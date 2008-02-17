@@ -10,7 +10,7 @@
 // GNU Lesser General Public License for more details.
 
 function dt_getvalue() {
-	if(this.form.mode == 'Query' && this.DateObj)
+	if(this.form && this.form.mode == 'Query' && this.DateObj)
 	    return new Array('>= ' + dt_formatdate(this, this.DateObj, 3),'<= ' + dt_formatdate(this, this.DateObj2, 3));
 	else if (this.DateObj)
 	    return dt_formatdate(this, this.DateObj, 0);
@@ -95,7 +95,7 @@ function dt_actionsetvalue(aparam) {
 
 function dt_changemode(){
     var l = this.mainlayer;
-    if(this.form.mode == 'Query'){
+    if(this.form && this.form.mode == 'Query'){
 	if(!this.DateObj) this.DateObj = new Date();
 	if(!this.DateObj2)  this.DateObj2 = new Date();
 	this.DateObj.setHours(0);
@@ -200,7 +200,7 @@ function dt_init(param){
 // load times).
 function dt_prepare(l) {
 	// Create the pane if needed.
-	if(l.form.mode != 'Query' && l.PaneLayer2){
+	if((!l.form || l.form.mode != 'Query') && l.PaneLayer2){
 	    l.PaneLayer = null;
 	    l.PaneLayer2 = null;
 	}
@@ -226,7 +226,7 @@ function dt_prepare(l) {
 		
 	}
 	// redraw the month & time.
-	if(l.form.mode == 'Query'){
+	if(l.form && l.form.mode == 'Query'){
 	    l.TmpDateObj2 = (l.DateObj2?(new Date(l.DateObj2)):null);
 	    dt_drawmonth(l.PaneLayer2, l.TmpDateObj2);
 	    dt_drawtime(l.PaneLayer2, l.TmpDateObj2);
@@ -318,7 +318,7 @@ function dt_drawmonth(l, d) {
 	    cur_dy = l.ml.DateObj2.getDate();
 	
 	rows=Math.ceil((num+col)/7);
-	if(l.ml.form.mode == 'Query'){
+	if(l.ml.form && l.ml.form.mode == 'Query'){
 	pg_set_style(l,'height',rows*20+110);
 	setClipHeight(l,rows*20+110);
 	moveTo(l.TimeHidLayer,0,rows*20+76);
@@ -681,9 +681,10 @@ function dt_addday(c,e,f){
 function dt_getfocus_day(a,b,c,d,e,f) {
 	// check area
 	if (e != 'dt_today' && e != 'dt_day' && e != 'dt_null') return;
+	if (!dt_current) return;
 
 	// hide the drop down part of the control
-	if(dt_current && dt_current.form && dt_current.form.mode != 'Query'){
+	if(!dt_current.form || dt_current.form.mode != 'Query'){
 	    dt_collapse(dt_current);
 	}
 
@@ -780,7 +781,7 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	}*/
 	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(h-2)+" width=1></TD>";
 	str += "	<TD valign=top>";
-	if(ml.form.mode =='Query'){
+	if(ml.form && ml.form.mode =='Query'){
 	    str += "        <TABLE height=20 cellpadding=0 cellspacing=0 border=0>";
 	    str += "        <TR><TD width="+w+" align=center><b>"+name+"</b></TD></TR></TABLE>";
 	    h+=20;
@@ -824,7 +825,7 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	l.MonVisLayer = htr_new_layer(116,l);
 	l.TimeHidLayer = htr_new_layer(1024, l);
 	l.TimeVisLayer = htr_new_layer(1024, l);
-	if(ml.form.mode == 'Query'){
+	if(ml.form && ml.form.mode == 'Query'){
 	    moveTo(l.HidLayer, 0, 68);
 	    moveTo(l.VisLayer, 0, 68);
 	    moveTo(l.MonHidLayer, 38, 22);
@@ -879,7 +880,7 @@ function dt_expand(l) {
 	pg_stackpopup(l.PaneLayer, l);
 	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
-	if(l.form.mode == 'Query'){
+	if(l.form && l.form.mode == 'Query'){
 	    pg_stackpopup(l.PaneLayer2, l);
 	    pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
 	    htr_setvisibility(l.PaneLayer2, 'inherit');
@@ -904,7 +905,7 @@ function dt_domousedown(l) {
 		dt_toggle(p.mainlayer);
 	}
 	if (p.kind == 'dt' || p.kind == 'dt_day') {
-		if (dt_current && ((dt_current.form.mode != 'Query' && p.kind =='dt_day') || p.kind == 'dt')) {
+		if (dt_current && (((!dt_current.form || dt_current.form.mode != 'Query') && p.kind =='dt_day') || p.kind == 'dt')) {
 			dt_current = null;
 			dt_collapse(p.mainlayer);
 		} else if (p.mainlayer.enabled == 'full') {
@@ -1085,7 +1086,7 @@ function dt_mousedown(e) {
 		if (e.kind && e.kind.substr(0,2) == 'dt') {
 			dt_domousedown(e.layer);
 			if (e.kind == 'dt') cn_activate(e.mainlayer, 'MouseDown');
-		} else if (dt_current && dt_current != e.mainlayer && !(!e.kind && dt_current.form.mode =='Query')) {
+		} else if (dt_current && dt_current != e.mainlayer && !(!e.kind && dt_current.form && dt_current.form.mode =='Query')) {
 			dt_collapse(dt_current);
 			dt_current = null;
 		}

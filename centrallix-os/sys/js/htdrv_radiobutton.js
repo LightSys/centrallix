@@ -10,7 +10,7 @@
 // GNU Lesser General Public License for more details.
 
 function rb_getvalue() {
-	if (this.form.mode == "Query"){
+	if (this.form && this.form.mode == "Query"){
 	    var vals = new Array();
 	    for(var i in this.buttonList){
 		if(htr_getvisibility(this.buttonList[i].optionPane.setPane) == 'inherit')
@@ -156,12 +156,12 @@ function rb_keyhandler(l, e, k)
 		if (i < this.buttonList.length-1)
 		    {
 		    this.kbdSelected = this.buttonList[i+1];
-		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+1);
+		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+5);
 		    }
 		else if (!this.form)
 		    {
 		    this.kbdSelected = this.buttonList[0];
-		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+1);
+		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+5);
 		    }
 		else
 		    {
@@ -178,7 +178,7 @@ function rb_keyhandler(l, e, k)
 	}
     else if (k == 13) // return pressed
 	{
-	if (this.kbdSelected && this.form.mode != "Query")
+	if (this.kbdSelected && (!this.form || this.form.mode != "Query"))
 	    radiobutton_toggle(this.kbdSelected);
 	if (this.form) this.form.RetNotify(this);
 	}
@@ -287,7 +287,7 @@ function rb_keyhandler(l, e, k)
     }
 
 function rb_changemode(){
-    if(this.form.mode == 'Query'){
+    if(this.form && this.form.mode == 'Query'){
 	for (i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/checkbox_checked.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/checkbox_unchecked.gif');
@@ -403,7 +403,7 @@ function radiobuttonpanel_init(param) {
 
 function radiobutton_toggle(layer) {
 	if(!layer) return;
-	if(layer.mainlayer.form.mode == "Query"){
+	if(layer.mainlayer.form && layer.mainlayer.form.mode == "Query"){
 	    layer.mainlayer.form.DataNotify(layer.mainlayer);
 	    if(htr_getvisibility(layer.optionPane.unsetPane) == 'inherit'){
 		htr_setvisibility(layer.optionPane.unsetPane, 'hidden');
