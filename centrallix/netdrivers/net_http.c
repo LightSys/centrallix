@@ -66,10 +66,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.76 2008/01/18 23:54:26 gbeeley Exp $
+    $Id: net_http.c,v 1.77 2008/02/17 07:45:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.77  2008/02/17 07:45:15  gbeeley
+    - (change) removal of 'encode' argument to WriteAttrs et al.
+    - (performance) slight reduction of data xfer size when fetching data.
+    - (change) ls__reopen_sql argument to OSML "create" allows for joins and
+      computed fields to be taken into account when a new record is inserted.
+
     Revision 1.76  2008/01/18 23:54:26  gbeeley
     - (change) add entropy to pool from web connection timings.
 
@@ -703,6 +709,7 @@ typedef struct
     char	Password[32];
     char	IPAddr[20];
     int		Size;
+    handle_t	LastHandle;
     }
     NhtConn, *pNhtConn;
 
@@ -754,6 +761,7 @@ nht_internal_AllocConn(pFile net_conn)
 	memset(conn, 0, sizeof(NhtConn));
 	conn->ConnFD = net_conn;
 	conn->Size = -1;
+	conn->LastHandle = XHN_INVALID_HANDLE;
 
 	/** Get the remote IP and port **/
 	remoteip = netGetRemoteIP(net_conn, NET_U_NOBLOCK);
@@ -1892,7 +1900,7 @@ nht_internal_EncodeHTML(int ch, char** bufptr, int maxlen)
  *** outbound data connection stream.
  ***/
 int
-nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrname, int encode)
+nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrname)
     {
     ObjData od;
     char* dptr;
@@ -1923,13 +1931,16 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 
 	/** Write the HTML output. **/
 	xsInit(&xs);
-	xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://", tgt);
+	if (tgt != XHN_INVALID_HANDLE && tgt == conn->LastHandle)
+	    xsPrintf(&xs, "<A TARGET=R HREF='http://");
+	else
+	    {
+	    conn->LastHandle = tgt;
+	    xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://", tgt);
+	    }
 	xsConcatQPrintf(&xs, "%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
-	if (encode)
-	    nht_internal_Escape(&xs, dptr);
-	else
-	    xsConcatenate(&xs,dptr,-1);
+	nht_internal_Escape(&xs, dptr);
 	xsConcatenate(&xs,"</A><br>\n",9);
 	fdWrite(conn->ConnFD,xs.String,strlen(xs.String),0,0);
 	/*printf("%s",xs.String);*/
@@ -1944,21 +1955,23 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
  *** object to the connection, given an object and a connection.
  ***/
 int
-nht_internal_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta, int encode)
+nht_internal_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
     {
     char* attr;
+
+	conn->LastHandle = XHN_INVALID_HANDLE;
 
 	/** Loop throught the attributes. **/
 	if (put_meta)
 	    {
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "name", encode);
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "inner_type", encode);
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "outer_type", encode);
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "annotation", encode);
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "name");
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "inner_type");
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "outer_type");
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "annotation");
 	    }
 	for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj))
 	    {
-	    nht_internal_WriteOneAttr(obj, conn, tgt, attr, encode);
+	    nht_internal_WriteOneAttr(obj, conn, tgt, attr);
 	    }
 
     return 0;
@@ -2088,11 +2101,12 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     char* orderby;
     int autoclose = 0;
     int retval;		/** FIXME FIXME FIXME FIXME FIXME FIXME **/
+    char* reopen_sql;
+    pXString reopen_str;
     
     handle_t session_handle;
     handle_t query_handle;
     handle_t obj_handle;
-    int encode_attrs = 0;
 
 	if (DEBUG_OSML) stPrint_ne(req_inf);
 
@@ -2114,10 +2128,6 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 	    }
 	else 
 	    {
-	    /** Need to encode result set? **/
-	    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__encode"),&ptr) >= 0 && !strcmp(ptr,"1"))
-		encode_attrs = 1;
-
 	    /** Get the session data **/
 	    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
 	    if (!sid) 
@@ -2271,7 +2281,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
 
 		/** Include an attribute listing **/
-		nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
+		nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
@@ -2377,7 +2387,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
 			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
 			    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
-			nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
+			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 			n--;
 			if (autoclose) objClose(obj);
 			}
@@ -2453,7 +2463,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
 	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
+		nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 		}
 	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
@@ -2542,14 +2552,46 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			}
 		    else
 			{
-			snprintf(sbuf,256,"Content-Type: text/html\r\n"
-				 "Pragma: no-cache\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-				 obj_handle);
-			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 			if (DEBUG_OSML) printf("ls__mode=create X" XHN_HANDLE_PRT "\n", obj_handle);
-			nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
+			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__reopen_sql"),&reopen_sql) == 0)
+			    {
+			    xhnFreeHandle(&(sess->Hctx), obj_handle);
+			    obj_handle = XHN_INVALID_HANDLE;
+			    reopen_str = (pXString)nmMalloc(sizeof(XString));
+			    if (reopen_str)
+				{
+				xsInit(reopen_str);
+				objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr));
+				xsQPrintf(reopen_str, "%STR WHERE :name = %STR&QUOT", reopen_sql, ptr);
+				qy = objMultiQuery(objsess, reopen_str->String);
+				if (qy)
+				    {
+				    objClose(obj);
+				    obj = objQueryFetch(qy, O_RDWR);
+				    objQueryClose(qy);
+				    }
+				xsDeInit(reopen_str);
+				nmFree(reopen_str, sizeof(XString));
+				}
+			    }
+			if (obj)
+			    {
+			    if (obj_handle == XHN_INVALID_HANDLE)
+				obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n"
+				     "Pragma: no-cache\r\n"
+				     "\r\n"
+				     "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
+				     obj_handle);
+			    nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+			    }
+			else
+			    {
+			    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n"
+				     "Pragma: no-cache\r\n"
+				     "\r\n"
+				     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			    }
 			}
 		    }
 		else
@@ -2571,7 +2613,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				 0);
 			}
 		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		    nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
+		    nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 		    }
 		}
 	    else if (!strcmp(request,"delete"))
@@ -2798,7 +2840,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int rowid;
     int tid = -1;
     int convert_text = 0;
-    int encode_attrs = 0;
     pDateTime dt = NULL;
     DateTime dtval;
     struct tm systime;
@@ -3228,10 +3269,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    strtcpy(path, objGetWD(nsess->ObjSess), sizeof(path));
 	    objSetWD(nsess->ObjSess, target_obj);
 
-	    /** Need to encode result set? **/
-	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__encode"),&ptr) >= 0 && !strcmp(ptr,"1"))
-		encode_attrs = 1;
-
 	    /** Get the SQL **/
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
 	        {
@@ -3241,7 +3278,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    rowid = 0;
 		    while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		        {
-			nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1,encode_attrs);
+			nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
 			objClose(sub_obj);
 			rowid++;
 			}
