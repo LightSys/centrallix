@@ -55,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.21 2007/09/18 18:08:20 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.22 2008/02/17 07:45:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.22  2008/02/17 07:45:58  gbeeley
+    - (bugfix) data corruption caused when a deleted row spanned a page
+      boundary
+
     Revision 1.21  2007/09/18 18:08:20  gbeeley
     - (bugfix) incorrect page flush logic was leaving pages unwritten to the
       file under certain circumstances.
@@ -2885,7 +2889,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    {
 			    qy->RowID++;
 			    for(i=0;i<=page;i++) dat_internal_UnlockPage(qy->Row.Pages[i]);
-			    qy->Row.Pages[i] = qy->Row.Pages[page];
+			    qy->Row.Pages[0] = qy->Row.Pages[page];
 			    len = -1;
 			    qy->Row.Offset = new_offset+1;
 			    qy->Row.StartPageID += page;
