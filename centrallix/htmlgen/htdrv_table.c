@@ -60,10 +60,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.54 2007/09/18 17:50:45 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.55 2008/02/17 07:42:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.55  2008/02/17 07:42:50  gbeeley
+    - (feature) image columns
+
     Revision 1.54  2007/09/18 17:50:45  gbeeley
     - (feature) stub out options for reverse_order and allow_selection.
     - (change) permit row height to auto adjust based on font size detected.
@@ -925,7 +928,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		else
 		    stAddValue(attr_inf, t->col_infs[i]->Name, 0);
 		attr_inf = stAddAttr(t->col_infs[i], "type");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image")))
 		    {
 		    str = nmSysStrdup(ptr);
 		    stAddValue(attr_inf, str, 0);
