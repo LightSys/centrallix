@@ -9,6 +9,25 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+function wn_deinit()
+    {
+    // If we moved it to top level, move it back so it can get cleaned up.
+    if (this.orig_parent)
+	this.orig_parent.appendChild(this);
+
+    // Remove references
+    for(var i in wn_list)
+	if (wn_list[i] == this)
+	    {
+	    wn_list.splice(i,1);
+	    break;
+	    }
+    if (wn_current == this)
+	wn_current = null;
+    if (wn_topwin == this)
+	wn_topwin = null;
+    }
+
 function wn_init(param)
     {
     var l = param.mainlayer;
@@ -16,6 +35,7 @@ function wn_init(param)
     htr_init_layer(l,l,"wn");
     htr_init_layer(param.clayer,l,"wn");
     ifc_init_widget(l);
+    l.destroy_widget = wn_deinit;
 
     /** NS4 version doesn't use a separate div for the title bar **/
     if(cx__capabilities.Dom1HTML && titlebar)
@@ -65,11 +85,13 @@ function wn_init(param)
 	    l.has_titlebar = 1;
 	}
 
+    l.orig_parent = null;
     if (param.toplevel == 1)
 	{
 	var tl = pg_toplevel_layer(l);
 	if (tl && tl != window && tl != document && tl != l)
 	    {
+	    l.orig_parent = l.parentNode;
 	    var x = getPageX(l);
 	    var y = getPageY(l);
 	    moveAbove(l, tl);

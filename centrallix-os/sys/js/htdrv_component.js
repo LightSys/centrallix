@@ -421,9 +421,26 @@ function cmp_add_event(cmp, eventname)
     }
 
 
+function cmp_deinit()
+    {
+    if (this.is_static)
+	{
+	for(var i in this.components)
+	    {
+	    wgtrDeinitTree(this.components[i].cmp);
+	    }
+	}
+    else
+	{
+	this.ifcProbe(ifAction).Invoke('Destroy', {_inst_aparam:null});
+	}
+    }
+
+
 function cmp_init(param)
     {
     var node = param.node;
+    node.destroy_widget = cmp_deinit;
     node.is_static = param.is_static;
     node.is_toplevel = param.is_top;
     node.allow_multi = param.allow_multi;
