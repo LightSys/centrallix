@@ -94,7 +94,8 @@ form_controls "widget/component-decl"
 		disabledimage="/sys/images/ico16bd.gif";
 		enabled = runclient(:form:recid > 1);
 		tooltip = "Previous Record";
-		cnBack "widget/connector" { event="Click"; target=form; action="Prev"; }
+		repeat = yes;
+		cnBack "widget/connector" { event="MouseDown"; target=form; action="Prev"; }
 		}
 	    ebPosition "widget/editbox"
 		{
@@ -119,7 +120,8 @@ form_controls "widget/component-decl"
 		disabledimage="/sys/images/ico16cd.gif";
 		enabled = runclient(not(:form:recid == :form:lastrecid));
 		tooltip = "Next Record";
-		cnNext "widget/connector" { event="Click"; target=form; action="Next"; }
+		repeat = yes;
+		cnNext "widget/connector" { event="MouseDown"; target=form; action="Next"; }
 		}
 	    btnLast "widget/imagebutton"
 		{
