@@ -39,7 +39,12 @@ cx_hints_style.multiselect = 131072;
 function cx_set_hints(element, hstr, hinttype)
     {
     if (!element.cx_hints) element.cx_hints = new Object();
-    if (element.cx_hints.hstr == hstr) return;
+    if (element.cx_hints.hstr == hstr) 
+	{
+	if (!element.cx_hints['all'])
+	    element.cx_hints['all'] = cx_parse_hints('');
+	return;
+	}
     element.cx_hints[hinttype] = cx_parse_hints(hstr);
     cx_merge_hints(element);
     if (element.hintschanged) element.hintschanged();
