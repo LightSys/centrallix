@@ -1294,29 +1294,37 @@ function pg_dosched()
     window.pg_isloaded = true;
     if (pg_schedtimeoutlist.length > 0)
     	{
-	sched_item = pg_schedtimeoutlist.shift();
-	if (sched_item.tm) for(var i=0;i<pg_schedtimeoutlist.length;i++)
+	if (pg_schedtimeoutlist[0].tm) for(var i=0;i<pg_schedtimeoutlist.length;i++)
 	    {
-	    pg_schedtimeoutlist[i].tm -= sched_item.tm;
+	    pg_schedtimeoutlist[i].tm -= pg_schedtimeoutlist[0].tm;
 	    }
-	//pg_debug('' + (pg_timestamp()) + ': running item ' + sched_item.id + '\n');
-	if (sched_item.exp)
-	    {
-	    // evaluate expression
-	    //alert('evaluating ' + sched_item.exp);
-	    var _context = null;
-	    if (wgtrIsNode(sched_item.obj))
-		_context = wgtrGetRoot(sched_item.obj);
-	    with (sched_item.obj) { eval(sched_item.exp); }
-	    }
-	else
-	    {
-	    // call function
-	    var _context = null;
-	    if (wgtrIsNode(sched_item.obj))
-		_context = wgtrGetRoot(sched_item.obj);
-	    sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
-	    }
+
+	// Make a note of current scheduler event id, so we don't do any events
+	// newly added by the below scheduler callbacks until a setTimeout()
+	// expires, even for 0-length events.
+	var maxid = pg_schedtimeoutid - 1;
+	do  {
+	    sched_item = pg_schedtimeoutlist.shift();
+	    //pg_debug('' + (pg_timestamp()) + ': running item ' + sched_item.id + '\n');
+
+	    if (sched_item.exp)
+		{
+		// evaluate expression
+		//alert('evaluating ' + sched_item.exp);
+		var _context = null;
+		if (wgtrIsNode(sched_item.obj))
+		    _context = wgtrGetRoot(sched_item.obj);
+		with (sched_item.obj) { eval(sched_item.exp); }
+		}
+	    else
+		{
+		// call function
+		var _context = null;
+		if (wgtrIsNode(sched_item.obj))
+		    _context = wgtrGetRoot(sched_item.obj);
+		sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
+		}
+	    } while (pg_schedtimeoutlist.length > 0 && pg_schedtimeoutlist[0].tm == 0 && pg_schedtimeoutlist[0].id <= maxid);
 	}
 
     pg_startschedtimeout();
@@ -1766,14 +1774,6 @@ function pg_reveal_register_listener(l)
     l.__pg_reveal_is_listener = true;
 
     // Search for the triggerer in question.
-    /*var trigger_layer = l;
-    do  {
-	if (cx__capabilities.Dom0NS)
-	    trigger_layer = trigger_layer.parentLayer;
-	else 
-	    trigger_layer = trigger_layer.parentNode;
-	} while (trigger_layer && !trigger_layer.__pg_reveal_is_triggerer && trigger_layer != window && trigger_layer != document);
-    if (!trigger_layer) trigger_layer = window;*/
     var trigger_layer = l;
     do  {
 	trigger_layer = wgtrGetParent(trigger_layer);
