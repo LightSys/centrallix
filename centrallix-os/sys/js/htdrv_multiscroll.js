@@ -64,6 +64,12 @@ function ms_add_part(l, param)
 
 function ms_part_resize(w, h)	// this => multiscroll part
     {
+    var diff = (h - this.actual_h);
+    this.mainlayer.total_height += diff;
+    if (this.always_vis) this.mainlayer.always_vis_height += diff;
+    this.actual_h = h;
+    pg_set_style(this, "height", h);
+    this.mainlayer.sbvalue_to_layout(this.mainlayer.scroll_index);
     return true;
     }
 
@@ -161,6 +167,8 @@ function ms_init(l, param)
     ie.Add("MouseOver");
     ie.Add("MouseOut");
     ie.Add("MouseMove");
+
+    var ia = l.ifcProbeAdd(ifAction);
 
     l.sbvalue_to_layout(0);
 
