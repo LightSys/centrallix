@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.16 2007/12/05 19:00:00 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.17 2008/02/18 20:46:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.17  2008/02/18 20:46:28  gbeeley
+    - (bugfix) report summary rows were not being issued if they only
+      "sumarized" one row and only a the start of a report/table.
+
     Revision 1.16  2007/12/05 19:00:00  gbeeley
     - (bugfix) null vs. not-null handling for aggregate values was not working
       properly...
@@ -1940,6 +1944,39 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		break;
 		}
 
+	    /** If first record, prime any summary LastValue **/
+	    if (reccnt == 0)
+		{
+		for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
+		    {
+		    rowinf = table->SubInf[i];
+		    if (!strcmp(rowinf->UsrType,"report/table-row"))
+			{
+			if (rpt_internal_GetBool(rowinf,"summary",0,0))
+			    {
+			    summarize_for_inf = stLookup(rowinf, "summarize_for");
+			    if (summarize_for_inf)
+				{
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				if (!ud->LastValue)
+				    {
+				    /** First record; not initialized. **/
+				    if (expEvalTree(ud->Exp, inf->ObjList) < 0)
+					{
+					mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
+					err = 1;
+					break;
+					}
+				    ud->LastValue = expAllocExpression();
+				    ud->LastValue->NodeType = expDataTypeToNodeType(ud->Exp->DataType);
+				    expCopyValue(ud->Exp, ud->LastValue, 1);
+				    }
+				}
+			    }
+			}
+		    }
+		}
+
 	    /** Search for 'normal' rows **/
 	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 		{
@@ -1991,14 +2028,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				    err = 1;
 				    break;
 				    }
-				if (!ud->LastValue)
-				    {
-				    /** First record; not initialized.  don't issue summary **/
-				    ud->LastValue = expAllocExpression();
-				    ud->LastValue->NodeType = expDataTypeToNodeType(ud->Exp->DataType);
-				    expCopyValue(ud->Exp, ud->LastValue, 1);
-				    }
-				else if (ud->LastValue->DataType != ud->Exp->DataType)
+				if (ud->LastValue->DataType != ud->Exp->DataType)
 				    {
 				    /** Data type changed.  Issue summary. **/
 				    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
