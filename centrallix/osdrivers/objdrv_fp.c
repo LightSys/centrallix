@@ -62,10 +62,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.3 2007/11/16 21:48:52 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.4 2008/02/19 07:56:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.4  2008/02/19 07:56:40  gbeeley
+    - (change) increase max cols from 256 to 640.  Believe it or not.
+    - (bugfix) column limit was not being honored, resulting in an array
+      overflow and subsequent crash.
+
     Revision 1.3  2007/11/16 21:48:52  gbeeley
     - (feature) adding support for the builtin filepro control fields for
       create and modify uid and timestamp.
@@ -87,7 +92,7 @@
 /*** Module controls ***/
 #define FP_FORCE_READONLY	1	/* not update safe yet!!! */
 #define FP_INDEX_MAGIC		0xc139
-#define FP_MAX_COLS		256
+#define FP_MAX_COLS		640
 #define FP_SEGMENTSIZE		0x0400
 #define FP_NAME_MAX		64	/* max len name for cols, tables, formats */
 #define FP_MAX_INDICES		('Z' - '0' + 1) 
@@ -673,6 +678,10 @@ fp_internal_ParseDefinition(pFpTableInf tdata, pLxSession lxs)
 	if (!tptr) goto error;
 	n_columns = strtol(tptr, NULL, 10);
 
+	/** Too many columns? **/
+	if (n_columns > FP_MAX_COLS)
+	    goto error;
+
 	/** Get a line for each column **/
 	total_len = 0;
 	for(i=0;i<n_columns;i++)
@@ -877,7 +886,7 @@ fp_internal_FindIndices(pFpData inf, char* table_path)
     int remaining_length, cur_field;
     pObjQuery qy = NULL;
     pObject qy_obj = NULL;
-    pObject fetched_obj;
+    pObject fetched_obj = NULL;
     char* name;
 
 	/** Run a query to find the indexes **/
