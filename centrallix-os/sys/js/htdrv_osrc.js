@@ -124,7 +124,7 @@ function osrc_make_filter_integer(col,val)
 	return '(:"' + col.oid + '">=' + parts[0] + ' AND :"' + col.oid + '"<=' + parts[1] + ')';
 	}
     else
-	return ':' + col.oid + '=' + val;
+	return ':"' + col.oid + '" = ' + val;
     }
     
 
@@ -258,7 +258,9 @@ function osrc_make_filter(q)
 			break;
 		    default:
 			//htr_alert(val, 1);
-			if(val.substring(0,2)=='>=')
+			if(typeof val.substring == 'undefined') // assume integer
+			    str = osrc_make_filter_integer(q[i], val);
+			else if(val.substring(0,2)=='>=')
 			    str=':"'+q[i].oid+'" >= '+val.substring(2);
 			else if(val.substring(0,2)=='<=')
 			    str=':"'+q[i].oid+'" <= '+val.substring(2);
