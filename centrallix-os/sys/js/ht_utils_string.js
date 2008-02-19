@@ -105,8 +105,10 @@ function htutil_obscure(s)
     if (!obscure_data) return s;
     var new_s = String('');
     s = String(s);
+    
     for (var i=0;i<s.length;i++)
 	{
+	// initial scrambling
 	if (s.charAt(i) >= '0' && s.charAt(i) <= '9')
 	    new_s += String.fromCharCode(Math.random()*10+48);
 	else if (s.charAt(i) >= 'A' && s.charAt(i) <= 'Z')
@@ -115,7 +117,30 @@ function htutil_obscure(s)
 	    new_s += String.fromCharCode(Math.random()*26+97);
 	else
 	    new_s += s.charAt(i);
+
+	// add/remove a character
+	if (Math.random() < 0.1 && new_s.length > 1)
+	    {
+	    var idx = new_s.length - 2;
+	    if (new_s.charAt(idx) >= '0' && new_s.charAt(idx) <= '9' && new_s.charAt(idx+1) >= '0' && new_s.charAt(idx+1) <= '9')
+		new_s = new_s.substring(0, new_s.length - 1);
+	    else if (new_s.charAt(idx) >= 'a' && new_s.charAt(idx) <= 'z' && new_s.charAt(idx+1) >= 'a' && new_s.charAt(idx+1) <= 'z')
+		new_s = new_s.substring(0, new_s.length - 1);
+	    else if (new_s.charAt(idx) >= 'A' && new_s.charAt(idx) <= 'Z' && new_s.charAt(idx+1) >= 'A' && new_s.charAt(idx+1) <= 'Z')
+		new_s = new_s.substring(0, new_s.length - 1);
+	    }
+	if (Math.random() < 0.1 && new_s.length > 1)
+	    {
+	    var idx = new_s.length - 2;
+	    if (new_s.charAt(idx) >= '0' && new_s.charAt(idx) <= '9' && new_s.charAt(idx+1) >= '0' && new_s.charAt(idx+1) <= '9')
+		new_s += String.fromCharCode(Math.random()*10+48);
+	    else if (new_s.charAt(idx) >= 'a' && new_s.charAt(idx) <= 'z' && new_s.charAt(idx+1) >= 'a' && new_s.charAt(idx+1) <= 'z')
+		new_s += String.fromCharCode(Math.random()*26+97);
+	    else if (new_s.charAt(idx) >= 'A' && new_s.charAt(idx) <= 'Z' && new_s.charAt(idx+1) >= 'A' && new_s.charAt(idx+1) <= 'Z')
+		new_s += String.fromCharCode(Math.random()*26+65);
+	    }
 	}
+
     return new_s;
     }
 

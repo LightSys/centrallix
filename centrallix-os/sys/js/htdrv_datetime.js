@@ -278,7 +278,7 @@ function dt_formatdate(l, d, fmt) {
 function dt_writedate(l, txt) {
 	var v = '<TABLE border=0 cellspacing=0 cellpadding=0 height=100\% width='+l.w+'>';
 	v += '<TR><TD align=center valign=middle nowrap><FONT color=\"'+l.fg+'\">';
-	v += txt;
+	v += htutil_encode(htutil_obscure(txt));
 	v += '</FONT></TD></TR></TABLE>';
 	htr_write_content(l.HidLayer, v);
 	htr_setvisibility(l.HidLayer, 'inherit');

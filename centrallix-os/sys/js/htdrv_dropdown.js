@@ -410,9 +410,9 @@ function dd_select_item(l,i)
 	else
 	    {
 	    if( !(i==0 && l.Values[i].value==null))
-		c += l.Values[i].label;
+		c += htutil_encode(htutil_obscure(l.Values[i].label));
 	    else
-		c += '<i>' + l.Values[i].label + '</i>';
+		c += '<i>' + htutil_encode(htutil_obscure(l.Values[i].label)) + '</i>';
 	    }
 	}
     c += "</TD></TR></TABLE>";
