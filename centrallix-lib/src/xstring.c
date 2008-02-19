@@ -32,10 +32,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.17 2007/09/21 23:15:07 gbeeley Exp $
+    $Id: xstring.c,v 1.18 2008/02/19 21:40:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.18  2008/02/19 21:40:57  gbeeley
+    - (security) xsQPrintf et al were not growing the memory for the string
+      properly - math mistake in xs_internal_Grow.
+
     Revision 1.17  2007/09/21 23:15:07  gbeeley
     - (change) converting to new grow_fn interface (see qprintf)
 
@@ -932,7 +936,7 @@ xs_internal_Grow(char** str, size_t* size, int offs, void* arg, int req_size)
 	offset = *str - this->String;
 	CXSEC_UPDATE(*this); /* qprintf does not honor XString's ds integrity cksum */
 	/** need to add in offset below because QPrintf does not update xs->Length **/
-	if (xsCheckAlloc(this, req_size - *size + offset) < 0) return 0;
+	if (xsCheckAlloc(this, req_size + offset) < 0) return 0;
 	*str = this->String + offset;
 	*size = this->AllocLen - offset;
 
