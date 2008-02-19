@@ -551,19 +551,20 @@ function osrc_action_create_cb()
 
 	// Check new/corrected data provided by server
 	var server_rec = this.ParseOneRow(links, 1);
+	var max_j = 0;
 	for(var i in server_rec)
 	    {
-	    var max_j = 0;
 	    found = 0;
 	    for(var j in cr)
 		{
+		if (j == 'oid') continue;
 		if (cr[j].oid == server_rec[i].oid)
 		    {
 		    cr[j].value = server_rec[i].value;
 		    cr[j].type = server_rec[i].type;
 		    found = 1;
 		    }
-		if (j > max_j) max_j = j;
+		if (parseInt(j) > max_j) max_j = parseInt(j);
 		}
 	    if (!found)
 		{
