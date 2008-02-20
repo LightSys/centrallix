@@ -1455,7 +1455,8 @@ function osrc_action_sync(param)
 	}
     this.SyncID = this.parentosrc.SyncID;
 
-    var query = new Array();
+    // Compile the list of criteria
+    var query = [];
     query.oid=null;
     query.joinstring='AND';
     var p=this.parentosrc.CurrentRecord;
@@ -1491,7 +1492,31 @@ function osrc_action_sync(param)
 		}
 	    }
 	}
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null,ro:this.readonly, fromsync:true});
+
+    // Did it change from last time?
+    if (!this.lastSync)
+	this.lastSync = [];
+    var changed = false;
+    for(var i=0;i<query.length;i++)
+	{
+	if (!this.lastSync[i])
+	    {
+	    changed = true;
+	    }
+	else if (this.lastSync[i].oid != query[i].oid || this.lastSync[i].value != query[i].value)
+	    {
+	    changed = true;
+	    }
+	this.lastSync[i] = {oid:query[i].oid, type:query[i].type, value:query[i].value};
+	}
+    for (var i=query.length;i<this.lastSync.length;i++)
+	{
+	this.lastSync[i] = {};
+	}
+
+    // Do the query
+    if (changed)
+	this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null,ro:this.readonly, fromsync:true});
     }
 
 function osrc_action_double_sync(param)
