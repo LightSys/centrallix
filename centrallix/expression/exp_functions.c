@@ -56,10 +56,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.12 2007/12/05 18:43:55 gbeeley Exp $
+    $Id: exp_functions.c,v 1.13 2008/02/21 21:45:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.13  2008/02/21 21:45:52  gbeeley
+    - (bugfix) aggregate sum(), which can operate on strings, was not
+      properly resetting string allocation
+
     Revision 1.12  2007/12/05 18:43:55  gbeeley
     - (bugfix) fix for min(string) crashing due to invalid free()
 
@@ -1222,6 +1226,8 @@ int exp_fn_sum(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    {
 	    tree->AggExp->Flags &= ~EXPR_F_NULL;
 	    tree->AggExp->DataType = i0->DataType;
+	    if (tree->AggExp->String && tree->AggExp->Alloc) nmSysFree(tree->AggExp->String);
+	    tree->AggExp->Alloc = 0;
 	    tree->AggExp->String = tree->AggExp->Types.StringBuf;
 	    tree->AggExp->String[0] = '\0';
 	    tree->AggExp->Integer = 0;
