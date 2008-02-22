@@ -40,10 +40,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.10 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: mtsession.c,v 1.11 2008/02/22 23:41:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.11  2008/02/22 23:41:29  gbeeley
+    - (change) adding %c to mssError().
+
     Revision 1.10  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -405,6 +408,7 @@ mssError(int clr, char* module, char* message, ...)
     char* str;
     int i;
     char nbuf[16];
+    char ch;
 
     	/** Build the real error msg. **/
 	xsInit(&xs);
@@ -426,6 +430,11 @@ mssError(int clr, char* module, char* message, ...)
 		case 's':
 		    str = va_arg(vl, char*);
 		    xsConcatenate(&xs, str?str:"(NULL)", -1);
+		    cur_pos = ptr + 2;
+		    break;
+		case 'c':
+		    ch = va_arg(vl, int);
+		    xsConcatenate(&xs, &ch, 1);
 		    cur_pos = ptr + 2;
 		    break;
 		case 'd':
