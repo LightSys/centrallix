@@ -18,6 +18,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/qprintf.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "stparse.h"
@@ -62,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.4 2008/02/19 07:56:40 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.5 2008/02/22 23:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.5  2008/02/22 23:42:40  gbeeley
+    - (feature) adding support for "qualifiers" on filepro tables.
+
     Revision 1.4  2008/02/19 07:56:40  gbeeley
     - (change) increase max cols from 256 to 640.  Believe it or not.
     - (bugfix) column limit was not being honored, resulting in an array
@@ -310,6 +314,8 @@ typedef struct
     pExpression		RowAnnotExpr;
     char		Annotation[256];
     int			PhysLen;
+    char		RawName[FP_NAME_MAX];
+    char		Qualifier[10];
     }
     FpTableInf, *pFpTableInf;
 
@@ -374,6 +380,9 @@ typedef struct
     int		LLRowCnt;
     pObject	LLObj;
     pObjQuery	LLQuery;
+    int		LLRowCnt2;
+    pObject	LLObj2;
+    pObjQuery	LLQuery2;
     }
     FpQuery, *pFpQuery;
 
@@ -888,24 +897,28 @@ fp_internal_FindIndices(pFpData inf, char* table_path)
     pObject qy_obj = NULL;
     pObject fetched_obj = NULL;
     char* name;
+    char index_query[128];
 
 	/** Run a query to find the indexes **/
 	qy_obj = objOpen(inf->Obj->Session, table_path, O_RDONLY, 0600, "system/directory");
 	if (!qy_obj) goto error;
 	objUnmanageObject(inf->Obj->Session, qy_obj);
-	qy = objOpenQuery(qy_obj, "substring(:name,1,6) == 'index.' AND char_length(:name) == 7", NULL, NULL, NULL);
+	qpfPrintf(NULL, index_query, sizeof(index_query), 
+		"substring(:name,1,%INT) == 'index%STR&ESCQ.' AND char_length(:name) == %INT", 
+		6 + strlen(tdata->Qualifier), tdata->Qualifier, 7 + strlen(tdata->Qualifier));
+	qy = objOpenQuery(qy_obj, index_query, NULL, NULL, NULL);
 	if (!qy) goto error;
 	objUnmanageQuery(inf->Obj->Session, qy);
 	while((fetched_obj = objQueryFetch(qy, O_RDONLY)))
 	    {
 	    name = NULL;
 	    objGetAttrValue(fetched_obj, "name", DATA_T_STRING, POD(&name));
-	    if (!name || strlen(name) != 7) goto error;
-	    c = name[6];
+	    if (!name || strlen(name) != 7 + strlen(tdata->Qualifier)) goto error;
+	    c = name[6 + strlen(tdata->Qualifier)];
 	    objClose(fetched_obj);
 	    fetched_obj = NULL;
-	    snprintf(index_path, sizeof(index_path), "%s/index.%c", 
-		    table_path, c);
+	    qpfPrintf(NULL, index_path, sizeof(index_path), "%STR/index%STR.%1STR",
+		    table_path, tdata->Qualifier, &c);
 	    index_obj = fp_internal_GetOpenFile(inf, index_path, c);
 	    if (!index_obj) continue;
 	    idata = tdata->Indices[tdata->nIndices++] = 
@@ -981,6 +994,7 @@ fp_internal_GetTData(pFpData inf)
     pFpTableInf tdata = NULL;
     int i;
     pFpColInf column;
+    char* ptr;
 
 	/** just aint gonna do it **/
 	if (inf->Type == FP_T_DATABASE) return NULL;
@@ -1000,14 +1014,22 @@ fp_internal_GetTData(pFpData inf)
 	if (!tdata) return NULL;
 	memset(tdata, 0, sizeof(FpTableInf));
 	strtcpy(tdata->Name, inf->TablePtr, sizeof(tdata->Name));
+	strtcpy(tdata->RawName, inf->TablePtr, sizeof(tdata->RawName));
 	tdata->Node = inf->Node;
 	inf->TData = tdata;
 	xhInit(&(tdata->OpenFiles), 15, 0);
 
+	/** Qualified table? **/
+	if ((ptr = strrchr(tdata->RawName, '.')) != NULL)
+	    {
+	    *ptr = '\0';
+	    strtcpy(tdata->Qualifier, ptr+1, sizeof(tdata->Qualifier));
+	    }
+
 	/** Build the path **/
-	snprintf(tdata->RawPath, OBJSYS_MAX_PATH, "%s/%s", inf->Node->DataPath, tdata->Name);
-	snprintf(tdata->KeyPath, OBJSYS_MAX_PATH, "%s/%s/key", inf->Node->DataPath, tdata->Name);
-	snprintf(tdata->MapPath, OBJSYS_MAX_PATH, "%s/%s/map", inf->Node->DataPath, tdata->Name);
+	snprintf(tdata->RawPath, OBJSYS_MAX_PATH, "%s/%s", inf->Node->DataPath, tdata->RawName);
+	snprintf(tdata->KeyPath, OBJSYS_MAX_PATH, "%s/%s/key%s", inf->Node->DataPath, tdata->RawName, tdata->Qualifier);
+	snprintf(tdata->MapPath, OBJSYS_MAX_PATH, "%s/%s/map", inf->Node->DataPath, tdata->RawName);
 
 	/** Easy part.  Try to open the data file and read its header **/
 	if (fp_internal_ReadHeader(inf, tdata->KeyPath) < 0)
@@ -1710,6 +1732,7 @@ fpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		objUnmanageQuery(inf->Obj->Session, qy->LLQuery);
 		qy->RowCnt = 0;
 		qy->LLRowCnt = 0;
+		qy->LLQuery2 = NULL;
 		break;
 
 	    case FP_T_TABLE:
@@ -1750,11 +1773,12 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pFpData inf = NULL;
     char filename[120];
     char* ptr;
+    char* ptr2;
     int new_type;
     int i,cnt;
     pFpTableInf tdata = qy->ObjInf->TData;
     int restype;
-    pObject ll_obj;
+    pObject ll_obj3;
     pFpColInf prikey;
     char* endptr = NULL;
 
@@ -1785,18 +1809,55 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		case FP_T_DATABASE:
 		    while(1)
 			{
+			/** more qualified key files from the same table? **/
+			if (qy->LLQuery2)
+			    {
+			    ll_obj3 = objQueryFetch(qy->LLQuery2, O_RDONLY);
+			    if (ll_obj3)
+				{
+				objGetAttrValue(qy->LLObj2, "name", DATA_T_STRING, POD(&ptr));
+				objGetAttrValue(ll_obj3, "name", DATA_T_STRING, POD(&ptr2));
+				if (!strncmp(ptr2, "key", 3) && strlen(ptr2) - 3 < sizeof(tdata->Qualifier))
+				    {
+				    /** Got one **/
+				    if (ptr2[3])
+					snprintf(filename, sizeof(filename), "%s.%s", ptr, ptr2+3);
+				    else
+					strtcpy(filename, ptr, sizeof(filename));
+				    objClose(ll_obj3);
+				    break;
+				    }
+
+				/** Not valid, ignore this one and try for another **/
+				objClose(ll_obj3);
+				continue;
+				}
+			    else
+				{
+				objQueryClose(qy->LLQuery2);
+				qy->LLQuery2 = NULL;
+				}
+			    }
+
 			/** skip over any .fp files **/
-			ll_obj = objQueryFetch(qy->LLQuery, O_RDONLY);
-			if (!ll_obj)
+			if (qy->LLObj2)
+			    objClose(qy->LLObj2);
+			qy->LLObj2 = objQueryFetch(qy->LLQuery, O_RDONLY);
+			if (!qy->LLObj2)
 			    {
 			    nmFree(inf,sizeof(FpData));
 			    return NULL;
 			    }
-			objGetAttrValue(ll_obj, "name", DATA_T_STRING, POD(&ptr));
+			objUnmanageObject(inf->Obj->Session, qy->LLObj2);
+			objGetAttrValue(qy->LLObj2, "name", DATA_T_STRING, POD(&ptr));
 			strtcpy(filename, ptr, sizeof(filename));
 			i = strlen(filename);
 			if (i <= 3 || strncmp(filename+i-3, ".fp", 3))
-			    break;
+			    {
+			    qy->LLQuery2 = objOpenQuery(qy->LLObj2, "substring(:name,1,3) == 'key'", ":name", NULL, NULL);
+			    if (qy->LLQuery2)
+				objUnmanageQuery(inf->Obj->Session, qy->LLQuery2);
+			    }
 			}
 		    break;
 
@@ -1944,6 +2005,14 @@ fpQueryClose(void* qy_v, pObjTrxTree* oxt)
 
 	/** Free the structure **/
 	//if (qy->Files) fp_internal_CloseFiles(qy->Files);
+	if (qy->LLObj)
+	    objClose(qy->LLObj);
+	if (qy->LLObj2)
+	    objClose(qy->LLObj2);
+	if (qy->LLQuery)
+	    objQueryClose(qy->LLQuery);
+	if (qy->LLQuery2)
+	    objQueryClose(qy->LLQuery2);
 	nmFree(qy,sizeof(FpQuery));
 
     return 0;
