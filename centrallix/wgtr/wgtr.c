@@ -1115,9 +1115,13 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		    //add children without adding the repeat
 		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
+
+		    objClose(rptrow);
+		    rptrow = NULL;
 		    }
 		expRemoveParamFromList(context_objlist, "repeat");
 		objQueryClose(rptqy);
+		rptqy = NULL;
 		}
 	    }
 	else if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
@@ -1143,6 +1147,8 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (my_templates[i] != templates[i])
 		wgtrFree(my_templates[i]);
+	if (rptrow)
+	    objClose(rptrow);
 	if (rptqy)
 	    objQueryClose(rptqy);
 	if (this_node)
