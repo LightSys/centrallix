@@ -220,7 +220,11 @@ function mn_deactivate()
 	this.nextActive = null;
 	}
     this.UnHighlight();
-    if (this.popup) htr_setvisibility(this, "hidden");
+    if (this.popup)
+	{
+	htr_setvisibility(this, "hidden");
+	moveTo(this, 0, -this.act_h);
+	}
     if (this.popup) for(var i=0;i<mn_active.length;i++)
 	{
 	if (mn_active[i] == this)
@@ -400,6 +404,8 @@ function mn_init(param)
 	}
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
+    if (htr_getvisibility(menu) == 'hidden')
+	moveTo(menu, 0, -menu.act_h);
     if (cx__capabilities.CSSBox) menu.act_h += 2;
     htutil_tag_images(menu.clayer, "mn", menu.clayer, menu);
 
