@@ -63,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.5 2008/02/22 23:42:40 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.6 2008/02/23 03:12:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.6  2008/02/23 03:12:10  gbeeley
+    - (bugfix) various open file handle leak issues corrected.
+
     Revision 1.5  2008/02/22 23:42:40  gbeeley
     - (feature) adding support for "qualifiers" on filepro tables.
 
@@ -502,12 +505,12 @@ fp_internal_StampToDate(CXINT16 stamp, pDateTime dt)
  *** files structure.
  ***/
 int
-fp_internal_CloseFiles(pFpOpenFiles of, void* arg)
+fp_internal_CloseFiles(pFpOpenFiles of)
     {
     int i;
 
 	/** don't need to close 'em yet? **/
-	if (of->LinkCnt--) return 0;
+	if (--of->LinkCnt) return 0;
 
 	/** Close the files & free **/
 	for(i=0; i<FP_MAX_FILES; i++)
@@ -515,6 +518,7 @@ fp_internal_CloseFiles(pFpOpenFiles of, void* arg)
 	    if (of->FileList[i])
 		objClose(of->FileList[i]);
 	    }
+	xhRemove(&of->TData->OpenFiles, (void*)(of->OSMLSession));
 	nmFree(of, sizeof(FpOpenFiles));
 
     return 0;
@@ -541,7 +545,7 @@ fp_internal_FreeTData(pFpTableInf tdata)
 	    }
 
 	/** free the tdata itself **/
-	xhClear(&(tdata->OpenFiles), fp_internal_CloseFiles, NULL);
+	xhClear(&(tdata->OpenFiles), NULL, NULL);
 	xhDeInit(&(tdata->OpenFiles));
 	nmFree(tdata, sizeof(FpTableInf));
 	
@@ -565,6 +569,7 @@ fp_internal_OpenFiles(pFpData inf)
 	if ((files = (pFpOpenFiles)xhLookup(&(tdata->OpenFiles), (void*)s)) != NULL)
 	    {
 	    files->LinkCnt++;
+	    inf->OpenFiles = files;
 	    return files;
 	    }
 
@@ -574,7 +579,6 @@ fp_internal_OpenFiles(pFpData inf)
 	memset(files, 0, sizeof(FpOpenFiles));
 	files->OSMLSession = s;
 	files->TData = tdata;
-	files->LinkCnt = 1;
 	files->FileKeys[0] = FP_KEY_KEYFILE;
 	files->FileList[0] = objOpen(s, tdata->KeyPath, O_RDONLY, 0600, "application/octet-stream");
 	if (!files->FileList[0])
@@ -584,7 +588,10 @@ fp_internal_OpenFiles(pFpData inf)
 	    return NULL;
 	    }
 	objUnmanageObject(s, files->FileList[0]);
+
+	files->LinkCnt = 1;
 	xhAdd(&(tdata->OpenFiles), (void*)(files->OSMLSession), (void*)files);
+	inf->OpenFiles = files;
 
     return files;
     }
@@ -1089,6 +1096,8 @@ fp_internal_GetTData(pFpData inf)
     return tdata;
 
     error:
+	if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
+	inf->OpenFiles = NULL;
 	if (tdata) fp_internal_FreeTData(tdata);
 	if (inf->TData) inf->TData = NULL;
 
@@ -1480,6 +1489,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	inf->Node = fp_internal_OpenNode(inf,systype);
 	if (!inf->Node)
 	    {
+	    if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
 	    nmFree(inf,sizeof(FpData));
 	    return NULL;
 	    }
@@ -1490,6 +1500,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    if (strpbrk(inf->TablePtr," \t\r\n"))
 		{
 		mssError(1,"FP","Requested table '%s' is invalid", inf->TablePtr);
+		if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
 		nmFree(inf,sizeof(FpData));
 		return NULL;
 		}
@@ -1497,6 +1508,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    if (!inf->TData)
 		{
 		mssError(1,"FP","Requested table '%s' could not be accessed", inf->TablePtr);
+		if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
 		nmFree(inf,sizeof(FpData));
 		return NULL;
 		}
@@ -1507,6 +1519,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    {
 	    if (fp_internal_KeyToRow(inf, inf->RowColPtr) < 0)
 		{
+		if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
 		nmFree(inf,sizeof(FpData));
 		return NULL;
 		}
@@ -1606,6 +1619,7 @@ fpClose(void* inf_v, pObjTrxTree* oxt)
 	    }
 
 	/** Free the info structure **/
+	if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
 	if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
 	if (inf->RowData) nmSysFree(inf->RowData);
 	if (inf->ParsedData) nmSysFree(inf->ParsedData);
@@ -1976,6 +1990,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		if (!inf->TData)
 		    {
 		    //mssError(1,"FP","Requested table '%s' could not be accessed", inf->TablePtr);
+		    if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
 		    nmFree(inf,sizeof(FpData));
 		    inf = NULL;
 		    }
