@@ -552,6 +552,7 @@ function tbld_init(param)
 		{
 		l.rb.b=htr_new_layer(t.colsep, t);
 		htr_setzindex(l.rb.b, 2);
+		htr_setzindex(l.rb, 2);
 		htr_init_layer(l.rb.b, t, "tabledynamic");
 		htr_set_event_target(l.rb.b, l.rb);
 		l.rb.b.subkind = "border";
