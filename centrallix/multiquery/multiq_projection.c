@@ -43,10 +43,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.9 2007/09/18 17:59:07 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.10  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.9  2007/09/18 17:59:07  gbeeley
     - (change) permit multiple WHERE clauses in the SQL.  They are automatically
       combined using AND.  This permits more flexible building of dynamic SQL
@@ -409,15 +422,7 @@ mqpAnalyze(pMultiQuery mq)
 	    qe->QSLinkage = (void*)from_qs;
 
 	    /** Find the index of the object for this FROM clause **/
-	    src_idx = -1;
-	    for(i=0;i<mq->QTree->ObjList->nObjects;i++)
-	        {
-		if (!strcmp(mq->QTree->ObjList->Names[i],from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source)))
-		    {
-		    src_idx = i;
-		    break;
-		    }
-		}
+	    src_idx = expLookupParam(mq->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
 	    if (src_idx == -1)
 	        {
 		mq_internal_FreeQE(qe);
@@ -619,12 +624,12 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
     pObject obj;
 
 	/** Attempt to recurse a subtree? **/
-	if (qe->Flags & MQ_EF_FROMSUBTREE && mq->QTree->ObjList->Objects[qe->SrcIndex])
+	if (qe->Flags & MQ_EF_FROMSUBTREE && mq->ObjList->Objects[qe->SrcIndex])
 	    {
-	    obj = mqp_internal_Recurse(qe, mq, mq->QTree->ObjList->Objects[qe->SrcIndex]);
+	    obj = mqp_internal_Recurse(qe, mq, mq->ObjList->Objects[qe->SrcIndex]);
 	    if (obj)
 		{
-		expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
 		return 1;
 		}
 	    }
@@ -633,10 +638,10 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 	while(1)
 	    {
 	    /** Close the previous fetched object? **/
-	    if (mq->QTree->ObjList->Objects[qe->SrcIndex])
+	    if (mq->ObjList->Objects[qe->SrcIndex])
 		{
-		objClose(mq->QTree->ObjList->Objects[qe->SrcIndex]);
-		mq->QTree->ObjList->Objects[qe->SrcIndex] = NULL;
+		objClose(mq->ObjList->Objects[qe->SrcIndex]);
+		mq->ObjList->Objects[qe->SrcIndex] = NULL;
 		}
 
 	    /** Fetch the next item and set the object... **/
@@ -645,7 +650,7 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 		{
 		/** Got one. **/
 		objUnmanageObject(mq->SessionID, obj);
-		expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
 		if (qe->Flags & MQ_EF_FROMSUBTREE) mqp_internal_SetupSubtreeAttrs(qe, obj);
 		return 1;
 		}
@@ -655,7 +660,7 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 		{
 		obj = mqp_internal_Return(qe, mq, NULL);
 		if (!obj) return 0;
-		expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
 		}
 	    else
 		{
@@ -676,10 +681,10 @@ mqpFinish(pQueryElement qe, pMultiQuery mq)
     pExpression del_exp;
 
     	/** Close the previous fetched object? **/
-	if (mq->QTree->ObjList->Objects[qe->SrcIndex])
+	if (mq->ObjList->Objects[qe->SrcIndex])
 	    {
-	    objClose(mq->QTree->ObjList->Objects[qe->SrcIndex]);
-	    mq->QTree->ObjList->Objects[qe->SrcIndex] = NULL;
+	    objClose(mq->ObjList->Objects[qe->SrcIndex]);
+	    mq->ObjList->Objects[qe->SrcIndex] = NULL;
 	    }
 
 	if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);

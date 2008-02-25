@@ -58,10 +58,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.17 2008/02/18 20:46:28 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.18 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.18  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.17  2008/02/18 20:46:28  gbeeley
     - (bugfix) report summary rows were not being issued if they only
       "sumarized" one row and only a the start of a report/table.
@@ -1080,7 +1093,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	nmFree(sql_str, sizeof(XString));
 
 	/** Ok, now issue the query. **/
-	qy->Query = objMultiQuery(rs->ObjSess, newsql->String);
+	qy->Query = objMultiQuery(rs->ObjSess, newsql->String, inf->ObjList);
         /*nmSysFree(newsql);*/
 	xsDeInit(newsql);
 	nmFree(newsql,sizeof(XString));

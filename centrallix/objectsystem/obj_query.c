@@ -47,10 +47,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.17 2008/01/06 20:17:05 gbeeley Exp $
+    $Id: obj_query.c,v 1.18 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.18  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.17  2008/01/06 20:17:05  gbeeley
     - (change) reworking of part of objOpenQuery, possible bugfix here as well
 
@@ -294,9 +307,10 @@ obj_internal_MergeSort(pObjQuerySort sortinf, int bufferid, int startid, int end
  *** the objectsystem, potentially performing joins.
  ***/
 pObjQuery 
-objMultiQuery(pObjSession session, char* query)
+objMultiQuery(pObjSession session, char* query, void* objlist_v)
     {
     pObjQuery this;
+    pParamObjects objlist = (pParamObjects)objlist_v;
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
@@ -313,7 +327,7 @@ objMultiQuery(pObjSession session, char* query)
 	this->Obj = NULL;
 
 	/** Start the query. **/
-	this->Data = this->Drv->OpenQuery(session, query);
+	this->Data = this->Drv->OpenQuery(session, query, objlist);
 	if (!this->Data)
 	    {
 	    nmFree(this,sizeof(ObjQuery));

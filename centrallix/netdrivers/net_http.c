@@ -66,10 +66,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.77 2008/02/17 07:45:15 gbeeley Exp $
+    $Id: net_http.c,v 1.78 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.78  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.77  2008/02/17 07:45:15  gbeeley
     - (change) removal of 'encode' argument to WriteAttrs et al.
     - (performance) slight reduction of data xfer size when fetching data.
@@ -2341,7 +2354,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose"),&ptr) == 0 && strtol(ptr,NULL,0))
 			autoclose = 1;
-		    qy = objMultiQuery(objsess, ptr);
+		    qy = objMultiQuery(objsess, ptr, NULL);
 		    if (!qy)
 			query_handle = XHN_INVALID_HANDLE;
 		    else
@@ -2563,7 +2576,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				xsInit(reopen_str);
 				objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr));
 				xsQPrintf(reopen_str, "%STR WHERE :name = %STR&QUOT", reopen_sql, ptr);
-				qy = objMultiQuery(objsess, reopen_str->String);
+				qy = objMultiQuery(objsess, reopen_str->String, NULL);
 				if (qy)
 				    {
 				    objClose(obj);
@@ -3272,7 +3285,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    /** Get the SQL **/
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
 	        {
-		query = objMultiQuery(nsess->ObjSess, ptr);
+		query = objMultiQuery(nsess->ObjSess, ptr, NULL);
 		if (query)
 		    {
 		    rowid = 0;

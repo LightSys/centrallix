@@ -900,7 +900,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		mssError(1,"WGTR","Repeat widget %s must have a sql attribute", this_node->Name);
 		goto error;
 		}
-	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String)) != NULL)
+	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String,NULL)) != NULL)
 		{
 		/*the name will have to be changed from repeat to something unique */
 		expAddParamToList(context_objlist,this_node->Name,NULL,0);
@@ -1014,6 +1014,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    context_objlist = expCreateParamList();
 	    if (!context_objlist) 
 		goto error;
+	    context_objlist->Session = obj->Session;
 	    n_params = 0;
 	    memset(paramlist, 0, sizeof(paramlist));
 	    created_objlist = 1;
@@ -1104,7 +1105,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		goto error;
 		}
 	    //mssError(1,"WGTR","%s",rptqysql);
-	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String)) != NULL)
+	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String,NULL)) != NULL)
 		{
 		//the name will have to be changed from repeat to something unique
 		expAddParamToList(context_objlist,this_node->Name,NULL,0);
@@ -1653,7 +1654,7 @@ wgtrGetExpr(pWgtrNode widget, char* attrname)
 	    {
 	    /** Build exp from pod **/
 	    if (wgtrGetPropertyValue(widget, attrname, t, &pod) != 0) return NULL;
-	    exp = expPodToExpression(&pod, t);
+	    exp = expPodToExpression(&pod, t, NULL);
 	    }
 
 	return exp;

@@ -60,10 +60,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.55 2008/02/17 07:42:50 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.56 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.56  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.55  2008/02/17 07:42:50  gbeeley
     - (feature) image columns
 
@@ -653,7 +666,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    mssError(1,"HTTBL","Static datatable must have SQL property");
 	    return -1;
 	    }
-	qy = objMultiQuery(s->ObjSession, sql);
+	qy = objMultiQuery(s->ObjSession, sql, NULL);
 	if (!qy)
 	    {
 	    mssError(0,"HTTBL","Could not open query for static datatable");

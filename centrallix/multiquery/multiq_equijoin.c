@@ -45,10 +45,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.9 2007/09/18 17:59:07 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.10  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.9  2007/09/18 17:59:07  gbeeley
     - (change) permit multiple WHERE clauses in the SQL.  They are automatically
       combined using AND.  This permits more flexible building of dynamic SQL
@@ -179,6 +192,7 @@ mqjAnalyze(pMultiQuery mq)
     pQueryStructure from_sources[16];
     unsigned char from_srcmap[16];
     int n_joins = 0, n_joins_used;
+    int min_objlist = mq->nProvidedObjects;
 
     	/** Search for WHERE clauses with join operations... **/
 	while((where_qs = mq_internal_FindItem(mq->QTree, MQ_T_WHERECLAUSE, where_qs)) != NULL)
@@ -222,7 +236,7 @@ mqjAnalyze(pMultiQuery mq)
 
 	    /** Build a list of the FROM sources, and init the source mapping **/
 	    from_qs = mq_internal_FindItem(where_qs->Parent, MQ_T_FROMCLAUSE, NULL);
-	    for(i=0;i<mq->QTree->ObjList->nObjects;i++)
+	    for(i=min_objlist;i<mq->ObjList->nObjects;i++)
 	        {
 		/** init the map - which we'll use for sorting the from items by specificity. **/
 		from_srcmap[i] = i;
@@ -232,7 +246,7 @@ mqjAnalyze(pMultiQuery mq)
 		for(j=0;j<from_qs->Children.nItems;j++)
 		    {
 		    from_item = (pQueryStructure)(from_qs->Children.Items[j]);
-		    if (!strcmp(mq->QTree->ObjList->Names[i], 
+		    if (!strcmp(mq->ObjList->Names[i], 
 		        from_item->Presentation[0]?(from_item->Presentation):(from_item->Source)))
 			{
 			found = j;
@@ -248,9 +262,9 @@ mqjAnalyze(pMultiQuery mq)
 		}
 
 	    /** Ok, now sort by specificity **/
-	    for(i=0;i<mq->QTree->ObjList->nObjects;i++)
+	    for(i=min_objlist;i<mq->ObjList->nObjects;i++)
 	        {
-		for(j=i+1;j<mq->QTree->ObjList->nObjects;j++)
+		for(j=i+1;j<mq->ObjList->nObjects;j++)
 		    {
 		    if (from_sources[from_srcmap[i]]->Specificity < from_sources[from_srcmap[j]]->Specificity)
 		        {
@@ -555,8 +569,8 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 	        rval = master->Driver->NextItem(master, mq);
 	        if (rval == 0 || rval < 0) return rval;
 	        qe->IterCnt++;
-		expFreezeEval(qe->Constraint, mq->QTree->ObjList, slave->SrcIndex);
-		if (mq->QTree->ObjList->Objects[qe->SrcIndex] != NULL)
+		expFreezeEval(qe->Constraint, mq->ObjList, slave->SrcIndex);
+		if (mq->ObjList->Objects[qe->SrcIndex] != NULL)
 		    {
 		    if (slave->Driver->Start(slave, mq, qe->Constraint) < 0)
 			return -1;
@@ -565,13 +579,13 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 	        }
 
 	    /** Ok, retrieve a slave row. **/
-	    if (mq->QTree->ObjList->Objects[qe->SrcIndex] != NULL) 
+	    if (mq->ObjList->Objects[qe->SrcIndex] != NULL) 
 	        rval = slave->Driver->NextItem(slave, mq);
 	    else
 	        rval = 0;
 	    if ((rval == 0 || rval < 0) && (qe->SlaveIterCnt > 0 || !(qe->Flags & MQ_EF_OUTERJOIN)))
 	        {
-		if (mq->QTree->ObjList->Objects[qe->SrcIndex] != NULL) 
+		if (mq->ObjList->Objects[qe->SrcIndex] != NULL) 
 		    {
 		    slave->Driver->Finish(slave, mq);
 		    qe->Flags &= ~MQ_EF_SLAVESTART;

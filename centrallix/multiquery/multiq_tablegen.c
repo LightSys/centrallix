@@ -46,10 +46,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.7 2007/07/31 17:39:59 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.8 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.8  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.7  2007/07/31 17:39:59  gbeeley
     - (feature) adding "SELECT *" capability, rather than having to name each
       attribute in every query.  Note - "select *" does result in a query
@@ -157,7 +170,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigne
 	    {
 	    /** Evaluate the item **/
 	    exp = md->GroupByItems[i];
-	    if (expEvalTree(exp, mq->QTree->ObjList) < 0)
+	    if (expEvalTree(exp, mq->ObjList) < 0)
 	        {
 		mssError(0,"MQT","Error evaluating group-by item #%d",i+1);
 		return -1;
@@ -391,10 +404,10 @@ mqtStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     pQueryElement cld;
 
     	/** First, evaluate all of the attributes that we 'own' **/
-	mq->QTree->ObjList->Session = mq->SessionID;
+	mq->ObjList->Session = mq->SessionID;
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
 	    {
-	    if (expEvalTree((pExpression)qe->AttrCompiledExpr.Items[i], mq->QTree->ObjList) < 0) 
+	    if (expEvalTree((pExpression)qe->AttrCompiledExpr.Items[i], mq->ObjList) < 0) 
 	        {
 		mssError(0,"MQT","Could not evaluate SELECT item's value");
 		return -1;
@@ -429,7 +442,7 @@ mqt_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
 	/** Validate the constraint expression, otherwise succeed by default **/
         if (qe->Constraint)
             {
-            expEvalTree(qe->Constraint, mq->QTree->ObjList);
+            expEvalTree(qe->Constraint, mq->ObjList);
 	    if (qe->Constraint->DataType != DATA_T_INTEGER)
 	        {
 	        mssError(1,"MQT","WHERE clause item must have a boolean/integer value.");
@@ -508,11 +521,11 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		for(i=0;i<md->nObjects;i++)
 		    {
 		    tmp_obj = md->SavedObjList[i];
-		    md->SavedObjList[i] = mq->QTree->ObjList->Objects[i];
-		    mq->QTree->ObjList->Objects[i] = tmp_obj;
-		    if (md->SavedObjList[i]) objClose(md->SavedObjList[i]);
+		    md->SavedObjList[i] = mq->ObjList->Objects[i];
+		    mq->ObjList->Objects[i] = tmp_obj;
+		    if (md->SavedObjList[i] && i >= mq->nProvidedObjects) objClose(md->SavedObjList[i]);
 		    }
-		expAllObjChanged(mq->QTree->ObjList);
+		expAllObjChanged(mq->ObjList);
 		md->nObjects = 0;
 		}
 
@@ -568,14 +581,16 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    if (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL)
 		        {
 		        expUnlockAggregates(exp);
-		        expEvalTree(exp, mq->QTree->ObjList);
+		        expEvalTree(exp, mq->ObjList);
 			}
 		    }
 
 		/** Link to all objects in the current object list **/
-		memcpy(md->SavedObjList, mq->QTree->ObjList->Objects, mq->QTree->ObjList->nObjects*sizeof(pObject));
-		md->nObjects = mq->QTree->ObjList->nObjects;
-		for(i=0;i<md->nObjects;i++) if (md->SavedObjList[i]) objLinkTo(md->SavedObjList[i]);
+		memcpy(md->SavedObjList, mq->ObjList->Objects, mq->ObjList->nObjects*sizeof(pObject));
+		md->nObjects = mq->ObjList->nObjects;
+		for(i=0;i<md->nObjects;i++) 
+		    if (md->SavedObjList[i] && i>=mq->nProvidedObjects) 
+			objLinkTo(md->SavedObjList[i]);
 
 	        /** Next, retrieve until end or until end of group **/
 	        if (cld && qe->Children.nItems > 0)
@@ -603,10 +618,10 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    for(i=0;i<md->nObjects;i++)
 		        {
 			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = mq->QTree->ObjList->Objects[i];
-			mq->QTree->ObjList->Objects[i] = tmp_obj;
+			md->SavedObjList[i] = mq->ObjList->Objects[i];
+			mq->ObjList->Objects[i] = tmp_obj;
 			}
-		    expAllObjChanged(mq->QTree->ObjList);
+		    expAllObjChanged(mq->ObjList);
 		    md->IsLastRow = 1;
 		    return 1;
 		    }
@@ -617,17 +632,19 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    for(i=0;i<md->nObjects;i++)
 		        {
 			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = mq->QTree->ObjList->Objects[i];
-			mq->QTree->ObjList->Objects[i] = tmp_obj;
+			md->SavedObjList[i] = mq->ObjList->Objects[i];
+			mq->ObjList->Objects[i] = tmp_obj;
 			}
-		    expAllObjChanged(mq->QTree->ObjList);
+		    expAllObjChanged(mq->ObjList);
 		    md->GroupByPtr = bptr;
 		    if (!cld || qe->Children.nItems == 0) md->IsLastRow = 1;
 		    return 1;
 		    }
 		else
 		    {
-		    for(i=0;i<md->nObjects;i++) if (md->SavedObjList[i]) objClose(md->SavedObjList[i]);
+		    for(i=0;i<md->nObjects;i++) 
+			if (md->SavedObjList[i] && i >= mq->nProvidedObjects) 
+			    objClose(md->SavedObjList[i]);
 		    }
 		}
 	    }

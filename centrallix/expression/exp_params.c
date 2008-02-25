@@ -46,10 +46,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.9 2007/12/05 18:48:02 gbeeley Exp $
+    $Id: exp_params.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.10  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.9  2007/12/05 18:48:02  gbeeley
     - (bugfix) Problem was causing several aggregate functions to not properly
       reset to NULL on a new grouping, when used in a context where a "group"
@@ -188,6 +201,53 @@ expFreeParamListWithCB(pParamObjects this, int (*free_fn)())
     }
 
 
+/*** expCopyList - make a copy of a param objects list
+ ***/
+int
+expCopyList(pParamObjects src, pParamObjects dst)
+    {
+    int i;
+
+	/** Might need to deallocate strings in dst **/
+	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	    if (dst->Names[i] != NULL && dst->Flags[i] & EXPR_O_ALLOCNAME)
+		nmSysFree(dst->Names[i]);
+
+	/** For most things, just a straight memcpy will do **/
+	memcpy(dst, src, sizeof(ParamObjects));
+
+	/** Make copies of all names **/
+	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	    if (dst->Names[i] != NULL)
+		{
+		dst->Names[i] = nmSysStrdup(dst->Names[i]);
+		dst->Flags[i] |= EXPR_O_ALLOCNAME;
+		}
+
+	/** This is a transient property anyhow **/
+	dst->CurControl = NULL;
+
+    return 0;
+    }
+
+
+/*** expLookupParam - lookup a param in the object list, and return its ID if
+ *** we find it, or -1 if not found.
+ ***/
+int
+expLookupParam(pParamObjects this, char* name)
+    {
+    int i;
+
+	/** Search for it **/
+	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	    if (this->Names[i] != NULL && !strcmp(name, this->Names[i]))
+		return i;
+
+    return -1;
+    }
+
+
 /*** expAddParamToList - adds a new parameter slot to the parameter listing,
  *** possibly with or without a direct object reference (obj can be NULL).
  *** The name, slot number, and flags (EXPR_O_xxx) are used when the 
@@ -249,27 +309,26 @@ expRemoveParamFromList(pParamObjects this, char* name)
     int i;
 
     	/** Find the thing and delete it **/
-	for(i=0;i<EXPR_MAX_PARAMS;i++) if (this->Names[i] != NULL && !strcmp(name, this->Names[i]))
+	i = expLookupParam(this, name);
+	if (i < 0) return -1;
+
+	if (this->Flags[i] & EXPR_O_ALLOCNAME) nmSysFree(this->Names[i]);
+	this->Flags[i] = 0;
+	this->Objects[i] = NULL;
+	this->nObjects--;
+	this->Names[i] = NULL;
+	if (this->CurrentID == i)
 	    {
-	    if (this->Flags[i] & EXPR_O_ALLOCNAME) nmSysFree(this->Names[i]);
-	    this->Flags[i] = 0;
-	    this->Objects[i] = NULL;
-	    this->nObjects--;
-	    this->Names[i] = NULL;
-	    if (this->CurrentID == i)
-	        {
-		if (i==0) this->CurrentID = -1;
-		else this->CurrentID--;
-		}
-	    if (this->ParentID == i)
-	        {
-		if (i==0) this->ParentID = -1;
-		else this->ParentID--;
-		}
-	    return 0;
+	    if (i==0) this->CurrentID = -1;
+	    else this->CurrentID--;
+	    }
+	if (this->ParentID == i)
+	    {
+	    if (i==0) this->ParentID = -1;
+	    else this->ParentID--;
 	    }
 
-    return -1;
+    return 0;
     }
 
 
@@ -291,12 +350,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 	    }
 	else
 	    {
-	    for(i=0;i<EXPR_MAX_PARAMS;i++) 
-	      if (this->Names[i] && !strcmp(this->Names[i],name))
-	        {
-	        slot_id = i;
-		break;
-		}
+	    slot_id = expLookupParam(this, name);
 	    }
 	if (slot_id < 0) return -1;
 
@@ -383,6 +437,35 @@ expReplaceVariableID(pExpression this, int newid)
 	for(i=0;i<this->Children.nItems;i++)
 	    {
 	    expReplaceVariableID((pExpression)(this->Children.Items[i]), newid);
+	    }
+
+    return 0;
+    }
+
+
+/*** expFreezeOne - evaluates all id's in a tree with object id freeze_id
+ *** and sets those object's values as such.  It then marks them as
+ *** EXPR_F_FREEZEEVAL so that the next eval of the tree views such nodes
+ *** as constants and does not evaluate them.
+ ***/
+int
+expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
+    {
+    int i;
+
+    	/** Is this a PROPERTY object and does not match freeze_id?? **/
+	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID == freeze_id)
+	    {
+	    this->Flags &= ~EXPR_F_FREEZEEVAL;
+	    expEvalTree(this,objlist);
+	    this->Flags |= EXPR_F_FREEZEEVAL;
+	    return 0;
+	    }
+
+	/** Otherwise, check child items. **/
+	for(i=0;i<this->Children.nItems;i++)
+	    {
+	    expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id);
 	    }
 
     return 0;
@@ -516,12 +599,7 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 	    }
 	else
 	    {
-	    for(i=0;i<EXPR_MAX_PARAMS;i++) 
-	      if (this->Names[i] && !strcmp(this->Names[i],name))
-	        {
-	        slot_id = i;
-		break;
-		}
+	    slot_id = expLookupParam(this, name);
 	    }
 	if (slot_id < 0) return -1;
 

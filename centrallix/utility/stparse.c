@@ -47,10 +47,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.15 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: stparse.c,v 1.16 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.16  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.15  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -585,7 +598,7 @@ stSetAttrValue(pStructInf inf, int type, pObjData value, int nval)
 
 	/** Create the new expression node **/
 	if (type == DATA_T_ANY) return -1;
-	new_exp = expPodToExpression(value, type);
+	new_exp = expPodToExpression(value, type, NULL);
 
 	/** Where should the new expression be put? **/
 	if (nval == 0 && !inf->Value)

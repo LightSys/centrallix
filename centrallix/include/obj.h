@@ -35,10 +35,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.38 2007/06/09 19:53:46 gbeeley Exp $
+    $Id: obj.h,v 1.39 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.39  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.38  2007/06/09 19:53:46  gbeeley
     - (feature) adding objGetPathname() method to return the full path of an
       object that is already open.
@@ -900,7 +913,7 @@ pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
 
 /** objectsystem directory/query functions **/
-pObjQuery objMultiQuery(pObjSession session, char* query);
+pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist);
 pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp);
 int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);

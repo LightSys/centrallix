@@ -64,10 +64,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.39 2007/12/13 23:23:04 gbeeley Exp $
+    $Id: test_obj.c,v 1.40 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.40  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.39  2007/12/13 23:23:04  gbeeley
     - (bugfix) test_obj should behave itself when inserting a new record /
       object and the name isn't immediately available at the beginning of
@@ -823,7 +836,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		qy = objMultiQuery(s, cmd + 4);
+		qy = objMultiQuery(s, cmd + 4, NULL);
 		if (!qy)
 		    {
 		    printf("csv: could not open query!\n");
@@ -883,7 +896,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		qy = objMultiQuery(s, cmd + 6);
+		qy = objMultiQuery(s, cmd + 6, NULL);
 		if (!qy)
 		    {
 		    printf("query: could not open query!\n");

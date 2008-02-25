@@ -193,7 +193,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     
     /* Read and initialize the dropdown items */
     if (mode == 1) {
-	if ((qy = objMultiQuery(s->ObjSession, sql))) {
+	if ((qy = objMultiQuery(s->ObjSession, sql, NULL))) {
 	    flag=0;
 	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%STR&SYM\"], [",name);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
@@ -333,10 +333,23 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.61 2007/12/05 18:53:40 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.62 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.62  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.61  2007/12/05 18:53:40  gbeeley
     - (change) Set cursor to 'default' (just a plain old pointer) when pointing
       at text that should not normally be "selectable"

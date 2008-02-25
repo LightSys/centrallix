@@ -34,10 +34,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.14 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: expression.h,v 1.15 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.15  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.14  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -290,6 +303,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_N_OBJECT		21
 #define EXPR_N_PROPERTY		22
 #define EXPR_N_LIST		23
+#define EXPR_N_SUBQUERY		24	/* such as "i = (select ...)" */
 
 /*** Flags for expression nodes ***/
 #define EXPR_F_OPERATOR		1	/* node is an operator */
@@ -328,7 +342,7 @@ int expFreeExpression(pExpression this);
 pExpression expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflags);
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
 pExpression expLinkExpression(pExpression this);
-pExpression expPodToExpression(pObjData pod, int type);
+pExpression expPodToExpression(pObjData pod, int type, pExpression exp);
 int expExpressionToPod(pExpression this, int type, pObjData pod);
 pExpression expDuplicateExpression(pExpression this);
 int expReplaceString(pExpression this, char* oldstr, char* newstr);
@@ -373,14 +387,17 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 
 /*** Param-object functions ***/
 pParamObjects expCreateParamList();
+int expCopyList(pParamObjects src, pParamObjects dst);
 int expBindExpression(pExpression exp, pParamObjects this, int domain);
 int expFreeParamList(pParamObjects this);
 int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());
 int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
 int expModifyParam(pParamObjects this, char* name, pObject replace_obj);
+int expLookupParam(pParamObjects this, char* name);
 int expSyncModify(pExpression tree, pParamObjects objlist);
 int expReplaceID(pExpression tree, int oldid, int newid);
 int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
+int expFreezeOne(pExpression tree, pParamObjects objlist, int freeze_id);
 int expReplaceVariableID(pExpression tree, int newid);
 int expResetAggregates(pExpression tree, int reset_id);
 int exp_internal_ResetAggregates(pExpression tree, int reset_id);

@@ -47,10 +47,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.16 2007/03/21 04:48:08 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.17 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.17  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.16  2007/03/21 04:48:08  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -190,6 +203,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     int was_prefix_unary = 0;
     int new_cmpflags;
     char* sptr;
+    int alloc;
+    pXString subqy;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -303,7 +318,66 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			etmp->DataType = DATA_T_STRING;
 
 			/** Check for a function() **/
-			if (t==MLX_TOK_KEYWORD)
+			if (t == MLX_TOK_KEYWORD && !strcasecmp(etmp->String, "select") && !expr && (cmpflags & EXPR_CMP_WATCHLIST))
+			    {
+			    /** subquery **/
+			    subqy = (pXString)nmMalloc(sizeof(XString));
+			    if (!subqy)
+				{ err = 1; break; }
+			    xsInit(subqy);
+			    xsCopy(subqy, "select ", 7);
+			    i = 1;
+			    etmp->NodeType = EXPR_N_SUBQUERY;
+			    while(1)
+				{
+				t = mlxNextToken(lxs);
+				if (t == MLX_TOK_ERROR)
+				    { err=1; break; }
+				if (t == MLX_TOK_EOF)
+				    {
+				    mssError(1, "EXP", "Unexpected end-of-expression");
+				    err = 1; 
+				    break;
+				    }
+				if (t == MLX_TOK_OPENPAREN) 
+				    i++;
+				if (t == MLX_TOK_CLOSEPAREN)
+				    {
+				    i--;
+				    if (!i)
+					{
+					/** success - found end of subquery **/
+					mlxHoldToken(lxs);
+					break;
+					}
+				    }
+				alloc=0;
+				sptr = mlxStringVal(lxs, &alloc);
+				if (!sptr)
+				    { err=1; break; }
+				if (t == MLX_TOK_STRING)
+				    {
+				    if (xsConcatQPrintf(subqy, " %STR&DQUOT", sptr) < 0)
+					{ err=1; break; }
+				    }
+				else
+				    {
+				    if (xsConcatQPrintf(subqy, " %STR", sptr) < 0)
+					{ err=1; break; }
+				    }
+				if (alloc) nmSysFree(sptr);
+				}
+			    if (!err)
+				{
+				etmp->Name = nmSysStrdup(subqy->String);
+				etmp->NameAlloc = 1;
+				etmp->ObjCoverageMask = EXPR_MASK_EXTREF;
+				etmp->ObjID = -1;
+				}
+			    xsDeInit(subqy);
+			    nmFree(subqy, sizeof(XString));
+			    }
+			else if (t==MLX_TOK_KEYWORD)
 			    {
 			    t = mlxNextToken(lxs);
 			    if (!strcasecmp(etmp->String, "not"))
@@ -601,6 +675,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 	    /** Otherwise, comma or EOF specifies end-of-expression. **/
 	    if (t == MLX_TOK_EOF || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) 
 	        {
+		if (t == MLX_TOK_EOF && level > 0)
+		    {
+		    mssError(1, "EXP", "Unexpected end-of-expression");
+		    err = 1;
+		    }
 		mlxHoldToken(lxs);
 		break;
 		}
@@ -839,6 +918,10 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
 	    }
+	if (exp->NodeType == EXPR_N_SUBQUERY)
+	    {
+	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
+	    }
 
     return 0;
     }
@@ -1016,6 +1099,10 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 
 	/** Check for absolute references in functions **/
 	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name")))
+	    {
+	    cm |= EXPR_MASK_EXTREF;
+	    }
+	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    cm |= EXPR_MASK_EXTREF;
 	    }

@@ -66,10 +66,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.18 2007/09/18 17:40:32 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.19 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.19  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.18  2007/09/18 17:40:32  gbeeley
     - (feature) allow a string to be multiplied by an integer, which causes
       the string's contents to be repeated N times.
@@ -197,6 +210,87 @@
 
 
  **END-CVSDATA***********************************************************/
+
+/*** expEvalSubquery - evaluate a subquery SQL node.  This is done by
+ *** running the SQL command and pulling the first field of the first
+ *** row in the result set, and using that as our value.
+ ***/
+int
+expEvalSubquery(pExpression tree, pParamObjects objlist)
+    {
+    pObjQuery qy;
+    pObject obj;
+    char* attrname;
+    int t;
+    pObjData val;
+    int rval;
+
+	/** Can't eval? **/
+	if (!objlist->Session)
+	    {
+	    /** Null if no context to eval a filename obj yet **/
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
+
+	/** Run the query **/
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist);
+	if (!qy)
+	    {
+	    mssError(1,"EXP","Failed to run subselect query");
+	    return -1;
+	    }
+	obj = objQueryFetch(qy, O_RDONLY);
+	if (!obj)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
+	objQueryClose(qy);
+
+	/** Figure out the field, data type, and value **/
+	attrname = objGetFirstAttr(obj);
+	if (!attrname)
+	    {
+	    mssError(1,"EXP","Subselect query must return a value");
+	    objClose(obj);
+	    return -1;
+	    }
+	t = objGetAttrType(obj, attrname);
+	if (t <= 0)
+	    {
+	    mssError(1,"EXP","Subselect query must return a non-indefinite value");
+	    objClose(obj);
+	    return -1;
+	    }
+	rval = objGetAttrValue(obj, attrname, t, val);
+	if (rval < 0)
+	    {
+	    mssError(1,"EXP","Error getting result value from subquery select");
+	    objClose(obj);
+	    return -1;
+	    }
+	if (rval == 1)
+	    {
+	    /** null **/
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = t;
+	    objClose(obj);
+	    return 0;
+	    }
+
+	/** Set up node based on value **/
+	expPodToExpression(val, t, tree);
+	objClose(obj);
+
+	/** PodToExpression sets node type (for a constant node), let's fix that **/
+	tree->NodeType = EXPR_N_SUBQUERY;
+	
+    return 0;
+    }
+
 
 /*** expEvalContains - evaluate a CONTAINS node type.  This is for 
  *** determining whether an object's content CONTAINS the given string.
@@ -1724,6 +1818,7 @@ exp_internal_DefineNodeEvals()
 	EXP.EvalFunctions[EXPR_N_OBJECT] = expEvalObject;
 	EXP.EvalFunctions[EXPR_N_PROPERTY] = expEvalProperty;
 	EXP.EvalFunctions[EXPR_N_LIST] = expEvalList;
+	EXP.EvalFunctions[EXPR_N_SUBQUERY] = expEvalSubquery;
 
 	/** Operator precedence list **/
 	EXP.Precedence[EXPR_N_MULTIPLY] = 10;

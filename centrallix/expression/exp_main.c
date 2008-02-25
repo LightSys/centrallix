@@ -46,10 +46,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.9 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: exp_main.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.10  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.9  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -405,6 +418,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 	    case EXPR_N_ISNULL: printf("IS NULL"); break;
 	    case EXPR_N_FUNCTION: printf("FUNCTION = <%s>", this->Name); break;
 	    case EXPR_N_LIST: printf("LIST OF VALUES"); break;
+	    case EXPR_N_SUBQUERY: printf("SUBQUERY"); break;
 	    }
 	printf(", %d child(ren)", this->Children.nItems);
 	if (this->Flags & EXPR_F_NULL) 
@@ -554,13 +568,14 @@ expDataTypeToNodeType(int data_type)
  *** builds an expression node from it.
  ***/
 pExpression
-expPodToExpression(pObjData pod, int type)
+expPodToExpression(pObjData pod, int type, pExpression exp)
     {
-    pExpression exp;
     int n;
 
 	/** Create expression node. **/
-	exp = expAllocExpression();
+	if (!exp)
+	    exp = expAllocExpression();
+	exp->NodeType = expDataTypeToNodeType(type);
 
 	/** Based on type. **/
 	switch(type)
@@ -569,10 +584,13 @@ expPodToExpression(pObjData pod, int type)
 		exp->Integer = pod->Integer;
 		break;
 	    case DATA_T_STRING:
+		if (exp->Alloc)
+		    nmSysFree(exp->String);
 		n = strlen(pod->String);
-		if (n <= 63)
+		if (n < sizeof(exp->Types.StringBuf))
 		    {
 		    exp->String = exp->Types.StringBuf;
+		    exp->Alloc = 0;
 		    }
 		else
 		    {
@@ -594,7 +612,6 @@ expPodToExpression(pObjData pod, int type)
 		expFreeExpression(exp);
 		return NULL;
 	    }
-	exp->NodeType = expDataTypeToNodeType(type);
 	exp->DataType = type;
 	/*expEvalTree(exp,expNullObjlist);*/
 

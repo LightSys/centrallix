@@ -49,10 +49,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_query.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_query.c,v 1.5 2008/02/25 23:14:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_query.c,v $
 
     $Log: objdrv_query.c,v $
+    Revision 1.5  2008/02/25 23:14:33  gbeeley
+    - (feature) SQL Subquery support in all expressions (both inside and
+      outside of actual queries).  Limitations:  subqueries in an actual
+      SQL statement are not optimized; subqueries resulting in a list
+      rather than a scalar are not handled (only the first field of the
+      first row in the subquery result is actually used).
+    - (feature) Passing parameters to objMultiQuery() via an object list
+      is now supported (was needed for subquery support).  This is supported
+      in the report writer to simplify dynamic SQL query construction.
+    - (change) objMultiQuery() interface changed to accept third parameter.
+    - (change) expPodToExpression() interface changed to accept third param
+      in order to (possibly) copy to an already existing expression node.
+
     Revision 1.4  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -270,7 +283,7 @@ QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    	sprintf (sqlstring, "%s where :%s = %s",newsql,
 			find_inf->StrVal[0],
 			obj->Pathname->Elements[obj->SubPtr]);
-	        inf->MultiQuery = objMultiQuery(inf->Obj->Session, sqlstring);
+	        inf->MultiQuery = objMultiQuery(inf->Obj->Session, sqlstring, NULL);
 /** Right now only returns one row **/
 	        inf->MultiQueryObject = objQueryFetch(inf->MultiQuery,0);
 		}
@@ -614,7 +627,7 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	tmpXString = stpSubstParam(inf->ParsedInf, sql);
 	memccpy(newsql,tmpXString->String,'\0',254);
 	newsql[254]='\0';
-	inf->MultiQuery = objMultiQuery(inf->Obj->Session, newsql);
+	inf->MultiQuery = objMultiQuery(inf->Obj->Session, newsql, NULL);
     
     return (void*)qy;
     }
