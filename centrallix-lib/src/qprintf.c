@@ -36,10 +36,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.5 2007/09/21 23:14:43 gbeeley Exp $
+    $Id: qprintf.c,v 1.6 2008/03/03 09:04:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.6  2008/03/03 09:04:31  gbeeley
+    - (feature) adding JSSTR, CSSVAL, and CSSURL filters to qprintf.  JSSTR
+      is to be used when encoding a JavaScript string in a document.  CSSVAL
+      is for ordinary CSS values in an HTML context, and CSSURL handles a
+      CSS value placed inside url().
+
     Revision 1.5  2007/09/21 23:14:43  gbeeley
     - (feature) adding ESCQWS and HTENLBR filters
     - (change) the grow_fn interface needed to change in order to handle
@@ -99,7 +105,7 @@
 #define QPF_SPEC_T_QUOT		(7)
 #define QPF_SPEC_T_DQUOT	(8)
 #define QPF_SPEC_T_SYM		(9)
-#define QPF_SPEC_T_ESCQWS	(10)
+#define QPF_SPEC_T_JSSTR	(10)
 #define QPF_SPEC_T_NLEN		(11)
 #define QPF_SPEC_T_WS		(12)
 #define QPF_SPEC_T_ESCWS	(13)
@@ -126,9 +132,12 @@
 #define QPF_SPEC_T_SQLSYM	(34)
 #define QPF_SPEC_T_HTDATA	(35)
 #define QPF_SPEC_T_HTE		(36)
-#define QPF_SPEC_T_ESCQ		(37)
-#define QPF_SPEC_T_ENDFILT	(37)
-#define QPF_SPEC_T_MAXSPEC	(37)
+#define QPF_SPEC_T_ESCQWS	(37)
+#define QPF_SPEC_T_ESCQ		(38)
+#define QPF_SPEC_T_CSSVAL	(39)
+#define QPF_SPEC_T_CSSURL	(40)
+#define QPF_SPEC_T_ENDFILT	(40)
+#define QPF_SPEC_T_MAXSPEC	(40)
 
 /** Names for specifiers as used in format string - must match the above. **/
 const char*
@@ -144,7 +153,7 @@ qpf_spec_names[] =
     "QUOT",
     "DQUOT",
     "SYM",
-    "ESCQWS",
+    "JSSTR",
     "nLEN",
     "WS",
     "ESCWS",
@@ -171,7 +180,10 @@ qpf_spec_names[] =
     "SQLSYM",
     "HTDATA",	/* 35 */
     "HTE",
-    "ESCQ",	/* 37 */
+    "ESCQWS",	/* 37 */
+    "ESCQ",	/* 38 */
+    "CSSVAL",	/* 39 */
+    "CSSURL",	/* 40 */
     NULL
     };
 
@@ -198,6 +210,9 @@ typedef struct
     QPConvTable	hte_matrix;
     QPConvTable	htenlbr_matrix;
     QPConvTable	hex_matrix;
+    QPConvTable	jsstr_matrix;
+    QPConvTable	cssval_matrix;
+    QPConvTable	cssurl_matrix;
     }
     QPF_t;
     
@@ -269,6 +284,16 @@ qpfInitialize()
 	QPF.quote_ws_matrix.Matrix['\r'] = "\\r";
 	qpf_internal_SetupTable(&QPF.quote_ws_matrix);
 
+	memset(&QPF.jsstr_matrix, 0, sizeof(QPF.jsstr_matrix));
+	QPF.jsstr_matrix.Matrix['\''] = "\\'";
+	QPF.jsstr_matrix.Matrix['"'] = "\\\"";
+	QPF.jsstr_matrix.Matrix['\\'] = "\\\\";
+	QPF.jsstr_matrix.Matrix['/'] = "\\/";
+	QPF.jsstr_matrix.Matrix['\n'] = "\\n";
+	QPF.jsstr_matrix.Matrix['\t'] = "\\t";
+	QPF.jsstr_matrix.Matrix['\r'] = "\\r";
+	qpf_internal_SetupTable(&QPF.jsstr_matrix);
+
 	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
 	QPF.ws_matrix.Matrix['\n'] = "\\n";
 	QPF.ws_matrix.Matrix['\t'] = "\\t";
@@ -297,6 +322,37 @@ qpfInitialize()
 	QPF.htenlbr_matrix.Matrix['\0'] = "&#0;";
 	QPF.htenlbr_matrix.Matrix['\n'] = "<br>";
 	qpf_internal_SetupTable(&QPF.htenlbr_matrix);
+
+	memset(&QPF.cssval_matrix, 0, sizeof(QPF.cssval_matrix));
+	QPF.cssval_matrix.Matrix[';'] = "\\;";
+	QPF.cssval_matrix.Matrix['}'] = "\\}";
+	QPF.cssval_matrix.Matrix['{'] = "\\{";
+	QPF.cssval_matrix.Matrix['<'] = "\\<";
+	QPF.cssval_matrix.Matrix['>'] = "\\>";
+	QPF.cssval_matrix.Matrix['/'] = "\\/";
+	QPF.cssval_matrix.Matrix['\\'] = "\\\\";
+	QPF.cssval_matrix.Matrix['"'] = "\\\"";
+	QPF.cssval_matrix.Matrix['\''] = "\\'";
+	qpf_internal_SetupTable(&QPF.cssval_matrix);
+
+	memset(&QPF.cssurl_matrix, 0, sizeof(QPF.cssurl_matrix));
+	QPF.cssurl_matrix.Matrix[';'] = "\\;";
+	QPF.cssurl_matrix.Matrix['}'] = "\\}";
+	QPF.cssurl_matrix.Matrix['{'] = "\\{";
+	QPF.cssurl_matrix.Matrix['<'] = "\\<";
+	QPF.cssurl_matrix.Matrix['>'] = "\\>";
+	QPF.cssurl_matrix.Matrix['/'] = "\\/";
+	QPF.cssurl_matrix.Matrix['\\'] = "\\\\";
+	QPF.cssurl_matrix.Matrix['"'] = "\\\"";
+	QPF.cssurl_matrix.Matrix['\''] = "\\'";
+	QPF.cssurl_matrix.Matrix['('] = "\\(";
+	QPF.cssurl_matrix.Matrix[')'] = "\\)";
+	QPF.cssurl_matrix.Matrix[','] = "\\,";
+	QPF.cssurl_matrix.Matrix[' '] = "\\ ";
+	QPF.cssurl_matrix.Matrix['\t'] = "\\\t";
+	QPF.cssurl_matrix.Matrix['\n'] = "\\\n";
+	QPF.cssurl_matrix.Matrix['\r'] = "\\\r";
+	qpf_internal_SetupTable(&QPF.cssurl_matrix);
 
 	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
@@ -847,6 +903,9 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 				
 				case QPF_SPEC_T_ESCQ:
 				case QPF_SPEC_T_ESCQWS:
+				case QPF_SPEC_T_JSSTR:
+				case QPF_SPEC_T_CSSVAL:
+				case QPF_SPEC_T_CSSURL:
 				case QPF_SPEC_T_ESCWS:
 				case QPF_SPEC_T_QUOT:
 				case QPF_SPEC_T_DQUOT:
@@ -866,6 +925,18 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 									quote = 0;
 									break;
 					    case QPF_SPEC_T_ESCQWS:	table = &QPF.quote_ws_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_JSSTR:	table = &QPF.jsstr_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_CSSVAL:	table = &QPF.cssval_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_CSSURL:	table = &QPF.cssurl_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
