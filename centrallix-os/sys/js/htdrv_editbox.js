@@ -118,15 +118,23 @@ function eb_readonly()
 
 function eb_settext_cb()
     {
-    htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
-    htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
-    //setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
-    //setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
-    //setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
+    if (this.mainlayer.dbl_buffer)
+	{
+	htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
+	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
+	//setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
+	//setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
+	//setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
     
-    var tmp = this.mainlayer.ContentLayer;
-    this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
-    this.mainlayer.HiddenLayer = tmp;
+	var tmp = this.mainlayer.ContentLayer;
+	this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
+	this.mainlayer.HiddenLayer = tmp;
+	}
+    else
+	{
+	htr_setvisibility(this.mainlayer.ContentLayer, 'inherit');
+	}
+
     this.mainlayer.is_busy = false;
     if (this.mainlayer.content != this.mainlayer.viscontent)
 	eb_settext(this.mainlayer, this.mainlayer.content);
@@ -137,17 +145,18 @@ function eb_settext(l,txt)
     var vistxt = txt;
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
+    var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
     if (!l.is_busy)
 	{
 	l.is_busy = true;
 	l.viscontent = txt;
 	if (cx__capabilities.Dom0NS) // only serialize EB's for NS4
 	    {
-	    pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ', eb_settext_cb);
+	    pg_serialized_write(wl, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ', eb_settext_cb);
 	    }
 	else
 	    {
-	    htr_write_content(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ');
+	    htr_write_content(wl, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ');
 	    l.eb_settext_cb();
 	    }
 	}
@@ -225,6 +234,7 @@ function eb_update(txt, cursor)
     {
     var newx;
     var newclipl, newclipw;
+    var wl = this.dbl_buffer?this.HiddenLayer:this.ContentLayer;
     var diff = cursor - this.cursorCol;
     if (txt != null)
 	txt = new String(txt);
@@ -256,23 +266,23 @@ function eb_update(txt, cursor)
     newx = 5 - this.charOffset*text_metric.charWidth;
     newclipl = this.charOffset*text_metric.charWidth;
     newclipr = newclipl + this.charWidth*text_metric.charWidth;
-    if (this.HiddenLayer._eb_x != newx)
+    if (wl._eb_x != newx)
 	{
-	setRelativeX(this.HiddenLayer, newx);
-	this.HiddenLayer._eb_x = newx;
+	setRelativeX(wl, newx);
+	wl._eb_x = newx;
 	}
-    if (this.HiddenLayer._eb_clipl != newclipl)
+    if (wl._eb_clipl != newclipl)
 	{
-	setClipLeft(this.HiddenLayer, newclipl);
-	this.HiddenLayer._eb_clipl = newclipl;
+	setClipLeft(wl, newclipl);
+	wl._eb_clipl = newclipl;
 	}
-    if (this.HiddenLayer._eb_clipr != newclipr)
+    if (wl._eb_clipr != newclipr)
 	{
-	setClipRight(this.HiddenLayer, newclipr);
-	this.HiddenLayer._eb_clipr = newclipr;
+	setClipRight(wl, newclipr);
+	wl._eb_clipr = newclipr;
 	}
     if (eb_current == this)
-	moveToAbsolute(ibeam_current, getPageX(this.HiddenLayer) + this.cursorCol*text_metric.charWidth, getPageY(this.HiddenLayer));
+	moveToAbsolute(ibeam_current, getPageX(wl) + this.cursorCol*text_metric.charWidth, getPageY(wl));
     eb_settext(this, txt);
     eb_set_l_img(this, this.charOffset > 0);
     eb_set_r_img(this, this.charOffset + this.charWidth < eb_length(txt));
@@ -504,7 +514,17 @@ function eb_init(param)
     {
     var l = param.layer;
     var c1 = param.c1;
-    var c2 = param.c2; 
+
+    if (param.c2)
+	{
+	var c2 = param.c2; 
+	l.dbl_buffer = true;
+	}
+    else
+	{
+	l.dbl_buffer = false;
+	}
+
     if (!param.mainBackground)
 	{
 	l.bg = '#c0c0c0';
@@ -522,9 +542,11 @@ function eb_init(param)
 	l.bg = htr_extract_bgcolor(param.mainBackground);
 	l.bgi = htr_extract_bgimage(param.mainBackground);
 	}
+
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
-    htr_init_layer(c2,l,'eb');
+    if (l.dbl_buffer) 
+	htr_init_layer(c2,l,'eb');
     ifc_init_widget(l);
     l.fieldname = param.fieldname;
     l.tooltip = param.tooltip;
@@ -542,10 +564,16 @@ function eb_init(param)
 
     // Set up params for displaying the content.
     l.ContentLayer = c1;
-    l.HiddenLayer = c2;
-    l.ContentLayer._eb_x = l.HiddenLayer._eb_x = -1;
-    l.ContentLayer._eb_clipr = l.HiddenLayer._eb_clipr = -1;
-    l.ContentLayer._eb_clipl = l.HiddenLayer._eb_clipl = -1;
+    if (l.dbl_buffer)
+	{
+	l.HiddenLayer = c2;
+	l.HiddenLayer._eb_x = -1;
+	l.HiddenLayer._eb_clipr = -1;
+	l.HiddenLayer._eb_clipl = -1;
+	}
+    l.ContentLayer._eb_x = -1;
+    l.ContentLayer._eb_clipr = -1;
+    l.ContentLayer._eb_clipl = -1;
     l.is_busy = false;
     l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
     l.cursorCol = 0;
@@ -589,7 +617,8 @@ function eb_init(param)
     else
 	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
     setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
-    setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
+    if (l.dbl_buffer)
+	setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     l.form = null;
     if (param.form) l.form = wgtrGetNode(l, param.form);
     if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
