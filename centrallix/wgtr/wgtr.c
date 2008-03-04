@@ -261,6 +261,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
     pWgtrNode subtree,new_node;
     char new_name[64];
     pExpression code;
+    int rval;
 
 	/** Copy in standard geometry properties **/
 	tree->r_x = match->r_x;
@@ -287,7 +288,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	    {
 	    p = (pObjProperty)xaGetItem(&(match->Properties), i);
 	    t = wgtrGetPropertyType(match, p->Name);
-	    wgtrGetPropertyValue(match, p->Name, t, &val);
+	    rval = wgtrGetPropertyValue(match, p->Name, t, &val);
 
 	    /** Convert templated expression and string values, if needed **/
 	    code = NULL;
@@ -313,7 +314,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		    }
 		}
 
-	    wgtrAddProperty(tree, p->Name, t, &val, 0);
+	    wgtrAddProperty(tree, p->Name, t, &val, rval == 1);
 	    if (code) expFreeExpression(code);
 	    }
 
@@ -346,9 +347,12 @@ wgtrCheckTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode template, char* cl
     pWgtrNode match, search;
     char* tpl_class;
     int i;
+    char* wgt_path = NULL;
+    char* tpl_path = NULL;
 
 	/** Search through the template and see if we have a match. **/
 	match = NULL;
+	wgtrGetPropertyValue(tree, "path", DATA_T_STRING, POD(&wgt_path));
 	for (i=0;i<xaCount(&(template->Children));i++) 
 	    {
 	    search = (pWgtrNode)xaGetItem(&(template->Children), i);
@@ -358,6 +362,10 @@ wgtrCheckTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode template, char* cl
 		wgtrGetPropertyValue(search, "widget_class", DATA_T_STRING, POD(&tpl_class));
 		if ((!tpl_class && !class) || (tpl_class && class && !strcmp(tpl_class, class)))
 		    {
+		    if (!strcmp(tree->Type, "widget/component"))
+			wgtrGetPropertyValue(search, "path", DATA_T_STRING, POD(&tpl_path));
+		    if (wgt_path && tpl_path && strcmp(wgt_path, tpl_path))
+			continue;
 		    match = search;
 		    break;
 		    }
