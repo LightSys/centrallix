@@ -98,29 +98,7 @@ function form_cb_focus_notify(control)
 /** the tab key was pressed in child 'control' **/
 function form_cb_tab_notify(control)
     {
-    var ctrlnum = 0;
-    var origctrl;
-    for(var i=0;i<this.elements.length;i++)
-	{
-	if(this.elements[i].id==control.id)
-	    {
-	    ctrlnum=i;
-	    break;
-	    }
-	}
-    origctrl = ctrlnum;
-    while(1)
-	{
-	ctrlnum = (ctrlnum+1)%this.elements.length;
-	if (this.elements[ctrlnum])
-	    {
-	    if (pg_removekbdfocus())
-		{
-		if (pg_setkbdfocus(this.elements[ctrlnum], null, null, null)) break;
-		}
-	    }
-	if (ctrlnum == origctrl) break;
-	}
+    this.SelectElement(control);
     //if(this.elements[ctrlnum+1])
 //	{
 	/* bounce the tab up the call tree */
@@ -162,6 +140,8 @@ function form_cb_ret_notify(control)
 /** Objectsource says there's data ready **/
 function form_cb_data_available(aparam)
     {
+    this.recid = 1;
+    this.lastrecid = null;
     this.cb["DataAvailable"].run();
     }
 
@@ -204,6 +184,16 @@ function form_load_fields(data)
     {
     var name_to_id = [];
 
+    if (!data)
+	{
+	for(var i in this.elements)
+	    if (this.last_hints[this.elements[i].fieldname])
+		cx_set_hints(this.elements[i], this.last_hints[this.elements[i].fieldname], 'data');
+	    else
+		cx_set_hints(this.elements[i], '', 'data');
+	return;
+	}
+
     for(var j in data)
 	{
 	if (data[j].oid)
@@ -240,6 +230,7 @@ function form_load_fields(data)
 	    var id = name_to_id[this.elements[i].fieldname];
 	    this.elements[i].setvalue(data[id].value);
 	    cx_set_hints(this.elements[i], data[id].hints, 'data');
+	    this.last_hints[this.elements[i].fieldname] = data[id].hints;
 	    }
 	else
 	    {
@@ -272,13 +263,17 @@ function form_cb_object_available(data)
 		this.ifcProbe(ifValue).Add(this.data[j].oid, form_cb_getvalue);
 		}
 	    }
-	if (this.didsearch && (data.__osml_is_last || this.didsearchlast || data.id == this.recid))
+	if (this.didsearch && (data.__osrc_is_last || data.id == this.recid))
 	    this.lastrecid = data.id;
 	this.recid = data.id;
 
 	this.LoadFields(this.data);
 
 	this.SendEvent('DataLoaded');
+	}
+    else
+	{
+	this.LoadFields(null);
 	}
     this.didsearch = false;
     this.didsearchlast = false;
@@ -375,12 +370,18 @@ function form_action_discard(aparam)
 	    if (this.osrc) this.osrc.MoveToRecord(this.recid);
 	    this.ChangeMode("View");
 	    break;
+	case "Query":
 	case "New":
 	    this.ClearAll();
-	    this.ChangeMode("NoData");
+	    if (this.data)
+		this.ChangeMode("View");
+	    else
+		this.ChangeMode("NoData");
+	    this.LoadFields(this.data);
 	    break;
-	case "Query":
-	    this.ClearAll();
+//	case "Query":
+//	    this.ClearAll();
+//	    this.SelectElement();
 	    break;
 	}
     }
@@ -539,6 +540,44 @@ function form_action_prev(aparam)
     return 0;
     }
 
+/** Select first/next element **/
+function form_select_element(current)
+    {
+    var ctrlnum = this.elements.length-1;
+    var origctrl;
+
+    if (this.elements.length == 0)
+	return;
+
+    if (current)
+	{
+	for(var i=0;i<this.elements.length;i++)
+	    {
+	    if(this.elements[i].id==current.id)
+		{
+		ctrlnum=i;
+		break;
+		}
+	    }
+	}
+
+    origctrl = ctrlnum;
+    ctrlnum = (ctrlnum+1)%this.elements.length;
+    for(/*empty*/; ctrlnum!=origctrl; ctrlnum=(ctrlnum+1)%this.elements.length)
+	{
+	if (this.elements[ctrlnum])
+	    {
+	    if (!this.elements[ctrlnum].fieldname || this.elements[ctrlnum].fieldname == '__position')
+		continue;
+	    if (pg_removekbdfocus())
+		{
+		if (pg_setkbdfocus(this.elements[ctrlnum], null, null, null)) 
+		    break;
+		}
+	    }
+	}
+    }
+
 /** Helper function -- called from other mode change functions **/
 function form_change_mode(newmode)
     {
@@ -553,7 +592,7 @@ function form_change_mode(newmode)
     else if (newmode == 'NoData' && !this.allownodata)
 	return;
 
-    if (newmode == this.mode) return;
+    if (newmode == this.mode && newmode != 'Query') return;
 
     // Control button behavior
     this.is_discardable = (newmode == 'Query' || newmode == 'New' || newmode == 'Modify');
@@ -577,18 +616,6 @@ function form_change_mode(newmode)
     this.IsUnsaved = false;
     this.is_savable = false;
     
-    // Set focus to initial control
-    if ((newmode == 'Query' || newmode == 'New' || newmode == 'Modify') && this.elements[0] && !pg_curkbdlayer)
-	{
-	for(var i = 0; i < this.elements.length; i++)
-	    {
-	    if (pg_removekbdfocus())
-		{
-		if (pg_setkbdfocus(this.elements[i], null, null, null)) break;
-		}
-	    }
-	}
-
     if(this.mode=='Query')
 	{
 	this.ClearAll();
@@ -641,6 +668,12 @@ function form_change_mode(newmode)
 	    {
 	    if (this.elements[e].cx_hints) cx_hints_startmodify(this.elements[e]);
 	    }
+	}
+
+    // Set focus to initial control
+    if ((newmode == 'Query' || newmode == 'New' || newmode == 'Modify') && this.elements[0] && !pg_curkbdlayer)
+	{
+	this.SelectElement(null);
 	}
 
     this.SendEvent('StatusChange');
@@ -1043,8 +1076,9 @@ function form_init(form,param)
     //var form = new Object();
     ifc_init_widget(form);
     form.readonly=param.ro;
-    form.elements = new Array();
-    form.statuswidgets = new Array();
+    form.elements = [];
+    form.statuswidgets = [];
+    form.last_hints = [];
     form.mode = 'NoData';
     form.cobj = null; /* current 'object' (record) */
     form.oldmode = null;
@@ -1057,7 +1091,7 @@ function form_init(form,param)
     form.name = param.name;
     form.Pending = false;
 /** remember what to do after callbacks.... **/
-    form.cb = new Array();
+    form.cb = [];
     form.cb['DataAvailable'] = new form_cbobj('DataAvailable');
     form.cb['ObjectAvailable'] = new form_cbobj('ObjectAvailable');
     form.cb['OperationCompleteSuccess'] = new form_cbobj('OperationCompleteSuccess');
@@ -1117,6 +1151,7 @@ function form_init(form,param)
     form.ReadOnlyAll = form_readonly_all;
     form.ChangeMode = form_change_mode;
     form.SendEvent = form_send_event;
+    form.SelectElement = form_select_element;
     form.BuildDataObj = form_build_dataobj;
     form.LoadFields = form_load_fields;
     form.Reveal = form_cb_reveal;
