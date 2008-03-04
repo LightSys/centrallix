@@ -35,7 +35,16 @@ function cmpd_init(node, param)
     component.Reveal = cmpd_cb_reveal;
     pg_reveal_register_triggerer(component);
 
+    // Show Container
+    component.showcontainer = cmpd_showcontainer;
+
     return component;
+    }
+
+function cmpd_showcontainer(l,x,y)
+    {
+    pg_show_containers(this.shell);
+    return true;
     }
 
 function cmpd_find_container(t)
