@@ -1,7 +1,7 @@
 $Version=2$
 form_controls "widget/component-decl"
     {
-    width=450;
+    width=458;
     height=26;
 
     form "widget/parameter"
@@ -49,7 +49,7 @@ form_controls "widget/component-decl"
 
     form_ctl_pane "widget/pane"
 	{
-	x=0;y=0;width=450;height=26;
+	x=0;y=0;width=458;height=26;
 	fl_height=0;
 	style=raised;
 	bgcolor=runserver(:this:bgcolor);
@@ -68,7 +68,7 @@ form_controls "widget/component-decl"
 		form=form;
 		}
 
-	    sp1 "widget/autolayoutspacer" { width=8; }
+	    sp1 "widget/autolayoutspacer" { width=8; fl_width=0; }
 
 	    btnFirst "widget/imagebutton"
 		{
@@ -101,14 +101,24 @@ form_controls "widget/component-decl"
 		{
 		readonly=yes;
 		fieldname="__position";
-		width=40;
+		width=56;
 		y=3;
 		height=18;
 		form=form;
 		bgcolor=white;
-		fl_width=5;
+		fl_width=0;
 		ebp_hints "widget/hints" { style=readonly; }
 		}
+//	    lblPosition "widget/label"
+//		{
+//		fieldname = "__position";
+//		width=32;
+//		align=center;
+//		fl_width=0;
+//		form=form;
+//		y=2;
+//		height=18;
+//		}
 	    btnNext "widget/imagebutton"
 		{
 		y=3;
@@ -137,7 +147,7 @@ form_controls "widget/component-decl"
 		cnLast "widget/connector" { event="Click"; target=form; action="Last"; }
 		}
 		
-	    sp2 "widget/autolayoutspacer" { width=8; }
+	    sp2 "widget/autolayoutspacer" { width=8; fl_width=0; }
 
 	    btnSave "widget/imagebutton"
 		{
@@ -234,7 +244,7 @@ form_controls "widget/component-decl"
 		cnDelete "widget/connector" { event="Click"; target=form; action="Delete"; }
 		}
 
-	    sp3 "widget/autolayoutspacer" { width=8; }
+	    sp3 "widget/autolayoutspacer" { width=8; fl_width=0; }
 
 	    btnTabular "widget/imagebutton"
 		{
@@ -264,6 +274,8 @@ form_controls "widget/component-decl"
 		enabled = runclient(not (:detail_window:is_visible));
 		cnDetail "widget/connector" { event="Click"; target=detail_window; action="Open"; }
 		}
+
+	    sp4 "widget/autolayoutspacer" { width=8; fl_width=100; }
 	    }
 	}
     }
