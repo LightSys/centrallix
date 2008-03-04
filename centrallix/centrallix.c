@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -54,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.46 2007/12/05 18:56:18 gbeeley Exp $
+    $Id: centrallix.c,v 1.47 2008/03/04 01:26:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.47  2008/03/04 01:26:57  gbeeley
+    - (bugfix) include stdlib.h to get rid of warning about implicitly
+      defined exit().
+
     Revision 1.46  2007/12/05 18:56:18  gbeeley
     - (feature) adding declarative "widget/rule" widget, which has multiple
       purposes in defining rule-based behavior for different kinds of widgets.
