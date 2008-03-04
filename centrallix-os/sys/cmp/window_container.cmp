@@ -3,6 +3,7 @@ window_container "widget/component-decl"
     {
     component "widget/parameter" { type=string; default=null;}
     title "widget/parameter" { type=string; default=null;}
+    icon "widget/parameter" { type=string; default=null;}
     w "widget/parameter" { type=integer; default=640; }
     h "widget/parameter" { type=integer; default=480; }
 
@@ -17,7 +18,9 @@ window_container "widget/component-decl"
 	width=runserver(:this:w);
 	height=runserver(:this:h);
 
-	hdr_background='/sys/images/window_hdr.png';
+	icon = runserver(:this:icon);
+
+	//hdr_background='/sys/images/window_hdr.png';
 	bgcolor = "#c0c0c0";
 	title=runserver(condition(char_length(:this:title) > 0, :this:title, :this:component));
 	visible=true;
