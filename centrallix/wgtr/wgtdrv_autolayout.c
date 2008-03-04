@@ -223,31 +223,35 @@ wgtalVerify(pWgtrVerifySession s)
 		child = sortarray[i];
 		if (al_type == 0)	/* hbox */
 		    {
+		    if (child->r_width < 0 && cellsize >= 0)
+			possible_width = cellsize;
+		    else
+			possible_width = child->r_width;
+		    if (xo + possible_width > al->r_width)
+			{
+			if (xo > 0 && row_height > 0 && row_offset + row_height*2 + spacing <= al->r_height)
+			    {
+			    row_offset += (row_height + spacing);
+			    xo = 0;
+			    maxheight = -1;
+			    i--;
+			    continue;
+			    }
+			else
+			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
+			}
 		    child->x = child->r_x = child->pre_x = xo;
+		    child->r_width = child->pre_width = child->width = possible_width;
 		    if (child->r_y < 0)
 			child->r_y = child->pre_y = child->y = row_offset;
 		    else
 			child->r_y = child->pre_y = child->y = child->r_y + row_offset;
 		    if (child->r_height < 0 && al->r_height >= 0)
 			child->r_height = child->pre_height = child->height = al->r_height;
-		    if (child->r_width < 0 && cellsize >= 0)
-			child->r_width = child->pre_width = child->width = cellsize;
 		    if (row_height > 0 && child->r_height > row_height)
 			child->r_height = child->pre_height = child->height = row_height;
 		    if (child->r_height > maxheight)
 			maxheight = child->r_height;
-		    if (child->r_x + child->r_width > al->r_width)
-			{
-			if (row_height > 0 && row_offset + row_height*2 + spacing <= al->r_height)
-			    {
-			    row_offset += (row_height + spacing);
-			    xo = 0;
-			    maxheight = -1;
-			    continue;
-			    }
-			else
-			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
-			}
 		    wgtrReverify(s, child);
 		    if (child->r_width >= 0)
 			xo += child->r_width;
@@ -256,31 +260,35 @@ wgtalVerify(pWgtrVerifySession s)
 		    }
 		else if (al_type == 1)	/* vbox */
 		    {
-		    if (child->r_x < 0)
-			child->r_x = child->pre_x = child->x = column_offset;
-		    else
-			child->r_x = child->pre_x = child->x = child->r_x + column_offset;
-		    child->y = child->r_y = child->pre_y = yo;
-		    if (child->r_width < 0 && al->r_width >= 0)
-			child->r_width = child->pre_width = child->width = al->r_width;
 		    if (child->r_height < 0 && cellsize >= 0)
-			child->r_height = child->pre_height = child->height = cellsize;
-		    if (column_width > 0 && child->r_width > column_width)
-			child->r_width = child->pre_width = child->width = column_width;
-		    if (child->r_width > maxwidth)
-			maxwidth = child->r_width;
-		    if (child->r_y + child->r_height > al->r_height)
+			possible_height = cellsize;
+		    else
+			possible_height = child->r_height;
+		    if (yo + possible_height > al->r_height)
 			{
-			if (column_width > 0 && column_offset + column_width*2 + spacing <= al->r_width)
+			if (yo > 0 && column_width > 0 && column_offset + column_width*2 + spacing <= al->r_width)
 			    {
 			    column_offset += (column_width + spacing); 
 			    yo = 0;
 			    maxwidth = -1;
+			    i--;
 			    continue;
 			    }
 			else
 			    mssError(1, "WGTRAL", "Warning: overflow of end of vbox '%s'",al->Name);
 			}
+		    child->y = child->r_y = child->pre_y = yo;
+		    child->r_height = child->pre_height = child->height = possible_height;
+		    if (child->r_x < 0)
+			child->r_x = child->pre_x = child->x = column_offset;
+		    else
+			child->r_x = child->pre_x = child->x = child->r_x + column_offset;
+		    if (child->r_width < 0 && al->r_width >= 0)
+			child->r_width = child->pre_width = child->width = al->r_width;
+		    if (column_width > 0 && child->r_width > column_width)
+			child->r_width = child->pre_width = child->width = column_width;
+		    if (child->r_width > maxwidth)
+			maxwidth = child->r_width;
 		    wgtrReverify(s, child);
 		    if (child->r_height >= 0)
 			yo += child->r_height;
