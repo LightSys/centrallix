@@ -126,7 +126,7 @@ function tbld_update(p1)
 		this.rows[i].fg.cols[j].data=htutil_obscure(txt);
 		if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
 		    this.rows[i].fg.cols[j].data='';
-		this.FormatCell(this.rows[i].fg.cols[j], this.textcolor);
+		//this.FormatCell(this.rows[i].fg.cols[j], this.textcolor);
 		}
 	    }
 	else
