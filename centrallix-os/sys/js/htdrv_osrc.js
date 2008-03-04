@@ -967,27 +967,40 @@ function osrc_end_query()
     var qid=this.qid
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
-    if(this.moveop)
-	{
-	if(this.CurrentRecord>this.LastRecord)
-	    this.CurrentRecord=this.LastRecord;
-	this.GiveAllCurrentRecord();
+    if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
+	this.replica[this.LastRecord].__osrc_is_last = true;
+    /*if(this.moveop)
+	{*/
+	/*this.GiveAllCurrentRecord();
 	}
     else
 	{
 	this.TellAllReplicaMoved();
 	}
-    if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
-	this.replica[this.LastRecord].__osrc_is_last = true;
     this.pending=false;
     if(this.doublesync)
-	this.DoubleSyncCB();
+	this.DoubleSyncCB();*/
+    this.FoundRecord();
     if(qid)
 	{
 	pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
 	}
     this.Dispatch();
     return 0;
+    }
+
+function osrc_found_record()
+    {
+    if(this.CurrentRecord>this.LastRecord)
+	this.CurrentRecord=this.LastRecord;
+    if(this.doublesync)
+	this.DoubleSyncCB();
+    if(this.moveop)
+	this.GiveAllCurrentRecord();
+    else
+	this.TellAllReplicaMoved();
+    this.pending=false;
+    this.osrc_oldoid_cleanup();
     }
 
 function osrc_fetch_next()
@@ -1040,6 +1053,17 @@ function osrc_fetch_next()
 	    return 0;
 	    }
 
+	// Wow - how many records does the user want?
+	if ((this.LastRecord % 500) < ((this.LastRecord - this.querysize) % 500))
+	    {
+	    if (!confirm("You have already retrieved " + this.LastRecord + " records.  Do you want to continue?"))
+		{
+		// pause here.
+		this.FoundRecord();
+		return 0;
+		}
+	    }
+
 	// We're going farther down this...
 	this.DoFetch(this.readahead);
 	}
@@ -1053,14 +1077,7 @@ function osrc_fetch_next()
 	    }
 	else
 	    {
-	    if(this.doublesync)
-		this.DoubleSyncCB();
-	    if(this.moveop)
-		this.GiveAllCurrentRecord();
-	    else
-		this.TellAllReplicaMoved();
-	    this.pending=false;
-	    this.osrc_oldoid_cleanup();
+	    this.FoundRecord();
 	    }
 	}
     }
@@ -1251,7 +1268,7 @@ function osrc_move_to_record_cb(recnum)
 		if(this.CurrentRecord == Number.MAX_VALUE)
 		    {
 		    /* rowcount defaults to a really high number if not set */
-		    this.DoFetch();
+		    this.DoFetch(100);
 		    }
 		else if (recnum == 1)
 		    {
@@ -1406,7 +1423,7 @@ function osrc_scroll_to(startrec, endrec)
 		if(this.TargetRecord[1] == Number.MAX_VALUE)
 		    {
 		    /* rowcount defaults to a really high number if not set */
-		    this.DoFetch();
+		    this.DoFetch(100);
 		    }
 		else
 		    {
@@ -2019,6 +2036,7 @@ function osrc_init(param)
     loader.ClearReplica = osrc_clear_replica;
     loader.ApplyRelationships = osrc_apply_rel;
     loader.EndQuery = osrc_end_query;
+    loader.FoundRecord = osrc_found_record;
     loader.DoFetch = osrc_do_fetch;
     loader.FetchNext = osrc_fetch_next;
     loader.GoNogo = osrc_go_nogo;
