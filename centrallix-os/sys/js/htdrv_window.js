@@ -86,12 +86,14 @@ function wn_init(param)
 	}
 
     l.orig_parent = null;
+    l.is_toplevel = false;
     if (param.toplevel == 1)
 	{
 	var tl = pg_toplevel_layer(l);
 	if (tl && tl != window && tl != document && tl != l)
 	    {
 	    l.orig_parent = l.parentNode;
+	    l.is_toplevel = true;
 	    var x = getPageX(l);
 	    var y = getPageY(l);
 	    moveAbove(l, tl);
@@ -153,6 +155,7 @@ function wn_showcontainer()
     if (this.shaded)
 	wn_windowshade(this);
     wn_bring_top(this);
+    if (this.is_toplevel) return false; /* prevent bubble up if made toplevel */
     return true;
     }
 
