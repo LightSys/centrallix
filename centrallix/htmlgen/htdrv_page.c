@@ -46,10 +46,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.82 2007/09/18 17:42:54 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.83 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.83  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.82  2007/09/18 17:42:54  gbeeley
     - (change) allow font size to be specified on page and label, and do font
       sizing in CSS px instead of using the old 1...7 HTML approach.
@@ -809,9 +821,13 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage(s, tree, "window");
 	htrAddWgtrCtrLinkage(s, tree, "document");
 
+	/** Set the application key **/
+	htrAddScriptInit_va(s, "    if (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey);
+
+	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
 	htrAddScriptInit_va(s, "    pg_init(nodes['%STR&SYM'],%INT);\n", name, attract);
-	htrAddScriptInit_va(s, "    pg_username = '%STR&ESCQ';\n", mssUserName());
+	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
 	htrAddScriptInit_va(s, "    pg_height = %INT;\n", h);
 	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
@@ -828,7 +844,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    {
 	    if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&ESCQ');\n",
+		htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
 		    name, path);
 	    }
 
@@ -876,15 +892,15 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
-	htrAddStylesheetItem_va(s, "\tbody { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n",
+	htrAddStylesheetItem_va(s, "\tbody { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
 
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s, "\ttd { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n",
+	    htrAddStylesheetItem_va(s, "\ttd { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
-	    htrAddStylesheetItem_va(s, "\tfont { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n",
+	    htrAddStylesheetItem_va(s, "\tfont { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	    }
 
@@ -924,9 +940,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Set colors for the focus layers **/
-	htrAddScriptInit_va(s, "    page.kbcolor1 = '%STR&ESCQ';\n    page.kbcolor2 = '%STR&ESCQ';\n",kbfocus1,kbfocus2);
-	htrAddScriptInit_va(s, "    page.mscolor1 = '%STR&ESCQ';\n    page.mscolor2 = '%STR&ESCQ';\n",msfocus1,msfocus2);
-	htrAddScriptInit_va(s, "    page.dtcolor1 = '%STR&ESCQ';\n    page.dtcolor2 = '%STR&ESCQ';\n",dtfocus1,dtfocus2);
+	htrAddScriptInit_va(s, "    page.kbcolor1 = '%STR&JSSTR';\n    page.kbcolor2 = '%STR&JSSTR';\n",kbfocus1,kbfocus2);
+	htrAddScriptInit_va(s, "    page.mscolor1 = '%STR&JSSTR';\n    page.mscolor2 = '%STR&JSSTR';\n",msfocus1,msfocus2);
+	htrAddScriptInit_va(s, "    page.dtcolor1 = '%STR&JSSTR';\n    page.dtcolor2 = '%STR&JSSTR';\n",dtfocus1,dtfocus2);
 	/*htrAddScriptInit(s, "    document.LSParent = null;\n");*/
 
 	htrAddScriptInit(s, "    pg_togglecursor();\n");

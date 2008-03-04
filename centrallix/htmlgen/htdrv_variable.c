@@ -43,10 +43,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.13 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.14 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.14  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.13  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -241,7 +253,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].type = '%STR&ESCQ';\n",
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].type = '%STR&JSSTR';\n",
 		    name, obj_type_names[t]);
 	    }
 

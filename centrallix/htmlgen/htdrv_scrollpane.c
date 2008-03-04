@@ -44,10 +44,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.30 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.31 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.31  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.30  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -406,7 +418,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> elements for the layers. **/
 	if(s->Capabilities.Dom0NS)
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\"><TABLE %[bgcolor=%STR&DQUOT%] %[background=%STR&DQUOT%] border='0' cellspacing='0' cellpadding='0' width='%POS'>", id, *bcolor, bcolor, *bimage, bimage, w);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border='0' cellspacing='0' cellpadding='0' width='%POS'>", id, *bcolor, bcolor, *bimage, bimage, w);
 	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC='/sys/images/ico13b.gif' NAME='u'></TD></TR><TR><TD align=right>");
 	    htrAddBodyItem_va(s,"<IMG SRC='/sys/images/trans_1.gif' height='%POSpx' width='18px' name='b'>",h-36);
 	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC='/sys/images/ico12b.gif' NAME='d'></TD></TR></TABLE>\n");

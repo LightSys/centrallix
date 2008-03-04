@@ -43,10 +43,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.26 2007/06/06 15:21:57 gbeeley Exp $
+    $Id: htdrv_textarea.c,v 1.27 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.27  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.26  2007/06/06 15:21:57  gbeeley
     - (feature) allow label, textarea, datetime to specify the form directly,
       for use inside a component
@@ -387,7 +399,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", form:\"%STR&ESCQ\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&ESCQ\"});\n",
+	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",
 	    name, fieldname, form, is_readonly, mode, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/

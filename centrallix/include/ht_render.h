@@ -34,10 +34,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.35 2007/12/05 18:51:54 gbeeley Exp $
+    $Id: ht_render.h,v 1.36 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.36  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.35  2007/12/05 18:51:54  gbeeley
     - (change) parameters on a static component should not be automatically
       deployed to the client; adding deploy_to_client boolean on parameters
@@ -433,6 +445,7 @@ typedef struct
 
 /** WGTR RenderFlag defines **/
 #define HT_WGTF_NOOBJECT 1		/* wgt node does not have a corresponding DHTML object */
+#define HT_WGTF_NORENDER 2		/* do not deploy this node to the client. */
 
 /** Widget driver information structure **/
 typedef struct 

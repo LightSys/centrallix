@@ -42,10 +42,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.39 2007/06/05 16:45:49 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.40 2008/03/04 01:10:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.40  2008/03/04 01:10:56  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.39  2007/06/05 16:45:49  gbeeley
     - (feature) allow form to be passed as a parameter; needed for use inside
       a component when the form is outside the component
@@ -400,7 +412,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
    
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", checked:%INT, enabled:%INT, form:\"%STR&ESCQ\"});\n", name, fieldname,checked,enabled,form);
+   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id);

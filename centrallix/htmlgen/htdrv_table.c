@@ -60,10 +60,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.56 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.57 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.57  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.56  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -601,7 +613,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&ESCQ\", textcolorhighlight:\"%STR&ESCQ\", titlecolor:\"%STR&ESCQ\", rowbgnd1:\"%STR&ESCQ\", rowbgnd2:\"%STR&ESCQ\", rowbgndhigh:\"%STR&ESCQ\", hdrbgnd:\"%STR&ESCQ\", followcurrent:%INT, dragcols:%INT, colsep:%INT, gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, cols:new Array(",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, cols:new Array(",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->rowheight,
 		t->cellvspacing, t->cellhspacing,t->textcolor, 
@@ -614,7 +626,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    stAttrValue(stLookup(t->col_infs[colid],"title"),NULL,&coltitle,0);
 	    stAttrValue(stLookup(t->col_infs[colid],"type"),NULL,&coltype,0);
 	    stAttrValue(stLookup(t->col_infs[colid],"width"),&colw,NULL,0);
-	    htrAddScriptInit_va(s,"new Array(\"%STR&ESCQ\",\"%STR&ESCQ\",%INT,\"%STR&ESCQ\"),",
+	    htrAddScriptInit_va(s,"new Array(\"%STR&JSSTR\",\"%STR&JSSTR\",%INT,\"%STR&JSSTR\"),",
 		    t->col_infs[colid]->Name,coltitle,colw,coltype);
 	    }
 
@@ -941,7 +953,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		else
 		    stAddValue(attr_inf, t->col_infs[i]->Name, 0);
 		attr_inf = stAddAttr(t->col_infs[i], "type");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code")))
 		    {
 		    str = nmSysStrdup(ptr);
 		    stAddValue(attr_inf, str, 0);

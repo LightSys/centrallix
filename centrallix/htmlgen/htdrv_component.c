@@ -47,10 +47,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.11 2007/12/13 23:24:02 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.12 2008/03/04 01:10:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.12  2008/03/04 01:10:56  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.11  2007/12/13 23:24:02  gbeeley
     - (bugfix) component widget should render subwidgets, in order to get any
       connectors rendered.
@@ -431,14 +443,14 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
+		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
 		    name, is_toplevel, allow_multi, auto_destroy, cmp_path, name, id);
 
 	    /** Add template paths **/
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		{
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&ESCQ');\n",
+		    htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
 			name, path);
 		}
 

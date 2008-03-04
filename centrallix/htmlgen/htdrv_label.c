@@ -44,6 +44,18 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.36  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.35  2007/12/05 18:53:40  gbeeley
     - (change) Set cursor to 'default' (just a plain old pointer) when pointing
       at text that should not normally be "selectable"
@@ -410,7 +422,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** label text color **/
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    qpfPrintf(NULL, fgcolor,sizeof(fgcolor)," color=%STR&DQUOT",ptr);
+	    qpfPrintf(NULL, fgcolor,sizeof(fgcolor)," color=\"%STR&HTE\"",ptr);
 	else
 	    fgcolor[0] = '\0';
 
@@ -453,7 +465,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
 		w,align,is_bold,font_size > 0,font_size,fgcolor);
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&ESCQ', form:'%STR&ESCQ', text:'%STR&ESCQWS', style:'%STR&ESCQ', tooltip:'%STR&ESCQ'});\n",
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR'});\n",
 		name, fieldname, form, text, stylestr, tooltip);
 
 	/** Script include to get functions **/

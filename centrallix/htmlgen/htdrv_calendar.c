@@ -47,10 +47,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.11 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.12 2008/03/04 01:10:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.12  2008/03/04 01:10:56  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.11  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -319,7 +331,7 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ca_init(nodes[\"%STR&SYM\"], \"%STR&ESCQ\", \"%STR&ESCQ\", \"%STR&ESCQ\", \"%STR&ESCQ\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
+	htrAddScriptInit_va(s, "    ca_init(nodes[\"%STR&SYM\"], \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
 	    name,
 	    main_bg, cell_bg, textcolor, dispmode,
 	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,

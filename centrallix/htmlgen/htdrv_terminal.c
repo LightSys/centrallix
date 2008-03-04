@@ -45,6 +45,18 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_terminal.c,v $
+    Revision 1.11  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.10  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -312,13 +324,13 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"        .fixed%POS {font-family: fixed; }\n",id);
 
 	/** init line **/
-	htrAddScriptInit_va(s,"    terminal_init({layer:nodes[\"%STR&SYM\"], rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", root:rootname, source:'%STR&ESCQ', rows:%INT, cols:%INT, colors:new Array(",
+	htrAddScriptInit_va(s,"    terminal_init({layer:nodes[\"%STR&SYM\"], rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", root:rootname, source:'%STR&JSSTR', rows:%INT, cols:%INT, colors:new Array(",
 		name,id,id,id,source.String,rows,cols);
 	for(i=0;i<MAX_COLORS;i++)
 	    {
 	    if(i!=0)
 		htrAddScriptInit(s,",");
-	    htrAddScriptInit_va(s,"'%STR&ESCQ'",colors[i]);
+	    htrAddScriptInit_va(s,"'%STR&JSSTR'",colors[i]);
 	    }
 	htrAddScriptInit(s,")});\n");
 

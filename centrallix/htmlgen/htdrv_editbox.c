@@ -43,10 +43,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.48 2007/06/06 15:22:47 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.49 2008/03/04 01:10:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.49  2008/03/04 01:10:56  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.48  2007/06/06 15:22:47  gbeeley
     - (feature) allow tooltip on editbox, but tooltip will be overridden if
       there is overly long content
@@ -421,12 +433,17 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int box_offset;
+    int dbl_buffer = 0;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
 	    {
 	    mssError(1,"HTEB","Netscape, IE, or Dom2Events support required");
 	    return -1;
 	    }
+
+	/** Use double buffering? **/
+	if (s->Capabilities.Dom0NS)
+	    dbl_buffer = 1;
 
     	/** Get an id for this. **/
 	id = (HTEB.idcnt++);
@@ -502,7 +519,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
+	if (dbl_buffer)
+	    htrAddStylesheetItem_va(s,"\t#eb%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"eb%POSbase\")",id);
@@ -525,8 +543,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"), form:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", isReadOnly:%INT, mainBackground:\"%STR&ESCQ\", tooltip:\"%STR&ESCQ\"});\n",
-	    name,  name,id,  name,id, 
+	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), %[c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"),%] form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\"});\n",
+	    name,  name,id,  dbl_buffer,name,id, 
 	    form, fieldname, is_readonly, main_bg, tooltip);
 
 	/** HTML body <DIV> element for the base layer. **/
@@ -562,7 +580,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\">&nbsp;</DIV>\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon2\">&nbsp;</DIV>\n",id);
+	if (dbl_buffer)
+	    htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon2\">&nbsp;</DIV>\n",id);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

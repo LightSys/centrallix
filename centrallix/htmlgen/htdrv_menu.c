@@ -79,7 +79,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%STR&HTE\"></td>", ptr);
-	    xsConcatQPrintf(xs, ", icon:'%STR&ESCQ'", ptr);
+	    xsConcatQPrintf(xs, ", icon:'%STR&JSSTR'", ptr);
 	    }
 	else
 	    htrAddBodyItem(s, "<td>&nbsp;</td>");
@@ -104,12 +104,12 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%STR&HTE</td>", ptr);
-	    xsConcatQPrintf(xs, ", label:'%STR&ESCQ'", ptr);
+	    xsConcatQPrintf(xs, ", label:'%STR&JSSTR'", ptr);
 	    }
 	else
 	    htrAddBodyItem(s, "<td></td>");
 	if (wgtrGetPropertyValue(menu_item, "value", DATA_T_STRING, POD(&ptr)) == 0)
-	    xsConcatQPrintf(xs, ", value:'%STR&ESCQ'", ptr);
+	    xsConcatQPrintf(xs, ", value:'%STR&JSSTR'", ptr);
 	else if (wgtrGetPropertyValue(menu_item, "value", DATA_T_INTEGER, POD(&n)) == 0)
 	    xsConcatQPrintf(xs, ", value:%INT", n);
 
@@ -236,10 +236,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    strcpy(highlight, bgstr);
 	if (htrGetBackground(menu, "active", s->Capabilities.CSS2, active, sizeof(highlight)) < 0)
 	    strcpy(active, highlight);
-	if (wgtrGetPropertyValue(menu, "textcolor", DATA_T_STRING, POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(menu, "fgcolor", DATA_T_STRING, POD(&ptr)) != 0)
 	    strcpy(textcolor, "black");
 	else
 	    strtcpy(textcolor, ptr, sizeof(textcolor));
+	if (strpbrk(textcolor, ";{}&<>'\""))
+	    strcpy(textcolor, "black");
 
 	/** Mode of operation (popup/bar, horiz/vert) **/
 	if (wgtrGetPropertyValue(menu, "direction", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"vertical"))
@@ -250,30 +252,10 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	if (is_popup < 0) is_popup = 0;
 
 	/** Write the main style header item. **/
-	if (h != -1 && w == -1)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x,y,h-2*bx,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n", id, h-2*bx, z+1);
-	    }
-	else if (h == -1 && w != -1)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit",x,y,w-2*bx,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS; }\n", id, w-2*bx, z+1);
-	    }
-	else if (h != -1 && w != -1)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
-		    id,is_popup?"hidden":"inherit",x,y,w-2*bx,h-2*bx,z,w,h);
-	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n", 
-		    id, w-2*bx,h-2*bx, z+1);
-	    }
-	else
-	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit",x,y,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z+1);
-	    }
+	htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
+	htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; %STR }\n", id, bgstr);
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; color:%STR; %STR }\n", id, textcolor, bgstr);
 
 	/** content layer **/
 	if (s->Capabilities.CSS2)
@@ -305,7 +287,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
 
 	/** Initialization **/
-	htrAddScriptInit_va(s,"    mn_init({layer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), hlayer:htr_subel(nodes[\"%STR&SYM\"], \"mn%POShigh\"), bgnd:\"%STR&ESCQ\", high:\"%STR&ESCQ\", actv:\"%STR&ESCQ\", txt:\"%STR&ESCQ\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
+	htrAddScriptInit_va(s,"    mn_init({layer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), hlayer:htr_subel(nodes[\"%STR&SYM\"], \"mn%POShigh\"), bgnd:\"%STR&JSSTR\", high:\"%STR&JSSTR\", actv:\"%STR&JSSTR\", txt:\"%STR&JSSTR\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
 		name, name, name, id, 
 		bgstr, highlight, active, textcolor, 
 		w, h, is_horizontal, is_popup, name);

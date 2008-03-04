@@ -53,10 +53,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.70 2007/12/05 18:51:54 gbeeley Exp $
+    $Id: ht_render.c,v 1.71 2008/03/04 01:10:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.71  2008/03/04 01:10:53  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.70  2007/12/05 18:51:54  gbeeley
     - (change) parameters on a static component should not be automatically
       deployed to the client; adding deploy_to_client boolean on parameters
@@ -1728,7 +1740,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    }
 	xsConcatenate(&xs,")",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript");
-	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&ESCQ',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
+	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&JSSTR',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1892,6 +1904,8 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     char* objinit;
     char* ctrinit;
     pHtDMPrivateData inf = wgtrGetDMPrivateData(tree);
+    pWgtrNode child;
+    int rendercnt;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1900,23 +1914,37 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    return -1;
 	    }
 
+	/** Deploy the widget **/
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM', obj:%STR, cobj:%STR, type:'%STR&ESCQ', vis:%STR, sub:", 
+		"        %STR&*LEN{name:'%STR&SYM', obj:%STR, cobj:%STR, type:'%STR&JSSTR', vis:%STR, sub:", 
 		indent*4, "                                        ",
 		tree->Name, objinit?objinit:"\"new Object()\"",
 		ctrinit?ctrinit:"\"_obj\"",
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
-	if (childcnt)
+	/** ... and any subwidgets **/
+	for(i=0;i<childcnt;i++)
+	    {
+	    child = (pWgtrNode)xaGetItem(&tree->Children, i);
+	    if (child->RenderFlags & HT_WGTF_NORENDER)
+		continue;
+	    rendercnt++;
+	    }
+	if (rendercnt)
 	    {
 	    htrAddScriptWgtr_va(s, "\n        %STR&*LEN    [\n", indent*4, "                                        ");
+	    rendercnt = 0;
 	    for(i=0;i<childcnt;i++)
 		{
-		if (htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i), indent+1) < 0)
+		child = (pWgtrNode)xaGetItem(&tree->Children, i);
+		if (child->RenderFlags & HT_WGTF_NORENDER)
+		    continue;
+		rendercnt--;
+		if (htr_internal_BuildClientWgtr_r(s, child, indent+1) < 0)
 		    return -1;
-		if (i == childcnt-1) 
+		if (rendercnt == 0) /* last one - no comma */
 		    htrAddScriptWgtr(s, "\n");
 		else
 		    htrAddScriptWgtr(s, ",\n");
@@ -2138,9 +2166,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%STR&SYM);\n"
 			       "    var rootname = \"%STR&SYM\";\n",
 		s->Namespace->DName, s->Namespace->DName);
-
-	/** Set the application key **/
-	htrAddScriptInit_va(s, "    akey = '%STR&ESCQ';\n", c_info->AKey);
 
 	/** Render the top-level widget. **/
 	rval = htrRenderWidget(s, tree, 10);
@@ -2684,7 +2709,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    {
 	    if (strpbrk(ptr,"\"'\n\r\t")) return -1;
 	    if (as_style)
-		qpfPrintf(NULL, buf,buflen,"background-image: URL('%STR&HTE');",ptr);
+		qpfPrintf(NULL, buf,buflen,"background-image: URL('%STR&CSSURL');",ptr);
 	    else
 		qpfPrintf(NULL, buf,buflen,"background='%STR&HTE'",ptr);
 	    }
@@ -2693,7 +2718,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    /** Background color **/
 	    if (strpbrk(ptr,"\"'\n\r\t;}<>&")) return -1;
 	    if (as_style)
-		qpfPrintf(NULL, buf,buflen,"background-color: %STR&HTE;",ptr);
+		qpfPrintf(NULL, buf,buflen,"background-color: %STR&CSSVAL;",ptr);
 	    else
 		qpfPrintf(NULL, buf,buflen,"bgColor='%STR&HTE'",ptr);
 	    }

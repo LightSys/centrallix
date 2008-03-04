@@ -43,10 +43,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.32 2008/01/18 23:53:30 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.33 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.33  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.32  2008/01/18 23:53:30  gbeeley
     - (bugfix) fix invalid css clip:rect() declarations
 
@@ -482,14 +494,14 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    /** Script initialization call. **/
    if (strlen(main_background) > 0) {
       htrAddScriptInit_va(s,"    radiobuttonpanel_init({\n"
-        "    parentPane:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\",\n"
+        "    parentPane:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\",\n"
         "    borderPane:htr_subel(nodes[\"%STR&SYM\"],\"rb%POSborder\"),\n"
         "    coverPane:htr_subel(htr_subel(nodes[\"%STR&SYM\"],\"rb%POSborder\"),\"rb%POScover\"),\n"
         "    titlePane:htr_subel(nodes[\"%STR&SYM\"],\"rb%POStitle\"),\n"
-	"    mainBackground:\"%STR&ESCQ\", outlineBackground:\"%STR&ESCQ\", form:\"%STR&ESCQ\"});\n",
+	"    mainBackground:\"%STR&JSSTR\", outlineBackground:\"%STR&JSSTR\", form:\"%STR&JSSTR\"});\n",
 	    name, fieldname, name,id, name,id,id, name,id, main_background, outline_background, form);
    } else {
-      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0, form:\"%STR&ESCQ\"});\n", name, fieldname, form);
+      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0, form:\"%STR&JSSTR\"});\n", name, fieldname, form);
    }
 
    htrAddEventHandlerFunction(s, "document", "MOUSEUP", "radiobutton", "radiobutton_mouseup");
@@ -519,7 +531,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	    if (is_selected < 0) is_selected = 0;
 	    htrAddWgtrObjLinkage_va(s,sub_tree,"htr_subel(_parentctr,\"rb%POSoption%POS\")",id,i);
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
-            htrAddScriptInit_va(s,"    add_radiobutton(nodes[\"%STR&SYM\"], {selected:%INT, buttonset:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSbuttonset%POS\"), buttonunset:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSbuttonunset%POS\"), value:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSvalue%POS\"), label:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSlabel%POS\"), valuestr:\"%STR&ESCQ\", labelstr:\"%STR&ESCQ\"});\n", 
+            htrAddScriptInit_va(s,"    add_radiobutton(nodes[\"%STR&SYM\"], {selected:%INT, buttonset:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSbuttonset%POS\"), buttonunset:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSbuttonunset%POS\"), value:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSvalue%POS\"), label:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSlabel%POS\"), valuestr:\"%STR&JSSTR\", labelstr:\"%STR&JSSTR\"});\n", 
 		    ptr, is_selected,
 		    ptr, id, i, ptr, id, i,
 		    ptr, id, i, ptr, id, i,

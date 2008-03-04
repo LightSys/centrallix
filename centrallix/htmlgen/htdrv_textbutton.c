@@ -44,10 +44,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.39 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.40 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.40  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.39  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -496,7 +508,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#tb%POSlft { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",z+2);
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    tb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"), top:htr_subel(%STR&SYM, \"tb%POStop\"), bottom:htr_subel(%STR&SYM, \"tb%POSbtm\"), right:htr_subel(%STR&SYM, \"tb%POSrgt\"), left:htr_subel(%STR&SYM, \"tb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&ESCQ'});\n",
+	    htrAddScriptInit_va(s, "    tb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"), top:htr_subel(%STR&SYM, \"tb%POStop\"), bottom:htr_subel(%STR&SYM, \"tb%POSbtm\"), right:htr_subel(%STR&SYM, \"tb%POSrgt\"), left:htr_subel(%STR&SYM, \"tb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
 		    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name, text);
 
 	    /** HTML body <DIV> elements for the layers. **/
@@ -542,7 +554,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem(s,   "</DIV>");
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    tb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&ESCQ'});\n",
+	    htrAddScriptInit_va(s, "    tb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
 		    dptr, dptr, id, dptr, id, w, h, is_ts, name, text);
 	    }
 	else

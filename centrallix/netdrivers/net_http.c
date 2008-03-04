@@ -66,10 +66,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.78 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: net_http.c,v 1.79 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.79  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.78  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -2788,7 +2800,7 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "    <style type=\"text/css\">\n"
 			 "        #l1 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
 			 "        #l2 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
-			 "        body { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n"
+			 "        body { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n"
 			 "    </style>\n"
 			 "</head>\n"
 			 "<script language=\"javascript\" src=\"/sys/js/startup.js\" DEFER></script>\n"

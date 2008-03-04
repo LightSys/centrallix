@@ -48,10 +48,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_rule.c,v 1.1 2007/12/05 18:56:18 gbeeley Exp $
+    $Id: htdrv_rule.c,v 1.2 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_rule.c,v $
 
     $Log: htdrv_rule.c,v $
+    Revision 1.2  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.1  2007/12/05 18:56:18  gbeeley
     - (feature) adding declarative "widget/rule" widget, which has multiple
       purposes in defining rule-based behavior for different kinds of widgets.
@@ -191,7 +203,7 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Script Init **/
-	htrAddScriptInit_va(s, "    rl_init(nodes[\"%STR&SYM\"], \"%STR&ESCQ\", %STR);\n", nptr, ruletype, xs->String);
+	htrAddScriptInit_va(s, "    rl_init(nodes[\"%STR&SYM\"], \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
 	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%STR&SYM\"]).addRule(nodes[\"%STR&SYM\"]);\n", nptr, nptr);
 
 	/** mark this node as not being associated with a DHTML object **/

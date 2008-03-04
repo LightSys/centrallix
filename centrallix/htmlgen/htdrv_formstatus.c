@@ -42,10 +42,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.26 2007/11/16 21:43:16 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.27 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.27  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.26  2007/11/16 21:43:16  gbeeley
     - (bugfix) initial display should show "No Data", not "View".
 
@@ -349,7 +361,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%STR&SYM\"],form:\"%STR&ESCQ\",style:\"%STR&ESCQ\"});\n",
+   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%STR&SYM\"],form:\"%STR&JSSTR\",style:\"%STR&JSSTR\"});\n",
 	    name, form, style);
 
    /** HTML body <DIV> element for the layers. **/

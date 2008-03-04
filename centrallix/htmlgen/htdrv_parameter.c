@@ -46,10 +46,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.5 2007/12/05 18:51:54 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.6 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.6  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.5  2007/12/05 18:51:54  gbeeley
     - (change) parameters on a static component should not be automatically
       deployed to the client; adding deploy_to_client boolean on parameters
@@ -169,13 +181,13 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    find_inf = NULL;
 
-	/** Script init **/
-	htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {type:'%STR&ESCQ', findc:'%STR&ESCQ', val:%[null%]%[\"%STR&HEX\"%]});\n", 
-		name, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
-
 	/** Parameter has presentation-hints components to it.  Set those. **/
 	if (deploy_to_client)
 	    {
+	    /** Script init **/
+	    htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
+		    name, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
+
 	    hints = wgtrWgtToHints(tree);
 	    if (!hints)
 		{
@@ -184,13 +196,17 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    xsInit(&xs);
 	    hntEncodeHints(hints, &xs);
-	    htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%STR&SYM\"], '%STR&ESCQ', 'app');\n",
+	    htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%STR&SYM\"], '%STR&JSSTR', 'app');\n",
 		    name, xs.String);
 	    xsDeInit(&xs);
 	    objFreeHints(hints);
-	    }
 
-	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].Verify();\n", name);
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].Verify();\n", name);
+	    }
+	else
+	    {
+	    tree->RenderFlags |= HT_WGTF_NORENDER;
+	    }
 
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 

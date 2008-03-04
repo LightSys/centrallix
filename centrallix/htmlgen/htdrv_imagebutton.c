@@ -45,10 +45,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.38 2008/02/17 07:42:31 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.39 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.39  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.38  2008/02/17 07:42:31  gbeeley
     - (feature) when held down, imagebutton can generate repeated MouseDown
       events.
@@ -470,7 +482,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&ESCQ', repeat:%INT});\n",
+	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&JSSTR', repeat:%INT});\n",
 	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled, tooltip, button_repeat);
 
 	/** HTML body <DIV> elements for the layers. **/

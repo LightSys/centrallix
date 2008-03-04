@@ -42,10 +42,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.37 2007/12/05 18:53:40 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.38 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.38  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.37  2007/12/05 18:53:40  gbeeley
     - (change) Set cursor to 'default' (just a plain old pointer) when pointing
       at text that should not normally be "selectable"
@@ -541,6 +553,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    strtcpy(tab_txt, ptr, sizeof(tab_txt));
 	else
 	    strcpy(tab_txt,"black");
+	if (strpbrk(tab_txt, "{};&<>\"\'"))
+	    strcpy(tab_txt,"black");
 
 	/** Determine offset to actual tab pages **/
 	switch(tloc)
@@ -576,7 +590,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEOVER","tc","tc_mouseover");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tc_init({layer:nodes[\"%STR&SYM\"], tloc:%INT, mainBackground:\"%STR&ESCQ\", inactiveBackground:\"%STR&ESCQ\"});\n",
+	htrAddScriptInit_va(s,"    tc_init({layer:nodes[\"%STR&SYM\"], tloc:%INT, mainBackground:\"%STR&JSSTR\", inactiveBackground:\"%STR&JSSTR\"});\n",
 		name, tloc, main_bg, inactive_bg);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
@@ -657,8 +671,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			}
 		    else if (s->Capabilities.Dom2CSS)
 			{
-			htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { cursor:default; %STR }\n",
-				id, tabcnt, bg);
+			htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { cursor:default; color:%STR&CSSVAL; %STR }\n",
+				id, tabcnt, tab_txt, bg);
 			if (tab_width <= 0)
 			    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; overflow:hidden; z-index:%POS; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
 			else
@@ -734,10 +748,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		
 		/** Add script initialization to add a new tabpage **/
 		if (tloc == None)
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(null,wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&ESCQ','%STR&ESCQ','%STR&ESCQ');\n",
+		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(null,wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
 			name, ptr, name, ptr,page_type,fieldname);
 		else
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(nodes[\"%STR&SYM\"],wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&ESCQ','%STR&ESCQ','%STR&ESCQ');\n",
+		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(nodes[\"%STR&SYM\"],wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
 			name, ptr, ptr, name, ptr,page_type,fieldname);
 
 		/** Add named global for the tabpage **/
@@ -752,7 +766,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 		    htrAddBodyItem_va(s,"<DIV ID=\"tc%POSpane%POS\">\n",id,tabcnt);
 		else
-		    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
+		    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
 			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
 
 		/** Now look for sub-items within the tabpage. **/

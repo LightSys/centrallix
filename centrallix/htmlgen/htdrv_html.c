@@ -43,10 +43,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.28 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.29 2008/03/04 01:10:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.29  2008/03/04 01:10:57  gbeeley
+    - (security) changing from ESCQ to JSSTR in numerous places where
+      building JavaScript strings, to avoid such things as </script>
+      in the string from having special meaning.  Also began using the
+      new CSSVAL and CSSURL in places (see qprintf).
+    - (performance) allow the omission of certain widgets from the rendered
+      page.  In particular, omitting most widget/parameter's significantly
+      reduces the total widget count.
+    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
+      which reduces the <div> count for the page significantly.
+    - (bugfix) allow setting text color on tabs in mozilla/firefox.
+
     Revision 1.28  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -428,11 +440,11 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 
             /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&ESCQ\", width:%INT, height:%INT, loader:null});\n",
+		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:null});\n",
                     name, name, id, name, id, 
 		    src, w,h);
 	    else
-		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&ESCQ\", width:%INT, height:%INT, loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"ht%POSloader\")});\n",
+		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"ht%POSloader\")});\n",
                     name, name, id, name, id, 
 		    src, w,h, name, id);
     

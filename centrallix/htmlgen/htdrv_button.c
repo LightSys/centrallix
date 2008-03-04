@@ -168,9 +168,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		dptr = wgtrGetDName(tree);
 		htrAddScriptInit_va(s, "    %STR&SYM = nodes['%STR&SYM'];\n", dptr, name);
 
-		if(!strcmp(type,"image")) htrAddScriptInit_va(s,"    gb_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&ESCQ', text:'%STR&ESCQ'});\n", name, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
+		if(!strcmp(type,"image")) htrAddScriptInit_va(s,"    gb_init({layer:nodes[\"%STR&SYM\"], n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", name, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
 		/* text over image needs second layer */
-		else htrAddScriptInit_va(s,"    gb_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&ESCQ', text:'%STR&ESCQ'});\n", name, dptr, id, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
+		else htrAddScriptInit_va(s,"    gb_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", name, dptr, id, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
 
 		/** Include the javascript code for the button **/
 		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -237,7 +237,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    htrAddStylesheetItem_va(s,"\t#gb%POSlft { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",z+2);
 
 		    /** Script initialization call. **/
-		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:htr_subel(%STR&SYM, \"gb%POStop\"), bottom:htr_subel(%STR&SYM, \"gb%POSbtm\"), right:htr_subel(%STR&SYM, \"gb%POSrgt\"), left:htr_subel(%STR&SYM, \"gb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&ESCQ', n:\"%STR&ESCQ\", p:\"%STR&ESCQ\", c:\"%STR&ESCQ\", d:\"%STR&ESCQ\", type:\"%STR&ESCQ\"});\n",
+		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:htr_subel(%STR&SYM, \"gb%POStop\"), bottom:htr_subel(%STR&SYM, \"gb%POSbtm\"), right:htr_subel(%STR&SYM, \"gb%POSrgt\"), left:htr_subel(%STR&SYM, \"gb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:\"%STR&JSSTR\", p:\"%STR&JSSTR\", c:\"%STR&JSSTR\", d:\"%STR&JSSTR\", type:\"%STR&JSSTR\"});\n",
 			    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name, text,n_img,p_img,c_img,d_img,type);
 
 		    /** HTML body <DIV> elements for the layers. **/
@@ -374,7 +374,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    htrAddBodyItem(s,   "</DIV>");
 
 		    /** Script initialization call. **/
-		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&ESCQ', n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', type:'%STR&ESCQ'});\n",
+		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', type:'%STR&JSSTR'});\n",
 			    dptr, dptr, id, dptr, id, w, h, is_ts, name, text, n_img, p_img, c_img, d_img,type);
 		    }
 		else
