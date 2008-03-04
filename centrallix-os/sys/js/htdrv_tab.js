@@ -228,8 +228,11 @@ function tc_action_set_tab(aparam)
 
 function tc_showcontainer()
     {
-    if (htr_getvisibility(this) != 'inherit')
-	this.tabctl.ChangeSelection1(this);
+    var pg = this.tabpage?this.tabpage:this;
+    if (htr_getvisibility(pg) != 'inherit')
+	{
+	this.tabctl.ChangeSelection1(pg);
+	}
     return true;
     }
 
