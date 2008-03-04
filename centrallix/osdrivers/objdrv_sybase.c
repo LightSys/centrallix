@@ -70,10 +70,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.28 2008/01/18 23:55:12 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.29 2008/03/04 01:14:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.29  2008/03/04 01:14:48  gbeeley
+    - (bugfix) permit the Sybase driver to make more than 25 total connects
+      per process.  The Sybase C Client had a builtin limit that needed to
+      be raised.
+
     Revision 1.28  2008/01/18 23:55:12  gbeeley
     - (bugfix) fix some potential connection pool leaks
 
@@ -290,6 +295,9 @@ unsigned short int* __ctype_b;
 #define SYBD_SHOW_SQL		1	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
+
+/*** compiled in limit - max total syb connections per CX server ***/
+#define SYBD_MAX_CONNECTIONS	256	/* per CX instance, not per db node! */
 
 
 /*** This is a hack.  Couldn't get -D__USE_GNU to work.  ***/
@@ -4596,6 +4604,7 @@ int
 sybdInitialize()
     {
     pObjDriver drv;
+    int maxconn;
 #if 00
     pQueryDriver qdrv;
 #endif
@@ -4652,6 +4661,11 @@ sybdInitialize()
 	/** Initialize CT Library **/
 	if (cs_ctx_alloc(CS_VERSION_100, &SYBD_INF.Context) != CS_SUCCEED) return -1;
 	if (ct_init(SYBD_INF.Context, CS_VERSION_100) != CS_SUCCEED) return -1;
+	maxconn = SYBD_MAX_CONNECTIONS;
+	if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
+	    {
+	    mssError(1, "SYBD", "Warning: could not increase connection limit to %d", maxconn);
+	    }
 
 	nmRegister(sizeof(SybdTableInf),"SybdTableInf");
 	nmRegister(sizeof(SybdData),"SybdData");
