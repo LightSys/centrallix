@@ -10,6 +10,16 @@
    fun:_mcount
 }
 {
+   start_fn
+   Memcheck:Addr4
+   fun:r_mtRunStartFn
+}
+{
+   mcount2
+   Memcheck:Addr4
+   fun:mcount
+}
+{
    syb1
    Memcheck:Addr4
    fun:com__path_charfile
@@ -362,6 +372,21 @@
 }
 {
    sybct3
+   Memcheck:Addr4
+   fun:com_err_init
+}
+{
+   sybct4
+   Memcheck:Addr4
+   fun:com__path_charfile
+}
+{
+   sybct5
+   Memcheck:Addr4
+   fun:com__path_locfile
+}
+{
+   sybct6
    Memcheck:Addr4
    fun:com_err_init
 }

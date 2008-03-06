@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.19 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.20 2008/03/06 01:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.20  2008/03/06 01:18:59  gbeeley
+    - (change) updates to centrallix.supp suppressions file for valgrind
+    - (bugfix) several issues fixed as a result of a Valgrind scan, one of
+      which has likely been causing a couple of recent crashes.
+
     Revision 1.19  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -222,7 +227,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
     pObject obj;
     char* attrname;
     int t;
-    pObjData val;
+    ObjData od;
     int rval;
 
 	/** Can't eval? **/
@@ -265,7 +270,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    objClose(obj);
 	    return -1;
 	    }
-	rval = objGetAttrValue(obj, attrname, t, val);
+	rval = objGetAttrValue(obj, attrname, t, &od);
 	if (rval < 0)
 	    {
 	    mssError(1,"EXP","Error getting result value from subquery select");
@@ -282,7 +287,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Set up node based on value **/
-	expPodToExpression(val, t, tree);
+	expPodToExpression(&od, t, tree);
 	objClose(obj);
 
 	/** PodToExpression sets node type (for a constant node), let's fix that **/

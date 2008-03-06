@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.71 2008/03/04 01:10:53 gbeeley Exp $
+    $Id: ht_render.c,v 1.72 2008/03/06 01:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.72  2008/03/06 01:18:59  gbeeley
+    - (change) updates to centrallix.supp suppressions file for valgrind
+    - (bugfix) several issues fixed as a result of a Valgrind scan, one of
+      which has likely been causing a couple of recent crashes.
+
     Revision 1.71  2008/03/04 01:10:53  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -1925,7 +1930,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
 	/** ... and any subwidgets **/
-	for(i=0;i<childcnt;i++)
+	for(rendercnt=i=0;i<childcnt;i++)
 	    {
 	    child = (pWgtrNode)xaGetItem(&tree->Children, i);
 	    if (child->RenderFlags & HT_WGTF_NORENDER)

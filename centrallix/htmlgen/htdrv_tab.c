@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.38 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.39 2008/03/06 01:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.39  2008/03/06 01:18:59  gbeeley
+    - (change) updates to centrallix.supp suppressions file for valgrind
+    - (bugfix) several issues fixed as a result of a Valgrind scan, one of
+      which has likely been causing a couple of recent crashes.
+
     Revision 1.38  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -611,11 +616,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			strcpy(page_type,type);
 		    else
 			strcpy(page_type,"static");
+		    strcpy(fieldname,"NONE SELECTED");
 		    if(!strcmp(page_type,"dynamic"))
 			{
-			if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) != 0)
-			    strcpy(fieldname,"NONE SELECTED");
-			else
+			if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) == 0)
 			    strtcpy(fieldname,field,sizeof(fieldname));
 			}
 		    tabcnt++;
