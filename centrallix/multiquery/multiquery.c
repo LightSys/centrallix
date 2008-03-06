@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.32 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: multiquery.c,v 1.33 2008/03/06 01:16:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.33  2008/03/06 01:16:34  gbeeley
+    - (bugfix) Use qprintf to fix the way that parsed FROM and WHERE items
+      in a query are encoded.
+    - (bugfix) Enforce having only one SELECT clause per query.
+
     Revision 1.32  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -861,6 +866,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			ptr = mlxStringVal(lxs,NULL);
 			if (!strcmp("select",ptr))
 			    {
+			    if (select_cls)
+				{
+				mssError(1, "MQ", "Query must contain only one SELECT clause");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				break;
+				}
 			    select_cls = mq_internal_AllocQS(MQ_T_SELECTCLAUSE);
 			    xaAddItem(&qs->Children, (void*)select_cls);
 			    select_cls->Parent = qs;
@@ -1425,20 +1437,23 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 
 		case WhereItem:
 		    /** Copy the whole where clause first **/
+		    parenlevel = 0;
 		    while(1)
 		        {
 			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || t == MLX_TOK_RESERVEDWD)
-			    {
+			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 			    break;
-			    }
+			if ((t == MLX_TOK_RESERVEDWD) && parenlevel <= 0)
+			    break;
+			if (t == MLX_TOK_OPENPAREN) 
+			    parenlevel++;
+			if (t == MLX_TOK_CLOSEPAREN)
+			    parenlevel--;
 			ptr = mlxStringVal(lxs,NULL);
 			if (!ptr) break;
 			if (t == MLX_TOK_STRING)
 			    {
-			    xsConcatenate(&where_cls->RawData,"\"",1);
-			    xsConcatenate(&where_cls->RawData,ptr,-1);
-			    xsConcatenate(&where_cls->RawData,"\"",1);
+			    xsConcatQPrintf(&where_cls->RawData, "%STR&DQUOT", ptr);
 			    }
 			else
 			    {
@@ -1450,7 +1465,16 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 		    /** We'll break the where clause out later.  Now should be end of SQL. **/
 		    if (t == MLX_TOK_EOF)
 		        {
-		        next_state = ParseDone;
+			if (parenlevel != 0)
+			    {
+			    next_state = ParseError;
+			    mssError(1,"MQ","Unexpected end-of-query in WHERE clause");
+			    mlxNoteError(lxs);
+			    }
+			else
+			    {
+			    next_state = ParseDone;
+			    }
 			}
 		    else if (t == MLX_TOK_RESERVEDWD)
 		        {
