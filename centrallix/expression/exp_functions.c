@@ -56,10 +56,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.14 2008/03/06 01:18:59 gbeeley Exp $
+    $Id: exp_functions.c,v 1.15 2008/03/08 00:41:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.15  2008/03/08 00:41:59  gbeeley
+    - (bugfix) a double-free was being triggered on Subquery nodes as a
+      result of an obscure glitch in expCopyNode.  The string value should
+      be handled regardless of the DataType, as temporary data type changes
+      are possible.  Also cleaned up a number of other expression string
+      Alloc issues, many just for clarity.
+
     Revision 1.14  2008/03/06 01:18:59  gbeeley
     - (change) updates to centrallix.supp suppressions file for valgrind
     - (bugfix) several issues fixed as a result of a Valgrind scan, one of
@@ -208,10 +215,9 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    return 0;
 	    }
 	ptr = objDataToStringTmp(i1->DataType, vptr, 0);
-	if (tree->String && tree->Alloc)
+	if (tree->Alloc && tree->String)
 	    {
 	    nmSysFree(tree->String);
-	    tree->Alloc = 0;
 	    }
 	if (strlen(ptr) > 63)
 	    {
@@ -220,6 +226,7 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    }
 	else
 	    {
+	    tree->Alloc = 0;
 	    tree->String = tree->Types.StringBuf;
 	    strcpy(tree->String, ptr);
 	    }
@@ -294,7 +301,6 @@ int exp_fn_wordify(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     if (tree->Alloc && tree->String)
         {
 	nmSysFree(tree->String);
-	tree->Alloc = 0;
 	}
     if (strlen(ptr) > 63)
         {
@@ -303,6 +309,7 @@ int exp_fn_wordify(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	}
     else
         {
+	tree->Alloc = 0;
 	tree->String = tree->Types.StringBuf;
         strcpy(tree->String, ptr);
 	}
@@ -647,8 +654,8 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
     if (tree->Alloc && tree->String)
 	{
 	nmSysFree(tree->String);
-	tree->Alloc = 0;
 	}
+    tree->Alloc = 0;
     if (i1->DataType == DATA_T_INTEGER)
         {
         n = (i1->Integer > 255)?255:i1->Integer;
@@ -696,6 +703,10 @@ int exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	mssError(1,"EXP","lztrim() only works on STRING data types");
 	return -1;
 	}
+    if (tree->Alloc && tree->String)
+	{
+	nmSysFree(tree->String);
+	}
     tree->DataType = DATA_T_STRING;
     ptr = i0->String;
     while(*ptr == '0' && (ptr[1] >= '0' && ptr[1] <= '9')) ptr++;
@@ -719,6 +730,10 @@ int exp_fn_ltrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
         {
 	mssError(1,"EXP","ltrim() only works on STRING data types");
 	return -1;
+	}
+    if (tree->Alloc && tree->String)
+	{
+	nmSysFree(tree->String);
 	}
     tree->DataType = DATA_T_STRING;
     ptr = i0->String;
@@ -745,6 +760,11 @@ int exp_fn_rtrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	mssError(1,"EXP","rtrim() only works on STRING data types");
 	return -1;
 	}
+    if (tree->Alloc && tree->String)
+	{
+	nmSysFree(tree->String);
+	}
+    tree->Alloc = 0;
     tree->DataType = DATA_T_STRING;
     ptr = i0->String + strlen(i0->String);
     while(ptr > i0->String && ptr[-1] == ' ') ptr--;
@@ -752,17 +772,11 @@ int exp_fn_rtrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
         {
 	/** optimization for strings are still the same **/
 	tree->String = i0->String;
-	tree->Alloc = 0;
 	}
     else
         {
 	/** have to copy because we removed spaces **/
 	n = ptr - i0->String;
-	if (tree->Alloc && tree->String)
-	    {
-	    nmSysFree(tree->String);
-	    tree->Alloc = 0;
-	    }
 	if (n < 63)
 	    {
 	    tree->String = tree->Types.StringBuf;
@@ -796,6 +810,10 @@ int exp_fn_right(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
         {
 	mssError(1,"EXP","Invalid datatypes in right() function - takes (string,integer)");
 	return -1;
+	}
+    if (tree->Alloc && tree->String)
+	{
+	nmSysFree(tree->String);
 	}
     n = strlen(i0->String);
     i = i1->Integer;
@@ -933,6 +951,8 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	escchars = "";
     else
 	escchars = i1->String;
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    tree->Alloc = 0;
     ptr = strpbrk(i0->String, escchars);
     if (!ptr) ptr = strchr(i0->String, '\\');
     if (!ptr)
@@ -997,6 +1017,8 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	if (*ptr == '\\' || *ptr == '"') quotecnt++;
 	ptr++;
 	}
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    tree->Alloc = 0;
     if (len + quotecnt + 2 < 64)
 	{
 	tree->Alloc = 0;
@@ -1154,6 +1176,7 @@ int exp_fn_avg(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    tree->AggExp->Flags &= ~EXPR_F_NULL;
 	    sumexp->DataType = i0->DataType;
 	    sumexp->String = sumexp->Types.StringBuf;
+	    sumexp->Alloc = 0;
 	    sumexp->String[0] = '\0';
 	    sumexp->Integer = 0;
 	    sumexp->Types.Double = 0;
@@ -1290,6 +1313,7 @@ int exp_fn_max(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    tree->AggExp->Flags &= ~EXPR_F_NULL;
 	    tree->DataType = i0->DataType;
 	    tree->String = tree->Types.StringBuf;
+	    tree->Alloc = 0;
 	    tree->String[0] = '\0';
 	    tree->Integer = 0;
 	    tree->Types.Double = 0;

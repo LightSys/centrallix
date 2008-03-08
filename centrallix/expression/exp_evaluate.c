@@ -66,10 +66,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.20 2008/03/06 01:18:59 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.21 2008/03/08 00:41:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.21  2008/03/08 00:41:59  gbeeley
+    - (bugfix) a double-free was being triggered on Subquery nodes as a
+      result of an obscure glitch in expCopyNode.  The string value should
+      be handled regardless of the DataType, as temporary data type changes
+      are possible.  Also cleaned up a number of other expression string
+      Alloc issues, many just for clarity.
+
     Revision 1.20  2008/03/06 01:18:59  gbeeley
     - (change) updates to centrallix.supp suppressions file for valgrind
     - (bugfix) several issues fixed as a result of a Valgrind scan, one of
@@ -1108,9 +1115,9 @@ expRevEvalCompare(pExpression tree, pParamObjects objlist)
 	    obj_node->Integer = const_node->Integer;
 	    if (obj_node->Alloc && obj_node->String)
 	        {
-		obj_node->Alloc = 0;
 		nmSysFree(obj_node->String);
 		}
+	    obj_node->Alloc = 0;
 	    obj_node->String = const_node->String;
 	    obj_node->DataType = const_node->DataType;
 	    if (obj_node->DataType == DATA_T_MONEY || obj_node->DataType == DATA_T_DATETIME || obj_node->DataType == DATA_T_DOUBLE)

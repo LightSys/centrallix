@@ -46,10 +46,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: exp_main.c,v 1.11 2008/03/08 00:41:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.11  2008/03/08 00:41:59  gbeeley
+    - (bugfix) a double-free was being triggered on Subquery nodes as a
+      result of an obscure glitch in expCopyNode.  The string value should
+      be handled regardless of the DataType, as temporary data type changes
+      are possible.  Also cleaned up a number of other expression string
+      Alloc issues, many just for clarity.
+
     Revision 1.10  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -151,6 +158,7 @@ expAllocExpression()
 	if (!expr) return NULL;
 	xaInit(&(expr->Children),4);
 	expr->Alloc = 0;
+	expr->String = NULL;
 	expr->Name = NULL;
 	expr->NameAlloc = 0;
 	expr->Parent = NULL;
@@ -259,12 +267,18 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
 	memcpy(&(new_tree->Types), &(src->Types), sizeof(src->Types));
 
 	/** String fields may need to be allocated.. **/
-	if (new_tree->DataType == DATA_T_STRING)
+	if (src->String == src->Types.StringBuf)
 	    {
-	    if (new_tree->Alloc)
-		new_tree->String = nmSysStrdup(src->String);
-	    else
-		new_tree->String = new_tree->Types.StringBuf;
+	    new_tree->String = new_tree->Types.StringBuf;
+	    new_tree->Alloc = 0;
+	    }
+	else if (src->String)
+	    {
+	    /** force allocation if not using in-struct buf, since String
+	     ** may have been pointing to a child node's string as well.
+	     **/
+	    new_tree->Alloc = 1;
+	    new_tree->String = nmSysStrdup(src->String);
 	    }
 	if (new_tree->NameAlloc)
 	    {
@@ -505,9 +519,9 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 	if (dst->Alloc && dst->String)
 	    {
 	    nmSysFree(dst->String);
-	    dst->String = NULL;
-	    dst->Alloc = 0;
 	    }
+	dst->String = NULL;
+	dst->Alloc = 0;
 
 	/** Copy the value **/
 	switch(dst->DataType)
