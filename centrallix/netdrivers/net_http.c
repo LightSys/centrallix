@@ -66,10 +66,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.79 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: net_http.c,v 1.80 2008/03/08 01:45:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.80  2008/03/08 01:45:50  gbeeley
+    - (bugfix) gracefully handle a reopen_sql situation if autoname fails.
+
     Revision 1.79  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -2586,14 +2589,17 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    if (reopen_str)
 				{
 				xsInit(reopen_str);
-				objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr));
-				xsQPrintf(reopen_str, "%STR WHERE :name = %STR&QUOT", reopen_sql, ptr);
-				qy = objMultiQuery(objsess, reopen_str->String, NULL);
-				if (qy)
+				if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
 				    {
-				    objClose(obj);
-				    obj = objQueryFetch(qy, O_RDWR);
-				    objQueryClose(qy);
+				    /** note - it is possible for autoname to fail, thus name == NULL **/
+				    xsQPrintf(reopen_str, "%STR WHERE :name = %STR&QUOT", reopen_sql, ptr);
+				    qy = objMultiQuery(objsess, reopen_str->String, NULL);
+				    if (qy)
+					{
+					objClose(obj);
+					obj = objQueryFetch(qy, O_RDWR);
+					objQueryClose(qy);
+					}
 				    }
 				xsDeInit(reopen_str);
 				nmFree(reopen_str, sizeof(XString));
