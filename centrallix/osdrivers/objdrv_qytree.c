@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.15 2006/04/07 06:47:23 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.16 2008/03/09 08:02:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.16  2008/03/09 08:02:43  gbeeley
+    - (bugfix) you can't objUnmanageQuery a query which is NULL...
+
     Revision 1.15  2006/04/07 06:47:23  gbeeley
     - (bugfix) Don't try to compile the expression if we don't have any objects
       open in the first place.
@@ -1081,8 +1084,15 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
 	    qyinf = objOpenQuery(qy->LLQueryObj, qy->QyText, NULL,NULL,NULL);
-	    if (!qyinf) objClose(qy->LLQueryObj);
-	    objUnmanageQuery(qy->LLQueryObj->Session, qyinf);
+	    if (!qyinf)
+		{
+		objClose(qy->LLQueryObj);
+		qy->LLQueryObj = NULL;
+		}
+	    else
+		{
+		objUnmanageQuery(qy->LLQueryObj->Session, qyinf);
+		}
 	    }
 
 	/** Failed to open source object or issue query? **/
