@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.40 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: test_obj.c,v 1.41 2008/03/09 07:55:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.41  2008/03/09 07:55:43  gbeeley
+    - Grrr.  Can you imagine that one of the tables we're dealing with here
+      has over 500 columns in it?  Like I said, Grrrrr.
+
     Revision 1.40  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -785,8 +789,8 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     pObjectInfo info;
     Binary bn;
     pFile try_file;
-    char* attrnames[128];
-    int attrtypes[128];
+    char* attrnames[640];
+    int attrtypes[640];
     int n_attrs;
     int name_was_null;
 
