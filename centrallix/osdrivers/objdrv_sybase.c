@@ -70,10 +70,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.29 2008/03/04 01:14:48 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.30 2008/03/09 08:07:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.30  2008/03/09 08:07:28  gbeeley
+    - (bugfix) Make sure the correct values are available after an update
+      operation (without closing the object); net_http is now doing an
+      attribute re-read after update and create.
+
     Revision 1.29  2008/03/04 01:14:48  gbeeley
     - (bugfix) permit the Sybase driver to make more than 25 total connects
       per process.  The Sybase C Client had a builtin limit that needed to
@@ -2207,6 +2212,11 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
 		}
 	    else
 	        {
+		if (inf->TData->ColTypes[i] == 1)
+		    {
+		    /* rtrim char() fields */
+		    while (n && endptr[n-1] == ' ') n--;
+		    }
 		inf->ColPtrs[i] = endptr;
 		endptr[n] = 0;
 		endptr+=(n+1);
@@ -2214,6 +2224,52 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
 	    }
 
     return 0;
+    }
+
+
+/*** sybd_internal_LookupRow() - given a table name and a row key name,
+ *** retrieve the row from the database.
+ ***/
+int
+sybd_internal_LookupRow(CS_CONNECTION* sess, pSybdData inf)
+    {
+    char* ptr;
+    int cnt;
+    char sbuf[256];
+    CS_COMMAND* cmd;
+    int ncols, i, n, restype;
+
+	/** Find a WHERE clause that will retrieve this row, given the row name **/
+	ptr = sybd_internal_FilenameToKey(inf->Node,sess,inf->TablePtr,inf->RowColPtr);
+	if (!ptr)
+	    return -1;
+
+	/** Run the SQL query **/
+	snprintf(sbuf,sizeof(sbuf),"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
+	if ((cmd=sybd_internal_Exec(sess, sbuf)) == NULL)
+	    {
+	    mssError(0,"SYBD","Could not retrieve row object [%s] from database table [%s]",
+		    inf->RowColPtr, inf->TablePtr);
+	    return -1;
+	    }
+	cnt = 0;
+	while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+	    {
+	    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
+	    for(i=0; i < ncols && i < inf->TData->nCols; i++)
+		inf->ColNum[i] = (unsigned char)i;
+	    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
+		{
+		cnt++;
+
+		/** Good, found the row, let's load it **/
+		if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
+		    return -1;
+		}
+	    }
+	sybd_internal_Close(cmd);
+
+    return cnt;
     }
 
 
@@ -2376,37 +2432,12 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    /** Autonaming a new object?  Won't be able to look it up if so. **/
 	    if (!(inf->Obj->Mode & OBJ_O_AUTONAME))
 		{
-		ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
-		if (!ptr)
+		if ((cnt = sybd_internal_LookupRow(inf->SessionID, inf)) < 0)
 		    {
 		    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
 		    nmFree(inf,sizeof(SybdData));
 		    return NULL;
 		    }
-		snprintf(sbuf,256,"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
-		if ((cmd=sybd_internal_Exec(inf->SessionID, sbuf)) == NULL)
-		    {
-		    mssError(0,"SYBD","Could not retrieve row object from database");
-		    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
-		    }
-		while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
-		    {
-		    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
-		    for(i=0;i<ncols;i++) inf->ColNum[i] = (unsigned char)i;
-		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
-			{
-			cnt++;
-			if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
-			    {
-			    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
-			    nmFree(inf,sizeof(SybdData));
-			    return NULL;
-			    }
-			}
-		    }
-		sybd_internal_Close(cmd);
 		}
 	    if (cnt == 0)
 	        {
@@ -4165,10 +4196,23 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			return -1;
 			}
 
-		    /** Read the results and release the db session **/
+		    /** Read the results **/
 		    rval = CS_FAIL;
 		    while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
 		    sybd_internal_Close(cmd);
+
+		    /** Re-read the row from the db since it has changed, and we
+		     ** need to give feedback to the user on what other effects
+		     ** the update operation may have had.
+		     **/
+		    if (sybd_internal_LookupRow(sess, inf) <= 0)
+			{
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
+			mssError(1,"SYBD","Could not retrieve updated record");
+			return -1;
+			}
+
+		    /** Release the session **/
 		    if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
 		    }
 		}
