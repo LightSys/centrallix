@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include <sys/times.h>
 #include <math.h>
+#include <assert.h>
 
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -63,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.6 2008/02/23 03:12:10 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.7 2008/03/09 08:01:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.7  2008/03/09 08:01:02  gbeeley
+    - (bugfix) the open files hashtable was initialized for variable length
+      string keys rather than for a 4-byte session ptr.
+
     Revision 1.6  2008/02/23 03:12:10  gbeeley
     - (bugfix) various open file handle leak issues corrected.
 
@@ -517,6 +522,8 @@ fp_internal_CloseFiles(pFpOpenFiles of)
 	    {
 	    if (of->FileList[i])
 		objClose(of->FileList[i]);
+	    of->FileList[i] = NULL;
+	    of->FileKeys[i] = 0;
 	    }
 	xhRemove(&of->TData->OpenFiles, (void*)(of->OSMLSession));
 	nmFree(of, sizeof(FpOpenFiles));
@@ -568,6 +575,7 @@ fp_internal_OpenFiles(pFpData inf)
 	/** already open?  cool... **/
 	if ((files = (pFpOpenFiles)xhLookup(&(tdata->OpenFiles), (void*)s)) != NULL)
 	    {
+	    assert(files->LinkCnt > 0);
 	    files->LinkCnt++;
 	    inf->OpenFiles = files;
 	    return files;
@@ -1024,7 +1032,7 @@ fp_internal_GetTData(pFpData inf)
 	strtcpy(tdata->RawName, inf->TablePtr, sizeof(tdata->RawName));
 	tdata->Node = inf->Node;
 	inf->TData = tdata;
-	xhInit(&(tdata->OpenFiles), 15, 0);
+	xhInit(&(tdata->OpenFiles), 15, sizeof(pObjSession));
 
 	/** Qualified table? **/
 	if ((ptr = strrchr(tdata->RawName, '.')) != NULL)
