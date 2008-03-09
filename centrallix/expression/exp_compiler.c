@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.17 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.18 2008/03/09 07:58:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.18  2008/03/09 07:58:50  gbeeley
+    - (bugfix) sometimes the object name in objlist->Names[] is NULL.
+
     Revision 1.17  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -541,7 +544,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				{
 				for(i=0;i<objlist->nObjects;i++) 
 				    {
-				    if (!strcmp(etmp->Name,objlist->Names[i]))
+				    if (objlist->Names[i] && !strcmp(etmp->Name,objlist->Names[i]))
 					{
 					if (etmp->NameAlloc)
 					    {
@@ -1084,7 +1087,7 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 	    {
 	    for(i=0;i<objlist->nObjects;i++)
 		{
-		if (!strcmp(exp->Parent->Name, objlist->Names[i]))
+		if (objlist->Names[i] && !strcmp(exp->Parent->Name, objlist->Names[i]))
 		    {
 		    cm |= (1<<i);
 		    exp->ObjID = i;
