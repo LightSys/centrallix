@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.33 2008/03/06 01:16:34 gbeeley Exp $
+    $Id: multiquery.c,v 1.34 2008/03/09 08:00:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.34  2008/03/09 08:00:10  gbeeley
+    - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
+      close (wait until all objects are closed too), we should shutdown the
+      query execution, thus closing the underlying queries; this prevents
+      some deadlocking issues at the remote RDBMS.
+
     Revision 1.33  2008/03/06 01:16:34  gbeeley
     - (bugfix) Use qprintf to fix the way that parsed FROM and WHERE items
       in a query are encoded.
@@ -284,7 +290,7 @@ struct
 int mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTrxTree* oxt);
 int mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTree* oxt);
 int mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
-int mqQueryClose(void* qy_v, pObjTrxTree* oxt);
+int mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt);
 
 /*** mq_internal_FreeQS - releases memory used by the query syntax tree.
  ***/
@@ -1880,7 +1886,7 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
 
     	/** Close the query **/
 	n = inf->Query->nProvidedObjects;
-	mqQueryClose(inf->Query, oxt);
+	mq_internal_QueryClose(inf->Query, oxt);
 
 	/** Release all objects in our param list **/
 	for(i=n;i<inf->ObjList.nObjects;i++) if (inf->ObjList.Objects[i])
@@ -2081,9 +2087,6 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pMultiQuery qy = (pMultiQuery)qy_v;
 
-    	/** Check the link cnt **/
-	if (--(qy->LinkCnt)) return 0;
-
 	/** Make sure the cur objlist is correct, otherwise the Finish
 	 ** routines in the drivers might close up incorrect objects.
 	 **/
@@ -2095,6 +2098,23 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 
 	/** Shutdown the mq drivers **/
 	qy->Tree->Driver->Finish(qy->Tree,qy);
+
+	/** Shutdown the query structure **/
+	mq_internal_QueryClose(qy, oxt);
+
+    return 0;
+    }
+
+
+/*** mq_internal_QueryClose() - close the query; may be called by
+ *** mqQueryClose or by mqClose.
+ ***/
+int
+mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
+    {
+
+    	/** Check the link cnt **/
+	if (--(qy->LinkCnt)) return 0;
 
 	/** Free the expressions **/
 	if (qy->WhereClause && !(qy->WhereClause->Flags & EXPR_F_CVNODE)) 

@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: multiquery.h,v 1.11 2008/03/09 08:00:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.11  2008/03/09 08:00:10  gbeeley
+    - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
+      close (wait until all objects are closed too), we should shutdown the
+      query execution, thus closing the underlying queries; this prevents
+      some deadlocking issues at the remote RDBMS.
+
     Revision 1.10  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -247,6 +253,7 @@ typedef struct
 #define MQ_F_ALLOWUPDATE	1
 #define MQ_F_NOMOREREC		2
 #define MQ_F_ASTERISK		4		/* "select *" */
+#define MQ_F_SHUTDOWN		8		/* qe tree already shut down */
 
 
 /*** Pseudo-object structure. ***/
