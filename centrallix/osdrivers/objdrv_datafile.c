@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.22 2008/02/17 07:45:58 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.23 2008/03/14 18:20:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.23  2008/03/14 18:20:45  gbeeley
+    - (bugfix) Due to initial miscounting of rows, inserts into a completely
+      empty file were failing
+    - (bugfix) Two type mismatch error messages had incorrect parameters
+
     Revision 1.22  2008/02/17 07:45:58  gbeeley
     - (bugfix) data corruption caused when a deleted row spanned a page
       boundary
@@ -1498,7 +1503,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    dn->NodeSerial = -1;
 	    dn->TableInf = NULL;
 	    dn->MaxRowID = DAT_NODE_ROWIDPTRS*2 - 1;
-	    dn->RealMaxRowID = 0;
+	    dn->RealMaxRowID = -1;
 	    dn->RowAccessCnt = 0;
 	    dn->HeaderCols.nCols = 0;
 	    dn->HeaderCols.ColBuf = NULL;
@@ -3434,7 +3439,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		if (datatype != type)
 		    {
 		    mssError(1,"DAT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
-			    attrname, datatype, type);
+			    attrname, obj_type_names[datatype], obj_type_names[type]);
 		    return -1;
 		    }
 		(*oxt)->AllocObj = 0;
@@ -3463,7 +3468,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		if (datatype != type)
 		    {
 		    mssError(1,"DAT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
-			    attrname, datatype, type);
+			    attrname, obj_type_names[datatype], obj_type_names[type]);
 		    return -1;
 		    }
 
