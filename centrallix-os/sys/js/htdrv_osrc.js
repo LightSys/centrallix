@@ -986,6 +986,7 @@ function osrc_end_query()
 	pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
 	}
     this.Dispatch();
+    this.ifcProbe(ifEvent).Activate("EndQuery", {});
     return 0;
     }
 
@@ -1148,7 +1149,7 @@ function osrc_give_all_current_record()
     //confirm('give_all_current_record start');
     for(var i in this.child)
 	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord]);
-    cn_activate(this,"DataFocusChanged");
+    this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
     //confirm('give_all_current_record done');
     }
 
@@ -2076,6 +2077,7 @@ function osrc_init(param)
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
+    ie.Add("EndQuery");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
