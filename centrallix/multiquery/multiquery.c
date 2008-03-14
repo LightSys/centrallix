@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include "obj.h"
 #include "cxlib/mtlexer.h"
@@ -43,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.34 2008/03/09 08:00:10 gbeeley Exp $
+    $Id: multiquery.c,v 1.35 2008/03/14 18:25:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.35  2008/03/14 18:25:44  gbeeley
+    - (feature) adding INSERT INTO ... SELECT support, for creating new data
+      using SQL as well as using SQL to copy rows around between different
+      objects.
+
     Revision 1.34  2008/03/09 08:00:10  gbeeley
     - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
       close (wait until all objects are closed too), we should shutdown the
@@ -1103,6 +1109,14 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			    }
 			else if (!strcmp("insert",ptr))
 			    {
+			    if (select_cls)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Cannot have INSERT after a SELECT clause");
+				mlxNoteError(lxs);
+				break;
+				}
+
 			    /** Create the main insert clause **/
 			    insert_cls = mq_internal_AllocQS(MQ_T_INSERTCLAUSE);
 			    xaAddItem(&qs->Children, (void*)insert_cls);
@@ -1142,9 +1156,24 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 
 			    /** Ok, either a paren (for column list), VALUES, or SELECT is next. **/
 			    t = mlxNextToken(lxs);
-			    if (t == MLX_TOK_KEYWORD)
+			    if (t == MLX_TOK_RESERVEDWD)
 			        {
 				/** VALUES or SELECT **/
+				ptr = mlxStringVal(lxs, NULL);
+				if (ptr && !strcmp(ptr, "select"))
+				    {
+				    if (select_cls)
+					{
+					mssError(1, "MQ", "INSERT INTO ... SELECT: Query must contain only one SELECT clause");
+					mlxNoteError(lxs);
+					next_state = ParseError;
+					break;
+					}
+				    select_cls = mq_internal_AllocQS(MQ_T_SELECTCLAUSE);
+				    xaAddItem(&qs->Children, (void*)select_cls);
+				    select_cls->Parent = qs;
+				    next_state = SelectItem;
+				    }
 				}
 			    else if (t == MLX_TOK_OPENPAREN)
 			        {
@@ -1758,6 +1787,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	    return NULL;
 	    }
 	this->ObjList = expCreateParamList();
+	this->ObjList->Session = this->SessionID;
 
 	/** Import any externally provided data sources **/
 	if (objlist)
@@ -2211,7 +2241,6 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 
 	/** Evaluate the expression to get the data type **/
-	p->Query->ObjList->Session = p->Query->SessionID;
 	if (expEvalTree((pExpression)p->Query->Tree->AttrCompiledExpr.Items[id],p->Query->ObjList) < 0)
 	    return -1;
 	dt = ((pExpression)p->Query->Tree->AttrCompiledExpr.Items[id])->DataType;
@@ -2298,7 +2327,6 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 
 	/** Evaluate the expression to get the value **/
 	exp = (pExpression)p->Query->Tree->AttrCompiledExpr.Items[id];
-	p->Query->ObjList->Session = p->Query->SessionID;
 	if (expEvalTree(exp,p->Query->ObjList) < 0) return 1;
 	if (exp->DataType != datatype)
 	    {
@@ -2320,6 +2348,62 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
     }
 
 
+/*** mq_internal_QEGetNextAttr - get the next attribute available from the
+ *** query exec tree element.  Uses two externals - attrid and astobjid - to
+ *** track iteration state.  If astobjid == -1 on return, then the attribute
+ *** is internal, otherwise it is via "select *" and iterated from the given
+ *** astobjid object.
+ ***/
+char*
+mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlist, int* attrid, int* astobjid)
+    {
+    char* attrname = NULL;
+
+    	/** Check overflow... **/
+	while(!attrname)
+	    {
+	    if (*attrid >= qe->AttrNames.nItems) return NULL;
+
+	    /** Asterisk? **/
+	    attrname = qe->AttrNames.Items[*attrid];
+	    if (!strcmp(attrname,"*"))
+		{
+		attrname = NULL;
+		while(!attrname)
+		    {
+		    if (*astobjid == -1)
+			{
+			/** First non-external object **/
+			attrname = objGetFirstAttr(objlist->Objects[mq->nProvidedObjects]);
+			*astobjid = mq->nProvidedObjects;
+			}
+		    else	
+			{
+			attrname = objGetNextAttr(objlist->Objects[*astobjid]);
+			}
+		    if (attrname == NULL)
+			{
+			(*astobjid)++;
+			if (*astobjid >= objlist->nObjects)
+			    {
+			    *astobjid = -1;
+			    (*attrid)++;
+			    break;
+			    }
+			attrname = objGetFirstAttr(objlist->Objects[*astobjid]);
+			}
+		    }
+		}
+	    else
+		{
+		(*attrid)++;
+		}
+	    }
+
+    return attrname;
+    }
+
+
 /*** mqGetNextAttr - returns the name of the _next_ attribute.  This function, and
  *** the previous one, both return NULL if there are no (more) attributes.
  ***/
@@ -2327,53 +2411,11 @@ char*
 mqGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    char* attrname = NULL;
 
     	/** Check to see whether we're on current object. **/
 	mq_internal_CkSetObjList(p->Query, p);
 
-    	/** Check overflow... **/
-	while(!attrname)
-	    {
-	    if (p->AttrID >= p->Query->Tree->AttrNames.nItems) return NULL;
-
-	    /** Asterisk? **/
-	    attrname = p->Query->Tree->AttrNames.Items[p->AttrID];
-	    if (!strcmp(attrname,"*"))
-		{
-		attrname = NULL;
-		while(!attrname)
-		    {
-		    if (p->AstObjID == -1)
-			{
-			/** First non-external object **/
-			attrname = objGetFirstAttr(p->ObjList.Objects[p->Query->nProvidedObjects]);
-			p->AstObjID = p->Query->nProvidedObjects;
-			}
-		    else	
-			{
-			attrname = objGetNextAttr(p->ObjList.Objects[p->AstObjID]);
-			}
-		    if (attrname == NULL)
-			{
-			p->AstObjID++;
-			if (p->AstObjID >= p->ObjList.nObjects)
-			    {
-			    p->AstObjID = -1;
-			    p->AttrID++;
-			    break;
-			    }
-			attrname = objGetFirstAttr(p->ObjList.Objects[p->AstObjID]);
-			}
-		    }
-		}
-	    else
-		{
-		p->AttrID++;
-		}
-	    }
-
-    return attrname;
+    return mq_internal_QEGetNextAttr(p->Query, p->Query->Tree, &p->ObjList, &p->AttrID, &p->AstObjID);
     }
 
 
@@ -2441,7 +2483,6 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	 ** ideal, but it'll work for now.
 	 **/
 	exp = (pExpression)p->Query->Tree->AttrCompiledExpr.Items[id];
-	p->Query->ObjList->Session = p->Query->SessionID;
 	if (expEvalTree(exp,p->Query->ObjList) < 0) return -1;
 	if (exp->DataType == DATA_T_UNAVAILABLE) return -1;
 
@@ -2584,7 +2625,7 @@ mqRegisterQueryDriver(pQueryDriver drv)
     {
 
     	/** Add the thing to the global XArray. **/
-	xaAddItemSortedInt32(&MQINF.Drivers, (void*)drv,((char*)&(drv->Precedence))-((char*)(drv)));
+	xaAddItemSortedInt32(&MQINF.Drivers, (void*)drv, offsetof(QueryDriver, Precedence));
 
     return 0;
     }

@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.11 2008/03/09 08:00:10 gbeeley Exp $
+    $Id: multiquery.h,v 1.12 2008/03/14 18:25:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.12  2008/03/14 18:25:44  gbeeley
+    - (feature) adding INSERT INTO ... SELECT support, for creating new data
+      using SQL as well as using SQL to copy rows around between different
+      objects.
+
     Revision 1.11  2008/03/09 08:00:10  gbeeley
     - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
       close (wait until all objects are closed too), we should shutdown the
@@ -276,6 +281,7 @@ int mqRegisterQueryDriver(pQueryDriver drv);
 /*** Query set-up functions ***/
 
 /*** INTERNAL functions ***/
+char* mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlist, int* attrid, int* astobjid);
 int mq_internal_FreeQS(pQueryStructure qstree);
 pQueryStructure mq_internal_AllocQS(int type);
 pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);

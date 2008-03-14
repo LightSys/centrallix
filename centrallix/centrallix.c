@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.47 2008/03/04 01:26:57 gbeeley Exp $
+    $Id: centrallix.c,v 1.48 2008/03/14 18:25:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.48  2008/03/14 18:25:44  gbeeley
+    - (feature) adding INSERT INTO ... SELECT support, for creating new data
+      using SQL as well as using SQL to copy rows around between different
+      objects.
+
     Revision 1.47  2008/03/04 01:26:57  gbeeley
     - (bugfix) include stdlib.h to get rid of warning about implicitly
       defined exit().
@@ -688,6 +693,7 @@ cxInitialize(void* v)
 	mqtInitialize();			/* tablegen query module */
 	mqpInitialize();			/* projection query module */
 	mqjInitialize();			/* join query module */
+	mqisInitialize();			/* insert-select query mod */
 
 	/** Init the objectsystem drivers **/
 	sysInitialize();			/* Sys info driver */

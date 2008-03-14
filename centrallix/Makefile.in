@@ -220,6 +220,7 @@ HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS)) \
 XQYDRIVERS=multiq_tablegen.o \
 	   multiq_projection.o \
 	   multiq_equijoin.o \
+	   multiq_insertselect.o \
 	   multiquery.o
 QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
