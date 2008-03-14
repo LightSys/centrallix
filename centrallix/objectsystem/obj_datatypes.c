@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.19 2007/09/18 18:05:35 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.20 2008/03/14 18:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.20  2008/03/14 18:21:19  gbeeley
+    - (bugfix) datetime comparisons were failing due to an integer overflow
+
     Revision 1.19  2007/09/18 18:05:35  gbeeley
     - (bugfix) fix a bug in string/money conversion where the value is between
       $1.00 and $1.99.
@@ -1410,6 +1413,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
     DateTime dt_v;
     MoneyType m_v;
     double dblval;
+    long long dt_cmp_value;
 
     	/** Need to transpose v1 and v2 to simplify? **/
 	/*if ((data_type_1 != DATA_T_INTEGER && data_type_2 == DATA_T_INTEGER) ||
@@ -1573,7 +1577,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		switch(data_type_2)
 		    {
 		    case DATA_T_DATETIME:
-		        cmp_value = dt->Value - ((pDateTime)data_ptr_2)->Value;
+		        dt_cmp_value = dt->Value - ((pDateTime)data_ptr_2)->Value;
 			break;
 
 		    case DATA_T_INTVEC:
@@ -1592,7 +1596,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			    dt_v.Part.Hour = iv->Integers[3];
 			    dt_v.Part.Minute = iv->Integers[4];
 			    dt_v.Part.Second = iv->Integers[5];
-			    cmp_value = dt->Value - dt_v.Value;
+			    dt_cmp_value = dt->Value - dt_v.Value;
 			    }
 			break;
 
@@ -1601,6 +1605,15 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		    default:
 		        err = 1;
 			break;
+		    }
+		if (!err)
+		    {
+		    if (dt_cmp_value > 0)
+			cmp_value = 1;
+		    else if (dt_cmp_value < 0)
+			cmp_value = -1;
+		    else
+			cmp_value = 0;
 		    }
 	        break;
 
