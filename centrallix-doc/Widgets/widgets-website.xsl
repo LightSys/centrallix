@@ -3,7 +3,11 @@
 <xsl:output method="text" indent="no"/>
 
 <xsl:template match="/widgets">
-insert into topic values(2,1,"II. Application Components",null,
+select (@oldid := id) from topic where name = "3. Application Components";
+delete from topic where parent_id = @oldid;
+delete from topic where id = @oldid;
+
+insert into topic values(null,1,"3. Application Components",null,
 "       [b]Centrallix Application Widget Reference[/b]
 	
 	This guide contains a basic overview and specification of each of the widgets that Centrallix supports, including a handful of planned (but not yet implemented or not fully implemented) widgets.
@@ -20,7 +24,7 @@ insert into topic values(2,1,"II. Application Components",null,
 	
 	Sample code is generally given in \"structure file\" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.
 
-	Copyright (c)  1998-2006 LightSys Technology Services, Inc.
+	Copyright (c)  1998-2008 LightSys Technology Services, Inc.
 	
 	[b]Documentation on the following widgets is available:[/b]
 
@@ -31,10 +35,11 @@ insert into topic values(2,1,"II. Application Components",null,
 	</xsl:for-each>
 	[/table]
 ");
+select (@newid := @@last_insert_id);
 
 	<xsl:for-each select="widget">
 		<xsl:variable name="widgetname"><xsl:value-of select="@name"/></xsl:variable>
-insert into topic values(null, 2, "widget/<xsl:value-of select="@name"/>", null,
+insert into topic values(null, @newid, "widget/<xsl:value-of select="@name"/>", null,
 "		[b]<xsl:value-of select="@name"/>[/b] :: <xsl:value-of select="@description"/>
 
 		[b]Metadata:[/b]
