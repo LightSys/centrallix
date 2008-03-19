@@ -44,10 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.35 2008/03/14 18:25:44 gbeeley Exp $
+    $Id: multiquery.c,v 1.36 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.36  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.35  2008/03/14 18:25:44  gbeeley
     - (feature) adding INSERT INTO ... SELECT support, for creating new data
       using SQL as well as using SQL to copy rows around between different
@@ -314,7 +323,9 @@ mq_internal_FreeQS(pQueryStructure qstree)
 	/** Release some memory held by structure items. **/
 	xaDeInit(&qstree->Children);
 	xsDeInit(&qstree->RawData);
+	xsDeInit(&qstree->AssignRawData);
 	if (qstree->Expr) expFreeExpression(qstree->Expr);
+	if (qstree->AssignExpr) expFreeExpression(qstree->AssignExpr);
 
 	/** Free this structure **/
 	nmFree(qstree,sizeof(QueryStructure));
@@ -345,6 +356,7 @@ mq_internal_FreeQE(pQueryElement qetree)
 	xaDeInit(&qetree->AttrDeriv);
 	xaDeInit(&qetree->AttrExprPtr);
 	xaDeInit(&qetree->AttrCompiledExpr);
+	xaDeInit(&qetree->AttrAssignExpr);
 
 	/** Release expression **/
 	if (qetree->Constraint) expFreeExpression(qetree->Constraint);
@@ -371,6 +383,7 @@ mq_internal_AllocQE()
 	xaInit(&qe->AttrDeriv,16);
 	xaInit(&qe->AttrExprPtr,16);
 	xaInit(&qe->AttrCompiledExpr,16);
+	xaInit(&qe->AttrAssignExpr,16);
 	qe->Constraint = NULL;
 	qe->Flags = 0;
 
@@ -391,6 +404,7 @@ typedef enum
     OrderByItem,
     GroupByItem,
     HavingItem,
+    UpdateItem,
 
     /** Misc **/
     ParseDone,
@@ -414,10 +428,12 @@ mq_internal_AllocQS(int type)
 	this->NodeType = type;
 	this->QELinkage = NULL;
 	this->Expr = NULL;
+	this->AssignExpr = NULL;
 	this->Specificity = 0;
 	this->Flags = 0;
 	xaInit(&this->Children,16);
 	xsInit(&this->RawData);
+	xsInit(&this->AssignRawData);
 
     return this;
     }
@@ -463,26 +479,38 @@ mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
  ***/
 int
 mq_internal_PostProcess(pMultiQuery qy, pQueryStructure qs, pQueryStructure sel, pQueryStructure from, pQueryStructure where, 
-		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct)
+		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up)
     {
     int i,j,cnt;
     pQueryStructure subtree;
     char* ptr;
+    int has_identity;
 
     	/** First, build the object list from the FROM clause **/
-	if (from) for(i=0;i<from->Children.nItems;i++)
+	has_identity = 0;
+	if (from)
 	    {
-	    subtree = (pQueryStructure)(from->Children.Items[i]);
-	    if (subtree->Presentation[0])
-	        ptr = subtree->Presentation;
-	    else
-	        ptr = subtree->Source;
-	    if (expLookupParam(qy->ObjList, ptr) >= 0)
+	    for(i=0;i<from->Children.nItems;i++)
 		{
-		mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
+		subtree = (pQueryStructure)(from->Children.Items[i]);
+		if (subtree->Presentation[0])
+		    ptr = subtree->Presentation;
+		else
+		    ptr = subtree->Source;
+		if (subtree->Flags & MQ_SF_IDENTITY)
+		    has_identity = 1;
+		if (expLookupParam(qy->ObjList, ptr) >= 0)
+		    {
+		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
+		    return -1;
+		    }
+		expAddParamToList(qy->ObjList, ptr, NULL, (i==0)?EXPR_O_CURRENT:0);
+		}
+	    if (from->Children.nItems > 1 && !has_identity && up)
+		{
+		mssError(1, "MQ", "UPDATE statement with multiple data sources must have one marked as the IDENTITY source.");
 		return -1;
 		}
-	    expAddParamToList(qy->ObjList, ptr, NULL, (i==0)?EXPR_O_CURRENT:0);
 	    }
 
 	/** Ok, got object list.  Now compile the SELECT expressions **/
@@ -575,6 +603,32 @@ mq_internal_PostProcess(pMultiQuery qy, pQueryStructure qs, pQueryStructure sel,
 	    subtree->ObjCnt = cnt;
 	    }
 
+	/** Compile the update expressions **/
+	if (up) for(i=0;i<up->Children.nItems;i++)
+	    {
+	    subtree = (pQueryStructure)(up->Children.Items[i]);
+	    for(j=qy->nProvidedObjects;j<qy->ObjList->nObjects;j++) qy->ObjList->Flags[j] &= ~EXPR_O_REFERENCED;
+	    subtree->Expr = expCompileExpression(subtree->RawData.String, qy->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->Expr)
+	        {
+		mssError(0,"MQ","Error in UPDATE expression <%s>", subtree->RawData.String);
+		return -1;
+		}
+	    subtree->AssignExpr = expCompileExpression(subtree->AssignRawData.String, qy->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->AssignExpr)
+	        {
+		mssError(0,"MQ","Error in UPDATE assignment expression <%s>", subtree->AssignRawData.String);
+		return -1;
+		}
+	    cnt = 0;
+	    for(j=qy->nProvidedObjects;j<qy->ObjList->nObjects;j++) 
+	        {
+		subtree->ObjFlags[j] = qy->ObjList->Flags[j];
+		if (subtree->ObjFlags[j] & EXPR_O_REFERENCED) cnt++;
+		}
+	    subtree->ObjCnt = cnt;
+	    }
+
 	/** Merge WHERE clauses if there are more than one **/
 	cnt = xaCount(&qs->Children);
 	where = NULL;
@@ -611,7 +665,7 @@ mq_internal_PostProcess(pMultiQuery qy, pQueryStructure qs, pQueryStructure sel,
  *** filters...
  ***/
 int
-mq_internal_DetermineCoverage(pMultiQuery qy, pExpression where_clause, pQueryStructure qs_where, pQueryStructure qs_select, int level)
+mq_internal_DetermineCoverage(pMultiQuery qy, pExpression where_clause, pQueryStructure qs_where, pQueryStructure qs_select, pQueryStructure qs_update, int level)
     {
     int i,v;
     int sum_objmask = 0;
@@ -624,7 +678,7 @@ mq_internal_DetermineCoverage(pMultiQuery qy, pExpression where_clause, pQuerySt
     char presentation[64];
 
 	/** Check coverage mask for leaf nodes first **/
-	if (where_clause->NodeType == EXPR_N_PROPERTY && where_clause->ObjID == EXPR_OBJID_CURRENT)
+	if (qs_select && where_clause->NodeType == EXPR_N_PROPERTY && where_clause->ObjID == EXPR_OBJID_CURRENT)
 	    {
 	    /** If no object specified, make sure we have the obj id and thus coverage mask correct **/
 	    sum_objmask = where_clause->ObjCoverageMask;
@@ -641,6 +695,13 @@ mq_internal_DetermineCoverage(pMultiQuery qy, pExpression where_clause, pQuerySt
 			}
 		    }
 		}
+	    }
+	else if (qs_update && where_clause->NodeType == EXPR_N_PROPERTY && where_clause->ObjID == EXPR_OBJID_CURRENT)
+	    {
+	    /** Just leave it alone for now...  we may need to change
+	     ** this to refer to the IDENTITY source later on.
+	     **/
+	    sum_objmask = where_clause->ObjCoverageMask;
 	    }
 	else if (where_clause->Children.nItems == 0)
 	    {
@@ -659,7 +720,7 @@ mq_internal_DetermineCoverage(pMultiQuery qy, pExpression where_clause, pQuerySt
 	        {
 		/** Call sub-expression **/
 	        exp = (pExpression)(where_clause->Children.Items[i]);
-	        mq_internal_DetermineCoverage(qy, exp, qs_where, qs_select, level+1);
+	        mq_internal_DetermineCoverage(qy, exp, qs_where, qs_select, qs_update, level+1);
 
 		/** Sum up the object mask of objs involved, and determine outer members **/
 	        sum_objmask |= exp->ObjCoverageMask;
@@ -833,13 +894,14 @@ pQueryStructure
 mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
     {
     pQueryStructure qs, new_qs, select_cls=NULL, from_cls=NULL, where_cls=NULL, orderby_cls=NULL, groupby_cls=NULL, crosstab_cls=NULL, having_cls=NULL;
-    pQueryStructure insert_cls=NULL;
+    pQueryStructure insert_cls=NULL, update_cls=NULL;
     /* pQueryStructure delete_cls=NULL, update_cls=NULL;*/
     pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
     int t,parenlevel,subtr,identity;
     char* ptr;
+    int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for", NULL};
@@ -878,6 +940,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			ptr = mlxStringVal(lxs,NULL);
 			if (!strcmp("select",ptr))
 			    {
+			    if (update_cls)
+				{
+				mssError(1, "MQ", "Query cannot contain both a SELECT and an UPDATE clause");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				break;
+				}
 			    if (select_cls)
 				{
 				mssError(1, "MQ", "Query must contain only one SELECT clause");
@@ -1064,6 +1133,12 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			    }
 			else if (!strcmp("set",ptr))
 			    {
+			    if (update_cls)
+				{
+				next_state = UpdateItem;
+				break;
+				}
+
 			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
 			        {
 				next_state = ParseError;
@@ -1182,6 +1257,31 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			    }
 			else if (!strcmp("update",ptr))
 			    {
+			    if (select_cls || insert_cls)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Cannot have UPDATE after a SELECT or INSERT clause");
+				mlxNoteError(lxs);
+				break;
+				}
+
+			    /** Duh, this comes as no surprise. **/
+			    qy->Flags |= MQ_F_ALLOWUPDATE;
+
+			    /** Create the main update clause **/
+			    update_cls = mq_internal_AllocQS(MQ_T_UPDATECLAUSE);
+			    xaAddItem(&qs->Children, (void*)update_cls);
+			    update_cls->Parent = qs;
+
+			    /** Create a "from" clause too, the user didn't actually type it,
+			     ** but this is sortof like UPDATE FROM /data/source, and SUBTREE
+			     ** is supported as are joins.
+	 		     **/
+			    from_cls = mq_internal_AllocQS(MQ_T_FROMCLAUSE);
+			    xaAddItem(&qs->Children, (void*)from_cls);
+			    from_cls->Parent = qs;
+		            next_state = FromItem;
+			    break;
 			    }
 			else if (!strcmp("for",ptr))
 			    {
@@ -1565,6 +1665,91 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			mlxNoteError(lxs);
 			}
 		    break;
+
+		case UpdateItem:
+		    new_qs = mq_internal_AllocQS(MQ_T_UPDATEITEM);
+		    new_qs->Presentation[0] = 0;
+		    new_qs->Name[0] = 0;
+		    xaAddItem(&update_cls->Children, (void*)new_qs);
+		    new_qs->Parent = update_cls;
+
+		    /** Copy the entire item literally to the RawData for later compilation **/
+		    parenlevel = 0;
+		    in_assign = 1;
+		    while(1)
+		        {
+			t = mlxNextToken(lxs);
+			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+			    break;
+			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA) && parenlevel <= 0)
+			    break;
+			if (t == MLX_TOK_OPENPAREN) 
+			    parenlevel++;
+			if (t == MLX_TOK_CLOSEPAREN)
+			    parenlevel--;
+			if (t == MLX_TOK_EQUALS && parenlevel == 0 && in_assign)
+			    {
+			    in_assign = 0;
+			    continue;
+			    }
+			ptr = mlxStringVal(lxs,NULL);
+			if (!ptr) break;
+			if (t == MLX_TOK_STRING)
+			    {
+			    if (in_assign)
+				xsConcatQPrintf(&new_qs->AssignRawData, "%STR&DQUOT", ptr);
+			    else
+				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
+			    }
+			else
+			    {
+			    if (in_assign)
+				xsConcatenate(&new_qs->AssignRawData,ptr,-1);
+			    else
+				xsConcatenate(&new_qs->RawData,ptr,-1);
+			    }
+			xsConcatenate(&new_qs->RawData," ",1);
+			}
+
+		    if (!new_qs->RawData.String[0] || !new_qs->AssignRawData.String[0])
+			{
+			mssError(1, "MQ", "UPDATE assignment must have form '{assign-expr} = {value-expr}'");
+			next_state = ParseError;
+			mlxNotePosition(lxs);
+			break;
+			}
+
+		    /** Where to from here? **/
+		    if (t == MLX_TOK_COMMA)
+		        {
+			next_state = state;
+			break;
+			}
+		    else if (t == MLX_TOK_RESERVEDWD)
+		        {
+			mlxHoldToken(lxs);
+			next_state = LookForClause;
+			break;
+			}
+		    else if (t == MLX_TOK_EOF)
+		        {
+			next_state = ParseDone;
+			break;
+			}
+		    else
+		        {
+			next_state = ParseError;
+			mssError(1,"MQ","Expected update item, WHERE clause, or end-of-query after UPDATE");
+			mlxNoteError(lxs);
+			break;
+			}
+		    break;
+
+		default:
+		    /** This should not be reachable **/
+		    next_state = ParseError;
+		    mssError(1, "MQ", "Bark! Unhandled SQL parser state");
+		    break;
 		}
 
 	    /** Set the next state **/
@@ -1580,7 +1765,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 	    }
 
 	/** Ok, postprocess the expression trees, etc. **/
-	if (mq_internal_PostProcess(qy, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls) < 0)
+	if (mq_internal_PostProcess(qy, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls) < 0)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not postprocess multiquery");
@@ -1607,6 +1792,8 @@ mq_internal_DumpQS(pQueryStructure tree, int level)
 	    case MQ_T_FROMSOURCE: printf("%*.*s%s (%s)\n",level*4,level*4,"",tree->Source,tree->Presentation); break;
 	    case MQ_T_SELECTITEM: printf("%*.*s%s (%s)\n",level*4,level*4,"",tree->RawData.String,tree->Presentation); break;
 	    case MQ_T_WHERECLAUSE: printf("%*.*sWHERE: %s\n",level*4,level*4,"",tree->RawData.String); break;
+	    case MQ_T_UPDATECLAUSE: printf("%*.*sUPDATE:\n",level*4,level*4,""); break;
+	    case MQ_T_UPDATEITEM: printf("%*.*s%s <-- %s\n",level*4,level*4,"",tree->Name,tree->RawData.String); break;
 	    default: printf("%*.*sunknown\n",level*4,level*4,"");
 	    }
 
@@ -1761,7 +1948,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
     {
     pMultiQuery this;
     pLxSession lxs;
-    pQueryStructure qs, select_qs, sub_qs;
+    pQueryStructure qs, select_qs, sub_qs, update_qs;
     char* exp;
     int i;
     pQueryDriver qdrv;
@@ -1834,7 +2021,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 
 	    /** Break the where clause into tiny little chunks **/
 	    select_qs = mq_internal_FindItem(this->QTree, MQ_T_SELECTCLAUSE, NULL);
-	    mq_internal_DetermineCoverage(this, this->WhereClause, qs, select_qs, 0);
+	    update_qs = mq_internal_FindItem(this->QTree, MQ_T_UPDATECLAUSE, NULL);
+	    mq_internal_DetermineCoverage(this, this->WhereClause, qs, select_qs, update_qs, 0);
 	    if (this->WhereClause->Flags & EXPR_F_CVNODE) this->WhereClause = NULL;
 
 	    /** Optimize the "little chunks" **/
@@ -1863,6 +2051,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	    }
 
 	/** Ok, got the from, select, and where built.  Now call the mq-drivers **/
+	xaInit(&this->Trees, 16);
 	for(i=0;i<MQINF.Drivers.nItems;i++)
 	    {
 	    qdrv = (pQueryDriver)(MQINF.Drivers.Items[i]);
@@ -1870,6 +2059,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	        {
 	        mq_internal_FreeQS(this->QTree);
 		if (this->Tree) mq_internal_FreeQE(this->Tree);
+		xaDeInit(&this->Trees);
 	        nmFree(this,sizeof(MultiQuery));
 	        return NULL;
 		}
@@ -1884,6 +2074,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 		expFreeExpression(this->HavingClause);
 	    mq_internal_FreeQS(this->QTree);
 	    mq_internal_FreeQE(this->Tree);
+	    xaDeInit(&this->Trees);
 	    nmFree(this,sizeof(MultiQuery));
 	    mssError(0,"MQ","Could not start the query");
 	    return NULL;
@@ -2163,6 +2354,9 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 
 	/** Release the object list for the main query **/
 	expFreeParamList(qy->ObjList);
+
+	/** List of query execution nodes **/
+	xaDeInit(&qy->Trees);
 
 	/** Free the qy itself **/
 	nmFree(qy,sizeof(MultiQuery));

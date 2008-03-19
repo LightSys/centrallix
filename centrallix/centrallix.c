@@ -55,10 +55,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.48 2008/03/14 18:25:44 gbeeley Exp $
+    $Id: centrallix.c,v 1.49 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.49  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.48  2008/03/14 18:25:44  gbeeley
     - (feature) adding INSERT INTO ... SELECT support, for creating new data
       using SQL as well as using SQL to copy rows around between different
@@ -694,6 +703,7 @@ cxInitialize(void* v)
 	mqpInitialize();			/* projection query module */
 	mqjInitialize();			/* join query module */
 	mqisInitialize();			/* insert-select query mod */
+	mquInitialize();			/* update statement query mod */
 
 	/** Init the objectsystem drivers **/
 	sysInitialize();			/* Sys info driver */

@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.11 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.11  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.10  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -408,7 +417,7 @@ mqpAnalyze(pMultiQuery mq)
     pQueryStructure item;
     pQueryStructure select_item;
     pQueryStructure where_item;
-    int src_idx,i,n=0,j;
+    int src_idx,i,j;
     pExpression new_exp;
 
     	/** Search for FROM clauses for this driver... **/
@@ -431,26 +440,23 @@ mqpAnalyze(pMultiQuery mq)
 
 	    /** Find the SELECT clause associated with this FROM clause. **/
 	    select_qs = mq_internal_FindItem(from_qs->Parent->Parent, MQ_T_SELECTCLAUSE, NULL);
-	    if (!select_qs)
+	    if (select_qs)
 	        {
-		mq_internal_FreeQE(qe);
-		continue;
-		}
-	    
-	    /** Loop through the select items looking for ones that match this FROM source **/
-	    for(i=0;i<select_qs->Children.nItems;i++)
-	        {
-		select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-		if (select_item->QELinkage != NULL) continue;
-		if (select_item->ObjCnt == 1 && (select_item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
+		/** Loop through the select items looking for ones that match this FROM source **/
+		for(i=0;i<select_qs->Children.nItems;i++)
 		    {
-		    if (select_item->Flags & MQ_SF_ASTERISK)
-			mq->Flags |= MQ_F_ASTERISK;
-		    xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
-		    xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
-		    xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);
-		    select_item->QELinkage = qe;
-		    xaAddItem(&qe->AttrDeriv, (void*)NULL);
+		    select_item = (pQueryStructure)(select_qs->Children.Items[i]);
+		    if (select_item->QELinkage != NULL) continue;
+		    if (select_item->ObjCnt == 1 && (select_item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
+			{
+			if (select_item->Flags & MQ_SF_ASTERISK)
+			    mq->Flags |= MQ_F_ASTERISK;
+			xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
+			xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
+			xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);
+			select_item->QELinkage = qe;
+			xaAddItem(&qe->AttrDeriv, (void*)NULL);
+			}
 		    }
 		}
 
@@ -541,8 +547,7 @@ mqpAnalyze(pMultiQuery mq)
 	    /*if (qe->Constraint) expRemapID(qe->Constraint, src_idx, 0);*/
 
 	    /** Link into the multiquery **/
-	    while(mq->Trees[n]) n++;
-	    mq->Trees[n] = qe;
+	    xaAddItem(&mq->Trees, qe);
 	    mq->Tree = qe;
 
 	    /** Setup the object that this will use. **/

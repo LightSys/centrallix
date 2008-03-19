@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_insertselect.c,v 1.1 2008/03/14 18:25:44 gbeeley Exp $
+    $Id: multiq_insertselect.c,v 1.2 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_insertselect.c,v $
 
     $Log: multiq_insertselect.c,v $
+    Revision 1.2  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.1  2008/03/14 18:25:44  gbeeley
     - (feature) adding INSERT INTO ... SELECT support, for creating new data
       using SQL as well as using SQL to copy rows around between different
@@ -96,8 +105,7 @@ mqisAnalyze(pMultiQuery mq)
 
 	/** Link the qe into the multiquery **/
 	n=0;
-	while(mq->Trees[n]) n++;
-	mq->Trees[n] = qe;
+	xaAddItem(&mq->Trees, qe);
 	xaAddItem(&qe->Children, mq->Tree);
 	mq->Tree = qe;
 

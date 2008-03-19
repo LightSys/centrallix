@@ -45,10 +45,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.11 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.11  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.10  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -399,9 +408,9 @@ mqjAnalyze(pMultiQuery mq)
 		/** Find the master QE from the MQ->Trees array if 1st join, otherwise use MQ->Tree. **/
 		if (n_joins_used == 0)
 		    {
-		    for(i=0;mq->Trees[i];i++)
+		    for(i=0;i < xaCount(&mq->Trees);i++)
 		        {
-			master = mq->Trees[i];
+			master = (pQueryElement)xaGetItem(&mq->Trees, i);
 			if (((pQueryStructure)(master->QSLinkage)) == from_sources[join_obj1[found]]) break;
 			}
 		    }
@@ -413,33 +422,36 @@ mqjAnalyze(pMultiQuery mq)
 		qe->SrcIndexSlave = join_obj2[found];
 
 		/** Find the slave QE, from the MQ->Trees array, whether 1st or nth join. **/
-		for(i=0;mq->Trees[i];i++)
+		for(i=0;i<xaCount(&mq->Trees);i++)
 		    {
-		    slave = mq->Trees[i];
+		    slave = (pQueryElement)xaGetItem(&mq->Trees, i);
 		    if (((pQueryStructure)(slave->QSLinkage)) == from_sources[join_obj2[found]]) break;
 		    }
 
 		/** 'steal' the qe-linkages from the select items for any sub-objects. **/
-		for(i=0;i<select_qs->Children.nItems;i++)
+		if (select_qs)
 		    {
-		    select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-		    if (select_item->QELinkage == slave || select_item->QELinkage == master)
-		        select_item->QELinkage = qe;
-		    }
+		    for(i=0;i<select_qs->Children.nItems;i++)
+			{
+			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
+			if (select_item->QELinkage == slave || select_item->QELinkage == master)
+			    select_item->QELinkage = qe;
+			}
 
-		/** Setup the attribute list in the queryelement structure **/
-		for(i=0;i<select_qs->Children.nItems;i++)
-		    {
-		    select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-		    if (select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0)
-		        {
-			if (select_item->Flags & MQ_SF_ASTERISK)
-			    mq->Flags |= MQ_F_ASTERISK;
-			xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
-			xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
-			xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);
-			xaAddItem(&qe->AttrDeriv, (void*)(select_item->QELinkage));
-			select_item->QELinkage = qe;
+		    /** Setup the attribute list in the queryelement structure **/
+		    for(i=0;i<select_qs->Children.nItems;i++)
+			{
+			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
+			if (select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0)
+			    {
+			    if (select_item->Flags & MQ_SF_ASTERISK)
+				mq->Flags |= MQ_F_ASTERISK;
+			    xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
+			    xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
+			    xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);
+			    xaAddItem(&qe->AttrDeriv, (void*)(select_item->QELinkage));
+			    select_item->QELinkage = qe;
+			    }
 			}
 		    }
 

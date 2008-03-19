@@ -46,10 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.8 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.9 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.9  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.8  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -234,7 +243,6 @@ mqtAnalyze(pMultiQuery mq)
     pQueryElement qe,recent;
     pExpression new_exp;
     int i;
-    int n = 0;
     pMQTData md;
 
     	/** Search for SELECT statements... **/
@@ -384,8 +392,7 @@ mqtAnalyze(pMultiQuery mq)
 		}
 
 	    /** Link the qe into the multiquery **/
-	    while(mq->Trees[n]) n++;
-	    mq->Trees[n] = qe;
+	    xaAddItem(&mq->Trees, qe);
 	    mq->Tree = qe;
 	    }
 
@@ -404,7 +411,6 @@ mqtStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     pQueryElement cld;
 
     	/** First, evaluate all of the attributes that we 'own' **/
-	mq->ObjList->Session = mq->SessionID;
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
 	    {
 	    if (expEvalTree((pExpression)qe->AttrCompiledExpr.Items[i], mq->ObjList) < 0) 

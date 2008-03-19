@@ -46,10 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.11 2008/03/08 00:41:59 gbeeley Exp $
+    $Id: exp_main.c,v 1.12 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.12  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.11  2008/03/08 00:41:59  gbeeley
     - (bugfix) a double-free was being triggered on Subquery nodes as a
       result of an obscure glitch in expCopyNode.  The string value should
@@ -508,12 +517,12 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 
     	/** First, copy data type and NULL flag. **/
 	dst->DataType = src->DataType;
+	dst->Flags &= ~EXPR_F_NULL;
 	if (src->Flags & EXPR_F_NULL)
 	    {
 	    dst->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	dst->Flags &= ~EXPR_F_NULL;
 
 	/** Release the string from dst if allocated. **/
 	if (dst->Alloc && dst->String)
@@ -550,6 +559,8 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 		    dst->Alloc = 0;
 		    }
 		break;
+	    default:
+		return -1;
 	    }
 
     return 0;
@@ -582,9 +593,10 @@ expDataTypeToNodeType(int data_type)
  *** builds an expression node from it.
  ***/
 pExpression
-expPodToExpression(pObjData pod, int type, pExpression exp)
+expPodToExpression(pObjData pod, int type, pExpression provided_exp)
     {
     int n;
+    pExpression exp = provided_exp;
 
 	/** Create expression node. **/
 	if (!exp)
@@ -623,7 +635,8 @@ expPodToExpression(pObjData pod, int type, pExpression exp)
 		memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
 		break;
 	    default:
-		expFreeExpression(exp);
+		if (!provided_exp)
+		    expFreeExpression(exp);
 		return NULL;
 	    }
 	exp->DataType = type;

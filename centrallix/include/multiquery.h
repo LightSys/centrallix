@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.12 2008/03/14 18:25:44 gbeeley Exp $
+    $Id: multiquery.h,v 1.13 2008/03/19 07:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.13  2008/03/19 07:30:53  gbeeley
+    - (feature) adding UPDATE statement capability to the multiquery module.
+      Note that updating was of course done previously, but not via SQL
+      statements - it was programmatic via objSetAttrValue.
+    - (bugfix) fixes for two bugs in the expression module, one a memory leak
+      and the other relating to null values when copying expression values.
+    - (bugfix) the Trees array in the main multiquery structure could
+      overflow; changed to an xarray.
+
     Revision 1.12  2008/03/14 18:25:44  gbeeley
     - (feature) adding INSERT INTO ... SELECT support, for creating new data
       using SQL as well as using SQL to copy rows around between different
@@ -162,6 +171,7 @@ typedef struct _QE
     XArray		AttrDeriv;		/* ptrs to qe where attr comes from */
     XArray		AttrExprPtr;		/* char* for each expression */
     XArray		AttrCompiledExpr;	/* pExpression ptrs for each attr */
+    XArray		AttrAssignExpr;		/* pExpression ptrs for each assignment */
     pQueryDriver	Driver;			/* driver handling this qe */
     int 		Flags;			/* bitmask MQ_EF_xxx */
     int			PreCnt;
@@ -197,7 +207,9 @@ typedef struct _QS
     int			ObjFlags[16];
     int			ObjCnt;
     XString		RawData;
+    XString		AssignRawData;
     pExpression		Expr;
+    pExpression		AssignExpr;
     pQueryElement	QELinkage;
     int			Specificity;		/* source specificity */
     int			Flags;
@@ -240,7 +252,7 @@ typedef struct
     {
     pExpression		WhereClause;		/* where clause expression */
     pExpression		HavingClause;		/* having-clause expression */
-    pQueryElement	Trees[16];		/* list of tree and subtrees */
+    XArray		Trees;			/* list of tree and subtrees */
     pQueryElement	Tree;			/* query exec main tree ptr */
     pQueryStructure	QTree;			/* query syntax tree head ptr */
     int			Flags;			/* bitmask MQ_F_xxx */
