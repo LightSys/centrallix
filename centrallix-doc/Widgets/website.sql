@@ -34,6 +34,10 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/clock][/td][td]A simple clock widget which displays the current time on the client.[/td][/tr]
 	
+		[tr][td][widget/component][/td][td]A widget which instantiates a custom component[/td][/tr]
+	
+		[tr][td][widget/component-decl][/td][td]A widget which defines a custom component[/td][/tr]
+	
 		[tr][td][widget/connector][/td][td]A nonvisual widget used to trigger an Action on a widget when an Event on another widget fires.[/td][/tr]
 	
 		[tr][td][widget/datetime][/td][td]A visual widget for displaying and editing a date/time type value.[/td][/tr]
@@ -63,6 +67,8 @@ insert into topic values(null,1,"3. Application Components",null,
 		[tr][td][widget/page][/td][td]The top-level container that represents a Centrallix application.[/td][/tr]
 	
 		[tr][td][widget/pane][/td][td]A visible rectangular container widget with a border[/td][/tr]
+	
+		[tr][td][widget/parameter][/td][td]A declaration of a parameter that can be passed to an application or component[/td][/tr]
 	
 		[tr][td][widget/radiobuttonpanel][/td][td]A visual widget displaying a set of 'radio buttons'[/td][/tr]
 	
@@ -137,13 +143,13 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 				[tr]
 					[td]width[/td]
 					[td]integer[/td]
-					[td]width, in pixels, of the autolayout area.[/td]
+					[td]width, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available width for the given height, without overlapping other visible widgets.[/td]
 				[/tr]
 			
 				[tr]
 					[td]height[/td]
 					[td]integer[/td]
-					[td]height, in pixels, of the autolayout area.[/td]
+					[td]height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will chose a width and height that maximize the available autolayout area.[/td]
 				[/tr]
 			
 				[tr]
@@ -633,6 +639,203 @@ insert into topic values(null, @newid, "widget/clock", null,
 				[/tr]
 			
 		[/table]
+	
+");
+	
+insert into topic values(null, @newid, "widget/component", null,
+"		[b]component[/b] :: A widget which instantiates a custom component
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/component[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a \".cmp\" file.  The instantiation can be either static or dynamic:  a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.
+		
+	[b]Usage:[/b]
+	
+			A component can be either visual or non-visual, and can be placed at almost any point in the application.
+			At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However that capability is not available at present.
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]x-coordinate of the upper left corner of the component.  If unset, defaults to 0.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]y-coordinate of the upper left corner of the component.  If unset, defaults to 0.[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]width, in pixels, of the component.  If unset, this defaults to the width of the component's containing widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]height, in pixels, of the component.  If unset, this defaults to the height of the component's containing widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]path[/td]
+					[td]string[/td]
+					[td]The path, in the OSML, to the component's definition (.cmp) file.[/td]
+				[/tr]
+			
+				[tr]
+					[td]mode[/td]
+					[td]string[/td]
+					[td]Either \"static\" or \"dynamic\".  A static component is rendered with the application, whereas a dynamic one is loaded as needed from the client.  Defaults to 'static'.[/td]
+				[/tr]
+			
+				[tr]
+					[td]multiple_instantiation[/td]
+					[td]yes/no[/td]
+					[td]If enabled (dynamic components only), the component can be instantiated more than once on the client.  Defaults to 'no'.[/td]
+				[/tr]
+			
+				[tr]
+					[td]auto_destroy[/td]
+					[td]yes/no[/td]
+					[td]If enabled (dynamic single-instantiation components only), when a component is instantiated a second time, the original component is automatically destroyed so there is at most one instance at a time in existence.  Defaults to 'yes'.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Actions:[/b]
+	
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Instantiate[/td]
+					[td]Instantiates the component.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Destroy[/td]
+					[td]Destroys the component.  If multiple instances exist, then all instances are destroyed.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Events:[/b]
+	
+		[table]
+		[tr][th]Event[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]LoadComplete[/td]
+					[td]This event is triggered when a dynamic component completes loading from the server.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+			
+// Instantiate the form_controls.cmp component
+formctl \"widget/component\"
+	{
+	x=0; y=0; width=800; height=26;
+	mode=static;
+	path=\"/sys/cmp/form_controls.cmp\";
+	form=my_form;
+	}
+			
+		
+		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/component-decl", null,
+"		[b]component-decl[/b] :: A widget which defines a custom component
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/component-decl[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] yes[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The component-decl widget is used to define a new component which can be used and reused in other applications or components.  Creating a component is very similar to creating an application - except that the top-level widget in a component is \"widget/component-decl\" instead of \"widget/page\".
+		
+	[b]Usage:[/b]
+	
+			A widget/component-decl widget must occur at the top level of a component (.cmp) file.
+			Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.
+			To declare that a component generates an Event, place a \"widget/component-decl-event\" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.
+			Similarly, to declare that a component can receive an Action, place a \"widget/component-decl-action\" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.
+			Components can take parameters just like applications can.  See the \"widget/parameter\" widget for details on how to declare parameters on applications and components.
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]The design width, in pixels, of the component.  When the component is instantiated, it is subject to resizing; this width value will be used as a reference in that process.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]The design height, in pixels, of the component.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+			
+// Declare a component having a button that triggers an event
+my_button \"widget/component-decl\"
+	{
+	width=100; height=32;
+	button_txt \"widget/parameter\" { type=string; default=\"OK\"; }
+	button_clk \"widget/component-decl-event\" { }
+	btn \"widget/textbutton\"
+		{
+		x=0; y=0; width=100; height=32;
+		text = runserver(:this:button_txt);
+		fgcolor1=\"white\"; fgcolor2=\"black\";
+		tristate=no;
+		bgcolor=\"#c0c0c0\";
+		onclk \"widget/connector\"
+			{
+			event=\"Click\";
+			target=my_button;
+			action=\"button_clk\";
+			}
+		}
+	}
+			
+		
+		[/code]
 	
 ");
 	
@@ -2753,6 +2956,87 @@ mypane \"widget/pane\"
 	
 ");
 	
+insert into topic values(null, @newid, "widget/parameter", null,
+"		[b]parameter[/b] :: A declaration of a parameter that can be passed to an application or component
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/parameter[/td][/tr]
+		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			Applications (.app) and components (.cmp) can accept parameters, which can then be used to control the way that the application or component is rendered or the way it functions.  The widget/parameter widget is used to declare a parameter on an application or component, and to specify data type, default values, and more.
+		
+	[b]Usage:[/b]
+	
+			Parameters must be placed inside a widget/page or widget/component-decl.  They cannot be used anywhere else, and cannot contain other widgets.
+			Parameters have a very similar set of properties to the widget/hints widget, which is used to attach \"presentation hints\" to a widget.
+			To use a parameter value, just reference it in a runserver() expression with object \"this\", as in :this:parametername.  For \"object\" parameters, reference them by just using the parameter name as if you would use the name of the object itself if the object were physically present in the component instead of being passed as a parameter (see sample code).
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]type[/td]
+					[td]string[/td]
+					[td]The data type of the parameter.  Can be \"integer\", \"string\", \"double\", \"datetime\", \"money\", or \"object\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]find_container[/td]
+					[td]string[/td]
+					[td]If this is a parameter to a component, and the parameter has type \"object\", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the contianing application or component, without that form or objectsource having to be explicitly passed to the component.[/td]
+				[/tr]
+			
+				[tr]
+					[td]deploy_to_client[/td]
+					[td]yes/no[/td]
+					[td]Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type \"object\", are not deployed to the client.  To override this behavior, set this option to \"yes\".[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+			
+$Version=2$
+// Here is a component with two parameters, one a string, and one to
+// pass a form to the component.
+my_cmp \"widget/component-decl\"
+	{
+	width=200; height=32;
+	
+	field_name \"widget/parameter\"
+		{
+		type = string;
+		default = null;
+		}
+	form_to_use \"widget/parameter\"
+		{
+		type = object;
+		find_container = \"widget/form\";
+		}
+	my_label \"widget/label\"
+		{
+		x=0;y=0;width=200;height=32;
+		fieldname=runserver(:this:field_name);
+		form = form_to_use;
+		}
+	}
+			
+		
+		[/code]
+	
+");
+	
 insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 "		[b]radiobuttonpanel[/b] :: A visual widget displaying a set of 'radio buttons'
 
@@ -2882,7 +3166,7 @@ testradio \"widget/radiobuttonpanel\"
 	bgcolor=\"#ffffff\";
 	label1 \"widget/radiobutton\" { label=\"basketball\";selected=\"true\"; }
 	label2 \"widget/radiobutton\" { label=\"is fun\"; }
-    }
+	}
 		
 		
 		[/code]
