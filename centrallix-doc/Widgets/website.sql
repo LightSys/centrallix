@@ -115,13 +115,18 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 	[b]Overview:[/b]
 	
 			The autolayout widget is used to automatically position widgets without having to explicitly provide x, y, width, and height values for those widgets.  Most of the layout in Centrallix is done on a coordinate basis (although the automatic resize logic adjusts those coordinates to fit the target application or component render size).  The autolayout widget provides the capability to do nested gui layout in Centrallix, where the coordinate positions of the widgets are computed automatically.
+
 			Normally, the autolayout widget is used not as \"widget/autolayout\", but as \"widget/hbox\" or \"widget/vbox\", two synonyms for this widget which also set the layout direction (horizontal or vertical).
+
 			A \"hbox\" widget stacks its children horizontally one after the other, while a \"vbox\" widget stacks its children vertically from the top down.  The spacing between children can be set, and the size of each child can be either independently set per-child, or it can be set by virtue of the geometry of the autolayout widget.
+
 			The autolayout widget supports having multiple rows or columns of widgets.  That is, if a \"vbox\" widget fills up vertically, it can resume adding children to a second vertical column should there be space to the right of the original column of widgets.  For this to work, the width of the columns (for a vbox) or the height of the rows (for an hbox) must be specified.
+
 		
 	[b]Usage:[/b]
 	
 			The autolayout widget can occur any place that a visual widget can be placed.  As it is a container, it can also contain both visual and nonvisual widgets and containers.
+
 		
 	[b]Properties:[/b]
 	
@@ -244,17 +249,24 @@ insert into topic values(null, @newid, "widget/calendar", null,
 	[b]Overview:[/b]
 	
 			The calendar widget is used to present event/schedule types of data in a year, month, week, or day format.  The data for the events on the calendar is obtained from an objectsource's query results, and as such, can be controlled via queries and other forms/tables associated with the same objectsource.  The four formats are listed below and can be selected during app run-time.
+
 			
-			    Year - presents twelve months at a time in a low-detail type of setting; when events occur on a day, the day is highlighted, but no more data than that is displayed.  If the user points the mouse at a given day, it will display in a popup \"tooltip\" type of manner the events associated with that day.  If more than one year's worth of data is in the objectsource's replica, then multiple years are displayed one after the other.  Each year is displayed as four rows of three months each, in traditional calendar format.
-			    Month - presents one month's worth of data in a medium-detail display.  For each month with data in the objectsource, the calendar will display the month as multiple rows, each row containing one week's worth of days.  The calendar will attempt to display the various entries for each day, in order of priority, but will limit the amount of data displayed to keep the boxes for the days approximately visually square.  Pointing at a day will show the events for the day in a popup, and pointing at an event in the day will show the details for that event.
-			    Week - presents one week's worth of data in a high-detail display.  For each week with data in the objectsource, the calendar will display the week as seven days with a large vertical extent capable of displaying all events for the day.  The left edge of the display will contain times during the day for the day's events to line up with.
-			    Day - presents an entire day's worth of data in a high-detail display.  For each day with data in the objectsource, the calendar will display the day in full-width, with the day's events listed chronologically from top to bottom.
+			    [b]Year[/b] - presents twelve months at a time in a low-detail type of setting; when events occur on a day, the day is highlighted, but no more data than that is displayed.  If the user points the mouse at a given day, it will display in a popup \"tooltip\" type of manner the events associated with that day.  If more than one year's worth of data is in the objectsource's replica, then multiple years are displayed one after the other.  Each year is displayed as four rows of three months each, in traditional calendar format.
+
+			    [b]Month[/b] - presents one month's worth of data in a medium-detail display.  For each month with data in the objectsource, the calendar will display the month as multiple rows, each row containing one week's worth of days.  The calendar will attempt to display the various entries for each day, in order of priority, but will limit the amount of data displayed to keep the boxes for the days approximately visually square.  Pointing at a day will show the events for the day in a popup, and pointing at an event in the day will show the details for that event.
+
+			    [b]Week[/b] - presents one week's worth of data in a high-detail display.  For each week with data in the objectsource, the calendar will display the week as seven days with a large vertical extent capable of displaying all events for the day.  The left edge of the display will contain times during the day for the day's events to line up with.
+
+			    [b]Day[/b] - presents an entire day's worth of data in a high-detail display.  For each day with data in the objectsource, the calendar will display the day in full-width, with the day's events listed chronologically from top to bottom.
+
 			
 			It should be noted that all of the data for the calendar must fit into the objectsource, or else the calendar will not display all of the available data.  In this manner the calendar's display must be controlled via the objectsource's data.
+
 		
 	[b]Usage:[/b]
 	
 			The calendar widget can be placed inside of any visual container, but because its height can change, it is often placed inside of a scrollpane widget.  This widget may not contain other visual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -371,10 +383,12 @@ insert into topic values(null, @newid, "widget/checkbox", null,
 	[b]Overview:[/b]
 	
 			The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.
+
 		
 	[b]Usage:[/b]
 	
 			The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Checkboxes may not contain visual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -506,10 +520,12 @@ insert into topic values(null, @newid, "widget/clock", null,
 	[b]Overview:[/b]
 	
 			The clock widget displays the current time on the client computer, and is very configurable in terms of appearance.
+
 		
 	[b]Usage:[/b]
 	
 			The clock widget can be used inside of any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.
+
 		
 	[b]Properties:[/b]
 	
@@ -656,11 +672,14 @@ insert into topic values(null, @newid, "widget/component", null,
 	[b]Overview:[/b]
 	
 			This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a \".cmp\" file.  The instantiation can be either static or dynamic:  a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.
+
 		
 	[b]Usage:[/b]
 	
 			A component can be either visual or non-visual, and can be placed at almost any point in the application.
+
 			At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However that capability is not available at present.
+
 		
 	[b]Properties:[/b]
 	
@@ -779,14 +798,20 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 	[b]Overview:[/b]
 	
 			The component-decl widget is used to define a new component which can be used and reused in other applications or components.  Creating a component is very similar to creating an application - except that the top-level widget in a component is \"widget/component-decl\" instead of \"widget/page\".
+
 		
 	[b]Usage:[/b]
 	
 			A widget/component-decl widget must occur at the top level of a component (.cmp) file.
+
 			Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.
+
 			To declare that a component generates an Event, place a \"widget/component-decl-event\" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.
+
 			Similarly, to declare that a component can receive an Action, place a \"widget/component-decl-action\" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.
+
 			Components can take parameters just like applications can.  See the \"widget/parameter\" widget for details on how to declare parameters on applications and components.
+
 		
 	[b]Properties:[/b]
 	
@@ -853,14 +878,20 @@ insert into topic values(null, @newid, "widget/connector", null,
 	[b]Overview:[/b]
 	
 			Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.
+
 			The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.
+
 			Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.  Such parameters from events can be linked into parameters for actions via the connector widget as well.
+
 			When supplying a parameter to a connector (other than \"action\", \"event\", and \"target\"), there are several ways that parameter can be specified.  First the parameter can be a constant value, defined explicitly in the application.  Second, the parameter can be an expression which is evaluated on the client (using the runclient() pseudo-function) and which can change based on the conditions under which the connector is triggered.  In this latter case, the runclient() expression can contain parameters supplied by the event, or values supplied by other widgets.
+
 		
 	[b]Usage:[/b]
 	
 			The connector object should be a sub-object of the widget which will trigger the event.  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.
+
 			An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.  See the Example source code at the end of this document to see how this is done.
+
 		
 	[b]Properties:[/b]
 	
@@ -924,10 +955,15 @@ insert into topic values(null, @newid, "widget/datetime", null,
 		[/table]
 		
 	[b]Overview:[/b]
-	  The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.
+	
+		    The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.
+
 		
 	[b]Usage:[/b]
-	This widget can be placed within any visual widget.
+	
+		    This widget can be placed within any visual widget.
+
+		
 	[b]Properties:[/b]
 	
 		[table]
@@ -1080,10 +1116,12 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 	[b]Overview:[/b]
 	
 		  A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.
+
 		
 	[b]Usage:[/b]
 	
 		  This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.
+
 		
 	[b]Properties:[/b]
 	
@@ -1264,11 +1302,14 @@ insert into topic values(null, @newid, "widget/editbox", null,
 	[b]Overview:[/b]
 	
 			An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).
+
 			  When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.
+
 		
 	[b]Usage:[/b]
 	
 			The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -1442,11 +1483,14 @@ insert into topic values(null, @newid, "widget/execmethod", null,
 	[b]Overview:[/b]
 	
 			The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.
+
 			These widgets are used via the activation of their \"ExecuteMethod\" action.
+
 		
 	[b]Usage:[/b]
 	
 			The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type \"widget/page\") for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.
+
 		
 	[b]Properties:[/b]
 	
@@ -1518,19 +1562,28 @@ insert into topic values(null, @newid, "widget/form", null,
 	[b]Overview:[/b]
 	
 			The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.
+
 			Forms have five different \"modes\"of operation, each of which can be specifically allowed or disallowed for the form.
+
 		
 		 No Data - form inactive/disabled, no data viewed/edited.
+
 		 View - data being viewed readonly.
+
 		 Modify - existing data being modified.
+
 		 Query - query criteria being entered (used for query-by-form applications)
+
 		 New - new object being entered/created.
+
 		
 			Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a \"three-way confirm\" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a \"three-way confirm\" window.  This should be a hidden (visible=no) \"widget/htmlwindow\" object which may contain any content, but should at least contain three buttons named \"_3bConfirmSave\", \"_3bConfirmDiscard\", and \"_3bConfirmCancel\" directly in the htmlwindow.  During a confirm operation, this window will become \"application-modal\"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.
+
 		
 	[b]Usage:[/b]
 	
 			Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).
+
 		
 	[b]Properties:[/b]
 	
@@ -1769,10 +1822,12 @@ insert into topic values(null, @newid, "widget/formstatus", null,
 	[b]Overview:[/b]
 	
 			Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently \"doing\" (for instance, is a blank form with a blinking cursor in a \"new\" state or \"enter query\" state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.
+
 		
 	[b]Usage:[/b]
 	
 			The form status widget can only be used either directly or indirectly within a form widget.  It can contain no visual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -1875,10 +1930,12 @@ insert into topic values(null, @newid, "widget/frameset", null,
 	[b]Overview:[/b]
 	
 			The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.
+
 		
 	[b]Usage:[/b]
 	
 			The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.
+
 		
 	[b]Properties:[/b]
 	
@@ -1978,12 +2035,16 @@ insert into topic values(null, @newid, "widget/html", null,
 	[b]Overview:[/b]
 	
 			The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.
+
 			The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).
+
 			Dynamic HTML areas do double-buffering and allow for transitions (fades) of various types.
+
 		
 	[b]Usage:[/b]
 	
 			The HTML area widget can be placed within any other widget that has a visible container (such as panes, pages, tab pages, etc.).
+
 		
 	[b]Properties:[/b]
 	
@@ -2091,12 +2152,16 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 	[b]Overview:[/b]
 	
 			The childwindow provides the capability of creating a popup dialog or application window within a web page.  The window is not actually a separate browser window, but rather a movable container that can appear \"floating\" above the rest of the Centrallix application.They can take on one of two styles;\"dialog\" and \"window\", which currently relate only to how the window border and titlebar are drawn.  The windows support windowshading (double-clicking on the titlebar to \"rollup\" or \"rolldown\" the window contents).
+
 			These \"windows\" currently do not support multiple instantiation.
+
 		
 	[b]Usage:[/b]
 	
 			Childwindows are normally coded at the top-level of an application, since if they are placed within containers, the container limits where the window can be moved (the window is clipped by its container).  However, if the \"toplevel\" property is enabled, then the window floats at the top level of other widgets regardless of the size and location of its container in the application or component (thus the window is not clipped by its container).
+
 			These windows can contain other visual and nonvisual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -2274,13 +2339,18 @@ insert into topic values(null, @newid, "widget/imagebutton", null,
 	[b]Overview:[/b]
 	
 			The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.  This provides a \"tri-state\" appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an \"unclicked\" and \"clicked\" version of the image.
+
 			The images are automatically swapped out when the appropriate mouse events occur on the button.
+
 			ImageButtons can also be disabled, and a \"disabled\" image is displayed at that time.
+
 			Unlike the textbutton, there is no 'tristate' property for an imagebutton; to make an imagebutton tri-state (different image when idle vs. when pointed to), use a 'pointimage', otherwise do not specify 'pointimage'.
+
 		
 	[b]Usage:[/b]
 	
 			The ImageButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.
+
 		
 	[b]Properties:[/b]
 	
@@ -2411,12 +2481,16 @@ insert into topic values(null, @newid, "widget/menu", null,
 	[b]Overview:[/b]
 	
 			The menu widget is used to create popup menus, drop-down menus, and menu bars.  Menu widgets consist of a series of menuitem widgets which compose a menu.
+
 			Menu items are generally linked to actions on a page via the use of connectors.  Simply place the connector inside the menu item widget.
+
 			Note: as of the time of writing, menu widgets were not yet properly functional.
+
 		
 	[b]Usage:[/b]
 	
 			Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets contain menuitem widgets, which are also described in this section.
+
 		
 	[b]Properties:[/b]
 	
@@ -2549,14 +2623,20 @@ insert into topic values(null, @newid, "widget/osrc", null,
 	[b]Overview:[/b]
 	
 			The objectsource (osrc) widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of \"replication\" by maintaining a replica of a small segment of data in the user agent.
+
 			Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.
+
 			Objectsources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below) or rule-based connnectivity (see widget/rule).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.
+
 			An objectsource may also be used to run a query which does not return any rows, such as an insert, update, or delete query.  Under normal data maintenance conditions such queries are not needed as the objectsource handles those operations internally, however.
+
 		
 	[b]Usage:[/b]
 	
 			Objectsource widgets are often used at the top-level of an application, within a \"widget/page\" object, but can be used anywhere.  The forms/tables that use an objectsource are generally placed within that objectsource.  A page may have more than one objectsource widget.
+
 			Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -2751,11 +2831,14 @@ insert into topic values(null, @newid, "widget/page", null,
 	[b]Overview:[/b]
 	
 			The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be \"widget/page\" or \"widget/frameset\", where the latter is used to create a multi-framed application containing multiple page widgets.
+
 			Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.
+
 		
 	[b]Usage:[/b]
 	
 			The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.
+
 		
 	[b]Properties:[/b]
 	
@@ -2872,10 +2955,12 @@ insert into topic values(null, @newid, "widget/pane", null,
 	[b]Overview:[/b]
 	
 			The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a \"raised\" edge or \"lowered\" edge style.
+
 		
 	[b]Usage:[/b]
 	
 			This container can be placed inside any widget having a visible container.  Visual or nonvisual widgets may be placed inside a pane.
+
 		
 	[b]Properties:[/b]
 	
@@ -2970,12 +3055,16 @@ insert into topic values(null, @newid, "widget/parameter", null,
 	[b]Overview:[/b]
 	
 			Applications (.app) and components (.cmp) can accept parameters, which can then be used to control the way that the application or component is rendered or the way it functions.  The widget/parameter widget is used to declare a parameter on an application or component, and to specify data type, default values, and more.
+
 		
 	[b]Usage:[/b]
 	
 			Parameters must be placed inside a widget/page or widget/component-decl.  They cannot be used anywhere else, and cannot contain other widgets.
+
 			Parameters have a very similar set of properties to the widget/hints widget, which is used to attach \"presentation hints\" to a widget.
+
 			To use a parameter value, just reference it in a runserver() expression with object \"this\", as in :this:parametername.  For \"object\" parameters, reference them by just using the parameter name as if you would use the name of the object itself if the object were physically present in the component instead of being passed as a parameter (see sample code).
+
 		
 	[b]Properties:[/b]
 	
@@ -3051,11 +3140,14 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 	[b]Overview:[/b]
 	
 			A radio button panel widget is a form element used to create a set of radio buttons on screen.  Only one radio button may be selected at a time.  When the form goes into query mode the radio buttons change into checkboxes and more than one can be selected at a time.
+
 		
 	[b]Usage:[/b]
 	
 			The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The \"widget/radiobuttonpanel\" is the main widget, and can contain any number of \"widget/radiobutton\" widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.
+
 			Note: form widget interaction was not yet implemented as of the time of writing of this document.
+
 		
 	[b]Properties:[/b]
 	
@@ -3187,13 +3279,18 @@ insert into topic values(null, @newid, "widget/remotectl", null,
 	[b]Overview:[/b]
 	
 			The remote control nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.
+
 			Two remote control widgets are required: a master and slave. This widget is the slave widget, which receives remote control events via the Centrallix server. When a master widget (remotemgr) sends an event through the channel, this slave widget is automatically activated and can then trigger the appropriate action on another widget on the page.
+
 			In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.
+
 			Note: at the time of this writing, the remotectl widget was not yet operational.
+
 		
 	[b]Usage:[/b]
 	
 			The remote control widget is a nonvisual widget and thus cannot contain visual widgets.  It is normally located at the top-level of an application, within a \"widget/page\" object.
+
 		
 	[b]Sample Code:[/b]
 	
@@ -3215,13 +3312,18 @@ insert into topic values(null, @newid, "widget/remotemgr", null,
 	[b]Overview:[/b]
 	
 			The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.
+
 			Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When a this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.
+
 			In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.
+
 			Note: at the time of this writing, the remotemgr widget was not yet written.
+
 		
 	[b]Usage:[/b]
 	
 			The remote control manager widget is a nonvisual widget and thus cannot contain visual widgets.It is normally located at the top-level of an application, within a \"widget/page\" object.
+
 		
 	[b]Sample Code:[/b]
 	
@@ -3243,11 +3345,14 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 	[b]Overview:[/b]
 	
 			The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.
+
 			The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.  Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.
+
 		
 	[b]Usage:[/b]
 	
 			Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.  Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.
+
 		
 	[b]Properties:[/b]
 	
@@ -3340,13 +3445,18 @@ insert into topic values(null, @newid, "widget/tab", null,
 	[b]Overview:[/b]
 	
 			The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.
+
 			To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.
+
 		
 	[b]Usage:[/b]
 	
 			The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.
+
 			Tab pages are added to a tab control by including widgets of type \"widget/tabpage\" within the \"widget/tab\" widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective \"widget/tabpage\" widgets in the structure file.Only widgets of type \"widget/tabpage\" should be placed inside a \"widget/tab\", with the exception of nonvisuals such as connectors.
+
 			Tab pages also have a 'visible' property which allows them to be hidden and revealed.  This is used if the type is set to dynamic, but can be used manually as well.
+
 		
 	[b]Properties:[/b]
 	
@@ -3497,12 +3607,15 @@ insert into topic values(null, @newid, "widget/table", null,
 	[b]Overview:[/b]
 	
 			A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.
-		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only static mode and dynamicrow mode were supported.
+
+		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only [i]static[/i] mode and [i]dynamicrow[/i] mode were supported.
 			Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.
+
 		
 	[b]Usage:[/b]
 	
 			Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via \"widget/table-column\" child widgets within the table widget.
+
 		
 	[b]Properties:[/b]
 	
@@ -3757,10 +3870,12 @@ insert into topic values(null, @newid, "widget/textarea", null,
 	[b]Overview:[/b]
 	
 			The textarea is a multi-line text edit widget, allowing the user to enter text data containing line endings, tabs, and more.  It also contains a scrollbar which allows more text to be edited than can fit in the displayable area.
+
 		
 	[b]Usage:[/b]
 	
 			The textarea is a visual form element widget, and can be contained inside any container capable of holding visual widgets.  It may only contain nonvisual widgets like the connector.
+
 		
 	[b]Properties:[/b]
 	
@@ -3918,10 +4033,12 @@ insert into topic values(null, @newid, "widget/button", null,
 	[b]Overview:[/b]
 	
 		Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.
+
 	    
 	[b]Usage:[/b]
 	
 		A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored
+
 	    
 	[b]Properties:[/b]
 	
@@ -4042,11 +4159,14 @@ insert into topic values(null, @newid, "widget/textbutton", null,
 	[b]Overview:[/b]
 	
 			A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.
+
 			Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a \"raised\" border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.
+
 		
 	[b]Usage:[/b]
 	
 			The TextButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.
+
 		
 	[b]Properties:[/b]
 	
@@ -4182,10 +4302,12 @@ insert into topic values(null, @newid, "widget/timer", null,
 	[b]Overview:[/b]
 	
 			A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.
+
 		
 	[b]Usage:[/b]
 	
 			Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -4281,11 +4403,14 @@ insert into topic values(null, @newid, "widget/treeview", null,
 	[b]Overview:[/b]
 	
 			A treeview provides a way of viewing hierarchically-organized data via a \"traditional\" GUI point-and-click tree structure. A treeview has \"branches\" that can expand and collapse entire subtrees of data.
+
 			Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a \"querytree\" (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.
+
 		
 	[b]Usage:[/b]
 	
 			Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.
+
 		
 	[b]Properties:[/b]
 	
@@ -4377,10 +4502,12 @@ insert into topic values(null, @newid, "widget/variable", null,
 	[b]Overview:[/b]
 	
 			The 'variable' nonvisual widget is used to create a global javascript scalar variable in the application.The variable can be an integer or string.
+
 		
 	[b]Usage:[/b]
 	
 			This nonvisual widget is used at the top-level (within a \"widget/page\").  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.
+
 		
 	[b]Properties:[/b]
 	
@@ -4426,9 +4553,11 @@ insert into topic values(null, @newid, "widget/repeat", null,
 	[b]Overview:[/b]
 	
 		The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query
+
 	    
 	[b]Usage:[/b]
 	This widget has no content of its own, so it is only useful if it has widgets inside it.  It can be put inside an autolayout widget (vbox/hbox) for layout purposes, or the x and y coordinates could be specified through another query (ala runserver/runclient)
+
 	[b]Properties:[/b]
 	
 		[table]

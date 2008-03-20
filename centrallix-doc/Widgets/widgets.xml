@@ -303,9 +303,12 @@ cn1 "widget/connector"
 	</widget>
 -->
 	<widget name="datetime" type="widget/datetime" description="A visual widget for displaying and editing a date/time type value." visual="yes" formelement="yes" container="no">
-		<overview>  The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.
+		<overview>
+		    <p>The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.</p>
 		</overview>
-		<usage>This widget can be placed within any visual widget.</usage>
+		<usage>
+		    <p>This widget can be placed within any visual widget.</p>
+		</usage>
 		<properties>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the bar.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the bar.</property>

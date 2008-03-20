@@ -1,6 +1,7 @@
 <?xml version='1.0'?>
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:exslt="http://exslt.org/common">
 <xsl:output method="text" indent="no"/>
+<xsl:preserve-space elements="xsl:text"/>
 
 <xsl:template match="/widgets">
 select (@oldid := id) from topic where name = "3. Application Components";
@@ -63,20 +64,36 @@ insert into topic values(null, @newid, "widget/<xsl:value-of select="@name"/>", 
 
 <xsl:template match="overview">
 	[b]Overview:[/b]
-	<xsl:call-template name="str_escape">
-		<xsl:with-param name="search" select="'&quot;'"/>
-		<xsl:with-param name="escchar" select="'&#092;'"/>
-		<xsl:with-param name="subject" select="string()"/>
-	</xsl:call-template>
+	<xsl:apply-templates/>
 </xsl:template>
 
 <xsl:template match="usage">
 	[b]Usage:[/b]
+	<xsl:apply-templates/>
+</xsl:template>
+
+<xsl:template match="p">
+	<xsl:variable name="current">
+		<xsl:apply-templates/>
+	</xsl:variable>
 	<xsl:call-template name="str_escape">
 		<xsl:with-param name="search" select="'&quot;'"/>
 		<xsl:with-param name="escchar" select="'&#092;'"/>
-		<xsl:with-param name="subject" select="string()"/>
+		<xsl:with-param name="subject" select="string($current)"/>
 	</xsl:call-template>
+<xsl:text>&#xA;</xsl:text>
+</xsl:template>
+
+<xsl:template match="li">
+	<xsl:variable name="current">
+		<xsl:apply-templates/>
+	</xsl:variable>
+	<xsl:call-template name="str_escape">
+		<xsl:with-param name="search" select="'&quot;'"/>
+		<xsl:with-param name="escchar" select="'&#092;'"/>
+		<xsl:with-param name="subject" select="string($current)"/>
+	</xsl:call-template>
+<xsl:text>&#xA;</xsl:text>
 </xsl:template>
 
 <xsl:template match="properties">
@@ -311,10 +328,8 @@ insert into topic values(null, @newid, "widget/<xsl:value-of select="@name"/>", 
 
 
 <!--HTML elements allowed in other stuff-->
-<xsl:template match="p"><xsl:apply-templates/></xsl:template>
 <xsl:template match="ol"><ol><xsl:apply-templates/></ol></xsl:template>
 <xsl:template match="ul"><ul><xsl:apply-templates/></ul></xsl:template>
-<xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
 <xsl:template match="b">[b]<xsl:apply-templates/>[/b]</xsl:template>
 <xsl:template match="i">[i]<xsl:apply-templates/>[/i]</xsl:template>
 </xsl:stylesheet>
