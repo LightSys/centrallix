@@ -30,6 +30,8 @@
 #endif
 #include "centrallix.h"
 #include "hints.h"
+#include "cxlib/qprintf.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -70,10 +72,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.30 2008/03/09 08:07:28 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.31 2008/03/20 23:05:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.31  2008/03/20 23:05:01  gbeeley
+    - (change) Sybase driver now no longer defaults to using the centrallix
+      login username/password to connect to the database, but that username
+      and password can be specified in the DB node file.
+    - (feature) Driver can automatically set a user's DB password to his/her
+      centrallix login password, if the database password is still at its
+      default setting (e.g., empty or "password" or whatnot), when the user
+      first logs in to the database via Centrallix.
+    - (notes) new DB node params:  username, password, default_password,
+      use_system_auth, and set_passwords.
+
     Revision 1.30  2008/03/09 08:07:28  gbeeley
     - (bugfix) Make sure the correct values are available after an update
       operation (without closing the object); net_http is now doing an
@@ -374,8 +387,15 @@ typedef struct
     XHashTable	TypeNameToID;					/** for figuring out id from name **/
     pObjPresentationHints	TypeHints[SYBD_MAX_NUM_TYPES];		/** for storing hint info about each type **/
     int		Version;
+    int		Flags;
+    char	Username[32];		/* username to log into db server */
+    char	Password[32];		/* password to log into db server */
+    char	DefaultPassword[32];	/* default password for uninitialized user */
     }
     SybdNode, *pSybdNode;
+
+#define SYBD_NODE_F_USECXAUTH	1	/* use Centrallix usernames/passwords */
+#define SYBD_NODE_F_SETCXAUTH	2	/* try to change empty passwords to Centrallix login passwords */
 
 /*** Structure used by this driver to manage connections to the db ***/
 typedef struct
@@ -600,15 +620,31 @@ sybd_internal_Close(CS_COMMAND* cmd)
  *** given database node.
  ***/
 CS_CONNECTION*
-sybd_internal_GetConn(pSybdNode db_node, char* user, char* pwd)
+sybd_internal_GetConn(pSybdNode db_node)
     {
     int i,found_one,rval;
     pSybdConn conn;
     CS_COMMAND* cmd;
     char sbuf[64];
+    char* user;
+    char* pwd;
 
-	if(!user || !pwd)
-	    return NULL;
+	/** Use system auth? **/
+	if (db_node->Flags & SYBD_NODE_F_USECXAUTH)
+	    {
+	    /** Get username/password from session **/
+	    user = mssUserName();
+	    pwd = mssPassword();
+
+	    if(!user || !pwd)
+		return NULL;
+	    }
+	else
+	    {
+	    /** Use username/password from node **/
+	    user = db_node->Username;
+	    pwd = db_node->Password;
+	    }
 
 	/** User/pass out of range? **/
 	if (strlen(user) > 31 || strlen(pwd) > 31)
@@ -681,8 +717,32 @@ sybd_internal_GetConn(pSybdNode db_node, char* user, char* pwd)
 	ct_con_props(conn->SessionID, CS_SET, CS_HOSTNAME, sbuf, CS_NULLTERM, NULL);
 	if (ct_connect(conn->SessionID, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
 	    {
-	    mssError(0,"SYBD","Could not connect to database!");
-	    return NULL;
+	    /** attempt to connect with default password, and then set password **/
+	    ct_con_props(conn->SessionID, CS_SET, CS_PASSWORD, db_node->DefaultPassword, CS_NULLTERM, NULL);
+	    if (ct_connect(conn->SessionID, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
+		{
+		mssError(0,"SYBD","Could not connect to database!");
+		return NULL;
+		}
+
+	    /** Set password? **/
+	    if ((db_node->Flags & SYBD_NODE_F_USECXAUTH) && (db_node->Flags & SYBD_NODE_F_SETCXAUTH))
+		{
+		if (strchr(pwd, '"') || strchr(db_node->DefaultPassword, '"'))
+		    return NULL;
+		snprintf(sbuf,sizeof(sbuf),"sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
+		cmd = sybd_internal_Exec(conn->SessionID, sbuf);
+		while((rval=ct_results(cmd, (CS_INT*)&i)))
+		    {
+		    if (rval == CS_FAIL)
+			{
+			mssError(0,"SYBD","Warning: could not change default password for user '%s'", user);
+			break;
+			}
+		    if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
+		    }
+		sybd_internal_Close(cmd);
+		}
 	    }
 
 	/** Do a USE DATABASE only if database was specified in the node. **/
@@ -1187,12 +1247,11 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 	    mssError(0,"SYBD","Could not allocate DB node structure");
 	    return NULL;
 	    }
-	db_node->SnNode = snnode;
 	memset(db_node,0,sizeof(SybdNode));
+	db_node->SnNode = snnode;
 	strcpy(db_node->Path,path);
 	if (stAttrValue(stLookup(snnode->Data,"server"),NULL,&ptr,0) < 0) ptr = NULL;
-	strncpy(db_node->Server,ptr?ptr:"",63);
-	db_node->Server[63]=0;
+	strtcpy(db_node->Server,ptr?ptr:"",sizeof(db_node->Server));
 	if (stAttrValue(stLookup(snnode->Data,"database"),NULL,&ptr,0) < 0) ptr = NULL;
 	strncpy(db_node->Database,ptr?ptr:"",31);
 	db_node->Database[31]=0;
@@ -1204,6 +1263,22 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 	db_node->Description[255]=0;
 	if (stAttrValue(stLookup(snnode->Data,"max_connections"),&i,NULL,0) < 0) i=16;
 	db_node->MaxConn = i;
+	if (stAttrValue(stLookup(snnode->Data,"use_system_auth"),NULL,&ptr,0) == 0)
+	    {
+	    if (!strcasecmp(ptr,"yes"))
+		db_node->Flags |= SYBD_NODE_F_USECXAUTH;
+	    }
+	if (stAttrValue(stLookup(snnode->Data,"set_passwords"),NULL,&ptr,0) == 0)
+	    {
+	    if (!strcasecmp(ptr,"yes"))
+		db_node->Flags |= SYBD_NODE_F_SETCXAUTH;
+	    }
+	if (stAttrValue(stLookup(snnode->Data,"username"),NULL,&ptr,0) < 0) ptr = "cxguest";
+	strtcpy(db_node->Username,ptr,sizeof(db_node->Username));
+	if (stAttrValue(stLookup(snnode->Data,"password"),NULL,&ptr,0) < 0) ptr = "";
+	strtcpy(db_node->Password,ptr,sizeof(db_node->Password));
+	if (stAttrValue(stLookup(snnode->Data,"default_password"),NULL,&ptr,0) < 0) ptr = "";
+	strtcpy(db_node->DefaultPassword,ptr,sizeof(db_node->DefaultPassword));
 
 	/** Did we get the required data for the connection? **/
 	if (!db_node->Server[0])
@@ -1227,7 +1302,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 	type_hints = stLookup(snnode->Data, "typehints");
 
 	/** Get a connection and get the version and types list. **/
-	s = sybd_internal_GetConn(db_node, mssUserName(), mssPassword());
+	s = sybd_internal_GetConn(db_node);
 	if (s)
 	    {
 	    if ((cmd=sybd_internal_Exec(s,"select @@version")))
@@ -2313,7 +2388,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->WriteSessID = NULL;
 	inf->RWCmd = NULL;
 	inf->Size = -1;
-	inf->SessionID = sybd_internal_GetConn(inf->Node, mssUserName(), mssPassword());
+	inf->SessionID = sybd_internal_GetConn(inf->Node);
 	if (inf->SessionID == NULL)
 	    {
 	    mssError(0,"SYBD","Database session setup failed");
@@ -2847,7 +2922,7 @@ sybdCommit(void* inf_v, pObjTrxTree* oxt)
 		case SYBD_T_ROW:
 		    /** Need to get a session? **/
 		    if (inf->SessionID == NULL) inf->SessionID = 
-		        sybd_internal_GetConn(inf->Node, mssUserName(), mssPassword());
+		        sybd_internal_GetConn(inf->Node);
 		    if (!inf->SessionID)
 			{
 			mssError(0,"SYBD","Database connection failed");
@@ -2973,7 +3048,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Grab a database connection **/
-	inf->SessionID = sybd_internal_GetConn(inf->Node, mssUserName(), mssPassword());
+	inf->SessionID = sybd_internal_GetConn(inf->Node);
 	if (inf->SessionID == NULL)
 	    {
 	    mssError(0,"SYBD","Database session setup failed");
@@ -3142,7 +3217,7 @@ sybdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 		}
 	    else
 	        {
-		inf->ReadSessID = sybd_internal_GetConn(inf->Node, mssUserName(), mssPassword());
+		inf->ReadSessID = sybd_internal_GetConn(inf->Node);
 		if (!inf->ReadSessID) 
 		    {
 		    mssError(0,"SYBD","Could not get database session to read database BLOB");
@@ -3261,7 +3336,7 @@ sybdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		}
 	    else
 	        {
-		inf->WriteSessID = sybd_internal_GetConn(inf->Node, mssUserName(), mssPassword());
+		inf->WriteSessID = sybd_internal_GetConn(inf->Node);
 		if (!inf->WriteSessID) 
 		    {
 		    mssError(0,"SYBD","Could not get database session for BLOB write");
@@ -3382,7 +3457,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		qy->ObjSession = inf->SessionID;
 		inf->SessionID = NULL;
 		if (qy->SessionID == NULL)
-		    qy->SessionID = sybd_internal_GetConn(inf->Node,mssUserName(),mssPassword());
+		    qy->SessionID = sybd_internal_GetConn(inf->Node);
 		if (qy->SessionID == NULL)
 		    {
 		    nmFree(qy,sizeof(SybdQuery));
@@ -3415,7 +3490,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		inf->SessionID = NULL;
 		qy->RowCnt = 0;
 		if (qy->SessionID == NULL)
-		    qy->SessionID = sybd_internal_GetConn(inf->Node,mssUserName(),mssPassword());
+		    qy->SessionID = sybd_internal_GetConn(inf->Node);
 		if (qy->SessionID == NULL)
 		    {
 		    nmFree(qy,sizeof(SybdQuery));
@@ -3580,7 +3655,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		new_type = SYBD_T_TABLE;
 		ct_get_data(qy->Cmd, 1, filename, 119, (CS_INT*)&i);
 		filename[i] = 0;
-		s2 = sybd_internal_GetConn(qy->ObjInf->Node, mssUserName(), mssPassword());
+		s2 = sybd_internal_GetConn(qy->ObjInf->Node);
 		if (!s2)
 		    {
 		    mssError(0,"SYBD","Database connection failed");
@@ -4081,7 +4156,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		        {
 		        /** Get a session. **/
 		        sess = inf->SessionID;
-		        if (!sess) sess=sybd_internal_GetConn(inf->Node,mssUserName(),mssPassword());
+		        if (!sess) sess=sybd_internal_GetConn(inf->Node);
 		        if (!sess) return -1;
 
 			/** Build the SQL to update the annotation table **/
@@ -4152,7 +4227,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	            {
 		    /** Get a session. **/
 		    sess = inf->SessionID;
-		    if (!sess) sess=sybd_internal_GetConn(inf->Node,mssUserName(),mssPassword());
+		    if (!sess) sess=sybd_internal_GetConn(inf->Node);
 		    if (!sess) return -1;
 
 		    /** No transaction.  Simply do an update. **/
