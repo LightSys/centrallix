@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.36 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiquery.c,v 1.37 2008/03/20 00:46:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.37  2008/03/20 00:46:36  gbeeley
+    - (bugfix) Fixing a bug introduced in revision 1.11 which caused
+      reopen_sql to fail on record creation.
+
     Revision 1.36  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -2316,6 +2320,7 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 	    qy->CurSerial = qy->CntSerial;
 	    memcpy(qy->ObjList, &qy->CurObjList, sizeof(ParamObjects));
 	    }
+	qy->CurSerial = (++qy->CntSerial);
 
 	/** Shutdown the mq drivers **/
 	qy->Tree->Driver->Finish(qy->Tree,qy);
