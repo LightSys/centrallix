@@ -144,7 +144,6 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_pane.o \
 	wgtdrv_parameter.o \
 	wgtdrv_radiobutton.o \
-	wgtdrv_remotectl.o \
 	wgtdrv_repeat.o \
 	wgtdrv_rule.o \
 	wgtdrv_scrollbar.o \

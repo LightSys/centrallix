@@ -2047,7 +2047,6 @@ wgtrInitialize()
 	wgtpageInitialize();
 	wgtpnInitialize();
 	wgtrbInitialize();
-	wgtrmtInitialize();
 	wgtrptInitialize();
 	wgtsbInitialize();
 	wgtspaneInitialize();
