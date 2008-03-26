@@ -390,9 +390,17 @@ function ifEvent()
 		{
 		var _context = this.to;
 		//if (pn == 'Source') htr_alert(this, 1);
-		if (typeof ep.eval != 'function')
-		    ep.eval = eval;
-		ap[pn] = ep.eval(p.value);
+		if (cx__capabilities.JS15)
+		    {
+		    ep._context = this.to;
+		    ap[pn] = eval(p.value, ep);
+		    }
+		else
+		    {
+		    if (typeof ep.eval != 'function')
+			ep.eval = eval;
+		    ap[pn] = ep.eval(p.value);
+		    }
 		}
 	    }
 	return ai.Invoke(this.action, ap);
