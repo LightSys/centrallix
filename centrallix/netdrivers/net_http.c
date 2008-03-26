@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.80 2008/03/08 01:45:50 gbeeley Exp $
+    $Id: net_http.c,v 1.81 2008/03/26 01:08:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.81  2008/03/26 01:08:29  gbeeley
+    - (change) switching to fdQPrintf() for file listing output, for better
+      robustness
+
     Revision 1.80  2008/03/08 01:45:50  gbeeley
     - (bugfix) gracefully handle a reopen_sql situation if autoname fails.
 
@@ -3189,11 +3193,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (ifcToHtml(conn->ConnFD, nsess->ObjSess, url_inf->StrVal) < 0)
 		    {
 		    mssError(0, "NHT", "Error sending Interface info for '%s' to client", url_inf->StrVal);
-		    fdPrintf(conn->ConnFD, "<A TARGET=\"ERR\" HREF=\"%s\"></A>", url_inf->StrVal);
+		    fdQPrintf(conn->ConnFD, "<A TARGET=\"ERR\" HREF=\"%STR&HTE\"></A>", url_inf->StrVal);
 		    }
 		else
 		    {
-		    fdPrintf(conn->ConnFD, "<A NAME=\"%s\" TARGET=\"OK\" HREF=\"%s\"></A>", ptr, url_inf->StrVal);
+		    fdQPrintf(conn->ConnFD, "<A NAME=\"%s\" TARGET=\"OK\" HREF=\"%STR&HTE\"></A>", ptr, url_inf->StrVal);
 		    }
 		}
 	    /** some other sort of request **/
@@ -3256,7 +3260,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    if (query)
 	        {
 		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-		fdPrintf(conn->ConnFD,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
+		fdQPrintf(conn->ConnFD,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
 		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
@@ -3269,18 +3273,18 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
 		    if (send_info && objinfo)
 			{
-			fdPrintf(conn->ConnFD,"<A HREF=%s%s%s TARGET='%s'>%d:%d:%s</A><BR>\n",dptr,
-			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
+			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
+			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
 			}
 		    else if (send_info && !objinfo)
 			{
-			fdPrintf(conn->ConnFD,"<A HREF=%s%s%s TARGET='%s'>0:0:%s</A><BR>\n",dptr,
-			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
+			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
+			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
 			}
 		    else
 			{
-			fdPrintf(conn->ConnFD,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
-			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
+			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
+			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
 			}
 		    objClose(sub_obj);
 		    }
