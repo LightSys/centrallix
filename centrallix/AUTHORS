@@ -60,6 +60,19 @@ Matt McGill
 		implemented the ifc (interface) module which will be used in
 		component-driven development.
 
+Nathaniel Colson
+		Developed the auto-positioning module, which allows for the
+		dynamic resizing of applications in an intelligent manner.
+
+Alex Cole
+		Enhancements and Mozilla porting of various widgets including
+		the Object Canvas (objcanvas) widget.
+
+David Kasper
+		Enhancements to Query By Form functionality, creation of the
+		"button" widget to replace textbutton and imagebutton, and
+		other enhancements.
+
 Taylor University CSS Department
 		Luke, Jonathan, Joe, John, and Josh all worked on Centrallix as
 		a part of Taylor's computer science department's new open

@@ -1,5 +1,28 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
+0.7.5 --> 0.9.0	    (unreleased)    MAJOR DEVELOPMENT RELEASE
+
+    Changes:
+
+	1.  Added component widgets, providing for reusable code.  Components
+	    can be dynamically loaded, and can be multiply instantiated.
+	2.  Added parameterization to applications and components.
+	3.  Many many bug fixes and efficiency improvements.
+	4.  SQL "INSERT INTO ... SELECT" support
+	5.  SQL "UPDATE ... SET" support
+	6.  Added autolayout (hbox/vbox) widget
+	7.  Full Mozilla/Firefox support
+	8.  Readonly filepro driver
+	9.  Declarative "rule" widget for implementing various data and
+	    application behavior, including relationships between osrc widgets.
+	10. Several system-supplied components, including a generic form
+	    component for auto-constructing a form and table based on the
+	    information available about a data source in the objectsystem.
+	11. "Repeat" widget used for auto-generating multiple widgets or trees
+	    of widgets in an application or component based on the results of
+	    a SQL query.  [David K]
+
+-------------------------------------------------------------------------------
 0.7.4 --> 0.7.5	    (unreleased)    MAJOR DEVELOPMENT RELEASE
 
     Changes:

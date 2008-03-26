@@ -1,15 +1,15 @@
 Summary: The Centrallix application platform server.
 Name: centrallix
-Version: 0.7.5
-Release: 1
+Version: 0.9.0
+Release: 0
 License: GPL
 Group: System Environment/Daemons
 Source: centrallix-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
 BuildPrereq: zlib-devel, centrallix-lib-devel = %{version}
-Requires: zlib, centrallix-lib = %{version}
+Requires: zlib, centrallix-lib = %{version}, centrallix-os = %{version}
 URL: http://www.centrallix.net/
-Vendor: LightSys (http://www.lightsys.org)
+Vendor: LightSys (http://www.lightsys.org/)
 
 %description
 The Centrallix package provides the Centrallix application platform
@@ -63,13 +63,9 @@ echo "by installing this software, you assume ALL RISKS of its use.  For"
 echo "details, see the file COPYING that accompanies this distribution."
 echo ""
 echo "This version is UNSTABLE DEVELOPMENT software.  It is incomplete and"
-echo "has a lot of bugs, including some with potential security ramifications."
-echo "At present, we do not advise the use of this software where untrusted"
-echo "parties may have access to its services, or where untrusted parties may"
-echo "be able to influence or control data that is processed by this software."
-echo ""
-echo "We realize that install messages like this can be annoying, but we only"
-echo "thought it fair to make sure you were aware of the software's status!"
+echo "is bound to have many bugs, including some with potential security"
+echo "ramifications.  We recommend firewalling this software from access by"
+echo "untrusted users."
 echo ""
 exit 0
 
@@ -119,6 +115,9 @@ echo "<html><head><title>Centrallix</title></head><body>Centrallix Successfully 
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Mar 21 2008 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.0-0
+- major development release; see changelog and release notes.
+
 * Fri Apr 07 2006 Greg Beeley <Greg.Beeley@LightSys.org> 0.7.5-0
 - major development release; see release notes for details.
 

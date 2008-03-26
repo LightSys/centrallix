@@ -48,6 +48,11 @@ three sections outlined below.
 
 2.  COMPILE AND INSTALL CENTRALLIX
 ==================================
+    If prebuilt binary packages are available for your distribution, then
+    your job is easy - just install the required packages (see above),
+    start the server in the customary manner for your distribution, and
+    connect to localhost:800.
+
     Since the last release of Centrallix, we have added autoconf support.
     This means that you can run the familiar "configure" script to detect
     settings on your system.  You can also specify the "--prefix" parameter
@@ -78,6 +83,11 @@ three sections outlined below.
 
 3.  CONFIGURE CENTRALLIX
 ========================
+    If you installed prebuilt packages, then Centrallix should already
+    be configured for you.  However, you may choose to make configuration
+    changes to, for instance, the authentication mechanism, or perhaps to
+    enable or disable optional modules.
+
     Now that you have successfully installed Centrallix, you will neet to
     verify that "make install" copied the configuration files to their 
     proper location and modify them accordingly.  The configure script 
@@ -137,6 +147,11 @@ three sections outlined below.
 
 RUN CENTRALLIX
 ==============
+    For prebuilt binaries, just start the server in the manner conventional
+    for your distribution, such as:
+
+	/etc/init.d/centrallix start
+
     At this point, you have fully configured Centrallix and should be able
     to play with it.  To run it, simply execute /usr/local/sbin/centrallix.
     Depending on your setup, you may need to specify the path of the

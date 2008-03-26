@@ -21,7 +21,7 @@ centrallix "system/config"
         {
 	listen_port = 800;
 	user_session_limit = 100; // max sessions per user
-	server_string = "Centrallix/0.7.5";
+	server_string = "Centrallix/0.9.0";
 	auth_realm = "Centrallix";
 	session_cookie = "CXID";
 	session_watchdog_timer = 180; //seconds

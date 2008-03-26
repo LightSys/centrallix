@@ -1,10 +1,12 @@
+Centrallix is Free Software.
+
 This software is made available under the GNU General Public
 License, version 2.  A copy is included in this distribution
 in the file "COPYING".  You may also use this software under
 any later version of the GNU GPL published by the Free Software
 Foundation.
 
-Copyright (C) 1998-2007 LightSys Technology Services, Inc.
+Copyright (C) 1998-2008 LightSys Technology Services, Inc.
 
 You may download the source to this software at:
 
@@ -18,23 +20,12 @@ GNU General Public License for more details.
 OpenSSL:  As a special additional permission, you may link this
 application with the OpenSSL cryptographic library.  If you
 copy or distribute Centrallix, you are not required to retain
-this additional restriction.  In that case, simply delete it 
+this additional permission.  In that case, simply delete it 
 from this LICENSE file when you make the copy.
 
-We also must point out that due to the content of the generated
-DHTML output of this program (it contains extensive javascript
-directly from the source of Centrallix itself), that output
-MUST be considered a "work based on the program" in compliance
-with the GNU General Public License, and is thus covered by that
-license.  That output is already in "source" format when emitted
-by Centrallix.  Copying, modification, redistribution, etc., of
-that output (including DHTML, embedded javascript, etc.) is 
-covered under the conditions of the GPL.
-
-We are working on a solution to this issue so that your generated
-DHTML output can be under a copyright and license of your own
-choice.
-
-Any normal .app file, however, you wholly create yourself is
-obviously under your own copyright, and you may distribute (or
-not distribute) such files in any manner you please.
+Sybase CT-Lib:  AS a special additional permission, you may link
+this application (the objdrv_sybase.c driver) with Sybase CT
+Library, for access to Sybase ASE servers.  If you copy or
+distribute Centrallix, you are not required to retain this
+additional permission.  In that case, simply delete it from
+this LICENSE file when you make the copy.
