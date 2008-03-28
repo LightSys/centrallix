@@ -1,0 +1,23 @@
+$Version=2$
+wrapper "widget/component-decl"
+    {
+    which "widget/parameter" { type=string; default="/lightsys/base/p_partner.cmp"; badchars="/."; }
+    visual = yes;
+    width=362;
+    height=362;
+    mainpane "widget/pane"
+	{
+	x=0;y=0;width=362;height=362;
+	style=flat;
+	this_cmp "widget/component"
+	    { 
+	    x=0;
+	    y=0;
+	    width=360;
+	    height=360;
+	    multiple_instantiation=no;
+	    auto_destroy=yes;
+	    path=runserver("/apps/widget_demo/widgets/" + :this:which + ".cmp");
+	    }
+	}
+    }

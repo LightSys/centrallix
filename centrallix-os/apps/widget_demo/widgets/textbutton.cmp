@@ -1,0 +1,15 @@
+$Version=2$
+textbutton "widget/component-decl"
+    {
+    width=360; height=360;
+
+    btn "widget/textbutton"
+	{
+	x=20; y=20; width=100; height=30;
+	fgcolor1=black; 
+	fgcolor2=white;
+	background="/sys/images/grey_gradient.png";
+	tristate=no;
+	text = "Push Me";
+	}
+    }

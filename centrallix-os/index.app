@@ -22,7 +22,7 @@ index "widget/page"
 
     pnOptions "widget/pane"
 	{
-	x=16;y=160;width=588;height=72;
+	x=16;y=160;width=588;height=128;
 	bgcolor="#c0c0c0";
 	style=raised;
 
@@ -47,6 +47,29 @@ index "widget/page"
 	    x=120; y=16; width=440; height=40;
 	    fontsize=4;
 	    text = "Click here to browse some Centrallix sample applications, reports, and more.";
+	    }
+
+	btnDemo "widget/textbutton"
+	    {
+	    x=16; y=72; width=96; height=40;
+	    tristate=no;
+	    background="/sys/images/grey_gradient.png";
+	    fgcolor1=black; fgcolor2=white;
+	    text = "Demo";
+
+	    onDemoClick "widget/connector"
+		{
+		event = "Click";
+		target = index;
+		action = "LoadPage";
+		Source = runclient("/apps/widget_demo/");
+		}
+	    }
+	lblDemo "widget/label"
+	    {
+	    x=120; y=72; width=440; height=40;
+	    fontsize=4;
+	    text = "Click here for a demo app showing the uses of a few of the many widgets that Centrallix supports, using a component-based approach.";
 	    }
 	}
 
