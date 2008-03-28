@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.18 2006/06/21 21:19:03 gbeeley Exp $
+## $Id: Makefile.in,v 1.19 2008/03/28 07:48:47 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -140,6 +140,17 @@ test:	$(TESTPROGS)
 	@for PROG in $(TESTPROGS); do \
 	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
 		$$PROG; \
+	    fi \
+	done 
+
+.PHONY:	valtest
+valtest:	$(TESTPROGS)
+	@printf "Running Regression Tests Under Valgrind..."
+	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
+	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
+	@for PROG in $(TESTPROGS); do \
+	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
+		valgrind -q $$PROG; \
 	    fi \
 	done 
 
