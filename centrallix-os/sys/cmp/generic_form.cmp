@@ -6,6 +6,13 @@ generic_form "widget/component-decl"
 
     table "widget/parameter" { type=string; default="/samples/Months.csv"; badchars=" '\""; }
 
+    division "widget/parameter"
+	{
+	type=integer;
+	//default=runserver(40 + eval("(select count(1) from " + :this:table + "/columns )")*9);
+	default=310;
+	}
+
     osrc "widget/osrc"
 	{
 	sql = runserver("select * from " + :this:table + "/rows");
@@ -42,12 +49,12 @@ generic_form "widget/component-decl"
 
 	detail_pane "widget/pane"
 	    {
-	    x=10;y=310;width=620;height=160;
+	    x=10;y=runserver(:this:division);width=620;height=runserver(480 - :this:division - 10);
 	    style=lowered;
 
 	    detail "widget/table"
 		{
-		x=0;y=0;width=618;height=158;
+		x=0;y=0;width=618;height=runserver(480 - :this:division - 10 - 2);
 		mode=dynamicrow;
 
 		row1_bgcolor = "#ffffff";

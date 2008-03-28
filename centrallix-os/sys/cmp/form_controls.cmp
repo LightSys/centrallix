@@ -16,6 +16,12 @@ form_controls "widget/component-decl"
 	find_container = "widget/osrc";
 	}
 
+    object_name "widget/parameter"
+	{
+	type = "string";
+	default = "Record";
+	}
+
     bgcolor "widget/parameter"
 	{
 	type = "string";
@@ -81,7 +87,7 @@ form_controls "widget/component-decl"
 		disabledimage="/sys/images/ico16ad.gif";
 		enabled = runclient(:form:recid > 1);
 		cnFirst "widget/connector" { event="Click"; target=form; action="First"; }
-		tooltip = "First Record";
+		tooltip = runserver("First " + :this:object_name);
 		}
 	    btnBack "widget/imagebutton"
 		{
@@ -93,7 +99,7 @@ form_controls "widget/component-decl"
 		clickimage="/sys/images/ico16bc.gif";
 		disabledimage="/sys/images/ico16bd.gif";
 		enabled = runclient(:form:recid > 1);
-		tooltip = "Previous Record";
+		tooltip = runserver("Previous " + :this:object_name);
 		repeat = yes;
 		cnBack "widget/connector" { event="MouseDown"; target=form; action="Prev"; }
 		}
@@ -129,7 +135,7 @@ form_controls "widget/component-decl"
 		clickimage="/sys/images/ico16cc.gif";
 		disabledimage="/sys/images/ico16cd.gif";
 		enabled = runclient(not(:form:recid == :form:lastrecid));
-		tooltip = "Next Record";
+		tooltip = runserver("Next " + :this:object_name);
 		repeat = yes;
 		cnNext "widget/connector" { event="MouseDown"; target=form; action="Next"; }
 		}
@@ -142,7 +148,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico16db.gif";
 		clickimage="/sys/images/ico16dc.gif";
 		disabledimage="/sys/images/ico16dd.gif";
-		tooltip = "Last Record";
+		tooltip = runserver("Last " + :this:object_name);
 		enabled = runclient(not(:form:recid == :form:lastrecid));
 		cnLast "widget/connector" { event="Click"; target=form; action="Last"; }
 		}
@@ -186,7 +192,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico21b.gif";
 		clickimage="/sys/images/ico21c.gif";
 		disabledimage="/sys/images/ico21d.gif";
-		tooltip = "Search for Records";
+		tooltip = runserver("Search for " + :this:object_name + "(s)");
 		enabled = runclient(:form:is_queryable or :form:is_queryexecutable);
 		cnSearch "widget/connector" { event="Click"; target=form; action="QueryToggle"; }
 		}
@@ -212,7 +218,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico23b.gif";
 		clickimage="/sys/images/ico23c.gif";
 		disabledimage="/sys/images/ico23d.gif";
-		tooltip = "Edit this Record";
+		tooltip = runserver("Edit this " + :this:object_name);
 		enabled = runclient(:form:is_editable);
 		cnEdit "widget/connector" { event="Click"; target=form; action="Edit"; }
 		}
@@ -225,7 +231,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico25b.gif";
 		clickimage="/sys/images/ico25c.gif";
 		disabledimage="/sys/images/ico25d.gif";
-		tooltip = "Create a New Record";
+		tooltip = runserver("Create a New " + :this:object_name);
 		enabled = runclient(:form:is_newable);
 		cnNew "widget/connector" { event="Click"; target=form; action="New"; }
 		}
@@ -239,7 +245,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico24b.gif";
 		clickimage="/sys/images/ico24c.gif";
 		disabledimage="/sys/images/ico24d.gif";
-		tooltip = "Delete this Record";
+		tooltip = runserver("Delete this " + :this:object_name);
 		enabled = runclient(:form:is_editable);
 		cnDelete "widget/connector" { event="Click"; target=form; action="Delete"; }
 		}

@@ -4,6 +4,7 @@ window_container "widget/component-decl"
     component "widget/parameter" { type=string; default=null;}
     title "widget/parameter" { type=string; default=null;}
     icon "widget/parameter" { type=string; default=null;}
+    toplevel "widget/parameter" { type=string; default="no";}
     w "widget/parameter" { type=integer; default=640; }
     h "widget/parameter" { type=integer; default=480; }
 
@@ -17,6 +18,7 @@ window_container "widget/component-decl"
 	y=runserver((768 - :this:h) / 2);
 	width=runserver(:this:w);
 	height=runserver(:this:h);
+	toplevel=runserver(:this:toplevel);
 
 	icon = runserver(:this:icon);
 
