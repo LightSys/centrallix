@@ -22,7 +22,7 @@ index "widget/page"
 
     pnOptions "widget/pane"
 	{
-	x=16;y=160;width=588;height=130;
+	x=16;y=160;width=588;height=72;
 	bgcolor="#c0c0c0";
 	style=raised;
 
@@ -47,29 +47,6 @@ index "widget/page"
 	    x=120; y=16; width=440; height=40;
 	    fontsize=4;
 	    text = "Click here to browse some Centrallix sample applications, reports, and more.";
-	    }
-
-	btnMgmt "widget/textbutton"
-	    {
-	    x=16; y=72; width=96; height=40;
-	    tristate=no;
-	    background="/sys/images/grey_gradient.png";
-	    fgcolor1=black; fgcolor2=white;
-	    text = "System Mgmt";
-
-	    onClick2 "widget/connector"
-		{
-		event = "Click";
-		target = index;
-		action = "LoadPage";
-		Source = runclient("/apps/cxmanage/");
-		}
-	    }
-	lblMgmt "widget/label"
-	    {
-	    x=120; y=72; width=440; height=40;
-	    fontsize=4;
-	    text = "Click here for the Centrallix system management page.";
 	    }
 	}
 
