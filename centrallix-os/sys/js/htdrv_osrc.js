@@ -599,19 +599,27 @@ function osrc_action_create_cb()
 
 function osrc_action_modify(aparam) //up,formobj)
     {
-    var up = aparam.data;
-    var formobj = aparam.client;
+    if (aparam)
+	{
+	this.modifieddata = aparam.data;
+	this.formobj = aparam.client;
+	}
 
+    // Need to close an open query first?
+    if(this.qid)
+	{
+	pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_modify);
+	this.qid=null;
+	return 0;
+	}
     //Modify an object through OSML
     //up[adsf][value];
-    var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
-    this.ApplyRelationships(up);
-    for(var i in up) if(i!='oid')
+    var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
+    this.ApplyRelationships(this.modifieddata);
+    for(var i in this.modifieddata) if(i!='oid')
 	{
-	src+='&'+htutil_escape(up[i]['oid'])+'='+htutil_escape(up[i]['value']);
+	src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
 	}
-    this.formobj=formobj;
-    this.modifieddata=up;
     pg_serialized_load(this, src, osrc_action_modify_cb);
     }
 
