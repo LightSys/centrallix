@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.6 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.7 2008/03/28 05:48:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.7  2008/03/28 05:48:11  gbeeley
+    - (bugfix) parameter widget requires hints functionality.
+
     Revision 1.6  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -174,6 +177,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** JavaScript include file **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_parameter.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
 	/** Value supplied? **/
 	if (deploy_to_client)
