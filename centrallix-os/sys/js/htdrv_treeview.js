@@ -146,7 +146,7 @@ function tv_doclick(e)
 	    var r = e.target.layer.root;
 	    if (path.lastIndexOf('/') == path.length-1)
 		path = path.substring(0,path.length-1);
-	    r.ifcProbe(ifEvent).Activate('ClickItem', {Pathname:path, HRef:e.target.layer.link_href, Caller:r});
+	    r.ifcProbe(ifEvent).Activate('ClickItem', {Pathname:path, Name:e.target.layer.objn, HRef:e.target.layer.link_href, Caller:r});
 	    }
 	return false;
 	}
@@ -456,6 +456,7 @@ function tv_BuildNewLayers(l, linkcnt)
 	    link_href = links[i].href;
 	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
+	    one_layer.objn = one_link;
 	    im = tv_tgt_layer.root.imgnames.ico_file;
 	    if (link_txt == '' || link_txt == null) link_txt = one_link;
 	    else link_txt = one_link + ' - ' + link_txt;
@@ -929,6 +930,9 @@ function tv_click(e)
 	{
 	if (e.target != null && e.target.kind == 'tv' && (e.target.nodeName == 'A' || e.target.nodeName == 'DIV'))
 	    {
+	    //htr_alert(e,1);
+	    //alert(e.target.objn);
+	    //e.mainlayer.ifcProbe(ifEvent).Activate('ClickItem', {Pathname:e.target.fname, Name:e.target.objn, Caller:e.mainlayer, X:e.pageX, Y:e.pageY});
 	    cn_activate(e.mainlayer, 'Click');
 	    if (tv_doclick(e))
 		return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
