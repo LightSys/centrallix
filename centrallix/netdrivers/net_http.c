@@ -66,10 +66,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.81 2008/03/26 01:08:29 gbeeley Exp $
+    $Id: net_http.c,v 1.82 2008/03/28 07:00:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.82  2008/03/28 07:00:36  gbeeley
+    - (bugfix) only set values on a new object if the values are not NULL.
+
     Revision 1.81  2008/03/26 01:08:29  gbeeley
     - (change) switching to fdQPrintf() for file listing output, for better
       robustness
@@ -2537,13 +2540,19 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			switch(t)
 			    {
 			    case DATA_T_INTEGER:
-			        n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
-				retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
+				if (subinf->StrVal[0])
+				    {
+				    n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
+				    }
 				break;
 
 			    case DATA_T_DOUBLE:
-			        dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
-				retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
+				if (subinf->StrVal[0])
+				    {
+				    dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
+				    }
 				break;
 
 			    case DATA_T_STRING:
@@ -2551,15 +2560,21 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				break;
 
 			    case DATA_T_DATETIME:
-			        objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
-				pdt = &dt;
-				retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
+				if (subinf->StrVal[0])
+				    {
+				    objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
+				    pdt = &dt;
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
+				    }
 				break;
 
 			    case DATA_T_MONEY:
-				pm = &m;
-			        objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
-				retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
+				if (subinf->StrVal[0])
+				    {
+				    pm = &m;
+				    objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
+				    }
 				break;
 
 			    case DATA_T_STRINGVEC:
