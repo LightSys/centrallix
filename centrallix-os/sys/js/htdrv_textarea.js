@@ -26,7 +26,7 @@ function tx_setvalue(txt)
     {
     txt = htutil_obscure(txt);
     var reg = /(.*)(\n*)/;
-    do
+    while(txt)
         {
         reg.exec(txt);
         var para = RegExp.$1;
@@ -42,7 +42,7 @@ function tx_setvalue(txt)
                 }
             }
         }
-    while (txt)
+	//while (txt)
     for(var i in this.rows)
         {
         htr_setvisibility(this.rows[i].hiddenLayer, 'hidden');
