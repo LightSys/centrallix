@@ -1,0 +1,24 @@
+$Version=2$
+labeled_datetime "widget/component-decl"
+    {
+    width=200;height=20;
+
+    form "widget/parameter" { type=object; find_container="widget/form";}
+    field "widget/parameter" { type=string; }
+    text "widget/parameter" { type=string; }
+    type "widget/parameter" { type=string; default = "standard"; }
+
+    SetValue "widget/component-decl-action" { }
+    sv_cn "widget/connector" { event="SetValue"; target=datetime; action="SetValue"; Value=runclient(:Value); }
+
+    label "widget/label" { x=0;y=0;height=20;width=95; text=runserver(:this:text); align=right; }
+    datetime "widget/datetime"
+	{ 
+	x=100;y=0;height=20;width=100; 
+	bgcolor=white; 
+	fieldname=runserver(:this:field); 
+	form=form; 
+        create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(getdate()); style=readonly; }
+        ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
+	}
+    }

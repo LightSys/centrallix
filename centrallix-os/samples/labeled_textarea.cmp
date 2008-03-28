@@ -1,0 +1,12 @@
+$Version=2$
+labeled_textarea "widget/component-decl"
+    {
+    width=200;height=64;
+
+    form "widget/parameter" { type=object; find_container="widget/form";}
+    field "widget/parameter" { type=string; }
+    text "widget/parameter" { type=string; }
+
+    label "widget/label" { x=0;y=0;height=20;width=95; text=runserver(:this:text); align=right; }
+    textarea "widget/textarea" { x=100;y=0;height=64;width=100; bgcolor=white; fieldname=runserver(:this:field); form=form; }
+    }

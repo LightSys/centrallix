@@ -1,0 +1,71 @@
+$Version=2$
+simple "system/report"
+    {
+    title = "A Simple Report";
+    resolution = 300;
+    document_format="application/pdf";
+
+    min_size "report/parameter"
+	{
+	default = 0;
+	type = integer;
+	allowchars="0123456789";
+	}
+    
+    pagewidth=85;
+    pageheight=66;
+    marginleft=10;
+    marginright=10;
+    margintop=6;
+    marginbottom=6;
+
+    files "report/query"
+	{
+	sql =  runserver("
+		SELECT
+			thename = :name, :size, :last_modification
+		FROM
+			/sys/images
+		WHERE
+			:size > :this:min_size 
+		ORDER BY
+			:name");
+	}
+
+    cx "report/image"
+	{
+	x=32.5; y=0; width=1.5; height=0.9;
+	source="/lightsys/CX.png";
+	}
+
+    file_data "report/table"
+	{
+	x=0; y=2; width=65; height=11.8;
+	columns=3;
+	widths=45,6,8;
+	colsep=0.9;
+	//shadow=0.4;
+	source=files;
+
+	rcpt_data_hdr "report/table-row"
+	    {
+	    font=helvetica;
+	    fontsize=8;
+	    header=yes;
+	    bottomborder=0.01;
+	    rdh1 "report/table-cell" { value='Name'; align=center; style=bold; }
+	    rdh2 "report/table-cell" { value='Size'; align=center; style=bold; }
+	    rdh3 "report/table-cell" { value='Modified'; align=center; style=bold; }
+	    }
+
+	rcpt_data_row "report/table-row"
+	    {
+	    font=courier;
+	    fontsize=8;
+	    rdr1 "report/table-cell" { font=helvetica; value=runserver(:files:thename); align=left; }
+	    rdr2 "report/table-cell" { value=runserver(:files:size); align=right; }
+	    rdr3 "report/table-cell" { value=runserver(:files:last_modification); dateformat="dd-MMM-yyyy"; align=left; }
+	    }
+	}
+    }
+

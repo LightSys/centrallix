@@ -1,0 +1,13 @@
+$Version=2$
+labeled_datetime "widget/component-decl"
+    {
+    width=200;height=20;
+
+    form "widget/parameter" { type=object; find_container="widget/form";}
+    field "widget/parameter" { type=string; }
+    text "widget/parameter" { type=string; }
+    sql "widget/parameter" { type=string; }
+
+    label "widget/label" { x=0;y=0;height=20;width=95; text=runserver(:this:text); align=right; }
+    dropdown "widget/dropdown" { x=100;y=0;height=20;width=100; fl_width=40; bgcolor=white; fieldname=runserver(:this:field); form=form; sql=runserver(:this:sql); mode=dynamic_server; hilight="#d0d0d0"; }
+    }
