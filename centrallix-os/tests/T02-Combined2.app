@@ -18,7 +18,7 @@ Page1 "widget/page"
     {
     title="Test #02 - 2nd Combined Page";
     bgcolor="#546140";
-    loadstatus="true";
+    //loadstatus="true";
     x=0; y=0; height=230; width=310;
     TextButton1 "widget/textbutton"
 	{
@@ -29,7 +29,7 @@ Page1 "widget/page"
 	text="INDEX";
 	tristate="no";
 
-	Connector1 "widget/connector" { event="Click"; target="Page1"; action="LoadPage"; Source="'index.app'"; }
+	Connector1 "widget/connector" { event="Click"; target="Page1"; action="LoadPage"; Source=runclient("index.app"); }
 	}
 
     OSRC1 "widget/osrc"
