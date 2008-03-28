@@ -522,7 +522,10 @@ function osrc_action_create_cb2()
     //htr_alert(this.createddata, 2);
     for(var i in this.createddata) if(i!='oid')
 	{
-	src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
+	if (this.createddata[i]['value'] == null)
+	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'=';
+	else
+	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
 	}
     pg_serialized_load(this, src, osrc_action_create_cb);
     }
@@ -530,7 +533,7 @@ function osrc_action_create_cb2()
 function osrc_action_create_cb()
     {
     var links = pg_links(this);
-    if(links[0].target != 'ERR')
+    if(links && links[0] && links[0].target != 'ERR')
 	{
 	this.LastRecord++;
 	this.CurrentRecord = this.LastRecord;
@@ -615,8 +618,8 @@ function osrc_action_modify(aparam) //up,formobj)
 function osrc_action_modify_cb()
     {
     var links = pg_links(this);
-    var success = links[0].target;
-    if(success != 'ERR')
+    var success = links && links[0] && (links[0].target != 'ERR');
+    if(success)
 	{
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
