@@ -1,0 +1,314 @@
+####  Centrallix Makefile
+####
+####  LightSys Technology Services, Inc
+####  Copyright (C) 1998-2001.  All rights reserved.
+####
+####  If you're in this file looking for how to add a new objectsystem
+####  driver to the build, add its .o file to the XOBJECTSYSTEM variable's
+####  file list, below.  Don't forget to call the driver's initialization
+####  function from lsmain.c and test_obj.c at appropriate places!!  And,
+####  don't forget to add the content-type information to types.cfg.
+####
+
+@SET_MAKE@
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+top_builddir = .
+
+EXEEXT = @EXEEXT@
+OBJEXT = @OBJEXT@
+PATH_SEPARATOR = @PATH_SEPARATOR@
+AWK = @AWK@
+CC = @CC@
+STRIP = @STRIP@
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_DATA = @INSTALL_DATA@
+
+# VPATH - all the directories we manage.
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression
+
+# Support modules -- only basic utilities.
+#XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
+#BASIC=$(patsubst %,utility/%,$(XBASIC))
+
+# Support modules -- basic and advanced utilities.
+XSUPPORT=stparse.o \
+	 st_node.o \
+	 htmlparse.o 
+SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
+
+# OSML modules that implement the OSML API for internal C use
+XOBJECTSYSTEM=obj_main.o \
+	      obj_session.o \
+	      obj_object.o \
+	      obj_attr.o \
+	      obj_query.o \
+	      obj_method.o \
+	      obj_content.o \
+	      obj_params.o \
+	      obj_trx.o \
+	      obj_datatypes.o \
+	      obj_rootnode.o
+OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
+
+# Objectsystem drivers.
+XOBJDRIVERS=objdrv_ux.o \
+	    objdrv_unixuser.o \
+	    objdrv_struct.o \
+	    objdrv_report.o \
+	    objdrv_uxprint.o \
+	    objdrv_qytree.o \
+	    objdrv_datafile.o \
+	    objdrv_audio.o
+OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
+XOBJDRIVERMODULES=@OBJDRIVERMODULES@
+OBJDRIVERMODULES=$(patsubst %,osdrivers/%,$(XOBJDRIVERMODULES))
+
+XV3OBJDRIVERS=$(XOBJDRIVERMODULES) \
+	      objdrv_ux.o \
+	      objdrv_unixuser.o \
+	      objdrv_sybase.o \
+	      objdrv_struct.o \
+	      objdrv_qytree.o \
+	      objdrv_datafile.o \
+	      objdrv_audio.o \
+	      objdrv_http.o
+V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
+
+# DHTML generation subsystem, including drivers and the ht_render main system.
+XHTDRIVERS=htdrv_page.o \
+	   htdrv_scrollpane.o \
+	   htdrv_treeview.o \
+	   htdrv_html.o \
+	   htdrv_connector.o \
+	   htdrv_imagebutton.o \
+	   htdrv_textbutton.o \
+	   htdrv_menu.o \
+	   htdrv_frameset.o \
+	   ht_render.o \
+	   htdrv_variable.o \
+	   htdrv_tab.o \
+	   htdrv_pane.o \
+	   htdrv_table.o \
+	   htdrv_window.o \
+	   htdrv_checkbox.o \
+	   htdrv_radiobutton.o \
+	   htdrv_editbox.o \
+	   htdrv_timer.o \
+	   htdrv_execmethod.o \
+	   htdrv_form.o \
+	   htdrv_formstatus.o \
+	   htdrv_alerter.o \
+	   htdrv_osrc.o \
+	   htdrv_spinner.o \
+	   htdrv_dropdown.o \
+	   htdrv_label.o \
+
+HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
+
+# Multiquery subsystem, SQL parser, and query drivers.
+XQYDRIVERS=multiq_tablegen.o \
+	   multiq_projection.o \
+	   multiq_equijoin.o \
+	   multiquery.o
+QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
+
+# Network drivers.
+XNETDRIVERS=net_http.o \
+	    net_bdqs.o
+NETDRIVERS=$(patsubst %,netdrivers/%,$(XNETDRIVERS))
+
+# Reporting subsystem, including printer drivers and print management system.
+XRPTMODS=epsonfx_prt.o \
+	 hppcl_prt.o \
+	 html_prt.o \
+	 barcode.o \
+	 prtmgmt.o \
+	 text_prt.o
+RPTMODS=$(patsubst %,report/%,$(XRPTMODS))
+
+## V3 reporting subsystem
+#XV3RPTMODS=prtmgmt_v3_api.o \
+#	   prtmgmt_v3_fm_strict.o \
+#	   prtmgmt_v3_internal.o \
+#	   prtmgmt_v3_lm_page.o \
+#	   prtmgmt_v3_lm_text.o \
+#	   prtmgmt_v3_main.o \
+#	   prtmgmt_v3_od_pcl.o \
+#	   prtmgmt_v3_session.o
+#V3RPTMODS=$(patsubst %,report/%,$(XV3RPTMODS))
+
+# Expression evaluation/compilation manager.
+XEXPRMODS=exp_main.o \
+	  exp_params.o \
+	  exp_compiler.o \
+	  exp_evaluate.o \
+	  exp_functions.o \
+	  exp_generator.o
+EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
+
+# Javascript VM modules... for Centrallix side of things.
+XLSJSVM=jsvm_client.o
+LSJSVM=$(patsubst %,jsvm/%,$(XLSJSVM))
+
+# Javascript VM modules... runtime engine side of things.
+XJSVM=jsvm_server.o
+JSVM=$(patsubst %,jsvm/%,$(XJSVM))
+
+# Test suite.
+XTESTSUITE=ts1.c \
+	   ts2.c \
+	   ts3.c
+TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
+
+# Loadable modules.
+MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES)
+
+# Some basic build parameters.
+MASTERHOST=greg
+PROFILE=-pg
+BUILD=$(shell cat .build)
+BLDFILE=$(shell if [ "$$HOSTNAME" = "$(MASTERHOST)" ]; then echo ".build"; echo '1' >.subbuild; else echo ".subbuild"; if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; fi)
+SUBBUILD=$(shell if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; cat .subbuild)
+PREVBUILD=$(shell expr $(BUILD) - 1)
+YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
+VERSION=$(shell cat .version)
+
+CXLIBDIR=@CXLIBDIR@
+CFLAGS=$(PROFILE) -I./include @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration
+
+LIBS=@LIBS@ -lCentrallix
+
+BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS)
+LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
+
+.PHONY:	modules
+.PHONY:	modules_install
+.PHONY:	mods
+.PHONY:	depend
+.PHONY: all
+
+centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
+	@echo ''
+	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
+	@echo
+	$(CC) centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o centrallix
+	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
+	@rm centrallix.o
+	@echo ''
+
+
+# You can call "make mods" directly to avoid getting the warning about
+# make modules_install.  However, we recommend avoiding that habit if
+# possible :)  make modules is the standard way to do it if you aren't
+# going to install em immediately (otherwise, use make modules_install).
+#
+mods: $(MODULES)
+
+modules: mods
+	@echo "*** Be sure to do a 'make modules_install'"
+
+modules_install: mods
+	@mkdir -p $(libdir)
+	$(INSTALL) $(MODULES) $(libdir)
+	@echo ""
+	@echo "***************************************************************"
+	@echo "Libraries have been installed in $(libdir)"
+	@echo ""
+	@echo "Please ensure that $(libdir) is in"
+	@echo '$$LD_LIBRARY_PATH or added to /etc/ld.so.conf.'
+	@echo "***************************************************************"
+	@echo ""
+
+all:	centrallix mods
+
+install: all modules_install
+	@mkdir -p $(sbindir)
+	$(INSTALL) centrallix $(sbindir)
+
+.c.so:	$<
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
+
+jsengine: $(JSVM)
+	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
+
+test_obj: test_obj.o centrallix.o $(LSOBJS)
+	$(CC) centrallix.o test_obj.o $(LSOBJS) $(LIBDIRS) $(PROFILE) -Wl,-export-dynamic -o test_obj $(LIBS)
+
+test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
+	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
+
+ts: ts.o $(LSOBJS) $(TESTSUITE)
+	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) -o ts $(LIBS)
+
+domatches: domatches.o $(BASEOBJS)
+	$(CC) domatches.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o domatches $(LIBS)
+
+lsclient: lsclient.o $(BASIC)
+	$(CC) lsclient.o $(BASIC) $(PROFILE) -o lsclient
+
+htmltest: htmltest.o $(SUPPORT)
+	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
+
+clean:
+	@rm -f */*.o
+	@rm -f */*.so
+	@rm -f centrallix test_obj lsclient
+	@rm -f *.o
+
+distclean: clean
+	@rm -f config.status config.cache config.log
+	@rm -rf autom4te-2.5x.cache/
+	@rm -f config.h
+	@rm -f Makefile stamp-h
+	@rm -f .depend
+
+distreallyclean: distclean
+	@rm -f configure
+	@rm -f config.h.in
+	@rm -f install-sh
+
+depend:	.depend
+
+.depend: *.[ch] */*.[ch]
+	@echo "Rebuilding dependencies..."
+	@makedepend -o.o -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c >.depend 2>/dev/null
+	@makedepend -o.so -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c >>.depend 2>/dev/null
+
+backup:
+	@/bin/echo -n Creating a backup of $(VERSION).$(PREVBUILD) "... "
+	@mkdir VER/$(VERSION).$(PREVBUILD) 2>/dev/null; exit 0
+	@cp -r htmlgen include lsmain.c lsclient.c test_obj.c Makefile multiquery netdrivers objectsystem osdrivers report utility expression VER/$(VERSION).$(PREVBUILD)
+	@echo "done."
+
+# You will need to add an entry to know how to compile your objdrv file.  You
+# will probably also want to add checks to configure.ac and aclocal.m4 for
+# this new module.
+osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
+	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@
+	
+osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	
+# Dependencies made by "make depend"
+include .depend
+
