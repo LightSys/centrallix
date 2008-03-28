@@ -275,6 +275,7 @@ function tbld_change_width(move)
 	move=0-l.clip_w-getClipWidth(l.rb);
     if(getRelativeX(l.rb)+move<0)
 	move=0-getRelativeX(l.rb);
+    t.cols[l.colnum][2] += move;
     //alert(move);
     for(var i=0;i<t.maxwindowsize+1;i++)
 	for(var j=l.colnum; j<t.colcount; j++)
