@@ -55,7 +55,7 @@ function pa_init(l, wparam)
     l.datatype = wparam.type;
     l.findcontainer = wparam.findc;
 
-    if (l.findcontainer && wgtrGetType(wgtrGetParent(l)) == 'widget/component-decl')
+    if (!l.newvalue && l.findcontainer && wgtrGetType(wgtrGetParent(l)) == 'widget/component-decl')
 	{
 	l.newvalue = wgtrCheckReference(wgtrGetParent(l).FindContainer(l.findcontainer));
 	}
