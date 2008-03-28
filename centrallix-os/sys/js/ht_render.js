@@ -38,9 +38,9 @@ function cxjs_convert(dt,v)
 function cxjs_substring(s,p,l)
     {
     if (l == null)
-	return s.substr(p);
+	return s.substr(p-1);
     else
-	return s.substr(p,l);
+	return s.substr(p-1,l);
     }
 function cxjs_eval(x)
     {
