@@ -1,7 +1,7 @@
 $Version=2$
 index "widget/page"
     {
-    title = "Welcome to Centrallix 0.7.5";
+    title = "Welcome to Centrallix 0.9.0";
     bgcolor = "#ffffff";
     height = 400;
     width = 620;
@@ -17,7 +17,7 @@ index "widget/page"
 	x=16; y=80; height=66; width=588;
 	align=center;
 	fontsize=4;
-	text = "Welcome to Centrallix 0.7.5, released in June 2006.  If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are a few links to get you started.";
+	text = "Welcome to Centrallix 0.9.0, released in March 2008.  If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are a few links to get you started.";
 	}
 
     pnOptions "widget/pane"
@@ -76,7 +76,7 @@ index "widget/page"
     lblLicense "widget/label"
 	{
 	x=16; y=340; width=588; height=50;
-	text="Centrallix 0.7.5 is Free Software, released under the GNU GPL version 2, or at your option any later version published by the Free Software Foundation.  Centrallix 0.7.5 is provided with ABSOLUTELY NO WARRANTY.  See the file COPYING, in the accompanying documentation, for details.";
+	text="Centrallix 0.9.0 is Free Software, released under the GNU GPL version 2, or at your option any later version published by the Free Software Foundation.  Centrallix 0.9.0 is provided with ABSOLUTELY NO WARRANTY.  See the file COPYING, in the accompanying documentation, for details.";
 	fontsize=2;
 	}
     }

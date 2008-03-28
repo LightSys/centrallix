@@ -1,17 +1,15 @@
 Centrallix Base ObjectSystem
 
+Copyright (c) 1998-2008, LightSys Technology Services, Inc.
+
 PLEASE NOTE THAT OTHER COMPONENTS OF CENTRALLIX ARE UNDER 
 DIFFERENT LICENSES.  REFER TO THE LICENSE or LICENSE.txt
 FILES IN EACH MODULE FOR MORE INFORMATION.
-
-Copyright (c) 1998-2002, LightSys Technology Services, Inc.
-All rights reserved.
 
 The "samples" directory is under a BSD type license.  You can find
 its license terms in the samples/LICENSE.txt file.  In this way
 you can, if you choose, use samples in this directory and base your
 own applications, open or proprietary, on them.
 
-The "sys" directory is under an LGPL license.  See the file
-sys/LICENSE.txt for the terms of this license.
-
+The "sys" directory and its contents are under an LGPL license.
+See the file sys/LICENSE.txt for the terms of this license.
