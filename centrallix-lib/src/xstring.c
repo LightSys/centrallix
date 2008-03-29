@@ -32,10 +32,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.18 2008/02/19 21:40:57 gbeeley Exp $
+    $Id: xstring.c,v 1.19 2008/03/29 01:03:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.19  2008/03/29 01:03:36  gbeeley
+    - (change) changing integer type in IntVec to a signed integer
+    - (security) switching to size_t in qprintf where needed instead of using
+      bare integers.  Also putting in some checks for insanely huge amounts
+      of data in qprintf that would overflow many of the integer counters.
+    - (bugfix) several fixes to make the code compile cleanly at the newer
+      warning levels on newer compilers.
+
     Revision 1.18  2008/02/19 21:40:57  gbeeley
     - (security) xsQPrintf et al were not growing the memory for the string
       properly - math mistake in xs_internal_Grow.
@@ -925,7 +933,7 @@ xsString(pXString this)
 /*** xs_internal_Grow - grow function needed by QPrintf
  ***/
 int
-xs_internal_Grow(char** str, size_t* size, int offs, void* arg, int req_size)
+xs_internal_Grow(char** str, size_t* size, size_t offs, void* arg, size_t req_size)
     {
     pXString this = (pXString)arg;
     int offset;

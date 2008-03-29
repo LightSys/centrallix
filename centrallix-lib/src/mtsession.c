@@ -40,10 +40,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.11 2008/02/22 23:41:29 gbeeley Exp $
+    $Id: mtsession.c,v 1.12 2008/03/29 01:03:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.12  2008/03/29 01:03:36  gbeeley
+    - (change) changing integer type in IntVec to a signed integer
+    - (security) switching to size_t in qprintf where needed instead of using
+      bare integers.  Also putting in some checks for insanely huge amounts
+      of data in qprintf that would overflow many of the integer counters.
+    - (bugfix) several fixes to make the code compile cleanly at the newer
+      warning levels on newer compilers.
+
     Revision 1.11  2008/02/22 23:41:29  gbeeley
     - (change) adding %c to mssError().
 
@@ -213,7 +221,7 @@ mssAuthenticate(char* username, char* password)
     pMtSession s;
     char* encrypted_pwd;
     char* pwd;
-    struct passwd* pw;
+    struct passwd* pw = NULL;
 #ifdef HAVE_SHADOW_H
     struct spwd* spw;
 #endif

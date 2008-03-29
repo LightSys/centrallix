@@ -20,10 +20,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: datatypes.h,v 1.5 2004/05/04 18:18:59 gbeeley Exp $
+    $Id: datatypes.h,v 1.6 2008/03/29 01:03:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/datatypes.h,v $
 
     $Log: datatypes.h,v $
+    Revision 1.6  2008/03/29 01:03:36  gbeeley
+    - (change) changing integer type in IntVec to a signed integer
+    - (security) switching to size_t in qprintf where needed instead of using
+      bare integers.  Also putting in some checks for insanely huge amounts
+      of data in qprintf that would overflow many of the integer counters.
+    - (bugfix) several fixes to make the code compile cleanly at the newer
+      warning levels on newer compilers.
+
     Revision 1.5  2004/05/04 18:18:59  gbeeley
     - Adding fdAccess() wrapper for access(2).
     - Moving PTOD definition to module in centrallix core.
@@ -70,7 +78,7 @@ typedef union _DT
 typedef struct _IV
     {
     unsigned int        nIntegers;
-    unsigned int*       Integers;
+    int*		Integers;
     }
     IntVec, *pIntVec;
 

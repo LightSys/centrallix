@@ -36,10 +36,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.6 2008/03/03 09:04:31 gbeeley Exp $
+    $Id: qprintf.c,v 1.7 2008/03/29 01:03:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.7  2008/03/29 01:03:36  gbeeley
+    - (change) changing integer type in IntVec to a signed integer
+    - (security) switching to size_t in qprintf where needed instead of using
+      bare integers.  Also putting in some checks for insanely huge amounts
+      of data in qprintf that would overflow many of the integer counters.
+    - (bugfix) several fixes to make the code compile cleanly at the newer
+      warning levels on newer compilers.
+
     Revision 1.6  2008/03/03 09:04:31  gbeeley
     - (feature) adding JSSTR, CSSVAL, and CSSURL filters to qprintf.  JSSTR
       is to be used when encoding a JavaScript string in a document.  CSSVAL
@@ -486,7 +494,7 @@ qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
 /*** qpfPrintf_grow() - returns whether the additional size will fit.
  ***/
 int
-qpfPrintf_grow(char** str, size_t* size, int offs, void* arg, int req_size)
+qpfPrintf_grow(char** str, size_t* size, size_t offs, void* arg, size_t req_size)
     {
     return (*size) >= req_size;
     }
@@ -515,12 +523,16 @@ qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list a
  *** null terminator, for instance.
  ***/
 static inline int
-qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** dstbuf, int* dstoffs, int* dstsize, int limit, pQPConvTable table, int(*grow_fn)(), void* grow_arg, int min_room)
+qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** dstbuf, size_t* dstoffs, size_t* dstsize, size_t limit, pQPConvTable table, qpf_grow_fn_t grow_fn, void* grow_arg, size_t min_room)
     {
     int rval = 0;
-    int tlen, i;
+    unsigned int tlen;
+    int i;
     char* trans;
     int nogrow = (grow_fn == NULL);
+
+	if (srcsize >= SIZE_MAX/2/table->MaxExpand)
+	    return -1;
 
 	if (srcsize)
 	    {
@@ -610,13 +622,14 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
  *** solely by offsets.
  ***/
 int
-qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), void* grow_arg, const char* format, va_list ap)
+qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
     {
     const char* specptr;
     const char* endptr;
-    int copied = 0;
+    size_t copied = 0;
     int rval;
-    int cplen;
+    size_t cplen;
+    ptrdiff_t ptrdiff_cplen;
     char specchain[QPF_MAX_SPECS];
     int specchain_n[QPF_MAX_SPECS];
     int n_specs;
@@ -628,16 +641,16 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
     double dblval;
     char tmpbuf[64];
     char chrval;
-    int cpoffset = 0;
-    int oldcpoffset;
+    size_t cpoffset = 0;
+    size_t oldcpoffset;
     int nogrow = 0;
     int startspec;
     int endspec;
-    int maxdst;
+    size_t maxdst;
     int ignore = 0;
     pQPConvTable table;
     QPSession null_session;
-    int min_room;
+    size_t min_room;
     char quote;
 
 	if (!QPF.is_init) 
@@ -651,7 +664,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 	    s=&null_session;
 	    }
 
-	/** this all fall apart if there isn't at least room for the
+	/** this all falls apart if there isn't at least room for the
 	 ** null terminator!
 	 **/
 	if ((!*str || *size < 1) && !grow_fn(str, size, cpoffset, grow_arg, 1)) 
@@ -666,8 +679,21 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 	    /** Copy the plain section of string **/
 	    if (!ignore)
 		{
-		cplen = (endptr - format);
+		ptrdiff_cplen = (endptr - format);
+		if (__builtin_expect(ptrdiff_cplen < 0 || ptrdiff_cplen >= SIZE_MAX/4, 0))
+		    {
+		    QPERR(QPF_ERR_T_BUFOVERFLOW);
+		    rval = -EINVAL;
+		    goto error;
+		    }
+		cplen = ptrdiff_cplen;
 		if (__builtin_expect(nogrow, 0)) cplen = 0;
+		if (__builtin_expect(cpoffset+cplen+1 > SIZE_MAX/2, 0))
+		    {
+		    QPERR(QPF_ERR_T_BUFOVERFLOW);
+		    rval = -EINVAL;
+		    goto error;
+		    }
 		if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (nogrow || !grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
@@ -676,7 +702,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 		    }
 		if (cplen) memcpy((*str) + cpoffset, format, cplen);
 		cpoffset += cplen;
-		copied += (endptr - format);
+		copied += ptrdiff_cplen;
 		}
 	    format = endptr;
 
@@ -1045,6 +1071,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 			if (__builtin_expect(cplen != 0,1))
 			    {
 			    copied += cplen;
+			    if (__builtin_expect(cpoffset+cplen+1 > SIZE_MAX/2, 0))
+				{
+				QPERR(QPF_ERR_T_BUFOVERFLOW);
+				rval = -EINVAL;
+				goto error;
+				}
 			    if (__builtin_expect(nogrow, 0)) cplen = 0;
 			    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
 				{

@@ -55,10 +55,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.41 2007/12/13 23:10:25 gbeeley Exp $
+    $Id: mtask.c,v 1.42 2008/03/29 01:03:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.42  2008/03/29 01:03:36  gbeeley
+    - (change) changing integer type in IntVec to a signed integer
+    - (security) switching to size_t in qprintf where needed instead of using
+      bare integers.  Also putting in some checks for insanely huge amounts
+      of data in qprintf that would overflow many of the integer counters.
+    - (bugfix) several fixes to make the code compile cleanly at the newer
+      warning levels on newer compilers.
+
     Revision 1.41  2007/12/13 23:10:25  gbeeley
     - (change) adding --enable-debugging to the configure script, and without
       debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
@@ -2863,10 +2871,10 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
  *** there.
  ***/
 int
-fdQPrintf_Grow(char** str, size_t* size, int offs, void* arg, int req_size)
+fdQPrintf_Grow(char** str, size_t* size, size_t offs, void* arg, size_t req_size)
     {
     pFile filedesc = (pFile)arg;
-    int incr;
+    size_t incr;
 
 	if (req_size <= *size) return 1;
 

@@ -31,10 +31,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.h,v 1.3 2007/04/19 21:14:13 gbeeley Exp $
+    $Id: qprintf.h,v 1.4 2008/03/29 01:03:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/qprintf.h,v $
 
     $Log: qprintf.h,v $
+    Revision 1.4  2008/03/29 01:03:36  gbeeley
+    - (change) changing integer type in IntVec to a signed integer
+    - (security) switching to size_t in qprintf where needed instead of using
+      bare integers.  Also putting in some checks for insanely huge amounts
+      of data in qprintf that would overflow many of the integer counters.
+    - (bugfix) several fixes to make the code compile cleanly at the newer
+      warning levels on newer compilers.
+
     Revision 1.3  2007/04/19 21:14:13  gbeeley
     - (feature) adding &FILE and &PATH filters to qprintf.
     - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
@@ -57,6 +65,8 @@
  **END-CVSDATA***********************************************************/
 
 #include <stdarg.h>
+
+typedef int (*qpf_grow_fn_t)(char**, size_t*, size_t, void*, size_t);
 
 typedef struct _QPS
     {
@@ -90,6 +100,6 @@ int qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_li
 void qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source);
 
 /*** Raw interface - should only be used internally by cxlib **/
-int qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), void* grow_arg, const char* format, va_list ap);
+int qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap);
 
 #endif /* _QPRINTF_H */
