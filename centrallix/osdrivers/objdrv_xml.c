@@ -57,10 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.25 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: objdrv_xml.c,v 1.26 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.26  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.25  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -482,7 +486,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	i=0; /** 'i' was a temp variable above -- reset to 0 **/
 	do
 	    {
-	    if(!strcmp(p->name,searchElement))
+	    if(!strcmp((char*)p->name,searchElement))
 		{
 		if(i==target)
 		    {
@@ -528,7 +532,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 		    p=xml_internal_GetChildren(inf->CurNode);
 		    do
 			{
-			if(!strcmp(p->name,searchElement))
+			if(!strcmp((char*)p->name,searchElement))
 			    {
 			    inf->CurNode=p;
 			    flag=1;
@@ -801,7 +805,7 @@ int
 xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pXmlData inf = XML(inf_v);
-    char *buf;
+    unsigned char *buf;
     int i;
 
     /** get the data from the tree **/
@@ -815,8 +819,8 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	inf->Offset=offset;
 
     /** calcuate length to use -- the smaller of the remaining buffer after offset or the maxlen **/
-    if(maxcnt>strlen(buf)-inf->Offset)
-	i=strlen(buf)-inf->Offset;
+    if(maxcnt>strlen((char*)buf)-inf->Offset)
+	i=strlen((char*)buf)-inf->Offset;
     else
 	i=maxcnt;
 
@@ -1054,12 +1058,12 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		ap=(xmlAttrPtr)pHE->ptr;
 		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
 		/* I consider this a hack -- I can't figure out where to get the text! */
-		inf->AttrValue=xmlGetProp(ap->parent,ap->name);
+		inf->AttrValue=(char*)xmlGetProp(ap->parent,ap->name);
 		}
 	    else if(pHE->type==XML_SUBOBJ)
 		{
 		np=(xmlNodePtr)pHE->ptr;
-		inf->AttrValue=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
+		inf->AttrValue=(char*)xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
 		}
 	    else
 		{
@@ -1100,7 +1104,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
     xmlNodePtr np;
     xmlAttrPtr ap;
     pXmlAttrObj pHE;
-    char* p;
+    unsigned char* p;
 
     if(!inf->Attributes)
 	{
@@ -1230,12 +1234,12 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		ap=(xmlAttrPtr)pHE->ptr;
 		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
 		/* I consider this a hack -- I can't figure out where to get the text! */
-		inf->AttrValue=xmlGetProp(ap->parent,ap->name);
+		inf->AttrValue=(char*)xmlGetProp(ap->parent,ap->name);
 		}
 	    else if(pHE->type==XML_SUBOBJ)
 		{
 		np=(xmlNodePtr)pHE->ptr;
-		inf->AttrValue=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
+		inf->AttrValue=(char*)xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
 		}
 	    else
 		{
@@ -1350,12 +1354,12 @@ xmlGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	    if(inf->CurSubNode->name && inf->CurSubNode->name[0] && /** verify a valid name **/
 		/** _never_ return one of the 'special' attributes, even it it was overriden in the document **/
 		/** without this, connectors act wierd ... **/
-		strcmp(inf->CurSubNode->name,"outer_type") &&
-		strcmp(inf->CurSubNode->name,"inner_type") &&
-		strcmp(inf->CurSubNode->name,"content_type") &&
-		strcmp(inf->CurSubNode->name,"last_modification") &&
-		strcmp(inf->CurSubNode->name,"annotation") &&
-		strcmp(inf->CurSubNode->name,"name") &&
+		strcmp((char*)inf->CurSubNode->name,"outer_type") &&
+		strcmp((char*)inf->CurSubNode->name,"inner_type") &&
+		strcmp((char*)inf->CurSubNode->name,"content_type") &&
+		strcmp((char*)inf->CurSubNode->name,"last_modification") &&
+		strcmp((char*)inf->CurSubNode->name,"annotation") &&
+		strcmp((char*)inf->CurSubNode->name,"name") &&
 		(pHE=(pXmlAttrObj)xhLookup(inf->Attributes,(char*)inf->CurSubNode->name)) && /** get AttrObj **/
 		pHE->count==1) /** only one subobject of this type **/
 		{

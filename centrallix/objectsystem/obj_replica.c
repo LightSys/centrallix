@@ -1,5 +1,10 @@
-#include "obj.h"
 #include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include "obj.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_replica.c,v 1.2 2004/12/31 04:20:51 gbeeley Exp $
+    $Id: obj_replica.c,v 1.3 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_replica.c,v $
 
     $Log: obj_replica.c,v $
+    Revision 1.3  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.2  2004/12/31 04:20:51  gbeeley
     - fix a couple of substantial memory leaks in obj_replica mechanism
 
@@ -155,7 +164,7 @@ obj_internal_RnDelete(pObjReqNotifyItem item)
 	xaRemoveItem(&(notify_data->Requests), xaFindItem(&(notify_data->Requests), (void*)item));
 
 	/** Unlink from the object **/
-	item_ptr = &(item->Obj->NotifyItem);
+	item_ptr = (pObjReqNotifyItem*)&(item->Obj->NotifyItem);
 	while(*item_ptr != item) item_ptr = &((*item_ptr)->Next);
 	*item_ptr = (*item_ptr)->Next;
 	item->Next = NULL;

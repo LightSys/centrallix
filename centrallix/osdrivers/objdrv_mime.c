@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.29 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: objdrv_mime.c,v 1.30 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.30  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.29  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -397,7 +401,7 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     /** free any memory used to return an attribute **/
     if(inf->AttrValue)
 	{
-	free(inf->AttrValue);
+	nmSysFree(inf->AttrValue);
 	inf->AttrValue=NULL;
 	}
 
@@ -576,7 +580,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
     if (inf->AttrValue)
 	{
-	free(inf->AttrValue);
+	nmSysFree(inf->AttrValue);
 	inf->AttrValue = NULL;
 	}
     if (!strcmp(attrname, "inner_type"))
@@ -596,7 +600,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     if (!strcmp(attrname, "outer_type"))
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-	inf->AttrValue = (char*)malloc(128);
+	inf->AttrValue = (char*)nmSysMalloc(128);
 	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
 	val->String = inf->AttrValue;
 	return 0;
@@ -604,7 +608,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     if (!strcmp(attrname, "content_type"))
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-	inf->AttrValue = (char*)malloc(128);
+	inf->AttrValue = (char*)nmSysMalloc(128);
 	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
 	val->String = inf->AttrValue;
 	return 0;

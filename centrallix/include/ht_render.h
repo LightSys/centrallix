@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.36 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: ht_render.h,v 1.37 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.37  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.36  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -602,7 +606,7 @@ typedef struct
     pHtTree	Tree;			/* tree page metainfo structure */
     int		DisableBody;
     char*	Tmpbuf;			/* temp buffer used in _va() functions */
-    int		TmpbufSize;
+    size_t	TmpbufSize;
     HtCapabilities Capabilities;	/* the capabilities supported by the browser */
     pHtClass	Class;			/* the widget class to use **/
     pStruct	Params;			/* params from the user */

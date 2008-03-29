@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.72 2008/03/06 01:18:59 gbeeley Exp $
+    $Id: ht_render.c,v 1.73 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.73  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.72  2008/03/06 01:18:59  gbeeley
     - (change) updates to centrallix.supp suppressions file for valgrind
     - (bugfix) several issues fixed as a result of a Valgrind scan, one of
@@ -1059,11 +1063,11 @@ extern int __data_start;
  *** the fly.
  ***/
 int
-htr_internal_GrowFn(char** str, size_t* size, int offs, void* arg, int req_size)
+htr_internal_GrowFn(char** str, size_t* size, size_t offs, void* arg, size_t req_size)
     {
     pHtSession s = (pHtSession)arg;
     char* new_buf;
-    int new_buf_size;
+    size_t new_buf_size;
 
 	if (*size >= req_size) return 1;
 

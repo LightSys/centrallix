@@ -72,10 +72,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.31 2008/03/20 23:05:01 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.32 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.32  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.31  2008/03/20 23:05:01  gbeeley
     - (change) Sybase driver now no longer defaults to using the centrallix
       login username/password to connect to the database, but that username
@@ -304,7 +308,7 @@
 /*** AARRRRRGGGHH!!  Silly glibc guys went and changed the interface again,
  *** breaking the sybase libraries.  Here is our workaround.
  ***/
-unsigned short int* __ctype_b;
+const unsigned short int* __ctype_b;
 #endif
 
 /*** Module Controls ***/

@@ -50,7 +50,7 @@
 int
 wgtmsVerify(pWgtrVerifySession s)
     {
-    pWgtrNode this = s->CurrWidget;
+    /*pWgtrNode this = s->CurrWidget;*/
     
     return 0;
     }

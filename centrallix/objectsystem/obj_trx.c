@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -45,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.13 2007/12/05 18:58:29 gbeeley Exp $
+    $Id: obj_trx.c,v 1.14 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.14  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.13  2007/12/05 18:58:29  gbeeley
     - (bugfix) Failure to attach a QueryFetch()ed object to the right point in
       an existing transaction (or, rather, attaching it to the wrong point) was

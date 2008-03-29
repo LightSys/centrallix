@@ -110,7 +110,8 @@ http_internal_Cleanup(pHttpData inf,char *line)
 	{
 #define HTTP_CLEANUP(i) \
 	if(i) \
-	    free(i);
+	    nmSysFree(i); \
+	i = NULL;
 	HTTP_CLEANUP(inf->ProxyServer);
 	HTTP_CLEANUP(inf->ProxyPort);
 	HTTP_CLEANUP(inf->ProxyAuthLine);
@@ -323,7 +324,6 @@ http_internal_GetPageStream(pHttpData inf)
     char *ptr2;
     int alloc;
     char *p1;
-    char *p2;
     short status=0;
     pStructInf attr;
 
@@ -341,12 +341,12 @@ http_internal_GetPageStream(pHttpData inf)
 	{
 	if(inf->Path[0])
 	    {
-	    fullpath=(char*)malloc(strlen(inf->Path)+strlen(ptr)+3);
+	    fullpath=(char*)nmSysMalloc(strlen(inf->Path)+strlen(ptr)+3);
 	    sprintf(fullpath,"/%s/%s",inf->Path,ptr);
 	    }
 	else
 	    {
-	    fullpath=(char*)malloc(strlen(ptr)+2);
+	    fullpath=(char*)nmSysMalloc(strlen(ptr)+2);
 	    sprintf(fullpath,"/%s",ptr);
 	    }
 	}
@@ -354,12 +354,12 @@ http_internal_GetPageStream(pHttpData inf)
 	{
 	if(inf->Path[0])
 	    {
-	    fullpath=(char*)malloc(strlen(inf->Path)+2);
+	    fullpath=(char*)nmSysMalloc(strlen(inf->Path)+2);
 	    sprintf(fullpath,"/%s",inf->Path);
 	    }
 	else
 	    {
-	    fullpath=(char*)malloc(2);
+	    fullpath=(char*)nmSysMalloc(2);
 	    sprintf(fullpath,"/");
 	    }
 	}
@@ -466,7 +466,7 @@ http_internal_GetPageStream(pHttpData inf)
 		if(ptr2[strlen(ptr2)-1]=='\r') ptr2[strlen(ptr2)-1]='\0';
 		if(status/100==3)
 		    {
-		    if(!strcmp(ptr,"Location"))
+		    if(!strcasecmp(ptr,"Location"))
 			{   // changed to GNU regex matching -- much better
 			regmatch_t pmatch[5];
 			if(regexec(&HTTP_INF.parsehttp,ptr2,5,pmatch,0)==REG_NOMATCH)
@@ -474,12 +474,10 @@ http_internal_GetPageStream(pHttpData inf)
 			    // the Location: line was unparsable
 			    return 2; // try up one more level
 			    }
-			free(inf->Server);
-			free(inf->Port);
-			free(inf->Path);
 
 #define COPY_FROM_PMATCH(p,m) \
-			(p)=(char*)malloc(pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
+			if (p) nmSysFree(p); \
+			(p)=(char*)nmSysMalloc(pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
 			if(!(p)) return (int)http_internal_Cleanup(inf,"malloc error");\
 			memset((p),0,pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
 			strncpy((p),ptr2+pmatch[(m)].rm_so,pmatch[(m)].rm_eo-pmatch[(m)].rm_so);
@@ -488,9 +486,9 @@ http_internal_GetPageStream(pHttpData inf)
 			
 			if(pmatch[3].rm_so==-1) // port is optional
 			    {
-			    inf->Port=(char*)malloc(1);
+			    if (inf->Port) nmSysFree(inf->Port);
+			    inf->Port=(char*)nmSysStrdup("");
 			    if(!inf->Port) return (int)http_internal_Cleanup(inf,"malloc error");
-			    inf->Port[0]='\0';
 			    }
 			else
 			    {
@@ -510,17 +508,17 @@ http_internal_GetPageStream(pHttpData inf)
 		    }
 		if(status/100==2)
 		    {
-		    p1=(char*)nmMalloc(strlen(ptr)+1);
+		    /*p1=(char*)nmMalloc(strlen(ptr)+1);
 		    p2=(char*)nmMalloc(strlen(ptr2)+1);
 		    if(!p1 || !p2) http_internal_Cleanup(inf,"malloc failed");
 		    strcpy(p1,ptr);
-		    strcpy(p2,ptr2);
+		    strcpy(p2,ptr2);*/
 
-		    attr=stAddAttr(inf->Attr,p1);
-		    stAddValue(attr,p2,0);
-		    if(!strcmp(p1,"Last-Modified"))
+		    attr=stAddAttr(inf->Attr,ptr);
+		    stAddValue(attr,ptr2,0);
+		    if(!strcasecmp(ptr,"Last-Modified"))
 			{
-			http_internal_ParseDate(&(inf->LastModified),p2);
+			http_internal_ParseDate(&(inf->LastModified),ptr2);
 		    /*** objDataToDateTime looked like what I should use, but if I used it,
 		     ***   centrallix would hang on access to this object
 		     ***/
@@ -529,9 +527,9 @@ http_internal_GetPageStream(pHttpData inf)
 					    "DDD, dd MMM yyyy HH:mm:ss GMT");
 			*/
 			}
-		    else if(!strcmp(p1,"Content-Length"))
+		    else if(!strcasecmp(ptr,"Content-Length"))
 			{
-			inf->ContentLength=atoi(p2);
+			inf->ContentLength=atoi(ptr2);
 			}
 		    }
 
@@ -549,7 +547,7 @@ http_internal_GetPageStream(pHttpData inf)
 		   
 		    if(status/100==2)
 			{
-			inf->Annotation=(char*)malloc(strlen(inf->Server)+strlen(inf->Port)+strlen(inf->Path)+10);
+			inf->Annotation=(char*)nmSysMalloc(strlen(inf->Server)+strlen(inf->Port)+strlen(inf->Path)+10);
 			if(!inf->Annotation) http_internal_Cleanup(inf,"malloc failed");
 			if(inf->Port[0])
 			    sprintf(inf->Annotation,"http://%s:%s/%s",inf->Server,inf->Port,inf->Path);
@@ -629,10 +627,9 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** I was too lazy to retype this 7 times... **/
 #define HTTP_PARAM_INIT(i,s) \
 	if(stAttrValue(stLookup(node->Data,(s)),NULL,&ptr,0)<0) ptr=""; \
-	(i)=(char*)malloc(strlen(ptr)+1); \
+	(i)=(char*)nmSysStrdup(ptr); \
 	if(!(i))\
 	    return http_internal_Cleanup(inf,"malloc failure");\
-	strcpy((i),ptr); \
 	if(HTTP_OS_DEBUG) printf("%s: %s\n",s,i);	
 
 	HTTP_PARAM_INIT(inf->ProxyServer,"proxyserver");

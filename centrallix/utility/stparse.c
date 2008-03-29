@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.16 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: stparse.c,v 1.17 2008/03/29 02:26:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.17  2008/03/29 02:26:17  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.16  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -645,7 +649,7 @@ stSetAttrValue(pStructInf inf, int type, pObjData value, int nval)
  *** type is DATA_T_ANY.
  ***/
 void*
-stGetValueList(pStructInf this, int type, int* nval)
+stGetValueList(pStructInf this, int type, unsigned int* nval)
     {
     unsigned char* values;
     int i,n;
@@ -1034,7 +1038,7 @@ st_internal_ParseScript(pLxSession s, pStructInf info)
 
 	/** build the structinf entry **/
 	info->Flags |= ST_F_SCRIPT;
-	info->ScriptText = nmSysStrdup(xs.String);
+	info->ScriptText = (unsigned char*)nmSysStrdup(xs.String);
 	info->ScriptCode = NULL;
 
 	/** Revert back to token mode **/

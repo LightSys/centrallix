@@ -55,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.23 2008/03/14 18:20:45 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.24 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.24  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.23  2008/03/14 18:20:45  gbeeley
     - (bugfix) Due to initial miscounting of rows, inserts into a completely
       empty file were failing
@@ -401,8 +405,8 @@ typedef struct
     unsigned char  RowBuf[(DAT_ROW_MAXPAGESPAN-1)*DAT_CACHE_PAGESIZE];
     int		   RowBufSize;
     unsigned char* ColPtrs[256];
-    unsigned char  AutoName[256];
-    unsigned char  SpecName[OBJSYS_MAX_PATH]; /* spec file if specified in openctl params */
+    char  AutoName[256];
+    char  SpecName[OBJSYS_MAX_PATH]; /* spec file if specified in openctl params */
     pObject	   DataObj;
     pObject	   SpecObj;
     }
@@ -573,7 +577,7 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	        {
 		seq_pages[i]->Flags |= DAT_CACHE_F_LOCKED;
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_DIRTY;
-		objWrite(context->DataObj, seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK);
+		objWrite(context->DataObj, (char*)seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK);
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_LOCKED;
 		}
 	    }
@@ -668,7 +672,7 @@ dat_internal_ReadPage(pDatData context, pDatNode node, int page_id)
 	this->Node = node;
 	this->PageID = page_id;
 	this->Flags |= DAT_CACHE_F_LOCKED;
-	this->Length = objRead(context->DataObj, this->Data, DAT_CACHE_PAGESIZE, DAT_CACHE_PAGESIZE*page_id, FD_U_SEEK);
+	this->Length = objRead(context->DataObj, (char*)this->Data, DAT_CACHE_PAGESIZE, DAT_CACHE_PAGESIZE*page_id, FD_U_SEEK);
 	if (this->Length <= 0)
 	    {
 	    if (this->Prev) this->Prev->Next = this->Next;
@@ -1259,7 +1263,7 @@ dat_internal_KeyToFilename(pDatTableInf tdata, pDatData inf)
 		    sprintf(ptr,"%d",col);
 		    break;
 		case DATA_T_STRING:
-		    strcpy(ptr, inf->ColPtrs[tdata->KeyCols[i]]);
+		    strcpy(ptr, (char*)inf->ColPtrs[tdata->KeyCols[i]]);
 		    break;
 		}
 	    ptr += strlen(ptr);
@@ -2319,8 +2323,8 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
     unsigned char* endptr;
 
     	/** Hmm... is row too big? **/
-	len = strlen(rowdata) + 1 + node->NewRowPadding;
-	endptr = rowdata + strlen(rowdata);
+	len = strlen((char*)rowdata) + 1 + node->NewRowPadding;
+	endptr = rowdata + strlen((char*)rowdata);
 	if (len > DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1))
 	    {
 	    mssError(1,"DAT","Length %d for new row exceeds maximum of %d bytes",len,DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1));
@@ -2802,7 +2806,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pDatQuery qy = ((pDatQuery)(qy_v));
     pDatData inf;
     char filename[80];
-    char* ptr;
+    unsigned char* ptr;
     int new_type;
     int i;
     pDatTableInf tdata = qy->ObjInf->TData;
@@ -3036,8 +3040,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	/** Build the filename. **/
 	ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
 	*(ptr++) = '/';
-	strcpy(ptr,filename);
-	obj->Pathname->Elements[obj->Pathname->nElements++] = ptr;
+	strcpy((char*)ptr,filename);
+	obj->Pathname->Elements[obj->Pathname->nElements++] = (char*)ptr;
 	/*inf = datOpen(obj, mode & (~O_CREAT), NULL, "");*/
 
 	/** Fill out the remainder of the structure. **/
@@ -3405,7 +3409,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    switch(inf->Type)
 	        {
 		case DAT_T_TABLE:
-		    ptr = nmSysStrdup(val->String);
+		    ptr = (unsigned char*)nmSysStrdup(val->String);
 		    node_inf = stLookup(inf->Node->Node->Data,"annotation");
 		    if (!node_inf) node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
 		    stSetAttrValue(node_inf, DATA_T_STRING, val, 0);
@@ -3475,7 +3479,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		/** Generate a new row. **/
 		ptr = dat_csv_GenerateRow(inf, colid, val, NULL);
 		if (!ptr) return -1;
-		len = strlen(ptr);
+		len = strlen((char*)ptr);
 
 		/** Get the row pages from the page cache. **/
 		ri = dat_internal_GetRow(inf,inf->Node, inf->RowID);

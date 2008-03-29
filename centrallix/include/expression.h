@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.15 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: expression.h,v 1.16 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.16  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.15  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -205,8 +209,8 @@ typedef struct _ET
     unsigned char	DataType;		/* one-of DATA_T_xxx */
     unsigned char	CompareType;		/* bitmask MLX_CMP_xxx */
     char		ObjID;
-    unsigned int	Alloc;
-    unsigned int	NameAlloc;
+    int			Alloc;
+    int			NameAlloc;
     pExpControl		Control;
     char*		Name;
     int			Flags;			/* bitmask EXPR_F_xxx */

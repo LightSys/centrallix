@@ -45,6 +45,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_repeat.c,v $
+    Revision 1.3  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.2  2007/08/08 23:17:09  dkasper
     - Added the correct widget tree linkage so that subobjects can find the
       correct container.
@@ -69,6 +73,8 @@ htrptRender(pHtSession s, pWgtrNode tree, int z)
 	/** Render Subwidgets **/
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	htrRenderSubwidgets(s,tree,z);
+
+    return 0;
     }
 
 int
@@ -79,6 +85,8 @@ htrptInitialize()
     /** Allocate the driver **/
     drv = htrAllocDriver();
     if (!drv) return -1;
+
+    memset(&HTRPT, 0, sizeof(HTRPT));
     
     /** Fill in structure **/
     strcpy(drv->Name,"Repeat Object Driver");

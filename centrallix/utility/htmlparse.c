@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.c,v 1.5 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: htmlparse.c,v 1.6 2008/03/29 02:26:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/htmlparse.c,v $
 
     $Log: htmlparse.c,v $
+    Revision 1.6  2008/03/29 02:26:17  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.5  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -218,10 +222,10 @@ hts_internal_ReadConvCh(pHtmlSession this)
 	    if (ch == ';')
 	        {
 		buf[n] = 0;
-	        if (!strcmp(buf,"nbsp")) ch = ' ';
-	        if (!strcmp(buf,"amp")) ch = '&';
-	        if (!strcmp(buf,"gt")) ch = '>';
-	        if (!strcmp(buf,"lt")) ch = '<';
+	        if (!strcmp((char*)buf,"nbsp")) ch = ' ';
+	        if (!strcmp((char*)buf,"amp")) ch = '&';
+	        if (!strcmp((char*)buf,"gt")) ch = '>';
+	        if (!strcmp((char*)buf,"lt")) ch = '<';
 		}
 	    }
 

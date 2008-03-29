@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.7 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.8 2008/03/29 02:26:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.8  2008/03/29 02:26:17  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.7  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -216,7 +220,7 @@ prt_textod_OutputPage(pPrtTextodInf context)
 	/** Output all lines that were written **/
 	for(row=0;row<=context->MaxLine;row++)
 	    {
-	    prt_textod_Output(context, context->PageBuf[row], -1);
+	    prt_textod_Output(context, (char*)context->PageBuf[row], -1);
 	    prt_textod_Output(context, "\r\n", 2);
 	    }
 
@@ -344,7 +348,7 @@ double
 prt_textod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style)
     {
     /*pPrtTextodInf context = (pPrtTextodInf)context_v;*/
-    return strlen(str);
+    return strlen((char*)str);
     }
 
 

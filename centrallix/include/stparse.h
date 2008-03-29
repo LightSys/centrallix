@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.h,v 1.3 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: stparse.h,v 1.4 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/stparse.h,v $
 
     $Log: stparse.h,v $
+    Revision 1.4  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.3  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -161,7 +165,7 @@ int stGetAttrType(pStructInf this, int nval);
 int stStructType(pStructInf this);
 int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);
 pExpression stGetExpression(pStructInf this, int nval);
-void* stGetValueList(pStructInf this, int type, int* nval);
+void* stGetValueList(pStructInf this, int type, unsigned int* nval);
 int stAttrIsList(pStructInf this);
 
 #endif /* _STPARSE_H */

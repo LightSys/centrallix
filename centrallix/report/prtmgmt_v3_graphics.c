@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.8 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.9 2008/03/29 02:26:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.9  2008/03/29 02:26:16  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.8  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -361,7 +365,7 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
     {
 #if defined(HAVE_PNG_H) && defined(HAVE_LIBPNG)
     pPrtImage img;
-    char ckbuf[8];
+    unsigned char ckbuf[8];
     png_structp libpng_png_ptr;
     png_infop libpng_info_ptr;
     png_infop libpng_end_ptr;

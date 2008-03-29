@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_autolayout.c,v 1.5 2007/07/27 00:23:53 dkasper Exp $
+    $Id: htdrv_autolayout.c,v 1.6 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
 
     $Log: htdrv_autolayout.c,v $
+    Revision 1.6  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.5  2007/07/27 00:23:53  dkasper
     - No longer render each subwidget of a repeat widget here.  That is handled
       by the repeat widget driver.
@@ -102,8 +106,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
     int x=-1,y=-1,w,h;
     int id;
     pWgtrNode subtree;
-    pWgtrNode rptsubtree;
-    int i,rpti;
+    int i;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {

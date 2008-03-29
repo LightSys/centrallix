@@ -2,6 +2,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "centrallix.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
@@ -46,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.15 2007/06/06 15:17:39 gbeeley Exp $
+    $Id: obj_main.c,v 1.16 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.16  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.15  2007/06/06 15:17:39  gbeeley
     - (change) getting the obj_inherit code into the build
 

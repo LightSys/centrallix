@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.22 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.23 2008/03/29 02:26:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.23  2008/03/29 02:26:16  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.22  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -781,10 +785,10 @@ prtWriteString(int handle_id, char* str)
 	    /** Format it and add it to the container **/
 	    string_obj->Content = nmSysMalloc(len+2);
 	    string_obj->ContentSize = len+2;
-	    strncpy(string_obj->Content, str, len);
+	    strncpy((char*)string_obj->Content, str, len);
 	    string_obj->Content[len] = 0;
 	    prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,string_obj);
-	    string_obj->Width = prt_internal_GetStringWidth((obj->ContentTail)?(obj->ContentTail):obj, string_obj->Content, -1);
+	    string_obj->Width = prt_internal_GetStringWidth((obj->ContentTail)?(obj->ContentTail):obj, (char*)string_obj->Content, -1);
 	    string_obj->ConfigWidth = string_obj->Width;
 	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
 	    string_obj->ConfigHeight = string_obj->Height;

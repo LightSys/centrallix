@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.20 2008/03/14 18:21:19 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.21 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.21  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.20  2008/03/14 18:21:19  gbeeley
     - (bugfix) datetime comparisons were failing due to an integer overflow
 
@@ -947,7 +951,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		    }
 		else
 		    {
-		    str_ptr = bn->Data;
+		    str_ptr = (char*)(bn->Data);
 		    len_limit = bn->Size;
 		    }
 		/* fallthrough */

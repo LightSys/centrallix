@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.10 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: exp_params.c,v 1.11 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.11  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.10  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -341,7 +345,6 @@ int
 expModifyParam(pParamObjects this, char* name, pObject replace_obj)
     {
     int slot_id = -1;
-    int i;
 
     	/** Pick the slot id.  If name is NULL, use current. **/
 	if (name == NULL)
@@ -590,7 +593,6 @@ int
 expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)())
     {
     int slot_id = -1;
-    int i;
 
     	/** Pick the slot id.  If name is NULL, use current. **/
 	if (name == NULL)

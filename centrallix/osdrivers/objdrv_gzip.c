@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
+#include "cxlib/newmalloc.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "stparse.h"
@@ -47,7 +48,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_gzip.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_gzip.c,v 1.6 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_gzip.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -152,7 +153,7 @@ gzip_internal_FillBuffer(pGzipData inf)
 	    }
 	if(GZIP_DEBUG & GZIP_DEBUG_READ)
 	    printf("lab: %i -- getting: %i\n",lab,GZIP_BUFFER_SIZE-lab);
-	inf->stream.avail_in=objRead(inf->Obj->Prev,inf->buffer+lab, GZIP_BUFFER_SIZE-lab, 0, 0);
+	inf->stream.avail_in=objRead(inf->Obj->Prev,(char*)inf->buffer+lab, GZIP_BUFFER_SIZE-lab, 0, 0);
 	if(GZIP_DEBUG & GZIP_DEBUG_READ)
 	    printf("bytes read: %i\n",inf->stream.avail_in);
 	if (inf->stream.avail_in < 0)
@@ -246,7 +247,7 @@ gzip_internal_ParseHeaders(pGzipData inf)
 	{
 	short len,i;
 	len = gzipGetByte(inf) | gzipGetByte(inf)<<8;
-	inf->Extra = (unsigned char*) malloc(len+2);
+	inf->Extra = (unsigned char*) nmSysMalloc(len+2);
 	/** put the 2 bytes indicating the length in inf->Extra **/
 	inf->Extra[0]=len & 0xff;
 	inf->Extra[1]=len>>8 & 0xff;
@@ -265,7 +266,7 @@ gzip_internal_ParseHeaders(pGzipData inf)
 	    {
 	    buf[i++]=gzipGetByte(inf);
 	    } while(i<GZIP_BUFFER_SIZE && buf[i-1]!='\0');
-	inf->Filename=(unsigned char*)malloc(i);
+	inf->Filename=(unsigned char*)nmSysMalloc(i);
 	memcpy(inf->Filename,buf,i);
 	}
     
@@ -279,7 +280,7 @@ gzip_internal_ParseHeaders(pGzipData inf)
 	    {
 	    buf[i++]=gzipGetByte(inf);
 	    } while(i<GZIP_BUFFER_SIZE && buf[i-1]!='\0');
-	inf->Comment=(unsigned char*)malloc(i);
+	inf->Comment=(unsigned char*)nmSysMalloc(i);
 	memcpy(inf->Comment,buf,i);
 	}
 
@@ -432,7 +433,7 @@ gzipRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	}
     if(gzip_internal_FillBuffer(inf)<0)
 	return -1;
-    inf->stream.next_out=buffer;
+    inf->stream.next_out=(unsigned char*)buffer;
     inf->stream.avail_out=maxcnt;
     while((rval=inflate(&(inf->stream),Z_SYNC_FLUSH))==Z_OK)
 	{
@@ -442,7 +443,7 @@ gzipRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    if(GZIP_DEBUG & GZIP_DEBUG_DECOMPRESSION & GZIP_DEBUG_BUFFER_DUMP)
 		{
 		printf("decompressed buffer (data left):\n");
-		gzip_internal_DumpBuffer(buffer,maxcnt);
+		gzip_internal_DumpBuffer((unsigned char*)buffer,maxcnt);
 		}
 	    inf->offset+=maxcnt;
 	    return maxcnt;
@@ -496,7 +497,7 @@ gzipRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     if(GZIP_DEBUG & GZIP_DEBUG_DECOMPRESSION)
 	{
 	printf("decompressed buffer (ending...):\n");
-	gzip_internal_DumpBuffer(buffer,maxcnt);
+	gzip_internal_DumpBuffer((unsigned char*)buffer,maxcnt);
 	}
     return rval;
 
@@ -590,7 +591,7 @@ gzipGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	if (!strcmp(attrname,"name"))
 	    {
 	    if(inf->Filename)
-		val->String=inf->Filename;
+		val->String=(char*)inf->Filename;
 	    else
 		/** TODO: need to examine the current filename
 		 **   if it ends in .gz, strip that off and return it

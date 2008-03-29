@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.7 2008/03/09 08:01:02 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.8 2008/03/29 02:26:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.8  2008/03/29 02:26:15  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.7  2008/03/09 08:01:02  gbeeley
     - (bugfix) the open files hashtable was initialized for variable length
       string keys rather than for a 4-byte session ptr.
@@ -1308,14 +1312,14 @@ fp_internal_ParseColN(pFpData inf, int col_num)
     {
     pFpColInf column;
     pObjData pod;
-    char* data;
+    unsigned char* data;
     pFpTableInf tdata = inf->TData;
     int rval;
 
 	column = tdata->Columns[col_num];
 	pod = (pObjData)(inf->ParsedData + column->ParsedOffset);
 	data = (inf->ParsedData + column->ParsedOffset + sizeof(ObjData));
-	rval = fp_internal_ParseColumn(column, pod, data, inf->RowData);
+	rval = fp_internal_ParseColumn(column, pod, (char*)data, (char*)inf->RowData);
 	if (rval == 0) inf->ColFlags[col_num] |= FP_DATA_COL_F_PARSED;
 
     return rval;
@@ -1392,7 +1396,7 @@ fp_internal_ReadRow(pFpData inf, unsigned int offset)
 	/** Read the record in from the given offset **/
 	if (!inf->RowData)
 	    {
-	    inf->RowData = (char*)nmSysMalloc(inf->TData->PhysLen);
+	    inf->RowData = nmSysMalloc(inf->TData->PhysLen);
 	    if (!inf->RowData)
 		{
 		return -1;
@@ -1401,7 +1405,7 @@ fp_internal_ReadRow(pFpData inf, unsigned int offset)
 	rval = objRead(dataobj, (char*)&(inf->RowHeader), sizeof(FpRecData), offset, OBJ_U_SEEK | OBJ_U_PACKET);
 	if (rval != sizeof(FpRecData))
 	    return -1;
-	rval = objRead(dataobj, inf->RowData, inf->TData->PhysLen, offset + sizeof(FpRecData), OBJ_U_SEEK | OBJ_U_PACKET);
+	rval = objRead(dataobj, (char*)inf->RowData, inf->TData->PhysLen, offset + sizeof(FpRecData), OBJ_U_SEEK | OBJ_U_PACKET);
 	if (rval != inf->TData->PhysLen)
 	    return -1;
 

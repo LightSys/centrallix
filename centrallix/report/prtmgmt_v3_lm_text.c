@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.23 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.24 2008/03/29 02:26:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.24  2008/03/29 02:26:16  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.23  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -443,12 +447,12 @@ prt_textlm_Chopify(pPrtObjStream to_be_chopped)
     pPrtObjStream end_of_chop = to_be_chopped;
     pPrtObjStream new_chunk;
     double space_width = prt_internal_GetStringWidth(to_be_chopped, " ", 1);
-    unsigned char* spaceptr;
+    char* spaceptr;
 
 	/** Trim them off the initial string one word at a time **/
-	while((spaceptr = strrchr(to_be_chopped->Content, ' ')) != NULL)
+	while((spaceptr = strrchr((char*)to_be_chopped->Content, ' ')) != NULL)
 	    {
-	    new_chunk = prt_textlm_SplitString(to_be_chopped, spaceptr - to_be_chopped->Content, 0, -1);
+	    new_chunk = prt_textlm_SplitString(to_be_chopped, spaceptr - (char*)to_be_chopped->Content, 0, -1);
 	    prt_internal_Insert(to_be_chopped, new_chunk);
 	    if (end_of_chop == to_be_chopped) end_of_chop = new_chunk;
 	    new_chunk->Y = to_be_chopped->Y;
@@ -493,10 +497,10 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 	/** Does line end in a space?  Trim it if so **/
 	if (end->ObjType->TypeID == PRT_OBJ_T_STRING)
 	    {
-	    while (*(end->Content) && end->Content[strlen(end->Content)-1] == ' ')
+	    while (*(end->Content) && end->Content[strlen((char*)end->Content)-1] == ' ')
 		{
-		end->Content[strlen(end->Content)-1] = '\0';
-		end->Width = prt_internal_GetStringWidth(end, end->Content, -1);
+		end->Content[strlen((char*)end->Content)-1] = '\0';
+		end->Width = prt_internal_GetStringWidth(end, (char*)end->Content, -1);
 		end->Flags |= PRT_TEXTLM_F_RMSPACE;
 		}
 	    }
@@ -604,7 +608,7 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 
 	/** Start looking at beginning of string, computing width as we go **/
 	w = 0.0;
-	sl = strlen(stringobj->Content);
+	sl = strlen((char*)stringobj->Content);
 	last_sep = -1;
 	lastw = 0.0;
 	for(n=0;n<sl;n++)
@@ -619,7 +623,7 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 	    /** Catch hyphens where the objects are already split **/
 	    if (n == 0 && stringobj->Content[0] >= 'A' && stringobj->Prev && stringobj->Prev->ObjType->TypeID == PRT_OBJ_T_STRING)
 		{
-		sw = strlen(stringobj->Prev->Content);
+		sw = strlen((char*)stringobj->Prev->Content);
 		if (sw > 1 && stringobj->Prev->Content[sw-1] == '-' && stringobj->Prev->Content[sw-2] >= 'A')
 		    {
 		    last_sep = n;
@@ -628,7 +632,7 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 		}
 
 	    /** Is that all that will fit? **/
-	    ckw = prt_internal_GetStringWidth(stringobj, stringobj->Content+n, 1);
+	    ckw = prt_internal_GetStringWidth(stringobj, (char*)stringobj->Content+n, 1);
 	    if (w + ckw > maxwidth)
 		{
 		if (last_sep == -1)
@@ -683,17 +687,17 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
 	/** Copy the second part of the content; leave room to add a space if needed 
 	 ** later during a reflow 
 	 **/
-	n = strlen(stringobj->Content+splitpt+splitlen);
+	n = strlen((char*)stringobj->Content+splitpt+splitlen);
 	split_obj->Content = nmSysMalloc(n+2);
 	split_obj->ContentSize = n+2;
-	strcpy(split_obj->Content, stringobj->Content+splitpt+splitlen);
+	strcpy((char*)split_obj->Content, (char*)stringobj->Content+splitpt+splitlen);
 
 	/** Truncate the first string to give the first part. **/
 	stringobj->Content[splitpt] = '\0';
 	if (new_width >= 0)
 	    stringobj->Width = new_width;
 	else
-	    stringobj->Width = prt_internal_GetStringWidth(stringobj, stringobj->Content, -1);
+	    stringobj->Width = prt_internal_GetStringWidth(stringobj, (char*)stringobj->Content, -1);
 
 	/** Transfer newlines or rmspace flags to the second half **/
 	if (stringobj->Flags & PRT_TEXTLM_F_RMSPACE && n > 0)
@@ -716,7 +720,7 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
 	if (splitlen == 1) stringobj->Flags |= PRT_TEXTLM_F_RMSPACE;
 	split_obj->Height = stringobj->Height;
 	split_obj->YBase = stringobj->YBase;
-	split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
+	split_obj->Width = prt_internal_GetStringWidth(split_obj, (char*)split_obj->Content, -1);
 
     return split_obj;
     }
@@ -788,7 +792,7 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
 	 ** stuff, the 'search' pointer should point to the object beginning
 	 ** the new line.
 	 **/
-	n = strlen(search->Content);
+	n = strlen((char*)search->Content);
 	if (sep == 0 && search->Content[0] != ' ')
 	    {
 	    /** No good split point; split must occur with this object. **/
@@ -909,7 +913,7 @@ prt_textlm_UndoWrap(pPrtObjStream obj)
 	 **/
 	if (obj->Flags & PRT_TEXTLM_F_RMSPACE)
 	    {
-	    n = strlen(obj->Content);
+	    n = strlen((char*)obj->Content);
 	    obj->Content[n] = ' ';
 	    obj->Content[n+1] = '\0';
 	    obj->Flags &= ~PRT_TEXTLM_F_RMSPACE;

@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.18 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.19 2008/03/29 02:26:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.19  2008/03/29 02:26:17  gbeeley
+    - (change) Correcting various compile time warnings such as signed vs.
+      unsigned char.
+
     Revision 1.18  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -715,8 +719,8 @@ prt_pclod_WriteRasterData(void* context_v, pPrtImage img, double width, double h
 	/** Send each row **/
 	rowlen = ((cols+7)/8);
 	rowbuf = (unsigned char*)nmSysMalloc(20 + rowlen);
-	sprintf(rowbuf, "\33*b%dW", rowlen);
-	colptr = strchr(rowbuf,'\0');
+	sprintf((char*)rowbuf, "\33*b%dW", rowlen);
+	colptr = (unsigned char*)strchr((char*)rowbuf,'\0');
 	for(p=0;p<planes;p++)
 	    {
 	    for(y=0;y<rows;y++)
@@ -750,7 +754,7 @@ prt_pclod_WriteRasterData(void* context_v, pPrtImage img, double width, double h
 			}
 		    }
 		/*printf("\n");*/
-		prt_pclod_Output(context, rowbuf, (colptr-rowbuf) + rowlen);
+		prt_pclod_Output(context, (char*)rowbuf, (colptr-rowbuf) + rowlen);
 		}
 	    }
 	img->Hdr.YOffset += (1.0 - img->Hdr.YOffset)*(actual_height/height);
