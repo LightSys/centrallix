@@ -1,6 +1,6 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
-0.7.5 --> 0.9.0	    (unreleased)    MAJOR DEVELOPMENT RELEASE
+0.7.5 --> 0.9.0	    28-Mar-2008     MAJOR DEVELOPMENT RELEASE
 
     Changes:
 
@@ -21,6 +21,7 @@ Centrallix ChangeLog
 	11. "Repeat" widget used for auto-generating multiple widgets or trees
 	    of widgets in an application or component based on the results of
 	    a SQL query.  [David K]
+	12. Enhanced query-by-form functionality [David K]
 
 -------------------------------------------------------------------------------
 0.7.4 --> 0.7.5	    (unreleased)    MAJOR DEVELOPMENT RELEASE
