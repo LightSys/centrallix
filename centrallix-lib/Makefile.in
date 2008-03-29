@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.19 2008/03/28 07:48:47 gbeeley Exp $
+## $Id: Makefile.in,v 1.20 2008/03/29 03:37:53 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -43,6 +43,13 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_DATA = @INSTALL_DATA@
+
+CXLIBVER = @CXLIBVER@
+CXLIBVER_GEN = @CXLIBVER_GEN@
+LIBCXNAME = libCentrallix.so.$(CXLIBVER)
+LIBSTNAME = libStParse.so.$(CXLIBVER)
+LIBCXSONAME = libCentrallix.so.$(CXLIBVER_GEN)
+LIBSTSONAME = libStParse.so.$(CXLIBVER_GEN)
 
 LIBS = @LIBS@
 
@@ -100,16 +107,28 @@ src/mtask.lo: src/mtask.c
 .c.o:	$<
 	$(CC) $(CFLAGS) -c $< -o $@
 
-libCentrallix.so:	$(DYNAMICFILES)
-	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,libCentrallix.so $(DYNAMICFILES) -o libCentrallix.so ${LIBS}
+$(LIBCXNAME):	$(DYNAMICFILES)
+	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,$(LIBCXSONAME) $(DYNAMICFILES) -o $(LIBCXNAME) ${LIBS}
+
+$(LIBCXSONAME):	$(LIBCXNAME)
+	ln -sf $(LIBCXNAME) $(LIBCXSONAME)
+
+libCentrallix.so:	$(LIBCXNAME)
+	ln -sf $(LIBCXNAME) libCentrallix.so
 
 libCentrallix.a:	$(STATICFILES)
 	$(AR) -r libCentrallix.a $(STATICFILES)
 	$(AR) -s libCentrallix.a
 	${RANLIB} libCentrallix.a
 
-libStParse.so:		src/stparse.lo
-	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,libStParse.so src/stparse.lo -o libStParse.so ${LIBS}
+$(LIBSTNAME):		src/stparse.lo
+	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,$(LIBSTSONAME) src/stparse.lo -o $(LIBSTNAME) ${LIBS}
+
+$(LIBSTSONAME):		$(LIBSTNAME)
+	ln -sf $(LIBSTNAME) $(LIBSTSONAME)
+
+libStParse.so:		$(LIBSTNAME)
+	ln -sf $(LIBSTNAME) libStParse.so
 
 libStParse.a:		src/stparse.o
 	$(AR) -r libStParse.a src/stparse.o
@@ -120,7 +139,14 @@ install: all
 	mkdir -p "$(includedir)/cxlib"
 	$(INSTALL) -p $(INCLUDEFILES) "$(includedir)/cxlib"
 	mkdir -p "$(libdir)"
-	$(INSTALL) -p ${FINAL_TARGETS} "$(libdir)"
+	for FILE in ${FINAL_TARGETS}; do \
+	    if [ -L $$FILE ]; then \
+		rm -f "$(libdir)"/$$FILE; \
+		cp -a $$FILE "$(libdir)"; \
+	    else \
+		$(INSTALL) -p $$FILE "$(libdir)"; \
+	    fi \
+	done
 	@echo ""
 	@echo "***************************************************************"
 	@echo "Libraries have been installed in $(libdir)"

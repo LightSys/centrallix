@@ -1,7 +1,7 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
-Version: 0.7.5
-Release: 3
+Version: 0.9.0
+Release: 0
 License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz
@@ -35,8 +35,8 @@ make
 %install
 rm -rf $RPM_BUILD_ROOT
 make install
-mv $RPM_BUILD_ROOT/usr/lib/libCentrallix.so $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}
-mv $RPM_BUILD_ROOT/usr/lib/libStParse.so $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}
+mv $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}.%{release} $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}.%{release}
+mv $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}.%{release} $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}.%{release}
 
 %post -p /sbin/ldconfig
 
@@ -44,6 +44,8 @@ mv $RPM_BUILD_ROOT/usr/lib/libStParse.so $RPM_BUILD_ROOT/usr/lib/libStParse.so.%
 
 %files
 %defattr(-,root,root)
+/usr/lib/libCentrallix.so.%{version}.%{release}
+/usr/lib/libStParse.so.%{version}.%{release}
 /usr/lib/libCentrallix.so.%{version}
 /usr/lib/libStParse.so.%{version}
 
@@ -51,12 +53,18 @@ mv $RPM_BUILD_ROOT/usr/lib/libStParse.so $RPM_BUILD_ROOT/usr/lib/libStParse.so.%
 %defattr(-,root,root)
 /usr/include/cxlib/*
 /usr/lib/libCentrallix.a
+/usr/lib/libCentrallix.so
 /usr/lib/libStParse.a
+/usr/lib/libStParse.so
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu Mar 22 2008 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.0-0
+- Update to 0.9.0 to sync with main centrallix distribution.
+- Many bug fixes.
+
 * Thu Apr 20 2006 Greg Beeley <Greg.Beeley@LightSys.org> 0.7.5-0
 - Update to 0.7.5; many bug fixes.
 - Added smmalloc module, strtcpy(), and the qpfPrintf() family of functions.

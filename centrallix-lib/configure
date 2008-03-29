@@ -310,7 +310,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE AWK GREP STRIP AR RANLIB INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CPP EGREP LIBOBJS MAKEDEPEND PROFILE FINAL_TARGETS CXLIBVER LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE AWK GREP STRIP AR RANLIB INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CPP EGREP LIBOBJS MAKEDEPEND PROFILE FINAL_TARGETS CXLIBVER CXLIBVER_GEN LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -3838,7 +3838,8 @@ fi
 done
 
 
-CXLIBVER="0.7.5"
+CXLIBVER="0.9.0.0"
+CXLIBVER_GEN="0.9.0"
 FINAL_TARGETS="libCentrallix.a libStParse.a"
 
 
@@ -4301,7 +4302,7 @@ echo $ECHO_N "checking if a shared libCentrallix is possible... $ECHO_C" >&6
 	    temp="$CFLAGS"
 	    CFLAGS="$CFLAGS -shared"
 	    if test "x`$CC -shared 2>&1 | $GREP '-shared'`" = "x"; then
-		FINAL_TARGETS="$FINAL_TARGETS libCentrallix.so libStParse.so"
+		FINAL_TARGETS="$FINAL_TARGETS libCentrallix.so.$CXLIBVER libStParse.so.$CXLIBVER libCentrallix.so.$CXLIBVER_GEN libStParse.so.$CXLIBVER_GEN libCentrallix.so libStParse.so"
 		echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
 	    else
@@ -4310,6 +4311,7 @@ echo "${ECHO_T}no" >&6
 	    fi
 	    CFLAGS="$temp"
 	fi
+
 
 
 
@@ -4960,6 +4962,7 @@ s,@MAKEDEPEND@,$MAKEDEPEND,;t t
 s,@PROFILE@,$PROFILE,;t t
 s,@FINAL_TARGETS@,$FINAL_TARGETS,;t t
 s,@CXLIBVER@,$CXLIBVER,;t t
+s,@CXLIBVER_GEN@,$CXLIBVER_GEN,;t t
 s,@LTLIBOBJS@,$LTLIBOBJS,;t t
 CEOF
 

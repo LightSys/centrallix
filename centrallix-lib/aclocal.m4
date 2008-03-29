@@ -16,7 +16,7 @@ AC_DEFUN(SHARED_LIBCENTRALLIX,
 	    temp="$CFLAGS"
 	    CFLAGS="$CFLAGS -shared"
 	    if test "x`$CC -shared 2>&1 | $GREP '-shared'`" = "x"; then
-		FINAL_TARGETS="$FINAL_TARGETS libCentrallix.so libStParse.so"
+		FINAL_TARGETS="$FINAL_TARGETS libCentrallix.so.$CXLIBVER libStParse.so.$CXLIBVER libCentrallix.so.$CXLIBVER_GEN libStParse.so.$CXLIBVER_GEN libCentrallix.so libStParse.so"
 		AC_MSG_RESULT(yes)
 	    else
 		AC_MSG_RESULT(no)
