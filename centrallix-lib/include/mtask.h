@@ -23,10 +23,25 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.21 2007/10/19 23:26:58 gbeeley Exp $
+    $Id: mtask.h,v 1.22 2008/04/01 03:19:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.22  2008/04/01 03:19:00  gbeeley
+    - (change) Handle supplementary group id's instead of just blanking out
+      the supplementary group list.
+    - (security) The use of setreuid() was causing the saved user id to be
+      set, which would allow an unprivileged user to kill the centrallix
+      server process under some circumstances.  See kill(2) and setreuid(2).
+    - (security) There were potentially some logic errors in the way that
+      uid/gid switching was being handled.
+    - (WARNING) The current implementation of fdAccess() is not optimal.  The
+      solution appears to be to use faccessat() with AT_EACCESS, but that
+      system call is apparently not yet standardized nor is it widespread.
+      Better yet, the one usage of fdAccess() might be best rewritten to not
+      use it, allowing us to rid ourselves of this problematic function
+      altogether.
+
     Revision 1.21  2007/10/19 23:26:58  gbeeley
     - (feature) adding thWaitTimed() as a convenience API function.
 
@@ -145,6 +160,7 @@
 
 #include <setjmp.h>
 #include <sys/types.h>
+#include <grp.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdarg.h>
@@ -189,6 +205,8 @@ typedef struct _MSEC
     {
     int		UserID;				/* ID of user of this thread */
     int		GroupID;			/* primary group of user */
+    int		nGroups;			/* number of suppl. groups */
+    gid_t	GroupList[32];			/* list of supplemental groups for user */
 #if 0
     pThrExt	ThrParam[16];			/* Structure extension */
 #else
@@ -456,6 +474,7 @@ int thSetUserID(pThread thr, int new_uid);
 int thGetUserID(pThread thr);
 int thSetGroupID(pThread thr, int new_gid);
 int thGetGroupID(pThread thr);
+int thSetSupplementalGroups(pThread thr, int n_groups, gid_t* grouplist);
 int thGetSecContext(pThread thr, pMTSecContext context);
 int thSetSecContext(pThread thr, pMTSecContext context);
 

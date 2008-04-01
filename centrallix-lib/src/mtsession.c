@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <sys/types.h>
+#include <grp.h>
 #ifdef HAVE_SHADOW_H
 #include <shadow.h>
 #endif
@@ -40,10 +42,25 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.12 2008/03/29 01:03:36 gbeeley Exp $
+    $Id: mtsession.c,v 1.13 2008/04/01 03:19:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.13  2008/04/01 03:19:00  gbeeley
+    - (change) Handle supplementary group id's instead of just blanking out
+      the supplementary group list.
+    - (security) The use of setreuid() was causing the saved user id to be
+      set, which would allow an unprivileged user to kill the centrallix
+      server process under some circumstances.  See kill(2) and setreuid(2).
+    - (security) There were potentially some logic errors in the way that
+      uid/gid switching was being handled.
+    - (WARNING) The current implementation of fdAccess() is not optimal.  The
+      solution appears to be to use faccessat() with AT_EACCESS, but that
+      system call is apparently not yet standardized nor is it widespread.
+      Better yet, the one usage of fdAccess() might be best rewritten to not
+      use it, allowing us to rid ourselves of this problematic function
+      altogether.
+
     Revision 1.12  2008/03/29 01:03:36  gbeeley
     - (change) changing integer type in IntVec to a signed integer
     - (security) switching to size_t in qprintf where needed instead of using
@@ -231,6 +248,8 @@ mssAuthenticate(char* username, char* password)
     char pwline[80];
     int t;
     int found_user;
+    gid_t grps[16];
+    int n_grps;
 
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
@@ -353,13 +372,18 @@ mssAuthenticate(char* username, char* password)
 	    {
 	    s->UserID = pw->pw_uid;
 	    s->GroupID = pw->pw_gid;
+	    initgroups(username, s->GroupID);
 	    }
 	else
 	    {
 	    s->UserID = geteuid();
 	    s->GroupID = getegid();
 	    }
+	n_grps = getgroups(sizeof(grps) / sizeof(gid_t), grps);
+	if (n_grps < 0 || n_grps > sizeof(grps) / sizeof(gid_t))
+	    n_grps = 0;
 	thSetParam(NULL,"mss",(void*)s);
+	thSetSupplementalGroups(NULL, n_grps, grps);
 	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
 

@@ -24,6 +24,7 @@
 #endif
 #include <grp.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 #include "qprintf.h"
 
 #ifdef USING_VALGRIND
@@ -55,10 +56,25 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.42 2008/03/29 01:03:36 gbeeley Exp $
+    $Id: mtask.c,v 1.43 2008/04/01 03:19:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.43  2008/04/01 03:19:00  gbeeley
+    - (change) Handle supplementary group id's instead of just blanking out
+      the supplementary group list.
+    - (security) The use of setreuid() was causing the saved user id to be
+      set, which would allow an unprivileged user to kill the centrallix
+      server process under some circumstances.  See kill(2) and setreuid(2).
+    - (security) There were potentially some logic errors in the way that
+      uid/gid switching was being handled.
+    - (WARNING) The current implementation of fdAccess() is not optimal.  The
+      solution appears to be to use faccessat() with AT_EACCESS, but that
+      system call is apparently not yet standardized nor is it widespread.
+      Better yet, the one usage of fdAccess() might be best rewritten to not
+      use it, allowing us to rid ourselves of this problematic function
+      altogether.
+
     Revision 1.42  2008/03/29 01:03:36  gbeeley
     - (change) changing integer type in IntVec to a signed integer
     - (security) switching to size_t in qprintf where needed instead of using
@@ -309,6 +325,8 @@ typedef struct _MTS
     int		StartUserID;
     int		CurUserID;
     int		CurGroupID;
+    int		CurNGroups;
+    gid_t	CurGroupList[32];
     unsigned long LastTick;
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
@@ -742,7 +760,6 @@ pThread
 mtInitialize(int flags, void (*start_fn)())
     {
     register int i;
-    gid_t grouplist[1];
 
 	memset(&MTASK, 0, sizeof(MTASK));
 
@@ -767,7 +784,7 @@ mtInitialize(int flags, void (*start_fn)())
 	 ** root you can't switch to other users anyhow so it isn't an
 	 ** issue there.
 	 **/
-	if (geteuid() == 0 || getuid() == 0) setgroups(0,grouplist);
+	/*if (geteuid() == 0 || getuid() == 0) setgroups(0,grouplist);*/
 
 	/** Create the first thread. **/
 	MTASK.CurrentThread = (pThread)nmMalloc(sizeof(Thread));
@@ -784,6 +801,13 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.CurrentThread->SecContext.UserID = geteuid();
 	MTASK.CurrentThread->SecContext.GroupID = getegid();
 	MTASK.CurrentThread->SecContext.ThrParam = NULL;
+	MTASK.CurrentThread->SecContext.nGroups = 0;
+	memset(MTASK.CurrentThread->SecContext.GroupList, 0, sizeof(MTASK.CurrentThread->SecContext.GroupList));
+	MTASK.CurrentThread->SecContext.nGroups = getgroups(sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t), MTASK.CurrentThread->SecContext.GroupList);
+	if (MTASK.CurrentThread->SecContext.nGroups < 0)
+	    MTASK.CurrentThread->SecContext.nGroups = 0;
+	if (MTASK.CurrentThread->SecContext.nGroups > sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t))
+	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
 	MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
 #ifdef USING_VALGRIND
@@ -792,6 +816,8 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.StartUserID = geteuid();
 	MTASK.CurUserID = geteuid();
 	MTASK.CurGroupID = getegid();
+	MTASK.CurNGroups = MTASK.CurrentThread->SecContext.nGroups;
+	memcpy(MTASK.CurGroupList, MTASK.CurrentThread->SecContext.GroupList, MTASK.CurrentThread->SecContext.nGroups * sizeof(gid_t));
 
 	/** Add it to the table **/
 	MTASK.nThreads = 1;
@@ -927,6 +953,51 @@ int mtProcessSignals()
 	}
     return processed;
     }
+
+
+/*** MT_INTERNAL_SWITCHTOCONTEXT switches the process credentials to the
+ *** contents of the new security context.  Assumes that root uid checks
+ *** have already been done and so does this unconditionally.
+ ***/
+int
+mt_internal_SwitchToContext(pMTSecContext context)
+    {
+
+	if (context->UserID != MTASK.CurUserID || context->GroupID != MTASK.CurGroupID || context->nGroups != MTASK.CurNGroups || !memcmp(context->GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t)))
+	    {
+	    /** Get effective root privs **/
+	    if (MTASK.CurUserID != 0)
+		seteuid(0);
+
+	    /** group id **/
+	    if (context->GroupID != MTASK.CurGroupID)
+		{
+		setegid(context->GroupID);
+		MTASK.CurGroupID = context->GroupID;
+		}
+
+	    /** group list **/
+	    if (context->nGroups != MTASK.CurNGroups || !memcmp(context->GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t)))
+		{
+		MTASK.CurNGroups = context->nGroups;
+		memcpy(MTASK.CurGroupList, context->GroupList, sizeof(gid_t) * context->nGroups);
+		setgroups(MTASK.CurNGroups, MTASK.CurGroupList);
+		}
+
+	    /** user id **/
+	    if (context->UserID != MTASK.CurUserID) 
+		{
+		MTASK.CurUserID = context->UserID;
+		}
+
+	    /** Re-drop effective root privs, if indicated **/
+	    if (MTASK.CurUserID != 0) 
+		seteuid(MTASK.CurUserID);
+	    }
+
+    return 0;
+    }
+
 
 /*** MTSCHED is the main thread scheduling and blocking i/o processing
  *** piece of the MTASK system.  This routine is internal-only and not
@@ -1397,19 +1468,7 @@ mtSched()
 	lowest_run_thr->Status = THR_S_EXECUTING;
 
 	/** Switch to that thread's UID if different from current. **/
-	if (lowest_run_thr->SecContext.UserID != MTASK.CurUserID) 
-	    {
-	    if (MTASK.CurUserID != 0) seteuid(0);
-	    if (lowest_run_thr->SecContext.UserID != 0) seteuid(lowest_run_thr->SecContext.UserID);
-	    MTASK.CurUserID = lowest_run_thr->SecContext.UserID;
-	    }
-	if (lowest_run_thr->SecContext.GroupID != MTASK.CurGroupID)
-	    {
-	    if (MTASK.CurUserID != 0) seteuid(0);
-	    if (lowest_run_thr->SecContext.GroupID != 0) setegid(lowest_run_thr->SecContext.GroupID);
-	    if (MTASK.CurUserID != 0) seteuid(MTASK.CurUserID);
-	    MTASK.CurGroupID = lowest_run_thr->SecContext.GroupID;
-	    }
+	mt_internal_SwitchToContext(&(lowest_run_thr->SecContext));
 
 	/** Jump into the thread... **/
 	if (lowest_run_thr->Flags & THR_F_STARTING)
@@ -1460,6 +1519,8 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->StartParam = start_param;
 	thr->SecContext.UserID = MTASK.CurUserID;
 	thr->SecContext.GroupID = MTASK.CurGroupID;
+	thr->SecContext.nGroups = MTASK.CurNGroups;
+	memcpy(thr->SecContext.GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t));
 	thr->Stack = NULL;
 	thr->StackBottom = NULL;
 #ifdef USING_VALGRIND
@@ -2042,6 +2103,31 @@ thSetUserID(pThread thr, int new_uid)
     }
 
 
+/*** THSETSUPPLEMENTALGROUPS - load the set of supplemental gropu ID's for
+ *** the thread.
+ ***/
+int
+thSetSupplementalGroups(pThread thr, int n_groups, gid_t* grouplist)
+    {
+
+	/** Setting current thread? **/
+	if (!thr) thr = MTASK.CurrentThread;
+
+	/** Verify permissions **/
+	if (MTASK.CurrentThread->SecContext.UserID != 0) return -1;
+
+	/** Truncate? **/
+	if (n_groups > sizeof(thr->SecContext.GroupList) / sizeof(gid_t))
+	    n_groups = sizeof(thr->SecContext.GroupList) / sizeof(gid_t);
+
+	/** copy **/
+	memcpy(thr->SecContext.GroupList, grouplist, n_groups * sizeof(gid_t));
+	thr->SecContext.nGroups = n_groups;
+
+    return 0;
+    }
+
+
 
 /*** THGETUSERID gets the user id of the given thread, or current thread
  *** if thr is NULL.
@@ -2111,13 +2197,20 @@ thSetSecContext(pThread thr, pMTSecContext context)
 	/** Current thread? **/
 	if (!thr) thr = MTASK.CurrentThread;
 
+	/** Permission? **/
+	if (MTASK.CurrentThread->SecContext.UserID != 0) return -1;
+
 	/** Update thread context **/
-	thr->SecContext.UserID = context->UserID;
+	memcpy(&(thr->SecContext), context, sizeof(MTSecContext));
+	/*thr->SecContext.UserID = context->UserID;
 	thr->SecContext.GroupID = context->GroupID;
-	thr->SecContext.ThrParam = context->ThrParam;
+	thr->SecContext.ThrParam = context->ThrParam;*/
 
 	/** Update current run settings if thread is current thread **/
 	if (thr == MTASK.CurrentThread)
+	    mt_internal_SwitchToContext(&(thr->SecContext));
+
+	/*if (thr == MTASK.CurrentThread)
 	    {
 	    if (thr->SecContext.UserID != MTASK.CurUserID)
 		{
@@ -2131,7 +2224,13 @@ thSetSecContext(pThread thr, pMTSecContext context)
 		if (thr->SecContext.GroupID) setegid(thr->SecContext.GroupID);
 		MTASK.CurGroupID = thr->SecContext.GroupID;
 		}
-	    }
+	    if (MTASK.CurNGroups != thr->SecContext.nGroups || !memcmp(MTASK.CurGroupList, thr->SecContext.GroupList, thr->SecContext.nGroups * sizeof(gid_t)))
+		{
+		setgroups(thr->SecContext.nGroups, thr->SecContext.GroupList);
+		MTASK.CurNGroups = thr->SecContext.nGroups;
+		memcpy(MTASK.CurGroupList, thr->SecContext.GroupList, thr->SecContext.nGroups * sizeof(gid_t));
+		}
+	    }*/
 
     return 0;
     }
@@ -2152,9 +2251,10 @@ thGetSecContext(pThread thr, pMTSecContext context)
 	if (!thr) thr = MTASK.CurrentThread;
 
 	/** Save it **/
-	context->UserID = thr->SecContext.UserID;
+	memcpy(context, &(thr->SecContext), sizeof(MTSecContext));
+	/*context->UserID = thr->SecContext.UserID;
 	context->GroupID = thr->SecContext.GroupID;
-	context->ThrParam = thr->SecContext.ThrParam;
+	context->ThrParam = thr->SecContext.ThrParam;*/
 
     return 0;
     }
@@ -3102,19 +3202,70 @@ fdFD(pFile filedesc)
  *** given operation (W_OK, R_OK, etc.) on the file, without actually
  *** performing the operation.  Like access() but works with MTask and
  *** is based on the effective UID of the thread.
+ ***
+ *** WARNING:  this function only checks based on the traditional RWX
+ *** file permissions.  It does not check ACL's, RBAC policy, etc.  Use
+ *** with care.  access() does not work because it checks based on the
+ *** real uid, and we can't do the uid dance to set the real uid because
+ *** that opens up the process for tampering/killing by a non-root user.
+ *** The new recommended standard faccessat() will work for us, but it
+ *** is not yet standard and is not widespread yet.  It ideally should
+ *** be used, however, if available.
  ***/
 int
 fdAccess(const char* pathname, int check_ok)
     {
-    int rval;
+    /*int rval;*/
+    struct stat fileinfo;
+    int perms = 0;
+    int grpid, i;
 
-	setregid(getegid(), getgid());
+	if (stat(pathname, &fileinfo) < 0)
+	    return -1;
+
+	/** owner perms **/
+	if (MTASK.CurrentThread->SecContext.UserID == fileinfo.st_uid)
+	    {
+	    if (fileinfo.st_mode & S_IRUSR) perms |= R_OK;
+	    if (fileinfo.st_mode & S_IWUSR) perms |= W_OK;
+	    if (fileinfo.st_mode & S_IXUSR) perms |= X_OK;
+	    }
+
+	i = -1;
+	grpid = MTASK.CurrentThread->SecContext.GroupID;
+	while(1)
+	    {
+	    if (grpid == fileinfo.st_gid)
+		{
+		if (fileinfo.st_mode & S_IRGRP) perms |= R_OK;
+		if (fileinfo.st_mode & S_IWGRP) perms |= W_OK;
+		if (fileinfo.st_mode & S_IXGRP) perms |= X_OK;
+		break;
+		}
+	    i++;
+	    if (i >= MTASK.CurrentThread->SecContext.nGroups)
+		break;
+	    grpid = MTASK.CurrentThread->SecContext.GroupList[i];
+	    } 
+
+	/** world perms **/
+	if (fileinfo.st_mode & S_IROTH) perms |= R_OK;
+	if (fileinfo.st_mode & S_IWOTH) perms |= W_OK;
+	if (fileinfo.st_mode & S_IXOTH) perms |= X_OK;
+
+	/** Check **/
+	if ((check_ok & R_OK) && !(perms & R_OK)) return -1;
+	if ((check_ok & W_OK) && !(perms & W_OK)) return -1;
+	if ((check_ok & X_OK) && !(perms & X_OK)) return -1;
+
+	/** can't do this because it changes the saved uid/gid **/
+	/*setregid(getegid(), getgid());
 	setreuid(geteuid(), getuid());
 	rval = access(pathname, check_ok);
 	setreuid(geteuid(), getuid());
-	setregid(getegid(), getgid());
+	setregid(getegid(), getgid());*/
 
-    return rval;
+    return 0;
     }
 
 
