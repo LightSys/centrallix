@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <title>Centrallix - Technology</title>
+    <link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white">
+    <p align="center">
+	<table border="0" cellspacing="0" cellpadding="0" width="750" style="background-image:url('hdr-bgnd.jpg');">
+	    <tr>
+		<td align="center" style="padding-top:8px;">
+		    <img src="centrallix_banner.png" alt="Centrallix - It's Different than what you Think">
+		</td>
+	    </tr>
+	    <tr>
+		<td align="center" style="border-top:1px solid black; border-bottom:1px solid black; background-color:#ffffff; opacity:0.4;">
+		    <table border="0" cellspacing="1">
+			<tr>
+			    <td><a class="main" href=".">Home</a></td>
+			    <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+			    <td><a class="cur" href="tech.html">Technology</a></td>
+			    <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+			    <td><a class="main" href="screen.html">Screen Shots</a></td>
+			    <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+			    <td><a class="main" href="dload.html">Download</a></td>
+			    <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+			    <td><a class="main" href="docs.html">Documentation</a></td>
+			    <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+			    <td><a class="main" href="hist.html">History</a></td>
+			    <td>&nbsp;&nbsp;|&nbsp;&nbsp;</td>
+			    <td><a class="main" href="dev.html">For Developers</a></td>
+			</tr>
+		    </table>
+		</td>
+	    </tr>
+	    <tr>
+		<td bgcolor="white" style="background-color:white;">
+		    <br>
+		    <table border="0" cellspacing="0" width="100%">
+			<tr>
+			    <td class='main' valign="top">
+
+
+				<h1>Technology Overview</h1>
+				<ul>
+				    <li>Centrallix applications are developed to be <a href="#deploy"><b>abstract and independent of the deployment method</b></a>.</li>
+				    <li>Centrallix development is <a href="#declare"><b>declarative</b></a> in nature.</li>
+				    <li>Centrallix data access is <a href="#data"><b>abstracted using a recursive filesystem-like metaphor</b></a>.</li>
+				    <li>Centrallix's design is best understood as a <a href="#fla"><b>four layer architecture</b></a>.</li>
+				    <li>Centrallix contains a basic <a href="#sql"><b>SQL engine</b></a>.</li>
+				    <li>Centrallix features an <a href="#ajax"><b>AJAX-style user interface</b></a>.</li>
+				    <li>Centrallix's job is hard, so the Centrallix server is <a href="#clang"><b>written in C</b></a> for performance.</li>
+				</ul>
+				<br>
+
+
+				<a name="deploy"></a>
+				<h1>Deployment Method Abstraction</h1>
+				    <p><u>Centrallix is not a web-centric platform.</u>  That statement might seem strange, considering that it was one of the earliest adopters of AJAX-type technology, and since the web-based UI is one of the most noticeable features of Centrallix.  Let us explain....</p>
+				    <p>As mentioned on the <a href="hist.html">history</a> page, a part of the goal of Centrallix is to be <i>a system that anticipates change</i>.  Many application architecture patterns today partially address this by isolating domain logic (business rules) from the application, simplifying the rewrite that is necessary when moving to a new way of deploying applications (e.g., from client-server to web-based).</p>
+				    <p>In Centrallix, we are taking this a step further by offering a way to build an application's front end (the View) in an abstracted manner which is not tied to any particular method of deployment.  Thus it is theoretically possible to write a Win32, .Net, GTK, or Java front end for Centrallix which would enable any existing application to be deployed in the new context, without rewriting the applications themselves.</p>
+				    <center><img src="deploy.png"></center>
+				    <p>We realize there are limitations to this, since many ways of deploying applications involve more changes than just the underlying technology -- the screen may be very tiny (e.g., PDA's and cell phones) or very large (new widescreen laptops), etc.  Thus, our goal is for applications to be written either as actual layout (.app files) or as application models which are intelligently converted on the fly to appropriate .app's, using the Application Modeler (AM)</p>
+				    <p>We should note that some web developers (who may be used to having full control over page design via such technologies as CSS) may find Centrallix overly restrictive (at least at first), since Centrallix prohibits coding directly to the deployment vehicle (such as writing direct HTML, JavaScript, and CSS code).  Thus, if the developer's desire is to simply write a web-based application, without need for any of the additional benefits that Centrallix provides, it may be advantageous for such a developer to use a different (and more web-specific) platform.  We are planning a solution to this issue by providing a way to "theme" the HTML output in such a way that functionality is unaffected should the theme be unavailable and while still preserving the deployment method independence of the application.</p>
+				<br>
+
+
+				<a name="declare"></a>
+				<h1>Declarative Development</h1>
+				    <p>Since our target for Centrallix is to be a platform for community-built applications, and we desire to empower application developers (or customizers) who perhaps don't have a formal training in modern technologies, Centrallix features a declarative method of application construction which is suitable for (one day) being generated and managed by a visual GUI tool (itself written in Centrallix, even!).  Procedural code, such as <tt>myContainer.add(myWidget);</tt>, is avoided at all costs.  Where procedural processing is needed, it is broken down into structured objects as well.</p>
+				    <p>The benefits of a declarative platform go beyond the simplification of the application development process.  Users of applications often need to make changes to them, but desire to do so without breaking compatibility with updates from the original developer.  Declarative applications provide a way for specific parts of an application to be overridden at a detailed level of resolution that isn't generally possible with textual procedural code.</p>
+				<br>
+
+
+				<a name="data"></a>
+				<h1>Data Abstraction</h1>
+				    <p>Oftentimes, developers spend a lot of energy coding their applications to use different specific types of data sources, such as local database files, relational databases, heirarchical databases (like LDAP), email storage, and more.  A primary goal of Centrallix is to abstract data so that it can be accessed regardless of its storage location and regardless of how many levels removed the data is (such as CSV data inside an email attachment on a remote POP3 server).</p>
+				    <p>Centrallix uses a data abstraction layer, based on the filesystem metaphor, called the ObjectSystem.  In Centrallix, however, a "fractal" perspective is used which results in data being accessible regardless of how deeply it is embedded.  For example, it is possible to store an application (.app) file inside a database blob, and to directly access that application and run it (which will be subject to security policy constraints), or to directly query items from XML data (such as RSS feeds) on a remote web server.</p>
+				<br>
+
+
+				<a name="fla"></a>
+				<h1>Four-Layer Architecture</h1>
+				    <p>The design for Centrallix is best understood as a <a href="http://c2.com/cgi/wiki?FourLayerArchitecture">four layer architecture</a> (FLA) pattern for its applications and data access, in order to properly implement separation of concerns while keeping application programming complexity to a minimum.  Centrallix implements separation of concerns differently than, for instance, the more well-known <a href="http://c2.com/cgi/wiki?ModelViewController">MVC (Model View Controller)</a> pattern.  Note: Centrallix is still under development; as of the time of writing, some of the modules in the below chart weren't yet implemented (or had incomplete implementations).</p>
+				    <center>
+					<table class="illustration" width="640" border="1" cellspacing="0" cellpadding="6">
+						<tr><th>Classic&nbsp;FLA</th><th>Centrallix Implementation</th></tr>
+						<tr><td><b>View</b></td><td><b>Modules: HTML Generator (HTMLGEN), Generalized Widget Tree (WGTR)</b><br>This layer is constructed from applications (.app) and components (.cmp).  From a developer's perspective, the View is independent of the deployment method.</td></tr>
+						<tr><td><b>App&nbsp;Model</b><td><b>Modules: Application Management Layer (AML), Application Modeler (AM)</b><br>The AML provides a representation a running application, including acting as an intermediary for data access.  Centrallix will allow the application author to either integrate or separate View objects and AML objects, but internally these layers will be distinct.</td></tr>
+						<tr><td><b>Domain&nbsp;Model</b></td><td><b>Modules: Domain Logic Object (DLO), Process Modeler (PM)</b><br>Domain Logic Objects (DLO's) contain the logic (i.e., "business rules") for the Domain Model, and the Process Modeler provides for stateful procedural processing in the context of the domain model.</td></tr>
+						<tr><td><b>Infrastructure</b></td><td><b>Modules: ObjectSystem Management Layer (OSML) and Drivers</b><br>The ObjectSystem Management Layer (OSML) provides the mapping of various types of data sources into a heirarchical tree of objects.  The data sources may or may not be relational.</td></tr>
+					</table>
+				    </center>
+				    <p>Our goal is to provide both separation of functional concerns as well as properly attaching data knowledge at the appropriate layers (with impacts further up the layers as well).</p>
+				<br>
+
+
+				<a name="sql"></a>
+				<h1>Integrated SQL Engine</h1>
+				    <p>It is common in our work for an organization's data to be spread out over numerous data sources.  Thus, a major goal of this project is to bring some unity to those data sources.  Centrallix provides <a href="#data">abstracted</a> data access to these sources via the OSML, and then provides a minimal SQL engine so that the data in these sources can be brought together via a simple unified interface.</p>
+				    <p>The SQL language is mildly different from other SQL's.  For more information, see the relevant pages on the <a href="http://www.centrallix.net/docs/docs.php?t=SQL+Language">online documentation site</a>.</p>
+				<br>
+
+
+				<a name="ajax"></a>
+				<h1>AJAX - Style User Interface</h1>
+				    <p>Centrallix's current only deployment method is via web-based AJAX-style user interfaces.  The use of a fluid and rich user interface via a web browser was an original design goal of Centrallix, based on a vision that a core developer had in 1997 that the entire "thick client" desktop could one day be replaced (and improved upon) by a web-based interface.  Even as development began in 1998, Centrallix had many features not widely seen on the web.  In 2002, an AJAX-style application was demonstrated running under Centrallix, three years before the term "AJAX" was even coined.</p>
+				    <p>We firmly believe that the ease of deployment of web pages combined with the richness of an AJAX-style application provide the best end-user experience today.  However, we desire to remain flexible to new approaches as they develop.</p>
+				    <p>This type of user interface was generated by Centrallix originally for Netscape 4.x, which was really the only cross-platform browser in 1998.  Since Netscape 4.x lacked a XmlHttpRequest object, data communication took place via a hidden DIV or IFRAME.  Of course today, Netscape 4.x is defunct and Centrallix fully supports Firefox/Mozilla as the browser of choice (some IE support is also present).</p>
+				<br>
+
+
+				<a name="clang"></a>
+				<h1>Written in C</h1>
+				    <p>In today's age of fast computers and more powerful and expressive programming languages, it seems odd for a project like Centrallix to be written in C.  Here's a quick explanation of why Centrallix is written in C.</p>
+				    <p>First, Centrallix's job is hard.  Centrallix aims to be a declarative and dynamic environment for the applications it serves, rather than a procedural and compiled environment.  This approach requires a lot of processing: imagine writing a program in .Net or Java and having your environment compile the application every single time a user runs it.</p>
+				    <p>Second, when our work began on this project in 1998, the most spectacularly successful open source projects were all written in C.  Examples include the Linux kernel, the Apache webserver, the GTK toolkit and applications written to use it, and more.  Of course, today there are many other languages which are popular in the open source world, one (Java) even exceeding the popularity of C.  While we will consider a rewrite of Centrallix into a different environment, we do want to finish what we've begun first!</p>
+				<br>
+			    </td>
+			</tr>
+		    </table>
+		    <hr><i><small>(c) 2001-2008 LightSys Technology Services, Inc.  All trademarks are property of their respective owners.</small></i>
+		    <br>
+		    <p align="center"><small><b>Project Hosting Provided By:</b></small><br><a target="_top" href="http://sourceforge.net"><IMG src="http://sourceforge.net/sflogo.php?group_id=33299" width="88" height="31" border="0" alt="Hosted by Sourceforge"></a></p>
+		</td>
+	    </tr>
+	</table>
+    </p>
+</body>
+</html>

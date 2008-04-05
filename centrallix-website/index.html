@@ -2,14 +2,7 @@
 <html>
 <head>
     <title>Centrallix - SourceForge</title>
-    <style type="text/css">
-	a { text-decoration:none; }
-	a.main { color:#202020; }
-	a.cur { color:black; font-weight:bold; }
-	body { font-family:verdana,helvetica,arial,sans-serif; font-size:12px; margin:0px;}
-	td.main { font-size:10px; }
-	small { font-size:8px; }
-    </style>
+    <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white">
     <p align="center">
@@ -20,7 +13,7 @@
 		</td>
 	    </tr>
 	    <tr>
-		<td align="center" style="border-top:1px solid black; border-bottom:1px solid black; background-color:#ffffff; opacity:0.4;">
+		<td class="bar" align="center">
 		    <table border="0" cellspacing="1">
 			<tr>
 			    <td><a class="cur" href=".">Home</a></td>
@@ -50,6 +43,25 @@
 				<table border="0" cellspacing="0" cellpadding="2" width="184">
 				    <tr>
 					<th background="hdr-bgnd.jpg" style="border-bottom:1px solid black;">
+					    <p>LOOKUP</p>
+					</th>
+				    </tr>
+				    <tr>
+					<td style="background-color:#d4dada; text-align:center;">
+					    <small>
+					    <p><b>Search Documentation:</b></p>
+					    <form method="get" action="http://www.centrallix.net/docs/docs.php">
+						<input name="q" style="width:110px;">
+						<input type="submit" value="Go">
+					    </form>
+					    </small>
+					</td>
+				    </tr>
+				    <tr>
+					<td height="20"></td>
+				    </tr>
+				    <tr>
+					<th background="hdr-bgnd.jpg" style="border-bottom:1px solid black;">
 					    <p>NEWS</p>
 
 					</th>
@@ -57,16 +69,9 @@
 				    <tr>
 					<td style="background-color:#d4dada;">
 					    <small> 
-					    <p><b>23-Jun-2006</b>: New website released, and Centrallix 0.7.5 is
-					      being prepped for release.  Stay tuned!</p>
-					    <p><b>01-Mar-2005</b>: Version 0.7.4 released.  Main features include
-					      prebuilt RPM's (tested on Fedora Core 2 and RedHat 7.3), a totally
-					      revamped report writer with PDF/PostScript support, several more
-					      widgets including the ObjectCanvas widget for data-driven diagrams
-					      and maps, moderate Mozilla/IE6 support, reliability enhancements,
-					      a POP3 driver, composite widgets, presentation hints (data display
-					      rules), and some internal DHTML generator enhancements in preparation
-					      for component support and more.</p>
+					    <p><b>22-Mar-2008</b>: Centrallix 0.9.0, the first in the 0.9.x series
+					      now that the platform is on its home stretch towards version 1.0,
+					      is being prepped for release.  Stay tuned!</p>
 					    </small>
 					</td>
 				    </tr>
@@ -113,14 +118,13 @@
 				</table>
 			    </td>
 			    <td class='main' valign="top" style="padding-left:16px;">
-				<font size="+2"><b>Centrallix Overview</b></font>
-				<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient03.png"><img border="0" height="1" width="1" src="gradient03.png"></td></tr></table>
-	
-				<p>
-				Centrallix is a framework and application platform, specializing in:
-				</p>
+
+
+				<h1 class="main">The Centrallix Application Platform</h1>
+				<p><b>Our Vision:</b> A platform which enables open-source community-built business applications which can span the gap of widely varied data storage, adapt to changing technologies, make possible local customization and centralized updates, and multiply the effectiveness of both programmers and non-programmers alike.</p>
+				<p>Centrallix is an <a href="http://www.opensource.org"><b>open source</b></a> (mostly <a href="http://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL</a>) framework and application platform, specializing in:</p>
 				<ul>
-				    <li>Rich <b>web-based</b> application deployment using <b>AJAX</b> type
+				    <li>Rich <b>web-based</b> application deployment using <b>DHTML/AJAX</b>
 					technology (since late 1998!).</li>
 				    <li><b>Data abstraction</b> - your data can be stored in databases, CSV files,
 					emails, files, XML, and more.  And you can use SQL to bring it all
@@ -142,8 +146,9 @@
 				<p>And... it's different than what you think!</p>
 
 				<br>
-				<font size="+2"><b>Centrallix Purpose</b></font>
-				<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient03.png"><img border="0" height="1" width="1" src="gradient03.png"></td></tr></table>
+
+
+				<h1 class="main">Purpose: Community</h1>
 				<p>
 				Centrallix is a purpose-driven project, with the ultimate goal of being
 				<b>a platform for community-built applications</b> needing:
@@ -160,25 +165,27 @@
 				</ul>
 
 				<br>
-				<font size="+2"><b>Current Status</b></font>
-				<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient03.png"><img border="0" height="1" width="1" src="gradient03.png"></td></tr></table>
+
+
+				<h1 class="main">Current Status</h1>
 				<p>
 				<table border="0" cellspacing="0" cellpadding="1">
-				    <tr><td><b>Current Release:&nbsp;</b></td><td>0.7.4, March 2005</td></tr>
+				    <tr><td><b>Current Release:&nbsp;</b></td><td>0.7.4</td></tr>
 				    <tr><td><b>Current Stability:&nbsp;</b></td><td>Development / Unstable.</td></tr>
-				    <tr><td><b>Current Security:&nbsp;</b></td><td>Unstable / Incomplete.</td></tr>
-				    <tr><td><b>Next Development Release:&nbsp;</b></td><td>0.7.5, Est. July 2006</td></tr>
-				    <tr><td><b>Next App Builders Release:&nbsp;</b></td><td>0.8.0, Est. October 2006</td></tr>
-				    <tr><td><b>Next Production Release:&nbsp;</b></td><td>1.0.0, Est. August 2007</td></tr>
+				    <tr><td><b>Next Development Release:&nbsp;</b></td><td>0.9.0, March 2008</td></tr>
 				</table>
 				<br>
 				(Go to <a href="dload.html">Downloads Page</a>)<br>
+				(Go to <a href="quick.html">Quick Install Page</a>)<br>
 				(Go to <a href="screen.html">Screenshots Page</a>)<br>
-				(Go to <a href="http://sourceforge.net/projects/centrallix">Sourceforge Project Page</a>)<br>
+				(Go to <a href="http://sourceforge.net/projects/centrallix">Sourceforge Project Page</a>)
+				<br>
+
+
 			    </td>
 			</tr>
 		    </table>
-		    <hr><i><small>(c) 2001-2006 LightSys Technology Services, Inc.  All trademarks are property of their respective owners.</small></i>
+		    <hr><i><small>(c) 2001-2008 LightSys Technology Services, Inc.  All trademarks are property of their respective owners.</small></i>
 		</td>
 	    </tr>
 	</table>
