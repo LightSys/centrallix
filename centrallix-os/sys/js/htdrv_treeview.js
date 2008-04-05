@@ -239,7 +239,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	for(var i = start_img; i<=l.tree_depth; i++)
 	    tvtext += "<IMG width='" + l.root.iconwidth + "' SRC='" + l.imgs[i] + "' align='left'>";
 	tvtext += "&nbsp;<A HREF='" + link_href + "'>" +
-	    (link_bold?"<b>":"") + htutil_encode(link_text) + (link_bold?"<b>":"") + "</A></nobr>";
+	    (link_bold?"<b>":"") + htutil_encode(htutil_obscure(link_text)) + (link_bold?"<b>":"") + "</A></nobr>";
 	if (l.tvtext != tvtext)
 	    {
 	    l.expanded = 0;
@@ -284,12 +284,12 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	if(link_bold)
 	    {
 	    var bold = document.createElement('b');
-	    bold.appendChild(document.createTextNode(String(link_text).replace(/ /g, "\u00a0")));
+	    bold.appendChild(document.createTextNode(String(htutil_obscure(link_text)).replace(/ /g, "\u00a0")));
 	    a.appendChild(bold);
 	    }
 	else
 	    {
-	    a.appendChild(document.createTextNode(String(link_text).replace(/ /g, "\u00a0")));
+	    a.appendChild(document.createTextNode(String(htutil_obscure(link_text)).replace(/ /g, "\u00a0")));
 	    }
 	nobr.appendChild(a);
 	}
