@@ -586,9 +586,9 @@ function dt_get_parsed_date(dt,origdate,vals,offset,now){
 	   doesn't happen! */
 	var d = new Date(1,1,1);
 	vals[1+offset]--;
+	d.setYear((vals[3+offset])?vals[3+offset]:origdate.getFullYear());
 	d.setMonth((vals[1+offset]>=0)?vals[1+offset]:origdate.getMonth());
 	d.setDate((vals[2+offset])?vals[2+offset]:origdate.getDate());
-	d.setYear((vals[3+offset])?vals[3+offset]:origdate.getFullYear());
 	d.setHours((vals[4+offset])?vals[4+offset]:origdate.getHours());
 	d.setMinutes((vals[5+offset])?vals[5+offset]:origdate.getMinutes());    
 	if (d.getFullYear() < now.getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0) //ten year window
