@@ -302,24 +302,11 @@ basicform "widget/page"
 	        }
 	    }
 	}
-    debugwin "widget/childwindow"
+    debugwin "widget/component"
 	{
-	x=20;y=220;width=600;height=330;
-	visible=true;
-	Treeview_pane "widget/pane"
-	    {
-	    x=0; y=0; width=598; height=305;
-	    bgcolor="#e0e0e0";
-	    style=lowered;
-	    Tree_scroll "widget/scrollpane"
-		{
-		x=0; y=0; width=596; height=303;
-		Tree "widget/treeview"
-		    {
-		    x=0; y=1; width=576;
-		    source = "javascript:window";
-		    }
-		}
-	    }
+	mode=static;
+	x=0;y=0;width=640;height=480;
+	multiple_instantiation=no;
+	path="/sys/cmp/debugger.cmp";
 	}
     }
