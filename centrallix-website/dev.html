@@ -39,9 +39,36 @@
 		    <table border="0" cellspacing="0" width="100%">
 			<tr>
 			    <td class='main' valign="top">
-				<h1>Overview...</h1>
-				<ul>
-				</ul>
+				<h1>Getting Started...</h1>
+				<p>First, are you looking to develop an application to run in the Centrallix environment, or would you like to join with us in the vision of Centrallix itself, contributing to the development and improvement of parts of the project?</p>
+				<center>
+				    <table class="illustration" width="640" border="0" cellspacing="8" cellpadding="4">
+					<tr><th>App Developer</th><th>System Developer</th></tr>
+					<tr>
+					    <td valign="top" style="width:308px;">A great way to get started in <b>developing applications for Centrallix</b> is to start looking over the sample and demo applications.  First, <a href="quick.html">install</a> Centrallix, and then go to the root URL indicated on that quick install page (<code>http://localhost:800/</code>) and log in.  Both the samples browser and the demo application will allow you to view some source code.  To create an application, all you have to do is create a file with a .app extension in the Centrallix ObjectSystem directory.  On most systems that will be <code>/var/centrallix/os</code>.  Here's a quick application to get you started... call this "myapp.app":<br>
+<pre>  $Version=2$
+  myapp "widget/page"
+      {
+      title = "Hello World";
+      bgcolor = "#000060";
+      }
+</pre>
+The above application will create a blank dark blue page with the title "Hello World", which you can access via a URL something like <code>http://localhost:800/myapp.app</code>.  You can then start adding more widgets to the page, like buttons, panes, windows, editboxes, data sources (osrc's), and more.
+<br>
+<br>
+For more information, see the <a href="docs.html">documentation</a>.
+<br>
+<br>
+We hope to have a more formal tutorial here online at some point!</td>
+
+					    <td valign="top" style="width:308px;">If you're interested in <b>helping out on the Centrallix project</b> itself, there is no shortage of things to do!  The rest of this page is meant specifically for you.  Read on...<br><br>
+					    At present, the easiest way to get started is by helping out with a specific submodule.  For example, at the time of writing, we would really like to add MySQL support to Centrallix, and that would involve writing an "objectsystem driver" module, and possibly reorganizing the Sybase ASE driver such that the code that is specific to accessing an RDBMS, but not specific to Sybase or MySQL, is generalized.  Drop us a note on the centrallix-devel mailing list if you're interested!</td>
+					</tr>
+				    </table>
+				</center>
+				<br>
+				<h1>Under Construction...</h1>
+				<p>As of 4/4/2008, this page continues to be under construction...</p>
 				<br>
 			    </td>
 			</tr>
