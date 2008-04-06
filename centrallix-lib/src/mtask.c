@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.43 2008/04/01 03:19:00 gbeeley Exp $
+    $Id: mtask.c,v 1.44 2008/04/06 20:57:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.44  2008/04/06 20:57:21  gbeeley
+    - (security) More fixes for handling of supplemental groups
+
     Revision 1.43  2008/04/01 03:19:00  gbeeley
     - (change) Handle supplementary group id's instead of just blanking out
       the supplementary group list.
@@ -963,7 +966,7 @@ int
 mt_internal_SwitchToContext(pMTSecContext context)
     {
 
-	if (context->UserID != MTASK.CurUserID || context->GroupID != MTASK.CurGroupID || context->nGroups != MTASK.CurNGroups || !memcmp(context->GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t)))
+	if (context->UserID != MTASK.CurUserID || context->GroupID != MTASK.CurGroupID || context->nGroups != MTASK.CurNGroups || memcmp(context->GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t)) != 0)
 	    {
 	    /** Get effective root privs **/
 	    if (MTASK.CurUserID != 0)
@@ -977,7 +980,7 @@ mt_internal_SwitchToContext(pMTSecContext context)
 		}
 
 	    /** group list **/
-	    if (context->nGroups != MTASK.CurNGroups || !memcmp(context->GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t)))
+	    if (context->nGroups != MTASK.CurNGroups || memcmp(context->GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t)) != 0)
 		{
 		MTASK.CurNGroups = context->nGroups;
 		memcpy(MTASK.CurGroupList, context->GroupList, sizeof(gid_t) * context->nGroups);
@@ -2122,7 +2125,8 @@ thSetSupplementalGroups(pThread thr, int n_groups, gid_t* grouplist)
 
 	/** copy **/
 	memcpy(thr->SecContext.GroupList, grouplist, n_groups * sizeof(gid_t));
-	thr->SecContext.nGroups = n_groups;
+	memcpy(MTASK.CurGroupList, grouplist, n_groups * sizeof(gid_t));
+	MTASK.CurNGroups = thr->SecContext.nGroups = n_groups;
 
     return 0;
     }
