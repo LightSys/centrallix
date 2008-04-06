@@ -19,7 +19,7 @@
 /* 									*/
 /* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
-/* This program is free software; you can redistribute it and/or modify	*/
+/* This program is nmSysFree software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
 /* the Free Software Foundation; either version 2 of the License, or	*/
 /* (at your option) any later version.					*/
@@ -48,10 +48,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_pop3_v3.c,v 1.3 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_pop3_v3.c,v 1.4 2008/04/06 22:12:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_pop3_v3.c,v $
 
     $Log: objdrv_pop3_v3.c,v $
+    Revision 1.4  2008/04/06 22:12:16  gbeeley
+    - (change) use nmSysXxx for memory management
+
     Revision 1.3  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -332,7 +335,7 @@ pop_internal_FreeMaildrop(pPopMaildrop drop)
 
 	if (drop->Session != NULL) netCloseTCP(drop->Session, 0, 0);
 
-	if (drop->DropName != NULL) free(drop->DropName);
+	if (drop->DropName != NULL) nmSysFree(drop->DropName);
 
 	if (drop->Sem != NULL) syDestroySem(drop->Sem, 0);
 
@@ -340,7 +343,7 @@ pop_internal_FreeMaildrop(pPopMaildrop drop)
 	    {
 	    for (i=0;i<xaCount(drop->uids);i++)
 		{
-		if ( (uid = xaGetItem(drop->uids, i)) != NULL) free (uid);
+		if ( (uid = xaGetItem(drop->uids, i)) != NULL) nmSysFree (uid);
 		}
 	    xaClear(drop->uids);
 	    xaDeInit(drop->uids);
@@ -413,7 +416,7 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
 	    /** first clear the thing out **/
 	    for (i=0;i<xaCount(drop->uids);i++)
 		{
-		if ( (uid = xaGetItem(drop->uids, i)) != NULL) free (uid);
+		if ( (uid = xaGetItem(drop->uids, i)) != NULL) nmSysFree (uid);
 		}
 	    xaClear(drop->uids);
 
@@ -441,7 +444,7 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
 			mssError(1, "POP", "Invalid response from server");
 			goto piUM_Error;
 			}
-		    xaAddItem(drop->uids, strdup(uid));
+		    xaAddItem(drop->uids, nmSysStrdup(uid));
 		}
 
 	    /** read in that last line **/
@@ -555,12 +558,12 @@ pop_internal_GetMaildrop(pPopData inf)
 	    {
 	    case POP_T_SERVER: return -1;
 	    case POP_T_MAILDROP:
-		path = strdup(inf->Obj->Pathname->Pathbuf);
-		dropname = strdup(inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1]);
+		path = nmSysStrdup(inf->Obj->Pathname->Pathbuf);
+		dropname = nmSysStrdup(inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1]);
 		break;
 	    case POP_T_MSG:
-		path = strdup(obj_internal_PathPart(inf->Obj->Pathname, 0, inf->Obj->Pathname->nElements-1));
-		dropname = strdup(obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-2, 1));
+		path = nmSysStrdup(obj_internal_PathPart(inf->Obj->Pathname, 0, inf->Obj->Pathname->nElements-1));
+		dropname = nmSysStrdup(obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-2, 1));
 		obj_internal_PathPart(inf->Obj->Pathname, 0, 0);
 		break;
 	    }
@@ -587,8 +590,8 @@ pop_internal_GetMaildrop(pPopData inf)
 	    drop->LinkCnt = 0;
 
 	    /** Save the username and crypt()'d password of the centrallix user opening this **/
-	    drop->UserName = strdup(mssUserName());
-	    drop->CryptPasswd = strdup((const char*)crypt(mssPassword(), "fo"));
+	    drop->UserName = nmSysStrdup(mssUserName());
+	    drop->CryptPasswd = nmSysStrdup((const char*)crypt(mssPassword(), "fo"));
 
 	    /** Save the name of the drop **/
 	    drop->DropName = dropname;
@@ -656,7 +659,7 @@ pop_internal_GetParam(pSnNode node, char* param_name)
 	    {
 	    return NULL;
 	    }
-	if ( (ptr2 = strdup(ptr)) == NULL)
+	if ( (ptr2 = nmSysStrdup(ptr)) == NULL)
 	    {
 	    mssError(1, "POP", "Couldn't get memory for param!");
 	    return NULL;
@@ -720,11 +723,11 @@ void pop_internal_Cleanup(pPopData inf)
 	/** then the values **/
 	for (i=0;i<xaCount(inf->AttribVals); i++)
 	    {
-	    if ( (item = xaGetItem(inf->AttribVals, i)) != NULL) free(item);
+	    if ( (item = xaGetItem(inf->AttribVals, i)) != NULL) nmSysFree(item);
 	    }
 	
-	if (inf->EnumList) free(inf->EnumList);
-	if (inf->EnumFilename) free(inf->EnumFilename);
+	if (inf->EnumList) nmSysFree(inf->EnumList);
+	if (inf->EnumFilename) nmSysFree(inf->EnumFilename);
 
 	/** then the server-specific stuff **/
 	
@@ -782,12 +785,12 @@ pop_internal_OpenMaildrop(pPopData inf, char* usrtype)
 	/** num_messages **/
 	xaAddItem(inf->AttribNames, "num_messages");
 	snprintf(buf, 32, "%d", xaCount(inf->Drop->uids));
-	xaAddItem(inf->AttribVals, strdup(buf));
+	xaAddItem(inf->AttribVals, nmSysStrdup(buf));
 
 	/** size **/
 	xaAddItem(inf->AttribNames, "size");
 	snprintf(buf, 32, "%ld", inf->Drop->Size);
-	xaAddItem(inf->AttribVals, strdup(buf));
+	xaAddItem(inf->AttribVals, nmSysStrdup(buf));
 
 	return 0;
     }
@@ -808,17 +811,17 @@ pop_internal_OpenServer(pPopData inf, char* usrtype)
 	xaAddItem(inf->AttribNames, "maildrop_enum_method");
 	switch(inf->MaildropEnumMethod)
 	    {
-	    case POP_ENUM_CURRLOGIN: xaAddItem(inf->AttribVals, strdup("currlogin")); break;
-	    case POP_ENUM_FILE:	xaAddItem(inf->AttribVals, strdup("file")); break;
-	    case POP_ENUM_LIST:	xaAddItem(inf->AttribVals, strdup("list")); break;
+	    case POP_ENUM_CURRLOGIN: xaAddItem(inf->AttribVals, nmSysStrdup("currlogin")); break;
+	    case POP_ENUM_FILE:	xaAddItem(inf->AttribVals, nmSysStrdup("file")); break;
+	    case POP_ENUM_LIST:	xaAddItem(inf->AttribVals, nmSysStrdup("list")); break;
 	    }
 
 	/** auth_method **/
 	xaAddItem(inf->AttribNames, "auth_method");
 	switch (inf->AuthMethod)
 	    {
-	    case POP_AUTH_PROMPT: xaAddItem(inf->AttribVals, strdup("prompt")); break;
-	    case POP_AUTH_CURRLOGIN: xaAddItem(inf->AttribVals, strdup("currlogin")); break;
+	    case POP_AUTH_PROMPT: xaAddItem(inf->AttribVals, nmSysStrdup("prompt")); break;
+	    case POP_AUTH_CURRLOGIN: xaAddItem(inf->AttribVals, nmSysStrdup("currlogin")); break;
 	    }
 	
 	return 0;
@@ -881,7 +884,7 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
 	inf->ContentSize = size;
 
 	/** Allocate some memory, and retrieve the e-mail **/
-	if ( (inf->Content = (char*)malloc(size+1)) == NULL) return -1;
+	if ( (inf->Content = (char*)nmSysMalloc(size+1)) == NULL) return -1;
 	memset(inf->Content, 0, size+1);
 	fdPrintf(inf->Drop->Session, "RETR %d\r\n", inf->MsgNum);
 
@@ -898,7 +901,7 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
 	if ( (s = mlxOpenSession(inf->Drop->Session, MLX_F_LINEONLY | MLX_F_NODISCARD)) == NULL)
 	    {
 	    mssError(1, "POP", "popRead() - Couldn't start a lexer session");
-	    free(inf->Content);
+	    nmSysFree(inf->Content);
 	    return -1;
 	    }
 
@@ -907,7 +910,7 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
 	if ( (line = mlxStringVal(s, &alloc)) == NULL)
 	    {
 	    mssError(0, "POP", "Error reading message content");
-	    free(inf->Content);
+	    nmSysFree(inf->Content);
 	    return -1;
 	    }
 	bytes_read = 0;
@@ -927,7 +930,7 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
 	    if ( (line = mlxStringVal(s, &alloc)) == NULL)
 		{
 		mssError(1, "POP", "Error reading message content");
-		free(inf->Content);
+		nmSysFree(inf->Content);
 		return -1;
 		}
 	    }
@@ -986,13 +989,13 @@ pop_internal_Open(pPopData inf, char* usrtype)
 	    mssError(1, "POP", "'host' not defined in %s!", inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1]);
 	    return -1;
 	    }
-	inf->Host = strdup(attribval);
+	inf->Host = nmSysStrdup(attribval);
 	xaAddItem(inf->AttribVals, inf->Host);
 	
 	/** port **/
 	xaAddItem(inf->AttribNames, "port");
 	if ( (attribval = pop_internal_GetParam(inf->Node, "port")) == NULL) attribval = "110";
-	inf->Port = strdup(attribval);
+	inf->Port = nmSysStrdup(attribval);
 	xaAddItem(inf->AttribVals, inf->Port);
 
 	/** auth_method - maildrops/messages need to know this for opening maildrops **/
@@ -1096,7 +1099,7 @@ popClose(void* inf_v, pObjTrxTree* oxt)
 
 	if (pop_internal_GetType(inf) == POP_T_MAILDROP || pop_internal_GetType(inf) == POP_T_MSG)
 	    {
-		if (inf->Content != NULL) free(inf->Content);
+		if (inf->Content != NULL) nmSysFree(inf->Content);
 		pop_internal_ReleaseMaildrop(inf);
 	    }	
 	
@@ -1293,7 +1296,7 @@ popOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			    mssError(1, "POP", "You have not authenticated with Centrallix");
 			    goto pOQ_Cleanup;
 			    }
-			xaAddItem(qy->Maildrops, strdup(maildrop));
+			xaAddItem(qy->Maildrops, nmSysStrdup(maildrop));
 			break;
 		    case POP_ENUM_LIST:
 			mssError(1, "POP", "Maildrop Enumeration Method 'list' not yet implemented.");
@@ -1396,7 +1399,7 @@ popQueryClose(void* qy_v, pObjTrxTree* oxt)
 	    {
 	    for (i=0;i<xaCount(qy->Maildrops);i++)
 		{
-		if ( (item = xaGetItem(qy->Maildrops, i)) != NULL) free(item);
+		if ( (item = xaGetItem(qy->Maildrops, i)) != NULL) nmSysFree(item);
 		}
 	    }
 	xaDeInit(qy->Maildrops);
