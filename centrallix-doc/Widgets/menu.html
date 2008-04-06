@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'menu.html' -->
 <h2 class="widgetname"><a name="menu">menu</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/menu</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/menu</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The menu widget is used to create popup menus, drop-down menus, and menu bars.  Menu widgets consist of a series of menuitem widgets which compose a menu.</p>
@@ -43,12 +39,12 @@
 <tr>
 <td class="name">orientation</td>
 <td class="type">string</td>
-<td class="description">Either &quot;horizontal&quot; or &quot;vertical&quot; (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</td>
+<td class="description">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</td>
 </tr>
 <tr>
 <td class="name">type</td>
 <td class="type">string</td>
-<td class="description">Either &quot;popup&quot; (default) or &quot;fixed&quot;.  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
+<td class="description">Either "popup" (default) or "fixed".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -112,15 +108,15 @@
 		
 $Version=2$
 // Here's a sample menu with three buttons.
-myMenu &quot;widget/menu&quot;
+myMenu "widget/menu"
 	{
 	x = 10; y = 10; width = 72;
-	orientation = &quot;vertical&quot;; type = &quot;popup&quot;;
-	bgcolor=&quot;#808080&quot;;
+	orientation = "vertical"; type = "popup";
+	bgcolor="#808080";
 	
-	m1 &quot;widget/menuitem&quot; { label=&quot;One&quot;; }
-	m2 &quot;widget/menuitem&quot; { label=&quot;Two&quot;; }
-	m3 &quot;widget/menuitem&quot; { label=&quot;Three&quot;; }
+	m1 "widget/menuitem" { label="One"; }
+	m2 "widget/menuitem" { label="Two"; }
+	m3 "widget/menuitem" { label="Three"; }
 	}
 		
 		</pre>

@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'scrollpane.html' -->
 <h2 class="widgetname"><a name="scrollpane">scrollpane</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/scrollpane</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/scrollpane</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
@@ -69,21 +65,21 @@
 <pre>
 		
 $Version=2$
-MyScrollPane &quot;widget/scrollpane&quot;
+MyScrollPane "widget/scrollpane"
 	{
 	// Visible scrollpane geometries...
 	x = 0; y = 0;
 	width = 600; height = 300;
 	// This treeview is inside the scrollpane.
-	MyTreeView &quot;widget/treeview&quot;
+	MyTreeView "widget/treeview"
 		{
 		x = 1; y = 1;
 		// Leave room for the scrollbar, (600 - 20 = 580)
 		width = 580;
 		// The source for the treeview.
-		source = &quot;/&quot;;
+		source = "/";
 		}
-	visible = &quot;true&quot;;
+	visible = "true";
 	}
 		
 		</pre>

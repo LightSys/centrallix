@@ -1,27 +1,23 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'execmethod.html' -->
 <h2 class="widgetname"><a name="execmethod">execmethod</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/execmethod</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/execmethod</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
-			<p>These widgets are used via the activation of their &quot;ExecuteMethod&quot; action.</p>
+			<p>These widgets are used via the activation of their "ExecuteMethod" action.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type &quot;widget/page&quot;) for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.</p>
+			<p>The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -53,7 +49,7 @@
 </tr>
 <tr>
 <td class="name">ExecuteMethod</td>
-<td class="description">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: &quot;Objname&quot;, the object path, &quot;Method&quot;, the method to invoke, and &quot;Parameter&quot;, the parameter to pass to the method being invoked.</td>
+<td class="description">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: "Objname", the object path, "Method", the method to invoke, and "Parameter", the parameter to pass to the method being invoked.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -61,11 +57,11 @@
 		
 $Version=2$
 // This execmethod widget is set up to play a sound file (on the server).
-mySoundPlayer &quot;widget/execmethod&quot;
+mySoundPlayer "widget/execmethod"
 	{
-	object = &quot;/sys/ossdsp.aud&quot;;
-	method = &quot;Play&quot;;
-	parameter = &quot;/data/Welcome.wav&quot;;
+	object = "/sys/ossdsp.aud";
+	method = "Play";
+	parameter = "/data/Welcome.wav";
 	}
 		
 		</pre>

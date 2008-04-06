@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'frameset.html' -->
 <h2 class="widgetname"><a name="frameset">frameset</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/frameset</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/frameset</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.</p>
@@ -41,7 +37,7 @@
 <tr>
 <td class="name">direction</td>
 <td class="type">string</td>
-<td class="description">Whether the frames are arranged in rows or columns.  Set this attribute to &quot;rows&quot; or &quot;columns&quot;respectively.</td>
+<td class="description">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -55,7 +51,7 @@
 <tr>
 <td class="name">framesize</td>
 <td class="type">integer/string</td>
-<td class="description">large this frame will be.Can either be expressed as an integer, which represents &quot;50%&quot;.</td>
+<td class="description">large this frame will be.Can either be expressed as an integer, which represents "50%".</td>
 </tr>
 <tr>
 <td class="name">marginwidth</td>
@@ -69,28 +65,28 @@
 $Version=2$
 // Example of a page with three frames on it.
 //
-BigFrameset &quot;widget/frameset&quot;
+BigFrameset "widget/frameset"
 	{
-	title = &quot;MyTitle&quot;;
-	direction = &quot;rows&quot;;
+	title = "MyTitle";
+	direction = "rows";
 	borderwidth = 3;
-	TopFrameset &quot;widget/frameset&quot;
+	TopFrameset "widget/frameset"
 		{
-		framesize = &quot;40%&quot;;
-		direction = &quot;columns&quot;;
+		framesize = "40%";
+		direction = "columns";
 		borderwidth = 3;
-		TopLeftDocument &quot;widget/page&quot;
+		TopLeftDocument "widget/page"
 			{
-			framesize = &quot;50%&quot;;
+			framesize = "50%";
 			}
-		TopRightDocument &quot;widget/page&quot;
+		TopRightDocument "widget/page"
 			{
-			framesize = &quot;50%&quot;;
+			framesize = "50%";
 			}
 		}
-	BottomDocument &quot;widget/page&quot;
+	BottomDocument "widget/page"
 		{
-		framesize = &quot;60%&quot;;
+		framesize = "60%";
 		}
 	}
 		

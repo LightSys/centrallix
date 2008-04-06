@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'timer.html' -->
 <h2 class="widgetname"><a name="timer">timer</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/timer</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/timer</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.</p>
@@ -52,7 +48,7 @@
 </tr>
 <tr>
 <td class="name">SetTimer</td>
-<td class="description">action takes two parameters: &quot;Time&quot; (integer in milliseconds) and &quot;AutoReset&quot; (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</td>
+<td class="description">action takes two parameters: "Time" (integer in milliseconds) and "AutoReset" (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</td>
 </tr>
 <tr>
 <td class="name">CancelTimer</td>
@@ -67,26 +63,26 @@ $Version=2$
 // more interesting by putting other connectors on the Expire events of
 // the timers as well :)
 //
-mytimerOne &quot;widget/timer&quot;
+mytimerOne "widget/timer"
 	{
 	msec = 500; // half a second
 	auto_start = 1;
 	auto_reset = 0;
-	cnOne &quot;widget/connector&quot;
+	cnOne "widget/connector"
 		{ 
-		event=&quot;Expire&quot;; target=&quot;mytimerTwo&quot;;action=&quot;SetTimer&quot;;
-		Time=&quot;500&quot;; AutoReset=&quot;0&quot;;
+		event="Expire"; target="mytimerTwo";action="SetTimer";
+		Time="500"; AutoReset="0";
 		}  
 	}
-mytimerTwo &quot;widget/timer&quot;
+mytimerTwo "widget/timer"
 	{
 	msec = 500;
 	auto_start = 0;
 	auto_reset = 0;
-	cnTwo &quot;widget/connector&quot;
+	cnTwo "widget/connector"
 		{ 
-		event=&quot;Expire&quot;; target=&quot;mytimerOne&quot;;action=&quot;SetTimer&quot;;
-		Time=&quot;500&quot;; AutoReset=&quot;0&quot;;
+		event="Expire"; target="mytimerOne";action="SetTimer";
+		Time="500"; AutoReset="0";
 		}
 	}
 		

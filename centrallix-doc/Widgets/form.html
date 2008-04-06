@@ -1,24 +1,20 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'form.html' -->
 <h2 class="widgetname"><a name="form">form</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/form</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/form</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
-			<p>Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.</p>
+			<p>Forms have five different "modes"of operation, each of which can be specifically allowed or disallowed for the form.</p>
 		<ol>
 		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
 		<li> View - data being viewed readonly.</li>
@@ -26,7 +22,7 @@
 		<li> Query - query criteria being entered (used for query-by-form applications)</li>
 		<li> New - new object being entered/created.</li>
 		</ol>
-			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a &quot;three-way confirm&quot; message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a &quot;three-way confirm&quot; window.  This should be a hidden (visible=no) &quot;widget/htmlwindow&quot; object which may contain any content, but should at least contain three buttons named &quot;_3bConfirmSave&quot;, &quot;_3bConfirmDiscard&quot;, and &quot;_3bConfirmCancel&quot; directly in the htmlwindow.  During a confirm operation, this window will become &quot;application-modal&quot;; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
+			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a "three-way confirm" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a "three-way confirm" window.  This should be a hidden (visible=no) "widget/htmlwindow" object which may contain any content, but should at least contain three buttons named "_3bConfirmSave", "_3bConfirmDiscard", and "_3bConfirmCancel" directly in the htmlwindow.  During a confirm operation, this window will become "application-modal"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
@@ -181,12 +177,12 @@
 <tr>
 <td class="name">is_queryable</td>
 <td class="type">true/false</td>
-<td class="description">Whether the form can be placed into &quot;QBF&quot; (query by form) mode so that the user can enter query criteria.</td>
+<td class="description">Whether the form can be placed into "QBF" (query by form) mode so that the user can enter query criteria.</td>
 </tr>
 <tr>
 <td class="name">is_queryexecutable</td>
 <td class="type">true/false</td>
-<td class="description">Whether the form is in &quot;QBF&quot; (query by form) mode so that the query can actually be run.</td>
+<td class="description">Whether the form is in "QBF" (query by form) mode so that the query can actually be run.</td>
 </tr>
 <tr>
 <td class="name">is_savable</td>
@@ -208,7 +204,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-form1 &quot;widget/form&quot;
+form1 "widget/form"
 	{
 	//Form elements here
 	}

@@ -1,25 +1,22 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'connector.html' -->
 <h2 class="widgetname"><a name="connector">connector</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/connector</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/connector</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
 			<p>The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.</p>
 			<p>Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.  Such parameters from events can be linked into parameters for actions via the connector widget as well.</p>
+			<p>When supplying a parameter to a connector (other than "action", "event", and "target"), there are several ways that parameter can be specified.  First the parameter can be a constant value, defined explicitly in the application.  Second, the parameter can be an expression which is evaluated on the client (using the runclient() pseudo-function) and which can change based on the conditions under which the connector is triggered.  In this latter case, the runclient() expression can contain parameters supplied by the event, or values supplied by other widgets.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>The connector object should be a sub-object of the widget which will trigger the event.  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.</p>
@@ -51,18 +48,18 @@
 <pre>
 		
 $Version=2$
-// Here's our connector.Imagine that this is embedded within a treeview
+// Here's our connector. Imagine that this is embedded within a treeview
 // and references an 'html' control called 'ht1' somewhere else on the page.
 //
-cn1 &quot;widget/connector&quot;
+cn1 "widget/connector"
 	{
 	// Triggered by ClickItem from the treeview.
-	event = &quot;ClickItem&quot;;
+	event = "ClickItem";
 	// Causes the LoadPage action on html area 'ht1'
-	target = &quot;ht1&quot;;
-	action = &quot;LoadPage&quot;;
-	// The Source for LoadPage is the Pathname fronm ClickItem.
-	Source = &quot;Pathname&quot;;
+	target = "ht1";
+	action = "LoadPage";
+	// The Source for LoadPage is the Pathname from ClickItem.
+	Source = runclient(:Pathname);
 	}
 		
 		</pre>

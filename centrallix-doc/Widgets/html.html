@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'html.html' -->
 <h2 class="widgetname"><a name="html">html</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/html</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/html</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.</p>
@@ -33,7 +29,7 @@
 <tr>
 <td class="name">content</td>
 <td class="type">string</td>
-<td class="description">Static contents for the HTML area. Usually used in lieu of &quot;source&quot; (see below).</td>
+<td class="description">Static contents for the HTML area. Usually used in lieu of "source" (see below).</td>
 </tr>
 <tr>
 <td class="name">epilogue</td>
@@ -48,7 +44,7 @@
 <tr>
 <td class="name">mode</td>
 <td class="type">string</td>
-<td class="description">Either &quot;static&quot; or &quot;dynamic&quot;, and determines whether the HTML area is in-flow (&quot;static&quot;) can be positioned and reloaded at-will.</td>
+<td class="description">Either "static" or "dynamic", and determines whether the HTML area is in-flow ("static") can be positioned and reloaded at-will.</td>
 </tr>
 <tr>
 <td class="name">prologue</td>
@@ -84,19 +80,19 @@
 </tr>
 <tr>
 <td class="name">LoadPage</td>
-<td class="description">loadpage action takes two parameters. &quot;Source&quot; contains the URL for the new page to be loaded into the HTML area.The optional parameter &quot;Transition&quot; indicates the type of fade to be used between one page and the next.Currently supported values are &quot;pixelate&quot;, &quot;rlwipe&quot;, and &quot;lrwipe&quot;.</td>
+<td class="description">loadpage action takes two parameters. "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
-HTMLArea &quot;widget/html&quot;
+HTMLArea "widget/html"
 	{
-	mode = &quot;dynamic&quot;;
+	mode = "dynamic";
 	x = 2; y = 2;
 	width = 478; height = 396;
-	source = &quot;http://localhost:800/index.html&quot;;
+	source = "http://localhost:800/index.html";
 	}
 		
 		</pre>

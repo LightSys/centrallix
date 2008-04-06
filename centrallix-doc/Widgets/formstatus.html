@@ -1,23 +1,19 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'formstatus.html' -->
 <h2 class="widgetname"><a name="formstatus">formstatus</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/formstatus</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/formstatus</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently &quot;doing&quot; (for instance, is a blank form with a blinking cursor in a &quot;new&quot; state or &quot;enter query&quot; state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.</p>
+			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>The form status widget can only be used either directly or indirectly within a form widget.  It can contain no visual widgets.</p>
@@ -31,7 +27,7 @@
 <tr>
 <td class="name">style</td>
 <td class="type">string</td>
-<td class="description">Sets the style of the form widget.  Can be &quot;small&quot;, &quot;large&quot;, or &quot;largeflat&quot;.</td>
+<td class="description">Sets the style of the form widget.  Can be "small", "large", or "largeflat".</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -83,10 +79,10 @@
 <pre>
 		
 $Version=2$
-formstatus &quot;widget/formstatus&quot; 
+formstatus "widget/formstatus" 
     {
     x=5; y=450;
-    style=&quot;largeflat&quot;;
+    style="largeflat";
     }
 		
 		</pre>

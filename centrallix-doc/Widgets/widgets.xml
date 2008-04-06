@@ -907,6 +907,8 @@ osrc1 "widget/osrc"
 			<property name="bgcolor" type="string">The background color for the page. Can either be a recognized color (such as "red"), or an RGB color (such as "#C0C0C0").</property>
 			<property name="datafocus1" type="string">A color, RGB or named, for the top and left edges of rectangles drawn to indicate data focus (default is dark blue).</property>
 			<property name="datafocus2" type="string">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate data focus (default is dark blue).</property>
+			<property name="font_name" type="string">The default font to use in the application (such as "Arial").</property>
+			<property name="font_size" type="integer">The default font size, in pixels (same as points on a typical 72dpi display), for text in the application.</property>
 			<property name="kbdfocus1" type="string">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate keyboard focus (default is "white").</property>
 			<property name="kbdfocus2" type="string">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate keyboard focus (default is dark grey).</property>
 			<property name="mousefocus1" type="string">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate mouse focus (default is "black").</property>

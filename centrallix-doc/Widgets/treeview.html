@@ -1,24 +1,20 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'treeview.html' -->
 <h2 class="widgetname"><a name="treeview">treeview</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/treeview</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/treeview</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>A treeview provides a way of viewing hierarchically-organized data via a &quot;traditional&quot; GUI point-and-click tree structure. A treeview has &quot;branches&quot; that can expand and collapse entire subtrees of data.</p>
-			<p>Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a &quot;querytree&quot; (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.</p>
+			<p>A treeview provides a way of viewing hierarchically-organized data via a "traditional" GUI point-and-click tree structure. A treeview has "branches" that can expand and collapse entire subtrees of data.</p>
+			<p>Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a "querytree" (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.</p>
@@ -58,7 +54,7 @@
 </tr>
 <tr>
 <td class="name">ClickItem</td>
-<td class="description">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is &quot;Pathname&quot;, or the ObjectSystem path to the object which was selected.</td>
+<td class="description">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is "Pathname", or the ObjectSystem path to the object which was selected.</td>
 </tr>
 <tr>
 <td class="name">RightClickItem</td>
@@ -70,18 +66,18 @@
 		
 $Version=2$
 // Example of a pane containing a scrollpane containing a treeview.
-mypane &quot;widget/pane&quot;
+mypane "widget/pane"
 	{
 	x=100; y=100; width=300; height=300;
-	style = &quot;lowered&quot;;
-	bgcolor = &quot;#c0c0c0&quot;;
-	myscroll &quot;widget/scrollpane&quot;
+	style = "lowered";
+	bgcolor = "#c0c0c0";
+	myscroll "widget/scrollpane"
 		{
 		x=0; y=0; width=198; height=198;
-		mytreeview &quot;widget/treeview&quot;
+		mytreeview "widget/treeview"
 			{
 			x=1; y=1; width=175;
-			source=&quot;/&quot;;
+			source="/";
 			}
 		}
 	}

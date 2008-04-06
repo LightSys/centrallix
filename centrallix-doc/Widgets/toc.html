@@ -1,6 +1,6 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
@@ -8,15 +8,19 @@
 <!-- PAGE BREAK: 'toc.html' -->
 <h1>Centrallix Application<br>Widget<br>Reference</h1>
 <br><p>This guide contains a basic overview and specification of each of the widgets that Centrallix supports, including a handful of planned (but not yet implemented or not fully implemented) widgets.</p>
-<p>Each widget can have properties, child properties, events, and actions.  Properties define how the widget behaves, appears, and is constructed. Child properties usually define how a widget contained within the given widget relates to its parent. Such properties are normally managed by the containing (parent) widget rather than by the child, and many times the child widget cannot exist without its parent. Events enable a widget to have an &quot;influence&quot; on the other widgets on the page, and are utilized by placing a &quot;connector&quot; widget within the given widget.  The connector routes an event's firing to the activation of an &quot;action&quot; on some other widget on the page.  Actions are &quot;methods&quot; on widgets which cause the widget to do something or change its appearance in some way.</p>
-<p>The &quot;overview&quot; section for each widget describes the widget's purpose and how it operates.  A &quot;usage&quot; section is provided to show the appropriate contexts for the use of the widget in a real application.</p>
+<p>Each widget can have properties, child properties, events, and actions.  Properties define how the widget behaves, appears, and is constructed. Child properties usually define how a widget contained within the given widget relates to its parent. Such properties are normally managed by the containing (parent) widget rather than by the child, and many times the child widget cannot exist without its parent. Events enable a widget to have an "influence" on the other widgets on the page, and are utilized by placing a "connector" widget within the given widget.  The connector routes an event's firing to the activation of an "action" on some other widget on the page.  Actions are "methods" on widgets which cause the widget to do something or change its appearance in some way.</p>
+<p>The "overview" section for each widget describes the widget's purpose and how it operates.  A "usage" section is provided to show the appropriate contexts for the use of the widget in a real application.</p>
 <p>Some widget properties are 'dynamic'; that is, an expression can be provided which is then evaluated dynamically on the client so that the widget's property changes as the expression's value changes.</p>
-<p>&quot;Client properties&quot; are available for some widgets.  These properties may not be specified in the application file itself, but are available on the client during application operation.  They often relate to the status of a given widget.</p>
-<p>Where possible, sample code is provided for each widget to show how the widget can be used.  In most cases the widget's code is displayed in isolation, although in practice widgets can never be used outside of a &quot;widget/page&quot; container widget at some level. In a few cases, a more complete mini-application is shown.</p>
-<p>Sample code is generally given in &quot;structure file&quot; format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
+<p>"Client properties" are available for some widgets.  These properties may not be specified in the application file itself, but are available on the client during application operation.  They often relate to the status of a given widget.</p>
+<p>Where possible, sample code is provided for each widget to show how the widget can be used.  In most cases the widget's code is displayed in isolation, although in practice widgets can never be used outside of a "widget/page" container widget at some level. In a few cases, a more complete mini-application is shown.</p>
+<p>Sample code is generally given in "structure file" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
 <p>Copyright (c)  1998-2003 LightSys Technology Services, Inc.</p>
 <br><p><b>Documentation on the following widgets is available:</b></p>
 <table>
+<tr>
+<td><a href="autolayout.html">autolayout</a></td>
+<td>Container which automatically positions its children</td>
+</tr>
 <tr>
 <td><a href="calendar.html">calendar</a></td>
 <td>Calendar-type view of event/schedule type data in an objectsource</td>
@@ -28,6 +32,14 @@
 <tr>
 <td><a href="clock.html">clock</a></td>
 <td>A simple clock widget which displays the current time on the client.</td>
+</tr>
+<tr>
+<td><a href="component.html">component</a></td>
+<td>A widget which instantiates a custom component</td>
+</tr>
+<tr>
+<td><a href="component-decl.html">component-decl</a></td>
+<td>A widget which defines a custom component</td>
 </tr>
 <tr>
 <td><a href="connector.html">connector</a></td>
@@ -66,7 +78,7 @@
 <td>A miniature HTML browser control, capable of viewing and navigating simple web documents.</td>
 </tr>
 <tr>
-<td><a href="htmlwindow.html">htmlwindow</a></td>
+<td><a href="childwindow.html">childwindow</a></td>
 <td>A dialog or application window which is a lightweight movable container.</td>
 </tr>
 <tr>
@@ -78,8 +90,8 @@
 <td>A visual pop-up or drop-down menu widget.</td>
 </tr>
 <tr>
-<td><a href="objectsource.html">objectsource</a></td>
-<td>A nonvisual widget which handles communication between forms/tables and the Centrallix server.</td>
+<td><a href="osrc.html">osrc</a></td>
+<td>A nonvisual widget which handles data communication between forms/tables and the Centrallix server.</td>
 </tr>
 <tr>
 <td><a href="page.html">page</a></td>
@@ -88,6 +100,10 @@
 <tr>
 <td><a href="pane.html">pane</a></td>
 <td>A visible rectangular container widget with a border</td>
+</tr>
+<tr>
+<td><a href="parameter.html">parameter</a></td>
+<td>A declaration of a parameter that can be passed to an application or component</td>
 </tr>
 <tr>
 <td><a href="radiobuttonpanel.html">radiobuttonpanel</a></td>
@@ -118,6 +134,10 @@
 <td>Visual multi-line text data entry widget.</td>
 </tr>
 <tr>
+<td><a href="button.html">button</a></td>
+<td>A multipurpose button</td>
+</tr>
+<tr>
 <td><a href="textbutton.html">textbutton</a></td>
 <td>A simple visual button widget built not from images but from a simple text string.</td>
 </tr>
@@ -132,6 +152,10 @@
 <tr>
 <td><a href="variable.html">variable</a></td>
 <td>A scalar variable object</td>
+</tr>
+<tr>
+<td><a href="repeat.html">repeat</a></td>
+<td>Repeat a subtree of widgets</td>
 </tr>
 </table>
 <br><br>

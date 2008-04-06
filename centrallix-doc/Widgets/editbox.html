@@ -1,23 +1,20 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'editbox.html' -->
 <h2 class="widgetname"><a name="editbox">editbox</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/editbox</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">yes</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/editbox</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
+			<p>  When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.</p>
@@ -61,7 +58,7 @@
 <tr>
 <td class="name">style</td>
 <td class="type">string</td>
-<td class="description">Either &quot;raised&quot; or &quot;lowered&quot;, and determines the style of the border drawn around the editbox.  Default is &quot;lowered&quot;.</td>
+<td class="description">Either "raised" or "lowered", and determines the style of the border drawn around the editbox.  Default is "lowered".</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -140,15 +137,15 @@
 		
 $Version=2$
 // Here is a single lonely edit box.
-my_editbox &quot;widget/editbox&quot; 
+my_editbox "widget/editbox" 
 	{
 	x=180; 
 	y=40; 
 	width=120; 
 	height=15; 
-	style=&quot;lowered&quot;; 
-	fieldname=&quot;datasource_fieldname&quot;;
-	bgcolor=&quot;#ffffff&quot;;
+	style="lowered"; 
+	fieldname="datasource_fieldname";
+	bgcolor="#ffffff";
 	}
 		
 		</pre>

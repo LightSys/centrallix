@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'checkbox.html' -->
 <h2 class="widgetname"><a name="checkbox">checkbox</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/checkbox</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">yes</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/checkbox</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.</p>
@@ -36,7 +32,12 @@
 <tr>
 <td class="name">fieldname</td>
 <td class="type">string</td>
-<td class="description">name of object source field that should be associated with this checkbox.</td>
+<td class="description">name of objectsource field that should be associated with this checkbox.</td>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">The name of the form that this checkbox is associated with.</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -95,14 +96,14 @@
 		
 $Version=2$
 // Here are two checkboxes.
-checkbox_test &quot;widget/page&quot;
+checkbox_test "widget/page"
 	{
-	background=&quot;/sys/images/slate2.gif&quot;;
-	testcheck2 &quot;widget/checkbox&quot;
+	background="/sys/images/slate2.gif";
+	testcheck2 "widget/checkbox"
 		{
 		x = 20; y = 40;
 		}
-	testcheck &quot;widget/checkbox&quot;
+	testcheck "widget/checkbox"
 		{
 		x = 20; y = 20;
 		}

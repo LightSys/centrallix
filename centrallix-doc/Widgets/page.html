@@ -1,23 +1,19 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'page.html' -->
 <h2 class="widgetname"><a name="page">page</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/page</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/page</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be &quot;widget/page&quot; or &quot;widget/frameset&quot;, where the latter is used to create a multi-framed application containing multiple page widgets.</p>
+			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be "widget/page" or "widget/frameset", where the latter is used to create a multi-framed application containing multiple page widgets.</p>
 			<p>Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
@@ -37,7 +33,7 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">The background color for the page. Can either be a recognized color (such as &quot;red&quot;), or an RGB color (such as &quot;#C0C0C0&quot;).</td>
+<td class="description">The background color for the page. Can either be a recognized color (such as "red"), or an RGB color (such as "#C0C0C0").</td>
 </tr>
 <tr>
 <td class="name">datafocus1</td>
@@ -50,9 +46,19 @@
 <td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate data focus (default is dark blue).</td>
 </tr>
 <tr>
+<td class="name">font_name</td>
+<td class="type">string</td>
+<td class="description">The default font to use in the application (such as "Arial").</td>
+</tr>
+<tr>
+<td class="name">font_size</td>
+<td class="type">integer</td>
+<td class="description">The default font size, in pixels (same as points on a typical 72dpi display), for text in the application.</td>
+</tr>
+<tr>
 <td class="name">kbdfocus1</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate keyboard focus (default is &quot;white&quot;).</td>
+<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate keyboard focus (default is "white").</td>
 </tr>
 <tr>
 <td class="name">kbdfocus2</td>
@@ -62,12 +68,12 @@
 <tr>
 <td class="name">mousefocus1</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate mouse focus (default is &quot;black&quot;).</td>
+<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate mouse focus (default is "black").</td>
 </tr>
 <tr>
 <td class="name">mousefocus2</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate mouse focus (default is &quot;black&quot;).</td>
+<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate mouse focus (default is "black").</td>
 </tr>
 <tr>
 <td class="name">textcolor</td>
@@ -92,11 +98,11 @@
 $Version=2$
 // A really simple application.Just a blank page with a title.
 //
-MyPage &quot;widget/page&quot;
+MyPage "widget/page"
 	{
-	title = &quot;This is an example page.&quot;;
-	bgcolor = &quot;white&quot;;
-	textcolor = &quot;black&quot;;
+	title = "This is an example page.";
+	bgcolor = "white";
+	textcolor = "black";
 
 	// widgets for application go here
 	}

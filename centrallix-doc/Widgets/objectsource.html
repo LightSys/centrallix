@@ -1,28 +1,24 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'objectsource.html' -->
 <h2 class="widgetname"><a name="objectsource">objectsource</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/objectsource</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/objectsource</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The objectsource widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of &quot;replication&quot; by maintaining a replica of a small segment of data in the user agent.</p>
+			<p>The objectsource widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of "replication" by maintaining a replica of a small segment of data in the user agent.</p>
 			<p>Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.</p>
 			<p>ObjectSources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>Objectsource widgets are normally used at the top-level of an application, within a &quot;widget/page&quot; object, but can be used anywhere.  The forms/tables that use an objectsource are generally placed within that objectsource.  A page may have more than one objectsource widget.</p>
+			<p>Objectsource widgets are normally used at the top-level of an application, within a "widget/page" object, but can be used anywhere.  The forms/tables that use an objectsource are generally placed within that objectsource.  A page may have more than one objectsource widget.</p>
 			<p>Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -124,12 +120,12 @@
 <pre>
 		
 $Version=2$
-osrc1 &quot;widget/osrc&quot;
+osrc1 "widget/osrc"
 	{
 	replicasize = 9;
 	readahead = 3;
-	sql = &quot;select :name, :size from /samples&quot;;
-	baseobj = &quot;/samples&quot;;
+	sql = "select :name, :size from /samples";
+	baseobj = "/samples";
 
 	// form or table widgets go here
 	}

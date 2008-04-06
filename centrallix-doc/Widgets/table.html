@@ -1,20 +1,16 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'table.html' -->
 <h2 class="widgetname"><a name="table">table</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/table</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/table</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
@@ -22,7 +18,7 @@
 			<p>Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via &quot;widget/table-column&quot; child widgets within the table widget.</p>
+			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -33,7 +29,7 @@
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
-<td class="description">A background image for the table. This &quot;shows through&quot; between table cells.</td>
+<td class="description">A background image for the table. This "shows through" between table cells.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
@@ -93,7 +89,7 @@
 <tr>
 <td class="name">mode</td>
 <td class="type">string</td>
-<td class="description">The mode of operation of the table, either &quot;static&quot; to be generated on the server when the application is generated, &quot;dynamicpage&quot; to be generated on the client a page at a time, or &quot;dynamicrow&quot;, to be generated on the client a row at a time.  Default is &quot;static&quot;.</td>
+<td class="description">The mode of operation of the table, either "static" to be generated on the server when the application is generated, "dynamicpage" to be generated on the client a page at a time, or "dynamicrow", to be generated on the client a row at a time.  Default is "static".</td>
 </tr>
 <tr>
 <td class="name">outer_border</td>
@@ -113,12 +109,12 @@
 <tr>
 <td class="name">row_background2</td>
 <td class="type">string</td>
-<td class="description">A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between &quot;row_background1&quot; and &quot;row_background2&quot;.</td>
+<td class="description">A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between "row_background1" and "row_background2".</td>
 </tr>
 <tr>
 <td class="name">row_bgcolor2</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between &quot;row_bgcolor1&quot; and &quot;row_bgcolor2&quot;.</td>
+<td class="description">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between "row_bgcolor1" and "row_bgcolor2".</td>
 </tr>
 <tr>
 <td class="name">rowheight</td>
@@ -207,20 +203,20 @@
 		
 $Version=2$
 // Here is a simple static table.
-tblFileList &quot;widget/table&quot;
+tblFileList "widget/table"
 	{
-	sql = &quot;select :name,annotation=condition(:annotation=='','-none-',:annotation)
-				from /samples&quot;;
-	mode=&quot;static&quot;;
+	sql = "select :name,annotation=condition(:annotation=='','-none-',:annotation)
+				from /samples";
+	mode="static";
 	width=408;
 	inner_border=2;
 	inner_padding=1;
-	bgcolor=&quot;#c0c0c0&quot;;
-	row_bgcolor1=&quot;#e0e0e0&quot;;
-	hdr_bgcolor=&quot;white&quot;;
-	textcolor=&quot;black&quot;;
-	name &quot;widget/table-column&quot; { title=&quot;Object Name&quot;;width=20; }
-	annotation &quot;widget/table-column&quot; { title=&quot;Annotation&quot;; width=25; }
+	bgcolor="#c0c0c0";
+	row_bgcolor1="#e0e0e0";
+	hdr_bgcolor="white";
+	textcolor="black";
+	name "widget/table-column" { title="Object Name";width=20; }
+	annotation "widget/table-column" { title="Annotation"; width=25; }
 	}
 		
 		</pre>

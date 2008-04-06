@@ -1,24 +1,20 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Widget Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'textbutton.html' -->
 <h2 class="widgetname"><a name="textbutton">textbutton</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/textbutton</span>
-</p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
-</p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span>
-</p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span>
-</p>
+<p class="widgettype">type: <span class="widgettypevalue">widget/textbutton</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.</p>
-			<p>Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a &quot;raised&quot; border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.</p>
+			<p>Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a "raised" border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>The TextButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
@@ -52,12 +48,12 @@
 <tr>
 <td class="name">fgcolor1</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the text on the button.  Default &quot;white&quot;.</td>
+<td class="description">A color, RGB or named, for the text on the button.  Default "white".</td>
 </tr>
 <tr>
 <td class="name">fgcolor2</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default &quot;black&quot;.</td>
+<td class="description">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</td>
 </tr>
 <tr>
 <td class="name">height</td>
@@ -109,14 +105,14 @@
 <pre>
 		
 $Version=2$
-MyButton &quot;widget/textbutton&quot;
+MyButton "widget/textbutton"
 	{
 	x = 10; y = 10;
 	width = 50;
 	height = 20;
-	tristate = &quot;no&quot;;
-	background = &quot;/sys/images/grey_gradient.png&quot;;
-	text = &quot;OK&quot;;
+	tristate = "no";
+	background = "/sys/images/grey_gradient.png";
+	text = "OK";
 	}
 		
 		</pre>
