@@ -55,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.24 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.25 2008/04/06 09:08:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.25  2008/04/06 09:08:56  gbeeley
+    - (bugfix) CSV / flat file driver was corrupting data fields during
+      updates under certain conditions.
+
     Revision 1.24  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -2084,9 +2088,9 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 				d = strlen(val->String) - len;
 				if (inf->RowBufSize + d <= maxlen)
 				    {
-				    for(j=i+1;j<inf->TData->nCols;j++)
+				    for(j=0;j<inf->TData->nCols;j++)
 					{
-					if (inf->ColPtrs[j]) inf->ColPtrs[j] += d;
+					if (inf->ColPtrs[j] && inf->ColPtrs[j] > inf->ColPtrs[i]) inf->ColPtrs[j] += d;
 					}
 				    memmove(inf->ColPtrs[i]+d+len,inf->ColPtrs[i]+len, inf->RowBufSize - (inf->ColPtrs[i] - inf->RowBuf) - len);
 				    inf->RowBufSize += d;

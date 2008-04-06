@@ -22,6 +22,10 @@ the previous versions for further details.
 5.  See the online documentation http://www.centrallix.net/docs/docs.php for
     instructions on building and installing from source.
 
+6.  Netscape 4.x support is now officially deprecated.  That is, with this
+    release we didn't intentionally try to break Netscape 4.x compatibility,
+    but we are no longer testing with it.  Please use Firefox/Mozilla instead.
+
 
 -------------------------------------------------------------------------------
 Version 0.7.5, (unreleased)
