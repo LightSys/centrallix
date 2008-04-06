@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
 #include "obj.h"
@@ -64,10 +65,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.41 2008/03/09 07:55:43 gbeeley Exp $
+    $Id: test_obj.c,v 1.42 2008/04/06 20:34:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.42  2008/04/06 20:34:31  gbeeley
+    - (bugfix) "csv" command was outputting CSV strings encoded improperly.
+    - (cleanup) use rl_insert instead of rl_insert_text for rl_bind_key when
+      disabling tabbing.
+
     Revision 1.41  2008/03/09 07:55:43  gbeeley
     - Grrr.  Can you imagine that one of the tables we're dealing with here
       has over 500 columns in it?  Like I said, Grrrrr.
@@ -859,7 +865,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 				{
 				attrtypes[n_attrs] = objGetAttrType(obj,attrname);
 				attrnames[n_attrs] = nmSysStrdup(attrname);
-				fdQPrintf(TESTOBJ.Output,"%[,%]%STR&DQUOT",
+				fdQPrintf(TESTOBJ.Output,"%[,%]\"%STR&DSYB\"",
 					n_attrs != 0,
 					attrname);
 				n_attrs++;
@@ -882,10 +888,12 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			    {
 			    ptr = NULL;
 			    }
-			if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE || attrtypes[i] == DATA_T_MONEY || attrtypes[i] == DATA_T_DATETIME)
+			if (ptr == NULL)
+			    fdQPrintf(TESTOBJ.Output, "%[,%]", i!=0);
+			else if  (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE || attrtypes[i] == DATA_T_MONEY || attrtypes[i] == DATA_T_DATETIME)
 			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR", i!=0, ptr);
 			else
-			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR&DQUOT", i!=0, ptr);
+			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			}
 		    fdPrintf(TESTOBJ.Output, "\n");
 		    objClose(obj);
@@ -1281,7 +1289,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			}
 		    }
 		puts("Enter attributes, blank line to end.");
-		rl_bind_key ('\t', rl_insert_text);
+		rl_bind_key ('\t', rl_insert);
 		while(1)
 		    {
 		    char* slbuf = readline("");
