@@ -20,6 +20,12 @@ centrallix "system/config"
     net_http "system/config"
         {
 	listen_port = 800;
+
+	// Set this to 0 to allow connections from anywhere.  Note:  this
+	// is a development release and it is recommended to restrict access
+	// to the server.
+	accept_localhost_only = 1; // true
+
 	user_session_limit = 100; // max sessions per user
 	server_string = "Centrallix/0.9.0";
 	auth_realm = "Centrallix";

@@ -66,10 +66,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.82 2008/03/28 07:00:36 gbeeley Exp $
+    $Id: net_http.c,v 1.83 2008/04/06 20:51:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.83  2008/04/06 20:51:30  gbeeley
+    - (change) adding config option accept_localhost_only which is enabled in
+      the default configuration file at present.  This prevents connections
+      except from 127.0.0.1 (connections from elsewhere will get an error
+      message).  If unspecified in the configuration, this option is not
+      enabled.
+    - (security) switching to MTASK mtSetSecContext interface instead of
+      mtSetUserID.  See centrallix-lib commit log for discussion on this.
+    - (change) Give an authorization error on a NULL password instead of
+      treating it as a parse error.
+
     Revision 1.82  2008/03/28 07:00:36  gbeeley
     - (bugfix) only set values on a new object if the values are not NULL.
 
@@ -685,6 +696,7 @@ typedef struct
     int		ver_11:1;	/* is HTTP/1.1 compatible */
     void*	Session;
     int		IsNewCookie;
+    MTSecContext SecurityContext;
     pObjSession	ObjSess;
     pSemaphore	Errors;
     XArray	ErrorList;	/* xarray of xstring */
@@ -766,6 +778,7 @@ struct
     regex_t*	reNet47;
     int		EnableGzip;
     int		CondenseJS;
+    int		RestrictToLocalhost;
     char*	DirIndex[16];
     int		UserSessionLimit;
     XHashTable	Users;
@@ -2580,7 +2593,23 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    case DATA_T_STRINGVEC:
 			    case DATA_T_INTVEC:
 			    case DATA_T_UNAVAILABLE: 
-			        return -1;
+			    default:
+			        retval = -1;
+				break;
+			    }
+			if (retval < 0)
+			    {
+			    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				     "Pragma: no-cache\r\n"
+				     "\r\n"
+				     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			    if (!strcmp(request, "create"))
+				{
+				xhnFreeHandle(&(sess->Hctx), obj_handle);
+				objClose(obj);
+				}
+			    return -1;
 			    }
 			//printf("%i\n",retval);
 			}
@@ -3874,7 +3903,6 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtConn conn = NULL;
     pNhtSessionData nsess;
     int akey[2];
-    unsigned long t;
     unsigned char t_lsb;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
@@ -3890,6 +3918,13 @@ nht_internal_ConnHandler(void* connfd_v)
 	    thExit();
 	    }
 
+	/** Restrict access to connections from localhost only? **/
+	if (NHT.RestrictToLocalhost && strcmp(conn->IPAddr, "127.0.0.1") != 0)
+	    {
+	    msg = "Connections currently restricted via accept_localhost_only in centrallix.conf";
+	    goto error;
+	    }
+
 	/** Parse the HTTP Headers... **/
 	if (nht_internal_ParseHeaders(conn) < 0)
 	    {
@@ -3898,8 +3933,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    }
 
 	/** Add some entropy to the pool - just the LSB of the time **/
-	t = htonl(mtRealTicks());
-	t_lsb = t & 0xFF;
+	t_lsb = mtRealTicks() & 0xFF;
 	cxssAddEntropy(&t_lsb, 1, 4);
 
 	/** Did client send authentication? **/
@@ -3920,6 +3954,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** Got authentication.  Parse the auth string. **/
 	usrname = strtok(conn->Auth,":");
 	if (usrname) passwd = strtok(NULL,"\r\n");
+	if (usrname && !passwd) passwd = "";
 	if (!usrname || !passwd) 
 	    {
 	    snprintf(sbuf,160,"HTTP/1.0 400 Bad Request\r\n"
@@ -3953,7 +3988,8 @@ nht_internal_ConnHandler(void* connfd_v)
 	            thExit();
 		    }
 		thSetParam(NULL,"mss",conn->NhtSession->Session);
-		thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);
+		/*thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);*/
+		thSetSecContext(NULL, &(conn->NhtSession->SecurityContext));
 		w_timer = conn->NhtSession->WatchdogTimer;
 		i_timer = conn->NhtSession->InactivityTimer;
 		}
@@ -4058,6 +4094,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
 	    strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
 	    strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
+	    thGetSecContext(NULL, &(nsess->SecurityContext));
 	    nsess->User = usr;
 	    nsess->Session = thGetParam(NULL,"mss");
 	    nsess->IsNewCookie = 1;
@@ -4240,7 +4277,7 @@ nht_internal_ConnHandler(void* connfd_v)
     thExit();
 
     error:
-	mssError(1,"NHT","Failed to parse HTTP request, exiting thread.");
+	mssError(1,"NHT","Failed to handle HTTP request, exiting thread (%s).",msg);
 	snprintf(sbuf,160,"HTTP/1.0 400 Request Error\r\n\r\n%s\r\n",msg);
 	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	if (conn) nht_internal_FreeConn(conn);
@@ -4317,6 +4354,8 @@ nht_internal_Handler(void* v)
 	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
 #endif
 	    stAttrValue(stLookup(my_config, "condense_js"), &(NHT.CondenseJS), NULL, 0);
+
+	    stAttrValue(stLookup(my_config, "accept_localhost_only"), &(NHT.RestrictToLocalhost), NULL, 0);
 
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
@@ -4403,6 +4442,7 @@ nhtInitialize()
 	NHT.UserSessionLimit = 100;
 	xhInit(&(NHT.Users), 255, 0);
 	NHT.AccCnt = 0;
+	NHT.RestrictToLocalhost = 0;
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
