@@ -79,11 +79,12 @@ make test_install
 mkdir -p $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}
 cp COPYING AUTHORS RELNOTES.txt README LICENSE CHANGELOG $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}
 mkdir -p $RPM_BUILD_ROOT/var/centrallix/os
-echo "<html><head><title>Centrallix</title></head><body>Centrallix Successfully Installed.<br><br>Please install a centrallix-os package for full functionality!</body></html>" > $RPM_BUILD_ROOT/var/centrallix/os/index.html
+echo "<html><head><title>Centrallix</title></head><body>Centrallix" %{version} "Successfully Installed.<br><br>Please install a centrallix-os package for full functionality!</body></html>" > $RPM_BUILD_ROOT/var/centrallix/os/index.html
 
 %files
 %defattr(-,root,root)
 /usr/sbin/centrallix
+/var/centrallix/os/index.html
 /usr/bin/test_obj
 /usr/bin/test_prt
 /usr/lib/centrallix/objdrv_http.so
