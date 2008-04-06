@@ -36,10 +36,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.7 2008/03/29 01:03:36 gbeeley Exp $
+    $Id: qprintf.c,v 1.8 2008/04/06 20:56:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.8  2008/04/06 20:56:34  gbeeley
+    - (feature) adding DSYB filter in qprintf to use sybase/csv style quoting
+      of strings (by doubling the double quotes)
+
     Revision 1.7  2008/03/29 01:03:36  gbeeley
     - (change) changing integer type in IntVec to a signed integer
     - (security) switching to size_t in qprintf where needed instead of using
@@ -221,6 +225,7 @@ typedef struct
     QPConvTable	jsstr_matrix;
     QPConvTable	cssval_matrix;
     QPConvTable	cssurl_matrix;
+    QPConvTable	dsyb_matrix;
     }
     QPF_t;
     
@@ -307,6 +312,10 @@ qpfInitialize()
 	QPF.ws_matrix.Matrix['\t'] = "\\t";
 	QPF.ws_matrix.Matrix['\r'] = "\\r";
 	qpf_internal_SetupTable(&QPF.ws_matrix);
+
+	memset(&QPF.dsyb_matrix, 0, sizeof(QPF.dsyb_matrix));
+	QPF.dsyb_matrix.Matrix['"'] = "\"\"";
+	qpf_internal_SetupTable(&QPF.dsyb_matrix);
 
 	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
 	QPF.hte_matrix.Matrix['<'] = "&lt;";
@@ -930,6 +939,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				case QPF_SPEC_T_ESCQ:
 				case QPF_SPEC_T_ESCQWS:
 				case QPF_SPEC_T_JSSTR:
+				case QPF_SPEC_T_DSYB:
 				case QPF_SPEC_T_CSSVAL:
 				case QPF_SPEC_T_CSSURL:
 				case QPF_SPEC_T_ESCWS:
@@ -955,6 +965,10 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 									quote = 0;
 									break;
 					    case QPF_SPEC_T_JSSTR:	table = &QPF.jsstr_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_DSYB:	table = &QPF.dsyb_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
