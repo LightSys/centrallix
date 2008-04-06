@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.28 2007/09/18 18:07:18 gbeeley Exp $
+    $Id: obj_object.c,v 1.29 2008/04/06 20:37:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.29  2008/04/06 20:37:36  gbeeley
+    - (change) adding obj_internal_FreePathStruct() to deinitialize a pathname
+      structure without actually freeing it (e.g. if the pathname structure is
+      a part of a larger structure).
+
     Revision 1.28  2007/09/18 18:07:18  gbeeley
     - (bugfix) off-by-one error in checking for whether we've chomped the entire
       pathname with drivers when opening a new object.
@@ -423,22 +428,41 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
     }
 
 
+/*** obj_internal_FreePathStruct - release a pathname structure when it
+ *** occurs inside another structure.
+ ***/
+int
+obj_internal_FreePathStruct(pPathname this)
+    {
+    int i;
+
+    	/** Release the memory for the open-ctl-buf **/
+	if (this->OpenCtlBuf) nmSysFree(this->OpenCtlBuf);
+	this->OpenCtlBuf = NULL;
+
+	/** Release the subinf structures, if needed. **/
+	for(i=0;i<this->nElements;i++) 
+	    if (this->OpenCtl[i]) 
+		{
+		stFreeInf_ne(this->OpenCtl[i]);
+		this->OpenCtl[i] = NULL;
+		}
+
+    return 0;
+    }
+
+
 /*** obj_internal_FreePath - release a pathname structure, and free its
  *** subcomponents as well.
  ***/
 int
 obj_internal_FreePath(pPathname this)
     {
-    int i;
 
     	/** Check link cnt **/
 	if ((--this->LinkCnt) > 0) return 0;
 
-    	/** Release the memory for the open-ctl-buf **/
-	if (this->OpenCtlBuf) nmSysFree(this->OpenCtlBuf);
-
-	/** Release the subinf structures, if needed. **/
-	for(i=0;i<this->nElements;i++) if (this->OpenCtl[i]) stFreeInf_ne(this->OpenCtl[i]);
+	obj_internal_FreePathStruct(this);
 
 	/** Now release the pathname structure itself **/
 	nmFree(this, sizeof(Pathname));

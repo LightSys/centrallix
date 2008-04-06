@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.39 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: obj.h,v 1.40 2008/04/06 20:37:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.40  2008/04/06 20:37:36  gbeeley
+    - (change) adding obj_internal_FreePathStruct() to deinitialize a pathname
+      structure without actually freeing it (e.g. if the pathname structure is
+      a part of a larger structure).
+
     Revision 1.39  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -957,6 +962,7 @@ int objParamsSet(pXArray params, char* name, char* stringval, int intval);
 int objParamsFree(pXArray params);
 int obj_internal_IsA(char* type1, char* type2);
 int obj_internal_FreePath(pPathname this);
+int obj_internal_FreePathStruct(pPathname this);
 pPathname obj_internal_NormalizePath(char* cwd, char* name);
 int obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt);
 pObject obj_internal_AllocObj();
