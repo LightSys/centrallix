@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.8 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.9 2008/04/06 20:43:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.9  2008/04/06 20:43:52  gbeeley
+    - (bugfix) all three rdbms-style objectsystem drivers had memory leak
+      issues relating to pathname structures.  The corrected interface in
+      obj.h allows us to fix this.
+
     Revision 1.8  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -1632,7 +1637,7 @@ fpClose(void* inf_v, pObjTrxTree* oxt)
 
 	/** Free the info structure **/
 	if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-	if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
+	obj_internal_FreePathStruct(&inf->Pathname);
 	if (inf->RowData) nmSysFree(inf->RowData);
 	if (inf->ParsedData) nmSysFree(inf->ParsedData);
 	nmFree(inf,sizeof(FpData));

@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.25 2008/04/06 09:08:56 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.26 2008/04/06 20:43:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.26  2008/04/06 20:43:52  gbeeley
+    - (bugfix) all three rdbms-style objectsystem drivers had memory leak
+      issues relating to pathname structures.  The corrected interface in
+      obj.h allows us to fix this.
+
     Revision 1.25  2008/04/06 09:08:56  gbeeley
     - (bugfix) CSV / flat file driver was corrupting data fields during
       updates under certain conditions.
@@ -523,6 +528,7 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
     pDatPage seq_pages[DAT_CACHE_MAXSEQ*2];
     pDatPage tmp;
     int n_seq,n_srch;
+    int rval = 0;
     unsigned int i,id,seq_tail,seq_head;
     unsigned int min_id, max_id;
 
@@ -581,7 +587,10 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	        {
 		seq_pages[i]->Flags |= DAT_CACHE_F_LOCKED;
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_DIRTY;
-		objWrite(context->DataObj, (char*)seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK);
+		if (objWrite(context->DataObj, (char*)seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK | FD_U_PACKET) < 0)
+		    {
+		    rval = -1;
+		    }
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_LOCKED;
 		}
 	    }
@@ -589,7 +598,7 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	/** Release the flush semaphore **/
 	syPostSem(this->Node->FlushSem, 1, 0);
 
-    return 0;
+    return rval;
     }
 
 
@@ -2217,8 +2226,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (!(inf->Node))
 	    {
 	    mssError(0,"DAT","Could not open database node!");
-	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-	    inf->Pathname.OpenCtlBuf = NULL;
+	    obj_internal_FreePathStruct(&inf->Pathname);
 	    nmFree(inf,sizeof(DatData));
 	    return NULL;
 	    }
@@ -2267,8 +2275,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		if (!inf->Row && !(obj->Mode & O_CREAT))
 		    {
 		    mssError(0,"DAT","Open: Row id '%s' not found.", inf->RowColPtr);
-	    	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-	    	    inf->Pathname.OpenCtlBuf = NULL;
+		    obj_internal_FreePathStruct(&inf->Pathname);
 		    nmFree(inf,sizeof(DatData));
 		    return NULL;
 		    }
@@ -2276,8 +2283,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    {
 		    mssError(1,"DAT","Create: Row id '%s' already exists", inf->RowColPtr);
 		    dat_internal_ReleaseRow(inf->Row);
-	    	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-	    	    inf->Pathname.OpenCtlBuf = NULL;
+		    obj_internal_FreePathStruct(&inf->Pathname);
 		    nmFree(inf,sizeof(DatData));
 		    return NULL;
 		    }
@@ -2325,6 +2331,7 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
     int n_pages;
     unsigned char ch;
     unsigned char* endptr;
+    int rval;
 
     	/** Hmm... is row too big? **/
 	len = strlen((char*)rowdata) + 1 + node->NewRowPadding;
@@ -2444,14 +2451,14 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
 
 	/** Write the data back. **/
 	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[i]);
-	dat_internal_FlushPages(context,ri->Pages[0]); /* unlocks it too */
+	rval = dat_internal_FlushPages(context,ri->Pages[0]); /* unlocks it too */
 	dat_internal_UpdateRowIDPtrCache(node,ri,rowid);
 	nmFree(ri,sizeof(DatRowInfo));
 	node->nRows++;
 	syPostSem(node->InsertSem, 1, 0);
 	context->Flags &= ~DAT_F_HOLDINSERTSEM;
 
-    return 0;
+    return rval;
     }
 
 
@@ -2522,8 +2529,7 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 	if (inf->DataObj != NULL) objClose(inf->DataObj);
 
 	/** Free the info structure **/
-        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        inf->Pathname.OpenCtlBuf = NULL;
+	obj_internal_FreePathStruct(&inf->Pathname);
 	if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 	nmFree(inf,sizeof(DatData));
 
@@ -2557,6 +2563,7 @@ datDeleteObj(void* inf_v, pObjTrxTree* oxt)
     unsigned char* dstptr;
     int curpg,i;
     pDatRowInfo ri;
+    int rval;
 
 	if (!inf->Row || !(inf->Flags & DAT_F_ROWPRESENT))
 	    {
@@ -2593,7 +2600,7 @@ datDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    }
 	*dstptr = 1;
 	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-	dat_internal_FlushPages(inf,ri->Pages[0]);
+	rval = dat_internal_FlushPages(inf,ri->Pages[0]);
 	nmFree(ri,sizeof(DatRowInfo));
 
 	/** Free the structure **/
@@ -2601,7 +2608,7 @@ datDeleteObj(void* inf_v, pObjTrxTree* oxt)
         inf->Pathname.OpenCtlBuf = NULL;
 	nmFree(inf,sizeof(DatData));
 
-    return 0;
+    return rval;
     }
 
 
@@ -3388,6 +3395,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     int type;
     int i,colid,len,curpg;
     pDatRowInfo ri;
+    int rval = 0;
 
         /** Modifying name? **/
 	if (!strcmp(attrname, "name"))
@@ -3522,7 +3530,8 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 			    }
 			}
 		    for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-		    dat_internal_FlushPages(inf,ri->Pages[0]);
+		    if (dat_internal_FlushPages(inf,ri->Pages[0]) < 0)
+			rval = -1;
 		    nmFree(ri,sizeof(DatRowInfo));
 		    }
 		else
@@ -3544,7 +3553,8 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 			}
 		    *dstptr = 1;
 		    for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-		    dat_internal_FlushPages(inf,ri->Pages[0]);
+		    if (dat_internal_FlushPages(inf,ri->Pages[0]) < 0)
+			rval = -1;
 		    nmFree(ri,sizeof(DatRowInfo));
 
 		    /** Insert new row. **/
@@ -3561,7 +3571,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return -1;
 	    }
 
-    return 0;
+    return rval;
     }
 
 

@@ -72,10 +72,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.32 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.33 2008/04/06 20:43:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.33  2008/04/06 20:43:52  gbeeley
+    - (bugfix) all three rdbms-style objectsystem drivers had memory leak
+      issues relating to pathname structures.  The corrected interface in
+      obj.h allows us to fix this.
+
     Revision 1.32  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -2991,6 +2996,7 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 	    }
 
 	/** Free the info structure **/
+	obj_internal_FreePathStruct(&inf->Pathname);
 	nmFree(inf,sizeof(SybdData));
 
     return rval;
