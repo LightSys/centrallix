@@ -50,11 +50,14 @@ typedef struct _CXG
     int		QuietInit;
     pCxModule	ModuleList;
     XArray	ShutdownHandlers;
-    int		ShuttingDown;
+    int		Flags;
     }
     CxGlobals_t, *pCxGlobals_t;
 
 extern CxGlobals_t CxGlobals;
+
+#define CX_F_SHUTTINGDOWN	1	/* shutting down */
+#define CX_F_ENABLEREMOTEPW	2	/* enable sending auth to remote services */
 
 
 /*** Loadable modules use this to define init/finish functions.

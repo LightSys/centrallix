@@ -55,10 +55,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.49 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: centrallix.c,v 1.50 2008/04/06 22:23:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.50  2008/04/06 22:23:28  gbeeley
+    - (security) adding option enable_send_credentials in centrallix.conf,
+      which defaults to 1 but is set to 0 in the default configuration.  This
+      option controls whether osdrivers are allowed to send a user's logon
+      credentials to a remote server (such as Sybase or pop3) to log into
+      that server as well.  Both sybase and pop3 behavior in that regard is
+      controlled by the node object.  But since any Centrallix user can
+      create a node object (outside of an RBAC policy-driven security system
+      preventing them or restricting the use thereof), this option can
+      globally shut down the sending of said credentials regardless of what
+      the node objects say.
+
     Revision 1.49  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -599,9 +611,9 @@ cx_internal_LoadModules(char* type)
 void cxShutdownThread(void *v)
     {
     int i;
-    if(CxGlobals.ShuttingDown)
+    if(CxGlobals.Flags & CX_F_SHUTTINGDOWN)
 	return;
-    CxGlobals.ShuttingDown = 1;
+    CxGlobals.Flags |= CX_F_SHUTTINGDOWN;
     mssError(0,"CX","Centrallix is shutting down");
     for(i=0;i<xaCount(&CxGlobals.ShutdownHandlers);i++)
 	{
@@ -629,8 +641,9 @@ cxInitialize(void* v)
     char* logprog;
     int log_all_errors;
     char* ptr;
+    int n;
 
-	CxGlobals.ShuttingDown = 0;
+	CxGlobals.Flags = 0;
 	xaInit(&CxGlobals.ShutdownHandlers,4);
 
 	/** set up the interrupt handler so we can shutdown properly **/
@@ -661,6 +674,12 @@ cxInitialize(void* v)
 	    thExit();
 	    }
 	fdClose(cxconf, 0);
+
+	/** This setting can be dangerous apart from the RBAC security subsystem.
+	 ** We default to Enabled here, but this is turned off in the default config.
+	 **/
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "enable_send_credentials"), &n, NULL, 0) != 0 || n != 0)
+	    CxGlobals.Flags |= CX_F_ENABLEREMOTEPW;
 
 	/** Init the security subsystem.
 	 **/

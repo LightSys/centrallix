@@ -72,10 +72,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.33 2008/04/06 20:43:52 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.34 2008/04/06 22:23:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.34  2008/04/06 22:23:28  gbeeley
+    - (security) adding option enable_send_credentials in centrallix.conf,
+      which defaults to 1 but is set to 0 in the default configuration.  This
+      option controls whether osdrivers are allowed to send a user's logon
+      credentials to a remote server (such as Sybase or pop3) to log into
+      that server as well.  Both sybase and pop3 behavior in that regard is
+      controlled by the node object.  But since any Centrallix user can
+      create a node object (outside of an RBAC policy-driven security system
+      preventing them or restricting the use thereof), this option can
+      globally shut down the sending of said credentials regardless of what
+      the node objects say.
+
     Revision 1.33  2008/04/06 20:43:52  gbeeley
     - (bugfix) all three rdbms-style objectsystem drivers had memory leak
       issues relating to pathname structures.  The corrected interface in
@@ -641,6 +653,13 @@ sybd_internal_GetConn(pSybdNode db_node)
 	/** Use system auth? **/
 	if (db_node->Flags & SYBD_NODE_F_USECXAUTH)
 	    {
+	    /** Do we have permission to do this? **/
+	    if (!(CxGlobals.Flags & CX_F_ENABLEREMOTEPW))
+		{
+		mssError(1,"SYBD","use_system_auth requested, but Centrallix global enable_send_credentials is turned off");
+		return NULL;
+		}
+
 	    /** Get username/password from session **/
 	    user = mssUserName();
 	    pwd = mssPassword();

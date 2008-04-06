@@ -48,10 +48,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_pop3_v3.c,v 1.4 2008/04/06 22:12:16 gbeeley Exp $
+    $Id: objdrv_pop3_v3.c,v 1.5 2008/04/06 22:23:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_pop3_v3.c,v $
 
     $Log: objdrv_pop3_v3.c,v $
+    Revision 1.5  2008/04/06 22:23:28  gbeeley
+    - (security) adding option enable_send_credentials in centrallix.conf,
+      which defaults to 1 but is set to 0 in the default configuration.  This
+      option controls whether osdrivers are allowed to send a user's logon
+      credentials to a remote server (such as Sybase or pop3) to log into
+      that server as well.  Both sybase and pop3 behavior in that regard is
+      controlled by the node object.  But since any Centrallix user can
+      create a node object (outside of an RBAC policy-driven security system
+      preventing them or restricting the use thereof), this option can
+      globally shut down the sending of said credentials regardless of what
+      the node objects say.
+
     Revision 1.4  2008/04/06 22:12:16  gbeeley
     - (change) use nmSysXxx for memory management
 
@@ -506,6 +518,11 @@ pop_internal_ConnectToMaildrop(pPopData inf)
 		    mssError(1, "POP", "Prompting for password not yet implemented");
 		    goto piCTM_Error;
 		case POP_AUTH_CURRLOGIN:
+		    if (!(CxGlobals.Flags & CX_F_ENABLEREMOTEPW))
+			{
+			mssError(1, "POP", "Auth method set to 'currlogin' but Centrallix global enable_send_credentials is turned off");
+			goto piCTM_Error;
+			}
 		    passwd = mssPassword();
 		    break;
 		}

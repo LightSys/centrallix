@@ -13,6 +13,12 @@ centrallix "system/config"
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
+
+    // Set this to 1 to allow Centrallix to send a user's login credentials
+    // to another server, as a part of "single sign on" type authentication.
+    // This is disabled here because it is dangerous apart from the RBAC
+    // security subsystem, if some users of Centrallix are untrusted.
+    enable_send_credentials = 0;
     
     // Configuration for various modules follows....
 
