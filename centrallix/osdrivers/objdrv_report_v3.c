@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.18 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.19 2008/04/06 20:52:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.19  2008/04/06 20:52:16  gbeeley
+    - (change) allow value= et al in a report/area without having to embed a
+      report/data element.  This simplifies some report writing a bit.
+
     Revision 1.18  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -3043,6 +3047,14 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn th
 	rpt_internal_SetMargins(area, area_handle, 0, 0, 0, 0);
 
 	/** Do stuff that is contained in the area **/
+	if (stLookup(area, "value"))
+	    {
+	    if (rpt_internal_DoData(inf, area, rs, area_handle) < 0)
+		{
+		prtEndObject(area_handle);
+		return -1;
+		}
+	    }
 	rval = rpt_internal_DoContainer(inf, area, rs, area_handle);
 
 	/** End the area **/
@@ -3140,7 +3152,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	object->UserData = NULL;
 
 	/** IF this is a report/data or report/table-cell, compile its one expression **/
-	if (!strcmp(object->UsrType,"report/data") || !strcmp(object->UsrType,"report/table-cell"))
+	if (!strcmp(object->UsrType,"report/data") || !strcmp(object->UsrType,"report/table-cell") || !strcmp(object->UsrType, "report/area"))
 	    {
 	    /** Get the expression itself **/
 	    expr_inf = stLookup(object,"value");
@@ -3723,7 +3735,7 @@ rpt_internal_StartGenerator(pRptData inf)
 	    }
 	inf->MasterFD = fdOpenFD(lowlevel_fd[0], O_RDONLY);
 	inf->SlaveFD = fdOpenFD(lowlevel_fd[1], O_WRONLY);
-	/*fdSetOptions(inf->SlaveFD, FD_UF_WRBUF);*/
+	fdSetOptions(inf->SlaveFD, FD_UF_WRBUF);
 
 	/** Create a new thread to start the report generation. **/
 	if (!thCreate(rpt_internal_Generator, 0, (void*)inf))
