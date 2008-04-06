@@ -35,8 +35,8 @@ make
 %install
 rm -rf $RPM_BUILD_ROOT
 make install
-mv $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}.%{release} $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}.%{release}
-mv $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}.%{release} $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}.%{release}
+#mv $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}.%{release} $RPM_BUILD_ROOT/usr/lib/libCentrallix.so.%{version}.%{release}
+#mv $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}.%{release} $RPM_BUILD_ROOT/usr/lib/libStParse.so.%{version}.%{release}
 
 %post -p /sbin/ldconfig
 
