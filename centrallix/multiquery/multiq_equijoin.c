@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.11 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.12 2008/04/06 20:53:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.12  2008/04/06 20:53:49  gbeeley
+    - (bugfix) under some conditions, the NULL values in a row resulting from
+      an outerjoin were not showing up as NULL.
+
     Revision 1.11  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -605,11 +609,17 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 		qe->SlaveIterCnt = 0;
 		continue;
 		}
+	    else if (rval == 0 && (qe->Flags & MQ_EF_OUTERJOIN))
+		{
+		/** outer join with NULL row from slave **/
+		expModifyParam(mq->ObjList, mq->ObjList->Names[slave->SrcIndex], NULL);
+		rval = 1;
+		}
 	    qe->SlaveIterCnt++;
 	    break;
 	    }
 
-    return 1;
+    return rval;
     }
 
 
