@@ -38,10 +38,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.10 2008/03/29 01:03:36 gbeeley Exp $
+    $Id: newmalloc.c,v 1.11 2008/04/06 21:34:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.11  2008/04/06 21:34:36  gbeeley
+    - (bugfix) nmSysStrdup() should use const qualifier.
+
     Revision 1.10  2008/03/29 01:03:36  gbeeley
     - (change) changing integer type in IntVec to a signed integer
     - (security) switching to size_t in qprintf where needed instead of using
@@ -663,7 +666,7 @@ nmSysRealloc(void* ptr, int newsize)
     }
 
 char*
-nmSysStrdup(char* ptr)
+nmSysStrdup(const char* ptr)
     {
 #ifdef NM_USE_SYSMALLOC
     char* newptr;

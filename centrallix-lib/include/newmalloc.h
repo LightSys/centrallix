@@ -28,10 +28,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.h,v 1.4 2007/12/13 23:10:25 gbeeley Exp $
+    $Id: newmalloc.h,v 1.5 2008/04/06 21:34:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/newmalloc.h,v $
 
     $Log: newmalloc.h,v $
+    Revision 1.5  2008/04/06 21:34:36  gbeeley
+    - (bugfix) nmSysStrdup() should use const qualifier.
+
     Revision 1.4  2007/12/13 23:10:25  gbeeley
     - (change) adding --enable-debugging to the configure script, and without
       debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
@@ -106,7 +109,7 @@ void nmDeltas();
 void* nmSysMalloc(int size);
 void nmSysFree(void* ptr);
 void* nmSysRealloc(void* ptr, int newsize);
-char* nmSysStrdup(char* ptr);
+char* nmSysStrdup(const char* ptr);
 
 void nmEnableTagging();
 void nmRegisterTagID(int tag_id, char* name);
