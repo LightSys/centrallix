@@ -66,10 +66,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.21 2008/03/08 00:41:59 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.22 2008/04/06 20:36:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.22  2008/04/06 20:36:16  gbeeley
+    - (feature) adding support for SQL round() function
+    - (change) adding support for division and multiplication with money
+      data types.  It is still not permitted to multiply one money type by
+      another money type, as 'money' is not a dimensionless value.
+
     Revision 1.21  2008/03/08 00:41:59  gbeeley
     - (bugfix) a double-free was being triggered on Subquery nodes as a
       result of an obscure glitch in expCopyNode.  The string value should
@@ -349,6 +355,8 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     void* dptr;
     int i;
     int is_negative = 0;
+    long long mv;
+    double md;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -455,6 +463,11 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    i = -i;
 			    is_negative = !is_negative;
 			    }
+			if (i == 0)
+			    {
+			    mssError(1,"EXP","Attempted divide by zero");
+			    return -1;
+			    }
 			tree->Types.Money.WholePart = m.WholePart / i;
 			tree->Types.Money.FractionPart = (10000*(m.WholePart % i) + m.FractionPart)/i;
 			if (is_negative)
@@ -468,6 +481,26 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    }
 			break;
 		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_MONEY;
+			if (i1->Types.Double == 0.0 || i1->Types.Double == -0.0)
+			    {
+			    mssError(1,"EXP","Attempted divide by zero");
+			    return -1;
+			    }
+			mv = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+			md = mv / i1->Types.Double;
+			if (md < 0) md -= 0.5;
+			else md += 0.5;
+			mv = md;
+			tree->Types.Money.WholePart = mv/10000;
+			mv = mv % 10000;
+			if (mv < 0)
+			    {
+			    mv += 10000;
+			    tree->Types.Money.WholePart -= 1;
+			    }
+			tree->Types.Money.FractionPart = mv;
+			break;
 		    case DATA_T_MONEY:
 		        tree->DataType = DATA_T_MONEY;
 			mssError(1,"EXP","Unimplemented money <divide> x operation");
@@ -492,11 +525,11 @@ int
 expEvalMultiply(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
-    MoneyType m,m2;
     void* dptr;
     int n, i;
-    int is_negative = 0;
     char* ptr;
+    long long mv;
+    double md;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -549,53 +582,34 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		break;
 
 	    case DATA_T_MONEY:
-	        /** BUG BUG!! **/
-	        mssError(1,"EXP","ERROR: UNIMPLEMENTED OPERATION moneytype * other_type");
-		return -1;
-
-	        objDataToMoney(i1->DataType, dptr, &m2);
-		memcpy(&m, &(i0->Types.Money), sizeof(MoneyType));
 		tree->DataType = DATA_T_MONEY;
-
-		/** First step is convert both to positive amounts **/
-		if (m.WholePart < 0)
+		mv = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+		switch(i1->DataType)
 		    {
-		    is_negative = !is_negative;
-		    if (m.FractionPart != 0)
-		        {
-			m.WholePart = m.WholePart + 1;
-			m.FractionPart = 10000 - m.FractionPart;
-			}
-		    m.WholePart = -m.WholePart;
+		    case DATA_T_INTEGER:
+			mv *= i1->Integer;
+			break;
+		    case DATA_T_DOUBLE:
+			md = mv * i1->Types.Double;
+			if (md < 0) md -= 0.5;
+			else md += 0.5;
+			mv = md;
+			break;
+		    case DATA_T_MONEY:
+			mssError(1,"EXP","Cannot multiply a money data type by another money data type");
+			return -1;
+		    default:
+			mssError(1,"EXP","Can only multiply a money data type by an integer or double");
+			return -1;
 		    }
-		if (m2.WholePart < 0)
+		tree->Types.Money.WholePart = mv/10000;
+		mv = mv % 10000;
+		if (mv < 0)
 		    {
-		    is_negative = !is_negative;
-		    if (m2.FractionPart != 0)
-		        {
-			m2.WholePart = m2.WholePart + 1;
-			m2.FractionPart = 10000 - m2.FractionPart;
-			}
-		    m2.WholePart = -m2.WholePart;
+		    mv += 10000;
+		    tree->Types.Money.WholePart -= 1;
 		    }
-
-		/** Second step is to compute the result value. **/
-		tree->Types.Money.WholePart = m.WholePart * m2.WholePart;
-		n = m.FractionPart * m2.FractionPart;
-		tree->Types.Money.FractionPart = n%10000;
-		tree->Types.Money.WholePart += n/10000;
-		n = 0;
-
-		/** Final step is to apply the negative sign, if necessary **/
-		if (is_negative)
-		    {
-		    if (tree->Types.Money.FractionPart != 0)
-		        {
-			tree->Types.Money.WholePart = tree->Types.Money.WholePart - 1;
-			tree->Types.Money.FractionPart = 10000 - tree->Types.Money.FractionPart;
-			}
-		    tree->Types.Money.WholePart = -tree->Types.Money.WholePart;
-		    }
+		tree->Types.Money.FractionPart = mv;
 		break;
 
 	    case DATA_T_STRING:

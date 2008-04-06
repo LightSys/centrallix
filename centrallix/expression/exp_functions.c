@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <math.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -56,10 +57,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.15 2008/03/08 00:41:59 gbeeley Exp $
+    $Id: exp_functions.c,v 1.16 2008/04/06 20:36:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.16  2008/04/06 20:36:16  gbeeley
+    - (feature) adding support for SQL round() function
+    - (change) adding support for division and multiplication with money
+      data types.  It is still not permitted to multiply one money type by
+      another money type, as 'money' is not a dimensionless value.
+
     Revision 1.15  2008/03/08 00:41:59  gbeeley
     - (bugfix) a double-free was being triggered on Subquery nodes as a
       result of an obscure glitch in expCopyNode.  The string value should
@@ -1072,6 +1079,81 @@ int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     }
 
 
+int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int dec = 0;
+    int i, v;
+    double dv;
+    long long mt, mv;
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY) || (i1 && i1->DataType != DATA_T_INTEGER) || (i1 && i2))
+	{
+	mssError(1,"EXP","round() requires a numeric parameter and an optional integer parameter");
+	return -1;
+	}
+    if ((i0->Flags & EXPR_F_NULL) || (i1 && (i1->Flags & EXPR_F_NULL)))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i1) dec = i1->Integer;
+    tree->DataType = i0->DataType;
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = i0->Integer;
+	    if (dec < 0)
+		{
+		v = 1;
+		for(i=dec;i<0;i++) v *= 10;
+		if (tree->Integer > 0)
+		    tree->Integer += (v/2);
+		else
+		    tree->Integer -= (v/2);
+		tree->Integer /= v;
+		tree->Integer *= v;
+		}
+	    break;
+
+	case DATA_T_DOUBLE:
+	    tree->Types.Double = i0->Types.Double;
+	    dv = 1;
+	    for(i=dec;i<0;i++) dv *= 10;
+	    for(i=0;i<dec;i++) dv /= 10;
+	    tree->Types.Double = tree->Types.Double/dv;
+	    if (tree->Types.Double > 0)
+		tree->Types.Double = floor(tree->Types.Double + 0.5);
+	    else
+		tree->Types.Double = ceil(tree->Types.Double - 0.5);
+	    tree->Types.Double = tree->Types.Double*dv;
+	    break;
+
+	case DATA_T_MONEY:
+	    mt = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+	    if (dec < 4)
+		{
+		mv = 1;
+		for(i=dec;i<4;i++) mv *= 10;
+		if (mt > 0)
+		    mt += (mv/2);
+		else
+		    mt -= (mv/2);
+		mt /= mv;
+		mt *= mv;
+		}
+	    tree->Types.Money.WholePart = mt/10000;
+	    mt = mt % 10000;
+	    if (mt < 0)
+		{
+		mt += 10000;
+		tree->Types.Money.WholePart -= 1;
+		}
+	    tree->Types.Money.FractionPart = mt;
+	    break;
+	}
+    return 0;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -1450,6 +1532,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
+	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
