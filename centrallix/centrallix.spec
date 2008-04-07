@@ -20,7 +20,7 @@ web-based application deployment with zero client footprint.
 %package sybase
 Summary: The Sybase ASE ObjectSystem Driver
 Group: System Environment/Daemons
-Requires: centrallix = %{version}, sybase-ocsd >= 10.0.4-6
+Requires: centrallix = %{version}
 
 %description sybase
 The Sybase ASE ObjectSystem Driver provides Centrallix access to the
