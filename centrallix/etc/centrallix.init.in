@@ -23,7 +23,7 @@ start() {
     local RETVAL=0
 
     # Start daemon.
-    gprintf "Starting centrallix: "
+    printf "Starting centrallix: "
     daemon ${centrallix} $ARGS
     RETVAL=$?
     echo
@@ -36,7 +36,7 @@ stop() {
     local RETVAL=0
 
     # Stop daemons.
-    gprintf "Stopping centrallix: "
+    printf "Stopping centrallix: "
     killproc ${centrallix}
     RETVAL=$?
     echo
@@ -67,7 +67,7 @@ case "$1" in
 	fi
 	;;
     *)
-	gprintf "Usage: %s {start|stop|restart|status|condrestart}\n" "$0"
+	printf "Usage: %s {start|stop|restart|status|condrestart}\n" "$0"
 	RETVAL=1
 esac
 
