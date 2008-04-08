@@ -9,6 +9,7 @@ Buildroot: %{_tmppath}/%{name}-%{version}-root
 BuildPrereq: zlib-devel
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org)
+%define librelease 0
 
 %description
 The centrallix-lib package provides required base functionality for the
@@ -44,8 +45,8 @@ make install
 
 %files
 %defattr(-,root,root)
-/usr/lib/libCentrallix.so.%{version}.%{release}
-/usr/lib/libStParse.so.%{version}.%{release}
+/usr/lib/libCentrallix.so.%{version}.%{librelease}
+/usr/lib/libStParse.so.%{version}.%{librelease}
 /usr/lib/libCentrallix.so.%{version}
 /usr/lib/libStParse.so.%{version}
 
