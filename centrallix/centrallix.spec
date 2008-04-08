@@ -69,6 +69,14 @@ echo "untrusted users."
 echo ""
 exit 0
 
+%post
+[ -f /sbin/chkconfig -a "$1" = "1" ] && /sbin/chkconfig --add centrallix
+exit 0
+
+%preun
+[ -f /sbin/chkconfig -a "$1" = "0" ] && /sbin/chkconfig --del centrallix
+exit 0
+
 %install
 rm -rf $RPM_BUILD_ROOT
 make install
