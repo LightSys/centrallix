@@ -14,7 +14,7 @@
 centrallix=##SBINDIR##/centrallix
 [ -x ${centrallix} ] || exit 0
 
-ARGS="-q -d"
+ARGS="-q -d -c ##SYSCONFDIR##/centrallix.conf"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:##LIBDIR##:##CXLIBDIR##"
 
 [ -d ##LOCALSTATEDIR##/lock/subsys ] || mkdir -p ##LOCALSTATEDIR##/lock/subsys
