@@ -32,21 +32,27 @@ true
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/centrallix/os
+mkdir -p $RPM_BUILD_ROOT/var/centrallix/os/tmp
+chmod 1777 $RPM_BUILD_ROOT/var/centrallix/os/tmp
 mkdir -p $RPM_BUILD_ROOT/var/centrallix/os/samples
 cp -r samples/* $RPM_BUILD_ROOT/var/centrallix/os/samples/
 mkdir -p $RPM_BUILD_ROOT/var/centrallix/os/sys
 cp -r sys/* $RPM_BUILD_ROOT/var/centrallix/os/sys/
 mkdir -p $RPM_BUILD_ROOT/var/centrallix/os/tests
 cp -r tests/* $RPM_BUILD_ROOT/var/centrallix/os/tests/
-cp LICENSE.txt INSTALL.txt $RPM_BUILD_ROOT/var/centrallix/os/
+cp -r apps $RPM_BUILD_ROOT/var/centrallix/os/
+cp LICENSE.txt INSTALL.txt index.app $RPM_BUILD_ROOT/var/centrallix/os/
 
 %files
 %defattr(-,root,root)
 /var/centrallix/os/samples/*
 /var/centrallix/os/sys/*
 /var/centrallix/os/tests/*
+/var/centrallix/os/apps/*
+/var/centrallix/os/tmp
 /var/centrallix/os/LICENSE.txt
 /var/centrallix/os/INSTALL.txt
+/var/centrallix/os/index.app
 
 %clean
 rm -rf $RPM_BUILD_ROOT
