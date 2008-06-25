@@ -207,6 +207,8 @@ function wn_setvisibility_bh(v)
 	    this.ifcProbe(ifEvent).Activate("Load", {});
 	    }
 	this.ifcProbe(ifEvent).Activate("Open", {});
+	if (this.do_cascade && wn_topwin && getPageX(this) == getPageX(wn_topwin) && getPageY(this) == getPageY(wn_topwin) && wn_topwin != this)
+	    moveBy(this, 16, 16);
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
@@ -440,6 +442,7 @@ function wn_setvisibility(aparam)
 	    }*/
 	this.is_modal = aparam.IsModal;
 	this.no_close = aparam.NoClose;
+	this.do_cascade = aparam.Cascade;
 	this.SetVisibilityTH(true);
 	}
     else
