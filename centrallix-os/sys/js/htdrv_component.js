@@ -396,7 +396,7 @@ function cmp_action(aname, aparam)
     {
     for(var i=0;i<this.components.length;i++)
 	{
-	for(var j=0;i<this.components[i].actions.length;i++)
+	for(var j=0;j<this.components[i].actions.length;j++)
 	    {
 	    if (this.components[i].actions[j] == aname)
 		{
