@@ -42,6 +42,38 @@
  **END-CVSDATA***********************************************************/
 
 
+int
+wgtal_internal_AddToArray(pWgtrNode node, pWgtrNode widgetarray[], int * wgt_cnt, int maxsize)
+    {
+    int count;
+    int i;
+    pWgtrNode child;
+
+	count = xaCount(&(node->Children));
+	if((*wgt_cnt)+count > maxsize)
+	    {
+	    mssError(1, "WGTRAL", "Too many widgets inside '%s'",node->Name);
+	    return -1;
+	    }
+
+	for(i=0;i<count;i++)
+	    {
+	    child = (pWgtrNode)(xaGetItem((&node->Children),i));
+	    if((child->Flags & WGTR_F_CONTROL) || (child->Flags & WGTR_F_NONVISUAL))
+		{
+		if (wgtal_internal_AddToArray(child, widgetarray, wgt_cnt, maxsize) < 0)
+		    return -1;
+		}
+	    else
+		{
+		widgetarray[(*wgt_cnt)++] = child;
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** wgtalVerify - allows the driver to check elsewhere in the tree
  *** to make sure that the conditions it requires for proper functioning
  *** are present - checking for other widgets that might be necessary,
@@ -57,9 +89,8 @@ wgtalVerify(pWgtrVerifySession s)
     int ord[64];
     int xo, yo;
     int al_type = -1;
-    int i, j, rpti;
+    int i, j;
     char* ptr;
-    int count,rptcount=0;
     int wgt_cnt;
     int n;
     int next_wgt;
@@ -151,42 +182,9 @@ wgtalVerify(pWgtrVerifySession s)
 		}
 
 	    /** Grab the widgets and put them in a list **/
-	    count = xaCount(&(al->Children));
-	    for(wgt_cnt=i=0;i<count;i++)
-		{
-		child = (pWgtrNode)(xaGetItem(&(al->Children),i));
-		if(child->Flags & WGTR_F_CONTROL)
-		    {
-		    /** Code for the repeat widget that could be extended to work for other types
-		     ** of control structres that need to 'look through' to their subwidgets
-		     **/
-		    rptcount = xaCount(&(child->Children));
-		    if(wgt_cnt+rptcount > sizeof(widgetarray)/sizeof(pWgtrNode))
-			{
-			mssError(1, "WGTRAL", "Too many widgets inside '%s'",al->Name);
-			return -1;
-			}
-		    for(rpti=0;rpti<rptcount;rpti++)
-			{
-			widgetarray[wgt_cnt++] = (pWgtrNode)(xaGetItem((&child->Children),rpti));
-			}
-		    }
-		else if(child->Flags & WGTR_F_NONVISUAL)
-		    {
-		    mssError(1, "WGTRAL", "Cannot place nonvisual widget '%s' inside %s '%s'", 
-			    child->Name, al->Type, al->Name);
-		    return -1; 
-		    }
-		else
-		    {
-		    if (wgt_cnt >= sizeof(sortarray)/sizeof(pWgtrNode))
-			{
-			mssError(1, "WGTRAL", "Too many widgets in inside %s '%s'", al->Type, al->Name);
-			return -1;
-			}
-		    widgetarray[wgt_cnt++] = (pWgtrNode)(xaGetItem((&al->Children),i));
-		    }
-		}
+	    wgt_cnt = 0;
+	    if (wgtal_internal_AddToArray(al, widgetarray, &wgt_cnt, sizeof(widgetarray)/sizeof(pWgtrNode)) < 0)
+		return -1;
 
 	    /** Sort the list into the order they will be laid out **/
 	    for(i=0;i<wgt_cnt;i++)
