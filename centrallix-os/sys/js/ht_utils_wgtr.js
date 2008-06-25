@@ -175,15 +175,20 @@ function wgtrSetProperty(node, prop_name, value)
 	// make sure the parameters are legitimate
 	if (!node || !node.__WgtrName) { pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
 
-	// check for the existence of the asked-for property
-	if (!node[prop_name]) 
-	    { 
-	    pg_debug("wgtrSetProperty - widget node "+node.__WgtrName+" does not have property "+prop_name+'\n');
-	    return false;
+	// set the desired property
+	if (node.ifcProbe && node.ifcProbe(ifValue) && node.ifcProbe(ifValue).Exists(prop_name))
+	    node.ifcProbe(ifValue).setValue(prop_name, value);
+	else
+	    {
+	    // check for the existence of the asked-for property
+	    if (typeof (node[prop_name]) == 'undefined') 
+		{ 
+		pg_debug("wgtrSetProperty - widget node "+node.__WgtrName+" does not have property "+prop_name+'\n');
+		return false;
+		}
+	    node[prop_name]=value;
 	    }
 
-	// set the desired property
-	node[prop_name]=value;
 	return true;
     }
 
@@ -441,7 +446,7 @@ function wgtrFind(v)
     return null;
     }
 
-function wgtrGetChildren(n)
+function wgtrGetChildren(node)
     {
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
