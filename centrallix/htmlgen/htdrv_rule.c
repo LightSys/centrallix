@@ -48,10 +48,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_rule.c,v 1.2 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_rule.c,v 1.3 2008/06/25 18:27:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_rule.c,v $
 
     $Log: htdrv_rule.c,v $
+    Revision 1.3  2008/06/25 18:27:25  gbeeley
+    - (bugfix) switch to JSSTR (qprintf) for string encoding of rule parameters
+
     Revision 1.2  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -168,7 +171,7 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 	    if (xsConcatQPrintf(xs, "%[, %]%STR&SYM:", !first, attrname) > 0)
 		{
 		t = wgtrGetPropertyType(tree, attrname);
-		if (t <= 0 || (t != def->ParamTypes[found] && def->ParamTypes[found] != HT_DATA_T_BOOLEAN))
+		if (t <= 0 || (t != def->ParamTypes[found] && def->ParamTypes[found] != HT_DATA_T_BOOLEAN && def->ParamTypes[found] != DATA_T_ANY))
 		    xsConcatenate(xs, "null", 4);
 		else
 		    {
@@ -179,16 +182,27 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 		    else
 			{
 			if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE)
+			    {
 			    ptr = objDataToStringTmp(t, (void*)(&od), DATA_F_QUOTED);
+			    xsConcatenate(xs, ptr, -1);
+			    }
 			else if (t == DATA_T_CODE)
 			    {
 			    wgtrGetPropertyValue(tree,attrname,DATA_T_CODE,POD(&code));
 			    htrAddExpression(s, nptr, attrname, code);
 			    ptr = "null";
+			    xsConcatenate(xs, ptr, -1);
+			    }
+			else if (t == DATA_T_STRING)
+			    {
+			    ptr = objDataToStringTmp(t, (void*)(od.Generic), 0);
+			    xsConcatQPrintf(xs, "\"%STR&JSSTR\"", ptr);
 			    }
 			else
+			    {
 			    ptr = objDataToStringTmp(t, (void*)(od.Generic), DATA_F_QUOTED);
-			xsConcatenate(xs, ptr, -1);
+			    xsConcatenate(xs, ptr, -1);
+			    }
 			}
 		    }
 		first = 0;
