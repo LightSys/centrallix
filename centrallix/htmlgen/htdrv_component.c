@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.12 2008/03/04 01:10:56 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.13 2008/06/25 18:06:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.13  2008/06/25 18:06:40  gbeeley
+    - (bugfix) use_toplevel_params is a reserved attribute.
+
     Revision 1.12  2008/03/04 01:10:56  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -172,7 +175,7 @@ htcmp_internal_CreateParams(pWgtrNode tree)
     pStruct attr_inf;
     char* attrname;
     char* reserved_attrs[] = {"x", "y", "width", "height", "name", "inner_type", "outer_type",
-	    "annotation", "content_type", "path", "mode", NULL};
+	    "annotation", "content_type", "path", "mode", "use_toplevel_params", NULL};
     int i;
     int found;
     int t;
