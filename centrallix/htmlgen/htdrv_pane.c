@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.34 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.35 2008/06/25 18:18:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.35  2008/06/25 18:18:03  gbeeley
+    - (feature) pane can now have a solid border, not just a raised or lowered
+      border.
+
     Revision 1.34  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -354,9 +358,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char main_bg[128];
+    char bdr[64];
     int x=-1,y=-1,w,h;
     int id;
-    int style = 1; /* 0 = lowered, 1 = raised, 2 = none */
+    int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
     char* c2;
     int box_offset;
@@ -403,6 +408,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (!strcmp(ptr,"lowered")) style = 0;
 	    if (!strcmp(ptr,"raised")) style = 1;
 	    if (!strcmp(ptr,"flat")) style = 2;
+	    if (!strcmp(ptr,"bordered")) style = 3;
 	    }
 	if (style == 1) /* raised */
 	    {
@@ -438,6 +444,13 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTPN","Cannot render");
 		}
 	    }
+	else if (style == 3) /* framed */
+	    {
+	    if (wgtrGetPropertyValue(tree,"border_color",DATA_T_STRING,POD(&ptr)) != 0)
+		strcpy(bdr, "black");
+	    else
+		strtcpy(bdr,ptr,sizeof(bdr));
+	    }
 
 	/** Ok, write the style header items. **/
 	if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
@@ -452,10 +465,15 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { %STR}\n",id,main_bg);
 		}
-	    else /* lowered or raised */
+	    else if (style == 0 || style == 1) /* lowered or raised */
 		{
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; %STR}\n",id,c1,c2,c2,c1,main_bg);
+		}
+	    else if (style == 3) /* bordered */
+		{
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; %STR}\n",id,bdr,main_bg);
 		}
 	    }
 	else
