@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.11 2007/03/21 04:48:08 gbeeley Exp $
+    $Id: exp_generator.c,v 1.12 2008/06/25 01:04:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.12  2008/06/25 01:04:58  gbeeley
+    - (bugfix) switch to cxjs_plus instead of just the + operator when adding
+      values in cxsql expressions deployed into javascript.  The + operator in
+      cxsql has slightly different semantics than the + operator in javascript.
+
     Revision 1.11  2007/03/21 04:48:08  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -549,13 +554,12 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PLUS:
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, "(");
+		/** rules for string concat are different in javascript and cxsql **/
+		exp_internal_WriteText(eg, "cxjs_plus(");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
-		exp_internal_WriteText(eg, " + ");
+		exp_internal_WriteText(eg, ", ");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, ")");
+		exp_internal_WriteText(eg, ")");
 		break;
 
 	    case EXPR_N_MINUS:
