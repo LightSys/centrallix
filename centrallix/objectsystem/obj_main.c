@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.16 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: obj_main.c,v 1.17 2008/06/25 18:40:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.17  2008/06/25 18:40:16  gbeeley
+    - (change) moving OBJ_TYPE_NAMES_CNT to the public obj.h header file
+
     Revision 1.16  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -160,7 +163,6 @@
 /*** OSML Globals ***/
 OSYS_t OSYS;
 
-#define OBJ_TYPE_NAMES_CNT  32
 char* obj_type_names[OBJ_TYPE_NAMES_CNT];
 
 /*** objTypeID() - return the numeric type given a name
