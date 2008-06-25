@@ -64,6 +64,8 @@ function checkbox_disable()
 
 function checkbox_getfocus()
     {
+    if (!this.enabled) 
+	return 0;
     if (this.form) this.form.FocusNotify(this);
     return 1;
     }
@@ -95,8 +97,21 @@ function checkbox_keyhandler(l,e,k)
 
 
 // presentation hints (may) have changed
-function checkbox_hintschanged()
+function checkbox_hintschanged(ht)
     {
+    // Set default=0 if nulls not allowed
+    if (ht != 'widget')
+	{
+	if (cx_hints_teststyle(this, cx_hints_style.notnull))
+	    {
+	    cx_set_hints(this, "DefaultExpr=0&Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
+	    }
+	else
+	    {
+	    cx_set_hints(this, "Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
+	    }
+	}
+
     // If NULL setting has changed, modify appearance appropriately, but
     // only if user has not already changed it to not-null
     if (this.is_checked_initial == -1)
@@ -178,7 +193,7 @@ function checkbox_init(param)
     // hints interaction - default don't allow nulls - 
     // but app and data can override this.
     l.hintschanged = checkbox_hintschanged;
-    cx_set_hints(l, "Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
+    cx_set_hints(l, "DefaultExpr=0&Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
 
     // focus interaction
     l.getfocushandler  = checkbox_getfocus;

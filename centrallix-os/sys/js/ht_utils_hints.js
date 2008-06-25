@@ -47,7 +47,7 @@ function cx_set_hints(element, hstr, hinttype)
 	}
     element.cx_hints[hinttype] = cx_parse_hints(hstr);
     cx_merge_hints(element);
-    if (element.hintschanged) element.hintschanged();
+    if (element.hintschanged) element.hintschanged(hinttype);
     }
 
 
