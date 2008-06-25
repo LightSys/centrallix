@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.14 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: obj_trx.c,v 1.15 2008/06/25 01:02:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.15  2008/06/25 01:02:41  gbeeley
+    - (bugfix) Handle situation where DeleteObj() is not supported by the
+      underlying objectsystem driver
+
     Revision 1.14  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -522,6 +526,11 @@ oxtDeleteObj(void* this_v, pObjTrxTree* oxt)
 
     	/** Call the driver to make the delete operation. **/
     	pass_oxt = &(this->Trx);
+	if (this->Obj->TLowLevelDriver->DeleteObj == NULL)
+	    {
+	    mssError(1,"OXT","oxtDeleteObj: [%s] objects do not support deletion",this->Obj->TLowLevelDriver->Name);
+	    return -1;
+	    }
 	rval = this->Obj->TLowLevelDriver->DeleteObj(this->LLParam, pass_oxt);
 
 	/** Completed or error? **/
