@@ -45,6 +45,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.61  2008/06/25 18:09:33  gbeeley
+    - (change) normalize the AllowQuery/et.al. to a more usual format of
+      allow_query/etc., and switch to using htrGetBoolean().
+
     Revision 1.60  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -451,16 +455,12 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	id = (HTFORM.idcnt++);
 
 	/** Get params. **/
-	if (wgtrGetPropertyValue(tree,"AllowQuery",DATA_T_INTEGER,POD(&allowquery)) != 0) 
-	    allowquery=1;
-	if (wgtrGetPropertyValue(tree,"AllowNew",DATA_T_INTEGER,POD(&allownew)) != 0) 
-	    allownew=1;
-	if (wgtrGetPropertyValue(tree,"AllowModify",DATA_T_INTEGER,POD(&allowmodify)) != 0) 
-	    allowmodify=1;
-	if (wgtrGetPropertyValue(tree,"AllowView",DATA_T_INTEGER,POD(&allowview)) != 0) 
-	    allowview=1;
-	if (wgtrGetPropertyValue(tree,"AllowNoData",DATA_T_INTEGER,POD(&allownodata)) != 0) 
-	    allownodata=1;
+	allowquery = htrGetBoolean(tree, "allow_query", 1);
+	allownew = htrGetBoolean(tree, "allow_new", 1);
+	allowmodify = htrGetBoolean(tree, "allow_modify", 1);
+	allowview = htrGetBoolean(tree, "allow_view", 1);
+	allownodata = htrGetBoolean(tree, "allow_nodata", 1);
+
 	/** The way I read the specs -- overriding this resides in 
 	 **   the code, not here -- JDR **/
 	if (wgtrGetPropertyValue(tree,"MultiEnter",DATA_T_INTEGER,POD(&multienter)) != 0) 
