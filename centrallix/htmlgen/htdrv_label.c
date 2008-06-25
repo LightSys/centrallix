@@ -44,6 +44,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.37  2008/06/25 18:14:17  gbeeley
+    - (feature) label's value can now be a runclient() expression, dynamically
+      maintained on the client.
+
     Revision 1.36  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -386,6 +390,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char* tooltip;
     char stylestr[128];
     int is_bold = 0;
+    pExpression code;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -395,6 +400,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
     	/** Get an id for this. **/
 	id = (HTLBL.idcnt++);
+
+	/** Get name **/
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	strtcpy(name,ptr,sizeof(name));
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -410,7 +419,15 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 
-	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyType(tree,"value") == DATA_T_CODE)
+	    {
+	    wgtrGetPropertyValue(tree,"value",DATA_T_CODE,POD(&code));
+	    text = nmSysStrdup("");
+	    htrAddExpression(s, name, "value", code);
+	    }
+	else if (wgtrGetPropertyValue(tree,"value",DATA_T_STRING,POD(&ptr)) == 0)
+	    text=nmSysStrdup(ptr);
+	else if (wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    text=nmSysStrdup(ptr);
 	else
 	    text=nmSysStrdup("");
@@ -452,10 +469,6 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    strtcpy(form,ptr,sizeof(form));
 	else
 	    form[0]='\0';
-
-	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,w,z);
