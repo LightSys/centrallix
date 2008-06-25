@@ -20,7 +20,10 @@ function ht_loadpage(aparam)
 function ht_setvalue(aparam)
     {
     this.mainlayer.content = aparam.Value;
-    if (aparam.ContentType) this.mainlayer.content_type = aparam.ContentType;
+    if (!this.mainlayer.content)
+	this.mainlayer.content = '';
+    if (aparam.ContentType)
+	this.mainlayer.content_type = aparam.ContentType;
     }
 function ht_addtext(aparam)
     {
