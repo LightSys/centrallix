@@ -109,6 +109,18 @@ function lb_cb_reveal(e)
     return true;
     }
 
+
+// used by ifValue
+function lbl_cb_getvalue(attr)
+    {
+    return this.getvalue();
+    }
+function lbl_cb_setvalue(attr, val)
+    {
+    return this.setvalue(val);
+    }
+
+
 // DO NOT COPY! TOP SECRET FUNCTION!
 function lbl_init(l, wparam)
     {
@@ -144,6 +156,10 @@ function lbl_init(l, wparam)
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetValue", lb_actionsetvalue);
+
+    // Values
+    var iv = l.ifcProbeAdd(ifValue);
+    iv.Add("value", lbl_cb_getvalue, lbl_cb_setvalue);
 
     // Register with form.
     l.enabled = 'disable';
