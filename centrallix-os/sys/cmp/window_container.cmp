@@ -7,6 +7,15 @@ window_container "widget/component-decl"
     toplevel "widget/parameter" { type=string; default="no";}
     w "widget/parameter" { type=integer; default=640; }
     h "widget/parameter" { type=integer; default=480; }
+    visible "widget/parameter" { type=string; default="true"; }
+
+    Open "widget/component-decl-action" { }
+    OpenModal "widget/component-decl-action" { }
+    Close "widget/component-decl-action" { }
+
+    open_cn "widget/connector" { event="Open"; target=mainwin; action="Open"; Cascade=1; }
+    openmodal_cn "widget/connector" { event="OpenModal"; target=mainwin; action="Open"; IsModal=1; }
+    close_cn "widget/connector" { event="Close"; target=mainwin; action="Close"; }
 
     visual = yes;
     width=1024;
@@ -19,14 +28,12 @@ window_container "widget/component-decl"
 	width=runserver(:this:w);
 	height=runserver(:this:h);
 	toplevel=runserver(:this:toplevel);
-
 	icon = runserver(:this:icon);
-
-	//hdr_background='/sys/images/window_hdr.png';
 	bgcolor = "#c0c0c0";
 	title=runserver(condition(char_length(:this:title) > 0, :this:title, :this:component));
-	visible=true;
+	visible=runserver(:this:visible);
 	style=dialog;
+
 	this_cmp "widget/component"
 	    {
 	    path=runserver(:this:component);
