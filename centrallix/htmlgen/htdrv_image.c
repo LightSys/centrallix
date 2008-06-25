@@ -43,6 +43,12 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.9  2008/06/25 18:11:30  gbeeley
+    - (feature) image widget can now be a form element, displaying an image
+      referred to (in the objectsystem) by a value queried via an osrc widget.
+    - (feature) image source property is now a dynamic property that can be
+      maintained on the client via a runclient() expression.
+
     Revision 1.8  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -190,6 +196,8 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     int x=-1,y=-1,w,h;
     int id, i;
     char *text;
+    char fieldname[HT_FIELDNAME_SIZE];
+    char form[64];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -223,7 +231,12 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    text=nmSysStrdup("");
 	    }
 
+	/** Get name **/
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	strtcpy(name,ptr,sizeof(name));
+
 	/** image source **/
+	htrCheckAddExpression(s, tree, name, "source");
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
@@ -232,9 +245,15 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	strtcpy(src, ptr, sizeof(src));
 
-	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(name,ptr,sizeof(name));
+	/** Field name **/
+	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
+	else
+	    fieldname[0]='\0';
+	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(form,ptr,sizeof(form));
+	else
+	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#img%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
@@ -242,7 +261,8 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	/** Init image widget (?) **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%POS\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	htrAddScriptInit_va(s, "    im_init(nodes['%STR&SYM']);\n", name);
+	htrAddScriptInit_va(s, "    im_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
+		name, fieldname, form);
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 
 	/** Event Handlers **/
