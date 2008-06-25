@@ -1,7 +1,7 @@
 $Version=2$
 smart_field "widget/component-decl"
     {
-    width=220;height=runserver(condition(:this:type == 'textarea', 64, 20));
+    width=220;height=runserver(condition(:this:ctl_type == 'textarea', 64, 20) + condition(char_length(:this:preview_sql)>0,16,0));
 
     form "widget/parameter" { type=object; find_container="widget/form";}
     field "widget/parameter" { type=string; }
@@ -11,14 +11,18 @@ smart_field "widget/component-decl"
     sql "widget/parameter" { type=string; default="select 1,1 where 1 != 1"; }
     type "widget/parameter" { type=string; default="standard"; }
     ctl_type "widget/parameter" { type=string; default="editbox"; }
+    label_width "widget/parameter" { type=integer; default=100; }
+
+    preview_sql "widget/parameter" { type=string; default=null; }
+    preview_field "widget/parameter" { type=string; default=null; }
 
     SetValue "widget/component-decl-action" { }
     sv_cn "widget/connector" { event="SetValue"; target=ctl; action="SetValue"; Value=runclient(:Value); }
 
     label_normal "widget/label"
 	{ 
-	condition=runserver(:this:ctl_type != 'checkboxleft');
-	x=0;y=0;height=20;width=95;
+	condition=runserver(:this:ctl_type != 'checkboxleft' and :this:label_width >= 5);
+	x=0;y=0;height=20;width=runserver(:this:label_width - 5);
 	text=runserver(:this:text); 
 	align=right; 
 	}
@@ -32,7 +36,7 @@ smart_field "widget/component-decl"
     ctl "widget/checkbox" 
 	{
 	condition=runserver(:this:ctl_type == 'checkboxleft');
-	x=0;y=2;height=16;
+	x=0;y=4;height=16;
 	width=20;
 	fl_width=0;
 	fieldname=runserver(:this:field); 
@@ -42,8 +46,8 @@ smart_field "widget/component-decl"
     ctl "widget/checkbox" 
 	{
 	condition=runserver(:this:ctl_type == 'checkbox');
-	x=100;y=2;height=16;
-	width=120;
+	x=runserver(:this:label_width);y=4;height=16;
+	width=runserver(220 - :this:label_width);
 	fl_width=40;
 	fieldname=runserver(:this:field); 
 	form=form; 
@@ -52,7 +56,7 @@ smart_field "widget/component-decl"
     ctl "widget/datetime"
 	{
 	condition=runserver(:this:ctl_type == 'datetime');
-	x=100;y=0;height=20;width=120; 
+	x=runserver(:this:label_width);y=0;height=20;width=runserver(220 - :this:label_width); 
 	bgcolor=white; 
 	fl_width=40;
 	fieldname=runserver(:this:field); 
@@ -65,7 +69,7 @@ smart_field "widget/component-decl"
     ctl "widget/dropdown" 
 	{ 
 	condition=runserver(:this:ctl_type == 'dropdown');
-	x=100;y=0;height=20;width=120; 
+	x=runserver(:this:label_width);y=0;height=20;width=runserver(220 - :this:label_width); 
 	fl_width=40; 
 	bgcolor=white; 
 	fieldname=runserver(:this:field); 
@@ -78,7 +82,7 @@ smart_field "widget/component-decl"
     ctl "widget/textarea"
 	{ 
 	condition=runserver(:this:ctl_type == 'textarea');
-	x=100;y=0;height=64;width=120;
+	x=runserver(:this:label_width);y=0;height=64;width=runserver(220 - :this:label_width);
 	bgcolor=white;
 	fieldname=runserver(:this:field);
 	form=form;
@@ -86,8 +90,8 @@ smart_field "widget/component-decl"
     ctl "widget/editbox" 
 	{
 	condition=runserver(:this:ctl_type == 'editbox');
-	x=100;y=0;height=20;
-	width=runserver(condition(char_length(:this:lookup_with) > 0, 100, 120));
+	x=runserver(:this:label_width);y=0;height=20;
+	width=runserver(condition(char_length(:this:lookup_with) > 0, 200, 220) - :this:label_width);
 	bgcolor=white; 
 	fieldname=runserver(:this:field); 
 	form=form; 
@@ -122,5 +126,28 @@ smart_field "widget/component-decl"
 	condition=runserver(char_length(:this:lookup_with) > 0); 
 	mode=dynamic;
 	path=runserver(:this:lookup_with);
+	}
+    preview_osrc "widget/osrc"
+	{
+	condition=runserver(char_length(:this:preview_sql) > 0);
+	sql = runserver(:this:preview_sql);
+	autoquery=never;
+	replicasize=2;
+	readahead=1;
+	preview_pane "widget/pane"
+	    {
+	    x=runserver(:this:label_width);y=20;width=runserver(220 - :this:label_width);height=16;
+	    //style=lowered;bgcolor="#d0d0d0";
+	    style=flat;
+	    preview_form "widget/form"
+		{
+		preview_label "widget/label"
+		    {
+		    fieldname=msg;
+		    x=0;y=0;width=runserver(220 - 2 - :this:label_width);height=16;fl_height=100;
+		    }
+		}
+	    }
+	linkage "widget/rule" { ruletype=osrc_filter; fieldname=runserver(:this:preview_field); value=runclient(:ctl:content); min_chars=1; trailing_wildcard=no; query_delay=499;}
 	}
     }
