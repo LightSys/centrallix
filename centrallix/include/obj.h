@@ -35,10 +35,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.40 2008/04/06 20:37:36 gbeeley Exp $
+    $Id: obj.h,v 1.41 2008/06/25 18:33:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.41  2008/06/25 18:33:27  gbeeley
+    - (change) max num of data type string names should be declared publicly.
+
     Revision 1.40  2008/04/06 20:37:36  gbeeley
     - (change) adding obj_internal_FreePathStruct() to deinitialize a pathname
       structure without actually freeing it (e.g. if the pathname structure is
@@ -437,6 +440,7 @@ typedef struct
     }
     Pathname, *pPathname;
 
+#define OBJ_TYPE_NAMES_CNT  32
 extern char* obj_type_names[];
 
 extern char* obj_short_months[];
