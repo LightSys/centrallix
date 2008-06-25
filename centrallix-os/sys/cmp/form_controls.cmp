@@ -1,7 +1,7 @@
 $Version=2$
 form_controls "widget/component-decl"
     {
-    width=458;
+    width=558;
     height=26;
 
     form "widget/parameter"
@@ -27,6 +27,13 @@ form_controls "widget/component-decl"
 	type = "string";
 	allowchars = "abcdefghijklmnopqrstuvwxyz0123456789#";
 	default = null;
+	}
+
+    fgcolor "widget/parameter"
+	{
+	type = "string";
+	default = "black";
+	allowchars = "abcdefghijklmnopqrstuvwxyz0123456789#";
 	}
 
     background "widget/parameter"
@@ -55,11 +62,21 @@ form_controls "widget/component-decl"
 
     form_ctl_pane "widget/pane"
 	{
-	x=0;y=0;width=458;height=26;
+	x=0;y=0;width=558;height=26;
 	fl_height=0;
 	style=raised;
 	bgcolor=runserver(:this:bgcolor);
 	background=runserver(:this:background);
+
+	form_ctl_name "widget/label"
+	    {
+	    condition=runserver(:this:object_name != 'Record');
+	    x=458;y=0;width=94;height=24;
+	    font_size=15;
+	    text = runserver(:this:object_name);
+	    align=right;
+	    fgcolor=runserver(:this:fgcolor);
+	    }
 
 	form_ctl_hbox "widget/hbox"
 	    {
