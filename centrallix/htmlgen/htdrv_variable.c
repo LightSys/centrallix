@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.14 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.15 2008/06/25 18:32:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.15  2008/06/25 18:32:30  gbeeley
+    - (feature) variable "widget" can now be a form element, thus effectively
+      acting like a "hidden field" in some cases where that might be desired.
+
     Revision 1.14  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -233,9 +237,14 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
+    char fieldname[HT_FIELDNAME_SIZE];
+    char form[64];
     int t;
     int id, i;
-    char* vptr;
+    int n = 0;
+    char* vptr = NULL;
+    int is_null = 1;
+    pExpression code;
 
     	/** Get an id for this. **/
 	id = (HTVBL.idcnt++);
@@ -244,35 +253,60 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
-	/** Get type and value **/
-	t = wgtrGetPropertyType(tree,"value");
-	if (t < 0)
-	    {
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].type = 'ERR';\n",
-		    name);
-	    }
+	/** Field name **/
+	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else
-	    {
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].type = '%STR&JSSTR';\n",
-		    name, obj_type_names[t]);
-	    }
+	    fieldname[0]='\0';
+	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(form,ptr,sizeof(form));
+	else
+	    form[0]='\0';
 
-	if (t == DATA_T_STRING)
+	/** Value of label **/
+	t = wgtrGetPropertyType(tree,"value");
+	if (t < 0 || t >= OBJ_TYPE_NAMES_CNT)
 	    {
-	    wgtrGetPropertyValue(tree,"value",DATA_T_STRING,POD(&vptr));
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].value = %STR;\n",
-		    name, objDataToStringTmp(DATA_T_STRING, vptr, DATA_F_QUOTED));
+	    t = DATA_T_ANY;
+	    }
+	else if (t == DATA_T_CODE)
+	    {
+	    wgtrGetPropertyValue(tree,"value",DATA_T_CODE,POD(&code));
+	    htrAddExpression(s, name, "value", code);
+	    }
+	else if (t == DATA_T_STRING && wgtrGetPropertyValue(tree,"value",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    is_null = 0;
+	    vptr=nmSysStrdup(ptr);
 	    }
 	else if (t == DATA_T_INTEGER)
 	    {
-	    wgtrGetPropertyValue(tree,"value",DATA_T_INTEGER,POD(&t));
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].value = %INT;\n", 
-		    name, t);
+	    if (wgtrGetPropertyValue(tree,"value",DATA_T_INTEGER,POD(&n)) == 0)
+		is_null = 0;
 	    }
+
+	/** widget init **/
+	htrAddScriptInit_va(s, "    vbl_init(nodes[\"%STR&SYM\"], {type:\"%STR&JSSTR\", value:%[null%]%[\"%STR&JSSTR\"%]%[%INT%], field:\"%STR&JSSTR\", form:\"%STR&JSSTR\"} );\n",
+		name,
+		obj_type_names[t],
+		is_null,
+		(!is_null) && t == DATA_T_STRING, vptr,
+		(!is_null) && t == DATA_T_INTEGER, n,
+		fieldname, form);
+
+	/** JavaScript include file **/
+	htrAddScriptInclude(s, "/sys/js/htdrv_variable.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+
+	/** object linkages **/
+	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Check for more sub-widgets within the vbl entity. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
+
+	if (vptr)
+	    nmSysFree(vptr);
 
     return 0;
     }
