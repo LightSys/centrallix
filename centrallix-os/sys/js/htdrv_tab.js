@@ -372,6 +372,7 @@ function tc_init(param)
 	l.OperationComplete=new Function('return true');
 	l.ObjectDeleted=tc_updated;
 	l.ObjectCreated=tc_updated;
+	l.ObjectModified=tc_updated;
 	}
 
     // Actions
