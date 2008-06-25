@@ -226,6 +226,10 @@ QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
 # Network drivers.
 XNETDRIVERS=net_http.o \
+	    net_http_conn.o \
+	    net_http_sess.o \
+	    net_http_osml.o \
+	    net_http_app.o \
 	    net_bdqs.o \
 	    @NETDRIVERS@
 NETDRIVERS=$(patsubst %,netdrivers/%,$(XNETDRIVERS))
