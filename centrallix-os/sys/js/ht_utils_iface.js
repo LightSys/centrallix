@@ -443,42 +443,145 @@ function ifEvent()
 // Value interface
 function ifValue()
     {
+    function ifvalue_checkexist(n)
+	{
+	if (!this._Attributes[n])
+	    this._Attributes[n] = {name:n, exists:false, obj:this.obj, instance:this, watchlist:[], get:null, set:null};
+	return this._Attributes[n];
+	}
     function ifvalue_getvalue(n)
 	{
-	if (this.Values[n])
-	    return this.Values[n].call(this.obj, n);
-	else if (pg_diag && !this.NullNotExist)
+	var a = this._CheckExist(n);
+	if (a.exists)
+	    {
+	    if (a.propname)
+		return this.obj[a.propname];
+	    else
+		return a.get.call(this.obj, n);
+	    }
+	else if (pg_diag && !this._NullNotExist)
 	    alert("Get value: " + this.obj.id + " does not implement value " + n);
-	else if (this.NullNotExist)
-	    return this.NullNotExist.call(this.obj, n);
+	else if (this._NullNotExist)
+	    return this._NullNotExist.get.call(this.obj, n);
+	return null;
+	}
+    function ifvalue_setvalue(n, v)
+	{
+	var a = this._CheckExist(n);
+	if (a.exists)
+	    {
+	    if (a.propname)
+		return this.obj[a.propname] = v;
+	    else if (a.set)
+		return a.set.call(this.obj, n, v);
+	    else
+		return null;
+	    }
+	else if (pg_diag && !this._NullNotExist)
+	    alert("Set value: " + this.obj.id + " does not implement value " + n);
+	else if (this._NullNotExist && this._NullNotExist.set)
+	    return this._NullNotExist.set.call(this.obj, n, v);
 	return null;
 	}
     function ifvalue_exists(n, honest)
 	{
-	var v = this.Values[n]?true:false;
-	if (honest) return v;
-	if (this.NullNotExist && v == false) return true;
-	return v;
+	var a = this._CheckExist(n);
+	if (honest) return a.exists;
+	if (this._NullNotExist && a.exists == false) return true;
+	return a.exists;
 	}
-    function ifvalue_add(n, cb)	
+    function ifvalue_change_cb(a, ov, nv)
 	{
-	this.Values[n] = cb;
+	return this.ifcProbe(ifValue).Changing(a, nv, false, ov);
+	}
+    function ifvalue_add(n, get_cb, set_cb)	
+	{
+	var a = this._CheckExist(n);
+	if (typeof get_cb == 'string')
+	    {
+	    a.propname = get_cb;
+	    a.obj.__ifvalue_changed = ifvalue_change_cb;
+	    htr_watch(a.obj, a.propname, '__ifvalue_changed');
+	    }
+	else
+	    {
+	    a.get = get_cb;
+	    a.set = set_cb;
+	    }
+	a.exists = true;
 	}
     function ifvalue_remove(n)
 	{
-	this.Values[n] = null;
+	var a = this._CheckExist(n);
+	if (a.exists && a.propname)
+	    {
+	    htr_unwatch(a.obj, a.propname, '__ifvalue_changed');
+	    }
+	a.exists = false;
 	}
-    function ifvalue_setnonexistentcallback(c)
+    function ifvalue_setnonexistentcallback(get_cb, set_cb)
 	{
-	this.NullNotExist = c;
+	this._NullNotExist = {get:get_cb, set:set_cb};
 	}
-    this.NullNotExist = null;
-    this.Values = new Object();
+    function ifvalue_watch(attr, func)
+	{
+	var a = this._CheckExist(attr);
+	for(var i in a.watchlist)
+	    if (a.watchlist[i] == func) return;
+	a.watchlist.push(func);
+	}
+    function ifvalue_unwatch(attr, func)
+	{
+	var a = this._CheckExist(attr);
+	for(var i in a.watchlist)
+	    if (a.watchlist[i] == func)
+		{
+		a.splice(i, 1);
+		return;
+		}
+	}
+    function ifvalue_changing(attr, value, force, oldval, oldval_is_set)
+	{
+	var a = this._CheckExist(attr);
+	var changev = null;
+	if (oldval == null && !oldval_is_set)
+	    {
+	    var gf = a.exists?a.get:(this._NullNotExist?this._NullNotExist.get:null);
+	    if (!gf)
+		{
+		if (a.propname)
+		    oldval = this.obj[a.propname];
+		else
+		    return value;
+		}
+	    else
+		oldval = gf.call(this.obj, attr);
+	    }
+	for(var i in a.watchlist)
+	    {
+	    changev = a.watchlist[i].call(this.obj, attr, oldval, value);
+	    if (!force) value = changev;
+	    }
+	return value;
+	}
+
+    // Internal declarations
+    this._CheckExist = ifvalue_checkexist;
+    this._NullNotExist = null;
+    this._Attributes = {};
+
+    // Observer functions
     this.getValue = ifvalue_getvalue;
+    this.setValue = ifvalue_setvalue;
     this.Exists = ifvalue_exists;
+    this.Watch = ifvalue_watch;
+    this.Unwatch = ifvalue_unwatch;
+
+    // Host functions
     this.Add = ifvalue_add;
     this.Remove = ifvalue_remove;
     this.SetNonexistentCallback = ifvalue_setnonexistentcallback;
+    this.Changing = ifvalue_changing;
     }
 
 
