@@ -31,12 +31,14 @@ function cxjs_getdate()
     }
 function cxjs_convert(dt,v)
     {
+    if (v == null || dt == null) return null;
     if (dt == 'integer') return parseInt(v);
     if (dt == 'string') return '' + v;
     return v;
     }
 function cxjs_substring(s,p,l)
     {
+    if (s == null || p == null) return null;
     if (l == null)
 	return s.substr(p-1);
     else
@@ -44,8 +46,38 @@ function cxjs_substring(s,p,l)
     }
 function cxjs_eval(x)
     {
+    if (x == null) return null;
     if (typeof x == 'object') x = x.toString();
     return eval(x);
+    }
+function cxjs_isnull(v,d)
+    {
+    if (v == null)
+	return d;
+    else
+	return v;
+    }
+function cxjs_rtrim(s)
+    {
+    if (s == null) return null;
+    return String(s).replace(/ *$/, "");
+    }
+function cxjs_plus(a, b)
+    {
+    if (a == null || b == null) return null;
+    if ((typeof a == 'string') || (typeof b == 'string'))
+	return String(a) + String(b);
+    else
+	return a + b;
+    }
+
+function cxjs_condition(c, vtrue, vfalse)
+    {
+    if (c == null) return null;
+    if (c)
+	return vtrue;
+    else
+	return vfalse;
     }
 
 // Cross-browser support functions
@@ -441,22 +473,24 @@ function htr_extract_bgimage(s)
 
 function htr_getvisibility(l)
     {
+    var v = null;
     if (cx__capabilities.Dom0NS)
         {
-	return l.visibility;
+	v = l.visibility;
 	}
     else if (cx__capabilities.Dom0IE)
         {
-        return l.currentStyle.visibility;
+        v = l.currentStyle.visibility;
 	}
     else if (cx__capabilities.Dom1HTML)
         {
 	if (!l.style.visibility)
-	    return getComputedStyle(l,null).getPropertyCSSValue('visibility').cssText;
+	    v =  getComputedStyle(l,null).getPropertyCSSValue('visibility').cssText;
 	else
-	    return l.style.visibility;
+	    v = l.style.visibility;
 	}
-    return null;
+    if (v == 'visible') v = 'inherit';
+    return v;
     }
 
 function htr_setvisibility(l,v)
