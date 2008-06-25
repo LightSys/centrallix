@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.66 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.67 2008/06/25 18:17:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.67  2008/06/25 18:17:32  gbeeley
+    - (feature) adding indicates_activity (boolean) that can be set to false
+      if an osrc's queries do not represent user-initiated activity.  This is
+      useful, for example, with osrc's which are refreshed every so often via
+      a timer or whatnot.
+    - (feature) adding osrc_key rule, used to auto-set key values on new
+      records.  NOTE: this should belong at the domain logic layer, not at the
+      application layer.  It will be moved when the domain logic objects (DLOs)
+      are available for use.
+
     Revision 1.66  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -591,6 +601,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    enum htosrc_autoquery_types aq;
    int receive_updates;
    int count, i;
+   int ind_activity;
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -611,6 +622,9 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       readahead=replicasize/2;
    if (wgtrGetPropertyValue(tree,"scrollahead",DATA_T_INTEGER,POD(&scrollahead)) != 0)
       scrollahead=readahead;
+
+   /** do queries on this osrc indicate end-user activity? **/
+   ind_activity = htrGetBoolean(tree, "indicates_activity", 1);
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
    if(replicasize==1 && readahead==0) readahead=1;
@@ -676,9 +690,9 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT});\n",
+   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT});\n",
 	 name,readahead,scrollahead,replicasize,sql,filter,
-	 baseobj?baseobj:"",name,aq,receive_updates);
+	 baseobj?baseobj:"",name,aq,receive_updates, ind_activity);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
@@ -771,6 +785,19 @@ int htosrcInitialize() {
 		"key_5",		DATA_T_STRING,
 		"target_key_5",		DATA_T_STRING,
 		"is_slave",		HT_DATA_T_BOOLEAN,
+		"revealed_only",	HT_DATA_T_BOOLEAN,
+		NULL);
+
+   htruleRegister("osrc_key",
+		"key_fieldname",	DATA_T_STRING,
+		"keying_method",	DATA_T_STRING,		/* maxplusone, counter, counterosrc, sql, value */
+		"value",		DATA_T_CODE,
+		"min_value",		DATA_T_ANY,
+		"max_value",		DATA_T_ANY,
+		"object_path",		DATA_T_STRING,
+		"counter_attribute",	DATA_T_STRING,
+		"sql",			DATA_T_STRING,
+		"osrc",			DATA_T_STRING,
 		NULL);
 
    return 0;
