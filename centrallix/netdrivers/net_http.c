@@ -66,10 +66,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.83 2008/04/06 20:51:30 gbeeley Exp $
+    $Id: net_http.c,v 1.84 2008/06/25 01:01:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.84  2008/06/25 01:01:56  gbeeley
+    - (feature) adding support for sysinfo /users directory which contains a
+      list of currently logged-in users (as managed by NHT).
+    - (change) adding ls__autoclose_sr option to OSML queries, where a query
+      will automatically close if all rows in the result set were fetched.
+      Good for performance as well as for lock contention.
+    - (change) adding cx__noact option to all requests (used by the OSRC now),
+      which tells the HTTP module to not count the request as end-user-
+      initiated activity.  Useful for allowing sessions to idle out even if a
+      regular query refresh is occurring, e.g., for a chat session.
+
     Revision 1.83  2008/04/06 20:51:30  gbeeley
     - (change) adding config option accept_localhost_only which is enabled in
       the default configuration file at present.  This prevents connections
@@ -781,7 +792,8 @@ struct
     int		RestrictToLocalhost;
     char*	DirIndex[16];
     int		UserSessionLimit;
-    XHashTable	Users;
+    XHashTable	UsersByName;
+    XArray	UsersList;
     long long	AccCnt;
     pFile	AccessLogFD;
     char	AccessLogFile[256];
@@ -792,6 +804,83 @@ struct
 int nht_internal_UnConvertChar(int ch, char** bufptr, int maxlen);
 //extern int htrRender(pFile, pObject, pStruct);
 int nht_internal_RemoveWatchdog(handle_t th);
+
+
+/*** Functions for enumerating users for the cx.sysinfo directory ***/
+pXArray
+nht_internal_UsersAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "session_cnt");
+
+    return xa;
+    }
+pXArray
+nht_internal_UsersObjList(void* ctx)
+    {
+    pXArray xa;
+    int i;
+    pNhtUser usr;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.UsersList);i++) 
+	    {
+	    usr = (pNhtUser)xaGetItem(&NHT.UsersList, i);
+	    if (usr->SessionCnt > 0)
+		xaAddItem(xa, usr->Username);
+	    }
+
+    return xa;
+    }
+int
+nht_internal_UsersAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "session_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+
+    return -1;
+    }
+int
+nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtUser usr;
+
+	if (!objname || !attrname) return -1;
+	usr = (pNhtUser)xhLookup(&(NHT.UsersByName), objname);
+	if (!usr || usr->SessionCnt == 0) return -1;
+	if (!strcmp(attrname, "session_cnt"))
+	    val->Integer = usr->SessionCnt;
+	else if (!strcmp(attrname, "name"))
+	    val->String = usr->Username;
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** nht_internal_RegisterUsers() - register a handler for listing
+ *** users logged into the server.
+ ***/
+int
+nht_internal_RegisterUsers()
+    {
+    pSysInfoData si;
+
+	/** thread list **/
+	si = sysAllocData("/users", nht_internal_UsersAttrList, nht_internal_UsersObjList, NULL, nht_internal_UsersAttrType, nht_internal_UsersAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+    return 0;
+    }
 
 
 /*** nht_internal_AllocConn() - allocates a connection structure and
@@ -2148,6 +2237,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     char* where;
     char* orderby;
     int autoclose = 0;
+    int autoclose_shortres = 0;
     int retval;		/** FIXME FIXME FIXME FIXME FIXME FIXME **/
     char* reopen_sql;
     pXString reopen_str;
@@ -2386,9 +2476,11 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			"\r\n");
 		if (!strcmp(request,"multiquery"))
 		    {
-		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose"),&ptr) == 0 && strtol(ptr,NULL,0))
 			autoclose = 1;
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose_sr"),&ptr) == 0 && strtol(ptr,NULL,0))
+			autoclose_shortres = 1;
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 		    qy = objMultiQuery(objsess, ptr, NULL);
 		    if (!qy)
 			query_handle = XHN_INVALID_HANDLE;
@@ -2439,7 +2531,18 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			n--;
 			if (autoclose) objClose(obj);
 			}
-		    if (autoclose) objQueryClose(qy);
+		    if (autoclose_shortres && n > 0)
+			{
+			/** if end of result set was reached before rowlimit ran out **/
+			xhnFreeHandle(&(sess->Hctx), query_handle);
+			objQueryClose(qy);
+			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n");
+			}
+		    else if (autoclose)
+			{
+			xhnFreeHandle(&(sess->Hctx), query_handle);
+			objQueryClose(qy);
+			}
 		    }
 		}
 	    else if (!strcmp(request,"queryclose"))
@@ -2549,7 +2652,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (strncmp(subinf->Name,"ls__",4) != 0 && strncmp(subinf->Name,"cx__",4) != 0)
 		        {
 			t = objGetAttrType(obj, subinf->Name);
-			if (t < 0) return -1;
+			if (t < 0) continue;
 			switch(t)
 			    {
 			    case DATA_T_INTEGER:
@@ -3904,6 +4007,8 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtSessionData nsess;
     int akey[2];
     unsigned char t_lsb;
+    int noact = 0;
+    int err;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -3999,7 +4104,28 @@ nht_internal_ConnHandler(void* connfd_v)
 	    conn->NhtSession = NULL;
 	    }
 
+	/** Parse out the requested url **/
+	/*printf("debug: %s\n",urlptr);*/
+	url_inf = htsParseURL(conn->URL);
+	if (!url_inf)
+	    {
+	    snprintf(sbuf,160,"HTTP/1.0 500 Internal Server Error\r\n"
+	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
+			 "\r\n"
+			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
+	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	    nht_internal_FreeConn(conn);
+	    conn = NULL;
+	    }
+	nht_internal_ConstructPathname(url_inf);
+
 	/** Watchdog ping? **/
+	if ((find_inf=stLookup_ne(url_inf,"cx__noact")))
+	    {
+	    if (strtol(find_inf->StrVal,NULL,0) != 0)
+		noact = 1;
+	    }
 	if (!strcmp(conn->URL,"/INTERNAL/ping"))
 	    {
 	    if (conn->NhtSession)
@@ -4049,8 +4175,15 @@ nht_internal_ConnHandler(void* connfd_v)
 	    }
 	else if (conn->NhtSession)
 	    {
-	    /** Reset the idle and watchdog timers on a normal request **/
-	    if (nht_internal_ResetWatchdog(i_timer) < 0 || nht_internal_ResetWatchdog(w_timer) < 0)
+	    /** Reset the idle and watchdog (disconnect) timers on a normal request
+	     ** however if cx__noact is set, only reset the watchdog timer.
+	     **/
+	    err = 0;
+	    if (!noact && err == 0)
+		err = nht_internal_ResetWatchdog(i_timer);
+	    if (err == 0)
+		err = nht_internal_ResetWatchdog(w_timer);
+	    if (err < 0)
 		{
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
@@ -4079,13 +4212,14 @@ nht_internal_ConnHandler(void* connfd_v)
 		nht_internal_FreeConn(conn);
 	        thExit();
 		}
-	    usr = (pNhtUser)xhLookup(&(NHT.Users), usrname);
+	    usr = (pNhtUser)xhLookup(&(NHT.UsersByName), usrname);
 	    if (!usr)
 		{
 		usr = (pNhtUser)nmMalloc(sizeof(NhtUser));
 		usr->SessionCnt = 0;
 		strtcpy(usr->Username, usrname, sizeof(usr->Username));
-		xhAdd(&(NHT.Users), usr->Username, (void*)(usr));
+		xhAdd(&(NHT.UsersByName), usr->Username, (void*)(usr));
+		xaAddItem(&NHT.UsersList, (void*)usr);
 		}
 	    if (usr->SessionCnt >= NHT.UserSessionLimit)
 		{
@@ -4151,22 +4285,6 @@ nht_internal_ConnHandler(void* connfd_v)
 	    if (*acceptencoding) mssSetParam("Accept-Encoding", acceptencoding);
 	    nmFree(acceptencoding, 160);
 	    }*/
-
-	/** Parse out the requested url **/
-	/*printf("debug: %s\n",urlptr);*/
-	url_inf = htsParseURL(conn->URL);
-	if (!url_inf)
-	    {
-	    snprintf(sbuf,160,"HTTP/1.0 500 Internal Server Error\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    nht_internal_FreeConn(conn);
-	    conn = NULL;
-	    }
-	nht_internal_ConstructPathname(url_inf);
 
 	/** Need to start an available connection completion trigger on this? **/
 	if ((find_inf=stLookup_ne(url_inf,"ls__triggerid")))
@@ -4440,7 +4558,8 @@ nhtInitialize()
 	NHT.InactivityTime = 1800;
 	NHT.CondenseJS = 1; /* not yet implemented */
 	NHT.UserSessionLimit = 100;
-	xhInit(&(NHT.Users), 255, 0);
+	xhInit(&(NHT.UsersByName), 255, 0);
+	xaInit(&NHT.UsersList, 64);
 	NHT.AccCnt = 0;
 	NHT.RestrictToLocalhost = 0;
 
@@ -4449,6 +4568,8 @@ nhtInitialize()
 #else
         NHT.ClkTck = CLK_TCK;
 #endif
+
+	nht_internal_RegisterUsers();
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
