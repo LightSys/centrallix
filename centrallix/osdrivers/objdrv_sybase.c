@@ -72,10 +72,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.34 2008/04/06 22:23:28 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.35 2008/06/25 01:03:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.35  2008/06/25 01:03:51  gbeeley
+    - (feature) sybase driver now supports the DeleteObj() call.
+    - (change) log which field caused a record to fail to insert (due to
+      required field constraints)
+
     Revision 1.34  2008/04/06 22:23:28  gbeeley
     - (security) adding option enable_send_credentials in centrallix.conf,
       which defaults to 1 but is set to 0 in the default configuration.  This
@@ -2857,7 +2862,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		        }
 		    else
                         {
-                        mssError(1,"SYBD","Required column not specified in object create");
+                        mssError(1,"SYBD","Required column '%s' not specified in object create", inf->TData->Cols[j]);
 			xsDeInit(insbuf);
 			nmFree(insbuf,sizeof(XString));
 			if (holding_sem) syPostSem(inf->TData->AutonameSem, 1, 0);
@@ -3039,15 +3044,62 @@ sybdCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     }
 
 
+/*** sybdDeleteObj - delete an existing object that is already open.
+ ***/
+int
+sybdDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    char sbuf[256];
+    pSybdData inf = SYBD(inf_v);
+    CS_COMMAND* cmd;
+    int rval;
+    char* ptr;
+
+	/** Grab a database connection **/
+	inf->SessionID = sybd_internal_GetConn(inf->Node);
+	if (inf->SessionID == NULL)
+	    {
+	    mssError(0,"SYBD","Database session setup failed");
+	    nmFree(inf,sizeof(SybdData));
+	    return -1;
+	    }
+
+	/** Create the where clause for the delete. **/
+	ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
+	if (!ptr)
+	    {
+	    sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
+	    nmFree(inf,sizeof(SybdData));
+	    return -1;
+	    }
+	snprintf(sbuf,sizeof(sbuf),"DELETE FROM %s WHERE %s",inf->TablePtr, ptr);
+
+	/** Run the delete **/
+	if ((cmd = sybd_internal_Exec(inf->SessionID,sbuf)) == NULL)
+	    {
+	    mssError(0,"SYBD","Delete operation failed");
+	    sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
+	    nmFree(inf,sizeof(SybdData));
+	    return -1;
+	    }
+	while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+	sybd_internal_Close(cmd);
+	sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
+
+	/** Free the structure **/
+	nmFree(inf,sizeof(SybdData));
+
+    return 0;
+    }
+
+
 /*** sybdDelete - delete an existing object.
  ***/
 int
 sybdDelete(pObject obj, pObjTrxTree* oxt)
     {
-    char sbuf[256];
     pSybdData inf;
-    CS_COMMAND* cmd;
-    char* ptr;
+    int rval = 0;
 
 	/** Allocate the structure **/
 	inf = (pSybdData)nmMalloc(sizeof(SybdData));
@@ -3076,39 +3128,8 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 	    return -1;
 	    }
 
-	/** Grab a database connection **/
-	inf->SessionID = sybd_internal_GetConn(inf->Node);
-	if (inf->SessionID == NULL)
-	    {
-	    mssError(0,"SYBD","Database session setup failed");
-	    nmFree(inf,sizeof(SybdData));
-	    return -1;
-	    }
-
-	/** Create the where clause for the delete. **/
-	ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
-	if (!ptr)
-	    {
-	    sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
-	    nmFree(inf,sizeof(SybdData));
-	    return -1;
-	    }
-	snprintf(sbuf,256,"DELETE FROM %s WHERE %s",inf->TablePtr, ptr);
-
-	/** Run the delete **/
-	if ((cmd = sybd_internal_Exec(inf->SessionID,sbuf)) == NULL)
-	    {
-	    mssError(0,"SYBD","Delete operation failed");
-	    sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
-	    nmFree(inf,sizeof(SybdData));
-	    return -1;
-	    }
-	sybd_internal_Close(cmd);
-	sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
-	if (inf->TData && inf->TData->RowCount > 0) inf->TData->RowCount--;
-
-	/** Free the structure **/
-	nmFree(inf,sizeof(SybdData));
+	/** Delete it **/
+	rval = sybdDeleteObj(inf, oxt);
 
     return 0;
     }
@@ -4786,6 +4807,7 @@ sybdInitialize()
 	drv->Close = sybdClose;
 	drv->Create = sybdCreate;
 	drv->Delete = sybdDelete;
+	drv->DeleteObj = sybdDeleteObj;
 	drv->OpenQuery = sybdOpenQuery;
 	drv->QueryDelete = sybdQueryDelete;
 	drv->QueryFetch = sybdQueryFetch;
