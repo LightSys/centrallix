@@ -9,6 +9,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+var pg_msglist = '';
+var pg_init_ts = (new Date()).valueOf();
+
+var pg_waitlyr_id = null;
 
 var pg_layer = null;
 
@@ -797,7 +801,7 @@ function pg_resize(l)
     for(i=0;i<layers.length;i++)
 	{
 	var cl = layers[i];
-	var visibility = pg_get_style(cl,'visibility');
+	var visibility = htr_getvisibility(cl);
 	if (visibility == 'show' || visibility == 'visible' || visibility == 'inherit') 
 	    {
 	    //var clh = getRelativeY(cl) + getClipHeight(cl) + getClipTop(cl);
@@ -1100,6 +1104,7 @@ function pg_init(l,a,gs,ct)
 
     l.templates = new Array();
 
+
     // Actions
     var ia = window.ifcProbeAdd(ifAction);
     ia.Add("LoadPage", pg_load_page);
@@ -1117,7 +1122,22 @@ function pg_init(l,a,gs,ct)
 
 function pg_load_page(aparam)
     {
-    window.location.href = aparam.Source;
+    var newurl = '';
+    if (typeof aparam.Source != 'undefined')
+	newurl = aparam.Source;
+    else
+	newurl = window.location.href;
+    for(var p in aparam)
+	{
+	if (p == '_Origin' || p == 'Source') continue;
+	var v = aparam[p];
+	if (newurl.lastIndexOf('?') > newurl.lastIndexOf('/'))
+	    newurl += '&';
+	else
+	    newurl += '?';
+	newurl += (htutil_escape(p) + '=' + htutil_escape(v));
+	}
+    window.location.href = newurl;
     }
 
 function pg_launch(aparam)
@@ -1175,27 +1195,15 @@ function pg_mvpginpt(ly)
     }
 
 
-function pg_updateschedtime()
-    {
-    var cur_tm = pg_timestamp();
-    var diff = cur_tm - pg_schedtimeoutstamp;
-    for(var i=0;i<pg_schedtimeoutlist.length;i++)
-        pg_schedtimeoutlist[i].tm = Math.max(0, pg_schedtimeoutlist[i].tm - diff);
-    }
-
 function pg_addschedtolist(s)
     {
     var len = pg_schedtimeoutlist.length;
     var insert = len; 
-    var cur_ts = pg_timestamp();
-    var diff = cur_ts - pg_schedtimeoutstamp;
-    if (len) diff = Math.min(diff, pg_schedtimeoutlist[0].tm);
-    var reset_timer = (!len) || (s.tm < pg_schedtimeoutlist[0].tm - diff);
+    var reset_timer = (!len) || (s.tm < pg_schedtimeoutlist[0].tm);
     //pg_debug('' + (pg_timestamp()) + ': adding item ' + s.id + ' with delay ' + s.tm + '\n');
     if (reset_timer)
 	pg_stopschedtimeout();
-    else
-	s.tm += diff;
+    pg_msglist += ('' + pg_timestamp() + ': adding item ' + s.id + ' at time ' + s.tm + ' (' + (s.exp?s.exp:s.func) + ')\n');
     if (len > 0)
 	{
 	for(var i=0;i<len;i++)
@@ -1221,7 +1229,6 @@ function pg_stopschedtimeout()
 	{
 	clearTimeout(pg_schedtimeout);
 	pg_schedtimeout = null;
-	pg_updateschedtime();
 	}
     }
 
@@ -1230,7 +1237,9 @@ function pg_startschedtimeout()
     if(!pg_schedtimeout && pg_schedtimeoutlist.length > 0) 
 	{
 	pg_schedtimeoutstamp = pg_timestamp();
-	var len = pg_schedtimeoutlist[0].tm;
+	var len = pg_schedtimeoutlist[0].tm - pg_schedtimeoutstamp;
+	if (len < 0)
+	    len = 0;
 	if (!window.pg_isloaded)
 	    len = Math.max(len,100);
 	pg_schedtimeout = setTimeout(pg_dosched, len);
@@ -1240,14 +1249,14 @@ function pg_startschedtimeout()
 
 function pg_addsched(e,o,t)
     {
-    var sched = {exp:e, obj:o, tm:t, id:pg_schedtimeoutid++};
+    var sched = {exp:e, obj:o, tm:pg_timestamp() + t, id:pg_schedtimeoutid++};
     pg_addschedtolist(sched);
     return sched.id;
     }
 
 function pg_addsched_fn(o,f,p,t)
     {
-    var sched = {func:f, obj:o, param:p, tm:t, id:pg_schedtimeoutid++};
+    var sched = {func:f, obj:o, param:p, tm:pg_timestamp() + t, id:pg_schedtimeoutid++};
     pg_addschedtolist(sched);
     return sched.id;
     }
@@ -1267,6 +1276,13 @@ function pg_delsched(id)
     return false;
     }
 
+function pg_expchange_cb(exp)
+    {
+    var node = wgtrGetNode(window[exp.Context], exp.Objname);
+    var _context = window[exp.Context];
+    wgtrSetProperty(node, exp.Propname, eval(exp.Expression));
+    }
+
 function pg_expchange(p,o,n)
     {
     if (o==n) return n;
@@ -1279,7 +1295,7 @@ function pg_expchange(p,o,n)
 	    if (this == item[2] && p == item[1])
 		{
 		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		pg_addsched("wgtrGetNode(" + exp.Context + ",\"" + exp.Objname + "\")." + exp.Propname + " = " + exp.Expression, eval(exp.Context), 0);
+		pg_addsched_fn(window, 'pg_expchange_cb', [exp], 0);
 		}
 	    }
 	}
@@ -1291,26 +1307,24 @@ function pg_dosched()
     {
     pg_schedtimeout = null;
     var sched_item = null;
+    var now = pg_timestamp();
     window.pg_isloaded = true;
     if (pg_schedtimeoutlist.length > 0)
     	{
-	if (pg_schedtimeoutlist[0].tm) for(var i=0;i<pg_schedtimeoutlist.length;i++)
-	    {
-	    pg_schedtimeoutlist[i].tm -= pg_schedtimeoutlist[0].tm;
-	    }
-
 	// Make a note of current scheduler event id, so we don't do any events
 	// newly added by the below scheduler callbacks until a setTimeout()
 	// expires, even for 0-length events.
 	var maxid = pg_schedtimeoutid - 1;
-	do  {
+	while (pg_schedtimeoutlist.length > 0 && pg_schedtimeoutlist[0].tm <= now && pg_schedtimeoutlist[0].id <= maxid)
+	    {
 	    sched_item = pg_schedtimeoutlist.shift();
 	    //pg_debug('' + (pg_timestamp()) + ': running item ' + sched_item.id + '\n');
 
+	    var s = sched_item;
+	    pg_msglist += ('' + pg_timestamp() + ': doing item ' + s.id + ' sched for ' + s.tm + ' (' + (s.exp?s.exp:s.func) + ')\n');
 	    if (sched_item.exp)
 		{
 		// evaluate expression
-		//alert('evaluating ' + sched_item.exp);
 		var _context = null;
 		if (wgtrIsNode(sched_item.obj))
 		    _context = wgtrGetRoot(sched_item.obj);
@@ -1324,7 +1338,7 @@ function pg_dosched()
 		    _context = wgtrGetRoot(sched_item.obj);
 		sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
 		}
-	    } while (pg_schedtimeoutlist.length > 0 && pg_schedtimeoutlist[0].tm == 0 && pg_schedtimeoutlist[0].id <= maxid);
+	    }
 	}
 
     pg_startschedtimeout();
@@ -1332,7 +1346,7 @@ function pg_dosched()
 
 function pg_timestamp()
     {
-    return (new Date()).valueOf();
+    return (new Date()).valueOf() - pg_init_ts;
     }
 
 function pg_expression(o,p,e,l,c)
@@ -1343,22 +1357,23 @@ function pg_expression(o,p,e,l,c)
     expobj.Expression = e;
     expobj.ParamList = l;
     expobj.Context = c;
-    var _context = eval(c);
+    var _context = window[c];
     var nodelist = wgtrNodeList(_context);
-    //nodelist[expobj.Objname][expobj.Propname] = eval(expobj.Expression);
-    eval("wgtrGetNode(" + expobj.Context + ",\"" + expobj.Objname + "\")." + expobj.Propname + " = " + expobj.Expression);
+    var node = wgtrGetNode(_context, expobj.Objname);
+    wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
 	{
 	var item = l[i];
 	var ref;
-	//item[2] = eval(item[0]); // get obj reference
 	item[2] = nodelist[item[0]]; // get obj reference
 	if (item[2].reference && (ref = item[2].reference()))
 	    item[2] = ref;
 	item[2].pg_expchange = pg_expchange;
-	htr_watch(item[2],item[1],"pg_expchange");
-	//item[2].watch(item[1], pg_expchange);
+	if (item[2].ifcProbe && item[2].ifcProbe(ifValue) && item[2].ifcProbe(ifValue).Exists(item[1]))
+	    item[2].ifcProbe(ifValue).Watch(item[1], pg_expchange);
+	else
+	    htr_watch(item[2],item[1],"pg_expchange");
 	}
     }
 
@@ -1647,9 +1662,9 @@ function pg_toplevel_layer(l)
 // pg_serialized_load() - schedules the reload of a layer, hidden or visible,
 // from the server in a manner that keeps things serialized so server loads
 // don't overlap.
-function pg_serialized_load(l, newsrc, cb)
+function pg_serialized_load(l, newsrc, cb, silent)
     {
-    if (!pg_waitlyr || !pg_waitlyr.vis)
+    if (!silent && (!pg_waitlyr || !pg_waitlyr.vis))
 	{
 	if (!pg_waitlyr)
 	    {
@@ -1658,6 +1673,8 @@ function pg_serialized_load(l, newsrc, cb)
 	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
 	    htr_setzindex(pg_waitlyr, 99999);
 	    }
+	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
+	pg_waitlyr_id = null;
 	pg_waitlyr.vis = true;
 	//pg_addsched('pg_waitlyr.vis && htr_setvisibility(pg_waitlyr, "inherit")',window,0);
 	htr_setvisibility(pg_waitlyr, "inherit");
@@ -1688,7 +1705,8 @@ function pg_serialized_load_doone()
 	pg_loadqueue_busy = false;
 	if (pg_waitlyr) 
 	    {
-	    pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 100);
+	    if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
+	    pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
 	    pg_waitlyr.vis = false;
 	    }
 	return;
@@ -1732,7 +1750,8 @@ function pg_serialized_load_doone()
 	else
 	    if (pg_waitlyr) 
 		{
-		pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 100);
+		if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
+		pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
 		pg_waitlyr.vis = false;
 		}
 	}
@@ -1758,17 +1777,29 @@ function pg_serialized_load_cb()
     else
 	if (pg_waitlyr)
 	    {
-	    pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 100);
+	    if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
+	    pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
 	    pg_waitlyr.vis = false;
 	    }
     }
 
+
+// Reveal/Obscure properties:
+//
+// __pg_reveal			An array of listeners attached to the given triggerer
+// __pg_reveal_visible		Whether the triggerer is itself visible (regardless of containers)
+// __pg_reveal_parent_visible	Whether the parent triggerer is displayed
+// __pg_reveal_listener_visible	Whether the listener is displayed
 
 // pg_reveal_register_listener() - when a layer/div requests to be
 // notified when it is made visible to the user or is hidden from
 // the user.
 function pg_reveal_register_listener(l)
     {
+    // Already set up?
+    if (l.__pg_reveal_is_listener)
+	return l.__pg_reveal_listener_visible;
+
     // If listener reveal fn not set up, set it to the standard.
     if (!l.__pg_reveal_listener_fn) l.__pg_reveal_listener_fn = l.Reveal;
     l.__pg_reveal_is_listener = true;
@@ -1781,9 +1812,16 @@ function pg_reveal_register_listener(l)
     if (!trigger_layer) trigger_layer = wgtrGetRoot(l);
 
     // Add us to the triggerer
-    if (trigger_layer && trigger_layer.__pg_reveal) trigger_layer.__pg_reveal.push(l);
-    l.__pg_reveal_listener_visible = trigger_layer.__pg_reveal_visible && trigger_layer.__pg_reveal_parent_visible;
-    return l.__pg_reveal_listener_visible;
+    if (trigger_layer && trigger_layer.__pg_reveal)
+	{
+	trigger_layer.__pg_reveal.push(l);
+	l.__pg_reveal_listener_visible = trigger_layer.__pg_reveal_visible && trigger_layer.__pg_reveal_parent_visible;
+	return l.__pg_reveal_listener_visible;
+	}
+    else
+	{
+	return false;
+	}
     }
 
 // pg_reveal_register_triggerer() - when a layer/div states that it can
@@ -1792,7 +1830,7 @@ function pg_reveal_register_listener(l)
 function pg_reveal_register_triggerer(l)
     {
     l.__pg_reveal_is_triggerer = true;
-    l.__pg_reveal = new Array();
+    l.__pg_reveal = [];
     l.__pg_reveal_visible = false;
     l.__pg_reveal_listener_fn = pg_reveal_internal;
     l.__pg_reveal_triggerer_fn = l.Reveal;
@@ -1828,10 +1866,13 @@ function pg_reveal_internal(e)
 	}
 
     // For Reveal and Obscure, simply filter the events down.
-    if (vis_changing && (e.eventName == 'Reveal' || e.eventName == 'Obscure')) 
+    if (e.eventName == 'Reveal' || e.eventName == 'Obscure') 
 	{
 	this.__pg_reveal_parent_visible = (e.eventName == 'Reveal');
-	return pg_reveal_send_events(this, e.eventName);
+	if (vis_changing)
+	    return pg_reveal_send_events(this, e.eventName);
+	else
+	    return true;
 	}
 
     // For RevealCheck and ObscureCheck, start the notification process.
@@ -1850,9 +1891,9 @@ function pg_reveal_internal(e)
 	our_e.origName = null;   // not needed
 	our_e.triggerer_c = null;   // not needed
 	pg_debug('reveal_internal: passing it on down to ' + wgtrGetName(this.__pg_reveal[0]) + '\n');
-	pg_addsched_fn(this.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(our_e), 0);
+	pg_addsched_fn(this.__pg_reveal[0], "__pg_reveal_listener_fn", [our_e], 0);
+	return true;
 	}
-    return true;
     }
 
 // pg_reveal_event() - called by a triggerer to indicate that the triggerer
@@ -1867,23 +1908,22 @@ function pg_reveal_event(l,c,e_name)
 	{
 	if (l.__pg_reveal_visible == (e_name == 'Reveal')) return true; // already set
 	l.__pg_reveal_visible = (e_name == 'Reveal');
-	pg_reveal_send_events(l, e_name);
+	if (l.__pg_reveal_parent_visible)
+	    pg_reveal_send_events(l, e_name);
 	return true;
 	}
 
     // short circuit check process?
     if (e_name == 'RevealCheck' && (l.__pg_reveal.length == 0 || !l.__pg_reveal_parent_visible || l.__pg_reveal_visible))
 	{
-	var e = {eventName:'RevealOK', c:c};
 	l.__pg_reveal_visible = true;
-	pg_addsched_fn(l, "Reveal", new Array(e), 0);
+	pg_addsched_fn(l, "Reveal", [{eventName:'RevealOK', c:c}], 0);
 	return true;
 	}
     if (e_name == 'ObscureCheck' && (l.__pg_reveal.length == 0 || !l.__pg_reveal_visible || !l.__pg_reveal_parent_visible))
 	{
-	var e = {eventName:'ObscureOK', c:c};
 	l.__pg_reveal_visible = false;
-	pg_addsched_fn(l, "Reveal", new Array(e), 0);
+	pg_addsched_fn(l, "Reveal", [{eventName:'ObscureOK', c:c}], 0);
 	return true;
 	}
 
@@ -1896,7 +1936,7 @@ function pg_reveal_event(l,c,e_name)
     e.parent_e = null;   // not needed
     e.triggerer_c = c;
     e.listener_num = 0;
-    pg_addsched_fn(l.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(e), 0);
+    pg_addsched_fn(l.__pg_reveal[0], "__pg_reveal_listener_fn", [e], 0);
 
     return true;
     }
@@ -1909,7 +1949,7 @@ function pg_reveal_check_ok(e)
     if (e.triggerer.__pg_reveal.length > e.listener_num)
 	{
 	pg_debug('    -- passing it on down to ' + wgtrGetName(e.triggerer.__pg_reveal[e.listener_num]) + '\n');
-	pg_addsched_fn(e.triggerer.__pg_reveal[e.listener_num], "__pg_reveal_listener_fn", new Array(e), 0);
+	pg_addsched_fn(e.triggerer.__pg_reveal[e.listener_num], "__pg_reveal_listener_fn", [e], 0);
 	}
     else
 	{
@@ -1933,7 +1973,7 @@ function pg_reveal_check_ok(e)
 	    if (e.origName == 'RevealCheck') triggerer_e.eventName = 'RevealOK';
 	    else triggerer_e.eventName = 'ObscureOK';
 	    triggerer_e.c = e.triggerer_c;
-	    pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e), 0);
+	    pg_addsched_fn(e.triggerer, "Reveal", [triggerer_e], 0);
 	    e.triggerer.__pg_reveal_busy = false;
 	    }
 	}
@@ -1956,7 +1996,7 @@ function pg_reveal_check_veto(e)
 	if (e.origName == 'Reveal') triggerer_e.eventName = 'RevealFailed';
 	else triggerer_e.eventName = 'ObscureFailed';
 	triggerer_e.c = e.triggerer_c;
-	pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e), 0);
+	pg_addsched_fn(e.triggerer, "Reveal", [triggerer_e], 0);
 	e.triggerer.__pg_reveal_busy = false;
 	}
     return true;
@@ -1973,7 +2013,7 @@ function pg_reveal_send_events(t, e)
 	if ((e == 'Reveal') == t.__pg_reveal[i].__pg_reveal_listener_visible) continue;
 	t.__pg_reveal[i].__pg_reveal_listener_visible = (e == 'Reveal');
 	pg_debug('    -- sending ' + e + ' to ' + wgtrGetName(t.__pg_reveal[i]) + '\n');
-	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", new Array(listener_e), 0);
+	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", [listener_e], 0);
 	}
     return true;
     }
