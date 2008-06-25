@@ -45,6 +45,12 @@ function osrc_action_query_param(aparam)
     }
 
 
+function osrc_action_refresh(aparam)
+    {
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
+    }
+
+
 function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
     this.QueueRequest({Request:'QueryObject', Param:aparam});
@@ -68,6 +74,9 @@ function osrc_query_object_handler(aparam)
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
 
+    var sel_re = /^\s*(set\s+rowcount\s+[0-9]+\s+)?select\s+/i;
+    var is_select = sel_re.test(this.sql);
+
     this.pendingqueryobject=q;
     var statement=this.sql;
     //if (statement.indexOf(' WHERE ') != -1)
@@ -85,15 +94,19 @@ function osrc_query_object_handler(aparam)
     //    return 0;
     if(q && q.joinstring && q[0])
 	{
-	if(firstone)
-	    statement+=sep;
-	else
-	    statement+=' '+q.joinstring+' ';
-	statement+=osrc_make_filter(q);
+	var filt = osrc_make_filter(q);
+	if (filt)
+	    {
+	    if(firstone)
+		statement+=sep;
+	    else
+		statement+=' '+q.joinstring+' ';
+	    statement+=filt;
+	    }
 	}
     
     firstone=true;
-    if(this.pendingorderobject)
+    if(this.pendingorderobject && is_select)
 	for(var i in this.pendingorderobject)
 	    {
 	    //alert('asdf'+this.pendingorderobject[i]);
@@ -107,7 +120,7 @@ function osrc_query_object_handler(aparam)
 		statement+=', '+this.pendingorderobject[i];
 		}
 	    }
-    if (!readonly)
+    if (!readonly && is_select)
 	statement += ' FOR UPDATE'
     //statement+=';';
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj});
@@ -118,13 +131,48 @@ function osrc_make_filter_integer(col,val)
     {
     if (val == null)
 	return ':"' + col.oid + '" is null ';
-    else if (typeof val != 'number' && val.search(/-/)>=0)
+    else if (typeof val != 'number' && (new String(val)).search(/-/)>=0)
 	{
-	var parts = val.split(/-/);
+	var parts = (new String(val)).split(/-/);
 	return '(:"' + col.oid + '">=' + parts[0] + ' AND :"' + col.oid + '"<=' + parts[1] + ')';
 	}
     else
 	return ':"' + col.oid + '" = ' + val;
+    }
+
+
+function osrc_make_filter_string(col, val)
+    {
+    var str = '';
+    if (val == null)
+	str=':"'+col+'" is null ';
+    else
+	if (val.search(/^\*.+\*$/)>=0)
+	    {
+	    str='charindex("'+val.substring(1,val.length-1)+'",:"'+col+'")>0';
+	    }
+	else if(val.search(/^\*/)>=0) //* at beginning
+	    {
+	    val = val.substring(1); //pop off *
+	    str='right(:"'+col+'",'+val.length+')="'+val+'"';
+	    }
+	else if(val.search(/\*$/)>=0) //* at end
+	    {
+	    val=val.substring(0,val.length-1); //chop off *
+	    str='substring(:"'+col+'",'+1+','+val.length+')="'+val+'"';
+	    }
+	else if(val.indexOf('*')>=0) //* in middle
+	    {
+	    var ind = val.indexOf('*');
+	    var val1 = val.substring(0,ind);
+	    var val2 = val.substring(ind+1);
+	    str='(right(:"'+col+'",'+val2.length+')="'+val2+'"';
+	    str+=' AND ';
+	    str+='substring(:"'+col+'",1,'+val1.length+')="'+val1+'")';
+	    }
+	else
+	    str=':"'+col+'"='+'"'+val+'"';
+    return str;
     }
     
 
@@ -145,6 +193,9 @@ function osrc_make_filter(q)
 		{
 		var val=q[i].value;
 		if (val == null) continue;
+
+		if (typeof val == 'string')
+		    val = new String(val);
 
 		switch(q[i].type)
 		    {
@@ -168,6 +219,31 @@ function osrc_make_filter(q)
 			    str += ")";
 			    }
 			break;
+		    case 'undefinedarray':
+			if (val == null)
+			    {
+			    str=':"'+q[i].oid+'" is null ';
+			    }
+			else if (val.length == 0)
+			    {
+			    continue;
+			    }
+			else
+			    {
+			    str = "(";
+			    for(var j=0;j<val.length;j++)
+				{
+				if (j) str += " OR ";
+				str += "(";
+				if ((new String(parseInt(val[j]))) == (new String(val[j])))
+				    str += osrc_make_filter_integer(q[i], val[j]);
+				else
+				    str += osrc_make_filter_string(q[i].oid, val[j]);
+				str += ")";
+				}
+			    str += ")";
+			    }
+			break;
 		    case 'stringarray':
 			if (val == null)
 			    {
@@ -175,21 +251,31 @@ function osrc_make_filter(q)
 			    }
 			else
 			    {
+			    str = "(";
+			    for(var j=0;j<val.length;j++)
+				{
+				if (j) str += " OR ";
+				str += "(";
+				str += osrc_make_filter_string(q[i].oid, val[j]);
+				str += ")";
+				}
+			    str += ")";
+if (0) {
 			    if (val[0].search(/^\*.+\*$/)>=0)
 				{
 				str='(charindex("'+val[0].substring(1,val[0].length-1)+'",:'+q[i].oid+')>0';
 				}
-			    else if(val[0].search(/^\*/)>=0) //* at beginning
+			    else if(val[0].search(/^\*/)>=0) //asterisk at beginning
 				{
 				val[0] = val[0].substring(1); //pop off *
 				str='(right(:'+q[i].oid+','+val[0].length+')="'+val[0]+'"';
 				}
-			    else if(val[0].search(/\*$/)>=0) //* at end
+			    else if(val[0].search(/\*$/)>=0) //asterisk at end
 				{
 				val[0]=val[0].substring(0,val[0].length-1); //chop off *
 				str='(substring(:'+q[i].oid+','+1+','+val[0].length+')="'+val[0]+'"';
 				}
-			    else if(val[0].indexOf('*')>=0) //* in middle
+			    else if(val[0].indexOf('*')>=0) // * in middle
 				{
 				var ind = val[0].indexOf('*');
 				var val1 = val[0].substring(0,ind);
@@ -207,17 +293,17 @@ function osrc_make_filter(q)
 				    {
 				    str+=' OR charindex("'+val[j].substring(1,val[j].length-1)+'",:'+q[i].oid+')>0';
 				    }
-				else if(val[j].search(/^\*/)>=0) //* at beginning
+				else if(val[j].search(/^\*/)>=0) // * at beginning
 				    {
 				    val[j] = val[j].substring(1); //pop off *
 				    str+=' OR right(:'+q[i].oid+','+val[j].length+')="'+val[j]+'"';
 				    }
-				else if(val[j].search(/\*$/)>=0) //* at end
+				else if(val[j].search(/\*$/)>=0) // * at end
 				    {
 				    val[j]=val[j].substring(0,val[j].length-1); //chop off *
 				    str+=' OR substring(:'+q[i].oid+','+1+','+val[j].length+')="'+val[j]+'"';
 				    }
-				else if(val[j].indexOf('*')>=0) //* in middle
+				else if(val[j].indexOf('*')>=0) // * in middle
 				    {
 				    var ind = val[j].indexOf('*');
 				    var val1 = val[j].substring(0,ind);
@@ -230,6 +316,7 @@ function osrc_make_filter(q)
 				    str+=' OR :'+q[i].oid+'='+'"'+val[j]+'"';
 				}
 			    str+=')';
+}
 			    }
 			break;
 		    case 'datetimearray':
@@ -282,34 +369,7 @@ function osrc_make_filter(q)
 			    }
 			else
 			    {
-			    if (val == null)
-				str=':"'+q[i].oid+'" is null ';
-			    else
-				if (val.search(/^\*.+\*$/)>=0)
-				    {
-				    str='charindex("'+val.substring(1,val.length-1)+'",:"'+q[i].oid+'")>0';
-				    }
-				else if(val.search(/^\*/)>=0) //* at beginning
-				    {
-				    val = val.substring(1); //pop off *
-				    str='right(:"'+q[i].oid+'",'+val.length+')="'+val+'"';
-				    }
-				else if(val.search(/\*$/)>=0) //* at end
-				    {
-				    val=val.substring(0,val.length-1); //chop off *
-				    str='substring(:"'+q[i].oid+'",'+1+','+val.length+')="'+val+'"';
-				    }
-				else if(val.indexOf('*')>=0) //* in middle
-				    {
-				    var ind = val.indexOf('*');
-				    var val1 = val.substring(0,ind);
-				    var val2 = val.substring(ind+1);
-				    str='(right(:"'+q[i].oid+'",'+val2.length+')="'+val2+'"';
-				    str+=' AND ';
-				    str+='substring(:"'+q[i].oid+'",1,'+val1.length+')="'+val1+'")';
-				    }
-				else
-				    str=':"'+q[i].oid+'"='+'"'+val+'"';
+			    str = osrc_make_filter_string(q[i].oid, val);
 			    }
 			break;
 		    }
@@ -395,8 +455,9 @@ function osrc_query_handler(aparam)
 	alert('There is already a query or movement in progress...');
 	return 0;
 	}
-    this.easyquery=q;
-    this.pendingquery=htutil_escape(q);
+    this.lastquery=q;
+    //this.pendingquery=htutil_escape(q);
+    this.pendingquery=q;
     this.pending=true;
     //var someunsaved=false;
     // Check if any children are modified and call IsDiscardReady if they are
@@ -426,12 +487,13 @@ function osrc_action_delete(aparam) //up,formobj)
     var formobj = aparam.client;
 
     //Delete an object through OSML
-    var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
+    //var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
     this.formobj = formobj;
     this.deleteddata=up;
     //this.onload = osrc_action_delete_cb;
     //pg_set(this,'src',src);
-    pg_serialized_load(this, src, osrc_action_delete_cb);
+    //pg_serialized_load(this, src, osrc_action_delete_cb);
+    this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
     //this.formobj.ObjectDeleted();
     //this.formobj.OperationComplete();
     return 0;
@@ -474,19 +536,27 @@ function osrc_action_delete_cb()
 		this.MoveToRecord(this.CurrentRecord, true);
 		}
 	    }
-	this.formobj.OperationComplete(true);
+	if (this.formobj) this.formobj.OperationComplete(true);
 	}
     else
 	{
 	// delete failed
-	this.formobj.OperationComplete(false);
+	if (this.formobj) this.formobj.OperationComplete(false);
 	}
     this.formobj=null;
     delete this.deleteddata;
     return 0;
     }
 
-function osrc_action_create(aparam) //up,formobj)
+function osrc_action_create(aparam)
+    {
+    var newobj = [];
+    for(var p in aparam)
+	newobj.push({oid:p, value:aparam[p]});
+    this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj});
+    }
+
+function osrc_action_create_object(aparam) //up,formobj)
     {
     var up = aparam.data;
     var formobj = aparam.client;
@@ -496,7 +566,8 @@ function osrc_action_create(aparam) //up,formobj)
     //First close the currently open query
     if(this.qid)
 	{
-	pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_create_cb2);
+	//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_create_cb2);
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_action_create_cb2);
 	this.qid=null;
 	return 0;
 	}
@@ -517,17 +588,26 @@ function osrc_action_create_cb2()
     {
     //Create an object through OSML
     if(!this.sid) this.sid=pg_links(this)[0].target;
-    var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
+    //var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
     this.ApplyRelationships(this.createddata);
     //htr_alert(this.createddata, 2);
-    for(var i in this.createddata) if(i!='oid')
+    /*for(var i in this.createddata) if(i!='oid')
 	{
 	if (this.createddata[i]['value'] == null)
 	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'=';
 	else
 	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
+	}*/
+    //pg_serialized_load(this, src, osrc_action_create_cb);
+    var reqparam = {ls__reopen_sql:this.sql}
+    for(var i in this.createddata) if(i!='oid')
+	{
+	if (this.createddata[i]['value'] == null)
+	    reqparam[this.createddata[i]['oid']] = '';
+	else
+	    reqparam[this.createddata[i]['oid']] = this.createddata[i]['value'];
 	}
-    pg_serialized_load(this, src, osrc_action_create_cb);
+    this.DoRequest('create', this.baseobj + '/*', reqparam, osrc_action_create_cb);
     }
 
 function osrc_action_create_cb()
@@ -567,6 +647,7 @@ function osrc_action_create_cb()
 		    {
 		    cr[j].value = server_rec[i].value;
 		    cr[j].type = server_rec[i].type;
+		    cr[j].hints = server_rec[i].hints;
 		    found = 1;
 		    }
 		if (parseInt(j) > max_j) max_j = parseInt(j);
@@ -584,14 +665,16 @@ function osrc_action_create_cb()
 	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
-	this.formobj.OperationComplete(true);
+	this.SyncID = osrc_syncid++;
+	if (this.formobj) this.formobj.OperationComplete(true);
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum);
 	this.GiveAllCurrentRecord();
+	this.ifcProbe(ifEvent).Activate("Created", {});
 	}
     else
 	{
-	this.formobj.OperationComplete(false);
+	if (this.formobj) this.formobj.OperationComplete(false);
 	}
     this.formobj=null;
     delete this.createddata;
@@ -608,19 +691,23 @@ function osrc_action_modify(aparam) //up,formobj)
     // Need to close an open query first?
     if(this.qid)
 	{
-	pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_modify);
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_action_modify);
+	//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_modify);
 	this.qid=null;
 	return 0;
 	}
     //Modify an object through OSML
     //up[adsf][value];
-    var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
+    var reqparam = {ls__oid:this.modifieddata.oid};
+    //var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
     this.ApplyRelationships(this.modifieddata);
     for(var i in this.modifieddata) if(i!='oid')
 	{
-	src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
+	reqparam[this.modifieddata[i]['oid']] = this.modifieddata[i]['value'];
+	//src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
 	}
-    pg_serialized_load(this, src, osrc_action_modify_cb);
+    //pg_serialized_load(this, src, osrc_action_modify_cb);
+    this.DoRequest('setattrs', '/', reqparam, osrc_action_modify_cb);
     }
 
 function osrc_action_modify_cb()
@@ -652,15 +739,16 @@ function osrc_action_modify_cb()
 		    }
 		}
 	
-	this.formobj.OperationComplete(true);
+	this.SyncID = osrc_syncid++;
+	if (this.formobj) this.formobj.OperationComplete(true);
 	for(var i in this.child)
-	    this.child[i].ObjectModified(recnum);
+	    this.child[i].ObjectModified(recnum, this.replica[this.CurrentRecord]);
 	if (diff)
 	    this.GiveAllCurrentRecord();
 	}
     else
 	{
-	this.formobj.OperationComplete(false);
+	if (this.formobj) this.formobj.OperationComplete(false);
 	}
     this.formobj=null;
     delete this.modifieddata;
@@ -799,7 +887,8 @@ function osrc_open_session(cb)
 	}
     else
 	{
-	pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=opensession', cb);
+	this.DoRequest('opensession', '/', {}, cb);
+	//pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=opensession', cb);
 	}
     }
 
@@ -815,12 +904,14 @@ function osrc_open_query()
 	}
     if(this.qid)
 	{
-	pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query);
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query);
+	//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query);
 	this.qid=null;
 	return 0;
 	}
     //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query, osrc_get_qid);
-    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.replicasize + "&ls__sql=" + this.query, osrc_get_qid);
+    this.DoRequest('multiquery', '/', {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query}, osrc_get_qid);
+    //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autoclose_sr=1&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.replicasize + "&ls__sql=" + this.query, osrc_get_qid);
     this.querysize = this.replicasize;
     }
 
@@ -969,7 +1060,13 @@ function osrc_parse_one_row(lnk, i)
 function osrc_do_fetch(rowcnt)
     {
     this.querysize = rowcnt?rowcnt:1;
-    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):"") + (this.startat?("&ls__startat="+this.startat):""), osrc_fetch_next);
+    var reqparam = {ls__qid:this.qid, ls__objmode:'0', ls__notify:this.request_updates};
+    if (rowcnt)
+	reqparam.ls__rowcount = rowcnt;
+    if (this.startat)
+	reqparam.ls__startat = this.startat;
+    this.DoRequest('queryfetch', '/', reqparam, osrc_fetch_next);
+    //pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):"") + (this.startat?("&ls__startat="+this.startat):""), osrc_fetch_next);
     }
 
 function osrc_end_query()
@@ -994,7 +1091,8 @@ function osrc_end_query()
     this.FoundRecord();
     if(qid)
 	{
-	pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
+	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
+	//pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
 	}
     this.Dispatch();
     this.ifcProbe(ifEvent).Activate("EndQuery", {});
@@ -1038,6 +1136,11 @@ function osrc_fetch_next()
     var rowcnt = 0;
     while (i < lc)
 	{
+	if (lnk[i].target == 'QUERYCLOSED')
+	    {
+	    this.qid = null;
+	    break;
+	    }
 	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
 	this.replica[this.OSMLRecord] =
 		this.NewReplicaObj(this.OSMLRecord, lnk[i].target);
@@ -1053,7 +1156,7 @@ function osrc_fetch_next()
     pg_debug("   Fetch returned " + rowcnt + " rows, querysize was " + this.querysize + ".\n");
 
     // make sure we bring this.LastRecord back down to the top of our replica...
-    while(!this.replica[this.LastRecord])
+    while(!this.replica[this.LastRecord] && this.LastRecord > 0)
 	this.LastRecord--;
 
     if(this.LastRecord<this.TargetRecord[1])
@@ -1089,7 +1192,10 @@ function osrc_fetch_next()
 	    }
 	else
 	    {
-	    this.FoundRecord();
+	    if (rowcnt < this.querysize)
+		this.EndQuery();
+	    else
+		this.FoundRecord();
 	    }
 	}
     }
@@ -1104,7 +1210,8 @@ function osrc_oldoid_cleanup()
 	    src+=this.oldoids[i];
 	if(this.sid)
 	    //pg_set(this,'src','/?ls__mode=osml&ls__req=close&ls__sid='+this.sid+'&ls__oid=' + src);
-	    pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=close&ls__sid='+this.sid+'&ls__oid=' + src, osrc_oldoid_cleanup_cb);
+	    this.DoRequest('close', '/', {ls__oid:src}, osrc_oldoid_cleanup_cb);
+	    //pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=close&ls__sid='+this.sid+'&ls__oid=' + src, osrc_oldoid_cleanup_cb);
 	else
 	    alert('session is invalid');
 	}
@@ -1134,7 +1241,8 @@ function osrc_close_query()
 function osrc_close_object()
     {
     //Close Object
-    pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=close&ls__oid=' + this.oid, osrc_close_session);
+    this.DoRequest('close', '/', {ls__oid:this.oid}, osrc_close_session);
+    //pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=close&ls__oid=' + this.oid, osrc_close_session);
     //this.onload = osrc_close_session;
     //pg_set(this,'src','/?ls__mode=osml&ls__req=close&ls__oid=' + this.oid);
     }
@@ -1142,7 +1250,8 @@ function osrc_close_object()
 function osrc_close_session()
     {
     //Close Session
-    pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid, osrc_oldoid_cleanup);
+    this.DoRequest('closesession', '/', {}, osrc_oldoid_cleanup);
+    //pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid, osrc_oldoid_cleanup);
     //this.onload=osrc_oldoid_cleanup;
     //pg_set(this,'src','/?ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid);
     this.qid=null;
@@ -1155,9 +1264,65 @@ function osrc_move_first(aparam)
     this.MoveToRecord(1, aparam.from_internal);
     }
 
+
+function osrc_change_current_record()
+    {
+    var newprevcurrent = [];
+    var fieldlistobj = this.prevcurrent;
+    if (!fieldlistobj || fieldlistobj.length == 0)
+	fieldlistobj = this.replica[this.CurrentRecord];
+    if (!fieldlistobj || fieldlistobj.length == 0)
+	return;
+
+    for(var i in fieldlistobj)
+	{
+	if (typeof fieldlistobj[i] != 'object') continue;
+	var attrname = fieldlistobj[i].oid;
+	var oldval = null;
+	var newval = null;
+	if (this.prevcurrent)
+	    {
+	    for(var j in this.prevcurrent)
+		{
+		if (typeof this.prevcurrent[j] != 'object') continue;
+		if (this.prevcurrent[j].oid == attrname)
+		    {
+		    oldval = this.prevcurrent[j].value;
+		    break;
+		    }
+		}
+	    }
+	if (this.replica[this.CurrentRecord])
+	    {
+	    for(var j in this.replica[this.CurrentRecord])
+		{
+		if (typeof this.replica[this.CurrentRecord][j] != 'object') continue;
+		if (this.replica[this.CurrentRecord][j].oid == attrname)
+		    {
+		    newval = this.replica[this.CurrentRecord][j].value;
+		    break;
+		    }
+		}
+	    }
+	if (oldval != newval)
+	    this.ifcProbe(ifValue).Changing(attrname, newval, true, oldval, true);
+	if (newval)
+	    newprevcurrent.push({oid:attrname, value:newval});
+	}
+    this.prevcurrent = newprevcurrent;
+    }
+
+
 function osrc_give_all_current_record()
     {
     //confirm('give_all_current_record start');
+    /*for(var j in this.replica[this.CurrentRecord])
+	{
+	var col = this.replica[this.CurrentRecord][j];
+	if (typeof col == 'object')
+	    this.ifcProbe(ifValue).Changing(col.oid, col.value, true);
+	}*/
+    this.ChangeCurrentRecord();
     for(var i in this.child)
 	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord]);
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
@@ -1263,7 +1428,8 @@ function osrc_move_to_record_cb(recnum)
 		}
 	    if(this.qid)
 		{
-		pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid,osrc_open_query_startat);
+		this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
+		//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid,osrc_open_query_startat);
 		//this.onload=osrc_open_query_startat;
 		//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid);
 		}
@@ -1310,7 +1476,8 @@ function osrc_open_query_startat()
 	this.querysize = this.FirstRecord - this.startat;
     else
 	this.querysize = this.replicasize;
-    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.querysize + "&ls__sql=" + this.query, osrc_get_qid_startat);
+    this.DoRequest('multiquery', '/', {ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query}, osrc_get_qid_startat);
+    //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autoclose_sr=1&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.querysize + "&ls__sql=" + this.query, osrc_get_qid_startat);
     //pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
     }
 
@@ -1419,7 +1586,8 @@ function osrc_scroll_to(startrec, endrec)
 	    if(this.qid)
 		{
 		//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid);
-		pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query_startat);
+		this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
+		//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query_startat);
 		}
 	    else
 		{
@@ -1636,7 +1804,63 @@ function osrc_cb_new_object_template()
     var obj = this.NewReplicaObj(0, 0);
 
     this.ApplyRelationships(obj);
+    this.ApplyKeys(obj);
+
     return obj;
+    }
+
+function osrc_apply_keys(obj)
+    {
+    var cnt = 0;
+    while(typeof obj[cnt] != 'undefined') cnt++;
+
+    for(var i in this.rulelist)
+	{
+	var rl = this.rulelist[i];
+	if (rl.ruletype == 'osrc_key')
+	    {
+	    switch(rl.keying_method)
+		{
+		case 'counterosrc':
+		    if (rl.osrc.CurrentRecord && rl.osrc.replica && rl.osrc.replica[rl.osrc.CurrentRecord])
+			{
+			var pobj = rl.osrc.replica[rl.osrc.CurrentRecord];
+			for(var j in pobj)
+			    {
+			    var col = pobj[j];
+			    if (typeof col == 'object' && col.oid == rl.counter_attribute)
+				{
+				var found = false;
+				for(var l in obj)
+				    {
+				    if (obj[l] == null || typeof obj[l] != 'object') continue;
+				    if (obj[l].oid == rl.key_fieldname)
+					{
+					found = true;
+					obj[l] = {type:col.type, value:col.value, hints:col.hints, oid:rl.key_fieldname};
+					}
+				    }
+				if (!found)
+				    obj[cnt++] = {type:col.type, value:col.value, hints:col.hints, oid:rl.key_fieldname};
+
+				var nobj = [];
+				nobj.oid = pobj.oid;
+				nobj.push({value:parseInt(pobj[j].value?pobj[j].value:0) + 1, type:pobj[j].type, oid:pobj[j].oid});
+
+				rl.osrc.ifcProbe(ifAction).Invoke("Modify", {data:nobj, client:this});
+				break;
+				}
+			    }
+			}
+		    break;
+
+		default:
+		    break;
+		}
+	    }
+	}
+
+    return;
     }
 
 function osrc_apply_rel(obj)
@@ -1698,9 +1922,29 @@ function osrc_apply_rel(obj)
 /** called by child when all or part of the child is shown to the user **/
 function osrc_cb_reveal(child)
     {
-    //alert(this.name + ' got Reveal');
-    // Increment reveal counts
-    this.revealed_children++;
+    if ((typeof child) == 'object' && child.eventName)
+	{
+	var e = child;
+	switch (e.eventName) 
+	    {
+	    case 'Reveal':
+		this.revealed_children++;
+		break;
+	    case 'Obscure':
+		return this.Obscure(null);
+		break;
+	    case 'RevealCheck':
+	    case 'ObscureCheck':
+		pg_reveal_check_ok(e);
+		break;
+	    }
+	}
+    else
+	{
+	//alert(this.name + ' got Reveal');
+	// Increment reveal counts
+	this.revealed_children++;
+	}
     if (this.revealed_children > 1) return 0;
 
     // User requested onReveal?  If so, do that here.
@@ -1710,6 +1954,11 @@ function osrc_cb_reveal(child)
     else if (this.autoquery == this.AQonEachReveal)
 	{
 	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:null, client:null, ro:this.readonly}, 0);
+	}
+    if (this.has_onreveal_relationship && this.hidden_change_cnt > 0)
+	{
+	this.hidden_change_cnt = 0;
+	this.Resync();
 	}
     return 0;
     }
@@ -1760,6 +2009,8 @@ function osrc_do_filter(r)
     var f = r.filter_to_use;
     if (r.tw) f = f + '*';
     if (r.lw) f = '*' + f;
+    if (f && r.prev_filter && f.valueOf() == r.prev_filter.valueOf()) return;
+    r.prev_filter = f;
     var t={oid:r.field, value:f, type:'string'};
     query.push(t);
     this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:this, ro:true});
@@ -1806,6 +2057,7 @@ function osrc_add_rule(rule_widget)
 	rl.lw = rule_widget.leading_wildcard;
 	if (rl.lw == null) rl.lw = 0;
 	rl.field = rule_widget.fieldname;
+	rl.prev_filter = null;
 	rule_widget._osrc_filter_changed = osrc_filter_changed;
 	htr_watch(rule_widget, "value", "_osrc_filter_changed");
 	this.rulelist.push(rl);
@@ -1822,7 +2074,49 @@ function osrc_add_rule(rule_widget)
 	rl.is_slave = rule_widget.is_slave;
 	if (rl.is_slave == null)
 	    rl.is_slave = 1;
+	rl.revealed_only = rule_widget.revealed_only;
+	if (rl.revealed_only == null)
+	    rl.revealed_only = 0;
 	osrc_relationships.push(rl);
+	}
+    else if (rl.ruletype == 'osrc_key')
+	{
+	rl.key_fieldname = rule_widget.key_fieldname;
+	rl.keying_method = rule_widget.keying_method;
+	switch(rl.keying_method)
+	    {
+	    case 'maxplusone':
+		rl.min_value = rule_widget.min_value;
+		rl.max_value = rule_widget.max_value;
+		break;
+
+	    case 'counter':
+		rl.object_path = rule_widget.object_path;
+		rl.counter_attribute = rule_widget.counter_attribute;
+		break;
+
+	    case 'counterosrc':
+		rl.osrc = null;
+		if (rule_widget.osrc)
+		    rl.osrc = wgtrGetNode(this, rule_widget.osrc);
+		if (!rl.osrc)
+		    rl.osrc = wgtrFindContainer(this, "widget/osrc");
+		rl.counter_attribute = rule_widget.counter_attribute;
+		break;
+
+	    case 'sql':
+		rl.sql = rule_widget.sql;
+		break;
+
+	    case 'value':
+		rl.value_container = rule_widget;
+		break;
+
+	    default:
+		alert("Invalid keying method '" + rl.keying_method + "' for osrc_key rule");
+		break;
+	    }
+	this.rulelist.push(rl);
 	}
     }
 
@@ -1862,6 +2156,11 @@ function osrc_dispatch()
 // OSRC Client routines (for linking with another osrc)
 function osrc_oc_resync()
     {
+    if (this.has_onreveal_relationship && this.revealed_children == 0)
+	{
+	this.hidden_change_cnt++;
+	return;
+	}
     //alert('Resync: ' + this.sql);
     var sync_param = {ParentOSRC:this.master_osrc};
     for(var i=1; i<=10;i++)
@@ -1959,6 +2258,8 @@ function osrc_init_bh()
 		this.master_keys['master_' + i] = rl[masterkey + i];
 		this.master_keys['slave_' + i] = rl[slavekey + i];
 		}
+	    if (rl.revealed_only)
+		this.has_onreveal_relationship = true;
 	    //pg_addsched_fn(this, "Resync", [], 0);
 	    }
 	}
@@ -1994,6 +2295,23 @@ function osrc_action_save_clients(aparam)
     }
 
 
+function osrc_do_request(cmd, url, params, cb)
+    {
+    var first = true;
+    params.cx__akey = akey;
+    params.ls__mode = 'osml';
+    params.ls__req = cmd;
+    if (this.sid) params.ls__sid = this.sid;
+    if (!this.ind_act) params.cx__noact = '1';
+    for(var p in params)
+	{
+	url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
+	first = false;
+	}
+    pg_serialized_load(this, url, cb, !this.ind_act);
+    }
+
+
 function osrc_print_debug()
     {
     var str = "\n";
@@ -2016,6 +2334,7 @@ function osrc_init(param)
     loader.scrollahead=param.scrollahead;
     loader.replicasize=param.replicasize;
     loader.initreplicasize = param.replicasize;
+    loader.ind_act = param.ind_act;
     loader.sql=param.sql;
     loader.filter=param.filter;
     loader.baseobj=param.baseobj;
@@ -2047,6 +2366,7 @@ function osrc_init(param)
     loader.PruneReplica = osrc_prune_replica;
     loader.ClearReplica = osrc_clear_replica;
     loader.ApplyRelationships = osrc_apply_rel;
+    loader.ApplyKeys = osrc_apply_keys;
     loader.EndQuery = osrc_end_query;
     loader.FoundRecord = osrc_found_record;
     loader.DoFetch = osrc_do_fetch;
@@ -2054,7 +2374,9 @@ function osrc_init(param)
     loader.GoNogo = osrc_go_nogo;
     loader.QueueRequest = osrc_queue_request;
     loader.Dispatch = osrc_dispatch;
+    loader.DoRequest = osrc_do_request;
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
+    loader.ChangeCurrentRecord=osrc_change_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
     loader.child = new Array();
@@ -2062,6 +2384,10 @@ function osrc_init(param)
     loader.sid = null;
     loader.qid = null;
     loader.savable_client_count = 0;
+    loader.lastquery = null;
+    loader.prevcurrent = null;
+    loader.has_onreveal_relationship = false;
+    loader.hidden_change_cnt = 0;
 
     loader.MoveToRecordHandler = osrc_move_to_record_handler;
     loader.QueryObjectHandler = osrc_query_object_handler;
@@ -2075,6 +2401,7 @@ function osrc_init(param)
     ia.Add("QueryParam", osrc_action_query_param);
     ia.Add("OrderObject", osrc_action_order_object);
     ia.Add("Delete", osrc_action_delete);
+    ia.Add("CreateObject", osrc_action_create_object);
     ia.Add("Create", osrc_action_create);
     ia.Add("Modify", osrc_action_modify);
     ia.Add("First", osrc_move_first);
@@ -2084,11 +2411,13 @@ function osrc_init(param)
     ia.Add("Sync", osrc_action_sync);
     ia.Add("DoubleSync", osrc_action_double_sync);
     ia.Add("SaveClients", osrc_action_save_clients);
+    ia.Add("Refresh", osrc_action_refresh);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
     ie.Add("EndQuery");
+    ie.Add("Created");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
@@ -2111,6 +2440,8 @@ function osrc_init(param)
     loader.Register = osrc_cb_register;
     loader.Reveal = osrc_cb_reveal;
     loader.Obscure = osrc_cb_obscure;
+    if (wgtrGetChildren(loader).length == 0)
+	pg_reveal_register_listener(loader, true);
 
     loader.ScrollTo = osrc_scroll_to;
     loader.ScrollPrev = osrc_scroll_prev;
