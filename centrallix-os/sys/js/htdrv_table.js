@@ -133,7 +133,7 @@ function tbld_update(p1)
 	    {
 	    //confirm('(skipped)'+i+':'+this.rows[i].fg.recnum);
 	    }
-	if(this.rows[i].fg.recnum==this.osrc.CurrentRecord)
+	if(this.rows[i].fg.recnum==this.osrc.CurrentRecord && this.showselect)
 	    this.rows[i].fg.select();
 	else
 	    this.rows[i].fg.deselect();
@@ -409,6 +409,8 @@ function tbld_init(param)
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.gridinemptyrows = param.gridinemptyrows;
+    t.allowselect = param.allow_selection;
+    t.showselect = param.show_selection;
     t.cr = 1;
     t.followcurrent = param.followcurrent>0?true:false;
     t.hdr_bgnd = param.hdrbgnd;
@@ -506,6 +508,14 @@ function tbld_init(param)
     for (var i in t.cols)
 	{
 	t.cols[i][2] *= adj;
+	}
+
+    // which col do we group the rows by?
+    t.grpby = -1;
+    for (var i in t.cols)
+	{
+	if (t.cols[i][4])
+	    t.grpby = i;
 	}
 
     t.maxwindowsize = t.windowsize;
@@ -663,19 +673,22 @@ function tbld_mouseover(e)
 	    if (ly.clip_w < getdocWidth(ly) && ly.data)
 		ly.tipid = pg_tooltip(ly.data, e.pageX, e.pageY);
 	    }
-        if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
+        if((ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg'))
             {
             if(ly.row) ly=ly.row;
             if(ly.bg) ly=ly.bg;
-            if(tbld_current) tbld_current.mouseout();
-            tbld_current=ly;
-            tbld_current.mouseover();
+	    if (ly.table.allowselect)
+		{
+		if(tbld_current) tbld_current.mouseout();
+		tbld_current=ly;
+		tbld_current.mouseover();
+		}
             }
         }
     if(!(  ly.kind && ly.kind=='tabledynamic' && 
            (ly.subkind=='row' || ly.subkind=='cell' ||
             ly.subkind=='bg'
-           )) && tbld_current)
+           )) && tbld_current && tbld_current.table.allowselect)
         {
         tbld_current.mouseout();
         tbld_current=null;
@@ -723,62 +736,65 @@ function tbld_mousedown(e)
             {
             if(ly.row) ly=ly.row;
             if(ly.fg) ly=ly.fg;
-            if(ly.table.osrc.CurrentRecord!=ly.recnum)
-                {
-                if(ly.recnum)
-                    {
-                    ly.table.osrc.MoveToRecord(ly.recnum);
-                    }
-                }
-            if(ly.table.ifcProbe(ifEvent).Exists("Click"))
-                {
-                var event = new Object();
-                event.Caller = ly.table;
-                event.recnum = ly.recnum;
-                event.data = new Object();
-                var rec=ly.table.osrc.replica[ly.recnum];
-                if(rec)
-                    {
-                    for(var i in rec)
-                        {
-                        event.data[rec[i].oid]=rec[i].value;
-                        }
-                    }
-                ly.table.dta=event.data;
-                cn_activate(ly.table,'Click', event);
-                delete event;
-                }
-            if(ly.table.ifcProbe(ifEvent).Exists("DblClick"))
-                {
-                if (!ly.table.clicked || !ly.table.clicked[ly.recnum])
-                    {
-                    if (!ly.table.clicked) ly.table.clicked = new Array();
-                    if (!ly.table.tid) ly.table.tid = new Array();
-                    ly.table.clicked[ly.recnum] = 1;
-                    ly.table.tid[ly.recnum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.recnum);
-                    }
-                else
-                    {
-                    ly.table.clicked[ly.recnum] = 0;
-                    clearTimeout(ly.table.tid[ly.recnum]);
-                    var event = new Object();
-                    event.Caller = ly.table;
-                    event.recnum = ly.recnum;
-                    event.data = new Object();
-                    var rec=ly.table.osrc.replica[ly.recnum];
-                    if(rec)
-                        {
-                        for(var i in rec)
-                            {
-                            event.data[rec[i].oid]=rec[i].value;
-                            }
-                        }
-                    ly.table.dta=event.data;
-                    cn_activate(ly.table,'DblClick', event);
-                    delete event;
-                    }
-                }
-            }
+	    if (ly.table.allowselect)
+		{
+		if(ly.table.osrc.CurrentRecord!=ly.recnum)
+		    {
+		    if(ly.recnum)
+			{
+			ly.table.osrc.MoveToRecord(ly.recnum);
+			}
+		    }
+		if(ly.table.ifcProbe(ifEvent).Exists("Click"))
+		    {
+		    var event = new Object();
+		    event.Caller = ly.table;
+		    event.recnum = ly.recnum;
+		    event.data = new Object();
+		    var rec=ly.table.osrc.replica[ly.recnum];
+		    if(rec)
+			{
+			for(var i in rec)
+			    {
+			    event.data[rec[i].oid]=rec[i].value;
+			    }
+			}
+		    ly.table.dta=event.data;
+		    cn_activate(ly.table,'Click', event);
+		    delete event;
+		    }
+		if(ly.table.ifcProbe(ifEvent).Exists("DblClick"))
+		    {
+		    if (!ly.table.clicked || !ly.table.clicked[ly.recnum])
+			{
+			if (!ly.table.clicked) ly.table.clicked = new Array();
+			if (!ly.table.tid) ly.table.tid = new Array();
+			ly.table.clicked[ly.recnum] = 1;
+			ly.table.tid[ly.recnum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.recnum);
+			}
+		    else
+			{
+			ly.table.clicked[ly.recnum] = 0;
+			clearTimeout(ly.table.tid[ly.recnum]);
+			var event = new Object();
+			event.Caller = ly.table;
+			event.recnum = ly.recnum;
+			event.data = new Object();
+			var rec=ly.table.osrc.replica[ly.recnum];
+			if(rec)
+			    {
+			    for(var i in rec)
+				{
+				event.data[rec[i].oid]=rec[i].value;
+				}
+			    }
+			ly.table.dta=event.data;
+			cn_activate(ly.table,'DblClick', event);
+			delete event;
+			}
+		    }
+		}
+	    }
         if(ly.subkind=='headercell')
             {
             var neworder=new Array();
