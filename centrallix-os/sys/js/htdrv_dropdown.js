@@ -385,7 +385,7 @@ function dd_select_item(l,i)
 		c += '<i>' + l.Values[i].label + '</i>';*/
 	    var firstone = true;
 	    var items = '';
-	    for(j in l.selectedItems)
+	    for(var j in l.selectedItems)
 		{
 		if(!firstone)
 		    items += ', ';
@@ -397,7 +397,7 @@ function dd_select_item(l,i)
 		else
 		    {
 		    items = '<i>' + l.Values[l.selectedItems[j]].label + '</i>';
-		    for(k in l.Items)
+		    for(var k in l.Items)
 			{
 			htr_setbgcolor(l.Items[k],l.bg);
 			}
@@ -869,7 +869,7 @@ function dd_changemode()
 	{
 	//unselect items
 	this.selectedItems = null;
-	for(k in this.Items)
+	for(var k in this.Items)
 	    {
 	    htr_setbgcolor(this.Items[k],this.bg);
 	    }
