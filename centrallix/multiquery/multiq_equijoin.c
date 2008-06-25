@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.12 2008/04/06 20:53:49 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.13 2008/06/25 18:39:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.13  2008/06/25 18:39:47  gbeeley
+    - (bugfix) include the "*" in a SELECT * in the topmost join's list of
+      attributes, rather than causing squawkage about the query not being set
+      up right...
+
     Revision 1.12  2008/04/06 20:53:49  gbeeley
     - (bugfix) under some conditions, the NULL values in a row resulting from
       an outerjoin were not showing up as NULL.
@@ -446,7 +451,7 @@ mqjAnalyze(pMultiQuery mq)
 		    for(i=0;i<select_qs->Children.nItems;i++)
 			{
 			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-			if (select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0)
+			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
 			    {
 			    if (select_item->Flags & MQ_SF_ASTERISK)
 				mq->Flags |= MQ_F_ASTERISK;
