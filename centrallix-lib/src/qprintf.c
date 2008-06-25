@@ -36,10 +36,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.8 2008/04/06 20:56:34 gbeeley Exp $
+    $Id: qprintf.c,v 1.9 2008/06/25 22:38:29 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.9  2008/06/25 22:38:29  jncraton
+    (feature) adding URL and DB64 filters
+
     Revision 1.8  2008/04/06 20:56:34  gbeeley
     - (feature) adding DSYB filter in qprintf to use sybase/csv style quoting
       of strings (by doubling the double quotes)
@@ -222,6 +225,7 @@ typedef struct
     QPConvTable	hte_matrix;
     QPConvTable	htenlbr_matrix;
     QPConvTable	hex_matrix;
+    QPConvTable	url_matrix;
     QPConvTable	jsstr_matrix;
     QPConvTable	cssval_matrix;
     QPConvTable	cssurl_matrix;
@@ -279,7 +283,7 @@ int
 qpfInitialize()
     {
     int i;
-    char buf[3];
+    char buf[4];
     char hex[] = "0123456789abcdef";
 
 	memset(&QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
@@ -380,6 +384,42 @@ qpfInitialize()
 	    }
 	qpf_internal_SetupTable(&QPF.hex_matrix);
 
+	/* set up table for url encoding everything except 0-9, A-Z, and a-z */
+	for(i=0;i<48;i++) /* escape until 0-9 */
+	    {
+	    buf[0] = '%';
+	    buf[1] = hex[(i>>4)&0x0F];
+	    buf[2] = hex[i&0x0F];
+	    buf[3] = '\0';
+	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
+	    }
+	for(i=58;i<65;i++) /* skip 0-9 and continue until A-Z */
+	    {
+	    buf[0] = '%';
+	    buf[1] = hex[(i>>4)&0x0F];
+	    buf[2] = hex[i&0x0F];
+	    buf[3] = '\0';
+	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
+	    }
+	for(i=91;i<97;i++) /* skip A-Z and continue until a-z */
+	    {
+	    buf[0] = '%';
+	    buf[1] = hex[(i>>4)&0x0F];
+	    buf[2] = hex[i&0x0F];
+	    buf[3] = '\0';
+	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
+	    }
+	for(i=123;i<QPF_MATRIX_SIZE;i++) /* encode everything higher */
+	    {
+	    buf[0] = '%';
+	    buf[1] = hex[(i>>4)&0x0F];
+	    buf[2] = hex[i&0x0F];
+	    buf[3] = '\0';
+	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
+	    }
+	qpf_internal_SetupTable(&QPF.url_matrix);
+
+	
 	for(i=0;i<=QPF_SPEC_T_MAXSPEC;i++)
 	    {
 	    if (qpf_spec_names[i]) 
@@ -479,6 +519,101 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 	}
     *dst = '\0';
     return rval;
+    }
+
+
+/*** qpf_internal_base64decode() - convert base 64 to a string representation
+this needs to be cleaned up a lot and made compatible with qpf
+it was copied almost verbatim from net_http
+ ***/
+static inline int
+qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* cplen)
+    {
+    static char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char* ptr;
+    char* cursor;
+    int ix;
+    int req_size = (.75 * src_size) + 1; /* fmul could truncate when cast (+1)*/
+
+	/* Grow dstbuf if necessary and possible, otherwise return error*/
+	if (req_size > *dst_size)
+	    {
+	    if((ptr = realloc(*dst, req_size)))
+		{
+		*dst = ptr;
+		*dst_size = req_size;
+		}
+	    else /* memory reallocation failed */
+		{
+		QPERR(QPF_ERR_T_MEMORY);
+		return -1;
+		}
+	    }
+	
+	cursor = *dst;
+	
+	/** Step through src 4 bytes at a time. **/
+	while(*src)
+	    {
+	    /** First 6 bits. **/
+	    ptr = strchr(b64,src[0]);
+	    if (!ptr) 
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = ptr-b64;
+	    cursor[0] = ix<<2;
+
+	    /** Second six bits are split between cursor[0] and cursor[1] **/
+	    ptr = strchr(b64,src[1]);
+	    if (!ptr)
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = ptr-b64;
+	    cursor[0] |= ix>>4;
+	    cursor[1] = (ix<<4)&0xF0;
+
+	    /** Third six bits are nonmandatory and split between cursor[1] and [2] **/
+	    if (src[2] == '=' && src[3] == '=')
+	        {
+		cursor += 1;
+		src += 4;
+		break;
+		}
+	    ptr = strchr(b64,src[2]);
+	    if (!ptr)
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = ptr-b64;
+	    cursor[1] |= ix>>2;
+	    cursor[2] = (ix<<6)&0xC0;
+
+	    /** Fourth six bits are nonmandatory and a part of cursor[2]. **/
+	    if (src[3] == '=')
+	        {
+		cursor += 2;
+		src += 4;
+		break;
+		}
+	    ptr = strchr(b64,src[3]);
+	    if (!ptr)
+	        {
+		return -1;
+		}
+	    ix = ptr-b64;
+	    cursor[2] |= ix;
+	    src += 4;
+	    cursor += 3;
+	    }
+
+	*cplen = cursor - *dst;
+
+    return 0;
     }
 
 
@@ -649,6 +784,8 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     const char* strval;
     double dblval;
     char tmpbuf[64];
+    char* buf = 0;
+    size_t buf_size = 0;
     char chrval;
     size_t cpoffset = 0;
     size_t oldcpoffset;
@@ -936,6 +1073,13 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
 				
+				case QPF_SPEC_T_DB64:
+				    if(qpf_internal_base64decode(s, strval, cplen, &buf, &buf_size, &cplen)) 
+					{ rval = -EINVAL; goto error; } 
+				    else 
+					{ strval = buf; }
+				    break;
+				
 				case QPF_SPEC_T_ESCQ:
 				case QPF_SPEC_T_ESCQWS:
 				case QPF_SPEC_T_JSSTR:
@@ -948,6 +1092,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				case QPF_SPEC_T_HTE:
 				case QPF_SPEC_T_HTENLBR:
 				case QPF_SPEC_T_HEX:
+				case QPF_SPEC_T_URL:
 				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
 					{
 					if (n_specs-i == 2)
@@ -1001,6 +1146,10 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 									quote = 0;
 									break;
 					    case QPF_SPEC_T_HEX:	table = &QPF.hex_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_URL:	table = &QPF.url_matrix;
 									min_room = 1;
 									quote = 0;
 									break;

@@ -31,10 +31,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.h,v 1.4 2008/03/29 01:03:36 gbeeley Exp $
+    $Id: qprintf.h,v 1.5 2008/06/25 22:38:29 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/qprintf.h,v $
 
     $Log: qprintf.h,v $
+    Revision 1.5  2008/06/25 22:38:29  jncraton
+    (feature) adding URL and DB64 filters
+
     Revision 1.4  2008/03/29 01:03:36  gbeeley
     - (change) changing integer type in IntVec to a signed integer
     - (security) switching to size_t in qprintf where needed instead of using
@@ -87,6 +90,7 @@ typedef struct _QPS
 #define QPF_ERR_T_INTERNAL	1024	/* Uncorrectable internal error. */
 #define QPF_ERR_T_BADFILE	2048	/* Bad filename for &FILE filter */
 #define QPF_ERR_T_BADPATH	4096	/* Bad pathname for &PATH filter */
+#define QPF_ERR_T_BADCHAR	8192	/* Bad character for filter (e.g. an octothorpe for &DB64) */
 
 #define QPERR(x) (s->Errors |= (x))
 
