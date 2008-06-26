@@ -36,10 +36,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.9 2008/06/25 22:38:29 jncraton Exp $
+    $Id: qprintf.c,v 1.10 2008/06/26 23:36:22 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.10  2008/06/26 23:36:22  jncraton
+    - DB64 filter now uses a proper grow function and is more efficient
+
     Revision 1.9  2008/06/25 22:38:29  jncraton
     (feature) adding URL and DB64 filters
 
@@ -523,34 +526,27 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 
 
 /*** qpf_internal_base64decode() - convert base 64 to a string representation
-this needs to be cleaned up a lot and made compatible with qpf
-it was copied almost verbatim from net_http
  ***/
 static inline int
-qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* cplen)
+qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    static char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* cursor;
     int ix;
-    int req_size = (.75 * src_size) + 1; /* fmul could truncate when cast (+1)*/
+    int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
 
-	/* Grow dstbuf if necessary and possible, otherwise return error*/
+	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
 	    {
-	    if((ptr = realloc(*dst, req_size)))
-		{
-		*dst = ptr;
-		*dst_size = req_size;
-		}
-	    else /* memory reallocation failed */
+	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
 		{
 		QPERR(QPF_ERR_T_MEMORY);
 		return -1;
 		}
 	    }
-	
-	cursor = *dst;
+
+	cursor = *dst + *dst_offset;
 	
 	/** Step through src 4 bytes at a time. **/
 	while(*src)
@@ -610,10 +606,9 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    src += 4;
 	    cursor += 3;
 	    }
+	    *dst_offset = *dst_offset + cursor - *dst;
 
-	*cplen = cursor - *dst;
-
-    return 0;
+    return cursor - *dst;
     }
 
 
@@ -784,8 +779,6 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     const char* strval;
     double dblval;
     char tmpbuf[64];
-    char* buf = 0;
-    size_t buf_size = 0;
     char chrval;
     size_t cpoffset = 0;
     size_t oldcpoffset;
@@ -1074,10 +1067,13 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				    break;
 				
 				case QPF_SPEC_T_DB64:
-				    if(qpf_internal_base64decode(s, strval, cplen, &buf, &buf_size, &cplen)) 
+				    if((n=qpf_internal_base64decode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
 					{ rval = -EINVAL; goto error; } 
 				    else 
-					{ strval = buf; }
+					{
+					copied+=n;
+					cplen=0; 
+					}
 				    break;
 				
 				case QPF_SPEC_T_ESCQ:
@@ -1266,7 +1262,6 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 	 ** in the return value.
 	 **/
 	if ((*size) > cpoffset) (*str)[cpoffset] = '\0';
-
     return rval;
     }
 
