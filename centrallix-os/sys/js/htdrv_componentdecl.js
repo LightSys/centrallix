@@ -9,9 +9,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function cmpd_init(node, param)
+//SETH: ?? check below
+/*
+  I (Seth) think that cmpd_init is only used in server's generation of
+  components.
+ */
+
+
+function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.gname = ? name
     {
-    // component is access point for stuff inside, shell is access point for stuff outside.
+    // 'component' is access point for stuff inside, shell is access point for stuff outside.
     var component = node;
     var shell = wgtrGetNode(param.gns, param.gname);
 
@@ -41,15 +48,23 @@ function cmpd_init(node, param)
     return component;
     }
 
+
+// START SECTION: helper functions ---------------------------------------------
+
+// >> Makes sure containers, from innermost to outermost, are
+// displayed to the user.  Used when a control receives keyboard focus
+// to make sure control is visible to user.
 function cmpd_showcontainer(l,x,y)
     {
     pg_show_containers(this.shell);
     return true;
     }
 
+// This is a static form function to find the form that contains the
+// given element.  Replacement for the old fm_current logic.
 function cmpd_find_container(t)
     {
-    return wgtrFindContainer(this.shell, t);
+    return wgtrfindContainer(this.shell, t);
     }
 
 function cmpd_cb_reveal(e)

@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.40 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.41 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.41  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.40  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -582,7 +585,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
     }
 
 
-/*** httbtnInitialize - register with the ht_render module.
+/*** httbtnInitialize. - register with the ht_render module.
  ***/
 int
 httbtnInitialize()

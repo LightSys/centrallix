@@ -1150,7 +1150,6 @@ function form_cb_reveal(element,event)
  **/
 function form_init(form,param)
     {
-    //var form = new Object();
     ifc_init_widget(form);
     form.readonly=param.ro;
     form.elements = [];
@@ -1164,7 +1163,6 @@ function form_init(form,param)
     form.revealed_elements = 0;
     form.valuelist = [];
     form.osrc = wgtrFindContainer(form, "widget/osrc");
-    //if (!form.osrc) alert('no osrc container!');
     form.IsUnsaved = false;
     form.name = param.name;
     form.Pending = false;

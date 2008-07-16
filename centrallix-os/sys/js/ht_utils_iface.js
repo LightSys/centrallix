@@ -9,18 +9,46 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-// client-side interface module
+//------------------
+
+// by Seth Bird:
+
+// client-side interface module. This is actually separate from the
+// concept of a widget "interface" (I believe).
+
+// Sometimes, in javascript development, a coder wants to "bind" a
+// specific object to always be used as the 'this' pointer for some
+// given function. One model of how to do this is by means of
+// Prototype's 'bind' function
+// (http://prototypejs.org/api/function/bind). The model used in
+// Centrallix is a little more complicated...
+
+// Instead of storing actually-bounded functions, Centrallix uses a
+// bunch of 'Client Interfaces' -- which is a hash of just normal
+// functions that the coder "wants" to be bound to some object. This
+// then requires a lot of overhead wrappers (stored in the Client
+// Interface instance) which will ensure for the coder that these
+// functions are being passed the intended object.
+
+// also, some code implementation of asynchronous request
+// overhead/management (for interfaces) seem to occur here. I don't
+// think it would be needed if it's ever refactered to use AJAX.
+
+
+
+
 
 // GLOBALS
 
+// as far as I can tell, this is used for just overhead/management of async requests for interfaces
 var IFC=    {	Layer: null,
 		BaseDir: "",
-		Categories: new Array(),
-		Definitions: new Array(),
-		Loading: new Object(),
-		Callbacks: new Object(),
-		Params: new Object(),
-		Handles: new Array()
+		Categories: {},
+		Definitions: {},
+		Loading: {},
+		Callbacks: {},
+		Params: {},
+		Handles: {}
 	    };
 
 
@@ -36,10 +64,7 @@ function IfcDefinition(path, type)
 // has been loaded from the server, and is ready for parsing
 function ifc_internal_LoadFinished()
     {
-    var tokens;
-    var i, maj_v_num, min_v_num;
-    var def;
-    var def_ref;
+    var tokens,	i, maj_v_num, min_v_num, def, def_ref, cat;
 
 	// get the tokens array
 	if (IFC.Layer.document) tokens = IFC.Layer.document.links;
@@ -105,7 +130,7 @@ function ifc_internal_LoadFinished()
 		while (tokens[i].target != "end")
 		    {
 		    pg_debug("IFC:     Processing category '"+tokens[i].host+"'\n");
-		    if (tokens[i].target != "end")
+		    if (tokens[i].target != "end") //SETH: ?? why this test? it really is already known/implied
 			{
 			cat = tokens[i].host;
 			def.MajorVersions[maj_v_num][min_v_num][cat] = new Object();
@@ -129,7 +154,7 @@ function ifc_internal_LoadFinished()
 	    }
 	pg_debug("IFC: Done parsing interface definition\n");
 	IFC.Definitions[def_ref] = def;
-	if (IFC.Callbacks[def_ref] != null) IFC.Callbacks[def_ref](IFC.Params[def_ref]);
+	IFC.Callbacks[def_ref] && IFC.Callbacks[def_ref](IFC.Params[def_ref]); //SETH: $$$callback$$$: should always call callback; but sometimes there'll be a blank callback //SETH: shouldn't these callbacks be handles by custom handlers?
 	delete IFC.Callbacks[def_ref];
 	delete IFC.Params[def_ref];
     }
@@ -159,7 +184,7 @@ function ifcLoadDef(def_str, func)
 
 	// specify this def as 'loading'
 	IFC.Loading[def_str] = true;
-	IFC.Callbacks[def_str] = func;
+	IFC.Callbacks[def_str] = func; //SETH: //TODO: .... = func || function(){} (see $$$callback$$$)
 
 	// now we can start the load
 	pg_debug("ifcLoadDef("+def_str+") - starting load\n");
@@ -170,12 +195,7 @@ function ifcLoadDef(def_str, func)
 // ifcGetHandle - retrieves a handle to an interface 
 function ifcGetHandle(ifc_str)
     {
-    var maj_v_num, min_v_num;
-    var path, ver, tmp;
-    var def;
-    var handle;
-    var i, j;
-    var cat, member;
+    var maj_v_num, min_v_num, path, ver, tmp, def, handle, i, j, cat, member;
 
 	// unpack the major and minor version numbers
 	tmp = ifc_str.split('?');
@@ -185,7 +205,7 @@ function ifcGetHandle(ifc_str)
 	    return null;
 	    }
 	path = tmp[0];
-	ver = tmp.split(/[.=]/);
+	ver = tmp[1].split(/[.=]/);
 	if (ver.length != 3 || ver[0] != 'cx__version')
 	    {
 	    pg_debug("IFC: in ifcGetHandle, '"+ifc_str+"' has misformatted version\n");
@@ -194,11 +214,11 @@ function ifcGetHandle(ifc_str)
 	maj_v_num = parseInt(ver[1]);
 	min_v_num = parseInt(ver[2]);
 	if (isNaN(maj_v_num) || isNaN(min_v_num))
-	if (ver.length != 3 || ver[0] != 'cx__version')
-	    {
-	    pg_debug("IFC: in ifcGetHandle, '"+ifc_str+"' has misformatted version number\n");
-	    return null;
-	    }
+	    if (ver.length != 3 || ver[0] != 'cx__version')
+		{
+		    pg_debug("IFC: in ifcGetHandle, '"+ifc_str+"' has misformatted version number\n");
+		    return null;
+		}
 
 	// make sure the path is absolute
 	if (path[0] != '/') path = IFC.BaseDir+"/"+path;
@@ -226,24 +246,34 @@ function ifcInitialize(ifc_base_dir)
     }
 
 
-
+// ------------------------------------------------------------------------
 // The following are routines for internal interfaces within the javascript
 // client widgets
 
-function ClientInterface(obj, i)
+
+// The ClientInterface constructor will construct a 'Client
+// Interface'. A client interface is simply a hash of
+// "desired-to-be-bound" functions along with needed management
+// functions. (see documentation at top of this file)
+function ClientInterface(thisObj, interfaceInitializer)
     {
-    i.call(this);
-    this.obj = obj;
+    interfaceInitializer.call(this);
+    this.obj = thisObj;
     }
 
+// this initializer is what sets up a javascript object to mimic
+// multiple inheritance (see code description at top).
 function ifc_init_widget(w)
     {
-    w.__ifc = new Array();
+    w.__ifc = {};
     w.ifcProbe = ifc_probe;
     w.ifcProbeAdd = ifc_probe_add;
     return;
     }
 
+// this function creates a 'ClientInterface' which conceptually binds
+// {the widget pointed to by 'this'} to certain methods. (see
+// documentation at top of file)
 function ifc_probe_add(i)
     {
     if (typeof i.name != 'undefined')
@@ -255,25 +285,33 @@ function ifc_probe_add(i)
     return this.__ifc[nm];
     }
 
+//checks to see if the 'this' widget is associated with an interface 'i'.
 function ifc_probe(i)
     {
     if (typeof i.name != 'undefined')
-	var nm = i.name;
-    else
+	var nm = i.name; //most browsers automatically create the .name property of functions
+    else //assume is IE. do a hack
 	var nm = i.toString().substr(9,100).split('(')[0];
+
     if (this.__ifc[nm]) 
-	return this.__ifc[nm];
+	return this.__ifc[nm]; //__ifc[nm] will be an instance of ClientInterface;
     else
 	return null;
     }
 
 
-// the Action interface - allows outside objects to invoke actions
-// on a given widget.
-//
+// ----------------------------------------------------------------------
+// Interface Initializers
+// ----------------------------------------------------------------------
+// The following are classes that a 'Client Interface' can derive
+// from.
+
+
+// the Action interface Initializer - allows outside objects to invoke
+// 'actions' on a given widget.
 function ifAction()
     {
-    function ifaction_invoke(a,ap)
+    function ifaction_invoke(a,ap) //ap stands for [a]ction [p]arameters (a hash of parameters)
 	{
 	if (this.Actions[a]) 
 	    return this.Actions[a].call(this.obj, ap);
@@ -300,7 +338,7 @@ function ifAction()
 	{
 	return (this.Actions[a])?true:false;
 	}
-    this.Actions = new Array();
+    this.Actions = [];
     this.Add = ifaction_add;
     this.Exists = ifaction_exists;
     this.Invoke = ifaction_invoke;
@@ -311,11 +349,15 @@ function ifAction()
 // Event interface - allows outside objects to hook into events which
 // occur on the widget.
 //
+// the Event class (it seems to me) is really just a set of event
+// management functions that differ from the already in-built event
+// management functions in the browser. (to allow custom events).
+//
 function ifEvent()
     {
     function ifevent_add(e)
 	{
-	this.Events[e] = new Array();
+	this.Events[e] = [];
 	}
     function ifevent_clear(e)
 	{
@@ -338,23 +380,17 @@ function ifEvent()
 	else if (pg_diag)
 	    alert("Hook event: " + this.obj.id + " does not implement event " + e);
 	}
-    function ifevent_activate(e,ep)
+    function ifevent_activate(e,ep) //e = event (a string), ep = event parameters
 	{
 	var rval = null;
 	ep._Origin = wgtrGetName(this.obj);
 	if (this.Events[e])
 	    {
-	    for(var ev=0; ev<this.Events[e].length;ev++)
+	    var eventList = this.Events[e];
+	    var len = eventList.length;
+	    for(var ev=0; ev<len;ev++)
 		{
-		rval = this.Events[e][ev].fn.call(this.Events[e][ev].eo, ep);
-		/*if ((this.Events[e][ev]).fn == ifevent_connect_exec)
-		    {
-		    rval = (this.Events[e][ev]).fn(ep);
-		    }
-		else
-		    {
-		    rval = (this.Events[e][ev]).fn.call(this.obj, ep);
-		    }*/
+		rval = eventList[ev].fn.call(eventList[ev].eo, ep);
 		}
 	    }
 	else if (pg_diag)
@@ -430,7 +466,7 @@ function ifEvent()
 	}
     this.late_binding = false;
     this.EnableLateConnectBinding = ifevent_enable_late;
-    this.Events = new Array();
+    this.Events = [];
     this.Add = ifevent_add;
     this.Hook = ifevent_hook;
     this.Activate = ifevent_activate;
@@ -440,7 +476,8 @@ function ifEvent()
     }
 
 
-// Value interface
+// Value interface. A Value instance is really just a container of
+// key/value pairs.
 function ifValue()
     {
     function ifvalue_checkexist(n)
@@ -567,7 +604,7 @@ function ifValue()
 
     // Internal declarations
     this._CheckExist = ifvalue_checkexist;
-    this._NullNotExist = null;
+    this._NullNotExist = null; // if defined, this is the handler that runs whenever a value is null or does not exist (instead of an error occurring)
     this._Attributes = {};
 
     // Observer functions

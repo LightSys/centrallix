@@ -1,0 +1,4 @@
+expressions seem to be internal storage of SQL querys
+
+expressions are created in compiler.c
+

@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.73 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: ht_render.c,v 1.74 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.74  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.73  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -605,7 +608,7 @@
 struct
     {
     XArray	Drivers;		/* simple driver listing. */
-    XHashTable	Classes;		/* classes of widget sets */
+    XHashTable	Classes;		/* classes of widget sets (see centrallix/htmlgen/README) */
     }
     HTR;
 
@@ -751,8 +754,8 @@ htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     fdWrite(out," = ",3,0,FD_U_PACKET); \
     fdWrite(out,(s->Capabilities.attr?"1;\n":"0;\n"),3,0,FD_U_PACKET);
 
-    PROCESS_CAP_OUT(Dom0NS);
-    PROCESS_CAP_OUT(Dom0IE);
+    PROCESS_CAP_OUT(Dom0NS); //true when navigator is netscape navigator
+    PROCESS_CAP_OUT(Dom0IE); //true when navigator is IE
     PROCESS_CAP_OUT(Dom1HTML);
     PROCESS_CAP_OUT(Dom1XML);
     PROCESS_CAP_OUT(Dom2Core);
@@ -770,7 +773,7 @@ htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     PROCESS_CAP_OUT(Dom2Traversal);
     PROCESS_CAP_OUT(CSS1);
     PROCESS_CAP_OUT(CSS2);
-    PROCESS_CAP_OUT(CSSBox);
+    PROCESS_CAP_OUT(CSSBox); //true if navigator implements the CSSBox model enough by the standards (aka, if it's not IE)
     PROCESS_CAP_OUT(CSSClip);
     PROCESS_CAP_OUT(HTML40);
     PROCESS_CAP_OUT(JS15);
@@ -993,7 +996,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    return -1;
 	    }
 
-	/** Lookup the driver **/
+	/** Lookup the driver. These are what are defined in the various htdrv_* functions **/
 	drv = (pHtDriver)xhLookup(widget_drivers,widget->Type+7);
 	if (!drv)
 	    {
@@ -1001,11 +1004,12 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    return -1;
 	    }
 
+    // will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender)
     return drv->Render(session, widget, z);
     }
 
 
-/*** htrAddStylesheetItem -- copies stylesheet definitions into the
+/*** Htraddstylesheetitem -- copies stylesheet definitions into the
  *** buffers that will eventually be output as HTML.
  ***/
 int
@@ -1144,7 +1148,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 #endif
 
 	/** Save the current va_list state so we can retry it. **/
-	orig_va = va;
+	__va_copy(orig_va,va);
 
 	/** Attempt to print the thing to the tmpbuf. **/
 	while(1)
@@ -1261,7 +1265,7 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
 
 
 /*** htrAddScriptWgtr_va() - use a vararg list to add a formatted string
- *** to wgtr function of the document
+ *** to build_wgtr_* function of the document
  ***/
 int
 htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
@@ -1415,68 +1419,6 @@ htrAddScriptCleanup(pHtSession s, char* init_text)
     return htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text);
     }
 
-#if 00
-/*** htrAddEventHandler - adds an event handler script code segment for a
- *** given event on a given object (usually the 'document').
- ***/
-int
-htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code)
-    {
-    pHtNameArray obj, evt, drv;
-
-    	/** Is this object already listed? **/
-	obj = (pHtNameArray)xhLookup(&(s->Page.EventScripts.HashTable), event_src);
-
-	/** If not, create new object for this event source **/
-	if (!obj)
-	    {
-	    obj = (pHtNameArray)nmMalloc(sizeof(HtNameArray));
-	    if (!obj) return -1;
-	    memccpy(obj->Name, event_src, 0, 127);
-	    obj->Name[127] = '\0';
-	    xhInit(&(obj->HashTable),257,0);
-	    xaInit(&(obj->Array),16);
-	    xhAdd(&(s->Page.EventScripts.HashTable), obj->Name, (void*)(obj));
-	    xaAddItem(&(s->Page.EventScripts.Array), (void*)obj);
-	    }
-
-	/** Is this event name already listed? **/
-	evt = (pHtNameArray)xhLookup(&(obj->HashTable), event);
-
-	/** If not already, create new. **/
-	if (!evt)
-	    {
-	    evt = (pHtNameArray)nmMalloc(sizeof(HtNameArray));
-	    if (!evt) return -1;
-	    memccpy(evt->Name, event,0,127);
-	    evt->Name[127] = '\0';
-	    xhInit(&(evt->HashTable),257,0);
-	    xaInit(&(evt->Array),16);
-	    xhAdd(&(obj->HashTable), evt->Name, (void*)evt);
-	    xaAddItem(&(obj->Array), (void*)evt);
-	    }
-
-	/** Is the driver name already listed? **/
-	drv = (pHtNameArray)xhLookup(&(evt->HashTable),drvname);
-
-	/** If not already, add new. **/
-	if (!drv)
-	    {
-	    drv = (pHtNameArray)nmMalloc(sizeof(HtNameArray));
-	    if (!drv) return -1;
-	    memccpy(drv->Name, drvname, 0, 127);
-	    drv->Name[127] = '\0';
-	    xaInit(&(drv->Array),16);
-	    xhAdd(&(evt->HashTable), drv->Name, (void*)drv);
-	    xaAddItem(&(evt->Array), (void*)drv);
-
-	    /** Ok, got event and object.  Now, add script text. **/
-            htr_internal_AddTextToArray(&(drv->Array), handler_code);
-	    }
-
-    return 0;
-    }
-#endif
 
 /*** htrAddEventHandlerFunction - adds an event handler script code segment for
  *** a given event on a given object (usually the 'document').
@@ -1525,18 +1467,6 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	xaAddItem(&e->Handlers, function);
 
     return 0;
-	
-    /*char buf[HT_SBUF_SIZE];
-    snprintf(buf, HT_SBUF_SIZE,
-	"    handler_return = %s(e);\n"
-	"    if(handler_return & EVENT_PREVENT_DEFAULT_ACTION)\n"
-	"        prevent_default = true;\n"
-	"    if(handler_return & EVENT_HALT)\n"
-	"        return !prevent_default;\n",
-	function);
-    buf[HT_SBUF_SIZE-1] = '\0';
-
-    return htrAddEventHandler(s, event_src, event, drvname, buf);*/
     }
 
 
@@ -1854,53 +1784,6 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     return 0;
     }
 
-#if 00
-/*** htr_internal_BuildClientWgtr_r - the recursive part of client-side wgtr generation
- ***/
-int
-htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree)
-    {
-    int i;
-    char visual[6];
-
-	/** visual or non-visual? **/
-	if (tree->Flags & WGTR_F_NONVISUAL) sprintf(visual, "false");
-	else sprintf(visual, "true");
-
-	/** create an object for this node if there isn't one **/
-	/** NOTE: yes, it is indeed possible to have a visual widget without a layer.
-	 ** Static tables, for example (AAARRGGGGG - MJM)
-	 **/
-	if (tree->RenderFlags & HT_WGTF_NOOBJECT)
-	    {
-	    htrAddScriptWgtr_va(s, "    %s = new Object();\n", tree->Name);
-	    }
-	htrAddScriptWgtr_va(s, "    wgtrAddToTree(%s, '%s', '%s', curr_node[0], %s);\n", 
-	    tree->Name, tree->Name, tree->Type, visual);
-
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    {
-	    if (!(tree->RenderFlags & HT_WGTF_NOOBJECT)) 
-		htrAddScriptWgtr_va(s, "    curr_node.unshift(%s);\n", tree->Name, tree->Name);
-	    htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i));		
-	    if (!(tree->RenderFlags & HT_WGTF_NOOBJECT)) 
-		htrAddScriptWgtr_va(s, "    curr_node.shift();\n", tree->Name);
-	    }
-    }
-
-/*** htr_internal_BuildClientWgtr - responsible for generating the DHTML to build
- *** a client-side representation of the widget tree.
- ***/
-int
-htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
-    {
-	htrAddScriptWgtr(s, "    var client_node;\n");
-	htrAddScriptWgtr(s, "    var curr_node = new Array(0)\n");
-	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
-
-	return htr_internal_BuildClientWgtr_r(s, tree);
-    }
-#endif
 
 /*** htr_internal_BuildClientWgtr - generate the DHTML to represent the widget
  *** tree.
@@ -1924,16 +1807,16 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    }
 
 	/** Deploy the widget **/
-	objinit = inf?(inf->ObjectLinkage):NULL;
-	ctrinit = inf?(inf->ContainerLinkage):NULL;
+	objinit = inf?(inf->ObjectLinkage):"\"{}\"";
+	ctrinit = inf?(inf->ContainerLinkage):"\"_obj\"";
 	htrAddScriptWgtr_va(s, 
 		"        %STR&*LEN{name:'%STR&SYM', obj:%STR, cobj:%STR, type:'%STR&JSSTR', vis:%STR, sub:", 
 		indent*4, "                                        ",
-		tree->Name, objinit?objinit:"\"new Object()\"",
-		ctrinit?ctrinit:"\"_obj\"",
+		tree->Name, objinit,
+		ctrinit,
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
-	/** ... and any subwidgets **/
+	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
 	for(rendercnt=i=0;i<childcnt;i++)
 	    {
 	    child = (pWgtrNode)xaGetItem(&tree->Children, i);
@@ -2038,6 +1921,11 @@ htr_internal_FreeNamespace(pHtNamespace ns)
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
+/** This is where all control for DHTML generation begins. The
+    infrastructure of this function: This function traverses through the 
+
+    understanding of returned infrastructure is needed first.
+ **/
 int
 htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
@@ -2066,19 +1954,27 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	if (!s) return -1;
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
-//	s->ObjSession = appstruct->Session;
 	s->ObjSession = obj_s;
 	s->ClientInfo = c_info;
 	s->Namespace = &(s->Page.RootNamespace);
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 	s->IsDynamic = 1;
 
-	/** Parent container name specified? **/
+	/** Parent container name specified? I (Seth) think that this
+	    GET parameter is only used when a component is
+	    requested. **/
 	if ((ptr = htrParamValue(s, "cx__graft")))
 	    s->GraftPoint = nmSysStrdup(ptr);
 	else
 	    s->GraftPoint = NULL;
 
+	/** Note: 'classes' here refers to server-side "classes" (see
+	    centrallix/htmlgen/README). Note: if this feature ever
+	    does get implemented, then this code would actually have
+	    to get moved somewhere else since by the time htrRender
+	    gets called, it's already assumed that the client wants
+	    the information in DHTML. **/
+	// $$$ MARK: server-side classes $$$ 
 	/** Did user request a class of widgets? **/
 	classname = (char*)mssGetParam("Class");
 	if (classname)
@@ -2089,9 +1985,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    }
 	else
 	    s->Class = NULL;
-
-	/** find the right capabilities for the class we're using **/
-	if(s->Class)
+	if(s->Class) //	find the right capabilities for the class we're using
 	    {
 	    pHtCapabilities pCap = htr_internal_GetBrowserCapabilities(agent, s->Class);
 	    if(pCap)
@@ -2160,8 +2054,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	xaInit(&(s->Page.HtmlStylesheet),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
 	xaInit(&(s->Page.HtmlExpressionInit),16);
-	/*xaInit(&(s->Page.EventScripts.Array),16);
-	xhInit(&(s->Page.EventScripts.HashTable),257,0);*/
 	xaInit(&s->Page.EventHandlers,16);
 	xaInit(&(s->Page.Wgtr), 64);
 	s->Page.HtmlBodyFile = NULL;
@@ -2176,10 +2068,13 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 			       "    var rootname = \"%STR&SYM\";\n",
 		s->Namespace->DName, s->Namespace->DName);
 
-	/** Render the top-level widget. **/
+	/** Render the top-level widget -- the function that's run
+	  * underneath will be dependent upon what the widget
+	  * is. (eg. if the top widget is "widget/page", then the page
+	  * driver (defined somewhere in htdrv_page.c) will run) **/
 	rval = htrRenderWidget(s, tree, 10);
 
-	/** Assemble the various objects into a widget tree **/
+	/** Assemble the various objects into a javascript widget tree **/
 	htrBuildClientWgtr(s, tree);
 
 	/** Generate the namespace initialization. **/
@@ -2227,7 +2122,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	fdPrintf(output, "    <META NAME=\"Pragma\" CONTENT=\"no-cache\">\n");
 
 	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
-	/** Write the HTML header items. **/
+	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlStylesheet.Items[i]);
@@ -2293,33 +2188,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    fdWrite(output, sv->Value, strlen(sv->Value),0,FD_U_PACKET);
 	    }
 
-	/** Write the event scripts themselves. **/
-	/*for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
-	    {
-	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    for(j=0;j<tmp_a->Array.nItems;j++)
-	        {
-	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-	        snprintf(sbuf,HT_SBUF_SIZE,"\nfunction e%d_%d(e)\n    {\n",i,j);
-		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
-	        snprintf(sbuf,HT_SBUF_SIZE,"    var e = htr_event(e);\n    var ly = (typeof e.target.layer != \"undefined\" && e.target.layer != null)?e.target.layer:e.target;\n    var handler_return;\n    var prevent_default=false;\n");
-		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
-		for(k=0;k<tmp_a2->Array.nItems;k++)
-		    {
-		    tmp_a3 = (pHtNameArray)(tmp_a2->Array.Items[k]);
-		    for(l=0;l<tmp_a3->Array.nItems;l++)
-		        {
-		        ptr = (char*)(tmp_a3->Array.Items[l]);
-		        fdWrite(output,ptr+8,*(int*)ptr,0,FD_U_PACKET);
-			}
-		    }
-		fdPrintf(output,"    return !prevent_default;\n    }\n");
-		}
-	    }*/
 
-	/** Link up the events **/
-
-	/** Write the event capture lines **/
+	/** Write the event capture lines **/ //SETH: @@ ?only in NS4?
 	fdPrintf(output,"\nfunction events_%s()\n    {\n",s->Namespace->DName);
 	cnt = xaCount(&s->Page.EventHandlers);
 	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
@@ -2352,38 +2222,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_eventhandler);\n",
 			ename);
 	    }
-#if 00
-	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
-	    {
-	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    if(window.Event)\n    %.64s.captureEvents(",tmp_a->Name);
-	    for(j=0;j<tmp_a->Array.nItems;j++)
-	        {
-	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-		if (j!=0) strcat(sbuf," | ");
-		strcat(sbuf,"Event.");
-		strcat(sbuf,tmp_a2->Name);
-		}
-	    strcat(sbuf,");\n");
-	    fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
-	    for(j=0;j<tmp_a->Array.nItems;j++)
-	        {
-	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-		n = strlen(tmp_a2->Name);
-		if (n >= sizeof(ename)) n = sizeof(ename)-1;
-		for(k=0;k<=n;k++) ename[k] = tolower(tmp_a2->Name[k]);
-		ename[k] = '\0';
-		/*snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.on%s=e%d_%d;\n",tmp_a->Name,ename,i,j);
-		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);*/
-		if (!strcmp(ename,"mousemove"))
-		    fdPrintf(output, "    %.64s.on%s = htr_mousemovehandler;\n",
-			tmp_a->Name, ename);
-		else
-		    fdPrintf(output, "    %.64s.on%s = htr_eventhandler;\n",
-			tmp_a->Name, ename);
-		}
-	    }
-#endif
 
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
@@ -2410,7 +2248,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	/** Write the initialization lines **/
 	fdPrintf(output,"\nfunction startup_%s()\n    {\n", s->Namespace->DName);
-	htr_internal_writeCxCapabilities(s,output);
+	htr_internal_writeCxCapabilities(s,output); //TODO: (by Seth) this really only needs to happen during first-load.
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
@@ -2601,8 +2439,9 @@ htrAllocDriver()
     }
 
 
-/*** htrAddSupport - adds support for a class to a driver (by telling the class)
- ***   note: _must_ be called after the driver registers
+/*** htrAddSupport - adds support for a server-side class to a driver
+ ***   (by telling the class) (see centrallix/htmlgen/README) note:
+ ***   _must_ be called after the driver registers
  ***/
 int
 htrAddSupport(pHtDriver drv, char* className)

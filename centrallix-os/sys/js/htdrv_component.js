@@ -9,100 +9,100 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function cmp_cb_load_complete_4()
-    {
-    var dname = pg_links(this.cmp.loader)[0].target;
-    var startupname = "startup_" + dname;
-    window[startupname]();
-    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
-    }
+/*
+  by Seth Bird:
 
-function cmp_cb_load_complete_3()
-    {
-    var larr = htr_get_layers(this.cmp.loader2);
-    this._oarr = new Array();
-    for(var i=0;i<larr.length;i++)
-	{
-	this.cmp.loader.parentNode.appendChild(larr[i]);
-	this._oarr.push(larr[i]);
-	}
-    //this.cmp.larr = larr;
-    var scripts = document.getElementsByTagName('script');
-    var css = document.getElementsByTagName('style');
-    var head = document.getElementsByTagName('head')[0];
-    var scripts_to_move = new Array();
-    var css_to_move = new Array();
-    for(var i=0;i<scripts.length;i++)
-	{
-	if (scripts[i].parentNode != head) 
-	    scripts_to_move.push(scripts[i]);
-	}
-    for(var i=0;i<scripts_to_move.length;i++)
-	{
-	var newscript = document.createElement('script');
-	var oldscript = scripts_to_move[i];
-	if (oldscript.src) newscript.src = oldscript.src;
-	if (oldscript.type) newscript.type = oldscript.type;
-	if (oldscript.language) newscript.language = oldscript.language;
-	if (oldscript.text) newscript.text = oldscript.text;
-	head.appendChild(newscript);
-	this._oarr.push(newscript);
-	}
-    for(var i=0;i<css.length;i++)
-	{
-	if (css[i].parentNode != head) 
-	    css_to_move.push(css[i]);
-	}
-    for(var i=0;i<css_to_move.length;i++)
-	{
-	head.appendChild(css_to_move[i]);
-	this._oarr.push(css_to_move[i]);
-	}
-    pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_4', [], 200);
-    }
+  This file is where the "async hack" (see README file in js/ folder)
+  is implemented in order to request for components. A js 'component'
+  is the actual iframe ('layer' in NS) and is what should be the
+  'this' for cmp_initializer. The async requests will be for a
+  "componentdecl" widget (which is where the actual definition of the
+  component is). When the componentdecl widget is finished loading, it
+  will then be moved out of the layer/iframe into the main page as its
+  own tree so that the componentdecl widget is actually not ever
+  nested in the main widget tree. This is done so that there is no
+  scope clobbering (ie, so that there are no overshadowing of widget
+  names inside the main widget tree).
+ */
 
-function cmp_cb_load_complete_2()
+//'this' should be the actual iframe/layer DOM element.
+function cmp_init(param)
     {
-    pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_3', [], 30);
-    }
-
-function cmp_cb_load_complete_2ns()
-    {
-    //htr_alert(document.layers,1);
-    var lnks = pg_links(this.loader);
-    var dname = lnks[0].target;
-    this.loader['startup_' + dname]();
-    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
-    }
-
-function cmp_cb_load_complete()
-    {
-    if (cx__capabilities.Dom0NS)
+    var node = param.node;
+    node.destroy_widget = cmp_deinit;
+    node.is_static = param.is_static;
+    node.is_toplevel = param.is_top;
+    node.allow_multi = param.allow_multi;
+    node.auto_destroy = param.auto_destroy;
+    node.cmp = node;
+    node._oarr = [];
+    node.components = [];
+    node.templates = [];
+    if (!param.is_static)
 	{
-	var larr = pg_layers(this.cmp.loader);
-	var layers_to_move = new Array();
-	for(var i=0;i<larr.length;i++)
+	node.loader = param.loader;
+	node.loader.cmp = node;
+	node.path = param.path;
+	htr_init_layer(node.loader,node,'cmp');
+	node.stublayer = htr_new_layer(pg_width);
+	htr_setvisibility(node.stublayer, 'hidden');
+	node.stublayer = htr_new_layer(pg_width, node.stublayer);
+	htr_setvisibility(node.stublayer, 'hidden');
+
+	if (cx__capabilities.Dom1HTML)
 	    {
-	    layers_to_move.push(larr[i]);
+	    node.loader2 = htr_new_layer(pg_width, node.loader.parentNode);
+	    node.loader2.cmp = node;
+	    htr_setvisibility(node.loader2, 'hidden');
 	    }
-	for(var i=0;i<layers_to_move.length;i++)
-	    {
-	    moveAbove(layers_to_move[i], this.cmp.loader);
-	    if (!this.cmp.loader.parentLayer.document.layers[layers_to_move[i].id])
-		this.cmp.loader.parentLayer.document.layers[layers_to_move[i].id] = layers_to_move[i];
-	    this.cmp._oarr.push(layers_to_move[i]);
-	    }
-	pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_2ns', [], 300);
 	}
-    else
+    node.is_visible = false;
+    node.cmp_cb_load_complete = cmp_cb_load_complete;
+    node.cmp_cb_load_complete_2 = cmp_cb_load_complete_2;
+    node.cmp_cb_load_complete_2ns = cmp_cb_load_complete_2ns;
+    node.cmp_cb_load_complete_3 = cmp_cb_load_complete_3;
+    node.cmp_cb_load_complete_4 = cmp_cb_load_complete_4;
+    node.cmp_action = cmp_action;
+
+    node.cmp_instantiate_2 = cmp_instantiate_2;
+    node.cmp_destroy_2 = cmp_destroy_2;
+    ifc_init_widget(node);
+
+    node.RegisterComponent = cmp_register_component;
+    node.AddParam = cmp_add_param;
+    node.Params = [];
+
+    // Obscure/Reveal
+    node.Reveal = cmp_cb_reveal; // from other widgets in same NS
+    node.HandleReveal = cmp_cb_handle_reveal; // from component
+    if (pg_reveal_register_listener(node))
 	{
-	pg_serialized_write(this.cmp.loader2, this.contentWindow.document.getElementsByTagName("html")[0].innerHTML, cmp_cb_load_complete_2);
+	node.is_visible = true;
 	}
+
+    // Event/Action handling for components instantiated inside this one
+    node.AddAction = cmp_add_action;
+    node.AddEvent = cmp_add_event;
+
+    // Events
+    var ie = node.ifcProbeAdd(ifEvent);
+    ie.EnableLateConnectBinding();
+    ie.Add("LoadComplete");
+
+    // Actions
+    var ia = node.ifcProbeAdd(ifAction);
+    ia.Add("Instantiate", cmp_instantiate);
+    ia.Add("Destroy", cmp_destroy);
+
+    return node;
     }
 
 
+// This function is where the main control starts. This is also the
+// function which actually sends the request to server.
 function cmp_instantiate(aparam)
     {
+    //this function cycles through all contained components (?)
     if (this.components.length > 0 && !this.allow_multi)
 	{
 	if (this.auto_destroy)
@@ -123,6 +123,7 @@ function cmp_instantiate(aparam)
     var graft = wgtrGetNamespace(this) + ':' + wgtrGetName(this);
     var url = this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft) + "&cx__akey=" + escape(akey);
 
+    //SETH: ?? what are templates
     if (this.templates.length > 0)
 	{
 	url += "&cx__templates=";
@@ -176,7 +177,8 @@ function cmp_instantiate(aparam)
 	htr_setvisibility(this.loader, 'hidden');
 	htr_init_layer(this.loader,this,'cmp');
 	}
-    pg_addsched_fn(this.cmp, 'cmp_instantiate_2', [url], 100);
+    pg_addsched_fn(this.cmp, 'cmp_instantiate_2', [url], 100); //SETH: ?? why is this scheduled instead of just called?
+
     return true;
     }
 
@@ -186,11 +188,113 @@ function cmp_instantiate_2(url)
     return true;
     }
 
+//this is the heart of this file. this function is what moves the
+//loaded component (in the iframe) into the main tree.
+function cmp_cb_load_complete()
+    {
+    if (cx__capabilities.Dom0NS)
+	{
+	var larr = pg_layers(this.cmp.loader);
+	var layers_to_move = [];
+	for(var i=0;i<larr.length;i++)
+	    {
+	    layers_to_move.push(larr[i]);
+	    }
+	for(var i=0;i<layers_to_move.length;i++)
+	    {
+	    moveAbove(layers_to_move[i], this.cmp.loader);
+	    if (!this.cmp.loader.parentLayer.document.layers[layers_to_move[i].id])
+		this.cmp.loader.parentLayer.document.layers[layers_to_move[i].id] = layers_to_move[i];
+	    this.cmp._oarr.push(layers_to_move[i]);
+	    }
+	pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_2ns', [], 300);
+	}
+    else
+	{
+	pg_serialized_write(this.cmp.loader2, this.contentWindow.document.getElementsByTagName("html")[0].innerHTML, cmp_cb_load_complete_2);
+	}
+    }
+
+function cmp_cb_load_complete_2()
+    {
+    pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_3', [], 30);
+    }
+
+//this function simply moves all scripts and stylesheets into <head>   //SETH: ?? why are the scripts and stylesheets being moved to the head?
+function cmp_cb_load_complete_3()
+    {
+    var larr = htr_get_layers(this.cmp.loader2);
+    this._oarr = [];
+    for(var i=0;i<larr.length;i++)
+	{
+	this.cmp.loader.parentNode.appendChild(larr[i]);
+	this._oarr.push(larr[i]);
+	}
+    //this.cmp.larr = larr;
+    var scripts = document.getElementsByTagName('script');
+    var css = document.getElementsByTagName('style');
+    var head = document.getElementsByTagName('head')[0];
+    var scripts_to_move = [];
+    var css_to_move = [];
+
+    for(var i=0;i<scripts.length;i++)
+	{
+	if (scripts[i].parentNode != head) 
+	    scripts_to_move.push(scripts[i]);
+	}
+    for(var i=0;i<scripts_to_move.length;i++)
+	{
+	var newscript = document.createElement('script');
+	var oldscript = scripts_to_move[i];
+	if (oldscript.src) newscript.src = oldscript.src;
+	if (oldscript.type) newscript.type = oldscript.type;
+	if (oldscript.language) newscript.language = oldscript.language;
+	if (oldscript.text) newscript.text = oldscript.text;
+	head.appendChild(newscript);
+	this._oarr.push(newscript);
+	}
+
+    for(var i=0;i<css.length;i++)
+	{
+	if (css[i].parentNode != head) 
+	    css_to_move.push(css[i]);
+	}
+    for(var i=0;i<css_to_move.length;i++)
+	{
+	head.appendChild(css_to_move[i]);
+	this._oarr.push(css_to_move[i]);
+	}
+    pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_4', [], 200);
+    }
+
+// this passes control to the js startup function (see README in js/
+// folder), then (after startup returns) triggers 'LoadComplete' event.
+function cmp_cb_load_complete_4()
+    {
+    var dname = pg_links(this.cmp.loader)[0].target;
+    var startupname = "startup_" + dname;
+    window[startupname]();
+    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
+    }
+
+// this passes control to the js startup function (see README in js/
+// folder), then (after startup returns) triggers 'LoadComplete' event.
+function cmp_cb_load_complete_2ns()
+    {
+    //htr_alert(document.layers,1);
+    var lnks = pg_links(this.loader);
+    var dname = lnks[0].target;
+    this.loader['startup_' + dname]();
+    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
+    }
+
+
+
 function cmp_destroy(aparam)
     {
     if (this.is_static)
 	return false;
-    var cmps_to_destroy = new Array();
+    var cmps_to_destroy = [];
     for(var i in this.components)
 	{
 	var cmp = this.components[i];
@@ -297,13 +401,16 @@ function cmp_destroy_3()
     htr_setvisibility(this.cmp.stublayer, 'hidden');
     }
 
+
+// START SECTION: helper functions ----------------------------------------
+
 function cmp_register_component(c)
     {
     var newcmp = {cmp:c, cmpnamespace:wgtrGetNamespace(c), cmpname:wgtrGetName(c), objects:this._oarr, graft:this._graft, geom:this._geom, url:this._url, name:this._name, events:[], actions:[]};
     this.components.push(newcmp);
     if (this.is_visible)
 	pg_addsched_fn(newcmp.cmp, 'HandleReveal', ['Reveal', null], 0);
-    this._oarr = new Array();
+    this._oarr = [];
     }
 
 function cmp_cb_reveal(e)
@@ -331,7 +438,7 @@ function cmp_cb_reveal(e)
 	    break;
 	case 'RevealCheck':
 	case 'ObscureCheck':
-	    e.cmp_revealcmps = new Array();
+	    e.cmp_revealcmps = [];
 	    for(var c in this.components)
 		{
 		var cmp = this.components[c];
@@ -408,7 +515,6 @@ function cmp_action(aname, aparam)
 	}
     }
 
-
 function cmp_add_event(cmp, eventname)
     {
     var re = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -437,73 +543,3 @@ function cmp_deinit()
     }
 
 
-function cmp_init(param)
-    {
-    var node = param.node;
-    node.destroy_widget = cmp_deinit;
-    node.is_static = param.is_static;
-    node.is_toplevel = param.is_top;
-    node.allow_multi = param.allow_multi;
-    node.auto_destroy = param.auto_destroy;
-    node.cmp = node;
-    node._oarr = new Array();
-    node.components = new Array();
-    node.templates = new Array();
-    if (!param.is_static)
-	{
-	node.loader = param.loader;
-	node.loader.cmp = node;
-	node.path = param.path;
-	htr_init_layer(node.loader,node,'cmp');
-	node.stublayer = htr_new_layer(pg_width);
-	htr_setvisibility(node.stublayer, 'hidden');
-	node.stublayer = htr_new_layer(pg_width, node.stublayer);
-	htr_setvisibility(node.stublayer, 'hidden');
-
-	if (cx__capabilities.Dom1HTML)
-	    {
-	    node.loader2 = htr_new_layer(pg_width, node.loader.parentNode);
-	    node.loader2.cmp = node;
-	    htr_setvisibility(node.loader2, 'hidden');
-	    }
-	}
-    node.is_visible = false;
-    node.cmp_cb_load_complete = cmp_cb_load_complete;
-    node.cmp_cb_load_complete_2 = cmp_cb_load_complete_2;
-    node.cmp_cb_load_complete_2ns = cmp_cb_load_complete_2ns;
-    node.cmp_cb_load_complete_3 = cmp_cb_load_complete_3;
-    node.cmp_cb_load_complete_4 = cmp_cb_load_complete_4;
-    node.cmp_action = cmp_action;
-
-    node.cmp_instantiate_2 = cmp_instantiate_2;
-    node.cmp_destroy_2 = cmp_destroy_2;
-    ifc_init_widget(node);
-
-    node.RegisterComponent = cmp_register_component;
-    node.AddParam = cmp_add_param;
-    node.Params = new Array();
-
-    // Obscure/Reveal
-    node.Reveal = cmp_cb_reveal; // from other widgets in same NS
-    node.HandleReveal = cmp_cb_handle_reveal; // from component
-    if (pg_reveal_register_listener(node))
-	{
-	node.is_visible = true;
-	}
-
-    // Event/Action handling for components instantiated inside this one
-    node.AddAction = cmp_add_action;
-    node.AddEvent = cmp_add_event;
-
-    // Events
-    var ie = node.ifcProbeAdd(ifEvent);
-    ie.EnableLateConnectBinding();
-    ie.Add("LoadComplete");
-
-    // Actions
-    var ia = node.ifcProbeAdd(ifAction);
-    ia.Add("Instantiate", cmp_instantiate);
-    ia.Add("Destroy", cmp_destroy);
-
-    return node;
-    }

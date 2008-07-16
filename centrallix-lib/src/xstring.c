@@ -32,10 +32,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.19 2008/03/29 01:03:36 gbeeley Exp $
+    $Id: xstring.c,v 1.20 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.20  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.19  2008/03/29 01:03:36  gbeeley
     - (change) changing integer type in IntVec to a signed integer
     - (security) switching to size_t in qprintf where needed instead of using
@@ -850,7 +853,7 @@ xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, co
     int rval=0,len;
 
 	/** Init the varargs **/
-	orig_va = va;
+	__va_copy(orig_va,va);
 
 	/** Allocate a buffer, if caller didn't **/
 	if (!buf)

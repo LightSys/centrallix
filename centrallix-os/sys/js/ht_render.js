@@ -9,8 +9,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+//**********************************
+//This file is responsible for Events (and a few other things)
+//**********************************
+
 /** values to be returned from event handling functions
-    should return one of the first two and one of the last two, ored together **/
+    should return one of the first two and one of the last two, ored together.
+    (is this for IE only?)  **/
 var EVENT_CONTINUE = 0;
 var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
@@ -83,7 +88,7 @@ function cxjs_condition(c, vtrue, vfalse)
 // Cross-browser support functions
 function htr_event(e)
     {
-    var cx__event = new Object();
+    var cx__event = {};
     cx__event.cx = true;
 
     // Browser specific stuff
@@ -157,11 +162,6 @@ function htr_event(e)
 	    t = t.parentNode;
 
 	cx__event.target = t;
-	
-	//cx__event.target = htr_get_parent_div(e.srcElement);
-
-	//status = "ht_render.js target nodeName " + cx__event.target.nodeName + " " + cx__event.target.id;
-
 	cx__event.pageX = e.clientX;
 	cx__event.pageY = e.clientY;
 	cx__event.which = e.button;
@@ -172,14 +172,6 @@ function htr_event(e)
 
 	cx__event.x = e.offsetX;
 	cx__event.y = e.offsetY;
-	/*
-	cx__event.width = e.width;
-	cx__event.height = e.height;
-	cx__event.layerX = e.layerX;
-	cx__event.layerY = e.layerY;
-	cx__event.which = e.which;
-	cx__event.modifiers = e.modifiers;
-	cx__event.data = e.data;*/
 	cx__event.screenX = e.screenX;
 	cx__event.screenY = e.screenY;
 	}
@@ -240,11 +232,12 @@ function htr_build_tabs(level)
     return "	"+htr_build_tabs(level-1);
     }
 
+//uses (or mimicks) firefox's .watch method.
 function htr_watch(obj, attr, func)
     {
     if (!obj.htr_watchlist) 
 	{
-	obj.htr_watchlist = new Array();
+	obj.htr_watchlist = [];
 	}
     if (cx__capabilities.Dom0IE) 
         {
@@ -254,7 +247,7 @@ function htr_watch(obj, attr, func)
 	{
     	obj.watch(attr,htr_watchchanged);
 	}
-    var watchitem = new Object();
+    var watchitem = {};
     watchitem.attr = attr;
     watchitem.func = func;
     watchitem.obj = obj;
@@ -327,21 +320,6 @@ function htr_set_event_target(l, et)
 	l.layer = et;
     }
 
-/*function htr_search_element(e,id)
-    {
-    var sl = e.firstChild;
-    var ck_sl = null;
-    while(sl)
-	{
-	if ((sl.tagName == 'DIV' || sl.tagName == 'IFRAME') && sl.id == id)
-	    return sl;
-	if (sl.tagName == 'TABLE' || sl.tagName == 'TBODY' || sl.tagName == 'TR' || sl.tagName == 'TD')
-	    if ((ck_sl = htr_search_element(sl, id)))
-		return ck_sl;
-	sl = sl.nextSibling;
-	}
-    }*/
-
 function htr_search_element(e, id)
     {
     var found = document.getElementById(id);
@@ -390,8 +368,6 @@ function htr_get_subelement(id)
 
 function htr_subel(l, id)
     {
-//    if (pg_namespaces)
-//	for(var ns in pg_namespaces) ;
     if (cx__capabilities.Dom0NS)
 	{
 	if (!l) 
@@ -690,7 +666,7 @@ function htr_write_content(l,t)
 function htr_addeventhandler(t,h)
     {
     if (!pg_handlers[t])
-	pg_handlers[t] = new Array();
+	pg_handlers[t] = [];
     pg_handlers[t][h] = eval(h);
     }
 
@@ -726,7 +702,12 @@ function htr_mousemovehandler_cb()
     }
 
 
-// Universal event handler script
+// Universal event handler script. Recieves a browser event variable
+// and converts different browsers' events into a Centrallix
+// event. Also, because IE and FF manage default_action manipulation
+// differently, this function ensures correct manipulation of
+// default_action. (IE prevents/allow default action by the handler's
+// return function while FF has a separate function)
 function htr_eventhandler(e)
     {
     if (!e.cx)
@@ -734,10 +715,10 @@ function htr_eventhandler(e)
     var handler_return;
     var prevent_default = false;
     var handlerlist = pg_handlers[e.type];
-    //pg_debug(e.type + '<br>\n');
+
     for(var h in handlerlist)
 	{
-	if (typeof handlerlist[h] != 'function')
+	if (typeof handlerlist[h] != 'function') //SETH: @@ there's no need to have string keys
 	    alert(h + ' ' + typeof handlerlist[h]);
 	handler_return = handlerlist[h](e);
 	if (handler_return & EVENT_PREVENT_DEFAULT_ACTION)
@@ -762,21 +743,21 @@ function htr_eventhandler(e)
     return !prevent_default;
     }
 
-function htr_addeventlistener(e,o,f)
+function htr_addeventlistener(eventType,obj,handler)
     {
-    if (!pg_capturedevents)
-	pg_capturedevents = new Array();
+    pg_capturedevents || (pg_capturedevents = []);
+
     if (cx__capabilities.Dom2Events)
 	{
-	if (typeof pg_capturedevents[e] == 'undefined')
+	if (typeof pg_capturedevents[eventType] == 'undefined')
 	    {
-	    pg_capturedevents[e] = f;
-	    o.addEventListener(e, f, true);
+	    pg_capturedevents[eventType] = handler;
+	    obj.addEventListener(eventType, handler, true);
 	    }
 	}
     else
 	{
-	o['on' + e] = f;
+	obj['on' + eventType] = handler;
 	}
     }
 
@@ -787,18 +768,8 @@ function htr_captureevents(elist)
     // SPECIFIED THE SECOND TIME WERE NOT SPECIFIED THE FIRST TIME!
     // N.B. - captureEvents() is deprecated and may not be available in
     // the future.
-    //document.releaseEvents(pg_capturedevents);
-    //pg_capturedevents |= elist;
-    //alert(pg_capturedevents);
-    if (cx__capabilities.Dom2Events)
-	{
-	//var old_capturedevents = pg_capturedevents;
-	//document.releaseEvents(pg_capturedevents & ~(Event.KEYDOWN | Event.KEYUP | Event.KEYPRESS));
-	//pg_capturedevents |= elist;
-	//document.captureEvents(pg_capturedevents);
-	//alert(pg_capturedevents & ~(old_capturedevents & (Event.KEYDOWN | Event.KEYPRESS | Event.KEYUP)));
-	}
-    else
+
+    if (!cx__capabilities.Dom2Events)
 	{
 	document.releaseEvents(pg_capturedevents);
 	pg_capturedevents |= elist;

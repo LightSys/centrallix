@@ -8,6 +8,169 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
+/**  OSRC Initializer **/
+
+function osrc_init(param)
+    {
+    var loader = param.loader;
+    ifc_init_widget(loader);
+    loader.osrcname=param.name;
+    loader.readahead=param.readahead;
+    loader.scrollahead=param.scrollahead;
+    loader.replicasize=param.replicasize;
+    loader.initreplicasize = param.replicasize;
+    loader.ind_act = param.ind_act; //SETH: ??
+    loader.sql=param.sql;
+    loader.filter=param.filter;
+    loader.baseobj=param.baseobj;
+    loader.readonly = false;
+    loader.autoquery = param.autoquery;
+    loader.revealed_children = 0;
+    loader.rulelist = [];
+    loader.SyncID = osrc_syncid++;
+    loader.bh_finished = false;
+    loader.request_queue = [];
+
+    // autoquery types - must match htdrv_osrc.c's enum declaration
+    loader.AQnever = 0;
+    loader.AQonLoad = 1;
+    loader.AQonFirstReveal = 2;
+    loader.AQonEachReveal = 3;
+
+    // Handle declarative rules
+    loader.addRule = osrc_add_rule;
+
+    loader.osrc_do_filter = osrc_do_filter;
+    loader.osrc_filter_changed = osrc_filter_changed;
+    loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
+    loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
+    loader.osrc_open_query_startat = osrc_open_query_startat;
+    loader.ParseOneAttr = osrc_parse_one_attr;
+    loader.ParseOneRow = osrc_parse_one_row;
+    loader.NewReplicaObj = osrc_new_replica_object;
+    loader.PruneReplica = osrc_prune_replica;
+    loader.ClearReplica = osrc_clear_replica;
+    loader.ApplyRelationships = osrc_apply_rel;
+    loader.ApplyKeys = osrc_apply_keys;
+    loader.EndQuery = osrc_end_query;
+    loader.FoundRecord = osrc_found_record;
+    loader.DoFetch = osrc_do_fetch;
+    loader.FetchNext = osrc_fetch_next;
+    loader.GoNogo = osrc_go_nogo;
+    loader.QueueRequest = osrc_queue_request;
+    loader.Dispatch = osrc_dispatch;
+    loader.DoRequest = osrc_do_request;
+    loader.GiveAllCurrentRecord=osrc_give_all_current_record;
+    loader.ChangeCurrentRecord=osrc_change_current_record;
+    loader.MoveToRecord=osrc_move_to_record;
+    loader.MoveToRecordCB=osrc_move_to_record_cb;
+    loader.child = new Array();
+    loader.oldoids = new Array();
+    loader.sid = null;
+    loader.qid = null;
+    loader.savable_client_count = 0;
+    loader.lastquery = null;
+    loader.prevcurrent = null;
+    loader.has_onreveal_relationship = false;
+    loader.hidden_change_cnt = 0;
+
+    loader.MoveToRecordHandler = osrc_move_to_record_handler;
+    loader.QueryObjectHandler = osrc_query_object_handler;
+    loader.QueryHandler = osrc_query_handler;
+   
+    // Actions
+    var ia = loader.ifcProbeAdd(ifAction);
+    //loader.ActionClear=osrc_action_clear;
+    ia.Add("Query", osrc_action_query);
+    ia.Add("QueryObject", osrc_action_query_object);
+    ia.Add("QueryParam", osrc_action_query_param);
+    ia.Add("OrderObject", osrc_action_order_object);
+    ia.Add("Delete", osrc_action_delete);
+    ia.Add("CreateObject", osrc_action_create_object);
+    ia.Add("Create", osrc_action_create);
+    ia.Add("Modify", osrc_action_modify);
+    ia.Add("First", osrc_move_first);
+    ia.Add("Next", osrc_move_next);
+    ia.Add("Prev", osrc_move_prev);
+    ia.Add("Last", osrc_move_last);
+    ia.Add("Sync", osrc_action_sync);
+    ia.Add("DoubleSync", osrc_action_double_sync);
+    ia.Add("SaveClients", osrc_action_save_clients);
+    ia.Add("Refresh", osrc_action_refresh);
+
+    // Events
+    var ie = loader.ifcProbeAdd(ifEvent);
+    ie.Add("DataFocusChanged");
+    ie.Add("EndQuery");
+    ie.Add("Created");
+
+    // Data Values
+    var iv = loader.ifcProbeAdd(ifValue);
+    iv.SetNonexistentCallback(osrc_get_value);
+
+    loader.CreateCB2 = osrc_action_create_cb2;
+    loader.DoubleSyncCB = osrc_action_double_sync_cb;
+    loader.OpenSession=osrc_open_session;
+    loader.OpenQuery=osrc_open_query;
+    loader.CloseQuery=osrc_close_query;
+    loader.CloseObject=osrc_close_object;
+    loader.CloseSession=osrc_close_session;
+/**    loader.StoreReplica=osrc_store_replica; **/
+    loader.QueryContinue = osrc_cb_query_continue;
+    loader.QueryCancel = osrc_cb_query_cancel;
+    loader.RequestObject = osrc_cb_request_object;
+    loader.NewObjectTemplate = osrc_cb_new_object_template;
+    loader.SetViewRange = osrc_cb_set_view_range;
+    loader.InitBH = osrc_init_bh;
+    loader.Register = osrc_cb_register;
+    loader.Reveal = osrc_cb_reveal;
+    loader.Obscure = osrc_cb_obscure;
+    if (wgtrGetChildren(loader).length == 0)
+	pg_reveal_register_listener(loader, true);
+
+    loader.ScrollTo = osrc_scroll_to;
+    loader.ScrollPrev = osrc_scroll_prev;
+    loader.ScrollNext = osrc_scroll_next;
+    loader.ScrollPrevPage = osrc_scroll_prev_page;
+    loader.ScrollNextPage = osrc_scroll_next_page;
+
+    loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;
+
+    loader.InitQuery = osrc_init_query;
+    loader.cleanup = osrc_cleanup;
+
+    // OSRC Client interface -- for linking osrc's together
+    loader.DataAvailable = osrc_oc_data_available;
+    loader.ReplicaMoved = osrc_oc_replica_moved;
+    loader.IsDiscardReady = osrc_oc_is_discard_ready;
+    loader.ObjectAvailable = osrc_oc_object_available;
+    loader.ObjectCreated = osrc_oc_object_created;
+    loader.ObjectModified = osrc_oc_object_modified;
+    loader.ObjectDeleted = osrc_oc_object_deleted;
+    loader.OperationComplete = osrc_oc_operation_complete;
+
+    // OSRC Client interface helpers
+    loader.Resync = osrc_oc_resync;
+
+    // Client side maintained properties
+    loader.is_client_savable = false;
+
+    // Debugging functions
+    loader.print_debug = osrc_print_debug;
+
+    // Request replication messages
+    loader.request_updates = param.requestupdates?1:0;
+    if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
+    loader.ControlMsg = osrc_cb_control_msg;
+
+    if (loader.autoquery == loader.AQonLoad) 
+	pg_addsched_fn(loader,'InitQuery', [], 0);
+
+    // Finish initialization...
+    pg_addsched_fn(loader, "InitBH", [], 0);
+
+    return loader;
+    }
 
 function osrc_init_query()
     {
@@ -25,6 +188,7 @@ function osrc_action_order_object(aparam) //order)
     }
 
 
+//'this' would be a TreeNode
 function osrc_action_query_param(aparam)
     {
     var qo = [];
@@ -32,9 +196,8 @@ function osrc_action_query_param(aparam)
     for (var i in aparam)
 	{
 	if (i == '_Origin') continue;
-	if (typeof aparam[i] == 'string')
-	    t = 'string';
-	else if (typeof aparam[i] == 'number')
+
+	if (typeof aparam[i] == 'number')
 	    t = 'integer';
 	else
 	    t = 'string';
@@ -51,9 +214,13 @@ function osrc_action_refresh(aparam)
     }
 
 
+//@purpose: send async-req for data.
+//
+// instead of directly sending an async-req, we must use our own
+// async-req-manager.
 function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
-    this.QueueRequest({Request:'QueryObject', Param:aparam});
+    this.request_queue.push({Request:'QueryObject', Param:aparam});
     this.Dispatch();
     }
 
@@ -389,6 +556,10 @@ if (0) {
     }
 
 
+// This function sees if any children are 'unsure' or have unsaved
+// data. This function could be called right before closing a window
+// where nogo_func would be a confirmation box (to lose unsaved data
+// or not) could appear if needed.
 function osrc_go_nogo(go_func, nogo_func)
     {
     this._unsaved_cnt = 0;
@@ -446,39 +617,16 @@ function osrc_query_handler(aparam)
     var q = aparam.query;
     var formobj = aparam.client;
 
-    //Is discard ready
-    //if(!formobj.IsDiscardReady()) return 0;
-    //Send query as GET request
-    //this.formobj = formobj;
     if(this.pending)
 	{
 	alert('There is already a query or movement in progress...');
 	return 0;
 	}
     this.lastquery=q;
-    //this.pendingquery=htutil_escape(q);
     this.pendingquery=q;
     this.pending=true;
-    //var someunsaved=false;
-    // Check if any children are modified and call IsDiscardReady if they are
+
     this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2);
-    /*for(var i in this.child)
-	 {
-	 if(this.child[i].IsUnsaved)
-	     {
-	     this.child[i]._osrc_ready=false;
-	     this.child[i].IsDiscardReady();
-	     someunsaved=true;
-	     }
-	 else
-	     {
-	     this.child[i]._osrc_ready=true;
-	     }
-	 }
-    //if someunsaved is false, there were no unsaved forms, so no callbacks
-    //  so, we'll just fake one using the first form....
-    if(someunsaved) return 0;
-    this.QueryContinue(this.child[0]);*/
     }
 
 function osrc_action_delete(aparam) //up,formobj)
@@ -795,10 +943,6 @@ function osrc_cb_query_continue_2()
 	this.pendingquery=null;
 	this.pendingqueryobject=null;
 	this.pendingorderobject=null;
-	/*for(var i in this.child)
-	     {
-	     this.child[i]._osrc_ready=false;
-	     }*/
 
 	this.ClearReplica();
 	this.moveop=true;
@@ -878,8 +1022,6 @@ function osrc_cb_savable_changed(p,o,n)
 
 function osrc_open_session(cb)
     {
-    //Open Session
-    //alert('open');
     if(this.sid)
 	{
 	this.__osrc_cb = cb;
@@ -888,7 +1030,6 @@ function osrc_open_session(cb)
     else
 	{
 	this.DoRequest('opensession', '/', {}, cb);
-	//pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=opensession', cb);
 	}
     }
 
@@ -905,13 +1046,10 @@ function osrc_open_query()
     if(this.qid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query);
-	//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query);
 	this.qid=null;
 	return 0;
 	}
-    //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query, osrc_get_qid);
     this.DoRequest('multiquery', '/', {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query}, osrc_get_qid);
-    //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autoclose_sr=1&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.replicasize + "&ls__sql=" + this.query, osrc_get_qid);
     this.querysize = this.replicasize;
     }
 
@@ -1026,6 +1164,7 @@ function osrc_prune_replica(most_recent_id)
 	}
     }
 
+//SETH: document
 function osrc_clear_replica()
     {
     this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
@@ -1034,11 +1173,13 @@ function osrc_clear_replica()
 
     /** Clear replica **/
     if(this.replica)
+	{
 	for(var i in this.replica)
 	    this.oldoids.push(this.replica[i].oid);
     
-    if(this.replica) delete this.replica;
-    this.replica=new Array();
+	delete this.replica;
+	}
+    this.replica = {};
     this.LastRecord=0;
     this.FirstRecord=1;
     }
@@ -2127,10 +2268,13 @@ function osrc_queue_request(r)
     }
 
 
+//this function is just a wrapper around osrc async requests. This
+//model was used because originally NS didn't have a good one for
+//async requests. Conversion to AJAX would replace this model.
 function osrc_dispatch()
     {
     if (this.pending) return;
-    var req = null;
+    var req;
     while ((req = this.request_queue.shift()) != null)
 	{
 	switch(req.Request)
@@ -2298,7 +2442,7 @@ function osrc_action_save_clients(aparam)
 function osrc_do_request(cmd, url, params, cb)
     {
     var first = true;
-    params.cx__akey = akey;
+    params.cx__akey = akey; //SETH: ?? where's akey coming from?
     params.ls__mode = 'osml';
     params.ls__req = cmd;
     if (this.sid) params.ls__sid = this.sid;
@@ -2324,166 +2468,5 @@ function osrc_print_debug()
     }
 
 
-/**  OSRC Initializer **/
-function osrc_init(param)
-    {
-    var loader = param.loader;
-    ifc_init_widget(loader);
-    loader.osrcname=param.name;
-    loader.readahead=param.readahead;
-    loader.scrollahead=param.scrollahead;
-    loader.replicasize=param.replicasize;
-    loader.initreplicasize = param.replicasize;
-    loader.ind_act = param.ind_act;
-    loader.sql=param.sql;
-    loader.filter=param.filter;
-    loader.baseobj=param.baseobj;
-    loader.readonly = false;
-    loader.autoquery = param.autoquery;
-    loader.revealed_children = 0;
-    loader.rulelist = [];
-    loader.SyncID = osrc_syncid++;
-    loader.bh_finished = false;
-    loader.request_queue = [];
 
-    // autoquery types - must match htdrv_osrc.c's enum declaration
-    loader.AQnever = 0;
-    loader.AQonLoad = 1;
-    loader.AQonFirstReveal = 2;
-    loader.AQonEachReveal = 3;
-
-    // Handle declarative rules
-    loader.addRule = osrc_add_rule;
-
-    loader.osrc_do_filter = osrc_do_filter;
-    loader.osrc_filter_changed = osrc_filter_changed;
-    loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
-    loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
-    loader.osrc_open_query_startat = osrc_open_query_startat;
-    loader.ParseOneAttr = osrc_parse_one_attr;
-    loader.ParseOneRow = osrc_parse_one_row;
-    loader.NewReplicaObj = osrc_new_replica_object;
-    loader.PruneReplica = osrc_prune_replica;
-    loader.ClearReplica = osrc_clear_replica;
-    loader.ApplyRelationships = osrc_apply_rel;
-    loader.ApplyKeys = osrc_apply_keys;
-    loader.EndQuery = osrc_end_query;
-    loader.FoundRecord = osrc_found_record;
-    loader.DoFetch = osrc_do_fetch;
-    loader.FetchNext = osrc_fetch_next;
-    loader.GoNogo = osrc_go_nogo;
-    loader.QueueRequest = osrc_queue_request;
-    loader.Dispatch = osrc_dispatch;
-    loader.DoRequest = osrc_do_request;
-    loader.GiveAllCurrentRecord=osrc_give_all_current_record;
-    loader.ChangeCurrentRecord=osrc_change_current_record;
-    loader.MoveToRecord=osrc_move_to_record;
-    loader.MoveToRecordCB=osrc_move_to_record_cb;
-    loader.child = new Array();
-    loader.oldoids = new Array();
-    loader.sid = null;
-    loader.qid = null;
-    loader.savable_client_count = 0;
-    loader.lastquery = null;
-    loader.prevcurrent = null;
-    loader.has_onreveal_relationship = false;
-    loader.hidden_change_cnt = 0;
-
-    loader.MoveToRecordHandler = osrc_move_to_record_handler;
-    loader.QueryObjectHandler = osrc_query_object_handler;
-    loader.QueryHandler = osrc_query_handler;
-   
-    // Actions
-    var ia = loader.ifcProbeAdd(ifAction);
-    //loader.ActionClear=osrc_action_clear;
-    ia.Add("Query", osrc_action_query);
-    ia.Add("QueryObject", osrc_action_query_object);
-    ia.Add("QueryParam", osrc_action_query_param);
-    ia.Add("OrderObject", osrc_action_order_object);
-    ia.Add("Delete", osrc_action_delete);
-    ia.Add("CreateObject", osrc_action_create_object);
-    ia.Add("Create", osrc_action_create);
-    ia.Add("Modify", osrc_action_modify);
-    ia.Add("First", osrc_move_first);
-    ia.Add("Next", osrc_move_next);
-    ia.Add("Prev", osrc_move_prev);
-    ia.Add("Last", osrc_move_last);
-    ia.Add("Sync", osrc_action_sync);
-    ia.Add("DoubleSync", osrc_action_double_sync);
-    ia.Add("SaveClients", osrc_action_save_clients);
-    ia.Add("Refresh", osrc_action_refresh);
-
-    // Events
-    var ie = loader.ifcProbeAdd(ifEvent);
-    ie.Add("DataFocusChanged");
-    ie.Add("EndQuery");
-    ie.Add("Created");
-
-    // Data Values
-    var iv = loader.ifcProbeAdd(ifValue);
-    iv.SetNonexistentCallback(osrc_get_value);
-
-    loader.CreateCB2 = osrc_action_create_cb2;
-    loader.DoubleSyncCB = osrc_action_double_sync_cb;
-    loader.OpenSession=osrc_open_session;
-    loader.OpenQuery=osrc_open_query;
-    loader.CloseQuery=osrc_close_query;
-    loader.CloseObject=osrc_close_object;
-    loader.CloseSession=osrc_close_session;
-/**    loader.StoreReplica=osrc_store_replica; **/
-    loader.QueryContinue = osrc_cb_query_continue;
-    loader.QueryCancel = osrc_cb_query_cancel;
-    loader.RequestObject = osrc_cb_request_object;
-    loader.NewObjectTemplate = osrc_cb_new_object_template;
-    loader.SetViewRange = osrc_cb_set_view_range;
-    loader.InitBH = osrc_init_bh;
-    loader.Register = osrc_cb_register;
-    loader.Reveal = osrc_cb_reveal;
-    loader.Obscure = osrc_cb_obscure;
-    if (wgtrGetChildren(loader).length == 0)
-	pg_reveal_register_listener(loader, true);
-
-    loader.ScrollTo = osrc_scroll_to;
-    loader.ScrollPrev = osrc_scroll_prev;
-    loader.ScrollNext = osrc_scroll_next;
-    loader.ScrollPrevPage = osrc_scroll_prev_page;
-    loader.ScrollNextPage = osrc_scroll_next_page;
-
-    loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;
-
-    loader.InitQuery = osrc_init_query;
-    loader.cleanup = osrc_cleanup;
-
-    // OSRC Client interface -- for linking osrc's together
-    loader.DataAvailable = osrc_oc_data_available;
-    loader.ReplicaMoved = osrc_oc_replica_moved;
-    loader.IsDiscardReady = osrc_oc_is_discard_ready;
-    loader.ObjectAvailable = osrc_oc_object_available;
-    loader.ObjectCreated = osrc_oc_object_created;
-    loader.ObjectModified = osrc_oc_object_modified;
-    loader.ObjectDeleted = osrc_oc_object_deleted;
-    loader.OperationComplete = osrc_oc_operation_complete;
-
-    // OSRC Client interface helpers
-    loader.Resync = osrc_oc_resync;
-
-    // Client side maintained properties
-    loader.is_client_savable = false;
-
-    // Debugging functions
-    loader.print_debug = osrc_print_debug;
-
-    // Request replication messages
-    loader.request_updates = param.requestupdates?1:0;
-    if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
-    loader.ControlMsg = osrc_cb_control_msg;
-
-    if (loader.autoquery == loader.AQonLoad) 
-	pg_addsched_fn(loader,'InitQuery', [], 0);
-
-    // Finish initialization...
-    pg_addsched_fn(loader, "InitBH", [], 0);
-
-    return loader;
-    }
 

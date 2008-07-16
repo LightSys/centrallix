@@ -1,4 +1,53 @@
 <?xml version='1.0'?>
+<!DOCTYPE widgets [
+	  <!ELEMENT widgets (widget*)>
+	  <!ELEMENT widget (overview,usage,properties,children,events,actions,clientprops,sample)>
+	  <!ELEMENT overview (ANY)>
+	  <!ELEMENT usage (ANY)>
+	  <!ELEMENT properties (property*)>
+	  <!ELEMENT property (ANY)>
+	  <!ELEMENT children (child*)>
+	  <!ELEMENT child (childproperty*)>
+	  <!ELEMENT childproperty (ANY)
+	  <!ELEMENT events (event*)>
+	  <!ELEMENT event (ANY)>
+	  <!ELEMENT actions (action*)>
+	  <!ELEMENT action (ANY)>
+	  <!ELEMENT clientprops (clientprop*)>
+	  <!ELEMENT clientprop (ANY)>
+	  <!ELEMENT sample (#CDATA)>
+
+	  <!ATTLIST widget    
+		    name           ID         #REQUIRED
+		    type           CDATA      #REQUIRED
+		    description    CDATA      #IMPLIED
+		    visual         (yes|no)   #IMPLIED
+		    formelement    (yes|no)   #IMPLIED
+		    container      (yes|no)   #IMPLIED
+		    osrcclient     (yes|no)   #IMPLIED
+		    >
+	  <!ATTLIST property
+		    name           ID         #REQUIRED
+		    type           CDATA      #REQUIRED
+		    >
+	  <!ATTLIST child
+		    type           CDATA      #REQUIRED
+		    >
+	  <!ATTLIST childproperty
+		    name           ID         #REQUIRED
+		    type           CDATA      #REQUIRED
+		    >
+	  <!ATTLIST event
+		    name           ID         #REQUIRED
+		    >
+	  <!ATTLIST action
+		    name           ID         #REQUIRED
+		    >
+	  <!ATTLIST clientprop
+		    name           ID         #REQUIRED
+		    type           CDATA      #REQUIRED
+		    >
+]>
 <widgets>
 	<widget name="autolayout" type="widget/autolayout" description="Container which automatically positions its children" visual="yes" formelement="no" container="yes" osrcclient="no">
 		<overview>
@@ -280,28 +329,6 @@ cn1 "widget/connector"
 		]]>
 		</sample>
 	</widget>
-<!--
-	<widget name="" type="" description="" visual="" formelement="" container="">
-		<overview>
-		</overview>
-		<usage>
-		</usage>
-		<properties>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
-		<clientprops>
-		</clientprops>
-		<sample>
-		<![CDATA[
-		]]>
-		</sample>
-	</widget>
--->
 	<widget name="datetime" type="widget/datetime" description="A visual widget for displaying and editing a date/time type value." visual="yes" formelement="yes" container="no">
 		<overview>
 		    <p>The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.</p>
@@ -915,6 +942,11 @@ osrc1 "widget/osrc"
 			<property name="mousefocus2" type="string">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate mouse focus (default is "black").</property>
 			<property name="textcolor" type="string">The default color for text which appears on the page.  Can either be a named color or RGB (numeric) color.</property>
 			<property name="title" type="string">The title which will appear in the browser's window title bar.</property>
+			<property name="x" type="integer"></property>
+			<property name="y" type="integer"></property>
+			<property name="width" type="integer"></property>
+			<property name="height" type="integer"></property>
+			<property name="y" type="integer"></property>
 		</properties>
 		<children>
 		</children>
@@ -1498,4 +1530,103 @@ $Version=2$
 		]]>
 	    </sample>
 	</widget>
+	<widget name="template" type="widget/template" visual="no" formelement="no" container="no" description="templates are a way to provide default values (and default children) of different widget_class's">
+		<overview>
+		</overview>
+		<usage>
+		  <p>a widget/template must be a root widget of a file (which normally is given a .tpl extension) </p>
+		  <p>each child in a widget/template is a "rule". each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and "rule")) and 2) match the widget type of the child (eg "widget/imagebutton")</p>
+		  <p>every other property of the "rule" are default values</p>
+		  <p>all children of the "rule" are automatically inserted into the matched widgets</p>
+		</usage>
+		<properties>
+		  <property name="" type=""></property>
+		</properties>
+		<children>
+		  <child type="any">
+		    <childproperty name="widget_class" type="string">the value of this property must match another widget before said widget will "inheret" this "rule".</childproperty>
+		  </child>
+		</children>
+		<events>
+		</events>
+		<actions>
+		</actions>
+		<clientprops>
+		</clientprops>
+		<sample>
+		<![CDATA[
+objcanvas_test "widget/template"
+    {
+    btnFirst "widget/imagebutton"
+	{
+	widget_class="FirstRecord";
+
+	width=18;
+	height=18;
+	image="/sys/images/ico16aa.gif";
+	pointimage="/sys/images/ico16ab.gif";
+	clickimage="/sys/images/ico16ac.gif";
+	disabledimage="/sys/images/ico16ad.gif";
+	enabled = runclient(:template_form:recid > 1);
+	cnFirst "widget/connector" { event="Click"; target=template_form; action="First"; }
+	}
+    }
+		]]>
+		</sample>
+	</widget>
+	<widget name="childwindow" type="widget/childwindow" description="a common top-level visual container" visual="yes" formelement="no" container="yes">
+		<overview>
+		</overview>
+		<usage>
+		  <p></p>
+		</usage>
+		<properties>
+		  <property name="x" type="integer"></property>
+		  <property name="y" type="integer"></property>
+		  <property name="width" type="integer"></property>
+		  <property name="height" type="integer"></property>
+		  <property name="y" type="integer"></property>
+		</properties>
+		<children>
+		</children>
+		<events>
+		</events>
+		<actions>
+		</actions>
+		<clientprops>
+		</clientprops>
+		<sample>
+		<![CDATA[
+		]]>
+		</sample>
+	</widget>
+<!--
+	<widget name="" type="" description="" visual="" formelement="" container="">
+		<overview>
+		</overview>
+		<usage>
+		</usage>
+		<properties>
+		  <property name="" type=""></property>
+		</properties>
+		<children>
+		  <child type="">
+		    <childproperty name="" type=""></childproperty>
+		  </child>
+		</children>
+		<events>
+		  <event name=""></event>
+		</events>
+		<actions>
+		  <action name=""></action>
+		</actions>
+		<clientprops>
+		  <clientprop name="" type=""></clientprop>
+		</clientprops>
+		<sample>
+		<![CDATA[
+		]]>
+		</sample>
+	</widget>
+-->
 </widgets>

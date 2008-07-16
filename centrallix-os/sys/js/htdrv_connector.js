@@ -18,31 +18,6 @@ function cn_activate(t,f,eparam)
     return t.ifcProbe(ifEvent).Activate(f,eparam);
     }
 
-/*function cn_activate(t,f,eparam)
-    {
-    if (!t || !t['Event'+f]) return false;
-    if (!eparam)
-	{
-	eparam = new Object();
-	eparam.Caller = t;
-	var d = 1;
-	}
-    if (t['Event' + f].constructor == Array)
-	{
-	for(var fn in t['Event' + f])
-	    {
-	    var x = t['Event' + f][fn](eparam);
-	    }
-	if(d) delete eparam;
-	return x;
-	}
-    else
-	{
-	if(d) delete eparam;
-	return t['Event' + f](eparam);
-	}
-    }*/
-
 // would be nice if this could go through the wgtr module, but the
 // sequence of events at startup makes that tricky - this gets called
 // before the wgtr stuff is initialized

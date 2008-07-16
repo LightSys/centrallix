@@ -9,6 +9,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+//$(".wn")
+
 function wn_deinit()
     {
     // If we moved it to top level, move it back so it can get cleaned up.
@@ -452,6 +454,11 @@ function wn_setvisibility(aparam)
 	}
     }
 
+function wn_domove2() 
+    {
+    
+    }
+
 function wn_domove()
     {
     if (wn_current != null)
@@ -494,18 +501,6 @@ function wn_bring_top(l)
     if (wn_topwin == l) return true;
     wn_adjust_z(l, wn_top_z - htr_getzindex(l) + 4);
     wn_topwin = l;
-    // maybe we can mess with this someday.
-    /*if (cx__capabilities.CSS2)
-	{
-	l.style.opacity = 1.0;
-	for(var i=0; i<wn_list.length; i++)
-	    {
-	    var onewin = wn_list[i];
-	    if (onewin != l)
-		onewin.style.opacity = 0.9;
-	    }
-	}*/
-//    wn_clicked = 0;
     }
 
 // FIXME: does this MOUSEDOWN work if for NS4 if there is no title?

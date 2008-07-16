@@ -1,4 +1,5 @@
 $Version=2$
+
 window_test "widget/page"
     {
     alerter "widget/alerter" {}

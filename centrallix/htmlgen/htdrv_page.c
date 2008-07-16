@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.83 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.84 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.84  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.83  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -757,8 +760,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "page", "new Object()", 0);
 
 	/** Add a list of highlightable areas **/
-	htrAddScriptGlobal(s, "pg_arealist", "new Array()", 0);
-	htrAddScriptGlobal(s, "pg_keylist", "new Array()", 0);
+	/** These are javascript global variables**/
+	htrAddScriptGlobal(s, "pg_arealist", "[]", 0);
+	htrAddScriptGlobal(s, "pg_keylist", "[]", 0);
 	htrAddScriptGlobal(s, "pg_curarea", "null", 0);
 	htrAddScriptGlobal(s, "pg_curlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_curkbdlayer", "null", 0);
@@ -772,34 +776,34 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_attract", "null", 0);
 	htrAddScriptGlobal(s, "pg_gshade", "null", 0);
 	htrAddScriptGlobal(s, "pg_closetype", "null", 0);
-	htrAddScriptGlobal(s, "pg_explist", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_explist", "[]", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0);
-	htrAddScriptGlobal(s, "pg_schedtimeoutlist", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_schedtimeoutlist", "[]", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutid", "0", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutstamp", "0", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
-	htrAddScriptGlobal(s, "pg_loadqueue", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_loadqueue", "[]", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue_busy", "true", 0);
 	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
 	htrAddScriptGlobal(s, "pg_isloaded", "false", 0);
 	htrAddScriptGlobal(s, "pg_username", "null", 0);
-	htrAddScriptGlobal(s, "pg_msg_handlers", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_msg_handlers", "[]", 0);
 	htrAddScriptGlobal(s, "pg_msg_layer", "null", 0);
 	htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0);
-	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0);
+	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0); /* causes pop-up boxes for certain non-fatel warnings */
 	htrAddScriptGlobal(s, "pg_width", "0", 0);
 	htrAddScriptGlobal(s, "pg_height", "0", 0);
 	htrAddScriptGlobal(s, "pg_charw", "0", 0);
 	htrAddScriptGlobal(s, "pg_charh", "0", 0);
 	htrAddScriptGlobal(s, "pg_parah", "0", 0);
-	htrAddScriptGlobal(s, "pg_namespaces", "new Object()", 0);
-	htrAddScriptGlobal(s, "pg_handlertimeout", "null", 0);
-	htrAddScriptGlobal(s, "pg_mousemoveevents", "new Array()", 0);
-	htrAddScriptGlobal(s, "pg_handlers", "new Array()", 0);
-	htrAddScriptGlobal(s, "pg_capturedevents", "0", 0);
+	htrAddScriptGlobal(s, "pg_namespaces", "{}", 0);
+	htrAddScriptGlobal(s, "pg_handlertimeout", "null", 0); /* this is used by htr_mousemovehandler */
+	htrAddScriptGlobal(s, "pg_mousemoveevents", "[]", 0);
+	htrAddScriptGlobal(s, "pg_handlers", "[]", 0); /* keeps track of handlers for basic events tied to document (click, mousemove, keypress, etc) */
+	htrAddScriptGlobal(s, "pg_capturedevents", "0", 0); /* is the binary OR of all event flags that the document currently has registered */
 	htrAddScriptGlobal(s, "pg_tiplayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_tipindex", "0", 0);
 	htrAddScriptGlobal(s, "pg_tiptmout", "null", 0);

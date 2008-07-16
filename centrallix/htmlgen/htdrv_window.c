@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.53 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.54 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.54  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.53  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -632,7 +635,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "wn_top_z","10000",0);
-	htrAddScriptGlobal(s, "wn_list","new Array()",0);
+	htrAddScriptGlobal(s, "wn_list","[]",0);
 	htrAddScriptGlobal(s, "wn_current","null",0);
 	htrAddScriptGlobal(s, "wn_newx","null",0);
 	htrAddScriptGlobal(s, "wn_newy","null",0);
@@ -647,6 +650,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"wn%POSmain\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
+	htrAddScriptInclude(s, "http://code.jquery.com/jquery-latest.min.js", 0);
 
 	/** Event handler for mousedown/up/click/etc **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown");
@@ -682,15 +686,15 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> elements for the layers. **/
 	if(s->Capabilities.HTML40 && s->Capabilities.CSS2) 
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"wn%POSbase\">\n",id);
+	    htrAddBodyItem_va(s,"<DIV ID=\"wn%POSbase\" CLASS=\"wnbase\">\n",id);
 	    if (has_titlebar)
 		{
-		htrAddBodyItem_va(s,"<DIV ID=\"wn%POStitlebar\">\n",id);
+		htrAddBodyItem_va(s,"<DIV ID=\"wn%POStitlebar\" class=\"wntitlebar\" >\n",id);
 		htrAddBodyItem_va(s,"<table border=0 cellspacing=0 cellpadding=0 height=%POS><tr><td><table cellspacing=0 cellpadding=0 border=0 width=%POS><tr><td align=left><TABLE cellspacing=0 cellpadding=0 border=\"0\"><TR><td width=26 align=center><img width=18 height=18 src=\"%STR&HTE\" name=\"icon\"></td><TD valign=\"middle\" nobreak><FONT COLOR='%STR&HTE'>&nbsp;<b>%STR&HTE</b></FONT></TD></TR></TABLE></td><td align=right><IMG src=\"/sys/images/01bigclose.gif\" name=\"close\" align=\"right\"></td></tr></table></td></tr></table>\n", 
 			tbh-1, tbw-2, icon, txtcolor, title);
 		htrAddBodyItem(s,   "</DIV>\n");
 		}
-	    htrAddBodyItem_va(s,"<DIV ID=\"wn%POSmain\">\n",id);
+	    htrAddBodyItem_va(s,"<DIV class=\"wnborder\"><DIV ID=\"wn%POSmain\">\n",id);
 	    }
 	else
 	    {
@@ -774,7 +778,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    htrRenderWidget(s, sub_tree, z+2);
 	    }
 
-	htrAddBodyItem(s,"</DIV></DIV>\n");
+	htrAddBodyItem(s,"</DIV></DIV></DIV>\n");
 
     return 0;
     }

@@ -7,9 +7,9 @@ License:   Copyright (C) 2001 LightSys Technology Services.  See "LICENSE".
 
 I   OVERVIEW
 
-    The structure file is a basic filesystem element within Centrallix.  It
-    provides the ability to construct structured parameter settings within a
-    tree-type framework that can be extended to a number of applications.
+    A structure file is a basic filesystem element within Centrallix. It
+    provides the ability to construct a 'Widget Tree' which describes/defines
+    minimal GUIs. A Widget Tree can be implemented however needed/desired.
 
     This document defines the general structure of this type of file, provides
     information about the Centrallix API's for accessing such files, and also
@@ -20,13 +20,13 @@ I   OVERVIEW
     Structure files now support full expressions in their attributes; to do
     this you have to put the key phrase "$Version=2$" as the first line in
     the structure file.  The only immediate change needed in an existing 
-    file if Version 2 is enabled this way, is to add a semicolon after each
+    file, if Version 2 is enabled this way, is to add a semicolon after each
     attribute line.
 
 
 II  DEFINITION
 
-    The structure file is a plain-text file that can be edited/read in any 
+    A structure file is a plain-text file that can be edited/read in any 
     text editor.  It has two basic constructs: the group element and the
     attribute-value association element.  Group elements have a name and "data
     type", and can contain other group elements as well as other attribute-
@@ -89,9 +89,9 @@ III EXAMPLE #1 - REPORT (.RPT) FILES
     types that are used for defining various aspects of the report.
 
     The "system/report" group is the top-level group, and contains mostly
-    other group elements of other types, except that it can contain some
-    attribute-value elements as well, the most important of which is the
-    'title' element, which provides a title for the report.  Any top-level
+    other group elements of other types, but there still are some standard
+    attribute-value elements as well -- the most important of which is the
+    'title' element which provides a title for the report.  Any top-level
     attribute-value element, including 'title', can be subject to parameter
     substitution when the report is executed, thus its value can be changed
     dynamically depending on the reporting needs of the end user.  

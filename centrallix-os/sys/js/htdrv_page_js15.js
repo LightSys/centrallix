@@ -291,7 +291,7 @@ function Layer (w,p)
     var l = document.createElement("div");
     l.style.position = "absolute";
     if (w) l.style.width = w;
-    if (p) l = p.appendChild(l);
+    if (p) l = p.appendChild(l); //SETH: $$$Layer.appendChild$$$ this won't do anything if p is window
     l.document = l;
     l.document._is_open = false;
     l.document._tmptxt = "";

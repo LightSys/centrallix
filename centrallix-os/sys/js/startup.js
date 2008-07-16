@@ -25,18 +25,8 @@ function tohex16(n)
 function startup()
     {
     var loc = window.location.href;
-    //var re1 = new RegExp('cx__[^&]*');
-    //var re2 = new RegExp('([?&])&*');
     var metrics = new Object();
-    //while(loc.match(re1))
-    //    {
-    //    loc = loc.replace(re1,'');
-    //    }
-    //while(loc.match(re2))
-    //    {
-    //    loc = loc.replace(re2,'');
-    //    }
-    //loc = loc.replace(new RegExp('[?&]*$'),'');
+
     loc = loc.replace(new RegExp('([?&])cx__geom[^&]*([&]?)'),
 	    function (str,p1,p2) { return p2?p1:''; });
     if (loc.indexOf('?') >= 0)

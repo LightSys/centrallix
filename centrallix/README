@@ -30,6 +30,8 @@ Please note that unless this source code came packaged in an RPM or other
 installable package format, it is likely an unstable source release.  In this
 case, expect parts of the system to not work correctly.
 
+There is also another README file in centrallix-doc.
+
 The main operating system platform for Centrallix is Linux.  However, we have
 successfully compiled and run the server on Windows (via cygwin) and Mac OS X
 as well.

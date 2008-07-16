@@ -61,7 +61,7 @@ struct _APOS_S
     {
     pAposLine	StartLine;	//left line for columns and top line for rows
     pAposLine	EndLine;	//right line for columns and bottom line for rows
-    int		Flex;		//section's flexibility
+    int		Flex;		//section's flexibility. It does not follow any "units" (ie, pixels, percent of container, etc)
     int		Width;		//Width of columns or height of rows
     int		DesiredWidth;	//When we need to resize to honor max/mins
     int		isSpacer;	//set for narrow spaces between widgets

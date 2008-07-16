@@ -9,6 +9,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+/* This file contains a bunch of helper functions for DOM/CSS
+ * manipulation, for 'boxes' and 'areas', for keyboard event handling,
+ * for page 'status', wrappers for setTimeout (as a NS4 hack),
+ * 'expression' functions, async request management, reveal/obscure,
+ * debugging, Control Message management, some event handlers for
+ * mouse events.
+ */
+
+
 var pg_msglist = '';
 var pg_init_ts = (new Date()).valueOf();
 
@@ -16,12 +25,14 @@ var pg_waitlyr_id = null;
 
 var pg_layer = null;
 
-var pg_msg = new Object();
+var pg_msg = {};
 pg_msg.MSG_ERROR=1;
 pg_msg.MSG_QUERY=2;
 pg_msg.MSG_GOODBYE=4;
 pg_msg.MSG_REPMSG=8;
 pg_msg.MSG_EVENT=16;
+
+//START SECTION: DOM/CSS helper functions -----------------------------------
 
 /** returns an attribute of the element in pixels **/
 function pg_get_style(element,attr)
@@ -287,67 +298,78 @@ function pg_set_style_string(element,attr, value)
 	}
     }
 
-function pg_ping_init(l,i)
+// pg_show_containers() - makes sure containers, from innermost to
+// outermost, are displayed to the user.  Used when a control receives
+// keyboard focus to make sure control is visible to user.
+function pg_show_containers(l, x, y)
     {
-    if(cx__capabilities.Dom0IE)
-        {
-        //alert(l.currentStyle.position);
-    	l.tid=setInterval(pg_ping_send, i);
+    var orig_l = l;
+    while (l && !wgtrIsNode(l))
+	{
+	if (l.showcontainer && l.showcontainer(orig_l, x, y) == false)
+	    return false;
+	l = pg_get_container(l);
 	}
-    else
-    	{
-    	l.tid=setInterval(pg_ping_send,i,l);    		
-    	}
+    while(l)
+	{
+	if (l.showcontainer && l.showcontainer(orig_l, x, y) == false)
+	    return false;
+	l = wgtrGetParent(l);
+	}
+    return true;
     }
 
-function pg_ping_recieve()
+
+// pg_get_container() - figure out what layer directly contains 
+// the current one.
+function pg_get_container(l)
     {
-    var link;
-    //confirm("recieving");
-    if(cx__capabilities.Dom1HTML)
+    if (cx__capabilities.Dom0NS)
 	{
-	link = this.contentDocument.getElementsByTagName("a")[0];
+	if (typeof l.parentLayer == 'undefined') return l;
+	else return l.parentLayer;
 	}
-    else if(cx__capabilities.Dom0NS)
+    else if (cx__capabilities.Dom1HTML)
 	{
-	link = this.document.links[0];
+	do  {
+	    l = l.parentNode;
+	    } while (l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
+	return l;
+	}
+    return null;
+    }
+
+
+// pg_toplevel_layer() - returns the layer which contains the given
+// one, at the top level (i.e., a direct child of the page itself)
+function pg_toplevel_layer(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	{
+	while (l != window && l.parentLayer != window) l = l.parentLayer;
 	}
     else
 	{
-	return false;
+	while (l.tagName != 'BODY' && l.parentNode.tagName != 'BODY' && 
+		l != window && l.parentNode != window) 
+	    l = l.parentNode;
 	}
-    if(!link || link.target!=='OK')
-	{
-	clearInterval(this.tid);
-	if (!window.pg_disconnected)
-	    confirm('you have been disconnected from the server');
-	window.pg_disconnected = true;
-	}
-    }
-    
-function pg_ping_send(p)
-    {
-    //confirm('sending');
-    if (cx__capabilities.Dom0IE)
-        {
-        p = document.getElementById('pgping');
-	}
-	        
-    //p.onload=pg_ping_recieve;
-   
-    pg_serialized_load(p, '/INTERNAL/ping', pg_ping_recieve);
-    /*if(cx__capabilities.Dom1HTML)
-	{
-	p.setAttribute('src','/INTERNAL/ping');
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	//alert(p);
-	p.src='/INTERNAL/ping';
-	}*/
+    return l;
     }
 
-/** Function to get the links attacked to a layer **/
+
+// pg_serialized_write() - schedules the writing of content to a layer, so that
+// we don't have the document open while stuff is happening from the server.
+function pg_serialized_write(l, text, cb)
+    {
+    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
+    pg_loadqueue.push({lyr:l, text:text, cb:cb});
+    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
+    pg_serialized_load_doone();
+    }
+
+
+/** Function to get the links attached to a layer **/
 function pg_links(o)
     {
     if(cx__capabilities.Dom1HTML)
@@ -430,7 +452,76 @@ function pg_set(o,a,v)
 	}
     }
 
-function pg_get_computed_clip(o)
+//END SECTION: DOM/CSS helper functions -----------------------------------
+
+//START SECTION: pinging functions ---------------------------------------
+/* these functions deal with pinging the server. The client pings the
+ * server because ...? //SETH:
+ */
+
+function pg_ping_init(l,i)
+    {
+    if(cx__capabilities.Dom0IE)
+        {
+    	l.tid=setInterval(pg_ping_send, i);
+	}
+    else
+    	{
+    	l.tid=setInterval(pg_ping_send,i,l);    		
+    	}
+    }
+
+function pg_ping_recieve()
+    {
+    var link;
+    //confirm("recieving");
+    if(cx__capabilities.Dom1HTML)
+	{
+	link = this.contentDocument.getElementsByTagName("a")[0];
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	link = this.document.links[0];
+	}
+    else
+	{
+	return false;
+	}
+    if(!link || link.target!=='OK')
+	{
+	clearInterval(this.tid);
+	if (!window.pg_disconnected)
+	    confirm('you have been disconnected from the server');
+	window.pg_disconnected = true;
+	}
+    }
+    
+function pg_ping_send(p)
+    {
+    //confirm('sending');
+    if (cx__capabilities.Dom0IE)
+        {
+        p = document.getElementById('pgping');
+	}
+	        
+    //p.onload=pg_ping_recieve;
+   
+    pg_serialized_load(p, '/INTERNAL/ping', pg_ping_recieve);
+    /*if(cx__capabilities.Dom1HTML)
+	{
+	p.setAttribute('src','/INTERNAL/ping');
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	//alert(p);
+	p.src='/INTERNAL/ping';
+	}*/
+    }
+
+//END SECTION: pinging functions ---------------------------------------
+
+
+function pg_get_computed_clip(o) //SETH: ??
     {
     if(cx__capabilities.Dom2CSS)
 	return getComputedStyle(o,null).getPropertyCSSValue('clip').getRectValue();
@@ -570,7 +661,7 @@ function pg_isinlayer(outer,inner)
     return false;
     }
 
-/** Function to make four layers into a box 
+/** Function to make four layers into a box  //SETH: ?? what's a 'box'?
 * pl - a layer
 * x,y - x,y-cord
 * w,h - widht, height
@@ -678,7 +769,7 @@ function pg_hidebox(tl,bl,rl,ll)
     }
 
 /** Function to make a new clickable "area" **INTERNAL** **/
-function pg_area(pl,x,y,w,h,cls,nm,f)
+function pg_area(pl,x,y,w,h,cls,nm,f) //SETH: ?? what's an 'area'?
     {
     this.layer = pl;
     this.x = x;
@@ -953,9 +1044,9 @@ function pg_togglecursor()
     }
 
 /** Keyboard input handling **/
-function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)
+function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam) //SETH: ??
     {
-    kd = new Object();
+    kd = {};
     kd.startcode = s;
     kd.endcode = e;
     kd.mod = mod;
@@ -970,7 +1061,7 @@ function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)
     return kd;
     }
     
-function pg_cmpkey(k1,k2)
+function pg_cmpkey(k1,k2) //SETH: ??
     {
     return (k1.endcode-k1.startcode) - (k2.endcode-k2.startcode);
     }
@@ -1056,7 +1147,7 @@ function pg_keyhandler_internal(k,m,e)
     return false;
     }
  
-function pg_status_init()
+function pg_status_init() //SETH: ??
     {
     pg_status = null;
     if(cx__capabilities.Dom1HTML)
@@ -1088,10 +1179,9 @@ function pg_status_close()
     pg_status.visibility = 'hide';
     }
 
-// tc_init(document.cxSubElement("tc0base"), 0, "background='sys/images/slate2.gif'", "");
-function pg_init(l,a,gs,ct)
+function pg_init(l,a,gs,ct) //SETH: ??
     {
-    window.windowlist = new Object();
+    window.windowlist = {};
     pg_attract = a;
     if (cx__capabilities.Dom0NS) pg_set_emulation(document);
     htr_init_layer(window,window,"window");
@@ -1102,7 +1192,7 @@ function pg_init(l,a,gs,ct)
     pg_addsched('pg_msg_init()', window,0);
     ifc_init_widget(window);
 
-    l.templates = new Array();
+    l.templates = [];
 
 
     // Actions
@@ -1120,7 +1210,7 @@ function pg_init(l,a,gs,ct)
     return window;
     }
 
-function pg_load_page(aparam)
+function pg_load_page(aparam) //SETH: ??
     {
     var newurl = '';
     if (typeof aparam.Source != 'undefined')
@@ -1194,13 +1284,16 @@ function pg_mvpginpt(ly)
     	setTimeout(pg_mvpginpt, 500, pg_layer);
     }
 
+//START SECTION: setTimout wrappers ------------------------------------------
+//these are wrappers for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaniously.
 
+// see pg_addsched_fn
 function pg_addschedtolist(s)
     {
     var len = pg_schedtimeoutlist.length;
     var insert = len; 
     var reset_timer = (!len) || (s.tm < pg_schedtimeoutlist[0].tm);
-    //pg_debug('' + (pg_timestamp()) + ': adding item ' + s.id + ' with delay ' + s.tm + '\n');
+
     if (reset_timer)
 	pg_stopschedtimeout();
     pg_msglist += ('' + pg_timestamp() + ': adding item ' + s.id + ' at time ' + s.tm + ' (' + (s.exp?s.exp:s.func) + ')\n');
@@ -1223,6 +1316,7 @@ function pg_addschedtolist(s)
 	pg_startschedtimeout();
     }
 
+// see pg_addsched_fn
 function pg_stopschedtimeout()
     {
     if (pg_schedtimeout)
@@ -1232,6 +1326,7 @@ function pg_stopschedtimeout()
 	}
     }
 
+// see pg_addsched_fn
 function pg_startschedtimeout()
     {
     if(!pg_schedtimeout && pg_schedtimeoutlist.length > 0) 
@@ -1240,13 +1335,13 @@ function pg_startschedtimeout()
 	var len = pg_schedtimeoutlist[0].tm - pg_schedtimeoutstamp;
 	if (len < 0)
 	    len = 0;
-	if (!window.pg_isloaded)
+	if (!pg_isloaded)
 	    len = Math.max(len,100);
 	pg_schedtimeout = setTimeout(pg_dosched, len);
-	//pg_debug('' + (pg_timestamp()) + ': starting timer for length ' + len + '\n');
 	}
     }
 
+// see pg_addsched_fn
 function pg_addsched(e,o,t)
     {
     var sched = {exp:e, obj:o, tm:pg_timestamp() + t, id:pg_schedtimeoutid++};
@@ -1254,6 +1349,7 @@ function pg_addsched(e,o,t)
     return sched.id;
     }
 
+//this is a wrapper for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaniously.
 function pg_addsched_fn(o,f,p,t)
     {
     var sched = {func:f, obj:o, param:p, tm:pg_timestamp() + t, id:pg_schedtimeoutid++};
@@ -1261,6 +1357,7 @@ function pg_addsched_fn(o,f,p,t)
     return sched.id;
     }
 
+// see pg_addsched_fn
 function pg_delsched(id)
     {
     for(var i=0;i<pg_schedtimeoutlist.length;i++)
@@ -1275,33 +1372,6 @@ function pg_delsched(id)
 	}
     return false;
     }
-
-function pg_expchange_cb(exp)
-    {
-    var node = wgtrGetNode(window[exp.Context], exp.Objname);
-    var _context = window[exp.Context];
-    wgtrSetProperty(node, exp.Propname, eval(exp.Expression));
-    }
-
-function pg_expchange(p,o,n)
-    {
-    if (o==n) return n;
-    for(var i=0;i<pg_explist.length;i++)
-	{
-	var exp = pg_explist[i];
-	for(var j=0;j<exp.ParamList.length;j++)
-	    {
-	    var item = exp.ParamList[j];
-	    if (this == item[2] && p == item[1])
-		{
-		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		pg_addsched_fn(window, 'pg_expchange_cb', [exp], 0);
-		}
-	    }
-	}
-    return n;
-    }
-
 
 function pg_dosched()
     {
@@ -1349,9 +1419,13 @@ function pg_timestamp()
     return (new Date()).valueOf() - pg_init_ts;
     }
 
+//END SECTION: setTimout wrappers ------------------------------------------
+
+//START SECTION: 'expression' functions ----------------------------------------
+
 function pg_expression(o,p,e,l,c)
     {
-    var expobj = new Object();
+    var expobj = {};
     expobj.Objname = o;
     expobj.Propname = p;
     expobj.Expression = e;
@@ -1377,7 +1451,36 @@ function pg_expression(o,p,e,l,c)
 	}
     }
 
+function pg_expchange_cb(exp) //SETH: ??
+    {
+    var node = wgtrGetNode(window[exp.Context], exp.Objname);
+    var _context = window[exp.Context];
+    wgtrSetProperty(node, exp.Propname, eval(exp.Expression));
+    }
 
+function pg_expchange(p,o,n)
+    {
+    if (o==n) return n;
+    for(var i=0;i<pg_explist.length;i++)
+	{
+	var exp = pg_explist[i];
+	for(var j=0;j<exp.ParamList.length;j++)
+	    {
+	    var item = exp.ParamList[j];
+	    if (this == item[2] && p == item[1])
+		{
+		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
+		pg_addsched_fn(window, 'pg_expchange_cb', [exp], 0);
+		}
+	    }
+	}
+    return n;
+    }
+
+//END SECTION: 'expression' functions ----------------------------------------
+
+
+//SETH: this function seems to implement the 'blur' event.
 function pg_removemousefocus()
     {
     if (pg_curarea.layer.losemousefocushandler) 
@@ -1599,71 +1702,14 @@ function pg_getrelcoord(l, sub_l)
     }
 
 
-// pg_show_containers() - makes sure containers, from innermost to
-// outermost, are displayed to the user.  Used when a control receives
-// keyboard focus to make sure control is visible to user.
-function pg_show_containers(l, x, y)
-    {
-    var orig_l = l;
-    while (l && !wgtrIsNode(l))
-	{
-	if (l.showcontainer && l.showcontainer(orig_l, x, y) == false)
-	    return false;
-	l = pg_get_container(l);
-	}
-    while(l)
-	{
-	if (l.showcontainer && l.showcontainer(orig_l, x, y) == false)
-	    return false;
-	l = wgtrGetParent(l);
-	}
-    return true;
-    }
+//START SECTION: async request handling ----------------------------------
 
-
-// pg_get_container() - figure out what layer directly contains 
-// the current one.
-function pg_get_container(l)
-    {
-    if (cx__capabilities.Dom0NS)
-	{
-	if (typeof l.parentLayer == 'undefined') return l;
-	else return l.parentLayer;
-	}
-    else if (cx__capabilities.Dom1HTML)
-	{
-	do  {
-	    l = l.parentNode;
-	    } while (l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
-	return l;
-	}
-    return null;
-    }
-
-
-// pg_toplevel_layer() - returns the layer which contains the given
-// one, at the top level (i.e., a direct child of the page itself)
-function pg_toplevel_layer(l)
-    {
-    if (cx__capabilities.Dom0NS)
-	{
-	while (l != window && l.parentLayer != window) l = l.parentLayer;
-	}
-    else
-	{
-	while (l.tagName != 'BODY' && l.parentNode.tagName != 'BODY' && 
-		l != window && l.parentNode != window) 
-	    l = l.parentNode;
-	}
-    return l;
-    }
-
-
-// pg_serialized_load() - schedules the reload of a layer, hidden or visible,
-// from the server in a manner that keeps things serialized so server loads
-// don't overlap.
+// pg_serialized_load() - a wrapper for async requests. It schedules
+// the reload of a layer, hidden or visible, from the server in a
+// manner that keeps things serialized so server loads don't overlap.
 function pg_serialized_load(l, newsrc, cb, silent)
     {
+    // pg_waitlyr says if the 'wait layer' should be used (the 'wait layer' is the layer that takes focus and says "please wait...")
     if (!silent && (!pg_waitlyr || !pg_waitlyr.vis))
 	{
 	if (!pg_waitlyr)
@@ -1676,7 +1722,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
 	pg_waitlyr_id = null;
 	pg_waitlyr.vis = true;
-	//pg_addsched('pg_waitlyr.vis && htr_setvisibility(pg_waitlyr, "inherit")',window,0);
+
 	htr_setvisibility(pg_waitlyr, "inherit");
 	}
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
@@ -1685,18 +1731,9 @@ function pg_serialized_load(l, newsrc, cb, silent)
     pg_serialized_load_doone();
     }
 
-// pg_serialized_write() - schedules the writing of content to a layer, so that
-// we don't have the document open while stuff is happening from the server.
-function pg_serialized_write(l, text, cb)
-    {
-    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
-    pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
-    pg_serialized_load_doone();
-    }
-
 // pg_serialized_load_doone() - loads the next item off of the
-// serialized loader list.
+// serialized loader list. This is where the old-style async req is
+// actually made.
 function pg_serialized_load_doone()
     {
     if (pg_loadqueue_busy) return;
@@ -1715,7 +1752,7 @@ function pg_serialized_load_doone()
     var one_item = pg_loadqueue.shift(); // remove first item
     if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' loads ' + one_item.src + '\n');
     one_item.lyr.__pg_onload = one_item.cb;
-    if (one_item.src)
+    if (one_item.src) // I (Seth) only think this gets used in NS.
 	{
 	one_item.lyr.onload = pg_serialized_load_cb;
 	pg_set(one_item.lyr, 'src', one_item.src);
@@ -1726,27 +1763,25 @@ function pg_serialized_load_doone()
 	    {
 	    one_item.lyr.document.write(one_item.text);
 	    one_item.lyr.document.close();
-	    //alert(one_item.text);
 	    }
 	else
 	    {
 	    one_item.lyr.innerHTML = one_item.text;
 	    }
+
 	if (one_item.lyr.__pg_onload) 
 	    {
-	    //one_item.lyr.__pg_onload();
 	    one_item.lyr.__pg_onload_cb = pg_serialized_load_cb;
 	    pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [], 0);
-	    //pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' cb ' + one_item.lyr.__pg_onload.name + '()\n');
 	    }
 	else
 	    {
 	    pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
 	    pg_loadqueue_busy = false;
 	    }
-	//one_item.lyr.onload = pg_serialized_load_cb;
+
 	if (pg_loadqueue.length > 0)
-	    pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
+	    pg_addsched_fn(window, 'pg_serialized_load_doone', {}, 0);
 	else
 	    if (pg_waitlyr) 
 		{
@@ -1760,20 +1795,15 @@ function pg_serialized_load_doone()
 // pg_serialized_load_cb() - called when a load finishes
 function pg_serialized_load_cb()
     {
-    pg_loadqueue_busy = false;
+    pg_loadqueue_busy = false; //SETH: ?? I thought that the definition of pg_loadqueue_busy ment pg_serialized_load_doone was working. if so, then how does this function have any permisions to change this variable?
+
     if (this.__pg_onload) 
 	{
-	//pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': (start) ' + this.name + ' ' + this.__pg_onload.name + '()\n');
 	this.__pg_onload();
-	//pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': (end) ' + this.name + ' ' + this.__pg_onload.name + '()\n');
 	}
-    else
-	{
-	//pg_debug('pg_serialized_load_cb (no cb fn): ' + pg_loadqueue.length + ': ' + this.name + '\n');
-	}
-    //pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': ' + this.name + '\n');
+
     if (pg_loadqueue.length > 0)
-	pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
+	pg_addsched_fn(window, 'pg_serialized_load_doone', {}, 0);
     else
 	if (pg_waitlyr)
 	    {
@@ -1783,6 +1813,9 @@ function pg_serialized_load_cb()
 	    }
     }
 
+//END SECTION: async request handling ------------------------------------
+
+//START SECTION: reveal/obscure ------------------------------------------
 
 // Reveal/Obscure properties:
 //
@@ -2018,6 +2051,9 @@ function pg_reveal_send_events(t, e)
     return true;
     }
 
+//END SECTION: reveal/obscure ------------------------------------------
+
+//START SECTION: debugging ---------------------------------------------
 
 // set up for debug logging
 function pg_debug_register_log(l)
@@ -2071,6 +2107,10 @@ function pg_log_fn(fnname)
     }
 
 
+//END SECTION: debugging ---------------------------------------------
+
+//START SECTION: Control Message management --------------------------
+
 /// The below set of functions handle the Control Message mechanism from
 /// the server.  Widgets / objects may request to receive control messages
 /// of certain types, and they will be routed as requested when they
@@ -2112,6 +2152,8 @@ function pg_msg_received()
     pg_msg_timeout = setTimeout('pg_serialized_load(pg_msg_layer, "/INTERNAL/control?cx_cm_nowait=1", pg_msg_received);', 2000);
     return;
     }
+
+//END SECTION: Control Message management --------------------------
 
 
 // tooltips

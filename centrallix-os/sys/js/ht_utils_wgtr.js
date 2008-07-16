@@ -8,6 +8,7 @@
 // Pass in the declared tree, and this thing returns the actual tree of real
 // widgets.
 //
+
 function wgtrSetupTree(tree, ns, parent)
     {
     var _parentobj = parent?parent.obj:null;

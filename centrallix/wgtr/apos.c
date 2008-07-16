@@ -30,10 +30,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.14 2008/03/04 01:21:11 gbeeley Exp $
+    $Id: apos.c,v 1.15 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.15  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.14  2008/03/04 01:21:11  gbeeley
     - (bugfix) various fixes to the auto-resizing (apos) code, related to
       having two nonvisual containers nested directly inside each other
@@ -317,6 +320,7 @@ int sectCount;
 }
 
 
+/** this function is the recursive function that actually does the work **/
 int
 aposSetLimits_r(pWgtrNode Parent, int* delta_w, int* delta_h)
 {
@@ -412,6 +416,7 @@ pWgtrNode Child;
 }
 
 
+/** This function simply call the recursive version **/
 int
 aposSetLimits(pWgtrNode Parent)
 {

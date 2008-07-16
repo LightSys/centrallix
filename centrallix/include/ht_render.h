@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.37 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: ht_render.h,v 1.38 2008/07/16 00:34:57 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.38  2008/07/16 00:34:57  thr4wn
+    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
+
     Revision 1.37  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -608,14 +611,13 @@ typedef struct
     char*	Tmpbuf;			/* temp buffer used in _va() functions */
     size_t	TmpbufSize;
     HtCapabilities Capabilities;	/* the capabilities supported by the browser */
-    pHtClass	Class;			/* the widget class to use **/
+    pHtClass	Class;			/* the widget class to use (see centrallix/htmlgen/README section: 'server-side classes')**/
     pStruct	Params;			/* params from the user */
     pObjSession	ObjSession;		/* objectsystem session */
     int		Width;			/* target container (browser) width in pixels */
     int		Height;			/* target container height in pixels */
     char*	GraftPoint;		/* name of target container */
     pWgtrVerifySession VerifySession;	/* name of the current verification session */
-    /*char	Context[64];*/
     pWgtrClientInfo ClientInfo;
     pHtNamespace Namespace;		/* current namespace */
     int		IsDynamic;
