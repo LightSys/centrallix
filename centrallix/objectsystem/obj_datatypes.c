@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.21 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.22 2008/07/22 21:44:49 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.22  2008/07/22 21:44:49  jncraton
+    - added support to convert MySQL dates given the format 'mysql'
+
     Revision 1.21  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -1119,6 +1122,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     struct tm *t;
     time_t int_time;
     int reversed_day=0;
+    int mysql = 0;
 
     	/** Only accept string... **/
 	if (data_type != DATA_T_STRING) return -1;
@@ -1129,6 +1133,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	if (format)
 	    {
 	    if (!strncmp(format,"II",2)) reversed_day = 1;
+	    if (!strncmp(format,"mysql",5)) mysql = 1;
 	    }
 
 	startptr = (char*)data_ptr;
@@ -1158,6 +1163,12 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		        {
 		        if (got_day == -1) got_day = last_num-1;
 		        else if (got_mo == -1) got_mo = last_num-1;
+			}
+		    else if(mysql)
+			{
+			if (got_yr == -1) got_yr = last_num;
+			else if (got_mo == -1) got_mo = last_num-1;
+			else if (got_day == -1) got_day = last_num-1;
 			}
 		    else
 		        {
