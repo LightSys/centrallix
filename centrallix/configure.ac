@@ -96,9 +96,13 @@ dnl FilePro osdriver support.
 AH_TEMPLATE([USE_FP], [Define for FilePro support])
 CENTRALLIX_CHECK_FP_OS
 
-dnl Sybase support.
+dnl Sybase osdriver support.
 AH_TEMPLATE([USE_SYBASE], [Define for Sybase support])
 CENTRALLIX_CHECK_SYBASE
+
+dnl MySQL osdriver support.
+AH_TEMPLATE([USE_MYSQL], [Define for MySQL support])
+CENTRALLIX_CHECK_MYSQL
 
 dnl XML osdriver support.
 AH_TEMPLATE([USE_XML], [Define for XML support])

@@ -321,6 +321,82 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
     ]
 )
 
+dnl Test for the MySQL libraries.
+AC_DEFUN(CENTRALLIX_CHECK_MYSQL,
+    [
+	AC_MSG_CHECKING(if MySQL support is desired)
+
+	AC_ARG_ENABLE(mysql,
+	    AC_HELP_STRING([--disable-mysql],
+		[disable MySQL support]
+	    ),
+	    WITH_MYSQL="$enableval", 
+	    WITH_MYSQL="yes"
+	)
+
+	default_mysql_incdir="/usr/include/mysql"
+	default_mysql_libdir="/usr/lib/mysql"
+	
+	AC_ARG_WITH(mysql-inc,
+	    AC_HELP_STRING([--with-mysql-inc=PATH],
+		[include path for MySQL headers (default is /usr/include/mysql)]
+	    ),
+	    mysql_incdir="$withval",
+	    mysql_incdir="$default_mysql_incdir"
+	)
+ 
+	AC_ARG_WITH(mysql-lib,
+	    AC_HELP_STRING([--with-mysql-lib=PATH],
+		[library path for MySQL libraries (default is /usr/lib/mysql)]
+	    ),
+	    mysql_libdir="$withval",
+	    mysql_libdir="$default_mysql_libdir"
+	)
+
+	ENABLE_MYSQL="no"
+ 
+	if test "$WITH_MYSQL" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+ 
+	    temp=$CPPFLAGS
+	    CPPFLAGS="$CPPFLAGS -I$mysql_incdir -L$mysql_libdir -lmysqlclient -lz"
+	    AC_CHECK_HEADER(mysql.h, 
+		WITH_MYSQL="yes",
+		WITH_MYSQL="no"
+	    )
+	    CPPFLAGS="$temp"
+
+	    
+	    AC_MSG_CHECKING(if MySQL support can be enabled)
+	    if test "$WITH_MYSQL" = "yes"; then
+		AC_DEFINE(USE_MYSQL)
+		if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mysql.so"
+		else
+		    STATIC_CFLAGS="$STATIC_CFLAGS $MYSQL_CFLAGS"
+		    STATIC_LIBS="$STATIC_LIBS $MYSQL_LIBS"
+		    OBJDRIVERS="$OBJDRIVERS objdrv_mysql.o"
+		fi
+		ENABLE_MYSQL="yes"
+		AC_MSG_RESULT(yes)
+		CENTRALLIX_ADD_DRIVER(mysd, [MySQL Database])
+	    else
+		AC_MSG_RESULT(no)
+	    fi
+	fi
+
+	MYSQL_CFLAGS="-I$mysql_incdir"
+	MYSQL_LIBS="-L$mysql_libdir -lmysqlclient"
+	LIBS="$LIBS -L$mysql_libdir"
+
+	AC_SUBST(ENABLE_MYSQL)
+	AC_SUBST(MYSQL_LIBS)
+	AC_SUBST(MYSQL_CFLAGS)
+    ]
+)
+
 dnl Test for the GZIP os driver.
 AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
     [

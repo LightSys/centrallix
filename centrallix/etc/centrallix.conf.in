@@ -30,7 +30,7 @@ centrallix "system/config"
 	// Set this to 0 to allow connections from anywhere.  Note:  this
 	// is a development release and it is recommended to restrict access
 	// to the server.
-	accept_localhost_only = 1; // true
+	accept_localhost_only = 0; // true
 
 	user_session_limit = 100; // max sessions per user
 	server_string = "Centrallix/0.9.0";
@@ -83,6 +83,7 @@ centrallix "system/config"
     // Loadable Modules
     modules "system/config"
 	{
+	mysd "system/config-module" { enable_module=@ENABLE_MYSQL@; path="##LIBDIR##/centrallix/objdrv_mysql.so"; type="osdriver"; }
 	sybd "system/config-module" { enable_module=@ENABLE_SYBASE@; path="##LIBDIR##/centrallix/objdrv_sybase.so"; type="osdriver"; }
 	http "system/config-module" { enable_module=@ENABLE_HTTP@; path="##LIBDIR##/centrallix/objdrv_http.so"; type="osdriver"; }
 	xml "system/config-module" { enable_module=@ENABLE_XML@; path="##LIBDIR##/centrallix/objdrv_xml.so"; type="osdriver"; }

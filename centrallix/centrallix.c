@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.50 2008/04/06 22:23:28 gbeeley Exp $
+    $Id: centrallix.c,v 1.51 2008/07/22 00:22:16 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.51  2008/07/22 00:22:16  jncraton
+    - Initial integration of the MySQL driver
+    - The driver is far from complete and shouldn't be used for anything
+    - It is currently missing huge amounts of functionality
+
     Revision 1.50  2008/04/06 22:23:28  gbeeley
     - (security) adding option enable_send_credentials in centrallix.conf,
       which defaults to 1 but is set to 0 in the default configuration.  This
@@ -729,7 +734,9 @@ cxInitialize(void* v)
 	uxdInitialize();			/* UNIX filesystem driver */
 #if 0
 	sybdInitialize();			/* Sybase CT-lib driver */
+	mysdInitialize();			/* MySQL driver */
 #endif
+
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
 	rptInitialize();			/* report writer driver */
@@ -767,6 +774,7 @@ cxInitialize(void* v)
 #endif
 
 #ifndef WITH_DYNAMIC_LOAD
+
 #ifdef USE_HTTP
 	httpInitialize();
 #endif
@@ -777,6 +785,10 @@ cxInitialize(void* v)
 
 #ifdef USE_SYBASE
 	sybdInitialize();
+#endif
+
+#ifdef USE_MYSQL
+	mysdInitialize();			/* MySQL driver */
 #endif
 
 #ifdef USE_XML
