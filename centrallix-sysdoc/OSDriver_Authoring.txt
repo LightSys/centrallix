@@ -34,6 +34,7 @@ VI  NETWORK CONNECTION FUNCTIONALITY
     A.  MTASK's network library - NET, FD
 VII PARSING DATA
     A.  The MTLEXER (MLX) lexical analyzer / tokenizer
+VIII TESTING
 
 -------------------------------------------------------------------------------
 
@@ -1710,6 +1711,197 @@ VII PARSING DATA
 	    NOTE:  If using a StringSession instead of a pFile session, this
 	    may not be accurate, as the string may have come from the middle
 	    of a file somewhere.  Use with care.
+
+
+VIII OBJECTSYSTEM DRIVER TESTING
+
+    This section contains a list of things that can be done to test an
+    objectsystem driver, to make sure that it is performing all basic
+    operations normally.  We will use the test_obj command line interface for
+    testing here.  For more information on test_obj commands, see the online
+    Centrallix documentation at:  http://www.centrallix.net/docs/docs.php
+
+    Testing for memory leaks for each of these items is strongly encouraged,
+    by watching memory utilization using nmDeltas() during repetitive
+    operations (e.g., nmDeltas(), open, close, nmDeltas(), open, close, and
+    then nmDeltas() again).
+
+    Testing for more general bugs using the "valgrind" tool is also strongly
+    encouraged, via running these various tests in test_obj while test_obj is
+    running under valgrind.
+
+    Magic number checking on data structures is encouraged.  To use magic
+    number checking, determine a magic number value for each of your
+    structures, and code that as a constant #define in your code.  The magic
+    number should be a 32-bit integer, possibly with 0x00 in either the 2nd or
+    3rd byte of the integer.  Many existing magic number values can be found
+    in the file "magic.h" in centrallix-lib.  The 32-bit integer is placed as
+    the first element of the structure, and set using the macro SETMAGIC(),
+    and then tested using the macros ASSERTMAGIC(), and less commonly,
+    ASSERTNOTMAGIC().  ASSERTMAGIC() should be used any time a pointer to the
+    structure crosses an interface boundary.  It also may be used at the entry
+    to internal methods/functions, or when traversing linked lists of data
+    structures, or when retrieving data structures from an array.
+
+    When used in conjunction with nmMalloc() and nmFree(), ASSERTMAGIC also
+    helps to detect the reuse of already-freed memory, since nmFree() tags the
+    first four bytes of the memory block with the constant MGK_FREEMEM.
+    nmFree() also looks for the constant MGK_FREEMEM in the magic number slot
+    to detect already-freed memory (so do not use that same constant for your
+    own magic numbers).
+
+    To properly test under Valgrind, centrallix-lib must be compiled with the
+    configure flag --enable-valgrind-integration turned on.  This disables
+    nmMalloc block caching (so that valgrind can properly detect memory leaks
+    and free memory reuse), and it provides better information to valgrind's
+    analyzer regarding MTASK threads.
+
+    The term "MUST", as used here, means that the driver will likely cause
+    problems if the functionality is not present.
+
+    The term "SHOULD" indicates behavior which is desirable, but may not cause
+    problems if not fully implemented.
+
+    The term "MAY" refers to optional, but permissible, behavior.
+
+    A.	Object opening, closing, creation, and deletion
+
+	1.  Any object in the driver's subtree, including the node object
+	    itself, MUST be able to be opened using objOpen() and then closed
+	    using objClose().  Although it does more than just open and close,
+	    the "show" command in test_obj can be useful for testing this.
+
+	2.  New objects within the driver's subtree SHOULD be able to be
+	    created using objOpen with OBJ_O_CREAT, or using objCreate().  The
+	    flags OBJ_O_EXCL and OBJ_O_TRUNC should also be supported, where
+	    meaningful.
+
+	3.  Where possible, OBJ_O_AUTONAME should be supported on object
+	    creation.  With this, the name of the object will be set to "*" in
+	    the pathname structure, and OBJ_O_CREAT will also be set.  The
+	    driver should automatically determine a suitable "name" for the
+	    object, and subsequent calls to objGetAttrValue on "name" should
+	    return the determined name.  A driver MAY choose to return NULL
+	    for "name" until after certain object properties have been set and
+	    an objCommit operation performed.  A driver MUST NOT return "*"
+	    for the object name unless "*" is truly the name chosen for the
+	    object.
+
+	4.  A driver SHOULD support deletion of any object in its subtree with
+	    the exception of the node object itself.  Deletion may be done
+	    directly with objDelete(), or on an already-open object using
+	    objDeleteObj().  A driver MAY refuse to delete an object if the
+	    object still contains deletable sub-objects.  Some objects in the
+	    subtree might inherently not be deletable apart from the parent
+	    objects of said objects.  In those cases, deletion should not
+	    succeed.
+
+    B.	Object attribute enumeration, getting, and setting.
+
+	1.  The driver MUST NOT return system attributes (name, inner_type,
+	    and so forth) when enumerating with objGetFirst/NextAttr.
+
+	2.  The driver does not need to handle objGetAttrType on the system
+	    attributes.  The OSML does this.
+
+	3.  The driver SHOULD support the attribute last_modification if at
+	    all reasonable.  Not all objects can have this property however.
+
+	4.  The driver SHOULD support the attribute "annotation" if reasonable
+	    to do so.  Database drivers should have a configurable "row
+	    annotation expression" to auto-generate annotations from existing
+	    row content, where reasonable.  The driver MAY permit the user to
+	    directly set annotation values.  The driver MUST return an empty
+	    string ("") for any annotation values that are unavailable.
+
+	5.  Drivers MUST coherently name EVERY object.  Names MUST be unique
+	    in any given "directory".
+
+	6.  Drivers MAY choose to omit some attributes from normal attribute
+	    enumeration.
+
+	7.  The "show" command in test_obj is a good way to display a list of
+	    attributes for an object.
+
+	8.  Attribute enumeration, retrieval, and modification MUST work
+	    equally well on objects returned by objOpen() and objects returned
+	    by objQueryFetch().
+
+	9.  If a driver returns an attribute during attribute enumeration,
+	    then that attribute MUST return a valid type via objGetAttrType.
+
+	10. A driver MUST return -1 and error with a "type mismatch" type of
+	    error from objGet/SetAttrValue, if the data type is inappropriate.
+
+	11. A driver MAY choose to perform auto-conversion of data types on
+	    certain attributes, but SHOULD NOT perform such auto conversion
+	    on a widespread wholesale basis.
+
+	12. A driver MAY support the DATA_T_CODE attribute data type.
+
+	13. Drivers MAY support DATA_T_INTVEC and DATA_T_STRINGVEC.
+
+	14. Drivers MAY support objAddAttr and objOpenAttr.
+
+	15. Drivers MAY support methods on objects.  Objects without any
+	    methods should be indicated by a NULL return value from the method
+	    enumeration functions.
+
+	16. When returning attribute values, the value MUST remain valid at
+	    least until the next call to objGetAttrValue, objSetAttrValue, or
+	    objGetAttrType, or until the object is closed, whichever occurs
+	    first.  Drivers MUST NOT require the caller to free attribute
+	    memory.
+
+	17. When objSetAttrValue is used, drivers MUST NOT depend on the
+	    referenced value (in the POD) being valid past the end of the call
+	    to objSetAttrValue().
+
+    C.	Object querying (for subobjects)
+
+	1.  If an object cannot support queries for subobjects, the OpenQuery
+	    call SHOULD fail.
+
+	2.  If an object can support the existence of subobjects, but has no
+	    subobjects, the OpenQuery should succeed, but calls to QueryFetch
+	    MUST return NULL.
+
+	3.  Objects returned by QueryFetch MUST remain valid even after the
+	    query is closed using QueryClose.
+
+	4.  Objects returned by QueryFetch MUST also be able to be passed to
+	    OpenQuery to check for the existence of further subobjects, though
+	    the OpenQuery call is permitted to fail as in (C)(1) above.
+
+	5.  Any name returned by objGetAttrValue(name) on a queried subobject
+	    MUST be able to be used to open the same object using objOpen().
+
+	6.  Drivers which connect to resources which are able to perform
+	    sorting and/or selection (filtering) of records or objects SHOULD
+	    use the OBJ_QY_F_FULLSORT and OBJ_QY_F_FULLQUERY flags (see
+	    previous discussion) as well as pass on the sorting and filtering
+	    expressions to the remote resource so that resource can do the
+	    filtering and/or sorting.
+
+	7.  If the driver's remote resource can filter and/or sort, but can
+	    only do so imperfectly (e.g., the resource cannot handle the
+	    potential complexity of all sorting/selection expressions, but can
+	    handle parts of them), then OBJ_QY_F_FULLSORT and/or OBJ_QY_F_FULL-
+	    QUERY MUST NOT be used.  However the remote resource MAY still
+	    provide partial sorting and/or selection of data.
+
+	8.  Drivers SHOULD NOT use OBJ_QY_F_FULLSORT and OBJ_QY_F_FULLQUERY if
+	    there is no advantage to letting the resource perform these
+	    operations (usually, however, if the resource provides such
+	    functionality, there is advantage to letting the resource perform
+	    those operations.  However, the coding burden to provide the
+	    filtering and sorting expressions to the resource, and in the
+	    correct format for the resource, may be not worth the work).
+
+	9.  Testing of query functionality can be done via test_obj's "query",
+	    "csv", and "ls" (or "list") commands.  To test for nested querying
+	    of objects returned from QueryFetch, a SUBTREE select can be used
+	    with the "query" or "csv" commands.
 
 -------------------------------------------------------------------------------
 
