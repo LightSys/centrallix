@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.74 2008/07/16 00:34:57 thr4wn Exp $
+    $Id: ht_render.c,v 1.75 2008/07/24 21:30:31 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.75  2008/07/24 21:30:31  thr4wn
+    -(bug fix) fixed a bug I previously coded that generated a null pointer dereference
+
     Revision 1.74  2008/07/16 00:34:57  thr4wn
     Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
 
@@ -1148,7 +1151,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 #endif
 
 	/** Save the current va_list state so we can retry it. **/
-	__va_copy(orig_va,va);
+	orig_va = va;
 
 	/** Attempt to print the thing to the tmpbuf. **/
 	while(1)
@@ -1807,13 +1810,13 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    }
 
 	/** Deploy the widget **/
-	objinit = inf?(inf->ObjectLinkage):"\"{}\"";
-	ctrinit = inf?(inf->ContainerLinkage):"\"_obj\"";
+	objinit = inf?(inf->ObjectLinkage):NULL;
+	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
 		"        %STR&*LEN{name:'%STR&SYM', obj:%STR, cobj:%STR, type:'%STR&JSSTR', vis:%STR, sub:", 
 		indent*4, "                                        ",
-		tree->Name, objinit,
-		ctrinit,
+		tree->Name, objinit?objinit:"\"new Object()\"",
+		ctrinit?ctrinit:"\"_obj\"",
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
