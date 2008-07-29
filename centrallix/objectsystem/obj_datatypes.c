@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.22 2008/07/22 21:44:49 jncraton Exp $
+    $Id: obj_datatypes.c,v 1.23 2008/07/29 19:32:59 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.23  2008/07/29 19:32:59  jncraton
+    - (feature) added objFormatDateTmp to return a formatted date string
+    - (feature) added objFormatMoneyTmp to return a formatted money string
+    - (change) renamed format 'mysql' to 'ISO' in objDataToDateTime
+      it creates a datetime from a string like: yyyy-mm-dd hh:mm:ss
+
     Revision 1.22  2008/07/22 21:44:49  jncraton
     - added support to convert MySQL dates given the format 'mysql'
 
@@ -332,7 +338,7 @@ obj_internal_SetDateLang(char* dest_array[], int array_cnt, char* src_array[])
  *** value.
  ***/
 int
-obj_internal_FormatDate(pDateTime dt, char* str)
+obj_internal_FormatDate(pDateTime dt, char* str, char* format)
     {
     char* fmt;
     char* myfmt;
@@ -341,7 +347,7 @@ obj_internal_FormatDate(pDateTime dt, char* str)
     char *Lwptr, *LWptr, *Lmptr, *LMptr;
 
     	/** Get the current date format. **/
-	fmt = mssGetParam("dfmt");
+	if(format) fmt=format; else fmt = mssGetParam("dfmt");
 	if (!fmt) fmt = obj_default_date_fmt;
 	myfmt = nmSysStrdup(fmt);
 
@@ -518,12 +524,27 @@ obj_internal_FormatDate(pDateTime dt, char* str)
     return 0;
     }
 
+ /*** objFormatDateTmp - formats a date/time value to a tmp buffer
+ *** returns a pointer to the date string
+ ***/
+char*
+objFormatDateTmp(pDateTime dt, char* format)
+    {
+    /** this should hold the datetime data just fine 
+     ** but format strings better not be user supplied...
+     **/
+    static char tmp[80];
+    
+        if(obj_internal_FormatDate(dt,tmp,format)) return NULL;
+    return tmp;
+    }
+
 
 /*** obj_internal_FormatMoney - format a money data type into a string
  *** using the default format or the one stored in the session.
  ***/
 int
-obj_internal_FormatMoney(pMoneyType m, char* str)
+obj_internal_FormatMoney(pMoneyType m, char* str, char* format)
     {
     char* fmt;
     char* ptr;
@@ -539,7 +560,8 @@ obj_internal_FormatMoney(pMoneyType m, char* str)
     int orig_print_whole;
 
     	/** Get the format **/
-	fmt = mssGetParam("mfmt");
+    if(format) fmt = format;
+	else fmt = mssGetParam("mfmt");
 	if (!fmt) fmt = obj_default_money_fmt;
 	start_fmt = fmt;
 
@@ -687,6 +709,21 @@ obj_internal_FormatMoney(pMoneyType m, char* str)
     }
 
 
+/*** objFormatMoneyTmp - formats a money value to a tmp buffer
+ *** returns pointer to the money string
+ ***/
+char*
+objFormatMoneyTmp(pMoneyType m, char* format)
+    {
+    /** this should hold the money data just fine 
+     ** but format strings better not be user supplied...
+     **/
+    static char tmp[64]; 
+    
+        if(obj_internal_FormatMoney(m,tmp,format)) return NULL;
+    return tmp;
+    }
+
 /*** objDataToString - concatenates the string representation of the given
  *** data type onto the end of the given XString.
  ***/
@@ -744,7 +781,7 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        m = (pMoneyType)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
-		obj_internal_FormatMoney(m, sbuf + strlen(sbuf));
+		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL);
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
 		xsConcatenate(dest, sbuf, -1);
 		break;
@@ -753,7 +790,7 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
-		obj_internal_FormatDate(d, sbuf + strlen(sbuf));
+		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL);
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
 		xsConcatenate(dest, sbuf, -1);
 		break;
@@ -1049,7 +1086,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        m = (pMoneyType)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
-		obj_internal_FormatMoney(m, sbuf + strlen(sbuf));
+		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL);
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
 		break;
 
@@ -1057,7 +1094,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
-		obj_internal_FormatDate(d, sbuf + strlen(sbuf));
+		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL);
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
 		break;
 
@@ -1122,18 +1159,21 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     struct tm *t;
     time_t int_time;
     int reversed_day=0;
-    int mysql = 0;
+    int iso = 0;
 
     	/** Only accept string... **/
 	if (data_type != DATA_T_STRING) return -1;
 
-	/** Check for reversed days (ie, international format, dd-mm-yyyy)
-	 ** Default is to interpret as mm-dd-yyyy (U.S. format)
+	/** Default is to interpret as mm-dd-yyyy (U.S. format)
+	 ** "II" uses the more common non-U.S. format, dd-mm-yyyy
+	 ** "ISO" uses an international format similar to ISO 8601: 
+	 ** 		yyyy-mm-dd hh:mm:ss
+	 ** this provides the standard format for many SQL engines
 	 **/
 	if (format)
 	    {
 	    if (!strncmp(format,"II",2)) reversed_day = 1;
-	    if (!strncmp(format,"mysql",5)) mysql = 1;
+	    if (!strncmp(format,"ISO",5)) iso = 1;
 	    }
 
 	startptr = (char*)data_ptr;
@@ -1164,7 +1204,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		        if (got_day == -1) got_day = last_num-1;
 		        else if (got_mo == -1) got_mo = last_num-1;
 			}
-		    else if(mysql)
+		    else if(iso)
 			{
 			if (got_yr == -1) got_yr = last_num;
 			else if (got_mo == -1) got_mo = last_num-1;
