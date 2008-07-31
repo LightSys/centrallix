@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.23 2008/07/29 19:32:59 jncraton Exp $
+    $Id: obj_datatypes.c,v 1.24 2008/07/31 00:10:58 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.24  2008/07/31 00:10:58  jncraton
+    - (change) Modified internal_FormatDate and internal_FormatMoney to do length
+      checking and make use of XString
+
     Revision 1.23  2008/07/29 19:32:59  jncraton
     - (feature) added objFormatDateTmp to return a formatted date string
     - (feature) added objFormatMoneyTmp to return a formatted money string
@@ -338,14 +342,18 @@ obj_internal_SetDateLang(char* dest_array[], int array_cnt, char* src_array[])
  *** value.
  ***/
 int
-obj_internal_FormatDate(pDateTime dt, char* str, char* format)
+obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
     {
     char* fmt;
     char* myfmt;
     int append_ampm = 0;
     char *Lw[7], *LW[7], *Lm[12], *LM[12];
     char *Lwptr, *LWptr, *Lmptr, *LMptr;
-
+    char tmp[20];
+    XString xs;
+	
+	xsInit(&xs);
+    
     	/** Get the current date format. **/
 	if(format) fmt=format; else fmt = mssGetParam("dfmt");
 	if (!fmt) fmt = obj_default_date_fmt;
@@ -378,20 +386,20 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 	        if (fmt[1] == 'd' && fmt[2] == 'd')
 		    {
 		    if (dt->Part.Day == 0 || dt->Part.Day == 20 || dt->Part.Day == 30)
-		        sprintf(str,"%dst",dt->Part.Day+1);
+		        sprintf(tmp,"%dst",dt->Part.Day+1);
 		    else if (dt->Part.Day == 1 || dt->Part.Day == 21)
-		        sprintf(str,"%dnd",dt->Part.Day+1);
+		        sprintf(tmp,"%dnd",dt->Part.Day+1);
 		    else if (dt->Part.Day == 2 || dt->Part.Day == 22)
-		        sprintf(str,"%drd",dt->Part.Day+1);
+		        sprintf(tmp,"%drd",dt->Part.Day+1);
 		    else
-		        sprintf(str,"%dth",dt->Part.Day+1);
-		    str = memchr(str,'\0',16);
+		        sprintf(tmp,"%dth",dt->Part.Day+1);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt+=2;
 		    }
 		else if (fmt[1] == 'd')
 		    {
-		    sprintf(str,"%2.2d",dt->Part.Day+1);
-		    str+=2;
+		    sprintf(tmp,"%2.2d",dt->Part.Day+1);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
@@ -401,20 +409,18 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 	    case 'M':
 	        if (fmt[1] == 'M' && fmt[2] == 'M' && fmt[3] == 'M')
 		    {
-		    strcpy(str,obj_long_months[dt->Part.Month]);
-		    str = memchr(str,'\0',16);
+		    xsConcatenate(&xs,obj_long_months[dt->Part.Month], -1);
 		    fmt+=3;
 		    }
 		else if (fmt[1] == 'M' && fmt[2] == 'M')
 		    {
-		    strcpy(str,obj_short_months[dt->Part.Month]);
-		    str+=3;
+		    xsConcatenate(&xs,obj_short_months[dt->Part.Month], -1);
 		    fmt+=2;
 		    }
 		else if (fmt[1] == 'M')
 		    {
-		    sprintf(str,"%2.2d",dt->Part.Month+1);
-		    str+=2;
+		    sprintf(tmp,"%2.2d",dt->Part.Month+1);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
@@ -423,14 +429,14 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 	    case 'y':
 	        if (fmt[1] == 'y' && fmt[2] == 'y' && fmt[3] == 'y')
 		    {
-		    sprintf(str,"%4.4d",dt->Part.Year+1900);
-		    str+=4;
+		    sprintf(tmp,"%4.4d",dt->Part.Year+1900);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt+=3;
 		    }
 		else if (fmt[1] == 'y')
 		    {
-		    sprintf(str,"%2.2d",dt->Part.Year % 100);
-		    str+=2;
+		    sprintf(tmp,"%2.2d",dt->Part.Year % 100);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
@@ -439,8 +445,8 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 	    case 'H':
 	        if (fmt[1] == 'H')
 		    {
-		    sprintf(str,"%2.2d",dt->Part.Hour);
-		    str+=2;
+		    sprintf(tmp,"%2.2d",dt->Part.Hour);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
@@ -450,8 +456,8 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 	    case 'h':
 	        if (fmt[1] == 'h')
 		    {
-		    sprintf(str,"%2.2d",((dt->Part.Hour%12)==0)?12:(dt->Part.Hour%12));
-		    str+=2;
+		    sprintf(tmp,"%2.2d",((dt->Part.Hour%12)==0)?12:(dt->Part.Hour%12));
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
@@ -459,40 +465,40 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 		if (append_ampm && (*fmt == ' ' || *fmt == ',' || *fmt == '\0'))
 		    {
 		    append_ampm = 0;
-		    strcpy(str,(dt->Part.Hour >= 12)?"PM":"AM");
-		    str+=2;
+		    strcpy(tmp,(dt->Part.Hour >= 12)?"PM":"AM");
+		    xsConcatenate(&xs, tmp, -1);
 		    }
 		break;
 
 	    case 'm':
 	        if (fmt[1] == 'm')
 		    {
-		    sprintf(str,"%2.2d",dt->Part.Minute);
-		    str+=2;
+		    sprintf(tmp,"%2.2d",dt->Part.Minute);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
 		if (append_ampm && (*fmt == ' ' || *fmt == ',' || *fmt == '\0'))
 		    {
 		    append_ampm = 0;
-		    strcpy(str,(dt->Part.Hour >= 12)?"PM":"AM");
-		    str+=2;
+		    strcpy(tmp,(dt->Part.Hour >= 12)?"PM":"AM");
+		    xsConcatenate(&xs, tmp, -1);
 		    }
 		break;
 
 	    case 's':
 	        if (fmt[1] == 's')
 		    {
-		    sprintf(str,"%2.2d",dt->Part.Second);
-		    str+=2;
+		    sprintf(tmp,"%2.2d",dt->Part.Second);
+		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
 		fmt++;
 		if (append_ampm && (*fmt == ' ' || *fmt == ',' || *fmt == '\0'))
 		    {
 		    append_ampm = 0;
-		    strcpy(str,(dt->Part.Hour >= 12)?"PM":"AM");
-		    str+=2;
+		    strcpy(tmp,(dt->Part.Hour >= 12)?"PM":"AM");
+		    xsConcatenate(&xs, tmp, -1);
 		    }
 		break;
 
@@ -514,14 +520,24 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format)
 		break;
 
 	    default:
-	        *(str++) = *(fmt++);
+		xsConcatenate(&xs, fmt, 1);
+		fmt++;
 		break;
 	    }
-	*str = '\0';
 
 	nmSysFree(myfmt);
-
-    return 0;
+	
+	if(strlen(xs.String) < length)
+	    {
+	    strcpy(str,xs.String);
+	    xsDeInit(&xs);
+	    return 0;
+	    }
+	else
+	    {
+	    xsDeInit(&xs);
+	    return -1;
+	    }
     }
 
  /*** objFormatDateTmp - formats a date/time value to a tmp buffer
@@ -535,7 +551,7 @@ objFormatDateTmp(pDateTime dt, char* format)
      **/
     static char tmp[80];
     
-        if(obj_internal_FormatDate(dt,tmp,format)) return NULL;
+        if(obj_internal_FormatDate(dt,tmp,format,80)) return NULL;
     return tmp;
     }
 
@@ -544,7 +560,7 @@ objFormatDateTmp(pDateTime dt, char* format)
  *** using the default format or the one stored in the session.
  ***/
 int
-obj_internal_FormatMoney(pMoneyType m, char* str, char* format)
+obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
     {
     char* fmt;
     char* ptr;
@@ -558,9 +574,13 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format)
     int d;
     char* start_fmt;
     int orig_print_whole;
+    char tmp[20];
+    XString xs;
+    
+	xsInit(&xs);
 
-    	/** Get the format **/
-    if(format) fmt = format;
+	/** Get the format **/
+	if(format) fmt = format;
 	else fmt = mssGetParam("mfmt");
 	if (!fmt) fmt = obj_default_money_fmt;
 	start_fmt = fmt;
@@ -631,27 +651,27 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format)
 		    if (d != 0 || *fmt == '0' || *fmt == '^') suppressing_zeros = 0;
 		    if (suppressing_zeros)
 		        {
-			if (*fmt == ' ') *(str++) = ' ';
-			else if (*fmt == '*') *(str++) = '*';
+			if (*fmt == ' ') xsConcatenate(&xs," ",1);
+			else if (*fmt == '*') xsConcatenate(&xs," ",1);
 			}
 		    else
 		        {
-			sprintf(str,"%d",d);
-			str = memchr(str,'\0',24);
+			sprintf(tmp,"%d",d);
+			xsConcatenate(&xs,tmp,-1);
 			}
 		    break;
 
                 case ',':
 		    if (!suppressing_zeros) 
 		        {
-			*(str++) = ',';
+			xsConcatenate(&xs,",",1);
 			}
 		    else
 		        {
 			/** Replace comma with space if no digits and surrounded by placeholders **/
 			if (!((start_fmt != fmt && fmt[-1] == '#') || fmt[1] == '#'))
 			    {
-			    *(str++) = ' ';
+			    xsConcatenate(&xs," ",1);
 			    }
 			}
 		    break;
@@ -659,43 +679,43 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format)
                 case '.':
 		    if (print_whole != 0)
 		        {
-			sprintf(str,"%d",print_whole);
-			str = memchr(str,'\0',24);
+			sprintf(tmp,"%d",print_whole);
+			xsConcatenate(&xs,tmp,1);
 			}
                     in_decimal_part = 1;
 		    suppressing_zeros = 0;
 		    tens_multiplier = 1000;
-		    *(str++) = '.';
+		    xsConcatenate(&xs,".",1);
                     break;
     
                 case '-':
-		    if (orig_print_whole >= 0) *(str++) = ' ';
-		    else *(str++) = '-';
+		    if (orig_print_whole >= 0) xsConcatenate(&xs," ",1);
+		    else xsConcatenate(&xs,"-",1);
 		    break;
 
                 case '+':
-		    if (orig_print_whole >= 0) *(str++) = '+';
-		    else *(str++) = '-';
+		    if (orig_print_whole >= 0) xsConcatenate(&xs,"+",1);
+		    else xsConcatenate(&xs,"-",1);
 		    break;
 
                 case '[':
-		    if (orig_print_whole >= 0) *(str++) = '(';
-		    else *(str++) = ' ';
+		    if (orig_print_whole >= 0) xsConcatenate(&xs,"(",1);
+		    else xsConcatenate(&xs," ",1);
 		    break;
 
                 case '(':
-		    if (orig_print_whole < 0) *(str++) = '(';
-		    else *(str++) = ' ';
+		    if (orig_print_whole < 0) xsConcatenate(&xs,"(",1);
+		    else xsConcatenate(&xs," ",1);
 		    break;
 
                 case ']':
-		    if (orig_print_whole >= 0) *(str++) = ')';
-		    else *(str++) = ' ';
+		    if (orig_print_whole >= 0) xsConcatenate(&xs,")",1);
+		    else xsConcatenate(&xs," ",1);
 		    break;
 
                 case ')':
-		    if (orig_print_whole < 0) *(str++) = ')';
-		    else *(str++) = ' ';
+		    if (orig_print_whole < 0) xsConcatenate(&xs,")",1);
+		    else xsConcatenate(&xs," ",1);
 		    break;
 
                 default:
@@ -703,9 +723,18 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format)
                 }
 	    fmt++;
 	    }
-	*str = '\0';
 
-    return 0;
+	if(strlen(xs.String) < length)
+	    {
+	    strcpy(str,xs.String);
+	    xsDeInit(&xs);
+	    return 0;
+	    }
+	else
+	    {
+	    xsDeInit(&xs);
+	    return -1;
+	    }
     }
 
 
@@ -720,7 +749,7 @@ objFormatMoneyTmp(pMoneyType m, char* format)
      **/
     static char tmp[64]; 
     
-        if(obj_internal_FormatMoney(m,tmp,format)) return NULL;
+        if(obj_internal_FormatMoney(m,tmp,format,64)) return NULL;
     return tmp;
     }
 
@@ -781,7 +810,7 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        m = (pMoneyType)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
-		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL);
+		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
 		xsConcatenate(dest, sbuf, -1);
 		break;
@@ -790,7 +819,7 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
-		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL);
+		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
 		xsConcatenate(dest, sbuf, -1);
 		break;
@@ -1086,7 +1115,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        m = (pMoneyType)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
-		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL);
+		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
 		break;
 
@@ -1094,7 +1123,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
-		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL);
+		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
 		break;
 
