@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.42 2008/04/06 20:34:31 gbeeley Exp $
+    $Id: test_obj.c,v 1.43 2008/08/13 21:20:24 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.43  2008/08/13 21:20:24  jncraton
+    - (bugfix) Presentation hints are now freed properly
+
     Revision 1.42  2008/04/06 20:34:31  gbeeley
     - (bugfix) "csv" command was outputting CSV strings encoded improperly.
     - (cleanup) use rl_insert instead of rl_insert_text for rl_bind_key when
@@ -547,7 +550,7 @@ testobj_show_attr(pObject obj, char* attrname)
 	    if (hints->DefaultExpr != NULL) { fdPrintf(TESTOBJ.Output,"DefaultExpr="); printExpression(hints->DefaultExpr); }
 	    if (hints->MinValue != NULL) { fdPrintf(TESTOBJ.Output,"MinValue="); printExpression(hints->MinValue); }
 	    if (hints->MaxValue != NULL) { fdPrintf(TESTOBJ.Output,"MaxValue="); printExpression(hints->MaxValue); }
-	    nmFree(hints, sizeof(ObjPresentationHints));
+	    objFreeHints(hints);
 	    fdPrintf(TESTOBJ.Output,"]\n");
 	    }
 
