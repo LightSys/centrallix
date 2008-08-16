@@ -1,0 +1,154 @@
+
+digraph Centrallix {
+	style=dotted;
+	clusterrank=local;
+	splines=false
+
+
+	Browser;
+	subgraph cluster4 {
+		label="centrallix/"
+
+		subgraph cluster0 {
+			label="lsmain.c";
+			style="dashed";
+
+			main;
+			start;
+		}
+		subgraph cluster1 {
+			label="centrallix.c";
+			style="dashed";
+
+			cxInitialize;
+			cxHtInit;
+			cxNetworkInit;
+		}
+		subgraph cluster5 {
+			label="netdrivers/"
+
+			subgraph cluster41 {
+				label="net_http.h";
+				style="dashed";
+
+				recordconn [shape=record label="\n(NhtConn)|{<ConnFD>ConnFD}"];
+				recordconnfd [shape=record label="\n(File)"];
+			}
+			subgraph cluster2 {
+				label="net_http.c"
+				style="dashed";
+
+				nhtInitialize;
+				nht_internal_GET;
+			}
+			subgraph cluster3 {
+				label="net_http_conn.c";
+				style="dashed";
+
+				nht_internal_Handler;
+				nht_internal_ConnHandler;
+			}
+			subgraph cluster6 {
+				label="net_http_osml.c";
+				style="dashed";
+
+				nht_internal_ConstructPathname;
+			}
+			subgraph cluster40 {
+				label="net_http_app.c";
+				style="dashed";
+
+				nhtRenderApp;
+			}
+		}
+		subgraph cluster7 {
+			label="wgtr/";
+
+			subgraph cluster8 {
+				label="wgtr.c";
+				style="dashed";
+
+				WGTR [shape=record label="WGTR\n()|{<Methods>Methods|<Drivers>Drivers|<DriversByType>DriversByType|<SerialID>SerialID}"];
+
+				wgtrVerify;
+				wgtrParseOpenObject;
+				wgtrRender;
+			}
+			subgraph cluster9 {
+				label="apos.c";
+				style="dashed";
+
+				aposAutoPositionWidgetTree;
+			}
+		}
+		subgraph cluster10 {
+			label="htmlgen/"
+
+			recordsession [shape=record label="\n(HtSession)|{<Class>Class|<Page>Page}"];
+			recorddhtml [shape=record label="\n(HtClass)|<WidgetDrivers>WidgetDrivers"];
+
+			subgraph cluster11 {
+				label="ht_render.c"
+				style="dashed";
+
+				output [shape=record];
+
+				"htrAdd*"
+//				htrAddScriptInit;
+//				htrAddScriptGlobal;
+//				htrAddStylesheetItem;
+//				htrAddEventHandlerFunction;
+//				htrAddBodyItem;
+				htrRender;
+				htrRenderWidget;
+				htrBuildClientWgtr;
+				htr_internal_BuildClientWgtr_r;
+				htr_internal_initNamespace;
+			}
+			subgraph cluster12 {
+				label="htdrv_*.c"
+				style="dashed"
+
+				"*Render";
+			}
+		}
+	}
+
+
+	Browser -> nht_internal_Handler [style=dotted];
+	main -> start [arrowtail=tee];
+	start -> cxInitialize [arrowhead=inv];
+	start -> cxHtInit [arrowhead=inv];
+	start -> cxNetworkInit [arrowhead=inv];
+	cxNetworkInit -> nhtInitialize [arrowhead=inv];
+	nhtInitialize -> nht_internal_Handler [arrowtail=tee];
+	nht_internal_Handler -> nht_internal_ConnHandler [arrowtail=tee];
+	nht_internal_ConnHandler -> nht_internal_ConstructPathname [arrowhead=inv];
+	nht_internal_ConnHandler -> nht_internal_GET [arrowhead=inv];
+	nht_internal_GET -> nhtRenderApp [arrowhead=inv];
+	nhtRenderApp -> wgtrVerify [arrowhead=inv];
+	wgtrVerify -> aposAutoPositionWidgetTree [arrowhead=inv];
+	nhtRenderApp -> wgtrParseOpenObject [arrowhead=inv];
+	nhtRenderApp -> wgtrRender [arrowhead=inv];
+	htrRender -> htrRenderWidget [arrowhead=inv];
+	htrRender -> htrBuildClientWgtr [arrowhead=inv];
+	htrBuildClientWgtr -> htr_internal_BuildClientWgtr_r [arrowhead=inv];
+	htrRender -> htr_internal_initNamespace [arrowhead=inv];
+	"*Render" -> "htrAdd*" [arrowhead=inv];
+	htrRenderWidget -> recorddhtml:WidgetDrivers:w [arrowhead=inv constraint=false];
+	"*Render" -> htrRenderWidget [arrowhead=inv constraint=false penwidth=.25];
+
+
+	wgtrRender -> WGTR:Methods:w [arrowhead=inv ];
+	WGTR:Methods:e -> htrRender[style=dotted];
+	recordsession:Class:e -> recorddhtml [style=dotted];
+	recorddhtml:WidgetDrivers:e -> "*Render" [style=dotted];
+	"htrAdd*" -> recordsession:Page:w [arrowhead=vee];
+	recordconn:ConnFD:e -> recordconnfd [style=dotted];
+	output -> recordconnfd:w [style=dotted constraint=false color=brown];
+
+
+	recordsession:Page:w -> htrRender [color=brown constraint=false];
+	htrRender -> output [color=brown arrowhead=vee];
+	recordconnfd:w -> Browser [color=brown constraint=false];
+}
