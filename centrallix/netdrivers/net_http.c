@@ -33,10 +33,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.86 2008/08/16 00:31:38 thr4wn Exp $
+    $Id: net_http.c,v 1.87 2008/08/16 00:49:27 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.87  2008/08/16 00:49:27  thr4wn
+    There was one last renaming of a function I forgot about in order for
+    Centrallix to actually compile :P
+
     Revision 1.86  2008/08/16 00:31:38  thr4wn
     I made some more modification of documentation and begun logic for
     caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
@@ -1403,7 +1407,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    //|| (objpath = objGetPathname(obj)) && wgtrMergeOverlays(tree, objpath, client_info->AppPath, client_info->Overlays, client_info->Templates) < 0 )
 		    //|| nht_internal_Parse_and_Cache_an_App(target_obj, url_inf, &wgtr_params, nsess, &tree) < 0
 		    //|| nht_internal_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
-		if (htrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
+		if (nhtRenderApp(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
 		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
@@ -1413,20 +1417,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    if (lptr) nmSysFree(lptr);
 		    return -1;
 		    }
-#if 0
-		// store into cache;
-		if (wgtrVerify(tree, client_info) < 0)
-		    {
-		    if(tree) wgtrFree(tree);
-		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
-		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
-		    mssPrintError(conn->ConnFD);
-		    objClose(target_obj);
-		    if (tptr) nmSysFree(tptr);
-		    if (lptr) nmSysFree(lptr);
-		    return -1;
-		    }
-#endif
 		if (tptr) nmSysFree(tptr);
 		if (lptr) nmSysFree(lptr);
 	        }
