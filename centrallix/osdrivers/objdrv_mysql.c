@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mysql.c,v 1.2 2008/07/31 17:57:56 jncraton Exp $
+    $Id: objdrv_mysql.c,v 1.3 2008/08/16 00:53:24 jncraton Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mysql.c,v $
 
     $Log: objdrv_mysql.c,v $
+    Revision 1.3  2008/08/16 00:53:24  jncraton
+    - (change) added some functionality and fixed some bugs
+    - I'm done for the summer, so this will be my last commit
+
     Revision 1.2  2008/07/31 17:57:56  jncraton
     - (feature) lots more things work now
     - (change) lots of bugs/leaks were fixed
@@ -66,20 +70,27 @@
 
  **END-CVSDATA***********************************************************/
 
-#define MYSQLD_MAX_COLS                256
-#define MYSQLD_MAX_KEYS                8
-#define MYSQLD_NAME_LEN                32
+#define MYSD_MAX_COLS                256
+#define MYSD_MAX_KEYS                8
+#define MYSD_NAME_LEN                32
 #define MYSD_MAX_CONN                16
+
+#define MYSD_NODE_F_USECXAUTH	1	/* use Centrallix usernames/passwords */
+#define MYSD_NODE_F_SETCXAUTH	2	/* try to change empty passwords to Centrallix login passwords */
 
 /*** Node ***/
 typedef struct
     {
     char        Path[OBJSYS_MAX_PATH];
     char        Server[64];
-    char        Database[MYSQLD_NAME_LEN];
-    char        AnnotTable[MYSQLD_NAME_LEN];
+    char        Username[64];
+    char        Password[64];
+    char        DefaultPassword[64];
+    char        Database[MYSD_NAME_LEN];
+    char        AnnotTable[MYSD_NAME_LEN];
     char        Description[256];
     int                MaxConn;
+    int         Flags;
     pSnNode        SnNode;
     XArray        Conns;
     int                ConnAccessCnt;
@@ -87,7 +98,7 @@ typedef struct
     XArray        Tablenames;
     int                LastAccess;
     }
-    MysqlNode, *pMysqlNode;
+    MysdNode, *pMysdNode;
 
 
 /*** Connection data ***/
@@ -96,33 +107,35 @@ typedef struct
     MYSQL        Handle;
     char        Username[64];
     char        Password[64];
-    pMysqlNode        Node;
+    pMysdNode        Node;
     int                Busy;
     int                LastAccess;
     }
-    MysqlConn, *pMysqlConn;
+    MysdConn, *pMysdConn;
 
 
 /*** Table data ***/
 typedef struct
     {
-    char        Name[MYSQLD_NAME_LEN];
-    pMysqlNode        Node;
-    char*        Cols[MYSQLD_MAX_COLS];
-    unsigned char ColFlags[MYSQLD_MAX_COLS];
-    char*        ColTypes[MYSQLD_MAX_COLS];
-    unsigned char ColCxTypes[MYSQLD_MAX_COLS];
-    unsigned char ColKeys[MYSQLD_MAX_COLS];
-    unsigned short ColLengths[MYSQLD_MAX_COLS];
+    char        Name[MYSD_NAME_LEN];
+    unsigned char ColFlags[MYSD_MAX_COLS];
+    unsigned char ColCxTypes[MYSD_MAX_COLS];
+    unsigned char ColKeys[MYSD_MAX_COLS];
+    char*        Cols[MYSD_MAX_COLS];
+    char*        ColTypes[MYSD_MAX_COLS];
+    unsigned int ColLengths[MYSD_MAX_COLS];
+    pObjPresentationHints ColHints[MYSD_MAX_COLS];
     int                nCols;
-    char*        Keys[MYSQLD_MAX_KEYS];
-    int                KeyCols[MYSQLD_MAX_KEYS];
+    char*        Keys[MYSD_MAX_KEYS];
+    int                KeyCols[MYSD_MAX_KEYS];
     int                nKeys;
+    pMysdNode        Node;
     }
-    MysqlTable, *pMysqlTable;
+    MysdTable, *pMysdTable;
 
-#define MYSQLD_COL_F_NULL        1        /* column allows nulls */
-#define MYSQLD_COL_F_PRIKEY        2        /* column is part of primary key */
+#define MYSD_COL_F_NULL         1       /* column allows nulls */
+#define MYSD_COL_F_PRIKEY       2       /* column is part of primary key */
+#define MYSD_COL_F_UNSIGNED     4       /* Flag for unsigned on integer fields */
 
 
 /*** Structure used by this driver internally. ***/
@@ -134,13 +147,13 @@ typedef struct
     pObject        Obj;
     int                Mask;
     int                CurAttr;
-    pMysqlNode        Node;
+    pMysdNode        Node;
     char*        RowBuf;
     MYSQL_ROW        Row;
     MYSQL_RES *     Result;
-    char*        ColPtrs[MYSQLD_MAX_COLS];
-    unsigned short ColLengths[MYSQLD_MAX_COLS];
-    pMysqlTable        TData;
+    char*        ColPtrs[MYSD_MAX_COLS];
+    unsigned short ColLengths[MYSD_MAX_COLS];
+    pMysdTable        TData;
     union
         {
         DateTime	Date;
@@ -149,7 +162,7 @@ typedef struct
         StringVec	SV;
         } Types;
     }
-    MysqlData, *pMysqlData;
+    MysdData, *pMysdData;
 
 #define MYSD_T_DATABASE        1
 #define MYSD_T_TABLE                2
@@ -159,17 +172,17 @@ typedef struct
 #define MYSD_T_ROW                6
 
 
-#define MYSQLD(x) ((pMysqlData)(x))
+#define MYSD(x) ((pMysdData)(x))
 
 /*** Structure used by queries for this driver. ***/
 typedef struct
     {
-    pMysqlData        Data;
+    pMysdData        Data;
     char                  NameBuf[256];
     XString            Clause;
     int                ItemCnt;
     }
-    MysqlQuery, *pMysqlQuery;
+    MysdQuery, *pMysdQuery;
 
 
 /*** GLOBALS ***/
@@ -180,16 +193,16 @@ struct
     int                             AccessCnt;
     int                             LastAccess;
     }
-    MYSQLD_INF;
+    MYSD_INF;
 
 
 /*** mysd_internal_GetConn() - given a specific database node, get a connection
  *** to the server with a given login (from mss thread structures).
  ***/
-pMysqlConn
-mysd_internal_GetConn(pMysqlNode node)
+pMysdConn
+mysd_internal_GetConn(pMysdNode node)
     {
-    pMysqlConn conn;
+    pMysdConn conn;
     int i, conn_cnt, found;
     int min_access;
     char* username;
@@ -197,12 +210,35 @@ mysd_internal_GetConn(pMysqlNode node)
 
         /** Is one available from the node's connection pool? **/
         conn_cnt = xaCount(&node->Conns);
-        username = mssUserName();
-        password = mssPassword();
+        
+        /** Use system auth? **/
+        if (node->Flags & MYSD_NODE_F_USECXAUTH)
+            {
+            /** Do we have permission to do this? **/
+            if (!(CxGlobals.Flags & CX_F_ENABLEREMOTEPW))
+            {
+            mssError(1,"MYSD","use_system_auth requested, but Centrallix global enable_send_credentials is turned off");
+            return NULL;
+            }
+        
+            /** Get usernamename/password from session **/
+            username = mssUserName();
+            password = mssPassword();
+        
+            if(!username || !password)
+            return NULL;
+            }
+        else
+            {
+            /** Use usernamename/password from node **/
+            username = node->Username;
+            password = node->Password;
+            }
+        
         conn = NULL;
         for(i=0;i<conn_cnt;i++)
             {
-            conn = (pMysqlConn)xaGetItem(&node->Conns, i);
+            conn = (pMysdConn)xaGetItem(&node->Conns, i);
             if (!conn->Busy && !strcmp(username, conn->Username) && !strcmp(password, conn->Password))
                 break;
             conn = NULL;
@@ -214,7 +250,7 @@ mysd_internal_GetConn(pMysqlNode node)
             if (conn_cnt < node->MaxConn)
                 {
                 /** Below pool maximum?  Alloc if so **/
-                conn = (pMysqlConn)nmMalloc(sizeof(MysqlConn));
+                conn = (pMysdConn)nmMalloc(sizeof(MysdConn));
                 if (!conn) return NULL;
                 conn->Node = node;
                 }
@@ -225,7 +261,7 @@ mysd_internal_GetConn(pMysqlNode node)
                 found = -1;
                 for(i=0;i<conn_cnt;i++)
                     {
-                    conn = (pMysqlConn)xaGetItem(&node->Conns, i);
+                    conn = (pMysdConn)xaGetItem(&node->Conns, i);
                     if (!conn->Busy && conn->LastAccess < min_access)
                         {
                         min_access = conn->LastAccess;
@@ -247,7 +283,7 @@ mysd_internal_GetConn(pMysqlNode node)
             if (mysql_init(&conn->Handle) == NULL)
                 {
                 mssError(1, "MYSD", "Memory exhausted");
-                nmFree(conn, sizeof(MysqlConn));
+                nmFree(conn, sizeof(MysdConn));
                 return NULL;
                 }
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)
@@ -255,7 +291,7 @@ mysd_internal_GetConn(pMysqlNode node)
                 mssError(1, "MYSD", "Could not connect to MySQL server [%s], DB [%s]: %s",
                         node->Server, node->Database, mysql_error(&conn->Handle));
                 mysql_close(&conn->Handle);
-                nmFree(conn, sizeof(MysqlConn));
+                nmFree(conn, sizeof(MysdConn));
                 return NULL;
                 }
 
@@ -277,7 +313,7 @@ mysd_internal_GetConn(pMysqlNode node)
  *** pool.  Also sets the pointer to NULL.
  ***/
 void
-mysd_internal_ReleaseConn(pMysqlConn * conn)
+mysd_internal_ReleaseConn(pMysdConn * conn)
     {
 
         /** Release it **/
@@ -304,12 +340,12 @@ mysd_internal_ReleaseConn(pMysqlConn * conn)
 *** All parameters are sanatized with mysql_real_escape_string before
 *** the query is built
 *** This WILL NOT WORK WITH BINARY DATA
- ***/
+***/
 MYSQL_RES*
-mysd_internal_RunQuery(pMysqlNode node, char* stmt, ...)
+mysd_internal_RunQuery(pMysdNode node, char* stmt, ...)
     {
     MYSQL_RES * result = NULL;
-    pMysqlConn conn = NULL;
+    pMysdConn conn = NULL;
     XString query;
     va_list ap;
     int i, j;
@@ -381,7 +417,10 @@ mysd_internal_RunQuery(pMysqlNode node, char* stmt, ...)
         /** insert the last constant bit **/
         if(xsConcatenate(&query,start,-1)) goto error;
 
-        printf("TEST: query=\"%s\"\n",query.String);
+        /** If you want to do something with all the DB queries
+         ** this is the place
+         **/ 
+        /* printf("TEST: query=\"%s\"\n",query.String); */
 
         va_end(ap);
 
@@ -444,10 +483,10 @@ mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
     }
 
 /*** mysd_internal_ParseTData() - given a mysql result set, parse the table
- *** data into a MysqlTable structure.  Returns < 0 on failure.
+ *** data into a MysdTable structure.  Returns < 0 on failure.
  ***/
 int
-mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysqlTable tdata)
+mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysdTable tdata)
     {
     int i;
     MYSQL_ROW row;
@@ -455,8 +494,9 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysqlTable tdata)
     char* pptr;
     char* cptr;
     int len;
+    char* pos;
 
-        if (rowcnt > MYSQLD_MAX_COLS)
+        if (rowcnt > MYSD_MAX_COLS)
             {
             mssError(1,"MYSD","Too many columns (%d) in table [%s]", rowcnt, tdata->Name);
             return -1;
@@ -482,12 +522,20 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysqlTable tdata)
                 if ((cptr = strchr(pptr+1, ',')) != NULL)
                     len = strtol(cptr+1, NULL, 10);
                 }
+                
+            /** set lengths for various text types **/
+            if(!strcmp(data_desc, "tinytext") || !strcmp(data_desc, "tinyblob")) tdata->ColLengths[tdata->nCols] = 0xFF;
+            if(!strcmp(data_desc, "text") || !strcmp(data_desc, "blob")) tdata->ColLengths[tdata->nCols] = 0xFFFF;
+            if(!strcmp(data_desc, "mediumtext") || !strcmp(data_desc, "mediumblob")) tdata->ColLengths[tdata->nCols] = 0xFFFFFF;
+            if(!strcmp(data_desc, "longtext") || !strcmp(data_desc, "longblob")) tdata->ColLengths[tdata->nCols] = 0xFFFFFFFF;
 
             /** Type **/
             tdata->ColTypes[tdata->nCols] = nmSysStrdup(data_desc);
-            if (!strcmp(data_desc, "int") || !strcmp(data_desc, "tinyint") || !strcmp(data_desc, "smallint") || !strcmp(data_desc, "mediumint") || !strcmp(data_desc, "bit"))
+            if (!strcmp(data_desc, "int") || !strcmp(data_desc, "bigint") || !strcmp(data_desc, "tinyint") || !strcmp(data_desc, "smallint") || !strcmp(data_desc, "mediumint") || !strcmp(data_desc, "bit"))
                 tdata->ColCxTypes[tdata->nCols] = DATA_T_INTEGER;
-            else if (!strcmp(data_desc, "char") || !strcmp(data_desc, "varchar"))
+            else if (!strcmp(data_desc, "char") || !strcmp(data_desc, "varchar") 
+                    || !strcmp(data_desc, "text") || !strcmp(data_desc, "tinytext") || !strcmp(data_desc, "mediumtext") || !strcmp(data_desc, "longtext")
+                    || !strcmp(data_desc, "blob") || !strcmp(data_desc, "tinyblob") || !strcmp(data_desc, "mediumblob") || !strcmp(data_desc, "longblob"))
                 tdata->ColCxTypes[tdata->nCols] = DATA_T_STRING;
             else if (!strcmp(data_desc, "float") || !strcmp(data_desc, "double"))
                 tdata->ColCxTypes[tdata->nCols] = DATA_T_DOUBLE;
@@ -498,15 +546,22 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysqlTable tdata)
             else
                 tdata->ColCxTypes[tdata->nCols] = DATA_T_UNAVAILABLE;
 
-            /** Allow nulls **/
             tdata->ColFlags[i] = 0;
+            /** unsigned? **/
+            if(row[1] && (pos = strchr(row[1],'u')))
+                {
+                if(!strcmp(pos,"unsigned")) 
+                    tdata->ColFlags[i] |= MYSD_COL_F_UNSIGNED;
+                }
+            
+            /** Allow nulls **/
             if (row[2] && !strcmp(row[2], "YES"))
-                tdata->ColFlags[i] |= MYSQLD_COL_F_NULL;
+                tdata->ColFlags[i] |= MYSD_COL_F_NULL;
 
             /** Primary Key **/
             if (row[3] && !strcmp(row[3], "PRI"))
                 {
-                if (tdata->nKeys >= MYSQLD_MAX_KEYS)
+                if (tdata->nKeys >= MYSD_MAX_KEYS)
                     {
                     mssError(1,"MYSD","Too many key fields in table [%s]",tdata->Name);
                     return -1;
@@ -515,7 +570,7 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysqlTable tdata)
                 tdata->KeyCols[tdata->nKeys] = tdata->nCols;
                 tdata->ColKeys[tdata->nCols] = tdata->nKeys;
                 tdata->nKeys++;
-                tdata->ColFlags[i] |= MYSQLD_COL_F_PRIKEY;
+                tdata->ColFlags[i] |= MYSD_COL_F_PRIKEY;
                 }
             tdata->nCols++;
             }
@@ -525,16 +580,16 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysqlTable tdata)
 
 /*** mysd_internal_GetTData() - get a table information structure
  ***/
-pMysqlTable
-mysd_internal_GetTData(pMysqlNode node, char* tablename)
+pMysdTable
+mysd_internal_GetTData(pMysdNode node, char* tablename)
     {
     MYSQL_RES * result = NULL;
-    pMysqlTable tdata = NULL;
+    pMysdTable tdata = NULL;
     int length;
     int rowcnt;
 
         /** Value cached already? **/
-        tdata = (pMysqlTable)xhLookup(&node->Tables, tablename);
+        tdata = (pMysdTable)xhLookup(&node->Tables, tablename);
         if (tdata)
             return tdata;
 
@@ -551,15 +606,15 @@ mysd_internal_GetTData(pMysqlNode node, char* tablename)
             goto error;
 
         /** Build the TData **/
-        tdata = (pMysqlTable)nmMalloc(sizeof(MysqlTable));
+        tdata = (pMysdTable)nmMalloc(sizeof(MysdTable));
         if (!tdata)
             goto error;
-        memset(tdata, 0, sizeof(MysqlTable));
+        memset(tdata, 0, sizeof(MysdTable));
         strtcpy(tdata->Name, tablename, sizeof(tdata->Name));
         tdata->Node = node;
         if (mysd_internal_ParseTData(result, rowcnt, tdata) < 0)
             {
-            nmFree(tdata, sizeof(MysqlTable));
+            nmFree(tdata, sizeof(MysdTable));
             tdata = NULL;
             }
 
@@ -577,7 +632,7 @@ mysd_internal_GetTData(pMysqlNode node, char* tablename)
  ***/
 
 int
-mysd_internal_GetNextRow(char* filename, pMysqlQuery qy, pMysqlData data, char* tablename)
+mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* tablename)
     {
     MYSQL_RES * result = NULL;
     MYSQL_ROW row = NULL;
@@ -613,7 +668,7 @@ mysd_internal_GetNextRow(char* filename, pMysqlQuery qy, pMysqlData data, char* 
  ***/
 
 int
-mysd_internal_GetRowByKey(char* key, pMysqlData data, char* tablename)
+mysd_internal_GetRowByKey(char* key, pMysdData data, char* tablename)
     {
     MYSQL_RES * result = NULL;
     MYSQL_ROW row = NULL;
@@ -642,12 +697,12 @@ mysd_internal_GetRowByKey(char* key, pMysqlData data, char* tablename)
 /*** mysd_internal_UpdateRow() - update a given row
  ***/
 int
-mysd_internal_UpdateRow(pMysqlData data, char* newval, int col)
+mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
     {
-    pMysqlConn conn = NULL;
+    pMysdConn conn = NULL;
     int i = 0;
     char* filename;
-    char tablename[MYSQLD_NAME_LEN];
+    char tablename[MYSD_NAME_LEN];
     
         /** get the filename from the path **/
         filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
@@ -664,12 +719,12 @@ mysd_internal_UpdateRow(pMysqlData data, char* newval, int col)
 /*** mysd_internal_DeleteRow() - update a given row
  ***/
 int
-mysd_internal_DeleteRow(pMysqlData data)
+mysd_internal_DeleteRow(pMysdData data)
     {
-    pMysqlConn conn = NULL;
+    pMysdConn conn = NULL;
     int i = 0;
     char* filename;
-    char tablename[MYSQLD_NAME_LEN];
+    char tablename[MYSD_NAME_LEN];
 
         /** get the filename from the path **/
         filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
@@ -681,7 +736,7 @@ mysd_internal_DeleteRow(pMysqlData data)
 /*** mysd_internal_InsertRow() - update a given row
  ***/
 int
-mysd_internal_InsertRow(pMysqlData inf, pObjTrxTree oxt)
+mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
     {
     char* kptr;
     char* find_str;
@@ -690,8 +745,8 @@ mysd_internal_InsertRow(pMysqlData inf, pObjTrxTree oxt)
     int* length;
     pObjTrxTree attr_oxt, find_oxt;
     pXString insbuf;
-    char* values[MYSQLD_MAX_COLS];
-    char* cols[MYSQLD_MAX_COLS];
+    char* values[MYSD_MAX_COLS];
+    char* cols[MYSD_MAX_COLS];
     char* filename;
 
         filename = inf->Pathname.Elements[inf->Pathname.nElements - 1];
@@ -710,7 +765,7 @@ mysd_internal_InsertRow(pMysqlData inf, pObjTrxTree oxt)
             /** we scan through the OXT's **/
             find_oxt=0x00;
             find_str = 0x00;
-            if ((inf->TData->ColFlags[j] & MYSQLD_COL_F_PRIKEY) && !(inf->Obj->Mode & OBJ_O_AUTONAME))
+            if ((inf->TData->ColFlags[j] & MYSD_COL_F_PRIKEY) && !(inf->Obj->Mode & OBJ_O_AUTONAME))
                 {
                 if(filename)
                     find_str = filename;
@@ -747,7 +802,7 @@ mysd_internal_InsertRow(pMysqlData inf, pObjTrxTree oxt)
             /** Print the appropriate type. **/
             if (!find_oxt && !find_str)
                 {
-                if (inf->TData->ColFlags[j] & MYSQLD_COL_F_NULL)
+                if (inf->TData->ColFlags[j] & MYSD_COL_F_NULL)
                     {
                     values[j] = (char*)insbuf->Length;
                     xsConcatenate(insbuf,"NULL",4);
@@ -805,11 +860,11 @@ mysd_internal_InsertRow(pMysqlData inf, pObjTrxTree oxt)
 /*** mysd_internal_GetTablenames() - throw the table names in an Xarray
  ***/
 int
-mysd_internal_GetTablenames(pMysqlNode node)
+mysd_internal_GetTablenames(pMysdNode node)
     {
     MYSQL_RES * result = NULL;
     MYSQL_ROW row;
-    pMysqlConn conn;
+    pMysdConn conn;
     int nTables;
     char* tablename;
     
@@ -819,8 +874,6 @@ mysd_internal_GetTablenames(pMysqlNode node)
         
         while((row = mysql_fetch_row(result)))
             {
-            //if(!(tablename=nmMalloc(MYSQLD_NAME_LEN))) {mysql_free_result(result); return -1;}
-            //memcpy(tablename, row[0], strlen(row[0]) + 1);
             if(xaAddItem(&node->Tablenames,row[0]) < 0) {mysql_free_result(result); return -1;};
             }
     
@@ -831,20 +884,20 @@ mysd_internal_GetTablenames(pMysqlNode node)
 /*** mysd_internal_OpenNode() - access the node object and get the mysql
  *** server connection parameters.
  ***/
-pMysqlNode
+pMysdNode
 mysd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mask)
     {
-    pMysqlNode db_node;
+    pMysdNode db_node;
     pSnNode sn_node;
     char* ptr = NULL;
     int i;
-
+    
         /** First, do a lookup in the db node cache. **/
-        db_node = (pMysqlNode)xhLookup(&(MYSQLD_INF.DBNodesByPath), path);
+        db_node = (pMysdNode)xhLookup(&(MYSD_INF.DBNodesByPath), path);
         if (db_node) 
             {
-            db_node->LastAccess = MYSQLD_INF.AccessCnt;
-            MYSQLD_INF.AccessCnt++;
+            db_node->LastAccess = MYSD_INF.AccessCnt;
+            MYSD_INF.AccessCnt++;
             return db_node;
             }
 
@@ -881,13 +934,13 @@ mysd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
             }
 
         /** Create the DB node and fill it in. **/
-        db_node = (pMysqlNode)nmMalloc(sizeof(MysqlNode));
+        db_node = (pMysdNode)nmMalloc(sizeof(MysdNode));
         if (!db_node)
             {
             mssError(0,"MYSQL","Could not allocate DB node structure");
             return NULL;
             }
-        memset(db_node,0,sizeof(MysqlNode));
+        memset(db_node,0,sizeof(MysdNode));
         db_node->SnNode = sn_node;
         strtcpy(db_node->Path,path,sizeof(db_node->Path));
         if (stAttrValue(stLookup(sn_node->Data,"server"),NULL,&ptr,0) < 0) ptr = NULL;
@@ -899,6 +952,22 @@ mysd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
         if (stAttrValue(stLookup(sn_node->Data,"description"),NULL,&ptr,0) < 0) ptr = NULL;
         strtcpy(db_node->Description,ptr?ptr:"",sizeof(db_node->Description));
         if (stAttrValue(stLookup(sn_node->Data,"max_connections"),&i,NULL,0) < 0) i=16;
+        if (stAttrValue(stLookup(sn_node->Data,"use_system_auth"),NULL,&ptr,0) == 0)
+            {
+            if (!strcasecmp(ptr,"yes"))
+            db_node->Flags |= MYSD_NODE_F_USECXAUTH;
+            }
+        if (stAttrValue(stLookup(sn_node->Data,"set_passwords"),NULL,&ptr,0) == 0)
+            {
+            if (!strcasecmp(ptr,"yes"))
+            db_node->Flags |= MYSD_NODE_F_SETCXAUTH;
+            }
+        if (stAttrValue(stLookup(sn_node->Data,"username"),NULL,&ptr,0) < 0) ptr = "cxguest";
+        strtcpy(db_node->Username,ptr,sizeof(db_node->Username));
+        if (stAttrValue(stLookup(sn_node->Data,"password"),NULL,&ptr,0) < 0) ptr = "";
+        strtcpy(db_node->Password,ptr,sizeof(db_node->Password));
+        if (stAttrValue(stLookup(sn_node->Data,"default_password"),NULL,&ptr,0) < 0) ptr = "";
+        strtcpy(db_node->DefaultPassword,ptr,sizeof(db_node->DefaultPassword));
         db_node->MaxConn = i;
         xaInit(&(db_node->Conns),16);
         xhInit(&(db_node->Tables),255,0);
@@ -908,13 +977,13 @@ mysd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
         if((i=mysd_internal_GetTablenames(db_node)) < 0)
             {
             mssError(0,"MYSD","Unable to query for table names");
-            nmFree(db_node,sizeof(MysqlNode));
+            nmFree(db_node,sizeof(MysdNode));
             return NULL;
             }
 
         /** Add node to the db node cache **/
-        xhAdd(&(MYSQLD_INF.DBNodesByPath), db_node->Path, (void*)db_node);
-        xaAddItem(&MYSQLD_INF.DBNodeList, (void*)db_node);
+        xhAdd(&(MYSD_INF.DBNodesByPath), db_node->Path, (void*)db_node);
+        xaAddItem(&MYSD_INF.DBNodeList, (void*)db_node);
 
     return db_node;
     }
@@ -923,7 +992,7 @@ mysd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
  *** setup the table, row, etc. pointers. 
  ***/
 int
-mysd_internal_DetermineType(pObject obj, pMysqlData inf)
+mysd_internal_DetermineType(pObject obj, pMysdData inf)
     {
     int i;
 
@@ -963,7 +1032,7 @@ mysd_internal_DetermineType(pObject obj, pMysqlData inf)
  *** clause for the SQL statement.
  ***/
 int
-mysd_internal_TreeToClause(pExpression tree, pMysqlTable *tdata, pXString where_clause, MYSQL * conn)
+mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
     {
     pExpression subtree;
     int i,id = 0;
@@ -1279,7 +1348,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysqlTable *tdata, pXString where_
 void*
 mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    pMysqlData inf;
+    pMysdData inf;
     int rval;
     int length;
     char* tablename;
@@ -1288,9 +1357,9 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     char* ptr;
 
         /** Allocate the structure **/
-        inf = (pMysqlData)nmMalloc(sizeof(MysqlData));
+        inf = (pMysdData)nmMalloc(sizeof(MysdData));
         if (!inf) return NULL;
-        memset(inf,0,sizeof(MysqlData));
+        memset(inf,0,sizeof(MysdData));
         inf->Obj = obj;
         inf->Mask = mask;
         inf->Result = NULL;
@@ -1299,7 +1368,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
         if(mysd_internal_DetermineType(obj,inf))
             {
             mssError(1,"MYSD","Unable to determine type.");
-            nmFree(inf,sizeof(MysqlData));
+            nmFree(inf,sizeof(MysdData));
             return NULL;
             }
 
@@ -1310,7 +1379,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
         if(!(inf->Node = mysd_internal_OpenNode(node_path, obj->Mode, obj, inf->Type == MYSD_T_DATABASE, inf->Mask)))
             {
             mssError(1,"MYSD","Couldn't open node.");
-            nmFree(inf,sizeof(MysqlData));
+            nmFree(inf,sizeof(MysdData));
             return NULL;
             }
         
@@ -1322,13 +1391,13 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
             if(!(inf->TData = mysd_internal_GetTData(inf->Node,tablename)))
                 {
                 if(obj->Mode & O_CREAT)
-                    /** Table creation code could some day go here
+                    /** Table creation code could some day go here,
                      ** but it is not supported right now
                      **/
-                    mssError(1,"MYSD","Table creation is not supported current");
+                    mssError(1,"MYSD","Table creation is not supported currently");
                 else
                     mssError(1,"MYSD","Table object does not exist.");
-                nmFree(inf,sizeof(MysqlData));
+                nmFree(inf,sizeof(MysdData));
                 return NULL;
                 }
             }
@@ -1349,7 +1418,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
                     mssError(1,"MYSD","Unable to fetch row by key.");
                     if(inf->Result) mysql_free_result(inf->Result);
                     inf->Result = NULL;
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
                 else
@@ -1364,7 +1433,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
                 if (!(obj->Mode & O_CREAT))
                     {
                     mssError(1,"MYSD","Row object does not exist.");
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
 
@@ -1387,7 +1456,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 int
 mysdClose(void* inf_v, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
 
         /** commit changes before we get rid of the transaction **/
         mysdCommit(inf,oxt);
@@ -1397,15 +1466,14 @@ mysdClose(void* inf_v, pObjTrxTree* oxt)
         
         /** Release the memory **/
         inf->Node->SnNode->OpenCnt --;
-        //if(inf->Result) mysql_free_result(inf->Result);
         obj_internal_FreePathStruct(&inf->Pathname);
-        nmFree(inf,sizeof(MysqlData));
+        nmFree(inf,sizeof(MysdData));
 
     return 0;
     }
 
 
-/*** mysqlCreate() - create a new object, without actually returning a
+/*** mysdCreate() - create a new object, without actually returning a
  *** descriptor for it.  For most drivers, it is safe to just call
  *** the Open method with create/exclude set, and then close the
  *** object immediately.
@@ -1426,7 +1494,7 @@ mysdCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     }
 
 
-/*** mysqlDelete() - delete an existing object.  For most drivers, it works to
+/*** mysdDelete() - delete an existing object.  For most drivers, it works to
  *** call open() first to make sure the thing exists and get information
  *** on it, and then "handle the close a bit differently" :)
  ***/
@@ -1434,18 +1502,18 @@ int
 mysdDelete(pObject obj, pObjTrxTree* oxt)
     {
     struct stat fileinfo;
-    pMysqlData inf, find_inf, search_inf;
+    pMysdData inf, find_inf, search_inf;
     int is_empty = 1;
     int i;
 
             /** Open the thing first to get the inf ptrs **/
         obj->Mode = O_WRONLY;
-        inf = (pMysqlData)mysdOpen(obj, 0, NULL, "", oxt);
+        inf = (pMysdData)mysdOpen(obj, 0, NULL, "", oxt);
         if (!inf) return -1;
 
         if (inf->Type != MYSD_T_ROW)
             {
-            nmFree(inf,sizeof(MysqlData));
+            nmFree(inf,sizeof(MysdData));
             puts("Unimplemented delete operation in MYSD.");
             mssError(1,"MYSD","Unimplemented delete operation in MYSD");
             return -1;
@@ -1456,21 +1524,22 @@ mysdDelete(pObject obj, pObjTrxTree* oxt)
 
         /** Physically delete the node, and then remove it from the node cache **/
         unlink(inf->Node->SnNode->NodePath);
-        stFreeInf(inf->Node->SnNode->Data);
 
         /** Release, don't call close because that might write data to a deleted object **/
-        nmFree(inf,sizeof(MysqlData));
+        inf->Node->SnNode->OpenCnt --;
+        obj_internal_FreePathStruct(&inf->Pathname);
+        nmFree(inf,sizeof(MysdData));
 
     return 0;
     }
 
 
-/*** mysqlRead() - Structure elements have no content.  Fails.
+/*** mysdRead() - Structure elements have no content.  Fails.
  ***/
 int
 mysdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     return -1;
     }
 
@@ -1480,7 +1549,7 @@ mysdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 int
 mysdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     return -1;
     }
 
@@ -1492,18 +1561,18 @@ mysdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 void*
 mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
-    pMysqlQuery qy;
-    pMysqlConn escape_conn = NULL;
+    pMysdData inf = MYSD(inf_v);
+    pMysdQuery qy;
+    pMysdConn escape_conn = NULL;
     int i;
         /** check if we should really allow a query **/
         if(inf->Type==MYSD_T_ROW) return 0;
         if(inf->Type==MYSD_T_COLUMN) return 0;
         
         /** Allocate the query structure **/
-        qy = (pMysqlQuery)nmMalloc(sizeof(MysqlQuery));
+        qy = (pMysdQuery)nmMalloc(sizeof(MysdQuery));
         if (!qy) return NULL;
-        memset(qy, 0, sizeof(MysqlQuery));
+        memset(qy, 0, sizeof(MysdQuery));
         qy->Data = inf;
         if(qy->Data->Result) mysql_free_result(qy->Data->Result);
         qy->Data->Result = NULL;
@@ -1544,20 +1613,20 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     return (void*)qy;
     }
 
-/*** mysqlQueryFetch() - get the next directory entry as an open object.
+/*** mysdQueryFetch() - get the next directory entry as an open object.
  ***/
 void*
 mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
-    pMysqlQuery qy = ((pMysqlQuery)(qy_v));
-    pMysqlData inf = NULL;
+    pMysdQuery qy = ((pMysdQuery)(qy_v));
+    pMysdData inf = NULL;
     MYSQL_RES * result = NULL;
-    pMysqlConn conn;
-    char name_buf[(MYSQLD_NAME_LEN+1)*MYSQLD_MAX_KEYS];
+    pMysdConn conn;
+    char name_buf[(MYSD_NAME_LEN+1)*MYSD_MAX_KEYS];
     char* new_obj_name = NULL;
 
         /** Alloc the structure **/
-        if(!(inf = (pMysqlData)nmMalloc(sizeof(MysqlData)))) return NULL;
+        if(!(inf = (pMysdData)nmMalloc(sizeof(MysdData)))) return NULL;
         inf->Pathname.OpenCtlBuf = NULL;
             /** Get the next name based on the query type. **/
         switch(qy->Data->Type)
@@ -1570,7 +1639,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else
                     {
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
                 /** Get filename from the first column - table name. **/
@@ -1590,7 +1659,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else 
                     {
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
                 break;
@@ -1606,7 +1675,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else
                     {
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
                 break;
@@ -1615,7 +1684,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                 /** return columns until they are all exhausted **/
                 if(!(qy->Data->TData = mysd_internal_GetTData(qy->Data->Node,qy->Data->TData->Name)))
                     {
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
                 if (qy->ItemCnt < qy->Data->TData->nCols)
@@ -1625,14 +1694,13 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else
                     {
-                    nmFree(inf,sizeof(MysqlData));
+                    nmFree(inf,sizeof(MysdData));
                     return NULL;
                     }
                 break;
 
         }
         /** Build the filename. **/
-        /** REPLACE NEW_OBJ_NAME WITH YOUR NEW OBJECT NAME OF THE OBJ BEING FETCHED **/
         if (strlen(new_obj_name) > 255) 
             {
             mssError(1,"MYSQL","Query result pathname exceeds internal representation");
@@ -1654,35 +1722,36 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     }
 
 
-/*** mysqlQueryClose() - close the query.
+/*** mysdQueryClose() - close the query.
  ***/
 int
 mysdQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
-
-        /** Free the structure **/
-        pMysqlQuery qy = (pMysqlQuery)qy_v;
-        if(qy->Data->Result) 
-            {
-            mysql_free_result(qy->Data->Result);
-            }
+        pMysdQuery qy = (pMysdQuery)qy_v;
+        static MYSQL_RES * last_result = NULL;
+        
+        /** Free the last result and store the pointer to this query's result **/
+        if(last_result) mysql_free_result(last_result);
+        last_result = qy->Data->Result;
         qy->Data->Result = NULL;
-        nmFree(qy_v,sizeof(MysqlQuery));
+        
+        /** Free the structure **/
+        nmFree(qy_v,sizeof(MysdQuery));
 
     return 0;
     }
 
 
-/*** mysqlGetAttrType() - get the type of an attribute by name.
+/*** mysdGetAttrType() - get the type of an attribute by name.
  ***/
 int
 mysdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     int i;
     pStructInf find_inf;
 
-            /** If name, it's a string **/
+        /** If name, it's a string **/
         if (!strcmp(attrname,"name")) return DATA_T_STRING;
 
         /** If 'content-type', it's also a string. **/
@@ -1712,13 +1781,13 @@ mysdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     }
 
 
-/*** mysqlGetAttrValue() - get the value of an attribute by name.  The 'val'
+/*** mysdGetAttrValue() - get the value of an attribute by name.  The 'val'
  *** pointer must point to an appropriate data type.
  ***/
 int
 mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     pStructInf find_inf;
     char* ptr;
     int i;
@@ -1759,7 +1828,8 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
         if (!strcmp(attrname,"annotation"))
             {
-            val->String = "I should implement annotation";
+            /** annotation is not supported at the moment **/
+            val->String = "";
             return 0;
             }
 
@@ -1836,19 +1906,19 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     }
 
 
-/*** mysqlGetNextAttr() - get the next attribute name for this object.
+/*** mysdGetNextAttr() - get the next attribute name for this object.
  ***/
 char*
 mysdGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
 
         /** Attribute listings depend on object type. **/
         switch(inf->Type)
             {
             case MYSD_T_DATABASE:
                 return NULL;
-        
+
             case MYSD_T_TABLE:
                 return NULL;
 
@@ -1873,12 +1943,12 @@ mysdGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     }
 
 
-/*** mysqlGetFirstAttr() - get the first attribute name for this object.
+/*** mysdGetFirstAttr() - get the first attribute name for this object.
  ***/
 char*
 mysdGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     char* ptr;
         /** Set the current attribute. **/
         inf->CurAttr = 0;
@@ -1896,7 +1966,7 @@ mysdGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
 int
 mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     pStructInf find_inf;
     const int max_money_length = 64;
     char* tmp;
@@ -1994,20 +2064,18 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                     }
                 }
             }
-
-
     return 0;
     }
 
 
-/*** mysqlAddAttr() - add an attribute to an object.  This doesn't always work
+/*** mysdAddAttr() - add an attribute to an object.  This doesn't always work
  *** for all object types, and certainly makes no sense for some (like unix
  *** files).
  ***/
 int
 mysdAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     pStructInf new_inf;
     char* ptr;
 
@@ -2015,7 +2083,7 @@ mysdAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* ox
     }
 
 
-/*** mysqlOpenAttr() - open an attribute as if it were an object with content.
+/*** mysdOpenAttr() - open an attribute as if it were an object with content.
  *** Not all objects support this type of operation.
  ***/
 void*
@@ -2025,7 +2093,7 @@ mysdOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree* oxt)
     }
 
 
-/*** mysqlGetFirstMethod() -- return name of First method available on the object.
+/*** mysdGetFirstMethod() -- return name of First method available on the object.
  ***/
 char*
 mysdGetFirstMethod(void* inf_v, pObjTrxTree oxt)
@@ -2034,7 +2102,7 @@ mysdGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** mysqlGetNextMethod() -- return successive names of methods after the First one.
+/*** mysdGetNextMethod() -- return successive names of methods after the First one.
  ***/
 char*
 mysdGetNextMethod(void* inf_v, pObjTrxTree oxt)
@@ -2043,7 +2111,7 @@ mysdGetNextMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** mysqlExecuteMethod() - Execute a method, by name.
+/*** mysdExecuteMethod() - Execute a method, by name.
  ***/
 int
 mysdExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
@@ -2060,8 +2128,164 @@ mysdExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt
 pObjPresentationHints
 mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    /** No hints yet on this **/
-    return NULL;
+    pMysdData inf = MYSD(inf_v);
+    pObjPresentationHints hints=NULL;
+    pExpression exp;
+    int i;
+    int datatype;
+    char * ptr;
+    pParamObjects tmplist;
+    
+        if (!strcmp(attrname, "name") || !strcmp(attrname, "inner_type") || !strcmp(attrname, "outer_type") ||
+            !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname, "last_modification"))
+            {
+            if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
+            memset(hints, 0, sizeof(ObjPresentationHints));
+            hints->GroupID=-1;
+            hints->VisualLength2=1;
+            xaInit(&(hints->EnumList), 8);
+            if (!strcmp(attrname, "annotation")) hints->VisualLength = 60;
+            else hints->VisualLength = 30;
+            if (!strcmp(attrname, "name")) hints->Length = 30;
+            else if (!strcmp(attrname, "annotation")) hints->Length = 255;
+            else 
+                {
+                hints->Style |= OBJ_PH_STYLE_READONLY;
+                hints->StyleMask |= OBJ_PH_STYLE_READONLY;
+                }
+            return hints;
+            }
+        
+        switch(inf->Type)
+            {
+            case MYSD_T_DATABASE: break;
+            case MYSD_T_TABLE: break;
+            case MYSD_T_ROWSOBJ: break;
+            case MYSD_T_COLSOBJ: break;
+            case MYSD_T_COLUMN:
+                if (strcmp(attrname, "datatype"))
+                    {
+                    mssError(1, "SYBD", "No attribute %s", attrname);
+                    return NULL;
+                    }
+
+                if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
+                memset(hints, 0, sizeof(ObjPresentationHints));
+                hints->GroupID=-1;
+                hints->VisualLength2=1;
+                hints->Style |= OBJ_PH_STYLE_READONLY;
+                hints->StyleMask |= OBJ_PH_STYLE_READONLY;
+                hints->VisualLength = 15;
+                xaInit(&(hints->EnumList), 8);
+                return hints;
+                break;
+            case MYSD_T_ROW:
+                /** the attributes of a row are the column names, with the values being the field values **/
+                /** find the name of the column, and get its data type **/
+                for (i=0;i<inf->TData->nCols;i++) 
+                    {
+                    if (!strcmp(attrname, inf->TData->Cols[i]))
+                        {
+                        /** Check to see if we already know the hints **/
+                        if(inf->TData->ColHints[i]) return objDuplicateHints(inf->TData->ColHints[i]);
+                        /** Otherwise compile them and add them to the table data **/
+                        if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
+                        memset(hints, 0, sizeof(ObjPresentationHints));
+                        datatype = inf->TData->ColCxTypes[i];
+                        hints->GroupID=-1;
+                        hints->VisualLength2=1;
+                        xaInit(&(hints->EnumList), 8);
+
+                        if (datatype == DATA_T_STRING)
+                            {
+                            /** use the length that we pulled when we grabbed the table data **/
+                            if (hints->Length == 0) hints->Length = inf->TData->ColLengths[i];
+                            if (hints->VisualLength == 0) hints->VisualLength = inf->TData->ColLengths[i];
+                            }
+                        if (datatype == DATA_T_MONEY)
+                            {
+                            hints->Format=nmSysStrdup("money");
+                            }
+                        if (datatype == DATA_T_DATETIME)
+                            {
+                             hints->Format=nmSysStrdup("datetime");
+                            }
+                        if (datatype == DATA_T_INTEGER)
+                            {
+                            /** use the sizes from the MySQL datatypes **/
+                            tmplist = expCreateParamList();
+                            expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
+                            hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                            if(!strcmp(inf->TData->ColTypes[i], "tinyint"))
+                                {
+                                if(inf->TData->ColFlags[i] & MYSD_COL_F_UNSIGNED)
+                                    {
+                                    hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("255", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                else
+                                    {
+                                    hints->MinValue = expCompileExpression("-128", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("127", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                }
+                            if(!strcmp(inf->TData->ColTypes[i], "smallint"))
+                                {
+                                if(inf->TData->ColFlags[i] & MYSD_COL_F_UNSIGNED)
+                                    {
+                                    hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("65535", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                else
+                                    {
+                                    hints->MinValue = expCompileExpression("-32768", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("-32767", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                }
+                            if(!strcmp(inf->TData->ColTypes[i], "mediumint"))
+                                {
+                                if(inf->TData->ColFlags[i] & MYSD_COL_F_UNSIGNED)
+                                    {
+                                    hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("16777215", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                else
+                                    {
+                                    hints->MinValue = expCompileExpression("-8388608", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("8388607", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                }
+                            if(!strcmp(inf->TData->ColTypes[i], "int"))
+                                {
+                                if(inf->TData->ColFlags[i] & MYSD_COL_F_UNSIGNED)
+                                    {
+                                    hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("4294967295", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                else
+                                    {
+                                    hints->MinValue = expCompileExpression("-2147483648", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("2147483647", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    }
+                                }
+                            expFreeParamList(tmplist);
+                            }
+                        inf->TData->ColHints[i] = objDuplicateHints(hints);
+                        break;
+                        }
+                    }
+                if (i == inf->TData->nCols)
+                    {
+                    mssError(1, "MYSD", "No attribute '%s'", attrname);
+                    return NULL;
+                    }
+                break;
+            default:
+                mssError(1, "MYSD", "Can't get hints for that type yet");
+                break;
+            }
+
+        return hints;
     }
 
 
@@ -2081,7 +2305,7 @@ mysdInfo(void* inf_v, pObjectInfo info_struct)
 int
 mysdCommit(void* inf_v, pObjTrxTree* oxt)
     {
-    pMysqlData inf = MYSQLD(inf_v);
+    pMysdData inf = MYSD(inf_v);
     struct stat fileinfo;
     int i;
     char sbuf[160];
@@ -2132,9 +2356,9 @@ mysdInitialize()
         memset(drv, 0, sizeof(ObjDriver));
 
         /** Initialize globals **/
-        memset(&MYSQLD_INF,0,sizeof(MYSQLD_INF));
-        xhInit(&MYSQLD_INF.DBNodesByPath,255,0);
-        xaInit(&MYSQLD_INF.DBNodeList,127);
+        memset(&MYSD_INF,0,sizeof(MYSD_INF));
+        xhInit(&MYSD_INF.DBNodesByPath,255,0);
+        xaInit(&MYSD_INF.DBNodeList,127);
 
         /** Init mysql client library **/
         if (mysql_library_init(0, NULL, NULL) != 0)
@@ -2174,8 +2398,8 @@ mysdInitialize()
         drv->Info = mysdInfo;
         drv->Commit = mysdCommit;
 
-        nmRegister(sizeof(MysqlData),"MysqlData");
-        nmRegister(sizeof(MysqlQuery),"MysqlQuery");
+        nmRegister(sizeof(MysdData),"MysdData");
+        nmRegister(sizeof(MysdQuery),"MysdQuery");
 
         /** Register the driver **/
         if (objRegisterDriver(drv) < 0) 
@@ -2187,6 +2411,6 @@ mysdInitialize()
     
 MODULE_INIT(mysdInitialize);
 MODULE_PREFIX("mysd");
-MODULE_DESC("UNSTABLE MySQL ObjectSystem Driver");
-MODULE_VERSION(0,0,1);
+MODULE_DESC("MySQL ObjectSystem Driver");
+MODULE_VERSION(0,1,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
