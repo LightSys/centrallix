@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.75 2008/07/24 21:30:31 thr4wn Exp $
+    $Id: ht_render.c,v 1.76 2008/08/16 00:31:37 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.76  2008/08/16 00:31:37  thr4wn
+    I made some more modification of documentation and begun logic for
+    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
+
     Revision 1.75  2008/07/24 21:30:31  thr4wn
     -(bug fix) fixed a bug I previously coded that generated a null pointer dereference
 
@@ -1972,7 +1976,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    s->GraftPoint = NULL;
 
 	/** Note: 'classes' here refers to server-side "classes" (see
-	    centrallix/htmlgen/README). Note: if this feature ever
+	    centrallix-sysdoc/README). Note: if this feature ever
 	    does get implemented, then this code would actually have
 	    to get moved somewhere else since by the time htrRender
 	    gets called, it's already assumed that the client wants
@@ -2192,7 +2196,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    }
 
 
-	/** Write the event capture lines **/ //SETH: @@ ?only in NS4?
+	/** Write the event capture lines **/
 	fdPrintf(output,"\nfunction events_%s()\n    {\n",s->Namespace->DName);
 	cnt = xaCount(&s->Page.EventHandlers);
 	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");

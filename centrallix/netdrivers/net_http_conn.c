@@ -33,10 +33,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_conn.c,v 1.1 2008/06/25 22:48:12 jncraton Exp $
+    $Id: net_http_conn.c,v 1.2 2008/08/16 00:31:38 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
 
     $Log: net_http_conn.c,v $
+    Revision 1.2  2008/08/16 00:31:38  thr4wn
+    I made some more modification of documentation and begun logic for
+    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
+
     Revision 1.1  2008/06/25 22:48:12  jncraton
     - (change) split net_http into separate files
     - (change) replaced nht_internal_UnConvertChar with qprintf filter
@@ -434,6 +438,8 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
 	    usr->SessionCnt++;
 	    xaAddItem(&(NHT.Sessions), (void*)nsess);
+	    nsess->CachedApps = (pXHashTable)nmSysMalloc(sizeof(XHashTable));
+	    xhInit(nsess->CachedApps, 127, 4);
 	    conn->NhtSession = nsess;
 	    printf("NHT: new session for username [%s], cookie [%s]\n", nsess->Username, nsess->Cookie);
 	    nht_internal_LinkSess(conn->NhtSession);

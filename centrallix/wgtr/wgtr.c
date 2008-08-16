@@ -100,7 +100,7 @@ wgtr_internal_LookupDriver(pWgtrNode node)
     pWgtrDriver drv;
     /*char* this_type;*/
 
-	drv = (pWgtrDriver)xhLookup(&(WGTR.DriversByType), node->Type+7);
+    drv = (pWgtrDriver)xhLookup(&(WGTR.DriversByType), node->Type+7); //eg, node->Type == "widget/page" and node->Type+7 == "page";
 
 	/*for (i=0;i<xaCount(&(WGTR.Drivers));i++)
 	    {
@@ -2335,33 +2335,27 @@ wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, p
     {
     pWgtrNode tree;
     int rval;
-    char* objpath;
 
-	/** Parse it **/
-	tree = wgtrParseOpenObject(obj, app_params, client_info->Templates);
-	if (!tree) return -1;
 
-	/** Merge overlays, if any **/
-	objpath = objGetPathname(obj);
-	if (wgtrMergeOverlays(tree, objpath, client_info->AppPath, client_info->Overlays, client_info->Templates) < 0)
-	    {
-	    wgtrFree(tree);
-	    return -1;
-	    }
+    if(! (tree = wgtrParseOpenObject(obj, app_params, client_info->Templates)))
+	{
+	if(tree) wgtrFree(tree);
+	return -1;
+	}
+    if(! (wgtrMergeOverlays(tree, objGetPathname(obj), client_info->AppPath, client_info->Overlays, client_info->Templates) >= 0))
+	{
+	if(tree) wgtrFree(tree);
+	return -1;
+	}
+    if(! (wgtrVerify(tree, client_info) >= 0))
+	{
+	if(tree) wgtrFree(tree);
+	return -1;
+	}
 
-	/** Verify **/
-	if (wgtrVerify(tree, client_info) < 0)
-	    {
-	    wgtrFree(tree);
-	    return -1;
-	    }
+    rval = wgtrRender(output, s, tree, app_params, client_info, method);
 
-	/** Render **/
-	rval = wgtrRender(output, s, tree, app_params, client_info, method);
-
-	/** Clean up **/
-	wgtrFree(tree);
-
+    if(tree) wgtrFree(tree);
     return rval;
     }
 

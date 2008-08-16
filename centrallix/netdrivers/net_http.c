@@ -33,10 +33,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.85 2008/06/25 22:48:12 jncraton Exp $
+    $Id: net_http.c,v 1.86 2008/08/16 00:31:38 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.86  2008/08/16 00:31:38  thr4wn
+    I made some more modification of documentation and begun logic for
+    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
+
     Revision 1.85  2008/06/25 22:48:12  jncraton
     - (change) split net_http into separate files
     - (change) replaced nht_internal_UnConvertChar with qprintf filter
@@ -781,6 +785,40 @@ nht_internal_FreeControlMsg(pNhtControlMsg cm)
     return 0;
     }
 
+#if 0
+int
+nht_internal_CacheHandler(pNhtConn conn)
+    {
+#if 0
+    pWgtrNode tree = xmGet(conn->NhtSession->CachedApps2, "0");
+
+#if 1
+    /** cache the app **/
+    char buf[1<<10];
+    sprintf(buf, "%i", NHT.numbCachedApps);
+    NHT.numbCachedApps++;
+    xmAdd(&nsess->CachedApps, buf, tree);
+#else
+    xaAddItem(&nsess->CachedApps2, NHT.numbCachedApps)
+    NHT.numbCachedApps++;
+#endif
+
+    if(! (wgtrVerify(tree, client_info) >= 0))
+	{
+	if(tree) wgtrFree(tree);
+	return -1;
+	}
+
+    rval = wgtrRender(output, s, tree, app_params, client_info, method);
+
+    if(tree) wgtrFree(tree);
+    return rval;
+    //fdQPrintf(conn->ConnFD, "Hello World!");    
+#endif
+    }
+#endif
+
+
 
 /*** nht_internal_ControlMsgHandler() - the main handler for all connections
  *** which access /INTERNAL/control, thus requesting to receive control
@@ -1079,18 +1117,29 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
+//START INTERNAL handler -------------------------------------------------------------------
+//TODO (from Seth): should this be moved out of nht_internal_GET and back into nht_internal_ConnHandler?
+
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
 	if (!strncmp(url_inf->StrVal,"/INTERNAL/errorstream",21))
 	    {
-	    return nht_internal_ErrorHandler(conn);
+		return nht_internal_ErrorHandler(conn);
 	    }
 	else if (!strncmp(url_inf->StrVal, "/INTERNAL/control", 17))
 	    {
-	    return nht_internal_ControlMsgHandler(conn, url_inf);
+		return nht_internal_ControlMsgHandler(conn, url_inf);
 	    }
+#if 0 //TODO: finish the caching ability. (this section could very well belong somewhere else)
+	else if (!strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
+	    {
+		return htrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess);
+	    }
+#endif
 
-	/** app key specified? **/
+//END INTERNAL handler ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	/** app key specified? **/ //the app key feature is to prevent CSRFing attacks
 	find_inf = stLookup_ne(url_inf,"cx__akey");
 	if (find_inf && !strcmp(find_inf->StrVal, nsess->AKey))
 	    akey_match = 1;
@@ -1349,7 +1398,12 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    }
 
 		/** Read the app spec, verify it, and generate it to DHTML **/
-		if (wgtrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML") < 0)
+		//pWgtrNode tree;
+		//if ((tree = wgtrParseOpenObject(target_obj, url_inf, wgtr_params.Templates)) < 0
+		    //|| (objpath = objGetPathname(obj)) && wgtrMergeOverlays(tree, objpath, client_info->AppPath, client_info->Overlays, client_info->Templates) < 0 )
+		    //|| nht_internal_Parse_and_Cache_an_App(target_obj, url_inf, &wgtr_params, nsess, &tree) < 0
+		    //|| nht_internal_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
+		if (htrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
 		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
@@ -1359,6 +1413,20 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    if (lptr) nmSysFree(lptr);
 		    return -1;
 		    }
+#if 0
+		// store into cache;
+		if (wgtrVerify(tree, client_info) < 0)
+		    {
+		    if(tree) wgtrFree(tree);
+		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
+		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
+		    mssPrintError(conn->ConnFD);
+		    objClose(target_obj);
+		    if (tptr) nmSysFree(tptr);
+		    if (lptr) nmSysFree(lptr);
+		    return -1;
+		    }
+#endif
 		if (tptr) nmSysFree(tptr);
 		if (lptr) nmSysFree(lptr);
 	        }
@@ -2036,6 +2104,7 @@ nhtInitialize()
 	srand48(time(NULL));
 
 	/** Initialize globals **/
+	NHT.numbCachedApps = 0;
 	memset(&NHT, 0, sizeof(NHT));
 	xhInit(&(NHT.CookieSessions),255,0);
 	xaInit(&(NHT.Sessions),256);
@@ -2079,3 +2148,10 @@ nhtInitialize()
     return 0;
     }
 
+
+int CachedAppDeconstructor(pCachedApp this)
+    {
+    nmSysFree(&this->Key);
+    wgtrFree(this->Node);
+    return 0;
+    }

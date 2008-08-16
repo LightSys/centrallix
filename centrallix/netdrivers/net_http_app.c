@@ -33,10 +33,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_app.c,v 1.1 2008/06/25 22:48:12 jncraton Exp $
+    $Id: net_http_app.c,v 1.2 2008/08/16 00:31:38 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_app.c,v $
 
     $Log: net_http_app.c,v $
+    Revision 1.2  2008/08/16 00:31:38  thr4wn
+    I made some more modification of documentation and begun logic for
+    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
+
     Revision 1.1  2008/06/25 22:48:12  jncraton
     - (change) split net_http into separate files
     - (change) replaced nht_internal_UnConvertChar with qprintf filter
@@ -105,4 +109,50 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 
     return 0;
     }
- 
+
+int
+nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrClientInfo client_info, char* method, pNhtSessionData nsess)
+    {
+    pWgtrNode tree;
+    int rval;
+    int i = 0;
+
+    if (strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
+	{
+	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates)))
+	    {
+	    if(tree) wgtrFree(tree);
+	    return -1;
+	    }
+	if(! (wgtrMergeOverlays(tree, objGetPathname(obj), client_info->AppPath, client_info->Overlays, client_info->Templates) >= 0))
+	    {
+	    if(tree) wgtrFree(tree);
+	    return -1;
+	    }
+
+
+	/** cache the app **/
+	pCachedApp pca = (pCachedApp) nmSysMalloc(sizeof(CachedApp));
+	pca->Node = tree;
+	pca->Key = NHT.numbCachedApps;
+	NHT.numbCachedApps++;
+	xhAdd(nsess->CachedApps, &pca->Key, pca);
+	}
+    else
+	{
+	tree = ((pCachedApp)xhLookup(nsess->CachedApps, &i))->Node; //TODO: caching is not fully implemented
+	}
+
+    if(! (wgtrVerify(tree, client_info) >= 0))
+	{
+	if(tree) wgtrFree(tree);
+	return -1;
+	}
+
+    rval = wgtrRender(output, s, tree, url_inf, client_info, method);
+
+    //if(tree) wgtrFree(tree); //by Seth: because all trees are being cached, the trees must be freed somewhere else. Probably at the closing of the session. //SETH: ?? is that already taken care of?
+    return rval;
+
+    }
+

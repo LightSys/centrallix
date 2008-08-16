@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.84 2008/07/16 00:34:57 thr4wn Exp $
+    $Id: htdrv_page.c,v 1.85 2008/08/16 00:31:37 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.85  2008/08/16 00:31:37  thr4wn
+    I made some more modification of documentation and begun logic for
+    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
+
     Revision 1.84  2008/07/16 00:34:57  thr4wn
     Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
 
@@ -638,7 +642,6 @@
 
 
 int
-//htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
 htpageRender(pHtSession s, pWgtrNode tree, int z)
     {
     char *ptr;

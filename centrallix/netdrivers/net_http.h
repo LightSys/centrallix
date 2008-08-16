@@ -69,10 +69,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.h,v 1.1 2008/06/25 22:48:12 jncraton Exp $
+    $Id: net_http.h,v 1.2 2008/08/16 00:31:38 thr4wn Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.h,v $
 
     $Log: net_http.h,v $
+    Revision 1.2  2008/08/16 00:31:38  thr4wn
+    I made some more modification of documentation and begun logic for
+    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
+
     Revision 1.1  2008/06/25 22:48:12  jncraton
     - (change) split net_http into separate files
     - (change) replaced nht_internal_UnConvertChar with qprintf filter
@@ -169,9 +173,9 @@ typedef struct
     XArray	ControlMsgsList;
     pNhtUser	User;
     int		LastAccess;
+    pXHashTable	CachedApps;
     }
     NhtSessionData, *pNhtSessionData;
-
 
 /*** Timer structure.  The rule on the deallocation of these is that if
  *** you successfully remove it from the Timers list while holding the
@@ -247,8 +251,19 @@ struct
     pFile	AccessLogFD;
     char	AccessLogFile[256];
     int		ClkTck;
+    int		numbCachedApps;
     }
     NHT;
+
+typedef struct
+    {
+    int Key;
+    pWgtrNode Node;
+    }
+    CachedApp, *pCachedApp;
+
+pCachedApp CachedAppConstructor();
+int CachedAppInit(pCachedApp this);
 
 int nht_internal_RemoveWatchdog(handle_t th);
 void nht_internal_Watchdog(void* v);
