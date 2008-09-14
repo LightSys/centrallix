@@ -65,10 +65,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.43 2008/08/13 21:20:24 jncraton Exp $
+    $Id: test_obj.c,v 1.44 2008/09/14 05:12:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.44  2008/09/14 05:12:31  gbeeley
+    - (bugfix) csv output was failing if the attribute type for a column changed
+      midway through the query (this can sometimes happen with NULL values).
+    - (feature) test_obj now keeps a persistent command history.
+
     Revision 1.43  2008/08/13 21:20:24  jncraton
     - (bugfix) Presentation hints are now freed properly
 
@@ -365,7 +370,7 @@ printExpression(pExpression exp)
 
 	tmplist = expCreateParamList();
 	expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
-	expGenerateText(exp,tmplist,text_gen_callback,dst,'"',"javascript");
+	expGenerateText(exp,tmplist,text_gen_callback,dst,'"',"cxsql", 0);
 	dst->buffer[dst->buflen]='\0';
 	expFreeParamList(tmplist);
 
@@ -866,7 +871,6 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			    {
 			    if (n_attrs < sizeof(attrnames) / sizeof(char*))
 				{
-				attrtypes[n_attrs] = objGetAttrType(obj,attrname);
 				attrnames[n_attrs] = nmSysStrdup(attrname);
 				fdQPrintf(TESTOBJ.Output,"%[,%]\"%STR&DSYB\"",
 					n_attrs != 0,
@@ -878,6 +882,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			}
 		    for(i=0;i<n_attrs;i++)
 			{
+			attrtypes[i] = objGetAttrType(obj,attrnames[i]);
 			if (objGetAttrValue(obj, attrnames[i], attrtypes[i], &od) == 0)
 			    {
 			    if (attrtypes [i] == DATA_T_CODE)
@@ -1468,11 +1473,41 @@ start(void* v)
     char* pwd;
     char prompt[1024];
     pFile cmdfile;
+    pFile histfile = NULL;
+    char histname[256];
+    char* home;
     pLxSession input_lx;
     char* ptr;
+    int alloc;
 
 	/** Initialize. **/
 	cxInitialize();
+
+	/** history file **/
+	home = getenv("HOME");
+	if (home && strlen(home) < sizeof(histname) - strlen("/.cxhistory") - 1)
+	    {
+	    snprintf(histname, sizeof(histname), "%s/.cxhistory", home);
+	    histfile = fdOpen(histname, O_RDWR | O_CREAT, 0600);
+	    if (histfile)
+		{
+		input_lx = mlxOpenSession(histfile, MLX_F_LINEONLY | MLX_F_EOF);
+		while((t = mlxNextToken(input_lx)) > 0)
+		    {
+		    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;
+		    alloc = 1;
+		    ptr = mlxStringVal(input_lx, &alloc);
+		    if (ptr && *ptr) 
+			{
+			if (strchr(ptr, '\n'))
+			    *(strchr(ptr, '\n')) = '\0';
+			add_history (ptr);
+			nmSysFree(ptr);
+			}
+		    }
+		mlxCloseSession(input_lx);
+		}
+	    }
 
 	/** enable tab completion **/
 	rl_bind_key ('\t', handle_tab);
@@ -1549,7 +1584,11 @@ start(void* v)
 
 	    /** If the line has any text in it, save it on the readline history. **/
 	    if (inbuf && *inbuf)
+		{
 		add_history (inbuf);
+		if (histfile)
+		    fdPrintf(histfile, "%s\n", inbuf);
+		}
 
 	    /** If inbuf is null (end of file, etc.), exit **/
 	    if (!inbuf)
