@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.12 2008/06/25 01:04:58 gbeeley Exp $
+    $Id: exp_generator.c,v 1.13 2008/09/14 05:17:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.13  2008/09/14 05:17:27  gbeeley
+    - (bugfix) subquery evaluator was leaking query handles if subquery did
+      not return any rows.
+    - (change) add ability to generate expression text based on the domain of
+      evaluation (client, server, etc.)
+
     Revision 1.12  2008/06/25 01:04:58  gbeeley
     - (bugfix) switch to cxjs_plus instead of just the + operator when adding
       values in cxsql expressions deployed into javascript.  The + operator in
@@ -160,6 +166,7 @@ typedef struct _EG
     int		    (*WriteFn)();
     void*	    WriteArg;
     char	    EscChar;
+    int		    Domain;
     char	    TmpBuf[256];
     }
     ExpGen, *pExpGen;
@@ -216,6 +223,29 @@ exp_internal_WriteText(pExpGen eg, char* text)
 	nmSysFree(buf);
 
     return 0;
+    }
+
+
+/*** exp_internal_CheckConstants() - from the domain declaration and target
+ *** for the expression generation, figure out if the node should be treated
+ *** as a constant.
+ ***/
+int
+exp_internal_CheckConstants(pExpression exp, pExpGen eg)
+    {
+    int nodetype = exp->NodeType;
+    int n;
+
+	if ((eg->Domain == EXPR_F_RUNCLIENT && ((exp->Flags & EXPR_F_RUNSERVER) || (exp->Flags & EXPR_F_RUNSTATIC) || (exp->Flags & EXPR_F_DOMAINMASK) == 0)) ||
+	    (eg->Domain == EXPR_F_RUNSERVER && ((exp->Flags & EXPR_F_RUNSTATIC) || (exp->Flags & EXPR_F_DOMAINMASK) == 0)))
+	    {
+	    if (exp->Flags & EXPR_F_NULL)
+		nodetype = 0;
+	    else if ((n = expDataTypeToNodeType(exp->DataType)) >= 0)
+		nodetype = n;
+	    }
+
+    return nodetype;
     }
 
 
@@ -486,6 +516,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     {
     int i;
     int prop_func;
+    int nodetype;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -494,8 +525,17 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 	    return -1;
 	    }
 
+	/** Treat some expressions as constants **/
+	nodetype = exp_internal_CheckConstants(exp, eg);
+
+	if ((exp->Flags & EXPR_F_PERMNULL) || nodetype == 0)
+	    {
+	    exp_internal_WriteText(eg, " null ");
+	    return 0;
+	    }
+
 	/** Select an expression type **/
-	switch(exp->NodeType)
+	switch(nodetype)
 	    {
 	    case EXPR_N_FUNCTION:
 	        /** Function node - write function call, param list, end paren. **/
@@ -758,9 +798,14 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
  ***
  ***         CXSQL (Centrallix SQL style expressions)
  ***         JavaScript (JavaScript style expressions for DHTML embedding)
+ ***
+ *** "domain" can be 0 to generate the full expression, or EXPR_F_RUNCLIENT
+ *** to constant-ize any runserver() or runstatic() subexpressions.  If the
+ *** domain is EXPR_F_RUNSERVER, only any runstatic() subexpressions are
+ *** converted to constants.
  ***/
 int
-expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char quote_char, char* language)
+expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char quote_char, char* language, int domain)
     {
     pExpGen eg;
 
@@ -771,6 +816,7 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 	eg->WriteFn = write_fn;
 	eg->WriteArg = write_arg;
 	eg->EscChar = quote_char;
+	eg->Domain = domain;
 
 	/** Call the internal recursive version of this function **/
 	if (!strcasecmp(language,"cxsql"))

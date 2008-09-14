@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.12 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: exp_main.c,v 1.13 2008/09/14 05:17:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.13  2008/09/14 05:17:27  gbeeley
+    - (bugfix) subquery evaluator was leaking query handles if subquery did
+      not return any rows.
+    - (change) add ability to generate expression text based on the domain of
+      evaluation (client, server, etc.)
+
     Revision 1.12  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -585,6 +591,7 @@ int
 expDataTypeToNodeType(int data_type)
     {
     static int types[] = {0, EXPR_N_INTEGER, EXPR_N_STRING, EXPR_N_DOUBLE, EXPR_N_DATETIME, 0, 0, EXPR_N_MONEY };
+    if (data_type < 0 || data_type >= sizeof(types)/sizeof(int)) return -1;
     return types[data_type];
     }
 

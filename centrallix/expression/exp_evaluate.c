@@ -66,10 +66,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.22 2008/04/06 20:36:16 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.23 2008/09/14 05:17:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.23  2008/09/14 05:17:27  gbeeley
+    - (bugfix) subquery evaluator was leaking query handles if subquery did
+      not return any rows.
+    - (change) add ability to generate expression text based on the domain of
+      evaluation (client, server, etc.)
+
     Revision 1.22  2008/04/06 20:36:16  gbeeley
     - (feature) adding support for SQL round() function
     - (change) adding support for division and multiplication with money
@@ -260,13 +266,13 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    return -1;
 	    }
 	obj = objQueryFetch(qy, O_RDONLY);
+	objQueryClose(qy);
 	if (!obj)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_INTEGER;
 	    return 0;
 	    }
-	objQueryClose(qy);
 
 	/** Figure out the field, data type, and value **/
 	attrname = objGetFirstAttr(obj);

@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.16 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: expression.h,v 1.17 2008/09/14 05:17:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.17  2008/09/14 05:17:26  gbeeley
+    - (bugfix) subquery evaluator was leaking query handles if subquery did
+      not return any rows.
+    - (change) add ability to generate expression text based on the domain of
+      evaluation (client, server, etc.)
+
     Revision 1.16  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -352,7 +358,7 @@ pExpression expDuplicateExpression(pExpression this);
 int expReplaceString(pExpression this, char* oldstr, char* newstr);
 
 /*** Generator functions ***/
-int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language);
+int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);
