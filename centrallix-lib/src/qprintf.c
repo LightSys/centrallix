@@ -36,10 +36,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.10 2008/06/26 23:36:22 jncraton Exp $
+    $Id: qprintf.c,v 1.11 2008/09/21 00:32:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.11  2008/09/21 00:32:30  gbeeley
+    - (change) handle situation where 'strval' passed to qprintf is NULL
+    - (change) update .cvsignore for new object files (lib symlinks)
+
     Revision 1.10  2008/06/26 23:36:22  jncraton
     - DB64 filter now uses a proper grow function and is more efficient
 
@@ -981,7 +985,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			    strval = va_arg(ap, const char*);
 			    if (__builtin_expect(strval == NULL && !ignore, 0))
 				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
-			    cplen = strlen(strval);
+			    cplen = strval?strlen(strval):0;
 			    break;
 
 			case QPF_SPEC_T_POS:
