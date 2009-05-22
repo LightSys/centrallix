@@ -8,7 +8,7 @@
 	  <!ELEMENT property (ANY)>
 	  <!ELEMENT children (child*)>
 	  <!ELEMENT child (childproperty*)>
-	  <!ELEMENT childproperty (ANY)
+	  <!ELEMENT childproperty (ANY)>
 	  <!ELEMENT events (event*)>
 	  <!ELEMENT event (ANY)>
 	  <!ELEMENT actions (action*)>
