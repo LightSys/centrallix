@@ -15,7 +15,7 @@
 	  <!ELEMENT action (ANY)>
 	  <!ELEMENT clientprops (clientprop*)>
 	  <!ELEMENT clientprop (ANY)>
-	  <!ELEMENT sample (#CDATA)>
+	  <!ELEMENT sample (#PCDATA)>
 
 	  <!ATTLIST widget    
 		    name           ID         #REQUIRED
