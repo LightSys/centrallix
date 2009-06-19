@@ -32,10 +32,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.10 2007/12/05 22:10:15 gbeeley Exp $
+    $Id: mtlexer.c,v 1.11 2009/06/19 21:29:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.11  2009/06/19 21:29:44  gbeeley
+    - (bugfix) Permit lines returned from mlxNextToken() to span blocks of
+      data that were read in using the ReadFn().
+    - BUGBUG - The mtlexer needs an overhaul ASAP.  There are parts of this
+      code that have problems.
+
     Revision 1.10  2007/12/05 22:10:15  gbeeley
     - (bugfix) fixing problem regarding quoting of chars in a string under
       some circumstances
@@ -337,6 +343,7 @@ mlxNextToken(pLxSession this)
     char ch, prev_ch;
     int invert;
     int i,got_dot;
+    int found_end;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 
@@ -489,8 +496,23 @@ mlxNextToken(pLxSession this)
 	    if (this->Flags & MLX_F_LINEONLY)
 	        {
 		this->TokStrCnt = 0;
-		while(*ptr)
+		found_end = 0;
+		while(1)
 		    {
+		    if (!*ptr)
+			{
+			if (found_end) break;
+			this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
+			this->BufPtr = this->Buffer;
+			ptr = this->Buffer;
+			if (this->BufCnt <= 0 || !*ptr)
+			    {
+			    mssError(1,"MLX","Unterminated line at end of data");
+			    this->TokType = MLX_TOK_ERROR;
+			    break;
+			    }
+			}
+		    if (*ptr == '\n') found_end = 1;
 		    this->TokString[this->TokStrCnt++] = *(ptr++);
 		    if (this->TokStrCnt >= 255)
 		        {
@@ -498,6 +520,7 @@ mlxNextToken(pLxSession this)
 			break;
 			}
 		    }
+		if (this->TokType == MLX_TOK_ERROR) break;
 		this->TokString[this->TokStrCnt] = 0;
 		this->TokType = MLX_TOK_STRING;
 		this->Delimiter = '\0';
@@ -506,9 +529,22 @@ mlxNextToken(pLxSession this)
 	    else if (this->Flags & MLX_F_IFSONLY)
 	        {
 		this->TokStrCnt = 0;
-		while(*ptr && *ptr != ' ' && *ptr != '\t' && *ptr != '\r' &&
+		while(*ptr != ' ' && *ptr != '\t' && *ptr != '\r' &&
 		      *ptr != '\n')
 		    {
+		    if (!*ptr)
+			{
+			this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
+			this->BufPtr = this->Buffer;
+			ptr = this->Buffer;
+			if (this->BufCnt < 0)
+			    {
+			    this->TokType = MLX_TOK_ERROR;
+			    break;
+			    }
+			if (this->BufCnt == 0 || !*ptr)
+			    break;
+			}
 		    this->TokString[this->TokStrCnt++] = *(ptr++);
 		    if (this->TokStrCnt >= 255)
 		        {
@@ -516,6 +552,7 @@ mlxNextToken(pLxSession this)
 			break;
 			}
 		    }
+		if (this->TokType == MLX_TOK_ERROR) break;
 		this->TokString[this->TokStrCnt] = 0;
 		this->TokType = MLX_TOK_STRING;
 		break;
@@ -944,7 +981,7 @@ mlxStringVal(pLxSession this, int* alloc)
 		    ptr = nptr;
 		    }
 		}
-	    if (this->Flags & MLX_F_INSTRING) bptr++; /* skip delimiter */
+	    if (this->Flags & MLX_F_INSTRING && this->Delimiter != '\0') bptr++; /* skip delimiter */
 	    this->BufPtr = bptr;
 	    ptr[cnt] = 0;
 	    this->Flags &= ~MLX_F_INSTRING;
