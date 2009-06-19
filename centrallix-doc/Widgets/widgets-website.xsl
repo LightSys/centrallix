@@ -31,6 +31,7 @@ insert into topic values(null,1,"3. Application Components",null,
 
 	[table]
 	<xsl:for-each select="widget">
+		<xsl:sort select="@name" order="ascending"/>
 		<xsl:variable name="widgetname"><xsl:value-of select="@name"/></xsl:variable>
 		[tr][td][widget/<xsl:value-of select="@name"/>][/td][td]<xsl:value-of select="@description"/>[/td][/tr]
 	</xsl:for-each>
