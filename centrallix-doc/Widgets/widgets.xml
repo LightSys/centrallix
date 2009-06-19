@@ -946,7 +946,6 @@ osrc1 "widget/osrc"
 			<property name="y" type="integer"></property>
 			<property name="width" type="integer"></property>
 			<property name="height" type="integer"></property>
-			<property name="y" type="integer"></property>
 		</properties>
 		<children>
 		</children>
