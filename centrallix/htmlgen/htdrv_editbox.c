@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.49 2008/03/04 01:10:56 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.50 2009/06/24 22:16:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.50  2009/06/24 22:16:30  gbeeley
+    - (feature) adding "description" to editbox - which adds text after the
+      actual value, in a different color, so the user can see more information
+      about the value in the editbox (or the lack of a value).
+
     Revision 1.49  2008/03/04 01:10:56  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -422,6 +427,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char main_bg[128];
+    char descfg[64];
+    char descr[128];
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
@@ -475,6 +482,18 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
+
+	/** Get description color **/
+	if (wgtrGetPropertyValue(tree,"description_fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(descfg,ptr,sizeof(descfg));
+	else
+	    strcpy(descfg, "gray");
+
+	/** Get empty field description **/
+	if (wgtrGetPropertyValue(tree,"empty_description",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(descr,ptr,sizeof(descr));
+	else
+	    strcpy(descr, "");
 
 	/** client-side expr for content **/
 	htrCheckAddExpression(s,tree,name,"content");
@@ -543,9 +562,10 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), %[c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"),%] form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\"});\n",
+	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), %[c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"),%] form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
 	    name,  name,id,  dbl_buffer,name,id, 
-	    form, fieldname, is_readonly, main_bg, tooltip);
+	    form, fieldname, is_readonly, main_bg,
+	    tooltip, descfg, descr);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
