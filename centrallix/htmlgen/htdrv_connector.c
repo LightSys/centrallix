@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.25 2008/03/04 01:10:56 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.26 2009/06/24 22:00:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.26  2009/06/24 22:00:21  gbeeley
+    - (feature) allow connectors to have a 'source' property, so they can be
+      placed within the event source or action target, or be placed elsewhere
+      in the application at the discretion of the coder - such as at the top
+      level in one group.
+
     Revision 1.25  2008/03/04 01:10:56  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -321,6 +327,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char event[32];
     char target[32];
+    char source[32];
     char action[32];
     int id, i;
     XString xs;
@@ -343,12 +350,6 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 	strtcpy(event,ptr,sizeof(event));
-	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) != 0)
-	    {
-	    mssError(1,"HTCONN","Connector must have a 'target' property");
-	    return -1;
-	    }
-	strtcpy(target,ptr,sizeof(target));
 	if (wgtrGetPropertyValue(tree,"action",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'action' property");
@@ -360,12 +361,23 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
+	/** Source/target **/
+	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) != 0)
+	    target[0] = '\0';
+	else
+	    strtcpy(target,ptr,sizeof(target));
+
+	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
+	    source[0] = '\0';
+	else
+	    strtcpy(source, ptr, sizeof(source));
+
 	/** Build the param list **/
 	xsInit(&xs);
 	first = 1;
 	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
 	    {
-	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
+	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action") || !strcmp(ptr, "source")) continue;
 	    if (!first) xsConcatenate(&xs, ",", 1);
 	    first = 0;
 	    switch(wgtrGetPropertyType(tree, ptr))
@@ -373,7 +385,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 		case DATA_T_CODE:
 		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
 		    xsConcatQPrintf(&xs,"%STR&SYM:{type:'exp', value:'", ptr);
-		    expGenerateText(code, NULL, xsWrite, &xs, '\'', "javascript");
+		    expGenerateText(code, NULL, xsWrite, &xs, '\'', "javascript", EXPR_F_RUNCLIENT);
 		    xsConcatenate(&xs,"'}",2);
 		    break;
 		case DATA_T_INTEGER:
@@ -399,8 +411,14 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Add a script init to install the connector **/
-	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%STR&SYM\"]).ifcProbe(ifEvent).Connect('%STR&SYM', '%STR&SYM', '%STR&SYM', {%STR});\n",
-		name, event, target, action, xs.String);
+	htrAddScriptInit_va(s, "    %[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%], '%STR&SYM', {%STR});\n",
+		!*source, name, 
+		*source, source,
+		event, 
+		*target, target, 
+		!*target, name,
+		action,
+		xs.String);
 	xsDeInit(&xs);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
