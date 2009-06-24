@@ -34,10 +34,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.17 2008/09/14 05:17:26 gbeeley Exp $
+    $Id: expression.h,v 1.18 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.18  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.17  2008/09/14 05:17:26  gbeeley
     - (bugfix) subquery evaluator was leaking query handles if subquery did
       not return any rows.
@@ -173,7 +199,7 @@
 #include "cxlib/mtlexer.h"
 #include "cxlib/xhash.h"
 
-#define EXPR_MAX_PARAMS		16
+#define EXPR_MAX_PARAMS		30
 
 
 /** Global structure definition **/
@@ -184,6 +210,7 @@ typedef struct
     int         (*(EvalFunctions[64]))();
     int         Precedence[64];
     XHashTable  Functions;
+    XHashTable  ReverseFunctions;
     }
     EXP_Globals;
 
@@ -337,6 +364,8 @@ extern pParamObjects expNullObjlist;
 
 #define EXPR_F_INDETERMINATE	32768	/* Value cannot yet be known */
 
+#define EXPR_F_HASRUNSERVER	65536	/* Expression contains runserver() */
+
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */
 #define EXPR_CMP_OUTERJOIN	2	/* allow =* and *= for == */
@@ -356,6 +385,8 @@ pExpression expPodToExpression(pObjData pod, int type, pExpression exp);
 int expExpressionToPod(pExpression this, int type, pObjData pod);
 pExpression expDuplicateExpression(pExpression this);
 int expReplaceString(pExpression this, char* oldstr, char* newstr);
+int expIsConstant(pExpression this);
+pExpression expReducedDuplicate(pExpression this);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);

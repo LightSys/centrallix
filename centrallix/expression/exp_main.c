@@ -46,10 +46,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.13 2008/09/14 05:17:27 gbeeley Exp $
+    $Id: exp_main.c,v 1.14 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.14  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.13  2008/09/14 05:17:27  gbeeley
     - (bugfix) subquery evaluator was leaking query handles if subquery did
       not return any rows.
@@ -333,6 +359,87 @@ exp_internal_CopyTree(pExpression orig_exp)
     }
 
 
+/*** expIsConstant() - returns true (1) if the expression is a constant
+ *** node.
+ ***/
+int
+expIsConstant(pExpression this)
+    {
+    int t = this->NodeType;
+    return (t == EXPR_N_INTEGER || t == EXPR_N_STRING || t == EXPR_N_DOUBLE || t == EXPR_N_MONEY || t == EXPR_N_DATETIME);
+    }
+
+
+/*** exp_internal_CopyTreeReduced() - same as below.
+ ***/
+pExpression
+exp_internal_CopyTreeReduced(pExpression orig_exp)
+    {
+    pExpression new_exp;
+    pExpression subexp;
+    pExpression new_subexp;
+    int i, t;
+
+    	ASSERTMAGIC(orig_exp,MGK_EXPRESSION);
+
+    	/** First, copy the current node. **/
+	new_exp = expAllocExpression();
+	exp_internal_CopyNode(orig_exp, new_exp);
+
+	/** Is this node frozen? **/
+	if (new_exp->Flags & EXPR_F_FREEZEEVAL)
+	    {
+	    /** convert to a constant **/
+	    t = expDataTypeToNodeType(new_exp->DataType);
+	    if (t > 0) new_exp->NodeType = t;
+	    }
+	else
+	    {
+	    /** Now, make copies of the subtrees **/
+	    for(i=0;i<orig_exp->Children.nItems;i++)
+		{
+		subexp = (pExpression)(orig_exp->Children.Items[i]);
+		new_subexp = exp_internal_CopyTreeReduced(subexp);
+		xaAddItem(&(new_exp->Children), (void*)new_subexp);
+		new_subexp->Parent = new_exp;
+		}
+	    }
+
+	/** Optimize NULL IS NULL **/
+	if (new_exp->NodeType == EXPR_N_ISNULL)
+	    {
+	    subexp = (pExpression)(new_exp->Children.Items[0]);
+	    if (subexp && expIsConstant(subexp) && (subexp->Flags & EXPR_F_NULL))
+		{
+		expFreeExpression(subexp);
+		xaRemoveItem(&new_exp->Children, 0);
+		new_exp->NodeType = EXPR_N_INTEGER;
+		new_exp->DataType = DATA_T_INTEGER;
+		new_exp->Flags &= EXPR_F_NULL;
+		new_exp->Integer = 1;
+		}
+	    }
+
+    return new_exp;
+    }
+
+
+
+/*** expReducedDuplicate - duplicate an expression tree, but reduce it,
+ *** converting frozen nodes to constants and optimizing out forced true
+ *** or false parts of the expression
+ ***/
+pExpression
+expReducedDuplicate(pExpression orig_exp)
+    {
+    pExpression new_exp;
+
+	new_exp = exp_internal_CopyTreeReduced(orig_exp);
+
+    return new_exp;
+    }
+
+
 /*** expDuplicateExpression - duplicate an expression tree (as above)
  ***/
 pExpression
@@ -422,6 +529,7 @@ int
 exp_internal_DumpExpression_r(pExpression this, int level)
     {
     int i;
+    char* ptr;
 
     	ASSERTMAGIC(this,MGK_EXPRESSION);
 
@@ -461,6 +569,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 		case DATA_T_INTEGER: printf(", integer=%d",this->Integer); break;
 		case DATA_T_STRING: printf(", string='%s'",this->String); break;
 		case DATA_T_DOUBLE: printf(", double=%f",this->Types.Double); break;
+		case DATA_T_MONEY: ptr = objDataToStringTmp(DATA_T_MONEY, &(this->Types.Money), 0); printf(", money=%s", ptr); break;
 		}
 	    }
 	if (this->Flags & EXPR_F_NEW) printf(", NEW");
@@ -763,6 +872,7 @@ expInitialize()
 
 	/** Function list for EXPR_N_FUNCTION nodes **/
 	xhInit(&EXP.Functions, 255, 0);
+	xhInit(&EXP.ReverseFunctions, 255, 0);
 	exp_internal_DefineFunctions();
 
 	/** Define the null objectlist **/

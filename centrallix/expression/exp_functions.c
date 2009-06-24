@@ -57,10 +57,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.16 2008/04/06 20:36:16 gbeeley Exp $
+    $Id: exp_functions.c,v 1.17 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.17  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.16  2008/04/06 20:36:16  gbeeley
     - (feature) adding support for SQL round() function
     - (change) adding support for division and multiplication with money
@@ -149,18 +175,9 @@
 
 int exp_fn_getdate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    struct tm* tmptr;
-    time_t t;
-
     tree->DataType = DATA_T_DATETIME;
-    t = time(NULL);
-    tmptr = localtime(&t);
-    tree->Types.Date.Part.Second = tmptr->tm_sec;
-    tree->Types.Date.Part.Minute = tmptr->tm_min;
-    tree->Types.Date.Part.Hour = tmptr->tm_hour;
-    tree->Types.Date.Part.Day = tmptr->tm_mday - 1;
-    tree->Types.Date.Part.Month = tmptr->tm_mon;
-    tree->Types.Date.Part.Year = tmptr->tm_year;
+    objCurrentDate(&(tree->Types.Date));
+
     return 0;
     }
 
@@ -405,6 +422,10 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	mssError(1,"EXP","Three parameters required for condition()");
 	return -1;
 	}
+    if (exp_internal_EvalTree(i0,objlist) < 0)
+	{
+	return -1;
+	}
     if (i0->DataType != DATA_T_INTEGER)
         {
 	mssError(1,"EXP","condition() first parameter must evaluate to boolean");
@@ -419,6 +440,10 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
     if (i0->Integer != 0)
         {
 	/** True, return 2nd argument i1 **/
+	if (exp_internal_EvalTree(i1,objlist) < 0)
+	    {
+	    return -1;
+	    }
 	tree->DataType = i1->DataType;
 	if (i1->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
 	switch(i1->DataType)
@@ -431,6 +456,10 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
     else
         {
 	/** False, return 3rd argument i2 **/
+	if (exp_internal_EvalTree(i2,objlist) < 0)
+	    {
+	    return -1;
+	    }
 	tree->DataType = i2->DataType;
 	if (i2->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
 	switch(i2->DataType)
@@ -449,7 +478,7 @@ int exp_fn_charindex(pExpression tree, pParamObjects objlist, pExpression i0, pE
     char* ptr;
 
     tree->DataType = DATA_T_INTEGER;
-    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
+    if (!i0 || !i1)
         {
 	mssError(1,"EXP","Two string parameters required for charindex()");
 	return -1;
@@ -458,6 +487,11 @@ int exp_fn_charindex(pExpression tree, pParamObjects objlist, pExpression i0, pE
         {
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
+        {
+	mssError(1,"EXP","Two string parameters required for charindex()");
+	return -1;
 	}
     ptr = strstr(i1->String, i0->String);
     if (ptr == NULL)
@@ -551,7 +585,7 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 int exp_fn_char_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     tree->DataType = DATA_T_INTEGER;
-    if (i0->Flags & EXPR_F_NULL)
+    if (i0 && i0->Flags & EXPR_F_NULL)
         {
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
@@ -572,7 +606,7 @@ int exp_fn_datepart(pExpression tree, pParamObjects objlist, pExpression i0, pEx
     DateTime dt;
 
     tree->DataType = DATA_T_INTEGER;
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+    if (i0 && i1 && ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL)))
         {
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
@@ -625,17 +659,56 @@ int exp_fn_datepart(pExpression tree, pParamObjects objlist, pExpression i0, pEx
     return 0;
     }
 
+// Reverse isnull() just passes the value on to the first parameter, so the
+// isnull() function can be used to set default values on SQL query properties.
+int exp_fn_reverse_isnull(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    if (!i0)
+        {
+	mssError(1,"EXP","isnull() requires two parameters");
+	return -1;
+	}
+    if (tree->Flags & EXPR_F_NULL) 
+	i0->Flags |= EXPR_F_NULL;
+    else
+	i0->Flags &= ~EXPR_F_NULL;
+    switch(tree->DataType)
+	{
+	case DATA_T_INTEGER: i0->Integer = tree->Integer; break;
+	case DATA_T_STRING:
+	    if (i0->Alloc && i0->String)
+		{
+		nmSysFree(i0->String);
+		}
+	    i0->Alloc = 0;
+	    i0->String = tree->String;
+	    break;
+	default: memcpy(&(i0->Types), &(tree->Types), sizeof(tree->Types)); break;
+	}
+    i0->DataType = tree->DataType;
+    return expReverseEvalTree(i0, objlist);
+    }
 
 int exp_fn_isnull(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+    if (!i0 || !i1)
+        {
+	mssError(1,"EXP","isnull() requires two parameters");
+	return -1;
+	}
     if (i0->Flags & EXPR_F_NULL) i0 = i1;
+    tree->DataType = i0->DataType;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
     switch(i0->DataType)
         {
         case DATA_T_INTEGER: tree->Integer = i0->Integer; break;
         case DATA_T_STRING: tree->String = i0->String; tree->Alloc = 0; break;
         default: memcpy(&(tree->Types), &(i0->Types), sizeof(tree->Types));
 	}
-    tree->DataType = i0->DataType;
     return 0;
     }
 
@@ -1154,6 +1227,164 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int dec = 0;
+    int i, v;
+    double dv;
+    long long mt, mv;
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY) || (i1 && i1->DataType != DATA_T_INTEGER) || (i1 && i2))
+	{
+	mssError(1,"EXP","truncate() requires a numeric parameter and an optional integer parameter");
+	return -1;
+	}
+    if ((i0->Flags & EXPR_F_NULL) || (i1 && (i1->Flags & EXPR_F_NULL)))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i1) dec = i1->Integer;
+    tree->DataType = i0->DataType;
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = i0->Integer;
+	    if (dec < 0)
+		{
+		v = 1;
+		for(i=dec;i<0;i++) v *= 10;
+		tree->Integer /= v;
+		tree->Integer *= v;
+		}
+	    break;
+
+	case DATA_T_DOUBLE:
+	    tree->Types.Double = i0->Types.Double;
+	    dv = 1;
+	    for(i=dec;i<0;i++) dv *= 10;
+	    for(i=0;i<dec;i++) dv /= 10;
+	    tree->Types.Double = tree->Types.Double/dv;
+	    if (tree->Types.Double > 0)
+		tree->Types.Double = floor(tree->Types.Double + 0.000001);
+	    else
+		tree->Types.Double = ceil(tree->Types.Double - 0.000001);
+	    tree->Types.Double = tree->Types.Double*dv;
+	    break;
+
+	case DATA_T_MONEY:
+	    mt = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+	    if (dec < 4)
+		{
+		mv = 1;
+		for(i=dec;i<4;i++) mv *= 10;
+		mt /= mv;
+		mt *= mv;
+		}
+	    tree->Types.Money.WholePart = mt/10000;
+	    mt = mt % 10000;
+	    if (mt < 0)
+		{
+		mt += 10000;
+		tree->Types.Money.WholePart -= 1;
+		}
+	    tree->Types.Money.FractionPart = mt;
+	    break;
+	}
+    return 0;
+    }
+
+/*** constrain(value, min, max) ***/
+int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int v;
+
+    if (!i0 || !i1 || !i2 || (i0->DataType != i1->DataType) || i0->DataType != i2->DataType || !(i0->DataType == DATA_T_INTEGER || i0->DataType == DATA_T_MONEY || i0->DataType == DATA_T_DOUBLE))
+	{
+	mssError(1,"EXP","constrain() requires three numeric parameters of the same data type");
+	return -1;
+	}
+    tree->DataType = i0->DataType;
+    if ((i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+
+    /* check min */
+    if (!(i1->Flags & EXPR_F_NULL))
+	{
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		if (objDataCompare(i0->DataType, &(i0->Integer), i1->DataType, &(i1->Integer)) < 0)
+		    {
+		    tree->Integer = i1->Integer;
+		    return 0;
+		    }
+		break;
+	    case DATA_T_DOUBLE: 
+		if (objDataCompare(i0->DataType, &(i0->Types.Double), i1->DataType, &(i1->Types.Double)) < 0)
+		    {
+		    tree->Types.Double = i1->Types.Double;
+		    return 0;
+		    }
+		break;
+	    case DATA_T_MONEY: 
+		if (objDataCompare(i0->DataType, &(i0->Types.Money), i1->DataType, &(i1->Types.Money)) < 0)
+		    {
+		    tree->Types.Money = i1->Types.Money;
+		    return 0;
+		    }
+		break;
+	    }
+	}
+
+    /* check max */
+    if (!(i2->Flags & EXPR_F_NULL))
+	{
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		if (objDataCompare(i0->DataType, &(i0->Integer), i2->DataType, &(i2->Integer)) > 0)
+		    {
+		    tree->Integer = i2->Integer;
+		    return 0;
+		    }
+		break;
+	    case DATA_T_DOUBLE: 
+		if (objDataCompare(i0->DataType, &(i0->Types.Double), i2->DataType, &(i2->Types.Double)) > 0)
+		    {
+		    tree->Types.Double = i2->Types.Double;
+		    return 0;
+		    }
+		break;
+	    case DATA_T_MONEY: 
+		if (objDataCompare(i0->DataType, &(i0->Types.Money), i2->DataType, &(i2->Types.Money)) > 0)
+		    {
+		    tree->Types.Money = i2->Types.Money;
+		    return 0;
+		    }
+		break;
+	    }
+	}
+
+    /* go with actual value */
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = i0->Integer;
+	    break;
+	case DATA_T_DOUBLE: 
+	    tree->Types.Double = i0->Types.Double;
+	    break;
+	case DATA_T_MONEY: 
+	    tree->Types.Money = i0->Types.Money;
+	    break;
+	}
+
+    return 0;
+    }
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -1477,14 +1708,17 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    /** Initialize the aggexp tree? **/
-    if (!(i0->Flags & EXPR_F_NULL) && !(tree->Flags & EXPR_F_AGGLOCKED))
-        {
+    if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
+	{
 	if (tree->AggCount == 0) 
 	    {
 	    expCopyValue(i0, tree, 1);
 	    }
 	tree->AggCount++;
+	}
+    else
+	{
+	if (tree->AggCount == 0) tree->Flags |= EXPR_F_NULL;
 	}
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
@@ -1493,11 +1727,14 @@ int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    /** Initialize the aggexp tree? **/
-    if (!(i0->Flags & EXPR_F_NULL) && !(tree->Flags & EXPR_F_AGGLOCKED))
-        {
+    if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
+	{
 	expCopyValue(i0, tree, 1);
 	tree->AggCount++;
+	}
+    else
+	{
+	if (tree->AggCount == 0) tree->Flags |= EXPR_F_NULL;
 	}
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
@@ -1533,6 +1770,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
+	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
+	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
@@ -1541,6 +1780,9 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "min", (char*)exp_fn_min);
 	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
 	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
+
+	/** Reverse functions **/
+	xhAdd(&EXP.ReverseFunctions, "isnull", (char*)exp_fn_reverse_isnull);
 
     return 0;
     }

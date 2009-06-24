@@ -119,13 +119,13 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 		    break;
 		case DATA_T_CODE:
 		    xsInit(&expr);
-		    expGenerateText((pExpression)val.Generic, NULL, xsWrite, &expr, 0, "javascript");
+		    expGenerateText((pExpression)val.Generic, NULL, xsWrite, &expr, 0, "javascript", EXPR_F_RUNCLIENT);
 		    xsConcatPrintf(str, "%s: \"%s\"", name, expr.String);
 		    xsDeInit(&expr);
 		    break;
 		/** TODO: Support for other datatypes should probably be added **/
 		default:
-		    mssError(1, "IFC", "Can't convert properties of type %d in ObToJS - FIXME!", type);
+		    mssError(1, "IFC", "Can't convert properties of type %d in ObjToJS - FIXME!", type);
 		    break;
 		}
 	    name = objGetNextAttr(obj);

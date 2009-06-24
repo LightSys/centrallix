@@ -47,10 +47,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.17 2008/03/29 02:26:17 gbeeley Exp $
+    $Id: stparse.c,v 1.18 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.18  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.17  2008/03/29 02:26:17  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -532,6 +558,7 @@ int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
     pExpression find_exp;
+    pParamObjects objlist;
 
 	/** Do some error-cascade checking. **/
 	if (!this) return -1;
@@ -552,6 +579,14 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 	/** Correct type requested? **/
 	if (find_exp->Flags & EXPR_F_NULL) return 1;
 	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
+
+	/** If external ref, do eval **/
+	if ((find_exp->ObjCoverageMask & EXPR_MASK_EXTREF) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
+	    {
+	    objlist = expCreateParamList();
+	    expEvalTree(find_exp, objlist);
+	    expFreeParamList(objlist);
+	    }
 
     return expExpressionToPod(find_exp, find_exp->DataType, pod);
     }
@@ -1271,14 +1306,14 @@ st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObjects 
 	/** Output the various expressions. **/
 	if (info->Value->NodeType != EXPR_N_LIST)
 	    {
-	    expGenerateText(info->Value, objlist, xsWrite, xs, '\0', "cxsql");
+	    expGenerateText(info->Value, objlist, xsWrite, xs, '\0', "cxsql", 0);
 	    }
 	else
 	    {
 	    for(i=0;i<info->Value->Children.nItems;i++)
 	        {
 		exp = (pExpression)(info->Value->Children.Items[i]);
-		expGenerateText(exp, objlist, xsWrite, xs, '\0', "cxsql");
+		expGenerateText(exp, objlist, xsWrite, xs, '\0', "cxsql", 0);
 		if (i != info->Value->Children.nItems-1) xsConcatenate(xs,", ",2);
 		}
 	    }

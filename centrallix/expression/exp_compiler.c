@@ -47,10 +47,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.18 2008/03/09 07:58:50 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.19 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.19  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.18  2008/03/09 07:58:50  gbeeley
     - (bugfix) sometimes the object name in objlist->Names[] is NULL.
 
@@ -930,6 +956,32 @@ exp_internal_SetCoverageMask(pExpression exp)
     }
 
 
+/*** exp_internal_SetDomain - set up domain (runserver/etc) flags
+ ***/
+int
+exp_internal_SetDomain(pExpression exp)
+    {
+    int i;
+    int has_runserver = 0;
+    pExpression subexp;
+
+	/** Handle children first **/
+	for(i=0;i<exp->Children.nItems;i++)
+	    {
+	    subexp = exp->Children.Items[i];
+	    exp_internal_SetDomain(subexp);
+	    if (subexp->Flags & (EXPR_F_RUNSERVER | EXPR_F_HASRUNSERVER))
+		has_runserver = 1;
+	    }
+
+	/** Set flag **/
+	if (has_runserver && !(exp->Flags & EXPR_F_RUNSERVER))
+	    exp->Flags |= EXPR_F_HASRUNSERVER;
+
+    return 0;
+    }
+
+
 /*** exp_internal_SetAggLevel - determine the level of aggregate nesting
  *** in an expression.
  ***/
@@ -1033,6 +1085,7 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 	/*if (!(e->Flags & EXPR_F_DOMAINMASK)) e->Flags |= EXPR_F_RUNDEFAULT;*/
 	exp_internal_SetAggLevel(e);
 	exp_internal_SetCoverageMask(e);
+	exp_internal_SetDomain(e);
 
 	/** Set SEQ ids. **/
 	exp_internal_SetupControl(e);

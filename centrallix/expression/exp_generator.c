@@ -46,10 +46,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.13 2008/09/14 05:17:27 gbeeley Exp $
+    $Id: exp_generator.c,v 1.14 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.14  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.13  2008/09/14 05:17:27  gbeeley
     - (bugfix) subquery evaluator was leaking query handles if subquery did
       not return any rows.
@@ -237,7 +263,8 @@ exp_internal_CheckConstants(pExpression exp, pExpGen eg)
     int n;
 
 	if ((eg->Domain == EXPR_F_RUNCLIENT && ((exp->Flags & EXPR_F_RUNSERVER) || (exp->Flags & EXPR_F_RUNSTATIC) || (exp->Flags & EXPR_F_DOMAINMASK) == 0)) ||
-	    (eg->Domain == EXPR_F_RUNSERVER && ((exp->Flags & EXPR_F_RUNSTATIC) || (exp->Flags & EXPR_F_DOMAINMASK) == 0)))
+	    (eg->Domain == EXPR_F_RUNSERVER && ((exp->Flags & EXPR_F_RUNSTATIC) || (exp->Flags & EXPR_F_DOMAINMASK) == 0)) ||
+	    (exp->Flags & EXPR_F_FREEZEEVAL))
 	    {
 	    if (exp->Flags & EXPR_F_NULL)
 		nodetype = 0;
@@ -256,6 +283,7 @@ int
 exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     {
     int i;
+    int nodetype;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -275,8 +303,11 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		exp_internal_WriteText(eg, "runclient(");
 	    }
 
+	/** Treat some expressions as constants **/
+	nodetype = exp_internal_CheckConstants(exp, eg);
+
 	/** Select an expression type **/
-	switch(exp->NodeType)
+	switch(nodetype)
 	    {
 	    case EXPR_N_FUNCTION:
 	        /** Function node - write function call, param list, end paren. **/
@@ -411,7 +442,7 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
 		    exp_internal_WriteText(eg, "(");
 		exp_internal_WriteText(eg, "NOT ");
-	        if (exp_internal_GenerateText_cxsql((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
+	        if (exp_internal_GenerateText_cxsql((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
 		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
 		    exp_internal_WriteText(eg, ")");
 		break;
@@ -487,6 +518,10 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		    }
 		exp_internal_WriteText(eg,":");
 		exp_internal_WriteText(eg,exp->Name);
+		break;
+
+	    case 0:  /** NULL **/
+		exp_internal_WriteText(eg, " NULL ");
 		break;
 
 	    default:
@@ -769,7 +804,16 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 			    }
 			break;
 		    }
-		exp_internal_WriteText(eg,exp->Name);
+		if (!exp->Parent || exp->Parent->NodeType != EXPR_N_OBJECT)
+		    {
+		    exp_internal_WriteText(eg,"((typeof _this.");
+		    exp_internal_WriteText(eg,exp->Name);
+		    exp_internal_WriteText(eg," != 'undefined')?(_this.");
+		    exp_internal_WriteText(eg,exp->Name);
+		    exp_internal_WriteText(eg,"):null)");
+		    }
+		else
+		    exp_internal_WriteText(eg,exp->Name);
 		break;
 
 	    default:
@@ -849,6 +893,39 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
     }
 
 
+int
+exp_internal_AddPropToList(pXArray objs_xa, pXArray props_xa, char* objname, char* propname)
+    {
+    int i;
+    char* objn = NULL;
+    char* propn = NULL;
+
+	/** Check dups **/
+	for(i=0;i<objs_xa->nItems;i++)
+	    {
+	    objn = (char*)(objs_xa->Items[i]);
+	    propn = (char*)(props_xa->Items[i]);
+	    if (((!objn && !objname) || (objn && objname && !strcmp(objn, objname))) &&
+		((!propn && !propname) || (propn && propname && !strcmp(propn, propname))))
+		return -1;
+	    }
+
+	/** add it **/
+	if (objname)
+	    objn = nmSysStrdup(objname);
+	else
+	    objn = NULL;
+	if (propname)
+	    propn = nmSysStrdup(propname);
+	else
+	    propn = NULL;
+	xaAddItem(props_xa, propn);
+	xaAddItem(objs_xa, objn);
+
+    return 0;
+    }
+
+
 /*** expGetPropList - get a list of object/property names referenced in a given
  *** expression tree.  Returns the list in a pair of xarrays - one for the
  *** object names, the second with the property names.  The caller must init
@@ -860,25 +937,23 @@ expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
     {
     pExpression subexp;
     int i;
+    char* objn = NULL;
+    char* propn = NULL;
 
 	/** Is node an object/property node? **/
 	if (exp->NodeType == EXPR_N_OBJECT)
 	    {
 	    subexp = (pExpression)(exp->Children.Items[0]);
-	    xaAddItem(objs_xa, nmSysStrdup(exp->Name));
+	    objn = exp->Name;
 	    if (subexp && subexp->NodeType == EXPR_N_PROPERTY)
-		{
-		xaAddItem(props_xa, nmSysStrdup(subexp->Name));
-		}
+		propn = subexp->Name;
 	    else
-		{
-		xaAddItem(props_xa, NULL);
-		}
+		propn = NULL;
+	    exp_internal_AddPropToList(objs_xa, props_xa, objn, propn);
 	    }
 	else if (exp->NodeType == EXPR_N_PROPERTY)
 	    {
-	    xaAddItem(objs_xa, NULL);
-	    xaAddItem(props_xa, nmSysStrdup(exp->Name));
+	    exp_internal_AddPropToList(objs_xa, props_xa, NULL, exp->Name);
 	    }
 	else
 	    {

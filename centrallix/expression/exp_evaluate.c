@@ -10,6 +10,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -66,10 +67,36 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.23 2008/09/14 05:17:27 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.24 2009/06/24 17:33:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.24  2009/06/24 17:33:19  gbeeley
+    - (change) adding domain param to expGenerateText, so it can be used to
+      generate an expression string with lower domains converted to constants
+    - (bugfix) better handling of runserver() embedded within runclient(), etc
+    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
+    - (bugfix) after a property has been set using reverse evaluation, tag it
+      as modified so it shows up as changed in other expressions using that
+      same object param list
+    - (change) condition() function now uses short-circuit evaluation
+      semantics, so parameters are only evaluated as they are needed... e.g.
+      condition(a,b,c) if a is true, b is returned and c is never evaluated,
+      and vice versa.
+    - (feature) add structure for reverse-evaluation of functions.  The
+      isnull() function now supports this feature.
+    - (bugfix) save/restore the coverage mask before/after evaluation, so that
+      a nested subexpression (eval or subquery) using the same object list
+      will not cause an inconsistency.  Basically a reentrancy bug.
+    - (bugfix) some functions were erroneously depending on the data type of
+      a NULL value to be correct.
+    - (feature) adding truncate() function which is similar to round().
+    - (feature) adding constrain() function which limits a value to be
+      between a given minimum and maximum value.
+    - (bugfix) first() and last() functions were not properly resetting the
+      value to NULL between GROUP BY groups
+    - (bugfix) some expression-to-JS fixes
+
     Revision 1.23  2008/09/14 05:17:27  gbeeley
     - (bugfix) subquery evaluator was leaking query handles if subquery did
       not return any rows.
@@ -664,6 +691,9 @@ int
 expEvalMinus(pExpression tree, pParamObjects objlist)
     {
     pExpression i0, i1;
+    void* dptr;
+    char* ptr;
+    int n;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -763,8 +793,50 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    }
 		break;
 
+	    case DATA_T_STRING:
+		/** subtracting from a string -- remove the tail -- reverse of string concat with +  **/
+		switch(i1->DataType)
+		    {
+		    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
+		    case DATA_T_STRING: dptr = i1->String; break;
+		    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
+		    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
+		    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
+		    default:
+			mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
+			return -1;
+		    }
+		ptr = objDataToStringTmp(i1->DataType, dptr, 0);
+		tree->DataType = DATA_T_STRING;
+		if (strlen(ptr) > strlen(i0->String) || strcmp(ptr, i0->String + (strlen(i0->String) - strlen(ptr))) != 0)
+		    {
+		    /** GRB - note - perhaps this should be an error condition?  Or at least NULL?
+		     ** Right now we are just ignoring it if the tail does not match.
+		     **/
+		    tree->String = i0->String;
+		    tree->Alloc = 0;
+		    }
+		else
+		    {
+		    if (tree->Alloc) nmSysFree(tree->String);
+		    n = strlen(i0->String) - strlen(ptr);
+		    if (n < sizeof(i0->Types.StringBuf))
+			{
+			tree->String = tree->Types.StringBuf;
+			tree->Alloc = 0;
+			}
+		    else
+			{
+			tree->String = nmSysMalloc(n+1);
+			tree->Alloc = 1;
+			}
+		    memcpy(tree->String, i0->String, n);
+		    tree->String[n] = '\0';
+		    }
+		break;
+
 	    default:
-	        mssError(1,"EXP","Only integer, double, and money types valid for '-'");
+	        mssError(1,"EXP","Only integer, string, double, and money types valid for '-'");
 		return -1;
 	    }
 
@@ -798,6 +870,18 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 	i1 = ((pExpression)(tree->Children.Items[1]));
 	if (exp_internal_EvalTree(i0,objlist) <0) return -1;
 	if (exp_internal_EvalTree(i1,objlist) <0) return -1;
+
+	/*if (CxGlobals.Flags & CX_F_DEBUG)
+	    {
+	    if (i0->Flags & EXPR_F_NULL)
+		printf("0: null\n");
+	    else
+		printf("0: $ %d %2.2d\n", i0->Types.Money.WholePart, i0->Types.Money.FractionPart);
+	    if (i1->Flags & EXPR_F_NULL)
+		printf("1: null\n");
+	    else
+		printf("1: $ %d %2.2d\n", i1->Types.Money.WholePart, i1->Types.Money.FractionPart);
+	    }*/
 
 	/** Determine data type - fixme this has some problems, e.g.,
 	 ** "1 + 1.0" -> DATA_T_INTEGER
@@ -1173,6 +1257,13 @@ expEvalObject(pExpression tree, pParamObjects objlist)
 	    case DATA_T_STRING: tree->String = i0->String; tree->Alloc = 0; break;
 	    default: memcpy(&(tree->Types), &(i0->Types), sizeof(tree->Types)); break;
 	    }
+		/*if (i0->DataType == DATA_T_MONEY && CxGlobals.Flags & CX_F_DEBUG)
+		    {
+		    if (tree->Flags & EXPR_F_NULL)
+			printf("O: null\n");
+		    else
+			printf("O: $ %d %2.2d\n", tree->Types.Money.WholePart, tree->Types.Money.FractionPart);
+		    }*/
 
     return 0;
     }
@@ -1327,6 +1418,13 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	        v = getfn(obj,tree->Name,DATA_T_MONEY,&vptr);
 		if (v != 0) break;
 		memcpy(&(tree->Types.Money), vptr, sizeof(MoneyType));
+		/*if (CxGlobals.Flags & CX_F_DEBUG)
+		    {
+		    if (tree->Flags & EXPR_F_NULL)
+			printf("P: null\n");
+		    else
+			printf("P: $ %d %2.2d\n", tree->Types.Money.WholePart, tree->Types.Money.FractionPart);
+		    }*/
 		break;
 
 	    case DATA_T_UNAVAILABLE:
@@ -1373,6 +1471,9 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	if (id == EXPR_CTL_CONSTANT) return 0;
 	obj = objlist->Objects[id];
 	setfn = objlist->SetAttrFn[id];
+
+	/** Set it as modified -- so it gets a new serial # **/
+	expModifyParam(objlist, objlist->Names[id], obj);
 
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
@@ -1454,12 +1555,18 @@ expEvalFunction(pExpression tree, pParamObjects objlist)
 	if (tree->Children.nItems > 1) i1 = (pExpression)(tree->Children.Items[1]);
 	if (tree->Children.nItems > 2) i2 = (pExpression)(tree->Children.Items[2]);
 
-	/** Evaluate all child items. **/
-	for(i=0;i<tree->Children.nItems;i++) 
+	/** Evaluate all child items.
+	 ** The 'condition' function is special - give it control because 
+	 ** of the need for short-circuit logic.
+	 **/
+	if (strcmp(tree->Name, "condition") != 0)
 	    {
-	    if (exp_internal_EvalTree((pExpression)(tree->Children.Items[i]),objlist) < 0)
-	        {
-		return -1;
+	    for(i=0;i<tree->Children.nItems;i++) 
+		{
+		if (exp_internal_EvalTree((pExpression)(tree->Children.Items[i]),objlist) < 0)
+		    {
+		    return -1;
+		    }
 		}
 	    }
 
@@ -1481,7 +1588,23 @@ expEvalFunction(pExpression tree, pParamObjects objlist)
 int
 expRevEvalFunction(pExpression tree, pParamObjects objlist)
     {
-    return 0;
+    pExpression i0 = NULL, i1 = NULL, i2 = NULL;
+    int (*fn)();
+
+    	/** Pick up the first two params... **/
+	if (tree->Children.nItems > 0) i0 = (pExpression)(tree->Children.Items[0]);
+	if (tree->Children.nItems > 1) i1 = (pExpression)(tree->Children.Items[1]);
+	if (tree->Children.nItems > 2) i2 = (pExpression)(tree->Children.Items[2]);
+
+	/** Get and call the evaluator function. **/
+	fn = (int(*)())xhLookup(&EXP.ReverseFunctions,tree->Name);
+	if (!fn)
+	    {
+	    mssError(1,"EXP","Function '%s' cannot be reverse-evaluated",tree->Name);
+	    return -1;
+	    }
+
+    return fn(tree,objlist,i0,i1,i2);
     }
 
 
@@ -1649,6 +1772,7 @@ int
 expEvalTree(pExpression tree, pParamObjects objlist)
     {
     int i,v,c;
+    int old_cm;
 
     	/** Flag set to reset aggregate values? **/
 	if (tree->Flags & EXPR_F_DORESET) 
@@ -1665,6 +1789,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
     	/** Determine modified-object coverage mask **/
 	if (objlist)
 	    {
+	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
 	    objlist->CurControl = tree->Control;
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
@@ -1690,6 +1815,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 		    }
 		}
 	    }
+	/*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("evaluating with mod cov mask: %8.8X\n", objlist->ModCoverageMask);*/
 
 	/** Evaluate the thing. **/
 	v = exp_internal_EvalTree(tree,objlist);
@@ -1697,6 +1823,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	/** Update sequence ids on the expression. **/
 	if (objlist)
 	    {
+	    objlist->ModCoverageMask = old_cm;
 	    tree->Control->PSeqID = objlist->PSeqID;
 	    memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
 	    objlist->MainFlags &= ~EXPR_MO_RECALC;
@@ -1732,7 +1859,11 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 #endif
 	
 	/** If node is NOT stale and NOT in modified cov mask, return now. **/
-	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) return 0;
+	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+	    {
+	    /*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
+	    return 0;
+	    }
 	tree->Flags &= ~EXPR_F_NEW;
 
 	/** Call the appropriate evaluator fn based on type **/
