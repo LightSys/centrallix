@@ -68,6 +68,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     int x,y,w,h,w2=184,h2=190;
     int id, i;
     int rval;
+    int search_by_range;
     DateTime dt;
     ObjData od;
     pObjQuery qy;
@@ -113,6 +114,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else 
 	    fieldname[0]='\0';
+
+	search_by_range = htrGetBoolean(tree, "search_by_range", 1);
 	
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -205,11 +208,13 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT})\n",
+	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT})\n",
 	    name,
 	    name,id, 
 	    name,id, 
-	    initialdate, bgcolor, fgcolor, fieldname, form, w-20, h, w2,h2);
+	    initialdate, bgcolor, fgcolor, fieldname, form,
+	    w-20, h, w2,h2,
+	    search_by_range);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n", id);
@@ -282,10 +287,14 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.42 2008/03/04 01:10:56 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.43 2009/06/24 22:01:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.43  2009/06/24 22:01:40  gbeeley
+    - (change) added an option to enable (default) or disable the search by
+      date range feature.
+
     Revision 1.42  2008/03/04 01:10:56  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
