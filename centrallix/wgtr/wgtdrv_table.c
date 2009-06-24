@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -30,7 +30,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	wgtr/wgtdrv_table.c						*/
+/* Module: 	wgtr/wgtdrv_table.c					*/
 /* Author:	Matt McGill (MJM)		 			*/
 /* Creation:	June 30, 2004						*/
 /* Description:								*/
@@ -50,6 +50,15 @@
 int
 wgttblVerify(pWgtrVerifySession s)
     {
+    pWgtrNode tbl = s->CurrWidget;
+
+	if (!strcmp(tbl->Type, "widget/table-row-detail"))
+	    {
+	    tbl->width = tbl->r_width = tbl->pre_width = tbl->Parent->r_width;
+	    tbl->x = tbl->r_x = tbl->pre_x = 0;
+	    tbl->y = tbl->r_y = tbl->pre_y = 0;
+	    }
+
     return 0;
     }
 
@@ -62,8 +71,23 @@ wgttblVerify(pWgtrVerifySession s)
 int
 wgttblNew(pWgtrNode node)
     {   
-	if(node->fl_width < 0) node->fl_width = 100;
-	if(node->fl_height < 0) node->fl_height = 100;
+
+	if (!strcmp(node->Type, "widget/table"))
+	    {
+	    if(node->fl_width < 0) node->fl_width = 100;
+	    if(node->fl_height < 0) node->fl_height = 100;
+	    node->Flags |= WGTR_F_CONTAINER;
+	    }
+	else if (!strcmp(node->Type, "widget/table-row-detail"))
+	    {
+	    if(node->fl_width < 0) node->fl_width = 100;
+	    if(node->fl_height < 0) node->fl_height = 0;
+	    node->Flags |= WGTR_F_CONTAINER;
+	    }
+	else if (!strcmp(node->Type, "widget/table-column"))
+	    {
+	    node->Flags |= WGTR_F_NONVISUAL;
+	    }
 	
     return 0;
     }
@@ -77,6 +101,7 @@ wgttblInitialize()
 	wgtrRegisterDriver(name, wgttblVerify, wgttblNew);
 	wgtrAddType(name, "table");
 	wgtrAddType(name, "table-column");
+	wgtrAddType(name, "table-row-detail");
 
 	return 0;
     }
