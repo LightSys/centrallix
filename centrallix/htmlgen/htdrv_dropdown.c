@@ -65,6 +65,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    int x,y,w,h;
    int id, i;
    int num_disp;
+   int query_multiselect;
    ObjData od;
    XString xs;
    pObjQuery qy;
@@ -90,6 +91,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
    }
+
+   query_multiselect = htrGetBoolean(tree, "query_multiselect", 0);
 
    if (wgtrGetPropertyValue(tree,"numdisplay",DATA_T_INTEGER,POD(&num_disp)) != 0) num_disp=3;
 
@@ -172,7 +175,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR'});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form);
+    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', qms:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, query_multiselect);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
@@ -202,7 +205,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		if (!attr) {
 		    objClose(qy_obj);
 		    objQueryClose(qy);
-		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+		    mssError(1, "HTDD", "SQL query must have at least two attributes: label and value.");
 		    return -1;
 		}
 		type = objGetAttrType(qy_obj, attr);
@@ -219,7 +222,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		if (!attr) {
 		    objClose(qy_obj);
 		    objQueryClose(qy);
-		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+		    mssError(1, "HTDD", "SQL query must have at least two attributes: label and value.");
 		    return -1;
 		}
 
@@ -230,7 +233,17 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		} else {
 		    str = objDataToStringTmp(type, (void*)(od.String), DATA_F_QUOTED);
 		}
-		htrAddScriptInit_va(s,"value:%STR}", str);
+		htrAddScriptInit_va(s,"value:%STR", str);
+
+		/** is selected **/
+		attr = objGetNextAttr(qy_obj);
+		if (attr) {
+		    type = objGetAttrType(qy_obj, attr);
+		    rval = objGetAttrValue(qy_obj, attr, type, &od);
+		    htrAddScriptInit_va(s, ",sel:%INT}", type == DATA_T_INTEGER && rval == 0 && od.Integer != 0);
+		} else {
+		    htrAddScriptInit(s, "}");
+		}
 		objClose(qy_obj);
 		flag=1;
 	    }
@@ -333,10 +346,15 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.63 2008/03/04 01:10:56 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.64 2009/06/24 22:03:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.64  2009/06/24 22:03:13  gbeeley
+    - (change) permit the multi-select (in QBF mode) to be enabled/disabled.
+    - (feature) SQL-based dropdown result set has an optional 3rd column now
+      which specified whether the entry in the dropdown is the default option
+
     Revision 1.63  2008/03/04 01:10:56  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
