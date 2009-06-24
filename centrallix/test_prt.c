@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.23 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: test_prt.c,v 1.24 2009/06/24 16:00:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.24  2009/06/24 16:00:02  gbeeley
+    - (feature) adding print test suite item to display print styles
+    - (bugfix) test output was mis-formatting chars >= 0x80
+
     Revision 1.23  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -250,7 +254,7 @@ testWrite(void* arg, char* buffer, int len, int offset, int flags)
 	    else if (buffer[i] == '\r')
 		printf("\\CR\\");
 	    else 
-		printf("\\%3.3d\\",buffer[i]);
+		printf("\\%3.3d\\",((unsigned char*)buffer)[i]);
 	    }
 	printf("\n");
 
@@ -309,6 +313,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		   "  printfile   - output contents of a file into a whole-page area\n"
 		   "  rectangle   - draws a rectangle\n"
 		   "  session     - test open/close of a session for a given content type\n"
+		   "  styles      - print a string of text in bold/italic/underline styles\n"
 		   "  table       - do a simple test of a table\n"
 		   "  text        - puts a given string of text in a given content type\n"
 		  );
@@ -912,6 +917,63 @@ testprt_process_cmd(pObjSession s, char* cmd)
 	    rval = prtCloseSession(prtsession);
 	    printf("fonts: prtCloseSession returned %d\n", rval);
 	    }
+	else if (!strcmp(cmdname,"styles"))
+	    {
+	    char* stylenames[] = {"plain","bold","italic","bold+italic","underlined","underlined+bold","underlined+italic","underlined+bold+italic"};
+	    int stylevalues[] = {0,1,2,3,4,5,6,7};
+
+	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		{
+		printf("test_prt: usage: styles <mime type> 'text'\n");
+		mlxCloseSession(ls);
+		return;
+		}
+	    ptr = mlxStringVal(ls,NULL);
+	    prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
+	    printf("styles: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    if (!prtsession)
+		{
+		mlxCloseSession(ls);
+		return;
+		}
+	    pagehandle = prtGetPageRef(prtsession);
+	    printf("styles: prtGetPageRef returned page handle %d\n", pagehandle);
+	    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
+	    printf("styles: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+		    areahandle);
+
+	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		{
+		printf("test_prt: usage: styles <mime type> 'text'\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    ptr = mlxStringVal(ls,NULL);
+
+	    for(i=0;i<sizeof(stylevalues)/sizeof(stylevalues[0]);i++)
+		{
+		rval = prtWriteString(areahandle, "This text is ");
+		printf("styles: prtWriteString returned %d\n", rval);
+		rval = prtWriteString(areahandle, stylenames[i]);
+		printf("styles: prtWriteString returned %d\n", rval);
+		rval = prtWriteString(areahandle, ": ");
+		printf("styles: prtWriteString returned %d\n", rval);
+		rval = prtSetAttr(areahandle, stylevalues[i]);
+		printf("styles: prtSetAttr returned %d\n", rval);
+		rval = prtWriteString(areahandle, ptr);
+		printf("styles: prtWriteString returned %d\n", rval);
+		rval = prtSetAttr(areahandle, 0);
+		printf("styles: prtSetAttr returned %d\n", rval);
+		rval = prtWriteString(areahandle, "\n");
+		printf("styles: prtWriteString returned %d\n", rval);
+		}
+
+	    rval = prtEndObject(areahandle);
+	    printf("styles: prtEndObject(area) returned %d\n", rval);
+	    rval = prtCloseSession(prtsession);
+	    printf("styles: prtCloseSession returned %d\n", rval);
+	    }
 	else if (!strcmp(cmdname,"justify"))
 	    {
 	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
@@ -1042,6 +1104,7 @@ start(void* v)
 	prt_pclod_Initialize();
 	prt_textod_Initialize();
 	prt_psod_Initialize();
+	prt_fxod_Initialize();
 
 	/** Disable tab complete until we have a function to do something useful with it. **/
 	rl_bind_key ('\t', rl_insert);
