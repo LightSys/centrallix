@@ -45,6 +45,12 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.62  2009/06/24 22:22:29  gbeeley
+    - (feature) adding options for allow_delete, confirm_delete,
+      confirm_discard, autofocus, tab_revealed_only, and enter_mode, as
+      well as the ability to link forms together for tabbing, and the
+      ability to explicity specify what objectsource to use
+
     Revision 1.61  2008/06/25 18:09:33  gbeeley
     - (change) normalize the AllowQuery/et.al. to a more usual format of
       allow_query/etc., and switch to using htrGetBoolean().
@@ -443,11 +449,18 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char tabmode[64];
+    char osrc[64];
+    char link_next[64];
+    char link_next_within[64];
     int id, i;
-    int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
+    int allowquery, allownew, allowmodify, allowview, allownodata, multienter, allowdelete, confirmdelete;
+    int confirmdiscard;
     int allowobscure = 0;
+    int autofocus;
     char _3bconfirmwindow[30];
     int readonly;
+    int tro;
+    int enter_mode;
 
 	/** form widget should work on any browser **/
     
@@ -460,6 +473,31 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	allowmodify = htrGetBoolean(tree, "allow_modify", 1);
 	allowview = htrGetBoolean(tree, "allow_view", 1);
 	allownodata = htrGetBoolean(tree, "allow_nodata", 1);
+	allowdelete = htrGetBoolean(tree, "allow_delete", 1);
+	confirmdelete = htrGetBoolean(tree, "confirm_delete", 1);
+
+	confirmdiscard = htrGetBoolean(tree, "confirm_discard", 1);
+
+	autofocus = htrGetBoolean(tree, "auto_focus", 1);
+
+	tro = htrGetBoolean(tree, "tab_revealed_only", 0);
+
+	if (wgtrGetPropertyValue(tree,"enter_mode",DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    if (!strcasecmp(ptr, "save"))
+		enter_mode = 0;
+	    else if (!strcasecmp(ptr, "nextfield"))
+		enter_mode = 1;
+	    else if (!strcasecmp(ptr, "lastsave"))
+		enter_mode = 2;
+	    else
+		enter_mode = 0;
+	    }
+	else
+	    {
+	    /** save **/
+	    enter_mode = 0;
+	    }
 
 	/** The way I read the specs -- overriding this resides in 
 	 **   the code, not here -- JDR **/
@@ -491,6 +529,20 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(_3bconfirmwindow,"null");
 
+	if (wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(osrc,ptr,sizeof(osrc));
+	else
+	    strcpy(osrc,"");
+	
+	if (wgtrGetPropertyValue(tree,"next_form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(link_next,ptr,sizeof(link_next));
+	else
+	    strcpy(link_next,"");
+	
+	if (wgtrGetPropertyValue(tree,"next_form_within",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(link_next_within,ptr,sizeof(link_next_within));
+	else
+	    strcpy(link_next_within,"");
 	
 	/*** 
 	 *** (03/01/02) Jonathan Rupp -- added two new paramters
@@ -532,9 +584,14 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%STR&SYM\"], {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, me:%INT, name:'%STR&SYM', _3b:nodes[\"%STR&SYM\"], ro:%INT, ao:%INT});\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,
-		multienter,name,_3bconfirmwindow,readonly,allowobscure);
+	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%STR&SYM\"], {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:nodes[\"%STR&SYM\"], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%]});\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard,
+		multienter,name,_3bconfirmwindow,readonly,allowobscure,autofocus,
+		*osrc != '\0', osrc, *osrc == '\0',
+		tro, enter_mode,
+		*link_next != '\0', link_next, *link_next == '\0',
+		*link_next_within != '\0', link_next_within, *link_next_within == '\0'
+		);
 	htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].ChangeMode('NoData');\n",name);
 
 	/** Check for and render all subobjects. **/
