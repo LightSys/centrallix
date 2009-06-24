@@ -48,10 +48,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.12 2007/06/06 15:23:40 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.13 2009/06/24 21:58:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.13  2009/06/24 21:58:51  gbeeley
+    - (bugfix) properly pass positioning data to components
+    - (feature) add options to expose all actions/events/properties on a
+      widget within a component - useful for wrapping one particular widget.
+
     Revision 1.12  2007/06/06 15:23:40  gbeeley
     - (bugfix) better handle difference between componentdecl- subwidgets and
       other (normal) subwidgets.
@@ -235,6 +240,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char subobj_name[64];
+    char expose_events_for[64] = "";
+    char expose_actions_for[64] = "";
+    char expose_props_for[64] = "";
     int id;
     char* nptr;
 //    pObject subobj = NULL;
@@ -246,6 +254,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     int is_visual = 1;
     char gbuf[256];
     char* gname;
+    char* xptr;
+    char* yptr;
+    int xoffs, yoffs;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -271,6 +282,29 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTCMPD","Invalid name '%s' for component", name);
 	    return -1;
 	    }
+
+	/** Need to relocate the widgets via xoffset/yoffset? **/
+	xptr = htrParamValue(s, "cx__xoffset");
+	yptr = htrParamValue(s, "cx__yoffset");
+	if (xptr || yptr)
+	    {
+	    xoffs = yoffs = 0;
+	    if (xptr) xoffs = strtol(xptr, NULL, 10);
+	    if (yptr) yoffs = strtol(yptr, NULL, 10);
+	    wgtrMoveChildren(tree, xoffs, yoffs);
+	    }
+
+	/** Expose all events on a subwidget? **/
+	if (wgtrGetPropertyValue(tree, "expose_events_for", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(expose_events_for, ptr, sizeof expose_events_for);
+
+	/** Expose all actions on a subwidget? **/
+	if (wgtrGetPropertyValue(tree, "expose_actions_for", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(expose_actions_for, ptr, sizeof expose_actions_for);
+
+	/** Expose all values on a subwidget? **/
+	if (wgtrGetPropertyValue(tree, "expose_properties_for", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(expose_props_for, ptr, sizeof expose_props_for);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -308,8 +342,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Init component **/
-	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%STR&SYM\"], {vis:%POS, gns:%STR&SYM, gname:'%STR&SYM'});\n", 
-		name, is_visual, gbuf, gname);
+	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%STR&SYM\"], {vis:%POS, gns:%STR&SYM, gname:'%STR&SYM'%[, expe:'%STR&SYM'%]%[, expa:'%STR&SYM'%]%[, expp:'%STR&SYM'%]});\n", 
+		name, is_visual, gbuf, gname, *expose_events_for, expose_events_for, *expose_actions_for, expose_actions_for,
+		*expose_props_for, expose_props_for);
 
 	/** Hunt for parameters for this component **/
 	xaInit(&attrs, 16);
@@ -468,9 +503,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    sub_tree = NULL;
 	    }
 
-	/** End init for component **/
-	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%STR&SYM\"]);\n", name);
-
 	/** Do subwidgets **/
 	/*htrRenderSubwidgets(s, tree, z+2);*/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -483,6 +515,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		htrRenderWidget(s, sub_tree, z+2);
 	    sub_tree = NULL;
 	    }
+
+	/** End init for component **/
+	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%STR&SYM\"]);\n", name);
 
     htcmpd_cleanup:
 //	if (subobj) objClose(subobj);

@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.13 2008/06/25 18:06:40 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.14 2009/06/24 21:58:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.14  2009/06/24 21:58:51  gbeeley
+    - (bugfix) properly pass positioning data to components
+    - (feature) add options to expose all actions/events/properties on a
+      widget within a component - useful for wrapping one particular widget.
+
     Revision 1.13  2008/06/25 18:06:40  gbeeley
     - (bugfix) use_toplevel_params is a reserved attribute.
 
@@ -317,10 +322,14 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
         if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
 	if (is_toplevel)
 	    {
-	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"width",DATA_T_INTEGER,POD(&w)) != 0)
+/*	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"width",DATA_T_INTEGER,POD(&w)) != 0)
 		w = wgtrGetContainerWidth(tree) - x;
 	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"height",DATA_T_INTEGER,POD(&h)) != 0) 
-		h = wgtrGetContainerHeight(tree) - y;
+		h = wgtrGetContainerHeight(tree) - y;*/
+	    if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
+		w = s->ClientInfo->AppMaxWidth - x;
+	    if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
+		h = s->ClientInfo->AppMaxHeight - y;
 	    }
 	else
 	    {
@@ -381,8 +390,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:true, allow_multi:false, auto_destroy:false});\n",
-		    name);
+		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
+		    name, w,h,x,y);
 
 	    /** Are there any templates we should use **/
 	    memset(templates, 0, sizeof(templates));
@@ -433,6 +442,9 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Switch the namespace back **/
 	    htrLeaveNamespace(s);
 
+	    /** End Init component **/
+	    htrAddScriptInit_va(s, "    cmp_endinit(nodes[\"%STR&SYM\"]);\n", name);
+
 	    /** Restore original graft point and parameters **/
 	    s->Params = old_params;
 	    old_params = NULL;
@@ -446,8 +458,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
-		    name, is_toplevel, allow_multi, auto_destroy, cmp_path, name, id);
+		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
+		    name, is_toplevel, allow_multi, auto_destroy, cmp_path,
+		    name, id,
+		    w, h, x, y);
 
 	    /** Add template paths **/
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
