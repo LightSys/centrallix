@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_autolayout.c,v 1.6 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: htdrv_autolayout.c,v 1.7 2009/06/24 19:33:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
 
     $Log: htdrv_autolayout.c,v $
+    Revision 1.7  2009/06/24 19:33:38  gbeeley
+    - (change) adding autolayoutspacer as officially handled by this driver
+    - (feature) adding center/right/bottom alignments within the hbox/vbox
+
     Revision 1.6  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -95,6 +99,15 @@ static struct
     }
     HTAL;
 
+
+int
+htalRenderSpacer(pHtSession s, pWgtrNode tree, int z)
+    {
+
+	tree->RenderFlags |= HT_WGTF_NOOBJECT;
+
+    return 0;
+    }
 
 /*** htalRender - generate the HTML code for the page.
  ***/
@@ -229,6 +242,20 @@ htalInitialize()
 	strcpy(drv->Name,"DHTML Autolayout Driver - HBox");
 	strcpy(drv->WidgetName,"hbox");
 	drv->Render = htalRender;
+
+	/** Register. **/
+	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
+
+    	/** Allocate the driver **/
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+
+	/** Fill in the structure. **/
+	strcpy(drv->Name,"DHTML Autolayout Driver - Spacer");
+	strcpy(drv->WidgetName,"autolayoutspacer");
+	drv->Render = htalRenderSpacer;
 
 	/** Register. **/
 	htrRegisterDriver(drv);

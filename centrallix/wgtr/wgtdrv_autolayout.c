@@ -101,6 +101,8 @@ wgtalVerify(pWgtrVerifySession s)
     int possible_width, possible_height, tw, th, a1, a2;
     int column_width = -1, row_height = -1;
     int column_offset = 0, row_offset = 0;
+    int adj;
+    char* align;
 
 	/** Ignore this if it is just a spacer **/
 	if (strcmp(al->Type, "widget/autolayoutspacer") != 0)
@@ -137,6 +139,10 @@ wgtalVerify(pWgtrVerifySession s)
 	    /** Size of each cell **/
 	    if (wgtrGetPropertyValue(al, "cellsize", DATA_T_INTEGER, POD(&cellsize)) != 0)
 		cellsize = -1;
+
+	    /** Justification **/
+	    if (wgtrGetPropertyValue(al, "align", DATA_T_STRING, POD(&align)) != 0)
+		align = "left";
 
 	    /** Auto-set width and height of this container? **/
 	    if (al->r_width < 0 && al->r_height >= 0)
@@ -312,22 +318,40 @@ wgtalVerify(pWgtrVerifySession s)
 		    al->r_width = al->pre_width = al->width = maxwidth + column_offset;
 		}
 
-	    /** If Width/Height unspecified, occupy entire container **/
-	    /*if (al->r_width < 0 || al->r_height < 0)
+	    /** Center or Right/Bottom jusitification? **/
+	    if (!strcmp(align, "center") || !strcmp(align, "right") || !strcmp(align, "bottom"))
 		{
-		parent = al->Parent;
-		while(parent && (parent->Flags & WGTR_F_NONVISUAL))
-		    parent = parent->Parent;
-		if (parent)
+		if (al_type == 0)	/* hbox */
 		    {
-		    xo = (al->r_x >= 0)?al->r_x:0;
-		    yo = (al->r_y >= 0)?al->r_y:0;
-		    if (al->r_width < 0)
-			al->width = al->pre_width = al->r_width = parent->r_width - xo;
-		    if (al->r_height < 0)
-			al->height = al->pre_height = al->r_height = parent->r_height - yo;
+		    if (!strcmp(align, "center"))
+			adj = (al->r_width - (maxwidth - spacing)) / 2;
+		    else
+			adj = (al->r_width - (maxwidth - spacing));
+		    if (maxwidth - spacing < al->r_width)
+			for(i=0;i<wgt_cnt;i++)
+			    {
+			    child = sortarray[i];
+			    child->x += adj;
+			    child->r_x += adj;
+			    child->pre_x += adj;
+			    }
 		    }
-		}*/
+		else			/* vbox */
+		    {
+		    if (!strcmp(align, "center"))
+			adj = (al->r_height - (maxheight - spacing)) / 2;
+		    else
+			adj = (al->r_height - (maxheight - spacing));
+		    if (maxheight - spacing < al->r_height)
+			for(i=0;i<wgt_cnt;i++)
+			    {
+			    child = sortarray[i];
+			    child->y += adj;
+			    child->r_y += adj;
+			    child->pre_y += adj;
+			    }
+		    }
+		}
 	    }
 
     return 0;
