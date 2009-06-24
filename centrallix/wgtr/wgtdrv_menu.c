@@ -108,6 +108,7 @@ wgtmenuInitialize()
 	wgtrAddType(name, "menu");
 	wgtrAddType(name, "menuitem");
 	wgtrAddType(name, "menusep");
+	wgtrAddType(name, "menutitle");
 
 	return 0;
     }

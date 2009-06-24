@@ -163,6 +163,26 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
 
 
 int
+htmenu_internal_AddTitle(pHtSession s, pWgtrNode menu_title, int is_horizontal, int row_h, int mcnt, char* nptr)
+    {
+    char* ptr;
+
+	if (!is_horizontal)
+	    htrAddBodyItem(s, "<tr>");
+
+	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+
+	if (wgtrGetPropertyValue(menu_title,"label",DATA_T_STRING,POD(&ptr)) != 0)
+	    ptr = "";
+
+	htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr);
+	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddItem({sep:true});\n", nptr);
+
+    return 0;
+    }
+
+
+int
 htmenu_internal_CheckAddItem(pHtSession s, pWgtrNode sub_tree, int is_horizontal, int is_popup, int is_onright, int row_h, int* mcnt, char* name, pXString xs)
     {
     char* ptr;
@@ -182,6 +202,11 @@ htmenu_internal_CheckAddItem(pHtSession s, pWgtrNode sub_tree, int is_horizontal
 	else if (!strcmp(ptr,"widget/menusep"))
 	    {
 	    htmenu_internal_AddSep(s, is_horizontal, row_h, *mcnt, name);
+	    (*mcnt)++;
+	    }
+	else if (!strcmp(ptr,"widget/menutitle"))
+	    {
+	    htmenu_internal_AddTitle(s, sub_tree, is_horizontal, row_h, *mcnt, name);
 	    (*mcnt)++;
 	    }
 
@@ -473,6 +498,16 @@ htmenuRender_sep(pHtSession s, pWgtrNode menusep, int z)
     }
 
 int 
+htmenuRender_ttl(pHtSession s, pWgtrNode menutitle, int z) 
+    {
+
+	menutitle->RenderFlags |= HT_WGTF_NOOBJECT;
+	htrRenderSubwidgets(s, menutitle, z);
+
+    return 0;
+    }
+
+int 
 htmenuRender_item(pHtSession s, pWgtrNode menuitem, int z) 
     {
 
@@ -511,6 +546,14 @@ htmenuInitialize()
 	/** Register. **/
 	htrRegisterDriver(drv);
 
+	htrAddSupport(drv, "dhtml");
+
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+	strcpy(drv->Name,"DHTML Menu Title Driver");
+	strcpy(drv->WidgetName,"menutitle");
+	drv->Render = htmenuRender_ttl;
+	htrRegisterDriver(drv);
 	htrAddSupport(drv, "dhtml");
 
 	drv = htrAllocDriver();
