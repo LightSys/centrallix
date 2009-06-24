@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.51 2008/07/22 00:22:16 jncraton Exp $
+    $Id: centrallix.c,v 1.52 2009/06/24 15:49:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.52  2009/06/24 15:49:13  gbeeley
+    - (feature) adding EpsonFX output driver support for continuous form
+      printers.
+    - (feature) adding DELETE sql statement support
+
     Revision 1.51  2008/07/22 00:22:16  jncraton
     - Initial integration of the MySQL driver
     - The driver is far from complete and shouldn't be used for anything
@@ -728,6 +733,7 @@ cxInitialize(void* v)
 	mqjInitialize();			/* join query module */
 	mqisInitialize();			/* insert-select query mod */
 	mquInitialize();			/* update statement query mod */
+	mqdInitialize();			/* delete statement query mod */
 
 	/** Init the objectsystem drivers **/
 	sysInitialize();			/* Sys info driver */
@@ -760,6 +766,7 @@ cxInitialize(void* v)
 	prt_pclod_Initialize();
 	prt_textod_Initialize();
 	prt_psod_Initialize();
+	prt_fxod_Initialize();
 
 	/** Initialize the wgtr module **/
 	wgtrInitialize();

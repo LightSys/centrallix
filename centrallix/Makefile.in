@@ -221,6 +221,7 @@ XQYDRIVERS=multiq_tablegen.o \
 	   multiq_equijoin.o \
 	   multiq_insertselect.o \
 	   multiq_update.o \
+	   multiq_delete.o \
 	   multiquery.o
 QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
@@ -263,6 +264,7 @@ XV3RPTMODS=prtmgmt_v3_api.o \
 	   prtmgmt_v3_od_pcl.o \
 	   prtmgmt_v3_od_text.o \
 	   prtmgmt_v3_od_ps.o \
+	   prtmgmt_v3_od_epsonfx.o \
 	   prtmgmt_v3_session.o
 V3RPTMODS=$(patsubst %,report/%,$(XV3RPTMODS))
 
