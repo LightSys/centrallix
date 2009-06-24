@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.76 2008/08/16 00:31:37 thr4wn Exp $
+    $Id: ht_render.c,v 1.77 2009/06/24 19:31:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.77  2009/06/24 19:31:56  gbeeley
+    - (change) reduction in the size of the generated HTML file
+
     Revision 1.76  2008/08/16 00:31:37  thr4wn
     I made some more modification of documentation and begun logic for
     caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
@@ -1016,7 +1019,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     }
 
 
-/*** Htraddstylesheetitem -- copies stylesheet definitions into the
+/*** htrAddStylesheetItem -- copies stylesheet definitions into the
  *** buffers that will eventually be output as HTML.
  ***/
 int
@@ -1672,7 +1675,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	xsInit(&exptxt);
 	expGetPropList(exp, &objs, &props);
 
-	xsCopy(&xs,"new Array(",-1);
+	xsCopy(&xs,"[",-1);
 	first=1;
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1680,12 +1683,12 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    prop = (char*)(props.Items[i]);
 	    if (obj && prop)
 		{
-		xsConcatQPrintf(&xs,"%[,%]new Array('%STR&SYM','%STR&SYM')", !first, obj, prop);
+		xsConcatQPrintf(&xs,"%[,%]['%STR&SYM','%STR&JSSTR']", !first, obj, prop);
 		first = 0;
 		}
 	    }
-	xsConcatenate(&xs,")",1);
-	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript");
+	xsConcatenate(&xs,"]",1);
+	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript", EXPR_F_RUNCLIENT);
 	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&JSSTR',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
@@ -1817,10 +1820,11 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM', obj:%STR, cobj:%STR, type:'%STR&JSSTR', vis:%STR, sub:", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%], type:'%STR&JSSTR', vis:%STR", 
 		indent*4, "                                        ",
-		tree->Name, objinit?objinit:"\"new Object()\"",
-		ctrinit?ctrinit:"\"_obj\"",
+		tree->Name,
+		objinit, objinit,
+		ctrinit, ctrinit,
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
@@ -1833,7 +1837,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    }
 	if (rendercnt)
 	    {
-	    htrAddScriptWgtr_va(s, "\n        %STR&*LEN    [\n", indent*4, "                                        ");
+	    htrAddScriptWgtr_va(s, ", sub:\n        %STR&*LEN    [\n", indent*4, "                                        ");
 	    rendercnt = 0;
 	    for(i=0;i<childcnt;i++)
 		{
@@ -1852,7 +1856,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    }
 	else
 	    {
-	    htrAddScriptWgtr(s, "[] }");
+	    htrAddScriptWgtr(s, "}");
 	    }
 
     return 0;
@@ -2074,6 +2078,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%STR&SYM);\n"
 			       "    var rootname = \"%STR&SYM\";\n",
 		s->Namespace->DName, s->Namespace->DName);
+	/*htrAddStylesheetItem(s, "\tdiv {position:absolute; visibility:inherit; overflow:hidden; }\n");*/
 
 	/** Render the top-level widget -- the function that's run
 	  * underneath will be dependent upon what the widget
