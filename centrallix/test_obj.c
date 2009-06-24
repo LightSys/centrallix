@@ -65,10 +65,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.44 2008/09/14 05:12:31 gbeeley Exp $
+    $Id: test_obj.c,v 1.45 2009/06/24 15:58:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.45  2009/06/24 15:58:12  gbeeley
+    - (feature) comments (beginning with #) now allowed in test obj scripts
+    - (bugfix) really long lines were messing up the test_obj saved command
+      history
+
     Revision 1.44  2008/09/14 05:12:31  gbeeley
     - (bugfix) csv output was failing if the attribute type for a column changed
       midway through the query (this can sometimes happen with NULL values).
@@ -807,6 +812,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     int attrtypes[640];
     int n_attrs;
     int name_was_null;
+
+	    /** Just a comment? **/
+	    if (cmd[0] == '#')
+		return 0;
 
 	    /** Open a lexer session **/
 	    ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
@@ -1554,10 +1563,12 @@ start(void* v)
 		while((t = mlxNextToken(input_lx)) > 0)
 		    {
 		    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;
-		    ptr = mlxStringVal(input_lx, NULL);
+		    alloc = 1;
+		    ptr = mlxStringVal(input_lx, &alloc);
 		    if (ptr) 
 			{
 			rval = testobj_do_cmd(s, ptr, 1);
+			nmSysFree(ptr);
 			if (rval == 1) break;
 			}
 		    }
