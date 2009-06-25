@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.85 2008/08/16 00:31:37 thr4wn Exp $
+    $Id: htdrv_page.c,v 1.86 2009/06/25 19:55:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.86  2009/06/25 19:55:30  gbeeley
+    - (change) adding a linkcolor setting on the page.
+    - (change) swap the highlight colors used for mouse and keyboard focus
+      so kbd focus is a black rectange and mouse focus is a raised border.
+    - (bugfix) prevent scrollbars from appearing on the main document.
+
     Revision 1.85  2008/08/16 00:31:37  thr4wn
     I made some more modification of documentation and begun logic for
     caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
@@ -669,10 +675,10 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 
-	strcpy(kbfocus1,"#ffffff");	/* kb focus = 3d raised */
-	strcpy(kbfocus2,"#7a7a7a");
-	strcpy(msfocus1,"#000000");	/* ms focus = black rectangle */
-	strcpy(msfocus2,"#000000");
+	strcpy(msfocus1,"#ffffff");	/* ms focus = 3d raised */
+	strcpy(msfocus2,"#7a7a7a");
+	strcpy(kbfocus1,"#000000");	/* kb focus = black rectangle */
+	strcpy(kbfocus2,"#000000");
 	strcpy(dtfocus1,"#000080");	/* dt focus = navyblue rectangle */
 	strcpy(dtfocus2,"#000080");
 
@@ -713,6 +719,12 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddBodyParam_va(s, " TEXT=\"%STR&HTE\"",ptr);
+	    }
+
+	/** Check for link color **/
+	if (wgtrGetPropertyValue(tree,"linkcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    htrAddBodyParam_va(s, " LINK=\"%STR&HTE\"",ptr);
 	    }
 
 	/** Keyboard Focus Indicator colors 1 and 2 **/
@@ -899,7 +911,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
-	htrAddStylesheetItem_va(s, "\tbody { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
+	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
 
