@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.33 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.34 2009/06/25 21:05:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.34  2009/06/25 21:05:52  gbeeley
+    - (feature) adding value and value_index client props, which can be used
+      to make the rb selection "follow" an expression.
+
     Revision 1.33  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -417,6 +421,12 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    /** Get title **/
    if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    strtcpy(title,ptr,sizeof(title));
+
+   /** User requesting expression for selected tab? **/
+   htrCheckAddExpression(s, tree, name, "value");
+
+   /** User requesting expression for selected tab using integer index value? **/
+   htrCheckAddExpression(s, tree, name, "value_index");
 
    /** Get fieldname **/
    if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
