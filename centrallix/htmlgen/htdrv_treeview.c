@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.42 2008/03/04 01:10:57 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.43 2009/06/25 21:10:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.43  2009/06/25 21:10:36  gbeeley
+    - (feature) icon used is now configurable
+    - (feature) foreground color, highlight bg, and highlight fg, are now all
+      configurable.
+
     Revision 1.42  2008/03/04 01:10:57  gbeeley
     - (security) changing from ESCQ to JSSTR in numerous places where
       building JavaScript strings, to avoid such things as </script>
@@ -400,12 +405,17 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char src[128];
+    char icon[128];
+    char fgcolor[64];
+    char hfgcolor[64];
+    char selected_bg[128];
     int x,y,w;
     int id, i;
     int show_root = 1;
     int show_branches = 1;
     int show_root_branch = 1;
     int use_3d_lines;
+    int order_desc = 0;
     pWgtrNode sub_tree;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
@@ -447,6 +457,10 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** 3-D lines or simple? **/
 	use_3d_lines = htrGetBoolean(tree, "use_3d_lines", 1);
 
+	/** descending order **/
+	if (wgtrGetPropertyValue(tree, "order", DATA_T_STRING, POD(&ptr)) == 0 && !strcasecmp(ptr, "desc"))
+	    order_desc = 1;
+
 	/** Compensate hidden root position if not shown **/
 	if (!show_root)
 	    {
@@ -466,6 +480,28 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
+	/** Selected item background color **/
+	strcpy(selected_bg,"");
+	htrGetBackground(tree, "highlight", s->Capabilities.CSS2?1:0, selected_bg, sizeof(selected_bg));
+
+	/** Get foreground (text) color **/
+	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(fgcolor,ptr,sizeof(fgcolor));
+	else
+	    fgcolor[0] = '\0';
+
+	/** Get highlight foreground (text) color **/
+	if (wgtrGetPropertyValue(tree,"highlight_fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(hfgcolor,ptr,sizeof(hfgcolor));
+	else
+	    hfgcolor[0] = '\0';
+
+	/** Get icon to use for treeview objects **/
+	if (wgtrGetPropertyValue(tree,"icon",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(icon,ptr,sizeof(icon));
+	else
+	    icon[0] = '\0';
+
 	/** Get source directory tree **/
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
@@ -480,6 +516,8 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#tv%POSroot { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
 	    }
 	htrAddStylesheetItem_va(s,"\t#tv%POSload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
+	htrAddStylesheetItem_va(s,"\tdiv.tv%POS a { %[color:%STR&CSSVAL;%] }\n", id, *fgcolor, fgcolor);
+	htrAddStylesheetItem_va(s,"\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n", id, *hfgcolor, hfgcolor);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
@@ -493,8 +531,8 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT});\n",
-		name, src, name, id, w, show_branches, use_3d_lines, show_root_branch);
+	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
+		name, src, name, id, w, show_branches, use_3d_lines, show_root_branch, icon, id, selected_bg, order_desc);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);
@@ -504,12 +542,12 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> elements for the layers. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSroot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%STR&HTE</DIV>\n",id,src);
+	    htrAddBodyItem_va(s, "<DIV class=\"tv%POS\" ID=\"tv%POSroot\"><IMG SRC=\"%STR&HTE\" align=left>&nbsp;%STR&HTE</DIV>\n", id, id, (*icon)?icon:"/sys/images/ico02b.gif", src);
 	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSload\"></DIV>\n",id);
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSroot\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%STR&HTE</DIV>\n",id,show_root?"inherit":"hidden",x,y,w,z,src);
+	    htrAddBodyItem_va(s, "<DIV class=\"tv%POS\" ID=\"tv%POSroot\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS;\"><IMG SRC=\"%STR&HTE\" align=left>&nbsp;%STR&HTE</DIV>\n",id,id,show_root?"inherit":"hidden",x,y,w,z,(*icon)?icon:"/sys/images/ico02b.gif", src);
 	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, "");
 	    /*htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);*/
 	    }
