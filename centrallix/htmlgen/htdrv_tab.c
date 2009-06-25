@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.39 2008/03/06 01:18:59 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.40 2009/06/25 21:09:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.40  2009/06/25 21:09:12  gbeeley
+    - (bugfix) tabpage "object" is now the pane, not the little tab, so that
+      things work consistently when there are or are not tabs (e.g., tab
+      location = none).
+
     Revision 1.39  2008/03/06 01:18:59  gbeeley
     - (change) updates to centrallix.supp suppressions file for valgrind
     - (bugfix) several issues fixed as a result of a Valgrind scan, one of
@@ -616,12 +621,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			strcpy(page_type,type);
 		    else
 			strcpy(page_type,"static");
-		    strcpy(fieldname,"NONE SELECTED");
-		    if(!strcmp(page_type,"dynamic"))
-			{
-			if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) == 0)
-			    strtcpy(fieldname,field,sizeof(fieldname));
-			}
 		    tabcnt++;
 		    is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
 		    bg = is_selected?main_bg:inactive_bg;
@@ -742,6 +741,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    strcpy(page_type,type);
 		else
 		    strcpy(page_type,"static");
+		strcpy(fieldname,"");
+		if(!strcmp(page_type,"dynamic"))
+		    {
+		    if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) == 0)
+			strtcpy(fieldname,field,sizeof(fieldname));
+		    }
 
 		/** Add the pane **/
 		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
@@ -755,15 +760,15 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(null,wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
 			name, ptr, name, ptr,page_type,fieldname);
 		else
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(nodes[\"%STR&SYM\"],wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
-			name, ptr, ptr, name, ptr,page_type,fieldname);
+		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tc%POStab%POS\"),wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
+			name, name, id, tabcnt, ptr, name, ptr,page_type,fieldname);
 
 		/** Add named global for the tabpage **/
 		subnptr = nmSysStrdup(ptr);
-		if (tloc == None)
+		/*if (tloc == None)*/
 		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%POSpane%POS\")", id, tabcnt);
-		else
-		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(wgtrGetContainer(wgtrGetParent(_parentobj)), \"tc%POStab%POS\")", id, tabcnt);
+		/*else
+		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(wgtrGetContainer(wgtrGetParent(_parentobj)), \"tc%POStab%POS\")", id, tabcnt);*/
 		htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, tabcnt);
 
 		/** Add DIV section for the tabpage. **/
