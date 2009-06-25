@@ -59,6 +59,8 @@ extern CxGlobals_t CxGlobals;
 #define CX_F_SHUTTINGDOWN	1	/* shutting down */
 #define CX_F_ENABLEREMOTEPW	2	/* enable sending auth to remote services */
 
+#define CX_F_DEBUG		4	/* for testing only */
+
 
 /*** Loadable modules use this to define init/finish functions.
  *** Note that Centrallix init/finish functions are quite
