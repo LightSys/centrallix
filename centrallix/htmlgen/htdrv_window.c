@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.54 2008/07/16 00:34:57 thr4wn Exp $
+    $Id: htdrv_window.c,v 1.55 2009/06/25 17:54:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.55  2009/06/25 17:54:07  gbeeley
+    - (change) Removed link to external script.  When using 3rd party libs,
+      they need to be downloaded and distributed with Centrallix; remember
+      that Centrallix may be run behind a restrictive firewall, among other
+      issues with direct-linking.
+
     Revision 1.54  2008/07/16 00:34:57  thr4wn
     Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
 
@@ -650,7 +656,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"wn%POSmain\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
-	htrAddScriptInclude(s, "http://code.jquery.com/jquery-latest.min.js", 0);
+	/*htrAddScriptInclude(s, "http://code.jquery.com/jquery-latest.min.js", 0);*/	/** FOLKS PLEASE DO NOT DO THIS SORT OF THING -- WHEN USING EXTERNAL LIBS, DOWNLOAD IT!!! **/
 
 	/** Event handler for mousedown/up/click/etc **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown");
