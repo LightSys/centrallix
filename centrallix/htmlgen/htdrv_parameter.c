@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.7 2008/03/28 05:48:11 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.8 2009/06/25 21:04:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.8  2009/06/25 21:04:46  gbeeley
+    - (change) deploy all non-component-params to the client regardless of
+      param type.  Needed esp. for widget/osrc parameters.
+
     Revision 1.7  2008/03/28 05:48:11  gbeeley
     - (bugfix) parameter widget requires hints functionality.
 
@@ -167,7 +171,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 
-	deploy_to_client = htrGetBoolean(tree, "deploy_to_client", s->IsDynamic || !strcmp(type, "object"));
+	deploy_to_client = htrGetBoolean(tree, "deploy_to_client", s->IsDynamic || !strcmp(type, "object") || (tree->Parent && strcmp(tree->Parent->Type, "widget/component-decl") != 0));
 
 	if (!strcmp(type, "object") && deploy_to_client && 
 		wgtrGetPropertyValue(tree,"find_container",DATA_T_STRING,POD(&ptr)) == 0)
