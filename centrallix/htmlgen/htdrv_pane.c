@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.35 2008/06/25 18:18:03 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.36 2009/06/25 20:53:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.36  2009/06/25 20:53:54  gbeeley
+    - (feature) allow pane to be enabled/disabled
+
     Revision 1.35  2008/06/25 18:18:03  gbeeley
     - (feature) pane can now have a solid border, not just a raised or lowered
       border.
@@ -401,6 +404,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
+
+	htrCheckAddExpression(s, tree, name, "enabled");
 
 	/** Style of pane - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0)
