@@ -44,6 +44,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.38  2009/06/25 17:51:14  gbeeley
+    - (feature) labels can now be clickable, as if they were links
+    - (feature) allow labels to be vertically aligned as well as horizontally
+      aligned.
+
     Revision 1.37  2008/06/25 18:14:17  gbeeley
     - (feature) label's value can now be a runclient() expression, dynamically
       maintained on the client.
@@ -378,8 +383,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char align[64];
+    char valign[64];
     char main_bg[128];
     char fgcolor[64];
+    char pfgcolor[64];
+    char cfgcolor[64];
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int x=-1,y=-1,w,h;
@@ -390,6 +398,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char* tooltip;
     char stylestr[128];
     int is_bold = 0;
+    int is_link = 0;
     pExpression code;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -439,9 +448,28 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** label text color **/
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    qpfPrintf(NULL, fgcolor,sizeof(fgcolor)," color=\"%STR&HTE\"",ptr);
+	    /*qpfPrintf(NULL, fgcolor,sizeof(fgcolor)," color=\"%STR&HTE\"",ptr);*/
+	    strtcpy(fgcolor, ptr, sizeof(fgcolor));
 	else
 	    fgcolor[0] = '\0';
+
+	/** label text color - when pointed to **/
+	if (wgtrGetPropertyValue(tree,"point_fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    strtcpy(pfgcolor, ptr, sizeof(pfgcolor));
+	    is_link = 1;
+	    }
+	else
+	    pfgcolor[0] = '\0';
+
+	/** label text color - when clicked **/
+	if (wgtrGetPropertyValue(tree,"click_fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    strtcpy(cfgcolor, ptr, sizeof(cfgcolor));
+	    is_link = 1;
+	    }
+	else
+	    cfgcolor[0] = '\0';
 
 	/** font size in points **/
 	if (wgtrGetPropertyValue(tree,"font_size",DATA_T_INTEGER,POD(&font_size)) != 0 || font_size < 5 || font_size > 100)
@@ -457,6 +485,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(align,"left");
 	
+	if(wgtrGetPropertyValue(tree,"valign",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(valign,ptr,sizeof(valign));
+	else
+	    strcpy(valign,"top");
+	
 	/** Background color/image? **/
 	htrGetBackground(tree, NULL, 0, main_bg, sizeof(main_bg));
 
@@ -471,15 +504,27 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; }\n",
+		id,x,y,h,w,z, 
+		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign);
+	if (is_link)
+	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
+	if (is_link && *cfgcolor)
+	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
+	if (strcmp(valign,"top") != 0)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#lbl%POS table { padding:0px; margin:0px; border-spacing:0px; height:%POSpx; width:%POSpx; }\n", id, h, w);
+	    htrAddStylesheetItem_va(s,"\t#lbl%POS table td { vertical-align:%STR&CSSVAL; text-align:%STR&CSSVAL; }\n", id, valign, align);
+	    }
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	qpfPrintf(NULL, stylestr,sizeof(stylestr),
+	stylestr[0] = '\0';
+	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
-		w,align,is_bold,font_size > 0,font_size,fgcolor);
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR'});\n",
-		name, fieldname, form, text, stylestr, tooltip);
+		w,align,is_bold,font_size > 0,font_size,fgcolor);*/
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
+		name, fieldname, form, text, stylestr, tooltip, is_link, pfgcolor);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
@@ -492,12 +537,13 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, 
-	    "\n%STR%STR&HTENLBR</font></td></tr></table>\n", stylestr, text);
+	if (strcmp(valign,"top") != 0)
+	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<table><tr><td>%STR&HTENLBR</td></tr></table>", text);
+	else
+	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "%STR&HTENLBR", text);
 
 	/** Check for more sub-widgets **/
-	for (i=0;xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, tree, z+1);
+	htrRenderSubwidgets(s, tree, z+1);
 
 	nmSysFree(text);
 	nmSysFree(tooltip);
