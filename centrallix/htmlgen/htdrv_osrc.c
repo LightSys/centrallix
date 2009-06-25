@@ -44,10 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.67 2008/06/25 18:17:32 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.68 2009/06/25 19:53:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.68  2009/06/25 19:53:26  gbeeley
+    - (change) permit OSRC to add constraints to the query using a HAVING
+      clause instead of the WHERE clause
+    - (change) permit OSRC to delay any queries until the osrc is actually
+      visible
+    - (change) some attribute additions to osrc_relationship rules for
+      whether to enforce the rule on object create and whether to issue
+      queries automatically to keep in sync with the related osrc.
+
     Revision 1.67  2008/06/25 18:17:32  gbeeley
     - (feature) adding indicates_activity (boolean) that can be set to false
       if an osrc's queries do not represent user-initiated activity.  This is
@@ -602,6 +611,8 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    int receive_updates;
    int count, i;
    int ind_activity;
+   int use_having;
+   int qy_reveal_only;
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -625,6 +636,12 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 
    /** do queries on this osrc indicate end-user activity? **/
    ind_activity = htrGetBoolean(tree, "indicates_activity", 1);
+
+   /** use HAVING clause for query filtering instead of WHERE? **/
+   use_having = htrGetBoolean(tree, "use_having_clause", 0);
+
+   /** Delay query until osrc is visible? **/
+   qy_reveal_only = htrGetBoolean(tree, "delay_query_until_reveal", 0);
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
    if(replicasize==1 && readahead==0) readahead=1;
@@ -690,9 +707,10 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT});\n",
+   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT});\n",
 	 name,readahead,scrollahead,replicasize,sql,filter,
-	 baseobj?baseobj:"",name,aq,receive_updates, ind_activity);
+	 baseobj?baseobj:"",name,aq,receive_updates, ind_activity,
+	 use_having, qy_reveal_only);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
@@ -786,6 +804,8 @@ int htosrcInitialize() {
 		"target_key_5",		DATA_T_STRING,
 		"is_slave",		HT_DATA_T_BOOLEAN,
 		"revealed_only",	HT_DATA_T_BOOLEAN,
+		"enforce_create",	HT_DATA_T_BOOLEAN,
+		"autoquery",		HT_DATA_T_BOOLEAN,
 		NULL);
 
    htruleRegister("osrc_key",
