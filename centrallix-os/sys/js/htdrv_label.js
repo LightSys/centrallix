@@ -9,11 +9,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+if (typeof lb_current == 'undefined') var lb_current = null;
+
 function lbl_mouseup(e)
     {
     if (e.kind == 'lbl') 
 	{
-	cn_activate(e.layer, 'Click');
+	if (lb_current == e.layer) cn_activate(e.layer, 'Click');
 	cn_activate(e.layer, 'MouseUp');
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -21,8 +23,11 @@ function lbl_mouseup(e)
 
 function lbl_mousedown(e)
     {
-    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseDown');
-    if (this.tipid) { pg_canceltip(this.tipid); this.tipid = null; }
+    if (e.kind == 'lbl')
+	{
+	cn_activate(e.layer, 'MouseDown');
+	}
+    if (e.layer.tipid) { pg_canceltip(e.layer.tipid); e.layer.tipid = null; }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -31,6 +36,7 @@ function lbl_mouseover(e)
     if (e.kind == 'lbl')
 	{
 	cn_activate(e.layer, 'MouseOver');
+	lb_current = e.layer;
 	if (e.layer.tooltip) e.layer.tipid = pg_tooltip(e.layer.tooltip, e.pageX, e.pageY);
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -41,6 +47,7 @@ function lbl_mouseout(e)
     if (e.kind == 'lbl')
 	{
 	cn_activate(e.layer, 'MouseOut');
+	if (lb_current == e.layer) lb_current = null;
 	if (e.layer.tipid) { pg_canceltip(e.layer.tipid); e.layer.tipid = null; }
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -59,7 +66,8 @@ function lbl_mousemove(e)
 
 function lb_actionsetvalue(aparam)
     {
-    if (aparam.Value) this.setvalue(aparam.Value);
+    if ((typeof aparam.Value) != 'undefined')
+	this.setvalue(aparam.Value);
     }
 
 function lb_getvalue()
@@ -75,7 +83,7 @@ function lb_setvalue(v)
 
 function lb_clearvalue()
     {
-    this.content = '';
+    this.content = this.orig_content;
     this.Update();
     }
 
@@ -89,7 +97,13 @@ function lb_disable()
 
 function lb_update()
     {
-    pg_serialized_write(this, this.stylestr + htutil_nlbr(htutil_encode(htutil_obscure(this.content))) + "</font></td></tr></table>", null);
+    var v = htutil_nlbr(htutil_encode(htutil_obscure(this.content), true));
+    //var txt = this.stylestr + (v?v:"") + "</font></td></tr></table>";
+    var txt = v?v:"";
+    if (cx__capabilities.Dom0NS) // only serialize this for NS4
+	pg_serialized_write(this, txt, null);
+    else
+	htr_write_content(this, txt);
     }
 
 function lb_cb_reveal(e)
@@ -117,7 +131,9 @@ function lbl_cb_getvalue(attr)
     }
 function lbl_cb_setvalue(attr, val)
     {
-    return this.setvalue(val);
+    this.setvalue(val);
+    this.orig_content = this.content;
+    return;
     }
 
 
@@ -129,10 +145,13 @@ function lbl_init(l, wparam)
 
     // Params
     l.content = wparam.text;
+    l.orig_content = wparam.text;
     l.fieldname = wparam.field;
     l.stylestr = wparam.style;
     l.tooltip = wparam.tooltip;
     l.tipid = null;
+    l.pointcolor = wparam.pfg;
+    l.is_link = wparam.link;
 
     // Callbacks
     l.getvalue = lb_getvalue;
