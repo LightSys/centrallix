@@ -60,6 +60,10 @@ typedef struct
     int		MinHeight;
     int		MaxWidth;
     int		MaxHeight;
+    int		AppMinWidth;
+    int		AppMinHeight;
+    int		AppMaxWidth;
+    int		AppMaxHeight;
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
