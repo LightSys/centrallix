@@ -29,6 +29,7 @@ function tbld_format_cell(cell, color)
 	}
     else
 	{
+	cell.fmt_color = color;
 	if(color)
 	    txt = '<font color='+htutil_encode(color)+'>'+str+'</font>';
 	else
@@ -41,6 +42,16 @@ function tbld_format_cell(cell, color)
 	else
 	    htr_write_content(cell, txt);
 	cell.content = txt;
+	}
+    if (this.cols[cell.colnum][5] == 'right')
+	{
+	if (cell.clip_w > getdocWidth(cell))
+	    {
+	    // only rt align if there is enough room
+	    moveTo(cell, cell.xoffset + (cell.clip_w - getdocWidth(cell)), this.innerpadding);
+	    }
+	else
+	    moveTo(cell, cell.xoffset, this.innerpadding);
 	}
     }
 
@@ -287,9 +298,14 @@ function tbld_change_width(move)
 		{
 		c.clip_w+=move;
 		setClipWidth(c, c.clip_w);
+		if (t.cols[j][5] == 'right')
+		    t.FormatCell(c, c.fmt_color);
 		}
 	    else
+		{
+		c.xoffset += move;
 		moveBy(c, move, 0);
+		}
 	    if(c.rb) moveBy(c.rb, move, 0);
 	    if(c.rb && c.rb.b) moveBy(c.rb.b, move, 0);
 	    }
@@ -374,12 +390,14 @@ function tbld_instantiate_row(r)
 	    row.fg.cols[j] = htr_new_layer(null,row.fg);
 	    var col = row.fg.cols[j];
 	    htr_init_layer(col, this, "tabledynamic");
+	    pg_set_style(col, "cursor", "default");
 	    col.ChangeWidth = tbld_change_width;
 	    col.row=row.fg;
 	    col.colnum=j;
 	    if(r==j&&j==0) this.down.m+='4a6f6 52048 657468 0d4c756b 652045';
 	    col.subkind='cell';
 	    col.colnum=j;
+	    col.xoffset = hoffset + this.innerpadding;
 	    moveTo(col, hoffset + this.innerpadding, this.innerpadding);
 	    col.initwidth=this.cols[j][2]-this.innerpadding*2;
 	    if (this.colsep > 0 || this.dragcols)
@@ -408,6 +426,7 @@ function tbld_init(param)
     t.tablename = param.tablename;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
+    t.colsepbg = param.colsep_bgnd;
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
@@ -474,10 +493,13 @@ function tbld_init(param)
 	else
 	    delete t.cols[i];
 	}
-    t.osrc = wgtrFindContainer(t, "widget/osrc");
+    if (param.osrc)
+	t.osrc = wgtrGetNode(t, param.osrc, "widget/osrc");
+    else
+	t.osrc = wgtrFindContainer(t, "widget/osrc");
     if(!t.osrc || !(t.colcount>0))
 	{
-	alert('this is useless without an OSRC and some columns');
+	alert('table widget requires an objectsource and at least one column');
 	return t;
 	}
 	
@@ -576,7 +598,10 @@ function tbld_init(param)
 		pg_set_style(l.rb.b, "height", (t.rowheight * (t.maxwindowsize+1)) + "px");
 		pg_set_style(l.rb.b, "cursor", "move");
 		htr_setvisibility(l.rb.b, 'inherit');
-		htr_setbgcolor(l.rb.b, 'black');
+		if (t.colsepbg)
+		    htr_setbackground(l.rb.b, t.colsepbg);
+		else
+		    htr_setbgcolor(l.rb.b, 'black');
 		}
 	    }
 	}
@@ -605,6 +630,7 @@ function tbld_init(param)
     var ie = t.ifcProbeAdd(ifEvent);
     ie.Add("Click");
     ie.Add("DblClick");
+    ie.Add("RightClick");
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
@@ -713,6 +739,42 @@ function tbld_mouseout(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function tbld_contextmenu(e)
+    {
+    var ly = e.layer;
+    if(ly.kind && ly.kind=='tabledynamic')
+        {
+        if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
+            {
+            if(ly.row) ly=ly.row;
+            if(ly.fg) ly=ly.fg;
+	    if(e.which == 3 && ly.table.ifcProbe(ifEvent).Exists("RightClick"))
+		{
+		var event = new Object();
+		event.Caller = ly.table;
+		event.recnum = ly.recnum;
+		event.data = new Object();
+		event.X = e.pageX;
+		event.Y = e.pageY;
+		var rec=ly.table.osrc.replica[ly.recnum];
+		if(rec)
+		    {
+		    for(var i in rec)
+			{
+			event.data[rec[i].oid]=rec[i].value;
+			if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum' && rec[i].oid != 'X' && rec[i].oid != 'Y')
+			    event[rec[i].oid] = rec[i].value;
+			}
+		    }
+		ly.table.dta=event.data;
+		cn_activate(ly.table,'RightClick', event);
+		delete event;
+		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+		}
+	    }
+	}
+    }
+
 function tbld_mousedown(e)
     {
     var ly = e.layer;
@@ -745,7 +807,7 @@ function tbld_mousedown(e)
 			ly.table.osrc.MoveToRecord(ly.recnum);
 			}
 		    }
-		if(ly.table.ifcProbe(ifEvent).Exists("Click"))
+		if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
 		    {
 		    var event = new Object();
 		    event.Caller = ly.table;
@@ -757,13 +819,15 @@ function tbld_mousedown(e)
 			for(var i in rec)
 			    {
 			    event.data[rec[i].oid]=rec[i].value;
+			    if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum')
+				event[rec[i].oid] = rec[i].value;
 			    }
 			}
 		    ly.table.dta=event.data;
 		    cn_activate(ly.table,'Click', event);
 		    delete event;
 		    }
-		if(ly.table.ifcProbe(ifEvent).Exists("DblClick"))
+		if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
 		    {
 		    if (!ly.table.clicked || !ly.table.clicked[ly.recnum])
 			{
@@ -786,6 +850,8 @@ function tbld_mousedown(e)
 			    for(var i in rec)
 				{
 				event.data[rec[i].oid]=rec[i].value;
+				if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum')
+				    event[rec[i].oid] = rec[i].value;
 				}
 			    }
 			ly.table.dta=event.data;
