@@ -39,6 +39,7 @@ function tv_new_layer(width,pdoc,l)
 	    {
 	    nl = document.createElement('DIV');
 	    nl.style.width = width + 'px';
+	    nl.className = l.divclass;
 	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
 	    pdoc.appendChild(nl);
@@ -67,6 +68,10 @@ function tv_cache_layer(l,pdoc)
     pdoc.tv_layer_cache = l;*/
     pdoc.tv_layer_cache.push(l);
     pg_set_style_string(l,'visibility','hidden');
+    if (l.selected)
+	{
+	l.root.selectitem(null);
+	}
     tv_cache_cnt++;
     }
 
@@ -82,9 +87,9 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showrb:this.showrb});
+    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showrb:this.show_root_branch, icon:this.icon, divclass:this.divclass, sbg:this.sel_bg, desc:this.ord_desc});
     //tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
-    if (aparam.Expand == 'yes') this.root.expand();
+    if (aparam.Expand == 'yes') this.root.expand(null);
     }
 
 function tv_doclick(e)
@@ -146,7 +151,8 @@ function tv_doclick(e)
 	    var r = e.target.layer.root;
 	    if (path.lastIndexOf('/') == path.length-1)
 		path = path.substring(0,path.length-1);
-	    r.ifcProbe(ifEvent).Activate('ClickItem', {Pathname:path, Name:e.target.layer.objn, HRef:e.target.layer.link_href, Caller:r});
+	    r.selectitem(e.target.layer);
+	    r.ifcProbe(ifEvent).Activate('ClickItem', {Pathname:path, Name:e.target.layer.objn, Label:e.target.layer.link_txt, HRef:e.target.layer.link_href, Caller:r});
 	    }
 	return false;
 	}
@@ -188,7 +194,7 @@ function tv_rclick(e)
 	    {
 	    var hr = e.target.layer.document.links[0].href;
 	    var r = e.target.layer.root;
-	    if (r.ifcProbe(ifEvent).Activate('RightClickItem', {Pathname:hr, Caller:r, X:e.pageX, Y:e.pageY}) != null)
+	    if (r.ifcProbe(ifEvent).Activate('RightClickItem', {Pathname:hr, Caller:r, X:e.pageX, Y:e.pageY, Label:e.target.layer.link_txt, Name:e.target.layer.objn}) != null)
 		return false;
 	    }
 	}
@@ -233,6 +239,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	}
 
     // build the layer
+    l.expanded = false;
     if(cx__capabilities.Dom0NS)
 	{
 	var tvtext = "<nobr>";
@@ -242,7 +249,6 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	    (link_bold?"<b>":"") + htutil_encode(htutil_obscure(link_text)) + (link_bold?"<b>":"") + "</A></nobr>";
 	if (l.tvtext != tvtext)
 	    {
-	    l.expanded = 0;
 	    l.tvtext = tvtext;
 	    l.document.tags.A.textDecoration = "none";
 	    htr_write_content(l, l.tvtext);
@@ -315,7 +321,7 @@ function tv_GetLinkCnt(l)
 	    {
 	    if(!l.objptr)
 		{
-		l.expanded=0;
+		l.expanded=false;
 		var ret=prompt(l.objn,l.parent.objptr[l.objn]);
 		if(ret!=undefined)
 		    {
@@ -347,7 +353,7 @@ function tv_GetLinkCnt(l)
 	}
     else
 	{
-	return pg_links(tv_tgt_layer.ld).length-1;
+	return pg_links(l.ld).length-1;
 	}
     }
 
@@ -374,14 +380,15 @@ function tv_BuildNewLayers(l, linkcnt)
     {
     /** pre-load some variables **/
     //var tgtClipWidth = tv_tgt_layer.clip.width;
-    var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (getRelativeX(tv_tgt_layer) - getRelativeX(tv_tgt_layer.mainlayer)) - tv_tgt_layer.root.iconwidth;
-    var tgtX = getRelativeX(tv_tgt_layer);
-    var tgtY = getRelativeY(tv_tgt_layer);
+    var tgtClipWidth = l.mainlayer.setwidth - (getRelativeX(l) - getRelativeX(l.mainlayer)) - l.root.iconwidth;
+    var tgtX = getRelativeX(l);
+    var tgtY = getRelativeY(l);
     var jsProps = null;
     var can_expand;
     var links;
     
-    if (tv_tgt_layer) links = pg_links(tv_tgt_layer.ld);
+    //if (tv_tgt_layer) links = pg_links(tv_tgt_layer.ld);
+    if (!l.isjs) links = pg_links(l.ld);
 
     if(l.isjs)
 	{
@@ -400,7 +407,7 @@ function tv_BuildNewLayers(l, linkcnt)
 
 	var link_bold = 0;
 	var one_link;
-	var one_layer = tv_new_layer(tgtClipWidth,tv_tgt_layer.pdoc,l.mainlayer);
+	var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
 	var im;
 	can_expand = null;
 
@@ -428,11 +435,11 @@ function tv_BuildNewLayers(l, linkcnt)
 		link_txt=j+" ("+t+"): ";
 		if(t=="function")
 		    {
-		    im = tv_tgt_layer.root.imgnames.ico_file;
+		    im = l.root.imgnames.ico_file;
 		    }
 		else
 		    {
-		    im = tv_tgt_layer.root.imgnames.ico_folder;
+		    im = l.root.imgnames.ico_folder;
 		    link_bold = 1;
 		    if(o.name) link_txt+=" "+o.name;
 		    }
@@ -444,11 +451,11 @@ function tv_BuildNewLayers(l, linkcnt)
 		else
 		    link_txt=j+" ("+t+"): "+o;
 		one_layer.objptr=null;
-		im = tv_tgt_layer.root.imgnames.ico_file;
+		im = l.root.imgnames.ico_file;
 		}
 	    one_layer.isjs=true;
 	    one_layer.objn=j;
-	    can_expand = (im == tv_tgt_layer.root.imgnames.ico_folder);
+	    can_expand = (im == l.root.imgnames.ico_folder);
 	    }
 	else
 	    {
@@ -457,37 +464,28 @@ function tv_BuildNewLayers(l, linkcnt)
 	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
 	    one_layer.objn = one_link;
-	    im = tv_tgt_layer.root.imgnames.ico_file;
+	    im = l.root.imgnames.ico_file;
 	    if (link_txt == '' || link_txt == null) link_txt = one_link;
 	    else link_txt = one_link + ' - ' + link_txt;
-	    //if (one_link.lastIndexOf('/') > 0) im = '02';
-	    //else 
 	    one_link = one_link + '/';
 	    var flags = cx_info_extract_flags(links[i].text);
-	    if (flags & cx_info_flags.can_have_subobj) im = tv_tgt_layer.root.imgnames.ico_folder;
+	    if (flags & cx_info_flags.can_have_subobj) im = l.root.imgnames.ico_folder;
 	    if (flags & cx_info_flags.no_subobj) can_expand = false;
 	    if (flags & cx_info_flags.has_subobj) can_expand = true;
 	    }
 
 	one_layer.tree_depth = one_layer.parent.tree_depth+1;
-	one_layer.root = tv_tgt_layer.root;
+	one_layer.root = l.root;
 	tv_build_layer(one_layer,im,link_href,link_txt, link_bold, i == linkcnt, can_expand);
 	one_layer.link_href = link_href;
-	one_layer.fname = tv_tgt_layer.fname + one_link;
+	one_layer.fname = l.fname + one_link;
 	one_layer.layer = one_layer;
-	/*if (cx__capabilities.Dom0NS)
-	    {*/
-	    if (l.mainlayer.show_branches)
-		moveTo(one_layer, tgtX, tgtY + tv_tgt_layer.root.rowheight*i);
-	    else
-		moveTo(one_layer, tgtX + tv_tgt_layer.root.iconwidth, tgtY + tv_tgt_layer.root.rowheight*i);
-	    /*}
-	else if (cx__capabilities.Dom1HTML)
-	    {
-	    moveTo(one_layer, tgtX + 20, tgtY + 20);
-	    }*/
+	one_layer.link_txt = link_txt;
+	if (l.mainlayer.show_branches)
+	    moveTo(one_layer, tgtX, tgtY + l.root.rowheight*i);
+	else
+	    moveTo(one_layer, tgtX + l.root.iconwidth, tgtY + l.root.rowheight*i);
 	htr_setvisibility(one_layer, 'inherit');
-	//pg_set_style_string(one_layer,'visibility','inherit');
 	var images = pg_images(one_layer);
 	one_layer.img = images[images.length-1];
 	one_layer.img.kind = 'tv';
@@ -503,12 +501,12 @@ function tv_BuildNewLayers(l, linkcnt)
 	    one_links[0].kind = 'tv';
 	    one_links[0].layer = one_layer;
 	    }
-	one_layer.expanded = 0;
-	one_layer.zIndex = tv_tgt_layer.zIndex;
-	one_layer.pdoc = tv_tgt_layer.pdoc;
-	one_layer.ld = tv_tgt_layer.ld;
-	//if (one_layer.clip.width != tgtClipWidth - one_layer.pageX + tv_tgt_layer.pageX)
-	//    one_layer.clip.width = tgtClipWidth - one_layer.pageX + tv_tgt_layer.pageX;
+	one_layer.expanded = false;
+	one_layer.expanding = false;
+	one_layer.autoexpanded = false;
+	one_layer.zIndex = l.zIndex;
+	one_layer.pdoc = l.pdoc;
+	one_layer.ld = l.ld;
 	}
     }
 
@@ -526,7 +524,8 @@ function tv_loaded(e)
     var one_layer=null;
     var cnt=0;
     var nullcnt=0;
-    var l=tv_tgt_layer;
+    //var l=tv_tgt_layer;
+    var l = this.loadtarget;
     var linkcnt = tv_GetLinkCnt(l);
     var offset;
 
@@ -548,11 +547,11 @@ function tv_loaded(e)
 
     if(cx__capabilities.Dom0NS)
 	{
-	pg_resize(tv_tgt_layer.parentLayer);
+	pg_resize(l.parentLayer);
 	}
     else if(cx__capabilities.Dom1HTML)
 	{
-	pg_resize(tv_tgt_layer.parentNode);
+	pg_resize(l.parentNode);
 	}
     else
 	{
@@ -569,11 +568,16 @@ function tv_loaded(e)
 	    }
 	}
 
-    pg_set(tv_tgt_layer.img,'src',tv_tgt_layer.img.realsrc);
-    if (tv_tgt_layer.root.use3d)
-	pg_set(tv_tgt_layer.img,'src',htutil_subst_last(tv_tgt_layer.img.src,'b.gif'));
-    tv_tgt_layer.img.realsrc = null;
+    pg_set(l.img,'src',l.img.realsrc);
+    if (l.root.use3d)
+	pg_set(l.img,'src',htutil_subst_last(l.img.src,'b.gif'));
+    l.img.realsrc = null;
     tv_tgt_layer = null;
+
+    l.expanding = false;
+
+    if (l.mainlayer.expand_completion_cb)
+	l.mainlayer.expand_completion_cb();
     return false;
     }
 
@@ -655,6 +659,29 @@ function tv_add_rule(node, param)
     }
 
 
+function tv_selectitem(item)
+    {
+    if (this.cur_selected && this.cur_selected.selected)
+	{
+	htr_setbackground(this.cur_selected, null);
+	this.cur_selected.className = this.divclass;
+	this.cur_selected.selected = false;
+	this.cur_selected = null;
+	this.selected_name = null;
+	this.selected_label = null;
+	}
+    if (item)
+	{
+	this.cur_selected = item;
+	htr_setbackground(item, this.sel_bg);
+	this.cur_selected.selected = true;
+	this.cur_selected.className = (this.divclass + 'h');
+	this.selected_name = this.cur_selected.objn;
+	this.selected_label = this.cur_selected.link_txt;
+	}
+    }
+
+
 function tv_init(param)
     {
     var l = param.layer;
@@ -664,6 +691,18 @@ function tv_init(param)
     l.show_branches = param.branches;
     l.show_root_branch = param.showrb;
     l.use3d = param.use3d;
+    l.icon = param.icon;
+    l.divclass = param.divclass;
+    l.sel_bg = param.sbg;
+    l.ord_desc = param.desc;
+    l.searchqueue = [];
+    l.patharray = [];
+    l.cur_selected = null;
+    l.selected_name = null;
+    l.selected_label = null;
+    l.search_cnt = 0;
+    l.cur_search = null;
+    l.rows = [];
     l.imgnames = {};
     if (l.use3d)
 	{
@@ -696,6 +735,11 @@ function tv_init(param)
 	l.imgnames.ico_loading = '/sys/images/ico11_16x16.gif';
 	l.imgnames.ico_file = '/sys/images/ico01_16x16.gif';
 	l.imgnames.ico_folder = '/sys/images/ico02_16x16.gif';
+	}
+    if (l.icon)
+	{
+	l.imgnames.ico_file = l.icon;
+	l.imgnames.ico_folder = l.icon;
 	}
     if (htr_getvisibility(l) == 'inherit')
 	{
@@ -731,19 +775,23 @@ function tv_init(param)
 	    l.objptr = param.newroot;
 	else if (t=(/javascript:([a-zA-Z0-9_]*)/).exec(param.fname))
 	    l.objptr = eval(t[1]);
-	else
-	    l.objptr = window;
-	l.isjs=true;
+	//else
+	    //l.objptr = window;
+	l.isjs=l.objptr?true:false;
 	}
-    l.expanded = 0;
+    l.expanded = false;
+    l.expanding = false;
     l.img = pg_images(l)[0];
-    l.img.layer = l;
-    l.img.kind = 'tv';
+    if (l.img)
+	{
+	l.img.layer = l;
+	l.img.kind = 'tv';
+	}
     l.pdoc = wgtrGetContainer(wgtrGetParent(l));
     //l.pdoc = pdoc;
     l.ld = param.loader;
+    l.ld.mainlayer = l;
     htr_init_layer(l,l,'tv');
-    ifc_init_widget(l);
     //l.ld.parent = l;
     l.root = l;
     if (!l.pdoc.tv_layer_cache) l.pdoc.tv_layer_cache = new Array();
@@ -765,35 +813,92 @@ function tv_init(param)
 
     l.collapse=tv_collapse;
     l.expand=tv_expand;
+    l.searchfor = tv_searchfor;
+    l.selectitem = tv_selectitem;
+    l.findpath = tv_findpath;
+    l.beginfindpath = tv_beginfindpath;
     l.addRule = tv_add_rule;
 
-    // Actions
-    var ia=l.ifcProbeAdd(ifAction);
-    ia.Add("SetRoot", tv_action_setroot);
-    ia.Add("SetFocus", tv_action_setfocus);
+    l.initial_reveal = false;
 
-    // Events
-    var ie=l.ifcProbeAdd(ifEvent);
-    ie.Add("Click");
-    ie.Add("MouseDown");
-    ie.Add("MouseUp");
-    ie.Add("MouseOver");
-    ie.Add("MouseOut");
-    ie.Add("MouseMove");
-    ie.Add("ClickItem");
-    ie.Add("RightClickItem");
+    if (!l.is_initialized)
+	{
+	ifc_init_widget(l);
+
+	// Actions
+	var ia=l.ifcProbeAdd(ifAction);
+	ia.Add("SetRoot", tv_action_setroot);
+	ia.Add("SetFocus", tv_action_setfocus);
+	ia.Add("Search", tv_action_search);
+	ia.Add("SearchNext", tv_action_search_next);
+
+	// Events
+	var ie=l.ifcProbeAdd(ifEvent);
+	ie.Add("Click");
+	ie.Add("MouseDown");
+	ie.Add("MouseUp");
+	ie.Add("MouseOver");
+	ie.Add("MouseOut");
+	ie.Add("MouseMove");
+	ie.Add("ClickItem");
+	ie.Add("RightClickItem");
+
+	// Request reveal/obscure notifications
+	l.Reveal = tv_cb_reveal;
+	if (pg_reveal_register_listener(l))
+	    {
+	    // already visible
+	    l.Reveal({eventName:'Reveal'});
+	    }
+	}
+    else
+	{
+	// auto expand if not showing root
+	if (htr_getvisibility(l) != 'inherit') l.root.expand(null);    
+	l.initial_reveal = true;
+	}
 
     l.is_initialized = true;
-
-    // Auto expand if not showing root, otherwise what's the use?
-    if (htr_getvisibility(l) != 'inherit') l.root.expand();    
     }
 
-function tv_expand()
+function tv_expand(cb)
     {
     var l = this;
     if (l==null) return false;
-    if (l.expanded==1) return false;
+    if (!l.expanding || !l.mainlayer.expand_completion_cb)
+	l.mainlayer.expand_completion_cb = cb;
+    if (l.expanded)
+	{
+	if (!l.expanding)
+	    {
+	    if (l.mainlayer.expand_completion_cb)
+		l.mainlayer.expand_completion_cb();
+	    }
+	return false;
+	}
+    if (!l.autoexpanded)
+	{
+	var sl = l;
+	while(sl.parent)
+	    {
+	    // a manual expand at a deeper level cancels autoexpanded
+	    // settings at higher levels
+	    sl.parent.autoexpanded = false;
+	    sl = sl.parent;
+	    }
+	}
+    else
+	{
+	// autocollapse an autoexpanded node at same level?
+	var arr = pg_layers(l.pdoc);
+	var len = arr.length;
+	for(var i = 0; i < len; i++)
+	    {
+	    var one = arr[i];
+	    if (one.parent == l.parent && one.autoexpanded)
+		one.collapse();
+	    }
+	}
     if (l.img.realsrc != null) return false;
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src',l.root.imgnames.ico_loading);
@@ -810,10 +915,12 @@ function tv_expand()
 	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
 	}
 
-    l.expanded = 1;
+    l.expanded = true;
+    l.expanding = true;
+    l.ld.loadtarget = l;
     if(l.isjs)
 	{
-	l.ld.onload=tv_loaded
+	l.ld.onload=tv_loaded;
 	l.ld.onload();
 	}
     else
@@ -823,9 +930,192 @@ function tv_expand()
 	else
 	    use_fname = l.fname;
 	if (use_fname.lastIndexOf('?') > use_fname.lastIndexOf('/', use_fname.length-2))
-	    pg_serialized_load(l.ld, use_fname + '&cx__akey='+akey+'&ls__mode=list&ls__info=1', tv_loaded);
+	    pg_serialized_load(l.ld, use_fname + '&cx__akey='+akey+'&ls__mode=list&ls__info=1&ls__orderdesc=' + l.ord_desc, tv_loaded);
 	else
-	    pg_serialized_load(l.ld, use_fname + '?cx__akey='+akey+'&ls__mode=list&ls__info=1', tv_loaded);
+	    pg_serialized_load(l.ld, use_fname + '?cx__akey='+akey+'&ls__mode=list&ls__info=1&ls__orderdesc=' + l.ord_desc, tv_loaded);
+	}
+    }
+
+function tv_action_search(aparam)
+    {
+    if (aparam.Value) this.searchfor(aparam.Value);
+    }
+
+function tv_action_search_next(aparam)
+    {
+    if (!this.search_cnt) return;
+    if (this.search_cnt >= this.rows.length) this.search_cnt = 0;
+    this.beginfindpath();
+    }
+
+function tv_searchfor(str)
+    {
+    var ckstr = (new String(str)).match(/^[\w ,.-]*$/);
+    if (!ckstr || !ckstr[0]) return;
+    ckstr = ckstr[0].toUpperCase();
+    this.searchqueue.push(ckstr);
+    if (this.searchqueue.length == 1)
+	{
+	this.cur_search = ckstr;
+
+	// stay on current item?
+	if (this.cur_selected && this.cur_selected.link_txt && (new String(this.cur_selected.link_txt)).toUpperCase().indexOf(ckstr) >= 0)
+	    {
+	    this.searchqueue.shift();
+	    return;
+	    }
+	var ckfname = (new String(this.root.fname)).match(/^\/[^\s,;]*$/);
+	if (!ckfname || !ckfname[0]) return;
+	ckfname = ckfname[0];
+	var q = "select :name, :annotation, :__cx_path from subtree " + ckfname + " having charindex(\"" + ckstr + "\", upper(:name)) > 0 or charindex(\"" + ckstr + "\", upper(:annotation)) > 0";
+	pg_serialized_load(this.ld, '/?cx__akey=' + akey + '&ls__rowcount=10&ls__mode=query&ls__sql=' + htutil_escape(q), tv_searchloaded, true);
+	}
+    }
+
+function tv_searchloaded()
+    {
+    // remove the one we just did
+    this.mainlayer.searchqueue.shift();
+
+    // parse it
+    var lnks = pg_links(this);
+    this.mainlayer.rows = [];
+    this.mainlayer.search_cnt = 0;
+    if (lnks && lnks.length > 0)
+	{
+	var row = {};
+	var tgt = null;
+	var colcnt = 0;
+	for(var i = 0; i<lnks.length; i++)
+	    {
+	    var lnk = lnks[i];
+	    if (lnk.target != tgt && lnk.target != 'R')
+		{
+		if (colcnt) this.mainlayer.rows.push(row);
+		row = {};
+		colcnt = 0;
+		tgt = lnk.target;
+		}
+	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+	    switch(lnk.text.charAt(0))
+		{
+		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
+		case 'N': col.value = null; break;
+		case 'E': col.value = '** ERROR **'; break;
+		}
+	    if (typeof row[col.oid] == 'undefined')
+		{
+		row[col.oid] = col;
+		colcnt++;
+		}
+	    }
+	if (colcnt) this.mainlayer.rows.push(row);
+	}
+    else if (lnks && lnks.length == 0)
+	{
+	this.mainlayer.selectitem(null);
+	}
+
+    this.mainlayer.beginfindpath();
+    }
+
+
+function tv_beginfindpath()
+    {
+    var s_name = null;
+    var s_path = null;
+    var s_annot = null;
+
+    if (this.rows.length > this.search_cnt)
+	{
+	for (var i in this.rows[this.search_cnt])
+	    {
+	    var col = this.rows[this.search_cnt][i];
+	    switch(col.oid)
+		{
+		case 'name': s_name = col.value; break;
+		case 'annotation': s_annot = col.value; break;
+		case '__cx_path': s_path = col.value; break;
+		}
+	    }
+	}
+
+    // find it in the tree
+    if (s_name && s_path)
+	{
+	this.search_cnt++;
+
+	// doesn't match this one?
+	if ((new String(s_name)).toUpperCase().indexOf(this.cur_search) < 0 && (new String(s_annot)).toUpperCase().indexOf(this.cur_search) < 0)
+	    {
+	    this.ifcProbe(ifAction).Invoke("SearchNext", {});
+	    }
+	else
+	    {
+	    this.patharray = (new String(s_path)).split('/');
+	    this.pathitem = this.root;
+	    if (!this.pathitem.expanded)
+		this.pathitem.autoexpanded = true;
+	    this.pathitem.expand(tv_findpath);
+	    }
+	}
+    else
+	{
+	// get last request placed
+	var newstr = this.searchqueue.pop();
+	this.searchqueue = [];
+
+	// run the request
+	if (newstr) this.searchfor(newstr);
+	}
+    }
+
+
+function tv_findpath()
+    {
+    // if no more items, we're done
+    if (this.patharray.length == 0) return;
+
+    var curitem = this.patharray.shift();
+
+    // Find the 'current' item.
+    var lyrs = pg_layers(this.pdoc);
+    var len = lyrs.length;
+    for(var i = 0; i < len; i++)
+	{
+	var l = lyrs[i];
+	if (l.parent == this.pathitem && l.objn == curitem)
+	    {
+	    this.pathitem = l;
+	    }
+	}
+
+    // Scroll to what we found so far
+    var pl = wgtrGetParent(this);
+    if (pl.ifcProbe && pl.ifcProbe(ifAction).Exists('ScrollTo'))
+	{
+	pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:getRelativeY(this.pathitem), RangeEnd:getRelativeY(this.pathitem)+this.root.rowheight});
+	}
+
+    // Last item to find?
+    if (this.patharray.length == 0)
+	{
+	// if this is the last item, highlight it.
+	this.selectitem(this.pathitem);
+
+	// get last request placed
+	var newstr = this.searchqueue.pop();
+	this.searchqueue = [];
+
+	// run the request
+	if (newstr) this.searchfor(newstr);
+	}
+    else
+	{
+	// otherwise, expand it and keep looking
+	if (!this.pathitem.expanded)
+	    this.pathitem.autoexpanded = true;
+	this.pathitem.expand(tv_findpath);
 	}
     }
 
@@ -834,7 +1124,7 @@ function tv_collapse()
     var l = this;
     var sl;
     if (l==null) return false;
-    if (l.expanded==0) return false;
+    if (!l.expanded) return false;
     if (l.img.realsrc != null) return false;
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src',l.root.imgnames.ico_loading);
@@ -851,7 +1141,8 @@ function tv_collapse()
 	}
 
 
-    l.expanded = 0;
+    l.expanded = false;
+    l.autoexpanded = false;
     var cnt = 0;
     var lyrs = pg_layers(l.pdoc);
     var len = lyrs.length;
@@ -911,6 +1202,32 @@ function tv_collapse()
 	pg_set(l.img,'src',htutil_subst_last(l.img.src,'b.gif'));
     l.img.realsrc = null;
     }
+
+
+// Called when the treeview is revealed/shown to the user
+function tv_cb_reveal(event)
+    {
+    switch(event.eventName)
+	{
+	case 'Reveal':
+	    if (!this.initial_reveal)
+		{
+		// Auto expand if not showing root, otherwise what's the use?
+		if (htr_getvisibility(this) != 'inherit') this.root.expand(null);    
+		this.initial_reveal = true;
+		}
+	    break;
+	case 'Obscure':
+	    break;
+	case 'RevealCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	case 'ObscureCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	}
+    }
+
 
 // Event handlers
 function tv_click(e)
@@ -972,9 +1289,9 @@ function tv_mouseup(e)
         {
         var l = tv_target_img.layer;
         tv_target_img = null;
-        if (l.expanded == 0)
+        if (!l.expanded)
             {
-            if (l.expand())
+            if (l.expand(null))
 		return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	    else
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
