@@ -395,9 +395,14 @@ function tx_keyhandler(l,e,k)
         tx_wordWrapUp(l,l.cursorRow+1,newrow,0);
         tx_getCursorPos(l,1,0);
         }
-    else if (k == 9)
+    else if (k == 9 && !e.shiftKey)
 	{
 	if (tx_current.form) tx_current.form.TabNotify(tx_current);
+	return true;
+	}
+    else if (k == 9 && e.shiftKey)
+	{
+	if (tx_current.form) tx_current.form.ShiftTabNotify(tx_current);
 	return true;
 	}
     else if (k == 27)
