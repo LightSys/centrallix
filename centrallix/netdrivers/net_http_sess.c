@@ -34,10 +34,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_sess.c,v 1.1 2008/06/25 22:48:12 jncraton Exp $
+    $Id: net_http_sess.c,v 1.2 2009/06/26 18:31:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_sess.c,v $
 
     $Log: net_http_sess.c,v $
+    Revision 1.2  2009/06/26 18:31:03  gbeeley
+    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
+      like test_obj does
+    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
+    - (change) some refactoring of error message handlers to clean things
+      up a bit
+    - (feature) adding last_activity to session objects (for sysinfo)
+    - (feature) parameterized OSML SQL queries over the http interface
+
     Revision 1.1  2008/06/25 22:48:12  jncraton
     - (change) split net_http into separate files
     - (change) replaced nht_internal_UnConvertChar with qprintf filter
@@ -84,6 +93,8 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
     pXString errmsg;
     pNhtConnTrigger trg;
     pNhtControlMsg cm;
+    int i;
+    pNhtQuery nht_query;
 
 	/** Bump the link cnt down **/
 	sess->LinkCnt--;
@@ -144,10 +155,20 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		nht_internal_FreeControlMsg(cm);
 		}
 
+	    /** Query data **/
+	    for(i=0;i<sess->OsmlQueryList.nItems;i++)
+		{
+		nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+		if (nht_query->ParamData) stFreeInf_ne(nht_query->ParamData);
+		if (nht_query->ParamList) expFreeParamList(nht_query->ParamList);
+		nmFree(nht_query, sizeof(NhtQuery));
+		}
+
 	    /** Dealloc the xarrays and such **/
 	    xaDeInit(&(sess->Triggers));
 	    xaDeInit(&(sess->ErrorList));
 	    xaDeInit(&(sess->ControlMsgsList));
+	    xaDeInit(&(sess->OsmlQueryList));
 	    xhnDeInitContext(&(sess->Hctx));
 	    nmFree(sess, sizeof(NhtSessionData));
 	    }

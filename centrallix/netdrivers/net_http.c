@@ -33,10 +33,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.87 2008/08/16 00:49:27 thr4wn Exp $
+    $Id: net_http.c,v 1.88 2009/06/26 18:31:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.88  2009/06/26 18:31:03  gbeeley
+    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
+      like test_obj does
+    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
+    - (change) some refactoring of error message handlers to clean things
+      up a bit
+    - (feature) adding last_activity to session objects (for sysinfo)
+    - (feature) parameterized OSML SQL queries over the http interface
+
     Revision 1.87  2008/08/16 00:49:27  thr4wn
     There was one last renaming of a function I forgot about in order for
     Centrallix to actually compile :P
@@ -628,6 +637,7 @@ nht_internal_UsersAttrList(void* ctx, char* objname)
 	xa = (pXArray)nmMalloc(sizeof(XArray));
 	xaInit(xa, 8);
 	xaAddItem(xa, "session_cnt");
+	xaAddItem(xa, "last_activity");
 
     return xa;
     }
@@ -656,6 +666,7 @@ nht_internal_UsersAttrType(void *ctx, char* objname, char* attrname)
 	if (!objname || !attrname) return -1;
 	if (!strcmp(attrname, "session_cnt")) return DATA_T_INTEGER;
 	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
 
     return -1;
     }
@@ -672,6 +683,8 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
 	    val->Integer = usr->SessionCnt;
 	else if (!strcmp(attrname, "name"))
 	    val->String = usr->Username;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(usr->LastActivity);
 	else
 	    return -1;
 
@@ -695,6 +708,26 @@ nht_internal_RegisterUsers()
     }
 
 
+/*** error exit handler -- does not return
+ ***/
+void
+nht_internal_ErrorExit(pNhtConn conn, int code, char* text)
+    {
+
+	/** Write the standard HTTP response **/
+	nht_internal_WriteResponse(conn, code, text, -1, "text/html", NULL, NULL);
+	fdQPrintf(conn->ConnFD, "<H1>%POS %STR</H1>\r\n<hr><pre>\r\n", code, text);
+
+	/** Display error info **/
+	mssPrintError(conn->ConnFD);
+
+	/** Shutdown the connection and free memory **/
+	nht_internal_FreeConn(conn);
+
+    thExit();
+    }
+
+
 /*** nht_internal_WriteResponse() - write the HTTP response header,
  *** not including content.
  ***/
@@ -715,13 +748,16 @@ nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, 
 		"HTTP/1.0 %INT %STR\r\n"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
+		"%[Set-Cookie: %STR\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
 		"%[Content-Type: %STR\r\n%]"
-		"%[Pragma: %STR\r\n%]",
+		"%[Pragma: %STR\r\n%]"
+		"\r\n",
 		code,
 		text,
 		NHT.ServerString,
 		tbuf,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie), (conn->NhtSession)?conn->NhtSession->Cookie:NULL,
 		contentlen > 0, contentlen,
 		contenttype != NULL, contenttype,
 		pragma != NULL, pragma);
@@ -734,6 +770,9 @@ nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, 
 	    wcnt += rval;
 	    }
 
+	if (conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie)
+	    conn->NhtSession->IsNewCookie = 0;
+
     return wcnt;
     }
 
@@ -743,15 +782,18 @@ nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, 
  *** routine if you want more flexible content.
  ***/
 int
-nht_internal_WriteErrResponse(pNhtConn conn, int code, char* text)
+nht_internal_WriteErrResponse(pNhtConn conn, int code, char* text, char* bodytext)
     {
     int wcnt, rval;
 
-	wcnt = nht_internal_WriteResponse(conn, code, text, strlen(text), "text/html", NULL, NULL);
+	wcnt = nht_internal_WriteResponse(conn, code, text, strlen(bodytext), "text/html", NULL, NULL);
 	if (wcnt < 0) return wcnt;
-	rval = nht_internal_WriteConn(conn, text, strlen(text), 0);
-	if (rval < 0) return rval;
-	wcnt += rval;
+	if (bodytext && *bodytext)
+	    {
+	    rval = nht_internal_WriteConn(conn, bodytext, strlen(bodytext), 0);
+	    if (rval < 0) return rval;
+	    wcnt += rval;
+	    }
 
     return wcnt;
     }
@@ -1118,6 +1160,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* lptr;
     char* lptr2;
     char* pptr;
+    int rowlimit;
+    int order_desc = 0;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1344,6 +1388,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		wgtr_params.MinHeight = client_h;
 		wgtr_params.MaxWidth = client_w;
 		wgtr_params.MinWidth = client_w;
+		wgtr_params.AppMaxHeight = client_h;
+		wgtr_params.AppMinHeight = client_h;
+		wgtr_params.AppMaxWidth = client_w;
+		wgtr_params.AppMinWidth = client_w;
 		strtcpy(wgtr_params.AKey, nsess->AKey, sizeof(wgtr_params.AKey));
 
 		/** Check for gzip encoding **/
@@ -1496,7 +1544,12 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__info"),&ptr) >= 0 && !strcmp(ptr,"1"))
 		send_info = 1;
-	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__orderdesc"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		order_desc = 1;
+	    if (order_desc)
+		query = objOpenQuery(target_obj,"",":name desc",NULL,NULL);
+	    else
+		query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
 		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
@@ -1544,6 +1597,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    strtcpy(path, objGetWD(nsess->ObjSess), sizeof(path));
 	    objSetWD(nsess->ObjSess, target_obj);
 
+	    /** row limit? **/
+	    rowlimit = 0;
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__rowcount"),&ptr) >= 0)
+		rowlimit = strtol(ptr, NULL, 10);
+
 	    /** Get the SQL **/
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
 	        {
@@ -1556,6 +1614,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
 			objClose(sub_obj);
 			rowid++;
+			if (rowid == rowlimit) break;
 			}
 		    objQueryClose(query);
 		    }
@@ -1760,56 +1819,74 @@ int
 nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
     {
     pNhtSessionData nsess = conn->NhtSession;
-    pObject source_obj,target_obj;
+    pObject source_obj = NULL;
+    pObject target_obj = NULL;
     int size;
-    int already_exist = 0;
+    int already_exists = 0;
     char sbuf[256];
     int rcnt,wcnt;
+    pStruct copymode_inf;
+    char* copymode = NULL;
+    char* copytype = NULL;
 
-	/** Ok, open the source object here. **/
-	source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
-	if (!source_obj)
+	/** What copy mode are we using? **/
+	copymode_inf = stLookup_ne(url_inf, "cx__copymode");
+	if (copymode_inf)
+	    stAttrValue_ne(copymode_inf, &copymode);
+
+	/** copy mode is srctype, dsttype, or an explicitly provided type **/
+	if (copymode && strcmp(copymode, "srctype") != 0 && strcmp(copymode, "dsttype") != 0)
+	    copytype = copymode;
+
+	/** If copymode is not dsttype, open the source object here. **/
+	if (!copymode || strcmp(copymode, "dsttype") != 0)
 	    {
-	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>404 Source Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    mssPrintError(conn->ConnFD);
-	    netCloseTCP(conn->ConnFD,1000,0);
-	    nht_internal_UnlinkSess(nsess);
-	    thExit();
+	    source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, copytype?copytype:"application/octet-stream");
+	    if (!source_obj)
+		{
+		nht_internal_ErrorExit(conn, 404, "Source Not Found");
+		}
+
+	    /** If using srctype copy mode, get the type now **/
+	    if (!copytype)
+		objGetAttrValue(source_obj, "inner_type", DATA_T_STRING, POD(&copytype));
 	    }
 
 	/** Do we need to set params as a part of the open? **/
 	nht_internal_CkParams(url_inf, source_obj);
 
-	/** Get the size of the original object, if possible **/
-	if (objGetAttrValue(source_obj,"size",DATA_T_INTEGER,POD(&size)) != 0) size = -1;
-
-	/** Try to open the new object read-only to see if it exists... **/
-	target_obj = objOpen(nsess->ObjSess, dest, O_RDONLY, 0600, "text/html");
+	/** Try to open the new object without O_CREAT to see if it exists... **/
+	target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC, 0600, "text/html");
 	if (target_obj)
 	    {
-	    objClose(target_obj);
-	    already_exist = 1;
+	    already_exists = 1;
+	    }
+	else
+	    {
+	    already_exists = 0;
+	    target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
+	    if (!target_obj)
+		{
+		nht_internal_ErrorExit(conn, 404, "Target Not Found");
+		}
 	    }
 
-	/** Ok, open the target object for keeps now. **/
-	target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
-	if (!target_obj)
+	/** If using dsttype, get the type from the target object **/
+	if (!copytype)
+	    objGetAttrValue(target_obj, "inner_type", DATA_T_STRING, POD(&copytype));
+
+	/** If using dsttype, now we open the source **/
+	if (!source_obj)
 	    {
-	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>404 Target Not Found</H1>\r\n",NHT.ServerString);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    netCloseTCP(conn->ConnFD,1000,0);
-	    nht_internal_UnlinkSess(nsess);
-	    thExit();
+	    source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, copytype?copytype:"application/octet-stream");
+	    if (!source_obj)
+		{
+		nht_internal_ErrorExit(conn, 404, "Source Not Found");
+		}
 	    }
+
+	/** Get the size of the original object, if possible **/
+	if (objGetAttrValue(source_obj,"size",DATA_T_INTEGER,POD(&size)) != 0) size = -1;
 
 	/** Set the size of the new document... **/
 	if (size >= 0) objSetAttrValue(target_obj, "size", DATA_T_INTEGER,POD(&size));
@@ -1830,48 +1907,8 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	objClose(target_obj);
 
 	/** Ok, issue the HTTP header for this one. **/
-	if (nsess->IsNewCookie)
-	    {
-	    if (already_exist)
-	        {
-	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Set-Cookie: %s; path=/\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
-		}
-	    else
-	        {
-	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
-		     "Server: %s\r\n"
-		     "Set-Cookie: %s; path=/\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
-		}
-	    nsess->IsNewCookie = 0;
-	    }
-	else
-	    {
-	    if (already_exist)
-	        {
-	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,dest);
-		}
-	    else
-	        {
-	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
-		     "Server: %s\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,dest);
-		}
-	    }
-	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	nht_internal_WriteResponse(conn, already_exists?200:201, already_exists?"OK":"Created", -1, "text/html", NULL, NULL);
+	fdQPrintf(conn->ConnFD, "%STR\r\n", dest);
 
     return 0;
     }

@@ -33,10 +33,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_osml.c,v 1.1 2008/06/25 22:48:12 jncraton Exp $
+    $Id: net_http_osml.c,v 1.2 2009/06/26 18:31:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_osml.c,v $
 
     $Log: net_http_osml.c,v $
+    Revision 1.2  2009/06/26 18:31:03  gbeeley
+    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
+      like test_obj does
+    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
+    - (change) some refactoring of error message handlers to clean things
+      up a bit
+    - (feature) adding last_activity to session objects (for sysinfo)
+    - (feature) parameterized OSML SQL queries over the http interface
+
     Revision 1.1  2008/06/25 22:48:12  jncraton
     - (change) split net_http into separate files
     - (change) replaced nht_internal_UnConvertChar with qprintf filter
@@ -198,7 +207,7 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 
 	/** Get type **/
 	type = objGetAttrType(obj,attrname);
-	if (type < 0) return -1;
+	if (type < 0 || type > 7) return -1;
 
 	/** Presentation Hints **/
 	xsInit(&hints);
@@ -228,7 +237,7 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 	xsConcatQPrintf(&xs, "%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
 
-	xsQPrintf(&xs,"%STR%STR&JSSTR",xs.String,dptr);
+	xsQPrintf(&xs,"%STR%STR&URL",xs.String,dptr);
 
 	xsConcatenate(&xs,"</A><br>\n",9);
 	fdWrite(conn->ConnFD,xs.String,strlen(xs.String),0,0);
@@ -328,6 +337,101 @@ nht_internal_UpdateNotify(void* v)
     }
 
 
+/*** nht_internal_OSML_GetAttrType - get an attribute type from parameters
+ *** supplied to the query
+ ***/
+int
+nht_internal_OSML_GetAttrType(void* nhtqy_v, char* attrname)
+    {
+    pNhtQuery nhtqy = (pNhtQuery)nhtqy_v;
+    pStruct find_inf;
+
+	/** search through the list of params **/
+	find_inf = stLookup_ne(nhtqy->ParamData, attrname);
+	if (!find_inf) return -1;
+
+	/** get data type **/
+	if (!strncmp(find_inf->StrVal, "integer:", 8)) return DATA_T_INTEGER;
+	if (!strncmp(find_inf->StrVal, "string:", 7)) return DATA_T_STRING;
+	if (!strncmp(find_inf->StrVal, "datetime:", 9)) return DATA_T_DATETIME;
+	if (!strncmp(find_inf->StrVal, "money:", 6)) return DATA_T_MONEY;
+	if (!strncmp(find_inf->StrVal, "double:", 7)) return DATA_T_DOUBLE;
+
+    return -1;
+    }
+
+
+/*** nht_internal_OSML_GetAttrValue - get the value of an attribute from the
+ *** query parameters.
+ ***/
+int
+nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObjData val)
+    {
+    pNhtQuery nhtqy = (pNhtQuery)nhtqy_v;
+    pStruct find_inf;
+    char* ptr;
+
+	/** search through the list of params **/
+	find_inf = stLookup_ne(nhtqy->ParamData, attrname);
+	if (!find_inf) return -1;
+
+	/** skip to after the colon, which separates data type from value **/
+	ptr = strchr(find_inf->StrVal, ':');
+	if (!ptr) return -1;
+	ptr++;
+	if (*ptr == 'N') // N = null, V = valid value
+	    return 1;
+	ptr = strchr(ptr,':');
+	if (!ptr) return -1;
+	ptr++;
+
+    return objDataFromString(val, datatype, ptr);
+    }
+
+
+/*** nht_internal_CreateQuery() - create a NhtQuery object, filled in from the
+ *** request data.
+ ***/
+pNhtQuery
+nht_internal_CreateQuery(pStruct req_inf)
+    {
+    pNhtQuery nht_query;
+    char* ptr;
+
+	nht_query = (pNhtQuery)nmMalloc(sizeof(NhtQuery));
+	if (nht_query)
+	    {
+	    memset(nht_query, 0, sizeof(NhtQuery));
+	    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sqlparam"),&ptr) == 0)
+		{
+		nht_query->ParamData = htsParseURL(ptr);
+		if (nht_query->ParamData)
+		    {
+		    nht_query->ParamList = expCreateParamList();
+		    expAddParamToList(nht_query->ParamList, "parameters", (void*)nht_query, 0);
+		    expSetParamFunctions(nht_query->ParamList, "parameters", nht_internal_OSML_GetAttrType, nht_internal_OSML_GetAttrValue, NULL);
+		    }
+		}
+	    }
+    
+    return nht_query;
+    }
+
+
+/*** nht_internal_FreeQuery() - deinit and release an NhtQuery object
+ ***/
+int
+nht_internal_FreeQuery(pNhtQuery nht_query)
+    {
+
+	if (nht_query->ParamData) stFreeInf_ne(nht_query->ParamData);
+	if (nht_query->ParamList) expFreeParamList(nht_query->ParamList);
+	nmFree(nht_query, sizeof(NhtQuery));
+
+    return 0;
+    }
+
+
 /*** nht_internal_OSML - direct OSML access from the client.  This will take
  *** the form of a number of different OSML operations available seemingly
  *** seamlessly (hopefully) from within the JavaScript functionality in an
@@ -362,6 +466,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     int retval;		/** FIXME FIXME FIXME FIXME FIXME FIXME **/
     char* reopen_sql;
     pXString reopen_str;
+    pNhtQuery nht_query;
     
     handle_t session_handle;
     handle_t query_handle;
@@ -595,18 +700,34 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			"Content-Type: text/html\r\n"
 			"Pragma: no-cache\r\n"
 			"\r\n");
+		nht_query = NULL;
 		if (!strcmp(request,"multiquery"))
 		    {
-		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose"),&ptr) == 0 && strtol(ptr,NULL,0))
-			autoclose = 1;
-		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose_sr"),&ptr) == 0 && strtol(ptr,NULL,0))
-			autoclose_shortres = 1;
-		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
-		    qy = objMultiQuery(objsess, ptr, NULL);
-		    if (!qy)
-			query_handle = XHN_INVALID_HANDLE;
+		    qy = NULL;
+
+		    /** check for query parameters **/
+		    nht_query = nht_internal_CreateQuery(req_inf);
+		    if (nht_query)
+			{
+			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose"),&ptr) == 0 && strtol(ptr,NULL,0))
+			    autoclose = 1;
+			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose_sr"),&ptr) == 0 && strtol(ptr,NULL,0))
+			    autoclose_shortres = 1;
+			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
+
+			/** open the query with the osml **/
+			qy = nht_query->OsmlQuery = objMultiQuery(objsess, ptr, nht_query->ParamList);
+			if (!qy)
+			    query_handle = XHN_INVALID_HANDLE;
+			else
+			    query_handle = xhnAllocHandle(&(sess->Hctx), qy);
+			nht_query->QueryHandle = query_handle;
+			}
 		    else
-			query_handle = xhnAllocHandle(&(sess->Hctx), qy);
+			{
+			qy = NULL;
+			query_handle = XHN_INVALID_HANDLE;
+			}
 		    if (autoclose)
 			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
 			    XHN_INVALID_HANDLE);
@@ -615,9 +736,28 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    query_handle);
 		    if (DEBUG_OSML) printf("ls__mode=multiquery X" XHN_HANDLE_PRT "\n", query_handle);
 		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    if (!qy && nht_query)
+			{
+			nht_internal_FreeQuery(nht_query);
+			}
+		    else
+			{
+			xaAddItem(&sess->OsmlQueryList, nht_query);
+			}
 		    }
 		if (!strcmp(request,"queryfetch") || (qy && stAttrValue_ne(stLookup_ne(req_inf,"ls__autofetch"),&ptr) == 0 && strtol(ptr,NULL,0)))
 		    {
+		    if (!nht_query)
+			{
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->QueryHandle == query_handle)
+				break;
+			    nht_query = NULL;
+			    }
+			}
+
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
 		    mode = strtol(ptr,NULL,0);
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__rowcount"),&ptr) < 0)
@@ -657,18 +797,30 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			/** if end of result set was reached before rowlimit ran out **/
 			xhnFreeHandle(&(sess->Hctx), query_handle);
 			objQueryClose(qy);
+			qy = NULL;
 			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n");
 			}
 		    else if (autoclose)
 			{
 			xhnFreeHandle(&(sess->Hctx), query_handle);
 			objQueryClose(qy);
+			qy = NULL;
 			}
 		    }
 		}
 	    else if (!strcmp(request,"queryclose"))
 	        {
 		xhnFreeHandle(&(sess->Hctx), query_handle);
+		for(i=0;i<sess->OsmlQueryList.nItems;i++)
+		    {
+		    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+		    if (nht_query->OsmlQuery == qy)
+			{
+			xaRemoveItem(&sess->OsmlQueryList, i);
+			nht_internal_FreeQuery(nht_query);
+			break;
+			}
+		    }
 		objQueryClose(qy);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 			 "Pragma: no-cache\r\n"
@@ -860,11 +1012,12 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    if (reopen_str)
 				{
 				xsInit(reopen_str);
+				nht_query = nht_internal_CreateQuery(req_inf);
 				if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
 				    {
 				    /** note - it is possible for autoname to fail, thus name == NULL **/
 				    xsQPrintf(reopen_str, "%STR WHERE :name = %STR&QUOT", reopen_sql, ptr);
-				    qy = objMultiQuery(objsess, reopen_str->String, NULL);
+				    qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL);
 				    if (qy)
 					{
 					objClose(obj);
@@ -872,6 +1025,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					objQueryClose(qy);
 					}
 				    }
+				if (nht_query) nht_internal_FreeQuery(nht_query);
 				xsDeInit(reopen_str);
 				nmFree(reopen_str, sizeof(XString));
 				}

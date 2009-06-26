@@ -69,10 +69,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.h,v 1.2 2008/08/16 00:31:38 thr4wn Exp $
+    $Id: net_http.h,v 1.3 2009/06/26 18:31:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.h,v $
 
     $Log: net_http.h,v $
+    Revision 1.3  2009/06/26 18:31:03  gbeeley
+    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
+      like test_obj does
+    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
+    - (change) some refactoring of error message handlers to clean things
+      up a bit
+    - (feature) adding last_activity to session objects (for sysinfo)
+    - (feature) parameterized OSML SQL queries over the http interface
+
     Revision 1.2  2008/08/16 00:31:38  thr4wn
     I made some more modification of documentation and begun logic for
     caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
@@ -144,6 +153,7 @@ typedef struct
     {
     char		Username[32];
     int			SessionCnt;
+    DateTime		LastActivity;
     }
     NhtUser, *pNhtUser;
 
@@ -174,8 +184,24 @@ typedef struct
     pNhtUser	User;
     int		LastAccess;
     pXHashTable	CachedApps;
+    XArray	OsmlQueryList;	/* array of pNhtQuery */
     }
     NhtSessionData, *pNhtSessionData;
+
+
+/*** Query structure.  Used for storing information about an open query.  These
+ *** are stored in the OsmlQueryList in the NhtSessionData structure.
+ ***/
+typedef struct
+    {
+    pObjQuery	OsmlQuery;	/* osml query handle */
+    handle_t	QueryHandle;
+    int		FetchCount;
+    pStruct	ParamData;	/* parameter data from client */
+    pParamObjects ParamList;	/* parameter list, to represent ParamData */
+    }
+    NhtQuery, *pNhtQuery;
+
 
 /*** Timer structure.  The rule on the deallocation of these is that if
  *** you successfully remove it from the Timers list while holding the
@@ -271,5 +297,8 @@ void nht_internal_Watchdog(void* v);
 void nht_internal_Handler(void* v);
 int nht_internal_ITimeout(void* sess_v);
 int nht_internal_WTimeout(void* sess_v);
+
+int nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);
+void nht_internal_ErrorExit(pNhtConn conn, int code, char* text);
 
  #endif

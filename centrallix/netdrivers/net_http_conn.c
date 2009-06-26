@@ -33,10 +33,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_conn.c,v 1.2 2008/08/16 00:31:38 thr4wn Exp $
+    $Id: net_http_conn.c,v 1.3 2009/06/26 18:31:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
 
     $Log: net_http_conn.c,v $
+    Revision 1.3  2009/06/26 18:31:03  gbeeley
+    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
+      like test_obj does
+    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
+    - (change) some refactoring of error message handlers to clean things
+      up a bit
+    - (feature) adding last_activity to session objects (for sysinfo)
+    - (feature) parameterized OSML SQL queries over the http interface
+
     Revision 1.2  2008/08/16 00:31:38  thr4wn
     I made some more modification of documentation and begun logic for
     caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
@@ -190,7 +199,7 @@ nht_internal_ConnHandler(void* connfd_v)
     char* ptr;
     char* usrname;
     char* passwd = NULL;
-    pStruct url_inf,find_inf;
+    pStruct url_inf,find_inf,akey_inf;
     int tid = -1;
     handle_t w_timer = XHN_INVALID_HANDLE, i_timer = XHN_INVALID_HANDLE;
     pNhtUser usr;
@@ -431,6 +440,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaInit(&nsess->Triggers,16);
 	    xaInit(&nsess->ErrorList,16);
 	    xaInit(&nsess->ControlMsgsList,16);
+	    xaInit(&nsess->OsmlQueryList,64);
 	    nht_internal_CreateCookie(nsess->Cookie);
 	    cxssGenerateKey((unsigned char*)akey, sizeof(akey));
 	    sprintf(nsess->AKey, "%8.8x%8.8x", akey[0], akey[1]);
@@ -444,6 +454,9 @@ nht_internal_ConnHandler(void* connfd_v)
 	    printf("NHT: new session for username [%s], cookie [%s]\n", nsess->Username, nsess->Cookie);
 	    nht_internal_LinkSess(conn->NhtSession);
 	    }
+
+	if (!noact)
+	    objCurrentDate(&(conn->NhtSession->User->LastActivity));
 
 	/** Set nht session http ver **/
 	strtcpy(conn->NhtSession->HTTPVer, conn->HTTPVer, sizeof(conn->NhtSession->HTTPVer));
@@ -488,8 +501,8 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** If the method was GET and an ls__method was specified, use that method **/
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
-	    find_inf = stLookup_ne(url_inf,"cx__akey");
-	    if (!find_inf || strcmp(find_inf->StrVal, nsess->AKey))
+	    akey_inf = stLookup_ne(url_inf,"cx__akey");
+	    if (!akey_inf || strcmp(akey_inf->StrVal, conn->NhtSession->AKey))
 		{
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
