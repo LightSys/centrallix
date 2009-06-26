@@ -9,6 +9,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+var ib_imgcache = {};
+
 function ib_enable()
     {
     this.enabled=true;
@@ -41,16 +43,16 @@ function ib_setmode(ly, mode)
     switch(mode)
         {
 	case 'n':
-	    newsrc = ly.nImage.src;
+	    newsrc = ly.nImage;
 	    break;
 	case 'p':
-	    newsrc = ly.pImage.src;
+	    newsrc = ly.pImage;
 	    break;
 	case 'c':
-	    newsrc = ly.cImage.src;
+	    newsrc = ly.cImage;
 	    break;
 	case 'd':
-	    newsrc = ly.dImage.src;
+	    newsrc = ly.dImage;
 	    break;
 	}
     if (newsrc == ly.cursrc) return;
@@ -152,6 +154,26 @@ function ib_mouseout(e)
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
     }
 
+function ib_cache(path, w, h)
+    {
+    if (!(ib_imgcache[path]))
+	{
+	ib_imgcache[path] = {};
+	if (!(ib_imgcache[path][w]))
+	    {
+	    ib_imgcache[path][w] = {};
+	    if (!(ib_imgcache[path][w][h]))
+		{
+		if (h == -1)
+		    ib_imgcache[path][w][h] = new Image(w,h);
+		else
+		    ib_imgcache[path][w][h] = new Image();
+		pg_set(ib_imgcache[path][w][h], 'src', path);
+		}
+	    }
+	}
+    }
+
 function ib_init(param)
     {
     var l = param.layer;
@@ -185,18 +207,14 @@ function ib_init(param)
     l.trigger = ib_trigger;
 
     l.buttonName = param.name;
-    if (h == -1) l.nImage = new Image();
-    else l.nImage = new Image(w,h);
-    pg_set(l.nImage,'src',param.n);
-    if (h == -1) l.pImage = new Image();
-    else l.pImage = new Image(w,h);
-    pg_set(l.pImage,'src',param.p);
-    if (h == -1) l.cImage = new Image();
-    else l.cImage = new Image(w,h);
-    pg_set(l.cImage,'src',param.c);
-    if (h == -1) l.dImage = new Image();
-    else l.dImage = new Image(w,h);
-    pg_set(l.dImage,'src',param.d);
+    l.nImage = param.n;
+    l.pImage = param.p;
+    l.cImage = param.c;
+    l.dImage = param.d;
+    ib_cache(l.nImage,w,h);
+    ib_cache(l.pImage,w,h);
+    ib_cache(l.cImage,w,h);
+    ib_cache(l.dImage,w,h);
     l.enabled = null;
     if (cx__capabilities.Dom0IE)
     	{
