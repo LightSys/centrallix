@@ -72,10 +72,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.35 2008/06/25 01:03:51 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.36 2009/06/26 16:33:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.36  2009/06/26 16:33:38  gbeeley
+    - (change) log SQL commands to a file, not to stdout.
+    - (bugfix) handle constants properly when doing TreeToClause
+    - (bugfix) autokey (select max + 1) fix for initial empty table
+    - (bugfix) handle nulls in TreeToClause
+    - (bugfix) handle date/money in primary key
+    - (bugfix) datetime structure packing bug
+
     Revision 1.35  2008/06/25 01:03:51  gbeeley
     - (feature) sybase driver now supports the DeleteObj() call.
     - (change) log which field caused a record to fail to insert (due to
@@ -476,6 +484,7 @@ typedef struct
 
 #define SYBD_F_ROWPRESENT	1
 #define SYBD_F_TFRRW		2
+#define	SYBD_F_METAONLY		4	/* user opened the '?' object */
 
 #define SYBD_T_DATABASE		1
 #define SYBD_T_TABLE		2
@@ -535,6 +544,7 @@ struct
     XString		LastSQL;
     pQueryDriver	QueryDriver;
     pObjDriver		ObjDriver;
+    pFile		SqlLog;
     }
     SYBD_INF;
 
@@ -613,7 +623,7 @@ sybd_internal_Exec(CS_CONNECTION* s, char* cmdtext)
 	ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED);
 
 	/** Send it to the server. **/
-	if (SYBD_SHOW_SQL) printf("sending command ==> %s\n",cmdtext);
+	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC: %s\n",cmdtext);
 	if (ct_send(cmd) != CS_SUCCEED)
 	    {
 	    ct_cmd_drop(cmd);
@@ -887,6 +897,8 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 	    }
 	else if (ut==22 || ut==12)
 	    {
+	    val->DateTime->Value = 0;
+
 	    /** datetime **/
 	    memcpy(&days,ptr,4);
 	    memcpy(&fsec,ptr+4,4);
@@ -1770,19 +1782,31 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
     char* ptr;
     int n_left;
     int n;
+    unsigned long long col64;
 
     	/** Get pointers to the key data. **/
 	ptr = fbuf;
 	n_left = 119;
 	for(i=0;i<tdata->nKeys;i++)
 	    {
-	    if (i>0) *(ptr++)='|';
+	    if (i>0 && n_left > 0) 
+		{
+		*(ptr++)='|';
+		n_left--;
+		}
 	    col = 0;
 	    keyptrs[i] = NULL;
 	    if (inf->ColPtrs[tdata->KeyCols[i]])
 		{
 		switch(tdata->ColTypes[tdata->KeyCols[i]])
 		    {
+		    case 21: /** 8 byte money **/
+		    case 22: /** date value **/
+		    case 12: /** date value **/
+			memcpy(&col64, inf->ColPtrs[tdata->KeyCols[i]], 8);
+			snprintf(ptr,n_left,"%8.8llX",col64);
+			break;
+		    case 11: /** 4 byte money **/
 		    case 7: /** INT **/
 			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
 			snprintf(ptr,n_left,"%d",col);
@@ -1842,6 +1866,11 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
     int is_string;
     char* sptr;
     int t;
+    ObjData val;
+    MoneyType m;
+    DateTime dt;
+    unsigned long long i64;
+    unsigned int i32;
 
 	/** Lookup the key data **/
 	key = sybd_internal_GetTableInf(node,session,table);
@@ -1884,6 +1913,63 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 	    if (is_string)
 		{
 		sptr = objDataToStringTmp(DATA_T_STRING,ptr,DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
+		    {
+		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
+		    return NULL;
+		    }
+		strcpy(wptr,sptr);
+		wptr += strlen(sptr);
+		}
+	    else if (t == DATA_T_DATETIME)
+		{
+		/** 8-byte raw value at ptr **/
+		i64 = strtoull(ptr, NULL, 16);
+		val.DateTime = &dt;
+		if (sybd_internal_GetCxValue(&i64, key->ColTypes[key->KeyCols[i]], &val, t) < 0)
+		    {
+		    mssError(1,"SYBD","Invalid date/time value in object name");
+		    return NULL;
+		    }
+		sptr = objDataToStringTmp(DATA_T_DATETIME,&val,DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
+		    {
+		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
+		    return NULL;
+		    }
+		strcpy(wptr,sptr);
+		wptr += strlen(sptr);
+		}
+	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 21)
+		{
+		/** 8-byte raw value at ptr **/
+		val.Money = &m;
+		i64 = strtoull(ptr, NULL, 16);
+		if (sybd_internal_GetCxValue(&i64, key->ColTypes[key->KeyCols[i]], &val, t) < 0)
+		    {
+		    mssError(1,"SYBD","Invalid money value in object name");
+		    return NULL;
+		    }
+		sptr = objFormatMoneyTmp(val.Money,"0.00");
+		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
+		    {
+		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
+		    return NULL;
+		    }
+		strcpy(wptr,sptr);
+		wptr += strlen(sptr);
+		}
+	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 11)
+		{
+		/** 4-byte raw value at ptr **/
+		val.Money = &m;
+		i32 = strtoul(ptr, NULL, 16);
+		if (sybd_internal_GetCxValue(&i32, key->ColTypes[key->KeyCols[i]], &val, t) < 0)
+		    {
+		    mssError(1,"SYBD","Invalid money value in object name");
+		    return NULL;
+		    }
+		sptr = objFormatMoneyTmp(val.Money,"0.00");
 		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
 		    {
 		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
@@ -1973,6 +2059,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
     {
     pExpression subtree;
     int i,id = 0;
+    int add_rtrim;
 
 #if 0
     	/** What id in the tdata are we dealing with? **/
@@ -1988,64 +2075,83 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 	    {
 	    case EXPR_N_DATETIME:
 	  SYBD_DO_DATETIME:
-	        objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
+		if (tree->Flags & EXPR_F_NULL)
+		    xsConcatenate(where_clause, " NULL ", 6);
+		else
+		    objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
 	        break;
 
 	    case EXPR_N_MONEY:
 	  SYBD_DO_MONEY:
-	        objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
+		if (tree->Flags & EXPR_F_NULL)
+		    xsConcatenate(where_clause, " NULL ", 6);
+		else
+		    objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
 	        break;
 
 	    case EXPR_N_DOUBLE:
 	  SYBD_DO_DOUBLE:
-	        objDataToString(where_clause, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
+		if (tree->Flags & EXPR_F_NULL)
+		    xsConcatenate(where_clause, " NULL ", 6);
+		else
+		    objDataToString(where_clause, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
 	  	break;
 
 	    case EXPR_N_INTEGER:
 	  SYBD_DO_INTEGER:
-	        if (!tree->Parent || tree->Parent->NodeType == EXPR_N_AND ||
-		    tree->Parent->NodeType == EXPR_N_OR)
-		    {
-		    if (tree->Integer)
-		        xsConcatenate(where_clause, " (1=1) ", 6);
-		    else
-		        xsConcatenate(where_clause, " (1=0) ", 7);
-		    }
+		if (tree->Flags & EXPR_F_NULL)
+		    xsConcatenate(where_clause, " NULL ", 6);
 		else
 		    {
-	            objDataToString(where_clause, DATA_T_INTEGER, &(tree->Integer), DATA_F_QUOTED);
+		    if (!tree->Parent || tree->Parent->NodeType == EXPR_N_AND ||
+			tree->Parent->NodeType == EXPR_N_OR)
+			{
+			if (tree->Integer)
+			    xsConcatenate(where_clause, " (1=1) ", 6);
+			else
+			    xsConcatenate(where_clause, " (1=0) ", 7);
+			}
+		    else
+			{
+			objDataToString(where_clause, DATA_T_INTEGER, &(tree->Integer), DATA_F_QUOTED);
+			}
 		    }
 		break;
 
 	    case EXPR_N_STRING:
 	  SYBD_DO_STRING:
-	        if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
-		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
-		    (void*)tree == (void*)(tree->Parent->Children.Items[0]))
+		if (tree->Flags & EXPR_F_NULL)
+		    xsConcatenate(where_clause, " NULL ", 6);
+		else
 		    {
-		    if (!strcmp(tree->Parent->Name,"convert"))
-		        {
-			if (!strcmp(tree->String,"integer")) xsConcatenate(where_clause,"int",3);
-			else if (!strcmp(tree->String,"string")) xsConcatenate(where_clause,"varchar(255)",-1);
-			else if (!strcmp(tree->String,"double")) xsConcatenate(where_clause,"double",6);
-			else if (!strcmp(tree->String,"money")) xsConcatenate(where_clause,"money",5);
-			else if (!strcmp(tree->String,"datetime")) xsConcatenate(where_clause,"datetime",8);
-			}
-		    else
-		        {
-			if (strpbrk(tree->String,"\"' \t\r\n"))
+		    if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
+			(!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
+			(void*)tree == (void*)(tree->Parent->Children.Items[0]))
+			{
+			if (!strcmp(tree->Parent->Name,"convert"))
 			    {
-			    mssError(1,"SYBD","Invalid datepart() parameters in Expression Tree");
+			    if (!strcmp(tree->String,"integer")) xsConcatenate(where_clause,"int",3);
+			    else if (!strcmp(tree->String,"string")) xsConcatenate(where_clause,"varchar(255)",-1);
+			    else if (!strcmp(tree->String,"double")) xsConcatenate(where_clause,"double",6);
+			    else if (!strcmp(tree->String,"money")) xsConcatenate(where_clause,"money",5);
+			    else if (!strcmp(tree->String,"datetime")) xsConcatenate(where_clause,"datetime",8);
 			    }
 			else
 			    {
-			    objDataToString(where_clause, DATA_T_STRING, tree->String, 0);
+			    if (strpbrk(tree->String,"\"' \t\r\n"))
+				{
+				mssError(1,"SYBD","Invalid datepart() parameters in Expression Tree");
+				}
+			    else
+				{
+				objDataToString(where_clause, DATA_T_STRING, tree->String, 0);
+				}
 			    }
 			}
-		    }
-		else
-		    {
-	            objDataToString(where_clause, DATA_T_STRING, tree->String, DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		    else
+			{
+			objDataToString(where_clause, DATA_T_STRING, tree->String, DATA_F_QUOTED | DATA_F_SYBQUOTE);
+			}
 		    }
 		break;
 
@@ -2056,7 +2162,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 
 	    case EXPR_N_PROPERTY:
 	        /** 'Frozen' object?  IF so, use current tree value **/
-		if (tree->Flags & EXPR_F_FREEZEEVAL || (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL)))
+		if ((tree->Flags & EXPR_F_FREEZEEVAL) || (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL)))
 		    {
 		    if (tree->Flags & EXPR_F_NULL)
 		        {
@@ -2221,11 +2327,16 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 	            xsConcatenate(where_clause, " ", 1);
 		    xsConcatenate(where_clause, tree->Name, -1);
 		    xsConcatenate(where_clause, "(", 1);
+		    add_rtrim = (!strcmp(tree->Name, "right") && tree->Children.nItems > 0 && (((pExpression)(tree->Children.Items[0]))->NodeType == EXPR_N_OBJECT || ((pExpression)(tree->Children.Items[0]))->NodeType == EXPR_N_PROPERTY));
 		    for(i=0;i<tree->Children.nItems;i++)
 		        {
+			if (i == 0 && add_rtrim)
+			    xsConcatenate(where_clause, "rtrim(", 6);
 		        if (i != 0) xsConcatenate(where_clause,",",1);
 		        subtree = (pExpression)(tree->Children.Items[i]);
 		        sybd_internal_TreeToClause(subtree, tdata, n_tdata, where_clause);
+			if (i == 0 && add_rtrim)
+			    xsConcatenate(where_clause, ")", 1);
 		        }
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
@@ -2663,7 +2774,7 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
 		    rval = -1;
 		    goto exit_BuildAutoname;
 		    }
-		xsPrintf(sql, "SELECT max(%s)+1 FROM %s", inf->TData->Cols[colid], inf->TData->Table);
+		xsPrintf(sql, "SELECT isnull(max(%s),0)+1 FROM %s", inf->TData->Cols[colid], inf->TData->Table);
 		first_clause = 1;
 		for(i=0;i<inf->TData->nKeys;i++)
 		    {
@@ -3472,6 +3583,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     pSybdQuery qy;
     int i,restype;
     XString sql;
+    pExpression exp;
 
 	/** Allocate the query structure **/
 	qy = (pSybdQuery)nmMalloc(sizeof(SybdQuery));
@@ -3554,7 +3666,9 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    {
 		    xsConcatenate(&sql, " WHERE ", 7);
 		    qy->TableInf->ObjList->Session = qy->ObjInf->Obj->Session;
-		    sybd_internal_TreeToClause((pExpression)(query->Tree),&(qy->TableInf),1,&sql);
+		    exp = expReducedDuplicate(query->Tree);
+		    sybd_internal_TreeToClause(exp, &(qy->TableInf), 1, &sql);
+		    expFreeExpression(exp);
 		    }
 		if (query->SortBy[0])
 		    {
@@ -3576,7 +3690,8 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    }
 		if (strcmp(qy->SQLbuf, SYBD_INF.LastSQL.String) || 1)
 		    {
-		    if (SYBD_SHOW_SQL) printf("SQL = %s\n",qy->SQLbuf);
+		    if (SYBD_INF.SqlLog)
+			fdPrintf(SYBD_INF.SqlLog, "SQL:  %s\n",qy->SQLbuf);
 		    xsCopy(&SYBD_INF.LastSQL, qy->SQLbuf, -1);
 		    }
 		xsDeInit(&sql);
@@ -4157,7 +4272,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int type,rval;
     CS_COMMAND* cmd;
     CS_CONNECTION* sess;
-    char sbuf[160];
+    char sbuf[320];
     char* ptr;
 
 	/** Choose the attr name **/
@@ -4210,7 +4325,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		        if (!sess) return -1;
 
 			/** Build the SQL to update the annotation table **/
-			snprintf(sbuf, 160, "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
+			snprintf(sbuf, sizeof(sbuf), "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
 				inf->TData->Annotation, inf->TData->Table);
 			cmd = sybd_internal_Exec(sess,sbuf);
 			if (cmd)
@@ -4298,17 +4413,17 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			}
 		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
 		        {
-	                snprintf(sbuf,160,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
+	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_STRING)
 		        {   /** objDataToString quotes strings **/
-	                snprintf(sbuf,160,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_MONEY || type == DATA_T_DATETIME)
 		        {
-	                snprintf(sbuf,160,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 
@@ -4794,6 +4909,8 @@ sybdInitialize()
 	SYBD_INF.AccessCnt = 1;
 	xsInit(&SYBD_INF.LastSQL);
 	xsCopy(&SYBD_INF.LastSQL, "", -1);
+	if (SYBD_SHOW_SQL)
+	    SYBD_INF.SqlLog = fdOpen("/var/log/centrallix-sybase.log", O_RDWR | O_APPEND | O_CREAT, 0600);
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"SYBD - Sybase Database Driver");
