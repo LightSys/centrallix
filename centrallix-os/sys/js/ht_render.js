@@ -21,6 +21,37 @@ var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
+function Money(n)
+    {
+    if (n)
+	this.v = parseInt(n*1000);
+    else
+	this.v = 0;
+    return this;
+    }
+
+function cx_count_divs(kind)
+    {
+    var divs = document.getElementsByTagName("div");
+    var cnts = {};
+    var str = "";
+    var idx;
+    for(var i = 0; i < divs.length; i++)
+	{
+	if (divs[i].kind)
+	    idx = divs[i].kind;
+	else
+	    idx = 'none';
+	cnts[idx] = cnts[idx]?(cnts[idx]+1):1;
+	}
+    for(var k in cnts)
+	{
+	if (!kind || k == kind)
+	    str += k + ": " + cnts[k] + "\n";
+	}
+    return str;
+    }
+
 // Functions used for cxsql-to-js support
 function cxjs_user_name()
     {
@@ -51,6 +82,8 @@ function cxjs_substring(s,p,l)
     }
 function cxjs_eval(x)
     {
+    var _this = null;
+    var _context = null;
     if (x == null) return null;
     if (typeof x == 'object') x = x.toString();
     return eval(x);
@@ -85,6 +118,36 @@ function cxjs_condition(c, vtrue, vfalse)
 	return vfalse;
     }
 
+function cxjs_quote(s)
+    {
+    s = String(s);
+    return '"' + s.replace(/([\"])/g, "\\$1") + '"';
+    }
+
+function cxjs_charindex(needle, haystack)
+    {
+    if (needle === null || haystack === null) return null;
+    return (new String(haystack)).indexOf(needle) + 1;
+    }
+
+function cxjs_char_length(str)
+    {
+    if (str == null) return null;
+    return String(str).length;
+    }
+
+function cxjs_upper(str)
+    {
+    if (str === null) return null;
+    return String(str).toUpperCase();
+    }
+
+function cxjs_lower(str)
+    {
+    if (str === null) return null;
+    return String(str).toLowerCase();
+    }
+
 // Cross-browser support functions
 function htr_event(e)
     {
@@ -98,6 +161,7 @@ function htr_event(e)
 	cx__event.type = e.type;
 	cx__event.which = e.button+1;
 	cx__event.modifiers = e.modifiers;
+	cx__event.shiftKey = e.shiftKey;
 	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
 	    {
 	    cx__event.key = e.which;
@@ -109,6 +173,11 @@ function htr_event(e)
 		case e.DOM_VK_RIGHT:	cx__event.keyName = 'right'; break;
 		case e.DOM_VK_UP:	cx__event.keyName = 'up'; break;
 		case e.DOM_VK_DOWN:	cx__event.keyName = 'down'; break;
+		case e.DOM_VK_TAB:	cx__event.keyName = 'tab'; break;
+		case e.DOM_VK_ENTER:	cx__event.keyName = 'enter'; break;
+		case e.DOM_VK_RETURN:	cx__event.keyName = 'enter'; break;
+		case e.DOM_VK_ESCAPE:	cx__event.keyName = 'escape'; break;
+		case e.DOM_VK_F3:	cx__event.keyName = 'f3'; break;
 		default:		cx__event.keyName = null; break;
 		}
 	    }
@@ -232,8 +301,7 @@ function htr_build_tabs(level)
     return "	"+htr_build_tabs(level-1);
     }
 
-//uses (or mimicks) firefox's .watch method.
-function htr_watch(obj, attr, func)
+function htr_cwatch(obj, attr, fobj, func)
     {
     if (!obj.htr_watchlist) 
 	{
@@ -243,7 +311,7 @@ function htr_watch(obj, attr, func)
         {
         obj.onpropertychange = htr_watchchanged;
 	} 
-	else
+    else
 	{
     	obj.watch(attr,htr_watchchanged);
 	}
@@ -251,14 +319,22 @@ function htr_watch(obj, attr, func)
     watchitem.attr = attr;
     watchitem.func = func;
     watchitem.obj = obj;
+    watchitem.fobj = fobj;
     obj.htr_watchlist.push(watchitem);
     }
 
-function htr_unwatch(obj, attr, func)
+//uses (or mimicks) firefox's .watch method.
+function htr_watch(obj, attr, func)
+    {
+    htr_cwatch(obj, attr, null, func);
+    }
+
+function htr_uncwatch(obj, attr, fobj, func)
     {
     for (var i=0;i<obj.htr_watchlist.length;i++)
 	{
-	if (obj.htr_watchlist[i].attr == attr && obj.htr_watchlist[i].func == func)
+	var wl = obj.htr_watchlist[i];
+	if (wl.attr == attr && wl.func == func && wl.fobj == fobj)
 	    {
 	    obj.htr_watchlist.splice(i,1);
 	    i--;
@@ -267,15 +343,24 @@ function htr_unwatch(obj, attr, func)
 	}
     }
 
+function htr_unwatch(obj, attr, func)
+    {
+    htr_uncwatch(obj, attr, null, func);
+    }
+
 function htr_watchchanged(prop,oldval,newval)
     {
     var setprop = newval;
    
     for (var i=0;i<this.htr_watchlist.length;i++)
 	{
-	if (this.htr_watchlist[i].attr == prop)
+	var wl = this.htr_watchlist[i];
+	if (wl.attr == prop)
 	    {
-	    setprop = this[this.htr_watchlist[i].func](prop,oldval,newval);
+	    if (wl.fobj)
+		setprop = wl.fobj[wl.func](this,prop,oldval,newval);
+	    else
+		setprop = this[wl.func](prop,oldval,newval);
 	    if (setprop == oldval) return oldval;
 	    }
 	}
@@ -516,20 +601,28 @@ function htr_getbgimage(l)
 function htr_setbgimage(l,v)
     {
     if (cx__capabilities.Dom0NS)
-	//l.background.src = v;
 	pg_serialized_load(l.background, v, null);
     else if (cx__capabilities.Dom1HTML)
-	//pg_set_style_string(l,"backgroundImage",v);
-	l.style.backgroundImage = "URL('" + v + "')";
+	{
+	if (!v)
+	    l.style.backgroundImage = null;
+	else
+	    l.style.backgroundImage = "URL('" + v + "')";
+	}
     return null;
     }
 
 function htr_setbackground(l, v)
     {
-    var bgimg = htr_extract_bgimage(v);
-    var bgcol = htr_extract_bgcolor(v);
+    var bgimg = v?htr_extract_bgimage(v):null;
+    var bgcol = v?htr_extract_bgcolor(v):null;
     if (bgimg) htr_setbgimage(l, bgimg);
     if (bgcol) htr_setbgcolor(l, bgcol);
+    if (!bgimg && !bgcol)
+	{
+	htr_setbgimage(l, null);
+	htr_setbgcolor(l, null);
+	}
     }
 
 function htr_getphyswidth(l)
