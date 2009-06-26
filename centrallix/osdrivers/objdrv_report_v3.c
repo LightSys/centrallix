@@ -22,6 +22,7 @@
 #include "report.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -58,10 +59,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.19 2008/04/06 20:52:16 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.20 2009/06/26 18:16:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.20  2009/06/26 18:16:26  gbeeley
+    - (change) support runserver() expressions in parameter defaults
+    - (change) allow setting of "reset" value for query aggregates, to specify
+      whether the value is reset to 0/null when it is read.
+    - (bugfix) max query count now matches size of expression param obj list
+
     Revision 1.19  2008/04/06 20:52:16  gbeeley
     - (change) allow value= et al in a report/area without having to embed a
       report/data element.  This simplifies some report writing a bit.
@@ -345,11 +352,11 @@ typedef struct
     {
     int		Count;
     int		StackPtr;
-    int		InnerMode[16];
-    int		OuterMode[16];
-    pQueryConn	Queries[16];
-    int		Flags[16];
-    char*	Names[16];
+    int		InnerMode[EXPR_MAX_PARAMS];
+    int		OuterMode[EXPR_MAX_PARAMS];
+    pQueryConn	Queries[EXPR_MAX_PARAMS];
+    int		Flags[EXPR_MAX_PARAMS];
+    char*	Names[EXPR_MAX_PARAMS];
     int		MultiMode;
     }
     RptActiveQueries, *pRptActiveQueries;
@@ -767,6 +774,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     int n,i,was_null;
     pExpression exp;
     pStructInf subitem;
+    int rval;
 
     	/** Free existing query conn data buf? **/
 	if (qy->DataBuf)
@@ -842,7 +850,15 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     	/** Return 1 if object is NULL. **/
 	if (obj == NULL) return 1;
 
-    return objGetAttrValue(obj, attrname, datatype, data_ptr);
+    rval = objGetAttrValue(obj, attrname, datatype, data_ptr);
+    /*if (!strcmp(qy->Name, "summary2_qy"))
+	{
+	if (rval == 0)
+	    printf("%s: $ %d %2.2d\n", attrname, (*(pMoneyType*)data_ptr)->WholePart, (*(pMoneyType*)data_ptr)->FractionPart);
+	else
+	    printf("%s: null\n", attrname);
+	}*/
+    return rval;
     }
 
 /*** rpt_internal_PrepareQuery - perform all operations necessary to prepare
@@ -2256,7 +2272,10 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    if (ud)
 		{
 		/** Evaluate the expression **/
+		/*if (!strcmp(data->Name,"d2_1_start")) CxGlobals.Flags |= CX_F_DEBUG;*/
 		rval = expEvalTree(ud->Exp, inf->ObjList);
+		/*if (!strcmp(data->Name,"d2_1_start")) expDumpExpression(ud->Exp);
+		CxGlobals.Flags &= ~CX_F_DEBUG;*/
 		if (rval < 0)
 		    {
 		    mssError(0,"RPT","Could not evaluate %s '%s' value expression", data->UsrType, data->Name);
@@ -3247,6 +3266,7 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
 	    rpt_internal_UnPreProcess(inf, object->SubInf[i], rs);
 	    }
 
+#if 00
 	/** If userdata alloc'd, free it **/
 	if (object->UserData)
 	    {
@@ -3264,6 +3284,7 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
 		}
 	    object->UserData = NULL;
 	    }
+#endif
 
 	for(i=1;i<inf->UserDataSlots.nItems;i++) if (inf->UserDataSlots.Items[i])
 	    {
@@ -3329,6 +3350,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
     int resolution;
     double pagewidth, pageheight;
+    int do_reset;
 
     	/** Report has no titlebar header? **/
 	stAttrValue(rpt_internal_GetParam(inf,"titlebar"),NULL,&ptr,0);
@@ -3524,7 +3546,11 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		            expResetAggregates(exp, -1);
 			    expEvalTree(exp,qc->ObjList);
 			    xaAddItem(&(qc->AggregateExpList), (void*)exp);
-			    xaAddItem(&(qc->AggregateDoReset), (void*)1);
+
+			    do_reset = 1;
+			    stAttrValue(stLookup(subreq->SubInf[j], "reset"), &do_reset, NULL, 0);
+			    xaAddItem(&(qc->AggregateDoReset), (void*)do_reset);
+
 			    ptr = NULL;
 			    stAttrValue(stLookup(subreq->SubInf[j], "where"), NULL, &ptr, 0);
 			    if (ptr)
@@ -4122,7 +4148,8 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pRptData inf = RPT(inf_v);
     pStructInf find_inf, value_inf, tmp_inf;
     char* ptr;
-    int i;
+    int i, rval;
+    pExpression exp;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4232,6 +4259,25 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		/** No default, and nothing set in override?  Null if so. **/
 		if (!value_inf) return 1;
 
+		/** runserver() expression? **/
+		if (stGetAttrType(value_inf, 0) == DATA_T_CODE && datatype != DATA_T_CODE)
+		    {
+		    if (stGetAttrValue(value_inf, DATA_T_CODE, POD(&exp), 0) != 0)
+			return -1;
+		    if ((rval = expEvalTree(exp, inf->ObjList)) >= 0)
+			{
+			if (exp->DataType != datatype)
+			    {
+			    mssError(1,"RPT","Type mismatch accessing value '%s'", attrname);
+			    return -1;
+			    }
+			if (exp->Flags & EXPR_F_NULL)
+			    return 1;
+			if (expExpressionToPod(exp, datatype, val) == 0)
+			    return 0;
+			}
+		    }
+
 		/** Return result based on type. **/
 	        tmp_inf = stLookup(find_inf,"type");
 	        ptr="";
@@ -4241,6 +4287,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be %s)", attrname, ptr);
 		    return -1;
 		    }
+
 		return stGetAttrValue(value_inf, datatype, POD(val), 0);
 #if 0
 	        if (!strcmp(ptr,"integer") && datatype == DATA_T_INTEGER)
