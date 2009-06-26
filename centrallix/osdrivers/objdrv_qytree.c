@@ -53,10 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.16 2008/03/09 08:02:43 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.17 2009/06/26 16:39:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.17  2009/06/26 16:39:00  gbeeley
+    - (feature) adding a 'known_leaf' option to querytree nodes which have
+      recursion enabled, which helps SUBTREE select efficiency among other
+      things since queries don't need to be issued to find the nonexistent
+      child nodes of a known_leaf (if leaf status can be determined by the
+      data in the object itself rather than by the existence/nonexistence of
+      other objects)
+
     Revision 1.16  2008/03/09 08:02:43  gbeeley
     - (bugfix) you can't objUnmanageQuery a query which is NULL...
 
@@ -588,6 +596,26 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                     }
 		else if (!strcmp(find_inf->Name,"recurse"))
 		    {
+		    expr = NULL;
+		    exprval = NULL;
+		    stAttrValue(stLookup(dptr, "known_leaf"),NULL,&exprval,0);
+		    if (exprval) 
+			{
+			objlist->Names[(signed char)(objlist->CurrentID)] = find_inf->Name;
+			expr = (pExpression)expCompileExpression(exprval, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+			if (!expr)
+			    {
+			    mssError(0,"QYT","Error in known_leaf expression");
+			    break;
+			    }
+			else
+			    {
+			    v = (expEvalTree(expr,objlist) >= 0 && expr->Integer != 0);
+			    expFreeExpression(expr);
+			    expr = NULL;
+			    if (v) break;
+			    }
+			}
 		    stGetAttrValue(find_inf, DATA_T_STRING, POD(&ptr), 0);
 		    find_inf = (pStructInf)xhLookup(&struct_table, ptr);
 		    if (find_inf) goto PROCESS_SUBGROUP;
@@ -1507,9 +1535,59 @@ int
 qytInfo(void* inf_v, pObjectInfo info)
     {
     pQytData inf = QYT(inf_v);
+    pObjectInfo ll_info;
+    pStructInf find_inf;
+    int n_groups = 0;
+    int is_recurse = 0;
+    int is_leaf = 0;
+    int i;
+    pExpression exp;
+    pParamObjects objlist;
+    char* expstr;
+
     if (inf->LLObj) 
 	{
-	info = objInfo(inf->LLObj);
+	/** Get basic character of object from underlying object **/
+	ll_info = objInfo(inf->LLObj);
+	if (ll_info)
+	    memcpy(info, ll_info, sizeof(ObjectInfo));
+
+	/** Now add what we know, structurally, from the querytree **/
+	for(i=0;i<inf->NodeData->nSubInf;i++)
+	    {
+	    find_inf = inf->NodeData->SubInf[i];
+	    if (stStructType(find_inf) == ST_T_SUBGROUP)
+		n_groups++;
+	    else if (!strcmp(find_inf->Name,"recurse"))
+		is_recurse = 1;
+	    else if (!strcmp(find_inf->Name,"known_leaf"))
+		{
+		objlist = expCreateParamList();
+		if (objlist)
+		    {
+		    expstr = NULL;
+		    stAttrValue(find_inf, NULL, &expstr, 0);
+		    if (expstr)
+			{
+			exp = (pExpression)expCompileExpression(expstr, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+			if (exp)
+			    {
+			    expAddParamToList(objlist,"",inf->LLObj,EXPR_O_CURRENT);
+			    if (expEvalTree(exp, objlist) >= 0 && exp->Integer != 0 && !(exp->Flags & EXPR_F_NULL))
+				is_leaf = 1;
+			    expFreeExpression(exp);
+			    }
+			}
+		    expFreeParamList(objlist);
+		    }
+		}
+	    }
+	if ((is_recurse || n_groups > 0) && !is_leaf)
+	    {
+	    info->Flags &= ~( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ );
+	    info->Flags |= ( OBJ_INFO_F_CAN_HAVE_SUBOBJ );
+	    }
+
 	return 0;
 	}
     return -1;
