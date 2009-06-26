@@ -40,10 +40,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.11 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: hints.c,v 1.12 2009/06/26 16:26:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.12  2009/06/26 16:26:32  gbeeley
+    - (change) switch to specifying the RUNCLIENT domain when generating hint
+      expressions
+    - (performance) reduce the encoded length of hint data
+
     Revision 1.11  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -891,32 +896,32 @@ hntEncodeHints(pObjPresentationHints ph, pXString xs)
 	xsInit(&expstr);
 	if (ph->DefaultExpr)
 	    {
-	    xsConcatPrintf(xs, "%sDefaultExpr=", is_first?"":"&");
-	    expGenerateText(ph->DefaultExpr, NULL, xsWrite, &expstr, '\0', "javascript");
+	    xsConcatPrintf(xs, "%sd=", is_first?"":"&");
+	    expGenerateText(ph->DefaultExpr, NULL, xsWrite, &expstr, '\0', "javascript", EXPR_F_RUNCLIENT);
 	    hnt_internal_Escape(xs, expstr.String);
 	    xsCopy(&expstr,"",0);
 	    is_first=0;
 	    }
 	if (ph->MinValue)
 	    {
-	    xsConcatPrintf(xs, "%sMinValue=", is_first?"":"&");
-	    expGenerateText(ph->MinValue, NULL, xsWrite, &expstr, '\0', "javascript");
+	    xsConcatPrintf(xs, "%sm=", is_first?"":"&");
+	    expGenerateText(ph->MinValue, NULL, xsWrite, &expstr, '\0', "javascript", EXPR_F_RUNCLIENT);
 	    hnt_internal_Escape(xs, expstr.String);
 	    xsCopy(&expstr,"",0);
 	    is_first=0;
 	    }
 	if (ph->MaxValue)
 	    {
-	    xsConcatPrintf(xs, "%sMaxValue=", is_first?"":"&");
-	    expGenerateText(ph->MaxValue, NULL, xsWrite, &expstr, '\0', "javascript");
+	    xsConcatPrintf(xs, "%sM=", is_first?"":"&");
+	    expGenerateText(ph->MaxValue, NULL, xsWrite, &expstr, '\0', "javascript", EXPR_F_RUNCLIENT);
 	    hnt_internal_Escape(xs, expstr.String);
 	    xsCopy(&expstr,"",0);
 	    is_first=0;
 	    }
 	if (ph->Constraint)
 	    {
-	    xsConcatPrintf(xs, "%sConstraint=", is_first?"":"&");
-	    expGenerateText(ph->Constraint, NULL, xsWrite, &expstr, '\0', "javascript");
+	    xsConcatPrintf(xs, "%sc=", is_first?"":"&");
+	    expGenerateText(ph->Constraint, NULL, xsWrite, &expstr, '\0', "javascript", EXPR_F_RUNCLIENT);
 	    hnt_internal_Escape(xs, expstr.String);
 	    xsCopy(&expstr,"",0);
 	    is_first=0;
@@ -926,7 +931,7 @@ hntEncodeHints(pObjPresentationHints ph, pXString xs)
 	/** Add enumlist **/
 	if (ph->EnumList.nItems > 0)
 	    {
-	    xsConcatPrintf(xs, "%sEnumList=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%sel=", is_first?"":"&");
 	    is_first=0;
 	    for(i=0;i<ph->EnumList.nItems;i++)
 		{
@@ -938,37 +943,37 @@ hntEncodeHints(pObjPresentationHints ph, pXString xs)
 	/** String type hints **/
 	if (ph->EnumQuery != NULL)
 	    {
-	    xsConcatPrintf(xs, "%sEnumQuery=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%seq=", is_first?"":"&");
 	    hnt_internal_Escape(xs, ph->EnumQuery);
 	    is_first = 0;
 	    }
 	if (ph->Format != NULL)
 	    {
-	    xsConcatPrintf(xs, "%sFormat=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%sfm=", is_first?"":"&");
 	    hnt_internal_Escape(xs, ph->Format);
 	    is_first = 0;
 	    }
 	if (ph->GroupName != NULL)
 	    {
-	    xsConcatPrintf(xs, "%sGroupName=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%sgn=", is_first?"":"&");
 	    hnt_internal_Escape(xs, ph->GroupName);
 	    is_first = 0;
 	    }
 	if (ph->FriendlyName != NULL)
 	    {
-	    xsConcatPrintf(xs, "%sFriendlyName=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%sfn=", is_first?"":"&");
 	    hnt_internal_Escape(xs, ph->FriendlyName);
 	    is_first = 0;
 	    }
 	if (ph->AllowChars != NULL)
 	    {
-	    xsConcatPrintf(xs, "%sAllowChars=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%sac=", is_first?"":"&");
 	    hnt_internal_Escape(xs, ph->AllowChars);
 	    is_first = 0;
 	    }
 	if (ph->BadChars != NULL)
 	    {
-	    xsConcatPrintf(xs, "%sBadChars=", is_first?"":"&");
+	    xsConcatPrintf(xs, "%sbc=", is_first?"":"&");
 	    hnt_internal_Escape(xs, ph->BadChars);
 	    is_first = 0;
 	    }
@@ -976,37 +981,37 @@ hntEncodeHints(pObjPresentationHints ph, pXString xs)
 	/** Integer type hints **/
 	if (ph->Length > 0)
 	    {
-	    xsConcatPrintf(xs, "%sLength=%d", is_first?"":"&", ph->Length);
+	    xsConcatPrintf(xs, "%sl=%d", is_first?"":"&", ph->Length);
 	    is_first = 0;
 	    }
 	if (ph->VisualLength > 0)
 	    {
-	    xsConcatPrintf(xs, "%sVisualLength=%d", is_first?"":"&", ph->VisualLength);
+	    xsConcatPrintf(xs, "%sv1=%d", is_first?"":"&", ph->VisualLength);
 	    is_first = 0;
 	    }
 	if (ph->VisualLength2 > 1)
 	    {
-	    xsConcatPrintf(xs, "%sVisualLength2=%d", is_first?"":"&", ph->VisualLength2);
+	    xsConcatPrintf(xs, "%sv2=%d", is_first?"":"&", ph->VisualLength2);
 	    is_first = 0;
 	    }
 	if (ph->BitmaskRO > 0)
 	    {
-	    xsConcatPrintf(xs, "%sBitmaskRO=%d", is_first?"":"&", ph->BitmaskRO);
+	    xsConcatPrintf(xs, "%sr=%d", is_first?"":"&", ph->BitmaskRO);
 	    is_first = 0;
 	    }
 	if (ph->StyleMask > 0)
 	    {
-	    xsConcatPrintf(xs, "%sStyle=%d,%d", is_first?"":"&", ph->Style, ph->StyleMask);
+	    xsConcatPrintf(xs, "%ss=%d,%d", is_first?"":"&", ph->Style, ph->StyleMask);
 	    is_first = 0;
 	    }
 	if (ph->GroupID > 0)
 	    {
-	    xsConcatPrintf(xs, "%sGroupID=%d", is_first?"":"&", ph->GroupID);
+	    xsConcatPrintf(xs, "%sG=%d", is_first?"":"&", ph->GroupID);
 	    is_first = 0;
 	    }
 	if (ph->OrderID > 0)
 	    {
-	    xsConcatPrintf(xs, "%sOrderID=%d", is_first?"":"&", ph->OrderID);
+	    xsConcatPrintf(xs, "%sO=%d", is_first?"":"&", ph->OrderID);
 	    is_first = 0;
 	    }
 
