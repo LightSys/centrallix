@@ -31,16 +31,31 @@ function eb_getvalue()
 function eb_actionsetvalue(aparam)
     {
     //htr_alert(aparam,1);
+    var oldval = this.content;
     if ((typeof aparam.Value) != 'undefined')
 	{
 	this.setvalue(aparam.Value);
+	cn_activate(this,"DataChange", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0});
 	if (this.form) this.form.DataNotify(this, true);
 	this.changed=true;
-	cn_activate(this,"DataModify", {});
+	cn_activate(this,"DataModify", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0, OldValue:oldval});
 	}
     }
 
-function eb_setvalue(v,f)
+function eb_actionsetvaldesc(aparam)
+    {
+    if ((typeof aparam.Description) != 'undefined')
+	{
+	var olddesc = this.value_desc;
+	var oldvdv = this.value_desc_value;
+	this.value_desc = aparam.Description;
+	this.value_desc_value = this.content;
+	if (olddesc != this.value_desc || oldvdv != this.value_desc_value)
+	    this.Update(this.content, this.cursorCol);
+	}
+    }
+
+function eb_internal_setvalue(v)
     {
     this.was_null = (v == null);
     if (v != null)
@@ -50,14 +65,19 @@ function eb_setvalue(v,f)
 	c = eb_length(v);
     this.Update(v, c);
     this.addHistory(v);
-    cn_activate(this,"DataChange", {});
+    }
+
+function eb_setvalue(v,f)
+    {
+    this.internal_setvalue(v);
+    cn_activate(this,"DataChange", {Value:v, FromKeyboard:0, FromOSRC:1});
     }
 
 function eb_clearvalue()
     {
     this.was_null = true;
     // fake it by just making the content invisible - much faster :)
-    if (this != eb_current)
+    if (this != eb_current && !this.empty_desc)
 	{
 	this.set_content(null);
 	this.viscontent = null;
@@ -81,6 +101,7 @@ function eb_content_changed(p,o,n)
 
 function eb_set_content(v)
     {
+    if (typeof v == 'undefined') v = null;
     if (this.content != v)
 	{
 	htr_unwatch(this, "content", "content_changed");
@@ -146,17 +167,29 @@ function eb_settext(l,txt)
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
     var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
+    var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));
+    var descr = '';
+    if ((new String(l.content)).valueOf() == (new String(l.value_desc_value)).valueOf() && l.value_desc)
+	{
+	if (l != eb_current || l.content)
+	    descr = l.value_desc;
+	}
+    if (l != eb_current && (l.content == '' || l.content == null) && l.empty_desc)
+	descr = l.empty_desc;
+    if (descr)
+	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '"> (' + htutil_encode(htutil_obscure(descr)) + ')</span>';
+    enctxt += '</pre>';
     if (!l.is_busy)
 	{
 	l.is_busy = true;
 	l.viscontent = txt;
 	if (cx__capabilities.Dom0NS) // only serialize EB's for NS4
 	    {
-	    pg_serialized_write(wl, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ', eb_settext_cb);
+	    pg_serialized_write(wl, enctxt, eb_settext_cb);
 	    }
 	else
 	    {
-	    htr_write_content(wl, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ');
+	    htr_write_content(wl, enctxt);
 	    l.eb_settext_cb();
 	    }
 	}
@@ -299,10 +332,17 @@ function eb_keyhandler(l,e,k)
     var vistxt = (txt == null)?'':txt;
     var newtxt = txt;
     var cursoradj = 0;
-    if (k == 9)
+    if (isCancel(l.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:k, Name:e.keyName})))
+	return false;
+    if (k == 9 && !e.shiftKey)
 	{
 	if(l.form) l.form.TabNotify(this);
-	cn_activate(l,'TabPressed', {});
+	cn_activate(l,'TabPressed', {Shift:0});
+	}
+    if (k == 9 && e.shiftKey)
+	{
+	if(l.form) l.form.ShiftTabNotify(this);
+	cn_activate(l,'TabPressed', {Shift:1});
 	}
     if (k == 10 || k == 13)
 	{
@@ -405,17 +445,20 @@ function eb_keyhandler(l,e,k)
 	//if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) 
 	if (l.form) l.form.DataNotify(l);
 	l.changed=true;
-	cn_activate(l,"DataModify", {});
+	cn_activate(l,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:txt});
 	}
-    if (k == 13 || k == 9 || k == 10) cn_activate(l, "DataChange", {});
-    cn_activate(l, "KeyPress", {Key:k, Modifiers:e.modifiers, Content:l.content});
+    if (k == 13 || k == 9 || k == 10) cn_activate(l, "DataChange", {Value:newtxt, FromOSRC:0, FromKeyboard:1});
+    cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
     return false;
     }
 
 function eb_select(x,y,l,c,n,a,k)
     {
     if(l.enabled != 'full') return 0;
-    if(l.form) l.form.FocusNotify(l);
+    if(l.form)
+	{
+	if (!l.form.FocusNotify(l)) return 0;
+	}
     if (k)
 	l.cursorCol = eb_length(l.content);
     else
@@ -440,15 +483,16 @@ function eb_deselect()
 	eb_current.cursorlayer = null;
 	if (eb_current.changed)
 	    {
-	    cn_activate(eb_current,"DataChange", {});
+	    cn_activate(eb_current,"DataChange", {Value:this.content, FromOSRC:0, FromKeyboard:1});
 	    eb_current.changed=false;
 	    }
 	eb_current.charOffset=0;
 	eb_current.cursorCol=0;
-	eb_current.Update(eb_current.content, eb_current.cursorCol);
-	htr_setvisibility(ibeam_current, 'hidden');
-	eb_current.addHistory();
+	var eb = eb_current;
 	eb_current = null;
+	eb.Update(eb.content, eb.cursorCol);
+	htr_setvisibility(ibeam_current, 'hidden');
+	eb.addHistory();
 	}
     return true;
     }
@@ -543,6 +587,9 @@ function eb_init(param)
 	l.bgi = htr_extract_bgimage(param.mainBackground);
 	}
 
+    l.desc_fgcolor = param.desc_fgcolor;
+    l.empty_desc = param.empty_desc;
+
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
     if (l.dbl_buffer) 
@@ -580,6 +627,9 @@ function eb_init(param)
     l.charOffset = 0;
     l.viscontent = '';
     l.content = '';
+    l.value = '';
+    l.value_desc = '';
+    l.value_desc_value = '';
     l.Update = eb_update;
     l.addHistory = eb_add_history;
     l.was_null = false;
@@ -595,6 +645,7 @@ function eb_init(param)
     l.tipid = null;
     l.getvalue = eb_getvalue;
     l.setvalue = eb_setvalue;
+    l.internal_setvalue = eb_internal_setvalue;
     l.clearvalue = eb_clearvalue;
     l.setoptions = null;
     l.enablenew = eb_enable;  // We have added enablenew and enablemodify.  See docs
@@ -631,6 +682,11 @@ function eb_init(param)
 
     // Hot properties
     htr_watch(l,'content','content_changed');
+    //htr_watch(l,'value','content_changed');
+
+    //var iv = l.ifcProbeAdd(ifValue);
+    //iv.Add("content", eb_v_get_content, eb_v_set_content);
+    //iv.Add("value", eb_v_get_value, eb_v_set_value);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -644,6 +700,7 @@ function eb_init(param)
     ie.Add("LoseFocus");
     ie.Add("DataChange");
     ie.Add("DataModify");
+    ie.Add("BeforeKeyPress");
     ie.Add("KeyPress");
     ie.Add("TabPressed");
     ie.Add("ReturnPressed");
@@ -652,6 +709,9 @@ function eb_init(param)
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetValue", eb_actionsetvalue);
+    ia.Add("SetValueDescription", eb_actionsetvaldesc);
+
+    if (l.empty_desc) l.Update('', 0);
 
     return l;
     }
