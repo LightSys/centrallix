@@ -40,6 +40,24 @@ function rb_setvalue(v) {
 	//alert('Warning: "'+v+'" is not in the radio button list.');
 }
 
+function rb_cb_getvalue(p) {
+	return this.getvalue();
+}
+
+function rb_cb_setvalue(p, v) {
+	return this.setvalue(v);
+}
+
+function rb_action_setvalue(aparam) {
+	if (typeof aparam.Value != 'undefined') {
+		this.ifcProbe(ifValue).Changing('value', aparam.Value, true, this.value, true);
+		return this.setvalue(aparam.Value);
+	}
+	else
+		return null;
+}
+
+
 /*  Luke (03/04/02)  This unchecks ALL radio buttons.  As such, nothing is selected. */
 function rb_clearvalue() {
 
@@ -47,12 +65,16 @@ function rb_clearvalue() {
 		htr_setvisibility(this.selectedOption.unsetPane, 'inherit');
 		htr_setvisibility(this.selectedOption.setPane, 'hidden');
 		this.selectedOption = null;
+		this.value = null;
+		this.valueIndex = null;
 	}
 }
 
 function rb_resetvalue() {
 	if (this.selectedOption != this.defaultSelectedOption) {
 		radiobutton_toggle(this.defaultSelectedOption);
+		this.value = this.selectedOption.optionValue;
+		this.valueIndex = this.selectedOption.valueIndex;
 	}
 }
 
@@ -81,6 +103,7 @@ function rb_disable() {
 function add_radiobutton(optionPane, param) {
 	var rb = wgtrGetParent(optionPane);
 	rb.rbCount++;
+	optionPane.valueIndex = rb.rbCount;
 	/*optionPane.kind = 'radiobutton';
 	optionPane.document.layer = optionPane;*/
 	htr_init_layer(optionPane, rb, 'radiobutton');
@@ -120,6 +143,8 @@ function add_radiobutton(optionPane, param) {
 		htr_setvisibility(optionPane.setPane, 'inherit');
 		htr_setvisibility(optionPane.unsetPane, 'hidden');
 		rb.selectedOption = optionPane;
+		rb.value = rb.selectedOption.optionValue;
+		rb.valueIndex = rb.selectedOption.valueIndex;
 		rb.defaultSelectedOption = optionPane;
 	} else {
 		htr_setvisibility(optionPane.setPane, 'hidden');
@@ -147,7 +172,7 @@ function rb_losefocus()
 
 function rb_keyhandler(l, e, k)
     {
-    if (k == 9) // tab pressed
+    if (k == 9 && !e.shiftKey) // tab pressed
 	{
 	for(var i=0;i<this.buttonList.length;i++)
 	    {
@@ -171,15 +196,45 @@ function rb_keyhandler(l, e, k)
 		}
 	    }
 	}
+    else if (k == 9 && e.shiftKey) // shift-tab
+	{
+	for(var i=0;i<this.buttonList.length;i++)
+	    {
+	    if (this.kbdSelected == this.buttonList[i])
+		{
+		if (i > 0)
+		    {
+		    this.kbdSelected = this.buttonList[i-1];
+		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+5);
+		    }
+		else if (!this.form)
+		    {
+		    this.kbdSelected = this.buttonList[this.buttonList.length-1];
+		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+5);
+		    }
+		else
+		    {
+		    this.form.ShiftTabNotify(this);
+		    }
+		break;
+		}
+	    }
+	}
     else if (k == 32) // space pressed
 	{
 	if (this.kbdSelected)
+	    {
+	    this.ifcProbe(ifValue).Changing('value', this.kbdSelected.value, true, this.value, true);
 	    radiobutton_toggle(this.kbdSelected);
+	    }
 	}
     else if (k == 13) // return pressed
 	{
 	if (this.kbdSelected && (!this.form || this.form.mode != "Query"))
+	    {
+	    this.ifcProbe(ifValue).Changing('value', this.kbdSelected.value, true, this.value, true);
 	    radiobutton_toggle(this.kbdSelected);
+	    }
 	if (this.form) this.form.RetNotify(this);
 	}
     else if (k == 27) // esc pressed
@@ -227,6 +282,7 @@ function rb_keyhandler(l, e, k)
 			String.fromCharCode(k_lower))
 		    {
 		    radiobutton_toggle(this.buttonList[i]);
+		    this.ifcProbe(ifValue).Changing('value', this.buttonList[i].value, true, this.value, true);
 		    this.kbdSelected = this.buttonList[i];
 		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+1);
 		    this.lastmatch = this.buttonList[i];
@@ -364,6 +420,8 @@ function radiobuttonpanel_init(param) {
 	parentPane.losefocushandler = rb_losefocus;
 	parentPane.keyhandler = rb_keyhandler;
 	parentPane.kbdSelected = null;
+	parentPane.value = null;
+	parentPane.valueIndex = null;
 	htr_init_layer(parentPane, parentPane, 'radiobutton');
 	if (borderpane) {
 		htr_init_layer(borderpane, parentPane, 'radiobutton');
@@ -378,7 +436,7 @@ function radiobuttonpanel_init(param) {
 	parentPane.fieldname = param.fieldname;
 	if (param.form) 
 	    parentPane.form = wgtrGetNode(parentPane, param.form);
-	if (!parentPane.form)
+	if (!parentPane.form && parentPane.fieldname)
 	    parentPane.form = wgtrFindContainer(parentPane,"widget/form");
 	if (parentPane.form)
 	    parentPane.form.Register(parentPane);
@@ -398,6 +456,13 @@ function radiobuttonpanel_init(param) {
 	if(parentPane.form){
 	    parentPane.form.ifcProbe(ifEvent).Hook("StatusChange",rb_changemode,parentPane);
 	}
+
+	var iv = parentPane.ifcProbeAdd(ifValue);
+	iv.Add("value", rb_cb_getvalue, rb_cb_setvalue);
+	iv.Add("valueindex", 'valueIndex');
+
+	var ia = parentPane.ifcProbeAdd(ifAction);
+	ia.Add("SetValue", rb_action_setvalue);
 	return parentPane;
 }
 
@@ -413,7 +478,7 @@ function radiobutton_toggle(layer) {
 		htr_setvisibility(layer.optionPane.unsetPane, 'inherit');
 		htr_setvisibility(layer.optionPane.setPane, 'hidden');
 	    }
-	    cn_activate(layer.mainlayer, 'DataChange');
+	    cn_activate(layer.mainlayer, 'DataChange', {Value:layer.mainlayer.value});
 	    return;
 	}
 	if (layer.mainlayer.selectedOption != layer.optionPane) {
@@ -426,7 +491,9 @@ function radiobutton_toggle(layer) {
 		htr_setvisibility(layer.optionPane.setPane, 'inherit');
 		htr_setvisibility(layer.optionPane.unsetPane, 'hidden');
 		layer.mainlayer.selectedOption = layer.optionPane;
-		cn_activate(layer.mainlayer, 'DataChange');
+		layer.mainlayer.value = layer.mainlayer.selectedOption.optionValue;
+		layer.mainlayer.valueIndex = layer.mainlayer.selectedOption.valueIndex;
+		cn_activate(layer.mainlayer, 'DataChange', {Value:layer.mainlayer.value});
 	}
 }
 
@@ -445,7 +512,9 @@ function radiobutton_mousedown(e) {
 		if (e.mainlayer.enabled){
 			if(e.layer.optionPane) {
 				if (e.mainlayer.form) e.mainlayer.form.FocusNotify(e.mainlayer);
-					radiobutton_toggle(e.layer);
+				if (e.layer && e.layer.optionPane && e.layer.optionPane.optionValue)
+					e.mainlayer.ifcProbe(ifValue).Changing('value', e.layer.optionPane.optionValue, true, e.mainlayer.value, true);
+				radiobutton_toggle(e.layer);
 			}
 			cn_activate(e.mainlayer, 'MouseDown');
 		}
