@@ -28,53 +28,53 @@ function tc_set_tab_unwatched()
 function tc_makecurrent()
     {
     var t;
-    if (this.tabctl.tloc != 4 && htr_getzindex(this) > htr_getzindex(this.tabctl)) return 0;
+    if (this.tabctl.tloc != 4 && htr_getzindex(this.tab) > htr_getzindex(this.tabctl)) return 0;
     for(var i=0;i<this.tabctl.tabs.length;i++)
 	{
 	t = this.tabctl.tabs[i];
-	if (t != this && (t.tabctl.tloc == 4 || htr_getzindex(t) > htr_getzindex(this)))
+	if (t != this && (t.tabctl.tloc == 4 || htr_getzindex(t.tab) > htr_getzindex(this.tab)))
 	    {
-	    htr_setzindex(t.tabpage,htr_getzindex(this.tabctl) - 1);
-	    htr_setvisibility(t.tabpage,'hidden');
+	    htr_setzindex(t, htr_getzindex(this.tabctl) - 1);
+	    htr_setvisibility(t, 'hidden');
 	    if (t.tabctl.tloc != 4)
 		{
-		htr_setzindex(t,htr_getzindex(this.tabctl) - 1);
-		t.marker_image.src = '/sys/images/tab_lft3.gif';
-		moveBy(t, this.tabctl.xo, this.tabctl.yo);
-		setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
-		if (this.tabctl.inactive_bgColor) htr_setbgcolor(t,this.tabctl.inactive_bgColor);
-		if (this.tabctl.inactive_bgnd) htr_setbgimage(t,this.tabctl.inactive_bgnd);
+		htr_setzindex(t.tab, htr_getzindex(this.tabctl) - 1);
+		t.tab.marker_image.src = '/sys/images/tab_lft3.gif';
+		moveBy(t.tab, this.tabctl.xo, this.tabctl.yo);
+		setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
+		if (this.tabctl.inactive_bgColor) htr_setbgcolor(t.tab, this.tabctl.inactive_bgColor);
+		if (this.tabctl.inactive_bgnd) htr_setbgimage(t.tab, this.tabctl.inactive_bgnd);
 		}
 	    }
 	}
-    htr_setzindex(this.tabpage, htr_getzindex(this.tabctl) + 1);
-    htr_setvisibility(this.tabpage,'inherit');
+    htr_setzindex(this, htr_getzindex(this.tabctl) + 1);
+    htr_setvisibility(this,'inherit');
     if (this.tabctl.tloc != 4)
 	{
-	if (this.tabctl.main_bgColor) htr_setbgcolor(this,this.tabctl.main_bgColor);
-	if (this.tabctl.main_bgnd) htr_setbgimage(this,this.tabctl.main_bgnd);
-	htr_setzindex(this, htr_getzindex(this.tabctl) + 1);
-	this.marker_image.src = '/sys/images/tab_lft2.gif';
-	moveBy(this, -this.tabctl.xo, -this.tabctl.yo);
-	setClipItem(this,this.tabctl.cl, getClipItem(this,this.tabctl.cl) - this.tabctl.ci);
+	if (this.tabctl.main_bgColor) htr_setbgcolor(this.tab, this.tabctl.main_bgColor);
+	if (this.tabctl.main_bgnd) htr_setbgimage(this.tab, this.tabctl.main_bgnd);
+	htr_setzindex(this.tab, htr_getzindex(this.tabctl) + 1);
+	this.tab.marker_image.src = '/sys/images/tab_lft2.gif';
+	moveBy(this.tab, -this.tabctl.xo, -this.tabctl.yo);
+	setClipItem(this.tab, this.tabctl.cl, getClipItem(this.tab, this.tabctl.cl) - this.tabctl.ci);
 	}
     this.setTabUnwatched();
+    this.tabctl.ifcProbe(ifEvent).Activate("TabChanged", {Selected:this.tabctl.selected, SelectedIndex:this.tabctl.selected_index});
     }
 
 function tc_makenotcurrent(t)
     {
-    htr_setzindex(t.tabpage,htr_getzindex(t.tabctl) - 1);
-    htr_setvisibility(t.tabpage,'hidden');
+    htr_setzindex(t,htr_getzindex(t.tabctl) - 1);
+    htr_setvisibility(t,'hidden');
     if (t.tabctl.tloc != 4)
 	{
-	htr_setzindex(t,htr_getzindex(t.tabctl) - 1);
-	t.marker_image.src = '/sys/images/tab_lft3.gif';
-	moveBy(t, t.tabctl.xo, t.tabctl.yo);
-	setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
-	if (t.tabctl.inactive_bgColor) htr_setbgcolor(t,t.tabctl.inactive_bgColor);
-	if (t.tabctl.inactive_bgnd) htr_setbgimage(t,t.tabctl.inactive_bgnd);
+	htr_setzindex(t.tab,htr_getzindex(t.tabctl) - 1);
+	t.tab.marker_image.src = '/sys/images/tab_lft3.gif';
+	moveBy(t.tab, t.tabctl.xo, t.tabctl.yo);
+	setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
+	if (t.tabctl.inactive_bgColor) htr_setbgcolor(t.tab, t.tabctl.inactive_bgColor);
+	if (t.tabctl.inactive_bgnd) htr_setbgimage(t.tab, t.tabctl.inactive_bgnd);
 	}
-    
     }
 
 // Adds a new tab to the tab control
@@ -83,10 +83,10 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     var newx;
     var newy;
     if (!l_tab) l_tab = new Object();
-    l_tab.tabname = nm;
-    l_tab.type = type;
-    l_tab.fieldname = fieldname;
-    l_tab.tabindex = this.tabs.length+1;
+    l_page.tabname = nm;
+    l_page.type = type;
+    l_page.fieldname = fieldname;
+    l_page.tabindex = this.tabs.length+1;
     htr_init_layer(l_page,l,'tc_pn');
     if (l.tloc != 4) 
 	{
@@ -96,8 +96,8 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    if (this.tabs.length > 0)
 		{
 		//alert(htr_getphyswidth(this.tabs[this.tabs.length-1]));
-		newx = getPageX(this.tabs[this.tabs.length-1]) + htr_getphyswidth(this.tabs[this.tabs.length-1]) + 1;
-		if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newx += l.xo;
+		newx = getPageX(this.tabs[this.tabs.length-1].tab) + htr_getphyswidth(this.tabs[this.tabs.length-1].tab) + 1;
+		if (htr_getvisibility(this.tabs[this.tabs.length-1]) == 'inherit') newx += l.xo;
 		}
 	    else
 		newx = getPageX(this);
@@ -111,8 +111,8 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    {
 	    if (this.tabs.length > 0)
 		{
-		newy = getPageY(this.tabs[this.tabs.length-1]) + 26;
-		if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newy += l.yo;
+		newy = getPageY(this.tabs[this.tabs.length-1].tab) + 26;
+		if (htr_getvisibility(this.tabs[this.tabs.length-1]) == 'inherit') newy += l.yo;
 		}
 	    else
 		newy = getPageY(this);
@@ -145,11 +145,11 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	{
 	htr_unwatch(l,"selected","tc_selection_changed");
 	htr_unwatch(l,"selected_index","tc_selection_changed");
-	l.selected = l_tab.tabname;
-	l.selected_index = l_tab.tabindex;
-	l.current_tab = l_tab;
-	l.init_tab = l_tab;
-	pg_addsched_fn(window,"pg_reveal_event",new Array(l_tab,l_tab,'Reveal'), 0);
+	l.selected = l_page.tabname;
+	l.selected_index = l_page.tabindex;
+	l.current_tab = l_page;
+	l.init_tab = l_page;
+	pg_addsched_fn(window,"pg_reveal_event",new Array(l_page,l_page,'Reveal'), 0);
 	htr_watch(l,"selected", "tc_selection_changed");
 	htr_watch(l,"selected_index", "tc_selection_changed");
 	if (l.tloc != 4)
@@ -168,32 +168,32 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    if  (images[i].width == 5) l_tab.marker_image = images[i];
 	    }
 	}
-    this.tabs[this.tabs.length++] = l_tab;
-    l_tab.tabpage = l_page;
-    l_tab.tabctl = this;
-    l_tab.makeCurrent = tc_makecurrent;
-    l_tab.setTabUnwatched = tc_set_tab_unwatched;
+    this.tabs[this.tabs.length++] = l_page;
+    l_page.tabctl = this;
+    l_page.tab = l_tab;
+    l_page.makeCurrent = tc_makecurrent;
+    l_page.setTabUnwatched = tc_set_tab_unwatched;
     if (l.tloc != 4)
 	{
 	moveToAbsolute(l_tab, newx + 0.001, newy + 0.001);
 	}
-    l_page.tabctl = this;
-    l_page.tab = l_tab;
+    l_tab.tabpage = l_page;
+    l_tab.tabctl = this;
     setClipWidth(l_page, getClipWidth(this)-2);
     setClipHeight(l_page, getClipHeight(this)-2);
 
     // Indicate that we generate reveal/obscure notifications
-    l_tab.Reveal = tc_cb_reveal;
-    pg_reveal_register_triggerer(l_tab);
+    l_page.Reveal = tc_cb_reveal;
+    pg_reveal_register_triggerer(l_page);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-    htr_watch(l_tab,"visible", "tc_visible_changed"); //visible property
-    l_tab.tc_visible_changed = tc_visible_changed;
+    htr_watch(l_page,"visible", "tc_visible_changed"); //visible property
+    l_page.tc_visible_changed = tc_visible_changed;
 
     // Show Container API
     l_page.showcontainer = tc_showcontainer;
     l_tab.showcontainer = tc_showcontainer;
 
-    return l_tab;
+    return l_page;
     }
 
 function tc_selection_changed(prop,o,n)
@@ -216,7 +216,9 @@ function tc_selection_changed(prop,o,n)
 
     // okay to change tab.
     //this.tabs[tabindex-1].makeCurrent();
-    pg_addsched_fn(this,"ChangeSelection1", new Array(this.tabs[tabindex-1].tabpage), 0);
+    if (this.selchange_schedid)
+	pg_delsched(this.selchange_schedid);
+    this.selchange_schedid = pg_addsched_fn(this,"ChangeSelection1", new Array(this.tabs[tabindex-1]), 0);
     return n;
     }
 
@@ -250,12 +252,14 @@ function tc_clear_tabs(tabs)
 	    }
 	}
     }
-function tc_direct_parent(t){
-	    if(cx__capabilities.Dom0NS)
-		return t.parentLayer;
-	    else
-		return t.parentNode;
-}
+
+function tc_direct_parent(t)
+    {
+    if(cx__capabilities.Dom0NS)
+	return t.parentLayer;
+    else
+	return t.parentNode;
+    }
 
 function tc_updated(p1)
     {
@@ -318,17 +322,17 @@ function tc_updated(p1)
 	    setClipWidth(newtab,htr_getphyswidth(newtab));
 	    setClipHeight(newtab,26);
 	    
-	    newtab.osrcdata = vals[j];
-	    newtab.recordnumber = j;
+	    newpage.osrcdata = vals[j];
+	    newpage.recordnumber = j;
 
-	    tc_makenotcurrent(newtab);
-	    if(j==targetval) targettab = newtab.tabindex-1;
+	    tc_makenotcurrent(newpage);
+	    if(j==targetval) targettab = newpage.tabindex-1;
 
-	    if(targettab){
+	    if(targettab)
+		{
 		this.tabs[targettab].makeCurrent();
 		this.tabs[targettab].tc_visible_changed('visible','hidden','inherit');
-	    }
-		    
+		}
 	    }
 	}
     }
@@ -360,6 +364,7 @@ function tc_init(param)
     htr_watch(l,"selected", "tc_selection_changed");
     htr_watch(l,"selected_index", "tc_selection_changed");
     l.tc_selection_changed = tc_selection_changed;
+    l.selchange_schedid = null;
 
     l.osrc = wgtrFindContainer(l, "widget/osrc");
     if(l.osrc)
@@ -381,6 +386,7 @@ function tc_init(param)
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("TabChanged");
     ie.Add("MouseDown");
     ie.Add("MouseUp");
     ie.Add("MouseOver");
@@ -428,6 +434,7 @@ function tc_init(param)
 	}
     return l;
     }
+
 function tc_visible_changed(prop,o,n)
     {
     var t = this.tabctl;
@@ -436,10 +443,10 @@ function tc_visible_changed(prop,o,n)
     if(n) htr_setvisibility(this, 'inherit');
     else htr_setvisibility(this, 'hidden');
     // which tab should be selected? 
-    if(htr_getvisibility(t.tabs[t.selected_index-1])!='inherit')
+    if(htr_getvisibility(t.tabs[t.selected_index-1].tab)!='inherit')
 	{
 	//try default tab
-	if(htr_getvisibility(t.init_tab)=='inherit')
+	if(htr_getvisibility(t.init_tab.tab)=='inherit')
 	    {
 	    t.tabs[t.init_tab.tabindex-1].makeCurrent();
 	    }
@@ -447,7 +454,7 @@ function tc_visible_changed(prop,o,n)
 	    {
 	    for(var i=0; i<t.tabs.length;i++)
 		{
-		if(htr_getvisibility(t.tabs[i])=='inherit')
+		if(htr_getvisibility(t.tabs[i].tab)=='inherit')
 		    {
 		    t.tabs[i].makeCurrent();
 		    break;
@@ -458,14 +465,14 @@ function tc_visible_changed(prop,o,n)
     
     if(this.tabctl.tloc == 2) //left
 	{
-	var currx = getRelativeX(t)-getClipWidth(t.tabs[0])+4, curry = getRelativeY(t); //initial values
+	var currx = getRelativeX(t)-getClipWidth(t.tabs[0].tab)+4, curry = getRelativeY(t); //initial values
 	for(var i = 0; i< this.tabctl.tabs.length; i++)
 	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
-		moveTo(this.tabctl.tabs[i],currx,curry);
-		curry+=getClipHeight(this.tabctl.tabs[i])+1;
+		moveTo(this.tabctl.tabs[i].tab,currx,curry);
+		curry+=getClipHeight(this.tabctl.tabs[i].tab)+1;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    curry+=yo; currx+=xo;
@@ -478,11 +485,11 @@ function tc_visible_changed(prop,o,n)
 	var currx = getPageX(t), curry = getPageY(t)-22; //currently height is fixed at 26
 	for(var i in this.tabctl.tabs)
 	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
-		moveToAbsolute(this.tabctl.tabs[i],currx,curry);
-		currx+=getClipWidth(this.tabctl.tabs[i])+2;
+		moveToAbsolute(this.tabctl.tabs[i].tab,currx,curry);
+		currx+=getClipWidth(this.tabctl.tabs[i].tab)+2;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    currx+=xo; curry+=yo;
@@ -495,11 +502,11 @@ function tc_visible_changed(prop,o,n)
 	var currx = getRelativeX(t)+getClipWidth(t)-3, curry = getRelativeY(t); //currently height is fixed at 26
 	for(var i = 0; i< this.tabctl.tabs.length; i++)
 	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
-		moveTo(this.tabctl.tabs[i],currx,curry);
-		curry+=getClipHeight(this.tabctl.tabs[i])+1;
+		moveTo(this.tabctl.tabs[i].tab,currx,curry);
+		curry+=getClipHeight(this.tabctl.tabs[i].tab)+1;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    curry+=yo; currx+=xo;
@@ -512,11 +519,11 @@ function tc_visible_changed(prop,o,n)
 	var currx = getRelativeX(t), curry = getRelativeY(t)+getClipHeight(t)-3; //currently height is fixed at 26
 	for(var i = 0; i< this.tabctl.tabs.length; i++)
 	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
-		moveTo(this.tabctl.tabs[i],currx,curry);
-		currx+=getClipWidth(this.tabctl.tabs[i])+2;
+		moveTo(this.tabctl.tabs[i].tab,currx,curry);
+		currx+=getClipWidth(this.tabctl.tabs[i].tab)+2;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    currx+=xo; curry+=yo;
@@ -551,7 +558,8 @@ function tc_cb_reveal(e)
 // change selection - first function, called initially.
 function tc_changeselection_1(c)
     {
-    pg_reveal_event(c.tabctl.current_tab, c.tab, 'ObscureCheck');
+    this.selchange_schedid = null;
+    pg_reveal_event(c.tabctl.current_tab, c, 'ObscureCheck');
     }
 // change selection - second function, called when ObscureCheck succeeds.
 function tc_changeselection_2(c)
