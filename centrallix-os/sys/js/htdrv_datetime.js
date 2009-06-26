@@ -10,12 +10,22 @@
 // GNU Lesser General Public License for more details.
 
 function dt_getvalue() {
-	if(this.form && this.form.mode == 'Query' && this.DateObj)
+	if(this.form && this.form.mode == 'Query' && this.sbr && this.DateObj)
 	    return new Array('>= ' + dt_formatdate(this, this.DateObj, 3),'<= ' + dt_formatdate(this, this.DateObj2, 3));
+	else if(this.form && this.form.mode == 'Query' && this.DateObj)
+	    return dt_formatdate(this, this.DateObj, 3);
 	else if (this.DateObj)
 	    return dt_formatdate(this, this.DateObj, 0);
 	else
 	    return null;
+}
+
+function dt_cb_getvalue(a) {
+	return this.getvalue();
+}
+
+function dt_cb_setvalue(a,v) {
+	return this.ifcProbe(ifAction).Invoke("SetValue", {Value:v});
 }
 
 function dt_setvalue(v,nodrawdate) {
@@ -95,7 +105,7 @@ function dt_actionsetvalue(aparam) {
 
 function dt_changemode(){
     var l = this.mainlayer;
-    if(this.form && this.form.mode == 'Query'){
+    if(this.form && this.form.mode == 'Query' && this.sbr){
 	if(!this.DateObj) this.DateObj = new Date();
 	if(!this.DateObj2)  this.DateObj2 = new Date();
 	this.DateObj.setHours(0);
@@ -121,6 +131,8 @@ function dt_init(param){
 	var h = param.height;
 	var h2 = param.height2;
 	l.enabled = 'full';
+
+	l.sbr = param.sbr;
 	
 	//l.mainlayer = l;
 	//c1.mainlayer = l;
@@ -192,6 +204,10 @@ function dt_init(param){
 	var ia = l.ifcProbeAdd(ifAction);
 	ia.Add("SetValue", dt_actionsetvalue);
 
+	// Values
+	var iv = l.ifcProbeAdd(ifValue);
+	iv.Add("value", dt_cb_getvalue, dt_cb_setvalue);
+
 	return l;
 }
 
@@ -200,7 +216,7 @@ function dt_init(param){
 // load times).
 function dt_prepare(l) {
 	// Create the pane if needed.
-	if((!l.form || l.form.mode != 'Query') && l.PaneLayer2){
+	if((!l.form || l.form.mode != 'Query' || !l.sbr) && l.PaneLayer2){
 	    l.PaneLayer = null;
 	    l.PaneLayer2 = null;
 	}
@@ -226,7 +242,7 @@ function dt_prepare(l) {
 		
 	}
 	// redraw the month & time.
-	if(l.form && l.form.mode == 'Query'){
+	if(l.form && l.form.mode == 'Query' && l.sbr){
 	    l.TmpDateObj2 = (l.DateObj2?(new Date(l.DateObj2)):null);
 	    dt_drawmonth(l.PaneLayer2, l.TmpDateObj2);
 	    dt_drawtime(l.PaneLayer2, l.TmpDateObj2);
@@ -318,7 +334,7 @@ function dt_drawmonth(l, d) {
 	    cur_dy = l.ml.DateObj2.getDate();
 	
 	rows=Math.ceil((num+col)/7);
-	if(l.ml.form && l.ml.form.mode == 'Query'){
+	if(l.ml.form && l.ml.form.mode == 'Query' && l.ml.sbr){
 	pg_set_style(l,'height',rows*20+110);
 	setClipHeight(l,rows*20+110);
 	moveTo(l.TimeHidLayer,0,rows*20+76);
@@ -511,9 +527,12 @@ function dt_keyhandler(l,e,k) {
 			} else {
 				dt_setdata(dt,dt.TmpDateObj);
 			}
-			if (dt.form) dt.form.TabNotify(dt);
-		} else {
-			if (dt.form) dt.form.TabNotify(dt);
+		}
+		if (dt.form) {
+			if (e.shiftKey)
+				dt.form.ShiftTabNotify(dt);
+			else
+				dt.form.TabNotify(dt);
 		}
 	} else if (k == 32) {		// spacebar
 		if (!dt_current) {
@@ -626,7 +645,7 @@ function dt_parse_date(dt,content,drawdate){
 	dt.setvalue(d1,!drawdate);
     }
     else{
-	if(dt.form && dt.form.mode == 'Query'){
+	if(dt.form && dt.form.mode == 'Query' && dt.sbr){
 	    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}(?:\s?-\s?)?(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
 	    var vals = regex_dateformat.exec(content);
 	    var origdate = (dt_current)?dt_current.TmpDateObj:now;
@@ -684,7 +703,7 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	if (!dt_current) return;
 
 	// hide the drop down part of the control
-	if(!dt_current.form || dt_current.form.mode != 'Query'){
+	if(!dt_current.form || dt_current.form.mode != 'Query' || !dt_current.sbr){
 	    dt_collapse(dt_current);
 	}
 
@@ -726,7 +745,7 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	}
 
 	// draw the date/time on the collapsed control
-	if(dt_current.form && dt_current.form.mode == 'Query'){
+	if(dt_current.form && dt_current.form.mode == 'Query' && dt_current.sbr){
 	    dt_addday(c,e,f);
 	}
 	else{
@@ -781,7 +800,7 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	}*/
 	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(h-2)+" width=1></TD>";
 	str += "	<TD valign=top>";
-	if(ml.form && ml.form.mode =='Query'){
+	if(ml.form && ml.form.mode =='Query' && ml.sbr){
 	    str += "        <TABLE height=20 cellpadding=0 cellspacing=0 border=0>";
 	    str += "        <TR><TD width="+w+" align=center><b>"+name+"</b></TD></TR></TABLE>";
 	    h+=20;
@@ -825,7 +844,7 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	l.MonVisLayer = htr_new_layer(116,l);
 	l.TimeHidLayer = htr_new_layer(1024, l);
 	l.TimeVisLayer = htr_new_layer(1024, l);
-	if(ml.form && ml.form.mode == 'Query'){
+	if(ml.form && ml.form.mode == 'Query' && ml.sbr){
 	    moveTo(l.HidLayer, 0, 68);
 	    moveTo(l.VisLayer, 0, 68);
 	    moveTo(l.MonHidLayer, 38, 22);
@@ -880,7 +899,7 @@ function dt_expand(l) {
 	pg_stackpopup(l.PaneLayer, l);
 	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
-	if(l.form && l.form.mode == 'Query'){
+	if(l.form && l.form.mode == 'Query' && l.sbr){
 	    pg_stackpopup(l.PaneLayer2, l);
 	    pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
 	    htr_setvisibility(l.PaneLayer2, 'inherit');
@@ -905,9 +924,12 @@ function dt_domousedown(l) {
 		dt_toggle(p.mainlayer);
 	}
 	if (p.kind == 'dt' || p.kind == 'dt_day') {
-		if (dt_current && (((!dt_current.form || dt_current.form.mode != 'Query') && p.kind =='dt_day') || p.kind == 'dt')) {
+		if (dt_current && (((!dt_current.form || dt_current.form.mode != 'Query' || !dt_current.sbr) && p.kind =='dt_day') || p.kind == 'dt')) {
 			dt_current = null;
 			dt_collapse(p.mainlayer);
+			if (p.mainlayer.typed_content)
+				dt_parse_date(p.mainlayer,p.mainlayer.typed_content,true);
+			p.mainlayer.typed_content = '';
 		} else if (p.mainlayer.enabled == 'full') {
 			dt_current = p.mainlayer;
 			dt_expand(p.mainlayer);
@@ -1086,7 +1108,7 @@ function dt_mousedown(e) {
 		if (e.kind && e.kind.substr(0,2) == 'dt') {
 			dt_domousedown(e.layer);
 			if (e.kind == 'dt') cn_activate(e.mainlayer, 'MouseDown');
-		} else if (dt_current && dt_current != e.mainlayer && !(!e.kind && dt_current.form && dt_current.form.mode =='Query')) {
+		} else if (dt_current && dt_current != e.mainlayer && !(!e.kind && dt_current.form && dt_current.form.mode =='Query' && dt_current.sbr)) {
 			dt_collapse(dt_current);
 			dt_current = null;
 		}
