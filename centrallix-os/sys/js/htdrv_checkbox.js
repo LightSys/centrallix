@@ -16,6 +16,11 @@ function checkbox_getvalue()
     return (this.is_checked == -1)?null:this.is_checked;
     }
 
+function checkbox_action_setvalue(aparam)
+    {
+    this.setvalue(aparam.Value);
+    }
+
 function checkbox_setvalue(v)
     {
     this.is_checked_initial = null;
@@ -79,7 +84,14 @@ function checkbox_keyhandler(l,e,k)
     {
     if (k == 9)		// tab pressed
 	{
-	if (this.form) this.form.TabNotify(this);
+	if (e.shiftKey)
+	    {
+	    if (this.form) this.form.ShiftTabNotify(this);
+	    }
+	else
+	    {
+	    if (this.form) this.form.TabNotify(this);
+	    }
 	}
     else if (k == 32)	// spacebar pressed
 	{
@@ -220,6 +232,10 @@ function checkbox_init(param)
     ie.Add("MouseOver");
     ie.Add("MouseOut");
     ie.Add("MouseMove");
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetValue", checkbox_action_setvalue);
 
     return l;
     }
