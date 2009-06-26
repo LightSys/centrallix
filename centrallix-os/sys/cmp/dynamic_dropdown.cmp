@@ -1,0 +1,26 @@
+$Version=2$
+dynamic_dropdown "widget/component-decl"
+    {
+    width=120;
+    height=20;
+
+    expose_events_for = dd;
+    expose_actions_for = dd;
+
+    form "widget/parameter" { type=object; find_container="widget/form";}
+    field "widget/parameter" { type=string; }
+    sql "widget/parameter" { type=string; default="select 1,1 where 1 != 1"; deploy_to_client = yes; }
+    readonly "widget/parameter" { type=string; default="no"; }
+
+    dd "widget/dropdown"
+	{
+	x=0;y=0;width=120;height=20;
+	bgcolor=white; 
+	fieldname=runserver(:this:field); 
+	form=form; 
+	sql=runserver(:this:sql); 
+	mode=dynamic_server; 
+	hilight="#d0d0d0";
+        ro_hints "widget/hints" { condition=runserver(:this:readonly == 'yes'); style=readonly; }
+	}
+    }
