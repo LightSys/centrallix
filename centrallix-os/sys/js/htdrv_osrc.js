@@ -8,176 +8,13 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-/**  OSRC Initializer **/
-
-function osrc_init(param)
-    {
-    var loader = param.loader;
-    ifc_init_widget(loader);
-    loader.osrcname=param.name;
-    loader.readahead=param.readahead;
-    loader.scrollahead=param.scrollahead;
-    loader.replicasize=param.replicasize;
-    loader.initreplicasize = param.replicasize;
-    loader.ind_act = param.ind_act; //SETH: ??
-    loader.sql=param.sql;
-    loader.filter=param.filter;
-    loader.baseobj=param.baseobj;
-    loader.readonly = false;
-    loader.autoquery = param.autoquery;
-    loader.revealed_children = 0;
-    loader.rulelist = [];
-    loader.SyncID = osrc_syncid++;
-    loader.bh_finished = false;
-    loader.request_queue = [];
-
-    // autoquery types - must match htdrv_osrc.c's enum declaration
-    loader.AQnever = 0;
-    loader.AQonLoad = 1;
-    loader.AQonFirstReveal = 2;
-    loader.AQonEachReveal = 3;
-
-    // Handle declarative rules
-    loader.addRule = osrc_add_rule;
-
-    loader.osrc_do_filter = osrc_do_filter;
-    loader.osrc_filter_changed = osrc_filter_changed;
-    loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
-    loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
-    loader.osrc_open_query_startat = osrc_open_query_startat;
-    loader.ParseOneAttr = osrc_parse_one_attr;
-    loader.ParseOneRow = osrc_parse_one_row;
-    loader.NewReplicaObj = osrc_new_replica_object;
-    loader.PruneReplica = osrc_prune_replica;
-    loader.ClearReplica = osrc_clear_replica;
-    loader.ApplyRelationships = osrc_apply_rel;
-    loader.ApplyKeys = osrc_apply_keys;
-    loader.EndQuery = osrc_end_query;
-    loader.FoundRecord = osrc_found_record;
-    loader.DoFetch = osrc_do_fetch;
-    loader.FetchNext = osrc_fetch_next;
-    loader.GoNogo = osrc_go_nogo;
-    loader.QueueRequest = osrc_queue_request;
-    loader.Dispatch = osrc_dispatch;
-    loader.DoRequest = osrc_do_request;
-    loader.GiveAllCurrentRecord=osrc_give_all_current_record;
-    loader.ChangeCurrentRecord=osrc_change_current_record;
-    loader.MoveToRecord=osrc_move_to_record;
-    loader.MoveToRecordCB=osrc_move_to_record_cb;
-    loader.child = new Array();
-    loader.oldoids = new Array();
-    loader.sid = null;
-    loader.qid = null;
-    loader.savable_client_count = 0;
-    loader.lastquery = null;
-    loader.prevcurrent = null;
-    loader.has_onreveal_relationship = false;
-    loader.hidden_change_cnt = 0;
-
-    loader.MoveToRecordHandler = osrc_move_to_record_handler;
-    loader.QueryObjectHandler = osrc_query_object_handler;
-    loader.QueryHandler = osrc_query_handler;
-   
-    // Actions
-    var ia = loader.ifcProbeAdd(ifAction);
-    //loader.ActionClear=osrc_action_clear;
-    ia.Add("Query", osrc_action_query);
-    ia.Add("QueryObject", osrc_action_query_object);
-    ia.Add("QueryParam", osrc_action_query_param);
-    ia.Add("OrderObject", osrc_action_order_object);
-    ia.Add("Delete", osrc_action_delete);
-    ia.Add("CreateObject", osrc_action_create_object);
-    ia.Add("Create", osrc_action_create);
-    ia.Add("Modify", osrc_action_modify);
-    ia.Add("First", osrc_move_first);
-    ia.Add("Next", osrc_move_next);
-    ia.Add("Prev", osrc_move_prev);
-    ia.Add("Last", osrc_move_last);
-    ia.Add("Sync", osrc_action_sync);
-    ia.Add("DoubleSync", osrc_action_double_sync);
-    ia.Add("SaveClients", osrc_action_save_clients);
-    ia.Add("Refresh", osrc_action_refresh);
-
-    // Events
-    var ie = loader.ifcProbeAdd(ifEvent);
-    ie.Add("DataFocusChanged");
-    ie.Add("EndQuery");
-    ie.Add("Created");
-
-    // Data Values
-    var iv = loader.ifcProbeAdd(ifValue);
-    iv.SetNonexistentCallback(osrc_get_value);
-
-    loader.CreateCB2 = osrc_action_create_cb2;
-    loader.DoubleSyncCB = osrc_action_double_sync_cb;
-    loader.OpenSession=osrc_open_session;
-    loader.OpenQuery=osrc_open_query;
-    loader.CloseQuery=osrc_close_query;
-    loader.CloseObject=osrc_close_object;
-    loader.CloseSession=osrc_close_session;
-/**    loader.StoreReplica=osrc_store_replica; **/
-    loader.QueryContinue = osrc_cb_query_continue;
-    loader.QueryCancel = osrc_cb_query_cancel;
-    loader.RequestObject = osrc_cb_request_object;
-    loader.NewObjectTemplate = osrc_cb_new_object_template;
-    loader.SetViewRange = osrc_cb_set_view_range;
-    loader.InitBH = osrc_init_bh;
-    loader.Register = osrc_cb_register;
-    loader.Reveal = osrc_cb_reveal;
-    loader.Obscure = osrc_cb_obscure;
-    if (wgtrGetChildren(loader).length == 0)
-	pg_reveal_register_listener(loader, true);
-
-    loader.ScrollTo = osrc_scroll_to;
-    loader.ScrollPrev = osrc_scroll_prev;
-    loader.ScrollNext = osrc_scroll_next;
-    loader.ScrollPrevPage = osrc_scroll_prev_page;
-    loader.ScrollNextPage = osrc_scroll_next_page;
-
-    loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;
-
-    loader.InitQuery = osrc_init_query;
-    loader.cleanup = osrc_cleanup;
-
-    // OSRC Client interface -- for linking osrc's together
-    loader.DataAvailable = osrc_oc_data_available;
-    loader.ReplicaMoved = osrc_oc_replica_moved;
-    loader.IsDiscardReady = osrc_oc_is_discard_ready;
-    loader.ObjectAvailable = osrc_oc_object_available;
-    loader.ObjectCreated = osrc_oc_object_created;
-    loader.ObjectModified = osrc_oc_object_modified;
-    loader.ObjectDeleted = osrc_oc_object_deleted;
-    loader.OperationComplete = osrc_oc_operation_complete;
-
-    // OSRC Client interface helpers
-    loader.Resync = osrc_oc_resync;
-
-    // Client side maintained properties
-    loader.is_client_savable = false;
-
-    // Debugging functions
-    loader.print_debug = osrc_print_debug;
-
-    // Request replication messages
-    loader.request_updates = param.requestupdates?1:0;
-    if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
-    loader.ControlMsg = osrc_cb_control_msg;
-
-    if (loader.autoquery == loader.AQonLoad) 
-	pg_addsched_fn(loader,'InitQuery', [], 0);
-
-    // Finish initialization...
-    pg_addsched_fn(loader, "InitBH", [], 0);
-
-    return loader;
-    }
 
 function osrc_init_query()
     {
     if(this.init==true)
 	return;
     this.init=true;
-    this.ifcProbe(ifAction).Invoke("QueryObject", {qy:null, client:null, ro:this.readonly});
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:[], client:null, ro:this.readonly});
     }
 
 
@@ -187,48 +24,101 @@ function osrc_action_order_object(aparam) //order)
     this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
     }
 
-
-//'this' would be a TreeNode
-function osrc_action_query_param(aparam)
+function osrc_criteria_from_aparam(aparam)
     {
     var qo = [];
     var t;
+    var v;
+    qo.joinstring = 'AND';
     for (var i in aparam)
 	{
-	if (i == '_Origin') continue;
-
-	if (typeof aparam[i] == 'number')
+	if (i == 'cx__enable_lists') continue;
+	if (i == 'cx__case_insensitive') continue;
+	if (i == 'joinstring' && (new String(aparam[i])).toLowerCase() == 'or')
+	    {
+	    qo.joinstring = 'OR';
+	    continue;
+	    }
+	v = aparam[i];
+	if (i == '_Origin' || i == '_EventName') continue;
+	if (typeof v == 'string' && (new String(v)).indexOf(',') > 0 && aparam.cx__enable_lists)
+	    {
+	    t = 'stringarray';
+	    v = (new String(v)).split(/,/);
+	    }
+	else if ((typeof v == 'string' || (typeof v == 'object' && v != null && v.constructor == String)) && aparam.cx__case_insensitive)
+	    t = 'istring';
+	else if (typeof v == 'string' || (typeof v == 'object' && v != null && v.constructor == String))
+	    t = 'string';
+	else if (typeof v == 'number')
 	    t = 'integer';
 	else
 	    t = 'string';
-	qo.push({oid:i, value:aparam[i], type:t});
+	qo.push({oid:i, value:v, type:t});
 	}
-    qo.joinstring = 'AND';
+    return qo;
+    }
+
+function osrc_action_query_param(aparam)
+    {
+    if (this.query_delay_schedid)
+	{
+	pg_delsched(this.query_delay_schedid);
+	this.query_delay_schedid = null;
+	}
+    var qo = osrc_criteria_from_aparam(aparam);
     this.ifcProbe(ifAction).Invoke("QueryObject", {query:qo, client:null, ro:this.readonly});
     }
 
 
 function osrc_action_refresh(aparam)
     {
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
+    var tr = this.CurrentRecord;
+    if (!tr || tr < 1) tr = 1;
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
     }
 
 
-//@purpose: send async-req for data.
-//
-// instead of directly sending an async-req, we must use our own
-// async-req-manager.
+function osrc_action_change_source(aparam)
+    {
+    if (!this.baseobj) return null;
+    if (!aparam.Source) return null;
+    var l = (new String(this.baseobj)).length;
+    var s = new String(this.sql);
+    var p = s.indexOf(this.baseobj);
+    if (p >= 0)	
+	this.sql = s.substr(0,p) + aparam.Source + s.substr(p+l);
+    var s = new String(this.query);
+    var p = s.indexOf(this.baseobj);
+    if (p >= 0)	
+	this.query = s.substr(0,p) + aparam.Source + s.substr(p+l);
+    this.baseobj = aparam.Source;
+    if (typeof aparam.Refresh == 'undefined' || aparam.Refresh)
+	this.ifcProbe(ifAction).Invoke("Refresh", {});
+    }
+
+
 function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
-    this.request_queue.push({Request:'QueryObject', Param:aparam});
+    if (this.query_delay_schedid)
+	{
+	pg_delsched(this.query_delay_schedid);
+	this.query_delay_schedid = null;
+	}
+    this.QueueRequest({Request:'QueryObject', Param:aparam});
     this.Dispatch();
     }
 
 function osrc_query_object_handler(aparam)
     {
-    var q = aparam.query;
     var formobj = aparam.client;
+    var q = aparam.query;
     var readonly = aparam.ro;
+    var appendrows = (aparam.cx__appendrows)?true:false;
+    if (typeof aparam.cx__appendrows != 'undefined')
+	delete aparam.cx__appendrows;
+    var params = [];
+    var filter = [];
 
     if(this.pending)
 	{
@@ -236,7 +126,41 @@ function osrc_query_object_handler(aparam)
 	return 0;
 	}
 
-    if (q) this.ApplyRelationships(q);
+    this.move_target = aparam.targetrec;
+
+    if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false);
+
+    for(var i in q)
+	{
+	if (i == 'joinstring')
+	    filter.joinstring = q.joinstring;
+	else if (i == 'oid')
+	    filter.oid = q.oid;
+	else if (this.params[q[i].oid])
+	    params.push(q[i]);
+	else
+	    filter.push(q[i]);
+	}
+    if (!filter.joinstring)
+	filter.joinstring = 'AND';
+   
+    for(var pn in this.params)
+	{
+	var found = false;
+	for(var i in params)
+	    {
+	    if (params[i].oid == pn && typeof params[i].value != 'undefined')
+		{
+		found = true;
+		this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:params[i].value});
+		break;
+		}
+	    }
+	if (!found)
+	    {
+	    this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:null});
+	    }
+	}
 
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
@@ -246,9 +170,10 @@ function osrc_query_object_handler(aparam)
 
     this.pendingqueryobject=q;
     var statement=this.sql;
-    //if (statement.indexOf(' WHERE ') != -1)
-//	var sep = ' HAVING ';
-  //  else
+
+    if (this.use_having)
+	var sep = ' HAVING ';
+    else
 	var sep = ' WHERE ';
     var firstone=true;
     
@@ -257,11 +182,9 @@ function osrc_query_object_handler(aparam)
 	statement+= (sep + '('+this.filter+')');
 	firstone=false;
 	}
-    //if(!confirm(osrc_make_filter(q)))
-    //    return 0;
-    if(q && q.joinstring && q[0])
+    if(filter && filter.joinstring && filter[0])
 	{
-	var filt = osrc_make_filter(q);
+	var filt = this.MakeFilter(filter);
 	if (filt)
 	    {
 	    if(firstone)
@@ -276,7 +199,6 @@ function osrc_query_object_handler(aparam)
     if(this.pendingorderobject && is_select)
 	for(var i in this.pendingorderobject)
 	    {
-	    //alert('asdf'+this.pendingorderobject[i]);
 	    if(firstone)
 		{
 		statement+=' ORDER BY '+this.pendingorderobject[i];
@@ -289,8 +211,7 @@ function osrc_query_object_handler(aparam)
 	    }
     if (!readonly && is_select)
 	statement += ' FOR UPDATE'
-    //statement+=';';
-    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj});
+    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj, appendrows:appendrows});
     }
 
 
@@ -308,37 +229,40 @@ function osrc_make_filter_integer(col,val)
     }
 
 
-function osrc_make_filter_string(col, val)
+function osrc_make_filter_string(col, val, icase)
     {
     var str = '';
+    var ifunc = '';
+    if (icase)
+	ifunc = 'upper';
     if (val == null)
 	str=':"'+col+'" is null ';
     else
 	if (val.search(/^\*.+\*$/)>=0)
 	    {
-	    str='charindex("'+val.substring(1,val.length-1)+'",:"'+col+'")>0';
+	    str='charindex(' + ifunc + '("'+val.substring(1,val.length-1)+'"),' + ifunc + '(:"'+col+'"))>0';
 	    }
 	else if(val.search(/^\*/)>=0) //* at beginning
 	    {
 	    val = val.substring(1); //pop off *
-	    str='right(:"'+col+'",'+val.length+')="'+val+'"';
+	    str='right(' + ifunc + '(:"'+col+'"),'+val.length+')=' + ifunc + '("'+val+'")';
 	    }
 	else if(val.search(/\*$/)>=0) //* at end
 	    {
 	    val=val.substring(0,val.length-1); //chop off *
-	    str='substring(:"'+col+'",'+1+','+val.length+')="'+val+'"';
+	    str='substring(' + ifunc + '(:"'+col+'"),'+1+','+val.length+')=' + ifunc + '("'+val+'")';
 	    }
 	else if(val.indexOf('*')>=0) //* in middle
 	    {
 	    var ind = val.indexOf('*');
 	    var val1 = val.substring(0,ind);
 	    var val2 = val.substring(ind+1);
-	    str='(right(:"'+col+'",'+val2.length+')="'+val2+'"';
+	    str='(right(' + ifunc + '(:"'+col+'"),'+val2.length+')=' + ifunc + '("'+val2+'")';
 	    str+=' AND ';
-	    str+='substring(:"'+col+'",1,'+val1.length+')="'+val1+'")';
+	    str+='substring(' + ifunc + '(:"'+col+'"),1,'+val1.length+')=' + ifunc + '("'+val1+'"))';
 	    }
 	else
-	    str=':"'+col+'"='+'"'+val+'"';
+	    str=ifunc + '(:"'+col+'")='+ifunc+'("'+val+'")';
     return str;
     }
     
@@ -347,27 +271,43 @@ function osrc_make_filter(q)
     {
     var firstone=true;
     var statement='';
+    var isnot;
     for(var i in q)
 	{
+	isnot = false;
 	if(i!='oid' && i!='joinstring')
 	    {
 	    var str;
 	    if(q[i].joinstring)
 		{
-		str=osrc_make_filter(q[i]);
+		str=this.MakeFilter(q[i]);
 		}
 	    else
 		{
 		var val=q[i].value;
-		if (val == null) continue;
+		//if (val == null) continue;
 
 		if (typeof val == 'string')
 		    val = new String(val);
 
+		if (val && val.substring && val.substring(0,1) == '~')
+		    {
+		    val = val.substring(1);
+		    isnot = true;
+		    }
+		else if (val && val.length && val[0] && val[0].substring && val[0].substring(0,1) == '~')
+		    {
+		    val[0] = val[0].substring(1);
+		    isnot = true;
+		    }
+
+		if (q[i].type == "undefined" && this.type_list[q[i].oid])
+		    q[i].type = this.type_list[q[i].oid];
+
 		switch(q[i].type)
 		    {
 		    case 'integer':
-			str = osrc_make_filter_integer(q[i], val);
+			str = this.MakeFilterInteger(q[i], val);
 			break;
 
 		    case 'integerarray':
@@ -380,7 +320,7 @@ function osrc_make_filter(q)
 				{
 				if (j) str += " OR ";
 				str += "(";
-				str += osrc_make_filter_integer(q[i], val[j]);
+				str += this.MakeFilterInteger(q[i], val[j]);
 				str += ")";
 				}
 			    str += ")";
@@ -403,9 +343,9 @@ function osrc_make_filter(q)
 				if (j) str += " OR ";
 				str += "(";
 				if ((new String(parseInt(val[j]))) == (new String(val[j])))
-				    str += osrc_make_filter_integer(q[i], val[j]);
+				    str += this.MakeFilterInteger(q[i], val[j]);
 				else
-				    str += osrc_make_filter_string(q[i].oid, val[j]);
+				    str += this.MakeFilterString(q[i].oid, val[j]);
 				str += ")";
 				}
 			    str += ")";
@@ -423,7 +363,7 @@ function osrc_make_filter(q)
 				{
 				if (j) str += " OR ";
 				str += "(";
-				str += osrc_make_filter_string(q[i].oid, val[j]);
+				str += this.MakeFilterString(q[i].oid, val[j]);
 				str += ")";
 				}
 			    str += ")";
@@ -510,10 +450,16 @@ if (0) {
 			    }
 			str+=')';
 			break;
+
+		    case 'string':
+		    case 'istring':
+			str = this.MakeFilterString(q[i].oid, val, q[i].type == 'istring');
+			break;
+
 		    default:
 			//htr_alert(val, 1);
-			if(typeof val.substring == 'undefined') // assume integer
-			    str = osrc_make_filter_integer(q[i], val);
+			if(!val || typeof val.substring == 'undefined') // assume integer
+			    str = this.MakeFilterInteger(q[i], val);
 			else if(val.substring(0,2)=='>=')
 			    str=':"'+q[i].oid+'" >= '+val.substring(2);
 			else if(val.substring(0,2)=='<=')
@@ -536,11 +482,13 @@ if (0) {
 			    }
 			else
 			    {
-			    str = osrc_make_filter_string(q[i].oid, val);
+			    str = this.MakeFilterString(q[i].oid, val);
 			    }
 			break;
 		    }
 		}
+	    if (isnot)
+		str = "not (" + str + ")";
 	    if(firstone)
 		{
 		statement+=' ('+str+')';
@@ -608,6 +556,11 @@ function osrc_go_nogo(go_func, nogo_func)
 
 function osrc_action_query(aparam) //q, formobj)
     {
+    if (this.query_delay_schedid)
+	{
+	pg_delsched(this.query_delay_schedid);
+	this.query_delay_schedid = null;
+	}
     this.QueueRequest({Request:'Query', Param:aparam});
     this.Dispatch();
     }
@@ -622,10 +575,12 @@ function osrc_query_handler(aparam)
 	alert('There is already a query or movement in progress...');
 	return 0;
 	}
+    this.do_append = aparam.appendrows?true:false;
     this.lastquery=q;
     this.pendingquery=q;
     this.pending=true;
 
+    // Check if any children are modified and call IsDiscardReady if they are
     this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2);
     }
 
@@ -638,9 +593,6 @@ function osrc_action_delete(aparam) //up,formobj)
     //var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
     this.formobj = formobj;
     this.deleteddata=up;
-    //this.onload = osrc_action_delete_cb;
-    //pg_set(this,'src',src);
-    //pg_serialized_load(this, src, osrc_action_delete_cb);
     this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
     //this.formobj.ObjectDeleted();
     //this.formobj.OperationComplete();
@@ -714,14 +666,13 @@ function osrc_action_create_object(aparam) //up,formobj)
     //First close the currently open query
     if(this.qid)
 	{
-	//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_create_cb2);
 	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_action_create_cb2);
 	this.qid=null;
 	return 0;
 	}
     else if (!this.sid)
 	{
-	this.replica=new Array();
+	this.replica = [];
 	this.LastRecord=0;
 	this.FirstRecord=1;
 	this.CurrentRecord=1;
@@ -737,7 +688,7 @@ function osrc_action_create_cb2()
     //Create an object through OSML
     if(!this.sid) this.sid=pg_links(this)[0].target;
     //var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
-    this.ApplyRelationships(this.createddata);
+    this.ApplyRelationships(this.createddata, true);
     //htr_alert(this.createddata, 2);
     /*for(var i in this.createddata) if(i!='oid')
 	{
@@ -746,8 +697,7 @@ function osrc_action_create_cb2()
 	else
 	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
 	}*/
-    //pg_serialized_load(this, src, osrc_action_create_cb);
-    var reqparam = {ls__reopen_sql:this.sql}
+    var reqparam = {ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
     for(var i in this.createddata) if(i!='oid')
 	{
 	if (this.createddata[i]['value'] == null)
@@ -840,7 +790,6 @@ function osrc_action_modify(aparam) //up,formobj)
     if(this.qid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_action_modify);
-	//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_modify);
 	this.qid=null;
 	return 0;
 	}
@@ -848,13 +797,12 @@ function osrc_action_modify(aparam) //up,formobj)
     //up[adsf][value];
     var reqparam = {ls__oid:this.modifieddata.oid};
     //var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
-    this.ApplyRelationships(this.modifieddata);
+    this.ApplyRelationships(this.modifieddata, false);
     for(var i in this.modifieddata) if(i!='oid')
 	{
 	reqparam[this.modifieddata[i]['oid']] = this.modifieddata[i]['value'];
 	//src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
 	}
-    //pg_serialized_load(this, src, osrc_action_modify_cb);
     this.DoRequest('setattrs', '/', reqparam, osrc_action_modify_cb);
     }
 
@@ -943,8 +891,12 @@ function osrc_cb_query_continue_2()
 	this.pendingquery=null;
 	this.pendingqueryobject=null;
 	this.pendingorderobject=null;
+	/*for(var i in this.child)
+	     {
+	     this.child[i]._osrc_ready=false;
+	     }*/
 
-	this.ClearReplica();
+	if (!this.do_append) this.ClearReplica();
 	this.moveop=true;
 
 	this.OpenSession(this.OpenQuery);
@@ -1022,6 +974,8 @@ function osrc_cb_savable_changed(p,o,n)
 
 function osrc_open_session(cb)
     {
+    //Open Session
+    //alert('open');
     if(this.sid)
 	{
 	this.__osrc_cb = cb;
@@ -1049,7 +1003,8 @@ function osrc_open_query()
 	this.qid=null;
 	return 0;
 	}
-    this.DoRequest('multiquery', '/', {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query}, osrc_get_qid);
+    this.query_ended = false;
+    this.DoRequest('multiquery', '/', {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid);
     this.querysize = this.replicasize;
     }
 
@@ -1065,32 +1020,43 @@ function osrc_get_qid()
     if (!this.qid)
 	{
 	this.pending=false;
+	this.move_target = null;
 	this.GiveAllCurrentRecord();
 	this.Dispatch();
 	}
     else
 	{
+	this.query_delay = pg_timestamp() - this.request_start_ts;
 	for(var i in this.child)
 	    this.child[i].DataAvailable();
+	if (this.move_target)
+	    var tgt = this.move_target;
+	else
+	    var tgt = 1;
+	this.move_target = null;
 	if (lnk.length > 1)
 	    {
 	    // did an autofetch - we have the data already
-	    this.ClearReplica();
+	    if (!this.do_append) this.ClearReplica();
+	    this.TargetRecord = [tgt,tgt];
+	    this.CurrentRecord = tgt;
 	    this.moveop = true;
 	    this.FetchNext();
 	    }
 	else
 	    {
 	    // start the ball rolling for the fetch
-	    this.ifcProbe(ifAction).Invoke("First", {from_internal:true});
+	    //this.ifcProbe(ifAction).Invoke("First", {from_internal:true});
+	    this.ifcProbe(ifAction).Invoke("FindObject", {ID:tgt, from_internal:true});
 	    }
 	}
-/** normally don't actually load the data...just let children know that the data is available **/
+    /** normally don't actually load the data...just let children know that the data is available **/
     }
 
 function osrc_parse_one_attr(lnk)
     {
     var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+    this.type_list[col.oid] = col.type;
     switch(lnk.text.charAt(0))
 	{
 	case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
@@ -1103,7 +1069,7 @@ function osrc_parse_one_attr(lnk)
 
 function osrc_new_replica_object(id, oid)
     {
-    var obj=new Array();
+    var obj = [];
     obj.oid=oid;
     obj.id = id;
     return obj;
@@ -1164,7 +1130,6 @@ function osrc_prune_replica(most_recent_id)
 	}
     }
 
-//SETH: document
 function osrc_clear_replica()
     {
     this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
@@ -1173,20 +1138,18 @@ function osrc_clear_replica()
 
     /** Clear replica **/
     if(this.replica)
-	{
 	for(var i in this.replica)
 	    this.oldoids.push(this.replica[i].oid);
     
-	delete this.replica;
-	}
-    this.replica = {};
+    if(this.replica) delete this.replica;
+    this.replica = [];
     this.LastRecord=0;
     this.FirstRecord=1;
     }
 
 function osrc_parse_one_row(lnk, i)
     {
-    var row = new Array();
+    var row = [];
     var cnt = 0;
     var tgt = lnk[i].target;
     while(i < lnk.length && (lnk[i].target == tgt || lnk[i].target == 'R'))
@@ -1206,8 +1169,25 @@ function osrc_do_fetch(rowcnt)
 	reqparam.ls__rowcount = rowcnt;
     if (this.startat)
 	reqparam.ls__startat = this.startat;
+    if (this.query_delay_schedid)
+	{
+	pg_delsched(this.query_delay_schedid);
+	this.query_delay_schedid = null;
+	}
     this.DoRequest('queryfetch', '/', reqparam, osrc_fetch_next);
-    //pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):"") + (this.startat?("&ls__startat="+this.startat):""), osrc_fetch_next);
+    }
+
+function osrc_query_timeout()
+    {
+    var qid = this.qid;
+    this.query_delay_schedid = null;
+    if (qid)
+	{
+	this.qid = null;
+	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
+	}
+    this.Dispatch();
+    return 0;
     }
 
 function osrc_end_query()
@@ -1218,6 +1198,7 @@ function osrc_end_query()
     /* return the last record as the current one if it was our target otherwise, don't */
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
 	this.replica[this.LastRecord].__osrc_is_last = true;
+    this.query_ended = true;
     /*if(this.moveop)
 	{*/
 	/*this.GiveAllCurrentRecord();
@@ -1233,7 +1214,6 @@ function osrc_end_query()
     if(qid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
-	//pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
 	}
     this.Dispatch();
     this.ifcProbe(ifEvent).Activate("EndQuery", {});
@@ -1252,6 +1232,18 @@ function osrc_found_record()
 	this.TellAllReplicaMoved();
     this.pending=false;
     this.osrc_oldoid_cleanup();
+    if (this.query_delay)
+	{
+	if (this.query_delay_schedid)
+	    {
+	    pg_delsched(this.query_delay_schedid);
+	    this.query_delay_schedid = null;
+	    }
+	var d = this.query_delay * 2 + 1000;
+	if (d < 3000) d = 3000;
+	if (d > 30000) d = 30000;
+	this.query_delay_schedid = pg_addsched_fn(this, 'QueryTimeout', [], d);
+	}
     }
 
 function osrc_fetch_next()
@@ -1260,7 +1252,8 @@ function osrc_fetch_next()
     //alert('fetching....');
     if(!this.qid)
 	{
-	if (pg_diag) confirm("ERR: " + this.baseobj + " ==> " + this.qid);
+	//if (pg_diag) confirm("ERR: " + this.baseobj + " ==> " + this.qid);
+	if (pg_diag) confirm("fetch_next: error - no qid.  first/last/cur/osml: " + this.FirstRecord + "/" + this.LastRecord + "/" + this.CurrentRecord + "/" + this.OSMLRecord + "\n");
 	//alert('something is wrong...');
 	//alert(this.src);
 	}
@@ -1350,9 +1343,7 @@ function osrc_oldoid_cleanup()
 	for(var i in this.oldoids)
 	    src+=this.oldoids[i];
 	if(this.sid)
-	    //pg_set(this,'src','/?ls__mode=osml&ls__req=close&ls__sid='+this.sid+'&ls__oid=' + src);
 	    this.DoRequest('close', '/', {ls__oid:src}, osrc_oldoid_cleanup_cb);
-	    //pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=close&ls__sid='+this.sid+'&ls__oid=' + src, osrc_oldoid_cleanup_cb);
 	else
 	    alert('session is invalid');
 	}
@@ -1365,7 +1356,7 @@ function osrc_oldoid_cleanup_cb()
     this.pending=false;
     //alert('cb recieved');
     delete this.oldoids;
-    this.oldoids=new Array();
+    this.oldoids = [];
     this.Dispatch();
     }
  
@@ -1383,20 +1374,55 @@ function osrc_close_object()
     {
     //Close Object
     this.DoRequest('close', '/', {ls__oid:this.oid}, osrc_close_session);
-    //pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=close&ls__oid=' + this.oid, osrc_close_session);
-    //this.onload = osrc_close_session;
-    //pg_set(this,'src','/?ls__mode=osml&ls__req=close&ls__oid=' + this.oid);
     }
  
 function osrc_close_session()
     {
     //Close Session
     this.DoRequest('closesession', '/', {}, osrc_oldoid_cleanup);
-    //pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid, osrc_oldoid_cleanup);
-    //this.onload=osrc_oldoid_cleanup;
-    //pg_set(this,'src','/?ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid);
     this.qid=null;
     this.sid=null;
+    }
+
+
+function osrc_action_find_object(aparam)
+    {
+    var from_internal = (aparam.from_internal)?true:false;
+    if (typeof aparam.ID != 'undefined')
+	{
+	// Find by record #
+	var id = parseInt(aparam.ID);
+	if (!id) id = 1;
+	this.MoveToRecord(id, from_internal);
+	}
+    else if (typeof aparam.Name != 'undefined')
+	{
+	// Find by object name
+	for(var i in this.replica)
+	    {
+	    var rec = this.replica[i];
+	    for(var j in rec)
+		{
+		var col = rec[j];
+		if (col.oid == 'name')
+		    {
+		    if (col.value == aparam.Name)
+			this.MoveToRecord(i, from_internal);
+		    break;
+		    }
+		}
+	    }
+	}
+    else
+	{
+	// find arbitrarily
+	if (aparam._Origin) delete aparam._Origin;
+	if (aparam._EventName) delete aparam._EventName;
+	for(var i in this.replica)
+	    {
+	    var rec = this.replica[i];
+	    }
+	}
     }
 
 
@@ -1570,9 +1596,6 @@ function osrc_move_to_record_cb(recnum)
 	    if(this.qid)
 		{
 		this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
-		//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid,osrc_open_query_startat);
-		//this.onload=osrc_open_query_startat;
-		//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid);
 		}
 	    else
 		{
@@ -1599,6 +1622,11 @@ function osrc_move_to_record_cb(recnum)
 		    this.DoFetch(this.readahead);
 		    }
 		}
+	    else if (!this.query_ended)
+		{
+		this.startat = this.LastRecord + 1;
+		this.osrc_open_query_startat();
+		}
 	    else
 		{
 		this.pending=false;
@@ -1613,13 +1641,12 @@ function osrc_move_to_record_cb(recnum)
 
 function osrc_open_query_startat()
     {
-    if(this.FirstRecord - this.startat < this.replicasize)
+    if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
 	this.querysize = this.FirstRecord - this.startat;
     else
 	this.querysize = this.replicasize;
-    this.DoRequest('multiquery', '/', {ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query}, osrc_get_qid_startat);
-    //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autoclose_sr=1&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.querysize + "&ls__sql=" + this.query, osrc_get_qid_startat);
-    //pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
+    this.query_ended = false;
+    this.DoRequest('multiquery', '/', {ls__startat:this.startat, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
 function osrc_get_qid_startat()
@@ -1643,6 +1670,7 @@ function osrc_get_qid_startat()
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
+	this.query_delay = pg_timestamp() - this.request_start_ts;
 	this.FetchNext();
 	}
     else
@@ -1726,9 +1754,7 @@ function osrc_scroll_to(startrec, endrec)
 		}
 	    if(this.qid)
 		{
-		//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid);
 		this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
-		//pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query_startat);
 		}
 	    else
 		{
@@ -1751,6 +1777,11 @@ function osrc_scroll_to(startrec, endrec)
 		    /* need to increase replica size to accomodate? */
 		    this.DoFetch(this.scrollahead);
 		    }
+		}
+	    else if (!this.query_ended)
+		{
+		this.startat = this.LastRecord + 1;
+		this.osrc_open_query_startat();
 		}
 	    else
 		{
@@ -1783,8 +1814,8 @@ function osrc_action_sync(param)
     this.parentosrc=param.ParentOSRC;
     if (!this.parentosrc) 
 	this.parentosrc = wgtrGetNode(this, param._Origin);
-    this.ParentKey=new Array();
-    this.ChildKey=new Array();
+    this.ParentKey = [];
+    this.ChildKey = [];
 
     // Prevent sync loops
     if (this.SyncID == this.parentosrc.SyncID)
@@ -1864,11 +1895,11 @@ function osrc_action_double_sync(param)
     this.readahead=100;
     this.parentosrc=param.ParentOSRC;
     this.childosrc=param.ChildOSRC;
-    this.ParentKey=new Array();
-    this.ParentSelfKey=new Array();
-    this.SelfChildKey=new Array();
-    this.ChildKey=new Array();
-    var query = new Array();
+    this.ParentKey = [];
+    this.ParentSelfKey = [];
+    this.SelfChildKey = [];
+    this.ChildKey = [];
+    var query = [];
     query.oid=null;
     query.joinstring='AND';
     var p=this.parentosrc.CurrentRecord;
@@ -1898,7 +1929,7 @@ function osrc_action_double_sync(param)
 
 function osrc_action_double_sync_cb()
     {
-    var query = new Array();
+    var query = [];
     query.oid=null;
     query.joinstring='OR';
     if(this.LastRecord==0)
@@ -1911,7 +1942,7 @@ function osrc_action_double_sync_cb()
 	}
     for(var p=this.FirstRecord; p<=this.LastRecord; p++)
 	{
-	var q = new Array();
+	var q = [];
 	q.oid=null;
 	q.joinstring='AND';
 	for(var i=1;i<10;i++)
@@ -1939,12 +1970,94 @@ function osrc_action_double_sync_cb()
     }
 
 
+// for each value in the replica, run a SQL statement
+function osrc_action_do_sql(aparam)
+    {
+    if (!this.do_sql_loader)
+	{
+	this.do_sql_loader = htr_new_loader(this);
+	this.do_sql_loader.osrc = this;
+	}
+
+    if (!aparam.SQL) return;
+    this.do_sql_query = aparam.SQL;
+
+    var p = aparam;
+    if (p._Origin) delete p._Origin;
+    if (p._EventName) delete p._EventName;
+    delete p.SQL;
+
+    this.do_sql_field = aparam.GroupingField;
+    this.do_sql_used_values = {};
+    this.do_sql_params = p;
+
+    this.osrc_action_do_sql_cb();
+    }
+
+
+// Called when do_sql command is complete.
+function osrc_action_do_sql_cb()
+    {
+    var osrc = (this.osrc)?(this.osrc):this;
+
+    var grp_value = null;
+    var common_values = {};
+    var found_first = false;
+    var attrval;
+    for(var i in osrc.replica)
+	{
+	var obj = osrc.replica[i];
+	if (typeof osrc.do_sql_field != 'undefined')
+	    {
+	    for(var j in obj)
+		{
+		var attr = obj[j];
+		if (attr.oid == osrc.do_sql_field)
+		    {
+		    attrval = attr.value;
+		    if (typeof osrc.do_sql_used_values[attr.value] != 'undefined')
+			{
+			grp_value = attr.value;
+			osrc.do_sql_used_values[grp_value] = true;
+			}
+		    break;
+		    }
+		}
+	    }
+	if ((grp_value !== null && grp_value == attrval) || typeof osrc.do_sql_field == 'undefined')
+	    {
+	    for(var j in obj)
+		{
+		var attr = obj[j];
+		if (!found_first)
+		    common_values[attr.oid] = attr.value;
+		else if (common_values[attr.oid] != attr.value)
+		    delete common_values[attr.oid];
+		}
+	    found_first = true;
+	    }
+	}
+
+    // no more data to do?
+    if (!found_first) return;
+
+    // copy in aparam values -- overrides common_values
+    for (var p in osrc.do_sql_params)
+	{
+	common_values[p] = osrc.do_sql_params[p];
+	}
+
+    // run the request and wait for the callback.
+    osrc.DoRequest('multiquery', '/', {ls__autoclose:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:0, ls__sql:osrc.do_sql_query, ls__sqlparam:osrc.Encode(common_values)}, osrc_action_do_sql_cb, osrc.do_sql_loader);
+    }
+
+
 /** called by child to get a template to build a new object for creation **/
 function osrc_cb_new_object_template()
     {
     var obj = this.NewReplicaObj(0, 0);
 
-    this.ApplyRelationships(obj);
+    this.ApplyRelationships(obj, false);
     this.ApplyKeys(obj);
 
     return obj;
@@ -2004,7 +2117,7 @@ function osrc_apply_keys(obj)
     return;
     }
 
-function osrc_apply_rel(obj)
+function osrc_apply_rel(obj, in_create)
     {
     var cnt = 0;
     while(typeof obj[cnt] != 'undefined') cnt++;
@@ -2045,7 +2158,8 @@ function osrc_apply_rel(obj)
 				if (obj[l].oid == rl[srckey + k])
 				    {
 				    found = true;
-				    obj[l] = {type:col.type, value:col.value, hints:col.hints, oid:rl[srckey + k]};
+				    if (!in_create || rl[srckey + k].enforce_create)
+					obj[l] = {type:col.type, value:col.value, hints:col.hints, oid:rl[srckey + k]};
 				    }
 				}
 			    if (!found)
@@ -2093,9 +2207,10 @@ function osrc_cb_reveal(child)
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
-	{
 	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:null, client:null, ro:this.readonly}, 0);
-	}
+    else
+	this.Dispatch();
+
     if (this.has_onreveal_relationship && this.hidden_change_cnt > 0)
 	{
 	this.hidden_change_cnt = 0;
@@ -2128,13 +2243,22 @@ function osrc_get_value(n)
     var v = null;
     if (n == 'is_client_savable')
 	return this.is_client_savable;
+    if (n == 'cx__current_id')
+	return this.CurrentRecord;
     if (this.CurrentRecord && this.replica && this.replica[this.CurrentRecord])
 	{
 	for(var i in this.replica[this.CurrentRecord])
 	    {
 	    var col = this.replica[this.CurrentRecord][i];
 	    if (col.oid == n)
-		return col.value;
+		{
+		if (col.value == null)
+		    return null;
+		else if (col.type == 'integer')
+		    return parseInt(col.value);
+		else
+		    return col.value;
+		}
 	    }
 	}
     return v;
@@ -2211,6 +2335,7 @@ function osrc_add_rule(rule_widget)
 	    rl['target_key_' + keynum] = rule_widget['target_key_' + keynum];
 	    }
 	rl.osrc = this;
+	rl.aq = rule_widget.autoquery;
 	rl.target_osrc = wgtrGetNode(this, rule_widget.target);
 	rl.is_slave = rule_widget.is_slave;
 	if (rl.is_slave == null)
@@ -2218,6 +2343,9 @@ function osrc_add_rule(rule_widget)
 	rl.revealed_only = rule_widget.revealed_only;
 	if (rl.revealed_only == null)
 	    rl.revealed_only = 0;
+	rl.enforce_create = rule_widget.enforce_create;
+	if (rl.enforce_create == null)
+	    rl.enforce_create = 1;
 	osrc_relationships.push(rl);
 	}
     else if (rl.ruletype == 'osrc_key')
@@ -2268,19 +2396,20 @@ function osrc_queue_request(r)
     }
 
 
-//this function is just a wrapper around osrc async requests. This
-//model was used because originally NS didn't have a good one for
-//async requests. Conversion to AJAX would replace this model.
 function osrc_dispatch()
     {
     if (this.pending) return;
-    var req;
+    var req = null;
+    var requeue = [];
     while ((req = this.request_queue.shift()) != null)
 	{
 	switch(req.Request)
 	    {
 	    case 'Query':
-		this.QueryHandler(req.Param);
+		if (!this.qy_reveal_only || this.revealed_children > 0)
+		    this.QueryHandler(req.Param);
+		else
+		    requeue.push(req);
 		break;
 
 	    case 'QueryObject':
@@ -2293,6 +2422,7 @@ function osrc_dispatch()
 	    }
 	if (this.pending) break;
 	}
+    while((req = requeue.shift())) this.request_queue.push(req);
     return;
     }
 
@@ -2306,13 +2436,16 @@ function osrc_oc_resync()
 	return;
 	}
     //alert('Resync: ' + this.sql);
-    var sync_param = {ParentOSRC:this.master_osrc};
-    for(var i=1; i<=10;i++)
+    if (!this.no_autoquery_on_resync)
 	{
-	sync_param['ParentKey'+i] = this.master_keys['master_'+i];
-	sync_param['ChildKey'+i] = this.master_keys['slave_'+i];
+	var sync_param = {ParentOSRC:this.master_osrc};
+	for(var i=1; i<=10;i++)
+	    {
+	    sync_param['ParentKey'+i] = this.master_keys['master_'+i];
+	    sync_param['ChildKey'+i] = this.master_keys['slave_'+i];
+	    }
+	this.ifcProbe(ifAction).Invoke("Sync", sync_param);
 	}
-    this.ifcProbe(ifAction).Invoke("Sync", sync_param);
     }
 
 function osrc_oc_data_available()
@@ -2404,6 +2537,8 @@ function osrc_init_bh()
 		}
 	    if (rl.revealed_only)
 		this.has_onreveal_relationship = true;
+	    if (typeof rl.aq != 'undefined' && !rl.aq)
+		this.no_autoquery_on_resync = true;
 	    //pg_addsched_fn(this, "Resync", [], 0);
 	    }
 	}
@@ -2439,10 +2574,11 @@ function osrc_action_save_clients(aparam)
     }
 
 
-function osrc_do_request(cmd, url, params, cb)
+function osrc_do_request(cmd, url, params, cb, target)
     {
     var first = true;
-    params.cx__akey = akey; //SETH: ?? where's akey coming from?
+    if (!target) target = this;
+    params.cx__akey = akey;
     params.ls__mode = 'osml';
     params.ls__req = cmd;
     if (this.sid) params.ls__sid = this.sid;
@@ -2452,7 +2588,8 @@ function osrc_do_request(cmd, url, params, cb)
 	url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
 	first = false;
 	}
-    pg_serialized_load(this, url, cb, !this.ind_act);
+    this.request_start_ts = pg_timestamp();
+    pg_serialized_load(target, url, cb, !this.ind_act);
     }
 
 
@@ -2468,5 +2605,258 @@ function osrc_print_debug()
     }
 
 
+function osrc_param_notify(pname, pwgt, datatype, curval)
+    {
+    this.params[pname] = {pname:pname, pwgt:pwgt, datatype:datatype, val:curval};
+    }
 
+
+function osrc_encode(pl)
+    {
+    var s = '';
+
+    for(var p in pl)
+	{
+	var v = pl[p];
+	var dt;
+
+	if (this.type_list[p])
+	    dt = this.type_list[p];
+	else if (typeof v == 'number')
+	    dt = 'integer';
+	else
+	    dt = 'string';
+
+	if (!s)
+	    s += '?';
+	else
+	    s += '&';
+	if (v != null)
+	    s += htutil_escape(p) + '=' + htutil_escape(dt) + ':V:' + htutil_escape(v);
+	else
+	    s += htutil_escape(p) + '=' + htutil_escape(dt) + ':N:';
+	}
+
+    return s;
+    }
+
+
+// Read through the current query parameters, and encode them into a string to
+// be passed to the server.
+function osrc_encode_params()
+    {
+    var s = '';
+    var pl = {};
+    for(var i in this.params)
+	{
+	var p = this.params[i];
+	var v = p.pwgt.getvalue();
+	if (!s)
+	    s += '?';
+	else
+	    s += '&';
+	if (v != null)
+	    s += htutil_escape(p.pname) + '=' + htutil_escape(p.datatype) + ':V:' + htutil_escape(v);
+	else
+	    s += htutil_escape(p.pname) + '=' + htutil_escape(p.datatype) + ':N:';
+	}
+    return s;
+    }
+
+function osrc_destroy()
+    {
+    pg_set(this, "src", "about:blank");
+    }
+
+
+/**  OSRC Initializer **/
+function osrc_init(param)
+    {
+    var loader = param.loader;
+    ifc_init_widget(loader);
+    loader.osrcname=param.name;
+    loader.readahead=param.readahead;
+    loader.scrollahead=param.scrollahead;
+    loader.replicasize=param.replicasize;
+    loader.initreplicasize = param.replicasize;
+    loader.ind_act = param.ind_act;
+    loader.qy_reveal_only = param.qy_reveal_only;
+    loader.sql=param.sql;
+    loader.filter=param.filter;
+    loader.baseobj=param.baseobj;
+    loader.use_having = param.use_having;
+    loader.readonly = false;
+    loader.autoquery = param.autoquery;
+    loader.revealed_children = 0;
+    loader.rulelist = [];
+    loader.SyncID = osrc_syncid++;
+    loader.bh_finished = false;
+    loader.request_queue = [];
+    loader.params = [];
+    loader.destroy_widget = osrc_destroy;
+
+    // autoquery types - must match htdrv_osrc.c's enum declaration
+    loader.AQnever = 0;
+    loader.AQonLoad = 1;
+    loader.AQonFirstReveal = 2;
+    loader.AQonEachReveal = 3;
+
+    // Handle declarative rules
+    loader.addRule = osrc_add_rule;
+
+    loader.osrc_do_filter = osrc_do_filter;
+    loader.osrc_filter_changed = osrc_filter_changed;
+    loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
+    loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
+    loader.osrc_open_query_startat = osrc_open_query_startat;
+    loader.ParseOneAttr = osrc_parse_one_attr;
+    loader.ParseOneRow = osrc_parse_one_row;
+    loader.NewReplicaObj = osrc_new_replica_object;
+    loader.PruneReplica = osrc_prune_replica;
+    loader.ClearReplica = osrc_clear_replica;
+    loader.ApplyRelationships = osrc_apply_rel;
+    loader.ApplyKeys = osrc_apply_keys;
+    loader.EndQuery = osrc_end_query;
+    loader.FoundRecord = osrc_found_record;
+    loader.DoFetch = osrc_do_fetch;
+    loader.FetchNext = osrc_fetch_next;
+    loader.GoNogo = osrc_go_nogo;
+    loader.QueueRequest = osrc_queue_request;
+    loader.Dispatch = osrc_dispatch;
+    loader.DoRequest = osrc_do_request;
+    loader.EncodeParams = osrc_encode_params;
+    loader.Encode = osrc_encode;
+    loader.GiveAllCurrentRecord=osrc_give_all_current_record;
+    loader.ChangeCurrentRecord=osrc_change_current_record;
+    loader.MoveToRecord=osrc_move_to_record;
+    loader.MoveToRecordCB=osrc_move_to_record_cb;
+    loader.child =  [];
+    loader.oldoids =  [];
+    loader.sid = null;
+    loader.qid = null;
+    loader.savable_client_count = 0;
+    loader.lastquery = null;
+    loader.prevcurrent = null;
+    loader.has_onreveal_relationship = false;
+    loader.hidden_change_cnt = 0;
+    loader.query_delay = 0;
+    loader.type_list = [];
+    loader.do_append = false;
+    loader.query_ended = false;
+
+    loader.MoveToRecordHandler = osrc_move_to_record_handler;
+    loader.QueryObjectHandler = osrc_query_object_handler;
+    loader.QueryHandler = osrc_query_handler;
+   
+    // Actions
+    var ia = loader.ifcProbeAdd(ifAction);
+    //loader.ActionClear=osrc_action_clear;
+    ia.Add("Query", osrc_action_query);
+    ia.Add("QueryObject", osrc_action_query_object);
+    ia.Add("QueryParam", osrc_action_query_param);
+    ia.Add("OrderObject", osrc_action_order_object);
+    ia.Add("Delete", osrc_action_delete);
+    ia.Add("CreateObject", osrc_action_create_object);
+    ia.Add("Create", osrc_action_create);
+    ia.Add("Modify", osrc_action_modify);
+    ia.Add("First", osrc_move_first);
+    ia.Add("Next", osrc_move_next);
+    ia.Add("Prev", osrc_move_prev);
+    ia.Add("Last", osrc_move_last);
+    ia.Add("Sync", osrc_action_sync);
+    ia.Add("DoubleSync", osrc_action_double_sync);
+    ia.Add("SaveClients", osrc_action_save_clients);
+    ia.Add("Refresh", osrc_action_refresh);
+    ia.Add("ChangeSource", osrc_action_change_source);
+    ia.Add("DoSQL", osrc_action_do_sql);
+    ia.Add("FindObject", osrc_action_find_object);
+
+    // Events
+    var ie = loader.ifcProbeAdd(ifEvent);
+    ie.Add("DataFocusChanged");
+    ie.Add("EndQuery");
+    ie.Add("Created");
+
+    // Data Values
+    var iv = loader.ifcProbeAdd(ifValue);
+    iv.SetNonexistentCallback(osrc_get_value);
+
+    loader.ParamNotify = osrc_param_notify;
+    loader.CreateCB2 = osrc_action_create_cb2;
+    loader.DoubleSyncCB = osrc_action_double_sync_cb;
+    loader.OpenSession=osrc_open_session;
+    loader.OpenQuery=osrc_open_query;
+    loader.CloseQuery=osrc_close_query;
+    loader.CloseObject=osrc_close_object;
+    loader.CloseSession=osrc_close_session;
+/**    loader.StoreReplica=osrc_store_replica; **/
+    loader.QueryContinue = osrc_cb_query_continue;
+    loader.QueryCancel = osrc_cb_query_cancel;
+    loader.RequestObject = osrc_cb_request_object;
+    loader.NewObjectTemplate = osrc_cb_new_object_template;
+    loader.SetViewRange = osrc_cb_set_view_range;
+    loader.InitBH = osrc_init_bh;
+    loader.Register = osrc_cb_register;
+    loader.Reveal = osrc_cb_reveal;
+    loader.Obscure = osrc_cb_obscure;
+    loader.MakeFilter = osrc_make_filter;
+    loader.MakeFilterString = osrc_make_filter_string;
+    loader.MakeFilterInteger = osrc_make_filter_integer;
+    if (wgtrGetChildren(loader).length == 0)
+	pg_reveal_register_listener(loader, true);
+
+    loader.ScrollTo = osrc_scroll_to;
+    loader.ScrollPrev = osrc_scroll_prev;
+    loader.ScrollNext = osrc_scroll_next;
+    loader.ScrollPrevPage = osrc_scroll_prev_page;
+    loader.ScrollNextPage = osrc_scroll_next_page;
+
+    loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;
+
+    loader.InitQuery = osrc_init_query;
+    loader.cleanup = osrc_cleanup;
+
+    // this is triggered <n> msec after a query returns data, so
+    // we don't hold open locks on the server forever.
+    loader.QueryTimeout = osrc_query_timeout;
+
+    // OSRC Client interface -- for linking osrc's together
+    loader.DataAvailable = osrc_oc_data_available;
+    loader.ReplicaMoved = osrc_oc_replica_moved;
+    loader.IsDiscardReady = osrc_oc_is_discard_ready;
+    loader.ObjectAvailable = osrc_oc_object_available;
+    loader.ObjectCreated = osrc_oc_object_created;
+    loader.ObjectModified = osrc_oc_object_modified;
+    loader.ObjectDeleted = osrc_oc_object_deleted;
+    loader.OperationComplete = osrc_oc_operation_complete;
+
+    // OSRC Client interface helpers
+    loader.Resync = osrc_oc_resync;
+
+    // Client side maintained properties
+    loader.is_client_savable = false;
+
+    // Debugging functions
+    loader.print_debug = osrc_print_debug;
+
+    // Request replication messages
+    loader.request_updates = param.requestupdates?1:0;
+    if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
+    loader.ControlMsg = osrc_cb_control_msg;
+
+    // do sql loader
+    loader.do_sql_loader = null;
+    loader.osrc_action_do_sql_cb = osrc_action_do_sql_cb;
+
+    // Zero out the replica
+    loader.ClearReplica();
+
+    if (loader.autoquery == loader.AQonLoad) 
+	pg_addsched_fn(loader,'InitQuery', [], 0);
+
+    // Finish initialization...
+    pg_addsched_fn(loader, "InitBH", [], 0);
+
+    return loader;
+    }
 
