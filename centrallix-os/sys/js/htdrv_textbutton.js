@@ -82,6 +82,17 @@ function tb_init(param)
     ie.Add("MouseOver");
     ie.Add("MouseOut");
     ie.Add("MouseMove");
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetText", tb_action_settext);
+    }
+
+function tb_action_settext(aparam)
+    {
+    this.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    this.l2.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    this.l3.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     }
 
 function tb_propchange(prop, oldv, newv)
@@ -105,10 +116,10 @@ function tb_setenable(prop, oldv, newv)
 	    }
 	}
     //status = 'tb_setenable -- ' + this.id + ' -- ' + prop + ', ' + oldv + ', ' + newv;
-    if (typeof newv == "boolean")
-    {
+    //if (typeof newv == "boolean")
+    //{
     	//alert("here--" + newv);
-    if (newv == true)
+    if (newv)
 	{
 	// make enabled
 	pg_set_style_string(this.l2,'visibility','inherit');
@@ -120,7 +131,7 @@ function tb_setenable(prop, oldv, newv)
 	pg_set_style_string(this.l2,'visibility','hidden');
 	pg_set_style_string(this.l3,'visibility','inherit');
 	}
-    }
+    //}
     return newv;
     }
 
