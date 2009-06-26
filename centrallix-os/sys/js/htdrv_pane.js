@@ -43,6 +43,28 @@ function pn_mousemove(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function pn_getval(attr)
+    {
+    return this.enabled;
+    }
+
+function pn_setval(attr, val)
+    {
+    if (val)
+	this.enabled = true;
+    else
+	this.enabled = false;
+    this.style.opacity = this.enabled?1.0:0.4;
+    return this.enabled;
+    }
+
+function pn_setbackground(aparam)
+    {
+    if (aparam.Color) htr_setbgcolor(this, aparam.Color);
+    else if (aparam.Image) htr_setbgimage(this, aparam.Image);
+    else htr_setbackground(this, null);
+    }
+
 function pn_init(param)
     {
     var l = param.layer;
@@ -69,6 +91,16 @@ function pn_init(param)
     ie.Add("MouseOver");
     ie.Add("MouseOut");
     ie.Add("MouseMove");
+
+    // actions
+    var ia = ml.ifcProbeAdd(ifAction);
+    ia.Add("SetBackground", pn_setbackground);
+
+    var iv = ml.ifcProbeAdd(ifValue);
+    iv.Add("enabled", pn_getval, pn_setval);
+    ml.enabled = param.enabled;
+    if (param.enabled != null)
+	iv.Changing("enabled", ml.enabled, true, null, true);
 
     return ml;
     }
