@@ -53,10 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html.c,v 1.9 2008/03/29 02:26:16 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html.c,v 1.10 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
 
     $Log: prtmgmt_v3_fm_html.c,v $
+    Revision 1.10  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.9  2008/03/29 02:26:16  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -315,8 +322,8 @@ prt_htmlfm_GetNearestFontSize(void* context_v, int req_size)
 /*** prt_htmlfm_GetCharacterMetric - return the sizing information for a given
  *** character, in standard units.
  ***/
-double
-prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
+void
+prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style, double* width, double* height)
     {
     /*pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;*/
     double n;
@@ -324,7 +331,11 @@ prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
     
 	/** Based on font, style, and size... **/
 	if (style->FontID == PRT_FONT_T_MONOSPACE)
-	    return strlen(str)*style->FontSize/12.0;
+	    {
+	    *width = strlen(str)*style->FontSize/12.0;
+	    *height = style->FontSize/12.0;
+	    return;
+	    }
 
 	/** Figure based on attribute **/
 	a = 0;
@@ -346,7 +357,10 @@ prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
 	    str++;
 	    }
 
-    return n*style->FontSize/12.0;
+	*width = n*style->FontSize/12.0;
+	*height = style->FontSize/12.0;
+
+    return;
     }
 
 

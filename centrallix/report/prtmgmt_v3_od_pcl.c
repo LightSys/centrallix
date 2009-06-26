@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.19 2008/03/29 02:26:17 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.20 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.20  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.19  2008/03/29 02:26:17  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -416,8 +423,8 @@ prt_pclod_GetNearestFontSize(void* context_v, int req_size)
  *** in a given font size, attributes, etc., in 10ths of an inch (relative to
  *** 10cpi, or 12point, fonts.
  ***/
-double
-prt_pclod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style)
+void
+prt_pclod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     double n;
@@ -459,9 +466,10 @@ prt_pclod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle 
 	    }
 
 	/** Adjust the width based on the font size.  Base size is 12pt **/
-	n = n*(style->FontSize/12.0);
+	*width = n*(style->FontSize/12.0);
+	*height = style->FontSize/12.0;
 
-    return n;
+    return;
     }
 
 

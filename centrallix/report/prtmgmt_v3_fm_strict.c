@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.12 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.13 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.13  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.12  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -268,11 +275,11 @@ prt_strictfm_GetNearestFontSize(void* context_v, int req_size)
 /*** prt_strictfm_GetCharacterMetric - return the sizing information for a given
  *** character, in standard units.
  ***/
-double
-prt_strictfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
+void
+prt_strictfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style, double* width, double* height)
     {
     pPrtStrictfmInf context = (pPrtStrictfmInf)context_v;
-    return context->OutputDriver->GetCharacterMetric(context->OutputDriverData,  str, style);
+    return context->OutputDriver->GetCharacterMetric(context->OutputDriverData,  str, style, width, height);
     }
 
 

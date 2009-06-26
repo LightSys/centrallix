@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.21 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.22 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.22  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.21  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -406,7 +413,10 @@ prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst)
 double
 prt_internal_GetFontHeight(pPrtObjStream obj)
     {
-    return obj->TextStyle.FontSize/12.0;
+    double w, h;
+    PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, " ", &(obj->TextStyle), &w, &h);
+    /*return obj->TextStyle.FontSize/12.0;*/
+    return h;
     }
 
 
@@ -426,7 +436,7 @@ prt_internal_GetFontBaseline(pPrtObjStream obj)
 double
 prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n)
     {
-    double w = 0.0;
+    double w = 0.0, h;
     char oldend;
     int l;
     
@@ -437,7 +447,7 @@ prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n)
 	    oldend = str[n];
 	    str[n] = '\0';
 	    }
-	w = PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, str, &(obj->TextStyle));
+	PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, str, &(obj->TextStyle), &w, &h);
 	if (l > n)
 	    {
 	    str[n] = oldend;
@@ -457,6 +467,217 @@ prt_internal_FreeObj(pPrtObjStream obj)
 	nmFree(obj, sizeof(PrtObjStream));
 
     return 0;
+    }
+
+
+/*** prt_internal_YCompare() - compares two objects to see which one comes
+ *** first in the Y order.  Returns 0 if they are the same, -1 if the first
+ *** object comes first, and 1 if the second object comes first (and thus
+ *** the first one is 'greater').
+ ***/
+int
+prt_internal_YCompare(pPrtObjStream first, pPrtObjStream second)
+    {
+    if (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))
+	return 1;
+    else if (first->PageY == second->PageY && first->PageX == second->PageX)
+	return 0;
+    else
+	return -1;
+    }
+
+
+/*** prt_internal_YMergeSetup_r() - determines the absolute page coordinates of
+ *** each object on the page, as well as setting up the initial sequential
+ *** ynext/yprev linkages to facilitate the sorting procedure.  Sets the
+ *** first_obj to the first object in the sequential (unsorted) chain.
+ ***/
+int
+prt_internal_YMergeSetup_r(pPrtObjStream obj)
+    {
+    pPrtObjStream objptr;
+    int cnt = 1;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
+	/** Set this object's absolute y/x positions **/
+	if (obj->ObjType->TypeID == PRT_OBJ_T_PAGE)
+	    {
+	    obj->PageX = 0.0;
+	    obj->PageY = 0.0;
+	    }
+	else
+	    {
+	    if (obj->Flags & PRT_OBJ_F_MARGINRELEASE)
+		{
+		obj->PageX = obj->Parent->PageX + obj->X;
+		obj->PageY = obj->Parent->PageY + obj->Y;
+		}
+	    else
+		{
+		obj->PageX = obj->Parent->PageX + obj->Parent->MarginLeft + obj->Parent->BorderLeft + obj->X;
+		obj->PageY = obj->Parent->PageY + obj->Parent->MarginTop + obj->Parent->BorderTop + obj->Y;
+		}
+	    }
+
+	for(objptr=obj->ContentHead;objptr;objptr=objptr->Next)
+	    {
+	    /** Do the subtree **/
+	    cnt += prt_internal_YMergeSetup_r(objptr);
+	    }
+
+    return cnt;
+    }
+
+
+/*** prt_internal_YMergeCopy_r() - copy the entire tree of object pointers into
+ *** an array, to be sorted.
+ ***/
+int
+prt_internal_YMergeCopy_r(pPrtObjStream obj, pPrtObjStream* arr)
+    {
+    int cnt = 0;
+    pPrtObjStream objptr;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
+	/** Copy all sublists **/
+	for(objptr=obj->ContentHead;objptr;objptr=objptr->Next)
+	    {
+	    arr[cnt++] = objptr;
+	    if (objptr->ContentHead)
+		cnt += prt_internal_YMergeCopy_r(objptr, arr+cnt);
+	    }
+
+    return cnt;
+    }
+
+
+/*** prt_internal_YMergeSort_r() - actually do the merge sort on the arrays
+ *** of print objects
+ ***/
+int
+prt_internal_YMergeSort_r(pPrtObjStream * arr1, pPrtObjStream * arr2, int cnt, int okleaf)
+    {
+    int i,j,found;
+    int m,dst;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
+	/** Do a selection sort if cnt <= 32, IF we are starting with the right buffer **/
+	if (cnt <= 32 && okleaf)
+	    {
+	    for(i=0;i<cnt;i++)
+		{
+		found=0;
+		for(j=1;j<cnt;j++)
+		    {
+		    if (!arr1[found])
+			found = j;
+		    else if (arr1[j] && prt_internal_YCompare(arr1[j], arr1[found]) < 0)
+			found = j;
+		    }
+		arr2[i] = arr1[found];
+		arr1[found] = NULL;
+		}
+	    }
+	else
+	    {
+	    /** merge sort 0...m-1 and m...cnt-1 **/
+	    /** sort the halves **/
+	    m = cnt / 2;
+	    if (prt_internal_YMergeSort_r(arr2, arr1, m, !okleaf) < 0) return -1;
+	    if (prt_internal_YMergeSort_r(arr2+m, arr1+m, cnt-m, !okleaf) < 0) return -1;
+
+	    /** Merge them **/
+	    dst = 0;
+	    i = 0;
+	    j = m;
+	    while(i<m || j<cnt)
+		{
+		if (i==m)
+		    arr2[dst++] = arr1[j++];
+		else if (j==cnt)
+		    arr2[dst++] = arr1[i++];
+		else if (prt_internal_YCompare(arr1[i], arr1[j]) <= 0)
+		    arr2[dst++] = arr1[i++];
+		else
+		    arr2[dst++] = arr1[j++];
+		}
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_internal_YPrintArray() - show the contents of a y sort array ***/
+int
+prt_internal_PrintArray(pPrtObjStream * arr, int cnt)
+    {
+    int i;
+
+	for(i=0;i<cnt;i++)
+	    {
+	    printf("%2.2d %8.8x: (%.2lf,%.2lf)\n", arr[i]->ObjType->TypeID, arr[i], arr[i]->PageX, arr[i]->PageY);
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_internal_YMergeSort() - do a merge sort on the entire tree of objects,
+ *** so we can output them in visually sorted order.
+ ***/
+pPrtObjStream
+prt_internal_YMergeSort(pPrtObjStream page)
+    {
+    pPrtObjStream first;
+    int cnt, i;
+    pPrtObjStream * arr1;
+    pPrtObjStream * arr2;
+
+	/** Setup pageX, pageY, and count the number of objects **/
+	cnt = prt_internal_YMergeSetup_r(page);
+	if (cnt <= 0) return NULL;
+	if (cnt >= INT_MAX / sizeof(pPrtObjStream)) return NULL;
+
+	/** Copy the objects into the array **/
+	arr1 = (pPrtObjStream *)nmSysMalloc(cnt * sizeof(pPrtObjStream));
+	arr2 = (pPrtObjStream *)nmSysMalloc(cnt * sizeof(pPrtObjStream));
+	arr1[0] = page;
+	prt_internal_YMergeCopy_r(page, arr1+1);
+
+	/** Now do the mergesort. **/
+	prt_internal_YMergeSort_r(arr1, arr2, cnt, 1);
+
+	/** Set up the links **/
+	for(i=0;i<cnt-1;i++)
+	    {
+	    arr2[i]->YNext = arr2[i+1];
+	    arr2[i]->YNext->YPrev = arr2[i];
+	    }
+	arr2[cnt-1]->YNext = NULL;
+	arr2[0]->YPrev = NULL;
+	first = arr2[0];
+	nmSysFree(arr1);
+	nmSysFree(arr2);
+
+    return first;
     }
 
 
@@ -524,23 +745,6 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 	(*first_obj)->YPrev = NULL;
 
     return total;
-    }
-
-
-/*** prt_internal_YCompare() - compares two objects to see which one comes
- *** first in the Y order.  Returns 0 if they are the same, -1 if the first
- *** object comes first, and 1 if the second object comes first (and thus
- *** the first one is 'greater').
- ***/
-int
-prt_internal_YCompare(pPrtObjStream first, pPrtObjStream second)
-    {
-    if (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))
-	return 1;
-    else if (first->PageY == second->PageY && first->PageX == second->PageX)
-	return 0;
-    else
-	return -1;
     }
 
 
@@ -737,6 +941,7 @@ prt_internal_Finalize_r(pPrtObjStream this)
 int 
 prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
     {
+    pPrtObjStream first;
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
 	ASSERTMAGIC(page, MGK_PRTOBJSTRM);
@@ -746,7 +951,9 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
 	    return -1;
 
 	/** Next, y-sort the page **/
-	if (prt_internal_YSort(page) < 0)
+	/*first = prt_internal_YSort(page);*/
+	first = prt_internal_YMergeSort(page);
+	if (!first)
 	    return -1;
 
 	/** Now, send it to the formatter **/

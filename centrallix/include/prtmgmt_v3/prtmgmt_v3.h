@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.5 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.6 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.6  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.5  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -329,7 +336,7 @@ typedef struct _PFM
     void*		(*Probe)();
     int			(*Generate)();
     int			(*GetNearestFontSize)();
-    double		(*GetCharacterMetric)();
+    void		(*GetCharacterMetric)();
     double		(*GetCharacterBaseline)();
     int			(*Close)();
     }
@@ -349,7 +356,7 @@ typedef struct _PD
     int			(*SetPageGeom)();
     int			(*SetTextStyle)();
     int			(*GetNearestFontSize)();
-    double		(*GetCharacterMetric)();
+    void		(*GetCharacterMetric)();
     double		(*GetCharacterBaseline)();
     int			(*SetHPos)();
     int			(*SetVPos)();

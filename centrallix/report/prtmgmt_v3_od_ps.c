@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.7 2007/09/18 18:12:56 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.8 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.8  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.7  2007/09/18 18:12:56  gbeeley
     - (bugfix) clean up after yourself, you silly module!  Make sure to wait()
       and clean up child processes so they aren't left hanging as zombies.
@@ -131,7 +138,7 @@ void* prt_psod_OpenPDF(pPrtSession);
 
 static PrtPsodFormat PsFormats[] =
     {
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	"/usr/bin/ps2pdf -dPDFSETTINGS=/prepress - -" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - -" },
 	{ NULL,		NULL,			NULL,			NULL }
     };
 
@@ -216,7 +223,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.7 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.8 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
@@ -642,8 +649,8 @@ prt_psod_GetNearestFontSize(void* context_v, int req_size)
  *** in a given font size, attributes, etc., in 10ths of an inch (relative to
  *** 10cpi, or 12point, fonts.
  ***/
-double
-prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style)
+void
+prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double n;
@@ -685,9 +692,10 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	    }
 
 	/** Adjust the width based on the font size.  Base size is 12pt **/
-	n = n*(style->FontSize/12.0);
+	*width = n*(style->FontSize/12.0);
+	*height = style->FontSize/12.0;
 
-    return n;
+    return;
     }
 
 

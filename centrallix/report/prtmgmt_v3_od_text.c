@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <math.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -47,10 +48,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.8 2008/03/29 02:26:17 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.9 2009/06/26 16:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.9  2009/06/26 16:18:59  gbeeley
+    - (change) GetCharacterMetric now returns both height and width
+    - (performance) change from bubble sort to merge sort for page generation
+      and output sequencing (this made a BIG difference)
+    - (bugfix) attempted fix of text output overlapping problems, but there
+      are still trouble points here.
+
     Revision 1.8  2008/03/29 02:26:17  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -160,11 +168,11 @@ prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text)
     {
     int row,col,i,len;
 
-	/** Which row to write into? **/
+	/** Which row to write into?  Must have at least one row for each 1.0 of y **/
 	row = 0;
 	while(row < y && row < PRT_TEXTOD_MAXROWS)
 	    {
-	    if (context->LineY[row] == 0.0) context->LineY[row] = row;
+	    if (context->LineY[row] == 0.0 && row != 0) context->LineY[row] = floor(context->LineY[row-1] + 1.00001);
 	    row++;
 	    }
 	if (row >= PRT_TEXTOD_MAXROWS) return -1; /* offpage */
@@ -184,6 +192,9 @@ prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text)
 		}
 	    context->LineY[row] = y;
 	    memset(context->PageBuf[row], 0, PRT_TEXTOD_MAXCOLS+1);
+	    for(i=0;i<PRT_TEXTOD_MAXCOLS;i++)
+		{
+		}
 	    }
 
 	/** Ok, found a row.  Now point to the col, padding with spaces if needed. **/
@@ -344,11 +355,13 @@ prt_textod_GetNearestFontSize(void* context_v, int req_size)
  *** 10cpi, or 12point, fonts.  For the plain text driver, we just return the
  *** length of the string, since there is only one font - fixed 12point courier.
  ***/
-double
-prt_textod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style)
+void
+prt_textod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)
     {
     /*pPrtTextodInf context = (pPrtTextodInf)context_v;*/
-    return strlen((char*)str);
+    *width = strlen((char*)str);
+    *height = 1;
+    return;
     }
 
 
