@@ -29,16 +29,17 @@ function htutil_unpack(str)
     return ret;
     }
 
-function htutil_encode(s) 
+function htutil_encode(s, allowbrk) 
     {
     var rs = '';
+    if (s === null) return s;
     s = String(s);
     for(var i=0;i<s.length;i++) 
         {
 	if (s.charAt(i) == '<') rs += '&lt;';	
 	else if (s.charAt(i) == '>') rs += '&gt;';
 	else if (s.charAt(i) == '&') rs += '&amp;';
-	else if (s.charAt(i) == ' ') rs += '&nbsp;';
+	else if (s.charAt(i) == ' ' && !allowbrk) rs += '&nbsp;';
 	else if (s.charAt(i) == "'") rs += '&#39;';
 	else if (s.charAt(i) == "\"") rs += '&quot;';
 	else rs += s.charAt(i);
@@ -48,6 +49,7 @@ function htutil_encode(s)
 
 function htutil_nlbr(s)
     {
+    if (s === null) return s;
     var re = /\n\r?/g;
     return String(s).replace(re, "<br>");
     }
@@ -103,6 +105,7 @@ function htutil_escape(s)
 function htutil_obscure(s)
     {
     if (!obscure_data) return s;
+    if (s === null) return s;
     var new_s = String('');
     s = String(s);
     
