@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2007 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2008 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -9,36 +9,42 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-//SETH: ?? check below
-/*
-  I (Seth) think that cmpd_init is only used in server's generation of
-  components.
- */
-
-
 function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.gname = ? name
     {
-    // 'component' is access point for stuff inside, shell is access point for stuff outside.
+    // component is access point for stuff inside, shell is access point for stuff outside.
     var component = node;
     var shell = wgtrGetNode(param.gns, param.gname);
 
     // interface init
     ifc_init_widget(component);
-    component.ifcProbeAdd(ifAction);
-    component.ifcProbeAdd(ifEvent);
+    var ia = component.ifcProbeAdd(ifAction);
+    ia.Add("TriggerEvent", cmpd_action_trigger_event);
+    var ie = component.ifcProbeAdd(ifEvent);
     shell.RegisterComponent(component);
+    wgtrRegisterContainer(component, shell);
 
     component.addAction = cmpd_add_action;
     component.addEvent = cmpd_add_event;
     component.addProp = cmpd_add_prop;
+    component.postInit = cmpd_post_init;
     component.handleAction = cmpd_handle_action;
     component.ifcProbe(ifAction).Add('ModifyProperty', cmpd_action_modify_property);
+    component.ifcProbe(ifEvent).Add('LoadComplete');
     component.shell = shell;
     component.is_visual = param.vis;
     component.FindContainer = cmpd_find_container;
 
+    // expose events/actions on a subwidget
+    if (param.expe) component.expe = param.expe;
+    if (param.expa) component.expa = param.expa;
+    if (param.expp) component.expp = param.expp;
+
+    //if (param.expe || param.expa || param.expp)
+    //	pg_addsched_fn(component, "postInit", [], 0);
+
     // Obscure/Reveal
     component.HandleReveal = cmpd_handle_reveal;
+    component.HandleLoadComplete = cmpd_handle_load_complete;
     component.Reveal = cmpd_cb_reveal;
     pg_reveal_register_triggerer(component);
 
@@ -48,8 +54,76 @@ function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.
     return component;
     }
 
+function cmpd_endinit(c)
+    {
+    if (c.expe || c.expa || c.expp) c.postInit();
+    return;
+    }
 
-// START SECTION: helper functions ---------------------------------------------
+function cmpd_post_init()
+    {
+    if (this.expe)
+	{
+	var ewidget = wgtrGetNode(this, this.expe);
+	if (ewidget && ewidget.ifcProbe(ifEvent))
+	    {
+	    var elist = ewidget.ifcProbe(ifEvent).GetEventList();
+	    for(var e in elist)
+		{
+		if (!this.ifcProbe(ifAction).Exists(elist[e]))
+		    {
+		    if (!this.shell.ifcProbe(ifEvent).Exists(elist[e]))
+			this.shell.ifcProbe(ifEvent).Add(elist[e]);
+		    this.ifcProbe(ifAction).Add(elist[e], new Function('aparam','return this.handleAction("' + elist[e] + '",aparam);'));
+		    ewidget.ifcProbe(ifEvent).Connect(elist[e], wgtrGetName(this), elist[e], null);
+		    }
+		}
+	    }
+	}
+    if (this.expa)
+	{
+	var awidget = wgtrGetNode(this, this.expa);
+	if (awidget && awidget.ifcProbe(ifAction))
+	    {
+	    var alist = awidget.ifcProbe(ifAction).GetActionList();
+	    for(var a in alist)
+		{
+		if (!this.shell.ifcProbe(ifAction).Exists(alist[a]))
+		    {
+		    this.addAction(alist[a]);
+		    this.ifcProbe(ifEvent).Connect(alist[a], wgtrGetName(awidget), alist[a], null);
+		    }
+		}
+	    }
+	}
+
+    if (this.expp)
+	{
+	var w = wgtrGetNode(this, this.expp);
+	if (w)
+	    {
+	    this.shell.registerPropTarget(this, w);
+	    }
+	}
+
+    // notify parent component?
+    var pc = wgtrFindContainer(this.shell, "widget/component-decl");
+    if (pc)
+	{
+	pc.postInit();
+	}
+    }
+
+
+// Called when something *inside* the component wants to trigger what
+// would normally be an action invoked from outside.  This results in
+// an event internally with the name specified by aparam.EventName
+function cmpd_action_trigger_event(aparam)
+    {
+    if (!aparam.EventName) return;
+    return cn_activate(this, aparam.EventName, aparam);
+    }
+
 
 // >> Makes sure containers, from innermost to outermost, are
 // displayed to the user.  Used when a control receives keyboard focus
@@ -64,7 +138,7 @@ function cmpd_showcontainer(l,x,y)
 // given element.  Replacement for the old fm_current logic.
 function cmpd_find_container(t)
     {
-    return wgtrfindContainer(this.shell, t);
+    return wgtrFindContainer(this.shell, t);
     }
 
 function cmpd_cb_reveal(e)
@@ -85,9 +159,9 @@ function cmpd_handle_reveal(ename, ctx)
     return pg_reveal_event(this, ctx, ename);
     }
 
-function cmpd_endinit(c)
+function cmpd_handle_load_complete()
     {
-    return;
+    this.ifcProbe(ifEvent).Activate('LoadComplete', {});
     }
 
 function cmpd_add_action(a)
@@ -137,15 +211,13 @@ function cmpd_shell_prop_change(p,o,n)
 // when an action is called externally, trigger an internal event on the component
 function cmpd_shell_handle_action(a,aparam)
     {
-    cn_activate(this.component, a, aparam);
-    return;
+    return cn_activate(this.component, a, aparam);
     }
 
 // when an action is called internally, trigger an external event on the shell
 function cmpd_handle_action(a,aparam)
     {
-    cn_activate(this.shell, a, aparam);
-    return;
+    return cn_activate(this.shell, a, aparam);
     }
 
 // set the context of the component
