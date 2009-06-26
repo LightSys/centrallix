@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.41 2008/06/25 18:33:27 gbeeley Exp $
+    $Id: obj.h,v 1.42 2009/06/26 16:37:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.42  2009/06/26 16:37:02  gbeeley
+    - (change) new function objCurrentDate() to support getdate() and others
+    - (bugfix) misformatting of floating point data type in some circumstances
+    - (change) new version of objDataFromString to provide for allocating and
+      non-allocating interfaces
+
     Revision 1.41  2008/06/25 18:33:27  gbeeley
     - (change) max num of data type string names should be declared publicly.
 
@@ -704,6 +710,7 @@ typedef struct _OF
 #define	OBJ_F_CREATED		2	/* O_CREAT requested; object didn't exist but was created */
 #define OBJ_F_DELETE		4	/* object should be deleted on final close */
 #define OBJ_F_NOCACHE		8	/* object should *not* be cached by the Directory Cache */
+#define	OBJ_F_METAONLY		16	/* user opened '?' object */
 
 
 /** structure used for sorting a query result set. **/
@@ -998,6 +1005,9 @@ int objCopyData(pObjData src, pObjData dst, int type);
 int objTypeID(char* name);
 int objDebugDate(pDateTime dt);
 int objDataFromString(pObjData pod, int type, char* str);
+int objDataFromStringAlloc(pObjData pod, int type, char* str);
+char* objFormatMoneyTmp(pMoneyType m, char* format);
+int objCurrentDate(pDateTime dt);
 
 
 /** objectsystem replication services - open object notification (Rn) system **/

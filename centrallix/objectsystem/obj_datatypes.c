@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.24 2008/07/31 00:10:58 jncraton Exp $
+    $Id: obj_datatypes.c,v 1.25 2009/06/26 16:37:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.25  2009/06/26 16:37:02  gbeeley
+    - (change) new function objCurrentDate() to support getdate() and others
+    - (bugfix) misformatting of floating point data type in some circumstances
+    - (change) new version of objDataFromString to provide for allocating and
+      non-allocating interfaces
+
     Revision 1.24  2008/07/31 00:10:58  jncraton
     - (change) Modified internal_FormatDate and internal_FormatMoney to do length
       checking and make use of XString
@@ -337,6 +343,25 @@ obj_internal_SetDateLang(char* dest_array[], int array_cnt, char* src_array[])
     return 0;
     }
 
+
+int
+objCurrentDate(pDateTime dt)
+    {
+    struct tm* tmptr;
+    time_t t;
+
+	t = time(NULL);
+	tmptr = localtime(&t);
+	dt->Value = 0;
+	dt->Part.Second = tmptr->tm_sec;
+	dt->Part.Minute = tmptr->tm_min;
+	dt->Part.Hour = tmptr->tm_hour;
+	dt->Part.Day = tmptr->tm_mday - 1;
+	dt->Part.Month = tmptr->tm_mon;
+	dt->Part.Year = tmptr->tm_year;
+
+    return 0;
+    }
 
 /*** obj_internal_FormatDate - formats a date/time value to the given string
  *** value.
@@ -1106,7 +1131,10 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		else
 		    {
 		    /** Otherwise, add decimal point for 'proper form' **/
-		    strcpy(ptr+1,".0");
+		    if (flags & DATA_F_QUOTED)
+			strcpy(ptr,".0 ");
+		    else
+			strcpy(ptr+1,".0");
 		    }
 		ptr = sbuf;
 		break;
@@ -2027,8 +2055,8 @@ objDebugDate(pDateTime dt)
     }
 
 
-/*** objDataFromString() - convert data from a string value to a data type
- *** that is specified.
+/*** objDataFromString() - same as objDataFromStringAlloc, but is based on
+ *** the caller having allocated the memory.
  ***/
 int
 objDataFromString(pObjData pod, int type, char* str)
@@ -2041,7 +2069,7 @@ objDataFromString(pObjData pod, int type, char* str)
 		break;
 
 	    case DATA_T_STRING:
-		pod->String = nmSysStrdup(str);
+		pod->String = str;
 		break;
 
 	    case DATA_T_DOUBLE:
@@ -2049,17 +2077,53 @@ objDataFromString(pObjData pod, int type, char* str)
 		break;
 
 	    case DATA_T_DATETIME:
+		objDataToDateTime(DATA_T_STRING, str, pod->DateTime, NULL);
+		break;
+
+	    case DATA_T_MONEY:
+		objDataToMoney(DATA_T_STRING, str, pod->Money);
+		break;
+
+	    default:
+		return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** objDataFromStringAlloc() - convert data from a string value to a data type
+ *** that is specified.
+ ***/
+int
+objDataFromStringAlloc(pObjData pod, int type, char* str)
+    {
+    
+	switch(type)
+	    {
+	    case DATA_T_INTEGER:
+	    case DATA_T_STRING:
+	    case DATA_T_DOUBLE:
+		break;
+
+	    case DATA_T_DATETIME:
 		pod->DateTime = (pDateTime)nmMalloc(sizeof(DateTime));
 		if (!pod->DateTime) return -1;
-		objDataToDateTime(DATA_T_STRING, str, pod->DateTime, NULL);
 		break;
 
 	    case DATA_T_MONEY:
 		pod->Money = (pMoneyType)nmMalloc(sizeof(MoneyType));
 		if (!pod->Money) return -1;
-		objDataToMoney(DATA_T_STRING, str, pod->Money);
 		break;
+
+	    default:
+		return -1;
 	    }
+
+	if (objDataFromString(pod, type, str) < 0) return -1;
+
+	if (type == DATA_T_STRING)
+	    pod->String = nmSysStrdup(pod->String);
 
     return 0;
     }
