@@ -1,0 +1,43 @@
+$Version=2$
+framed_tree "widget/component-decl"
+    {
+    width=200; height=200;
+
+    bgcolor "widget/parameter" { type=string; default=null; }
+    source "widget/parameter" { type=string; default="/"; }
+    show_root "widget/parameter" { type=string; default="no"; }
+    order "widget/parameter" { type=string; default="asc"; }
+    highlight_bgcolor "widget/parameter" { type=string; default=null; }
+    highlight_fgcolor "widget/parameter" { type=string; default=null; }
+    icon "widget/parameter" { type=string; default=null; }
+
+    expose_events_for = tree;
+    expose_actions_for = tree;
+    expose_properties_for = tree;
+
+    tree_pane "widget/pane" 
+	{
+	x=0;y=0;width=200;height=200;
+	style=lowered;
+	bgcolor=runserver(:this:bgcolor);
+
+	tree_scroll "widget/scrollpane"
+	    {
+	    x=0;y=0;width=198;height=198;
+
+	    tree "widget/treeview"
+		{
+		x=0;y=0;width=178;
+		order=runserver(:this:order);
+		icon=runserver(:this:icon);
+		highlight_bgcolor=runserver(:this:highlight_bgcolor);
+		highlight_fgcolor=runserver(:this:highlight_fgcolor);
+		source=runserver(:this:source);
+		show_root=runserver(:this:show_root);
+		show_branches=yes;
+		show_root_branch = yes;
+		use_3d_lines=no;
+		}
+	    }
+	}
+    }
