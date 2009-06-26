@@ -220,65 +220,65 @@ function cx_parse_hints(hstr)
 		{
 		switch(attrval[0])
 		    {
-		    case "DefaultExpr":
+		    case "d":
 			ph.DefaultExpr = unescape(attrval[1]);
 			break;
-		    case "Constraint":
+		    case "c":
 			ph.Constraint = unescape(attrval[1]);
 			break;
-		    case "MinValue":
+		    case "m":
 			ph.MinValue = unescape(attrval[1]);
 			break;
-		    case "MaxValue":
+		    case "M":
 			ph.MaxValue = unescape(attrval[1]);
 			break;
-		    case "EnumList":
+		    case "el":
 			ph.EnumList = attrval[1].split(",");
 			for(var j=0; j<ph.EnumList.length; j++)
 			    {
 			    ph.EnumList[j] = unescape(ph.EnumList[j]);
 			    }
 			break;
-		    case "EnumQuery":
+		    case "eq":
 			ph.EnumQuery = unescape(attrval[1]);
 			break;
-		    case "Format":
+		    case "fm":
 			ph.Format = unescape(attrval[1]);
 			break;
-		    case "AllowChars":
+		    case "ac":
 			ph.AllowChars = unescape(attrval[1]);
 			break;
-		    case "BadChars":
+		    case "bc":
 			ph.BadChars = unescape(attrval[1]);
 			break;
-		    case "Length":
+		    case "l":
 			ph.Length = parseInt(attrval[1]);
 			break;
-		    case "VisualLength":
+		    case "v1":
 			ph.VisualLength = parseInt(attrval[1]);
 			break;
-		    case "VisualLength2":
+		    case "v2":
 			ph.VisualLength2 = parseInt(attrval[1]);
 			break;
-		    case "BitmaskRO":
+		    case "r":
 			ph.BitmaskRO = parseInt(attrval[1]);
 			break;
-		    case "Style":
+		    case "s":
 			var twostyles = attrval[1].split(",",2);
 			if (twostyles.length == 1) twostyles[1] = twostyles[0];
 			ph.Style = parseInt(twostyles[0]);
 			ph.StyleMask = parseInt(twostyles[1]);
 			break;
-		    case "GroupID":
+		    case "G":
 			ph.GroupID = parseInt(attrval[1]);
 			break;
-		    case "GroupName":
+		    case "gn":
 			ph.GroupName = unescape(attrval[1]);
 			break;
-		    case "OrderID":
+		    case "O":
 			ph.OrderID = parseInt(attrval[1]);
 			break;
-		    case "FriendlyName":
+		    case "fn":
 			ph.FriendlyName = unescape(attrval[1]);
 			break;
 		    }
@@ -309,6 +309,7 @@ function cx_hints_startnew(e)
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr) 
 	    {
 	    var _context = wgtrGetRoot(e);
+	    var _this = e;
 	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
 	    if (e.form) e.form.DataNotify(e);
 	    }
@@ -325,6 +326,7 @@ function cx_hints_startmodify(e)
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr && (e.cx_hints['all'].Style & cx_hints_style.alwaysdef))
 	    {
 	    var _context = wgtrGetRoot(e);
+	    var _this = e;
 	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
 	    if (e.form) e.form.DataNotify(e);
 	    }
