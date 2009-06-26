@@ -400,7 +400,8 @@ function pg_layers(o)
 	return null;
     if(cx__capabilities.Dom1HTML)
 	{
-	return o.getElementsByTagName("DIV");
+	var divs = o.getElementsByTagName("DIV");
+	return divs;
 	}
     else if(cx__capabilities.Dom0NS || cx__capabilities.Dom0IE)
 	{
@@ -449,6 +450,18 @@ function pg_set(o,a,v)
     else
 	{
 	o[a]=v;
+	}
+    }
+
+function pg_get(o,a)
+    {
+    if(cx__capabilities.Dom1HTML)
+	{
+	return o.getAttribute(a);
+	}
+    else
+	{
+	return o[a];
 	}
     }
 
@@ -982,7 +995,12 @@ function pg_stackpopup(p,l)
 
     if (win == window || win == document)
 	{
-	moveAbove(p,doclayers[0]);
+	// work around firebug bug
+	if (doclayers[0].id == '_firebugConsole')
+	    found_win = doclayers[1];
+	else
+	    found_win = doclayers[0];
+	moveAbove(p,found_win);
 	htr_setzindex(p, min_z + 1000);
 	}
     else
@@ -1001,7 +1019,7 @@ function pg_positionpopup(p, x, y, h, w)
     var posx, posy;
 
     // Determine vertical (Y) position of where we can pop up...
-    if (y + h + getClipHeight(p) <= getInnerHeight())
+    if (y + h + getClipHeight(p) < getInnerHeight() - 1)
 	posy = y + h;
     else if (y - getClipHeight(p) >= 0)
 	posy = y - getClipHeight(p);
@@ -1046,7 +1064,7 @@ function pg_togglecursor()
 /** Keyboard input handling **/
 function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam) //SETH: ??
     {
-    kd = {};
+    var kd = {};
     kd.startcode = s;
     kd.endcode = e;
     kd.mod = mod;
@@ -1219,7 +1237,7 @@ function pg_load_page(aparam) //SETH: ??
 	newurl = window.location.href;
     for(var p in aparam)
 	{
-	if (p == '_Origin' || p == 'Source') continue;
+	if (p == '_Origin' || p == 'Source' || p == '_EventName') continue;
 	var v = aparam[p];
 	if (newurl.lastIndexOf('?') > newurl.lastIndexOf('/'))
 	    newurl += '&';
@@ -1396,6 +1414,7 @@ function pg_dosched()
 		{
 		// evaluate expression
 		var _context = null;
+		var _this = sched_item.obj;
 		if (wgtrIsNode(sched_item.obj))
 		    _context = wgtrGetRoot(sched_item.obj);
 		with (sched_item.obj) { eval(sched_item.exp); }
@@ -1434,6 +1453,7 @@ function pg_expression(o,p,e,l,c)
     var _context = window[c];
     var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
+    var _this = node;
     wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
@@ -1441,13 +1461,16 @@ function pg_expression(o,p,e,l,c)
 	var item = l[i];
 	var ref;
 	item[2] = nodelist[item[0]]; // get obj reference
-	if (item[2].reference && (ref = item[2].reference()))
-	    item[2] = ref;
-	item[2].pg_expchange = pg_expchange;
-	if (item[2].ifcProbe && item[2].ifcProbe(ifValue) && item[2].ifcProbe(ifValue).Exists(item[1]))
-	    item[2].ifcProbe(ifValue).Watch(item[1], pg_expchange);
-	else
-	    htr_watch(item[2],item[1],"pg_expchange");
+	if (item[2])
+	    {
+	    if (item[2].reference && (ref = item[2].reference()))
+		item[2] = ref;
+	    item[2].pg_expchange = pg_expchange;
+	    if (item[2].ifcProbe && item[2].ifcProbe(ifValue) && item[2].ifcProbe(ifValue).Exists(item[1]))
+		item[2].ifcProbe(ifValue).Watch(item[1], null, pg_expchange);
+	    else
+		htr_watch(item[2],item[1],"pg_expchange");
+	    }
 	}
     }
 
@@ -1455,6 +1478,7 @@ function pg_expchange_cb(exp) //SETH: ??
     {
     var node = wgtrGetNode(window[exp.Context], exp.Objname);
     var _context = window[exp.Context];
+    var _this = node;
     wgtrSetProperty(node, exp.Propname, eval(exp.Expression));
     }
 
@@ -1479,6 +1503,12 @@ function pg_expchange(p,o,n)
 
 //END SECTION: 'expression' functions ----------------------------------------
 
+function pg_reclaim_objects()
+    {
+    pg_hidebox(document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"));
+    pg_hidebox(document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"));
+    if (ibeam_current) moveAbove(ibeam_current, document.getElementById("pgtvl"));
+    }
 
 //SETH: this function seems to implement the 'blur' event.
 function pg_removemousefocus()
@@ -1781,7 +1811,7 @@ function pg_serialized_load_doone()
 	    }
 
 	if (pg_loadqueue.length > 0)
-	    pg_addsched_fn(window, 'pg_serialized_load_doone', {}, 0);
+	    pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
 	else
 	    if (pg_waitlyr) 
 		{
@@ -1803,9 +1833,9 @@ function pg_serialized_load_cb()
 	}
 
     if (pg_loadqueue.length > 0)
-	pg_addsched_fn(window, 'pg_serialized_load_doone', {}, 0);
+	pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
     else
-	if (pg_waitlyr)
+	if (pg_waitlyr && !pg_loadqueue_busy)
 	    {
 	    if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
 	    pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
@@ -1856,6 +1886,27 @@ function pg_reveal_register_listener(l)
 	return false;
 	}
     }
+
+
+// pg_reveal_is_visible() - return true if an object is revealed, false if
+// it is obscured.  The object need not be a listener or triggerer.
+function pg_reveal_is_visible(l)
+    {
+    // listener
+    if (typeof l.__pg_reveal_listener_visible != 'undefined')
+	return l.__pg_reveal_listener_visible;
+
+    // not listener - find a triggerer and go with that
+    while (l && !l.__pg_reveal_is_triggerer && !wgtrIsRoot(l)) l = wgtrGetParent(l);
+
+    // found a triggerer
+    if (l && l.__pg_reveal_is_triggerer)
+	return l.__pg_reveal_visible && l.__pg_reveal_parent_visible;
+
+    // otherwise, fail
+    return false;
+    }
+
 
 // pg_reveal_register_triggerer() - when a layer/div states that it can
 // generate reveal/obscure events that need to be arbitrated by this
