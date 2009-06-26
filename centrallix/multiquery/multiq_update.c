@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_update.c,v 1.1 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiq_update.c,v 1.2 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_update.c,v $
 
     $Log: multiq_update.c,v $
+    Revision 1.2  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.1  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -225,13 +234,15 @@ mqu_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
 int
 mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     {
-    int i;
+    int i,j;
     pQueryElement cld;
     pExpression exp, assign_exp;
     int rval = -1;
     int cld_rval;
     int is_started = 0;
     int t;
+    pXArray objects_to_update = NULL;
+    pParamObjects objlist;
     /*ObjData od;*/
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
@@ -246,6 +257,10 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	/** Set iteration cnt to 0 **/
 	qe->IterCnt = 0;
 
+	objects_to_update = (pXArray)nmMalloc(sizeof(XArray));
+	if (!objects_to_update) goto error;
+	xaInit(objects_to_update, 16);
+
 	/** Retrieve matching records **/
 	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, mq)) == 1)
 	    {
@@ -255,46 +270,96 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		/** Got a matching row, count it and update it **/
 		qe->IterCnt++;
 
-		/** Loop through list of values to set **/
-		for(i=0;i<qe->AttrNames.nItems;i++)
-		    {
-		    if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
-			{
-			exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-			assign_exp = (pExpression)(qe->AttrAssignExpr.Items[i]);
-
-			/** Get the value to be assigned **/
-			if (expEvalTree(exp, mq->ObjList) < 0) 
-			    {
-			    mssError(0,"MQU","Could not evaluate UPDATE expression's value");
-			    goto error;
-			    }
-			t = exp->DataType;
-			if (t <= 0)
-			    {
-			    mssError(1,"MQU","Could not evaluate UPDATE expression's value");
-			    goto error;
-			    }
-
-			/** Set the attribute on the object **/
-			if (expCopyValue(exp, assign_exp, 1) < 0)
-			    {
-			    mssError(1,"MQU","Could not handle UPDATE expression's value");
-			    goto error;
-			    }
-			if (expReverseEvalTree(assign_exp, mq->ObjList) < 0)
-			    goto error;
-			}
-		    }
+		/** Save it for later **/
+		objlist = expCreateParamList();
+		if (!objlist) goto error;
+		expCopyList(mq->ObjList, objlist);
+		for(i=0;i<objlist->nObjects;i++)
+		    if (i >= mq->nProvidedObjects)
+			if (objlist->Objects[i])
+			    objLinkTo(objlist->Objects[i]);
+		xaAddItem(objects_to_update, (void*)objlist);
 		}
 	    }
+
+	is_started = 0;
+	if (cld->Driver->Finish(cld, mq) < 0)
+	    goto error;
 
 	if (cld_rval < 0)
 	    goto error;
 
+	/** Update the retrieved records **/
+	for(i=0;i<mq->ObjList->nObjects;i++)
+	    {
+	    if (mq->ObjList->Objects[i]) 
+		if (i >= mq->nProvidedObjects) 
+		    if (mq->ObjList->Objects[i])
+			objClose(mq->ObjList->Objects[i]);
+	    mq->ObjList->Objects[i] = NULL;
+	    }
+	for(j=0;j<objects_to_update->nItems;j++)
+	    {
+	    objlist = (pParamObjects)xaGetItem(objects_to_update, j);
+	    expCopyList(objlist, mq->ObjList);
+
+	    /** Loop through list of values to set **/
+	    for(i=0;i<qe->AttrNames.nItems;i++)
+		{
+		if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
+		    {
+		    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+		    assign_exp = (pExpression)(qe->AttrAssignExpr.Items[i]);
+
+		    /** Get the value to be assigned **/
+		    if (expEvalTree(exp, mq->ObjList) < 0) 
+			{
+			mssError(0,"MQU","Could not evaluate UPDATE expression's value");
+			goto error;
+			}
+		    t = exp->DataType;
+		    if (t <= 0)
+			{
+			mssError(1,"MQU","Could not evaluate UPDATE expression's value");
+			goto error;
+			}
+
+		    /** Set the attribute on the object **/
+		    if (expCopyValue(exp, assign_exp, 1) < 0)
+			{
+			mssError(1,"MQU","Could not handle UPDATE expression's value");
+			goto error;
+			}
+		    if (expReverseEvalTree(assign_exp, mq->ObjList) < 0)
+			goto error;
+		    }
+		}
+	    }
+
+	for(i=0;i<mq->ObjList->nObjects;i++)
+	    mq->ObjList->Objects[i] = NULL;
+
 	rval = 0;
 
     error:
+	if (objects_to_update)
+	    {
+	    for(i=0;i<objects_to_update->nItems;i++)
+		{
+		objlist = (pParamObjects)xaGetItem(objects_to_update, i);
+		if (objlist)
+		    {
+		    for(j=0;j<objlist->nObjects;j++)
+			if (j >= mq->nProvidedObjects)
+			    if (objlist->Objects[j])
+				objClose(objlist->Objects[j]);
+		    expFreeParamList(objlist);
+		    }
+		}
+	    xaDeInit(objects_to_update);
+	    nmFree(objects_to_update, sizeof(XArray));
+	    }
+
 	/** Close the SELECT **/
 	if (is_started)
 	    if (cld->Driver->Finish(cld, mq) < 0)

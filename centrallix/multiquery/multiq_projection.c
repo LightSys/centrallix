@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.11 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.12 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.12  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.11  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -147,6 +156,8 @@ struct
     }
     MQPINF;
 
+pFile mqp_log;
+
 /*** used by subtree projections to remember what depth objects were at, etc. ***/
 typedef struct _MSI
     {
@@ -169,6 +180,28 @@ typedef struct
     pMqpSbtInf	CtxCurrent;
     }
     MqpSubtrees, *pMqpSubtrees;
+
+
+/*** used by the single-row result set caching mechanism ***/
+typedef struct
+    {
+    pObject	Obj;		/* the cached object */
+    char*	Criteria;	/* serialized 'where' clause (cx sql) */
+    int		nMatches;	/* total number of matches against the criteria */
+    int		LastMatch;
+    }
+    MqpOneRow, *pMqpOneRow;
+
+#define MQP_MAX_ROWCACHE	128
+
+typedef struct
+    {
+    XArray	Cache;		/* of type pMqpOneRow */
+    int		LastMatch;	/* serial counter for MqpOneRow.LastMatch */
+    XString	CriteriaBuf;
+    int		CurCached;	/* set to N if current Start() is using the cache, -1 otherwise */
+    }
+    MqpRowCache, *pMqpRowCache;
 
 
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
@@ -429,6 +462,7 @@ mqpAnalyze(pMultiQuery mq)
 	    qe = mq_internal_AllocQE();
 	    qe->Driver = MQPINF.ThisDriver;
 	    qe->QSLinkage = (void*)from_qs;
+	    qe->OrderPrio = 999;
 
 	    /** Find the index of the object for this FROM clause **/
 	    src_idx = expLookupParam(mq->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
@@ -468,7 +502,7 @@ mqpAnalyze(pMultiQuery mq)
 		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
 		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if (where_item->Expr->ObjCoverageMask == (1<<src_idx))
+		    if ((where_item->Expr->ObjCoverageMask & (~mq->ProvidedObjMask)) == (1<<src_idx))
 		        {
 			/** Add this expression into the constraint for this element **/
 			if (qe->Constraint == NULL)
@@ -516,6 +550,8 @@ mqpAnalyze(pMultiQuery mq)
 		        {
 			j=0;
 			while(qe->OrderBy[j]) j++;
+			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
+			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
 			qe->OrderBy[j] = exp_internal_CopyTree(item->Expr);
 			qe->OrderBy[j+1] = NULL;
 			expRemapID(qe->OrderBy[j], src_idx, 0);
@@ -534,6 +570,8 @@ mqpAnalyze(pMultiQuery mq)
 		        {
 			j=0;
 			while(qe->OrderBy[j]) j++;
+			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
+			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
 			qe->OrderBy[j] = item->Expr;
 			item->Expr = NULL;
 			qe->OrderBy[j+1] = NULL;
@@ -553,6 +591,7 @@ mqpAnalyze(pMultiQuery mq)
 	    /** Setup the object that this will use. **/
 	    qe->SrcIndex = src_idx;
 	    if (from_qs->Flags & MQ_SF_FROMSUBTREE) qe->Flags |= MQ_EF_FROMSUBTREE;
+	    if (from_qs->Flags & MQ_SF_INCLSUBTREE) qe->Flags |= MQ_EF_INCLSUBTREE;
 	    from_qs->Flags |= MQ_SF_USED;
 	    from_qs->QELinkage = qe;
 
@@ -568,6 +607,134 @@ mqpAnalyze(pMultiQuery mq)
     }
 
 
+/*** mqp_internal_CheckConstraint - validate the constraint, if any, on the
+ *** current qe and mq.  Return -1 on error, 0 if fail, 1 if pass.
+ ***/
+int
+mqp_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
+    {
+
+	/** Validate the constraint expression, otherwise succeed by default **/
+        if (qe->Constraint)
+            {
+            expEvalTree(qe->Constraint, mq->ObjList);
+	    if (qe->Constraint->DataType != DATA_T_INTEGER)
+	        {
+	        mssError(1,"MQP","WHERE clause item must have a boolean/integer value.");
+	        return -1;
+	        }
+	    if (!(qe->Constraint->Flags & EXPR_F_NULL) && qe->Constraint->Integer != 0) return 1;
+	    }
+        else
+	    {
+            return 1;
+	    }
+
+    return 0;
+    }
+
+
+/*** mqp_internal_CacheRow - add a row to the single-row result set cache
+ ***/
+int
+mqp_internal_CacheRow(pMultiQuery mq, pQueryElement qe, pExpression criteria, pObject obj)
+    {
+    pMqpRowCache rc;
+    pMqpOneRow row;
+    pMqpOneRow fewest_matches;
+    int fewest_matches_id;
+    int i;
+
+	/** Set up the cache itself? **/
+	if (!qe->PrivateData)
+	    {
+	    qe->PrivateData = nmMalloc(sizeof(MqpRowCache));
+	    rc = (pMqpRowCache)(qe->PrivateData);
+	    xaInit(&rc->Cache, MQP_MAX_ROWCACHE);
+	    xsInit(&rc->CriteriaBuf);
+	    rc->LastMatch = 0;
+	    }
+	else
+	    rc = (pMqpRowCache)(qe->PrivateData);
+
+	/** Need to prune the cache of one item? **/
+	if (rc->Cache.nItems == MQP_MAX_ROWCACHE)
+	    {
+	    fewest_matches = xaGetItem(&rc->Cache, 0);
+	    fewest_matches_id = 0;
+	    for(i=1;i<MQP_MAX_ROWCACHE;i++)
+		{
+		row = xaGetItem(&rc->Cache, i);
+		if (row->LastMatch < rc->LastMatch - (MQP_MAX_ROWCACHE * 2))
+		    {
+		    /** stale item **/
+		    fewest_matches = row;
+		    fewest_matches_id = i;
+		    break;
+		    }
+		if (row->nMatches < fewest_matches->nMatches || (row->nMatches == fewest_matches->nMatches && row->LastMatch < fewest_matches->LastMatch))
+		    {
+		    /** least used item **/
+		    fewest_matches = row;
+		    fewest_matches_id = i;
+		    }
+		}
+	    /*fdQPrintf(mqp_log, "DISC:  %STR (%POS)\n", fewest_matches->Criteria, fewest_matches_id);*/
+	    xaRemoveItem(&rc->Cache, fewest_matches_id);
+	    nmSysFree(fewest_matches->Criteria);
+	    if (fewest_matches->Obj) objClose(fewest_matches->Obj);
+	    row = fewest_matches;
+	    }
+	else
+	    {
+	    row = (pMqpOneRow)nmMalloc(sizeof(MqpOneRow));
+	    }
+
+	/** Create a new item **/
+	row->LastMatch = rc->LastMatch++;
+	row->nMatches = 0;
+	row->Obj = obj;
+	xsCopy(&rc->CriteriaBuf, "", 0);
+	if (criteria) expGenerateText(criteria, mq->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	row->Criteria = nmSysStrdup(rc->CriteriaBuf.String);
+	xaAddItem(&rc->Cache, row);
+	/*fdQPrintf(mqp_log, "ADD:   %STR (%POS)\n", row->Criteria, xaCount(&rc->Cache)-1);*/
+
+    return 0;
+    }
+
+
+/*** mqp_internal_CheckCache() - look in the single row result set cache
+ *** for something that matches the current Constraint.  Returns -1 if not
+ *** found in the cache, and the cache id otherwise.
+ ***/
+int
+mqp_internal_CheckCache(pMultiQuery mq, pMqpRowCache rc, pExpression criteria)
+    {
+    int i;
+    pMqpOneRow row;
+
+	xsCopy(&rc->CriteriaBuf, "", 0);
+	if (criteria) expGenerateText(criteria, mq->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	for(i=0;i<rc->Cache.nItems;i++)
+	    {
+	    row = xaGetItem(&rc->Cache, i);
+	    if (!strcmp(row->Criteria, rc->CriteriaBuf.String))
+		{
+		/** Found it **/
+		row->nMatches++;
+		row->LastMatch = rc->LastMatch++;
+		/*fdQPrintf(mqp_log, "HIT:   %STR (%POS)\n", rc->CriteriaBuf.String, i);*/
+		return i;
+		}
+	    }
+
+	/*fdQPrintf(mqp_log, "MISS:  %STR\n", rc->CriteriaBuf.String);*/
+
+    return -1;
+    }
+
+
 /*** mqpStart - starts the query operation for a given projection element
  *** in the query.  Does not fetch the first row -- that is what NextItem
  *** is there for.
@@ -576,6 +743,8 @@ int
 mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     {
     pExpression new_exp;
+    pMqpRowCache rc;
+    int using_cache = 0;
 
     	/** Open the data source in the objectsystem **/
 	if (mq->Flags & MQ_F_ALLOWUPDATE)
@@ -604,15 +773,39 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
         if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
-    	/** Open the query with the objectsystem. **/
-	qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
-	if (!qe->LLQuery) 
+	/** Check for cached single row result set **/
+	if (!(qe->Flags & MQ_EF_FROMSUBTREE))
 	    {
-	    mqpFinish(qe,mq);
-	    mssError(0,"MQP","Could not query source object for SQL projection");
-	    return -1;
+	    rc = (pMqpRowCache)(qe->PrivateData);
+	    if (rc)
+		{
+		rc->CurCached = mqp_internal_CheckCache(mq, rc, qe->Constraint);
+		if (rc->CurCached >= 0)
+		    {
+		    /** We're going from the cache this time **/
+		    objClose(qe->LLSource);
+		    qe->LLSource = NULL;
+		    using_cache = 1;
+		    }
+		}
 	    }
-	objUnmanageQuery(mq->SessionID, qe->LLQuery);
+
+    	/** Open the query with the objectsystem. **/
+	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE))
+	    {
+	    qe->LLQuery = NULL;
+	    }
+	else if (!using_cache)
+	    {
+	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	    if (!qe->LLQuery) 
+		{
+		mqpFinish(qe,mq);
+		mssError(0,"MQP","Could not query source object for SQL projection");
+		return -1;
+		}
+	    objUnmanageQuery(mq->SessionID, qe->LLQuery);
+	    }
 	qe->IterCnt = 0;
 
     return 0;
@@ -627,6 +820,53 @@ int
 mqpNextItem(pQueryElement qe, pMultiQuery mq)
     {
     pObject obj;
+    pObject saved_obj = NULL;
+    pMqpRowCache rc;
+    pMqpOneRow row;
+
+	qe->IterCnt++;
+
+	/** Using cache? **/
+	if (qe->PrivateData && !(qe->Flags & MQ_EF_FROMSUBTREE))
+	    {
+	    rc = (pMqpRowCache)(qe->PrivateData);
+	    if (rc->CurCached >= 0)
+		{
+		row = xaGetItem(&rc->Cache, rc->CurCached);
+		if (qe->IterCnt == 1)
+		    {
+		    if (row->Obj) objLinkTo(row->Obj);
+		    expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], row->Obj);
+		    return row->Obj?1:0;
+		    }
+		else if (qe->IterCnt == 2)
+		    {
+		    if (mq->ObjList->Objects[qe->SrcIndex])
+			objClose(mq->ObjList->Objects[qe->SrcIndex]);
+		    mq->ObjList->Objects[qe->SrcIndex] = NULL;
+		    }
+		return 0;
+		}
+	    }
+
+	/** Inclusive subtree?  If so return the top-level src object too **/
+	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE) && !mq->ObjList->Objects[qe->SrcIndex] && qe->IterCnt == 1)
+	    {
+	    obj = objLinkTo(qe->LLSource);
+	    expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
+
+	    if (mqp_internal_CheckConstraint(qe, mq) > 0)
+		{
+		/** the top level one matches.  use it. **/
+		mqp_internal_SetupSubtreeAttrs(qe, obj);
+		return 1;
+		}
+	    else
+		{
+		objClose(mq->ObjList->Objects[qe->SrcIndex]);
+		mq->ObjList->Objects[qe->SrcIndex] = NULL;
+		}
+	    }
 
 	/** Attempt to recurse a subtree? **/
 	if (qe->Flags & MQ_EF_FROMSUBTREE && mq->ObjList->Objects[qe->SrcIndex])
@@ -645,15 +885,23 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 	    /** Close the previous fetched object? **/
 	    if (mq->ObjList->Objects[qe->SrcIndex])
 		{
+		/** if this is after the user has processed row #1, create a tmp copy of row 1 **/
+		if (qe->LLQuery && qe->IterCnt == 2 && !(qe->Flags & MQ_EF_FROMSUBTREE))
+		    saved_obj = objLinkTo(mq->ObjList->Objects[qe->SrcIndex]);
+
+		/** "close" it **/
 		objClose(mq->ObjList->Objects[qe->SrcIndex]);
 		mq->ObjList->Objects[qe->SrcIndex] = NULL;
 		}
 
 	    /** Fetch the next item and set the object... **/
+	    if (!qe->LLQuery)
+		return 0;
 	    obj = objQueryFetch(qe->LLQuery, (mq->Flags & MQ_F_ALLOWUPDATE)?O_RDWR:O_RDONLY);
 	    if (obj)
 		{
 		/** Got one. **/
+		if (saved_obj) objClose(saved_obj);
 		objUnmanageObject(mq->SessionID, obj);
 		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
 		if (qe->Flags & MQ_EF_FROMSUBTREE) mqp_internal_SetupSubtreeAttrs(qe, obj);
@@ -664,11 +912,16 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)
 		{
 		obj = mqp_internal_Return(qe, mq, NULL);
-		if (!obj) return 0;
+		if (!obj || obj == qe->LLSource) return 0;
 		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
 		}
 	    else
 		{
+		if (qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj))
+		    {
+		    /** empty or single-row result set.  Save the saved_obj in the cache **/
+		    mqp_internal_CacheRow(mq, qe, qe->Constraint, saved_obj);
+		    }
 		return 0;
 		}
 	    }
@@ -711,6 +964,8 @@ mqpFinish(pQueryElement qe, pMultiQuery mq)
     	/** Close the source object and the query. **/
 	if (qe->LLQuery) objQueryClose(qe->LLQuery);
 	if (qe->LLSource) objClose(qe->LLSource);
+	qe->LLQuery = NULL;
+	qe->LLSource = NULL;
 
     return 0;
     }
@@ -723,6 +978,8 @@ int
 mqpRelease(pQueryElement qe, pMultiQuery mq)
     {
     int i;
+    pMqpRowCache rc;
+    pMqpOneRow row;
 
     	/** Release the order-by expressions **/
 	for(i=0;qe->OrderBy[i];i++)
@@ -731,9 +988,30 @@ mqpRelease(pQueryElement qe, pMultiQuery mq)
 	    qe->OrderBy[i] = NULL;
 	    }
 
-	/** Release private data if needed **/
+	/** Release private data, if needed, from subtree data **/
 	if (qe->Flags & MQ_EF_FROMSUBTREE)
 	    nmFree(qe->PrivateData, sizeof(MqpSubtrees));
+
+	/** Release private data from row caching **/
+	if (!(qe->Flags & MQ_EF_FROMSUBTREE) && qe->PrivateData)
+	    {
+	    rc = (pMqpRowCache)(qe->PrivateData);
+
+	    /** Release any cached rows **/
+	    while(rc->Cache.nItems)
+		{
+		row = (pMqpOneRow)xaGetItem(&rc->Cache, 0);
+		if (row->Obj) objClose(row->Obj);
+		nmSysFree(row->Criteria);
+		nmFree(row, sizeof(MqpOneRow));
+		xaRemoveItem(&rc->Cache, 0);
+		}
+
+	    /** Release the cache data itself **/
+	    xaDeInit(&rc->Cache);
+	    xsDeInit(&rc->CriteriaBuf);
+	    nmFree(rc, sizeof(MqpRowCache));
+	    }
 
     return 0;
     }
@@ -765,6 +1043,8 @@ mqpInitialize()
 	/** Register with the multiquery system. **/
 	if (mqRegisterQueryDriver(drv) < 0) return -1;
 	MQPINF.ThisDriver = drv;
+
+	/*mqp_log = fdOpen("/tmp/optimlog.txt", O_RDWR | O_CREAT | O_TRUNC, 0600);*/
 
     return 0;
     }

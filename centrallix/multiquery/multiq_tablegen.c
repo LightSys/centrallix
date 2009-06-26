@@ -46,10 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.9 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.10 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.10  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.9  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -119,6 +128,7 @@
 
  **END-CVSDATA***********************************************************/
 
+#define MQT_MAX_OBJECTS	    (EXPR_MAX_PARAMS)
 
 /** Private data structure for doing groupby, etc **/
 typedef struct
@@ -126,14 +136,14 @@ typedef struct
     unsigned char	GroupByBuf[2][2048];
     unsigned char*	GroupByPtr;
     int			GroupByLen;
-    pExpression		GroupByItems[16];
+    pExpression		GroupByItems[MQT_MAX_OBJECTS];
     int			nGroupByItems;
-    pObject		SavedObjList[16];
+    pObject		SavedObjList[MQT_MAX_OBJECTS];
     int			nObjects;
     int			IsLastRow;
     int			AggLevel;
-    pExpression		ListItems[16];
-    int			ListCount[16];
+    pExpression		ListItems[MQT_MAX_OBJECTS];
+    int			ListCount[MQT_MAX_OBJECTS];
     int			nListItems;
     }
     MQTData, *pMQTData;
@@ -158,7 +168,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigne
     unsigned char* cur_buf;
     unsigned char* new_buf;
     unsigned char* ptr;
-    int i;
+    int i, oldlen;
     pExpression exp;
 
     	/** Figure out which buffer is which. **/
@@ -201,8 +211,8 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigne
 			break;
 
 		    case DATA_T_STRING:
-		        memcpy(ptr, exp->String, strlen(exp->String));
-			ptr += strlen(exp->String);
+		        memcpy(ptr, exp->String, strlen(exp->String)+1);
+			ptr += (strlen(exp->String)+1);
 			break;
 
 		    case DATA_T_DATETIME:
@@ -224,9 +234,11 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigne
 	    }
 
 	/** Ok, figure out if the group by columns changed **/
+	oldlen = md->GroupByLen;
+	md->GroupByLen = (ptr - new_buf);
 	*new_ptr = new_buf;
 	if (md->GroupByPtr == NULL) return 1;
-	if (memcmp(cur_buf, new_buf, ptr - new_buf)) return 1;
+	if (md->GroupByLen != oldlen || memcmp(cur_buf, new_buf, ptr - new_buf) != 0) return 1;
 
     return 0;
     }
@@ -246,6 +258,7 @@ mqtAnalyze(pMultiQuery mq)
     pMQTData md;
 
     	/** Search for SELECT statements... **/
+	/*while ((qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, qs)) != NULL || (qs = mq_internal_FindItem(mq->QTree, MQ_T_UPDATECLAUSE, qs)) != NULL)*/
 	while ((qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, qs)) != NULL)
 	    {
 	    /** Allocate a new query-element **/
@@ -254,27 +267,20 @@ mqtAnalyze(pMultiQuery mq)
 
 	    /** Allocate the private data stuff **/
 	    qe->PrivateData = (void*)nmMalloc(sizeof(MQTData));
+	    qe->Constraint = NULL;
+	    qe->SlaveIterCnt = 0;
 	    memset(qe->PrivateData, 0, sizeof(MQTData));
+
 	    md = (pMQTData)(qe->PrivateData);
 	    md->nListItems = 0;
-
-	    /** Does this have a set rowcount? Store it in SlaveIterCnt. **/
-	    qe->SlaveIterCnt = 0;
-	    for(i=0;i<qs->Parent->Children.nItems;i++)
-	        {
-		item = (pQueryStructure)(qs->Parent->Children.Items[i]);
-		if (item->NodeType == MQ_T_SETOPTION && !strcmp(item->Name,"rowcount"))
-		    {
-		    qe->SlaveIterCnt = strtol(item->Source, NULL, 10);
-		    break;
-		    }
-		}
-
-	    /** Need to link in with each of the select-items. **/
-	    recent = NULL;
 	    md->AggLevel = 0;
+
+	    /** Need to link in with each of the select-items.  This operates both
+	     ** on SELECT items and on the RHS of SET items in an UPDATE clause.
+	     **/
+	    recent = NULL;
 	    for(i=0;i<qs->Children.nItems;i++)
-	        {
+		{
 		item = (pQueryStructure)(qs->Children.Items[i]);
 		xaAddItem(&qe->AttrNames, (void*)item->Presentation);
 		xaAddItem(&qe->AttrExprPtr, (void*)item->RawData.String);
@@ -283,7 +289,7 @@ mqtAnalyze(pMultiQuery mq)
 		if (item->QELinkage)
 		    {
 		    if (item->QELinkage != recent)
-		        {
+			{
 			if (xaFindItem(&qe->Children, (void*)item->QELinkage) < 0)
 			    xaAddItem(&qe->Children, (void*)item->QELinkage);
 			}
@@ -294,7 +300,7 @@ mqtAnalyze(pMultiQuery mq)
 		    {
 		    /** No linkage but we can't handle it??? **/
 		    if (item->ObjCnt > 0)
-		        {
+			{
 			nmFree(qe->PrivateData,sizeof(MQTData));
 			nmFree(qe,sizeof(QueryElement));
 			mssError(1,"MQT","Bark! Unhandled SELECT item in query - aborting");
@@ -302,8 +308,8 @@ mqtAnalyze(pMultiQuery mq)
 			}
 
 		    /** Is it a list?  If so, make a note of it. **/
-		    if (md->nListItems >= 16)
-		        {
+		    if (md->nListItems >= MQT_MAX_OBJECTS)
+			{
 			nmFree(qe->PrivateData,sizeof(MQTData));
 			nmFree(qe,sizeof(QueryElement));
 			mssError(1,"MQT","Bark! Too many lists in select query");
@@ -316,44 +322,58 @@ mqtAnalyze(pMultiQuery mq)
 		    }
 		}
 
-	    /** No items linked via SELECT items, but a mq->Tree is set? **/
-	    if (qe->Children.nItems == 0 && mq->Tree != NULL)
-	        {
-		xaAddItem(&qe->Children, (void*)(mq->Tree));
-		}
-
-	    /** Find the WHERE items that didn't specifically match anything else **/
-	    qe->Constraint = NULL;
-	    where_qs = mq_internal_FindItem(qs->Parent, MQ_T_WHERECLAUSE, NULL);
-	    if (where_qs)
-	        {
-		for(i=0;i<where_qs->Children.nItems;i++)
+	    /** Don't do certain things if we're layering in an UPDATE query **/
+	    if (qs->NodeType == MQ_T_SELECTCLAUSE)
+		{
+		/** Does this have a set rowcount? Store it in SlaveIterCnt. **/
+		for(i=0;i<qs->Parent->Children.nItems;i++)
 		    {
-		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if (1)
-		        {
-			/** Add this expression into the constraint for this element **/
-			if (qe->Constraint == NULL)
-			    {
-			    qe->Constraint = where_item->Expr;
-			    }
-			else
-			    {
-			    new_exp = expAllocExpression();
-			    new_exp->NodeType = EXPR_N_AND;
-			    expAddNode(new_exp, qe->Constraint);
-			    expAddNode(new_exp, where_item->Expr);
-			    qe->Constraint = new_exp;
-			    }
+		    item = (pQueryStructure)(qs->Parent->Children.Items[i]);
+		    if (item->NodeType == MQ_T_SETOPTION && !strcmp(item->Name,"rowcount"))
+			{
+			qe->SlaveIterCnt = strtol(item->Source, NULL, 10);
+			break;
+			}
+		    }
 
-			/** Release the where item's structure **/
-			where_item->Expr = NULL;
-			mq_internal_FreeQS(where_item);
+		/** No items linked via SELECT items, but a mq->Tree is set? **/
+		if (qe->Children.nItems == 0 && mq->Tree != NULL)
+		    {
+		    xaAddItem(&qe->Children, (void*)(mq->Tree));
+		    }
 
-			/** Remove this from the WHERE clause and keep looking for more. **/
-			xaRemoveItem(&where_qs->Children,i);
-			i--;
-			continue;
+		/** Find the WHERE items that didn't specifically match anything else **/
+		where_qs = mq_internal_FindItem(qs->Parent, MQ_T_WHERECLAUSE, NULL);
+		if (where_qs)
+		    {
+		    for(i=0;i<where_qs->Children.nItems;i++)
+			{
+			where_item = (pQueryStructure)(where_qs->Children.Items[i]);
+			if (1)
+			    {
+			    /** Add this expression into the constraint for this element **/
+			    if (qe->Constraint == NULL)
+				{
+				qe->Constraint = where_item->Expr;
+				}
+			    else
+				{
+				new_exp = expAllocExpression();
+				new_exp->NodeType = EXPR_N_AND;
+				expAddNode(new_exp, qe->Constraint);
+				expAddNode(new_exp, where_item->Expr);
+				qe->Constraint = new_exp;
+				}
+
+			    /** Release the where item's structure **/
+			    where_item->Expr = NULL;
+			    mq_internal_FreeQS(where_item);
+
+			    /** Remove this from the WHERE clause and keep looking for more. **/
+			    xaRemoveItem(&where_qs->Children,i);
+			    i--;
+			    continue;
+			    }
 			}
 		    }
 		}

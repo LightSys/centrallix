@@ -44,10 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.37 2008/03/20 00:46:36 gbeeley Exp $
+    $Id: multiquery.c,v 1.38 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.38  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.37  2008/03/20 00:46:36  gbeeley
     - (bugfix) Fixing a bug introduced in revision 1.11 which caused
       reopen_sql to fail on record creation.
@@ -390,6 +399,7 @@ mq_internal_AllocQE()
 	xaInit(&qe->AttrAssignExpr,16);
 	qe->Constraint = NULL;
 	qe->Flags = 0;
+	qe->PrivateData = NULL;
 
     return qe;
     }
@@ -483,7 +493,7 @@ mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
  ***/
 int
 mq_internal_PostProcess(pMultiQuery qy, pQueryStructure qs, pQueryStructure sel, pQueryStructure from, pQueryStructure where, 
-		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up)
+		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc)
     {
     int i,j,cnt;
     pQueryStructure subtree;
@@ -514,6 +524,12 @@ mq_internal_PostProcess(pMultiQuery qy, pQueryStructure qs, pQueryStructure sel,
 		{
 		mssError(1, "MQ", "UPDATE statement with multiple data sources must have one marked as the IDENTITY source.");
 		return -1;
+		}
+	    if (from->Children.nItems > 0 && !has_identity && dc)
+		{
+		/** Mark the first one as the identity source **/
+		subtree = (pQueryStructure)(from->Children.Items[0]);
+		subtree->Flags |= MQ_SF_IDENTITY;
 		}
 	    }
 
@@ -898,12 +914,12 @@ pQueryStructure
 mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
     {
     pQueryStructure qs, new_qs, select_cls=NULL, from_cls=NULL, where_cls=NULL, orderby_cls=NULL, groupby_cls=NULL, crosstab_cls=NULL, having_cls=NULL;
-    pQueryStructure insert_cls=NULL, update_cls=NULL;
+    pQueryStructure insert_cls=NULL, update_cls=NULL, delete_cls=NULL;
     /* pQueryStructure delete_cls=NULL, update_cls=NULL;*/
     pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr,identity;
+    int t,parenlevel,subtr,identity,inclsubtr;
     char* ptr;
     int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
@@ -1185,6 +1201,35 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			    }
 			else if (!strcmp("delete",ptr))
 			    {
+			    if (select_cls || insert_cls || update_cls)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Cannot have DELETE after a SELECT, INSERT, or UPDATE clause");
+				mlxNoteError(lxs);
+				break;
+				}
+
+			    /** Create the main delete clause **/
+			    delete_cls = mq_internal_AllocQS(MQ_T_DELETECLAUSE);
+			    xaAddItem(&qs->Children, (void*)delete_cls);
+			    delete_cls->Parent = qs;
+
+			    /** Optional FROM keyword **/
+			    t = mlxNextToken(lxs);
+			    if (t != MLX_TOK_RESERVEDWD || ((ptr = mlxStringVal(lxs,NULL)) && strcasecmp("from", ptr)))
+				{
+				mlxHoldToken(lxs);
+				}
+
+			    /** Create a "from" clause too, the user didn't actually type it,
+			     ** but this is sortof like DELETE FROM /data/source, and SUBTREE
+			     ** is supported as are joins.
+	 		     **/
+			    from_cls = mq_internal_AllocQS(MQ_T_FROMCLAUSE);
+			    xaAddItem(&qs->Children, (void*)from_cls);
+			    from_cls->Parent = qs;
+		            next_state = FromItem;
+			    break;
 			    }
 			else if (!strcmp("insert",ptr))
 			    {
@@ -1261,10 +1306,10 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			    }
 			else if (!strcmp("update",ptr))
 			    {
-			    if (select_cls || insert_cls)
+			    if (select_cls || insert_cls || delete_cls)
 				{
 				next_state = ParseError;
-				mssError(1,"MQ","Cannot have UPDATE after a SELECT or INSERT clause");
+				mssError(1,"MQ","Cannot have UPDATE after a SELECT, INSERT, or DELETE clause");
 				mlxNoteError(lxs);
 				break;
 				}
@@ -1349,9 +1394,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			if (!ptr) break;
 			if (t == MLX_TOK_STRING)
 			    {
-			    xsConcatenate(&new_qs->RawData,"\"",1);
-			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    xsConcatenate(&new_qs->RawData,"\"",1);
+			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
 			    }
 			else
 			    {
@@ -1410,9 +1453,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			if (!ptr) break;
 			if (t == MLX_TOK_STRING)
 			    {
-			    xsConcatenate(&new_qs->RawData,"\"",1);
-			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    xsConcatenate(&new_qs->RawData,"\"",1);
+			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
 			    }
 			else
 			    {
@@ -1518,10 +1559,16 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 		    t = mlxNextToken(lxs);
 		    subtr = 0;
 		    identity = 0;
+		    inclsubtr = 0;
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
 			{
 			t = mlxNextToken(lxs);
 			identity = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("inclusive", ptr))
+			{
+			t = mlxNextToken(lxs);
+			inclsubtr = 1;
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("subtree", ptr))
 			{
@@ -1539,6 +1586,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 		    new_qs->Presentation[0] = 0;
 		    new_qs->Name[0] = 0;
 		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
+		    if (inclsubtr) new_qs->Flags |= MQ_SF_INCLSUBTREE;
 		    if (identity) new_qs->Flags |= MQ_SF_IDENTITY;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
@@ -1556,8 +1604,16 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 			}
 		    else if (t == MLX_TOK_RESERVEDWD)
 		        {
-			mlxHoldToken(lxs);
-			next_state = LookForClause;
+			if (delete_cls && (ptr = mlxStringVal(lxs, NULL)) && !strcasecmp(ptr, "from"))
+			    {
+			    /** FROM keyword can be used to delimit sources in DELETE clause **/
+			    next_state = state;
+			    }
+			else
+			    {
+			    mlxHoldToken(lxs);
+			    next_state = LookForClause;
+			    }
 			break;
 			}
 		    else if (t == MLX_TOK_EOF)
@@ -1630,20 +1686,23 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 
 		case HavingItem:
 		    /** Copy the whole having clause first **/
+		    parenlevel = 0;
 		    while(1)
 		        {
 			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || t == MLX_TOK_RESERVEDWD)
+			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || (t == MLX_TOK_RESERVEDWD && parenlevel <= 0))
 			    {
 			    break;
 			    }
+			if (t == MLX_TOK_OPENPAREN) 
+			    parenlevel++;
+			if (t == MLX_TOK_CLOSEPAREN)
+			    parenlevel--;
 			ptr = mlxStringVal(lxs,NULL);
 			if (!ptr) break;
 			if (t == MLX_TOK_STRING)
 			    {
-			    xsConcatenate(&having_cls->RawData,"\"",1);
-			    xsConcatenate(&having_cls->RawData,ptr,-1);
-			    xsConcatenate(&having_cls->RawData,"\"",1);
+			    xsConcatQPrintf(&having_cls->RawData, "%STR&DQUOT", ptr);
 			    }
 			else
 			    {
@@ -1769,7 +1828,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pMultiQuery qy)
 	    }
 
 	/** Ok, postprocess the expression trees, etc. **/
-	if (mq_internal_PostProcess(qy, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls) < 0)
+	if (mq_internal_PostProcess(qy, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls) < 0)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not postprocess multiquery");
@@ -1978,14 +2037,16 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	    return NULL;
 	    }
 	this->ObjList = expCreateParamList();
-	this->ObjList->Session = this->SessionID;
 
 	/** Import any externally provided data sources **/
 	if (objlist)
 	    {
 	    expCopyList(objlist, this->ObjList);
 	    this->nProvidedObjects = this->ObjList->nObjects;
+	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 	    }
+
+	this->ObjList->Session = this->SessionID;
 
 	/** Parse the query **/
 	this->QTree = mq_internal_SyntaxParse(lxs, this);
@@ -2017,6 +2078,10 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	    mssError(0,"MQ","Error in query's WHERE clause");
 	    return NULL;
 	    }
+	for(i=0;i<this->nProvidedObjects;i++)
+	    {
+	    expFreezeOne(this->WhereClause, this->ObjList, i);
+	    }
 
 	if (qs)
 	    {
@@ -2037,15 +2102,22 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 		}
 	    }
 
+	/** Build the one-object list for evaluating the Having clause, etc. **/
+	this->OneObjList = expCreateParamList();
+	this->OneObjList->Session = session;
+	expAddParamToList(this->OneObjList, "this", NULL, 0);
+	expSetParamFunctions(this->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
+
 	/** Compile the having expression, if one. **/
 	this->HavingClause = NULL;
 	qs = mq_internal_FindItem(this->QTree, MQ_T_HAVINGCLAUSE, NULL);
 	if (qs)
 	    {
-	    qs->Expr = expCompileExpression(qs->RawData.String,this->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    qs->Expr = expCompileExpression(qs->RawData.String, this->OneObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
 	    if (!qs->Expr)
 	        {
 	        mq_internal_FreeQS(this->QTree);
+		expFreeParamList(this->OneObjList);
 	        nmFree(this,sizeof(MultiQuery));
 		mssError(0,"MQ","Error in query's HAVING clause");
 		return NULL;
@@ -2064,6 +2136,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	        mq_internal_FreeQS(this->QTree);
 		if (this->Tree) mq_internal_FreeQE(this->Tree);
 		xaDeInit(&this->Trees);
+		expFreeParamList(this->OneObjList);
 	        nmFree(this,sizeof(MultiQuery));
 	        return NULL;
 		}
@@ -2079,15 +2152,11 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	    mq_internal_FreeQS(this->QTree);
 	    mq_internal_FreeQE(this->Tree);
 	    xaDeInit(&this->Trees);
+	    expFreeParamList(this->OneObjList);
 	    nmFree(this,sizeof(MultiQuery));
 	    mssError(0,"MQ","Could not start the query");
 	    return NULL;
 	    }
-
-	/** Build the one-object list for evaluating the Having clause, etc. **/
-	this->OneObjList = expCreateParamList();
-	expAddParamToList(this->OneObjList, "this", NULL, 0);
-	expSetParamFunctions(this->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
     return (void*)this;
     }
@@ -2180,6 +2249,84 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
     }
 
 
+pPseudoObject
+mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
+    {
+    pPseudoObject p;
+    int i;
+    pObject obj;
+
+	/** Allocate the pseudo-object. **/
+	p = (pPseudoObject)nmMalloc(sizeof(PseudoObject));
+	if (!p) return NULL;
+	p->Query = qy;
+	p->Obj = hl_obj;
+	qy->LinkCnt++;
+
+	/** Copy the object list and link to the objects.
+	 ** We don't link to objects for the qy->CurObjList since that
+	 ** objlist normally shadows QTree->ObjList, except when the
+	 ** user skips back to previous objects temporarily and then
+	 ** goes and does another fetch.
+	 **/
+	memcpy(&p->ObjList, qy->ObjList, sizeof(ParamObjects));
+	memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));
+	for(i=p->Query->nProvidedObjects;i<p->ObjList.nObjects;i++) 
+	    {
+	    obj = (pObject)(p->ObjList.Objects[i]);
+	    if (obj) objLinkTo(obj);
+	    }
+
+	p->Serial = qy->CurSerial;
+
+    return p;
+    }
+
+
+int
+mq_internal_FreePseudoObject(pPseudoObject p)
+    {
+    int i;
+    pMultiQuery qy = p->Query;
+
+	for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++)
+	    if (p->ObjList.Objects[i])
+		objClose((pObject)(p->ObjList.Objects[i]));
+
+	qy->LinkCnt--;
+	nmFree(p, sizeof(PseudoObject));
+
+    return 0;
+    }
+
+
+/*** return 1 if HAVING matches, 0 if HAVING does not match, or -1 if error.
+ ***/
+int
+mq_internal_EvalHavingClause(pMultiQuery qy, pPseudoObject p)
+    {
+
+	if (!qy->HavingClause) return 1;
+	expModifyParam(qy->OneObjList, "this", (void*)p);
+	if (expEvalTree(qy->HavingClause, qy->OneObjList) < 0)
+	    {
+	    mssError(1,"MQ","Could not evaluate HAVING clause");
+	    return -1;
+	    }
+	if (qy->HavingClause->DataType != DATA_T_INTEGER)
+	    {
+	    mssError(1,"MQ","HAVING clause must evaluate to boolean or integer");
+	    return -1;
+	    }
+	if (!(qy->HavingClause->Flags & EXPR_F_NULL) && qy->HavingClause->Integer != 0) 
+	    {
+	    return 1;
+	    }
+
+    return 0;
+    }
+
+
 /*** mqQueryFetch - retrieves the next item in the query result set.
  ***/
 void*
@@ -2187,7 +2334,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
     {
     pPseudoObject p;
     pMultiQuery qy = (pMultiQuery)qy_v;
-    int i;
+    int i, rval;
     pObject obj;
 
 	/** Make sure the cur objlist is correct **/
@@ -2213,58 +2360,31 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	        return NULL;
 	        }
 
-    	    /** Allocate the pseudo-object. **/
-	    p = (pPseudoObject)nmMalloc(sizeof(PseudoObject));
-	    if (!p) return NULL;
-	    p->Query = qy;
-	    p->Obj = highlevel_obj;
-	    qy->LinkCnt++;
-
-	    /** Copy the object list and link to the objects.
-	     ** We don't link to objects for the qy->CurObjList since that
-	     ** objlist normally shadows QTree->ObjList, except when the
-	     ** user skips back to previous objects temporarily and then
-	     ** goes and does another fetch.
-	     **/
-	    memcpy(&p->ObjList, qy->ObjList, sizeof(ParamObjects));
-	    memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));
-	    for(i=p->Query->nProvidedObjects;i<p->ObjList.nObjects;i++) 
-	        {
-	        obj = (pObject)(p->ObjList.Objects[i]);
-	        if (obj) objLinkTo(obj);
-	        }
+	    /** Create the pseudo object **/
+	    p = mq_internal_CreatePseudoObject(qy, highlevel_obj);
 
 	    /** Update row serial # **/
-	    p->Serial = qy->CntSerial = qy->CurSerial;
+	    qy->CntSerial = qy->CurSerial;
 
 	    /** Verify HAVING clause **/
-	    if (!qy->HavingClause) break;
-	    expModifyParam(qy->OneObjList, "this", (void*)p);
-	    if (expEvalTree(qy->HavingClause, qy->OneObjList) < 0)
-	        {
-		for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++) if (p->ObjList.Objects[i]) objClose((pObject)(p->ObjList.Objects[i]));
-		qy->LinkCnt--;
-		nmFree(p, sizeof(PseudoObject));
+	    rval = mq_internal_EvalHavingClause(qy, p);
+	    if (rval == 1)
+		{
+		/** matched **/
+		break;
+		}
+	    else if (rval == -1)
+		{
+		/** error **/
+		mq_internal_FreePseudoObject(p);
 		mssError(1,"MQ","Could not evaluate HAVING clause");
 		return NULL;
 		}
-	    if (qy->HavingClause->DataType != DATA_T_INTEGER)
-	        {
-		for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++) if (p->ObjList.Objects[i]) objClose((pObject)(p->ObjList.Objects[i]));
-		qy->LinkCnt--;
-		nmFree(p, sizeof(PseudoObject));
-		mssError(1,"MQ","HAVING clause must evaluate to boolean or integer");
-		return NULL;
-		}
-	    if (!(qy->HavingClause->Flags & EXPR_F_NULL) && qy->HavingClause->Integer != 0) 
-	        {
-		break;
-		}
 	    else
 	        {
-		for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++) if (p->ObjList.Objects[i]) objClose((pObject)(p->ObjList.Objects[i]));
-		qy->LinkCnt--;
-		nmFree(p, sizeof(PseudoObject));
+		/** no match, go get another row **/
+		mq_internal_FreePseudoObject(p);
+		p = NULL;
 		}
 	    }
 
@@ -2527,13 +2647,13 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	/** Evaluate the expression to get the value **/
 	exp = (pExpression)p->Query->Tree->AttrCompiledExpr.Items[id];
 	if (expEvalTree(exp,p->Query->ObjList) < 0) return 1;
+	if (exp->Flags & EXPR_F_NULL) return 1;
 	if (exp->DataType != datatype)
 	    {
 	    mssError(1,"MQ","Type mismatch getting attribute '%s' [requested=%s, actual=%s]", 
 		    attrname,obj_type_names[datatype],obj_type_names[exp->DataType]);
 	    return -1;
 	    }
-	if (exp->Flags & EXPR_F_NULL) return 1;
 	switch(exp->DataType)
 	    {
 	    case DATA_T_INTEGER: *(int*)value = exp->Integer; break;

@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_insertselect.c,v 1.2 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiq_insertselect.c,v 1.3 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_insertselect.c,v $
 
     $Log: multiq_insertselect.c,v $
+    Revision 1.3  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.2  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -82,6 +91,7 @@ mqisAnalyze(pMultiQuery mq)
     pQueryStructure select_qs, insert_qs;
     pQueryElement qe;
     int n;
+    int i;
 
     	/** Search for an INSERT and a SELECT statement... **/
 	select_qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, NULL);
@@ -103,6 +113,14 @@ mqisAnalyze(pMultiQuery mq)
 	insert_qs->QELinkage = qe;
 	qe->QSLinkage = insert_qs;
 
+	/** Link with select items **/
+	for(i=0;i<mq->Tree->AttrNames.nItems;i++)
+	    {
+	    xaAddItem(&qe->AttrNames, mq->Tree->AttrNames.Items[i]);
+	    xaAddItem(&qe->AttrExprPtr, mq->Tree->AttrExprPtr.Items[i]);
+	    xaAddItem(&qe->AttrCompiledExpr, mq->Tree->AttrCompiledExpr.Items[i]);
+	    }
+
 	/** Link the qe into the multiquery **/
 	n=0;
 	xaAddItem(&mq->Trees, qe);
@@ -122,6 +140,7 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     {
     pQueryElement sel;
     int rval = -1;
+    int exp_rval;
     int sel_rval = 0;
     char pathname[OBJSYS_MAX_PATH];
     pObject new_obj = NULL;
@@ -131,6 +150,8 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     ObjData od;
     int t;
     int use_attrid;
+    pPseudoObject p;
+    int hc_rval;
 
 	/** Prepare for the inserts **/
 	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 >= sizeof(pathname))
@@ -149,6 +170,15 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	/** Select all items in the result set **/
 	while((sel_rval = sel->Driver->NextItem(sel, mq)) == 1)
 	    {
+	    /** check HAVING clause **/
+	    p = mq_internal_CreatePseudoObject(mq, NULL);
+	    hc_rval = mq_internal_EvalHavingClause(mq, p);
+	    mq_internal_FreePseudoObject(p);
+	    if (hc_rval < 0)
+		goto error;
+	    else if (hc_rval == 0)
+		continue;
+
 	    /** open a new object **/
 	    new_obj = objOpen(mq->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
 	    if (!new_obj)
@@ -179,8 +209,11 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		    t = ((pExpression)sel->AttrCompiledExpr.Items[use_attrid])->DataType;
 		    if (t <= 0)
 			continue;
-		    if (expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[use_attrid]), t, &od) < 0)
+		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[use_attrid]), t, &od);
+		    if (exp_rval < 0)
 			goto error;
+		    else if (exp_rval == 1) /* null */
+			continue;
 		    }
 
 		/** Set the attribute on the newly inserted object **/

@@ -45,10 +45,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.13 2008/06/25 18:39:47 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.14 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.14  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.13  2008/06/25 18:39:47  gbeeley
     - (bugfix) include the "*" in a SELECT * in the topmost join's list of
       attributes, rather than causing squawkage about the query not being set
@@ -155,7 +164,9 @@
  *** same with non-intelligent data sources (like CSV files).
  ***/
 #define MQJ_ENABLE_PREFETCH	0
-#define MQJ_MAX_ORQUERY		16
+#define MQJ_MAX_PREFETCH	16
+
+#define MQJ_MAX_JOIN		(EXPR_MAX_PARAMS)
 
 
 /*** Globals ***/
@@ -171,9 +182,11 @@ struct
  ***/
 typedef struct
     {
-    pObject 		PrefetchObjs[MQJ_MAX_ORQUERY];
-    int			PrefetchMatchCnt[MQJ_MAX_ORQUERY];
+    pObject 		PrefetchObjs[MQJ_MAX_PREFETCH];
+    int			PrefetchMatchCnt[MQJ_MAX_PREFETCH];
     int 		nPrefetch;
+    int			PrefetchUsesSlave;	/* boolean */
+    int			PrefetchReachedEnd;	/* boolean */
     int			CurItem;
     pExpression		SlaveExpr;
     }
@@ -199,16 +212,16 @@ mqjAnalyze(pMultiQuery mq)
     pQueryStructure from_item=NULL;
     int i,n=0,j,found,m;
     pExpression new_exp;
-    unsigned short join_mask[16];
-    unsigned short join_outer[16];
-    signed char join_obj1[16];
-    signed char join_obj2[16];
-    unsigned char join_spec[16];
-    unsigned char join_map[16];
-    unsigned short joined_objects;
-    unsigned char join_used[16];
-    pQueryStructure from_sources[16];
-    unsigned char from_srcmap[16];
+    unsigned int join_mask[MQJ_MAX_JOIN];
+    unsigned int join_outer[MQJ_MAX_JOIN];
+    signed char join_obj1[MQJ_MAX_JOIN];
+    signed char join_obj2[MQJ_MAX_JOIN];
+    unsigned char join_spec[MQJ_MAX_JOIN];
+    unsigned char join_map[MQJ_MAX_JOIN];
+    unsigned int joined_objects;
+    unsigned char join_used[MQJ_MAX_JOIN];
+    pQueryStructure from_sources[MQJ_MAX_JOIN];
+    unsigned char from_srcmap[MQJ_MAX_JOIN];
     int n_joins = 0, n_joins_used;
     int min_objlist = mq->nProvidedObjects;
 
@@ -364,7 +377,7 @@ mqjAnalyze(pMultiQuery mq)
 	    /** Ok, got list of join expressions.  Now create a JOIN from each one. **/
 	    joined_objects = 0;
 	    n_joins_used = 0;
-	    do  {
+	    do  {  /** do ... while (n_joins_used < n_joins); **/
 	        /** Find a high-specificity join that can hook into any already processed joins **/
 	        found = -1;
 		for(i=0;i<n_joins;i++) if (!join_used[join_map[i]])
@@ -374,6 +387,13 @@ mqjAnalyze(pMultiQuery mq)
 			found = join_map[i];
 			break;
 			}
+		    }
+
+		/** This join already covered? **/
+		if ((join_mask[found] & joined_objects) == join_mask[found])
+		    {
+		    n_joins_used++;
+		    continue;
 		    }
 
 		/** Create the new QueryElement and link into the exec tree... **/
@@ -390,6 +410,16 @@ mqjAnalyze(pMultiQuery mq)
 		        n = join_obj1[found];
 		        join_obj1[found] = join_obj2[found];
 		        join_obj2[found] = n;
+			}
+		    }
+		else if (from_sources[join_obj1[found]]->QELinkage->OrderPrio != from_sources[join_obj2[found]]->QELinkage->OrderPrio)
+		    {
+		    /** ORDER BY clause trumps specificity at present **/
+		    if (from_sources[join_obj1[found]]->QELinkage->OrderPrio > from_sources[join_obj2[found]]->QELinkage->OrderPrio)
+			{
+			n = join_obj1[found];
+			join_obj1[found] = join_obj2[found];
+			join_obj2[found] = n;
 			}
 		    }
 		else if (from_sources[join_obj1[found]]->Specificity < from_sources[join_obj2[found]]->Specificity)
@@ -451,7 +481,7 @@ mqjAnalyze(pMultiQuery mq)
 		    for(i=0;i<select_qs->Children.nItems;i++)
 			{
 			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
+			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(mq->ProvidedObjMask | joined_objects | join_mask[found])) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
 			    {
 			    if (select_item->Flags & MQ_SF_ASTERISK)
 				mq->Flags |= MQ_F_ASTERISK;
@@ -469,7 +499,8 @@ mqjAnalyze(pMultiQuery mq)
 		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
 		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if (where_item->Expr->ObjCoverageMask == join_mask[found])
+		    /*if (where_item->Expr->ObjCoverageMask == join_mask[found])*/
+		    if ((where_item->Expr->ObjCoverageMask & (joined_objects | join_mask[found])) == where_item->Expr->ObjCoverageMask)
 		        {
 			if (qe->Constraint)
 			    {
@@ -503,6 +534,8 @@ mqjAnalyze(pMultiQuery mq)
 		mq->Tree = qe;
 		qe->QSLinkage = NULL;
 		qe->PrivateData = (void*)nmMalloc(sizeof(MqjJoinData));
+		memset(qe->PrivateData, 0, sizeof(MqjJoinData));
+		qe->OrderPrio = (slave->OrderPrio < master->OrderPrio)?slave->OrderPrio:master->OrderPrio;
 
 		/** Set the joined_objects bitmask to include the objects we have here **/
 		joined_objects |= join_mask[found];
@@ -510,7 +543,73 @@ mqjAnalyze(pMultiQuery mq)
 		/** Mark the one we found used. **/
 		join_used[found] = 1;
 		n_joins_used++;
-	        } while (n_joins_used < n_joins);
+	        } while (n_joins_used < n_joins);  /** do ... while **/
+	    }
+
+    return 0;
+    }
+
+
+int
+mqj_internal_ClosePrefetch(pQueryElement qe)
+    {
+    int i;
+    pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
+
+	for(i=0;i<md->nPrefetch;i++)
+	    {
+	    if (md->PrefetchObjs[i])
+		{
+		objClose(md->PrefetchObjs[i]);
+		md->PrefetchObjs[i] = NULL;
+		}
+	    }
+	md->nPrefetch = 0;
+
+    return 0;
+    }
+
+
+/*** mqj_internal_DoPrefetch() - grab up to N rows from the given child
+ *** source, and put them in the prefetch array in the PrivateData.
+ ***/
+int
+mqj_internal_DoPrefetch(pQueryElement qe, pMultiQuery mq)
+    {
+    pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
+    pQueryElement prefetch_cld;
+    int rval;
+
+	/** are we prefetching on master or slave side of the join? **/
+	if (md->PrefetchUsesSlave)
+	    prefetch_cld = (pQueryElement)(qe->Children.Items[1]);
+	else
+	    prefetch_cld = (pQueryElement)(qe->Children.Items[0]);
+
+	/** close any existing open prefetch objects **/
+	mqj_internal_ClosePrefetch(qe);
+
+	md->PrefetchReachedEnd = 0;
+
+	/** Get at most MQJ_MAX_PREFETCH objects **/
+	while(md->nPrefetch < MQJ_MAX_PREFETCH)
+	    {
+	    rval = prefetch_cld->Driver->NextItem(prefetch_cld, mq);
+	    if (rval < 0)
+		{
+		/** error from prefetch_cld **/
+		return rval;
+		}
+	    if (rval == 0)
+		{
+		/** no more rows from prefetch_cld **/
+		md->PrefetchReachedEnd = 1;
+		break;
+		}
+	    md->PrefetchObjs[md->nPrefetch] = mq->ObjList->Objects[prefetch_cld->SrcIndex];
+	    if (md->PrefetchObjs[md->nPrefetch])
+		objLinkTo(md->PrefetchObjs[md->nPrefetch]);
+	    md->nPrefetch++;
 	    }
 
     return 0;

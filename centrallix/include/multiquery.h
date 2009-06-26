@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.13 2008/03/19 07:30:53 gbeeley Exp $
+    $Id: multiquery.h,v 1.14 2009/06/26 16:04:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.14  2009/06/26 16:04:26  gbeeley
+    - (feature) adding DELETE support
+    - (change) HAVING clause now honored in INSERT ... SELECT
+    - (bugfix) some join order issues resolved
+    - (performance) cache 0 or 1 row result sets during a join
+    - (feature) adding INCLUSIVE option to SUBTREE selects
+    - (bugfix) switch to qprintf for building RawData sql data
+    - (change) some minor refactoring
+
     Revision 1.13  2008/03/19 07:30:53  gbeeley
     - (feature) adding UPDATE statement capability to the multiquery module.
       Note that updating was of course done previously, but not via SQL
@@ -183,7 +192,8 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[17];
+    pExpression		OrderBy[25];
+    int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
     QueryElement, *pQueryElement;
@@ -193,6 +203,7 @@ typedef struct _QE
 #define MQ_EF_CONSTEXP		4		/* constraint expression supplied in QE */
 #define MQ_EF_SLAVESTART	8		/* slave side of join was started */
 #define MQ_EF_FROMSUBTREE	16		/* SELECT ... FROM SUBTREE /path/name */
+#define MQ_EF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -204,7 +215,7 @@ typedef struct _QS
     char		Presentation[32];
     char		Source[256];
     char		Name[32];
-    int			ObjFlags[16];
+    int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;
     XString		RawData;
     XString		AssignRawData;
@@ -222,6 +233,7 @@ typedef struct _QS
 #define MQ_SF_FROMSUBTREE	4		/* SELECT ... FROM SUBTREE /path/name */
 #define MQ_SF_ASTERISK		8		/* SELECT clause uses 'SELECT *' */
 #define MQ_SF_IDENTITY		16		/* SELECT ... FROM IDENTITY /path/name */
+#define MQ_SF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -264,6 +276,7 @@ typedef struct
     pParamObjects	OneObjList;		/* objlist used for query as a whole - e.g., HAVING clause */
     ParamObjects	CurObjList;		/* objlist used for next fetch */
     int			nProvidedObjects;	/* number of objs in objlist provided to query externally */
+    int			ProvidedObjMask;	/* mask of external object id's **/
     }
     MultiQuery, *pMultiQuery;
 
@@ -299,6 +312,8 @@ pQueryStructure mq_internal_AllocQS(int type);
 pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);
 pQueryElement mq_internal_AllocQE();
 int mq_internal_FreeQE(pQueryElement qe);
-
+pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
+int mq_internal_FreePseudoObject(pPseudoObject p);
+int mq_internal_EvalHavingClause(pMultiQuery qy, pPseudoObject p);
 
 #endif  /* not defined _MULTIQUERY_H */
