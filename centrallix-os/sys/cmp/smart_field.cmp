@@ -3,21 +3,41 @@ smart_field "widget/component-decl"
     {
     width=220;height=runserver(condition(:this:ctl_type == 'textarea', 64, 20) + condition(char_length(:this:preview_sql)>0,16,0));
 
+    expose_events_for = ctl;
+    expose_actions_for = ctl;
+    expose_properties_for = ctl;
+
     form "widget/parameter" { type=object; find_container="widget/form";}
     field "widget/parameter" { type=string; }
     text "widget/parameter" { type=string; }
+    value "widget/parameter" { type=string; default=null; }
     tooltip "widget/parameter" { type=string; default=null; }
     lookup_with "widget/parameter" { type=string; default=null; }
     sql "widget/parameter" { type=string; default="select 1,1 where 1 != 1"; }
     type "widget/parameter" { type=string; default="standard"; }
     ctl_type "widget/parameter" { type=string; default="editbox"; }
     label_width "widget/parameter" { type=integer; default=100; }
+    empty_desc "widget/parameter" { type=string; default=""; }
+    search_by_range "widget/parameter" { type=integer; default=1; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
     preview_field "widget/parameter" { type=string; default=null; }
 
-    SetValue "widget/component-decl-action" { }
-    sv_cn "widget/connector" { event="SetValue"; target=ctl; action="SetValue"; Value=runclient(:Value); }
+    //SetValue "widget/component-decl-action" { }
+    //sv_cn "widget/connector" { event="SetValue"; target=ctl; action="SetValue"; Value=runclient(:Value); }
+
+    lc_cn "widget/connector" { condition = runserver(:this:ctl_type == 'dynamicdropdown'); event = "LoadComplete"; target=ctl; action="Instantiate"; form=form; }
+
+    SetSQL "widget/component-decl-action" { }
+    ss_cn "widget/connector"
+	{
+	event="SetSQL";
+	//event_condition=runclient(:sql != :ctl:sql or :ctl:sql is null);
+	target=ctl;
+	action="Instantiate";
+	sql=runclient(:sql);
+	form=form;
+	}
 
     label_normal "widget/label"
 	{ 
@@ -62,9 +82,24 @@ smart_field "widget/component-decl"
 	fieldname=runserver(:this:field); 
 	tooltip = runserver(:this:tooltip);
 	form=form; 
+	search_by_range = runserver(:this:search_by_range);
         create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(getdate()); style=readonly; }
         modify_hints "widget/hints" { condition=runserver(:this:type == 'modify'); default = runclient(getdate()); style=readonly,alwaysdef; }
         ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
+	}
+    ctl "widget/component"
+	{
+	condition=runserver(:this:ctl_type == 'dynamicdropdown');
+	x=runserver(:this:label_width);y=0;height=20;width=runserver(220 - :this:label_width); 
+	fl_width=40; 
+	path = "/sys/cmp/dynamic_dropdown.cmp";
+	mode = dynamic;
+	multiple_instantiation = no;
+	auto_destroy = yes;
+	field=runserver(:this:field); 
+	form=form; 
+	sql=runserver(:this:sql); 
+	readonly = condition(:this:type == 'readonly', 'yes', 'no');
 	}
     ctl "widget/dropdown" 
 	{ 
@@ -87,6 +122,18 @@ smart_field "widget/component-decl"
 	fieldname=runserver(:this:field);
 	form=form;
 	}
+    ctl "widget/label"
+	{
+	fl_width=40;
+	condition=runserver(:this:ctl_type == 'label');
+	x=runserver(:this:label_width);y=0;height=20;
+	width=runserver(220 - :this:label_width);
+	align=left;
+	style=bold;
+	fieldname=runserver(:this:field); 
+	form=form; 
+	value = runserver(:this:value);
+	}
     ctl "widget/editbox" 
 	{
 	condition=runserver(:this:ctl_type == 'editbox');
@@ -95,6 +142,7 @@ smart_field "widget/component-decl"
 	bgcolor=white; 
 	fieldname=runserver(:this:field); 
 	form=form; 
+	empty_description = runserver(:this:empty_desc);
 	tooltip = runserver(:this:tooltip);
         create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(user_name()); style=readonly; }
         modify_hints "widget/hints" { condition=runserver(:this:type == 'modify'); default = runclient(user_name()); style=readonly,alwaysdef; }
