@@ -49,7 +49,7 @@
 #include "ht_render.h"
 
 
-#define WGTR_MAX_PARAMS		(16)
+#define WGTR_MAX_PARAMS		(24)
 
 //global prefix for repeat widget
 int prefix=1;
@@ -183,7 +183,7 @@ wgtrParseParameter(pObject obj, pStruct inf)
 	    stAttrValue_ne(find_inf, &str);
 	    if (str)
 		{
-		if (objDataFromString(&(param->Value->Data), param->Value->DataType, str) < 0)
+		if (objDataFromStringAlloc(&(param->Value->Data), param->Value->DataType, str) < 0)
 		    {
 		    mssError(1, "WGTR", "Parameter '%s' specified incorrectly", param->Name);
 		    goto error;
@@ -381,11 +381,11 @@ wgtrCheckTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode template, char* cl
 
 
 pWgtrNode
-wgtrLoadTemplate(pObjSession s, char* path)
+wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     {
     pWgtrNode template;
 
-	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", NULL, NULL);
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL);
 	if (!template) return NULL;
 	if (strcmp(template->Type, "widget/template"))
 	    {
@@ -816,7 +816,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 	/** Before we do anything else, examine any application parameters
 	 ** that could be present.
 	 **/
-	if (!context_objlist && (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl")))
+	if (!context_objlist && (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl") || !strcmp(type,"widget/template")))
 	    {
 	    context_objlist = expCreateParamList();
 	    if (!context_objlist) 
@@ -868,7 +868,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		    {
 		    for(i=0;i<val.StringVec->nStrings && (i+startat)<WGTR_MAX_TEMPLATE; i++)
 			{
-			my_templates[i+startat] = wgtrLoadTemplate(obj->Session, val.StringVec->Strings[i]);
+			my_templates[i+startat] = wgtrLoadTemplate(obj->Session, val.StringVec->Strings[i], client_params);
 			if (!my_templates[i+startat])
 			    {
 			    mssError(0, "WGTR", "Could not load widget_template '%s'", val.StringVec->Strings[i]);
@@ -879,7 +879,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		}
 	    else if (objGetAttrValue(obj, "widget_template", DATA_T_STRING, &val) == 0)
 		{
-		my_templates[startat] = wgtrLoadTemplate(obj->Session, val.String);
+		my_templates[startat] = wgtrLoadTemplate(obj->Session, val.String, client_params);
 		if (!my_templates[startat])
 		    {
 		    mssError(0, "WGTR", "Could not load widget_template '%s'", val.String);
@@ -1017,7 +1017,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	/** Before we do anything else, examine any application parameters
 	 ** that could be present.
 	 **/
-	if (!context_objlist && (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl")))
+	if (!context_objlist && (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl") || !strcmp(type,"widget/template")))
 	    {
 	    context_objlist = expCreateParamList();
 	    if (!context_objlist) 
@@ -1071,7 +1071,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		    {
 		    for(i=0;i<val.StringVec->nStrings && (i+startat)<WGTR_MAX_TEMPLATE; i++)
 			{
-			my_templates[i+startat] = wgtrLoadTemplate(obj->Session, val.StringVec->Strings[i]);
+			my_templates[i+startat] = wgtrLoadTemplate(obj->Session, val.StringVec->Strings[i], client_params);
 			if (!my_templates[i+startat])
 			    {
 			    mssError(0, "WGTR", "Could not load widget_template '%s'", val.StringVec->Strings[i]);
@@ -1082,7 +1082,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		}
 	    else if (objGetAttrValue(obj, "widget_template", DATA_T_STRING, &val) == 0)
 		{
-		my_templates[startat] = wgtrLoadTemplate(obj->Session, val.String);
+		my_templates[startat] = wgtrLoadTemplate(obj->Session, val.String, client_params);
 		if (!my_templates[startat])
 		    {
 		    mssError(0, "WGTR", "Could not load widget_template '%s'", val.String);
@@ -1188,7 +1188,7 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[])
 	    {
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		if (templates[i])
-		    template_arr[i] = wgtrLoadTemplate(obj->Session, templates[i]);
+		    template_arr[i] = wgtrLoadTemplate(obj->Session, templates[i], params);
 	    }
 
     return wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0);
