@@ -45,12 +45,24 @@ function im_mousemove(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function im_get_source(a)
+    {
+    return this.source;
+    }
+
+function im_set_source(a, v)
+    {
+    this.source = v;
+    pg_set(this.img, "src", v);
+    }
+
 function im_init(l)
     {
     htr_init_layer(l,l,"im");
     ifc_init_widget(l);
     var imgs = pg_images(l);
     l.img = imgs[0];
+    l.source = pg_get(l.img, "src");
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -61,5 +73,9 @@ function im_init(l)
     ie.Add("MouseOut");
     ie.Add("MouseMove");
 
+    var iv = l.ifcProbeAdd(ifValue);
+    iv.Add("source", im_get_source, im_set_source);
+
     return l;
     }
+
