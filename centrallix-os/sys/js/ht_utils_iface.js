@@ -300,6 +300,16 @@ function ifc_probe(i)
     }
 
 
+// An event cancel class.  We need a unique return value for canceling an event.
+function Cancel()
+    {
+    }
+
+function isCancel(c)
+    {
+    return (((typeof c) == 'object') && c && c.constructor == Cancel);
+    }
+
 // ----------------------------------------------------------------------
 // Interface Initializers
 // ----------------------------------------------------------------------
@@ -314,7 +324,7 @@ function ifAction()
     function ifaction_invoke(a,ap) //ap stands for [a]ction [p]arameters (a hash of parameters)
 	{
 	if (this.Actions[a]) 
-	    return this.Actions[a].call(this.obj, ap);
+	    return this.Actions[a].call(this.obj, ap, a);
 	else if (pg_diag)
 	    alert("Invoke action: " + this.obj.id + " does not implement action " + a);
 	return null;
@@ -329,20 +339,32 @@ function ifAction()
 	    {
 	    alert("SchedInvoke action: " + this.obj.id + " does not implement action " + a);
 	    }
+	return null;
 	}
     function ifaction_add(a, f)
 	{
-	this.Actions[a] = f;
+	if (!this.Actions[a]) this.Actions[a] = f;
 	}
     function ifaction_exists(a)
 	{
 	return (this.Actions[a])?true:false;
+	}
+    function ifaction_getactionlist()
+	{
+	var alist = [];
+	for(var a in this.Actions)
+	    {
+	    // build array of just the action names
+	    alist.push(a);
+	    }
+	return alist;
 	}
     this.Actions = [];
     this.Add = ifaction_add;
     this.Exists = ifaction_exists;
     this.Invoke = ifaction_invoke;
     this.SchedInvoke = ifaction_schedinvoke;
+    this.GetActionList = ifaction_getactionlist;
     }
 
 
@@ -357,7 +379,7 @@ function ifEvent()
     {
     function ifevent_add(e)
 	{
-	this.Events[e] = [];
+	if (!this.Events[e]) this.Events[e] = [];
 	}
     function ifevent_clear(e)
 	{
@@ -384,6 +406,7 @@ function ifEvent()
 	{
 	var rval = null;
 	ep._Origin = wgtrGetName(this.obj);
+	ep._EventName = e;
 	if (this.Events[e])
 	    {
 	    var eventList = this.Events[e];
@@ -391,6 +414,7 @@ function ifEvent()
 	    for(var ev=0; ev<len;ev++)
 		{
 		rval = eventList[ev].fn.call(eventList[ev].eo, ep);
+		if (isCancel(rval)) break;
 		}
 	    }
 	else if (pg_diag)
@@ -409,37 +433,92 @@ function ifEvent()
 		alert("Event " + this.name + " -> Action " + this.action + ": target '" + this.target + "' not a widget");
 	    return null;
 	    }
+	var cancel = false;
+	var cond = true;
+	var cnfrm = null;
+	var rval = null;
 	var ai = t.ifcProbe(ifAction);
 	if (!ai) return null;
 	var ap = new Object;
 	ap._Origin = ep._Origin;
-	for(var pn in this.paramlist)
+	ap._EventName = ep._EventName;
+	if (this.paramlist == null)
 	    {
-	    var p = this.paramlist[pn];
-	    if (p.type == 'int' || p.type == 'str' || p.type == 'dbl')
-		ap[pn] = p.value;
-	    else if (p.type == 'sym')
+	    for(var e in ep)
 		{
-		ap[pn] = wgtrGetNode(this.to, p.value);
+		ap[e] = ep[e];
 		}
-	    else if (p.type == 'exp')
+	    }
+	else
+	    {
+	    for(var pn in this.paramlist)
 		{
-		var _context = this.to;
-		//if (pn == 'Source') htr_alert(this, 1);
-		if (cx__capabilities.JS15)
+		var p = this.paramlist[pn];
+		if (p.type == 'int' || p.type == 'str' || p.type == 'dbl')
+		    ap[pn] = p.value;
+		else if (p.type == 'sym')
 		    {
-		    ep._context = this.to;
-		    ap[pn] = eval(p.value, ep);
+		    ap[pn] = wgtrGetNode(this.to, p.value);
 		    }
-		else
+		else if (p.type == 'exp')
 		    {
-		    if (typeof ep.eval != 'function')
-			ep.eval = eval;
-		    ap[pn] = ep.eval(p.value);
+		    var _context = this.to;
+		    var _this = ep;
+		    //if (pn == 'Source') htr_alert(this, 1);
+		    if (cx__capabilities.JS15)
+			{
+			ep._context = this.to;
+			ep._this = ep;
+			//ap[pn] = eval(p.value, ep);
+			with (ep) ap[pn] = eval(p.value);
+			}
+		    else
+			{
+			if (typeof ep.eval != 'function')
+			    ep.eval = eval;
+			ap[pn] = ep.eval(p.value);
+			}
+		    }
+		// special case - don't do actions if event condition is false
+		if (pn == 'event_condition')
+		    {
+		    if (ap[pn])
+			delete ap[pn];
+		    else
+			cond = false;
+		    }
+		/*if (pn == 'event_input')
+		    {
+		    if (ap[pn])
+			{
+			var eival = prompt(ap[pn]);
+			if (eival == null)
+			    cond = false;
+			else
+			    ep.EventInput = eival;
+			}
+		    delete ap[pn];
+		    }*/
+		if (pn == 'event_confirm')
+		    {
+		    if (ap[pn]) cnfrm = ap[pn];
+		    delete ap[pn];
+		    }
+		if (pn == 'event_cancel')
+		    {
+		    if (ap[pn])
+			cancel = true;
+		    delete ap[pn];
 		    }
 		}
 	    }
-	return ai.Invoke(this.action, ap);
+	if (cond && cnfrm && !confirm(cnfrm))
+	    cond = false;
+	if (cond)
+	    rval = ai.Invoke(this.action, ap);
+	if (cancel)
+	    rval = new Cancel();
+	return rval;
 	}
     function ifevent_connect(e,t,a,pl)
 	{
@@ -464,8 +543,23 @@ function ifEvent()
 	{
 	this.late_binding = true;
 	}
+    function ifevent_geteventlist()
+	{
+	var elist = [];
+	for(var e in this.Events)
+	    {
+	    // build array of just the event names
+	    elist.push(e);
+	    }
+	return elist;
+	}
+    function ifevent_is_late_bind()
+	{
+	return this.late_binding;
+	}
     this.late_binding = false;
     this.EnableLateConnectBinding = ifevent_enable_late;
+    this.IsLateBindingEnabled = ifevent_is_late_bind;
     this.Events = [];
     this.Add = ifevent_add;
     this.Hook = ifevent_hook;
@@ -473,6 +567,7 @@ function ifEvent()
     this.Connect = ifevent_connect;
     this.Exists = ifevent_exists;
     this.Clear = ifevent_clear;
+    this.GetEventList = ifevent_geteventlist;
     }
 
 
@@ -560,18 +655,18 @@ function ifValue()
 	{
 	this._NullNotExist = {get:get_cb, set:set_cb};
 	}
-    function ifvalue_watch(attr, func)
+    function ifvalue_watch(attr, fobj, func)
 	{
 	var a = this._CheckExist(attr);
 	for(var i in a.watchlist)
-	    if (a.watchlist[i] == func) return;
-	a.watchlist.push(func);
+	    if (a.watchlist[i].func == func && a.watchlist[i].fobj == fobj) return;
+	a.watchlist.push({func:func, fobj:fobj});
 	}
-    function ifvalue_unwatch(attr, func)
+    function ifvalue_unwatch(attr, fobj, func)
 	{
 	var a = this._CheckExist(attr);
 	for(var i in a.watchlist)
-	    if (a.watchlist[i] == func)
+	    if (a.watchlist[i].func == func && a.watchlist[i].fobj == fobj)
 		{
 		a.splice(i, 1);
 		return;
@@ -596,7 +691,10 @@ function ifValue()
 	    }
 	for(var i in a.watchlist)
 	    {
-	    changev = a.watchlist[i].call(this.obj, attr, oldval, value);
+	    if (a.watchlist[i].fobj)
+		changev = a.watchlist[i].func.call(a.watchlist[i].fobj, this.obj, attr, oldval, value);
+	    else
+		changev = a.watchlist[i].func.call(this.obj, attr, oldval, value);
 	    if (!force) value = changev;
 	    }
 	return value;
