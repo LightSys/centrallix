@@ -14,13 +14,13 @@ function wgtrSetupTree(tree, ns, parent)
     var _parentobj = parent?parent.obj:null;
     var _parentctr = parent?parent.cobj:null;
 
-    if (tree.obj == 'new Object()')
-	tree.obj = new Object();
+    if (!tree.obj)
+	tree.obj = {};
     else
 	with (tree) tree.obj = eval(tree.obj);
 
     var _obj = tree.obj;
-    if (tree.cobj == '_obj')
+    if (!tree.cobj)
 	tree.cobj = _obj;
     else if (tree.cobj == '_parentctr')
 	tree.cobj = _parentctr;
@@ -29,8 +29,9 @@ function wgtrSetupTree(tree, ns, parent)
 
     if (ns) tree.obj.__WgtrNamespace = ns;
     wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis);
-    for(var i=0; i<tree.sub.length; i++)
-	wgtrSetupTree(tree.sub[i], null, tree);
+    if (tree.sub)
+	for(var i=0; i<tree.sub.length; i++)
+	    wgtrSetupTree(tree.sub[i], null, tree);
     return tree.obj;
     }
 
@@ -48,7 +49,7 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 	if (!obj) alert('no object for wgtr node: ' + name);
 	obj.__WgtrType = type;
 	obj.__WgtrVisual = is_visual;
-	obj.__WgtrChildren = new Array();
+	obj.__WgtrChildren = [];
 	obj.__WgtrName = name;
 	obj.__WgtrContainer = cobj;
 
@@ -61,7 +62,7 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 	else
 	    {
 	    obj.__WgtrParent = null;
-	    obj.__WgtrChildList = new Array();
+	    obj.__WgtrChildList = [];
 	    obj.__WgtrRoot = obj;
 	    }
 	
@@ -92,9 +93,29 @@ function wgtrRemoveNamespace(ns)
     }
 
 
+function wgtrUndefinedObject() { }
+
+function wgtrIsUndefined(v)
+    {
+    return (typeof prop == 'object' && prop && prop.constructor == wgtrUndefinedObject);
+    }
+
+
+function wgtrGetProperty(node, prop_name)
+    {
+    var prop = wgtrProbeProperty(node, prop_name);
+    if (wgtrIsUndefined(prop))
+	{
+	alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
+	return null;
+	}
+    return prop;
+    }
+
+
 // wgtrGetPropertyValue - returns the value of a given property
 // returns null on failure
-function wgtrGetProperty(node, prop_name)
+function wgtrProbeProperty(node, prop_name)
     {
     var prop;
     var newnode;
@@ -109,8 +130,8 @@ function wgtrGetProperty(node, prop_name)
 	if (node.reference && (newnode = node.reference()))
 	    node = newnode;
 
-	// If the Page or Component-decl widget, check for params
-	if (node.__WgtrType == "widget/component-decl" || node.__WgtrType == "widget/page")
+	// If the Page, Component-decl, or objectsource widget, check for params
+	if (node.__WgtrType == "widget/component-decl" || node.__WgtrType == "widget/page" || node.__WgtrType == "widget/osrc")
 	    {
 	    for(var child in node.__WgtrChildren)
 		{
@@ -131,17 +152,15 @@ function wgtrGetProperty(node, prop_name)
 		}
 	    else
 		{
-		alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
-		return null;
+		return new UndefinedObject();
 		}
 	    }
 
 	// check for the existence of the asked-for property
 	if (typeof (node[prop_name]) == 'undefined')
 	    {
-	    alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
-	    return null;
+	    return new UndefinedObject();
 	    }
 
 	prop = node[prop_name];
@@ -195,7 +214,7 @@ function wgtrSetProperty(node, prop_name, value)
 
 // wgtrGetNode - gets a particular node in the tree based on its name
 // returns the node, or null on fail.
-function wgtrGetNode(tree, node_name)
+function wgtrGetNode(tree, node_name, type)
     {
     var i;
     var child;
@@ -221,6 +240,9 @@ function wgtrGetNode(tree, node_name)
 	    {
 	    node = newnode;
 	    }
+
+	if (type && node.__WgtrType != type)
+	    alert('Application error: "' + node_name + '" (type ' + node.__WgtrType + ') is not of expected type "' + type + '"');
 
 	return node;
     }
@@ -379,6 +401,25 @@ function wgtrFindContainer(node,type)
 	}
     }
 
+// this finds a containing widget, across components.
+function wgtrGlobalFindContainer(node, type)
+    {
+    var c;
+    if (!node || !node.__WgtrName) 
+	{ pg_debug("wgtrGlobalFindContainer - node was not a WgtrNode!\n"); return false; }
+
+    while(1)
+	{
+	// first, try finding container normally.
+	c = wgtrFindContainer(node, type);
+	if (c) return c;
+	if (wgtrGetType(wgtrGetRoot(node)) == "widget/component-decl")
+	    node = wgtrGetRoot(node).shell;
+	else
+	    return null;
+	}
+    }
+
 function wgtrGetName(node)
     {
 	// make sure this is actually a tree
@@ -418,7 +459,12 @@ function wgtrCheckReference(v)
     {
     if (wgtrIsNode(v))
 	{
-	if (v.reference) v = v.reference();
+	while (v.reference)
+	    {
+	    var v2 = v.reference();
+	    if (v2 == v || v2 == null) break;
+	    v = v2;
+	    }
 	return wgtrGetNamespace(v) + ":" + wgtrGetName(v);
 	}
     return null;
@@ -455,3 +501,145 @@ function wgtrGetChildren(node)
 
 	return node.__WgtrChildren;
     }
+
+function wgtrRegisterContainer(node, container)
+    {
+	// make sure this is actually a tree
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrRegisterContainer - node was not a WgtrNode!\n"); return false; }
+	if (!container || !container.__WgtrName) 
+	    { pg_debug("wgtrRegisterContainer - container was not a WgtrNode!\n"); return false; }
+	node.__WgtrCmpContainer = container;
+	return;
+    }
+
+function wgtrIsChild(node, subnode)
+    {
+	// make sure this is actually a tree
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrGetChild - node was not a WgtrNode!\n"); return false; }
+	if (!subnode || !subnode.__WgtrName) 
+	    { pg_debug("wgtrGetChild - subnode was not a WgtrNode!\n"); return false; }
+
+	var nodert = wgtrGetRoot(node);
+	while(subnode)
+	    {
+	    if (subnode.__WgtrCmpContainer)
+		subnode = subnode.__WgtrCmpContainer;
+	    else
+		subnode = wgtrGetParent(subnode);
+	    if (subnode == node)
+		return true;
+	    }
+	return false;
+    }
+
+function wgtrGetGeom(node)
+    {
+    if (!node.tagName || node.tagName != 'DIV')
+	{
+	// fixme -- not all widgets have a visual DIV
+	if (wgtrGetType(node) == "widget/component")
+	    {
+	    var cmp_geom = node.getGeom();
+	    return {x:getPageX(wgtrGetContainer(wgtrGetParent(node))) + cmp_geom.x,
+		    y:getPageY(wgtrGetContainer(wgtrGetParent(node))) + cmp_geom.y,
+		    width:cmp_geom.width,
+		    height:cmp_geom.height};
+	    }
+	return null;
+	}
+    else
+	{
+	return {x:getPageX(node),y:getPageY(node),width:getClipWidth(node),height:getClipHeight(node)};
+	}
+    }
+
+function wgtrFindInSubtree(subtree, cur_node, nodetype)
+    {
+    if (!subtree) return null;
+    if (!cur_node) cur_node = subtree;
+
+    // find the next one
+    var find_node = cur_node;
+    while(true)
+	{
+	if (find_node.__WgtrChildren && find_node.__WgtrChildren.length > 0)
+	    {
+	    // Just examined parent, jump to first child next.
+	    find_node = find_node.__WgtrChildren[0];
+	    }
+	else if (find_node.__WgtrType == "widget/component" && find_node.components && find_node.components.length > 0)
+	    {
+	    find_node = find_node.components[0].cmp;
+	    }
+	else 
+	    {
+	    var continue_recurse = true;
+	    while(continue_recurse)
+		{
+		if (find_node.__WgtrParent)
+		    {
+		    // find the index of this child in the parent's child array so we
+		    // can locate the next sibling
+		    for(var i=0;i<find_node.__WgtrParent.__WgtrChildren.length; i++)
+			{
+			if (find_node.__WgtrParent.__WgtrChildren[i] == find_node)
+			    {
+			    if (find_node.__WgtrParent.__WgtrChildren.length > i+1)
+				{
+				// Just examined one child, go to sibling next
+				find_node = find_node.__WgtrParent.__WgtrChildren[i+1];
+				continue_recurse = false;
+				}
+			    else
+				{
+				// Examined all siblings, go back up the tree to find
+				// siblings of parent(s)
+				find_node = find_node.__WgtrParent;
+				}
+			    break;
+			    }
+			}
+		    }
+		else if (find_node.__WgtrType == 'widget/component-decl')
+		    {
+		    // This is a component root, instead of siblings look in the
+		    // component instance list.
+		    for(var i=0;i<find_node.shell.components.length; i++)
+			{
+			if (find_node.shell.components[i].cmp == find_node)
+			    {
+			    if (find_node.shell.components.length > i+1)
+				{
+				// go to next instance
+				find_node = find_node.shell.components[i+1].cmp;
+				continue_recurse = false;
+				}
+			    else
+				{
+				// Examined all instances in the component, go back up to container.
+				find_node = find_node.shell;
+				}
+			    break;
+			    }
+			}
+		    }
+
+		// Don't recurse back past the top of the subtree.
+		if (find_node == subtree) break;
+		}
+	    }
+
+	// Found a matching node?
+	if (!nodetype || find_node.__WgtrType == nodetype)
+	    break;
+
+	// If we're back where we started, return null.
+	if (find_node == cur_node)
+	    return null;
+	}
+
+    return find_node;
+    }
+
