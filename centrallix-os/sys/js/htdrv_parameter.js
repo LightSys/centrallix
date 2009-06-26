@@ -11,7 +11,7 @@
 
 function pa_actionsetvalue(aparam)
     {
-    if (aparam.Value) 
+    if (typeof aparam.Value != 'undefined') 
 	{
 	this.setvalue(cx_hints_checkmodify(this, this.value, aparam.Value, this.datatype));
 	}
@@ -22,23 +22,85 @@ function pa_getvalue()
     return this.value;
     }
 
+function pa_import_events_actions()
+    {
+    if (this.value.ifcProbe && this.value.ifcProbe(ifEvent))
+	{
+	var el = this.value.ifcProbe(ifEvent).GetEventList();
+	for(var e in el)
+	    {
+	    this.ifcProbe(ifEvent).Add(el[e]);
+	    this.value.ifcProbe(ifEvent).Hook(el[e], pa_event, this);
+	    }
+	}
+    if (this.value.ifcProbe && this.value.ifcProbe(ifAction))
+	{
+	var al = this.value.ifcProbe(ifAction).GetActionList();
+	for(var a in al)
+	    {
+	    this.ifcProbe(ifAction).Add(al[a], pa_action);
+	    }
+	}
+    }
+
 function pa_setvalue(v)
     {
     if (this.datatype == 'object')
+	{
 	this.value = wgtrDereference(v);
+	if (this.value)
+	    {
+	    this.ImportEventsAndActions();
+
+	    // if this is a component, schedule to import again, as list may have changed.
+	    if (wgtrGetType(this.value) == "widget/component")
+		pg_addsched_fn(this, "ImportEventsAndActions", [], 0);
+	    }
+	}
+    else if (this.datatype == 'integer')
+	{
+	if (v === null)
+	    this.value = v;
+	else
+	    this.value = parseInt(v);
+	}
     else
 	this.value = v;
+
+    if (this.value === null && !this.in_startnew)
+	{
+	// Prevent null default recursion
+	this.in_startnew = true;
+	cx_hints_startnew(this);
+	this.in_startnew = false;
+	}
     }
 
 function pa_verify()
     {
     cx_hints_startnew(this);
     this.setvalue(cx_hints_checkmodify(this, this.value, this.newvalue, this.datatype));
+
+    // Notify container
+    var p = wgtrGetParent(this);
+    if (p && p.ParamNotify) p.ParamNotify(wgtrGetName(this), this, this.datatype, this.value);
     }
 
 function pa_reference()
     {
     return this.value;
+    }
+
+function pa_event(eparam)
+    {
+    var e = eparam._EventName;
+    return this.ifcProbe(ifEvent).Activate(e, eparam);
+    }
+
+function pa_action(aparam, aname)
+    {
+    if (this.value && this.value.ifcProbe(ifAction) && this.value.ifcProbe(ifAction).Exists(aname))
+	return this.value.ifcProbe(ifAction).Invoke(aname, aparam);
     }
 
 function pa_init(l, wparam)
@@ -48,6 +110,7 @@ function pa_init(l, wparam)
     // Params
     l.newvalue = wparam.val;
     l.value = null;
+    l.in_startnew = false;
     if (l.newvalue != null)
 	{
 	l.newvalue = htutil_unpack(l.newvalue);
@@ -64,12 +127,14 @@ function pa_init(l, wparam)
     l.getvalue = pa_getvalue;
     l.setvalue = pa_setvalue;
     l.Verify = pa_verify;
+    l.ImportEventsAndActions = pa_import_events_actions;
     if (l.datatype == 'object')
 	l.reference = pa_reference;
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
     ie.Add("DataChange");
+    ie.EnableLateConnectBinding();
 
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
