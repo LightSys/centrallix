@@ -13,7 +13,7 @@
 
 function dd_getvalue() 
     {
-    if (this.form.mode == 'Query')
+    if (this.form.mode == 'Query' && this.query_multiselect)
 	{
 	var vals = new Array();
 	for(var j in this.selectedItems)
@@ -121,6 +121,7 @@ function dd_keyhandler(l,e,k)
 	    {
 	    for (var i=0; i < this.Values.length; i++)
 		{
+		if (this.Values[i].label == '(none selected)') continue;
 		if (this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_upper) ||
 		    this.Values[i].label.substring(0, 1) == 
@@ -131,6 +132,21 @@ function dd_keyhandler(l,e,k)
 		    i=this.Values.length;
 		    }
 		}
+	    if (!this.lastmatch)
+		{
+		for (var i=0; i < this.Values.length; i++)
+		    {
+		    if (this.Values[i].label == '(none selected)') continue;
+		    if (this.Values[i].label.toUpperCase().indexOf(String.fromCharCode(k_upper)) >= 0)
+			{
+			dd_hilight_item(this,i);
+			    this.lastmatch = i;
+			i=this.Values.length;
+			break;
+			}
+		    }
+		}
+
 	    this.keystring = String.fromCharCode(k);
 	    this.time_start = new Date();
 
@@ -154,6 +170,7 @@ function dd_keyhandler(l,e,k)
 			
 	    for (var i=0; i < this.Values.length; i++) 
 		{
+		if (this.Values[i].label == '(none selected)') continue;
 		if ((this.Values[i].label.substring(0, 
 			this.keystring.length).toLowerCase())
 			== this.keystring && !this.match)
@@ -163,6 +180,20 @@ function dd_keyhandler(l,e,k)
 		    this.match = true;
 		    this.lastmatch = i;
 		    }		
+		}
+	    if (!this.match)
+		{
+		for (var i=0; i < this.Values.length; i++)
+		    {
+		    if (this.Values[i].label == '(none selected)') continue;
+		    if (this.Values[i].label.toUpperCase().indexOf(this.keystring.toUpperCase()) >= 0)
+			{
+			dd_hilight_item(this,i);
+			this.match = true;
+			this.lastmatch = i;
+			break;
+			}
+		    }
 		}
 	    if (!this.match) 
 		{
@@ -240,7 +271,10 @@ function dd_keyhandler(l,e,k)
 		dd_collapse(this);
 		dd_unhilight_item(this,this.SelectedItem);
 		}
-	    this.form.TabNotify(this);
+	    if (e.shiftKey)
+		this.form.ShiftTabNotify(this);
+	    else
+		this.form.TabNotify(this);
 	    }
 	}
     else if (k == 27)
@@ -312,8 +346,8 @@ function dd_collapse(l)
 
 function dd_expand(l)
     {
-    var offs; 
-    if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull) && l.Values[0].value != null)
+    var offs;
+    if (!l.osrc && !cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull) && l.Values[0] && l.Values[0].value != null)
 	{
 	var nullitem = new Array();
 	if (l.mainlayer.w < 108)
@@ -364,7 +398,7 @@ function dd_select_item(l,i)
     var c = "<TABLE height=" + (pg_parah) + " cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
     if (i!=null)
 	{
-	if(l.form && l.form.mode == 'Query')
+	if(l.form && l.form.mode == 'Query' && l.query_multiselect)
 	    {
 	    if(!l.selectedItems)
 		{
@@ -429,8 +463,12 @@ function dd_select_item(l,i)
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
     //pg_debug('new id = ' + l.VisLayer.id + '\n');
+    var lbl = null;
     if (i != null)
+	{
 	l.value = l.Values[l.VisLayer.index].value;
+	lbl = l.Values[l.VisLayer.index].label;
+	}
     else
 	l.value = null;
     if(l.Mode == 3)
@@ -439,7 +477,7 @@ function dd_select_item(l,i)
 	//alert(i);
 	//l.osrc.MoveToRecord(i);
 	}
-    cn_activate(l, "DataChange");
+    cn_activate(l, "DataChange", {Value:l.value, Label:lbl});
     }
 
 function dd_datachange(l)
@@ -625,8 +663,7 @@ function dd_create_pane(l)
 
     /**  Add items  **/
     var w = getClipWidth(p.ScrLayer);
-    l.Items = null;
-    l.Items = new Array();
+    l.Items = [];
     for (var i=0; i < l.Values.length; i++)
 	{
 	if (!l.Items[i])
@@ -657,11 +694,13 @@ function dd_create_pane(l)
 
 function dd_add_items(l,ary)
     {
-    l.Values = null;
+    l.Values = [];
     for(var i in ary) 
 	{
 	ary[i].label = htutil_rtrim(ary[i].label);
 	ary[i].value = htutil_rtrim(ary[i].value);
+	ary[i].font = htutil_rtrim(ary[i].font);
+	ary[i].fontsize = htutil_rtrim(ary[i].fontsize);
 	if (ary[i].wname)
 	    {
 	    ary[i].wname = htutil_rtrim(ary[i].wname);
@@ -769,7 +808,7 @@ function dd_mousedown(e)
 	    dd_select_item(dd_current, e.layer.index);
 	    dd_datachange(dd_current);
 	    }
-	if(!dd_current.form || dd_current.form.mode != 'Query')
+	if(!dd_current.form || dd_current.form.mode != 'Query' || !dd_current.query_multiselect)
 	    dd_collapse(dd_current);
 	else 
 	    htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
@@ -876,6 +915,15 @@ function dd_changemode()
 	}
 }
 
+function dd_deinit()
+    {
+    dd_collapse(this);
+    if (this.form)
+	this.form.DeRegister(this);
+    if (dd_current == this)
+	dd_current = null;
+    }
+
 function dd_init(param)
     {
     var l = param.layer;
@@ -890,6 +938,7 @@ function dd_init(param)
     l.VisLayer.index = null;
     l.HidLayer.index = null;
     l.Items = new Array();
+    l.Values = [];
     if (l.NumDisplay < 5)
 	{
 	l.NumDisplay = 5;
@@ -903,6 +952,8 @@ function dd_init(param)
     l.resetvalue = dd_resetvalue;
     l.keyhandler = dd_keyhandler;
     l.additems = dd_add_items;
+    l.destroy_widget = dd_deinit;
+
     if(l.Mode == 3)
 	{
 	l.osrc = wgtrFindContainer(l, "widget/osrc");
@@ -929,6 +980,7 @@ function dd_init(param)
     l.enabled = 'full';
     if (param.form) l.form = wgtrGetNode(l, param.form);
     if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
+    l.query_multiselect = param.qms;
     l.value = null;
     htr_init_layer(l,l,'dd');
     htutil_tag_images(l,'dd',l,l);
