@@ -48,10 +48,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.15 2007/09/18 18:03:14 gbeeley Exp $
+    $Id: obj_attr.c,v 1.16 2009/06/26 18:34:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.16  2009/06/26 18:34:28  gbeeley
+    - (change) prevent virtual attributes from being added to an object if the
+      property already exists in the object itself
+    - (bugfix) runserver() expression fixes within OSML
+
     Revision 1.15  2007/09/18 18:03:14  gbeeley
     - (bugfix) when doing runserver() stuff in attributes, do not assume that
       the underlying driver knows how to tell us that the "standard four"
@@ -203,14 +208,25 @@ int
 objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(), int (*get_fn)(), int (*set_fn)(), int (*finalize_fn)())
     {
     pObjVirtualAttr va;
+    char* findattr;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
 	/** Must not already exist **/
-	if (objGetAttrType(this, attrname) >= 0)
+	if (!strcmp(attrname, "objcontent") || !strcmp(attrname,"name") ||
+		!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
+		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation"))
 	    {
 	    mssError(1, "OSML", "Virtual Attribute '%s' already exists in object.", attrname);
 	    return -1;
+	    }
+	for(findattr=objGetFirstAttr(this); findattr; findattr=objGetNextAttr(this))
+	    {
+	    if (!strcmp(findattr, attrname))
+		{
+		mssError(1, "OSML", "Virtual Attribute '%s' already exists in object.", attrname);
+		return -1;
+		}
 	    }
 
 	/** Set it up **/
@@ -274,7 +290,7 @@ objGetAttrType(pObject this, char* attrname)
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, rval, POD(&exp), &(this->Session->Trx)) == 0)
 		{
-		if (exp->Flags & EXPR_F_RUNSERVER)
+		if (exp->Flags & (EXPR_F_RUNSERVER))
 		    {
 		    exp = expDuplicateExpression(exp);
 		    if (exp)
@@ -398,7 +414,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
 		{
-		if (exp->Flags & EXPR_F_RUNSERVER)
+		if (exp->Flags & (EXPR_F_RUNSERVER | EXPR_F_HASRUNSERVER))
 		    {
 		    exp = expDuplicateExpression(exp);
 		    if (exp)
@@ -419,16 +435,26 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    expBindExpression(this->AttrExp, this->EvalContext, EXPR_F_RUNSERVER);
 	    if ((rval = expEvalTree(this->AttrExp, this->EvalContext)) >= 0)
 		{
-		if (((pExpression)(this->AttrExp))->DataType != data_type)
+		if ((((pExpression)(this->AttrExp))->Flags & EXPR_F_HASRUNSERVER) && data_type == DATA_T_CODE)
 		    {
-		    mssError(1,"OSML","Type mismatch accessing value '%s'", attrname);
-		    return -1;
+		    /** return exp tree **/
+		    val->Generic = this->AttrExp;
+		    rval = 0;
+		    used_expr = 1;
 		    }
-		if (((pExpression)(this->AttrExp))->Flags & EXPR_F_NULL)
-		    rval = 1;
-		used_expr = 1;
-		if (expExpressionToPod(this->AttrExp, data_type, val) < 0)
-		    rval = -1;
+		else
+		    {
+		    if (((pExpression)(this->AttrExp))->DataType != data_type)
+			{
+			mssError(1,"OSML","Type mismatch accessing value '%s'", attrname);
+			return -1;
+			}
+		    if (((pExpression)(this->AttrExp))->Flags & EXPR_F_NULL)
+			rval = 1;
+		    used_expr = 1;
+		    if (expExpressionToPod(this->AttrExp, data_type, val) < 0)
+			rval = -1;
+		    }
 		}
 	    }
 
