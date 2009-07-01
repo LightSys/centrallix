@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -49,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.22 2009/06/26 16:18:59 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.23 2009/07/01 18:50:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.23  2009/07/01 18:50:09  gbeeley
+    - (bugfix) need to include limits.h to get INT_MAX on some systems.
+
     Revision 1.22  2009/06/26 16:18:59  gbeeley
     - (change) GetCharacterMetric now returns both height and width
     - (performance) change from bubble sort to merge sort for page generation
