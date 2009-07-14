@@ -1284,7 +1284,18 @@ function pg_launch(aparam)
 	window.windowlist[w_name].close();
 	w_exists = false;
 	}
-    if (!w_exists) window.windowlist[w_name] = window.open(url, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",resizable=no,personalbar=no,menubar=no,status=no");
+    if (!w_exists) 
+	{
+	if (aparam.UseragentMenu != null && aparam.UseragentMenu && aparam.UseragentMenu != 'no')
+	    var menubar = ",menubar=yes";
+	else
+	    var menubar = ",menubar=no";
+	if (aparam.UseragentResize != null && aparam.UseragentResize && aparam.UseragentResize != 'no')
+	    var resizable = ",resizable=yes";
+	else
+	    var resizable = ",resizable=no";
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	}
     }
 
 function pg_mvpginpt(ly)
