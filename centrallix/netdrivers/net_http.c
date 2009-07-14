@@ -33,10 +33,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.88 2009/06/26 18:31:03 gbeeley Exp $
+    $Id: net_http.c,v 1.89 2009/07/14 22:09:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.89  2009/07/14 22:09:58  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+
     Revision 1.88  2009/06/26 18:31:03  gbeeley
     - (feature) enhance ls__method=copy so that it supports srctype/dsttype
       like test_obj does
@@ -1162,6 +1166,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* pptr;
     int rowlimit;
     int order_desc = 0;
+    char* name;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1198,7 +1203,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	/** Ok, open the object here, if not using OSML mode. **/
 	if (!find_inf || strcmp(find_inf->StrVal,"osml") != 0)
 	    {
-	    target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
+	    target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
 	    if (!target_obj)
 		{
 		nht_internal_GenerateError(nsess);
@@ -1230,7 +1235,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			if (NHT.DirIndex[i])
 			    {
 			    snprintf(path,sizeof(path),"%s/%s",url_inf->StrVal,NHT.DirIndex[i]);
-			    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY, 0600, "text/html");
+			    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
 			    if (tmp_obj) break;
 			    }
 			}
@@ -1319,6 +1324,15 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    fdWrite(conn->ConnFD,"OK\r\n",4,0,0);
 	    objClose(target_obj);
 	    return 0;
+	    }
+
+	/** Add content-disposition header with filename **/
+	if (target_obj && objGetAttrValue(target_obj, "cx__download_as", DATA_T_STRING, POD(&name)) == 0)
+	    {
+	    find_inf2 = stLookup_ne(url_inf,"cx__forcedownload");
+	    if (!strpbrk(name, "\r\n\t"))
+		fdQPrintf(conn->ConnFD, "Content-Disposition: %STR&SYM; filename=%STR&DQUOT\r\n",
+			(find_inf2 && find_inf2->StrVal && *(find_inf2->StrVal))?"attachment":"inline", name);
 	    }
 
 	/** Add last modified information if we can. **/
