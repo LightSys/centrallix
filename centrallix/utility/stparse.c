@@ -47,10 +47,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.18 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: stparse.c,v 1.19 2009/07/14 22:08:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.19  2009/07/14 22:08:08  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+    - (feature) adding "filename" property to the report writer to use the
+      cx__download_as feature to specify a filename to the browser to "Save
+      As...", so reports have a more intelligent name than just "report.rpt"
+      (or whatnot) when downloaded.
+
     Revision 1.18  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -557,6 +565,16 @@ stGetExpression(pStructInf this, int nval)
 int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
+    return stGetAttrValueOSML(this, type, pod, nval, NULL);
+    }
+
+
+/*** stGetAttrValueOSML - return the value of an expression, evaluated
+ *** in the context of an OSML session.
+ ***/
+int
+stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess)
+    {
     pExpression find_exp;
     pParamObjects objlist;
 
@@ -584,6 +602,7 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 	if ((find_exp->ObjCoverageMask & EXPR_MASK_EXTREF) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
 	    objlist = expCreateParamList();
+	    objlist->Session = sess;
 	    expEvalTree(find_exp, objlist);
 	    expFreeParamList(objlist);
 	    }

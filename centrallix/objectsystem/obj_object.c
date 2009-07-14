@@ -49,10 +49,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.29 2008/04/06 20:37:36 gbeeley Exp $
+    $Id: obj_object.c,v 1.30 2009/07/14 22:08:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.30  2009/07/14 22:08:08  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+    - (feature) adding "filename" property to the report writer to use the
+      cx__download_as feature to specify a filename to the browser to "Save
+      As...", so reports have a more intelligent name than just "report.rpt"
+      (or whatnot) when downloaded.
+
     Revision 1.29  2008/04/06 20:37:36  gbeeley
     - (change) adding obj_internal_FreePathStruct() to deinitialize a pathname
       structure without actually freeing it (e.g. if the pathname structure is
@@ -679,9 +687,10 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	/** Make sure supplied name is "*" if using autokeying **/
 	if (mode & OBJ_O_AUTONAME)
 	    {
-	    if (strcmp(pathinfo->Elements[pathinfo->nElements-1],"*") || !(mode & OBJ_O_CREAT))
+	    if (strcmp(pathinfo->Elements[pathinfo->nElements-1],"*"))
 		{
 		/** name isn't *, or mode didn't have O_CREAT, then no autoname. **/
+		/** GRB - don't require O_CREAT at this point 2-jul-2009 **/
 		mode &= ~OBJ_O_AUTONAME;
 		}
 	    else
@@ -1266,6 +1275,38 @@ obj_internal_AddToPath(pPathname path, char* new_element)
 	strcpy(pathend_ptr, new_element);
 
     return new_index;
+    }
+
+
+/*** obj_internal_RenamePath - renames a single element of a pathname.
+ ***/
+int
+obj_internal_RenamePath(pPathname path, int element_id, char* new_element)
+    {
+    int orig_len, new_len, offset;
+    char* pathend_ptr;
+    int i;
+
+	if (element_id <= 0 || element_id >= path->nElements) return -1;
+	new_len = strlen(new_element);
+	orig_len = strlen(obj_internal_PathPart(path, element_id, 1));
+
+	/** How much space do we need - and do we have it? **/
+	offset = new_len - orig_len;
+	pathend_ptr = path->Elements[path->nElements-1] + strlen(path->Elements[path->nElements-1]);
+	if ((pathend_ptr - path->Pathbuf) + offset >= (OBJSYS_MAX_PATH-1))
+	    {
+	    mssError(1,"OSML","Pathname exceeded internal limits - too long (limit is %d characters)", OBJSYS_MAX_PATH-1);
+	    return -1;
+	    }
+
+	/** Put the new name in there **/
+	memmove(path->Elements[element_id] + new_len, path->Elements[element_id] + orig_len, pathend_ptr - (path->Elements[element_id] + orig_len) + 1);
+	memcpy(path->Elements[element_id], new_element, new_len);
+	for(i=element_id + 1; i < path->nElements; i++)
+	    path->Elements[i] += offset;
+
+    return 0;
     }
 
 

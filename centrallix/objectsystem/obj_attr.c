@@ -48,10 +48,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.16 2009/06/26 18:34:28 gbeeley Exp $
+    $Id: obj_attr.c,v 1.17 2009/07/14 22:08:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.17  2009/07/14 22:08:08  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+    - (feature) adding "filename" property to the report writer to use the
+      cx__download_as feature to specify a filename to the browser to "Save
+      As...", so reports have a more intelligent name than just "report.rpt"
+      (or whatnot) when downloaded.
+
     Revision 1.16  2009/06/26 18:34:28  gbeeley
     - (change) prevent virtual attributes from being added to an object if the
       property already exists in the object itself
@@ -276,6 +284,15 @@ objGetAttrType(pObject this, char* attrname)
 		!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
 
+	/** download-as attribute **/
+	if (!strcmp(attrname, "cx__download_as"))
+	    {
+	    if (this->Driver->Capabilities & OBJDRV_C_DOWNLOADAS)
+		return DATA_T_STRING;
+	    else
+		return -1;
+	    }
+
 	/** Virtual attrs **/
 	for(va=this->VAttrs; va; va=va->Next)
 	    {
@@ -352,6 +369,18 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    data_type = objGetAttrType(this, attrname);
 	    }
 #endif
+
+	/** download as **/
+	if (!strcmp(attrname,"cx__download_as"))
+	    {
+	    if (!(this->Driver->Capabilities & OBJDRV_C_DOWNLOADAS))
+		return -1;
+	    if (data_type != DATA_T_STRING)
+		{
+		mssError(1,"OSML","Type mismatch in accessing 'cx__download_as' attribute");
+		return -1;
+		}
+	    }
 
     	/** How about content? **/
 	if (!strcmp(attrname,"objcontent"))

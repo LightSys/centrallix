@@ -46,10 +46,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.11 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: exp_params.c,v 1.12 2009/07/14 22:08:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.12  2009/07/14 22:08:08  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+    - (feature) adding "filename" property to the report writer to use the
+      cx__download_as feature to specify a filename to the browser to "Save
+      As...", so reports have a more intelligent name than just "report.rpt"
+      (or whatnot) when downloaded.
+
     Revision 1.11  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -157,6 +165,7 @@ expCreateParamList()
 	objlist->ParentID = -1;
 	objlist->MainFlags = 0;
 	objlist->PSeqID = (EXP.PSeqID++);
+	objlist->Session = NULL;
 
     return objlist;
     }

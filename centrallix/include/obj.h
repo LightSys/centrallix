@@ -35,10 +35,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.42 2009/06/26 16:37:02 gbeeley Exp $
+    $Id: obj.h,v 1.43 2009/07/14 22:08:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.43  2009/07/14 22:08:08  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+    - (feature) adding "filename" property to the report writer to use the
+      cx__download_as feature to specify a filename to the browser to "Save
+      As...", so reports have a more intelligent name than just "report.rpt"
+      (or whatnot) when downloaded.
+
     Revision 1.42  2009/06/26 16:37:02  gbeeley
     - (change) new function objCurrentDate() to support getdate() and others
     - (bugfix) misformatting of floating point data type in some circumstances
@@ -562,6 +570,7 @@ typedef struct _OSD
 #define OBJDRV_C_ISINHERIT	64	/* driver is the inheritance layer */
 #define OBJDRV_C_OUTERTYPE	128	/* driver layering depends on outer, not inner, type */
 #define OBJDRV_C_NOAUTO		256	/* driver should never be automatically invoked */
+#define OBJDRV_C_DOWNLOADAS	512	/* driver supports the cx__download_as attribute */
 
 /** objxact transaction tree **/
 typedef struct _OT
@@ -991,6 +1000,7 @@ char* obj_internal_PathPart(pPathname path, int start_element, int length);
 int obj_internal_PathPrefixCnt(pPathname full_path, pPathname prefix);
 int obj_internal_CopyPath(pPathname dest, pPathname src);
 int obj_internal_AddToPath(pPathname path, char* new_element);
+int obj_internal_RenamePath(pPathname path, int element_id, char* new_element);
 
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);

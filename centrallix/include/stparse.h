@@ -34,10 +34,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.h,v 1.4 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: stparse.h,v 1.5 2009/07/14 22:08:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/stparse.h,v $
 
     $Log: stparse.h,v $
+    Revision 1.5  2009/07/14 22:08:08  gbeeley
+    - (feature) adding cx__download_as object attribute which is used by the
+      HTTP interface to set the content disposition filename.
+    - (feature) adding "filename" property to the report writer to use the
+      cx__download_as feature to specify a filename to the browser to "Save
+      As...", so reports have a more intelligent name than just "report.rpt"
+      (or whatnot) when downloaded.
+
     Revision 1.4  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -161,6 +169,7 @@ int stAddInf(pStructInf main_inf, pStructInf sub_inf);
 
 /*** new functions ***/
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
+int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);
 int stGetAttrType(pStructInf this, int nval);
 int stStructType(pStructInf this);
 int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);
