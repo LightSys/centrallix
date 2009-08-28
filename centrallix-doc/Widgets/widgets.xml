@@ -979,8 +979,11 @@ MyPage "widget/page"
 		<properties>
 			<property name="background" type="string">A background image for the pane.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor background is specified, the pane will be transparent.</property>
+			<property name="border_color" type="string">e.g. #153f5f </property>
+			<property name="fl_height" type="integer">Unknown functionality.</property>
 			<property name="height" type="integer">height, in pixels, of the pane.</property>
 			<property name="style" type="string">Either "raised" or "lowered", and determines the style of the pane's border.</property>
+			<property name="widget_class" type="string">Options include: table_bgnd, label, or group.</property>
 			<property name="width" type="integer">width, in pixels, of the pane.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the pane, relative to its container.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the pane, relative to its container.</property>
