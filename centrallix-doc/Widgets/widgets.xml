@@ -230,12 +230,14 @@ checkbox_test "widget/page"
 		<properties>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the component.  If unset, defaults to 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the component.  If unset, defaults to 0.</property>
+			<property name="form" type="integer">Can specify another form to be a child of (if different than the implied form in which this control is nested).</property>
 			<property name="width" type="integer">width, in pixels, of the component.  If unset, this defaults to the width of the component's containing widget.</property>
 			<property name="height" type="integer">height, in pixels, of the component.  If unset, this defaults to the height of the component's containing widget.</property>
 			<property name="path" type="string">The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp)</property>
 			<property name="mode" type="string">Either "static" or "dynamic".  A static component is rendered with the application, whereas a dynamic one is loaded as needed from the client.  Defaults to 'static'.</property>
 			<property name="multiple_instantiation" type="yes/no">If enabled (dynamic components only), the component can be instantiated more than once on the client.  Defaults to 'no'.</property>
 			<property name="auto_destroy" type="yes/no">If enabled (dynamic single-instantiation components only), when a component is instantiated a second time, the original component is automatically destroyed so there is at most one instance at a time in existence.  Defaults to 'yes'.</property>
+			<property name="visible" type="true/false">(e.g. visible=false).</property>
 		</properties>
 		<actions>
 			<action name="Instantiate">Instantiates the component.</action>
@@ -249,12 +251,19 @@ checkbox_test "widget/page"
 		    <child type="/sys/cmp/smart_field.cmp">
 			    <childproperty name="field" type="string">The osrc field to which this this smartfield is linked/connected.</childproperty>
 			    <childproperty name="ctl_type" type="string"> Type of smart field (e.g. label, editbox, checkbox).</childproperty>
-			    <childproperty name="label_width" type="integer">The width of the label</childproperty>
+				<childproperty name="label_height" type="integer">The height of the label in pixels.</childproperty>
+			    <childproperty name="label_width" type="integer">The width of the label in pixels.</childproperty>
 				<childproperty name="text" type="string">The label text.</childproperty>
 				<childproperty name="tooltip" type="string">The message to display when the user hovers their mouse over the smart field.</childproperty>
 				<childproperty name="popup_source" type="string">PopUp tree of possible selections (in one example, it references a .qyt file).</childproperty>
 				<childproperty name="popup_text" type="string">The text to display above the popup selection tree.</childproperty>
+				<childproperty name="popup_order" type="string">(e.g. desc)</childproperty>
 				<childproperty name="type" type="string">(e.g. readonly).</childproperty>
+		    </child>
+		    <child type="/sys/cmp/form_controls.cmp">
+			    <childproperty name="deletable" type="yes/no"></childproperty>
+			    <childproperty name="multienter" type="integer">(e.g. 1)</childproperty>
+			    <childproperty name="object_name" type="string">Title to put across the form control bar (Note: the form_controls.cmp allows the user to perform row operations on a given record set)</childproperty>
 		    </child>
 		</children>
 		<sample>
@@ -284,6 +293,8 @@ formctl "widget/component"
 		<properties>
 			<property name="width" type="integer">The design width, in pixels, of the component.  When the component is instantiated, it is subject to resizing; this width value will be used as a reference in that process.</property>
 			<property name="height" type="integer">The design height, in pixels, of the component.</property>
+			<property name="expose_actions_for" type="string">specifies another component.</property>
+			<property name="expose_events_for" type="string">specifies another component.</property>
 		</properties>
 		<sample>
 			<![CDATA[
@@ -810,9 +821,18 @@ MyWindow "widget/childwindow"
 		<![CDATA[
 $Version=2$
 // Here is a checkbox which uses widget/hints.
-f_trx_mod "widget/checkbox" { width=16; y=4; readonly=yes; fieldname="a_modified"; f_trx_mod_h "widget/hints" { style=readonly,alwaysdef; default=1; } }
-
-		]]>
+f_trx_mod "widget/checkbox"
+{
+	width=16;
+	y=4;
+	readonly=yes;
+	fieldname="a_modified";
+	f_trx_mod_h "widget/hints"
+	{
+		style=readonly,alwaysdef;
+		default=1;
+	}
+}		]]>
 		</sample>
 	</widget>
 	<widget name="imagebutton" type="widget/imagebutton" visual="yes" formelement="no" container="no" osrcclient="no" description="A button widget which uses a set of images to control its appearance.">
@@ -956,6 +976,7 @@ myMenu "widget/menu"
 			<p>Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.</p>
 		</usage>
 		<properties>
+			<property name="autoquery" type="string">oneachreveal, never, onload, onfirstreveal</property>
 			<property name="baseobj" type="string">If inserts and deletes are to function, the ObjectSystem pathname in which those inserts and deletes should occur.  This should be one of the objects specified in the FROM clause of the SQL statement.</property>
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</property>
 			<property name="readahead" type="integer">Represents the number to fetch from the server when more records are needed from the server (such as when a form requests that the Current Record be a record beyond the end of the current replica contents).</property>
@@ -965,8 +986,16 @@ myMenu "widget/menu"
 		<children>
 			<child type="rule with ruletype=osrc_relationship">
 				<childproperty name="target" type="string">The target objectsource that this objectsource will be related to</childproperty>
+				<childproperty name="is_slave" type="yes/no">(e.g. yes).</childproperty>
 				<childproperty name="key_#" type="string">The field names in this objectsource to be used as the key value for the relationship.  Keys can be key_1 through key_5.</childproperty>
-				<childproperty name="target_key_#" type="string">The field names in the target objectsource to be used for the key value for the relationship.  These keys can be target_key_1 through target_key_5.</childproperty>
+				<childproperty name="target_key_#" type="string">The field names in the target objectsource to be used for the key value for the relationship (where # is an integer 1 through 5).  These keys can be target_key_1 through target_key_5.</childproperty>				
+				<childproperty name="autoquery" type="true/false"></childproperty>
+			</child>
+			<child type="rule with ruletype=osrc_key">
+				<childproperty name="keying_method" type="string">(e.g. counterosrc).</childproperty>
+				<childproperty name="key_fieldname" type="string">The field name in this objectsource to be used as the key.</childproperty>
+				<childproperty name="osrc" type="string">The osrc in which to store the next auto id / counting number.</childproperty>
+				<childproperty name="counter_attribute" type="string">The field in the specified 'osrc' in which to store the auto number.</childproperty>
 			</child>
 		</children>
 		<events>
@@ -1027,6 +1056,7 @@ osrc1 "widget/osrc"
 			<property name="title" type="string">The title which will appear in the browser's window title bar.</property>
 			<property name="x" type="integer"></property>
 			<property name="y" type="integer"></property>
+			<property name="widget_template" type="string">(e.g. "/apps/kardia/tpl/action-kardia.tpl").</property>
 			<property name="width" type="integer"></property>
 			<property name="height" type="integer"></property>
 		</properties>
@@ -1575,7 +1605,9 @@ mypane "widget/pane"
 			<p>This nonvisual widget is used at the top-level (within a "widget/page").  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.</p>
 		</usage>
 		<properties>
-		    <property name="value" type="integer/string">initial value of the variable.</property>
+		    <property name="fieldname" type="string">The field with which to link / connect to the variable.</property>
+			<property name="form" type="string">The form (e.g. it's osrc) with with to associate the variable and fieldname.</property>
+			<property name="type" type="string">(e.g. integer).</property>
 		</properties>
 		<sample>
 		<![CDATA[
