@@ -271,7 +271,7 @@ checkbox_test "widget/page"
 			    <childproperty name="object_name" type="string">Title to put across the form control bar (Note: the form_controls.cmp allows the user to perform row operations on a given record set)</childproperty>
 		    </child>
 		    <child type="/apps/kardia/modules/base/editbox_tree.cmp">
-			    <childproperty name="content" type="string">This is something which can accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
+			    <childproperty name="content" type="string">This is something which can accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
 		    </child>
 		</children>
 		<sample>
@@ -1621,11 +1621,12 @@ mypane "widget/pane"
 		</usage>
 		<properties>
 		    <property name="fieldname" type="string">The field with which to link / connect to the variable.</property>
-			<property name="form" type="string">The form (e.g. it's osrc) with which to associate the variable and fieldname.</property>
+			<property name="form" type="string">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</property>
 			<property name="type" type="string">(e.g. integer).</property>
+			<property name="value" type="string">Can be accessed as :<i>var_name</i>:value.</property>
 		</properties>
 		<actions>
-		    <action name="SetValue">Called by a widget/connector: Sets the value of the variable to whatever is specified in (Value).</action>
+		    <action name="SetValue">Called by a widget/connector: Sets the value of the variable to whatever is specified by the "Value" parameter.</action>
 		</actions>
 		<sample>
 		<![CDATA[
