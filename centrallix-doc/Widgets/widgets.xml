@@ -260,7 +260,7 @@ checkbox_test "widget/page"
 		<children>
 		    <child type="/sys/cmp/smart_field.cmp">
 			    
-			    <childproperty name="ctl_type" type="string"> Type of smart field (e.g. label, editbox, checkbox).</childproperty>
+			    <childproperty name="ctl_type" type="string"> Type of smart field (e.g. label, editbox, checkbox, datetime).</childproperty>
 
 				<childproperty name="type" type="string">(e.g. readonly). Must have field be set in order to be "readonly".</childproperty>
 				<childproperty name="value" type="string">This is something which can accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
@@ -771,7 +771,7 @@ HTMLArea "widget/html"
 		    <property name="icon" type="string">A pathname to an icon to be used in the upper left corner of the window.  If unspecified, the default "CX" ichthus icon is used instead.</property>
 		    <property name="style" type="string">Either "dialog" or "window", and determines the style of the window's border.</property>
 		    <property name="textcolor" type="string" subtype="color">The color for the titlebar's text (window title).  Default "black".</property>
-		    <property name="titlebar" type="yes/no">whether the window will have a titlebar. Default "yes".</property>
+		    <property name="titlebar" type="yes/no">whether the window will have a titlebar (and the close "X" in the upper right corner of the window). Default "yes".</property>
 		    <property name="title" type="string">The window's title.</property>
 		    <property name="visible" type="boolean">the window is initially visible on screen. The window has an action which can "true".</property>
 		    <property name="width" type="integer">width, in pixels, of the window.</property>
@@ -1623,7 +1623,7 @@ mypane "widget/pane"
 		    <property name="fieldname" type="string">The field with which to link / connect to the variable.</property>
 			<property name="form" type="string">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</property>
 			<property name="type" type="string">(e.g. integer).</property>
-			<property name="value" type="string">Can be accessed as :<i>var_name</i>:value.</property>
+			<property name="value" type="string">Can be accessed as :var_name:value.</property>
 		</properties>
 		<actions>
 		    <action name="SetValue">Called by a widget/connector: Sets the value of the variable to whatever is specified by the "Value" parameter.</action>
