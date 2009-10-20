@@ -57,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.17 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: exp_functions.c,v 1.18 2009/10/20 23:07:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.18  2009/10/20 23:07:20  gbeeley
+    - (feature) adding dateadd() function
+
     Revision 1.17  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -1227,6 +1230,118 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+int
+exp_fn_dateadd_mod_add(int v1, int v2, int mod, int* overflow)
+    {
+    int rv;
+    rv = (v1 + v2)%mod;
+    *overflow = (v1 + v2)/mod;
+    if (rv < 0)
+	{
+	*overflow -= 1;
+	rv += mod;
+	}
+    return rv;
+    }
+
+
+int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr;
+    int carry;
+
+    /** checks **/
+    if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	{
+	mssError(1, "EXP", "dateadd() first parameter must be non-null string or keyword date part");
+	return -1;
+	}
+    if ((i1 && (i1->Flags & EXPR_F_NULL)) || (i2 && (i2->Flags & EXPR_F_NULL)))
+	{
+	tree->DataType = DATA_T_DATETIME;
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i1 || i1->DataType != DATA_T_INTEGER)
+	{
+	mssError(1, "EXP", "dateadd() second parameter must be an integer (amount to add/subtract)");
+	return -1;
+	}
+    if (!i2 || i2->DataType != DATA_T_DATETIME)
+	{
+	mssError(1, "EXP", "dateadd() third parameter must be a datetime type");
+	return -1;
+	}
+
+    /** ok, we're good.  set up for returning the value **/
+    tree->DataType = DATA_T_DATETIME;
+    memcpy(&tree->Types.Date, &i2->Types.Date, sizeof(DateTime));
+    diff_sec = diff_min = diff_hr = diff_day = diff_mo = diff_yr = 0;
+    if (!strcmp(i0->String, "second"))
+	diff_sec = i1->Integer;
+    else if (!strcmp(i0->String, "minute"))
+	diff_min = i1->Integer;
+    else if (!strcmp(i0->String, "hour"))
+	diff_hr = i1->Integer;
+    else if (!strcmp(i0->String, "day"))
+	diff_day = i1->Integer;
+    else if (!strcmp(i0->String, "month"))
+	diff_mo = i1->Integer;
+    else if (!strcmp(i0->String, "year"))
+	diff_yr = i1->Integer;
+    else
+	{
+	mssError(1, "EXP", "dateadd() first parameter must be a valid date part (second/minute/hour/day/month/year)");
+	return -1;
+	}
+
+    /** Do the add **/
+    tree->Types.Date.Part.Second = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Second, diff_sec, 60, &carry);
+    diff_min += carry;
+    tree->Types.Date.Part.Minute = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Minute, diff_min, 60, &carry);
+    diff_hr += carry;
+    tree->Types.Date.Part.Hour = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Hour, diff_hr, 24, &carry);
+    diff_day += carry;
+
+    /** Now add months and years **/
+    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, diff_mo, 12, &carry);
+    diff_yr += carry;
+    tree->Types.Date.Part.Year += diff_yr;
+
+    /** Adding days is more complicated **/
+    while (diff_day > 0)
+	{
+	if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
+	    {
+	    tree->Types.Date.Part.Day = 0;
+	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, 1, 12, &carry);
+	    tree->Types.Date.Part.Year += carry;
+	    }
+	else
+	    {
+	    tree->Types.Date.Part.Day++;
+	    }
+	diff_day--;
+	}
+    while (diff_day < 0)
+	{
+	if (tree->Types.Date.Part.Day == 0)
+	    {
+	    tree->Types.Date.Part.Day = (obj_month_days[exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry)] + ((tree->Types.Date.Part.Month==2 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
+	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry);
+	    tree->Types.Date.Part.Year += carry;
+	    }
+	else
+	    {
+	    tree->Types.Date.Part.Day--;
+	    }
+	diff_day++;
+	}
+
+    return 0;
+    }
+
+
 int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int dec = 0;
@@ -1770,6 +1885,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
+	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
 	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
 	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
 
