@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.25 2009/06/26 16:37:02 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.26 2009/10/20 23:14:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.26  2009/10/20 23:14:03  gbeeley
+    - (change) allow conversion of integer to datetime (using the integer as
+      the raw value)
+    - (bugfix) datetime comparsion fixes
+
     Revision 1.25  2009/06/26 16:37:02  gbeeley
     - (change) new function objCurrentDate() to support getdate() and others
     - (bugfix) misformatting of floating point data type in some circumstances
@@ -1218,6 +1223,13 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     int reversed_day=0;
     int iso = 0;
 
+	if (data_type == DATA_T_INTEGER)
+	    {
+	    memset(dt, 0, sizeof(DateTime));
+	    dt->Value = *((int*)data_ptr);
+	    return 0;
+	    }
+
     	/** Only accept string... **/
 	if (data_type != DATA_T_STRING) return -1;
 
@@ -1607,7 +1619,13 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		    case DATA_T_DATETIME:
 		        objDataToDateTime(DATA_T_STRING, data_ptr_1, &dt_v, NULL);
 			dt = (pDateTime)data_ptr_2;
-			cmp_value = dt_v.Value - dt->Value;
+			dt_cmp_value = dt_v.Value - dt->Value;
+			if (dt_cmp_value > 0)
+			    cmp_value = 1;
+			else if (dt_cmp_value < 0)
+			    cmp_value = -1;
+			else
+			    cmp_value = 0;
 			break;
 		
 		    case DATA_T_MONEY:
