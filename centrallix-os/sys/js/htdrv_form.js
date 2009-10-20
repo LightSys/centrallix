@@ -1322,8 +1322,8 @@ function form_init(form,param)
     form.is_savable = false;
     form.is_discardable = false;
     form.is_editable = false;
-    form.is_newable = this.allownew?true:false;
-    form.is_queryable = this.allowquery?true:false;
+    form.is_newable = form.allownew?true:false;
+    form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
     form.recid = 1;
     form.lastrecid = null;
