@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.77 2009/06/24 19:31:56 gbeeley Exp $
+    $Id: ht_render.c,v 1.78 2009/12/15 22:02:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.78  2009/12/15 22:02:13  gbeeley
+    - (feature) adding application-wide (cross-component) scope capability,
+      with ability to specify the global name of a widget.  This *could* be
+      misused.
+
     Revision 1.77  2009/06/24 19:31:56  gbeeley
     - (change) reduction in the size of the generated HTML file
 
@@ -975,6 +980,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     {
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
+    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1014,8 +1020,10 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    return -1;
 	    }
 
-    // will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender)
-    return drv->Render(session, widget, z);
+	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
+	rval = drv->Render(session, widget, z);
+
+    return rval;
     }
 
 
@@ -1717,6 +1725,7 @@ htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property
             {
             wgtrGetPropertyValue(tree,property,DATA_T_CODE,POD(&code));
             htrAddExpression(s, w_name, property, code);
+	    return 1;
             }
 
     return 0;
@@ -1808,6 +1817,8 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     pHtDMPrivateData inf = wgtrGetDMPrivateData(tree);
     pWgtrNode child;
     int rendercnt;
+    char* scope = NULL;
+    char* scopename = NULL;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1816,15 +1827,25 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    return -1;
 	    }
 
+	/** Widget name scope **/
+	if (wgtrGetPropertyValue(tree,"scope",DATA_T_STRING,POD(&scope)) == 0)
+	    {
+	    if (strcmp(scope,"application") && strcmp(scope,"local") && strcmp(scope,"session"))
+		scope = NULL;
+	    }
+	wgtrGetPropertyValue(tree,"scope_name",DATA_T_STRING,POD(&scopename));
+
 	/** Deploy the widget **/
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%], type:'%STR&JSSTR', vis:%STR", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR", 
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
 		ctrinit, ctrinit,
+		scope, scope,
+		scopename, scopename,
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
