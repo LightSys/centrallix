@@ -823,6 +823,14 @@ function htr_eventhandler(e)
 		e.Dom2Event.preventDefault();
 		e.Dom2Event.stopPropagation();
 		}
+
+	    // catch all 0-length scheduled stuff before returning to browser control.
+	    if (e.type != 'mousemove')
+		{
+		pg_stopschedtimeout();
+		pg_dosched(true);
+		}
+
 	    return !prevent_default;
 	    }
 	}
@@ -831,6 +839,13 @@ function htr_eventhandler(e)
 	{
 	e.Dom2Event.preventDefault();
 	e.Dom2Event.stopPropagation();
+	}
+
+    // catch all 0-length scheduled stuff before returning to browser control.
+    if (e.type != 'mousemove')
+	{
+	pg_stopschedtimeout();
+	pg_dosched(true);
 	}
 
     return !prevent_default;

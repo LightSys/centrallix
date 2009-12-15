@@ -25,6 +25,8 @@ var pg_waitlyr_id = null;
 
 var pg_layer = null;
 
+var pg_modallist = [];
+
 var pg_msg = {};
 pg_msg.MSG_ERROR=1;
 pg_msg.MSG_QUERY=2;
@@ -611,6 +613,10 @@ function pg_set_emulation(d)
 /** Function to set modal mode to a layer. **/
 function pg_setmodal(l)
     {
+    if (pg_modallist.length && !l)
+	l = pg_modallist.pop();
+    else if (l && pg_modallayer)
+	pg_modallist.push(pg_modallayer);
     pg_modallayer = l;
     if (!window.pg_masklayer)
         {
@@ -878,7 +884,7 @@ function pg_addarea(pl,x,y,w,h,cls,nm,f)
 /** Function to remove an existing area... **/
 function pg_removearea(a)
     {
-    for(i=0;i<pg_arealist.length;i++)
+    for(var i=0;i<pg_arealist.length;i++)
 	{
 	if (pg_arealist[i] == a)
 	    {
@@ -902,7 +908,7 @@ function pg_resize(l)
 	alert("Cannot resize " + l.id + l.name + "(" + l + ") -- no child layers");
 	return;
 	}
-    for(i=0;i<layers.length;i++)
+    for(var i=0;i<layers.length;i++)
 	{
 	var cl = layers[i];
 	var visibility = htr_getvisibility(cl);
@@ -1086,7 +1092,7 @@ function pg_cmpkey(k1,k2) //SETH: ??
     
 function pg_removekey(kd)
     {
-    for(i=0;i<pg_keylist.length;i++)
+    for(var i=0;i<pg_keylist.length;i++)
 	{
 	if (pg_keylist[i] == kd)
 	    {
@@ -1153,7 +1159,7 @@ function pg_keyhandler_internal(k,m,e)
     	return false;       
 	}
       
-    for(i=0;i<pg_keylist.length;i++)
+    for(var i=0;i<pg_keylist.length;i++)
 	{
 	if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)
 	    {
@@ -1217,15 +1223,35 @@ function pg_init(l,a,gs,ct) //SETH: ??
     var ia = window.ifcProbeAdd(ifAction);
     ia.Add("LoadPage", pg_load_page);
     ia.Add("Launch", pg_launch);
+    ia.Add("Close", pg_close);
 
     // Events
     var ie = window.ifcProbeAdd(ifEvent);
     ie.Add("RightClick");
     ie.Add("Load");
 
+    // Reveal
+    l.Reveal = pg_reveal_cb;
+
     pg_addsched('window.ifcProbe(ifEvent).Activate("Load", {})', window, 100);
 
     return window;
+    }
+
+function pg_reveal_cb(e)
+    {
+    if (e.eventName == 'ObscureOK')
+	pg_close_bh();
+    }
+
+function pg_close(aparam)
+    {
+    pg_reveal_event(window, null, 'ObscureCheck');
+    }
+
+function pg_close_bh()
+    {
+    window.close();
     }
 
 function pg_load_page(aparam) //SETH: ??
@@ -1402,7 +1428,7 @@ function pg_delsched(id)
     return false;
     }
 
-function pg_dosched()
+function pg_dosched(do_all)
     {
     pg_schedtimeout = null;
     var sched_item = null;
@@ -1413,7 +1439,10 @@ function pg_dosched()
 	// Make a note of current scheduler event id, so we don't do any events
 	// newly added by the below scheduler callbacks until a setTimeout()
 	// expires, even for 0-length events.
-	var maxid = pg_schedtimeoutid - 1;
+	if (do_all)
+	    var maxid = 99999999;
+	else
+	    var maxid = pg_schedtimeoutid - 1;
 	while (pg_schedtimeoutlist.length > 0 && pg_schedtimeoutlist[0].tm <= now && pg_schedtimeoutlist[0].id <= maxid)
 	    {
 	    sched_item = pg_schedtimeoutlist.shift();
@@ -2248,7 +2277,9 @@ function pg_dotip()
     {
     pg_tiptmout = null;
     var txt = '<table border="0" cellspacing="0" cellpadding="1" bgcolor="black"><tr><td><table border="0" cellspacing="0" cellpadding="1" bgcolor="#ffffc0"><tr><td><table border="0" cellspacing="0" cellpadding="0"><tr><td><img src="/sys/images/trans_1.gif"></td><td>' + htutil_encode(pg_tipinfo.msg) + '</td><td><img src="/sys/images/trans_1.gif"></td></tr></table></td></tr></table></td></tr></table>';
-    pg_serialized_write(pg_tiplayer, txt, pg_dotip_complete);
+    //pg_serialized_write(pg_tiplayer, txt, pg_dotip_complete);
+    htr_write_content(pg_tiplayer,txt);
+    pg_dotip_complete();
     }
 
 function pg_dotip_complete()
@@ -2413,7 +2444,7 @@ function pg_keydown(e)
     pg_canceltip(pg_tipindex);
     if (cx__capabilities.Dom0NS)
 	{
-        k = e.which;
+        var k = e.which;
         if (k > 65280) k -= 65280;
         if (k >= 128) k -= 128;
         if (k == pg_lastkey && e.modifiers == pg_lastmodifiers) 
@@ -2430,7 +2461,7 @@ function pg_keydown(e)
 	}
     else if (cx__capabilities.Dom0IE)
 	{
-        k = e.keyCode;
+        var k = e.keyCode;
         if (k > 65280) k -= 65280;
         //if (k >= 128) k -= 128;
         if (k == pg_lastkey && e.modifiers == pg_lastmodifiers) 
@@ -2447,7 +2478,7 @@ function pg_keydown(e)
 	}
     else if (cx__capabilities.Dom2Events)
 	{
-	k = e.Dom2Event.which;
+	var k = e.Dom2Event.which;
         if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
@@ -2468,7 +2499,7 @@ function pg_keyup(e)
     {
     if (cx__capabilities.Dom0NS)
 	{
-        k = e.which;
+        var k = e.which;
         if (k > 65280) k -= 65280;
         if (k >= 128) k -= 128;
         if (k == pg_lastkey) pg_lastkey = -1;
@@ -2477,7 +2508,7 @@ function pg_keyup(e)
 	}
     else if (cx__capabilities.Dom0IE)
 	{
-        k = e.keyCode;
+        var k = e.keyCode;
         if (k > 65280) k -= 65280;
         //if (k >= 128) k -= 128;
         if (k == pg_lastkey) pg_lastkey = -1;
@@ -2490,7 +2521,7 @@ function pg_keyup(e)
 	}
     else if (cx__capabilities.Dom2Events)
 	{
-	k = e.Dom2Event.which;
+	var k = e.Dom2Event.which;
         if (k == pg_lastkey) pg_lastkey = -1;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
         pg_keytimeoutid = null;
@@ -2506,7 +2537,7 @@ function pg_keypress(e)
     {
     if (cx__capabilities.Dom0IE)
 	{
-        k = e.keyCode;
+        var k = e.keyCode;
         if (k > 65280) k -= 65280;
         //if (k >= 128) k -= 128;
         if (k == pg_lastkey) pg_lastkey = -1;
@@ -2519,7 +2550,7 @@ function pg_keypress(e)
 	}
     else if (cx__capabilities.Dom2Events)
 	{
-	k = e.Dom2Event.which;
+	var k = e.Dom2Event.which;
 	if ((k == 8 || k == 13) && k == pg_lastkey) 
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         if (k == pg_lastkey) pg_lastkey = -1;
