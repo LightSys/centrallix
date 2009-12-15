@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.8 2009/06/25 21:04:46 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.9 2009/12/15 21:55:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.9  2009/12/15 21:55:50  gbeeley
+    - (change) allow parameters to have an operational name different from the
+      widget name assigned to them.
+
     Revision 1.8  2009/06/25 21:04:46  gbeeley
     - (change) deploy all non-component-params to the client regardless of
       param type.  Needed esp. for widget/osrc parameters.
@@ -140,6 +144,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
+    char paramname[64];
     char type[32];
     char findcontainer[64];
     int id;
@@ -171,6 +176,13 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 
+	/** Specify name of param (in case param widget name isn't the desired param name) **/
+	if (wgtrGetPropertyValue(tree,"param_name",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(paramname, ptr, sizeof(paramname));
+	else
+	    strtcpy(paramname, name, sizeof(paramname));
+
+	/** Make param available for client expressions? **/
 	deploy_to_client = htrGetBoolean(tree, "deploy_to_client", s->IsDynamic || !strcmp(type, "object") || (tree->Parent && strcmp(tree->Parent->Type, "widget/component-decl") != 0));
 
 	if (!strcmp(type, "object") && deploy_to_client && 
@@ -193,8 +205,8 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	if (deploy_to_client)
 	    {
 	    /** Script init **/
-	    htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
-		    name, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
+	    htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {name:'%STR&JSSTR', type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
+		    name, paramname, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
 
 	    hints = wgtrWgtToHints(tree);
 	    if (!hints)
