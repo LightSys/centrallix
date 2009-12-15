@@ -83,7 +83,8 @@ function pa_verify()
 
     // Notify container
     var p = wgtrGetParent(this);
-    if (p && p.ParamNotify) p.ParamNotify(wgtrGetName(this), this, this.datatype, this.value);
+    //if (p && p.ParamNotify) p.ParamNotify(wgtrGetName(this), this, this.datatype, this.value);
+    if (p && p.ParamNotify) p.ParamNotify(this.realname, this, this.datatype, this.value);
     }
 
 function pa_reference()
@@ -108,6 +109,7 @@ function pa_init(l, wparam)
     ifc_init_widget(l);
 
     // Params
+    l.realname = wparam.name?wparam.name:wgtrGetName(l);
     l.newvalue = wparam.val;
     l.value = null;
     l.in_startnew = false;
