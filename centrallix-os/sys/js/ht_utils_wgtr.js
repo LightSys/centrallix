@@ -28,7 +28,7 @@ function wgtrSetupTree(tree, ns, parent)
 	with (tree) tree.cobj = eval(tree.cobj);
 
     if (ns) tree.obj.__WgtrNamespace = ns;
-    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis);
+    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.scope, tree.sn);
     if (tree.sub)
 	for(var i=0; i<tree.sub.length; i++)
 	    wgtrSetupTree(tree.sub[i], null, tree);
@@ -43,7 +43,9 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 			    name,	    // the name of the object
 			    type,	    // the widget type 
 			    parent,	    // the parent node of this object
-			    is_visual	    // is the node a visual node?
+			    is_visual,	    // is the node a visual node?
+			    scope,	    // scope of widget -- local vs application vs session
+			    scopename	    // name of widget to use in extended scope
 			)
     {
 	if (!obj) alert('no object for wgtr node: ' + name);
@@ -52,6 +54,16 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 	obj.__WgtrChildren = [];
 	obj.__WgtrName = name;
 	obj.__WgtrContainer = cobj;
+	obj.__WgtrScope = scope?scope:"local";
+
+	if (scope)
+	    {
+	    if (!scopename) scopename = name;
+	    if (scope == 'application')
+		pg_appglobals[scopename] = obj;
+	    else if (scope == 'session')
+		pg_sessglobals[scopename] = obj;
+	    }
 
 	if (parent) 
 	    {
@@ -101,6 +113,8 @@ function wgtrIsUndefined(v)
     }
 
 
+// wgtrGetProperty - returns the value of a given property
+// returns null on failure
 function wgtrGetProperty(node, prop_name)
     {
     var prop = wgtrProbeProperty(node, prop_name);
@@ -113,8 +127,6 @@ function wgtrGetProperty(node, prop_name)
     }
 
 
-// wgtrGetPropertyValue - returns the value of a given property
-// returns null on failure
 function wgtrProbeProperty(node, prop_name)
     {
     var prop;
@@ -136,7 +148,7 @@ function wgtrProbeProperty(node, prop_name)
 	    for(var child in node.__WgtrChildren)
 		{
 		child = node.__WgtrChildren[child];
-		if (child.__WgtrType == 'widget/parameter' && child.__WgtrName == prop_name)
+		if (child.__WgtrType == 'widget/parameter' && ((!child.realname && child.__WgtrName == prop_name) || (child.realname == prop_name)))
 		    {
 		    return child.getvalue();
 		    }
@@ -232,6 +244,10 @@ function wgtrGetNode(tree, node_name, type)
 	    }*/
 	if (tree.__WgtrRoot.__WgtrChildList[node_name]) 
 	    node = tree.__WgtrRoot.__WgtrChildList[node_name];
+	else if (pg_appglobals[node_name])
+	    node = pg_appglobals[node_name];
+	else if (pg_sessglobals[node_name])
+	    node = pg_sessglobals[node_name];
 	else
 	    alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
 
