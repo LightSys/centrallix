@@ -21,7 +21,10 @@ function osrc_init_query()
 function osrc_action_order_object(aparam) //order)
     {
     this.pendingorderobject=aparam.orderobj;
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
+    if (this.querytext)
+	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase});
+    else
+	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
     }
 
 function osrc_criteria_from_aparam(aparam)
@@ -75,7 +78,10 @@ function osrc_action_refresh(aparam)
     {
     var tr = this.CurrentRecord;
     if (!tr || tr < 1) tr = 1;
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
+    if (this.querytext)
+	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr});
+    else
+	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
     }
 
 
@@ -95,6 +101,116 @@ function osrc_action_change_source(aparam)
     this.baseobj = aparam.Source;
     if (typeof aparam.Refresh == 'undefined' || aparam.Refresh)
 	this.ifcProbe(ifAction).Invoke("Refresh", {});
+    }
+
+
+function osrc_action_query_text(aparam)
+    {
+    if (this.query_delay_schedid)
+	{
+	pg_delsched(this.query_delay_schedid);
+	this.query_delay_schedid = null;
+	}
+    this.QueueRequest({Request:'QueryText', Param:aparam});
+    this.Dispatch();
+    }
+
+function osrc_query_text_handler(aparam)
+    {
+    var formobj = aparam.client;
+    var appendrows = (aparam.cx__appendrows)?true:false;
+    var statement=this.sql;
+    var case_insensitive = (aparam.cx__case_insensitive)?true:false;
+
+    var sel_re = /^\s*(set\s+rowcount\s+[0-9]+\s+)?select\s+/i;
+    var is_select = sel_re.test(this.sql);
+
+    if (this.use_having)
+	var sep = ' HAVING ';
+    else
+	var sep = ' WHERE ';
+
+    var fieldlist = (new String(aparam.field_list)).split(',');
+    var searchlist = (new String(aparam.query)).split(' ');
+    if (aparam.min_length > 0)
+	var min_length = aparam.min_length;
+    else
+	var min_length = 2;
+
+    this.move_target = aparam.targetrec;
+
+    // build the search string from the criteria and field list
+    var filter = '';
+    var firstone=true;
+    if (searchlist.length > 0 && fieldlist.length > 0)
+	{
+	for(var i=0; i<searchlist.length; i++)
+	    {
+	    var s = searchlist[i];
+	    if (!firstone) filter += ' and ';
+	    filter += '(';
+
+	    var firstfield=true;
+	    for(var j=0; j<fieldlist.length; j++)
+		{
+		var f = fieldlist[j];
+		var criteria = s;
+
+		// asterisks on either side of field name indicate substring searching with wildcards.
+		if (f.indexOf('*') == 0)
+		    {
+		    criteria = '*' + criteria;
+		    f = f.substr(1);
+		    }
+		if (f.lastIndexOf('*') == f.length - 1)
+		    {
+		    criteria = criteria + '*';
+		    f = f.substr(0, f.length - 1);
+		    }
+
+		if (!firstfield) filter += ' or ';
+		filter += this.MakeFilterString(f, criteria, case_insensitive);
+
+		firstfield = false;
+		}
+	    filter += ')';
+	    firstone = false;
+	    }
+	statement += (sep + '('+filter+')');
+	}
+
+    // add any preset filtering
+    if (this.filter)
+	{
+	if (!firstone)
+	    filter += ' and ';
+	else
+	    filter += sep;
+	statement += '(' + this.filter + ')';
+	}
+
+    // add any order-by
+    var firstone=true;
+    if(this.pendingorderobject && is_select)
+	for(var i in this.pendingorderobject)
+	    {
+	    if(firstone)
+		{
+		statement+=' ORDER BY '+this.pendingorderobject[i];
+		firstone=false;
+		}
+	    else
+		{
+		statement+=', '+this.pendingorderobject[i];
+		}
+	    }
+
+    this.querytext = aparam.query;
+    this.querytext_fields = aparam.field_list;
+    this.querytext_icase = case_insensitive;
+    this.queryobject = null;
+
+    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj, appendrows:appendrows});
     }
 
 
@@ -169,6 +285,7 @@ function osrc_query_object_handler(aparam)
     var is_select = sel_re.test(this.sql);
 
     this.pendingqueryobject=q;
+    this.querytext = null;
     var statement=this.sql;
 
     if (this.use_having)
@@ -2412,6 +2529,10 @@ function osrc_dispatch()
 		    requeue.push(req);
 		break;
 
+	    case 'QueryText':
+		this.QueryTextHandler(req.Param);
+		break;
+
 	    case 'QueryObject':
 		this.QueryObjectHandler(req.Param);
 		break;
@@ -2746,6 +2867,7 @@ function osrc_init(param)
 
     loader.MoveToRecordHandler = osrc_move_to_record_handler;
     loader.QueryObjectHandler = osrc_query_object_handler;
+    loader.QueryTextHandler = osrc_query_text_handler;
     loader.QueryHandler = osrc_query_handler;
    
     // Actions
@@ -2754,6 +2876,7 @@ function osrc_init(param)
     ia.Add("Query", osrc_action_query);
     ia.Add("QueryObject", osrc_action_query_object);
     ia.Add("QueryParam", osrc_action_query_param);
+    ia.Add("QueryText", osrc_action_query_text);
     ia.Add("OrderObject", osrc_action_order_object);
     ia.Add("Delete", osrc_action_delete);
     ia.Add("CreateObject", osrc_action_create_object);
