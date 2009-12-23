@@ -1,0 +1,47 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'image.html' -->
+<h2 class="componentname"><a name="image">image</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/image</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The image object allows a graphics file or photo to be embedded in the report.  Currently only the PNG format is supported, so convert your image to PNG before using it in a report.</p>
+			<p>The output quality is determined by the 'resolution' setting specified in the system/report object.  Lower resolutions result in a poorer quality but also result in faster-running reports.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The image object may be used inside the system/report, or inside areas, table rows, or table cells.</p>
+			<p>See 'Common Properties' for x, y, width, and height, which are used for positioning the image.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem path to the PNG image file.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+img "report/image"
+	{
+	x=0; y=0; height=4.44; width=65;
+	source = "/images/DocumentHeader.png";
+	}
+		
+		</pre>
+</body>
+</html>

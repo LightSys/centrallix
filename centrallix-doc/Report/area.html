@@ -1,0 +1,53 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'area.html' -->
+<h2 class="componentname"><a name="area">area</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/area</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The area object is a generic positionable rectangular container that can also have a border around it.  Text added inside it with a 'report/data' element or a 'value' setting (as with table rows and table cells) can flow using text flow, justification, and wrapping semantics.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Areas may be placed inside the system/report, or inside other areas, table rows, or table cells.  Areas are containers, so they can contain other visual objects.</p>
+			<p>See 'Common Properties' for x, y, width, and height, which are used for positioning the area.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">allowbreak</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to allow the area to span multiple pages in the report if the text causes it to be larger than one page can hold.</td>
+</tr>
+<tr>
+<td class="name">border</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border around the area.</td>
+</tr>
+<tr>
+<td class="name">fixedsize</td>
+<td class="type">yes/no</td>
+<td class="description">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the area is allowed to grow vertically to fit its contents.</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">expression</td>
+<td class="description">The text to be printed in the area.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<p class="none">none currently available</p>
+</body>
+</html>
