@@ -64,7 +64,7 @@ insert into topic values(null,1,"5. Report Components",null,
 	
 		[tr][td][report][/td][td]The top-level report object[/td][/tr]
 	
-		[tr][td][table][/td][td]A tabular presentation of report data[/td][/tr]
+		[tr][td][report_table][/td][td]A tabular presentation of report data[/td][/tr]
 	
 	[/table]
 ");
@@ -687,7 +687,7 @@ outerForm \"report/form\"
 ");
 	
 insert into topic values(null, @newid, "report/table", null,
-"		[b]table[/b] :: A tabular presentation of report data
+"		[b]report_table[/b] :: A tabular presentation of report data
 
 		[b]Metadata:[/b]
 		[table]
