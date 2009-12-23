@@ -8,5 +8,8 @@ multipage: onepage.html
 onepage.html: report.xml report.xsl
 	xsltproc report.xsl report.xml > onepage.html
 
+website.sql: report.xml report-website.xsl
+	xsltproc report-website.xsl report.xml > website.sql
+
 clean:
 	rm -f ${HTML}

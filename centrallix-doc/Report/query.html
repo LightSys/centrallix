@@ -1,18 +1,15 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Report Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'query.html' -->
 <h2 class="componentname"><a name="query">query</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/query</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">no</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">no</span>
-</p>
+<p class="componenttype">type: <span class="componenttypevalue">report/query</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">no</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
@@ -31,12 +28,12 @@
 <tr>
 <td class="name">sql</td>
 <td class="type">string</td>
-<td class="description">A SQL statement.  It can include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz'.  To referenced linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</td>
+<td class="description">A SQL statement.  It can be a plain string, or an expression if the SQL is to be constructed dynamically.  The expressions inside the SQL statement (such as inside the WHERE clause or the SELECT item list) can reference parameters of the report using :this:parametername, and can reference values from other queries using :queryname:fieldname.  See "SQL Language" for more details on Centrallix SQL.  Though deprecated, the SQL can also include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz' (do not use).</td>
 </tr>
 <tr>
 <td class="name">link</td>
 <td class="type">stringvec</td>
-<td class="description">Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.</td>
+<td class="description">Deprecated.  Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.  In the SQL statement, to use this method to reference linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -57,16 +54,31 @@
 <td class="type">string</td>
 <td class="description">A conditional expression specifying which rows should be included in the aggregate computation.</td>
 </tr>
+<tr>
+<td class="name">reset</td>
+<td class="type">integer</td>
+<td class="description">Either 0 or 1 (the default).  Controls whether or not the aggregate (computed) value is reset when used.  Normally, whenever the value is referenced, it is automatically reset to 0 (count) or null (sum/avg/min/max/first/last).  Setting this value to 0 causes the value to accumulate during the entire time the report is running, and is useful for such things as numbering lines (when using count()) or generating a running total (with sum()).</td>
+</tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-$Version=2$
-myQuery &quot;report/query&quot;
+myQuery "report/query"
 	{
-	sql = &quot;select :name, :size from /samples where :size &gt;= &amp;minsize&quot;;
-	totalsize &quot;report/aggregate&quot; { compute = &quot;sum(:size)&quot;; }
-	bigfilesizetotal &quot;report/aggregate&quot; { compute = &quot;sum(:size)&quot;; where=&quot;:size &gt; 10000&quot;; }
+	// standard SQL statement referencing parameter 'minsize'
+	sql = "select :name, :size from /samples where :size &gt;= :this:minsize";
+
+	// a couple of aggregates for totaling things up
+	totalsize "report/aggregate" { compute = "sum(:size)"; }
+	bigfilesizetotal "report/aggregate" { compute = "sum(:size)"; where=":size &gt; 10000"; }
+	}
+
+myQueryTwo "report/query"
+	{
+	// dynamically built SQL illustration
+	sql = runserver("select :name, :size from /samples where :size &gt;= :this:minsize" + condition(:this:orderby_size == 1, " order by :size", " order by :name"));
 	}
 		
 		</pre>
+</body>
+</html>

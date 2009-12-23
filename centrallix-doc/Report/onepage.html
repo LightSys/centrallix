@@ -1,6 +1,6 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Report Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
@@ -8,9 +8,9 @@
 <!-- PAGE BREAK: 'toc.html' -->
 <h1>Centrallix<br>Reporting System<br>Reference</h1>
 <br><p>The Centrallix reporting system provides the ability to generate reports in a variety of formats from ObjectSystem data and a report object.  This document describes the report object structure in detail and how to use the various report components to build a report.</p>
-<p>Reports can have parameters - see the 'report' object for more details.  Parameters are passed to a report via HTTP URL parameters, and are defined in the report by top-level attributes other than 'title' and 'titlebar'.</p>
-<p>Sample code is generally given in &quot;structure file&quot; format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
-<p>Where a 'moneyformat' is specified, it is a text string in which the following special characters are recognized (the default money format is &quot;$0.00&quot;):</p>
+<p>Reports can have parameters - see the 'report' object and 'report/parameter' object for more details.  Parameters are passed to a report via HTTP URL parameters, and are defined in the report by 'report/parameter' objects (or, though deprecated, by simple top level attributes other than those already defined for 'system/report').</p>
+<p>Sample code is generally given in "structure file" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
+<p>Where a 'moneyformat' is specified, it is a text string in which the following special characters are recognized (the default money format is "$0.00"):</p>
 <table>
 <tr>
 <td><tt>#</tt></td>
@@ -53,7 +53,7 @@
 <td> - (space) optional digit, but put a space in its place if suppressing leading 0's.</td>
 </tr>
 </table>
-<p>Where a 'dateformat' is specified, it is a text string with the following character sequences recognized (default is &quot;dd MMM yyyy HH:mm&quot;):</p>
+<p>Where a 'dateformat' is specified, it is a text string with the following character sequences recognized (default is "dd MMM yyyy HH:mm"):</p>
 <table>
 <tr>
 <td><tt>dd</tt></td>
@@ -104,28 +104,24 @@
 <td> - At the beginning of the format, indicates that the date is in international (dd/mm/yy) order rather than U.S. (mm/dd/yy) order.  Used mainly when a date is being input rather than when it is being generated.</td>
 </tr>
 </table>
-<p>Copyright (c)  1998-2003 LightSys Technology Services, Inc.</p>
+<p>Copyright (c)  1998-2009 LightSys Technology Services, Inc.</p>
 <br><p><b>Documentation on the following report components is available:</b></p>
 <table>
+<tr>
+<td><a href="#Common%20Properties">Common Properties</a></td>
+<td>A list of common properties used by many report components</td>
+</tr>
 <tr>
 <td><a href="#report">report</a></td>
 <td>The top-level report object</td>
 </tr>
 <tr>
-<td><a href="#comment">comment</a></td>
-<td>A textual comment to be printed on the report</td>
-</tr>
-<tr>
-<td><a href="#column">column</a></td>
-<td>Prints a single column value from the source query</td>
+<td><a href="#query">query</a></td>
+<td>A definition of a SQL query to use elsewhere in the report</td>
 </tr>
 <tr>
 <td><a href="#data">data</a></td>
-<td>A data component in the report consisting of an arbitrary expression</td>
-</tr>
-<tr>
-<td><a href="#section">section</a></td>
-<td>An overall section of the report, possibly multicolumnar</td>
+<td>An expression-based data value such as text, a number, or currency</td>
 </tr>
 <tr>
 <td><a href="#form">form</a></td>
@@ -136,32 +132,225 @@
 <td>A tabular presentation of report data</td>
 </tr>
 <tr>
-<td><a href="#query">query</a></td>
-<td>A definition of a SQL query to use elsewhere in the report</td>
+<td><a href="#image">image</a></td>
+<td>An image (graphic/photo)</td>
+</tr>
+<tr>
+<td><a href="#area">area</a></td>
+<td>A positionable rectangular container</td>
+</tr>
+<tr>
+<td><a href="#parameter">parameter</a></td>
+<td>Defines a parameter that can be passed to a report</td>
 </tr>
 </table>
 <br><br>
-<!-- PAGE BREAK: 'report.html' -->
-<h2 class="componentname"><a name="report">report</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">system/report</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">yes</span>
-</p>
+<!-- PAGE BREAK: 'Common Properties.html' -->
+<h2 class="componentname"><a name="Common Properties">Common Properties</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">Common Properties</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">no</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The report object is the top-level container for a report, and is the first object that should be listed in the structure file.  It basically embodies the report itself.</p>
-			<p>Although there are only two properties listed for this component, others can be specified.  If they are, they become report parameters which can be referenced later on in the report and can be modified by the user running the report.</p>
+			<p>Below is a list of common properties that many report writer components have.</p>
+			<p>Visual positioning properties such as x, y, width, height are shared by areas, images, and tables.</p>
+			<p>The margin settings margintop, marginbottom, marginleft, and marginright are shared by the system/report object as well as areas, tables, table rows, and table cells.</p>
+			<p>Formatting settings such as style, font, fontsize, fontcolor, align, and lineheight are shared by nearly all objects except for images and queries.</p>
+			<p>Data output properties, including dateformat, moneyformat, and nullformat, are shared by all objects except for images and queries.</p>
+			<p>The 'condition' property is available on all objects except for system/report and report/table-cell.</p>
+			<p>Border properties are available on areas, tables, and table-rows.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">align</td>
+<td class="type">string</td>
+<td class="description">The text alignment to use - either "left" (default), "center", "right", or "full".  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">bottomborder</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border at the bottom of the table, table-row, or area.</td>
+</tr>
+<tr>
+<td class="name">condition</td>
+<td class="type">integer</td>
+<td class="description">Typically an expression that evaluates to an integer/boolean type.  If true, the area, table, table-row, image, or data element is displayed, otherwise the object (and any contents) are ignored.</td>
+</tr>
+<tr>
+<td class="name">dateformat</td>
+<td class="type">string</td>
+<td class="description">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">font</td>
+<td class="type">string</td>
+<td class="description">The font to use.  Available fonts are "times", "helvetica", and "courier".  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">fontsize</td>
+<td class="type">integer</td>
+<td class="description">The font size in points.  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">fontcolor</td>
+<td class="type">string</td>
+<td class="description">The color to use for the font, in HTML RGB format such as "#FF0000" for Red.  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">double</td>
+<td class="description">The height of the area, image, or table.  If "fixedsize" is set to "no" (false), then the object is allowed to grow beyond this height.</td>
+</tr>
+<tr>
+<td class="name">leftborder</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border at the left side of the table, table-row, or area.</td>
+</tr>
+<tr>
+<td class="name">lineheight</td>
+<td class="type">double</td>
+<td class="description">The line height (and thus line spacing) to use.  Normally this is set when "fontsize" is set, but can be manually set.  Units are standard "y" units, so setting this to 2.0 will not result in double-spaced lines.  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">margintop</td>
+<td class="type">double</td>
+<td class="description">The height of the top margin of the object.  Default 0.  Available on report, area, table, table-row, and table-cell.</td>
+</tr>
+<tr>
+<td class="name">marginbottom</td>
+<td class="type">double</td>
+<td class="description">The height of the bottom margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</td>
+</tr>
+<tr>
+<td class="name">marginleft</td>
+<td class="type">double</td>
+<td class="description">The width of the left margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</td>
+</tr>
+<tr>
+<td class="name">marginright</td>
+<td class="type">double</td>
+<td class="description">The width of the right margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</td>
+</tr>
+<tr>
+<td class="name">moneyformat</td>
+<td class="type">string</td>
+<td class="description">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">nullformat</td>
+<td class="type">string</td>
+<td class="description">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">rightborder</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border at the right side of the table, table-row, or area.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">stringvec</td>
+<td class="description">A list of styles, separated by commas.  Values include "bold", "italic", "underline", or "plain".  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">topborder</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border at the top of the table, table-row, or area.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">double</td>
+<td class="description">The width of the table, area, or image.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">double</td>
+<td class="description">The X coordinate of the upper left corner of the table, area, or image, relative to the container.  Defaults to 0.0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">double</td>
+<td class="description">The Y coordinate of the upper left corner of the table, area, or image, relative to the container.  Defaults to 0.0.</td>
+</tr>
+</table>
+<!-- PAGE BREAK: 'report.html' -->
+<h2 class="componentname"><a name="report">report</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">system/report</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The report object is the top-level container for a report, and is the first object that should be listed in the structure file.  It basically embodies the report itself.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.  Typically, a set of "report/query" objects is specified first inside the "system/report", and then the content of the report (which uses the queries) comes next.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">dateformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default date/time format for the report.  See the introduction to the reporting system documentation for date/time format information.</td>
+</tr>
+<tr>
+<td class="name">document_format</td>
+<td class="type">string</td>
+<td class="description">The content type to use for the generated report.  Possible values typically include "application/pdf", "application/postscript", "text/html", "text/plain", "text/x-epson-escp-24", and "text/x-hp-pcl".  A list of supported types can be found in the OSML directory /sys/cx.sysinfo/prtmgmt/output_types, and this list can be joined (via SQL) with /sys/cx.sysinfo/osml/types to generate a user-friendly list of supported output formats for reports.</td>
+</tr>
+<tr>
+<td class="name">margintop</td>
+<td class="type">double</td>
+<td class="description">The height of the top margin.  Default is 3 6ths of an inch (0.5 inches).</td>
+</tr>
+<tr>
+<td class="name">marginbottom</td>
+<td class="type">double</td>
+<td class="description">The height of the bottom margin.  Default is 3 6ths of an inch (0.5 inches).</td>
+</tr>
+<tr>
+<td class="name">marginleft</td>
+<td class="type">double</td>
+<td class="description">The width of the left margin.  Default is 0.</td>
+</tr>
+<tr>
+<td class="name">marginright</td>
+<td class="type">double</td>
+<td class="description">The width of the right margin.  Default is 0.</td>
+</tr>
+<tr>
+<td class="name">moneyformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default currency format for the report.  See the introduction to the reporting system documentation for money format information.</td>
+</tr>
+<tr>
+<td class="name">nullformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default NULL data format for the report; this is used when data has a NULL value.  By default, the text "NULL" is displayed.</td>
+</tr>
+<tr>
+<td class="name">pagewidth</td>
+<td class="type">double</td>
+<td class="description">The width of the physical page, in the specified units.  The default is 85 10ths of an inch (8.5 inches).</td>
+</tr>
+<tr>
+<td class="name">pageheight</td>
+<td class="type">double</td>
+<td class="description">The height of the physical page, in the specified units.  The default is 66 6ths of an inch (11 inches).</td>
+</tr>
+<tr>
+<td class="name">resolution</td>
+<td class="type">integer</td>
+<td class="description">Graphics resolution for the report, in dots per inch (DPI); typically set to 300, 600, or 1200.  Any images/photos in the report will be rendered at this resolution, and this resolution sets the minimum width for borders and lines around tables and areas.  This setting is NOT affected by the 'units' setting and is always in DPI.</td>
 </tr>
 <tr>
 <td class="name">title</td>
@@ -169,9 +358,9 @@
 <td class="description">The title for the report.</td>
 </tr>
 <tr>
-<td class="name">titlebar</td>
-<td class="type">yes/no</td>
-<td class="description">Whether the report will contain a title section at the top giving the title, requesting user, date, and time.</td>
+<td class="name">units</td>
+<td class="type">string</td>
+<td class="description">The units of measure to use for the report.  This setting affects nearly all positioning and sizing values, including x, y, width, height, margins, and borders.  Possible values are:  "us_forms" (the default), meaning 10ths of an inch for x/width and 6ths of an inch for y/height; "inches"; "points" (72nds of an inch); "centimeters"; and "millimeters".</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -180,32 +369,31 @@
 <pre>
 		
 $Version=2$
-myreport &quot;system/report&quot;
+myreport "system/report"
 	{
-	minsize = 1;  // a parameter.
-	title = &quot;This is a hello-world report&quot;;
+	minsize "report/parameter" { type=integer; default = 1; }  // a parameter.
+	title = "This is a hello-world report";
 
-	comment &quot;report/comment&quot;
+	comment "report/data"
 		{
-		text = &quot;Hello World&quot;;
+		value = "Hello World";
 		}
 	}
 		
 		</pre>
-<!-- PAGE BREAK: 'comment.html' -->
-<h2 class="componentname"><a name="comment">comment</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/comment</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">no</span>
-</p>
+<!-- PAGE BREAK: 'query.html' -->
+<h2 class="componentname"><a name="query">query</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/query</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">no</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The comment report component simply specifies a static string of text to be placed on the report with a given style at a given location.</p>
+			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
+			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
+			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -214,155 +402,71 @@ myreport &quot;system/report&quot;
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">autonewline</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to automatically emit a newline at the end of text.  Defaults to &quot;yes&quot;.</td>
-</tr>
-<tr>
-<td class="name">font</td>
+<td class="name">sql</td>
 <td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
+<td class="description">A SQL statement.  It can be a plain string, or an expression if the SQL is to be constructed dynamically.  The expressions inside the SQL statement (such as inside the WHERE clause or the SELECT item list) can reference parameters of the report using :this:parametername, and can reference values from other queries using :queryname:fieldname.  See "SQL Language" for more details on Centrallix SQL.  Though deprecated, the SQL can also include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz' (do not use).</td>
 </tr>
 <tr>
-<td class="name">relypos</td>
-<td class="type">integer</td>
-<td class="description">The vertical position relative to the current section, in lines (6ths of an inch).</td>
-</tr>
-<tr>
-<td class="name">style</td>
+<td class="name">link</td>
 <td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
-</tr>
-<tr>
-<td class="name">text</td>
-<td class="type">string</td>
-<td class="description">The text to print on the report.</td>
-</tr>
-<tr>
-<td class="name">xpos</td>
-<td class="type">integer</td>
-<td class="description">The horizontal position, in character cells (10ths of an inch).</td>
-</tr>
-<tr>
-<td class="name">ypos</td>
-<td class="type">integer</td>
-<td class="description">The vertical position relative to the top of the page, in lines (6ths of an inch).</td>
+<td class="description">Deprecated.  Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.  In the SQL statement, to use this method to reference linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
+<p class="childname">(of report/aggregate child components)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">compute</td>
+<td class="type">string</td>
+<td class="description">An expression specifying the computation to be performed.  Normally this should include one or more aggregate functions (sum, count, avg, min, and max) in some form or fashion.</td>
+</tr>
+<tr>
+<td class="name">where</td>
+<td class="type">string</td>
+<td class="description">A conditional expression specifying which rows should be included in the aggregate computation.</td>
+</tr>
+<tr>
+<td class="name">reset</td>
+<td class="type">integer</td>
+<td class="description">Either 0 or 1 (the default).  Controls whether or not the aggregate (computed) value is reset when used.  Normally, whenever the value is referenced, it is automatically reset to 0 (count) or null (sum/avg/min/max/first/last).  Setting this value to 0 causes the value to accumulate during the entire time the report is running, and is useful for such things as numbering lines (when using count()) or generating a running total (with sum()).</td>
+</tr>
+</table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-$Version=2$
-myComment &quot;report/comment&quot;
+myQuery "report/query"
 	{
-	xpos = 10;
-	text = &quot;This is printed starting at column number 10.&quot;;
+	// standard SQL statement referencing parameter 'minsize'
+	sql = "select :name, :size from /samples where :size &gt;= :this:minsize";
+
+	// a couple of aggregates for totaling things up
+	totalsize "report/aggregate" { compute = "sum(:size)"; }
+	bigfilesizetotal "report/aggregate" { compute = "sum(:size)"; where=":size &gt; 10000"; }
 	}
-		
-		</pre>
-<!-- PAGE BREAK: 'column.html' -->
-<h2 class="componentname"><a name="column">column</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/column</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">no</span>
-</p>
-<h3 class="overview">Overview:</h3>
-<span class="overview">
-			<p>The column component allows the value of a source query's data field to be printed.</p>
-		</span><h3 class="usage">Usage:</h3>
-<span class="usage">
-			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
-		</span><h3 class="properties">Properties:</h3>
-<table class="properties">
-<tr>
-<th class="name">Property</th>
-<th class="type">Type</th>
-<th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">autonewline</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to automatically emit a newline at the end of text.  Defaults to &quot;yes&quot;.</td>
-</tr>
-<tr>
-<td class="name">dateformat</td>
-<td class="type">string</td>
-<td class="description">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.</td>
-</tr>
-<tr>
-<td class="name">font</td>
-<td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
-</tr>
-<tr>
-<td class="name">moneyformat</td>
-<td class="type">string</td>
-<td class="description">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.</td>
-</tr>
-<tr>
-<td class="name">nullformat</td>
-<td class="type">string</td>
-<td class="description">Sets the text to use if the data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
-</tr>
-<tr>
-<td class="name">relypos</td>
-<td class="type">integer</td>
-<td class="description">The vertical position relative to the current section, in lines (6ths of an inch).</td>
-</tr>
-<tr>
-<td class="name">source</td>
-<td class="type">stringvec</td>
-<td class="description">The source query to use, and the column name in the source query, separated by a comma.</td>
-</tr>
-<tr>
-<td class="name">style</td>
-<td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
-</tr>
-<tr>
-<td class="name">xpos</td>
-<td class="type">integer</td>
-<td class="description">The horizontal position, in character cells (10ths of an inch).</td>
-</tr>
-<tr>
-<td class="name">ypos</td>
-<td class="type">integer</td>
-<td class="description">The vertical position relative to the top of the page, in lines (6ths of an inch).</td>
-</tr>
-</table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
-<h3 class="sample">Sample Code:</h3>
-<pre>
-		
-$Version=2$
-myColumn &quot;report/column&quot;
+
+myQueryTwo "report/query"
 	{
-	relypos = 5; // five lines down from top of current section
-	style = bold,italic;
-	source = myQuery,modified_date;
-	dateformat = &quot;MMM ddd, yyyy&quot;;
+	// dynamically built SQL illustration
+	sql = runserver("select :name, :size from /samples where :size &gt;= :this:minsize" + condition(:this:orderby_size == 1, " order by :size", " order by :name"));
 	}
 		
 		</pre>
 <!-- PAGE BREAK: 'data.html' -->
 <h2 class="componentname"><a name="data">data</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/data</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">no</span>
-</p>
+<p class="componenttype">type: <span class="componenttypevalue">report/data</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The data component allows the value of an arbitrary expression to be printed.  The expression can contain references to report parameters (via the object 'this') or to query fields.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+			<p>This component can be used within an area, section, table row, table column, form, or at the top level within the system/report object.  It cannot contain any components.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -373,52 +477,22 @@ myColumn &quot;report/column&quot;
 <tr>
 <td class="name">autonewline</td>
 <td class="type">yes/no</td>
-<td class="description">Whether to automatically emit a newline at the end of text.  Defaults to &quot;no&quot;.</td>
-</tr>
-<tr>
-<td class="name">dateformat</td>
-<td class="type">string</td>
-<td class="description">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.</td>
-</tr>
-<tr>
-<td class="name">font</td>
-<td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
-</tr>
-<tr>
-<td class="name">moneyformat</td>
-<td class="type">string</td>
-<td class="description">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.</td>
-</tr>
-<tr>
-<td class="name">nullformat</td>
-<td class="type">string</td>
-<td class="description">Sets the text to use if the data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
-</tr>
-<tr>
-<td class="name">relypos</td>
-<td class="type">integer</td>
-<td class="description">The vertical position relative to the current section, in lines (6ths of an inch).</td>
-</tr>
-<tr>
-<td class="name">style</td>
-<td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+<td class="description">Whether to automatically emit a newline at the end of text.  Defaults to "no".</td>
 </tr>
 <tr>
 <td class="name">value</td>
-<td class="type">string</td>
-<td class="description">A quoted expression (inside a string); if string literals are provided inside the expression, they have to be quoted again, as in &quot;'one' + 'two'&quot;.</td>
+<td class="type">expression</td>
+<td class="description">The text to be printed.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
 </tr>
 <tr>
 <td class="name">xpos</td>
 <td class="type">integer</td>
-<td class="description">The horizontal position, in character cells (10ths of an inch).</td>
+<td class="description">The horizontal position to offset the text to.  See "units" in "system/report".</td>
 </tr>
 <tr>
 <td class="name">ypos</td>
 <td class="type">integer</td>
-<td class="description">The vertical position relative to the top of the page, in lines (6ths of an inch).</td>
+<td class="description">The vertical position to offset the text to.  See "units" in "system/report".</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -426,118 +500,20 @@ myColumn &quot;report/column&quot;
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-$Version=2$
-myData &quot;report/data&quot;
+myData "report/data"
 	{
-	value = &quot;:myQuery:string1 + ', ' + :myQuery:string2 + '.'&quot;;
-	}
-		
-		</pre>
-<!-- PAGE BREAK: 'section.html' -->
-<h2 class="componentname"><a name="section">section</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/section</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">yes</span>
-</p>
-<h3 class="overview">Overview:</h3>
-<span class="overview">
-			<p>The section component of a report basically defines a general subpart of the report, possibly having multiple columns (newspaper-style) plus margin settings and more.  It is also useful for defining a part of the report, perhaps just inside of a form, in which you need to position text or data relative not to the page as a whole but rather to a chunk of information or data.</p>
-			<p>Sections may span multiple pages.</p>
-		</span><h3 class="usage">Usage:</h3>
-<span class="usage">
-			<p>Sections can be used inside of components which are containers.  They can contain other components, except for report/query and system/report components, and cannot contain other section components.</p>
-		</span><h3 class="properties">Properties:</h3>
-<table class="properties">
-<tr>
-<th class="name">Property</th>
-<th class="type">Type</th>
-<th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">colsep</td>
-<td class="type">integer</td>
-<td class="description">The separation between columns, if more than one was specified, in 10ths of an inch.</td>
-</tr>
-<tr>
-<td class="name">columns</td>
-<td class="type">integer</td>
-<td class="description">The number of columns for the section (newspaper style).  Default is 1.</td>
-</tr>
-<tr>
-<td class="name">dateformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
-</tr>
-<tr>
-<td class="name">font</td>
-<td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
-</tr>
-<tr>
-<td class="name">linespacing</td>
-<td class="type">integer</td>
-<td class="description">Sets the number of lines per inch.  Default is 6 lines per inch.</td>
-</tr>
-<tr>
-<td class="name">margins</td>
-<td class="type">intvec</td>
-<td class="description">The left and right margins for the section, relative to the page.  Defaults to 0,0 (no margins).</td>
-</tr>
-<tr>
-<td class="name">moneyformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
-</tr>
-<tr>
-<td class="name">nullformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
-</tr>
-<tr>
-<td class="name">page</td>
-<td class="type">integer</td>
-<td class="description">Sets the starting page number for the section.</td>
-</tr>
-<tr>
-<td class="name">style</td>
-<td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
-</tr>
-<tr>
-<td class="name">title</td>
-<td class="type">string</td>
-<td class="description">A title for the section.  If provided, it will be centered above the section.</td>
-</tr>
-</table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
-<h3 class="sample">Sample Code:</h3>
-<pre>
-		
-$Version=2$
-mySection &quot;report/section&quot;
-	{
-	title = &quot;The Next Section&quot;;
-	columns = 2;
-	colsep = 2;       // 39 char wide cols on an 80 col page
-	nullformat = &quot;&quot;;  // display nothing if data is null instead of displaying 'NULL'
-
-	//
-	// more components go here
-	//
+	fontcolor = "#0000ff";
+	fontsize = 15;
+	style = "bold";
+	value = runserver(:myQuery:string1 + ', ' + :myQuery:string2 + '.');
 	}
 		
 		</pre>
 <!-- PAGE BREAK: 'form.html' -->
 <h2 class="componentname"><a name="form">form</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/form</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">yes</span>
-</p>
+<p class="componenttype">type: <span class="componenttypevalue">report/form</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The form provides a way to display query results in a non-tabular fashion.  Each individual piece of data has to be manually positioned, requiring more effort but giving more flexibility.  The form will essentially iterate through its contents for each record it retrieves from a query.</p>
@@ -638,7 +614,7 @@ mySection &quot;report/section&quot;
 			    </table>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>May be used inside any visual container, and may contain any visual component or container.</p>
+			<p>May be used inside any visual container, and may contain any visual component or container, including areas, tables, other forms, and data elements.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -647,19 +623,9 @@ mySection &quot;report/section&quot;
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">dateformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
-</tr>
-<tr>
 <td class="name">ffsep</td>
 <td class="type">yes/no</td>
 <td class="description">Whether to do a page break between successive records.  Default 'no'.</td>
-</tr>
-<tr>
-<td class="name">font</td>
-<td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -667,19 +633,9 @@ mySection &quot;report/section&quot;
 <td class="description">The mode of the form (see overview).  'normal' is the default.</td>
 </tr>
 <tr>
-<td class="name">moneyformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
-</tr>
-<tr>
 <td class="name">multimode</td>
 <td class="type">string</td>
 <td class="description">How the form handles multiple queries (see overview).  'nested' is the default.</td>
-</tr>
-<tr>
-<td class="name">nullformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
 </tr>
 <tr>
 <td class="name">page</td>
@@ -692,24 +648,9 @@ mySection &quot;report/section&quot;
 <td class="description">Sets a limit on the number of records the form is to print.</td>
 </tr>
 <tr>
-<td class="name">relylimit</td>
-<td class="type">integer</td>
-<td class="description">Sets a limit on the height of the form's contents inside a section or page.  The form will continue to print records until this number of lines on the report have been used since the top of the current section.</td>
-</tr>
-<tr>
-<td class="name">rulesep</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to emit a horizontal line between successive records.  Default 'no'.</td>
-</tr>
-<tr>
 <td class="name">source</td>
 <td class="type">stringvec</td>
-<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</td>
-</tr>
-<tr>
-<td class="name">style</td>
-<td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' setting to specify how they are combined.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -717,29 +658,32 @@ mySection &quot;report/section&quot;
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-$Version=2$
-normalForm &quot;report/form&quot;
+normalForm "report/form"
 	{
 	source=myQuery;
-	rulesep=yes;
+	ffsep=yes;
 
 	//
-	// query data is printed here with report/data, report/column, etc.
+	// query data is printed here with report/data, etc.
 	//
 	}
-outerForm &quot;report/form&quot;
+
+outerForm "report/form"
 	{
+	// This inner/outer form pair displays six records per page.
 	source=myQuery;
 	mode=outer;
-	comment &quot;report/comment&quot; { text=&quot;Here are up to six of the records:&quot;; }
-	innerForm &quot;report/form&quot;
+	ffsep=yes;
+	comment "report/data" { value="Here are up to six of the records:\n"; }
+
+	innerForm "report/form"
 		{
 		source=myQuery;
 		mode=inner;
 		reclimit=6;
 
 		//
-		// display query data here with report/data, report/column, etc.
+		// display query data here with report/data, etc.
 		//
 		}
 	}
@@ -747,12 +691,9 @@ outerForm &quot;report/form&quot;
 		</pre>
 <!-- PAGE BREAK: 'table.html' -->
 <h2 class="componentname"><a name="table">table</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/table</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">no</span>
-</p>
+<p class="componenttype">type: <span class="componenttypevalue">report/table</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The table component is used to present data in an orderly, tabular fashion, in rows and columns.  While less flexible than the form, it is much easier to use.</p>
@@ -760,7 +701,7 @@ outerForm &quot;report/form&quot;
 			<p>Tables also can handle multiple queries using a 'multimode' - see the form for more information.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>Tables can be used inside any visual container, but cannot contain other objects</p>
+			<p>Tables can be used inside any visual container or inside forms.  Tables can contain "report/table-row" objects.  Table rows can contain either a set of "report/table-cell" objects, or other objects such as areas, data elements, and so forth.  A row cannot contain both a table-cell and an object of another type.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -769,59 +710,34 @@ outerForm &quot;report/form&quot;
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">align</td>
-<td class="type">stringvec</td>
-<td class="description">A list of strings defining how the data in each column should be aligned to its cell.  Values are 'left', 'right', and 'center'.</td>
+<td class="name">allowbreak</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to allow the table to span multiple pages in the report.</td>
 </tr>
 <tr>
 <td class="name">colsep</td>
-<td class="type">integer</td>
-<td class="description">Sets the separation between the table's columns, in 10ths of an inch.</td>
+<td class="type">double</td>
+<td class="description">Sets the separation between the table's columns.</td>
 </tr>
 <tr>
 <td class="name">columns</td>
-<td class="type">stringvec</td>
-<td class="description">A list of field names from the query source (expressions 'no') or expressions to evaluate for column information (expressions 'yes').</td>
+<td class="type">integer</td>
+<td class="description">The number of columns in the table.</td>
 </tr>
 <tr>
-<td class="name">colnames</td>
-<td class="type">stringvec</td>
-<td class="description">A list of column header titles.</td>
-</tr>
-<tr>
-<td class="name">dateformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
-</tr>
-<tr>
-<td class="name">expressions</td>
+<td class="name">fixedsize</td>
 <td class="type">yes/no</td>
-<td class="description">Determines whether the information given for columns in the 'columns' property are column names or full Centrallix expressions.  Default is 'no'.  You will want to set this to 'yes' if the 'source' property contains more than one query.</td>
+<td class="description">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table is allowed to grow vertically to fit its contents.</td>
 </tr>
 <tr>
-<td class="name">font</td>
-<td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
-</tr>
-<tr>
-<td class="name">headeralign</td>
-<td class="type">stringvec</td>
-<td class="description">A list of strings defining how the header names in each column should be aligned.  Values are 'left', 'right', and 'center'.</td>
-</tr>
-<tr>
-<td class="name">lowersep</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to display a separator line at the bottom of the table in addition to the one drawn between the table and its header (titlebar).  Default is 'no'.</td>
+<td class="name">innerborder</td>
+<td class="type">double</td>
+<td class="description">Width of the inside borders within the table.</td>
 </tr>
 <tr>
 <td class="name">mode</td>
 <td class="type">string</td>
 <td class="description">The mode of the table (see overview).  'normal' is the default.</td>
-</tr>
-<tr>
-<td class="name">moneyformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
 </tr>
 <tr>
 <td class="name">multimode</td>
@@ -834,9 +750,9 @@ outerForm &quot;report/form&quot;
 <td class="description">Whether to display the '(no data returned)' message below the table if no records were returned from the query source.  Default is 'yes' to display the no-data message.</td>
 </tr>
 <tr>
-<td class="name">nullformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
+<td class="name">outerborder</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</td>
 </tr>
 <tr>
 <td class="name">reclimit</td>
@@ -844,65 +760,113 @@ outerForm &quot;report/form&quot;
 <td class="description">Sets a limit on the number of records the table is to print.</td>
 </tr>
 <tr>
+<td class="name">shadow</td>
+<td class="type">double</td>
+<td class="description">Width of the drop-shadow to the right and bottom of the table.</td>
+</tr>
+<tr>
 <td class="name">source</td>
 <td class="type">stringvec</td>
 <td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</td>
 </tr>
 <tr>
-<td class="name">style</td>
-<td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
-</tr>
-<tr>
-<td class="name">titlebar</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to display a title bar on the table with column header names.  Default is 'yes' to display it.</td>
-</tr>
-<tr>
-<td class="name">widthmode</td>
-<td class="type">string</td>
-<td class="description">How the table computes column widths.  'relative' means column widths are relative to the size of the font, whereas 'absolute' means tenths of an inch.</td>
-</tr>
-<tr>
 <td class="name">widths</td>
 <td class="type">intvec</td>
-<td class="description">A list of numbers giving the widths of the columns.</td>
+<td class="description">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
+<p class="childname">(of report/table-row child components)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">allowbreak</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to allow the row to span multiple pages in the report.</td>
+</tr>
+<tr>
+<td class="name">fixedsize</td>
+<td class="type">yes/no</td>
+<td class="description">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table row is allowed to grow vertically to fit its contents.</td>
+</tr>
+<tr>
+<td class="name">header</td>
+<td class="type">yes/no</td>
+<td class="description">Whether the row is a header row (repeated on subsequent pages).</td>
+</tr>
+<tr>
+<td class="name">innerborder</td>
+<td class="type">double</td>
+<td class="description">Width of the inside borders between cells in the row.</td>
+</tr>
+<tr>
+<td class="name">outerborder</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border around the row.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</td>
+</tr>
+<tr>
+<td class="name">summary</td>
+<td class="type">yes/no</td>
+<td class="description">Whether the row is a summary row, emitted at the end of the table (no summarize_for) or at the end of each group of rows (if summarize_for is set).</td>
+</tr>
+<tr>
+<td class="name">summarize_for</td>
+<td class="type">expression</td>
+<td class="description">An expression whose value uniquely defines the desired group of rows.  The summary row is printed at the end of each group of consecutive rows having the same value for this expression.</td>
+</tr>
+</table>
+<p class="childname">(of report/table-cell child components)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">expression</td>
+<td class="description">The text to be printed inside the cell.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+</table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-$Version=2$
-myTable &quot;report/table&quot;
+myTable "report/table"
 	{
 	source=myQuery;
-	expressions=yes;
-	colnames='Name','Size';
-	columns=':myQuery:name', 'condition(:myQuery:size == 0, \'empty\', :myQuery:size)';
-	align=left,right;
-	headeralign=left,left;
-	titlebar=yes;
+	columns = 2;
+	widths = 40,40;
+	hdr "report/table-row"
+	    {
+	    header = yes;
+	    h_name "report/table-cell" { align=center; style=bold; value="Name"; }
+	    h_size "report/table-cell" { align=center; style=bold; value="Size"; }
+	    }
+	data "report/table-row"
+	    {
+	    t_name "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:name); }
+	    t_size "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:size); }
+	    }
 	}
 		
 		</pre>
-<!-- PAGE BREAK: 'query.html' -->
-<h2 class="componentname"><a name="query">query</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/query</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">no</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">no</span>
-</p>
+<!-- PAGE BREAK: 'image.html' -->
+<h2 class="componentname"><a name="image">image</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/image</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
-			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
-			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
+			<p>The image object allows a graphics file or photo to be embedded in the report.  Currently only the PNG format is supported, so convert your image to PNG before using it in a report.</p>
+			<p>The output quality is determined by the 'resolution' setting specified in the system/report object.  Lower resolutions result in a poorer quality but also result in faster-running reports.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
+			<p>The image object may be used inside the system/report, or inside areas, table rows, or table cells.</p>
+			<p>See 'Common Properties' for x, y, width, and height, which are used for positioning the image.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -911,47 +875,112 @@ myTable &quot;report/table&quot;
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">sql</td>
+<td class="name">source</td>
 <td class="type">string</td>
-<td class="description">A SQL statement.  It can include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz'.  To referenced linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</td>
-</tr>
-<tr>
-<td class="name">link</td>
-<td class="type">stringvec</td>
-<td class="description">Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.</td>
+<td class="description">The ObjectSystem path to the PNG image file.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
-<p class="childname">(of report/aggregate child components)</p>
-<table class="childproperties">
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+img "report/image"
+	{
+	x=0; y=0; height=4.44; width=65;
+	source = "/images/DocumentHeader.png";
+	}
+		
+		</pre>
+<!-- PAGE BREAK: 'area.html' -->
+<h2 class="componentname"><a name="area">area</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/area</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The area object is a generic positionable rectangular container that can also have a border around it.  Text added inside it with a 'report/data' element or a 'value' setting (as with table rows and table cells) can flow using text flow, justification, and wrapping semantics.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Areas may be placed inside the system/report, or inside other areas, table rows, or table cells.  Areas are containers, so they can contain other visual objects.</p>
+			<p>See 'Common Properties' for x, y, width, and height, which are used for positioning the area.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">compute</td>
-<td class="type">string</td>
-<td class="description">An expression specifying the computation to be performed.  Normally this should include one or more aggregate functions (sum, count, avg, min, and max) in some form or fashion.</td>
+<td class="name">allowbreak</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to allow the area to span multiple pages in the report if the text causes it to be larger than one page can hold.</td>
 </tr>
 <tr>
-<td class="name">where</td>
-<td class="type">string</td>
-<td class="description">A conditional expression specifying which rows should be included in the aggregate computation.</td>
+<td class="name">border</td>
+<td class="type">double</td>
+<td class="description">Width of the outside border around the area.</td>
+</tr>
+<tr>
+<td class="name">fixedsize</td>
+<td class="type">yes/no</td>
+<td class="description">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the area is allowed to grow vertically to fit its contents.</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">expression</td>
+<td class="description">The text to be printed in the area.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
 </tr>
 </table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<pre>
-		
-$Version=2$
-myQuery &quot;report/query&quot;
-	{
-	sql = &quot;select :name, :size from /samples where :size &gt;= &amp;minsize&quot;;
-	totalsize &quot;report/aggregate&quot; { compute = &quot;sum(:size)&quot;; }
-	bigfilesizetotal &quot;report/aggregate&quot; { compute = &quot;sum(:size)&quot;; where=&quot;:size &gt; 10000&quot;; }
-	}
-		
-		</pre>
+<p class="none">none currently available</p>
+<!-- PAGE BREAK: 'parameter.html' -->
+<h2 class="componentname"><a name="parameter">parameter</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/parameter</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">no</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>A parameter defines a value that can be passed to a report, as well as various constraints and aspects of that value.</p>
+			<p>A default value can be specified, which will be used if the user does not supply a value when running the report.</p>
+			<p>A variety of constraint properties are also allowed, such as allowchars and badchars.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The parameter object can only be used inside a system/report object.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">allowchars</td>
+<td class="type">string</td>
+<td class="description">The set of characters that are allowed. (e.g. allowchars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; )</td>
+</tr>
+<tr>
+<td class="name">badchars</td>
+<td class="type">string</td>
+<td class="description">The set of characters that are explicitly not allowed. (e.g. badchars=" \"'/,;"; )</td>
+</tr>
+<tr>
+<td class="name">default</td>
+<td class="type">mixed</td>
+<td class="description">If a parameter is not passed in, then the (optional) default value is assigned to the parameter (e.g. default = null, or 2745).</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">The data type of the parameter.  Can be "integer", "string", "double", "datetime", or "money".</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<p class="none">none currently available</p>
 <!-- PAGE BREAK: 'END' -->
 </body>
 </html>

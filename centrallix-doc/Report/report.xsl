@@ -17,7 +17,7 @@
 	<h1>Centrallix<br/>Reporting System<br/>Reference</h1>
 	<br/>
 	<p>The Centrallix reporting system provides the ability to generate reports in a variety of formats from ObjectSystem data and a report object.  This document describes the report object structure in detail and how to use the various report components to build a report.</p>
-	<p>Reports can have parameters - see the 'report' object for more details.  Parameters are passed to a report via HTTP URL parameters, and are defined in the report by top-level attributes other than 'title' and 'titlebar'.</p>
+	<p>Reports can have parameters - see the 'report' object and 'report/parameter' object for more details.  Parameters are passed to a report via HTTP URL parameters, and are defined in the report by 'report/parameter' objects (or, though deprecated, by simple top level attributes other than those already defined for 'system/report').</p>
 	<p>Sample code is generally given in "structure file" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
 	<p>Where a 'moneyformat' is specified, it is a text string in which the following special characters are recognized (the default money format is "$0.00"):</p>
 	<table>
@@ -47,7 +47,7 @@
 	    <tr><td><tt>ss</tt></td><td> - Seconds (00 through 59).</td></tr>
 	    <tr><td><tt>I</tt></td><td> - At the beginning of the format, indicates that the date is in international (dd/mm/yy) order rather than U.S. (mm/dd/yy) order.  Used mainly when a date is being input rather than when it is being generated.</td></tr>
 	</table>
-	<p>Copyright (c)  1998-2003 LightSys Technology Services, Inc.</p>
+	<p>Copyright (c)  1998-2009 LightSys Technology Services, Inc.</p>
 	<br/>
 	<p><b>Documentation on the following report components is available:</b></p>
 	<table>

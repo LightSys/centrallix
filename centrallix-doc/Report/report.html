@@ -1,25 +1,21 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Report Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'report.html' -->
 <h2 class="componentname"><a name="report">report</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">system/report</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">yes</span>
-</p>
+<p class="componenttype">type: <span class="componenttypevalue">system/report</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The report object is the top-level container for a report, and is the first object that should be listed in the structure file.  It basically embodies the report itself.</p>
-			<p>Although there are only two properties listed for this component, others can be specified.  If they are, they become report parameters which can be referenced later on in the report and can be modified by the user running the report.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.</p>
+			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.  Typically, a set of "report/query" objects is specified first inside the "system/report", and then the content of the report (which uses the queries) comes next.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -28,14 +24,69 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">dateformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default date/time format for the report.  See the introduction to the reporting system documentation for date/time format information.</td>
+</tr>
+<tr>
+<td class="name">document_format</td>
+<td class="type">string</td>
+<td class="description">The content type to use for the generated report.  Possible values typically include "application/pdf", "application/postscript", "text/html", "text/plain", "text/x-epson-escp-24", and "text/x-hp-pcl".  A list of supported types can be found in the OSML directory /sys/cx.sysinfo/prtmgmt/output_types, and this list can be joined (via SQL) with /sys/cx.sysinfo/osml/types to generate a user-friendly list of supported output formats for reports.</td>
+</tr>
+<tr>
+<td class="name">margintop</td>
+<td class="type">double</td>
+<td class="description">The height of the top margin.  Default is 3 6ths of an inch (0.5 inches).</td>
+</tr>
+<tr>
+<td class="name">marginbottom</td>
+<td class="type">double</td>
+<td class="description">The height of the bottom margin.  Default is 3 6ths of an inch (0.5 inches).</td>
+</tr>
+<tr>
+<td class="name">marginleft</td>
+<td class="type">double</td>
+<td class="description">The width of the left margin.  Default is 0.</td>
+</tr>
+<tr>
+<td class="name">marginright</td>
+<td class="type">double</td>
+<td class="description">The width of the right margin.  Default is 0.</td>
+</tr>
+<tr>
+<td class="name">moneyformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default currency format for the report.  See the introduction to the reporting system documentation for money format information.</td>
+</tr>
+<tr>
+<td class="name">nullformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default NULL data format for the report; this is used when data has a NULL value.  By default, the text "NULL" is displayed.</td>
+</tr>
+<tr>
+<td class="name">pagewidth</td>
+<td class="type">double</td>
+<td class="description">The width of the physical page, in the specified units.  The default is 85 10ths of an inch (8.5 inches).</td>
+</tr>
+<tr>
+<td class="name">pageheight</td>
+<td class="type">double</td>
+<td class="description">The height of the physical page, in the specified units.  The default is 66 6ths of an inch (11 inches).</td>
+</tr>
+<tr>
+<td class="name">resolution</td>
+<td class="type">integer</td>
+<td class="description">Graphics resolution for the report, in dots per inch (DPI); typically set to 300, 600, or 1200.  Any images/photos in the report will be rendered at this resolution, and this resolution sets the minimum width for borders and lines around tables and areas.  This setting is NOT affected by the 'units' setting and is always in DPI.</td>
+</tr>
+<tr>
 <td class="name">title</td>
 <td class="type">string</td>
 <td class="description">The title for the report.</td>
 </tr>
 <tr>
-<td class="name">titlebar</td>
-<td class="type">yes/no</td>
-<td class="description">Whether the report will contain a title section at the top giving the title, requesting user, date, and time.</td>
+<td class="name">units</td>
+<td class="type">string</td>
+<td class="description">The units of measure to use for the report.  This setting affects nearly all positioning and sizing values, including x, y, width, height, margins, and borders.  Possible values are:  "us_forms" (the default), meaning 10ths of an inch for x/width and 6ths of an inch for y/height; "inches"; "points" (72nds of an inch); "centimeters"; and "millimeters".</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -44,14 +95,14 @@
 <pre>
 		
 $Version=2$
-myreport &quot;system/report&quot;
+myreport "system/report"
 	{
-	minsize = 1;  // a parameter.
-	title = &quot;This is a hello-world report&quot;;
+	minsize "report/parameter" { type=integer; default = 1; }  // a parameter.
+	title = "This is a hello-world report";
 
-	comment &quot;report/comment&quot;
+	comment "report/data"
 		{
-		text = &quot;Hello World&quot;;
+		value = "Hello World";
 		}
 	}
 		

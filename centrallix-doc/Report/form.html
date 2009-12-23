@@ -1,18 +1,15 @@
 <html>
 <head>
-<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Centrallix Application Server: Report Documentation</title>
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
 <!-- PAGE BREAK: 'form.html' -->
 <h2 class="componentname"><a name="form">form</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/form</span>
-</p>
-<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
-</p>
-<p class="componenttype">container: <span class="componenttypevalue">yes</span>
-</p>
+<p class="componenttype">type: <span class="componenttypevalue">report/form</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The form provides a way to display query results in a non-tabular fashion.  Each individual piece of data has to be manually positioned, requiring more effort but giving more flexibility.  The form will essentially iterate through its contents for each record it retrieves from a query.</p>
@@ -113,7 +110,7 @@
 			    </table>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>May be used inside any visual container, and may contain any visual component or container.</p>
+			<p>May be used inside any visual container, and may contain any visual component or container, including areas, tables, other forms, and data elements.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -122,19 +119,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">dateformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
-</tr>
-<tr>
 <td class="name">ffsep</td>
 <td class="type">yes/no</td>
 <td class="description">Whether to do a page break between successive records.  Default 'no'.</td>
-</tr>
-<tr>
-<td class="name">font</td>
-<td class="type">string</td>
-<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -142,19 +129,9 @@
 <td class="description">The mode of the form (see overview).  'normal' is the default.</td>
 </tr>
 <tr>
-<td class="name">moneyformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
-</tr>
-<tr>
 <td class="name">multimode</td>
 <td class="type">string</td>
 <td class="description">How the form handles multiple queries (see overview).  'nested' is the default.</td>
-</tr>
-<tr>
-<td class="name">nullformat</td>
-<td class="type">string</td>
-<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
 </tr>
 <tr>
 <td class="name">page</td>
@@ -167,24 +144,9 @@
 <td class="description">Sets a limit on the number of records the form is to print.</td>
 </tr>
 <tr>
-<td class="name">relylimit</td>
-<td class="type">integer</td>
-<td class="description">Sets a limit on the height of the form's contents inside a section or page.  The form will continue to print records until this number of lines on the report have been used since the top of the current section.</td>
-</tr>
-<tr>
-<td class="name">rulesep</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to emit a horizontal line between successive records.  Default 'no'.</td>
-</tr>
-<tr>
 <td class="name">source</td>
 <td class="type">stringvec</td>
-<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</td>
-</tr>
-<tr>
-<td class="name">style</td>
-<td class="type">stringvec</td>
-<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' setting to specify how they are combined.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -192,29 +154,32 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-$Version=2$
-normalForm &quot;report/form&quot;
+normalForm "report/form"
 	{
 	source=myQuery;
-	rulesep=yes;
+	ffsep=yes;
 
 	//
-	// query data is printed here with report/data, report/column, etc.
+	// query data is printed here with report/data, etc.
 	//
 	}
-outerForm &quot;report/form&quot;
+
+outerForm "report/form"
 	{
+	// This inner/outer form pair displays six records per page.
 	source=myQuery;
 	mode=outer;
-	comment &quot;report/comment&quot; { text=&quot;Here are up to six of the records:&quot;; }
-	innerForm &quot;report/form&quot;
+	ffsep=yes;
+	comment "report/data" { value="Here are up to six of the records:\n"; }
+
+	innerForm "report/form"
 		{
 		source=myQuery;
 		mode=inner;
 		reclimit=6;
 
 		//
-		// display query data here with report/data, report/column, etc.
+		// display query data here with report/data, etc.
 		//
 		}
 	}

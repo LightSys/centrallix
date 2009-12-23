@@ -1,16 +1,63 @@
 <?xml version='1.0'?>
 <components>
+	<component name="Common Properties" type="Common Properties" description="A list of common properties used by many report components" visual="no" container="no">
+		<overview>
+			<p>Below is a list of common properties that many report writer components have.</p>
+			<p>Visual positioning properties such as x, y, width, height are shared by areas, images, and tables.</p>
+			<p>The margin settings margintop, marginbottom, marginleft, and marginright are shared by the system/report object as well as areas, tables, table rows, and table cells.</p>
+			<p>Formatting settings such as style, font, fontsize, fontcolor, align, and lineheight are shared by nearly all objects except for images and queries.</p>
+			<p>Data output properties, including dateformat, moneyformat, and nullformat, are shared by all objects except for images and queries.</p>
+			<p>The 'condition' property is available on all objects except for system/report and report/table-cell.</p>
+			<p>Border properties are available on areas, tables, and table-rows.</p>
+		</overview>
+		<usage>
+		</usage>
+		<properties>
+			<property name="align" type="string">The text alignment to use - either "left" (default), "center", "right", or "full".  Available on all objects except image, query, and parameter.</property>
+			<property name="bottomborder" type="double">Width of the outside border at the bottom of the table, table-row, or area.</property>
+			<property name="condition" type="integer">Typically an expression that evaluates to an integer/boolean type.  If true, the area, table, table-row, image, or data element is displayed, otherwise the object (and any contents) are ignored.</property>
+			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.  Available on all objects except image, query, and parameter.</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".  Available on all objects except image, query, and parameter.</property>
+			<property name="fontsize" type="integer">The font size in points.  Available on all objects except image, query, and parameter.</property>
+			<property name="fontcolor" type="string">The color to use for the font, in HTML RGB format such as "#FF0000" for Red.  Available on all objects except image, query, and parameter.</property>
+			<property name="height" type="double">The height of the area, image, or table.  If "fixedsize" is set to "no" (false), then the object is allowed to grow beyond this height.</property>
+			<property name="leftborder" type="double">Width of the outside border at the left side of the table, table-row, or area.</property>
+			<property name="lineheight" type="double">The line height (and thus line spacing) to use.  Normally this is set when "fontsize" is set, but can be manually set.  Units are standard "y" units, so setting this to 2.0 will not result in double-spaced lines.  Available on all objects except image, query, and parameter.</property>
+			<property name="margintop" type="double">The height of the top margin of the object.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
+			<property name="marginbottom" type="double">The height of the bottom margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
+			<property name="marginleft" type="double">The width of the left margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
+			<property name="marginright" type="double">The width of the right margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
+			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.  Available on all objects except image, query, and parameter.</property>
+			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.  Available on all objects except image, query, and parameter.</property>
+			<property name="rightborder" type="double">Width of the outside border at the right side of the table, table-row, or area.</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", or "plain".  Available on all objects except image, query, and parameter.</property>
+			<property name="topborder" type="double">Width of the outside border at the top of the table, table-row, or area.</property>
+			<property name="width" type="double">The width of the table, area, or image.</property>
+			<property name="x" type="double">The X coordinate of the upper left corner of the table, area, or image, relative to the container.  Defaults to 0.0.</property>
+			<property name="y" type="double">The Y coordinate of the upper left corner of the table, area, or image, relative to the container.  Defaults to 0.0.</property>
+		</properties>
+	</component>
 	<component name="report" type="system/report" description="The top-level report object" visual="yes" container="yes">
 		<overview>
 			<p>The report object is the top-level container for a report, and is the first object that should be listed in the structure file.  It basically embodies the report itself.</p>
-			<p>Although there are only two properties listed for this component, others can be specified.  If they are, they become report parameters which can be referenced later on in the report and can be modified by the user running the report.</p>
 		</overview>
 		<usage>
-			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.</p>
+			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.  Typically, a set of "report/query" objects is specified first inside the "system/report", and then the content of the report (which uses the queries) comes next.</p>
 		</usage>
 		<properties>
+			<property name="dateformat" type="string">Sets the default date/time format for the report.  See the introduction to the reporting system documentation for date/time format information.</property>
+			<property name="document_format" type="string">The content type to use for the generated report.  Possible values typically include "application/pdf", "application/postscript", "text/html", "text/plain", "text/x-epson-escp-24", and "text/x-hp-pcl".  A list of supported types can be found in the OSML directory /sys/cx.sysinfo/prtmgmt/output_types, and this list can be joined (via SQL) with /sys/cx.sysinfo/osml/types to generate a user-friendly list of supported output formats for reports.</property>
+			<property name="margintop" type="double">The height of the top margin.  Default is 3 6ths of an inch (0.5 inches).</property>
+			<property name="marginbottom" type="double">The height of the bottom margin.  Default is 3 6ths of an inch (0.5 inches).</property>
+			<property name="marginleft" type="double">The width of the left margin.  Default is 0.</property>
+			<property name="marginright" type="double">The width of the right margin.  Default is 0.</property>
+			<property name="moneyformat" type="string">Sets the default currency format for the report.  See the introduction to the reporting system documentation for money format information.</property>
+			<property name="nullformat" type="string">Sets the default NULL data format for the report; this is used when data has a NULL value.  By default, the text "NULL" is displayed.</property>
+			<property name="pagewidth" type="double">The width of the physical page, in the specified units.  The default is 85 10ths of an inch (8.5 inches).</property>
+			<property name="pageheight" type="double">The height of the physical page, in the specified units.  The default is 66 6ths of an inch (11 inches).</property>
+			<property name="resolution" type="integer">Graphics resolution for the report, in dots per inch (DPI); typically set to 300, 600, or 1200.  Any images/photos in the report will be rendered at this resolution, and this resolution sets the minimum width for borders and lines around tables and areas.  This setting is NOT affected by the 'units' setting and is always in DPI.</property>
 			<property name="title" type="string">The title for the report.</property>
-			<property name="titlebar" type="yes/no">Whether the report will contain a title section at the top giving the title, requesting user, date, and time.</property>
+			<property name="units" type="string">The units of measure to use for the report.  This setting affects nearly all positioning and sizing values, including x, y, width, height, margins, and borders.  Possible values are:  "us_forms" (the default), meaning 10ths of an inch for x/width and 6ths of an inch for y/height; "inches"; "points" (72nds of an inch); "centimeters"; and "millimeters".</property>
 		</properties>
 		<children>
 		</children>
@@ -19,112 +66,85 @@
 $Version=2$
 myreport "system/report"
 	{
-	minsize = 1;  // a parameter.
+	minsize "report/parameter" { type=integer; default = 1; }  // a parameter.
 	title = "This is a hello-world report";
 
-	comment "report/comment"
+	comment "report/data"
 		{
-		text = "Hello World";
+		value = "Hello World";
 		}
 	}
 		]]>
 		</sample>
 	</component>
-	<component name="comment" type="report/comment" description="A textual comment to be printed on the report" visual="yes" container="no">
+	<component name="query" type="report/query" description="A definition of a SQL query to use elsewhere in the report" visual="no" container="no">
 		<overview>
-			<p>The comment report component simply specifies a static string of text to be placed on the report with a given style at a given location.</p>
+			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
+			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
+			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
 		</overview>
 		<usage>
-			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
 		</usage>
 		<properties>
-			<property name="autonewline" type="yes/no">Whether to automatically emit a newline at the end of text.  Defaults to "yes".</property>
-			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
-			<property name="relypos" type="integer">The vertical position relative to the current section, in lines (6ths of an inch).</property>
-			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
-			<property name="text" type="string">The text to print on the report.</property>
-			<property name="xpos" type="integer">The horizontal position, in character cells (10ths of an inch).</property>
-			<property name="ypos" type="integer">The vertical position relative to the top of the page, in lines (6ths of an inch).</property>
+			<property name="sql" type="string">A SQL statement.  It can be a plain string, or an expression if the SQL is to be constructed dynamically.  The expressions inside the SQL statement (such as inside the WHERE clause or the SELECT item list) can reference parameters of the report using :this:parametername, and can reference values from other queries using :queryname:fieldname.  See "SQL Language" for more details on Centrallix SQL.  Though deprecated, the SQL can also include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz' (do not use).</property>
+			<property name="link" type="stringvec">Deprecated.  Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.  In the SQL statement, to use this method to reference linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</property>
 		</properties>
 		<children>
+			<child type="report/aggregate">
+				<childproperty name="compute" type="string">An expression specifying the computation to be performed.  Normally this should include one or more aggregate functions (sum, count, avg, min, and max) in some form or fashion.</childproperty>
+				<childproperty name="where" type="string">A conditional expression specifying which rows should be included in the aggregate computation.</childproperty>
+				<childproperty name="reset" type="integer">Either 0 or 1 (the default).  Controls whether or not the aggregate (computed) value is reset when used.  Normally, whenever the value is referenced, it is automatically reset to 0 (count) or null (sum/avg/min/max/first/last).  Setting this value to 0 causes the value to accumulate during the entire time the report is running, and is useful for such things as numbering lines (when using count()) or generating a running total (with sum()).</childproperty>
+			</child>
 		</children>
 		<sample>
 		<![CDATA[
-$Version=2$
-myComment "report/comment"
+myQuery "report/query"
 	{
-	xpos = 10;
-	text = "This is printed starting at column number 10.";
+	// standard SQL statement referencing parameter 'minsize'
+	sql = "select :name, :size from /samples where :size >= :this:minsize";
+
+	// a couple of aggregates for totaling things up
+	totalsize "report/aggregate" { compute = "sum(:size)"; }
+	bigfilesizetotal "report/aggregate" { compute = "sum(:size)"; where=":size > 10000"; }
+	}
+
+myQueryTwo "report/query"
+	{
+	// dynamically built SQL illustration
+	sql = runserver("select :name, :size from /samples where :size >= :this:minsize" + condition(:this:orderby_size == 1, " order by :size", " order by :name"));
 	}
 		]]>
 		</sample>
 	</component>
-	<component name="column" type="report/column" description="Prints a single column value from the source query" visual="yes" container="no">
-		<overview>
-			<p>The column component allows the value of a source query's data field to be printed.</p>
-		</overview>
-		<usage>
-			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
-		</usage>
-		<properties>
-			<property name="autonewline" type="yes/no">Whether to automatically emit a newline at the end of text.  Defaults to "yes".</property>
-			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.</property>
-			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
-			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.</property>
-			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.</property>
-			<property name="relypos" type="integer">The vertical position relative to the current section, in lines (6ths of an inch).</property>
-			<property name="source" type="stringvec">The source query to use, and the column name in the source query, separated by a comma.</property>
-			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
-			<property name="xpos" type="integer">The horizontal position, in character cells (10ths of an inch).</property>
-			<property name="ypos" type="integer">The vertical position relative to the top of the page, in lines (6ths of an inch).</property>
-		</properties>
-		<children>
-		</children>
-		<sample>
-		<![CDATA[
-$Version=2$
-myColumn "report/column"
-	{
-	relypos = 5; // five lines down from top of current section
-	style = bold,italic;
-	source = myQuery,modified_date;
-	dateformat = "MMM ddd, yyyy";
-	}
-		]]>
-		</sample>
-	</component>
-	<component name="data" type="report/data" description="A data component in the report consisting of an arbitrary expression" visual="yes" container="no">
+	<component name="data" type="report/data" description="An expression-based data value such as text, a number, or currency" visual="yes" container="no">
 		<overview>
 			<p>The data component allows the value of an arbitrary expression to be printed.  The expression can contain references to report parameters (via the object 'this') or to query fields.</p>
 		</overview>
 		<usage>
-			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+			<p>This component can be used within an area, section, table row, table column, form, or at the top level within the system/report object.  It cannot contain any components.</p>
 		</usage>
 		<properties>
 			<property name="autonewline" type="yes/no">Whether to automatically emit a newline at the end of text.  Defaults to "no".</property>
-			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.</property>
-			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
-			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.</property>
-			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.</property>
-			<property name="relypos" type="integer">The vertical position relative to the current section, in lines (6ths of an inch).</property>
-			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
-			<property name="value" type="string">A quoted expression (inside a string); if string literals are provided inside the expression, they have to be quoted again, as in "'one' + 'two'".</property>
-			<property name="xpos" type="integer">The horizontal position, in character cells (10ths of an inch).</property>
-			<property name="ypos" type="integer">The vertical position relative to the top of the page, in lines (6ths of an inch).</property>
+			<property name="value" type="expression">The text to be printed.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+			<property name="xpos" type="integer">The horizontal position to offset the text to.  See "units" in "system/report".</property>
+			<property name="ypos" type="integer">The vertical position to offset the text to.  See "units" in "system/report".</property>
 		</properties>
 		<children>
 		</children>
 		<sample>
 		<![CDATA[
-$Version=2$
 myData "report/data"
 	{
-	value = ":myQuery:string1 + ', ' + :myQuery:string2 + '.'";
+	fontcolor = "#0000ff";
+	fontsize = 15;
+	style = "bold";
+	value = runserver(:myQuery:string1 + ', ' + :myQuery:string2 + '.');
 	}
 		]]>
 		</sample>
 	</component>
-	<component name="section" type="report/section" description="An overall section of the report, possibly multicolumnar" visual="yes" container="yes">
+<!--	<component name="section" type="report/section" description="An overall section of the report, possibly multicolumnar" visual="yes" container="yes">
 		<overview>
 			<p>The section component of a report basically defines a general subpart of the report, possibly having multiple columns (newspaper-style) plus margin settings and more.  It is also useful for defining a part of the report, perhaps just inside of a form, in which you need to position text or data relative not to the page as a whole but rather to a chunk of information or data.</p>
 			<p>Sections may span multiple pages.</p>
@@ -163,7 +183,7 @@ mySection "report/section"
 	}
 		]]>
 		</sample>
-	</component>
+	</component> -->
 	<component name="form" type="report/form" description="A freeform layout container for displaying query results" visual="yes" container="yes">
 		<overview>
 			<p>The form provides a way to display query results in a non-tabular fashion.  Each individual piece of data has to be manually positioned, requiring more effort but giving more flexibility.  The form will essentially iterate through its contents for each record it retrieves from a query.</p>
@@ -201,42 +221,38 @@ mySection "report/section"
 			    </table>
 		</overview>
 		<usage>
-			<p>May be used inside any visual container, and may contain any visual component or container.</p>
+			<p>May be used inside any visual container, and may contain any visual component or container, including areas, tables, other forms, and data elements.</p>
 		</usage>
 		<properties>
-			<property name="dateformat" type="string">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</property>
 			<property name="ffsep" type="yes/no">Whether to do a page break between successive records.  Default 'no'.</property>
-			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
 			<property name="mode" type="string">The mode of the form (see overview).  'normal' is the default.</property>
-			<property name="moneyformat" type="string">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</property>
 			<property name="multimode" type="string">How the form handles multiple queries (see overview).  'nested' is the default.</property>
-			<property name="nullformat" type="string">Sets the default text to use when data is NULL.  Normally "NULL" is displayed.</property>
 			<property name="page" type="integer">Sets the starting page number for the form.  Used sometimes if the page number has to be reset to 1, as in reports containing a series of multipage parts (such as multi-page invoices).</property>
 			<property name="reclimit" type="integer">Sets a limit on the number of records the form is to print.</property>
-			<property name="relylimit" type="integer">Sets a limit on the height of the form's contents inside a section or page.  The form will continue to print records until this number of lines on the report have been used since the top of the current section.</property>
-			<property name="rulesep" type="yes/no">Whether to emit a horizontal line between successive records.  Default 'no'.</property>
-			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
-			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' setting to specify how they are combined.</property>
 		</properties>
 		<children>
 		</children>
 		<sample>
 		<![CDATA[
-$Version=2$
 normalForm "report/form"
 	{
 	source=myQuery;
-	rulesep=yes;
+	ffsep=yes;
 
 	//
-	// query data is printed here with report/data, report/column, etc.
+	// query data is printed here with report/data, etc.
 	//
 	}
+
 outerForm "report/form"
 	{
+	// This inner/outer form pair displays six records per page.
 	source=myQuery;
 	mode=outer;
-	comment "report/comment" { text="Here are up to six of the records:"; }
+	ffsep=yes;
+	comment "report/data" { value="Here are up to six of the records:\n"; }
+
 	innerForm "report/form"
 		{
 		source=myQuery;
@@ -244,7 +260,7 @@ outerForm "report/form"
 		reclimit=6;
 
 		//
-		// display query data here with report/data, report/column, etc.
+		// display query data here with report/data, etc.
 		//
 		}
 	}
@@ -258,76 +274,123 @@ outerForm "report/form"
 			<p>Tables also can handle multiple queries using a 'multimode' - see the form for more information.</p>
 		</overview>
 		<usage>
-			<p>Tables can be used inside any visual container, but cannot contain other objects</p>
+			<p>Tables can be used inside any visual container or inside forms.  Tables can contain "report/table-row" objects.  Table rows can contain either a set of "report/table-cell" objects, or other objects such as areas, data elements, and so forth.  A row cannot contain both a table-cell and an object of another type.</p>
 		</usage>
 		<properties>
-			<property name="align" type="stringvec">A list of strings defining how the data in each column should be aligned to its cell.  Values are 'left', 'right', and 'center'.</property>
-			<property name="colsep" type="integer">Sets the separation between the table's columns, in 10ths of an inch.</property>
-			<property name="columns" type="stringvec">A list of field names from the query source (expressions 'no') or expressions to evaluate for column information (expressions 'yes').</property>
-			<property name="colnames" type="stringvec">A list of column header titles.</property>
-			<property name="dateformat" type="string">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</property>
-			<property name="expressions" type="yes/no">Determines whether the information given for columns in the 'columns' property are column names or full Centrallix expressions.  Default is 'no'.  You will want to set this to 'yes' if the 'source' property contains more than one query.</property>
-			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
-			<property name="headeralign" type="stringvec">A list of strings defining how the header names in each column should be aligned.  Values are 'left', 'right', and 'center'.</property>
-			<property name="lowersep" type="yes/no">Whether to display a separator line at the bottom of the table in addition to the one drawn between the table and its header (titlebar).  Default is 'no'.</property>
+			<property name="allowbreak" type="yes/no">Whether to allow the table to span multiple pages in the report.</property>
+			<property name="colsep" type="double">Sets the separation between the table's columns.</property>
+			<property name="columns" type="integer">The number of columns in the table.</property>
+			<property name="fixedsize" type="yes/no">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table is allowed to grow vertically to fit its contents.</property>
+			<property name="innerborder" type="double">Width of the inside borders within the table.</property>
 			<property name="mode" type="string">The mode of the table (see overview).  'normal' is the default.</property>
-			<property name="moneyformat" type="string">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</property>
 			<property name="multimode" type="string">How the table handles multiple queries (see overview).  'nested' is the default.</property>
 			<property name="nodatamsg" type="yes/no">Whether to display the '(no data returned)' message below the table if no records were returned from the query source.  Default is 'yes' to display the no-data message.</property>
-			<property name="nullformat" type="string">Sets the default text to use when data is NULL.  Normally "NULL" is displayed.</property>
+			<property name="outerborder" type="double">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</property>
 			<property name="reclimit" type="integer">Sets a limit on the number of records the table is to print.</property>
+			<property name="shadow" type="double">Width of the drop-shadow to the right and bottom of the table.</property>
 			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
-			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
-			<property name="titlebar" type="yes/no">Whether to display a title bar on the table with column header names.  Default is 'yes' to display it.</property>
-			<property name="widthmode" type="string">How the table computes column widths.  'relative' means column widths are relative to the size of the font, whereas 'absolute' means tenths of an inch.</property>
-			<property name="widths" type="intvec">A list of numbers giving the widths of the columns.</property>
+			<property name="widths" type="intvec">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.</property>
 		</properties>
 		<children>
-		</children>
-		<sample>
-		<![CDATA[
-$Version=2$
-myTable "report/table"
-	{
-	source=myQuery;
-	expressions=yes;
-	colnames='Name','Size';
-	columns=':myQuery:name', 'condition(:myQuery:size == 0, \'empty\', :myQuery:size)';
-	align=left,right;
-	headeralign=left,left;
-	titlebar=yes;
-	}
-		]]>
-		</sample>
-	</component>
-	<component name="query" type="report/query" description="A definition of a SQL query to use elsewhere in the report" visual="no" container="no">
-		<overview>
-			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
-			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
-			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
-		</overview>
-		<usage>
-			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
-		</usage>
-		<properties>
-			<property name="sql" type="string">A SQL statement.  It can include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz'.  To referenced linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</property>
-			<property name="link" type="stringvec">Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.</property>
-		</properties>
-		<children>
-			<child type="report/aggregate">
-				<childproperty name="compute" type="string">An expression specifying the computation to be performed.  Normally this should include one or more aggregate functions (sum, count, avg, min, and max) in some form or fashion.</childproperty>
-				<childproperty name="where" type="string">A conditional expression specifying which rows should be included in the aggregate computation.</childproperty>
+			<child type="report/table-row">
+				<childproperty name="allowbreak" type="yes/no">Whether to allow the row to span multiple pages in the report.</childproperty>
+				<childproperty name="fixedsize" type="yes/no">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table row is allowed to grow vertically to fit its contents.</childproperty>
+				<childproperty name="header" type="yes/no">Whether the row is a header row (repeated on subsequent pages).</childproperty>
+				<childproperty name="innerborder" type="double">Width of the inside borders between cells in the row.</childproperty>
+				<childproperty name="outerborder" type="double">Width of the outside border around the row.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</childproperty>
+				<childproperty name="summary" type="yes/no">Whether the row is a summary row, emitted at the end of the table (no summarize_for) or at the end of each group of rows (if summarize_for is set).</childproperty>
+				<childproperty name="summarize_for" type="expression">An expression whose value uniquely defines the desired group of rows.  The summary row is printed at the end of each group of consecutive rows having the same value for this expression.</childproperty>
+			</child>
+			<child type="report/table-cell">
+				<childproperty name="value" type="expression">The text to be printed inside the cell.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
 			</child>
 		</children>
 		<sample>
 		<![CDATA[
-$Version=2$
-myQuery "report/query"
+myTable "report/table"
 	{
-	sql = "select :name, :size from /samples where :size >= &minsize";
-	totalsize "report/aggregate" { compute = "sum(:size)"; }
-	bigfilesizetotal "report/aggregate" { compute = "sum(:size)"; where=":size > 10000"; }
+	source=myQuery;
+	columns = 2;
+	widths = 40,40;
+	hdr "report/table-row"
+	    {
+	    header = yes;
+	    h_name "report/table-cell" { align=center; style=bold; value="Name"; }
+	    h_size "report/table-cell" { align=center; style=bold; value="Size"; }
+	    }
+	data "report/table-row"
+	    {
+	    t_name "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:name); }
+	    t_size "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:size); }
+	    }
 	}
+		]]>
+		</sample>
+	</component>
+	<component name="image" type="report/image" description="An image (graphic/photo)" visual="yes" container="no">
+		<overview>
+			<p>The image object allows a graphics file or photo to be embedded in the report.  Currently only the PNG format is supported, so convert your image to PNG before using it in a report.</p>
+			<p>The output quality is determined by the 'resolution' setting specified in the system/report object.  Lower resolutions result in a poorer quality but also result in faster-running reports.</p>
+		</overview>
+		<usage>
+			<p>The image object may be used inside the system/report, or inside areas, table rows, or table cells.</p>
+			<p>See 'Common Properties' for x, y, width, and height, which are used for positioning the image.</p>
+		</usage>
+		<properties>
+			<property name="source" type="string">The ObjectSystem path to the PNG image file.</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+img "report/image"
+	{
+	x=0; y=0; height=4.44; width=65;
+	source = "/images/DocumentHeader.png";
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="area" type="report/area" description="A positionable rectangular container" visual="yes" container="yes">
+		<overview>
+			<p>The area object is a generic positionable rectangular container that can also have a border around it.  Text added inside it with a 'report/data' element or a 'value' setting (as with table rows and table cells) can flow using text flow, justification, and wrapping semantics.</p>
+		</overview>
+		<usage>
+			<p>Areas may be placed inside the system/report, or inside other areas, table rows, or table cells.  Areas are containers, so they can contain other visual objects.</p>
+			<p>See 'Common Properties' for x, y, width, and height, which are used for positioning the area.</p>
+		</usage>
+		<properties>
+			<property name="allowbreak" type="yes/no">Whether to allow the area to span multiple pages in the report if the text causes it to be larger than one page can hold.</property>
+			<property name="border" type="double">Width of the outside border around the area.</property>
+			<property name="fixedsize" type="yes/no">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the area is allowed to grow vertically to fit its contents.</property>
+			<property name="value" type="expression">The text to be printed in the area.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+		]]>
+		</sample>
+	</component>
+	<component name="parameter" type="report/parameter" description="Defines a parameter that can be passed to a report" visual="no" container="no">
+		<overview>
+			<p>A parameter defines a value that can be passed to a report, as well as various constraints and aspects of that value.</p>
+			<p>A default value can be specified, which will be used if the user does not supply a value when running the report.</p>
+			<p>A variety of constraint properties are also allowed, such as allowchars and badchars.</p>
+		</overview>
+		<usage>
+			<p>The parameter object can only be used inside a system/report object.</p>
+		</usage>
+		<properties>
+			<property name="allowchars" type="string">The set of characters that are allowed. (e.g. allowchars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; )</property>
+			<property name="badchars" type="string">The set of characters that are explicitly not allowed. (e.g. badchars=" \"'/,;"; )</property>
+			<property name="default" type="mixed">If a parameter is not passed in, then the (optional) default value is assigned to the parameter (e.g. default = null, or 2745).</property>
+			<property name="type" type="string">The data type of the parameter.  Can be "integer", "string", "double", "datetime", or "money".</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
 		]]>
 		</sample>
 	</component>
