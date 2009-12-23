@@ -48,7 +48,7 @@ insert into topic values(null,1,"5. Report Components",null,
 
 	[table]
 	
-		[tr][td][Common Properties][/td][td]A list of common properties used by many report components[/td][/tr]
+		[tr][td][Common_Properties][/td][td]A list of common properties used by many report components[/td][/tr]
 	
 		[tr][td][area][/td][td]A positionable rectangular container[/td][/tr]
 	
@@ -72,7 +72,7 @@ select (@newid := @@last_insert_id);
 
 	
 insert into topic values(null, @newid, "Common Properties", null,
-"		[b]Common Properties[/b] :: A list of common properties used by many report components
+"		[b]Common_Properties[/b] :: A list of common properties used by many report components
 
 		[b]Metadata:[/b]
 		[table]

@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <components>
-	<component name="Common Properties" type="Common Properties" description="A list of common properties used by many report components" visual="no" container="no">
+	<component name="Common_Properties" type="Common Properties" description="A list of common properties used by many report components" visual="no" container="no">
 		<overview>
 			<p>Below is a list of common properties that many report writer components have.</p>
 			<p>Visual positioning properties such as x, y, width, height are shared by areas, images, and tables.</p>
