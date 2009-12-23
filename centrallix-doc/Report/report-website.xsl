@@ -55,7 +55,7 @@ insert into topic values(null,1,"5. Report Components",null,
 	<xsl:for-each select="component">
 		<xsl:sort select="@name" order="ascending"/>
 		<xsl:variable name="componentname"><xsl:value-of select="@name"/></xsl:variable>
-		[tr][td][<xsl:value-of select="@name"/>][/td][td]<xsl:value-of select="@description"/>[/td][/tr]
+		[tr][td][<xsl:value-of select="@type"/>][/td][td]<xsl:value-of select="@description"/>[/td][/tr]
 	</xsl:for-each>
 	[/table]
 ");

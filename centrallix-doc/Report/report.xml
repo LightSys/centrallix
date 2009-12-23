@@ -267,7 +267,7 @@ outerForm "report/form"
 		]]>
 		</sample>
 	</component>
-	<component name="report_table" type="report/table" description="A tabular presentation of report data" visual="yes" container="no">
+	<component name="table" type="report/table" description="A tabular presentation of report data" visual="yes" container="no">
 		<overview>
 			<p>The table component is used to present data in an orderly, tabular fashion, in rows and columns.  While less flexible than the form, it is much easier to use.</p>
 			<p>Tables, like forms, can have more than one 'mode'.  However, tables only support 'normal' and 'inner'; 'outer' is not supported since tables do not contain other components.  See the form documentation for more on the mode.</p>

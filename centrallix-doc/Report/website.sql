@@ -48,23 +48,23 @@ insert into topic values(null,1,"5. Report Components",null,
 
 	[table]
 	
-		[tr][td][Common_Properties][/td][td]A list of common properties used by many report components[/td][/tr]
+		[tr][td][Common Properties][/td][td]A list of common properties used by many report components[/td][/tr]
 	
-		[tr][td][area][/td][td]A positionable rectangular container[/td][/tr]
+		[tr][td][report/area][/td][td]A positionable rectangular container[/td][/tr]
 	
-		[tr][td][data][/td][td]An expression-based data value such as text, a number, or currency[/td][/tr]
+		[tr][td][report/data][/td][td]An expression-based data value such as text, a number, or currency[/td][/tr]
 	
-		[tr][td][form][/td][td]A freeform layout container for displaying query results[/td][/tr]
+		[tr][td][report/form][/td][td]A freeform layout container for displaying query results[/td][/tr]
 	
-		[tr][td][image][/td][td]An image (graphic/photo)[/td][/tr]
+		[tr][td][report/image][/td][td]An image (graphic/photo)[/td][/tr]
 	
-		[tr][td][parameter][/td][td]Defines a parameter that can be passed to a report[/td][/tr]
+		[tr][td][report/parameter][/td][td]Defines a parameter that can be passed to a report[/td][/tr]
 	
-		[tr][td][query][/td][td]A definition of a SQL query to use elsewhere in the report[/td][/tr]
+		[tr][td][report/query][/td][td]A definition of a SQL query to use elsewhere in the report[/td][/tr]
 	
-		[tr][td][report][/td][td]The top-level report object[/td][/tr]
+		[tr][td][system/report][/td][td]The top-level report object[/td][/tr]
 	
-		[tr][td][report_table][/td][td]A tabular presentation of report data[/td][/tr]
+		[tr][td][report/table][/td][td]A tabular presentation of report data[/td][/tr]
 	
 	[/table]
 ");
@@ -687,7 +687,7 @@ outerForm \"report/form\"
 ");
 	
 insert into topic values(null, @newid, "report/table", null,
-"		[b]report_table[/b] :: A tabular presentation of report data
+"		[b]table[/b] :: A tabular presentation of report data
 
 		[b]Metadata:[/b]
 		[table]
