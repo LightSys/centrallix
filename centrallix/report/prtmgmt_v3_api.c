@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.23 2008/03/29 02:26:16 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.24 2010/01/10 07:20:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.24  2010/01/10 07:20:18  gbeeley
+    - (feature) adding CSV file output from report writer.  Simply outputs
+      only tabular data (report/table data) into a CSV file format.
+    - (change) API addition to prtmgmt -- report writer can specify data type
+      of a piece of printed data; used as "hints" by the CSV file output to
+      output a cell as a quoted string vs. an integer or currency value
+
     Revision 1.23  2008/03/29 02:26:16  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -1044,3 +1051,20 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
     return 0;
     }
 
+
+/*** prtSetDataHints() - specify metadata "hints" about the data being 
+ *** displayed.  Hints include the data type (DATA_T_xxx) and a flags
+ *** field that is currently reserved.
+ ***/
+int
+prtSetDataHints(int handle_id, int data_type, int flags)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	if (!obj) return -1;
+	ASSERTMAGIC(obj,MGK_PRTOBJSTRM);
+
+	obj->DataType = data_type;
+
+    return 0;
+    }

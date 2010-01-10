@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.21 2009/07/14 22:08:08 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.22 2010/01/10 07:20:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.22  2010/01/10 07:20:18  gbeeley
+    - (feature) adding CSV file output from report writer.  Simply outputs
+      only tabular data (report/table data) into a CSV file format.
+    - (change) API addition to prtmgmt -- report writer can specify data type
+      of a piece of printed data; used as "hints" by the CSV file output to
+      output a cell as a quoted string vs. an integer or currency value
+
     Revision 1.21  2009/07/14 22:08:08  gbeeley
     - (feature) adding cx__download_as object attribute which is used by the
       HTTP interface to set the content disposition filename.
@@ -2295,6 +2302,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 		    }
 
 		/** Output the result **/
+		prtSetDataHints(container_handle, ud->Exp->DataType, 0);
 		rpt_internal_WriteExpResult(rs, ud->Exp, container_handle);
 		}
 	    else
@@ -2307,6 +2315,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    rval = stGetAttrValue(stLookup(data,"value"), t, POD(&od), 0);
 	    if (rval == 0) rpt_internal_WritePOD(rs, t, &od, container_handle);
 	    else if (rval == 1) rpt_internal_WritePOD(rs, t, NULL, container_handle);
+	    prtSetDataHints(container_handle, t, 0);
 	    }
 	else
 	    {

@@ -55,10 +55,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.52 2009/06/24 15:49:13 gbeeley Exp $
+    $Id: centrallix.c,v 1.53 2010/01/10 07:20:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.53  2010/01/10 07:20:18  gbeeley
+    - (feature) adding CSV file output from report writer.  Simply outputs
+      only tabular data (report/table data) into a CSV file format.
+    - (change) API addition to prtmgmt -- report writer can specify data type
+      of a piece of printed data; used as "hints" by the CSV file output to
+      output a cell as a quoted string vs. an integer or currency value
+
     Revision 1.52  2009/06/24 15:49:13  gbeeley
     - (feature) adding EpsonFX output driver support for continuous form
       printers.
@@ -762,6 +769,7 @@ cxInitialize(void* v)
 
 	prtInitialize();
 	prt_htmlfm_Initialize();
+	prt_csvfm_Initialize();
 	prt_strictfm_Initialize();
 	prt_pclod_Initialize();
 	prt_textod_Initialize();

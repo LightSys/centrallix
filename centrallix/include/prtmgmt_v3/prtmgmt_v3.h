@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.6 2009/06/26 16:18:59 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.7 2010/01/10 07:20:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.7  2010/01/10 07:20:18  gbeeley
+    - (feature) adding CSV file output from report writer.  Simply outputs
+      only tabular data (report/table data) into a CSV file format.
+    - (change) API addition to prtmgmt -- report writer can specify data type
+      of a piece of printed data; used as "hints" by the CSV file output to
+      output a cell as a quoted string vs. an integer or currency value
+
     Revision 1.6  2009/06/26 16:18:59  gbeeley
     - (change) GetCharacterMetric now returns both height and width
     - (performance) change from bubble sort to merge sort for page generation
@@ -292,6 +299,7 @@ typedef struct _POS
     double		ConfigLineHeight;	/* Configured height of lines, negative if unset. */
     unsigned char*	Content;		/* Text content or image bitmap */
     int			ContentSize;		/* total memory allocated for the content */
+    char		DataType;		/* type of data displayed in this object (Hints) */
     }
     PrtObjStream, *pPrtObjStream;
 
@@ -659,6 +667,7 @@ pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
 int prtWriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
+int prtSetDataHints(int handle_id, int data_type, int flags);
 
 /*** Printing content functions ***/
 int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);
