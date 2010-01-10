@@ -67,10 +67,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.24 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.25 2010/01/10 07:33:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.25  2010/01/10 07:33:23  gbeeley
+    - (performance) reduce the number of times that subqueries are executed by
+      only re-evaluating them if one of the ObjList entries has changed
+      (instead of re-evaluating every time).  Ideally we should check for what
+      objects are referenced by the subquery, but that is for a later fix...
+
     Revision 1.24  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -334,11 +340,12 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 
 	/** Set up node based on value **/
 	expPodToExpression(&od, t, tree);
-	objClose(obj);
 
 	/** PodToExpression sets node type (for a constant node), let's fix that **/
 	tree->NodeType = EXPR_N_SUBQUERY;
 	
+	objClose(obj);
+
     return 0;
     }
 
@@ -1813,6 +1820,13 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 			objlist->ModCoverageMask |= (1<<i);
 			}
 		    }
+		}
+	    if (objlist->ModCoverageMask & EXPR_MASK_ALLOBJECTS)
+		{
+		/** some object somewhere was modified, cause 'indeterminate'
+		 ** expressions to re-evaluate.
+		 **/
+		objlist->ModCoverageMask |= EXPR_MASK_INDETERMINATE;
 		}
 	    }
 	/*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("evaluating with mod cov mask: %8.8X\n", objlist->ModCoverageMask);*/

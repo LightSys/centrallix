@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.12 2009/07/14 22:08:08 gbeeley Exp $
+    $Id: exp_params.c,v 1.13 2010/01/10 07:33:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.13  2010/01/10 07:33:23  gbeeley
+    - (performance) reduce the number of times that subqueries are executed by
+      only re-evaluating them if one of the ObjList entries has changed
+      (instead of re-evaluating every time).  Ideally we should check for what
+      objects are referenced by the subquery, but that is for a later fix...
+
     Revision 1.12  2009/07/14 22:08:08  gbeeley
     - (feature) adding cx__download_as object attribute which is used by the
       HTTP interface to set the content disposition filename.
@@ -278,35 +284,45 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    return -1;
 	    }
 
-	/** Ok, add parameter. **/
-	for(i=0;i<EXPR_MAX_PARAMS;i++) if (this->Names[i] == NULL)
+	/** Already exists? **/
+	if (expLookupParam(this, name) >= 0)
 	    {
-	    /** Setup the entry for this parameter. **/
-	    this->SeqIDs[i] = EXP.ModSeqID++;
-	    this->Objects[i] = obj;
-	    this->Flags[i] = flags | EXPR_O_CHANGED;
-	    this->GetTypeFn[i] = objGetAttrType;
-	    this->GetAttrFn[i] = objGetAttrValue;
-	    this->SetAttrFn[i] = objSetAttrValue;
-	    this->nObjects++;
-	    if (flags & EXPR_O_ALLOCNAME)
-	        {
-		this->Names[i] = nmSysStrdup(name);
+	    mssError(1,"EXP","Parameter Object name %s already exists", name);
+	    return -1;
+	    }
+
+	/** Ok, add parameter. **/
+	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	    {
+	    if (this->Names[i] == NULL)
+		{
+		/** Setup the entry for this parameter. **/
+		this->SeqIDs[i] = EXP.ModSeqID++;
+		this->Objects[i] = obj;
+		this->Flags[i] = flags | EXPR_O_CHANGED;
+		this->GetTypeFn[i] = objGetAttrType;
+		this->GetAttrFn[i] = objGetAttrValue;
+		this->SetAttrFn[i] = objSetAttrValue;
+		this->nObjects++;
+		if (flags & EXPR_O_ALLOCNAME)
+		    {
+		    this->Names[i] = nmSysStrdup(name);
+		    }
+		else
+		    {
+		    this->Names[i] = name;
+		    }
+
+		/** Check for parent id and current id **/
+		if (flags & EXPR_O_PARENT) this->ParentID = i;
+		if (flags & EXPR_O_CURRENT) this->CurrentID = i;
+		if (this->nObjects == 1) this->CurrentID = i;
+
+		/** Set modified. **/
+		this->ModCoverageMask |= (1<<i);
+
+		break;
 		}
-	    else
-	        {
-		this->Names[i] = name;
-		}
-
-	    /** Check for parent id and current id **/
-	    if (flags & EXPR_O_PARENT) this->ParentID = i;
-	    if (flags & EXPR_O_CURRENT) this->CurrentID = i;
-	    if (this->nObjects == 1) this->CurrentID = i;
-
-	    /** Set modified. **/
-	    this->ModCoverageMask |= (1<<i);
-
-	    break;
 	    }
 
     return 0;

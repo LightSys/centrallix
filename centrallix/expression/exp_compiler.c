@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.19 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.20 2010/01/10 07:33:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.20  2010/01/10 07:33:23  gbeeley
+    - (performance) reduce the number of times that subqueries are executed by
+      only re-evaluating them if one of the ObjList entries has changed
+      (instead of re-evaluating every time).  Ideally we should check for what
+      objects are referenced by the subquery, but that is for a later fix...
+
     Revision 1.19  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -400,7 +406,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				{
 				etmp->Name = nmSysStrdup(subqy->String);
 				etmp->NameAlloc = 1;
-				etmp->ObjCoverageMask = EXPR_MASK_EXTREF;
+				/*etmp->ObjCoverageMask = EXPR_MASK_EXTREF;*/
+				etmp->ObjCoverageMask = EXPR_MASK_INDETERMINATE;
 				etmp->ObjID = -1;
 				}
 			    xsDeInit(subqy);
@@ -949,7 +956,8 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    }
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
-	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
+	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;
+	    /*exp->ObjCoverageMask |= EXPR_MASK_EXTREF;*/
 	    }
 
     return 0;
@@ -1160,7 +1168,8 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 	    }
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
-	    cm |= EXPR_MASK_EXTREF;
+	    cm |= EXPR_MASK_INDETERMINATE;
+	    /*cm |= EXPR_MASK_EXTREF;*/
 	    }
 
 	/** Loop through subnodes in the tree to process them as well. **/

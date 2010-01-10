@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.18 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: expression.h,v 1.19 2010/01/10 07:33:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.19  2010/01/10 07:33:23  gbeeley
+    - (performance) reduce the number of times that subqueries are executed by
+      only re-evaluating them if one of the ObjList entries has changed
+      (instead of re-evaluating every time).  Ideally we should check for what
+      objects are referenced by the subquery, but that is for a later fix...
+
     Revision 1.18  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -276,8 +282,12 @@ typedef struct _ET
 #define	EXPR_OBJID_CURRENT	(-2)
 #define EXPR_OBJID_PARENT	(-3)
 
+/** Based on 30 parameters - 30 least significant bits **/
 #define EXPR_OBJID_EXTREF	(31)
 #define EXPR_MASK_EXTREF	(1<<31)
+#define EXPR_OBJID_INDETERMINATE (30)
+#define EXPR_MASK_INDETERMINATE	(1<<30)
+#define EXPR_MASK_ALLOBJECTS	(0x3FFFFFFF)
 
 #define EXPR(x) ((pExpression)(x))
 
