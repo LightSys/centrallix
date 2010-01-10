@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.12 2009/06/26 16:04:26 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.13 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.13  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.12  2009/06/26 16:04:26  gbeeley
     - (feature) adding DELETE support
     - (change) HAVING clause now honored in INSERT ... SELECT
@@ -204,6 +213,25 @@ typedef struct
     MqpRowCache, *pMqpRowCache;
 
 
+/*** Private data used by this driver ***/
+typedef struct _MPI
+    {
+    pMqpSubtrees    Subtrees;
+    pMqpRowCache    RowCache;
+    int		    ObjMode;	/* O_xxx mode to open objects with */
+    char	    CurrentSource[OBJSYS_MAX_PATH];
+    XArray	    SourceList;
+    int		    SourceIndex;
+    pExpression	    AddlExp;
+    int		    Flags;
+    }
+    MqpInf, *pMqpInf;
+
+#define MQP_MI_F_SOURCELIST	1	/* source list is valid */
+#define MQP_MI_F_USINGCACHE	2	/* using row cache */
+#define MQP_MI_F_SOURCEOPEN	4	/* source has been opened */
+
+
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
 
 
@@ -327,12 +355,12 @@ mqp_internal_FinalizeSbt(pObjSession s, pObject obj, char* attrname, void* ctx_v
  *** otherwise.
  ***/
 pObject
-mqp_internal_Recurse(pQueryElement qe, pMultiQuery mq, pObject obj)
+mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
     {
     pObjectInfo oi;
     pObjQuery newqy;
     pObject newobj;
-    pMqpSubtrees ms = (pMqpSubtrees)(qe->PrivateData);
+    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
 
 	/** Too many levels of recursion? **/
 	if (ms->nStacked >= MQP_MAX_SUBTREE) return NULL;
@@ -344,14 +372,14 @@ mqp_internal_Recurse(pQueryElement qe, pMultiQuery mq, pObject obj)
 	/** Try running the query. **/
 	newqy = objOpenQuery(obj, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	if (!newqy) return NULL;
-	objUnmanageQuery(mq->SessionID, newqy);
-	newobj = objQueryFetch(newqy, (mq->Flags & MQ_F_ALLOWUPDATE)?O_RDWR:O_RDONLY);
+	objUnmanageQuery(stmt->Query->SessionID, newqy);
+	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
 	if (!newobj)
 	    {
 	    objQueryClose(newqy);
 	    return NULL;
 	    }
-	objUnmanageObject(mq->SessionID, newobj);
+	objUnmanageObject(stmt->Query->SessionID, newobj);
 
 	/** Stack em. **/
 	ms->ObjStack[ms->nStacked] = qe->LLSource;
@@ -370,9 +398,9 @@ mqp_internal_Recurse(pQueryElement qe, pMultiQuery mq, pObject obj)
 /*** mqp_internal_Return() - reverse of the above.
  ***/
 pObject
-mqp_internal_Return(pQueryElement qe, pMultiQuery mq, pObject obj)
+mqp_internal_Return(pQueryElement qe, pQueryStatement stmt, pObject obj)
     {
-    pMqpSubtrees ms = (pMqpSubtrees)(qe->PrivateData);
+    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
     pObject oldobj;
 
 	/** Nothing to return from? **/
@@ -399,7 +427,7 @@ mqp_internal_Return(pQueryElement qe, pMultiQuery mq, pObject obj)
 int
 mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj)
     {
-    pMqpSubtrees ms = (pMqpSubtrees)(qe->PrivateData);
+    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
     pMqpSbtInf ctx;
 
 	/** Build the context structure **/
@@ -439,7 +467,7 @@ mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj)
  *** if it finds no projections, and return -1 if it finds error(s).
  ***/
 int
-mqpAnalyze(pMultiQuery mq)
+mqpAnalyze(pQueryStatement stmt)
     {
     pQueryElement qe;
     pQueryStructure from_qs = NULL;
@@ -452,9 +480,10 @@ mqpAnalyze(pMultiQuery mq)
     pQueryStructure where_item;
     int src_idx,i,j;
     pExpression new_exp;
+    pMqpInf mi;
 
     	/** Search for FROM clauses for this driver... **/
-	while((from_qs = mq_internal_FindItem(mq->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
 	    {
 	    if (from_qs->Flags & MQ_SF_USED) continue;
 
@@ -465,7 +494,7 @@ mqpAnalyze(pMultiQuery mq)
 	    qe->OrderPrio = 999;
 
 	    /** Find the index of the object for this FROM clause **/
-	    src_idx = expLookupParam(mq->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
+	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
 	    if (src_idx == -1)
 	        {
 		mq_internal_FreeQE(qe);
@@ -484,7 +513,7 @@ mqpAnalyze(pMultiQuery mq)
 		    if (select_item->ObjCnt == 1 && (select_item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 			{
 			if (select_item->Flags & MQ_SF_ASTERISK)
-			    mq->Flags |= MQ_F_ASTERISK;
+			    stmt->Flags |= MQ_TF_ASTERISK;
 			xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
 			xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
 			xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);
@@ -502,7 +531,7 @@ mqpAnalyze(pMultiQuery mq)
 		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
 		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if ((where_item->Expr->ObjCoverageMask & (~mq->ProvidedObjMask)) == (1<<src_idx))
+		    if ((where_item->Expr->ObjCoverageMask & (~stmt->Query->ProvidedObjMask)) == (1<<src_idx))
 		        {
 			/** Add this expression into the constraint for this element **/
 			if (qe->Constraint == NULL)
@@ -585,22 +614,34 @@ mqpAnalyze(pMultiQuery mq)
 	    /*if (qe->Constraint) expRemapID(qe->Constraint, src_idx, 0);*/
 
 	    /** Link into the multiquery **/
-	    xaAddItem(&mq->Trees, qe);
-	    mq->Tree = qe;
+	    xaAddItem(&stmt->Trees, qe);
+	    stmt->Tree = qe;
 
 	    /** Setup the object that this will use. **/
 	    qe->SrcIndex = src_idx;
 	    if (from_qs->Flags & MQ_SF_FROMSUBTREE) qe->Flags |= MQ_EF_FROMSUBTREE;
 	    if (from_qs->Flags & MQ_SF_INCLSUBTREE) qe->Flags |= MQ_EF_INCLSUBTREE;
+	    if (from_qs->Flags & MQ_SF_WILDCARD) qe->Flags |= MQ_EF_WILDCARD;
+	    if (from_qs->Flags & MQ_SF_FROMOBJECT) qe->Flags |= MQ_EF_FROMOBJECT;
 	    from_qs->Flags |= MQ_SF_USED;
 	    from_qs->QELinkage = qe;
 
-	    /** Setup private data if needed **/
+	    /** Setup private data, as needed **/
+	    qe->PrivateData = mi = (pMqpInf)nmMalloc(sizeof(MqpInf));
+	    memset(mi, 0, sizeof(MqpInf));
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)
 		{
-		qe->PrivateData = (pMqpSubtrees)nmMalloc(sizeof(MqpSubtrees));
-		memset(qe->PrivateData, 0, sizeof(MqpSubtrees));
+		mi->Subtrees = (pMqpSubtrees)nmMalloc(sizeof(MqpSubtrees));
+		memset(mi->Subtrees, 0, sizeof(MqpSubtrees));
 		}
+	    xaInit(&mi->SourceList, 16);
+	    mi->SourceIndex = 0;
+
+	    /** Mode to open new objects with **/
+	    if (stmt->Flags & MQ_TF_ALLOWUPDATE)
+		mi->ObjMode = O_RDWR;
+	    else
+		mi->ObjMode = O_RDONLY;
 	    }
 
     return 0;
@@ -611,13 +652,13 @@ mqpAnalyze(pMultiQuery mq)
  *** current qe and mq.  Return -1 on error, 0 if fail, 1 if pass.
  ***/
 int
-mqp_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
+mqp_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     {
 
 	/** Validate the constraint expression, otherwise succeed by default **/
         if (qe->Constraint)
             {
-            expEvalTree(qe->Constraint, mq->ObjList);
+            expEvalTree(qe->Constraint, stmt->Query->ObjList);
 	    if (qe->Constraint->DataType != DATA_T_INTEGER)
 	        {
 	        mssError(1,"MQP","WHERE clause item must have a boolean/integer value.");
@@ -637,25 +678,25 @@ mqp_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
 /*** mqp_internal_CacheRow - add a row to the single-row result set cache
  ***/
 int
-mqp_internal_CacheRow(pMultiQuery mq, pQueryElement qe, pExpression criteria, pObject obj)
+mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criteria, pObject obj)
     {
     pMqpRowCache rc;
     pMqpOneRow row;
     pMqpOneRow fewest_matches;
     int fewest_matches_id;
     int i;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
 	/** Set up the cache itself? **/
-	if (!qe->PrivateData)
+	if (!mi->RowCache)
 	    {
-	    qe->PrivateData = nmMalloc(sizeof(MqpRowCache));
-	    rc = (pMqpRowCache)(qe->PrivateData);
+	    rc = mi->RowCache = (pMqpRowCache)nmMalloc(sizeof(MqpRowCache));
 	    xaInit(&rc->Cache, MQP_MAX_ROWCACHE);
 	    xsInit(&rc->CriteriaBuf);
 	    rc->LastMatch = 0;
 	    }
 	else
-	    rc = (pMqpRowCache)(qe->PrivateData);
+	    rc = mi->RowCache;
 
 	/** Need to prune the cache of one item? **/
 	if (rc->Cache.nItems == MQP_MAX_ROWCACHE)
@@ -695,7 +736,7 @@ mqp_internal_CacheRow(pMultiQuery mq, pQueryElement qe, pExpression criteria, pO
 	row->nMatches = 0;
 	row->Obj = obj;
 	xsCopy(&rc->CriteriaBuf, "", 0);
-	if (criteria) expGenerateText(criteria, mq->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
 	row->Criteria = nmSysStrdup(rc->CriteriaBuf.String);
 	xaAddItem(&rc->Cache, row);
 	/*fdQPrintf(mqp_log, "ADD:   %STR (%POS)\n", row->Criteria, xaCount(&rc->Cache)-1);*/
@@ -709,13 +750,13 @@ mqp_internal_CacheRow(pMultiQuery mq, pQueryElement qe, pExpression criteria, pO
  *** found in the cache, and the cache id otherwise.
  ***/
 int
-mqp_internal_CheckCache(pMultiQuery mq, pMqpRowCache rc, pExpression criteria)
+mqp_internal_CheckCache(pQueryStatement stmt, pMqpRowCache rc, pExpression criteria)
     {
     int i;
     pMqpOneRow row;
 
 	xsCopy(&rc->CriteriaBuf, "", 0);
-	if (criteria) expGenerateText(criteria, mq->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
 	for(i=0;i<rc->Cache.nItems;i++)
 	    {
 	    row = xaGetItem(&rc->Cache, i);
@@ -735,78 +776,346 @@ mqp_internal_CheckCache(pMultiQuery mq, pMqpRowCache rc, pExpression criteria)
     }
 
 
-/*** mqpStart - starts the query operation for a given projection element
- *** in the query.  Does not fetch the first row -- that is what NextItem
- *** is there for.
+/*** mqp_internal_CloseSource() - clean up after *one* source object has been used
  ***/
 int
-mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mqp_internal_CloseSource(pQueryElement qe)
+    {
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+
+    	/** Close the source object and the query. **/
+	if (qe->LLQuery) objQueryClose(qe->LLQuery);
+	if (qe->LLSource) objClose(qe->LLSource);
+	qe->LLQuery = NULL;
+	qe->LLSource = NULL;
+
+	mi->Flags &= ~MQP_MI_F_SOURCEOPEN;
+
+    return 0;
+    }
+
+
+/*** mqp_internal_OpenNextSource() - take the next source off of the
+ *** source list compiled by wildcard processing, and open it.
+ ***/
+int
+mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     {
     pExpression new_exp;
     pMqpRowCache rc;
-    int using_cache = 0;
+    char* src;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+
+	mi->Flags &= ~MQP_MI_F_USINGCACHE;
+
+	/** Get next source **/
+	if (mi->SourceIndex >= mi->SourceList.nItems) return 0;
+	src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
+	strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
 
     	/** Open the data source in the objectsystem **/
-	if (mq->Flags & MQ_F_ALLOWUPDATE)
-	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDWR, 0600, "system/directory");
-	else
-	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDONLY, 0600, "system/directory");
+	qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
 	if (!qe->LLSource) 
 	    {
 	    mssError(0,"MQP","Could not open source object for SQL projection");
 	    return -1;
 	    }
-	objUnmanageObject(mq->SessionID, qe->LLSource);
+	objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
 
 	/** Additional expression supplied?? **/
-	if (additional_expr) qe->Flags |= MQ_EF_ADDTLEXP;
+	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;
 	if (qe->Constraint) qe->Flags |= MQ_EF_CONSTEXP;
-	if (additional_expr && qe->Constraint)
+	if (mi->AddlExp && qe->Constraint)
 	    {
 	    new_exp = expAllocExpression();
 	    new_exp->NodeType = EXPR_N_AND;
 	    expAddNode(new_exp, qe->Constraint);
-	    expAddNode(new_exp, additional_expr);
+	    expAddNode(new_exp, mi->AddlExp);
 	    qe->Constraint = new_exp;
 	    }
-	if (!qe->Constraint) qe->Constraint = additional_expr;
+	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
 
         if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	/** Check for cached single row result set **/
-	if (!(qe->Flags & MQ_EF_FROMSUBTREE))
+	if (mi->RowCache)
 	    {
-	    rc = (pMqpRowCache)(qe->PrivateData);
-	    if (rc)
+	    rc = mi->RowCache;
+	    rc->CurCached = mqp_internal_CheckCache(stmt, rc, qe->Constraint);
+	    if (rc->CurCached >= 0)
 		{
-		rc->CurCached = mqp_internal_CheckCache(mq, rc, qe->Constraint);
-		if (rc->CurCached >= 0)
-		    {
-		    /** We're going from the cache this time **/
-		    objClose(qe->LLSource);
-		    qe->LLSource = NULL;
-		    using_cache = 1;
-		    }
+		/** We're going from the cache this time **/
+		objClose(qe->LLSource);
+		qe->LLSource = NULL;
+		qe->LLQuery = NULL;
+		mi->Flags |= MQP_MI_F_USINGCACHE;
 		}
 	    }
 
     	/** Open the query with the objectsystem. **/
-	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE))
+	if (((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE)) || (qe->Flags & MQ_EF_FROMOBJECT))
 	    {
 	    qe->LLQuery = NULL;
 	    }
-	else if (!using_cache)
+	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
 	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	    if (!qe->LLQuery) 
 		{
-		mqpFinish(qe,mq);
+		mqpFinish(qe,stmt);
 		mssError(0,"MQP","Could not query source object for SQL projection");
 		return -1;
 		}
-	    objUnmanageQuery(mq->SessionID, qe->LLQuery);
+	    objUnmanageQuery(stmt->Query->SessionID, qe->LLQuery);
 	    }
 	qe->IterCnt = 0;
+
+	mi->Flags |= MQP_MI_F_SOURCEOPEN;
+
+    return 1;
+    }
+
+
+/*** mqp_internal_WildcardMatch() - compare a wildcard string with a constant string
+ *** to see if there is a match.  Returns 1 on a match, 0 on no match.
+ ***/
+int
+mqp_internal_WildcardMatch(char* pattern, int pattern_len, char* str, int str_len)
+    {
+    char* astptr;
+    char* chptr;
+    int leading_len;
+
+	/** Find first wildcard **/
+	astptr = memchr(pattern, '*', pattern_len);
+
+	/** special cases - * pattern, or no wildcard at all (straight compare) **/
+	if (astptr && pattern_len == 1)
+	    return 1;
+	if (!astptr)
+	    return ((pattern_len == str_len) && memcmp(pattern, str, str_len) == 0);
+
+	/** leading pattern doesn't match? **/
+	leading_len = astptr - pattern;
+	if (leading_len > 0 && (str_len < leading_len || memcmp(pattern, str, leading_len) != 0)) return 0;
+
+	/** Asterisk is at the end of the pattern? **/
+	if (leading_len + 1 == pattern_len) return 1;
+
+	/** Now deal with trailing pattern - look for occurences of 1st char after the asterisk, and go from there **/
+	chptr = str + leading_len - 1;
+	while((chptr = memchr(chptr+1, astptr[1], str_len - (chptr+1 - str))) != NULL)
+	    {
+	    return mqp_internal_WildcardMatch(astptr+1, pattern_len - leading_len - 1, chptr, str_len - (chptr - str));
+	    }
+
+    return 0;
+    }
+
+
+/* leading_static_elements + wildcarded_name + ?query + static_elements + wildcarded_name + ?query + trailing_static_elements
+ * prev_path + static_elements + wildcarded_name + ?query + trailing_static_elements
+ * prev_path + trailing_static_elements -> add to list
+ *
+ */
+
+/*** mqp_internal_SetupWildcard_r() - recursive function which does the hard
+ *** work of building the list of wildcard matches.
+ ***
+ *** orig_path = original pathname with wildcards in it
+ *** pathbuf = buffer used for building the new (expanded) pathnames
+ *** last_ending = pointer to next element in orig_path after one just expanded
+ *** n_elements = number of wildcarded path elements
+ *** element_list[] = pointers to wildcarded path elements
+ ***/
+int
+mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_path, char* pathbuf, char* last_ending, int n_elements, char* element_list[])
+    {
+    int cur_len = strlen(pathbuf);
+    int orig_len;
+    char* ptr;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pObjQuery qy = NULL;
+    pObject obj = NULL, subobj = NULL;
+    pObjectInfo info;
+    char* slashptr;
+    char* qptr;
+
+	/** Add static element(s) if any **/
+	if (n_elements)
+	    ptr = element_list[0];
+	else
+	    ptr = strchr(orig_path, '\0');
+	if (ptr != last_ending)
+	    {
+	    if ((ptr - last_ending) + cur_len >= OBJSYS_MAX_PATH)
+		{
+		mssError(1,"MQP","Wildcard pathname expansion exceeds internal limits");
+		goto error;
+		}
+	    strncat(pathbuf, last_ending, ptr - last_ending);
+	    cur_len += (ptr - last_ending);
+	    }
+	
+	if (n_elements == 0)
+	    {
+	    /** End of our work?  Add to path list if so **/
+	    xaAddItem(&mi->SourceList, nmSysStrdup(pathbuf));
+	    /*printf("expands to: %s\n", pathbuf);*/
+	    }
+	else
+	    {
+	    /** Otherwise, do a pathname expansion on the current element **/
+	    slashptr = strchr(element_list[0]+1, '/');
+	    if (!slashptr) slashptr = strchr(element_list[0], '\0');
+	    qptr = strchr(element_list[0], '?');
+	    orig_len = cur_len;
+
+	    /** Open path so far and query for matching objects **/
+	    obj = objOpen(stmt->Query->SessionID, pathbuf, O_RDONLY, 0600, "system/directory");
+	    if (!obj)
+		goto finished;
+	    info = objInfo(obj);
+	    if (info && (info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
+		goto finished;
+	    qy = objOpenQuery(obj, NULL, NULL, NULL, NULL);
+	    if (!qy)
+		goto finished;
+	    while ((subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
+		{
+		objGetAttrValue(subobj, "name", DATA_T_STRING, POD(&ptr));
+		if (mqp_internal_WildcardMatch(element_list[0]+1, (qptr?qptr:slashptr) - (element_list[0]+1), ptr, strlen(ptr)))
+		    {
+		    if (strlen(ptr) + 1 + cur_len >= OBJSYS_MAX_PATH)
+			{
+			mssError(1,"MQP","Wildcard pathname expansion exceeds internal limits");
+			goto error;
+			}
+		    strcat(pathbuf, "/");
+		    strcat(pathbuf, ptr);
+		    if (qptr)
+			{
+			if (strlen(pathbuf) + (slashptr - qptr) >= OBJSYS_MAX_PATH)
+			    {
+			    mssError(1,"MQP","Wildcard pathname expansion exceeds internal limits");
+			    goto error;
+			    }
+			strncat(pathbuf, qptr, slashptr - qptr);
+			}
+		    if (mqp_internal_SetupWildcard_r(qe, stmt, orig_path, pathbuf, slashptr, n_elements-1, element_list+1) < 0)
+			goto error;
+		    pathbuf[orig_len] = '\0';
+		    }
+		objClose(subobj);
+		subobj = NULL;
+		}
+	    objQueryClose(qy);
+	    qy = NULL;
+	    objClose(obj);
+	    obj = NULL;
+	    }
+
+	return 0;
+
+    finished:
+	if (subobj) objClose(subobj);
+	if (qy) objQueryClose(qy);
+	if (obj) objClose(obj);
+	return 0;
+
+    error:
+	if (subobj) objClose(subobj);
+	if (qy) objQueryClose(qy);
+	if (obj) objClose(obj);
+	return -1;
+    }
+
+
+/*** mqp_internal_SetupWildcard() - take the given pathname with wildcards
+ *** in it, and generate a list of objects that match the wildcard pathname.
+ ***/
+int
+mqp_internal_SetupWildcard(pQueryElement qe, pQueryStatement stmt)
+    {
+    char* path = nmSysStrdup(((pQueryStructure)qe->QSLinkage)->Source);
+    char* pathbuf = nmSysMalloc(OBJSYS_MAX_PATH + 1);
+    char* element_list[OBJSYS_MAX_ELEMENTS];
+    int n_elements;
+    char* slashptr;
+    char* astptr;
+    char* qptr;
+    char* element;
+
+	/** Find where pathname elements with wildcards are **/
+	n_elements = 0;
+	element = path;
+	while(element)
+	    {
+	    /** / is next path element.  * is wildcard.  ? is begin of open params. **/
+	    astptr = strchr(element, '*');
+	    slashptr = strchr(element+1, '/');
+	    qptr = strchr(element, '?');
+
+	    if (astptr && (!slashptr || astptr < slashptr) && (!qptr || astptr < qptr))
+		{
+		/** too many? **/
+		if (n_elements >= OBJSYS_MAX_ELEMENTS)
+		    {
+		    mssError(1, "MQP", "Pathname has too many elements in it.");
+		    goto error;
+		    }
+
+		element_list[n_elements++] = element;
+		}
+	    element = slashptr;
+	    }
+
+	/** Build the wildcard expansion path list **/
+	strcpy(pathbuf, "");
+	if (mqp_internal_SetupWildcard_r(qe, stmt, path, pathbuf, path, n_elements, element_list) < 0)
+	    goto error;
+
+	nmSysFree(pathbuf);
+	nmSysFree(path);
+	return 0;
+
+    error:
+	nmSysFree(pathbuf);
+	nmSysFree(path);
+	return -1;
+    }
+
+
+/*** mqpStart - starts the query operation for a given projection element
+ *** in the query.  Does not fetch the first row -- that is what NextItem
+ *** is there for.
+ ***/
+int
+mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
+    {
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+
+	mi->AddlExp = additional_expr;
+	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
+	mi->SourceIndex = 0;
+
+	qe->LLSource = NULL;
+	qe->LLQuery = NULL;
+
+	/** Wildcard processing needed? **/
+	if (!(mi->Flags & MQP_MI_F_SOURCELIST))
+	    {
+	    if (qe->Flags & MQ_EF_WILDCARD)
+		{
+		if (mqp_internal_SetupWildcard(qe, stmt) < 0)
+		    return -1;
+		}
+	    else
+		{
+		xaAddItem(&(mi->SourceList), nmSysStrdup(((pQueryStructure)qe->QSLinkage)->Source));
+		}
+	    mi->Flags |= MQP_MI_F_SOURCELIST;
+	    }
 
     return 0;
     }
@@ -817,64 +1126,67 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
  *** available, and -1 on error.
  ***/
 int
-mqpNextItem(pQueryElement qe, pMultiQuery mq)
+mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
     {
     pObject obj;
     pObject saved_obj = NULL;
     pMqpRowCache rc;
     pMqpOneRow row;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
 	qe->IterCnt++;
 
 	/** Using cache? **/
-	if (qe->PrivateData && !(qe->Flags & MQ_EF_FROMSUBTREE))
+	if (mi->RowCache)
 	    {
-	    rc = (pMqpRowCache)(qe->PrivateData);
+	    rc = mi->RowCache;
 	    if (rc->CurCached >= 0)
 		{
 		row = xaGetItem(&rc->Cache, rc->CurCached);
 		if (qe->IterCnt == 1)
 		    {
 		    if (row->Obj) objLinkTo(row->Obj);
-		    expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], row->Obj);
+		    expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], row->Obj);
 		    return row->Obj?1:0;
 		    }
 		else if (qe->IterCnt == 2)
 		    {
-		    if (mq->ObjList->Objects[qe->SrcIndex])
-			objClose(mq->ObjList->Objects[qe->SrcIndex]);
-		    mq->ObjList->Objects[qe->SrcIndex] = NULL;
+		    if (stmt->Query->ObjList->Objects[qe->SrcIndex])
+			objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
+		    stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
 		    }
 		return 0;
 		}
 	    }
 
-	/** Inclusive subtree?  If so return the top-level src object too **/
-	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE) && !mq->ObjList->Objects[qe->SrcIndex] && qe->IterCnt == 1)
+	/** Inclusive subtree or FROM OBJECT?  If so return the top-level src object too **/
+	if ((qe->Flags & MQ_EF_FROMOBJECT || ((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE)))
+		&& !stmt->Query->ObjList->Objects[qe->SrcIndex] && qe->IterCnt == 1)
 	    {
 	    obj = objLinkTo(qe->LLSource);
-	    expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
+	    expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
 
-	    if (mqp_internal_CheckConstraint(qe, mq) > 0)
+	    if (mqp_internal_CheckConstraint(qe, stmt) > 0)
 		{
 		/** the top level one matches.  use it. **/
-		mqp_internal_SetupSubtreeAttrs(qe, obj);
+		if (qe->Flags & MQ_EF_FROMSUBTREE)
+		    mqp_internal_SetupSubtreeAttrs(qe, obj);
 		return 1;
 		}
 	    else
 		{
-		objClose(mq->ObjList->Objects[qe->SrcIndex]);
-		mq->ObjList->Objects[qe->SrcIndex] = NULL;
+		objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
+		stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
 		}
 	    }
 
 	/** Attempt to recurse a subtree? **/
-	if (qe->Flags & MQ_EF_FROMSUBTREE && mq->ObjList->Objects[qe->SrcIndex])
+	if (qe->Flags & MQ_EF_FROMSUBTREE && stmt->Query->ObjList->Objects[qe->SrcIndex])
 	    {
-	    obj = mqp_internal_Recurse(qe, mq, mq->ObjList->Objects[qe->SrcIndex]);
+	    obj = mqp_internal_Recurse(qe, stmt, stmt->Query->ObjList->Objects[qe->SrcIndex]);
 	    if (obj)
 		{
-		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
 		return 1;
 		}
 	    }
@@ -883,27 +1195,29 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 	while(1)
 	    {
 	    /** Close the previous fetched object? **/
-	    if (mq->ObjList->Objects[qe->SrcIndex])
+	    if (stmt->Query->ObjList->Objects[qe->SrcIndex])
 		{
 		/** if this is after the user has processed row #1, create a tmp copy of row 1 **/
-		if (qe->LLQuery && qe->IterCnt == 2 && !(qe->Flags & MQ_EF_FROMSUBTREE))
-		    saved_obj = objLinkTo(mq->ObjList->Objects[qe->SrcIndex]);
+		if (qe->LLQuery && qe->IterCnt == 2 && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_WILDCARD))
+		    saved_obj = objLinkTo(stmt->Query->ObjList->Objects[qe->SrcIndex]);
 
 		/** "close" it **/
-		objClose(mq->ObjList->Objects[qe->SrcIndex]);
-		mq->ObjList->Objects[qe->SrcIndex] = NULL;
+		objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
+		stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
 		}
 
-	    /** Fetch the next item and set the object... **/
+	    /** FROM OBJECT, or end of a subtree, won't have a LLQuery **/
 	    if (!qe->LLQuery)
 		return 0;
-	    obj = objQueryFetch(qe->LLQuery, (mq->Flags & MQ_F_ALLOWUPDATE)?O_RDWR:O_RDONLY);
+
+	    /** Fetch the next item and set the object... **/
+	    obj = objQueryFetch(qe->LLQuery, mi->ObjMode);
 	    if (obj)
 		{
 		/** Got one. **/
 		if (saved_obj) objClose(saved_obj);
-		objUnmanageObject(mq->SessionID, obj);
-		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
+		objUnmanageObject(stmt->Query->SessionID, obj);
+		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
 		if (qe->Flags & MQ_EF_FROMSUBTREE) mqp_internal_SetupSubtreeAttrs(qe, obj);
 		return 1;
 		}
@@ -911,16 +1225,16 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 	    /** No more objects - return from a subtree? **/
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)
 		{
-		obj = mqp_internal_Return(qe, mq, NULL);
+		obj = mqp_internal_Return(qe, stmt, NULL);
 		if (!obj || obj == qe->LLSource) return 0;
-		expModifyParam(mq->ObjList, mq->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
 		}
 	    else
 		{
-		if (qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj))
+		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & MQ_EF_WILDCARD))
 		    {
 		    /** empty or single-row result set.  Save the saved_obj in the cache **/
-		    mqp_internal_CacheRow(mq, qe, qe->Constraint, saved_obj);
+		    mqp_internal_CacheRow(stmt, qe, qe->Constraint, saved_obj);
 		    }
 		return 0;
 		}
@@ -929,20 +1243,45 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
     return 0;
     }
 
+int
+mqpNextItem(pQueryElement qe, pQueryStatement stmt)
+    {
+    int rval;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+   
+	/** Loop through sources and items in sources **/
+	while(1)
+	    {
+	    if (!(mi->Flags & MQP_MI_F_SOURCEOPEN))
+		{
+		rval = mqp_internal_OpenNextSource(qe, stmt);
+		if (rval != 1) break; /* return if no more sources (0) or error (-1) */
+		}
+
+	    rval = mqp_internal_NextItemFromSource(qe, stmt);
+	    if (rval != 0) break; /* return if valid row (1) or if error (-1) */
+
+	    /** No more items in that source.  Try another one. **/
+	    mqp_internal_CloseSource(qe);
+	    }
+
+    return rval;
+    }
+
 
 /*** mqpFinish - ends the projection operation and frees up any memory used
  *** in the process of running the query.
  ***/
 int
-mqpFinish(pQueryElement qe, pMultiQuery mq)
+mqpFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pExpression del_exp;
 
     	/** Close the previous fetched object? **/
-	if (mq->ObjList->Objects[qe->SrcIndex])
+	if (stmt->Query->ObjList->Objects[qe->SrcIndex])
 	    {
-	    objClose(mq->ObjList->Objects[qe->SrcIndex]);
-	    mq->ObjList->Objects[qe->SrcIndex] = NULL;
+	    objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
+	    stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
 	    }
 
 	if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);
@@ -961,11 +1300,8 @@ mqpFinish(pQueryElement qe, pMultiQuery mq)
 	    qe->Constraint = NULL;
 	    }
 
-    	/** Close the source object and the query. **/
-	if (qe->LLQuery) objQueryClose(qe->LLQuery);
-	if (qe->LLSource) objClose(qe->LLSource);
-	qe->LLQuery = NULL;
-	qe->LLSource = NULL;
+	/** Close the source **/
+	mqp_internal_CloseSource(qe);
 
     return 0;
     }
@@ -975,11 +1311,12 @@ mqpFinish(pQueryElement qe, pMultiQuery mq)
  *** during the Analyze phase.
  ***/
 int
-mqpRelease(pQueryElement qe, pMultiQuery mq)
+mqpRelease(pQueryElement qe, pQueryStatement stmt)
     {
     int i;
     pMqpRowCache rc;
     pMqpOneRow row;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
     	/** Release the order-by expressions **/
 	for(i=0;qe->OrderBy[i];i++)
@@ -988,14 +1325,19 @@ mqpRelease(pQueryElement qe, pMultiQuery mq)
 	    qe->OrderBy[i] = NULL;
 	    }
 
+	/** Clean up the list of sources **/
+	for (i=0; i<mi->SourceList.nItems; i++)
+	    nmSysFree(mi->SourceList.Items[i]);
+	xaDeInit(&mi->SourceList);
+
 	/** Release private data, if needed, from subtree data **/
-	if (qe->Flags & MQ_EF_FROMSUBTREE)
-	    nmFree(qe->PrivateData, sizeof(MqpSubtrees));
+	if (mi->Subtrees)
+	    nmFree(mi->Subtrees, sizeof(MqpSubtrees));
 
 	/** Release private data from row caching **/
-	if (!(qe->Flags & MQ_EF_FROMSUBTREE) && qe->PrivateData)
+	if (mi->RowCache)
 	    {
-	    rc = (pMqpRowCache)(qe->PrivateData);
+	    rc = mi->RowCache;
 
 	    /** Release any cached rows **/
 	    while(rc->Cache.nItems)
@@ -1011,7 +1353,12 @@ mqpRelease(pQueryElement qe, pMultiQuery mq)
 	    xaDeInit(&rc->Cache);
 	    xsDeInit(&rc->CriteriaBuf);
 	    nmFree(rc, sizeof(MqpRowCache));
+
+	    mi->RowCache = NULL;
 	    }
+
+	/** Now the main private data structure **/
+	nmFree(mi, sizeof(MqpInf));
 
     return 0;
     }

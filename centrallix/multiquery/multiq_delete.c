@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_delete.c,v 1.1 2009/06/24 15:49:13 gbeeley Exp $
+    $Id: multiq_delete.c,v 1.2 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_delete.c,v $
 
     $Log: multiq_delete.c,v $
+    Revision 1.2  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.1  2009/06/24 15:49:13  gbeeley
     - (feature) adding EpsonFX output driver support for continuous form
       printers.
@@ -76,7 +85,7 @@ typedef struct
  *** clause, and if there is one, we're in business.
  ***/
 int
-mqdAnalyze(pMultiQuery mq)
+mqdAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, where_qs, where_item, from_qs;
     pQueryElement qe;
@@ -85,7 +94,7 @@ mqdAnalyze(pMultiQuery mq)
     int src_idx;
 
     	/** Search for a DELETE statement... **/
-	if ((qs = mq_internal_FindItem(mq->QTree, MQ_T_DELETECLAUSE, NULL)) != NULL)
+	if ((qs = mq_internal_FindItem(stmt->QTree, MQ_T_DELETECLAUSE, NULL)) != NULL)
 	    {
 	    /** Allocate a new query-element **/
 	    qe = mq_internal_AllocQE();
@@ -104,7 +113,7 @@ mqdAnalyze(pMultiQuery mq)
 		}
 
 	    /** Determine which object id is for deleting **/
-	    from_qs = mq_internal_FindItem(mq->QTree, MQ_T_FROMCLAUSE, NULL);
+	    from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMCLAUSE, NULL);
 	    src_idx = -1;
 	    if (from_qs)
 		{
@@ -113,7 +122,7 @@ mqdAnalyze(pMultiQuery mq)
 		    item = (pQueryStructure)(from_qs->Children.Items[i]);
 		    if (from_qs->Children.nItems == 1 || (item->Flags & MQ_SF_IDENTITY))
 			{
-			src_idx = expLookupParam(mq->ObjList, 
+			src_idx = expLookupParam(stmt->Query->ObjList, 
 					item->Presentation[0]?(item->Presentation):(item->Source));
 			}
 		    }
@@ -127,9 +136,9 @@ mqdAnalyze(pMultiQuery mq)
 	    qe->SrcIndex = src_idx;
 
 	    /** mq->Tree is set? **/
-	    if (mq->Tree != NULL)
+	    if (stmt->Tree != NULL)
 	        {
-		xaAddItem(&qe->Children, (void*)(mq->Tree));
+		xaAddItem(&qe->Children, (void*)(stmt->Tree));
 		}
 	    else
 		{
@@ -139,8 +148,8 @@ mqdAnalyze(pMultiQuery mq)
 		}
 
 	    /** Link the qe into the multiquery **/
-	    xaAddItem(&mq->Trees, qe);
-	    mq->Tree = qe;
+	    xaAddItem(&stmt->Trees, qe);
+	    stmt->Tree = qe;
 
 	    /** Find the WHERE items that didn't specifically match anything else **/
 	    qe->Constraint = NULL;
@@ -185,13 +194,13 @@ mqdAnalyze(pMultiQuery mq)
  *** current qe and mq.  Return -1 on error, 0 if fail, 1 if pass.
  ***/
 int
-mqd_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
+mqd_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     {
 
 	/** Validate the constraint expression, otherwise succeed by default **/
         if (qe->Constraint)
             {
-            expEvalTree(qe->Constraint, mq->ObjList);
+            expEvalTree(qe->Constraint, stmt->Query->ObjList);
 	    if (qe->Constraint->DataType != DATA_T_INTEGER)
 	        {
 	        mssError(1,"MQD","WHERE clause item must have a boolean/integer value.");
@@ -213,7 +222,7 @@ mqd_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
  *** mqdNextItem.
  ***/
 int
-mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i,j;
     pQueryElement cld;
@@ -227,7 +236,7 @@ mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
 	cld = (pQueryElement)(qe->Children.Items[0]);
-	if (cld->Driver->Start(cld, mq, NULL) < 0) 
+	if (cld->Driver->Start(cld, stmt, NULL) < 0) 
 	    {
 	    mssError(0,"MQD","Failed to start child join/projection operation");
 	    goto error;
@@ -242,16 +251,16 @@ mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	xaInit(objects_to_delete, 16);
 
 	/** Retrieve matching records **/
-	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, mq)) == 1)
+	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, stmt)) == 1)
 	    {
 	    /** Does this row match the where clause criteria? **/
-	    if (mqd_internal_CheckConstraint(qe, mq) == 1)
+	    if (mqd_internal_CheckConstraint(qe, stmt) == 1)
 		{
 		/** Got a matching row, count it and delete it **/
 		qe->IterCnt++;
 
 		/** Save it for later deleting, if not already seen... **/
-		objGetAttrValue(mq->ObjList->Objects[qe->SrcIndex], "name", DATA_T_STRING, POD(&name));
+		objGetAttrValue(stmt->Query->ObjList->Objects[qe->SrcIndex], "name", DATA_T_STRING, POD(&name));
 		already_exists = 0;
 		for(i=0;i<objects_to_delete->nItems;i++)
 		    {
@@ -267,26 +276,26 @@ mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		    del = (pMqdDeletable)nmMalloc(sizeof(MqdDeletable));
 		    if (!del) goto error;
 		    strtcpy(del->Name, name, sizeof(del->Name));
-		    del->Obj = objLinkTo(mq->ObjList->Objects[qe->SrcIndex]);
+		    del->Obj = objLinkTo(stmt->Query->ObjList->Objects[qe->SrcIndex]);
 		    xaAddItem(objects_to_delete, (void*)del);
 		    }
 		}
 	    }
 
 	is_started = 0;
-	if (cld->Driver->Finish(cld, mq) < 0)
+	if (cld->Driver->Finish(cld, stmt) < 0)
 	    goto error;
 
 	if (cld_rval < 0)
 	    goto error;
 
 	/** Delete the retrieved records **/
-	for(i=0;i<mq->ObjList->nObjects;i++)
+	for(i=0;i<stmt->Query->ObjList->nObjects;i++)
 	    {
-	    if (mq->ObjList->Objects[i] && i >= mq->nProvidedObjects)
+	    if (stmt->Query->ObjList->Objects[i] && i >= stmt->Query->nProvidedObjects)
 		{
-		objClose(mq->ObjList->Objects[i]);
-		mq->ObjList->Objects[i] = NULL;
+		objClose(stmt->Query->ObjList->Objects[i]);
+		stmt->Query->ObjList->Objects[i] = NULL;
 		}
 	    }
 	for(j=0;j<objects_to_delete->nItems;j++)
@@ -299,8 +308,8 @@ mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    del->Obj = NULL;
 	    }
 
-	for(i=0;i<mq->ObjList->nObjects;i++)
-	    mq->ObjList->Objects[i] = NULL;
+	for(i=0;i<stmt->Query->ObjList->nObjects;i++)
+	    stmt->Query->ObjList->Objects[i] = NULL;
 
 	rval = 0;
 
@@ -326,7 +335,7 @@ mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
 	/** Close the SELECT **/
 	if (is_started)
-	    if (cld->Driver->Finish(cld, mq) < 0)
+	    if (cld->Driver->Finish(cld, stmt) < 0)
 		return -1;
 
     return rval;
@@ -336,7 +345,7 @@ mqdStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 /*** mqdNextItem - a delete query returns no rows.
  ***/
 int
-mqdNextItem(pQueryElement qe, pMultiQuery mq)
+mqdNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -345,7 +354,7 @@ mqdNextItem(pQueryElement qe, pMultiQuery mq)
 /*** mqdFinish - clean up.
  ***/
 int
-mqdFinish(pQueryElement qe, pMultiQuery mq)
+mqdFinish(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -354,7 +363,7 @@ mqdFinish(pQueryElement qe, pMultiQuery mq)
 /*** mqdRelease - does nothing for a delete statement.
  ***/
 int
-mqdRelease(pQueryElement qe, pMultiQuery mq)
+mqdRelease(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }

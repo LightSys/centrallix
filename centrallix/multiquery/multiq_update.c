@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_update.c,v 1.2 2009/06/26 16:04:26 gbeeley Exp $
+    $Id: multiq_update.c,v 1.3 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_update.c,v $
 
     $Log: multiq_update.c,v $
+    Revision 1.3  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.2  2009/06/26 16:04:26  gbeeley
     - (feature) adding DELETE support
     - (change) HAVING clause now honored in INSERT ... SELECT
@@ -80,7 +89,7 @@ struct
  *** clause, and if there is one, we're in business.
  ***/
 int
-mquAnalyze(pMultiQuery mq)
+mquAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, where_qs, where_item, from_qs;
     pQueryElement qe,recent;
@@ -89,7 +98,7 @@ mquAnalyze(pMultiQuery mq)
     int src_idx;
 
     	/** Search for an UPDATE statement... **/
-	if ((qs = mq_internal_FindItem(mq->QTree, MQ_T_UPDATECLAUSE, NULL)) != NULL)
+	if ((qs = mq_internal_FindItem(stmt->QTree, MQ_T_UPDATECLAUSE, NULL)) != NULL)
 	    {
 	    /** Allocate a new query-element **/
 	    qe = mq_internal_AllocQE();
@@ -108,7 +117,7 @@ mquAnalyze(pMultiQuery mq)
 		}
 
 	    /** Determine which object id is for updating **/
-	    from_qs = mq_internal_FindItem(mq->QTree, MQ_T_FROMCLAUSE, NULL);
+	    from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMCLAUSE, NULL);
 	    src_idx = -1;
 	    if (from_qs)
 		{
@@ -117,7 +126,7 @@ mquAnalyze(pMultiQuery mq)
 		    item = (pQueryStructure)(from_qs->Children.Items[i]);
 		    if (from_qs->Children.nItems == 1 || (item->Flags & MQ_SF_IDENTITY))
 			{
-			src_idx = expLookupParam(mq->ObjList, 
+			src_idx = expLookupParam(stmt->Query->ObjList, 
 					item->Presentation[0]?(item->Presentation):(item->Source));
 			}
 		    }
@@ -131,9 +140,9 @@ mquAnalyze(pMultiQuery mq)
 	    qe->SrcIndex = src_idx;
 
 	    /** mq->Tree is set? **/
-	    if (mq->Tree != NULL)
+	    if (stmt->Tree != NULL)
 	        {
-		xaAddItem(&qe->Children, (void*)(mq->Tree));
+		xaAddItem(&qe->Children, (void*)(stmt->Tree));
 		}
 	    else
 		{
@@ -143,8 +152,8 @@ mquAnalyze(pMultiQuery mq)
 		}
 
 	    /** Link the qe into the multiquery **/
-	    xaAddItem(&mq->Trees, qe);
-	    mq->Tree = qe;
+	    xaAddItem(&stmt->Trees, qe);
+	    stmt->Tree = qe;
 
 	    /** Need to link in with each of the update-items. **/
 	    recent = NULL;
@@ -204,13 +213,13 @@ mquAnalyze(pMultiQuery mq)
  *** current qe and mq.  Return -1 on error, 0 if fail, 1 if pass.
  ***/
 int
-mqu_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
+mqu_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     {
 
 	/** Validate the constraint expression, otherwise succeed by default **/
         if (qe->Constraint)
             {
-            expEvalTree(qe->Constraint, mq->ObjList);
+            expEvalTree(qe->Constraint, stmt->Query->ObjList);
 	    if (qe->Constraint->DataType != DATA_T_INTEGER)
 	        {
 	        mssError(1,"MQU","WHERE clause item must have a boolean/integer value.");
@@ -232,7 +241,7 @@ mqu_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
  *** mquNextItem.
  ***/
 int
-mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i,j;
     pQueryElement cld;
@@ -247,7 +256,7 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
 	cld = (pQueryElement)(qe->Children.Items[0]);
-	if (cld->Driver->Start(cld, mq, NULL) < 0) 
+	if (cld->Driver->Start(cld, stmt, NULL) < 0) 
 	    {
 	    mssError(0,"MQU","Failed to start child join/projection operation");
 	    goto error;
@@ -262,10 +271,10 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	xaInit(objects_to_update, 16);
 
 	/** Retrieve matching records **/
-	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, mq)) == 1)
+	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, stmt)) == 1)
 	    {
 	    /** Does this row match the where clause criteria? **/
-	    if (mqu_internal_CheckConstraint(qe, mq) == 1)
+	    if (mqu_internal_CheckConstraint(qe, stmt) == 1)
 		{
 		/** Got a matching row, count it and update it **/
 		qe->IterCnt++;
@@ -273,9 +282,9 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		/** Save it for later **/
 		objlist = expCreateParamList();
 		if (!objlist) goto error;
-		expCopyList(mq->ObjList, objlist);
+		expCopyList(stmt->Query->ObjList, objlist);
 		for(i=0;i<objlist->nObjects;i++)
-		    if (i >= mq->nProvidedObjects)
+		    if (i >= stmt->Query->nProvidedObjects)
 			if (objlist->Objects[i])
 			    objLinkTo(objlist->Objects[i]);
 		xaAddItem(objects_to_update, (void*)objlist);
@@ -283,25 +292,25 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    }
 
 	is_started = 0;
-	if (cld->Driver->Finish(cld, mq) < 0)
+	if (cld->Driver->Finish(cld, stmt) < 0)
 	    goto error;
 
 	if (cld_rval < 0)
 	    goto error;
 
 	/** Update the retrieved records **/
-	for(i=0;i<mq->ObjList->nObjects;i++)
+	for(i=0;i<stmt->Query->ObjList->nObjects;i++)
 	    {
-	    if (mq->ObjList->Objects[i]) 
-		if (i >= mq->nProvidedObjects) 
-		    if (mq->ObjList->Objects[i])
-			objClose(mq->ObjList->Objects[i]);
-	    mq->ObjList->Objects[i] = NULL;
+	    if (stmt->Query->ObjList->Objects[i]) 
+		if (i >= stmt->Query->nProvidedObjects) 
+		    if (stmt->Query->ObjList->Objects[i])
+			objClose(stmt->Query->ObjList->Objects[i]);
+	    stmt->Query->ObjList->Objects[i] = NULL;
 	    }
 	for(j=0;j<objects_to_update->nItems;j++)
 	    {
 	    objlist = (pParamObjects)xaGetItem(objects_to_update, j);
-	    expCopyList(objlist, mq->ObjList);
+	    expCopyList(objlist, stmt->Query->ObjList);
 
 	    /** Loop through list of values to set **/
 	    for(i=0;i<qe->AttrNames.nItems;i++)
@@ -312,7 +321,7 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		    assign_exp = (pExpression)(qe->AttrAssignExpr.Items[i]);
 
 		    /** Get the value to be assigned **/
-		    if (expEvalTree(exp, mq->ObjList) < 0) 
+		    if (expEvalTree(exp, stmt->Query->ObjList) < 0) 
 			{
 			mssError(0,"MQU","Could not evaluate UPDATE expression's value");
 			goto error;
@@ -330,14 +339,14 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 			mssError(1,"MQU","Could not handle UPDATE expression's value");
 			goto error;
 			}
-		    if (expReverseEvalTree(assign_exp, mq->ObjList) < 0)
+		    if (expReverseEvalTree(assign_exp, stmt->Query->ObjList) < 0)
 			goto error;
 		    }
 		}
 	    }
 
-	for(i=0;i<mq->ObjList->nObjects;i++)
-	    mq->ObjList->Objects[i] = NULL;
+	for(i=0;i<stmt->Query->ObjList->nObjects;i++)
+	    stmt->Query->ObjList->Objects[i] = NULL;
 
 	rval = 0;
 
@@ -350,7 +359,7 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		if (objlist)
 		    {
 		    for(j=0;j<objlist->nObjects;j++)
-			if (j >= mq->nProvidedObjects)
+			if (j >= stmt->Query->nProvidedObjects)
 			    if (objlist->Objects[j])
 				objClose(objlist->Objects[j]);
 		    expFreeParamList(objlist);
@@ -362,7 +371,7 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
 	/** Close the SELECT **/
 	if (is_started)
-	    if (cld->Driver->Finish(cld, mq) < 0)
+	    if (cld->Driver->Finish(cld, stmt) < 0)
 		return -1;
 
     return rval;
@@ -372,7 +381,7 @@ mquStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 /*** mquNextItem - an update query returns no rows.
  ***/
 int
-mquNextItem(pQueryElement qe, pMultiQuery mq)
+mquNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -381,7 +390,7 @@ mquNextItem(pQueryElement qe, pMultiQuery mq)
 /*** mquFinish - clean up.
  ***/
 int
-mquFinish(pQueryElement qe, pMultiQuery mq)
+mquFinish(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -390,7 +399,7 @@ mquFinish(pQueryElement qe, pMultiQuery mq)
 /*** mquRelease - does nothing for an update statement.
  ***/
 int
-mquRelease(pQueryElement qe, pMultiQuery mq)
+mquRelease(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }

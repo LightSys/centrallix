@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_insertselect.c,v 1.3 2009/06/26 16:04:26 gbeeley Exp $
+    $Id: multiq_insertselect.c,v 1.4 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_insertselect.c,v $
 
     $Log: multiq_insertselect.c,v $
+    Revision 1.4  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.3  2009/06/26 16:04:26  gbeeley
     - (feature) adding DELETE support
     - (change) HAVING clause now honored in INSERT ... SELECT
@@ -86,7 +95,7 @@ struct
  *** thing.
  ***/
 int
-mqisAnalyze(pMultiQuery mq)
+mqisAnalyze(pQueryStatement stmt)
     {
     pQueryStructure select_qs, insert_qs;
     pQueryElement qe;
@@ -94,15 +103,15 @@ mqisAnalyze(pMultiQuery mq)
     int i;
 
     	/** Search for an INSERT and a SELECT statement... **/
-	select_qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, NULL);
-	insert_qs = mq_internal_FindItem(mq->QTree, MQ_T_INSERTCLAUSE, NULL);
+	select_qs = mq_internal_FindItem(stmt->QTree, MQ_T_SELECTCLAUSE, NULL);
+	insert_qs = mq_internal_FindItem(stmt->QTree, MQ_T_INSERTCLAUSE, NULL);
 
 	/** We get to sit on the bench this time? **/
 	if (!select_qs || !insert_qs)
 	    return 0;
 
 	/** Bad news if other drivers haven't found a SELECT tree **/
-	if (!mq->Tree)
+	if (!stmt->Tree)
 	    return -1;
 
 	/** Alloc a queryexec node **/
@@ -114,18 +123,18 @@ mqisAnalyze(pMultiQuery mq)
 	qe->QSLinkage = insert_qs;
 
 	/** Link with select items **/
-	for(i=0;i<mq->Tree->AttrNames.nItems;i++)
+	for(i=0;i<stmt->Tree->AttrNames.nItems;i++)
 	    {
-	    xaAddItem(&qe->AttrNames, mq->Tree->AttrNames.Items[i]);
-	    xaAddItem(&qe->AttrExprPtr, mq->Tree->AttrExprPtr.Items[i]);
-	    xaAddItem(&qe->AttrCompiledExpr, mq->Tree->AttrCompiledExpr.Items[i]);
+	    xaAddItem(&qe->AttrNames, stmt->Tree->AttrNames.Items[i]);
+	    xaAddItem(&qe->AttrExprPtr, stmt->Tree->AttrExprPtr.Items[i]);
+	    xaAddItem(&qe->AttrCompiledExpr, stmt->Tree->AttrCompiledExpr.Items[i]);
 	    }
 
 	/** Link the qe into the multiquery **/
 	n=0;
-	xaAddItem(&mq->Trees, qe);
-	xaAddItem(&qe->Children, mq->Tree);
-	mq->Tree = qe;
+	xaAddItem(&stmt->Trees, qe);
+	xaAddItem(&qe->Children, stmt->Tree);
+	stmt->Tree = qe;
 
     return 0;
     }
@@ -136,7 +145,7 @@ mqisAnalyze(pMultiQuery mq)
  *** resulting inserts.  Fetch/NextItem always just returns NULL.
  ***/
 int
-mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     pQueryElement sel;
     int rval = -1;
@@ -163,16 +172,16 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    
 	/** Start the SELECT query **/
 	sel = (pQueryElement)(qe->Children.Items[0]);
-	if (sel->Driver->Start(sel, mq, NULL) < 0)
+	if (sel->Driver->Start(sel, stmt, NULL) < 0)
 	    goto error;
 	is_started = 1;
 
 	/** Select all items in the result set **/
-	while((sel_rval = sel->Driver->NextItem(sel, mq)) == 1)
+	while((sel_rval = sel->Driver->NextItem(sel, stmt)) == 1)
 	    {
 	    /** check HAVING clause **/
-	    p = mq_internal_CreatePseudoObject(mq, NULL);
-	    hc_rval = mq_internal_EvalHavingClause(mq, p);
+	    p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
+	    hc_rval = mq_internal_EvalHavingClause(stmt, p);
 	    mq_internal_FreePseudoObject(p);
 	    if (hc_rval < 0)
 		goto error;
@@ -180,7 +189,7 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 		continue;
 
 	    /** open a new object **/
-	    new_obj = objOpen(mq->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+	    new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
 	    if (!new_obj)
 		goto error;
 	   
@@ -190,21 +199,21 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    while(1)
 		{
 		use_attrid = attrid;
-		attrname = mq_internal_QEGetNextAttr(mq, sel, mq->ObjList, &attrid, &astobjid);
+		attrname = mq_internal_QEGetNextAttr(stmt->Query, sel, stmt->Query->ObjList, &attrid, &astobjid);
 		if (!attrname) break;
 		if (astobjid >= 0)
 		    {
 		    /** attr available direct from object via SELECT * **/
-		    t = objGetAttrType(mq->ObjList->Objects[astobjid], attrname);
+		    t = objGetAttrType(stmt->Query->ObjList->Objects[astobjid], attrname);
 		    if (t <= 0)
 			continue;
-		    if (objGetAttrValue(mq->ObjList->Objects[astobjid], attrname, t, &od) != 0)
+		    if (objGetAttrValue(stmt->Query->ObjList->Objects[astobjid], attrname, t, &od) != 0)
 			continue;
 		    }
 		else
 		    {
 		    /** attr available through SELECT item list **/
-		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[use_attrid], mq->ObjList) < 0)
+		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[use_attrid], stmt->Query->ObjList) < 0)
 			goto error;
 		    t = ((pExpression)sel->AttrCompiledExpr.Items[use_attrid])->DataType;
 		    if (t <= 0)
@@ -232,7 +241,7 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     error:
 	/** Close the SELECT **/
 	if (is_started)
-	    if (sel->Driver->Finish(sel, mq) < 0)
+	    if (sel->Driver->Finish(sel, stmt) < 0)
 		return -1;
 	if (new_obj)
 	    objClose(new_obj);
@@ -245,7 +254,7 @@ mqisStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
  *** 0 (end of results) because an insert does not generate a result set.
  ***/
 int
-mqisNextItem(pQueryElement qe, pMultiQuery mq)
+mqisNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -254,7 +263,7 @@ mqisNextItem(pQueryElement qe, pMultiQuery mq)
 /*** mqisFinish - ends the operation.
  ***/
 int
-mqisFinish(pQueryElement qe, pMultiQuery mq)
+mqisFinish(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -263,7 +272,7 @@ mqisFinish(pQueryElement qe, pMultiQuery mq)
 /*** mqisRelease - release any private data allocated (none)
  ***/
 int
-mqisRelease(pQueryElement qe, pMultiQuery mq)
+mqisRelease(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }

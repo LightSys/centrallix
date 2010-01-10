@@ -45,10 +45,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.14 2009/06/26 16:04:26 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.15 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.15  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.14  2009/06/26 16:04:26  gbeeley
     - (feature) adding DELETE support
     - (change) HAVING clause now honored in INSERT ... SELECT
@@ -200,7 +209,7 @@ typedef struct
  *** done in the 'proper' order :)
  ***/
 int
-mqjAnalyze(pMultiQuery mq)
+mqjAnalyze(pQueryStatement stmt)
     {
     pQueryElement qe;
     pQueryElement master=NULL,slave=NULL;
@@ -223,10 +232,10 @@ mqjAnalyze(pMultiQuery mq)
     pQueryStructure from_sources[MQJ_MAX_JOIN];
     unsigned char from_srcmap[MQJ_MAX_JOIN];
     int n_joins = 0, n_joins_used;
-    int min_objlist = mq->nProvidedObjects;
+    int min_objlist = stmt->Query->nProvidedObjects;
 
     	/** Search for WHERE clauses with join operations... **/
-	while((where_qs = mq_internal_FindItem(mq->QTree, MQ_T_WHERECLAUSE, where_qs)) != NULL)
+	while((where_qs = mq_internal_FindItem(stmt->QTree, MQ_T_WHERECLAUSE, where_qs)) != NULL)
 	    {
 	    /** Build a list of join expressions available in the where clause. **/
 	    for(i=0;i<where_qs->Children.nItems;i++)
@@ -267,7 +276,7 @@ mqjAnalyze(pMultiQuery mq)
 
 	    /** Build a list of the FROM sources, and init the source mapping **/
 	    from_qs = mq_internal_FindItem(where_qs->Parent, MQ_T_FROMCLAUSE, NULL);
-	    for(i=min_objlist;i<mq->ObjList->nObjects;i++)
+	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
 	        {
 		/** init the map - which we'll use for sorting the from items by specificity. **/
 		from_srcmap[i] = i;
@@ -277,7 +286,7 @@ mqjAnalyze(pMultiQuery mq)
 		for(j=0;j<from_qs->Children.nItems;j++)
 		    {
 		    from_item = (pQueryStructure)(from_qs->Children.Items[j]);
-		    if (!strcmp(mq->ObjList->Names[i], 
+		    if (!strcmp(stmt->Query->ObjList->Names[i], 
 		        from_item->Presentation[0]?(from_item->Presentation):(from_item->Source)))
 			{
 			found = j;
@@ -293,9 +302,9 @@ mqjAnalyze(pMultiQuery mq)
 		}
 
 	    /** Ok, now sort by specificity **/
-	    for(i=min_objlist;i<mq->ObjList->nObjects;i++)
+	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
 	        {
-		for(j=i+1;j<mq->ObjList->nObjects;j++)
+		for(j=i+1;j<stmt->Query->ObjList->nObjects;j++)
 		    {
 		    if (from_sources[from_srcmap[i]]->Specificity < from_sources[from_srcmap[j]]->Specificity)
 		        {
@@ -447,23 +456,23 @@ mqjAnalyze(pMultiQuery mq)
 		/** Find the master QE from the MQ->Trees array if 1st join, otherwise use MQ->Tree. **/
 		if (n_joins_used == 0)
 		    {
-		    for(i=0;i < xaCount(&mq->Trees);i++)
+		    for(i=0;i < xaCount(&stmt->Trees);i++)
 		        {
-			master = (pQueryElement)xaGetItem(&mq->Trees, i);
+			master = (pQueryElement)xaGetItem(&stmt->Trees, i);
 			if (((pQueryStructure)(master->QSLinkage)) == from_sources[join_obj1[found]]) break;
 			}
 		    }
 		else
 		    {
-		    master = mq->Tree;
+		    master = stmt->Tree;
 		    }
 		qe->SrcIndex = join_obj1[found];
 		qe->SrcIndexSlave = join_obj2[found];
 
 		/** Find the slave QE, from the MQ->Trees array, whether 1st or nth join. **/
-		for(i=0;i<xaCount(&mq->Trees);i++)
+		for(i=0;i<xaCount(&stmt->Trees);i++)
 		    {
-		    slave = (pQueryElement)xaGetItem(&mq->Trees, i);
+		    slave = (pQueryElement)xaGetItem(&stmt->Trees, i);
 		    if (((pQueryStructure)(slave->QSLinkage)) == from_sources[join_obj2[found]]) break;
 		    }
 
@@ -481,10 +490,10 @@ mqjAnalyze(pMultiQuery mq)
 		    for(i=0;i<select_qs->Children.nItems;i++)
 			{
 			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(mq->ProvidedObjMask | joined_objects | join_mask[found])) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
+			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | joined_objects | join_mask[found])) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
 			    {
 			    if (select_item->Flags & MQ_SF_ASTERISK)
-				mq->Flags |= MQ_F_ASTERISK;
+				stmt->Flags |= MQ_TF_ASTERISK;
 			    xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
 			    xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
 			    xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);
@@ -531,7 +540,7 @@ mqjAnalyze(pMultiQuery mq)
 		    }
 		xaAddItem(&qe->Children,(void*)master);
 		xaAddItem(&qe->Children,(void*)slave);
-		mq->Tree = qe;
+		stmt->Tree = qe;
 		qe->QSLinkage = NULL;
 		qe->PrivateData = (void*)nmMalloc(sizeof(MqjJoinData));
 		memset(qe->PrivateData, 0, sizeof(MqjJoinData));
@@ -574,7 +583,7 @@ mqj_internal_ClosePrefetch(pQueryElement qe)
  *** source, and put them in the prefetch array in the PrivateData.
  ***/
 int
-mqj_internal_DoPrefetch(pQueryElement qe, pMultiQuery mq)
+mqj_internal_DoPrefetch(pQueryElement qe, pQueryStatement stmt)
     {
     pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
     pQueryElement prefetch_cld;
@@ -594,7 +603,7 @@ mqj_internal_DoPrefetch(pQueryElement qe, pMultiQuery mq)
 	/** Get at most MQJ_MAX_PREFETCH objects **/
 	while(md->nPrefetch < MQJ_MAX_PREFETCH)
 	    {
-	    rval = prefetch_cld->Driver->NextItem(prefetch_cld, mq);
+	    rval = prefetch_cld->Driver->NextItem(prefetch_cld, stmt);
 	    if (rval < 0)
 		{
 		/** error from prefetch_cld **/
@@ -606,7 +615,7 @@ mqj_internal_DoPrefetch(pQueryElement qe, pMultiQuery mq)
 		md->PrefetchReachedEnd = 1;
 		break;
 		}
-	    md->PrefetchObjs[md->nPrefetch] = mq->ObjList->Objects[prefetch_cld->SrcIndex];
+	    md->PrefetchObjs[md->nPrefetch] = stmt->Query->ObjList->Objects[prefetch_cld->SrcIndex];
 	    if (md->PrefetchObjs[md->nPrefetch])
 		objLinkTo(md->PrefetchObjs[md->nPrefetch]);
 	    md->nPrefetch++;
@@ -620,7 +629,7 @@ mqj_internal_DoPrefetch(pQueryElement qe, pMultiQuery mq)
  *** some initialization, but does not fetch any rows.
  ***/
 int
-mqjStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mqjStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     pQueryElement master;
     pMqjJoinData md;
@@ -635,7 +644,7 @@ mqjStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
 	/** Start the query on the master side. **/
 	master = (pQueryElement)(qe->Children.Items[0]);
-	if (master->Driver->Start(master, mq, NULL) < 0) return -1;
+	if (master->Driver->Start(master, stmt, NULL) < 0) return -1;
 
     return 0;
     }
@@ -647,7 +656,7 @@ mqjStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
  *** to 1 (instead of 0).
  ***/
 int
-mqj_internal_NextItemPrefetch(pQueryElement qe, pMultiQuery mq)
+mqj_internal_NextItemPrefetch(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement master,slave;
     pMqjJoinData md;
@@ -668,13 +677,13 @@ mqj_internal_NextItemPrefetch(pQueryElement qe, pMultiQuery mq)
  *** error.
  ***/
 int
-mqjNextItem(pQueryElement qe, pMultiQuery mq)
+mqjNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement master,slave;
     int rval;
 
     	/** Do query in multiple-OR-fetch mode? **/
-	if (MQJ_ENABLE_PREFETCH) return mqj_internal_NextItemPrefetch(qe,mq);
+	if (MQJ_ENABLE_PREFETCH) return mqj_internal_NextItemPrefetch(qe,stmt);
 
     	/** Get master, slave ptrs **/
 	master = (pQueryElement)(qe->Children.Items[0]);
@@ -686,28 +695,28 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 	    /** IF slave cnt is 0, get a new master row and start the slave... **/
 	    if (qe->SlaveIterCnt == 0)
 	        {
-	        rval = master->Driver->NextItem(master, mq);
+	        rval = master->Driver->NextItem(master, stmt);
 	        if (rval == 0 || rval < 0) return rval;
 	        qe->IterCnt++;
-		expFreezeEval(qe->Constraint, mq->ObjList, slave->SrcIndex);
-		if (mq->ObjList->Objects[qe->SrcIndex] != NULL)
+		expFreezeEval(qe->Constraint, stmt->Query->ObjList, slave->SrcIndex);
+		if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL)
 		    {
-		    if (slave->Driver->Start(slave, mq, qe->Constraint) < 0)
+		    if (slave->Driver->Start(slave, stmt, qe->Constraint) < 0)
 			return -1;
 		    qe->Flags |= MQ_EF_SLAVESTART;
 		    }
 	        }
 
 	    /** Ok, retrieve a slave row. **/
-	    if (mq->ObjList->Objects[qe->SrcIndex] != NULL) 
-	        rval = slave->Driver->NextItem(slave, mq);
+	    if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) 
+	        rval = slave->Driver->NextItem(slave, stmt);
 	    else
 	        rval = 0;
 	    if ((rval == 0 || rval < 0) && (qe->SlaveIterCnt > 0 || !(qe->Flags & MQ_EF_OUTERJOIN)))
 	        {
-		if (mq->ObjList->Objects[qe->SrcIndex] != NULL) 
+		if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) 
 		    {
-		    slave->Driver->Finish(slave, mq);
+		    slave->Driver->Finish(slave, stmt);
 		    qe->Flags &= ~MQ_EF_SLAVESTART;
 		    }
 		qe->SlaveIterCnt = 0;
@@ -716,7 +725,7 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 	    else if (rval == 0 && (qe->Flags & MQ_EF_OUTERJOIN))
 		{
 		/** outer join with NULL row from slave **/
-		expModifyParam(mq->ObjList, mq->ObjList->Names[slave->SrcIndex], NULL);
+		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[slave->SrcIndex], NULL);
 		rval = 1;
 		}
 	    qe->SlaveIterCnt++;
@@ -730,7 +739,7 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 /*** mqjFinish - ends the join operation and cleans up after itself...
  ***/
 int
-mqjFinish(pQueryElement qe, pMultiQuery mq)
+mqjFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement master;
     pQueryElement slave;
@@ -742,12 +751,12 @@ mqjFinish(pQueryElement qe, pMultiQuery mq)
 	    {
 	    qe->Flags &= ~MQ_EF_SLAVESTART;
 	    slave = (pQueryElement)(qe->Children.Items[1]);
-	    slave->Driver->Finish(slave, mq);
+	    slave->Driver->Finish(slave, stmt);
 	    }
 
     	/** Complete the query on the master side **/
 	master = (pQueryElement)(qe->Children.Items[0]);
-	master->Driver->Finish(master, mq);
+	master->Driver->Finish(master, stmt);
 
     return 0;
     }
@@ -758,7 +767,7 @@ mqjFinish(pQueryElement qe, pMultiQuery mq)
  *** function.
  ***/
 int
-mqjRelease(pQueryElement qe, pMultiQuery mq)
+mqjRelease(pQueryElement qe, pQueryStatement stmt)
     {
 
     	if (qe->PrivateData) nmFree(qe->PrivateData, sizeof(MqjJoinData));

@@ -46,10 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.10 2009/06/26 16:04:26 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.11 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.11  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.10  2009/06/26 16:04:26  gbeeley
     - (feature) adding DELETE support
     - (change) HAVING clause now honored in INSERT ... SELECT
@@ -163,7 +172,7 @@ struct
  *** in the alternate binary row buffer.  Returns -1 on error.
  ***/
 int
-mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigned char** new_ptr)
+mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, unsigned char** new_ptr)
     {
     unsigned char* cur_buf;
     unsigned char* new_buf;
@@ -189,7 +198,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigne
 	    {
 	    /** Evaluate the item **/
 	    exp = md->GroupByItems[i];
-	    if (expEvalTree(exp, mq->ObjList) < 0)
+	    if (expEvalTree(exp, stmt->Query->ObjList) < 0)
 	        {
 		mssError(0,"MQT","Error evaluating group-by item #%d",i+1);
 		return -1;
@@ -249,7 +258,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pMultiQuery mq, pMQTData md, unsigne
  *** linking to the constant expressions within the querystructure items.
  ***/
 int
-mqtAnalyze(pMultiQuery mq)
+mqtAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, subitem, where_qs, where_item;
     pQueryElement qe,recent;
@@ -259,7 +268,7 @@ mqtAnalyze(pMultiQuery mq)
 
     	/** Search for SELECT statements... **/
 	/*while ((qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, qs)) != NULL || (qs = mq_internal_FindItem(mq->QTree, MQ_T_UPDATECLAUSE, qs)) != NULL)*/
-	while ((qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, qs)) != NULL)
+	while ((qs = mq_internal_FindItem(stmt->QTree, MQ_T_SELECTCLAUSE, qs)) != NULL)
 	    {
 	    /** Allocate a new query-element **/
 	    qe = mq_internal_AllocQE();
@@ -336,10 +345,10 @@ mqtAnalyze(pMultiQuery mq)
 			}
 		    }
 
-		/** No items linked via SELECT items, but a mq->Tree is set? **/
-		if (qe->Children.nItems == 0 && mq->Tree != NULL)
+		/** No items linked via SELECT items, but a stmt->Tree is set? **/
+		if (qe->Children.nItems == 0 && stmt->Tree != NULL)
 		    {
-		    xaAddItem(&qe->Children, (void*)(mq->Tree));
+		    xaAddItem(&qe->Children, (void*)(stmt->Tree));
 		    }
 
 		/** Find the WHERE items that didn't specifically match anything else **/
@@ -412,8 +421,8 @@ mqtAnalyze(pMultiQuery mq)
 		}
 
 	    /** Link the qe into the multiquery **/
-	    xaAddItem(&mq->Trees, qe);
-	    mq->Tree = qe;
+	    xaAddItem(&stmt->Trees, qe);
+	    stmt->Tree = qe;
 	    }
 
     return 0;
@@ -425,7 +434,7 @@ mqtAnalyze(pMultiQuery mq)
  *** ready for retrieval.
  ***/
 int
-mqtStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i;
     pQueryElement cld;
@@ -433,7 +442,7 @@ mqtStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     	/** First, evaluate all of the attributes that we 'own' **/
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
 	    {
-	    if (expEvalTree((pExpression)qe->AttrCompiledExpr.Items[i], mq->ObjList) < 0) 
+	    if (expEvalTree((pExpression)qe->AttrCompiledExpr.Items[i], stmt->Query->ObjList) < 0) 
 	        {
 		mssError(0,"MQT","Could not evaluate SELECT item's value");
 		return -1;
@@ -444,7 +453,7 @@ mqtStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	for(i=0;i<qe->Children.nItems;i++)
 	    {
 	    cld = (pQueryElement)(qe->Children.Items[i]);
-	    if (cld->Driver->Start(cld, mq, NULL) < 0) 
+	    if (cld->Driver->Start(cld, stmt, NULL) < 0) 
 	        {
 		mssError(0,"MQT","Failed to start child join/projection operation");
 		return -1;
@@ -462,13 +471,13 @@ mqtStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
  *** current qe and mq.  Return -1 on error, 0 if fail, 1 if pass.
  ***/
 int
-mqt_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
+mqt_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     {
 
 	/** Validate the constraint expression, otherwise succeed by default **/
         if (qe->Constraint)
             {
-            expEvalTree(qe->Constraint, mq->ObjList);
+            expEvalTree(qe->Constraint, stmt->Query->ObjList);
 	    if (qe->Constraint->DataType != DATA_T_INTEGER)
 	        {
 	        mssError(1,"MQT","WHERE clause item must have a boolean/integer value.");
@@ -491,7 +500,7 @@ mqt_internal_CheckConstraint(pQueryElement qe, pMultiQuery mq)
  *** lower-level drivers, like a projection or join operation.
  ***/
 int
-mqtNextItem(pQueryElement qe, pMultiQuery mq)
+mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement cld;
     int rval,ck;
@@ -516,16 +525,16 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	        {
 	        while(1)
 	            {
-	            rval = cld->Driver->NextItem(cld, mq);
+	            rval = cld->Driver->NextItem(cld, stmt);
 		    if (rval <= 0) break;
-		    ck = mqt_internal_CheckConstraint(qe, mq);
+		    ck = mqt_internal_CheckConstraint(qe, stmt);
 		    if (ck < 0) return ck;
 		    if (ck == 1) break;
 		    }
 		}
 	    else
 	        {
-		ck = mqt_internal_CheckConstraint(qe, mq);
+		ck = mqt_internal_CheckConstraint(qe, stmt);
 		if (ck < 0) return ck;
 		if (ck == 0) return 0;
 	        rval = (qe->IterCnt==1)?1:0;
@@ -547,11 +556,11 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		for(i=0;i<md->nObjects;i++)
 		    {
 		    tmp_obj = md->SavedObjList[i];
-		    md->SavedObjList[i] = mq->ObjList->Objects[i];
-		    mq->ObjList->Objects[i] = tmp_obj;
-		    if (md->SavedObjList[i] && i >= mq->nProvidedObjects) objClose(md->SavedObjList[i]);
+		    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+		    stmt->Query->ObjList->Objects[i] = tmp_obj;
+		    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) objClose(md->SavedObjList[i]);
 		    }
-		expAllObjChanged(mq->ObjList);
+		expAllObjChanged(stmt->Query->ObjList);
 		md->nObjects = 0;
 		}
 
@@ -568,9 +577,9 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    {
 	            while(1)
 	                {
-	                rval = cld->Driver->NextItem(cld, mq);
+	                rval = cld->Driver->NextItem(cld, stmt);
 			if (rval <= 0) break;
-		        ck = mqt_internal_CheckConstraint(qe, mq);
+		        ck = mqt_internal_CheckConstraint(qe, stmt);
 		        if (ck < 0) return ck;
 		        if (ck == 1) break;
 		        }
@@ -578,7 +587,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	        else
 		    {
 	            rval = (qe->IterCnt==1)?1:0;
-		    ck = mqt_internal_CheckConstraint(qe, mq);
+		    ck = mqt_internal_CheckConstraint(qe, stmt);
 		    if (ck < 0) return ck;
 		    if (ck == 0) rval = 0;
 		    }
@@ -594,7 +603,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 			return 0;
 			}
 		    }
-		mqt_internal_CheckGroupBy(qe, mq, md, &(md->GroupByPtr));
+		mqt_internal_CheckGroupBy(qe, stmt, md, &(md->GroupByPtr));
 		}
 
 	    /** This is the group-by loop. **/
@@ -607,15 +616,15 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    if (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL)
 		        {
 		        expUnlockAggregates(exp);
-		        expEvalTree(exp, mq->ObjList);
+		        expEvalTree(exp, stmt->Query->ObjList);
 			}
 		    }
 
 		/** Link to all objects in the current object list **/
-		memcpy(md->SavedObjList, mq->ObjList->Objects, mq->ObjList->nObjects*sizeof(pObject));
-		md->nObjects = mq->ObjList->nObjects;
+		memcpy(md->SavedObjList, stmt->Query->ObjList->Objects, stmt->Query->ObjList->nObjects*sizeof(pObject));
+		md->nObjects = stmt->Query->ObjList->nObjects;
 		for(i=0;i<md->nObjects;i++) 
-		    if (md->SavedObjList[i] && i>=mq->nProvidedObjects) 
+		    if (md->SavedObjList[i] && i>=stmt->Query->nProvidedObjects) 
 			objLinkTo(md->SavedObjList[i]);
 
 	        /** Next, retrieve until end or until end of group **/
@@ -623,9 +632,9 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    {
 	            while(1)
 	                {
-	                rval = cld->Driver->NextItem(cld, mq);
+	                rval = cld->Driver->NextItem(cld, stmt);
 			if (rval <= 0) break;
-		        ck = mqt_internal_CheckConstraint(qe, mq);
+		        ck = mqt_internal_CheckConstraint(qe, stmt);
 		        if (ck < 0) return ck;
 		        if (ck == 1) break;
 		        }
@@ -633,7 +642,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	        else
 		    {
 	            rval = (qe->IterCnt==1)?1:0;
-		    ck = mqt_internal_CheckConstraint(qe, mq);
+		    ck = mqt_internal_CheckConstraint(qe, stmt);
 		    if (ck < 0) return ck;
 		    if (ck == 0) rval = 0;
 		    }
@@ -644,24 +653,24 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    for(i=0;i<md->nObjects;i++)
 		        {
 			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = mq->ObjList->Objects[i];
-			mq->ObjList->Objects[i] = tmp_obj;
+			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+			stmt->Query->ObjList->Objects[i] = tmp_obj;
 			}
-		    expAllObjChanged(mq->ObjList);
+		    expAllObjChanged(stmt->Query->ObjList);
 		    md->IsLastRow = 1;
 		    return 1;
 		    }
 
 		/** Is this a group-end?  Return now if so. **/
-		if (mqt_internal_CheckGroupBy(qe, mq, md, &bptr) == 1 || !cld || qe->Children.nItems == 0)
+		if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || !cld || qe->Children.nItems == 0)
 		    {
 		    for(i=0;i<md->nObjects;i++)
 		        {
 			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = mq->ObjList->Objects[i];
-			mq->ObjList->Objects[i] = tmp_obj;
+			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+			stmt->Query->ObjList->Objects[i] = tmp_obj;
 			}
-		    expAllObjChanged(mq->ObjList);
+		    expAllObjChanged(stmt->Query->ObjList);
 		    md->GroupByPtr = bptr;
 		    if (!cld || qe->Children.nItems == 0) md->IsLastRow = 1;
 		    return 1;
@@ -669,7 +678,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		else
 		    {
 		    for(i=0;i<md->nObjects;i++) 
-			if (md->SavedObjList[i] && i >= mq->nProvidedObjects) 
+			if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) 
 			    objClose(md->SavedObjList[i]);
 		    }
 		}
@@ -683,7 +692,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
  *** in the process of running the "query".
  ***/
 int
-mqtFinish(pQueryElement qe, pMultiQuery mq)
+mqtFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement cld;
     int i;
@@ -692,7 +701,7 @@ mqtFinish(pQueryElement qe, pMultiQuery mq)
 	for(i=0;i<qe->Children.nItems;i++)
 	    {
 	    cld = (pQueryElement)(qe->Children.Items[i]);
-	    if (cld->Driver->Finish(cld, mq) < 0) return -1;
+	    if (cld->Driver->Finish(cld, stmt) < 0) return -1;
 	    }
 
     return 0;
@@ -703,7 +712,7 @@ mqtFinish(pQueryElement qe, pMultiQuery mq)
  *** during the Analyze phase.
  ***/
 int
-mqtRelease(pQueryElement qe, pMultiQuery mq)
+mqtRelease(pQueryElement qe, pQueryStatement stmt)
     {
     	
 	/** Free the group by structure **/

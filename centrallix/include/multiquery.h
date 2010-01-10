@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.14 2009/06/26 16:04:26 gbeeley Exp $
+    $Id: multiquery.h,v 1.15 2010/01/10 07:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.15  2010/01/10 07:51:06  gbeeley
+    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
+      rather than subobjects of the object.
+    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
+      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
+      combined.
+    - (feature) multiple statements per SQL query now allowed, with the
+      statements terminated by semicolons.
+
     Revision 1.14  2009/06/26 16:04:26  gbeeley
     - (feature) adding DELETE support
     - (change) HAVING clause now honored in INSERT ... SELECT
@@ -204,6 +213,8 @@ typedef struct _QE
 #define MQ_EF_SLAVESTART	8		/* slave side of join was started */
 #define MQ_EF_FROMSUBTREE	16		/* SELECT ... FROM SUBTREE /path/name */
 #define MQ_EF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
+#define MQ_EF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
+#define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -234,6 +245,8 @@ typedef struct _QS
 #define MQ_SF_ASTERISK		8		/* SELECT clause uses 'SELECT *' */
 #define MQ_SF_IDENTITY		16		/* SELECT ... FROM IDENTITY /path/name */
 #define MQ_SF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
+#define MQ_SF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
+#define MQ_SF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -258,43 +271,68 @@ typedef struct _QS
 #define MQ_T_WITHCLAUSE		20
 #define MQ_T_LIMITCLAUSE	21
 
+typedef struct _QST QueryStatement, *pQueryStatement;
+typedef struct _MQ MultiQuery, *pMultiQuery;
 
-/*** Structure for managing the multiquery. ***/
-typedef struct
+/*** Structure for a multiquery Statement - one sql statement ***/
+struct _QST
     {
+    int			LinkCnt;
+    int			Flags;			/* bitmask MQ_TF_xxx */
+    int			IterCnt;		/* rows processed so far, before LIMIT */
+    int			UserIterCnt;		/* rows processed so far, after LIMIT */
+    pMultiQuery		Query;			/* the main multiquery structure */
     pExpression		WhereClause;		/* where clause expression */
     pExpression		HavingClause;		/* having-clause expression */
+    int			LimitStart;
+    int			LimitCnt;
     XArray		Trees;			/* list of tree and subtrees */
     pQueryElement	Tree;			/* query exec main tree ptr */
     pQueryStructure	QTree;			/* query syntax tree head ptr */
+    pParamObjects	OneObjList;		/* objlist used for query as a whole - e.g., HAVING clause */
+    };
+
+#define MQ_TF_ALLOWUPDATE	1
+#define MQ_TF_NOMOREREC		2
+#define MQ_TF_ASTERISK		4		/* "select *" */
+#define MQ_TF_FINISHED		8		/* Finish() called on this statement */
+
+/*** Structure for managing the multiquery. ***/
+struct _MQ
+    {
     int			Flags;			/* bitmask MQ_F_xxx */
     int			LinkCnt;		/* number of opens on this */
     int			CntSerial;		/* serial number counter. */
     int			CurSerial;		/* reflects what the objlist has in it. */
+    int			QueryCnt;		/* current query# that is running, starts at 0 */
+    int			RowCnt;			/* last returned row# */
     pObjSession		SessionID;
     pParamObjects	ObjList;		/* master object list for query */
-    pParamObjects	OneObjList;		/* objlist used for query as a whole - e.g., HAVING clause */
     ParamObjects	CurObjList;		/* objlist used for next fetch */
     int			nProvidedObjects;	/* number of objs in objlist provided to query externally */
     int			ProvidedObjMask;	/* mask of external object id's **/
-    }
-    MultiQuery, *pMultiQuery;
+    pLxSession		LexerSession;		/* tokenized query string */
+    char*		QueryText;		/* saved copy of query string */
+    pQueryStatement	CurStmt;		/* current SQL statement that is executing */
+    };
 
-#define MQ_F_ALLOWUPDATE	1
-#define MQ_F_NOMOREREC		2
-#define MQ_F_ASTERISK		4		/* "select *" */
-#define MQ_F_SHUTDOWN		8		/* qe tree already shut down */
+#define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
+#define MQ_F_MULTISTATEMENT	2		/* allow multiple statements separated by semicolons */
 
 
 /*** Pseudo-object structure. ***/
 typedef struct
     {
-    pMultiQuery		Query;
+    pQueryStatement	Stmt;
     ParamObjects	ObjList;
     int			Serial;
     int			AttrID;
     int			AstObjID;
     pObject		Obj;
+    int			QueryID;
+    int			RowIDAllQuery;
+    int			RowIDThisQuery;
+    int			RowIDBeforeLimit;
     }
     PseudoObject, *pPseudoObject;
 
@@ -314,6 +352,6 @@ pQueryElement mq_internal_AllocQE();
 int mq_internal_FreeQE(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
-int mq_internal_EvalHavingClause(pMultiQuery qy, pPseudoObject p);
+int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
 
 #endif  /* not defined _MULTIQUERY_H */
