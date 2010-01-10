@@ -1247,6 +1247,12 @@ function osrc_prune_replica(most_recent_id)
 	}
     }
 
+function osrc_action_clear(aparam)
+    {
+    this.ClearReplica();
+    this.GiveAllCurrentRecord();
+    }
+
 function osrc_clear_replica()
     {
     this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
@@ -2893,6 +2899,7 @@ function osrc_init(param)
     ia.Add("ChangeSource", osrc_action_change_source);
     ia.Add("DoSQL", osrc_action_do_sql);
     ia.Add("FindObject", osrc_action_find_object);
+    ia.Add("Clear", osrc_action_clear);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
