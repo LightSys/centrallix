@@ -204,8 +204,27 @@ function wgtrGetParent(node)
 // returns true on success, false on failuer
 function wgtrSetProperty(node, prop_name, value)
     {
+    var newnode;
+
 	// make sure the parameters are legitimate
 	if (!node || !node.__WgtrName) { pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
+
+	// Indirect reference?
+	if (node.reference && (newnode = node.reference()))
+	    node = newnode;
+
+	// parameters?
+	if (node.__WgtrType == "widget/component-decl" || node.__WgtrType == "widget/page" || node.__WgtrType == "widget/osrc")
+	    {
+	    for(var child in node.__WgtrChildren)
+		{
+		child = node.__WgtrChildren[child];
+		if (child.__WgtrType == 'widget/parameter' && ((!child.realname && child.__WgtrName == prop_name) || (child.realname == prop_name)))
+		    {
+		    return child.setvalue(value);
+		    }
+		}
+	    }
 
 	// set the desired property
 	if (node.ifcProbe && node.ifcProbe(ifValue) && node.ifcProbe(ifValue).Exists(prop_name))

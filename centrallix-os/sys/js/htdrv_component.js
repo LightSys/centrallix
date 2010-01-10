@@ -593,6 +593,8 @@ function cmp_value_setter(n, v)
 	var cmp = this.components[i];
 	if (cmp.proptarget)
 	    return wgtrSetProperty(cmp.proptarget, n, v);
+	else
+	    return wgtrSetProperty(cmp.cmp, n, v);
 	}
     }
 
