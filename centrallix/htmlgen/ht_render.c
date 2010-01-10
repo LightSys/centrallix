@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.78 2009/12/15 22:02:13 gbeeley Exp $
+    $Id: ht_render.c,v 1.79 2010/01/10 07:16:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.79  2010/01/10 07:16:47  gbeeley
+    - (bugfix) fix double-encoding of expressions deployed to Javascript
+
     Revision 1.78  2009/12/15 22:02:13  gbeeley
     - (feature) adding application-wide (cross-component) scope capability,
       with ability to specify the global name of a widget.  This *could* be
@@ -1696,7 +1699,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 		}
 	    }
 	xsConcatenate(&xs,"]",1);
-	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript", EXPR_F_RUNCLIENT);
+	expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
 	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&JSSTR',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
