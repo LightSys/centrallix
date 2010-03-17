@@ -984,7 +984,7 @@ myMenu "widget/menu"
 			<p>Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.</p>
 		</usage>
 		<properties>
-			<property name="autoquery" type="string">One of oneachreveal, never, onload, onfirstreveal.  Note: This autoquery is different than the "widget/rule" "autoquery".  "onload" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  "onfirstreveal" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user.  "oneachreveal" means to do so *each* time the data is displayed to the user (e.g., when the childwindow that contains a table is opened).  "never" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.</property>
+			<property name="autoquery" type="string">One of oneachreveal, never, onload, onfirstreveal.  (note: this autoquery setting is different from, but related to, the "widget/rule" "autoquery").  "onload" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  "onfirstreveal" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user (e.g., the containing childwindow becomes visible or tabpage is selected).  "oneachreveal" means to do so *each* time the data is displayed to the user.  "never" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.  Important Note:  If you expect to normally trigger the osrc via a relationship or via QueryParam, it is often *best* to set autoquery to 'never'.  Otherwise, unexpected results can sometimes occur.</property>
 			<property name="baseobj" type="string">If inserts and deletes are to function, the ObjectSystem pathname in which those inserts and deletes should occur.  This should be one of the objects specified in the FROM clause of the SQL statement.</property>
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</property>
 			<property name="readahead" type="integer">Represents the number to fetch from the server when more records are needed from the server (such as when a form requests that the Current Record be a record beyond the end of the current replica contents).</property>
@@ -1019,6 +1019,7 @@ myMenu "widget/menu"
 			<action name="Query"><ni/>Query.</action>
 			<action name="QueryObject"><ni/>Query Object.  Primarily for internal use only.</action>
 			<action name="QueryParam">Refreshes the query, and allows new parameter values to be passed in.  Previous comment: Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.</action>
+			<action name="QueryText">Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples:  'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case insensitive.</action>
 			<action name="OrderObject"><ni/>Order Object</action>
 			<action name="Delete"><ni/>Deletes an object through OSML</action>
 			<action name="Create"><ni/>Creates an object though OSML</action>
@@ -1027,7 +1028,8 @@ myMenu "widget/menu"
 			<action name="Next"><ni/>Returns next record in the replica</action>
 			<action name="Prev"><ni/>Returns previous record in the replica</action>
 			<action name="Last"><ni/>Returns last record in the replica</action>
-			<action name="Refresh">Re-runs the SQL query (using the previously stored parameter values (if any); ignores parameter changes?).</action>
+			<action name="Refresh">Re-runs the SQL query using the previously stored parameter values (if any).  This is used when the data on the server is believed to have changed, and the new data is desired to be displayed in the application.  This action does not change the current row.</action>
+			<action name="RefreshObject">Re-runs the SQL query for just the one current object (record).  This does not change the currently selected record in the osrc.  This should be used when the intent is to refresh the values of just the current object without affecting anything else.</action>
 		</actions>
 		<sample>
 		<![CDATA[
