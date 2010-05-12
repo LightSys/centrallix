@@ -1,4 +1,5 @@
 #include "cxlibconfig-internal.h"
+#include "mtask.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -26,10 +27,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: t_driver.c,v 1.3 2006/06/21 21:17:02 gbeeley Exp $
+    $Id: t_driver.c,v 1.4 2010/05/12 18:21:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/tests/t_driver.c,v $
 
     $Log: t_driver.c,v $
+    Revision 1.4  2010/05/12 18:21:21  gbeeley
+    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
+      and for security.  Adding many test suite items for mtlexer, a good
+      fraction of which fail on the old mtlexer module.  The new module is
+      currently mildly slower than the old one, but is more correct.
+
     Revision 1.3  2006/06/21 21:17:02  gbeeley
     - Updating timings on smmalloc tests to speed things up a bit.
     - Updating test driver to detect crashes, lockups, and assertion failures.
@@ -73,8 +80,8 @@ alarm_handler(int v)
     exit(0);
     }
 
-int
-main(int argc, char* argv[])
+void
+start(void* v)
     {
     struct tms t;
     clock_t start,end;
@@ -94,6 +101,13 @@ main(int argc, char* argv[])
 	else
 	    printf("%-62.62s  PASS %lld\n", tname, rval*100/(long long)(end - start));
 
+    return;
+    }
+
+int
+main(int argc, char* argv[])
+    {
+    mtInitialize(0, start);
     return 0;
     }
 

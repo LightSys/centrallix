@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.20 2008/03/29 03:37:53 gbeeley Exp $
+## $Id: Makefile.in,v 1.21 2010/05/12 18:21:21 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -157,7 +157,7 @@ install: all
 	@echo ""
 
 %.bin:	%.c tests/t_driver.c libCentrallix.a
-	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@
+	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@ ${LIBS}
 
 .PHONY: test
 test:	$(TESTPROGS)

@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "newmalloc.h"
 #include "mtask.h"
 #include "mtlexer.h"
@@ -32,10 +33,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.11 2009/06/19 21:29:44 gbeeley Exp $
+    $Id: mtlexer.c,v 1.12 2010/05/12 18:21:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.12  2010/05/12 18:21:21  gbeeley
+    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
+      and for security.  Adding many test suite items for mtlexer, a good
+      fraction of which fail on the old mtlexer module.  The new module is
+      currently mildly slower than the old one, but is more correct.
+
     Revision 1.11  2009/06/19 21:29:44  gbeeley
     - (bugfix) Permit lines returned from mlxNextToken() to span blocks of
       data that were read in using the ReadFn().
@@ -99,7 +106,12 @@
  **END-CVSDATA***********************************************************/
 
 
+#define MLX_EOF		(-1)
+#define MLX_ERROR	(-2)
+
 int mlxReadLine(pLxSession s, char* buf, int maxlen);
+int mlxSkipChars(pLxSession s, int n_chars);
+int mlxPeekChar(pLxSession s, int offset);
 
 
 /*** mlxOpenSession - start a new lexer session on a given file 
@@ -122,23 +134,12 @@ mlxOpenSession(pFile fd, int flags)
 	this->InpCnt = 0;
 	this->InpPtr = this->InpBuf;
 	this->ReservedWords = NULL;
-	this->Flags = flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
-		MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
-		MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW | 
-		MLX_F_NODISCARD | MLX_F_FILENAMES | MLX_F_DBLBRACE | 
-		MLX_F_LINEONLY | MLX_F_SYMBOLMODE | MLX_F_CCOMM |
-		MLX_F_TOKCOMM | MLX_F_NOUNESC | MLX_F_SSTRING);
+	this->Flags = flags & MLX_F_PUBLIC;
 
 	/** Preload the buffer with the first line **/
-        /*this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-	if (this->BufCnt <= 0)
-	    {
-	    this->TokType = MLX_TOK_ERROR;
-	    }*/
-	this->Flags |= MLX_F_FOUNDEOL;
 	this->Buffer[0] = 0;
 	this->BufPtr = this->Buffer;
-	this->LineNumber = 0;
+	this->LineNumber = 1;
 	this->ReadArg = (void*)fd;
 	this->ReadFn = fdRead;
 	this->BytesRead = 0;
@@ -170,28 +171,11 @@ mlxStringSession(char* str, int flags)
 	this->InpPtr = str;
 	this->InpStartPtr = str;
 	this->ReservedWords = NULL;
-	this->Flags = flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
-		MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
-		MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW |
-		MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SYMBOLMODE | 
-		MLX_F_CCOMM | MLX_F_TOKCOMM | MLX_F_NOUNESC |
-		MLX_F_SSTRING);
+	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
 	this->Flags |= MLX_F_NOFILE;
 	this->Magic = MGK_LXSESSION;
 
 	/** Read the first line. **/
-        this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-	if (this->BufCnt == 0)
-	    {
-	    if (!(this->Flags & MLX_F_EOF))
-		{
-		this->TokType = MLX_TOK_EOF;
-		}
-	    }
-	else if (this->BufCnt < 0)
-	    {
-	    this->TokType = MLX_TOK_ERROR;
-	    }
 	this->BufPtr = this->Buffer;
 	this->LineNumber = 1;
 	this->ReadArg = NULL;
@@ -222,18 +206,12 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	this->InpCnt = 0;
 	this->InpPtr = this->InpBuf;
 	this->ReservedWords = NULL;
-	this->Flags = flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
-		MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
-		MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW | 
-		MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_LINEONLY |
-		MLX_F_SYMBOLMODE | MLX_F_CCOMM | MLX_F_TOKCOMM |
-		MLX_F_NOUNESC | MLX_F_SSTRING);
+	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
 
 	/** Preload the buffer with the first line **/
-	this->Flags |= MLX_F_FOUNDEOL;
 	this->Buffer[0] = 0;
 	this->BufPtr = this->Buffer;
-	this->LineNumber = 0;
+	this->LineNumber = 1;
 	this->ReadArg = src;
 	this->ReadFn = read_fn;
 	this->BytesRead = 0;
@@ -252,6 +230,13 @@ mlxCloseSession(pLxSession this)
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 
+	/** Left the last \n in the buffer for line numbering purposes? **/
+	if ((this->Flags & MLX_F_FOUNDEOL) && mlxPeekChar(this,0) == '\n')
+	    {
+	    this->Flags &= ~MLX_F_FOUNDEOL;
+	    mlxSkipChars(this,1);
+	    }
+
     	/** Need to do an 'unread' on the buffer? **/
 	if (this->Flags & MLX_F_NODISCARD && this->InpCnt > 0)
 	    {
@@ -265,68 +250,311 @@ mlxCloseSession(pLxSession this)
     }
 
 
+/*** mlx_internal_CheckBuffer() - load the input buffer if possible.
+ *** returns n chars available, or -1 on error.  'offset' is the offset
+ *** from the current position that we're interested in.
+ ***/
+int
+mlx_internal_CheckBuffer(pLxSession s, int offset)
+    {
+    int newcnt;
+
+	/** no data in input? **/
+	if (s->InpCnt <= offset)
+	    {
+	    if (!(s->Flags & MLX_F_NOFILE))
+		{
+		if (s->InpCnt)
+		    {
+		    /** shift existing bytes **/
+		    memmove(s->InpBuf, s->InpPtr, s->InpCnt);
+		    }
+
+		/** read in new bytes **/
+		s->InpPtr = s->InpBuf;
+		if (!s->EndOfFile && !s->StreamErr)
+		    {
+		    newcnt = s->ReadFn(s->ReadArg, s->InpBuf + s->InpCnt, sizeof(s->InpBuf) - s->InpCnt, 0,0);
+		    if (newcnt < 0)
+			{
+			s->StreamErr = 1;
+			mssErrorErrno(1,"MLX","Could not read line %d from token stream", s->LineNumber);
+			return -1; /* error */
+			}
+		    if (newcnt == 0)
+			s->EndOfFile = 1;
+		    else
+			s->InpCnt += newcnt;
+		    }
+		else if (s->StreamErr)
+		    return -1;
+		}
+	    }
+
+    return s->InpCnt;
+    }
+
+
+/*** mlxUseOneChar() - 'use up' one char in the input buffer
+ ***/
+int
+mlxUseOneChar(pLxSession s)
+    {
+	/** Keep track of what line we're on **/
+	if (s->InpPtr[0] == '\n')
+	    s->LineNumber++;
+
+	/** Advance the counters **/
+	s->InpCnt--;
+	s->InpPtr++;
+	s->BytesRead++;
+
+    return 0;
+    }
+
+
+/*** mlxNextChar() - fetch the next character from the input data.
+ *** Returns 0 - 255 on success (valid 8-bit char), -1 on EOF, and
+ *** -2 on a read error from the source.
+ ***/
+int
+mlxNextChar(pLxSession s)
+    {
+    int ch, v;
+
+	v = mlx_internal_CheckBuffer(s, 0);
+	if (v < 0) return MLX_ERROR;
+	if (v == 0) return MLX_EOF;
+
+	/** input buffer has a char? **/
+	ch = (int)((unsigned char)(s->InpPtr[0]));
+	mlxUseOneChar(s);
+
+    return ch;
+    }
+
+
+/*** mlxPeekChar() - return the current (or a future) character, without
+ *** advancing the char ptr.  Returns -1 on eof, or -2 on error.  'offset'
+ *** can be 0 for the current char, 1 for the one after that, etc.
+ ***/
+int
+mlxPeekChar(pLxSession s, int offset)
+    {
+    int v;
+
+	v = mlx_internal_CheckBuffer(s, offset);
+	if (v < 0) return MLX_ERROR;
+	if (v <= offset) return MLX_EOF;
+
+    return (int)((unsigned char)(s->InpPtr[offset]));
+    }
+
+
+/*** mlxSkipChars() - moves the char ptr forward by n characters, without
+ *** actually returning a char.  Does *not* fill the buffer.  It is an error
+ *** to call this when it is unknown whether the chars to be skipped exist
+ *** in the buffer (i.e., with PeekChar)
+ ***/
+int
+mlxSkipChars(pLxSession s, int n_chars)
+    {
+    int i;
+
+	/** Clamp n_chars to what is in the buffer **/
+	if (n_chars > s->InpCnt) n_chars = s->InpCnt;
+
+	/** Update our counters **/
+	for(i=0;i<n_chars;i++)
+	    mlxUseOneChar(s);
+
+    return n_chars;
+    }
+
+
+/*** mlxSkipWhitespace() - skip over any whitespace characters \r \t \n ' '
+ ***/
+int
+mlxSkipWhitespace(pLxSession s)
+    {
+    int ch;
+
+	while(1)
+	    {
+	    ch = mlxPeekChar(s, 0);
+	    if (ch == ' ' || ch == '\t' || ch == '\r')
+		mlxSkipChars(s, 1);
+	    else
+		break;
+	    }
+
+    return ch;
+    }
+
+
+/*** mlxSkipToEOL() - skip past the end of line, then return the current char.
+ ***/
+int
+mlxSkipToEOL(pLxSession s)
+    {
+    int ch;
+
+	while(1)
+	    {
+	    ch = mlxNextChar(s);
+	    if (ch == '\n' || ch < 0)
+		break;
+	    }
+
+    return mlxPeekChar(s, 0);
+    }
+
+
+/*** mlx_internal_Copy() - copy data from the input stream into a buffer,
+ *** given proper semantics for the type of copy that is occurring based on
+ *** the lexer flags and the token type.  The logic is slightly different
+ *** for each type; at least we can consolidate this here and use it in
+ *** mlxNextToken, mlxStringVal, and mlxCopyToken.
+ ***/
+int
+mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
+    {
+    int ch;
+    int len = 0;
+
+	/** Get the current character **/
+	ch = mlxPeekChar(this, 0);
+
+	/** LINEONLY mode 
+	 ** A \n goes in the TokString, but we leave it in the input
+	 ** as well.
+	 **/
+	if (this->Flags & MLX_F_LINEONLY)
+	    {
+	    *found_end = 0;
+	    while(ch >= 0 && len < bufsize-1)
+		{
+		buf[len++] = ch;
+		if (ch == '\n')
+		    {
+		    *found_end = 1;
+		    break;
+		    }
+		mlxSkipChars(this,1);
+		ch = mlxPeekChar(this,0);
+		}
+	    }
+
+	/** IFSONLY mode **/
+	else if (this->Flags & MLX_F_IFSONLY)
+	    {
+	    *found_end = 1;
+	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n')
+		{
+		if (len >= bufsize-1)
+		    {
+		    *found_end = 0;
+		    break;
+		    }
+		buf[len++] = ch;
+		mlxSkipChars(this,1);
+		ch = mlxPeekChar(this,0);
+		}
+	    }
+
+	/** STRING mode **/
+	else if (this->TokType == MLX_TOK_STRING)
+	    {
+	    *found_end = 1;
+	    while((ch = mlxPeekChar(this,0)) >= 0 && ch != this->Delimiter)
+		{
+		if (len >= bufsize-1)
+		    {
+		    *found_end = 0;
+		    break;
+		    }
+		if (ch == '\\')
+		    {
+		    if (this->Flags & MLX_F_NOUNESC)
+			{
+			/** Not unescaping the string - keep the \ chars **/
+			if (len >= bufsize-2)
+			    {
+			    /** copying 2 chars as an atomic unit - require 2 spaces in the buffer **/
+			    *found_end = 0;
+			    break;
+			    }
+			buf[len++] = ch;
+			mlxSkipChars(this,1);
+			ch = mlxPeekChar(this,0);
+			}
+		    else
+			{
+			/** Removing escapes - transform to control chars or strip the \ **/
+			mlxSkipChars(this,1);
+			ch = mlxPeekChar(this,0);
+			if (ch == 'n') ch='\n'; 
+			else if (ch == 't') ch='\t';
+			else if (ch == 'r') ch='\r';
+			}
+		    }
+		buf[len++] = ch;
+		mlxSkipChars(this,1);
+		}
+
+	    /** skip delimiter if found ending of string **/
+	    if (*found_end && ch == this->Delimiter)
+		mlxSkipChars(this,1);
+	    }
+
+	/** FILENAME mode **/
+	else if (this->TokType == MLX_TOK_FILENAME)
+	    {
+	    *found_end = 1;
+	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n' && ch != ':')
+		{
+		if (len >= bufsize-1)
+		    {
+		    *found_end = 0;
+		    break;
+		    }
+		buf[len++] = ch;
+		mlxSkipChars(this,1);
+		ch = mlxPeekChar(this,0);
+		}
+	    }
+
+	/** Nul-terminate the buffer **/
+	buf[len] = '\0';
+
+    return len;
+    }
+
+
+/*** Read a line, up to maxlen characters.
+ ***/
 int
 mlxReadLine(pLxSession s, char* buf, int maxlen)
     {
-    int n;
-    char* ptr;
-    int got_newline=0;
     int bufpos = 0;
+    int ch;
 
     	ASSERTMAGIC(s,MGK_LXSESSION);
 
 	/** Keep piling data into buffer until we get a NL or buf full **/
-	while(!got_newline && bufpos < maxlen-1)
+	while(bufpos < maxlen-1)
 	    {
-	    /** Have some data already? **/
-	    if (s->InpCnt > 0)
-		{
-	        /** NL already in buffer? **/
-	        ptr = memchr(s->InpPtr,'\n',s->InpCnt);
-		if (ptr)
-		    {
-		    got_newline = 1;
-	    	    n = ((int)ptr - (int)s->InpPtr)+1;
-		    }
-		else
-		    {
-		    n = s->InpCnt;
-		    }
-	    	if (n>maxlen-1-bufpos) n=maxlen-1-bufpos;
-	    	memcpy(buf+bufpos, s->InpPtr, n);
-
-		/** Add data retrieved so far to the BytesRead value for
-		 ** offset tracking.
-		 **/
-		s->BytesRead += n;
-		
-		bufpos += n;
-		s->InpCnt -= n;
-		s->InpPtr += n;
-		continue;
-		}
-
-	    /** Ok, get more data. **/
-	    if (s->Flags & MLX_F_NOFILE)
-		{
-		s->InpCnt = 0;
-		s->InpBuf[0] = 0;
+	    ch = mlxNextChar(s);
+	    if (ch == MLX_EOF)
 		break;
-		}
-	    s->InpPtr = s->InpBuf;
-	    s->InpCnt = s->ReadFn(s->ReadArg, s->InpBuf, 2048, 0,0);
-	    if (s->InpCnt <= 0) 
-		{
-		if (s->InpCnt < 0) mssErrorErrno(1,"MLX","Could not read line %d from token stream", s->LineNumber);
-		s->InpCnt = 0;
-		s->InpBuf[0] = 0;
+	    if (ch == MLX_ERROR)
+		return -1;
+	    buf[bufpos++] = ch;
+	    if (ch == '\n') /* eol */
 		break;
-		}
-	    s->InpBuf[s->InpCnt] = 0;
 	    }
 
 	buf[bufpos] = 0;
-	s->LineNumber++;
 
     return bufpos;
     }
@@ -339,11 +567,13 @@ mlxReadLine(pLxSession s, char* buf, int maxlen)
 int
 mlxNextToken(pLxSession this)
     {
-    char* ptr;
-    char ch, prev_ch;
+    int ch;
     int invert;
     int i,got_dot;
     int found_end;
+    char* ptr;
+    char* s_tokens = ":()/$*,#;";
+    int s_tokid[] = {MLX_TOK_COLON, MLX_TOK_OPENPAREN, MLX_TOK_CLOSEPAREN, MLX_TOK_SLASH, MLX_TOK_DOLLAR, MLX_TOK_ASTERISK, MLX_TOK_COMMA, MLX_TOK_POUND, MLX_TOK_SEMICOLON };
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 
@@ -353,8 +583,6 @@ mlxNextToken(pLxSession this)
 	    this->Hold = 0;
 	    return this->TokType;
 	    }
-
-	ptr = this->BufPtr;
 
 	/** Already in error condition?  Still in error condition. **/
 	if (this->TokType == MLX_TOK_ERROR) 
@@ -367,464 +595,361 @@ mlxNextToken(pLxSession this)
 	if (this->TokType == MLX_TOK_EOF)
 	    {
 	    this->TokType = MLX_TOK_ERROR;
-	    mssError(1,"MLX","Attempt to read past end-of-token-stream");
+	    mssError(1,"MLX","Attempt to read past end of data");
 	    return MLX_TOK_ERROR;
 	    }
 
 	/** Still in string and user didn't care?  Discard til delimiter. **/
 	if (this->Flags & MLX_F_INSTRING && (this->Flags & MLX_F_LINEONLY))
 	    {
-	    while(*ptr) ptr++;
+	    while((ch = mlxNextChar(this)) >= 0 && ch != '\n') ;
 	    this->Flags &= ~MLX_F_INSTRING;
 	    }
 	else if ((this->Flags & MLX_F_INSTRING) && ((this->Flags & MLX_F_IFSONLY) || this->Delimiter == ' '))
 	    {
-	    while(*ptr && *ptr != '\t' && *ptr != '\r' && *ptr != ' ' &&
-	    	  *ptr != '\n') ptr++;
+	    while((ch = mlxNextChar(this)) >= 0 && ch != '\n' && ch != '\t' && ch != '\r' && ch != ' ') ;
 	    this->Flags &= ~MLX_F_INSTRING;
 	    }
 	else if (this->Flags & MLX_F_INSTRING)
 	    {
-	    while(*ptr != this->Delimiter)
+	    while((ch = mlxNextChar(this)) != this->Delimiter)
 		{
-		if (*ptr == '\0')
+		if (ch == MLX_EOF || ch == MLX_ERROR)
 		    {
-		    this->BufCnt = mlxReadLine(this,this->Buffer, 2047);
-		    if (this->BufCnt <= 0)
-			{
-			mssError(0,"MLX","Unterminated string value");
-			this->TokType = MLX_TOK_ERROR;
-			return this->TokType;
-			}
-		    this->BufPtr = this->Buffer;
-		    ptr = this->Buffer;
-		    continue;
+		    mssError((ch == MLX_EOF)?1:0,"MLX","Unterminated string value");
+		    this->TokType = MLX_TOK_ERROR;
+		    return this->TokType;
 		    }
-		if (*ptr == '\\') ptr++;
-		ptr++;
+		if (ch == '\\') mlxNextChar(this);
 		}
 	    this->Flags &= ~MLX_F_INSTRING;
 	    }
 
-
 	/** Loop until we get a token **/
 	while(1)
 	    {
-	    /** Inside a C-style comment? **/
-	    if (this->Flags & MLX_F_INCOMM)
-	        {
-		while(*ptr && (*ptr != '*' || *(ptr+1) != '/')) ptr++;
-		if (*ptr)
-		    {
-		    ptr += 2;
-		    this->Flags &= ~MLX_F_INCOMM;
-		    }
-		}
-
-	    /** First, eliminate whitespace. **/
 	    this->TokString[0] = 0;
 	    this->TokString[1] = 0;
+
+	    /** Handled the EOL char?  If so, skip over it, thus letting the LineNumber advance. **/
+	    if ((this->Flags & MLX_F_FOUNDEOL) && mlxPeekChar(this,0) == '\n')
+		{
+		this->Flags &= ~MLX_F_FOUNDEOL;
+		mlxSkipChars(this,1);
+		}
+
+	    /** First, eliminate whitespace and comments. **/
 	    if (!(this->Flags & MLX_F_LINEONLY))
 	        {
-	        while(*ptr == ' ' || *ptr == '\r' || *ptr == '\n' || *ptr == '\t')
-	            ptr++;
+		ch = mlxSkipWhitespace(this);
 
 	        /** Single-line comment?  Skip EOL if so... **/
-	        if ((*ptr == '#' && (this->Flags & MLX_F_POUNDCOMM)) ||
-		    (*ptr == ';' && (this->Flags & MLX_F_SEMICOMM)) ||
-		    (*ptr == '/' && *(ptr+1) == '/' && (this->Flags & MLX_F_CPPCOMM)) ||
-		    (*ptr == '-' && *(ptr+1) == '-' && (this->Flags & MLX_F_DASHCOMM)))
+	        if ((ch == '#' && (this->Flags & MLX_F_POUNDCOMM)) ||
+		    (ch == ';' && (this->Flags & MLX_F_SEMICOMM)) ||
+		    (ch == '/' && mlxPeekChar(this,1) == '/' && (this->Flags & MLX_F_CPPCOMM)) ||
+		    (ch == '-' && mlxPeekChar(this,1) == '-' && (this->Flags & MLX_F_DASHCOMM)))
 		    {
-		    ptr += strlen(ptr);
+		    mlxSkipToEOL(this);
+		    continue;
 		    }
 
 		/** Beginning of a C-style comment?  Skip to comment end if so. **/
-		if (*ptr == '/' && *(ptr+1) == '*' && (this->Flags & MLX_F_CCOMM))
+		if (ch == '/' && mlxPeekChar(this,1) == '*' && (this->Flags & MLX_F_CCOMM))
 		    {
-		    ptr += 2;
-		    while(*ptr && (*ptr != '*' || *(ptr+1) != '/')) ptr++;
-
-		    /** End of comment or end of line? **/
-		    if (!*ptr)
-		        {
-			this->Flags |= MLX_F_INCOMM;
-			}
-		    else
-		        {
-			ptr += 2;
-			}
+		    mlxSkipChars(this,2);
+		    while(mlxPeekChar(this,0) != '*' && mlxPeekChar(this,1) != '/')
+			mlxSkipChars(this,1);
+		    mlxSkipChars(this,2);
+		    continue;
 		    }
 		}
+	    else
+		{
+		ch = mlxPeekChar(this,0);
+		}
 
-	    /** At end of buffer?  Read another line. **/
-	    this->TokStartOffset = this->BytesRead - ((this->Buffer + this->BufCnt) - ptr);
-	    if (!*ptr)
-	        {
-		if ((this->Flags & MLX_F_FOUNDEOL) || !(this->Flags & MLX_F_EOL))
+	    /** Mark the beginning of the token **/
+	    this->TokStartOffset = this->BytesRead;
+
+	    /** Error? **/
+	    if (ch == MLX_ERROR)
+		{
+		mssError(0,"MLX","Unexpected end of data");
+		this->TokType = MLX_TOK_ERROR;
+		break;
+		}
+
+	    /** Handle end-of-line, either EOL or an EOF with no immediately preceding EOL. **/
+	    if ((ch == '\n' || (ch == MLX_EOF && this->TokType != MLX_TOK_EOL)) && (this->Flags & MLX_F_PROCLINE))
+		{
+		if (ch == '\n')
+		    this->Flags &= ~MLX_F_PROCLINE;
+
+		/** Return the EOL to the caller? **/
+		this->TokType = MLX_TOK_EOL;
+		this->Flags |= MLX_F_FOUNDEOL;
+		if (this->Flags & MLX_F_EOL)
+		    break; /* return it to caller */
+		else
+		    continue; /* continue processing */
+		}
+
+	    /** End of file?  If so, return EOF or ERROR.  But, if there was no immediately
+	     ** preceding EOL, give the line a chance to be processed first in LINEONLY mode
+	     **/
+	    if (ch == MLX_EOF && ((this->Flags & MLX_F_PROCLINE) || this->TokType == MLX_TOK_EOL))
+		{
+		if (this->Flags & MLX_F_EOF)
+		    this->TokType = MLX_TOK_EOF;
+		else
 		    {
-		    this->Flags &= ~MLX_F_FOUNDEOL;
-	            this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-		    if (this->BufCnt <= 0)
-		        {
-		        if (this->Flags & MLX_F_EOF)
-			    {
-			    this->TokType = MLX_TOK_EOF;
-			    }
-		        else
-			    {
-			    mssError(1,"MLX","Unexpected end-of-token-stream");
-			    this->TokType = MLX_TOK_ERROR;
-			    }
-		        break;
-		        }
-		    this->BufPtr = this->Buffer;
-		    ptr = this->Buffer;
+		    mssError(1,"MLX","Unexpected end of data");
+		    this->TokType = MLX_TOK_ERROR; /* read past end of file */
+		    }
+		break; /* return to caller */
+		}
+
+	    /** Mark the line as having been processed, if not already.  That
+	     ** way we make sure we return the line token (with LINEONLY) before
+	     ** we return the EOL token.
+	     **/
+	    if (!(this->Flags & MLX_F_PROCLINE))
+		{
+		if ((this->Flags & MLX_F_LINEONLY))
+		    {
+		    this->TokType = MLX_TOK_STRING;
+		    this->Delimiter = '\0';
+
+		    /** Copy data up until \n or EOF or ERROR. **/
+		    this->TokStrCnt = mlx_internal_Copy(this, this->TokString, sizeof(this->TokString), &found_end);
+
+		    /** If we stopped because of a full strbuf, make a note of it **/
+		    if (!found_end && mlxPeekChar(this,0) >= 0)
+			this->Flags |= MLX_F_INSTRING;
+		    this->Flags |= MLX_F_PROCLINE;
+		    break;
 		    }
 		else
 		    {
-		    this->TokType = MLX_TOK_EOL;
-		    this->Flags |= MLX_F_FOUNDEOL;
-		    break;
+		    this->Flags |= MLX_F_PROCLINE;
+		    continue;
 		    }
-		continue;
-	        }
+		}
 
-	    /** Ok, not an EOL/EOF token; reset tokstart. **/
-	    this->TokStartOffset = this->BytesRead - ((this->Buffer + this->BufCnt) - ptr);
-
-	    /** Ok, we're at something.  What is it? **/
-	    if (this->Flags & MLX_F_LINEONLY)
+	    /** Ok, we got a token here.  What is it? **/
+	    if (this->Flags & MLX_F_IFSONLY)
 	        {
-		this->TokStrCnt = 0;
-		found_end = 0;
-		while(1)
-		    {
-		    if (!*ptr)
-			{
-			if (found_end) break;
-			this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-			this->BufPtr = this->Buffer;
-			ptr = this->Buffer;
-			if (this->BufCnt <= 0 || !*ptr)
-			    {
-			    mssError(1,"MLX","Unterminated line at end of data");
-			    this->TokType = MLX_TOK_ERROR;
-			    break;
-			    }
-			}
-		    if (*ptr == '\n') found_end = 1;
-		    this->TokString[this->TokStrCnt++] = *(ptr++);
-		    if (this->TokStrCnt >= 255)
-		        {
-			this->Flags |= MLX_F_INSTRING;
-			break;
-			}
-		    }
-		if (this->TokType == MLX_TOK_ERROR) break;
-		this->TokString[this->TokStrCnt] = 0;
 		this->TokType = MLX_TOK_STRING;
-		this->Delimiter = '\0';
+
+		/** Copy until eof/error, whitespace, or buffer full **/
+		this->TokStrCnt = mlx_internal_Copy(this, this->TokString, sizeof(this->TokString), &found_end);
+
+		/** If we stopped because of a full strbuf, make a note of it **/
+		if (!found_end)
+		    this->Flags |= MLX_F_INSTRING;
 		break;
 		}
-	    else if (this->Flags & MLX_F_IFSONLY)
-	        {
-		this->TokStrCnt = 0;
-		while(*ptr != ' ' && *ptr != '\t' && *ptr != '\r' &&
-		      *ptr != '\n')
-		    {
-		    if (!*ptr)
-			{
-			this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-			this->BufPtr = this->Buffer;
-			ptr = this->Buffer;
-			if (this->BufCnt < 0)
-			    {
-			    this->TokType = MLX_TOK_ERROR;
-			    break;
-			    }
-			if (this->BufCnt == 0 || !*ptr)
-			    break;
-			}
-		    this->TokString[this->TokStrCnt++] = *(ptr++);
-		    if (this->TokStrCnt >= 255)
-		        {
-			this->Flags |= MLX_F_INSTRING;
-			break;
-			}
-		    }
-		if (this->TokType == MLX_TOK_ERROR) break;
-		this->TokString[this->TokStrCnt] = 0;
-		this->TokType = MLX_TOK_STRING;
-		break;
-		}
-	    else if (*ptr == '\'' || *ptr == '"')
+
+	    /** Not LINEONLY, and not IFSONLY.  Check the actual data **/
+	    if (ch == '\'' || ch == '"')
 		{
-		this->Delimiter = *ptr;
-		this->Flags |= MLX_F_INSTRING;
-		ptr++;
-		this->TokStrCnt = 0;
+		/** A quoted string **/
 		this->TokType = MLX_TOK_STRING;
+		this->Delimiter = ch;
+		mlxSkipChars(this,1);
 
 		/** Keep scanning until delimiter, unless delimiter preceeded by an escape **/
-		prev_ch = '\0';
-		while(prev_ch == '\\' || *ptr != this->Delimiter)
+		this->TokStrCnt = mlx_internal_Copy(this, this->TokString, sizeof(this->TokString), &found_end);
+
+		/** Hit EOF or ERROR?  Oops. **/
+		if (!found_end && mlxPeekChar(this,0) < 0)
 		    {
-		    ch=*ptr;
-
-		    /** Load in more data? **/
-		    if (ch == '\0')
-			{
-			this->BufCnt = mlxReadLine(this,this->Buffer, 2047);
-			if (this->BufCnt <= 0)
-			    {
-			    mssError(1,"MLX","Unterminated string value");
-			    this->TokType = MLX_TOK_ERROR;
-			    break;
-			    }
-			this->BufPtr = this->Buffer;
-			ptr = this->Buffer;
-			continue;
-			}
-
-		    /** Allow escape of delimiter. **/
-		    if (prev_ch == '\\' && ch && !(this->Flags & MLX_F_NOUNESC))
-			{
-			if (ch == 'n') this->TokString[this->TokStrCnt-1]='\n'; 
-			else if (ch == 't') this->TokString[this->TokStrCnt-1]='\t';
-			else if (ch == 'r') this->TokString[this->TokStrCnt-1]='\r';
-			else this->TokString[this->TokStrCnt-1]=ch;
-			ptr++;
-			prev_ch = '\0';
-			continue;
-			}
-
-		    /** Verify no overrun **/
-		    if (this->TokStrCnt >= 256) 
-			break;
-
-		    /** Copy the char. **/
-		    this->TokString[this->TokStrCnt++] = ch;
-		    ptr++;
-		    prev_ch = ch;
+		    mssError(1,"MLX","Unterminated string value");
+		    this->TokType = MLX_TOK_ERROR;
+		    break;
 		    }
-		
+
 		/** Found delimiter? **/
-		if (*ptr == this->Delimiter)
-		    {
-		    ptr++;
-		    this->Flags &= ~MLX_F_INSTRING;
-		    this->TokString[this->TokStrCnt] = 0;
-		    }
+		if (!found_end)
+		    this->Flags |= MLX_F_INSTRING;
 		break;
 		}
-	    else if ((*ptr == '/' || (ptr[0] == '.' && ptr[1] == '/')) && 
+	    else if ((ch == '/' || (ch == '.' && mlxPeekChar(this,1) == '/')) && 
 	    	     this->Flags & MLX_F_FILENAMES)
 	        {
-		this->TokStrCnt = 0;
+		/** Got a filename **/
 		this->Delimiter = ' ';
 		this->TokType = MLX_TOK_FILENAME;
-		while(*ptr && *ptr != ' ' && *ptr != '\t' && *ptr != '\r' &&
-		      *ptr != '\n' && *ptr != ':')
-		    {
-		    this->TokString[this->TokStrCnt++] = *(ptr++);
-		    if (this->TokStrCnt >= 255)
-		        {
-			this->Flags |= MLX_F_INSTRING;
-			break;
-			}
-		    }
-		this->TokString[this->TokStrCnt] = 0;
+		this->TokStrCnt = mlx_internal_Copy(this, this->TokString, sizeof(this->TokString), &found_end);
+		if (!found_end)
+		    this->Flags |= MLX_F_INSTRING;
 		break;
 		}
-	    else if (*ptr == '{')
+	    else if (ch == '{')
 		{
-		if (ptr[1] == '{' && (this->Flags & MLX_F_DBLBRACE))
+		this->TokString[0] = '{';
+		if (mlxPeekChar(this,1) == '{' && (this->Flags & MLX_F_DBLBRACE))
 		    {
-		    this->TokString[0] = '{';
 		    this->TokString[1] = '{';
 		    this->TokStrCnt = 2;
 		    this->TokType = MLX_TOK_DBLOPENBRACE;
-		    ptr+=2;
 		    }
 		else
 		    {
-		    this->TokString[0] = *ptr;
 		    this->TokStrCnt = 1;
 		    this->TokType = MLX_TOK_OPENBRACE;
-		    ptr++;
 		    }
+		mlxSkipChars(this,this->TokStrCnt);
+		this->TokString[this->TokStrCnt] = '\0';
 		break;
 		}
-	    else if (*ptr == '}')
+	    else if (ch == '}')
 		{
-		if (ptr[1] == '}' && (this->Flags & MLX_F_DBLBRACE))
+		this->TokString[0] = '}';
+		if (mlxPeekChar(this,1) == '}' && (this->Flags & MLX_F_DBLBRACE))
 		    {
-		    this->TokString[0] = '}';
 		    this->TokString[1] = '}';
 		    this->TokStrCnt = 2;
 		    this->TokType = MLX_TOK_DBLCLOSEBRACE;
-		    ptr+=2;
 		    }
 		else
 		    {
-		    this->TokString[0] = *ptr;
 		    this->TokStrCnt = 1;
 		    this->TokType = MLX_TOK_CLOSEBRACE;
-		    ptr++;
 		    }
+		mlxSkipChars(this,this->TokStrCnt);
+		this->TokString[this->TokStrCnt] = '\0';
 		break;
 		}
-	    else if (*ptr == ':')
+	    else if (ch >= 0 && ch <= 255 && (ptr = strchr(s_tokens, (char)((unsigned char)ch))) != NULL && *ptr)
 		{
-		this->TokString[0] = *ptr;
+		/** single-char token that isn't dependent on what the next character is **/
+		this->TokString[0] = ch;
 		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_COLON;
-		ptr++;
+		this->TokType = s_tokid[ptr - s_tokens];
+		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (*ptr == '(')
-		{
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_OPENPAREN;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == ')')
-		{
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_CLOSEPAREN;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == '/')
+	    else if (ch == '.' && (mlxPeekChar(this,1) < '0' || mlxPeekChar(this,1) > '9'))
 	        {
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_SLASH;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == '$')
-	        {
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_DOLLAR;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == '.' && (ptr[1] < '0' || ptr[1] > '9'))
-	        {
-		this->TokString[0] = *ptr;
+		/** only a MLX_TOK_PERIOD if the next char is not a digit (that would make it part of a number) **/
+		this->TokString[0] = ch;
 		this->TokStrCnt = 1;
 		this->TokType = MLX_TOK_PERIOD;
-		ptr++;
+		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (*ptr == '+' && (ptr[1] < '0' || ptr[1] > '9'))
+	    else if (ch == '+' && (mlxPeekChar(this,1) < '0' || mlxPeekChar(this,1) > '9'))
 	        {
-		this->TokString[0] = *ptr;
+		/** only a MLX_TOK_PLUS if the next char is not a digit (that would make it part of a number) **/
+		this->TokString[0] = ch;
 		this->TokStrCnt = 1;
 		this->TokType = MLX_TOK_PLUS;
-		ptr++;
+		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (*ptr == '*')
-	        {
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_ASTERISK;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == '=' && ptr[1] != '=')
+	    else if (ch == '=' && mlxPeekChar(this,1) != '=')
 		{
-		this->TokString[0] = *ptr;
+		/** only a MLX_TOK_EQUALS if the next char is not also an equals (that would be MLX_TOK_COMPARE) **/
+		this->TokString[0] = ch;
 		this->TokStrCnt = 1;
 		this->TokType = MLX_TOK_EQUALS;
-		ptr++;
+		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (*ptr == ',')
-		{
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_COMMA;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == ';')
-		{
-		this->TokString[0] = *ptr;
-		this->TokStrCnt = 1;
-		this->TokType = MLX_TOK_SEMICOLON;
-		ptr++;
-		break;
-		}
-	    else if (*ptr == '=' || *ptr == '<' || *ptr == '>' || 
-		(*ptr == '!' && (ptr[1] == '=')))
+	    else if (ch == '=' || ch == '<' || ch == '>' || 
+		(ch == '!' && (mlxPeekChar(this,1) == '=')))
 		{
 		this->TokStrCnt = 0;
 		this->TokType = MLX_TOK_COMPARE;
 		this->TokInteger = 0;
-		invert = (*ptr == '!');
-		if (*ptr == '!') this->TokString[this->TokStrCnt++] = *(ptr++);
-		while(*ptr == '=' || *ptr == '<' || *ptr == '>')
+		invert = (ch == '!');
+		if (ch == '!')
 		    {
-		    this->TokString[this->TokStrCnt++] = *ptr;
-		    switch(*ptr)
+		    this->TokString[this->TokStrCnt++] = ch;
+		    mlxSkipChars(this,1);
+		    ch = mlxPeekChar(this,0);
+		    }
+		while ((ch == '=' || ch == '<' || ch == '>') && this->TokStrCnt < 2)
+		    {
+		    this->TokString[this->TokStrCnt++] = ch;
+		    switch(ch)
 		        {
 		        case '=': this->TokInteger |= MLX_CMP_EQUALS; break;
 		        case '<': this->TokInteger |= MLX_CMP_LESS; break;
 		        case '>': this->TokInteger |= MLX_CMP_GREATER; break;
 			}
-		    ptr++;
+		    mlxSkipChars(this,1);
+		    ch = mlxPeekChar(this,0);
 		    }
 		if (invert) this->TokInteger = 7 - this->TokInteger;
-		this->TokString[this->TokStrCnt] = 0;
+		this->TokString[this->TokStrCnt] = '\0';
 		break;
 		}
-	    else if (*ptr == '-' && !strchr("0123456789.",ptr[1]))
+	    else if (ch == '-' && !strchr("0123456789.",mlxPeekChar(this,1)))
 	        {
-		this->TokString[0] = *ptr;
+		/** only a MLX_TOK_PLUS if the next char is not a digit or period (that would make it part of a number) **/
+		this->TokString[0] = ch;
 		this->TokStrCnt = 1;
 		this->TokType = MLX_TOK_MINUS;
-		ptr++;
+		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (strchr("0123456789+-.",*ptr))
+	    else if (strchr("0123456789+-.",ch))
 		{
-		got_dot = (*ptr == '.')?1:0;
+		got_dot = (ch == '.')?1:0;
 		this->TokType = MLX_TOK_INTEGER;
 		this->TokStrCnt = 1;
-		this->TokString[0] = *(ptr++);
-		while(*ptr && (strchr("0123456789xabcdefABCDEF",*ptr) || (!got_dot && *ptr == '.')) && this->TokStrCnt<254)
+		this->TokString[0] = ch;
+		mlxSkipChars(this,1);
+		found_end=1;
+		while((ch = mlxPeekChar(this,0)) >= 0 && (strchr("0123456789xabcdefABCDEF",ch) || (!got_dot && ch == '.')))
 		    {
-		    if (*ptr == '.') got_dot = 1;
-		    this->TokString[this->TokStrCnt++] = *(ptr++);
+		    if (this->TokStrCnt >= 255)
+			{
+			found_end = 0;
+			break;
+			}
+		    if (ch == '.') got_dot = 1;
+		    this->TokString[this->TokStrCnt++] = ch;
+		    mlxSkipChars(this,1);
 		    }
 		if (got_dot) this->TokType = MLX_TOK_DOUBLE;
-		if (this->TokStrCnt >= 254) 
+		if (!found_end) 
 		    {
 		    mssError(1,"MLX","Bark!  Number is way way too long -- more than 255 digits!");
 		    this->TokType = MLX_TOK_ERROR;
 		    }
-		this->TokString[this->TokStrCnt] = 0;
+		this->TokString[this->TokStrCnt] = '\0';
+		errno = 0;
 		this->TokInteger = strtol(this->TokString, NULL, 0);
+		if (errno == ERANGE && this->TokType == MLX_TOK_INTEGER)
+		    {
+		    mssError(1,"MLX","Number exceeds 32-bit integer range");
+		    this->TokType = MLX_TOK_ERROR;
+		    break;
+		    }
 		this->TokDouble = strtod(this->TokString, NULL);
 		break;
 		}
-	    else if ((*ptr>='A' && *ptr<='Z') || (*ptr>='a' && *ptr<='z') || *ptr=='_')
+	    else if ((ch>='A' && ch<='Z') || (ch>='a' && ch<='z') || ch=='_')
 		{
 		this->TokType = MLX_TOK_KEYWORD;
 		this->TokStrCnt = 0;
-		while(*ptr && ((*ptr>='0' && *ptr<='9') || (*ptr>='A' && *ptr<='Z') ||
-		    (*ptr>='a' && *ptr<='z') || *ptr=='_' || *ptr=='.' || (*ptr=='-' && (this->Flags & MLX_F_DASHKW))) && this->TokStrCnt<254)
+		found_end = 1;
+		while(ch >= 0 && ((ch>='0' && ch<='9') || (ch>='A' && ch<='Z') ||
+		    (ch>='a' && ch<='z') || ch=='_' || ch=='.' || (ch=='-' && (this->Flags & MLX_F_DASHKW))))
 		    {
-		    this->TokString[this->TokStrCnt++] = *(ptr++);
+		    if (this->TokStrCnt >= 255)
+			{
+			found_end = 0;
+			break;
+			}
+		    this->TokString[this->TokStrCnt++] = ch;
+		    mlxSkipChars(this,1);
+		    ch = mlxPeekChar(this,0);
 		    }
-		if (this->TokStrCnt >= 254) 
+		if (!found_end)
 		    {
 		    mssError(1,"MLX","Keyword/reserved word is too long - max length is 255 characters");
 		    this->TokType = MLX_TOK_ERROR;
@@ -840,8 +965,6 @@ mlxNextToken(pLxSession this)
 		}
 	    }
 
-	this->BufPtr = ptr;
-
 	/** Differentiating string types? **/
 	if (this->Flags & MLX_F_SSTRING && this->Delimiter == '\'' && this->TokType == MLX_TOK_STRING)
 	    {
@@ -853,11 +976,25 @@ mlxNextToken(pLxSession this)
 	    {
 	    for(i=0;this->ReservedWords[i];i++)
 	        {
-		if (!strcasecmp(this->TokString,this->ReservedWords[i]))
+		if (((this->Flags & MLX_F_ICASER) && !strcasecmp(this->TokString,this->ReservedWords[i])) ||
+		    (!(this->Flags & MLX_F_ICASER) && !strcmp(this->TokString,this->ReservedWords[i])))
 		    {
 		    this->TokType = MLX_TOK_RESERVEDWD;
 		    break;
 		    }
+		}
+	    }
+
+	/** Need to lowercase the string? **/
+	if (((this->Flags & MLX_F_ICASEK) && this->TokType == MLX_TOK_KEYWORD) ||
+	    ((this->Flags & MLX_F_ICASER) && this->TokType == MLX_TOK_RESERVEDWD))
+	    {
+	    ptr = this->TokString;
+	    while(ptr < (this->TokString + this->TokStrCnt))
+		{
+		if (*ptr >= 'A' && *ptr <= 'Z')
+		    (*ptr) += ('a' - 'A');
+		ptr++;
 		}
 	    }
 
@@ -875,8 +1012,7 @@ char*
 mlxStringVal(pLxSession this, int* alloc)
     {
     char* ptr;
-    int len,cnt;
-    char* bptr;
+    int len,cnt,ccnt;
     char* nptr;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
@@ -888,15 +1024,6 @@ mlxStringVal(pLxSession this, int* alloc)
 	    mssError(0,"MLX","Attempt to obtain string value after error");
 	    return NULL;
 	    }
-	/*if (this->TokType != MLX_TOK_STRING && 
-	    this->TokType != MLX_TOK_INTEGER &&
-	    this->TokType != MLX_TOK_KEYWORD &&
-	    this->TokType != MLX_TOK_RESERVEDWD &&
-	    this->TokType != MLX_TOK_FILENAME)
-	    {
-	    if (alloc) *alloc = 0;
-	    return NULL;
-	    }*/
 
 	/** String too long and no alloc? **/
 	if (this->Flags & MLX_F_INSTRING && !alloc) 
@@ -914,94 +1041,42 @@ mlxStringVal(pLxSession this, int* alloc)
 	        len = MLX_BLK_SIZ;
 	    *alloc = 1;
 	    ptr = (char*)nmSysMalloc(len);
-	    cnt = 0;
-	    memcpy(ptr, this->TokString, this->TokStrCnt);
-	    cnt += this->TokStrCnt;
-	    bptr = this->BufPtr;
-	    while(this->Flags & MLX_F_INSTRING)
+	    if (!ptr)
 		{
-		if (this->Flags & MLX_F_LINEONLY)
-		    {
-		    if (*bptr == '\0') break;
-		    }
-		else if (this->Flags & MLX_F_IFSONLY)
-		    {
-		    if (*bptr == ' ' || *bptr == '\t' || *bptr == '\r' || *bptr == '\n') break;
-		    }
-		else
-		    {
-		    if (*bptr == this->Delimiter) break;
-		    }
-		if ((*bptr == ' ' || *bptr == ':' || *bptr == '\t' || *bptr == '\r' || *bptr == '\n') &&
-		    this->TokType == MLX_TOK_FILENAME) break;
-		if (*bptr == '\0')
-		    {
-		    this->BufCnt = mlxReadLine(this,this->Buffer, 2047);
-		    if (this->BufCnt <= 0)
-			{
-			mssError(1,"MLX","Unterminated string value");
-			this->TokType = MLX_TOK_ERROR;
-			*alloc = 0;
-			nmSysFree(ptr);
-			return NULL;
-			}
-		    this->BufPtr = this->Buffer;
-		    bptr = this->Buffer;
-		    continue;
-		    }
-		if (*bptr == '\\') 
-		    {
-		    bptr++;
-		    if (*bptr == 'n' || *bptr == 'r' || *bptr == 't')
-			{
-			if (*bptr == 'n') ptr[cnt] = '\n';
-			if (*bptr == 'r') ptr[cnt] = '\r';
-			if (*bptr == 't') ptr[cnt] = '\t';
-			bptr++;
-			}
-		    else ptr[cnt] = *(bptr++);
-		    }
-		else
-		    {
-		    ptr[cnt] = *(bptr++);
-		    }
-		cnt++;
-		if (cnt >= len-1)
-		    {
-		    len += MLX_BLK_SIZ;
-		    nptr = (char*)nmSysRealloc(ptr,len);
-		    if (!nptr)
-			{
-			this->TokType = MLX_TOK_ERROR;
-			*alloc = 0;
-			nmSysFree(ptr);
-			mssError(1,"MLX","Insufficient memory for string token");
-			return NULL;
-			}
-		    ptr = nptr;
-		    }
+		this->TokType = MLX_TOK_ERROR;
+		*alloc = 0;
+		mssError(1,"MLX","Insufficient memory for string token");
+		return NULL;
 		}
-	    if (this->Flags & MLX_F_INSTRING && this->Delimiter != '\0') bptr++; /* skip delimiter */
-	    this->BufPtr = bptr;
-	    ptr[cnt] = 0;
-	    this->Flags &= ~MLX_F_INSTRING;
+
+	    /** Copy what we have, then try to copy more from the source **/
+	    cnt = 0;
+	    while (1)
+		{
+		/** Try copying a block of the data **/
+		ccnt = mlxCopyToken(this, ptr+cnt, len-cnt);
+		cnt += ccnt;
+		if (ccnt == 0 || !(this->Flags & MLX_F_INSTRING)) break;
+
+		/** Need more space.  Allocate it. **/
+		len += MLX_BLK_SIZ;
+		nptr = (char*)nmSysRealloc(ptr,len);
+		if (!nptr)
+		    {
+		    this->TokType = MLX_TOK_ERROR;
+		    *alloc = 0;
+		    nmSysFree(ptr);
+		    mssError(1,"MLX","Insufficient memory for string token");
+		    return NULL;
+		    }
+		ptr = nptr;
+		}
 	    }
 	else
 	    {
+	    /** No alloc requested/needed.  Just point to TokString **/
 	    if (alloc) *alloc = 0;
 	    ptr = this->TokString;
-	    }
-
-	/** Need to lowercase the string? **/
-	if ((ptr && (this->Flags & MLX_F_ICASEK) && this->TokType == MLX_TOK_KEYWORD) ||
-	    (ptr && (this->Flags & MLX_F_ICASER) && this->TokType == MLX_TOK_RESERVEDWD))
-	    {
-	    nptr = ptr;
-	    while(*nptr)
-		{
-		if (*nptr >= 'A' && *nptr <= 'Z') (*nptr) += ('a' - 'A');
-		nptr++;
-		}
 	    }
 
     return ptr;
@@ -1051,100 +1126,46 @@ mlxDoubleVal(pLxSession this)
 int
 mlxCopyToken(pLxSession this, char* buffer, int maxlen)
     {
-    char* bptr;
     int cnt;
     int len;
-    char ch;
-    char* sptr;
+    int found_end;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 
-	/** Maybe buffer smaller than tok string? **/
-	if (maxlen-1 < this->TokStrCnt)
-	    {
-	    if ((this->TokType == MLX_TOK_RESERVEDWD && (this->Flags & MLX_F_ICASER)) ||
-	        (this->TokType == MLX_TOK_KEYWORD && (this->Flags & MLX_F_ICASEK)))
-		{
-		sptr = this->TokString;
-		bptr = buffer;
-		while(*sptr)
-		    {
-		    if (*sptr >= 'A' && *sptr <= 'Z')
-		        *(bptr++) = *(sptr++) + ('a' - 'A');
-		    else
-		        *(bptr++) = *(sptr++);
-		    }
-		}
-	    else
-	        {
-	        memcpy(buffer, this->TokString, maxlen-1);
-		}
-	    memmove(this->TokString, this->TokString+maxlen-1, 
-		this->TokStrCnt - (maxlen-1) + 1);
-	    this->TokStrCnt -= (maxlen-1);
-	    buffer[maxlen-1] = 0;
-	    return maxlen-1;
-	    }
-
-	cnt = 0;
-	if ((this->TokType == MLX_TOK_RESERVEDWD && (this->Flags & MLX_F_ICASER)) ||
-	    (this->TokType == MLX_TOK_KEYWORD && (this->Flags & MLX_F_ICASEK)))
-	    {
-	    sptr = this->TokString;
-	    bptr = buffer;
-	    while(*sptr)
-		{
-		if (*sptr >= 'A' && *sptr <= 'Z') 
-		    *(bptr++) = *(sptr++) + ('a' - 'A');
-		else
-		    *(bptr++) = *(sptr++);
-		}
-	    }
-	else
-	    {
-	    memcpy(buffer, this->TokString, this->TokStrCnt);
-	    }
+	/** Copy from TokString first **/
 	len = this->TokStrCnt;
-	if (!(this->Flags & MLX_F_INSTRING)) 
+	if (maxlen-1 < len)
+	    len = maxlen-1;
+	memcpy(buffer, this->TokString, len);
+	if (len < this->TokStrCnt)
+	    memmove(this->TokString, this->TokString + len, this->TokStrCnt - len + 1);
+	this->TokStrCnt -= len;
+	this->TokString[this->TokStrCnt] = '\0';
+	buffer[len] = '\0';
+	found_end = 1;
+
+	/** If more data available, and there is room for it, copy it too **/
+	if (this->Flags & MLX_F_INSTRING)
 	    {
-	    buffer[len] = 0;
-	    return len;
+	    found_end = 0;
+	    if (len < maxlen-1)
+		{
+		cnt = mlx_internal_Copy(this, buffer+len, maxlen - len, &found_end);
+		len += cnt;
+		buffer[len]=0;
+		if (found_end)
+		    this->Flags &= ~MLX_F_INSTRING;
+		}
 	    }
 
-	bptr = this->BufPtr;
-	while(*bptr != this->Delimiter && cnt < maxlen-1)
+	/** Unterminated string value? **/
+	if (!found_end && !(this->Flags & (MLX_F_IFSONLY | MLX_F_LINEONLY)) && this->TokType == MLX_TOK_STRING && mlxPeekChar(this,0) < 0)
 	    {
-	    if (*bptr == '\0')
-		{
-		this->BufCnt = mlxReadLine(this,this->Buffer, 2047);
-		if (this->BufCnt <= 0)
-		    {
-		    mssError(1,"MLX","Unterminated string value");
-		    this->TokType = MLX_TOK_ERROR;
-		    return -1;
-		    }
-		this->BufPtr = this->Buffer;
-		bptr = this->Buffer;
-		continue;
-		}
-	    ch = *bptr;
-	    if (*bptr == '\\') 
-		{
-		bptr++;
-		if (*bptr == 'n') ch='\n';
-		if (*bptr == 't') ch='\t';
-		if (*bptr == 'r') ch='\r';
-		else ch = *bptr;
-		}
-	    buffer[cnt] = ch;
-	    bptr++;
-	    cnt++;
+	    mssError(1,"MLX","Unterminated string value");
+	    this->TokType = MLX_TOK_ERROR;
 	    }
-	buffer[cnt]=0;
-	this->Flags &= ~MLX_F_INSTRING;
-	this->BufPtr = bptr;
-    
-    return cnt;
+
+    return len;
     }
 
 
@@ -1176,6 +1197,9 @@ mlxSetOptions(pLxSession this, int options)
     {
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
+
+	if ((options & MLX_F_LINEONLY) && !(this->Flags & MLX_F_LINEONLY))
+	    this->Flags &= ~MLX_F_PROCLINE;
 
     	this->Flags |= (options & (MLX_F_ICASE | MLX_F_IFSONLY | MLX_F_LINEONLY | MLX_F_SYMBOLMODE));
 
@@ -1272,7 +1296,7 @@ mlxGetCurOffset(pLxSession this)
 	 **/
 	if (this->BufCnt <= 0) return this->BytesRead;
 
-    return this->BytesRead - ((this->Buffer + this->BufCnt) - this->BufPtr);
+    return this->BytesRead;
     }
 
 
@@ -1301,20 +1325,10 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    this->BufPtr = this->Buffer;
 	    this->InpCnt = strlen(this->InpStartPtr);
 	    this->InpPtr = this->InpStartPtr + new_offset;
-	    this->Flags = this->Flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
-		    MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
-		    MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW |
-		    MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SYMBOLMODE | 
-		    MLX_F_CCOMM | MLX_F_TOKCOMM | MLX_F_NOUNESC |
-		    MLX_F_SSTRING);
+	    this->Flags = this->Flags & MLX_F_PUBLIC;
 	    this->Flags |= MLX_F_NOFILE;
 
 	    /** Read the first line. **/
-	    this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-	    if (this->BufCnt <= 0)
-		{
-		this->TokType = MLX_TOK_ERROR;
-		}
 	    this->BufPtr = this->Buffer;
 	    this->LineNumber = 1;
 	    this->TokStartOffset = new_offset;
@@ -1336,15 +1350,9 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    this->BufPtr = this->Buffer;
 	    this->InpCnt = 0;
 	    this->InpPtr = this->InpBuf;
-	    this->Flags = this->Flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
-		    MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
-		    MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW |
-		    MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SYMBOLMODE | 
-		    MLX_F_CCOMM | MLX_F_TOKCOMM | MLX_F_NOUNESC |
-		    MLX_F_SSTRING);
-	    this->Flags |= MLX_F_FOUNDEOL;
+	    this->Flags = this->Flags & MLX_F_PUBLIC;
 	    this->Buffer[0] = 0;
-	    this->LineNumber = 0;
+	    this->LineNumber = 1;
 	    this->BytesRead = new_offset;
 	    this->TokStartOffset = new_offset;
 	    }

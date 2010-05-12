@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.13 2008/04/01 03:19:00 gbeeley Exp $
+    $Id: mtsession.c,v 1.14 2010/05/12 18:21:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.14  2010/05/12 18:21:21  gbeeley
+    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
+      and for security.  Adding many test suite items for mtlexer, a good
+      fraction of which fail on the old mtlexer module.  The new module is
+      currently mildly slower than the old one, but is more correct.
+
     Revision 1.13  2008/04/01 03:19:00  gbeeley
     - (change) Handle supplementary group id's instead of just blanking out
       the supplementary group list.
@@ -495,7 +501,7 @@ mssError(int clr, char* module, char* message, ...)
 		else
 		    syslog(LOG_WARNING, "User '%s': %s: %.256s\n", s->UserName, module, xs.String);
 		}
-	    else
+	    else if (!strcmp(MSS.LogMethod, "stdout"))
 		{
 		printf("%s: %s: %s\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String);
 		}

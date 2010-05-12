@@ -21,10 +21,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.h,v 1.3 2005/02/26 04:32:02 gbeeley Exp $
+    $Id: mtlexer.h,v 1.4 2010/05/12 18:21:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtlexer.h,v $
 
     $Log: mtlexer.h,v $
+    Revision 1.4  2010/05/12 18:21:21  gbeeley
+    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
+      and for security.  Adding many test suite items for mtlexer, a good
+      fraction of which fail on the old mtlexer module.  The new module is
+      currently mildly slower than the old one, but is more correct.
+
     Revision 1.3  2005/02/26 04:32:02  gbeeley
     - moving include file install directory to include a "cxlib/" prefix
       instead of just putting 'em all in /usr/include with everything else.
@@ -53,27 +59,32 @@
 #include "cxlib/mtask.h"
 #endif
 
+#define	MLX_BUFSIZ	2048	/* amount of data to be read at a time from input */
+#define MLX_STRVAL	256	/* max size of non-copied string value */
+
 /** lexer session structure **/
 typedef struct _LX
     {
     int			Magic;
     char*		BufPtr;		/* ptr to next data */
     int			BufCnt;		/* length of buffer data */
-    char		Buffer[2048];	/* line buffer */
+    char		Buffer[MLX_BUFSIZ];	/* line buffer */
     char		Delimiter;	/* string delim. */
     int			Flags;
-    char		InpBuf[2049];	/* input buffer */
+    char		InpBuf[MLX_BUFSIZ + 1];	/* input buffer */
     char*		InpStartPtr;	/* start of data, for strings */
     char*		InpPtr;
     int			InpCnt;
     unsigned long	BytesRead;	/* for offset tracking */
     unsigned long	TokStartOffset;	/* for offset tracking */
-    char		TokString[256];	/* string val */
+    char		TokString[MLX_STRVAL];	/* string val */
     int			TokStrCnt;	/* counter for string value */
     int			TokInteger;	/* int val */
     double		TokDouble;	/* double val */
     int			TokType;	/* current token type */
     int			Hold;		/* hold current token. */
+    int			EndOfFile;	/* already hit end of file */
+    int			StreamErr;	/* already hit a read error */
     char**		ReservedWords;	/* reserved words */
     int			LineNumber;
     int			(*ReadFn)();
@@ -130,6 +141,8 @@ int mlxSetOffset(pLxSession this, unsigned long new_offset);
 #define MLX_TOK_SYMBOL		26	/* symbol mode +-=.,<> etc */
 #define MLX_TOK_SEMICOLON	27	/* semicolon ';' */
 #define MLX_TOK_SSTRING		28	/* string using single quotes */
+#define MLX_TOK_POUND		29	/* pound sign # */
+#define MLX_TOK_MAX		29	/* highest possible token value */
 
 /** Compare types -- get with mlxIntVal() **/
 #define MLX_CMP_EQUALS		1
@@ -161,6 +174,10 @@ int mlxSetOffset(pLxSession this, unsigned long new_offset);
 #define MLX_F_INCOMM		1048576	/* Inside a C-style comment (internal) */
 #define MLX_F_NOUNESC		2097152	/* Don't remove escapes in strings */
 #define MLX_F_SSTRING		4194304	/* Differentiate "" and '' strings */
+#define MLX_F_PROCLINE		8388608	/* (int) Line has been processed. */
+
+#define MLX_F_PUBLIC		(MLX_F_ICASE | MLX_F_POUNDCOMM | MLX_F_CCOMM | MLX_F_CPPCOMM | MLX_F_SEMICOMM | MLX_F_DASHCOMM | MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW | MLX_F_NODISCARD | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_LINEONLY | MLX_F_SYMBOLMODE | MLX_F_TOKCOMM | MLX_F_NOUNESC | MLX_F_SSTRING)
+#define	MLX_F_PRIVATE		(MLX_F_INSTRING | MLX_F_NOFILE | MLX_F_FOUNDEOL | MLX_F_INCOMM | MLX_F_PROCLINE)
 
 /** Other defines **/
 #define MLX_BLK_SIZ		1024
