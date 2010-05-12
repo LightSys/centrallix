@@ -841,6 +841,7 @@ if test -n "$ac_init_help"; then
 Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-profile        enable call graph profiler
   --enable-mtask-debug    enable mTask debugging support
   --enable-debugging      enable debugging support (-g enabled regardless,
                           unless optimization also turned on)
@@ -3948,6 +3949,24 @@ echo "${ECHO_T}yes" >&6
 echo "${ECHO_T}no" >&6
     fi
     CFLAGS="$temp"
+
+    echo "$as_me:$LINENO: checking if call graph profiling is desired" >&5
+echo $ECHO_N "checking if call graph profiling is desired... $ECHO_C" >&6
+    # Check whether --enable-profile or --disable-profile was given.
+if test "${enable_profile+set}" = set; then
+  enableval="$enable_profile"
+  PROFILE="$PROFILE"
+else
+  PROFILE=""
+
+fi;
+    if test "$PROFILE" = ""; then
+	echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+    else
+	echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+    fi
 
 
 
