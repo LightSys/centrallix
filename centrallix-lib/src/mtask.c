@@ -56,10 +56,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.44 2008/04/06 20:57:21 gbeeley Exp $
+    $Id: mtask.c,v 1.45 2010/05/12 18:18:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.45  2010/05/12 18:18:19  gbeeley
+    - (change) increasing per-thread stack size, as well as changing some of
+      the memory layout of the thread stacks in hopes of making valgrind happy,
+      though without success so far
+
     Revision 1.44  2008/04/06 20:57:21  gbeeley
     - (security) More fixes for handling of supplemental groups
 
@@ -306,8 +311,10 @@ int mtSched();
 
 #define MAX_EVENTS		256
 #define MAX_THREADS		256
-#define MAX_STACK		(31 * 1024)
-#define MT_STACK_HIGHWATER	(24 * 1024)
+#define MAX_STACK		(31 * 2048)
+#define MT_STACK_HIGHWATER	(24 * 2048)
+/*#define MAX_STACK		(31 * 1024)
+#define MT_STACK_HIGHWATER	(24 * 1024)*/
 #define MT_TASKSEP		256
 #define MT_TICK_MAX		1
 
@@ -891,6 +898,15 @@ mtRunStartFn(pThread new_thr, int idx)
     return 0; /* never returns */
     }
 
+
+int
+r_mtRun_PokeStack()
+    {
+    char buf[MAX_STACK - MT_TASKSEP*2];
+    buf[0] = buf[0];
+    return 0;
+    }
+
 int
 r_mtRun_Spacer()
     {
@@ -900,12 +916,16 @@ r_mtRun_Spacer()
      ** happy (and silent)....
      **/
     char buf[MT_TASKSEP];
-    buf[0] = buf[0];
+    buf[MT_TASKSEP-1] = buf[MT_TASKSEP-1];
 
     /*mprotect((char*)((int)(buf-MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
     MTASK.CurrentThread->Stack = (unsigned char*)buf;
+    r_mtRun_PokeStack();
 #ifdef USING_VALGRIND
-    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP, buf + MT_TASKSEP + 20);
+    /*MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);
+    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);*/
+    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
+    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
 #endif
     if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
@@ -921,11 +941,11 @@ r_mtRunStartFn()
      ** happy.
      **/
     char buf[MAX_STACK];
-    buf[0] = buf[0];
+    buf[MAX_STACK-1] = buf[MAX_STACK-1];
 
-    if (r_newidx < 0) return 0;
+    /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
-    r_mtRunStartFn();
+    /*r_mtRunStartFn();*/
     r_mtRun_Spacer();
     /* thExit(); */
     return 0;	/* should never return */
