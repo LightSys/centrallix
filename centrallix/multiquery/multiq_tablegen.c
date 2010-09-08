@@ -46,10 +46,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.11 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.12 2010/09/08 22:22:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.12  2010/09/08 22:22:43  gbeeley
+    - (bugfix) DELETE should only mark non-provided objects as null.
+    - (bugfix) much more intelligent join dependency checking, as well as
+      fix for queries containing mixed outer and non-outer joins
+    - (feature) support for two-level aggregates, as in select max(sum(...))
+    - (change) make use of expModifyParamByID()
+    - (change) disable RequestNotify mechanism as it needs to be reworked.
+
     Revision 1.11  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -193,6 +201,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 	    }
 
 	/** Build the binary image of the group by expression results **/
+/*#if 00*/
 	ptr = new_buf;
 	for(i=0;i<md->nGroupByItems;i++)
 	    {
@@ -241,13 +250,16 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 		    }
 		}
 	    }
+/* #endif 00 */
 
 	/** Ok, figure out if the group by columns changed **/
 	oldlen = md->GroupByLen;
 	md->GroupByLen = (ptr - new_buf);
+	/*md->GroupByLen = mq_internal_BuildBinaryImage(new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList);*/
+	if (md->GroupByLen < 0) return -1;
 	*new_ptr = new_buf;
 	if (md->GroupByPtr == NULL) return 1;
-	if (md->GroupByLen != oldlen || memcmp(cur_buf, new_buf, ptr - new_buf) != 0) return 1;
+	if (md->GroupByLen != oldlen || memcmp(cur_buf, new_buf, md->GroupByLen) != 0) return 1;
 
     return 0;
     }
@@ -438,6 +450,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i;
     pQueryElement cld;
+    pExpression exp;
 
     	/** First, evaluate all of the attributes that we 'own' **/
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
@@ -447,6 +460,13 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		mssError(0,"MQT","Could not evaluate SELECT item's value");
 		return -1;
 		}
+	    }
+
+	/** Clear aggregates - level 2 **/
+	for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
+	    {
+	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+	    if (exp) expResetAggregates(exp, -1, 2);
 	    }
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
@@ -503,7 +523,9 @@ int
 mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement cld;
-    int rval,ck;
+    int rval;
+    int fetch_rval = 0;
+    int ck;
     int i;
     pExpression exp;
     pMQTData md = (pMQTData)(qe->PrivateData);
@@ -521,7 +543,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	if (md->nGroupByItems == 0 && md->AggLevel == 0)
 	    {
 	    /** Next, retrieve until end or until end of group **/
-	    if (cld && qe->Children.nItems > 0)
+	    if (qe->Children.nItems > 0 && cld)
 	        {
 	        while(1)
 	            {
@@ -543,11 +565,11 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else
 	    {
-	    /** First, reset all aggregate counters/sums/etc **/
+	    /** Then, reset all aggregate counters/sums/etc - level 1 **/
 	    for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
 	        {
 	        exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	        expResetAggregates(exp, -1);
+	        if (exp) expResetAggregates(exp, -1, 1);
 	        }
 
 	    /** Restore a saved object list? **/
@@ -573,7 +595,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	    /** Prime with the first row if necessary **/
 	    if (qe->IterCnt == 1)
 	        {
-	        if (cld && qe->Children.nItems > 0)
+	        if (qe->Children.nItems > 0 && cld)
 		    {
 	            while(1)
 	                {
@@ -606,85 +628,143 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		mqt_internal_CheckGroupBy(qe, stmt, md, &(md->GroupByPtr));
 		}
 
-	    /** This is the group-by loop. **/
+	    /** This is the loop for a query with group-by and two-level aggregates **/
 	    while(1)
-	        {
-		/** Update all aggregate counters **/
-		for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
+		{
+		/** This is the group-by loop. **/
+		while(1)
 		    {
-	            exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-		    if (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL)
-		        {
-		        expUnlockAggregates(exp);
-		        expEvalTree(exp, stmt->Query->ObjList);
+		    /** Update all aggregate counters - level 1 **/
+		    for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
+			{
+			exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+			if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+			    {
+			    expUnlockAggregates(exp, 1);
+			    /*printf("\nBefore LEVEL 1 eval: \n");
+			    expDumpExpression(exp);*/
+			    expEvalTree(exp, stmt->Query->ObjList);
+			    /*printf("After LEVEL 1 eval: \n");
+			    expDumpExpression(exp);*/
+			    }
 			}
-		    }
 
-		/** Link to all objects in the current object list **/
-		memcpy(md->SavedObjList, stmt->Query->ObjList->Objects, stmt->Query->ObjList->nObjects*sizeof(pObject));
-		md->nObjects = stmt->Query->ObjList->nObjects;
-		for(i=0;i<md->nObjects;i++) 
-		    if (md->SavedObjList[i] && i>=stmt->Query->nProvidedObjects) 
-			objLinkTo(md->SavedObjList[i]);
-
-	        /** Next, retrieve until end or until end of group **/
-	        if (cld && qe->Children.nItems > 0)
-		    {
-	            while(1)
-	                {
-	                rval = cld->Driver->NextItem(cld, stmt);
-			if (rval <= 0) break;
-		        ck = mqt_internal_CheckConstraint(qe, stmt);
-		        if (ck < 0) return ck;
-		        if (ck == 1) break;
-		        }
-		    }
-	        else
-		    {
-	            rval = (qe->IterCnt==1)?1:0;
-		    ck = mqt_internal_CheckConstraint(qe, stmt);
-		    if (ck < 0) return ck;
-		    if (ck == 0) rval = 0;
-		    }
-
-		/** Last one? **/
-		if (rval == 0) 
-		    {
-		    for(i=0;i<md->nObjects;i++)
-		        {
-			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-			stmt->Query->ObjList->Objects[i] = tmp_obj;
-			}
-		    expAllObjChanged(stmt->Query->ObjList);
-		    md->IsLastRow = 1;
-		    return 1;
-		    }
-
-		/** Is this a group-end?  Return now if so. **/
-		if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || !cld || qe->Children.nItems == 0)
-		    {
-		    for(i=0;i<md->nObjects;i++)
-		        {
-			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-			stmt->Query->ObjList->Objects[i] = tmp_obj;
-			}
-		    expAllObjChanged(stmt->Query->ObjList);
-		    md->GroupByPtr = bptr;
-		    if (!cld || qe->Children.nItems == 0) md->IsLastRow = 1;
-		    return 1;
-		    }
-		else
-		    {
+		    /** Link to all objects in the current object list **/
+		    memcpy(md->SavedObjList, stmt->Query->ObjList->Objects, stmt->Query->ObjList->nObjects*sizeof(pObject));
+		    md->nObjects = stmt->Query->ObjList->nObjects;
 		    for(i=0;i<md->nObjects;i++) 
-			if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) 
-			    objClose(md->SavedObjList[i]);
+			if (md->SavedObjList[i] && i>=stmt->Query->nProvidedObjects) 
+			    objLinkTo(md->SavedObjList[i]);
+
+		    /** Next, retrieve until end or until end of group **/
+		    if (qe->Children.nItems > 0 && cld)
+			{
+			while(1)
+			    {
+			    rval = cld->Driver->NextItem(cld, stmt);
+			    if (rval <= 0) break;
+			    ck = mqt_internal_CheckConstraint(qe, stmt);
+			    if (ck < 0) return ck;
+			    if (ck == 1) break;
+			    }
+			}
+		    else
+			{
+			rval = (qe->IterCnt==1)?1:0;
+			ck = mqt_internal_CheckConstraint(qe, stmt);
+			if (ck < 0) return ck;
+			if (ck == 0) rval = 0;
+			}
+
+		    /** Last one? **/
+		    if (rval == 0) 
+			{
+			for(i=0;i<md->nObjects;i++)
+			    {
+			    tmp_obj = md->SavedObjList[i];
+			    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+			    stmt->Query->ObjList->Objects[i] = tmp_obj;
+			    }
+			expAllObjChanged(stmt->Query->ObjList);
+			md->IsLastRow = 1;
+			fetch_rval = 1;
+			break;
+			}
+
+		    /** Is this a group-end?  Return now if so. **/
+		    if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || qe->Children.nItems == 0 || !cld)
+			{
+			for(i=0;i<md->nObjects;i++)
+			    {
+			    tmp_obj = md->SavedObjList[i];
+			    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+			    stmt->Query->ObjList->Objects[i] = tmp_obj;
+			    }
+			expAllObjChanged(stmt->Query->ObjList);
+			md->GroupByPtr = bptr;
+			if (qe->Children.nItems == 0 || !cld) md->IsLastRow = 1;
+			fetch_rval = 1;
+			break;
+			}
+		    else
+			{
+			for(i=0;i<md->nObjects;i++) 
+			    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) 
+				objClose(md->SavedObjList[i]);
+			}
+		    }
+
+		/** One-level grouping?  Return now if so. **/
+		if (md->AggLevel < 2)
+		    break;
+
+		/** Got a row with 2-level grouping? **/
+		if (fetch_rval == 1 && md->AggLevel == 2)
+		    {
+		    /** Re-eval second level group **/
+		    for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
+			{
+			exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+			if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+			    {
+			    expUnlockAggregates(exp, 2);
+			    /*printf("\nBefore eval: \n");
+			    expDumpExpression(exp);*/
+			    expEvalTree(exp, stmt->Query->ObjList);
+			    /*printf("After eval: \n");
+			    expDumpExpression(exp);*/
+			    }
+			}
+		    }
+
+		/** 2-level group and this is the last row?  If so, return. **/
+		if (md->AggLevel == 2 && fetch_rval == 1 && md->IsLastRow)
+		    break;
+
+		/** Reset all aggregate counters/sums/etc - level 1 **/
+		for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
+		    {
+		    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+		    if (exp) expResetAggregates(exp, -1, 1);
+		    }
+
+		/** Force recalc **/
+		if (md->nObjects != 0)
+		    {
+		    for(i=0;i<md->nObjects;i++)
+			{
+			tmp_obj = md->SavedObjList[i];
+			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+			stmt->Query->ObjList->Objects[i] = tmp_obj;
+			if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) objClose(md->SavedObjList[i]);
+			}
+		    expAllObjChanged(stmt->Query->ObjList);
+		    md->nObjects = 0;
 		    }
 		}
 	    }
 
-    return 0;
+    return fetch_rval;
     }
 
 

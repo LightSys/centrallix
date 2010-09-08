@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <assert.h>
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
@@ -43,10 +44,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.13 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.14 2010/09/08 22:22:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.14  2010/09/08 22:22:43  gbeeley
+    - (bugfix) DELETE should only mark non-provided objects as null.
+    - (bugfix) much more intelligent join dependency checking, as well as
+      fix for queries containing mixed outer and non-outer joins
+    - (feature) support for two-level aggregates, as in select max(sum(...))
+    - (change) make use of expModifyParamByID()
+    - (change) disable RequestNotify mechanism as it needs to be reworked.
+
     Revision 1.13  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -595,7 +604,7 @@ mqpAnalyze(pQueryStatement stmt)
 		for(i=0;i<orderby_qs->Children.nItems;i++)
 		    {
 		    item = (pQueryStructure)(orderby_qs->Children.Items[i]);
-		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr)
+		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr && item->Expr->AggLevel == 0)
 		        {
 			j=0;
 			while(qe->OrderBy[j]) j++;
@@ -1095,6 +1104,9 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
+	if (additional_expr)
+	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);
+
 	mi->AddlExp = additional_expr;
 	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
 	mi->SourceIndex = 0;
@@ -1146,14 +1158,14 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		if (qe->IterCnt == 1)
 		    {
 		    if (row->Obj) objLinkTo(row->Obj);
-		    expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], row->Obj);
+		    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, row->Obj);
 		    return row->Obj?1:0;
 		    }
 		else if (qe->IterCnt == 2)
 		    {
 		    if (stmt->Query->ObjList->Objects[qe->SrcIndex])
 			objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
-		    stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
+		    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, NULL);
 		    }
 		return 0;
 		}
@@ -1164,7 +1176,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		&& !stmt->Query->ObjList->Objects[qe->SrcIndex] && qe->IterCnt == 1)
 	    {
 	    obj = objLinkTo(qe->LLSource);
-	    expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
+	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 
 	    if (mqp_internal_CheckConstraint(qe, stmt) > 0)
 		{
@@ -1176,7 +1188,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    else
 		{
 		objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
-		stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, NULL);
 		}
 	    }
 
@@ -1186,7 +1198,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    obj = mqp_internal_Recurse(qe, stmt, stmt->Query->ObjList->Objects[qe->SrcIndex]);
 	    if (obj)
 		{
-		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		return 1;
 		}
 	    }
@@ -1203,7 +1215,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 
 		/** "close" it **/
 		objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
-		stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, NULL);
 		}
 
 	    /** FROM OBJECT, or end of a subtree, won't have a LLQuery **/
@@ -1217,7 +1229,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		/** Got one. **/
 		if (saved_obj) objClose(saved_obj);
 		objUnmanageObject(stmt->Query->SessionID, obj);
-		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		if (qe->Flags & MQ_EF_FROMSUBTREE) mqp_internal_SetupSubtreeAttrs(qe, obj);
 		return 1;
 		}
@@ -1227,7 +1239,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		{
 		obj = mqp_internal_Return(qe, stmt, NULL);
 		if (!obj || obj == qe->LLSource) return 0;
-		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[qe->SrcIndex], obj);
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		}
 	    else
 		{
@@ -1281,7 +1293,7 @@ mqpFinish(pQueryElement qe, pQueryStatement stmt)
 	if (stmt->Query->ObjList->Objects[qe->SrcIndex])
 	    {
 	    objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
-	    stmt->Query->ObjList->Objects[qe->SrcIndex] = NULL;
+	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, NULL);
 	    }
 
 	if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);

@@ -45,10 +45,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.39 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiquery.c,v 1.40 2010/09/08 22:22:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.40  2010/09/08 22:22:43  gbeeley
+    - (bugfix) DELETE should only mark non-provided objects as null.
+    - (bugfix) much more intelligent join dependency checking, as well as
+      fix for queries containing mixed outer and non-outer joins
+    - (feature) support for two-level aggregates, as in select max(sum(...))
+    - (change) make use of expModifyParamByID()
+    - (change) disable RequestNotify mechanism as it needs to be reworked.
+
     Revision 1.39  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -463,6 +471,78 @@ mq_internal_AllocQS(int type)
     }
 
 
+/*** Build a 'binary image' of a list of fields that is suitable for comparison
+ *** in grouping and ordering.  Places that image in 'buf' and returns the
+ *** length in 'buf' that was used for the image.  Returns -1 on error.
+ ***/
+int
+mq_internal_BuildBinaryImage(char* buf, int buflen, pExpression* fields, int n_fields, pParamObjects objlist)
+    {
+    int i;
+    pExpression exp;
+    char* ptr;
+    char* cptr;
+    int clen;
+
+	ptr = buf;
+	for(i=0;i<n_fields;i++)
+	    {
+	    /** Evaluate the item **/
+	    exp = fields[i];
+	    if (expEvalTree(exp, objlist) < 0)
+	        {
+		mssError(0,"MQT","Error evaluating group-by item #%d",i+1);
+		return -1;
+		}
+
+	    /** Pick the data type and copy the stinkin thing **/
+	    if (ptr >= buf+buflen) return -1;
+	    if (exp->Flags & EXPR_F_NULL)
+	        {
+		*(ptr++) = '0';
+		}
+	    else
+	        {
+		*(ptr++) = '1';
+		switch(exp->DataType)
+		    {
+		    case DATA_T_INTEGER:
+			cptr = (char*)(exp->Integer);
+			clen = 4;
+			break;
+
+		    case DATA_T_STRING:
+			cptr = exp->String;
+			clen = (strlen(exp->String)+1);
+			break;
+
+		    case DATA_T_DATETIME:
+			cptr = (char*)(&(exp->Types.Date));
+			clen = sizeof(DateTime);
+			break;
+
+		    case DATA_T_MONEY:
+		        cptr = (char*)(&(exp->Types.Money));
+			clen = sizeof(MoneyType);
+			break;
+
+		    case DATA_T_DOUBLE:
+		        cptr = (char*)(&(exp->Types.Double));
+			clen = sizeof(double);
+			break;
+
+		    default:
+			return -1;
+		    }
+		if (ptr+clen > buf+buflen) return -1;
+		memcpy(ptr, cptr, clen);
+		}
+	    }
+
+    return (ptr - buf);
+    }
+
+
 /*** mq_internal_SetChainedReferences - for order by and group by clauses, the
  *** field lists might reference the result set column names rather than the
  *** source object attributes.  Here, we set those up so that the REFERENCED
@@ -497,6 +577,68 @@ mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
     }
 
 
+/*** mq_internal_SetCoverage - walk the QE tree and determine what parts
+ *** of the tree contain various object references.
+ ***/
+int
+mq_internal_SetCoverage(pQueryStatement stmt, pQueryElement tree)
+    {
+    int i;
+    pQueryElement subtree;
+
+	tree->CoverageMask = 0;
+
+	/** Determine dependencies on all subtrees **/
+	for(i=0;i<tree->Children.nItems;i++)
+	    {
+	    subtree = (pQueryElement)(tree->Children.Items[i]);
+	    mq_internal_SetCoverage(stmt, subtree);
+	    tree->CoverageMask |= subtree->CoverageMask;
+	    }
+
+	/** No children?  projection module - grab the src index **/
+	if (tree->Children.nItems == 0)
+	    tree->CoverageMask |= (1<<tree->SrcIndex);
+
+    return 0;
+    }
+
+
+/*** mq_internal_SetDependencies - walk the QE tree and determine what the
+ *** dependencies are for various projections and joins, as far as the 
+ *** constraints go.  This is mainly for outerjoin purposes, so we know
+ *** when we don't have to run the slave side of a join.
+ ***/
+int
+mq_internal_SetDependencies(pQueryStatement stmt, pQueryElement tree, pQueryElement parent)
+    {
+    int i;
+    pQueryElement subtree;
+
+	/** Parent's dependency mask applies to this too **/
+	if (parent)
+	    tree->DependencyMask = parent->DependencyMask;
+	else
+	    tree->DependencyMask = 0;
+
+	/** Determine dependencies based on constraint expressions **/
+	if (tree->Constraint)
+	    tree->DependencyMask |= tree->Constraint->ObjCoverageMask;
+
+	/** Determine dependencies on all subtrees **/
+	for(i=0;i<tree->Children.nItems;i++)
+	    {
+	    subtree = (pQueryElement)(tree->Children.Items[i]);
+	    mq_internal_SetDependencies(stmt, subtree, tree);
+	    }
+
+	/** Don't include *ourselves* in the dependency mask **/
+	tree->DependencyMask &= ~tree->CoverageMask;
+
+    return 0;
+    }
+
+
 /*** mq_internal_PostProcess - performs some additional processing on the
  *** SELECT, FROM, ORDER-BY, and WHERE clauses after the initial parse has been
  *** completed.
@@ -528,7 +670,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
 		    }
-		expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0)?EXPR_O_CURRENT:0);
+		expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
 		}
 	    if (from->Children.nItems > 1 && !has_identity && up)
 		{
@@ -538,6 +680,12 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    if (from->Children.nItems > 0 && !has_identity && dc)
 		{
 		/** Mark the first one as the identity source **/
+		subtree = (pQueryStructure)(from->Children.Items[0]);
+		subtree->Flags |= MQ_SF_IDENTITY;
+		}
+	    if (from->Children.nItems == 1 && !has_identity)
+		{
+		/** If only one source, it is the identity source **/
 		subtree = (pQueryStructure)(from->Children.Items[0]);
 		subtree->Flags |= MQ_SF_IDENTITY;
 		}
@@ -609,6 +757,10 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	        {
 		subtree->ObjFlags[j] = stmt->Query->ObjList->Flags[j];
 		if (subtree->ObjFlags[j] & EXPR_O_REFERENCED) cnt++;
+		}
+	    for(j=0;j<stmt->Query->nProvidedObjects;j++)
+		{
+		expFreezeOne(subtree->Expr, stmt->Query->ObjList, j);
 		}
 	    subtree->ObjCnt = cnt;
 	    }
@@ -799,6 +951,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 		where_item->Presentation[0] = 0;
 		where_item->Name[0] = 0;
 		where_item->Source[0] = 0;
+		where_item->Expr->Parent = NULL;
 		xaRemoveItem(&where_clause->Children,0);
 
 		/** Set the object cnt **/
@@ -817,6 +970,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 	    /** Convert the AND clause to an INTEGER node with value 1 **/
 	    where_clause->NodeType = EXPR_N_INTEGER;
 	    where_clause->ObjCoverageMask = 0;
+	    where_clause->ObjOuterMask = 0;
 	    where_clause->Integer = 1;
 	    }
 
@@ -873,6 +1027,7 @@ mq_internal_OptimizeExpr(pExpression *expr)
 		{
 		expr_tmp = *expr;
 		*expr = i1;
+		(*expr)->Parent = expr_tmp->Parent;
 		xaRemoveItem(&(expr_tmp->Children),1);
 		expFreeExpression(expr_tmp);
 		}
@@ -880,6 +1035,7 @@ mq_internal_OptimizeExpr(pExpression *expr)
 		{
 		expr_tmp = *expr;
 		*expr = i0;
+		(*expr)->Parent = expr_tmp->Parent;
 		xaRemoveItem(&(expr_tmp->Children),0);
 		expFreeExpression(expr_tmp);
 		}
@@ -1945,7 +2101,13 @@ mq_internal_DumpQE(pQueryElement tree, int level)
     int i;
 
     	/** print the driver type handling this tree **/
-	printf("%*.*sDRIVER=%s, CPTR=%8.8x, NC=%d\n",level*4,level*4,"",tree->Driver->Name,(unsigned int)(tree->Children.Items),tree->Children.nItems);
+	printf("%*.*sDRIVER=%s, CPTR=%8.8x, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
+	    (unsigned int)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
+
+	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
+	    printf(", IDX=%d, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Source);
+
+	printf("\n");
 
 	/** print child items **/
 	for(i=0;i<tree->Children.nItems;i++)
@@ -2298,6 +2460,10 @@ mq_internal_NextStatement(pMultiQuery this)
 		}
 	    }
 
+	/** Build dependency mask **/
+	mq_internal_SetCoverage(stmt, stmt->Tree);
+	mq_internal_SetDependencies(stmt, stmt->Tree, NULL);
+
 	/** Have the MQ drivers start the query. **/
 	if (stmt->Tree->Driver->Start(stmt->Tree, stmt, NULL) < 0)
 	    {
@@ -2391,17 +2557,19 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
     int i;
     pObject obj;
     int n;
+    pMultiQuery mq;
 
     	/** Close the query **/
 	n = inf->Stmt->Query->nProvidedObjects;
+	mq = inf->Stmt->Query;
 	mq_internal_CloseStatement(inf->Stmt);
-	mq_internal_QueryClose(inf->Stmt->Query, oxt);
+	mq_internal_QueryClose(mq, oxt);
 
 	/** Release all objects in our param list **/
 	for(i=n;i<inf->ObjList.nObjects;i++) if (inf->ObjList.Objects[i])
 	    {
 	    obj = (pObject)inf->ObjList.Objects[i];
-	    objRequestNotify(obj, mq_internal_UpdateNotify, inf, 0);
+	    /*objRequestNotify(obj, mq_internal_UpdateNotify, inf, 0);*/
 	    objClose(obj);
 	    }
 
@@ -2680,8 +2848,8 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	    for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++) 
 	        {
 	        obj = (pObject)(p->ObjList.Objects[i]);
-		if (obj) 
-		    objRequestNotify(obj, mq_internal_UpdateNotify, p, OBJ_RN_F_ATTRIB);
+		/*if (obj) 
+		    objRequestNotify(obj, mq_internal_UpdateNotify, p, OBJ_RN_F_ATTRIB);*/
 		}
 	    }
 

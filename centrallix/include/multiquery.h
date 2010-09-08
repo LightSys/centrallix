@@ -35,10 +35,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.15 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiquery.h,v 1.16 2010/09/08 22:22:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.16  2010/09/08 22:22:43  gbeeley
+    - (bugfix) DELETE should only mark non-provided objects as null.
+    - (bugfix) much more intelligent join dependency checking, as well as
+      fix for queries containing mixed outer and non-outer joins
+    - (feature) support for two-level aggregates, as in select max(sum(...))
+    - (change) make use of expModifyParamByID()
+    - (change) disable RequestNotify mechanism as it needs to be reworked.
+
     Revision 1.15  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -197,6 +205,8 @@ typedef struct _QE
     int			SlaveIterCnt;
     int			SrcIndex;
     int			SrcIndexSlave;
+    int			CoverageMask;		/* what objects the subtree contains (projections) */
+    int			DependencyMask;		/* what objects the subtree constraints "depend" on */
     pObject		LLSource;
     pObjQuery		LLQuery;
     void*		QSLinkage;
@@ -353,5 +363,6 @@ int mq_internal_FreeQE(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
+int mq_internal_BuildBinaryImage(char* buf, int buflen, pExpression* fields, int n_fields, pParamObjects objlist);
 
 #endif  /* not defined _MULTIQUERY_H */

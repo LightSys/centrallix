@@ -45,10 +45,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.15 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.16 2010/09/08 22:22:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.16  2010/09/08 22:22:43  gbeeley
+    - (bugfix) DELETE should only mark non-provided objects as null.
+    - (bugfix) much more intelligent join dependency checking, as well as
+      fix for queries containing mixed outer and non-outer joins
+    - (feature) support for two-level aggregates, as in select max(sum(...))
+    - (change) make use of expModifyParamByID()
+    - (change) disable RequestNotify mechanism as it needs to be reworked.
+
     Revision 1.15  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -681,6 +689,8 @@ mqjNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement master,slave;
     int rval;
+    int i;
+    int nullouter;
 
     	/** Do query in multiple-OR-fetch mode? **/
 	if (MQJ_ENABLE_PREFETCH) return mqj_internal_NextItemPrefetch(qe,stmt);
@@ -698,34 +708,46 @@ mqjNextItem(pQueryElement qe, pQueryStatement stmt)
 	        rval = master->Driver->NextItem(master, stmt);
 	        if (rval == 0 || rval < 0) return rval;
 	        qe->IterCnt++;
-		expFreezeEval(qe->Constraint, stmt->Query->ObjList, slave->SrcIndex);
-		if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL)
-		    {
+		/*expFreezeEval(qe->Constraint, stmt->Query->ObjList, slave->SrcIndex);*/
+		/*if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL)
+		    {*/
+		    /** If slave only depends on NULL outer elements, then don't run it **/
+		    nullouter = 0;
+		    for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
+			if (stmt->Query->ObjList->Objects[i] == NULL)
+			    nullouter |= (1<<i);
+		    if (slave->DependencyMask && (slave->DependencyMask & ~nullouter) == 0)
+			{
+			rval = 1;
+			break;
+			}
+
+		    /** Start the slave **/
 		    if (slave->Driver->Start(slave, stmt, qe->Constraint) < 0)
 			return -1;
 		    qe->Flags |= MQ_EF_SLAVESTART;
-		    }
+		    /*}*/
 	        }
 
 	    /** Ok, retrieve a slave row. **/
-	    if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) 
+	    /*if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) */
 	        rval = slave->Driver->NextItem(slave, stmt);
-	    else
-	        rval = 0;
+	    /*else
+	        rval = 0;*/
 	    if ((rval == 0 || rval < 0) && (qe->SlaveIterCnt > 0 || !(qe->Flags & MQ_EF_OUTERJOIN)))
 	        {
-		if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) 
-		    {
+		/*if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) 
+		    {*/
 		    slave->Driver->Finish(slave, stmt);
 		    qe->Flags &= ~MQ_EF_SLAVESTART;
-		    }
+		    /*}*/
 		qe->SlaveIterCnt = 0;
 		continue;
 		}
 	    else if (rval == 0 && (qe->Flags & MQ_EF_OUTERJOIN))
 		{
 		/** outer join with NULL row from slave **/
-		expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[slave->SrcIndex], NULL);
+		/*expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[slave->SrcIndex], NULL);*/
 		rval = 1;
 		}
 	    qe->SlaveIterCnt++;

@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_delete.c,v 1.2 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiq_delete.c,v 1.3 2010/09/08 22:22:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_delete.c,v $
 
     $Log: multiq_delete.c,v $
+    Revision 1.3  2010/09/08 22:22:43  gbeeley
+    - (bugfix) DELETE should only mark non-provided objects as null.
+    - (bugfix) much more intelligent join dependency checking, as well as
+      fix for queries containing mixed outer and non-outer joins
+    - (feature) support for two-level aggregates, as in select max(sum(...))
+    - (change) make use of expModifyParamByID()
+    - (change) disable RequestNotify mechanism as it needs to be reworked.
+
     Revision 1.2  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -309,7 +317,10 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    }
 
 	for(i=0;i<stmt->Query->ObjList->nObjects;i++)
-	    stmt->Query->ObjList->Objects[i] = NULL;
+	    {
+	    if (stmt->Query->ObjList->Objects[i] && i >= stmt->Query->nProvidedObjects)
+		stmt->Query->ObjList->Objects[i] = NULL;
+	    }
 
 	rval = 0;
 
