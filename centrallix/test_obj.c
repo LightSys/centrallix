@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.45 2009/06/24 15:58:12 gbeeley Exp $
+    $Id: test_obj.c,v 1.46 2010/09/08 21:40:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.46  2010/09/08 21:40:41  gbeeley
+    - (bugfix) when outputting text/csv data, change any newlines to spaces
+
     Revision 1.45  2009/06/24 15:58:12  gbeeley
     - (feature) comments (beginning with #) now allowed in test obj scripts
     - (bugfix) really long lines were messing up the test_obj saved command
@@ -910,7 +913,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			else if  (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE || attrtypes[i] == DATA_T_MONEY || attrtypes[i] == DATA_T_DATETIME)
 			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR", i!=0, ptr);
 			else
+			    {
+			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
+			    }
 			}
 		    fdPrintf(TESTOBJ.Output, "\n");
 		    objClose(obj);
