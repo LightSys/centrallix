@@ -4,6 +4,8 @@
 #include <fcntl.h>
 #include <time.h>
 #include <math.h>
+#include <stdlib.h>
+#include <errno.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -57,10 +59,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.18 2009/10/20 23:07:20 gbeeley Exp $
+    $Id: exp_functions.c,v 1.19 2010/09/08 21:55:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.19  2010/09/08 21:55:09  gbeeley
+    - (bugfix) allow /file/name:"attribute" to be quoted.
+    - (bugfix) order by ... asc/desc keywords are now case insenstive
+    - (bugfix) short-circuit eval was not resulting in aggregates properly
+      evaluating
+    - (change) new API function expModifyParamByID - use this for efficiency
+    - (feature) multi-level aggregate functions now supported, for use when
+      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
+    - (feature) added mathematical and trig functions radians, degrees, sin,
+      cos, tan, asin, acos, atan, atan2, sqrt, square
+
     Revision 1.18  2009/10/20 23:07:20  gbeeley
     - (feature) adding dateadd() function
 
@@ -361,11 +374,11 @@ int exp_fn_abs(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	switch(i0->DataType)
 	    {
 	    case DATA_T_INTEGER:
-	        tree->Integer = -i0->Integer;
+	        tree->Integer = abs(i0->Integer);
 	        break;
 
 	    case DATA_T_DOUBLE:
-	        tree->Types.Double = -i0->Types.Double;
+	        tree->Types.Double = fabs(i0->Types.Double);
 	        break;
 
 	    case DATA_T_MONEY:
@@ -438,15 +451,21 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
         {
 	tree->DataType = DATA_T_INTEGER;
 	tree->Flags |= EXPR_F_NULL;
+	i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
+	i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	return 0;
 	}
     if (i0->Integer != 0)
         {
 	/** True, return 2nd argument i1 **/
+	i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	if (exp_internal_EvalTree(i1,objlist) < 0)
 	    {
 	    return -1;
 	    }
+	if (i2->AggLevel > 0)
+	    if (exp_internal_EvalTree(i2,objlist) < 0)
+		return -1;
 	tree->DataType = i1->DataType;
 	if (i1->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
 	switch(i1->DataType)
@@ -459,6 +478,15 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
     else
         {
 	/** False, return 3rd argument i2 **/
+	if (i1->AggLevel > 0)
+	    {
+	    if (exp_internal_EvalTree(i1,objlist) < 0)
+		return -1;
+	    }
+	else
+	    {
+	    i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
+	    }
 	if (exp_internal_EvalTree(i2,objlist) < 0)
 	    {
 	    return -1;
@@ -1500,6 +1528,288 @@ int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pE
     return 0;
     }
 
+
+int exp_fn_radians(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+    double pi = 3.14159265358979323846;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","radians() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    tree->Types.Double = d*pi/180.0;
+    return 0;
+    }
+
+int exp_fn_degrees(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+    double pi = 3.14159265358979323846;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","degrees() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    tree->Types.Double = d*180.0/pi;
+    return 0;
+    }
+
+
+int exp_fn_sin(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","sin() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    tree->Types.Double = sin(d);
+    return 0;
+    }
+
+
+int exp_fn_cos(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","cos() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    tree->Types.Double = cos(d);
+    return 0;
+    }
+
+
+int exp_fn_tan(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","tan() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    tree->Types.Double = tan(d);
+    return 0;
+    }
+
+
+int exp_fn_asin(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","asin() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    errno = 0;
+    tree->Types.Double = asin(d);
+    if (errno == EDOM)
+	tree->Flags |= EXPR_F_NULL;
+    return 0;
+    }
+
+
+int exp_fn_acos(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","acos() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    errno = 0;
+    tree->Types.Double = acos(d);
+    if (errno == EDOM)
+	tree->Flags |= EXPR_F_NULL;
+    return 0;
+    }
+
+
+int exp_fn_atan(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","atan() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    errno = 0;
+    tree->Types.Double = atan(d);
+    if (errno == EDOM)
+	tree->Flags |= EXPR_F_NULL;
+    return 0;
+    }
+
+
+int exp_fn_atan2(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d1, d2;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || !i1 || (i1->DataType != DATA_T_INTEGER && i1->DataType != DATA_T_DOUBLE))
+	{
+	mssError(1,"EXP","atan2() requires two numeric (integer or double) parameters");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d1 = i0->Integer;
+    else
+	d1 = i0->Types.Double;
+    if (i1->DataType == DATA_T_INTEGER)
+	d2 = i1->Integer;
+    else
+	d2 = i1->Types.Double;
+    errno = 0;
+    tree->Types.Double = atan2(d1, d2);
+    if (errno == EDOM)
+	tree->Flags |= EXPR_F_NULL;
+    return 0;
+    }
+
+
+int exp_fn_sqrt(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double d;
+
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","sqrt() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = DATA_T_DOUBLE;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	d = i0->Integer;
+    else
+	d = i0->Types.Double;
+    errno = 0;
+    tree->Types.Double = sqrt(d);
+    if (errno == EDOM)
+	tree->Flags |= EXPR_F_NULL;
+    return 0;
+    }
+
+
+int exp_fn_square(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE) || i1)
+	{
+	mssError(1,"EXP","square() requires a single numeric (integer or double) parameter");
+	return -1;
+	}
+    tree->DataType = i0->DataType;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i0->DataType == DATA_T_INTEGER)
+	tree->Integer = i0->Integer * i0->Integer;
+    else
+	tree->Types.Double = i0->Types.Double * i0->Types.Double;
+    return 0;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -1610,6 +1920,8 @@ int exp_fn_avg(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    sumexp->Types.Double = 0;
 	    sumexp->Types.Money.FractionPart = 0;
 	    sumexp->Types.Money.WholePart = 0;
+
+	    cntexp->Integer = 0;
 	    }
 
 	/** Do the count() part. **/
@@ -1888,6 +2200,17 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
 	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
 	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
+	xhAdd(&EXP.Functions, "sin", (char*)exp_fn_sin);
+	xhAdd(&EXP.Functions, "cos", (char*)exp_fn_cos);
+	xhAdd(&EXP.Functions, "tan", (char*)exp_fn_tan);
+	xhAdd(&EXP.Functions, "asin", (char*)exp_fn_asin);
+	xhAdd(&EXP.Functions, "acos", (char*)exp_fn_acos);
+	xhAdd(&EXP.Functions, "atan", (char*)exp_fn_atan);
+	xhAdd(&EXP.Functions, "atan2", (char*)exp_fn_atan2);
+	xhAdd(&EXP.Functions, "sqrt", (char*)exp_fn_sqrt);
+	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
+	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
+	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);

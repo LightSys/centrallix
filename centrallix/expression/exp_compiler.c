@@ -47,10 +47,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.20 2010/01/10 07:33:23 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.21 2010/09/08 21:55:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.21  2010/09/08 21:55:09  gbeeley
+    - (bugfix) allow /file/name:"attribute" to be quoted.
+    - (bugfix) order by ... asc/desc keywords are now case insenstive
+    - (bugfix) short-circuit eval was not resulting in aggregates properly
+      evaluating
+    - (change) new API function expModifyParamByID - use this for efficiency
+    - (feature) multi-level aggregate functions now supported, for use when
+      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
+    - (feature) added mathematical and trig functions radians, degrees, sin,
+      cos, tan, asin, acos, atan, atan2, sqrt, square
+
     Revision 1.20  2010/01/10 07:33:23  gbeeley
     - (performance) reduce the number of times that subqueries are executed by
       only re-evaluating them if one of the ObjList entries has changed
@@ -516,7 +527,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			etmp->Name = mlxStringVal(lxs,&(etmp->NameAlloc));
 			etmp->ObjID = -1;
 			etmp->ObjCoverageMask = 0;
-			if (mlxNextToken(lxs) != MLX_TOK_COLON || mlxNextToken(lxs) != MLX_TOK_KEYWORD)
+			if (mlxNextToken(lxs) != MLX_TOK_COLON || ((t = mlxNextToken(lxs)) != MLX_TOK_KEYWORD && t != MLX_TOK_STRING))
 			    {
                             expFreeExpression(etmp);
                             if (expr) expFreeExpression(expr);
@@ -727,12 +738,12 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 	    if (t == MLX_TOK_KEYWORD && (cmpflags & EXPR_CMP_ASCDESC))
 	        {
 		sptr = mlxStringVal(lxs,NULL);
-		if (!strcmp(sptr,"desc"))
+		if (!strcasecmp(sptr,"desc"))
 		    {
 		    expr->Flags |= EXPR_F_DESC;
 		    break;
 		    }
-		else if (!strcmp(sptr,"asc"))
+		else if (!strcasecmp(sptr,"asc"))
 		    {
 		    break;
 		    }
@@ -998,11 +1009,13 @@ exp_internal_SetAggLevel(pExpression exp)
     {
     int i;
     int max_level = 0,rval;
+    pExpression child;
 
     	/** First, search for the max level of child expressions **/
 	for(i=0;i<exp->Children.nItems;i++)
 	    {
-	    rval = exp_internal_SetAggLevel((pExpression)(exp->Children.Items[i]));
+	    child = (pExpression)(exp->Children.Items[i]);
+	    rval = exp_internal_SetAggLevel(child);
 	    if (rval > max_level) max_level = rval;
 	    }
 

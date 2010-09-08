@@ -46,10 +46,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.13 2010/01/10 07:33:23 gbeeley Exp $
+    $Id: exp_params.c,v 1.14 2010/09/08 21:55:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.14  2010/09/08 21:55:09  gbeeley
+    - (bugfix) allow /file/name:"attribute" to be quoted.
+    - (bugfix) order by ... asc/desc keywords are now case insenstive
+    - (bugfix) short-circuit eval was not resulting in aggregates properly
+      evaluating
+    - (change) new API function expModifyParamByID - use this for efficiency
+    - (feature) multi-level aggregate functions now supported, for use when
+      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
+    - (feature) added mathematical and trig functions radians, degrees, sin,
+      cos, tan, asin, acos, atan, atan2, sqrt, square
+
     Revision 1.13  2010/01/10 07:33:23  gbeeley
     - (performance) reduce the number of times that subqueries are executed by
       only re-evaluating them if one of the ObjList entries has changed
@@ -382,6 +393,13 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 	    }
 	if (slot_id < 0) return -1;
 
+    return expModifyParamByID(this, slot_id, replace_obj);
+    }
+
+int
+expModifyParamByID(pParamObjects this, int slot_id, pObject replace_obj)
+    {
+
 	/** Replace the object. **/
 	this->Objects[slot_id] = replace_obj;
 	this->Flags[slot_id] |= EXPR_O_CHANGED;
@@ -534,22 +552,22 @@ expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
  *** all objects.
  ***/
 int
-expResetAggregates(pExpression this, int reset_id)
+expResetAggregates(pExpression this, int reset_id, int level)
     {
     /*this->Flags |= EXPR_F_DORESET;*/
-    exp_internal_ResetAggregates(this,reset_id);
+    exp_internal_ResetAggregates(this,reset_id, level);
     return 0;
     }
 
 int
-exp_internal_ResetAggregates(pExpression this, int reset_id)
+exp_internal_ResetAggregates(pExpression this, int reset_id, int level)
     {
     int i;
     int found_agg=0,rval;
 
     	/** Check reset on this. **/
 	if (this->NodeType == EXPR_N_FUNCTION && (this->Flags & EXPR_F_AGGREGATEFN) &&
-	    (this->ObjID == reset_id || reset_id < 0))
+	    this->AggLevel == level && (this->ObjID == reset_id || reset_id < 0))
 	    {
 	    this->AggCount = 0;
 	    this->AggValue = 0;
@@ -583,7 +601,7 @@ exp_internal_ResetAggregates(pExpression this, int reset_id)
 	/** Check all sub-nodes **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    rval = exp_internal_ResetAggregates((pExpression)(this->Children.Items[i]), reset_id);
+	    rval = exp_internal_ResetAggregates((pExpression)(this->Children.Items[i]), reset_id, level);
 	    if (rval) found_agg = 1;
 	    }
 
@@ -595,16 +613,17 @@ exp_internal_ResetAggregates(pExpression this, int reset_id)
  *** in the next expEvalTree operation.
  ***/
 int
-expUnlockAggregates(pExpression this)
+expUnlockAggregates(pExpression this, int level)
     {
     int i;
 
     	/** Unlock on this node. **/
-	this->Flags &= ~EXPR_F_AGGLOCKED;
+	if (this->AggLevel == level)
+	    this->Flags &= ~EXPR_F_AGGLOCKED;
 
 	/** Unlock child nodes **/
 	for(i=0;i<this->Children.nItems;i++) 
-	    expUnlockAggregates((pExpression)(this->Children.Items[i]));
+	    expUnlockAggregates((pExpression)(this->Children.Items[i]), level);
 
     return 0;
     }
@@ -736,5 +755,17 @@ expAllObjChanged(pParamObjects objlist)
 	/** stamp a new objlist serial id **/
 	objlist->PSeqID = EXP.PSeqID++;
 
+    return 0;
+    }
+
+
+/*** expSetCurrentID() - set the object that is considered the 'current' object,
+ *** that is, the one referred to by :attr without a :obj:attr.
+ ***/
+int
+expSetCurrentID(pParamObjects objlist, int current_id)
+    {
+    if (current_id >= 0 && current_id < objlist->nObjects)
+	objlist->CurrentID = current_id;
     return 0;
     }

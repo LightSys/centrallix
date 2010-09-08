@@ -67,10 +67,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.25 2010/01/10 07:33:23 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.26 2010/09/08 21:55:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.26  2010/09/08 21:55:09  gbeeley
+    - (bugfix) allow /file/name:"attribute" to be quoted.
+    - (bugfix) order by ... asc/desc keywords are now case insenstive
+    - (bugfix) short-circuit eval was not resulting in aggregates properly
+      evaluating
+    - (change) new API function expModifyParamByID - use this for efficiency
+    - (feature) multi-level aggregate functions now supported, for use when
+      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
+    - (feature) added mathematical and trig functions radians, degrees, sin,
+      cos, tan, asin, acos, atan, atan2, sqrt, square
+
     Revision 1.25  2010/01/10 07:33:23  gbeeley
     - (performance) reduce the number of times that subqueries are executed by
       only re-evaluating them if one of the ObjList entries has changed
@@ -1006,26 +1017,36 @@ int
 expEvalAnd(pExpression tree, pParamObjects objlist)
     {
     int i,t;
+    int short_circuiting = 0;
+    pExpression child;
 
 	/** Loop through items... **/
 	tree->DataType = DATA_T_INTEGER;
+	tree->Integer = 1;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
-	    t=exp_internal_EvalTree((pExpression)(tree->Children.Items[i]),objlist);
-	    if (t < 0 || ((pExpression)(tree->Children.Items[i]))->DataType != DATA_T_INTEGER) 
-	        {
-		mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
-		return -1;
-		}
-	    if (((pExpression)(tree->Children.Items[i]))->Integer == 0) 
+	    child = (pExpression)(tree->Children.Items[i]);
+	    if (short_circuiting)
 		{
-		tree->Integer = 0;
-		return 0;
+		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		}
+	    else
+		{
+		t=exp_internal_EvalTree(child,objlist);
+		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		    {
+		    mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
+		    return -1;
+		    }
+		if (child->Integer == 0) 
+		    {
+		    tree->Integer = 0;
+		    short_circuiting = 1;
+		    }
 		}
 	    }
-	tree->Integer = 1;
 
-    return 1;
+    return tree->Integer;
     }
 
 
@@ -1035,26 +1056,36 @@ int
 expEvalOr(pExpression tree, pParamObjects objlist)
     {
     int i,t;
+    int short_circuiting = 0;
+    pExpression child;
 
     	/** Loop through items **/
 	tree->DataType = DATA_T_INTEGER;
+	tree->Integer = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
-	    t=exp_internal_EvalTree((pExpression)(tree->Children.Items[i]),objlist);
-	    if (t < 0 || ((pExpression)(tree->Children.Items[i]))->DataType != DATA_T_INTEGER) 
-	        {
-		mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
-		return -1;
-		}
-	    if (((pExpression)(tree->Children.Items[i]))->Integer == 1) 
+	    child = (pExpression)(tree->Children.Items[i]);
+	    if (short_circuiting)
 		{
-		tree->Integer = 1;
-		return 1;
+		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		}
+	    else
+		{
+		t=exp_internal_EvalTree(child,objlist);
+		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		    {
+		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
+		    return -1;
+		    }
+		if (child->Integer == 1) 
+		    {
+		    tree->Integer = 1;
+		    short_circuiting = 1;
+		    }
 		}
 	    }
-	tree->Integer = 0;
 
-    return 0;
+    return tree->Integer;;
     }
 
 
@@ -1480,7 +1511,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	setfn = objlist->SetAttrFn[id];
 
 	/** Set it as modified -- so it gets a new serial # **/
-	expModifyParam(objlist, objlist->Names[id], obj);
+	expModifyParamByID(objlist, id, obj);
 
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
@@ -1784,7 +1815,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
     	/** Flag set to reset aggregate values? **/
 	if (tree->Flags & EXPR_F_DORESET) 
 	    {
-	    exp_internal_ResetAggregates(tree,-1);
+	    exp_internal_ResetAggregates(tree,-1,1);
 	    tree->Flags &= ~EXPR_F_DORESET;
 	    /*expEvalTree(tree,objlist);*/
 	    }
@@ -1841,6 +1872,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    tree->Control->PSeqID = objlist->PSeqID;
 	    memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
 	    objlist->MainFlags &= ~EXPR_MO_RECALC;
+	    objlist->CurControl = NULL;
 	    }
 
     return v;
@@ -1855,6 +1887,8 @@ int
 exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
     {
     int (*fn)();
+    int old_objmask;
+    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1871,11 +1905,15 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	if (!(objlist && (objlist->MainFlags & EXPR_MO_RECALC)) && !(tree->Flags & EXPR_F_NEW)) return 0;
 	tree->Flags &= ~EXPR_F_NEW;
 #endif
+
+	old_objmask = objlist->ModCoverageMask;
+	objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
 	
 	/** If node is NOT stale and NOT in modified cov mask, return now. **/
 	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
 	    {
 	    /*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
+	    objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	tree->Flags &= ~EXPR_F_NEW;
@@ -1884,8 +1922,15 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
 	/*if (tree->NodeType == EXPR_N_LIST) return -1;*/
 	fn = EXP.EvalFunctions[tree->NodeType];
-	if (!fn) return 0;
-	return fn(tree,objlist);
+	if (!fn)
+	    {
+	    objlist->ModCoverageMask = old_objmask;
+	    return 0;
+	    }
+	rval = fn(tree,objlist);
+	objlist->ModCoverageMask = old_objmask;
+	tree->ObjDelayChangeMask = 0;
+	return rval;
 
 #if 00
 	switch(tree->NodeType)

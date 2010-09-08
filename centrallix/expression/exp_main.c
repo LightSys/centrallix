@@ -46,10 +46,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.14 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: exp_main.c,v 1.15 2010/09/08 21:55:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.15  2010/09/08 21:55:09  gbeeley
+    - (bugfix) allow /file/name:"attribute" to be quoted.
+    - (bugfix) order by ... asc/desc keywords are now case insenstive
+    - (bugfix) short-circuit eval was not resulting in aggregates properly
+      evaluating
+    - (change) new API function expModifyParamByID - use this for efficiency
+    - (feature) multi-level aggregate functions now supported, for use when
+      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
+    - (feature) added mathematical and trig functions radians, degrees, sin,
+      cos, tan, asin, acos, atan, atan2, sqrt, square
+
     Revision 1.14  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -205,6 +216,7 @@ expAllocExpression()
 	expr->Parent = NULL;
 	expr->Flags = EXPR_F_NEW;
 	expr->ObjCoverageMask = 0;
+	expr->ObjDelayChangeMask = 0;
 	expr->ObjID = -1;
 	expr->AggExp = NULL;
 	expr->AggCount = 0;
