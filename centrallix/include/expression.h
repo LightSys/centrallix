@@ -34,10 +34,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.19 2010/01/10 07:33:23 gbeeley Exp $
+    $Id: expression.h,v 1.20 2010/09/08 22:01:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.20  2010/09/08 22:01:25  gbeeley
+    - (bugfix) allow /file/name:"attribute" to be quoted.
+    - (bugfix) order by ... asc/desc keywords are now case insenstive
+    - (bugfix) short-circuit eval was not resulting in aggregates properly
+      evaluating
+    - (change) new API function expModifyParamByID - use this for efficiency
+    - (feature) multi-level aggregate functions now supported, for use when
+      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
+    - (feature) added mathematical and trig functions radians, degrees, sin,
+      cos, tan, asin, acos, atan, atan2, sqrt, square
+
     Revision 1.19  2010/01/10 07:33:23  gbeeley
     - (performance) reduce the number of times that subqueries are executed by
       only re-evaluating them if one of the ObjList entries has changed
@@ -266,6 +277,7 @@ typedef struct _ET
 	}
 	Types;
     int			ObjCoverageMask;
+    int			ObjDelayChangeMask;
     int			ObjOuterMask;
     int			AggCount;
     int			AggValue;
@@ -444,15 +456,16 @@ int expFreeParamList(pParamObjects this);
 int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());
 int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
 int expModifyParam(pParamObjects this, char* name, pObject replace_obj);
+int expModifyParamByID(pParamObjects this, int id, pObject replace_obj);
 int expLookupParam(pParamObjects this, char* name);
 int expSyncModify(pExpression tree, pParamObjects objlist);
 int expReplaceID(pExpression tree, int oldid, int newid);
 int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
 int expFreezeOne(pExpression tree, pParamObjects objlist, int freeze_id);
 int expReplaceVariableID(pExpression tree, int newid);
-int expResetAggregates(pExpression tree, int reset_id);
-int exp_internal_ResetAggregates(pExpression tree, int reset_id);
-int expUnlockAggregates(pExpression tree);
+int expResetAggregates(pExpression tree, int reset_id, int level);
+int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
+int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
@@ -460,5 +473,6 @@ int expClearRemapping(pExpression tree);
 int expObjChanged(pParamObjects this, pObject obj);
 int expContainsAttr(pExpression exp, int objid, char* attrname);
 int expAllObjChanged(pParamObjects this);
+int expSetCurrentID(pParamObjects this, int current_id);
 
 #endif /* not defined _EXPRESSION_H */
