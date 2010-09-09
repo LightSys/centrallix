@@ -88,6 +88,7 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     l_page.fieldname = fieldname;
     l_page.tabindex = this.tabs.length+1;
     htr_init_layer(l_page,l,'tc_pn');
+    ifc_init_widget(l_page);
     if (l.tloc != 4) 
 	{
 	htr_init_layer(l_tab,l,'tc');
@@ -186,7 +187,11 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     l_page.Reveal = tc_cb_reveal;
     pg_reveal_register_triggerer(l_page);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-    htr_watch(l_page,"visible", "tc_visible_changed"); //visible property
+    l_page.is_visible = (l.tloc != 4 && htr_getvisibility(l_tab) == 'inherit');
+
+    var iv = l_page.ifcProbeAdd(ifValue);
+    iv.Add("visible", "is_visible");
+    htr_watch(l_page,"is_visible", "tc_visible_changed"); //visible property
     l_page.tc_visible_changed = tc_visible_changed;
 
     // Show Container API
@@ -440,8 +445,8 @@ function tc_visible_changed(prop,o,n)
     var t = this.tabctl;
     var xo = t.xo;
     var yo = t.yo;
-    if(n) htr_setvisibility(this, 'inherit');
-    else htr_setvisibility(this, 'hidden');
+    if(n) htr_setvisibility(this.tab, 'inherit');
+    else htr_setvisibility(this.tab, 'hidden');
     // which tab should be selected? 
     if(htr_getvisibility(t.tabs[t.selected_index-1].tab)!='inherit')
 	{
