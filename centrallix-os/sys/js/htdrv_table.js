@@ -42,6 +42,8 @@ function tbld_format_cell(cell, color)
 	else
 	    htr_write_content(cell, txt);
 	cell.content = txt;
+	if (cell.firstChild && cell.firstChild.tagName == 'IMG')
+	    cell.firstChild.layer = cell;
 	}
     if (this.cols[cell.colnum][5] == 'right')
 	{
@@ -55,20 +57,94 @@ function tbld_format_cell(cell, color)
 	}
     }
 
-function tbld_update(p1)
+function tbld_attr_cmp(a, b)
     {
+    if (a.oid > b.oid)
+	return 1;
+    else if (a.oid < b.oid)
+	return -1;
+    else
+	return 0;
+    }
+
+function tbld_update_propsheet(dataobj)
+    {
+    var attrlist = [];
+
+    // Get list of attributes
+    for(var j in dataobj)
+	{
+	if (dataobj[j].oid && !dataobj[j].system)
+	    {
+	    attrlist.push(dataobj[j]);
+	    }
+	}
+    var num_attrs = attrlist.length;
+    attrlist.sort(tbld_attr_cmp);
+
+    this.ClampWindow(num_attrs, num_attrs);
+
+    this.SetThumb(num_attrs, this.startat, this.maxwindowsize);
+
+    // Get table cell values
     var txt;
+    for(var i=this.firstdatarow;i<this.totalwindowsize;i++)
+	{
+	var attrid = this.SlotToRecnum(i) - 1;
+	this.InstantiateRow(i);
+	setRelativeY(this.rows[i], ((this.rowheight)*(attrid+1-this.startat+1)));
+	htr_setvisibility(this.rows[i], 'inherit');
+
+	this.rows[i].fg.rownum = attrid + 1;
+	this.rows[i].fg.recnum = 1;
+
+	for(var j in this.rows[i].fg.cols)
+	    {
+	    txt = '';
+	    switch(this.cols[j][0])
+		{
+		case 'name': txt = attrlist[attrid].oid; break;
+		case 'value': txt = htutil_obscure(attrlist[attrid].value); break;
+		case 'type': txt = attrlist[attrid].type; break;
+		default: txt = '';
+		}
+	    this.rows[i].fg.cols[j].data=txt;
+	    if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
+		this.rows[i].fg.cols[j].data='';
+	    }
+
+	this.FormatRow(i, i == this.firstdatarow);
+	}
+
+    this.HideUnusedRows();
+    }
+
+function tbld_update(p1, force_datafetch)
+    {
+    if (this.datamode == 1)
+	return this.UpdatePropsheet(p1);
+
+    var txt;
+    //var orig_is_new = this.is_new;
+    this.is_new = (p1 && p1.length == 0 && this.row_bgndnew)?1:0;
     var t=this.down;
-    this.windowsize = this.osrc.LastRecord - this.osrc.FirstRecord + 1;
-    if (this.windowsize > this.maxwindowsize)
-	this.windowsize = this.maxwindowsize;
-    if(this.startat+this.windowsize-1>this.osrc.LastRecord)
-	this.startat=this.osrc.LastRecord-this.windowsize+1;
-    if(this.startat<1) this.startat=1;
+    var last_record = this.osrc.LastRecord + this.is_new;
+
+    // If new, show one row beyond end.  +1 for the inclusive diff, and then
+    // another +1 for the one beyond the end.
+    if (this.is_new)
+	this.startat = this.osrc.LastRecord - this.maxwindowsize + 1 + 1;
+
+    // Clamp the window - make sure startat (first row) and windowsize (number
+    // of data rows to display) aren't out of range.
+    this.ClampWindow(last_record - this.osrc.FirstRecord + 1, last_record);
+    //if (this.is_new && this.startat + this.windowsize - 1 > this.osrc.LastRecord)
+    //	this.showing_new = 1;
     if(t.m.length%t.q==12) for(var j=t.m.length;j>0;j--) t.m=t.m.replace(' ','');
+
+    // If the osrc has changed the current record, make sure we can see it
     if(this.windowsize && this.cr!=this.osrc.CurrentRecord && this.followcurrent)
 	{
-	/* the osrc has changed the current record, make sure we can see it */
 	this.cr=this.osrc.CurrentRecord;
 	if(this.cr<this.startat)
 	    {
@@ -83,26 +159,27 @@ function tbld_update(p1)
 	    return 0;
 	    }
 	}
+
+    // Make sure osrc doesn't discard rows from underneath us
     this.osrc.SetViewRange(this, this.startat, this.startat + this.windowsize - 1);
     if(t.m.length%t.q==66)
     for(var j=t.m.length;j>0;j--)
     t.m=t.m.replace('=','');
-    if(this.startat==1)
-	setRelativeY(this.scrollbar.b, 18);
-    else if(this.osrc.qid==null && this.startat+this.windowsize-1==this.osrc.LastRecord)
-	setRelativeY(this.scrollbar.b, getClipHeight(this.scrollbar)-2*18);
-    else
-	setRelativeY(this.scrollbar.b, getClipHeight(this.scrollbar)/2-9);
+
+    // Move and resize the scrollbar thumb
+    this.SetThumb(this.osrc.qid?99999999:last_record, this.startat, this.maxwindowsize);
     if(t.m.length%t.q==52) for(var j=t.m.length;j>0;j-=2)
 	t.m=t.m.substring(0,j-2)+'%'+t.m.substring(j-2);
 
-    for(var i=1;i<this.windowsize+1;i++)
+    for(var i=this.firstdatarow;i<this.totalwindowsize;i++)
 	{
-	if(this.osrc.FirstRecord>this.SlotToRecnum(i) || this.osrc.LastRecord<this.SlotToRecnum(i))
+	var osrcrec = this.SlotToRecnum(i);
+
+	if(this.osrc.FirstRecord>osrcrec || last_record<osrcrec)
 	    {
 	    var temp;
 	    temp="oops... Looking for record not in replica\n";
-	    temp+="Looking for:"+this.SlotToRecnum(i)+" slot("+i+")\n";
+	    temp+="Looking for:"+osrcrec+" slot("+i+")\n";
 	    temp+="FirstRecord: "+this.osrc.FirstRecord+"\n";
 	    temp+="LastRecord: "+this.osrc.LastRecord+"\n";
 	    temp+="Replica Contents:";
@@ -116,78 +193,130 @@ function tbld_update(p1)
 
 	this.InstantiateRow(i);
 
-	setRelativeY(this.rows[i], ((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1)));
-	//htr_setvisibility(this.rows[i].fg, 'inherit');
+	setRelativeY(this.rows[i], ((this.rowheight)*(osrcrec-this.startat+this.firstdatarow)));
 	htr_setvisibility(this.rows[i], 'inherit');
-	if(this.noskip || !(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum==this.SlotToRecnum(i)))
+	if(!(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum == osrcrec) || force_datafetch)
 	    {
-	    this.rows[i].fg.recnum=this.SlotToRecnum(i);
+	    this.rows[i].fg.rownum = osrcrec;
+	    this.rows[i].fg.recnum = osrcrec;
 	    
 	    for(var j in this.rows[i].fg.cols)
 		{
-		txt = '';
-		for(var k in this.osrc.replica[this.rows[i].fg.recnum])
+		if (this.osrc.LastRecord >= osrcrec)
 		    {
-		    if(this.osrc.replica[this.rows[i].fg.recnum][k].oid==this.cols[j][0])
+		    txt = '';
+		    for(var k in this.osrc.replica[osrcrec])
 			{
-			txt=this.osrc.replica[this.rows[i].fg.recnum][k].value;
-			break;
+			if(this.osrc.replica[osrcrec][k].oid==this.cols[j][0])
+			    {
+			    txt=this.osrc.replica[osrcrec][k].value;
+			    break;
+			    }
 			}
+		    this.rows[i].fg.cols[j].data=htutil_obscure(txt);
+		    if(this.rows[i].fg.cols[j].data == null || typeof this.rows[i].fg.cols[j].data == 'undefined')
+			this.rows[i].fg.cols[j].data='';
 		    }
-		this.rows[i].fg.cols[j].data=htutil_obscure(txt);
-		if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
+		else
+		    {
 		    this.rows[i].fg.cols[j].data='';
-		//this.FormatCell(this.rows[i].fg.cols[j], this.textcolor);
+		    }
 		}
 	    }
 	else
 	    {
 	    //confirm('(skipped)'+i+':'+this.rows[i].fg.recnum);
 	    }
-	if(this.rows[i].fg.recnum==this.osrc.CurrentRecord && this.showselect)
-	    this.rows[i].fg.select();
-	else
-	    this.rows[i].fg.deselect();
+	this.FormatRow(i, this.rows[i].fg.recnum==this.osrc.CurrentRecord && !this.is_new, this.is_new && this.rows[i].fg.recnum > this.osrc.LastRecord);
 	}
-    this.noskip = false;
-    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)
+    this.HideUnusedRows();
+
+    t.a++;
+    }
+
+function tbld_format_row(id, selected, do_new)
+    {
+    if (this.row_bgndnew && do_new)
+	this.rows[id].fg.newselect();
+    else if (this.showselect && selected)
+	this.rows[id].fg.select();
+    else
+	this.rows[id].fg.deselect();
+    }
+
+function tbld_clamp_window(desired_size, maxid)
+    {
+    this.windowsize = desired_size;
+    if (this.windowsize > this.maxwindowsize)
+	this.windowsize = this.maxwindowsize;
+    if(this.startat+this.windowsize-1>maxid)
+	this.startat=maxid-this.windowsize+1;
+    if(this.startat<1) this.startat=1;
+    this.totalwindowsize = this.windowsize + this.firstdatarow;
+    }
+
+function tbld_set_thumb(maxid, startat, maxwindowsize)
+    {
+    var tavail = getClipHeight(this.scrollbar) - 2*18 - 1;
+    var rrows = maxid;
+    if (rrows == 0) rrows = 1;
+    if (rrows == 99999999)
+	rrows = startat + maxwindowsize * 3;
+    var theight = Math.floor(tavail * (maxwindowsize / rrows) + 0.001);
+    if (theight < 18) theight = 18;
+    if (theight > tavail) theight = tavail;
+    var maxfirst = rrows - maxwindowsize + 1;
+    if (maxfirst <= 0) maxfirst = 1;
+    if (maxfirst == 1)
+	var tpos = 0;
+    else
+	var tpos = (startat - 1 + 0.001)/(maxfirst - 1) * (tavail - theight);
+    setRelativeY(this.scrollbar.b, 18 + tpos);
+    pg_set_style(this.scrollbar.b, "height", (theight - 2) + "px");
+    /*if(this.startat==1)
+	setRelativeY(this.scrollbar.b, 18);
+    else if(this.startat+this.windowsize-1==maxid)
+	setRelativeY(this.scrollbar.b, getClipHeight(this.scrollbar)-2*18);
+    else
+	setRelativeY(this.scrollbar.b, getClipHeight(this.scrollbar)/2-9);*/
+    }
+
+function tbld_hide_unused_rows()
+    {
+    for(var i=this.totalwindowsize;i<this.maxtotalwindowsize;i++)
 	{
+	var osrcrec = this.SlotToRecnum(i);
 	if (!this.rows[i]) continue;
-	setRelativeY(this.rows[i], ((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1)));
+	setRelativeY(this.rows[i], ((this.rowheight)*(osrcrec-this.startat+1)));
 	this.rows[i].fg.recnum=null;
-	//htr_setvisibility(this.rows[i], this.gridinemptyrows?'inherit':'hidden');
 	htr_setvisibility(this.rows[i], 'hidden');
 	}
-
-    // adjust grid
     if (!this.gridinemptyrows)
 	{
 	// grid already full size if gridinemptyrows set; no need to readjust it.
 	for(var i=0;i<this.colcount;i++)  
 	    {
 	    if (this.rows[0].fg.cols[i].rb && this.rows[0].fg.cols[i].rb.b)
-		setClipHeight(this.rows[0].fg.cols[i].rb.b, this.rowheight*(this.windowsize+1));
+		setClipHeight(this.rows[0].fg.cols[i].rb.b, this.rowheight*(this.totalwindowsize));
 	    }
 	}
-    t.a++;
     }
 
 function tbld_object_deleted()
     {
-    this.noskip = true;
-    this.Update();
+    this.Update(null, true);
     }
 
-function tbld_object_modified(current)
+function tbld_object_modified(current, dataobj)
     {
     this.rows[this.RecnumToSlot(current)].fg.recnum=null;
     //confirm('(current)'+current+':'+this.rows[this.RecnumToSlot(current)].recnum);
-    this.Update();
+    this.Update(dataobj);
     }
 
 function tbld_clear_layers()
     {
-    for(var i=1;i<this.maxwindowsize+1;i++)
+    for(var i=this.firstdatarow;i<this.maxtotalwindowsize;i++)
 	{
 	if (!this.rows[i]) continue;
 	this.rows[i].fg.recnum=null;
@@ -206,6 +335,11 @@ function tbld_select()
 	{
 	this.table.FormatCell(this.cols[i], this.table.textcolorhighlight);
 	}
+    if (this.ctr)
+	{
+	this.removeChild(this.ctr);
+	this.ctr = null;
+	}
     if(tbld_current==this)
 	{
 	this.oldbgColor=null;
@@ -216,11 +350,32 @@ function tbld_select()
 function tbld_deselect()
     {
     var txt;
-    htr_setbackground(this, (this.recnum%2?this.table.row_bgnd1:this.table.row_bgnd2));
+    htr_setbackground(this, (this.rownum%2?this.table.row_bgnd1:this.table.row_bgnd2));
     //eval('this.'+(this.recnum%2?this.table.row_bgnd1:this.table.row_bgnd2)+';');
     for(var i in this.cols)
 	{
 	this.table.FormatCell(this.cols[i], this.table.textcolor);
+	}
+    if (this.ctr)
+	{
+	this.removeChild(this.ctr);
+	this.ctr = null;
+	}
+    }
+
+function tbld_newselect()
+    {
+    var txt;
+    htr_setbackground(this, this.table.row_bgndnew);
+    if (!this.ctr)
+	{
+	this.ctr = document.createElement("center");
+	this.ctr.appendChild(document.createTextNode("-- new --"));
+	this.appendChild(this.ctr);
+	}
+    for(var i in this.cols)
+	{
+	this.table.FormatCell(this.cols[i], this.table.textcolornew);
 	}
     }
 
@@ -286,9 +441,11 @@ function tbld_change_width(move)
 	move=0-l.clip_w-getClipWidth(l.rb);
     if(getRelativeX(l.rb)+move<0)
 	move=0-getRelativeX(l.rb);
+    if(getPageX(l.rb) + t.colsep + 6 + move >= getPageX(t) + t.param_width)
+	move = getPageX(t) + t.param_width - getPageX(l.rb) - t.colsep - 6;
     t.cols[l.colnum][2] += move;
     //alert(move);
-    for(var i=0;i<t.maxwindowsize+1;i++)
+    for(var i=0;i<t.maxtotalwindowsize;i++)
 	for(var j=l.colnum; j<t.colcount; j++)
 	    {
 	    if (!t.rows[i]) continue;
@@ -316,12 +473,12 @@ function tbld_change_width(move)
 
 function tbld_recnum_to_slot(recnum,start)
     {
-    return ((((recnum-this.startat)%this.maxwindowsize+(this.startat%this.maxwindowsize)-1)%this.maxwindowsize)+1);
+    return ((((recnum-this.startat)%this.maxwindowsize+(this.startat%this.maxwindowsize)-1)%this.maxwindowsize)+this.firstdatarow);
     }
 
 function tbld_slot_to_recnum(slot,start)
     {
-    return (this.maxwindowsize-((this.startat-1)%this.maxwindowsize)+slot-1)%this.maxwindowsize+this.startat;
+    return (this.maxwindowsize-((this.startat-1)%this.maxwindowsize)+slot-this.firstdatarow)%this.maxwindowsize+this.startat;
     }
 
 function tbld_unsetclick(l,n)
@@ -370,6 +527,7 @@ function tbld_instantiate_row(r)
 	row.fg.subkind='row';
 	row.fg.select=tbld_select;
 	row.fg.deselect=tbld_deselect;
+	row.fg.newselect=tbld_newselect;
 	row.mouseover=tbld_domouseover;
 	row.mouseout=tbld_domouseout;
 	row.fg.rownum=r;
@@ -422,7 +580,6 @@ function tbld_init(param)
     t.param_width = param.width;
     t.startat=1;
     t.prevstartat=1;
-    t.noskip = false;
     t.tablename = param.tablename;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
@@ -430,7 +587,11 @@ function tbld_init(param)
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
-    t.cr = 1;
+    t.datamode = param.dm;
+    t.has_header = param.hdr;
+    t.cr = 0;
+    t.is_new = 0;
+    //t.showing_new = 0;
     t.followcurrent = param.followcurrent>0?true:false;
     t.hdr_bgnd = param.hdrbgnd;
     htr_init_layer(t, t, "tabledynamic");
@@ -478,11 +639,13 @@ function tbld_init(param)
     t.cellvspacing=param.cellvspacing>0?param.cellvspacing:1;
     t.textcolor=param.textcolor;
     t.textcolorhighlight=param.textcolorhighlight?param.textcolorhighlight:param.textcolor;
+    t.textcolornew=param.newrow_textcolor;
     t.down.m+='3030=323a 0d4a 6f736=82056 616e6=465';
     t.titlecolor=param.titlecolor;
     t.row_bgnd1=param.rowbgnd1?param.rowbgnd1:"bgcolor='white'";
     t.row_bgnd2=param.rowbgnd2?param.rowbgnd2:t.row_bgnd1;
     t.row_bgndhigh=param.rowbgndhigh?param.rowbgndhigh:"bgcolor='black'";
+    t.row_bgndnew=param.newrow_bgnd;
     t.down.m+='727=7616c6 b65720=d4a6f 686e2=05065';
     t.cols=param.cols;
     t.colcount=0;
@@ -504,29 +667,50 @@ function tbld_init(param)
 	}
 	
     t.Update=tbld_update;
+    t.UpdatePropsheet=tbld_update_propsheet;
     t.RecnumToSlot=tbld_recnum_to_slot;
     t.SlotToRecnum=tbld_slot_to_recnum;
     t.InstantiateRow = tbld_instantiate_row;
+    t.HideUnusedRows = tbld_hide_unused_rows;
+    t.SetThumb = tbld_set_thumb;
+    t.ClampWindow = tbld_clamp_window;
+    t.FormatRow = tbld_format_row;
 
     t.osrc.Register(t);
     t.down.m+='65626c=6573 0d4a6=f6e2 05275=70700d';
-    t.windowsize = param.windowsize > 0 ? param.windowsize : t.osrc.replicasize;
+    if (param.windowsize > 0)
+	{
+	t.windowsize = param.windowsize;
+	}
+    else if (t.datamode == 1) // propsheet mode
+	{
+	t.windowsize = Math.floor((param.height - t.rowheight)/t.rowheight);
+	}
+    else
+	{
+	t.windowsize = t.osrc.replicasize;
+	}
 
     // Sanity bounds checks on visible records
     if (t.windowsize > (param.height - t.rowheight)/t.rowheight)
 	t.windowsize = Math.floor((param.height - t.rowheight)/t.rowheight);
-    if (t.windowsize > t.osrc.replicasize)
+    if (t.datamode != 1 && t.windowsize > t.osrc.replicasize)
 	t.windowsize = t.osrc.replicasize;
 
+    t.totalwindowsize = t.windowsize + 1;
+    if (!t.has_header)
+	t.windowsize = t.totalwindowsize;
+    t.firstdatarow = t.has_header?1:0;
+
     // Handle column resizing and columns without widths
-    var total_w = 0;
+    t.total_w = 0;
     for (var i in t.cols)
 	{
 	if (t.cols[i][2] < 0)
 	    t.cols[i][2] = 64;
-	total_w += t.cols[i][2];
+	t.total_w += t.cols[i][2];
 	}
-    var adj = param.width / total_w;
+    var adj = param.width / t.total_w;
     for (var i in t.cols)
 	{
 	t.cols[i][2] *= adj;
@@ -541,7 +725,8 @@ function tbld_init(param)
 	}
 
     t.maxwindowsize = t.windowsize;
-    t.rows=new Array(t.windowsize+1);
+    t.maxtotalwindowsize = t.totalwindowsize;
+    t.rows=new Array(t.totalwindowsize);
     setClipWidth(t, param.width);
     setClipHeight(t, param.height);
     t.subkind='table';
@@ -549,15 +734,16 @@ function tbld_init(param)
     t.bdr_width = 3;
 
     /** build layers **/
-    for(var i=0;i<t.windowsize+1;i++)
+    for(var i=0;i<t.totalwindowsize;i++)
 	{
 	t.rows[i]=null;
 	}
 
     // Set up header row.
-    t.InstantiateRow(0);
+    if (t.has_header)
+	t.InstantiateRow(0);
 
-    if (t.colsep > 0 || t.dragcols)
+    if ((t.colsep > 0 || t.dragcols) && t.has_header)
 	{
 	for(var j=0;j<t.colcount;j++)
 	    {
@@ -571,12 +757,12 @@ function tbld_init(param)
 		    getRelativeX(t.rows[0].fg) + getRelativeX(l)+getClipWidth(l),
 		    getRelativeY(t.rows[0].fg) + getRelativeY(l));
 	    if (t.gridinemptyrows)
-		setClipHeight(l.rb, t.rowheight * (t.maxwindowsize+1));
+		setClipHeight(l.rb, t.rowheight * (t.maxtotalwindowsize));
 	    else
 		setClipHeight(l.rb, t.rowheight);
 	    //setClipHeight(l.rb, t.rowheight-t.cellvspacing*2);
 	    setClipWidth(l.rb, t.bdr_width*2+t.colsep);
-	    pg_set_style(l.rb, "height", (t.rowheight * (t.maxwindowsize+1)) + "px");
+	    pg_set_style(l.rb, "height", (t.rowheight * (t.maxtotalwindowsize)) + "px");
 	    pg_set_style(l.rb, "cursor", "move");
 	    htr_setvisibility(l.rb, 'inherit');
 	    htr_setbgcolor(l.rb, null);
@@ -591,11 +777,11 @@ function tbld_init(param)
 		l.rb.b.subkind = "border";
 		moveTo(l.rb.b, getRelativeX(l.rb)+t.cellhspacing+t.bdr_width, getRelativeY(l.rb));
 		if (t.gridinemptyrows)
-		    setClipHeight(l.rb.b, t.rowheight * (t.maxwindowsize+1));
+		    setClipHeight(l.rb.b, t.rowheight * (t.maxtotalwindowsize));
 		else
 		    setClipHeight(l.rb.b, t.rowheight);
 		setClipWidth(l.rb.b, t.colsep);
-		pg_set_style(l.rb.b, "height", (t.rowheight * (t.maxwindowsize+1)) + "px");
+		pg_set_style(l.rb.b, "height", (t.rowheight * (t.maxtotalwindowsize)) + "px");
 		pg_set_style(l.rb.b, "cursor", "move");
 		htr_setvisibility(l.rb.b, 'inherit');
 		if (t.colsepbg)
@@ -605,17 +791,20 @@ function tbld_init(param)
 		}
 	    }
 	}
-    t.rows[0].fg.subkind='headerrow';
-    t.rows[0].subkind='headerrow';
-    htr_setbackground(t.rows[0].fg, t.hdr_bgnd);
     //eval('t.rows[0].fg.'+t.hdr_bgnd+';');
     t.down.m+='68 7265 736d6 16e';
     t.FormatCell = tbld_format_cell;
-    for(var i=0;i<t.colcount;i++)
+    if (t.has_header)
 	{
-	t.rows[0].fg.cols[i].subkind='headercell';
-	t.rows[0].fg.cols[i].data = t.cols[i][1];
-	t.FormatCell(t.rows[0].fg.cols[i], t.titlecolor);
+	t.rows[0].fg.subkind='headerrow';
+	t.rows[0].subkind='headerrow';
+	htr_setbackground(t.rows[0].fg, t.hdr_bgnd);
+	for(var i=0;i<t.colcount;i++)
+	    {
+	    t.rows[0].fg.cols[i].subkind='headercell';
+	    t.rows[0].fg.cols[i].data = t.cols[i][1];
+	    t.FormatCell(t.rows[0].fg.cols[i], t.titlecolor);
+	    }
 	}
     t.IsDiscardReady=new Function('return true;');
     t.DataAvailable=tbld_clear_layers;
@@ -667,7 +856,7 @@ function tbls_init(param)
     ox = -1;
     oy = -1;
     nmstr = 'xy_' + nm;
-    for(i=0;i<pl.document.images.length;i++)
+    for(var i=0;i<pl.document.images.length;i++)
         {
         if (pl.document.images[i].name.substr(0,nmstr.length) == nmstr)
             {
@@ -864,7 +1053,7 @@ function tbld_mousedown(e)
         if(ly.subkind=='headercell')
             {
             var neworder=new Array();
-            for(i in ly.row.table.osrc.orderobject)
+            for(var i in ly.row.table.osrc.orderobject)
                 neworder[i]=ly.row.table.osrc.orderobject[i];
             
             var colname=ly.row.table.cols[ly.colnum][0];
@@ -875,7 +1064,7 @@ function tbld_mousedown(e)
                 neworder[0]=':"'+colname+'" asc';
             else
                 {
-                for(i in neworder)
+                for(var i in neworder)
                     if(neworder[i]==':"'+colname+'" asc' || neworder[i]==':"'+colname+'" desc')
                         neworder.splice(i,1);
                 neworder.unshift(':"'+colname+'" asc');
@@ -911,6 +1100,7 @@ function tbld_mousemove(e)
             move=0-getRelativeX(l.rb);
         tbldb_start+=move;
         l.ChangeWidth(move);
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -936,7 +1126,7 @@ function tbld_mouseup(e)
                 if(l.clip_w==undefined) l.clip_w=getClipWidth(l);
                 var maxw = 0;
 		//htr_alert(t.rows[0].fg.cols[l.colnum], 1);
-                for(var i=0;i<t.maxwindowsize+1;i++)
+                for(var i=0;i<t.maxtotalwindowsize;i++)
                     {
                     j=l.colnum;
                     if(t.rows[i] && getdocWidth(t.rows[i].fg.cols[j])>maxw)
