@@ -33,12 +33,14 @@ cx_hints_style.sepwindow = 16384;
 cx_hints_style.alwaysdef = 32768;
 cx_hints_style.createonly = 65536;
 cx_hints_style.multiselect = 131072;
+cx_hints_style.key = 262144;
+cx_hints_style.applyonchange = 524288;
 
 // cx_set_hints() - initializes hints information for a given
 // form field.
 function cx_set_hints(element, hstr, hinttype)
     {
-    if (!element.cx_hints) element.cx_hints = new Object();
+    if (!element.cx_hints) element.cx_hints = {};
     if (element.cx_hints.hstr == hstr) 
 	{
 	if (!element.cx_hints['all'])
@@ -46,8 +48,29 @@ function cx_set_hints(element, hstr, hinttype)
 	return;
 	}
     element.cx_hints[hinttype] = cx_parse_hints(hstr);
+    var old_default = null;
+    if (element.cx_hints && element.cx_hints['all']) old_default = element.cx_hints['all'].DefaultExpr;
     cx_merge_hints(element);
     if (element.hintschanged) element.hintschanged(hinttype);
+    if (element.cx_hints_applyto)
+	cx_set_hints(element.cx_hints_applyto, hstr, hinttype);
+    if (element.form && element.form.mode == 'New' && old_default != element.cx_hints['all'].DefaultExpr)
+	cx_hints_startnew(element);
+    }
+
+
+// cx_copy_hints() - copy hints from one widget to another, mainly used
+// for applying hints from a component to a widget inside the component.
+function cx_copy_hints(src, dst)
+    {
+    if (src.cx_hints)
+	{
+	for(var h in src.cx_hints)
+	    {
+	    if ((h == 'app' || h == 'data' || h == 'widget') && src.cx_hints[h].hstr)
+		cx_set_hints(dst, src.cx_hints[h].hstr, h);
+	    }
+	}
     }
 
 
@@ -295,8 +318,16 @@ function cx_hints_setup(e)
     {
 
 	// Readonly?  Use the control's DISABLED property if so.
-	if (e.cx_hints && (e.cx_hints['all'].Style & cx_hints_style.readonly) && e.disable)
+	if (e.cx_hints && ((e.cx_hints['all'].Style & cx_hints_style.readonly) || (!(e.form && e.form.mode == 'New') && (e.cx_hints['all'].Style & cx_hints_style.createonly))) && e.disable)
 	    e.disable();
+
+    return;
+    }
+
+function cx_hints_endnew(e)
+    {
+
+	e.cx_hints.__new = false;
 
     return;
     }
@@ -304,6 +335,12 @@ function cx_hints_setup(e)
 // cx_hints_startnew() - when creation of a record is beginning.
 function cx_hints_startnew(e)
     {
+
+	e.cx_hints.__new = true;
+
+	// enable for create?
+	if (e.cx_hints && (e.cx_hints['all'].Style & cx_hints_style.createonly) && !(e.cx_hints['all'].Style & cx_hints_style.readonly) && e.enable)
+	    e.enable();
 
 	// Set default all the time
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr) 
@@ -322,6 +359,10 @@ function cx_hints_startnew(e)
 function cx_hints_startmodify(e)
     {
 
+	// disable on modify?
+	if (e.cx_hints && (e.cx_hints['all'].Style & cx_hints_style.createonly) && !(e.cx_hints['all'].Style & cx_hints_style.readonly) && e.disable)
+	    e.disable();
+
 	// Set default only if 'alwaysdef' enabled
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr && (e.cx_hints['all'].Style & cx_hints_style.alwaysdef))
 	    {
@@ -337,18 +378,21 @@ function cx_hints_startmodify(e)
 // cx_hints_checkmodify() - validate a modified value; returns ov if nv
 // is not valid, or nv if the new value is valid.  May return a 
 // modified new value. type is 
-function cx_hints_checkmodify(e, ov, nv, type)
+function cx_hints_checkmodify(e, ov, nv, type, onchange)
     {
 	// no change or no hints?
 	if (ov == nv || !e.cx_hints) return nv;
 	var h = e.cx_hints['all'];
 
+	// don't apply if we're not doing an onchange check, and applyonchange is set.
+	if ((h.Style & cx_hints_style.applyonchange) && !onchange) return nv;
+
 	// uppercase/lowercase
-	if ((h.Style & cx_hints_style.lowercase) && typeof nv == 'string') nv = nv.toLowerCase();
-	if ((h.Style & cx_hints_style.uppercase) && typeof nv == 'string') nv = nv.toUpperCase();
+	if ((h.Style & cx_hints_style.lowercase) && ((typeof nv == 'string') || (typeof nv == 'object' && nv != null && nv.constructor == String))) nv = nv.toLowerCase();
+	if ((h.Style & cx_hints_style.uppercase) && ((typeof nv == 'string') || (typeof nv == 'object' && nv != null && nv.constructor == String))) nv = nv.toUpperCase();
 
 	// max length
-	if (h.Length && h.Length < ('' + nv).length) return ov;
+	if (nv != null && h.Length && h.Length < ('' + nv).length) return ('' + nv).substr(0,h.Length);
 
 	// badchars/allowchars
 	if (h.AllowChars)
