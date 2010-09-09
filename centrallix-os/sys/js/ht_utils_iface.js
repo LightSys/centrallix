@@ -392,11 +392,17 @@ function ifEvent()
 	{
 	if (this.Events[e])
 	    {
-	    eo = {fn:f, name:e};
+	    var eo = {fn:f, name:e};
 	    if (t)
 		eo.eo = t;
 	    else
 		eo.eo = this.obj;
+	    // check dups
+	    for(var i=0; i<this.Events[e].length; i++) 
+		{
+		var eo2 = this.Events[e][i];
+		if (eo2.eo == eo.eo && eo2.name == eo.name && eo2.fn == eo.fn) return;
+		}
 	    this.Events[e].push(eo);
 	    }
 	else if (pg_diag)
@@ -437,6 +443,8 @@ function ifEvent()
 	var cond = true;
 	var cnfrm = null;
 	var rval = null;
+	var allparam = false;
+	var delay = 0;
 	var ai = t.ifcProbe(ifAction);
 	if (!ai) return null;
 	var ap = new Object;
@@ -499,6 +507,11 @@ function ifEvent()
 			}
 		    delete ap[pn];
 		    }*/
+		if (pn == 'event_delay')
+		    {
+		    if (ap[pn]) delay = ap[pn];
+		    delete ap[pn];
+		    }
 		if (pn == 'event_confirm')
 		    {
 		    if (ap[pn]) cnfrm = ap[pn];
@@ -510,12 +523,31 @@ function ifEvent()
 			cancel = true;
 		    delete ap[pn];
 		    }
+		if (pn == 'event_all_params')
+		    {
+		    if (ap[pn])
+			allparam = true;
+		    delete ap[pn];
+		    }
+		}
+	    }
+	if (allparam)
+	    {
+	    for(var e in ep)
+		{
+		if (!ap[e] && e != '_this' && e != '_context')
+		    ap[e] = ep[e];
 		}
 	    }
 	if (cond && cnfrm && !confirm(cnfrm))
 	    cond = false;
 	if (cond)
-	    rval = ai.Invoke(this.action, ap);
+	    {
+	    if (delay > 0)
+		rval = ai.SchedInvoke(this.action, ap, delay * 1000);
+	    else
+		rval = ai.Invoke(this.action, ap);
+	    }
 	if (cancel)
 	    rval = new Cancel();
 	return rval;
@@ -528,7 +560,7 @@ function ifEvent()
 	    }
 	if (this.Events[e])
 	    {
-	    eo = {to:this.obj, fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
+	    var eo = {to:this.obj, fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
 	    eo.eo = eo;
 	    this.Events[e].push(eo);
 	    }
