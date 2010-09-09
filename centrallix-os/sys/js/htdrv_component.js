@@ -75,23 +75,33 @@ function cmp_cb_load_complete_3()
     var scripts = document.getElementsByTagName('script');
     var css = document.getElementsByTagName('style');
     var head = document.getElementsByTagName('head')[0];
+    var curscripts = [];
     var scripts_to_move = [];
     var css_to_move = [];
     for(var i=0;i<scripts.length;i++)
 	{
 	if (scripts[i].parentNode != head) 
 	    scripts_to_move.push(scripts[i]);
+	else if (scripts[i].src)
+	    curscripts[scripts[i].src] = true;
 	}
     for(var i=0;i<scripts_to_move.length;i++)
 	{
-	var newscript = document.createElement('script');
 	var oldscript = scripts_to_move[i];
-	if (oldscript.src) newscript.src = oldscript.src;
-	if (oldscript.type) newscript.type = oldscript.type;
-	if (oldscript.language) newscript.language = oldscript.language;
-	if (oldscript.text) newscript.text = oldscript.text;
-	head.appendChild(newscript);
-	this._oarr.push(newscript);
+	var oldsrc = oldscript.src;
+	//var oldsrc_regex = /([a-z]*:\/\/[^\/])(.*)/;
+	//var matches = oldsrc_regex.exec(oldsrc);
+	//if (matches && matches[1] && matches[2]) oldsrc = matches[2];
+	if (!curscripts[oldsrc])
+	    {
+	    var newscript = document.createElement('script');
+	    if (oldscript.src) newscript.src = oldscript.src;
+	    if (oldscript.type) newscript.type = oldscript.type;
+	    if (oldscript.language) newscript.language = oldscript.language;
+	    if (oldscript.text) newscript.text = oldscript.text;
+	    head.appendChild(newscript);
+	    this._oarr.push(newscript);
+	    }
 	}
     for(var i=0;i<css.length;i++)
 	{
@@ -146,7 +156,11 @@ function cmp_cb_load_complete()
 	}
     else
 	{
-	pg_serialized_write(this.cmp.loader2, this.contentWindow.document.getElementsByTagName("html")[0].innerHTML, cmp_cb_load_complete_2);
+	//pg_serialized_write(this.cmp.loader2, this.contentWindow.document.getElementsByTagName("html")[0].innerHTML, cmp_cb_load_complete_2);
+	this.cmp.loader2.innerHTML = this.contentWindow.document.getElementsByTagName("html")[0].innerHTML;
+	//while(this.cmp.loader2.firstChild) this.cmp.loader2.removeChild(this.cmp.loader2.firstChild);
+	//this.cmp.loader2.appendChild(this.contentWindow.document.getElementsByTagName("html")[0]);
+	this.cmp.cmp_cb_load_complete_2();
 	}
     }
 
@@ -184,7 +198,11 @@ function cmp_instantiate(aparam)
 	}
     var geom = tohex16(w) + tohex16(h) + tohex16(pg_charw) + tohex16(pg_charh) + tohex16(pg_parah);
     var graft = wgtrGetNamespace(this) + ':' + wgtrGetName(this);
-    var url = this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft) + "&cx__akey=" + escape(akey);
+    if (aparam.Path && aparam.Path[0] == '/' && aparam.Path[1] != '/')
+	var path = aparam.Path;
+    else
+	var path = this.path;
+    var url = path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft) + "&cx__akey=" + escape(akey);
     if (this.orig_x != 0 || this.orig_y != 0)
 	{
 	url += "&cx__xoffset=" + escape(this.orig_x) + "&cx__yoffset=" + escape(this.orig_y);
@@ -234,6 +252,26 @@ function cmp_instantiate(aparam)
 	if (v !== null)
 	    url += (htutil_escape(pr) + '=' + htutil_escape(v));
 	}
+
+    // Let server know what scripts we have loaded already from /sys/js
+    var scripts = document.getElementsByTagName("script");
+    var regex = /([a-z]*:\/\/[^\/]*)(\/sys\/js\/[^\/]*\.js)/
+    var script_list = "";
+    for(var i=0; i<scripts.length; i++)
+	{
+	var matches = regex.exec(scripts[i].src);
+	if (matches && matches[2])
+	    script_list += matches[2] + ",";
+	}
+    if (script_list)
+	{
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += "cx__scripts=" + htutil_escape(script_list);
+	}
+
     this._graft = graft;
     this._url = url;
     this._geom = geom;
@@ -588,12 +626,20 @@ function cmp_value_getter(n)
 
 function cmp_value_setter(n, v)
     {
+    var oldv;
+
     for(var i in this.components)
 	{
 	var cmp = this.components[i];
 	if (cmp.proptarget)
-	    return wgtrSetProperty(cmp.proptarget, n, v);
-	else
+	    {
+	    oldv = wgtrProbeProperty(cmp.proptarget, n);
+	    if (!wgtrIsUndefined(oldv))
+		return wgtrSetProperty(cmp.proptarget, n, v);
+	    }
+
+	oldv = wgtrProbeProperty(cmp.cmp, n);
+	if (!wgtrIsUndefined(oldv))
 	    return wgtrSetProperty(cmp.cmp, n, v);
 	}
     }
@@ -622,14 +668,18 @@ function cmp_init(param)
 	node.loader.cmp = node;
 	node.path = param.path;
 	htr_init_layer(node.loader,node,'cmp');
+	node.loader.style.display = 'none';
 	node.stublayer = htr_new_layer(pg_width);
+	node.stublayer.style.display = 'none';
 	htr_setvisibility(node.stublayer, 'hidden');
 	node.stublayer = htr_new_layer(pg_width, node.stublayer);
+	node.stublayer.style.display = 'none';
 	htr_setvisibility(node.stublayer, 'hidden');
 
 	if (cx__capabilities.Dom1HTML)
 	    {
 	    node.loader2 = htr_new_layer(pg_width, node.loader.parentNode);
+	    node.loader2.style.display = 'none';
 	    node.loader2.cmp = node;
 	    htr_setvisibility(node.loader2, 'hidden');
 	    }
