@@ -33,10 +33,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.89 2009/07/14 22:09:58 gbeeley Exp $
+    $Id: net_http.c,v 1.90 2010/09/09 01:25:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.90  2010/09/09 01:25:41  gbeeley
+    - (bugfix) overlay-building loop was using WGTR_MAX_TEMPLATE as its limit
+
     Revision 1.89  2009/07/14 22:09:58  gbeeley
     - (feature) adding cx__download_as object attribute which is used by the
       HTTP interface to set the content disposition filename.
@@ -1436,6 +1439,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			    wgtr_params.Templates[cnt] = tptr2;
 			    cnt++;
 			    }
+			else
+			    break;
 			tptr2 = strtok(NULL, "|");
 			}
 		    }
@@ -1449,11 +1454,13 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    lptr2 = strtok(lptr,"|");
 		    while(lptr2)
 			{
-			if (cnt < WGTR_MAX_TEMPLATE)
+			if (cnt < WGTR_MAX_OVERLAY)
 			    {
 			    wgtr_params.Overlays[cnt] = lptr2;
 			    cnt++;
 			    }
+			else
+			    break;
 			lptr2 = strtok(NULL, "|");
 			}
 		    }
