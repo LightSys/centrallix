@@ -13,12 +13,14 @@
 
 function checkbox_getvalue()
     {
-    return (this.is_checked == -1)?null:this.is_checked;
+    return this.value;
+    //return (this.is_checked == -1)?null:this.is_checked;
     }
 
 function checkbox_action_setvalue(aparam)
     {
     this.setvalue(aparam.Value);
+    if (this.form) this.form.DataNotify(this, false);
     }
 
 function checkbox_setvalue(v)
@@ -30,6 +32,7 @@ function checkbox_setvalue(v)
 	this.is_checked = -1;
     else
 	this.is_checked = v?1:0;
+    this.value = v;
     pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
     }
 
@@ -95,7 +98,7 @@ function checkbox_keyhandler(l,e,k)
 	}
     else if (k == 32)	// spacebar pressed
 	{
-	checkbox_toggleMode(this);
+	checkbox_toggleMode(this, true);
 	}
     else if (k == 13)	// return pressed
 	{
@@ -131,11 +134,13 @@ function checkbox_hintschanged(ht)
 	if (this.is_checked == -1 && cx_hints_teststyle(this, cx_hints_style.notnull))
 	    {
 	    this.is_checked = 0;
+	    this.value = 0;
 	    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
 	    }
 	else if (this.is_checked == 0 && !cx_hints_teststyle(this, cx_hints_style.notnull))
 	    {
 	    this.is_checked = -1;
+	    this.value = null;
 	    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
 	    }
 	}
@@ -147,7 +152,7 @@ function checkbox_mousedown(e)
     {
     if (e.kind == 'checkbox' && e.layer.enabled)
 	{
-	checkbox_toggleMode(e.layer);
+	checkbox_toggleMode(e.layer, false);
 	cn_activate(e.layer, "MouseDown");
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -188,9 +193,13 @@ function checkbox_init(param)
     l.fieldname = param.fieldname;
     l.is_checked = param.checked;
     l.is_checked_initial = param.checked;
+    l.value = l.is_checked;
+    if (l.value == -1) l.value = null;
     l.enabled = param.enabled;
-    if (param.form) l.form = wgtrGetNode(l, param.form);
-    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
+    if (param.form)
+	l.form = wgtrGetNode(l, param.form);
+    else
+	l.form = wgtrFindContainer(l,"widget/form");
     var imgs = pg_images(l);
     imgs[0].kind = 'checkbox';
     imgs[0].layer = l;
@@ -240,7 +249,7 @@ function checkbox_init(param)
     return l;
     }
 
-function checkbox_toggleMode(l) 
+function checkbox_toggleMode(l, from_kbd) 
     {
     if (!l.enabled) 
 	return;
@@ -257,9 +266,12 @@ function checkbox_toggleMode(l)
 	l.is_checked = 0;
     this.is_checked_initial = null;
 
+    l.value = l.is_checked;
+    if (l.value == -1) l.value = null;
+
     // update the image
     pg_set(l.img, 'src', l.imgfiles[l.enabled][l.is_checked+1]);
 
-    cn_activate(l, 'DataChange');
+    cn_activate(l, 'DataChange', {Value:l.value, FromKeyboard:from_kbd, FromOSRC:0});
     }
 
