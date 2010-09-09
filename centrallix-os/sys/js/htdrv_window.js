@@ -41,27 +41,15 @@ function wn_init(param)
     ifc_init_widget(l);
     l.destroy_widget = wn_deinit;
 
-    /** NS4 version doesn't use a separate div for the title bar **/
-    if(cx__capabilities.Dom1HTML && titlebar)
+    if (titlebar)
 	{
 	htr_init_layer(titlebar,l,"wn");
 	titlebar.subkind = 'titlebar';
-	l.titlebar = titlebar;
 	}
     else
-	{
-	titlebar=l;
-	}
+	titlebar = l;
+
     l.keep_kbd_focus = true;
-    //l.oldwin=window_current;
-    //window_current=l;
-    //l.osrc = new Array();
-    //var t = wgtrFindContainer(l, "widget/osrc");
-    //while(t)
-	//{
-	//l.osrc.push(t);
-	//t=t.oldosrc;
-	//}
     l.ContentLayer = param.clayer;
     l.ContentLayer.maxheight = l.ContentLayer.minheight = getClipHeight(l.ContentLayer);
     l.ContentLayer.maxwidth = l.ContentLayer.minwidth = getClipWidth(l.ContentLayer);
@@ -75,6 +63,7 @@ function wn_init(param)
 
     l.gshade = param.gshade;
     l.closetype = param.closetype;
+    l.is_modal = param.modal;
     l.working = false;
     l.shaded = false;
     l.loaded = false;
@@ -126,8 +115,6 @@ function wn_init(param)
     ie.Add("Open");
     ie.Add("Close");
 
-    //l.RegisterOSRC = wn_register_osrc;
-
     // Register as a triggerer of reveal/obscure events
     l.SetVisibilityBH = wn_setvisibility_bh;
     l.SetVisibilityTH = wn_setvisibility_th;
@@ -146,6 +133,8 @@ function wn_init(param)
 
     // Show container API
     l.showcontainer = wn_showcontainer;
+
+    if (l.is_modal && l.is_visible) pg_setmodal(l);
 
     return l;
     }
@@ -182,30 +171,10 @@ function wn_popup(aparam)
 	    pop_to_height = geom.height;
 	    }
 	}
-    /*if (pop_to && (!pop_to.tagName || pop_to.tagName != 'DIV'))
-	{
-	// fixme -- not all widgets have a visual DIV
-	if (wgtrGetType(pop_to) == "widget/component")
-	    {
-	    var cmp_geom = pop_to.getGeom();
-	    pop_to_x = getPageX(wgtrGetContainer(wgtrGetParent(pop_to))) + cmp_geom.x;
-	    pop_to_y = getPageY(wgtrGetContainer(wgtrGetParent(pop_to))) + cmp_geom.y;
-	    pop_to_width = cmp_geom.width;
-	    pop_to_height = cmp_geom.height;
-	    }
-	pop_to = null;
-	}*/
     if (aparam.X) pop_to_x = parseInt(aparam.X);
     if (aparam.Y) pop_to_y = parseInt(aparam.Y);
     if (aparam.Height) pop_to_height = parseInt(aparam.Height);
     if (aparam.Width) pop_to_width = parseInt(aparam.Width);
-    /*if (pop_to)
-	{
-	pop_to_x = getPageX(pop_to);
-	pop_to_y = getPageY(pop_to);
-	pop_to_width = getClipWidth(pop_to);
-	pop_to_height = getClipHeight(pop_to);
-	}*/
 
     if (aparam.OffsetX) pop_to_x += parseInt(aparam.OffsetX);
     if (aparam.OffsetY) pop_to_y += parseInt(aparam.OffsetY);
@@ -294,20 +263,15 @@ function wn_setvisibility_bh(v)
 	    this.loaded = true;
 	    this.ifcProbe(ifEvent).Activate("Load", {});
 	    }
-	this.ifcProbe(ifEvent).Activate("Open", {});
 	if (this.do_cascade && wn_topwin && getPageX(this) == getPageX(wn_topwin) && getPageY(this) == getPageY(wn_topwin) && wn_topwin != this)
 	    moveBy(this, 16, 16);
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
 	if (this.is_modal) pg_setmodal(this);
+	this.ifcProbe(ifEvent).Activate("Open", {});
 	}
     }
-
-//function wn_register_osrc(t)
-//    {
-//    this.osrc.push(t);
-//    }
 
 function wn_unset_windowshade(l)
     {
@@ -424,7 +388,7 @@ function wn_close(l)
     {
     if (l.is_modal) pg_setmodal(null);
     if (wn_popped[l.id]) delete wn_popped[l.id];
-    l.is_modal = false;
+    //l.is_modal = false;
     l.no_close = false;
     l.extended_region = null;
     if (l.popped_above)
@@ -505,13 +469,10 @@ function wn_togglevisibility(aparam)
     var vis = htr_getvisibility(this);
     if (vis != 'inherit' && vis != 'visible')
 	{
-	//aparam.IsVisible = 1;
-	//this.ActionSetVisibility(aparam);
 	this.SetVisibilityTH(true);
 	}
     else
 	{
-	//this.visibility = 'hide';
 	this.SetVisibilityTH(false);
 	}
     }
@@ -532,14 +493,7 @@ function wn_setvisibility(aparam)
     {
     if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1' || aparam.IsVisible == true)
 	{
-	/*wn_bring_top(this);
-	this.visibility = 'inherit';
-	if(!(aparam.NoInit && aparam.NoInit!=false && aparam.NoInit!=0))
-	    {
-	    for (var t in this.osrc)
-		this.osrc[t].InitQuery();
-	    }*/
-	this.is_modal = aparam.IsModal;
+	if (typeof aparam.IsModal != 'undefined') this.is_modal = aparam.IsModal;
 	this.no_close = aparam.NoClose;
 	this.do_cascade = aparam.Cascade;
 	this.SetVisibilityTH(true);
@@ -547,7 +501,6 @@ function wn_setvisibility(aparam)
     else
 	{
 	this.SetVisibilityTH(false);
-	//this.visibility = 'hidden';
 	}
     }
 
