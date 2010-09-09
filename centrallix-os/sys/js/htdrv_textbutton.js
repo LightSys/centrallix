@@ -83,6 +83,10 @@ function tb_init(param)
     ie.Add("MouseOut");
     ie.Add("MouseMove");
 
+    // Values
+    var iv = l.ifcProbeAdd(ifValue);
+    iv.Add("text", tb_cb_gettext, tb_cb_settext);
+
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetText", tb_action_settext);
@@ -93,6 +97,18 @@ function tb_action_settext(aparam)
     this.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     this.l2.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     this.l3.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    }
+
+// used by ifValue
+function tb_cb_gettext(attr)
+    {
+    return '';
+    }
+
+function tb_cb_settext(attr, val)
+    {
+    this.ifcProbe(ifAction).Invoke('SetText', {Text:val});
+    return;
     }
 
 function tb_propchange(prop, oldv, newv)
