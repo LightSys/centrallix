@@ -59,10 +59,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.22 2010/01/10 07:20:18 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.23 2010/09/09 01:48:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.23  2010/09/09 01:48:28  gbeeley
+    - (bugfix) used link counting to fix a race condition regarding report
+      completion by worker thread vs caller
+    - (change) permit xpos/ypos on a text snippet to have fractional parts
+    - (change) allow a table row without cells to contain a value= attribute
+
     Revision 1.22  2010/01/10 07:20:18  gbeeley
     - (feature) adding CSV file output from report writer.  Simply outputs
       only tabular data (report/table data) into a CSV file format.
@@ -296,6 +302,7 @@ typedef struct
     char	DownloadAs[256];
     char	ContentType[64];
     int		Flags;
+    int		LinkCnt;
     pObject	Obj;
     int		Mask;
     pSnNode	Node;
@@ -649,20 +656,22 @@ rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char
 int
 rpt_internal_CheckGoto(pRptSession rs, pStructInf object, int container_handle)
     {
-    int xpos = -1;
-    int ypos = -1;
-    int relypos = -1;
+    double xpos = -1.1;
+    double ypos = -1.1;
+    /*int relypos = -1;*/
 
     	/** Check for ypos and xpos **/
-	stAttrValue(stLookup(object, "ypos"),&ypos,NULL,0);
+	rpt_internal_GetDouble(object, "xpos", &xpos, 0);
+	rpt_internal_GetDouble(object, "ypos", &ypos, 0);
+	/*stAttrValue(stLookup(object, "ypos"),&ypos,NULL,0);
 	stAttrValue(stLookup(object, "xpos"),&xpos,NULL,0);
-	stAttrValue(stLookup(object, "relypos"),&relypos,NULL,0);
+	stAttrValue(stLookup(object, "relypos"),&relypos,NULL,0);*/
 
 	/** If ypos is set, do it first **/
-	if (ypos != -1) prtSetVPos(container_handle, (double)ypos);
+	if (ypos > -1) prtSetVPos(container_handle, (double)ypos);
 
 	/** Next check xpos **/
-	if (xpos != -1) prtSetHPos(container_handle, (double)xpos);
+	if (xpos > -1) prtSetHPos(container_handle, (double)xpos);
 
 	/** Relative y position? **/
 	/*if (relypos != -1) prtSetRelVPos(rs->PSession, (double)relypos);*/
@@ -728,7 +737,7 @@ rpt_internal_ProcessAggregates(pQueryConn qy)
 		    }
 		}
 	    expModifyParam(qy->ObjList, "this", (void*)qy);
-	    expUnlockAggregates(a_exp);
+	    expUnlockAggregates(a_exp,1);
 	    if (expEvalTree(a_exp, qy->ObjList) < 0)
 	        {
 		mssError(0,"RPT","Error evaluating compute= in aggregate");
@@ -840,7 +849,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 			}
 		    if (qy->AggregateDoReset.Items[n])
 		        {
-		        expResetAggregates(exp, -1);
+		        expResetAggregates(exp, -1,1);
 		        expEvalTree(exp,qy->ObjList);
 			}
 		    return was_null;
@@ -1673,12 +1682,12 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 
 	/** Loop through subobjects **/
 	is_cellrow = is_generalrow = 0;
-	for(i=0;i<tablerow->nSubInf;i++) if (stStructType(tablerow->SubInf[i]) == ST_T_SUBGROUP)
+	for(i=0;i<tablerow->nSubInf;i++) /*if (stStructType(tablerow->SubInf[i]) == ST_T_SUBGROUP)*/
 	    {
 	    subinf = tablerow->SubInf[i];
 
 	    /** Is this a cell object, or do we have a general-purpose row here? **/
-	    if (!strcmp(subinf->UsrType,"report/table-cell"))
+	    if (stStructType(subinf) == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"report/table-cell"))
 		{
 		if (is_generalrow)
 		    {
@@ -1743,7 +1752,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		/** End the cell **/
 		prtEndObject(tablecell_handle);
 		}
-	    else
+	    else if (stStructType(subinf) == ST_T_SUBGROUP || !strcmp(subinf->Name,"value"))
 		{
 		if (is_cellrow)
 		    {
@@ -1753,14 +1762,42 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		    return -1;
 		    }
 		is_generalrow = 1;
-		if (rpt_internal_DoContainer(inf, tablerow, rs, tablerow_handle) < 0)
+
+		if (stLookup(tablerow, "value"))
 		    {
-		    mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
-		    prtEndObject(tablerow_handle);
-		    rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
-		    return -1;
+		    /** Handle Table row as a monolithic container with a value= in it **/
+		    area_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, flags, NULL);
+		    if (area_handle < 0)
+			{
+			mssError(0,"RPT","problem constructing row object '%s' (error adding area object)", tablerow->Name);
+			prtEndObject(tablerow_handle);
+			rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+			return -1;
+			}
+		    /*rpt_internal_SetStyle(inf, subinf, rs, area_handle);*/
+		    rpt_internal_SetMargins(tablerow, area_handle, 0, 0, 0, 0);
+		    if (rpt_internal_DoData(inf, tablerow, rs, area_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing row object '%s' (error doing area content)", tablerow->Name);
+			prtEndObject(area_handle);
+			prtEndObject(tablerow_handle);
+			rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+			return -1;
+			}
+		    prtEndObject(area_handle);
 		    }
-		break; /* did all objects in DoContainer */
+		else
+		    {
+		    /** Handle table row as a monolithic container with abstract content in it **/
+		    if (rpt_internal_DoContainer(inf, tablerow, rs, tablerow_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
+			prtEndObject(tablerow_handle);
+			rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+			return -1;
+			}
+		    }
+		break; /* end the subinf for() loop, since we did all objects in DoContainer or DoArea */
 		}
 	    }
 
@@ -2473,7 +2510,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 		        {
 		        exp = (pExpression)(qy->AggregateExpList.Items[n]);
 	    	        rpt_internal_WriteExpResult(rs, exp);
-		        expResetAggregates(exp, -1);
+		        expResetAggregates(exp, -1,1);
 			expEvalTree(exp,qy->ObjList);
 	                rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
 	                rpt_internal_CheckFont(rs,field,&saved_font);
@@ -3190,7 +3227,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	object->UserData = NULL;
 
 	/** IF this is a report/data or report/table-cell, compile its one expression **/
-	if (!strcmp(object->UsrType,"report/data") || !strcmp(object->UsrType,"report/table-cell") || !strcmp(object->UsrType, "report/area"))
+	if (!strcmp(object->UsrType,"report/data") || !strcmp(object->UsrType,"report/table-cell") || !strcmp(object->UsrType, "report/area") || !strcmp(object->UsrType, "report/table-row"))
 	    {
 	    /** Get the expression itself **/
 	    expr_inf = stLookup(object,"value");
@@ -3434,11 +3471,6 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    prtWriteLine(ps);
 	    }*/
 
-	/** Create the parameter object list, adding the report object itself as 'this' **/
-	inf->ObjList = expCreateParamList();
-	expAddParamToList(inf->ObjList, "this", inf->Obj, EXPR_O_PARENT | EXPR_O_CURRENT);
-	inf->ObjList->Session = inf->Obj->Session;
-
 	/** Ok, now look through the request for queries, comments, tables, forms **/
 	xhInit(&queries, 31, 0);
 	rs = (pRptSession)nmMalloc(sizeof(RptSession));
@@ -3562,7 +3594,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 				break;
 				}
 			    exp->DataType = DATA_T_UNAVAILABLE;
-		            expResetAggregates(exp, -1);
+		            expResetAggregates(exp, -1,1);
 			    expEvalTree(exp,qc->ObjList);
 			    xaAddItem(&(qc->AggregateExpList), (void*)exp);
 
@@ -3673,9 +3705,6 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	/** Undo the preprocessing - release the expression trees **/
 	rpt_internal_UnPreProcess(inf, req, rs);
 
-	/** Free the objlist **/
-	expFreeParamList(inf->ObjList);
-
 	/** End with a form feed, close up and get out. **/
 	/*prtWriteFF(ps);*/
 
@@ -3755,6 +3784,8 @@ rpt_internal_Generator(void* v)
 	/** Close the slave side and exit. **/
 	prtCloseSession(ps);
 	fdClose(inf->SlaveFD,0);
+	inf->SlaveFD = NULL;
+	rpt_internal_Close(inf, NULL);
 	thExit();
 
     return;
@@ -3783,11 +3814,15 @@ rpt_internal_StartGenerator(pRptData inf)
 	fdSetOptions(inf->SlaveFD, FD_UF_WRBUF);
 
 	/** Create a new thread to start the report generation. **/
+	inf->LinkCnt++;
 	if (!thCreate(rpt_internal_Generator, 0, (void*)inf))
 	    {
+	    inf->LinkCnt--;
 	    mssError(1,"RPT","Failed to create thread for report generator");
 	    fdClose(inf->MasterFD,0);
+	    inf->MasterFD = NULL;
 	    fdClose(inf->SlaveFD,0);
+	    inf->SlaveFD = NULL;
 	    return -1;
 	    }
 
@@ -3902,6 +3937,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (!inf) return NULL;
 	inf->Obj = obj;
 	inf->Mask = mask;
+	inf->LinkCnt = 1;
 	inf->AttrOverride = stCreateStruct(NULL,NULL);
 	if (usrtype)
 	    memccpy(inf->ContentType, usrtype, 0, 63);
@@ -3930,6 +3966,11 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Node->OpenCnt++;
 	inf->StartSem = syCreateSem(0,0);
 	inf->IOSem = syCreateSem(0,0);
+
+	/** Create the parameter object list, adding the report object itself as 'this' **/
+	inf->ObjList = expCreateParamList();
+	expAddParamToList(inf->ObjList, "this", inf->Obj, EXPR_O_PARENT | EXPR_O_CURRENT);
+	inf->ObjList->Session = inf->Obj->Session;
 
 	/** create a unique object name? **/
 	if (obj->SubPtr < obj->Pathname->nElements && !strcmp(obj->Pathname->Elements[obj->SubPtr], "*") && (obj->Mode & OBJ_O_AUTONAME))
@@ -4005,6 +4046,24 @@ rptClose(void* inf_v, pObjTrxTree* oxt)
 	    fdClose(inf->MasterFD, 0);
 	    inf->MasterFD = NULL;
 	    }
+
+	/** close it, if linkcnt goes to 0 **/
+	rpt_internal_Close(inf_v, oxt);
+
+    return 0;
+    }
+
+int
+rpt_internal_Close(void* inf_v, pObjTrxTree* oxt)
+    {
+    pRptData inf = RPT(inf_v);
+
+	inf->LinkCnt--;
+	if (inf->LinkCnt > 0) return 0;
+
+	/** Free the objlist **/
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
 
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
