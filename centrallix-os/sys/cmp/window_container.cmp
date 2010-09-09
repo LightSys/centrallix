@@ -8,6 +8,7 @@ window_container "widget/component-decl"
     w "widget/parameter" { type=integer; default=640; }
     h "widget/parameter" { type=integer; default=480; }
     visible "widget/parameter" { type=string; default="true"; }
+    padding "widget/parameter" { type=integer; default=0; }
 
     Open "widget/component-decl-action" { }
     OpenModal "widget/component-decl-action" { }
@@ -20,6 +21,10 @@ window_container "widget/component-decl"
     visual = yes;
     width=1024;
     height=768;
+
+    expose_actions_for = this_cmp;
+    expose_events_for = this_cmp;
+    expose_properties_for = this_cmp;
 
     mainwin "widget/childwindow"
 	{
@@ -36,6 +41,10 @@ window_container "widget/component-decl"
 
 	this_cmp "widget/component"
 	    {
+	    width = runserver(:this:w - (:this:padding + 1) * 2);
+	    height = runserver(:this:h - 23 - (:this:padding + 1) * 2);
+	    x = runserver(:this:padding);
+	    y = runserver(:this:padding);
 	    path=runserver(:this:component);
 	    use_toplevel_params = yes;
 	    }
