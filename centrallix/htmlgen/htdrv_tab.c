@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.40 2009/06/25 21:09:12 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.41 2010/09/09 01:13:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.41  2010/09/09 01:13:12  gbeeley
+    - (change) allow tab control to "see" its children even if a nonvisual
+      widget (such as widget/repeat) is interposed.  This allows for the
+      widget/repeat to populate a tab control, which is key in some of the
+      plug-in architecture for applications
+
     Revision 1.40  2009/06/25 21:09:12  gbeeley
     - (bugfix) tabpage "object" is now the pane, not the little tab, so that
       things work consistently when there are or are not tabs (e.g., tab
@@ -465,6 +471,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
     int is_selected;
     char* bg;
     char* tabname;
+    pWgtrNode children[32];
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&(!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS))
 	    {
@@ -604,15 +611,17 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		name, tloc, main_bg, inactive_bg);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
+	tabcnt = wgtrGetMatchingChildList(tree, "widget/tabpage", children, sizeof(children)/sizeof(pWgtrNode));
 	if (tloc != None)
 	    {
-	    tabcnt = 0;
-	    for (i=0;i<xaCount(&(tree->Children));i++)
+	    /*tabcnt = 0;*/
+	    for (i=0;i<tabcnt;i++)
 		{
-		tabpage_obj = xaGetItem(&(tree->Children), i);
-		wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+		/*tabpage_obj = xaGetItem(&(tree->Children), i);*/
+		tabpage_obj = children[i];
+		/*wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/tabpage"))
-		    {
+		    {*/
 		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 
 		    if(wgtrGetPropertyValue(tabpage_obj,"type",DATA_T_STRING,POD(&type)) != 0)
@@ -621,8 +630,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			strcpy(page_type,type);
 		    else
 			strcpy(page_type,"static");
-		    tabcnt++;
-		    is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		    /*tabcnt++;*/
+		    is_selected = (i+1 == sel_idx || (!*sel && i == 0) || !strcmp(sel,ptr));
 		    bg = is_selected?main_bg:inactive_bg;
 		    if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
 			wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
@@ -631,13 +640,13 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 			{
 			htrAddStylesheetItem_va(s,"\t#tc%POStab%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; Z-INDEX:%POS; }\n",
-				id,tabcnt,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
+				id,i+1,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
 			}
 
 		    /** Generate the tabs along the edge of the control **/
 		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 			{
-			htrAddBodyItem_va(s,"<DIV ID=\"tc%POStab%POS\" %STR>\n",id,tabcnt,bg);
+			htrAddBodyItem_va(s,"<DIV ID=\"tc%POStab%POS\" %STR>\n",id,i+1,bg);
 			if (tab_width == 0)
 			    htrAddBodyItem(s,   "    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
 			else
@@ -659,7 +668,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			if (tloc == Right)
 			    {
 			    htrAddBodyItem(s,"           <TD align=right width=6>");
-			    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
+			    if ((!*sel && i == 0) || !strcmp(sel,ptr))
 				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
 			    else
 				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
@@ -675,11 +684,11 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    else if (s->Capabilities.Dom2CSS)
 			{
 			htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { cursor:default; color:%STR&CSSVAL; %STR }\n",
-				id, tabcnt, tab_txt, bg);
+				id, i+1, tab_txt, bg);
 			if (tab_width <= 0)
-			    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; overflow:hidden; z-index:%POS; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
+			    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; overflow:hidden; z-index:%POS; \">\n", id, i+1, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
 			else
-			    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; width:%POSpx; overflow:hidden; z-index:%POS; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
+			    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; width:%POSpx; overflow:hidden; z-index:%POS; \">\n", id, i+1, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
 			if (tloc != Right)
 			    {
 			    if (tab_width <= 0)
@@ -696,7 +705,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			    }
 			htrAddBodyItem(s, "</div>\n");
 			}
-		    }
+		    /*}*/
 		}
 	    }
 
@@ -724,17 +733,18 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Check for tabpages within the tab control entity, this time to do the pages themselves **/
-	tabcnt = 0;
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	/*tabcnt = 0;*/
+	for (i=0;i<tabcnt;i++)
 	    {
-	    tabpage_obj = xaGetItem(&(tree->Children), i);
-	    wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+	    /*tabpage_obj = xaGetItem(&(tree->Children), i);*/
+	    tabpage_obj = children[i];
+	    /*wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/tabpage"))
-		{
+		{*/
 		/** First, render the tabpage and add stuff for it **/
 		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
-		tabcnt++;
-		is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		/*tabcnt++;*/
+		is_selected = (i+1 == sel_idx || (!*sel && i == 0) || !strcmp(sel,ptr));
 		if(wgtrGetPropertyValue(tabpage_obj,"type",DATA_T_STRING,POD(&type)) != 0)
 		    strcpy(page_type,"static");
 		else if(!strcmp(type,"static") || !strcmp(type,"dynamic"))
@@ -752,7 +762,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 		    {
 		    htrAddStylesheetItem_va(s,"\t#tc%POSpane%POS { POSITION:absolute; VISIBILITY:%STR; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",
-			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
+			    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
 		    }
 		
 		/** Add script initialization to add a new tabpage **/
@@ -761,22 +771,22 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			name, ptr, name, ptr,page_type,fieldname);
 		else
 		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tc%POStab%POS\"),wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
-			name, name, id, tabcnt, ptr, name, ptr,page_type,fieldname);
+			name, name, id, i+1, ptr, name, ptr,page_type,fieldname);
 
 		/** Add named global for the tabpage **/
 		subnptr = nmSysStrdup(ptr);
 		/*if (tloc == None)*/
-		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%POSpane%POS\")", id, tabcnt);
+		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%POSpane%POS\")", id, i+1);
 		/*else
-		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(wgtrGetContainer(wgtrGetParent(_parentobj)), \"tc%POStab%POS\")", id, tabcnt);*/
-		htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, tabcnt);
+		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(wgtrGetContainer(wgtrGetParent(_parentobj)), \"tc%POStab%POS\")", id, i+1);*/
+		htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
 
 		/** Add DIV section for the tabpage. **/
 		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    htrAddBodyItem_va(s,"<DIV ID=\"tc%POSpane%POS\">\n",id,tabcnt);
+		    htrAddBodyItem_va(s,"<DIV ID=\"tc%POSpane%POS\">\n",id,i+1);
 		else
 		    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
-			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
+			    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
 
 		/** Now look for sub-items within the tabpage. **/
 		for (j=0;j<xaCount(&(tabpage_obj->Children));j++)
@@ -787,16 +797,27 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		nmSysFree(subnptr);
 		/** Add the visible property **/
 		htrCheckAddExpression(s, tabpage_obj, ptr, "visible");
-		}
+		/*}
 	    else if (!strcmp(ptr,"widget/connector"))
 		{
 		htrRenderWidget(s, tabpage_obj, z+2);
-		}
+		}*/
 	    }
+
+	/** Need to do other subwidgets (connectors, etc.) now **/
+	htrRenderSubwidgets(s, tree, z+1);
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV>\n");
 
+    return 0;
+    }
+
+int 
+httabRender_page(pHtSession s, pWgtrNode tabpage, int z) 
+    {
+    /** we already rendered subwidgets of the tabpage **/
+    /*htrRenderSubwidgets(s, tabpage, z);*/
     return 0;
     }
 
@@ -813,14 +834,22 @@ httabInitialize()
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
-	strcpy(drv->Name,"DHTML Tab Control / Tab Page Driver");
+	strcpy(drv->Name,"DHTML Tab Control Driver");
 	strcpy(drv->WidgetName,"tab");
 	drv->Render = httabRender;
-	xaAddItem(&(drv->PseudoTypes), "tabpage");
+	/*xaAddItem(&(drv->PseudoTypes), "tabpage");*/
 
 	/** Register. **/
 	htrRegisterDriver(drv);
 
+	htrAddSupport(drv, "dhtml");
+
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+	strcpy(drv->Name,"DHTML Tab Page Driver");
+	strcpy(drv->WidgetName,"tabpage");
+	drv->Render = httabRender_page;
+	htrRegisterDriver(drv);
 	htrAddSupport(drv, "dhtml");
 
 	HTTAB.idcnt = 0;
