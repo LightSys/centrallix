@@ -1,0 +1,32 @@
+$Version=2$
+edit_btn "widget/component-decl"
+    {
+    width=18;
+    height=18;
+
+    form "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/form";
+	}
+
+    object_name "widget/parameter"
+	{
+	type = "string";
+	default = "Record";
+	}
+
+    btnEdit "widget/imagebutton"
+	{
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico23a.gif";
+	pointimage="/sys/images/ico23b.gif";
+	clickimage="/sys/images/ico23c.gif";
+	disabledimage="/sys/images/ico23d.gif";
+	tooltip = runserver("Edit this " + :this:object_name);
+	enabled = runclient(:form:is_editable);
+	cnEdit "widget/connector" { event="Click"; target=form; action="Edit"; }
+	}
+    }

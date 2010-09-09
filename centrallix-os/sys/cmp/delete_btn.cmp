@@ -1,0 +1,32 @@
+$Version=2$
+delete_btn "widget/component-decl"
+    {
+    width=18;
+    height=18;
+
+    form "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/form";
+	}
+
+    object_name "widget/parameter"
+	{
+	type = "string";
+	default = "Record";
+	}
+
+    btnDelete "widget/imagebutton"
+	{
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico24a.gif";
+	pointimage="/sys/images/ico24b.gif";
+	clickimage="/sys/images/ico24c.gif";
+	disabledimage="/sys/images/ico24d.gif";
+	tooltip = runserver("Delete this " + :this:object_name);
+	enabled = runclient(:form:is_editable);
+	cnDelete "widget/connector" { event="Click"; target=form; action="Delete"; }
+	}
+    }

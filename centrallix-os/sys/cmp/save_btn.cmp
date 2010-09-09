@@ -1,0 +1,58 @@
+$Version=2$
+save_btn "widget/component-decl"
+    {
+    width=18;
+    height=18;
+
+    form "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/form";
+	}
+
+    osrc "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/osrc";
+	}
+
+    object_name "widget/parameter"
+	{
+	type = "string";
+	default = "Record";
+	}
+
+    save_mode "widget/parameter"
+	{
+	type = "string";
+	default = "form";
+	}
+    btnSave "widget/imagebutton"
+	{
+	condition=runserver(:this:save_mode == 'form');
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico20a.gif";
+	pointimage="/sys/images/ico20b.gif";
+	clickimage="/sys/images/ico20c.gif";
+	disabledimage="/sys/images/ico20d.gif";
+	tooltip = "Save Changes";
+	enabled = runclient(:form:is_savable);
+	cnSave "widget/connector" { event="Click"; target=form; action="Save"; }
+	}
+    btnSaveOsrc "widget/imagebutton"
+	{
+	condition=runserver(:this:save_mode == 'osrc');
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico20a.gif";
+	pointimage="/sys/images/ico20b.gif";
+	clickimage="/sys/images/ico20c.gif";
+	disabledimage="/sys/images/ico20d.gif";
+	tooltip = "Save Changes";
+	enabled = runclient(:osrc:is_client_savable);
+	cnSaveOsrc "widget/connector" { event="Click"; target=osrc; action="SaveClients"; }
+	}
+    }
