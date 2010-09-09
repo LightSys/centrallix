@@ -19,6 +19,8 @@ function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.
     ifc_init_widget(component);
     var ia = component.ifcProbeAdd(ifAction);
     ia.Add("TriggerEvent", cmpd_action_trigger_event);
+    ia.Add("Launch", cmpd_launch);
+    ia.Add("Alert", cmpd_alert);
     var ie = component.ifcProbeAdd(ifEvent);
     shell.RegisterComponent(component);
     wgtrRegisterContainer(component, shell);
@@ -38,6 +40,8 @@ function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.
     if (param.expe) component.expe = param.expe;
     if (param.expa) component.expa = param.expa;
     if (param.expp) component.expp = param.expp;
+
+    if (param.applyhint) component.applyhint = param.applyhint;
 
     //if (param.expe || param.expa || param.expp)
     //	pg_addsched_fn(component, "postInit", [], 0);
@@ -62,6 +66,12 @@ function cmpd_endinit(c)
 
 function cmpd_post_init()
     {
+    if (this.applyhint)
+	{
+	this.shell.cx_hints_applyto = wgtrGetNode(this, this.applyhint);
+	cx_copy_hints(this.shell, this.shell.cx_hints_applyto);
+	}
+
     if (this.expe)
 	{
 	var ewidget = wgtrGetNode(this, this.expe);
@@ -80,6 +90,7 @@ function cmpd_post_init()
 		}
 	    }
 	}
+
     if (this.expa)
 	{
 	var awidget = wgtrGetNode(this, this.expa);
@@ -226,3 +237,14 @@ function cmpd_shell_set_context(l)
     this.context = l;
     return;
     }
+
+function cmpd_launch(aparam)
+    {
+    return window.ifcProbe(ifAction).Invoke("Launch", aparam);
+    }
+
+function cmpd_alert(aparam)
+    {
+    return window.ifcProbe(ifAction).Invoke("Alert", aparam);
+    }
+
