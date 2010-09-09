@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.41 2008/07/16 00:34:57 thr4wn Exp $
+    $Id: htdrv_textbutton.c,v 1.42 2010/09/09 01:16:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.42  2010/09/09 01:16:09  gbeeley
+    - (feature) the 'text' property now can be assigned a dynamic expression
+
     Revision 1.41  2008/07/16 00:34:57  thr4wn
     Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
 
@@ -463,7 +466,8 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
 
 	/** Get normal, point, and click images **/
-	if (wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) != 0)
+	ptr = "-";
+	if (!htrCheckAddExpression(s, tree, name, "text") && wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTTBTN","TextButton widget must have a 'text' property");
 	    return -1;
