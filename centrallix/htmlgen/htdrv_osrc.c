@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.68 2009/06/25 19:53:26 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.69 2010/09/09 01:10:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.69  2010/09/09 01:10:13  gbeeley
+    - (feature) permit OSRC to operate in client-only mode where changes to
+      data values are not sent back to the server.
+    - (change) permit OSRC to specify which object in a SQL query holds the
+      primary key values.  used for when the osrc builds the where clause.
+    - (change) permit the same for osrc_relationship rules
+
     Revision 1.68  2009/06/25 19:53:26  gbeeley
     - (change) permit OSRC to add constraints to the query using a HAVING
       clause instead of the WHERE clause
@@ -609,10 +616,12 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 //   pObjQuery qy;
    enum htosrc_autoquery_types aq;
    int receive_updates;
+   int send_updates;
    int count, i;
    int ind_activity;
    int use_having;
    int qy_reveal_only;
+   char key_objname[32];
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -655,6 +664,11 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       return -1;
       }
 
+   /** Name/abbreviation of key object in SQL query **/
+   if (wgtrGetPropertyValue(tree,"key_objname",DATA_T_STRING,POD(&ptr)) != 0)
+      ptr = "";
+   strtcpy(key_objname, ptr, sizeof(key_objname));
+
    /** Query autostart types **/
    if (wgtrGetPropertyValue(tree,"autoquery",DATA_T_STRING,POD(&ptr)) == 0)
       {
@@ -675,6 +689,9 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 
    /** Get replication updates from server? **/
    receive_updates = htrGetBoolean(tree, "receive_updates", 0);
+
+   /** Send updates to the server? **/
+   send_updates = htrGetBoolean(tree, "send_updates", 1);
 
    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&ptr)) == 0)
       {
@@ -707,10 +724,10 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT});\n",
+   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT, send_updates:%INT, key_objname:\"%STR&JSSTR\"});\n",
 	 name,readahead,scrollahead,replicasize,sql,filter,
 	 baseobj?baseobj:"",name,aq,receive_updates, ind_activity,
-	 use_having, qy_reveal_only);
+	 use_having, qy_reveal_only, send_updates, key_objname);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
@@ -806,6 +823,10 @@ int htosrcInitialize() {
 		"revealed_only",	HT_DATA_T_BOOLEAN,
 		"enforce_create",	HT_DATA_T_BOOLEAN,
 		"autoquery",		HT_DATA_T_BOOLEAN,
+		"master_norec_action",	DATA_T_STRING,		/* what to do if no record in master (allrecs, sameasnull, norecs) */
+		"master_null_action",	DATA_T_STRING,		/* what to do if master key is null (allrecs, nullisvalue, norecs) */
+		"key_objname",		DATA_T_STRING,
+		"target_key_objname",	DATA_T_STRING,
 		NULL);
 
    htruleRegister("osrc_key",
