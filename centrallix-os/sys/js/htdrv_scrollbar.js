@@ -20,7 +20,7 @@ function sb_init(param)
 	if(ml.name==param.tname) tlayer=ml;
 	}*/
     var imgs = pg_images(l);
-    for(i=0;i<imgs.length;i++)
+    for(var i=0;i<imgs.length;i++)
 	{
 	var img=imgs[i];
 	if(img.name=='d' || img.name=='u' || img.name=='b')
