@@ -132,12 +132,16 @@ function osrc_query_text_handler(aparam)
 
     var fieldlist = (new String(aparam.field_list)).split(',');
     var searchlist = (new String(aparam.query)).split(' ');
+    var objname = aparam.objname?aparam.objname:null;
     if (aparam.min_length > 0)
 	var min_length = aparam.min_length;
     else
 	var min_length = 2;
 
     this.move_target = aparam.targetrec;
+
+    if (!aparam.fromsync)
+	this.SyncID = osrc_syncid++;
 
     // build the search string from the criteria and field list
     var filter = '';
@@ -147,6 +151,7 @@ function osrc_query_text_handler(aparam)
 	for(var i=0; i<searchlist.length; i++)
 	    {
 	    var s = searchlist[i];
+	    if (!s) continue;
 	    if (!firstone) filter += ' and ';
 	    filter += '(';
 
@@ -157,19 +162,19 @@ function osrc_query_text_handler(aparam)
 		var criteria = s;
 
 		// asterisks on either side of field name indicate substring searching with wildcards.
-		if (f.indexOf('*') == 0)
+		if (f.indexOf('*') == 0 && criteria.substr(0, 1) != '*')
 		    {
 		    criteria = '*' + criteria;
 		    f = f.substr(1);
 		    }
-		if (f.lastIndexOf('*') == f.length - 1)
+		if (f.lastIndexOf('*') == f.length - 1 && criteria.substr(criteria.length - 1, 1) != '*')
 		    {
 		    criteria = criteria + '*';
 		    f = f.substr(0, f.length - 1);
 		    }
 
 		if (!firstfield) filter += ' or ';
-		filter += this.MakeFilterString(f, criteria, case_insensitive);
+		filter += this.MakeFilterString({oid:f, obj:objname}, criteria, case_insensitive);
 
 		firstfield = false;
 		}
@@ -332,17 +337,25 @@ function osrc_query_object_handler(aparam)
     }
 
 
+function osrc_make_filter_colref(col)
+    {
+    return (col.obj?(':"' + col.obj + '"'):'') + ':"' + col.oid + '"';
+    }
+
+
 function osrc_make_filter_integer(col,val)
     {
-    if (val == null)
-	return ':"' + col.oid + '" is null ';
+    if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
+	return this.MFCol(col) + ' is null ';
+    else if (val == null)
+	return this.MFCol(col) + ' = null ';
     else if (typeof val != 'number' && (new String(val)).search(/-/)>=0)
 	{
 	var parts = (new String(val)).split(/-/);
-	return '(:"' + col.oid + '">=' + parts[0] + ' AND :"' + col.oid + '"<=' + parts[1] + ')';
+	return '(' + this.MFCol(col) + ' >=' + parts[0] + ' AND ' + this.MFCol(col) + ' <=' + parts[1] + ')';
 	}
     else
-	return ':"' + col.oid + '" = ' + val;
+	return this.MFCol(col) + ' = ' + val;
     }
 
 
@@ -350,36 +363,39 @@ function osrc_make_filter_string(col, val, icase)
     {
     var str = '';
     var ifunc = '';
+    var colref = this.MFCol(col);
     if (icase)
 	ifunc = 'upper';
-    if (val == null)
-	str=':"'+col+'" is null ';
+    if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
+	str=colref + ' is null ';
+    else if (val == null)
+	str=colref + ' = null ';
     else
 	if (val.search(/^\*.+\*$/)>=0)
 	    {
-	    str='charindex(' + ifunc + '("'+val.substring(1,val.length-1)+'"),' + ifunc + '(:"'+col+'"))>0';
+	    str='charindex(' + ifunc + '("'+val.substring(1,val.length-1)+'"),' + ifunc + '(' + colref + '))>0';
 	    }
 	else if(val.search(/^\*/)>=0) //* at beginning
 	    {
 	    val = val.substring(1); //pop off *
-	    str='right(' + ifunc + '(:"'+col+'"),'+val.length+')=' + ifunc + '("'+val+'")';
+	    str='right(' + ifunc + '(' + colref + '),'+val.length+')=' + ifunc + '("'+val+'")';
 	    }
 	else if(val.search(/\*$/)>=0) //* at end
 	    {
 	    val=val.substring(0,val.length-1); //chop off *
-	    str='substring(' + ifunc + '(:"'+col+'"),'+1+','+val.length+')=' + ifunc + '("'+val+'")';
+	    str='substring(' + ifunc + '(' + colref + '),'+1+','+val.length+')=' + ifunc + '("'+val+'")';
 	    }
 	else if(val.indexOf('*')>=0) //* in middle
 	    {
 	    var ind = val.indexOf('*');
 	    var val1 = val.substring(0,ind);
 	    var val2 = val.substring(ind+1);
-	    str='(right(' + ifunc + '(:"'+col+'"),'+val2.length+')=' + ifunc + '("'+val2+'")';
+	    str='(right(' + ifunc + '(' + colref + '),'+val2.length+')=' + ifunc + '("'+val2+'")';
 	    str+=' AND ';
-	    str+='substring(' + ifunc + '(:"'+col+'"),1,'+val1.length+')=' + ifunc + '("'+val1+'"))';
+	    str+='substring(' + ifunc + '(' + colref + '),1,'+val1.length+')=' + ifunc + '("'+val1+'"))';
 	    }
 	else
-	    str=ifunc + '(:"'+col+'")='+ifunc+'("'+val+'")';
+	    str=ifunc + '(' + colref + ')='+ifunc+'("'+val+'")';
     return str;
     }
     
@@ -395,7 +411,11 @@ function osrc_make_filter(q)
 	if(i!='oid' && i!='joinstring')
 	    {
 	    var str;
-	    if(q[i].joinstring)
+	    if (q[i].force_empty)
+		{
+		str = '1 == 0';
+		}
+	    else if(q[i].joinstring)
 		{
 		str=this.MakeFilter(q[i]);
 		}
@@ -418,8 +438,10 @@ function osrc_make_filter(q)
 		    isnot = true;
 		    }
 
-		if (q[i].type == "undefined" && this.type_list[q[i].oid])
+		if (typeof q[i].type == "undefined" && this.type_list[q[i].oid])
 		    q[i].type = this.type_list[q[i].oid];
+
+		var colref = this.MFCol(q[i]);
 
 		switch(q[i].type)
 		    {
@@ -428,8 +450,10 @@ function osrc_make_filter(q)
 			break;
 
 		    case 'integerarray':
-			if (val == null)
-			    str = ':"' + q[i].oid + '" is null ';
+			if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
+			    str = colref + 'is null ';
+			else if (val == null)
+			    str = colref + ' = null ';
 			else if (val.length)
 			    {
 			    str = "(";
@@ -444,9 +468,13 @@ function osrc_make_filter(q)
 			    }
 			break;
 		    case 'undefinedarray':
-			if (val == null)
+			if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
 			    {
-			    str=':"'+q[i].oid+'" is null ';
+			    str=colref + ' is null ';
+			    }
+			else if (val == null)
+			    {
+			    str=colref + ' = null ';
 			    }
 			else if (val.length == 0)
 			    {
@@ -462,16 +490,20 @@ function osrc_make_filter(q)
 				if ((new String(parseInt(val[j]))) == (new String(val[j])))
 				    str += this.MakeFilterInteger(q[i], val[j]);
 				else
-				    str += this.MakeFilterString(q[i].oid, val[j]);
+				    str += this.MakeFilterString(q[i], val[j]);
 				str += ")";
 				}
 			    str += ")";
 			    }
 			break;
 		    case 'stringarray':
-			if (val == null)
+			if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
 			    {
-			    str=':"'+q[i].oid+'" is null ';
+			    str=colref + ' is null ';
+			    }
+			else if (val == null)
+			    {
+			    str=colref + ' = null ';
 			    }
 			else
 			    {
@@ -480,75 +512,18 @@ function osrc_make_filter(q)
 				{
 				if (j) str += " OR ";
 				str += "(";
-				str += this.MakeFilterString(q[i].oid, val[j]);
+				str += this.MakeFilterString(q[i], val[j]);
 				str += ")";
 				}
 			    str += ")";
-if (0) {
-			    if (val[0].search(/^\*.+\*$/)>=0)
-				{
-				str='(charindex("'+val[0].substring(1,val[0].length-1)+'",:'+q[i].oid+')>0';
-				}
-			    else if(val[0].search(/^\*/)>=0) //asterisk at beginning
-				{
-				val[0] = val[0].substring(1); //pop off *
-				str='(right(:'+q[i].oid+','+val[0].length+')="'+val[0]+'"';
-				}
-			    else if(val[0].search(/\*$/)>=0) //asterisk at end
-				{
-				val[0]=val[0].substring(0,val[0].length-1); //chop off *
-				str='(substring(:'+q[i].oid+','+1+','+val[0].length+')="'+val[0]+'"';
-				}
-			    else if(val[0].indexOf('*')>=0) // * in middle
-				{
-				var ind = val[0].indexOf('*');
-				var val1 = val[0].substring(0,ind);
-				var val2 = val[0].substring(ind+1);
-				str='((right(:'+q[i].oid+','+val2.length+')="'+val2+'"';
-				str+=' AND ';
-				str+='substring(:'+q[i].oid+',1,'+val1.length+')="'+val1+'")';
-				}
-			    else
-				str='(:'+q[i].oid+'='+'"'+val[0]+'"';
-
-			    for(var j=1;j<val.length;j++)
-				{
-				if (val[j].search(/^\*.+\*$/)>=0)
-				    {
-				    str+=' OR charindex("'+val[j].substring(1,val[j].length-1)+'",:'+q[i].oid+')>0';
-				    }
-				else if(val[j].search(/^\*/)>=0) // * at beginning
-				    {
-				    val[j] = val[j].substring(1); //pop off *
-				    str+=' OR right(:'+q[i].oid+','+val[j].length+')="'+val[j]+'"';
-				    }
-				else if(val[j].search(/\*$/)>=0) // * at end
-				    {
-				    val[j]=val[j].substring(0,val[j].length-1); //chop off *
-				    str+=' OR substring(:'+q[i].oid+','+1+','+val[j].length+')="'+val[j]+'"';
-				    }
-				else if(val[j].indexOf('*')>=0) // * in middle
-				    {
-				    var ind = val[j].indexOf('*');
-				    var val1 = val[j].substring(0,ind);
-				    var val2 = val[j].substring(ind+1);
-				    str+=' OR (right(:'+q[i].oid+','+val2.length+')="'+val2+'"';
-				    str+=' AND ';
-				    str+='substring(:'+q[i].oid+',1,'+val1.length+')="'+val1+'")';
-				    }
-				else
-				    str+=' OR :'+q[i].oid+'='+'"'+val[j]+'"';
-				}
-			    str+=')';
-}
 			    }
 			break;
 		    case 'datetimearray':
-			str='(:'+q[i].oid;
+			str='(' + colref;
 			var dtfirst=true;
 			for(var j in val)
 			    {
-			    if(!dtfirst) str+= ' AND :"' + q[i].oid + '"';
+			    if(!dtfirst) str+= ' AND ' + colref;
 			    dtfirst=false;
 			    if(val[j].substring(0,2)=='>=')
 				str+=' >= \"'+val[j].substring(2)+'\"';
@@ -570,7 +545,7 @@ if (0) {
 
 		    case 'string':
 		    case 'istring':
-			str = this.MakeFilterString(q[i].oid, val, q[i].type == 'istring');
+			str = this.MakeFilterString(q[i], val, q[i].type == 'istring');
 			break;
 
 		    default:
@@ -578,28 +553,28 @@ if (0) {
 			if(!val || typeof val.substring == 'undefined') // assume integer
 			    str = this.MakeFilterInteger(q[i], val);
 			else if(val.substring(0,2)=='>=')
-			    str=':"'+q[i].oid+'" >= '+val.substring(2);
+			    str=colref + ' >= '+val.substring(2);
 			else if(val.substring(0,2)=='<=')
-			    str=':"'+q[i].oid+'" <= '+val.substring(2);
+			    str=colref + ' <= '+val.substring(2);
 			else if(val.substring(0,2)=='=>')
-			    str=':"'+q[i].oid+'" >= '+val.substring(2);
+			    str=colref + ' >= '+val.substring(2);
 			else if(val.substring(0,2)=='=<')
-			    str=':"'+q[i].oid+'" <= '+val.substring(2);
+			    str=colref + ' <= '+val.substring(2);
 			else if(val.substring(0,1)=='>')
-			    str=':"'+q[i].oid+'" > '+val.substring(1);
+			    str=colref + ' > '+val.substring(1);
 			else if(val.substring(0,1)=='<')
-			    str=':"'+q[i].oid+'" < '+val.substring(1);
+			    str=colref + ' < '+val.substring(1);
 			else if(val.indexOf('-')>=0)
 			    {
 			    //assume integer range in string
 			    var ind = val.indexOf('-');
 			    var val1 = val.substring(0,ind);
 			    var val2 = val.substring(ind+1);
-			    str='(:"'+q[i].oid+'">='+val1+' AND :"'+q[i].oid+'"<='+val2+')';
+			    str='(' + colref + ' >='+val1+' AND ' + colref + ' <='+val2+')';
 			    }
 			else
 			    {
-			    str = this.MakeFilterString(q[i].oid, val);
+			    str = this.MakeFilterString(q[i], val);
 			    }
 			break;
 		    }
@@ -625,10 +600,18 @@ if (0) {
 // data. This function could be called right before closing a window
 // where nogo_func would be a confirmation box (to lose unsaved data
 // or not) could appear if needed.
-function osrc_go_nogo(go_func, nogo_func)
+function osrc_go_nogo(go_func, nogo_func, context)
     {
+    if (this._go_nogo_pending)
+	{
+	this._go_nogo_queue.push([go_func, nogo_func, context]);
+	return;
+	}
+    if (!this._go_nogo_queue)
+	this._go_nogo_queue = [];
     this._unsaved_cnt = 0;
     this._go_nogo_pending = true;
+    this._go_nogo_context = context;
     this._go_func = go_func;
     this._nogo_func = nogo_func;
 
@@ -652,7 +635,7 @@ function osrc_go_nogo(go_func, nogo_func)
 	{
 	if (this.child[i]._osrc_ready == false)
 	    {
-	    if (this.child[i].IsDiscardReady() == true)
+	    if (this.child[i].IsDiscardReady(this) == true)
 		this._unsaved_cnt--;
 
 	    // Somebody already did a QueryCancel?
@@ -666,7 +649,9 @@ function osrc_go_nogo(go_func, nogo_func)
     if (this._unsaved_cnt == 0 && this._go_nogo_pending)
 	{
 	this._go_nogo_pending = false;
-	this._go_func();
+	this._go_func(context);
+	if (this._go_nogo_queue.length)
+	    this.GoNogo.apply(this, this._go_nogo_queue.shift());
 	}
     }
 
@@ -695,10 +680,10 @@ function osrc_query_handler(aparam)
     this.do_append = aparam.appendrows?true:false;
     this.lastquery=q;
     this.pendingquery=q;
-    this.pending=true;
+    this.SetPending(true);
 
     // Check if any children are modified and call IsDiscardReady if they are
-    this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2);
+    this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2, null);
     }
 
 function osrc_action_delete(aparam) //up,formobj)
@@ -740,7 +725,7 @@ function osrc_action_delete_cb()
 
 	    // Notify osrc clients (forms/tables/etc)
 	    for(var i in this.child)
-		this.child[i].ObjectDeleted(recnum);
+		this.child[i].ObjectDeleted(recnum, this);
 
 	    // Need to fetch another record (delete was on last one in replica)?
 	    if (this.CurrentRecord > this.LastRecord)
@@ -753,12 +738,12 @@ function osrc_action_delete_cb()
 		this.MoveToRecord(this.CurrentRecord, true);
 		}
 	    }
-	if (this.formobj) this.formobj.OperationComplete(true);
+	if (this.formobj) this.formobj.OperationComplete(true, this);
 	}
     else
 	{
 	// delete failed
-	if (this.formobj) this.formobj.OperationComplete(false);
+	if (this.formobj) this.formobj.OperationComplete(false, this);
 	}
     this.formobj=null;
     delete this.deleteddata;
@@ -815,6 +800,7 @@ function osrc_action_create_cb2()
 	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
 	}*/
     var reqparam = {ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
+    if (this.use_having) reqparam.ls__reopen_having = 1;
     for(var i in this.createddata) if(i!='oid')
 	{
 	if (this.createddata[i]['value'] == null)
@@ -881,18 +867,106 @@ function osrc_action_create_cb()
 
 	//alert(this.replica[this.CurrentRecord].oid);
 	this.SyncID = osrc_syncid++;
-	if (this.formobj) this.formobj.OperationComplete(true);
+	if (this.formobj) this.formobj.OperationComplete(true, this);
 	for(var i in this.child)
-	    this.child[i].ObjectCreated(recnum);
+	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord();
 	this.ifcProbe(ifEvent).Activate("Created", {});
 	}
     else
 	{
-	if (this.formobj) this.formobj.OperationComplete(false);
+	if (this.formobj) this.formobj.OperationComplete(false, this);
 	}
     this.formobj=null;
     delete this.createddata;
+    }
+
+function osrc_action_refresh_object(aparam)
+    {
+    this.QueueRequest({Request:'RefreshObject', Param:aparam});
+    this.Dispatch();
+    }
+
+function osrc_refresh_object_handler(aparam)
+    {
+    // Need a "last query" and a valid current record to proceed
+    if (!this.lastquery || !this.CurrentRecord || !this.replica || !this.replica[this.CurrentRecord]) return false;
+
+    // Build list of primary keys
+    var row = this.replica[this.CurrentRecord];
+    var keys = {};
+    var keycnt = 0;
+    for(var c in row)
+	{
+	if (c == 'oid') continue;
+	var col = row[c];
+	var ph = cx_parse_hints(col.hints);
+	if (ph.Style & cx_hints_style.key)
+	    {
+	    keys[col.oid] = col;
+	    keycnt ++;
+	    }
+	}
+    if (!keycnt) return false;
+
+    // Start with the lastquery SQL.
+    var sql = this.lastquery;
+
+    // Append logic to search for just this row
+    var first = true;
+    for(var k in keys)
+	{
+	if (first)
+	    sql += " WHERE ";
+	else 
+	    sql += " AND ";
+	sql += this.MakeFilter([keys[k]]);
+	first = false;
+	}
+    sql += " LIMIT 1";
+
+    // Now issue the query
+    this.DoRequest("multiquery", "/", 
+	    {
+	    ls__sql:sql,
+	    ls__rowcount:1,
+	    ls__objmode:0,
+	    ls__autofetch:1,
+	    ls__autoclose:1,
+	    ls__notify:this.request_updates,
+	    ls__sqlparam:this.EncodeParams()
+	    }, osrc_refresh_object_cb);
+    return true;
+    }
+
+function osrc_refresh_object_cb()
+    {
+    var links = pg_links(this);
+    var success = links && links[0] && (links[0].target != 'ERR');
+    if(success && links.length > 1)
+	{
+	// Check new/corrected data provided by server
+	var cr=this.replica[this.CurrentRecord];
+	var server_rec = this.ParseOneRow(links, 1);
+	var diff = 0;
+	for(var i in server_rec)
+	    for(var j in cr)
+		{
+		if (cr[j].oid == server_rec[i].oid && cr[j].value != server_rec[i].value)
+		    {
+		    cr[j].value = server_rec[i].value;
+		    cr[j].type = server_rec[i].type;
+		    diff = 1;
+		    }
+		}
+
+	// if any changes, display them
+	if (diff)
+	    {
+	    this.SyncID = osrc_syncid++;
+	    this.GiveAllCurrentRecord();
+	    }
+	}
     }
 
 function osrc_action_modify(aparam) //up,formobj)
@@ -901,6 +975,23 @@ function osrc_action_modify(aparam) //up,formobj)
 	{
 	this.modifieddata = aparam.data;
 	this.formobj = aparam.client;
+	}
+
+    // initiated by a connector?  use current record and convert the data
+    if (aparam && !aparam.data || !aparam.data.oid)
+	{
+	this.formobj = null;
+	this.modifieddata = [];
+	if (this.CurrentRecord && this.replica[this.CurrentRecord])
+	    this.modifieddata.oid = this.replica[this.CurrentRecord].oid;
+	else
+	    this.modifieddata.oid = null;
+
+	for(var a in aparam)
+	    {
+	    if (a == '_EventName' || a == '_Origin') continue;
+	    this.modifieddata.push({oid:a, value:aparam[a]});
+	    }
 	}
 
     // Need to close an open query first?
@@ -912,7 +1003,9 @@ function osrc_action_modify(aparam) //up,formobj)
 	}
     //Modify an object through OSML
     //up[adsf][value];
-    var reqparam = {ls__oid:this.modifieddata.oid};
+    var reqparam = {ls__oid:this.modifieddata.oid, ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
+    if (this.use_having) reqparam.ls__reopen_having = 1;
+
     //var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
     this.ApplyRelationships(this.modifieddata, false);
     for(var i in this.modifieddata) if(i!='oid')
@@ -920,7 +1013,14 @@ function osrc_action_modify(aparam) //up,formobj)
 	reqparam[this.modifieddata[i]['oid']] = this.modifieddata[i]['value'];
 	//src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
 	}
-    this.DoRequest('setattrs', '/', reqparam, osrc_action_modify_cb);
+    if (this.send_updates)
+	this.DoRequest('setattrs', '/', reqparam, osrc_action_modify_cb);
+    else
+	{
+	this.ImportModifiedData(this.modifieddata);
+	this.ChangeCurrentRecord();
+	this.osrc_action_modify_cb_2(false);
+	}
     }
 
 function osrc_action_modify_cb()
@@ -929,15 +1029,10 @@ function osrc_action_modify_cb()
     var success = links && links[0] && (links[0].target != 'ERR');
     if(success)
 	{
-	var recnum=this.CurrentRecord;
-	var cr=this.replica[this.CurrentRecord];
-	if(cr)
-	    for(var i in this.modifieddata) // update replica
-		for(var j in cr)
-		    if(cr[j].oid==this.modifieddata[i].oid)
-			cr[j].value=this.modifieddata[i].value;
+	this.ImportModifiedData(this.modifieddata);
 
 	// Check new/corrected data provided by server
+	var cr=this.replica[this.CurrentRecord];
 	var server_rec = this.ParseOneRow(links, 1);
 	var diff = 0;
 	for(var i in server_rec)
@@ -951,18 +1046,38 @@ function osrc_action_modify_cb()
 		    //alert(cr[j].value + " != " + server_rec[i].value);
 		    }
 		}
-	
-	this.SyncID = osrc_syncid++;
-	if (this.formobj) this.formobj.OperationComplete(true);
-	for(var i in this.child)
-	    this.child[i].ObjectModified(recnum, this.replica[this.CurrentRecord]);
-	if (diff)
-	    this.GiveAllCurrentRecord();
+	this.osrc_action_modify_cb_2(diff);
 	}
     else
 	{
-	if (this.formobj) this.formobj.OperationComplete(false);
+	if (this.formobj) this.formobj.OperationComplete(false, this);
+	this.formobj=null;
+	delete this.modifieddata;
 	}
+    }
+
+function osrc_import_modified_data(data)
+    {
+    var cr=this.replica[this.CurrentRecord];
+    if(cr)
+	for(var i in this.modifieddata) // update replica
+	    for(var j in cr)
+		if(cr[j].oid==this.modifieddata[i].oid)
+		    cr[j].value=this.modifieddata[i].value;
+    }
+
+function osrc_action_modify_cb_2(diff)
+    {
+    this.SyncID = osrc_syncid++;
+    if (this.formobj)
+	this.formobj.OperationComplete(true, this);
+    for(var i in this.child)
+	this.child[i].ObjectModified(this.CurrentRecord, this.replica[this.CurrentRecord], this);
+    this.ChangeCurrentRecord();
+    if (diff)
+	this.GiveAllCurrentRecord();
+    if (!this.formobj)
+	this.ifcProbe(ifEvent).Activate('Modified', {});
     this.formobj=null;
     delete this.modifieddata;
     }
@@ -982,7 +1097,9 @@ function osrc_cb_query_continue(o)
 	if (this._unsaved_cnt <= 0 && this._go_nogo_pending)
 	    {
 	    this._go_nogo_pending = false;
-	    this._go_func();
+	    this._go_func(this._go_nogo_context);
+	    if (this._go_nogo_queue.length)
+		this.GoNogo.apply(this, this._go_nogo_queue.shift());
 	    }
 	}
     //If all other forms are ready then go
@@ -1023,8 +1140,10 @@ function osrc_cb_query_continue_2()
 	this.MoveToRecordCB(this.RecordToMoveTo, true);
 	this.RecordToMoveTo=null;
 	}
-    this.pending=false;
-    this.Dispatch();
+    //this seems premature - GRB
+    //this.SetPending(false);
+    /*this.pending=false;
+    this.Dispatch();*/
     }
 
 function osrc_cb_query_cancel()
@@ -1032,15 +1151,18 @@ function osrc_cb_query_cancel()
     if (this._go_nogo_pending)
 	{
 	this._go_nogo_pending = false;
-	this._nogo_func();
+	this._nogo_func(this._go_nogo_context);
+	if (this._go_nogo_queue.length)
+	    this.GoNogo.apply(this, this._go_nogo_queue.shift());
 	}
     }
 
 function osrc_cb_query_cancel_2()
     {
     this.pendingquery=null;
-    this.pending=false;
-    this.Dispatch();
+    this.SetPending(false);
+    /*this.pending=false;
+    this.Dispatch();*/
     }
 
 function osrc_cb_request_object(aparam)
@@ -1136,16 +1258,17 @@ function osrc_get_qid()
     //confirm(this.baseobj + " ==> " + this.qid);
     if (!this.qid)
 	{
-	this.pending=false;
+	/*this.pending=false;*/
 	this.move_target = null;
 	this.GiveAllCurrentRecord();
-	this.Dispatch();
+	this.SetPending(false);
+	/*this.Dispatch();*/
 	}
     else
 	{
 	this.query_delay = pg_timestamp() - this.request_start_ts;
 	for(var i in this.child)
-	    this.child[i].DataAvailable();
+	    this.child[i].DataAvailable(this);
 	if (this.move_target)
 	    var tgt = this.move_target;
 	else
@@ -1278,6 +1401,7 @@ function osrc_parse_one_row(lnk, i)
     while(i < lnk.length && (lnk[i].target == tgt || lnk[i].target == 'R'))
 	{
 	row[cnt] = this.ParseOneAttr(lnk[i]);
+	row[cnt].system = (cnt < 4);
 	cnt++;
 	i++;
 	}
@@ -1322,17 +1446,6 @@ function osrc_end_query()
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
 	this.replica[this.LastRecord].__osrc_is_last = true;
     this.query_ended = true;
-    /*if(this.moveop)
-	{*/
-	/*this.GiveAllCurrentRecord();
-	}
-    else
-	{
-	this.TellAllReplicaMoved();
-	}
-    this.pending=false;
-    if(this.doublesync)
-	this.DoubleSyncCB();*/
     this.FoundRecord();
     if(qid)
 	{
@@ -1353,7 +1466,8 @@ function osrc_found_record()
 	this.GiveAllCurrentRecord();
     else
 	this.TellAllReplicaMoved();
-    this.pending=false;
+    /*this.pending=false;*/
+    this.SetPending(false);
     this.osrc_oldoid_cleanup();
     if (this.query_delay)
 	{
@@ -1461,7 +1575,8 @@ function osrc_oldoid_cleanup()
     {
     if(this.oldoids && this.oldoids[0])
 	{
-	this.pending=true;
+	this.SetPending(true);
+	/*this.pending=true;*/
 	var src='';
 	for(var i in this.oldoids)
 	    src+=this.oldoids[i];
@@ -1476,11 +1591,12 @@ function osrc_oldoid_cleanup()
  
 function osrc_oldoid_cleanup_cb()
     {
-    this.pending=false;
+    /*this.pending=false;*/
     //alert('cb recieved');
     delete this.oldoids;
     this.oldoids = [];
-    this.Dispatch();
+    this.SetPending(false);
+    /*this.Dispatch();*/
     }
  
 function osrc_close_query()
@@ -1509,6 +1625,12 @@ function osrc_close_session()
 
 
 function osrc_action_find_object(aparam)
+    {
+    this.QueueRequest({Request:'FindObject', Param:aparam});
+    this.Dispatch();
+    }
+
+function osrc_find_object_handler(aparam)
     {
     var from_internal = (aparam.from_internal)?true:false;
     if (typeof aparam.ID != 'undefined')
@@ -1544,6 +1666,23 @@ function osrc_action_find_object(aparam)
 	for(var i in this.replica)
 	    {
 	    var rec = this.replica[i];
+	    var matched = true;
+	    for(var j in rec)
+		{
+		var col = rec[j];
+		matched = true;
+		for(var k in aparam) 
+		    {
+		    if (col.oid == k && col.value != aparam[k])
+			matched = false;
+		    }
+		if (!matched) break;
+		}
+	    if (matched)
+		{
+		this.MoveToRecord(i, from_internal);
+		break;
+		}
 	    }
 	}
     }
@@ -1558,18 +1697,27 @@ function osrc_move_first(aparam)
 function osrc_change_current_record()
     {
     var newprevcurrent = [];
-    var fieldlistobj = this.prevcurrent;
-    if (!fieldlistobj || fieldlistobj.length == 0)
-	fieldlistobj = this.replica[this.CurrentRecord];
-    if (!fieldlistobj || fieldlistobj.length == 0)
-	return;
 
-    for(var i in fieldlistobj)
+    // first, build the list of fields we're working with.  We look both in the
+    // replica and in prevcurrent, since field lists can be irregular (different
+    // for different records), as well as can contain NULL values.
+    var fieldlist = {};
+    if (this.prevcurrent)
 	{
-	if (typeof fieldlistobj[i] != 'object') continue;
-	var attrname = fieldlistobj[i].oid;
+	for(var i=0; i<this.prevcurrent.length; i++)
+	    fieldlist[this.prevcurrent[i].oid] = true;
+	}
+    if (this.replica && this.replica[this.CurrentRecord])
+	{
+	for(var i=0; i<this.replica[this.CurrentRecord].length; i++)
+	    fieldlist[this.replica[this.CurrentRecord][i].oid] = true;
+	}
+
+    // Determine old and new values for the fields.
+    for(var attrname in fieldlist)
+	{
+	// Old value -- see this.prevcurrent
 	var oldval = null;
-	var newval = null;
 	if (this.prevcurrent)
 	    {
 	    for(var j in this.prevcurrent)
@@ -1582,6 +1730,9 @@ function osrc_change_current_record()
 		    }
 		}
 	    }
+
+	// New value -- see the replica.
+	var newval = null;
 	if (this.replica[this.CurrentRecord])
 	    {
 	    for(var j in this.replica[this.CurrentRecord])
@@ -1594,11 +1745,41 @@ function osrc_change_current_record()
 		    }
 		}
 	    }
+
+	// Issue a Changing ifValue operation if the old and new are different.
+	if (oldval != newval)
+	    {
+	    //if ((pg_username == 'gbeeley' || pg_username == 'dbeeley') && attrname == 'p_given_name' && this.__WgtrName == 'donor_osrc')
+	    //	pg_explog.push('Changing: ' + oldval + ' to ' + newval);
+	    this.ifcProbe(ifValue).Changing(attrname, newval, true, oldval, true);
+	    }
+
+	// Only record the value in prevcurrent if the *new* value is not null.
+	if (newval)
+	    newprevcurrent.push({oid:attrname, value:newval});
+	}
+
+    // Catch values that had no previous value and so were not in prevcurrent
+    /*for(var j in this.replica[this.CurrentRecord])
+	{
+	if (typeof this.replica[this.CurrentRecord][j] != 'object') continue;
+	var newval = this.replica[this.CurrentRecord][j].value;
+	var oldval = null;
+	var attrname = this.replica[this.CurrentRecord][j].oid;
+	for(var i in this.prevcurrent)
+	    {
+	    if (typeof this.prevcurrent[i] != 'object') continue;
+	    if (this.prevcurrent[i].oid == attrname)
+		{
+		oldval = this.prevcurrent[i].value;
+		break;
+		}
+	    }
 	if (oldval != newval)
 	    this.ifcProbe(ifValue).Changing(attrname, newval, true, oldval, true);
 	if (newval)
 	    newprevcurrent.push({oid:attrname, value:newval});
-	}
+	}*/
     this.prevcurrent = newprevcurrent;
     }
 
@@ -1614,7 +1795,7 @@ function osrc_give_all_current_record()
 	}*/
     this.ChangeCurrentRecord();
     for(var i in this.child)
-	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord]);
+	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this);
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
     //confirm('give_all_current_record done');
     }
@@ -1624,7 +1805,7 @@ function osrc_tell_all_replica_moved()
     //confirm('tell_all_replica_moved start');
     for(var i in this.child)
 	if(this.child[i].ReplicaMoved)
-	    this.child[i].ReplicaMoved();
+	    this.child[i].ReplicaMoved(this);
     //confirm('tell_all_replica_moved done');
     }
 
@@ -1649,12 +1830,13 @@ function osrc_move_to_record_handler(param)
 	//alert('you got ahead');
 	return 0;
 	}
-    this.pending=true;
+    this.SetPending(true);
+    //this.pending=true;
     //var someunsaved=false;
     this.RecordToMoveTo=recnum;
     if (!from_internal)
 	this.SyncID = osrc_syncid++;
-    this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2);
+    this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2, null);
     /*for(var i in this.child)
 	 {
 	 if(this.child[i].IsUnsaved)
@@ -1700,8 +1882,9 @@ function osrc_move_to_record_cb(recnum)
     if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)
 	{
 	this.GiveAllCurrentRecord();
-	this.pending=false;
-	this.Dispatch();
+	this.SetPending(false);
+	/*this.pending=false;
+	this.Dispatch();*/
 	return 1;
 	}
     else
@@ -1752,10 +1935,11 @@ function osrc_move_to_record_cb(recnum)
 		}
 	    else
 		{
-		this.pending=false;
+		//this.pending=false;
 		this.CurrentRecord=this.LastRecord;
 		this.GiveAllCurrentRecord();
-		this.Dispatch();
+		this.SetPending(false);
+		//this.Dispatch();
 		}
 	    return 0;
 	    }
@@ -1779,9 +1963,10 @@ function osrc_get_qid_startat()
     if (!this.qid)
 	{
 	this.startat = null;
-	this.pending=false;
+	//this.pending=false;
 	this.GiveAllCurrentRecord();
-	this.Dispatch();
+	this.SetPending(false);
+	//this.Dispatch();
 	return;
 	}
     this.OSMLRecord=this.startat-1;
@@ -1858,8 +2043,9 @@ function osrc_scroll_to(startrec, endrec)
     if(this.TargetRecord[1] <= this.LastRecord && this.TargetRecord[0] >= this.FirstRecord)
 	{
 	this.TellAllReplicaMoved();
-	this.pending=false;
-	this.Dispatch();
+	this.SetPending(false);
+	//this.pending=false;
+	//this.Dispatch();
 	return 1;
 	}
     else
@@ -1908,10 +2094,11 @@ function osrc_scroll_to(startrec, endrec)
 		}
 	    else
 		{
-		this.pending=false;
+		//this.pending=false;
 		this.TargetRecord[1]=this.LastRecord;
 		this.TellAllReplicaMoved();
-		this.Dispatch();
+		this.SetPending(false);
+		//this.Dispatch();
 		}
 	    return 0;
 	    }
@@ -2186,6 +2373,29 @@ function osrc_cb_new_object_template()
     return obj;
     }
 
+
+function osrc_action_begincreate(aparam)
+    {
+    // Get the template
+    var obj = this.NewObjectTemplate();
+
+    // Notify all children that we have a child that is creating an object
+    for(var i in this.child)
+	if (this.child[i] != aparam.client)
+	    this.child[i].ObjectAvailable([], this);
+
+    return obj;
+    }
+
+
+function osrc_action_cancelcreate(aparam)
+    {
+    for(var i in this.child)
+	if (this.child[i] != aparam.client)
+	    this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this);
+    }
+
+
 function osrc_apply_keys(obj)
     {
     var cnt = 0;
@@ -2246,47 +2456,79 @@ function osrc_apply_rel(obj, in_create)
     while(typeof obj[cnt] != 'undefined') cnt++;
 
     // First, check for relationships that might imply key values
-    for(var i in osrc_relationships)
+    for(var i=0; i<this.relationships.length; i++)
 	{
-	var rl = osrc_relationships[i];
-	if ((rl.osrc == this && rl.is_slave) || (rl.target_osrc == this && !rl.is_slave))
+	var rule = this.relationships[i];
+	if (rule.master)
 	    {
-	    if (rl.osrc == this)
+	    var tgt = rule.master;
+	    for(var k=0;k<rule.key.length;k++)
 		{
-		var tgt = rl.target_osrc;
-		var srckey = 'key_';
-		var tgtkey = 'target_key_';
-		}
-	    else
-		{
-		var tgt = rl.osrc;
-		var srckey = 'target_key_';
-		var tgtkey = 'key_';
-		}
-	    if (tgt.CurrentRecord && tgt.replica && tgt.replica[tgt.CurrentRecord])
-		{
-		for(var k=1;k<=5;k++)
+		// Which property of obj do we need to modify?
+		var found = false;
+		var obj_index = null;
+		for(var l in obj)
 		    {
-		    if (!rl[tgtkey + k]) continue;
-		    for(var j in tgt.replica[tgt.CurrentRecord])
+		    if (obj[l] == null || typeof obj[l] != 'object') continue;
+		    if (obj[l].oid == rule.key[k])
 			{
-			var col = tgt.replica[tgt.CurrentRecord][j];
-			if (col == null || typeof col != 'object') continue;
-			if (col.oid == rl[tgtkey + k])
+			found = true;
+			if (!in_create || rule.enforce_create)
+			    obj_index = l;
+			}
+		    }
+		if (!found)
+		    obj_index = cnt++;
+
+		if (obj_index != null)
+		    {
+		    // Find the matching column in the master osrc replica
+		    if (tgt.CurrentRecord && tgt.replica && tgt.replica[tgt.CurrentRecord])
+			{
+			for(var j in tgt.replica[tgt.CurrentRecord])
 			    {
-			    var found = false;
-			    for(var l in obj)
+			    var col = tgt.replica[tgt.CurrentRecord][j];
+			    if (col == null || typeof col != 'object') continue;
+			    if (col.oid == rule.tkey[k])
 				{
-				if (obj[l] == null || typeof obj[l] != 'object') continue;
-				if (obj[l].oid == rl[srckey + k])
-				    {
-				    found = true;
-				    if (!in_create || rl[srckey + k].enforce_create)
-					obj[l] = {type:col.type, value:col.value, hints:col.hints, oid:rl[srckey + k]};
-				    }
+				obj[obj_index] = {type:col.type, value:col.value, hints:col.hints, oid:rule.key[k], obj:rule.obj};
 				}
-			    if (!found)
-				obj[cnt++] = {type:col.type, value:col.value, hints:col.hints, oid:rl[srckey + k]};
+			    }
+			}
+		    else
+			{
+			// Master has no records.  Follow master_norecs_action.
+			switch (rule.master_norecs_action)
+			    {
+			    case 'norecs':
+				obj[obj_index] = {oid:rule.key[k], obj:rule.obj, force_empty:true};
+				break;
+			    case 'allrecs':
+				break;
+			    case 'sameasnull':
+				obj[obj_index] = {oid:rule.key[k], obj:rule.obj, value:null};
+				break;
+			    }
+			}
+
+		    // Type not available?
+		    if (obj[obj_index] && typeof obj[obj_index].type == "undefined" && this.type_list[obj[obj_index].oid])
+			obj[obj_index].type = this.type_list[obj[obj_index].oid];
+
+		    // Null value?
+		    if (obj[obj_index] && obj[obj_index].value === null)
+			{
+			switch(rule.master_null_action)
+			    {
+			    case 'nullisvalue':
+				obj[obj_index].nullisvalue = true;
+				break;
+			    case 'allrecs':
+				obj[obj_index] = {};
+				break;
+			    case 'norecs':
+				obj[obj_index].nullisvalue = false;
+				break;
 			    }
 			}
 		    }
@@ -2327,17 +2569,21 @@ function osrc_cb_reveal(child)
 
     // User requested onReveal?  If so, do that here.
     //if (!this.bh_finished) return 0;
+    var did_query = true;
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
-	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:null, client:null, ro:this.readonly}, 0);
+	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
     else
+	{
+	did_query = false;
 	this.Dispatch();
+	}
 
     if (this.has_onreveal_relationship && this.hidden_change_cnt > 0)
 	{
 	this.hidden_change_cnt = 0;
-	this.Resync();
+	if (!did_query) this.Resync(null);
 	}
     return 0;
     }
@@ -2452,13 +2698,9 @@ function osrc_add_rule(rule_widget)
 	}
     else if (rl.ruletype == 'osrc_relationship')
 	{
-	for(var keynum = 1; keynum <= 5; keynum++)
-	    {
-	    rl['key_' + keynum] = rule_widget['key_' + keynum];
-	    rl['target_key_' + keynum] = rule_widget['target_key_' + keynum];
-	    }
 	rl.osrc = this;
 	rl.aq = rule_widget.autoquery;
+	if (typeof rl.aq == 'undefined') rl.aq = 1;
 	rl.target_osrc = wgtrGetNode(this, rule_widget.target);
 	rl.is_slave = rule_widget.is_slave;
 	if (rl.is_slave == null)
@@ -2469,7 +2711,49 @@ function osrc_add_rule(rule_widget)
 	rl.enforce_create = rule_widget.enforce_create;
 	if (rl.enforce_create == null)
 	    rl.enforce_create = 1;
-	osrc_relationships.push(rl);
+	rl.master_norecs_action = rule_widget.master_norecs_action;
+	if (!rl.master_norecs_action) rl.master_norecs_action = 'sameasnull';
+	rl.master_null_action = rule_widget.master_null_action;
+	if (!rl.master_null_action) rl.master_null_action = 'nullisvalue';
+
+	// Data local to this osrc
+	if (rl.is_slave)
+	    {
+	    var slave = this;
+	    var master = rl.target_osrc;
+	    var skey = 'key_';
+	    var mkey = 'target_key_';
+	    var sobj = rule_widget.key_objname;
+	    }
+	else
+	    {
+	    var slave = rl.target_osrc;
+	    var master = this;
+	    var skey = 'target_key_';
+	    var mkey = 'key_';
+	    var sobj = rule_widget.target_key_objname;
+	    }
+	// default to key objectname specified for osrc
+	if (!sobj)
+	    sobj = slave.key_objname;
+	var slaverule = {master:master, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], obj:sobj};
+	var masterrule = {slave:slave, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[]};
+
+	// Keys
+	for(var keynum = 1; keynum <= 5; keynum++)
+	    {
+	    rl['key_' + keynum] = rule_widget['key_' + keynum];
+	    rl['target_key_' + keynum] = rule_widget['target_key_' + keynum];
+	    slaverule.key.push(rl[skey + keynum]);
+	    slaverule.tkey.push(rl[mkey + keynum]);
+	    masterrule.key.push(rl[mkey + keynum]);
+	    masterrule.tkey.push(rl[skey + keynum]);
+	    }
+
+	slave.relationships.push(slaverule);
+	if (typeof master.relationships == 'undefined')
+	    master.relationships = [];
+	master.relationships.push(masterrule);
 	}
     else if (rl.ruletype == 'osrc_key')
 	{
@@ -2515,16 +2799,19 @@ function osrc_add_rule(rule_widget)
 
 function osrc_queue_request(r)
     {
-    this.request_queue.push(r);
+    if (r.Request == 'Query' || r.Request == 'QueryText' || r.Request == 'QueryObject')
+	this.query_request_queue.push(r);
+    else
+	this.request_queue.push(r);
     }
 
 
 function osrc_dispatch()
     {
-    if (this.pending) return;
+    if (this.pending || this.masters_pending.length) return;
     var req = null;
     var requeue = [];
-    while ((req = this.request_queue.shift()) != null)
+    while ((req = this.query_request_queue.shift()) != null)
 	{
 	switch(req.Request)
 	    {
@@ -2542,91 +2829,127 @@ function osrc_dispatch()
 	    case 'QueryObject':
 		this.QueryObjectHandler(req.Param);
 		break;
-
-	    case 'MoveTo':
-		this.MoveToRecordHandler(req.Param);
-		break;
 	    }
-	if (this.pending) break;
+	if (this.pending || this.masters_pending.length) break;
 	}
-    while((req = requeue.shift())) this.request_queue.push(req);
+
+    if (!this.pending && this.masters_pending.length == 0)
+	{
+	while ((req = this.request_queue.shift()) != null)
+	    {
+	    switch(req.Request)
+		{
+		case 'RefreshObject':
+		    this.RefreshObjectHandler(req.Param);
+		    break;
+
+		case 'MoveTo':
+		    this.MoveToRecordHandler(req.Param);
+		    break;
+
+		case 'FindObject':
+		    this.FindObjectHandler(req.Param);
+		    break;
+		}
+	    if (this.pending || this.masters_pending.length) break;
+	    }
+	}
+
+    while((req = requeue.shift())) this.QueueRequest(req);
     return;
     }
 
 
 // OSRC Client routines (for linking with another osrc)
-function osrc_oc_resync()
+function osrc_oc_resync(master_osrc)
     {
-    if (this.has_onreveal_relationship && this.revealed_children == 0)
+    if (!master_osrc)
 	{
-	this.hidden_change_cnt++;
+	// If master unknown, just issue a query that captures all relationship values
+	this.ifcProbe(ifAction).Invoke("QueryObject", {query:[], client:null, ro:this.readonly});
 	return;
 	}
-    //alert('Resync: ' + this.sql);
-    if (!this.no_autoquery_on_resync)
+
+    // Find the responsible rule
+    var found_rule = null;
+    for(var i=0; i<this.relationships.length; i++)
 	{
-	var sync_param = {ParentOSRC:this.master_osrc};
-	for(var i=1; i<=10;i++)
+	if (this.relationships[i].master == master_osrc)
 	    {
-	    sync_param['ParentKey'+i] = this.master_keys['master_'+i];
-	    sync_param['ChildKey'+i] = this.master_keys['slave_'+i];
+	    found_rule = this.relationships[i];
+	    break;
+	    }
+	}
+    if (!found_rule) return;
+    if (found_rule.autoquery)
+	{
+	if (found_rule.revealed_only && this.revealed_children == 0)
+	    {
+	    this.hidden_change_cnt++;
+	    return;
+	    }
+	var sync_param = {ParentOSRC:found_rule.master};
+	for(var i=0; i<found_rule.key.length;i++)
+	    {
+	    sync_param['ParentKey'+(i+1)] = found_rule.tkey[i];
+	    sync_param['ChildKey'+(i+1)] = found_rule.key[i];
 	    }
 	this.ifcProbe(ifAction).Invoke("Sync", sync_param);
 	}
     }
 
-function osrc_oc_data_available()
+function osrc_oc_data_available(master_osrc)
     {
     return;
     }
 
-function osrc_oc_replica_moved()
+function osrc_oc_replica_moved(master_osrc)
     {
-    this.Resync();
+    this.Resync(master_osrc);
     return;
     }
 
-function osrc_oc_is_discard_ready()
+function osrc_oc_is_discard_ready(master_osrc)
     {
-    this.GoNogo(osrc_oc_is_discard_ready_yes, osrc_oc_is_discard_ready_no);
+    this.GoNogo(osrc_oc_is_discard_ready_yes, osrc_oc_is_discard_ready_no, master_osrc);
     return false;
     }
 
-function osrc_oc_is_discard_ready_yes()
+function osrc_oc_is_discard_ready_yes(master_osrc)
     {
-    this.master_osrc.QueryContinue(this);
+    master_osrc.QueryContinue(this);
     }
 
-function osrc_oc_is_discard_ready_no()
+function osrc_oc_is_discard_ready_no(master_osrc)
     {
-    this.master_osrc.QueryCancel(this);
+    master_osrc.QueryCancel(this);
     }
 
-function osrc_oc_object_available(o)
+function osrc_oc_object_available(o, master_osrc)
     {
-    this.Resync();
+    this.Resync(master_osrc);
     return;
     }
 
-function osrc_oc_object_created(o)
+function osrc_oc_object_created(o, master_osrc)
     {
-    this.Resync();
+    this.Resync(master_osrc);
     return;
     }
 
-function osrc_oc_object_modified(o)
+function osrc_oc_object_modified(o, row, master_osrc)
     {
-    this.Resync();
+    this.Resync(master_osrc);
     return;
     }
 
-function osrc_oc_object_deleted(o)
+function osrc_oc_object_deleted(o, master_osrc)
     {
-    this.Resync();
+    this.Resync(master_osrc);
     return;
     }
 
-function osrc_oc_operation_complete(o)
+function osrc_oc_operation_complete(is_success, master_osrc)
     {
     return true;
     }
@@ -2637,36 +2960,17 @@ function osrc_oc_operation_complete(o)
 function osrc_init_bh()
     {
     // Search for relationships... then register as an osrc client
-    for(var i in osrc_relationships)
+    for(var i=0; i<this.relationships.length; i++)
 	{
-	var rl = osrc_relationships[i];
-	if ((rl.osrc == this && rl.is_slave) || (rl.target_osrc == this && !rl.is_slave))
+	var rule = this.relationships[i];
+	if (rule.master)
 	    {
-	    if (rl.osrc == this)
-		{
-		this.master_osrc = rl.target_osrc;
-		var masterkey = 'target_key_';
-		var slavekey = 'key_';
-		}
-	    else
-		{
-		this.master_osrc = rl.osrc;
-		var masterkey = 'key_';
-		var slavekey = 'target_key_';
-		}
-	    this.master_osrc.Register(this);
-	    //alert('Register: ' + this.sql);
-	    this.master_keys = {};
-	    for(var i=1;i<=10;i++)
-		{
-		this.master_keys['master_' + i] = rl[masterkey + i];
-		this.master_keys['slave_' + i] = rl[slavekey + i];
-		}
-	    if (rl.revealed_only)
+	    rule.master.Register(this);
+	    if (rule.revealed_only)
 		this.has_onreveal_relationship = true;
-	    if (typeof rl.aq != 'undefined' && !rl.aq)
-		this.no_autoquery_on_resync = true;
-	    //pg_addsched_fn(this, "Resync", [], 0);
+	    //if (typeof rl.aq != 'undefined' && !rl.aq)
+	    //    this.no_autoquery_on_resync = true;
+		//pg_addsched_fn(this, "Resync", [], 0);
 	    }
 	}
     this.bh_finished = true;
@@ -2709,7 +3013,7 @@ function osrc_do_request(cmd, url, params, cb, target)
     params.ls__mode = 'osml';
     params.ls__req = cmd;
     if (this.sid) params.ls__sid = this.sid;
-    if (!this.ind_act) params.cx__noact = '1';
+    if (!this.ind_act && cmd != 'create' && cmd != 'setattrs') params.cx__noact = '1';
     for(var p in params)
 	{
 	url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
@@ -2717,6 +3021,8 @@ function osrc_do_request(cmd, url, params, cb, target)
 	}
     this.request_start_ts = pg_timestamp();
     pg_serialized_load(target, url, cb, !this.ind_act);
+    //this.onload = cb;
+    //target.src = url;
     }
 
 
@@ -2790,6 +3096,54 @@ function osrc_encode_params()
     return s;
     }
 
+
+function osrc_set_pending(p)
+    {
+    var was_pending = this.pending;
+    this.pending = p;
+    if (!this.pending && was_pending)
+	this.Dispatch();
+
+    if (this.pending != p) return;
+
+    for(var i=0; i<this.child.length; i++)
+	{
+	if (wgtrGetType(this.child[i]) == 'widget/osrc')
+	    {
+	    this.child[i].SetMasterPending(this, p);
+	    }
+	}
+    }
+
+
+function osrc_set_master_pending(master, p)
+    {
+    if (master == this) return;
+    var already_pending = -1;
+    for(var i=0; i<this.masters_pending.length; i++)
+	if (this.masters_pending[i] == master)
+	    {
+	    already_pending = i;
+	    break;
+	    }
+    if (already_pending == -1 && p)
+	this.masters_pending.push(master);
+    else if (already_pending != -1 && !p)
+	this.masters_pending.splice(i,1);
+
+    if (this.masters_pending.length == 0)
+	this.Dispatch();
+
+    for(var i=0; i<this.child.length; i++)
+	{
+	if (wgtrGetType(this.child[i]) == 'widget/osrc')
+	    {
+	    this.child[i].SetMasterPending(master, p);
+	    }
+	}
+    }
+
+
 function osrc_destroy()
     {
     pg_set(this, "src", "about:blank");
@@ -2814,13 +3168,23 @@ function osrc_init(param)
     loader.use_having = param.use_having;
     loader.readonly = false;
     loader.autoquery = param.autoquery;
+    loader.key_objname = param.key_objname;
     loader.revealed_children = 0;
     loader.rulelist = [];
+    if (typeof loader.relationships == 'undefined')
+	loader.relationships = [];
     loader.SyncID = osrc_syncid++;
     loader.bh_finished = false;
     loader.request_queue = [];
+    loader.query_request_queue = [];
     loader.params = [];
     loader.destroy_widget = osrc_destroy;
+
+    loader.pending = false;
+    loader.masters_pending = [];
+
+    loader.SetPending = osrc_set_pending;
+    loader.SetMasterPending = osrc_set_master_pending;
 
     // autoquery types - must match htdrv_osrc.c's enum declaration
     loader.AQnever = 0;
@@ -2836,6 +3200,8 @@ function osrc_init(param)
     loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
     loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
     loader.osrc_open_query_startat = osrc_open_query_startat;
+    loader.osrc_action_modify_cb_2 = osrc_action_modify_cb_2;
+    loader.ImportModifiedData = osrc_import_modified_data;
     loader.ParseOneAttr = osrc_parse_one_attr;
     loader.ParseOneRow = osrc_parse_one_row;
     loader.NewReplicaObj = osrc_new_replica_object;
@@ -2875,6 +3241,8 @@ function osrc_init(param)
     loader.QueryObjectHandler = osrc_query_object_handler;
     loader.QueryTextHandler = osrc_query_text_handler;
     loader.QueryHandler = osrc_query_handler;
+    loader.RefreshObjectHandler = osrc_refresh_object_handler;
+    loader.FindObjectHandler = osrc_find_object_handler;
    
     // Actions
     var ia = loader.ifcProbeAdd(ifAction);
@@ -2896,16 +3264,20 @@ function osrc_init(param)
     ia.Add("DoubleSync", osrc_action_double_sync);
     ia.Add("SaveClients", osrc_action_save_clients);
     ia.Add("Refresh", osrc_action_refresh);
+    ia.Add("RefreshObject", osrc_action_refresh_object);
     ia.Add("ChangeSource", osrc_action_change_source);
     ia.Add("DoSQL", osrc_action_do_sql);
     ia.Add("FindObject", osrc_action_find_object);
     ia.Add("Clear", osrc_action_clear);
+    ia.Add("BeginCreateObject", osrc_action_begincreate);
+    ia.Add("CancelCreateObject", osrc_action_cancelcreate);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
     ie.Add("EndQuery");
     ie.Add("Created");
+    ie.Add("Modified");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
@@ -2932,6 +3304,7 @@ function osrc_init(param)
     loader.MakeFilter = osrc_make_filter;
     loader.MakeFilterString = osrc_make_filter_string;
     loader.MakeFilterInteger = osrc_make_filter_integer;
+    loader.MFCol = osrc_make_filter_colref;
     if (wgtrGetChildren(loader).length == 0)
 	pg_reveal_register_listener(loader, true);
 
@@ -2968,6 +3341,9 @@ function osrc_init(param)
 
     // Debugging functions
     loader.print_debug = osrc_print_debug;
+
+    // Whether to send inserts/deletes/updates to the server (defaults to YES)
+    loader.send_updates = param.send_updates?1:0;
 
     // Request replication messages
     loader.request_updates = param.requestupdates?1:0;
