@@ -6,6 +6,7 @@ dynamic_dropdown "widget/component-decl"
 
     expose_events_for = dd;
     expose_actions_for = dd;
+    expose_properties_for = dd;
 
     form "widget/parameter" { type=object; find_container="widget/form";}
     field "widget/parameter" { type=string; }
