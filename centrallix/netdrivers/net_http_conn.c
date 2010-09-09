@@ -33,10 +33,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_conn.c,v 1.3 2009/06/26 18:31:03 gbeeley Exp $
+    $Id: net_http_conn.c,v 1.4 2010/09/09 01:29:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
 
     $Log: net_http_conn.c,v $
+    Revision 1.4  2010/09/09 01:29:00  gbeeley
+    - (change) ignore SIGPIPE from broken TCP connection from the user.
+
     Revision 1.3  2009/06/26 18:31:03  gbeeley
     - (feature) enhance ls__method=copy so that it supports srctype/dsttype
       like test_obj does
@@ -209,11 +212,15 @@ nht_internal_ConnHandler(void* connfd_v)
     unsigned char t_lsb;
     int noact = 0;
     int err;
+    int i;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
+
+	/** Ignore SIGPIPE events from end-user **/
+	thSetFlags(NULL, THR_F_IGNPIPE);
 
 	/** Create the connection structure **/
 	conn = nht_internal_AllocConn(connfd);
@@ -251,6 +258,8 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "\r\n"
 			 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	    /*if (*(conn->Cookie))
+		printf("Warning: session %s did not provide an Auth header.\n", conn->Cookie);*/
 	    nht_internal_FreeConn(conn);
 	    thExit();
 	    }
@@ -288,6 +297,15 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	            fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		    mssError(1,"NHT","Bark! User supplied valid cookie %s but cred mismatch (sesslink %d, provided %s, stored %s)", conn->Cookie, conn->NhtSession->LinkCnt, usrname, conn->NhtSession->Username);
+		    /*printf("Valid cookie but cred mismatch:  session data structure for %s %s", usrname, conn->Cookie);
+		    for(i=0;i<sizeof(NhtSessionData);i++)
+			{
+			printf("%c%2.2x", (((i%16) == 0)?'\n':' '), ((unsigned char*)conn->NhtSession)[i]);
+			}
+		    printf("\nAuth Data: ");
+		    for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
+		    printf("\n");*/
 		    nht_internal_FreeConn(conn);
 	            thExit();
 		    }
@@ -408,6 +426,9 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	        fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		/*printf("\nNew session requested, but user supplied invalid auth data: ");
+		for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
+		printf("\n");*/
 		nht_internal_FreeConn(conn);
 	        thExit();
 		}
