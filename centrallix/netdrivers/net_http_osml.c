@@ -33,10 +33,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_osml.c,v 1.2 2009/06/26 18:31:03 gbeeley Exp $
+    $Id: net_http_osml.c,v 1.3 2010/09/09 01:30:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_osml.c,v $
 
     $Log: net_http_osml.c,v $
+    Revision 1.3  2010/09/09 01:30:53  gbeeley
+    - (change) allow a HAVING clause to be used instead of WHERE when doing
+      the object reopen operation after a Create or Setattrs.
+    - (change) do the Reopen operation on both Create *and* Setattrs to
+      catch any changes to joined objects resulting from the setattrs.
+
     Revision 1.2  2009/06/26 18:31:03  gbeeley
     - (feature) enhance ls__method=copy so that it supports srctype/dsttype
       like test_obj does
@@ -465,7 +471,10 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     int autoclose_shortres = 0;
     int retval;		/** FIXME FIXME FIXME FIXME FIXME FIXME **/
     char* reopen_sql;
+    int reopen_having;
     pXString reopen_str;
+    pObject reopen_obj;
+    int reopen_success;
     pNhtQuery nht_query;
     
     handle_t session_handle;
@@ -915,8 +924,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
 			}
 		    }
-		else
-		    obj_handle = 0;
+		/*else
+		    obj_handle = 0;*/
 
 		/** Find all GET params that are NOT like ls__thingy **/
 		for(i=0;i<req_inf->nSubInf;i++)
@@ -989,57 +998,85 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    }
 			}
 		    }
-		if (!strcmp(request,"create"))
+
+		/** Commit the change. **/
+		rval = objCommit(objsess);
+		if (rval < 0)
 		    {
-		    rval = objCommit(objsess);
-		    if (rval < 0)
+		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			     "Pragma: no-cache\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    objClose(obj);
+		    }
+		else
+		    {
+		    /** Do the re-open if requested.  This re-runs the SQL to pick up any
+		     ** joins and computed fields and such.
+		     **/
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__reopen_sql"),&reopen_sql) == 0)
 			{
-			snprintf(sbuf,256,"Content-Type: text/html\r\n"
-				 "Pragma: no-cache\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-			objClose(obj);
-			}
-		    else
-			{
-			if (DEBUG_OSML) printf("ls__mode=create X" XHN_HANDLE_PRT "\n", obj_handle);
-			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__reopen_sql"),&reopen_sql) == 0)
+			reopen_success = 0;
+			reopen_str = (pXString)nmMalloc(sizeof(XString));
+			if (reopen_str)
+			    {
+			    xsInit(reopen_str);
+			    nht_query = nht_internal_CreateQuery(req_inf);
+
+			    /** note - it is possible for autoname to fail, thus name == NULL.  IT
+			     ** is also possible for a poorly constructed SQL query to result in
+			     ** NULL name values (for doing setattr on multiquery result set
+			     ** objects).  So we must check.
+			     **/
+			    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
+				{
+				reopen_having = stLookup_ne(req_inf,"ls__reopen_having")?1:0;
+				xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT", reopen_sql, !reopen_having, reopen_having, ptr);
+				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL);
+				if (qy)
+				    {
+				    reopen_obj = objQueryFetch(qy, O_RDWR);
+				    if (reopen_obj)
+					{
+					xhnUpdateHandle(&sess->Hctx, obj_handle, reopen_obj);
+					objClose(obj);
+					obj = reopen_obj;
+					reopen_success = 1;
+					}
+				    objQueryClose(qy);
+				    }
+				}
+
+			    if (nht_query) nht_internal_FreeQuery(nht_query);
+			    xsDeInit(reopen_str);
+			    nmFree(reopen_str, sizeof(XString));
+			    }
+
+			/** Reopen failure during create means create failed.  During
+			 ** setattrs (modify), we ignore it and go with our already 
+			 ** open (not reopened) object.
+			 **/
+			if (!reopen_success && !strcmp(request,"create"))
 			    {
 			    xhnFreeHandle(&(sess->Hctx), obj_handle);
 			    obj_handle = XHN_INVALID_HANDLE;
-			    reopen_str = (pXString)nmMalloc(sizeof(XString));
-			    if (reopen_str)
-				{
-				xsInit(reopen_str);
-				nht_query = nht_internal_CreateQuery(req_inf);
-				if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
-				    {
-				    /** note - it is possible for autoname to fail, thus name == NULL **/
-				    xsQPrintf(reopen_str, "%STR WHERE :name = %STR&QUOT", reopen_sql, ptr);
-				    qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL);
-				    if (qy)
-					{
-					objClose(obj);
-					obj = objQueryFetch(qy, O_RDWR);
-					objQueryClose(qy);
-					}
-				    }
-				if (nht_query) nht_internal_FreeQuery(nht_query);
-				xsDeInit(reopen_str);
-				nmFree(reopen_str, sizeof(XString));
-				}
+			    objClose(obj);
+			    obj = NULL;
 			    }
+			}
+
+		    /** Output result status **/
+		    if (!strcmp(request,"create"))
+			{
+			if (DEBUG_OSML) printf("ls__mode=create X" XHN_HANDLE_PRT "\n", obj_handle);
 			if (obj)
 			    {
-			    if (obj_handle == XHN_INVALID_HANDLE)
-				obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
 			    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n"
 				     "Pragma: no-cache\r\n"
 				     "\r\n"
 				     "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
 				     obj_handle);
-			    nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 			    }
 			else
 			    {
@@ -1049,17 +1086,6 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 			    }
 			}
-		    }
-		else
-		    {
-		    rval = objCommit(objsess);
-		    if (rval < 0)
-			{
-			snprintf(sbuf,256,"Content-Type: text/html\r\n"
-				 "Pragma: no-cache\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-			}
 		    else
 			{
 			snprintf(sbuf,256,"Content-Type: text/html\r\n"
@@ -1067,9 +1093,12 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				 "\r\n"
 				 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 				 0);
+			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 			}
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		    nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+
+		    /** Write the (possibly updated) attrs to the connection **/
+		    if (obj)
+			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 		    }
 		}
 	    else if (!strcmp(request,"delete"))
