@@ -13,6 +13,7 @@
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "prtmgmt_v3/prtmgmt_v3_lm_table.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
 
@@ -50,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_csv.c,v 1.1 2010/01/10 07:20:18 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_csv.c,v 1.2 2010/09/09 00:51:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_csv.c,v $
 
     $Log: prtmgmt_v3_fm_csv.c,v $
+    Revision 1.2  2010/09/09 00:51:07  gbeeley
+    - (bugfix) output money datatypes in a csv file in a way that will
+      consistently load right into OO Calc and Excel.
+    - (bugfix) handle space suppresion (when undoing word wrapping) correctly
+
     Revision 1.1  2010/01/10 07:20:18  gbeeley
     - (feature) adding CSV file output from report writer.  Simply outputs
       only tabular data (report/table data) into a CSV file format.
@@ -225,10 +231,10 @@ prt_csvfm_GenerateTableCell_r(pPrtCSVfmInf context, pPrtObjStream obj, char esc_
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
 	    {
 	    pos = context->CurrentLine.Length;
-	    len = strlen(obj->Content);
+	    len = strlen((char*)(obj->Content));
 	    if (len)
 		{
-		if (context->CellStringCnt) xsConcatenate(&context->CurrentLine, " ", 1);
+		/*if (context->CellStringCnt) xsConcatenate(&context->CurrentLine, " ", 1);*/
 		xsConcatenate(&context->CurrentLine, (char*)obj->Content, len);
 		context->CellStringCnt++;
 		if (esc_char)
@@ -244,6 +250,7 @@ prt_csvfm_GenerateTableCell_r(pPrtCSVfmInf context, pPrtObjStream obj, char esc_
 			}
 		    }
 		}
+	    if (obj->Flags & PRT_TEXTLM_F_RMSPACE) xsConcatenate(&context->CurrentLine, " ", 1);
 	    return 0;
 	    }
 
@@ -264,6 +271,9 @@ prt_csvfm_GenerateTableCell(pPrtCSVfmInf context, pPrtObjStream cell_obj)
     pPrtObjStream subobj;
     int datatype;
     char esc_char;
+    int value_start;
+    MoneyType m;
+    char* ptr;
 
 	/** First, determine data type of the cell, if available. **/
 	datatype = 0;
@@ -291,6 +301,7 @@ prt_csvfm_GenerateTableCell(pPrtCSVfmInf context, pPrtObjStream cell_obj)
 	    {
 	    esc_char = '\0';
 	    }
+	value_start = context->CurrentLine.Length;
 
 	/** Generate the content **/
 	context->CellStringCnt = 0;
@@ -300,6 +311,19 @@ prt_csvfm_GenerateTableCell(pPrtCSVfmInf context, pPrtObjStream cell_obj)
 	if (datatype == DATA_T_STRING)
 	    {
 	    xsConcatenate(&context->CurrentLine, "\"", 1);
+	    }
+
+	/** If date or money type, re-interpret value and output in a "vanilla" format **/
+	if (datatype == DATA_T_MONEY)
+	    {
+	    /** Remove any commas **/ /** now done inside objDataToMoney **/
+	    /*while (xsReplace(&context->CurrentLine, ",", 1, value_start, "", 0) >= 0) ;*/
+
+	    if (objDataToMoney(DATA_T_STRING, context->CurrentLine.String + value_start, &m) == 0)
+		{
+		ptr = objFormatMoneyTmp(&m, "0.00");
+		xsSubst(&context->CurrentLine, value_start, -1, ptr, -1);
+		}
 	    }
 
     return 0;
@@ -329,19 +353,32 @@ prt_csvfm_GenerateTableRow(pPrtCSVfmInf context, pPrtObjStream row_obj)
 		prt_csvfm_GenerateTableCell(context, subobj);
 		}
 	    }
-	xsConcatenate(&context->CurrentLine, "\n", 1);
 
-	/** Header?  If same as prior header, skip it, otherwise save it. **/
-	if ((((pPrtTabLMData)(row_obj->LMData))->Flags & PRT_TABLM_F_ISHEADER))
+	/** No cells found - just a content row?  Just output it verbatim if so. **/
+	if (first_one)
 	    {
-	    if (!strcmp(context->CurrentLine.String, context->LastHeader.String))
-		return 0;
-	    else
-		xsCopy(&context->LastHeader, context->CurrentLine.String, -1);
+	    context->CellStringCnt = 0;
+	    prt_csvfm_GenerateTableCell_r(context, row_obj, '\0');
 	    }
 
-	/** Output the line **/
-	prt_csvfm_Output(context, context->CurrentLine.String, -1);
+	/** Newline on the end **/
+	xsConcatenate(&context->CurrentLine, "\n", 1);
+
+	/** Output the line, suppressing blank lines (with just a \n on the end) **/
+	if (context->CurrentLine.Length > 1)
+	    {
+	    /** Header?  If same as prior header, skip it, otherwise save it. **/
+	    if ((((pPrtTabLMData)(row_obj->LMData))->Flags & PRT_TABLM_F_ISHEADER))
+		{
+		if (!strcmp(context->CurrentLine.String, context->LastHeader.String))
+		    return 0;
+		else
+		    xsCopy(&context->LastHeader, context->CurrentLine.String, -1);
+		}
+
+	    /** Output it **/
+	    prt_csvfm_Output(context, context->CurrentLine.String, -1);
+	    }
 
     return 0;
     }
