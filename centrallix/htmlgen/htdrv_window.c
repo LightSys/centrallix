@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.55 2009/06/25 17:54:07 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.56 2010/09/09 01:17:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.56  2010/09/09 01:17:03  gbeeley
+    - (change) the 'modal' operation of a window can be specified in the
+      window itself, instead of only in the connector that opens the window
+
     Revision 1.55  2009/06/25 17:54:07  gbeeley
     - (change) Removed link to external script.  When using 3rd party libs,
       they need to be downloaded and distributed with Centrallix; remember
@@ -468,6 +472,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int closetype = 0;
     int box_offset = 1;
     int is_toplevel = 0;
+    int is_modal = 0;
     char icon[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -505,6 +510,9 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Is this a toplevel window? **/
 	is_toplevel = htrGetBoolean(tree, "toplevel", 0);
+
+	/** Is this a modal window? **/
+	is_modal = htrGetBoolean(tree, "modal", 0);
 
 	/** Check background color **/
 	htrGetBackground(tree, NULL, 1, bgnd_style, sizeof(bgnd_style));
@@ -673,13 +681,13 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Script initialization call. **/
 	    if (has_titlebar)
 		{
-		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:htr_subel(nodes[\"%STR&SYM\"],'wn%POStitlebar')});\n", 
-			name,name,gshade,closetype, is_toplevel, name, id);
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:htr_subel(nodes[\"%STR&SYM\"],'wn%POStitlebar')});\n", 
+			name,name,gshade,closetype, is_toplevel, is_modal, name, id);
 		}
 	    else
 		{
-		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:nodes[\"%STR&SYM\"], gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:null});\n", 
-			name,name,gshade,closetype, is_toplevel);
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:nodes[\"%STR&SYM\"], gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:null});\n", 
+			name,name,gshade,closetype, is_toplevel, is_modal);
 		}
 	    }
 	else if(s->Capabilities.Dom0NS)
