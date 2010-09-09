@@ -6,6 +6,7 @@ smart_field "widget/component-decl"
     expose_events_for = ctl;
     expose_actions_for = ctl;
     expose_properties_for = ctl;
+    apply_hints_to = ctl;
 
     form "widget/parameter" { type=object; find_container="widget/form";}
     field "widget/parameter" { type=string; }
@@ -13,12 +14,14 @@ smart_field "widget/component-decl"
     value "widget/parameter" { type=string; default=null; }
     tooltip "widget/parameter" { type=string; default=null; }
     lookup_with "widget/parameter" { type=string; default=null; }
-    sql "widget/parameter" { type=string; default="select 1,1 where 1 != 1"; }
+    sql "widget/parameter" { type=string; default="select 1,1 where 1 != 1"; deploy_to_client=yes; }
     type "widget/parameter" { type=string; default="standard"; }
     ctl_type "widget/parameter" { type=string; default="editbox"; }
     label_width "widget/parameter" { type=integer; default=100; }
     empty_desc "widget/parameter" { type=string; default=""; }
     search_by_range "widget/parameter" { type=integer; default=1; }
+    date_only "widget/parameter" { type=integer; default=0; }
+    default_time "widget/parameter" { type=string; default=""; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
     preview_field "widget/parameter" { type=string; default=null; }
@@ -26,11 +29,20 @@ smart_field "widget/component-decl"
     //SetValue "widget/component-decl-action" { }
     //sv_cn "widget/connector" { event="SetValue"; target=ctl; action="SetValue"; Value=runclient(:Value); }
 
-    lc_cn "widget/connector" { condition = runserver(:this:ctl_type == 'dynamicdropdown'); event = "LoadComplete"; target=ctl; action="Instantiate"; form=form; }
+    lc_cn "widget/connector" { condition = runserver(:this:ctl_type == 'dynamicdropdown'); event = "LoadComplete"; target=ctl; action="Instantiate"; form=form; sql=runclient(:smart_field:sql); }
 
     SetSQL "widget/component-decl-action" { }
-    ss_cn "widget/connector"
+    ss_cn1 "widget/connector"
 	{
+	condition = runserver(:this:ctl_type == 'dynamicdropdown');
+	event="SetSQL";
+	target=sql;
+	action=SetValue;
+	Value=runclient(:sql);
+	}
+    ss_cn2 "widget/connector"
+	{
+	condition = runserver(:this:ctl_type == 'dynamicdropdown');
 	event="SetSQL";
 	//event_condition=runclient(:sql != :ctl:sql or :ctl:sql is null);
 	target=ctl;
@@ -83,6 +95,8 @@ smart_field "widget/component-decl"
 	tooltip = runserver(:this:tooltip);
 	form=form; 
 	search_by_range = runserver(:this:search_by_range);
+	default_time = runserver(:this:default_time);
+	date_only = runserver(:this:date_only);
         create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(getdate()); style=readonly; }
         modify_hints "widget/hints" { condition=runserver(:this:type == 'modify'); default = runclient(getdate()); style=readonly,alwaysdef; }
         ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
