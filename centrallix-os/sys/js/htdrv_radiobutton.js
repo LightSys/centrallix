@@ -80,7 +80,7 @@ function rb_resetvalue() {
 
 function rb_enable() {
 	this.mainlayer.enabled = true;
-	for (i=0;i<this.buttonList.length;i++) {
+	for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/radiobutton_set.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/radiobutton_unset.gif');
 	}
@@ -88,13 +88,13 @@ function rb_enable() {
 
 function rb_readonly() {
 	this.mainlayer.enabled = false;
-	for (i=0;i<this.buttonList.length;i++) {
+	for (var i=0;i<this.buttonList.length;i++) {
 	}
 }
 
 function rb_disable() {
 	this.mainlayer.enabled = false;
-	for (i=0;i<this.buttonList.length;i++) {
+	for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/radiobutton_set_dis.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/radiobutton_unset_dis.gif');
 	}
@@ -344,7 +344,7 @@ function rb_keyhandler(l, e, k)
 
 function rb_changemode(){
     if(this.form && this.form.mode == 'Query'){
-	for (i=0;i<this.buttonList.length;i++) {
+	for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/checkbox_checked.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/checkbox_unchecked.gif');
 		//htutil_tag_images(this.buttonList[i].optionPane.setPane, 'radiobutton', this.buttonList[i].optionPane.setPane, 'rb');	
@@ -360,7 +360,7 @@ function rb_changemode(){
     }
     else {
 	if(this.mainlayer.enabled)
-	    for (i=0;i<this.buttonList.length;i++) {
+	    for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/radiobutton_set.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/radiobutton_unset.gif');
 		if(this.buttonList[i].optionPane != this.mainlayer.selectedOption){
@@ -373,7 +373,7 @@ function rb_changemode(){
 		}
 	    }
 	else
-	    for (i=0;i<this.buttonList.length;i++) {
+	    for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/radiobutton_set_dis.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/radiobutton_unset_dis.gif');
 		if(this.buttonList[i].optionPane != this.mainlayer.selectedOption){
@@ -436,7 +436,7 @@ function radiobuttonpanel_init(param) {
 	parentPane.fieldname = param.fieldname;
 	if (param.form) 
 	    parentPane.form = wgtrGetNode(parentPane, param.form);
-	if (!parentPane.form && parentPane.fieldname)
+	if (!param.form && !parentPane.form && parentPane.fieldname)
 	    parentPane.form = wgtrFindContainer(parentPane,"widget/form");
 	if (parentPane.form)
 	    parentPane.form.Register(parentPane);
