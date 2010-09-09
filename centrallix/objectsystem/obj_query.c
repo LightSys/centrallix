@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.18 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: obj_query.c,v 1.19 2010/09/09 01:40:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.19  2010/09/09 01:40:58  gbeeley
+    - (feature) stubbing out objGetQueryCoverageMask, to be used to distinguish
+      between correlated and non-correlated subqueries
+
     Revision 1.18  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -935,4 +939,18 @@ objQueryClose(pObjQuery this)
     return 0;
     }
 
+
+/*** objGetQueryCoverageMask() - determine what external objects are in use
+ *** by the given query.  This is only valid on multiqueries (query handles
+ *** returned by objMultiQuery()), and only makes sense when an external
+ *** ParamObject list is used with the multiquery.
+ ***/
+int
+objGetQueryCoverageMask(pObjQuery this)
+    {
+    if (this->Obj->Driver->GetQueryCoverageMask)
+	return this->Obj->Driver->GetQueryCoverageMask(this->Data);
+    else
+	return -1;
+    }
 
