@@ -150,7 +150,7 @@ function tx_insertRow(l, index, txt)
     tx_write(r.contentLayer, txt);
     r.changed = 1;
     l.rows.splice(index,0,r);
-    for(i=index;i<l.rows.length;i++)
+    for(var i=index;i<l.rows.length;i++)
         {
         if (l.rows[i] != null)
             {
@@ -250,7 +250,7 @@ function tx_deleteRow(l, index)
     htr_setvisibility(l.rows[index].contentLayer, 'hidden');
     htr_setvisibility(l.rows[index].hiddenLayer, 'hidden');
     l.rows.splice(index,1);
-    for(i=index;i<l.rows.length;i++)
+    for(var i=index;i<l.rows.length;i++)
         {
         if (l.rows[i] != null)
             {
@@ -501,7 +501,7 @@ function tx_keyhandler(l,e,k)
             }
         }
     else return true;
-    for(i=0;i<l.rows.length;i++)
+    for(var i=0;i<l.rows.length;i++)
         {
         if (l.rows[i].changed == 1)
             {
@@ -627,8 +627,10 @@ function tx_init(param)
 	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', param.isReadonly?0:3);
     else
 	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'tbox', 'tbox', param.isReadonly?0:3);
-    if (param.form) l.form = wgtrGetNode(l, param.form);
-    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
+    if (param.form)
+	l.form = wgtrGetNode(l, param.form);
+    else
+	l.form = wgtrFindContainer(l,"widget/form");
     if (l.form) l.form.Register(l);
     l.changed = false;
 
