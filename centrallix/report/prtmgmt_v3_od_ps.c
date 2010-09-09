@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -52,10 +53,15 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.8 2009/06/26 16:18:59 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.9 2010/09/09 00:44:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.9  2010/09/09 00:44:49  gbeeley
+    - (bugfix) attempted to fix profiler/fork() interaction by blocking
+      SIGPROF while fork() was running.  This is good practice, but it didn't
+      solve our problem (compiling without -pg did).
+
     Revision 1.8  2009/06/26 16:18:59  gbeeley
     - (change) GetCharacterMetric now returns both height and width
     - (performance) change from bubble sort to merge sort for page generation
@@ -223,7 +229,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.8 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.9 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
@@ -482,6 +488,7 @@ prt_psod_OpenPDF(pPrtSession session)
     int rfds[2];
     gid_t gidlist[1];
     int id;
+    void (*prevhandler)(int);
 
 	/** Call the main open function to get a template context **/
 	context = prt_psod_Open(session);
@@ -514,7 +521,9 @@ prt_psod_OpenPDF(pPrtSession session)
 	    prt_psod_Close(context);
 	    return NULL;
 	    }
+	prevhandler = signal(SIGPROF, SIG_IGN);
 	context->ChildPID = fork();
+	signal(SIGPROF, prevhandler);
 	if (context->ChildPID < 0)
 	    {
 	    /** error **/
