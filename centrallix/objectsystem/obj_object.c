@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.30 2009/07/14 22:08:08 gbeeley Exp $
+    $Id: obj_object.c,v 1.31 2010/09/09 01:40:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.31  2010/09/09 01:40:10  gbeeley
+    - (security) prevent conversion of %00 to a \0 character in the filename
+      component (path part)
+    - (bugfix) object caching problem in ProcessOpen
+
     Revision 1.30  2009/07/14 22:08:08  gbeeley
     - (feature) adding cx__download_as object attribute which is used by the
       HTTP interface to set the content disposition filename.
@@ -343,6 +348,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 		if ((bufendptr - pathinfo->Pathbuf) >= OBJSYS_MAX_PATH - 2) break;
 		ch = htsConvertChar(&ptr);
 		if (ch == '/') ch = '_';
+		if (ch == '\0') ch = '_';
 		*(bufendptr++) = ch;
 		}
 	    *(bufendptr++) = '/';
@@ -642,6 +648,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pXHQElement xe;
     char prevname[256];
     int used_openas;
+    pObject cached_obj = NULL;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -722,15 +729,17 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    /** Discard cached entry, in hopes of caching the one we have. **/
 		    this = NULL;
 		    xhqRemove(&(s->DirectoryCache), xe, 0);
+		    dc = NULL;
 		    break;
 		    }
 
 		/** Link to the intermediate object to lock it open. **/
 		objLinkTo(this);
-		first_obj = this;
+		cached_obj = first_obj = this;
 
 		/** Unlink from the directory cache entry in the hashqueue **/
 		xhqUnlink(&(s->DirectoryCache), xe, 0);
+		dc = NULL;
 		break;
 		}
 	    }
@@ -906,7 +915,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    !(this->Prev->Flags & OBJ_F_NOCACHE))
 	    {
 	    /** Only cache if not already cached. **/
-	    if (!dc || dc->NodeObj != this->Prev)
+	    if (cached_obj != this->Prev)
 	        {
 		dc = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
 		dc->NodeObj = this->Prev;
@@ -1601,7 +1610,7 @@ objDelete(pObjSession session, char* path)
 	    return -1;
 	    }
 
-	/** Pass along the create call. **/
+	/** Pass along the delete call. **/
 	if (tmp->Driver->Delete(tmp, &(session->Trx)) <0) 
 	    {
 	    obj_internal_FreeObj(tmp);
