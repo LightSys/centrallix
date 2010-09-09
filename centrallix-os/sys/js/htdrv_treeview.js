@@ -38,7 +38,7 @@ function tv_new_layer(width,pdoc,l)
 	else if(cx__capabilities.Dom1HTML)
 	    {
 	    nl = document.createElement('DIV');
-	    nl.style.width = width + 'px';
+	    if (width) nl.style.width = width + 'px';
 	    nl.className = l.divclass;
 	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
@@ -407,7 +407,10 @@ function tv_BuildNewLayers(l, linkcnt)
 
 	var link_bold = 0;
 	var one_link;
-	var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
+	//var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
+	var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
+	setClipWidth(one_layer, tgtClipWidth);
+	setClipHeight(one_layer, l.root.rowheight);
 	var im;
 	can_expand = null;
 
@@ -978,40 +981,9 @@ function tv_searchloaded()
     this.mainlayer.searchqueue.shift();
 
     // parse it
-    var lnks = pg_links(this);
-    this.mainlayer.rows = [];
     this.mainlayer.search_cnt = 0;
-    if (lnks && lnks.length > 0)
-	{
-	var row = {};
-	var tgt = null;
-	var colcnt = 0;
-	for(var i = 0; i<lnks.length; i++)
-	    {
-	    var lnk = lnks[i];
-	    if (lnk.target != tgt && lnk.target != 'R')
-		{
-		if (colcnt) this.mainlayer.rows.push(row);
-		row = {};
-		colcnt = 0;
-		tgt = lnk.target;
-		}
-	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
-	    switch(lnk.text.charAt(0))
-		{
-		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
-		case 'N': col.value = null; break;
-		case 'E': col.value = '** ERROR **'; break;
-		}
-	    if (typeof row[col.oid] == 'undefined')
-		{
-		row[col.oid] = col;
-		colcnt++;
-		}
-	    }
-	if (colcnt) this.mainlayer.rows.push(row);
-	}
-    else if (lnks && lnks.length == 0)
+    this.mainlayer.rows = htr_parselinks(pg_links(this));
+    if (this.mainlayer.rows.length == 0)
 	{
 	this.mainlayer.selectitem(null);
 	}
@@ -1309,7 +1281,12 @@ function tv_mouseup(e)
 
 function tv_mouseover(e)
     {
-    if (e.kind == 'tv') cn_activate(e.mainlayer, 'MouseOver');
+    if (e.kind == 'tv')
+	{
+	cn_activate(e.mainlayer, 'MouseOver');
+	if (getClipWidth(e.layer) <= getdocWidth(e.layer)+2 && e.layer.link_txt)
+	    e.layer.tipid = pg_tooltip(e.layer.link_txt, e.pageX, e.pageY);
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -1321,7 +1298,15 @@ function tv_mousemove(e)
 
 function tv_mouseout(e)
     {
-    if (e.kind == 'tv') cn_activate(e.mainlayer, 'MouseOut');
+    if (e.kind == 'tv')
+	{
+	cn_activate(e.mainlayer, 'MouseOut');
+	if (e.layer.tipid)
+	    {
+	    pg_canceltip(e.layer.tipid);
+	    e.layer.tipid = null;
+	    }
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
