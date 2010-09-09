@@ -44,6 +44,17 @@ function cx_info_extract_cnt(a)
 // Extract original string
 function cx_info_extract_str(a)
     {
-    var arr = a.split(":");
-    return arr[2];
+    var pos = a.indexOf(":",0);
+    if (pos >= 0)
+	{
+	var pos2 = a.indexOf(":",pos+1);
+	if (pos2 >= 0)
+	    return a.substr(pos2+1);
+	else
+	    return "";
+	}
+    else
+	return a;
+    /*var arr = a.split(":");
+    return arr[2];*/
     }
