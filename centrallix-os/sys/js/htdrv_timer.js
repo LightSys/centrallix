@@ -22,7 +22,8 @@ function tm_action_settimer(aparam)
     {
     if (this.timerid != null) clearTimeout(this.timerid)
     if (aparam.AutoReset != null) this.autoreset = aparam.AutoReset;
-    this.timerid = setTimeout(tm_expire, aparam.Time, this);
+    if (typeof aparam.Time != 'undefined') this.msec = parseInt(aparam.Time);
+    this.timerid = setTimeout(tm_expire, this.msec, this);
     }
 
 function tm_action_canceltimer(aparam)
