@@ -126,7 +126,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,h,w,z);
+    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; }\n",id,x,y,h,w,z,bgstr);
     htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
     htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
 
@@ -179,7 +179,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
-    htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0 bgcolor=\"%STR&HTE\">\n",w, bgstr);
+    htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
     htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
     htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -196,6 +196,11 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     
     /* Read and initialize the dropdown items */
     if (mode == 1) {
+	/** The result set from this SQL query can take two forms: positional or named.
+	 ** For Positional, the params are: label, value, selected, group, hidden.
+	 ** For Named, the above names can appear in any order.
+	 ** label and value are required.
+	 **/
 	if ((qy = objMultiQuery(s->ObjSession, sql, NULL))) {
 	    flag=0;
 	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%STR&SYM\"], [",name);
@@ -240,10 +245,34 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		if (attr) {
 		    type = objGetAttrType(qy_obj, attr);
 		    rval = objGetAttrValue(qy_obj, attr, type, &od);
-		    htrAddScriptInit_va(s, ",sel:%INT}", type == DATA_T_INTEGER && rval == 0 && od.Integer != 0);
+		    htrAddScriptInit_va(s, ",sel:%INT", type == DATA_T_INTEGER && rval == 0 && od.Integer != 0);
+
+		    /** grouping **/
+		    attr = objGetNextAttr(qy_obj);
+		    if (attr) {
+			type = objGetAttrType(qy_obj, attr);
+			rval = objGetAttrValue(qy_obj, attr, type, &od);
+			if (rval == 0 && type == DATA_T_INTEGER)
+			    htrAddScriptInit_va(s, ",grp:%INT", od.Integer);
+			else if (rval == 0 && type == DATA_T_STRING)
+			    htrAddScriptInit_va(s, ",grp:\"%STR&JSSTR\"", od.String);
+
+			/** hidden **/
+			attr = objGetNextAttr(qy_obj);
+			if (attr) {
+			    type = objGetAttrType(qy_obj, attr);
+			    rval = objGetAttrValue(qy_obj, attr, type, &od);
+			    htrAddScriptInit_va(s, ",hide:%INT}", type == DATA_T_INTEGER && rval == 0 && od.Integer != 0);
+			} else {
+			    htrAddScriptInit(s, "}");
+			}
+		    } else {
+			htrAddScriptInit(s, "}");
+		    }
 		} else {
 		    htrAddScriptInit(s, "}");
 		}
+
 		objClose(qy_obj);
 		flag=1;
 	    }
@@ -346,10 +375,14 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.64 2009/06/24 22:03:13 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.65 2010/09/09 01:08:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.65  2010/09/09 01:08:18  gbeeley
+    - (feature) add Group and Hidden properties to the SQL result set used
+      to populate a dropdown box
+
     Revision 1.64  2009/06/24 22:03:13  gbeeley
     - (change) permit the multi-select (in QBF mode) to be enabled/disabled.
     - (feature) SQL-based dropdown result set has an optional 3rd column now
