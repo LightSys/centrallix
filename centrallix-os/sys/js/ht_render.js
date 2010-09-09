@@ -379,6 +379,45 @@ function htr_get_watch_newval(e)
         }
     }
 
+function htr_parselinks(lnks)
+    {
+    var rows = [];
+    if (lnks && lnks.length > 0)
+	{
+	var row = {};
+	var tgt = null;
+	var colcnt = 0;
+	for(var i = 0; i<lnks.length; i++)
+	    {
+	    var lnk = lnks[i];
+	    if (lnk.target != tgt && lnk.target != 'R')
+		{
+		if (colcnt) rows.push(row);
+		row = {};
+		colcnt = 0;
+		tgt = lnk.target;
+		}
+	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+	    switch(lnk.text.charAt(0))
+		{
+		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
+		case 'N': col.value = null; break;
+		case 'E': col.value = '** ERROR **'; break;
+		}
+	    if (col.type == 'integer') col.value = parseInt(col.value);
+	    if (typeof row[col.oid] == 'undefined')
+		{
+		row[col.oid] = col;
+		colcnt++;
+		}
+	    }
+	if (colcnt) rows.push(row);
+	}
+
+    return rows;
+    }
+
+
 function htr_init_layer(l,ml,kind)
     {
     if (l.document && l.document != document)
@@ -805,6 +844,7 @@ function htr_eventhandler(e)
     {
     if (!e.cx)
 	e = htr_event(e);
+    //if (e.keyName == 'escape' && e.type == 'keypress') window.esccnt = (window.esccnt)?(window.esccnt + 1):1;
     var handler_return;
     var prevent_default = false;
     var handlerlist = pg_handlers[e.type];
