@@ -34,6 +34,8 @@ pg_msg.MSG_GOODBYE=4;
 pg_msg.MSG_REPMSG=8;
 pg_msg.MSG_EVENT=16;
 
+var pg_explog = [];
+
 //START SECTION: DOM/CSS helper functions -----------------------------------
 
 /** returns an attribute of the element in pixels **/
@@ -333,9 +335,10 @@ function pg_get_container(l)
 	}
     else if (cx__capabilities.Dom1HTML)
 	{
+	if (!l) return null;
 	do  {
 	    l = l.parentNode;
-	    } while (l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
+	    } while (l && l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
 	return l;
 	}
     return null;
@@ -357,17 +360,6 @@ function pg_toplevel_layer(l)
 	    l = l.parentNode;
 	}
     return l;
-    }
-
-
-// pg_serialized_write() - schedules the writing of content to a layer, so that
-// we don't have the document open while stuff is happening from the server.
-function pg_serialized_write(l, text, cb)
-    {
-    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
-    pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
-    pg_serialized_load_doone();
     }
 
 
@@ -653,15 +645,10 @@ function pg_isinlayer(outer,inner)
     var i = 0;
     if(cx__capabilities.Dom1HTML)
         {
-//		for(i=0;i<outer.childNodes.length;i++)
-//			{
-//			if (outer.childNodes[i] == inner) return true;
-//			if (pg_isinlayer(outer.childNodes[i], inner)) return true;
-//			}        
 	while(inner)
 	    {
 	    if (inner == outer) return true;
-	    if (inner == window || inner == document) return false;
+	    if (inner == window || inner == document) break;
 	    inner = inner.parentNode;
 	    }
         }
@@ -1203,9 +1190,54 @@ function pg_status_close()
     pg_status.visibility = 'hide';
     }
 
+
+function pg_appwindowsync()
+    {
+    this.AppWindowBuild({});
+    this.AppWindowPropagate();
+    }
+
+function pg_appwindowbuild(seen)
+    {
+    seen[wgtrGetNamespace(this)] = this.pg_appwindows[wgtrGetNamespace(this)];
+    for(var win in this.pg_appwindows)
+	{
+	if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	    {
+	    var otherlist = this.pg_appwindows[win].wobj.AppWindowBuild(seen);
+	    for(var otherwin in otherlist)
+		{
+		this.pg_appwindows[otherwin] = otherlist[otherwin];
+		}
+	    }
+	}
+
+    return this.pg_appwindows;
+    }
+
+function pg_appwindowprop()
+    {
+    for(var win in this.pg_appwindows)
+	{
+	var w = this.pg_appwindows[win];
+	for(var win2 in this.pg_appwindows)
+	    {
+	    var w2 = this.pg_appwindows[win2];
+	    if (w2.wobj && !w2.wobj.closed)
+		{
+		if (!w.wobj || w.wobj.closed)
+		    delete w2.wobj.pg_appwindows[win];
+		else
+		    w2.wobj.pg_appwindows[win] = w;
+		}
+	    }
+	}
+    }
+
 function pg_init(l,a,gs,ct) //SETH: ??
     {
     window.windowlist = {};
+    window.pg_appwindows = {};
     pg_attract = a;
     if (cx__capabilities.Dom0NS) pg_set_emulation(document);
     htr_init_layer(window,window,"window");
@@ -1217,13 +1249,25 @@ function pg_init(l,a,gs,ct) //SETH: ??
     ifc_init_widget(window);
 
     l.templates = [];
+    window.AppWindowSync = pg_appwindowsync;
+    window.AppWindowBuild = pg_appwindowbuild;
+    window.AppWindowPropagate = pg_appwindowprop;
 
+    // update app window lists
+    pg_appwindows[wgtrGetNamespace(window)] = {wname:wgtrGetName(window), wobj:window, opener:window.opener, namespace:wgtrGetNamespace(window)};
+    if (window.opener && typeof window.opener.akey != 'undefined' && window.opener.akey == window.akey)
+	{
+	// link with opener and propagate window lists
+	pg_appwindows[wgtrGetNamespace(window.opener)] = {wname:wgtrGetName(window.opener), wobj:window.opener, opener:window.opener.opener, namespace:wgtrGetNamespace(window.opener)};
+	window.AppWindowSync();
+	}
 
     // Actions
     var ia = window.ifcProbeAdd(ifAction);
     ia.Add("LoadPage", pg_load_page);
     ia.Add("Launch", pg_launch);
     ia.Add("Close", pg_close);
+    ia.Add("Alert", pg_alert);
 
     // Events
     var ie = window.ifcProbeAdd(ifEvent);
@@ -1236,6 +1280,22 @@ function pg_init(l,a,gs,ct) //SETH: ??
     pg_addsched('window.ifcProbe(ifEvent).Activate("Load", {})', window, 100);
 
     return window;
+    }
+
+function pg_cleanup()
+    {
+    // remove this window from the app window lists
+    window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
+    window.AppWindowPropagate();
+    }
+
+function pg_alert(aparam)
+    {
+    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+    if (pg_keyschedid) pg_delsched(pg_keyschedid);
+    pg_keyschedid = 0;
+    pg_keytimeoutid = 0;
+    alert(aparam.Message);
     }
 
 function pg_reveal_cb(e)
@@ -1519,25 +1579,55 @@ function pg_expchange_cb(exp) //SETH: ??
     var node = wgtrGetNode(window[exp.Context], exp.Objname);
     var _context = window[exp.Context];
     var _this = node;
-    wgtrSetProperty(node, exp.Propname, eval(exp.Expression));
+    var v = eval(exp.Expression);
+    //pg_explog.push('assign: obj ' + node.__WgtrName + ', prop ' + exp.Propname + ', nv ' + v + ', exp ' + exp.Expression);
+    wgtrSetProperty(node, exp.Propname, v);
     }
 
 function pg_expchange(p,o,n)
     {
     if (o==n) return n;
+    /*if (this && this.__WgtrName == 'donor_osrc' && p == 'p_given_name' && pg_username == 'dbeeley')
+	{
+	pg_explog.push('expchange: id ' + this.id + ' ' + p + ' => ' + o + ' to ' + n + ' pg_explist len ' + pg_explist.length + ' paramlist len ' + pg_explist[8].ParamList.length);
+	if (!pg_explist[8]) pg_explog.push('no exp');
+	else if (!pg_explist[8].ParamList[0]) pg_explog.push('no param');
+	else if (!pg_explist[8].ParamList[0][2]) pg_explog.push('no ref');
+	else if (pg_explist[8].ParamList[0][2] != this) pg_explog.push('obj discrep ' + this.__WgtrName + ' != ' + pg_explist[8].ParamList[0][2].__WgtrName);
+	else if (pg_explist[8].ParamList[0][1] != p) pg_explog.push('attr discrep ' + p + ' != ' + pg_explist[8].ParamList[0][1]);
+	else pg_explog.push('no prob found');
+	}*/
+    var str = '';
     for(var i=0;i<pg_explist.length;i++)
 	{
+	//str += '' + i + ':';
 	var exp = pg_explist[i];
 	for(var j=0;j<exp.ParamList.length;j++)
 	    {
+	    //str += '' + j + ',';
 	    var item = exp.ParamList[j];
+	    //if (this == item[2]) str += 't';
+	    //if (p == item[1]) str += 'p';
+	    //if (this && this.__WgtrName == 'donor_osrc' && p == 'p_given_name' && pg_username == 'dbeeley' && i == 8 && j == 0)
+	//	str += ' ' + this.id + ' ';
+	    //var prevcmp = (this == item[2]);
+	    // THE BELOW LINE IS NEEDED TO WORK AROUND A FIREFOX BUG
+	    var str = this?(' ' + this.id + ' ' + this.__WgtrName):'';
+	    //if (!prevcmp && this == item[2]) pg_explog.push('wow!');
 	    if (this == item[2] && p == item[1])
 		{
 		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
+		//pg_explog.push('change: obj ' + ((this && this.__WgtrName)?this.__WgtrName:'(unknown)') + ', prop ' + p + ', ov ' + o + ', nv ' + n + ', exp ' + exp.Expression);
 		pg_addsched_fn(window, 'pg_expchange_cb', [exp], 0);
 		}
 	    }
+	//str += '.  ';
 	}
+    /*if (this && this.__WgtrName == 'donor_osrc' && p == 'p_given_name' && pg_username == 'dbeeley')
+	{
+	pg_explog.push(str);
+	pg_explog.push('expchange end: ' + p + ' => ' + o + ' to ' + n);
+	}*/
     return n;
     }
 
@@ -1612,11 +1702,11 @@ function pg_setmousefocus(l, xo, yo)
 	}
     }
 
-function pg_removekbdfocus()
+function pg_removekbdfocus(p)
     {
     if (pg_curkbdlayer)
 	{
-	if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return false;
+	if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler(p)) return false;
 	pg_curkbdlayer = null;
 	pg_curkbdarea = null;
 	if (cx__capabilities.Dom0NS)
@@ -1774,6 +1864,37 @@ function pg_getrelcoord(l, sub_l)
 
 //START SECTION: async request handling ----------------------------------
 
+// pg_loadqueue_additem() - adds an item to the load queue, sorted by 'level'
+function pg_loadqueue_additem(item)
+    {
+    var i = pg_loadqueue.length;
+    while (i && pg_loadqueue[i-1].level > item.level) i--;
+    pg_loadqueue.splice(i, 0, item);
+    }
+
+// pg_serialized_write() - schedules the writing of content to a layer, so that
+// we don't have the document open while stuff is happening from the server.
+function pg_serialized_write(l, text, cb)
+    {
+    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
+    //pg_loadqueue.push({lyr:l, text:text, cb:cb});
+    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb});
+    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
+    pg_serialized_load_doone();
+    }
+
+
+// pg_serialized_func() - schedules the running of a function (callback) in
+// queued order.  Higher 'level' will wait for all lower 'level' items to
+// complete (even if scheduled later) before it runs.
+function pg_serialized_func(level, obj, func, params)
+    {
+    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params});
+    //pg_serialized_load_doone();
+    pg_loadqueue_check();
+    }
+
+
 // pg_serialized_load() - a wrapper for async requests. It schedules
 // the reload of a layer, hidden or visible, from the server in a
 // manner that keeps things serialized so server loads don't overlap.
@@ -1796,7 +1917,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 	htr_setvisibility(pg_waitlyr, "inherit");
 	}
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
-    pg_loadqueue.push({lyr:l, src:newsrc, cb:cb});
+    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb});
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -1822,56 +1943,52 @@ function pg_serialized_load_doone()
     var one_item = pg_loadqueue.shift(); // remove first item
     if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' loads ' + one_item.src + '\n');
     one_item.lyr.__pg_onload = one_item.cb;
-    if (one_item.src) // I (Seth) only think this gets used in NS.
+    switch(one_item.type)
 	{
-	one_item.lyr.onload = pg_serialized_load_cb;
-	pg_set(one_item.lyr, 'src', one_item.src);
-	}
-    else if ((typeof one_item.text) != 'undefined')
-	{
-	if (cx__capabilities.Dom0NS)
-	    {
-	    one_item.lyr.document.write(one_item.text);
-	    one_item.lyr.document.close();
-	    }
-	else
-	    {
+	case 'src':
+	    one_item.lyr.onload = pg_serialized_load_cb;
+	    pg_set(one_item.lyr, 'src', one_item.src);
+	    break;
+
+	case 'write':
+	    if ((typeof one_item.text) == 'undefined') break;
+
 	    one_item.lyr.innerHTML = one_item.text;
-	    }
 
-	if (one_item.lyr.__pg_onload) 
-	    {
-	    one_item.lyr.__pg_onload_cb = pg_serialized_load_cb;
-	    pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [], 0);
-	    }
-	else
-	    {
-	    pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
-	    pg_loadqueue_busy = false;
-	    }
-
-	if (pg_loadqueue.length > 0)
-	    pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
-	else
-	    if (pg_waitlyr) 
+	    if (one_item.lyr.__pg_onload) 
 		{
-		if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-		pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
-		pg_waitlyr.vis = false;
+		one_item.lyr.__pg_onload_cb = pg_serialized_load_cb;
+		pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [], 0);
 		}
+	    else
+		{
+		pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
+		pg_loadqueue_busy = false;
+		}
+	    pg_loadqueue_check();
+	    break;
+
+	case 'func':
+	    one_item.cb.apply(one_item.lyr, one_item.params);
+	    pg_loadqueue_busy = false;
+	    pg_loadqueue_check();
+	    break;
 	}
     }
 
 // pg_serialized_load_cb() - called when a load finishes
 function pg_serialized_load_cb()
     {
-    pg_loadqueue_busy = false; //SETH: ?? I thought that the definition of pg_loadqueue_busy ment pg_serialized_load_doone was working. if so, then how does this function have any permisions to change this variable?
+    pg_loadqueue_busy = false;
 
     if (this.__pg_onload) 
-	{
 	this.__pg_onload();
-	}
 
+    pg_loadqueue_check();
+    }
+
+function pg_loadqueue_check()
+    {
     if (pg_loadqueue.length > 0)
 	pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
     else
@@ -2302,6 +2419,13 @@ function pg_dotip_complete()
     }
 
 
+// Is the DIV or LAYER "l" restricted due to a modal dialog?
+function pg_checkmodal(l)
+    {
+    return pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
+    }
+
+
 // event handlers
 function pg_mousemove(e)
     {
@@ -2312,10 +2436,11 @@ function pg_mousemove(e)
 	pg_tipinfo.x = e.pageX;
 	pg_tipinfo.y = e.pageY;
 	}
-    if (pg_modallayer)
+    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }
+        }*/
     if (pg_curlayer != null)
         {
         pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
@@ -2331,10 +2456,11 @@ function pg_mouseout(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    if (pg_modallayer)
+    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }
+        }*/
     if (ibeam_current && e.target == ibeam_current)
         {
         pg_curlayer = pg_curkbdlayer;
@@ -2353,10 +2479,11 @@ function pg_mouseover(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    if (pg_modallayer)
+    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }
+        }*/
     if (ibeam_current && e.target == ibeam_current)
         {
         pg_curlayer = pg_curkbdlayer;
@@ -2376,10 +2503,11 @@ function pg_mousedown(e)
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     pg_canceltip(pg_tipindex);
-    if (pg_modallayer)
+    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }
+        }*/
     //if (pg_curlayer) alert('cur layer kind = ' + e.mainkind + ' ' + e.mainlayer.id);
     if (ibeam_current && e.target.layer == ibeam_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
@@ -2432,10 +2560,11 @@ function pg_mouseup(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    if (pg_modallayer)
+    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
-        }
+        }*/
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
