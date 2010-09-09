@@ -185,9 +185,10 @@ function lbl_init(l, wparam)
     l.isFormStatusWidget = false;
     if (l.fieldname)
 	{
-	l.form = null;
-	if (wparam.form) l.form = wgtrGetNode(l, wparam.form);
-	if (!l.form) l.form = wgtrFindContainer(l, "widget/form");
+	if (wparam.form)
+	    l.form = wgtrGetNode(l, wparam.form);
+	else
+	    l.form = wgtrFindContainer(l, "widget/form");
 	if (l.form) l.form.Register(l);
 	}
     else
@@ -196,11 +197,15 @@ function lbl_init(l, wparam)
 	}
 
     // Request reveal/obscure notifications
-    l.Reveal = lb_cb_reveal;
-    if (pg_reveal_register_listener(l)) {
-	// already visible
-	if (l.form) l.form.Reveal(l,{ eventName:'Reveal' });
-    }
+    if (l.form)
+	{
+	l.Reveal = lb_cb_reveal;
+	if (pg_reveal_register_listener(l)) 
+	    {
+	    // already visible
+	    l.form.Reveal(l,{ eventName:'Reveal' });
+	    }
+	}
 
     return l;
     }
