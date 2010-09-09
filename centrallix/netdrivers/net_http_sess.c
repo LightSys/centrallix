@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_sess.c,v 1.2 2009/06/26 18:31:03 gbeeley Exp $
+    $Id: net_http_sess.c,v 1.3 2010/09/09 01:31:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_sess.c,v $
 
     $Log: net_http_sess.c,v $
+    Revision 1.3  2010/09/09 01:31:23  gbeeley
+    - (debug) check session link count.
+
     Revision 1.2  2009/06/26 18:31:03  gbeeley
     - (feature) enhance ls__method=copy so that it supports srctype/dsttype
       like test_obj does
@@ -65,6 +68,8 @@
 int
 nht_internal_LinkSess(pNhtSessionData sess)
     {
+    if (sess->LinkCnt <= 0 || sess->LinkCnt > 65535)
+	mssError(1,"NHT","Bark!  Bad link count %d for session %s", sess->LinkCnt, sess->Cookie);
     sess->LinkCnt++;
     sess->LastAccess = NHT.AccCnt++;
     return 0;
