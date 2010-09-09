@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_replica.c,v 1.3 2008/03/29 02:26:15 gbeeley Exp $
+    $Id: obj_replica.c,v 1.4 2010/09/09 01:42:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_replica.c,v $
 
     $Log: obj_replica.c,v $
+    Revision 1.4  2010/09/09 01:42:02  gbeeley
+    - (disabled) turned off request-notify mechanism as it needs to be
+      re-architected.  Suspected this piece of code of causing stability
+      problems.
+
     Revision 1.3  2008/03/29 02:26:15  gbeeley
     - (change) Correcting various compile time warnings such as signed vs.
       unsigned char.
@@ -102,6 +107,8 @@ int
 obj_internal_RnAdd(pObjReqNotifyItem item)
     {
     pObjReqNotify notify_data;
+
+	xaInit(&item->Notifications, 16);
 
 	/** Try to lookup the notify data **/
 	notify_data = obj_internal_RnLookupByObj(item->Obj);
@@ -156,6 +163,8 @@ obj_internal_RnDelete(pObjReqNotifyItem item)
     {
     pObjReqNotify notify_data;
     pObjReqNotifyItem *item_ptr;
+    int i;
+    pObjNotification n;
 
 	/** get the parent notify_data structure **/
 	notify_data = item->NotifyStruct;
@@ -186,6 +195,18 @@ obj_internal_RnDelete(pObjReqNotifyItem item)
 	/** Zero-out important fields in the item **/
 	item->NotifyStruct = NULL;
 
+	for(i=0;i<item->Notifications.nItems;i++)
+	    {
+	    n = (pObjNotification)(item->Notifications.Items[i]);
+	    if (n->Worker)
+		{
+		thKill(n->Worker);
+		n->Worker = NULL;
+		obj_internal_RnFree(n);
+		}
+	    }
+	xaDeInit(&item->Notifications);
+
     return 0;
     }
 
@@ -203,6 +224,7 @@ obj_internal_RnCreateAttrNotify(pObjReqNotifyItem item, char* attrname, pTObjDat
 	if (!n) return NULL;
 	n->Obj = item->Obj;
 	n->Context = item->CallerContext;
+	n->Worker = NULL;
 	n->__Item = item;
 	n->What = OBJ_RN_F_ATTRIB;
 	memccpy(n->Name, attrname, 0, OBJSYS_MAX_ATTR-1);
@@ -266,6 +288,8 @@ obj_internal_RnSendNotify(void* v)
 	thSetSecContext(NULL, &(n->__Item->SavedSecContext));
 
 	/** do the callback **/
+	n->Worker = NULL;
+	xaRemoveItem(&(n->__Item->Notifications), xaFindItem(&(n->__Item->Notifications), (void*)n));
 	n->__Item->CallbackFn(n);
 
 	/** Free memory used for the callback **/
@@ -290,6 +314,9 @@ obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, in
 	printf("RnNotifyAttrib: %s: ", attrname);
 	ptodPrint(newvalue);
 
+	/** GRB FIXME - disabling until we can make this work correctly. **/
+	return 0;
+
 	/** Lookup notify information **/
 	notify_data = obj_internal_RnLookupByObj(this);
 	if (!notify_data || !(notify_data->TotalFlags & OBJ_RN_F_ATTRIB)) 
@@ -308,7 +335,8 @@ obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, in
 	    if (!n) return -ENOMEM;
 
 	    /** Send the notify **/
-	    thCreate(obj_internal_RnSendNotify, 0, (void*)n);
+	    xaAddItem(&one_item->Notifications, (void*)n);
+	    n->Worker = thCreate(obj_internal_RnSendNotify, 0, (void*)n);
 	    }
 	    
     return 0;
