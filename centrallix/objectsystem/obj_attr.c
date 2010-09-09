@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.17 2009/07/14 22:08:08 gbeeley Exp $
+    $Id: obj_attr.c,v 1.18 2010/09/09 01:33:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.18  2010/09/09 01:33:27  gbeeley
+    - (feature) adding cx__pathname and cx__pathpartN system attributes
+      which can be retrieved on an object.  Useful for when doing a WILDCARD
+      select and needing to find out what filled the wildcard spots in the
+      pathname.
+
     Revision 1.17  2009/07/14 22:08:08  gbeeley
     - (feature) adding cx__download_as object attribute which is used by the
       HTTP interface to set the content disposition filename.
@@ -221,9 +227,9 @@ objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(),
 	ASSERTMAGIC(this, MGK_OBJECT);
 
 	/** Must not already exist **/
-	if (!strcmp(attrname, "objcontent") || !strcmp(attrname,"name") ||
+	if (!strcmp(attrname, "objcontent") || !strcmp(attrname,"name") || !strcmp(attrname,"cx__pathname") ||
 		!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
-		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation"))
+		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation") || !strncmp(attrname,"cx__pathpart",12))
 	    {
 	    mssError(1, "OSML", "Virtual Attribute '%s' already exists in object.", attrname);
 	    return -1;
@@ -265,6 +271,8 @@ objGetAttrType(pObject this, char* attrname)
     pObjVirtualAttr va;
     int rval, expval;
     pExpression exp;
+    int n;
+    char* endptr;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -279,10 +287,22 @@ objGetAttrType(pObject this, char* attrname)
 	if (!strcmp(attrname, "objcontent")) return DATA_T_STRING;
 
 	/** These 'system' attributes are also always strings **/
-	if (!strcmp(attrname,"name")) return DATA_T_STRING;
+	if (!strcmp(attrname,"name") || !strcmp(attrname,"cx__pathname")) return DATA_T_STRING;
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
 		!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
+
+	if (!strncmp(attrname,"cx__pathpart", 12))
+	    {
+	    endptr = NULL;
+	    n = strtoul(attrname+12, &endptr, 10);
+	    if (!n || !endptr || *endptr)
+		{
+		mssError(1,"OSML","Invalid cx__pathpart attribute: %s", attrname);
+		return -1;
+		}
+	    return DATA_T_STRING;
+	    }
 
 	/** download-as attribute **/
 	if (!strcmp(attrname, "cx__download_as"))
@@ -351,6 +371,9 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     int osmltype;
     pExpression exp;
     int used_expr;
+    unsigned long n;
+    char* endptr;
+    int is_system_attr = 0;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -380,6 +403,40 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		mssError(1,"OSML","Type mismatch in accessing 'cx__download_as' attribute");
 		return -1;
 		}
+	    }
+
+	/** Full pathname **/
+	if (!strcmp(attrname,"cx__pathname"))
+	    {
+	    if (data_type != DATA_T_STRING)
+		{
+		mssError(1,"OSML","Type mismatch in retrieving '%s' attribute", attrname);
+		return -1;
+		}
+	    val->String = objGetPathname(this);
+	    is_system_attr = 1;
+	    }
+
+	/** Part of pathname **/
+	if (!strncmp(attrname,"cx__pathpart", 12))
+	    {
+	    endptr = NULL;
+	    n = strtoul(attrname+12, &endptr, 10);
+	    if (!n || !endptr || *endptr)
+		{
+		mssError(1,"OSML","Invalid cx__pathpart attribute: %s", attrname);
+		return -1;
+		}
+	    if (data_type != DATA_T_STRING)
+		{
+		mssError(1,"OSML","Type mismatch in retrieving '%s' attribute", attrname);
+		return -1;
+		}
+	    /** null if past end of pathname **/
+	    if (n >= this->Pathname->nElements)
+		val->String = NULL;
+	    val->String = obj_internal_PathPart(this->Pathname, n, 1);
+	    is_system_attr = 1;
 	    }
 
     	/** How about content? **/
@@ -422,7 +479,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		bytes += readcnt;
 		}
 	    val->String = this->ContentPtr->String;
-	    return 0;
+	    is_system_attr = 1;
 	    }
 
 	/** Virtual attrs **/
@@ -438,7 +495,16 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    osmltype = DATA_T_STRING;
 	else
 	    osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
-	/*osmltype = objGetAttrType(this,attrname);*/
+
+	/** System attribute that can be overridden by MQ module? **/
+	if (is_system_attr && (!(this->Driver->Capabilities & OBJDRV_C_ISMULTIQUERY) || osmltype <= 0))
+	    {
+	    if (!val->String)
+		return 1;
+	    else
+		return 0;
+	    }
+
 	if (this->EvalContext && osmltype == DATA_T_CODE && (!this->AttrExpName || strcmp(attrname, this->AttrExpName)))
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
@@ -536,6 +602,7 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     int rval;
     TObjData tod;
     pObjVirtualAttr va;
+    char* str;
     
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -568,6 +635,9 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    tod.DataType = data_type;
 	    tod.Flags = 0;
 	    obj_internal_RnNotifyAttrib(this, attrname, &tod, 0);
+	    /*str = objDataToStringTmp(data_type, (data_type == DATA_T_INTEGER || data_type == DATA_T_DOUBLE)?val:val->Generic, 0);
+	    if (!str) str = "";
+	    obj_internal_TrxLog(this, "setattr", "%STR&DQUOT,%INT,%STR&DQUOT", attrname, data_type, str);*/
 	    }
 
     return rval;
