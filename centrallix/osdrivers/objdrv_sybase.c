@@ -72,10 +72,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.36 2009/06/26 16:33:38 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.37 2010/09/09 00:58:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.37  2010/09/09 00:58:48  gbeeley
+    - (change) upped sql buffer size, queries are becoming more complex
+      these days.  likely will need to go with a dynamic buffer / xstring
+    - (change) separate function TreeToClauseConstant - deals with constant
+      data values in a WHERE clause, and performs data conversion
+    - (feature) handle new atan2() function which Sybase calls atn2().
+    - (change) make use of new sybd_internal_ColNameToID refactoring
+    - (change) adjust for new parameter conventions in multiquery functions
+      though those aren't being used here yet.
+
     Revision 1.36  2009/06/26 16:33:38  gbeeley
     - (change) log SQL commands to a file, not to stdout.
     - (bugfix) handle constants properly when doing TreeToClause
@@ -503,7 +513,7 @@ typedef struct
     CS_CONNECTION* SessionID;
     CS_CONNECTION* ObjSession;
     int		RowCnt;
-    char	SQLbuf[2048];
+    char	SQLbuf[65536];
     pSybdTableInf TableInf;
     CS_COMMAND*	Cmd;
     int		RowsSinceFetch;
@@ -623,7 +633,7 @@ sybd_internal_Exec(CS_CONNECTION* s, char* cmdtext)
 	ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED);
 
 	/** Send it to the server. **/
-	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC: %s\n",cmdtext);
+	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC (time=%ld conn=%8.8x): %s\n", mtRealTicks(), s, cmdtext);
 	if (ct_send(cmd) != CS_SUCCEED)
 	    {
 	    ct_cmd_drop(cmd);
@@ -2045,6 +2055,145 @@ sybd_internal_DetermineType(pObject obj, pSybdData inf)
     }
 
 
+/*** sybd_internal_TreeToClauseConstant - convert a constant value to the
+ *** needed format for the WHERE or ORDER clause for the Sybase server.  This
+ *** also checks for needed data type conversions and issues the appropriate
+ *** convert() function to Sybase.
+ ***/
+int
+sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableInf *tdata, int n_tdata, pXString clause)
+    {
+    pExpression exp;
+    int colid, t;
+    char* ptr;
+    ObjData od;
+
+	/** Handle null values **/
+	if (tree->Flags & EXPR_F_NULL)
+	    {
+	    xsConcatenate(clause, " NULL ", 6);
+	    return 0;
+	    }
+
+	/** Derive data type from node type? **/
+	if (data_type == -1)
+	    {
+	    switch(tree->NodeType)
+		{
+		case EXPR_N_DATETIME: data_type=DATA_T_DATETIME; break;
+		case EXPR_N_MONEY: data_type=DATA_T_MONEY; break;
+		case EXPR_N_STRING: data_type=DATA_T_STRING; break;
+		case EXPR_N_INTEGER: data_type=DATA_T_INTEGER; break;
+		case EXPR_N_DOUBLE: data_type=DATA_T_DOUBLE; break;
+		}
+	    }
+   
+	/** Output the correct data type constant **/
+	switch(data_type)
+	    {
+	    case DATA_T_DATETIME:
+		objDataToString(clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
+	        break;
+
+	    case DATA_T_MONEY:
+		objDataToString(clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
+	        break;
+
+	    case DATA_T_DOUBLE:
+		objDataToString(clause, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
+	  	break;
+
+	    case DATA_T_INTEGER:
+		if (!tree->Parent || tree->Parent->NodeType == EXPR_N_AND ||
+		    tree->Parent->NodeType == EXPR_N_OR)
+		    {
+		    if (tree->Integer)
+			xsConcatenate(clause, " (1=1) ", 6);
+		    else
+			xsConcatenate(clause, " (1=0) ", 7);
+		    }
+		else
+		    {
+		    objDataToString(clause, DATA_T_INTEGER, &(tree->Integer), DATA_F_QUOTED);
+		    }
+		break;
+
+	    case DATA_T_STRING:
+		if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
+		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
+		    (void*)tree == (void*)(tree->Parent->Children.Items[0]))
+		    {
+		    if (!strcmp(tree->Parent->Name,"convert"))
+			{
+			if (!strcmp(tree->String,"integer")) xsConcatenate(clause,"int",3);
+			else if (!strcmp(tree->String,"string")) xsConcatenate(clause,"varchar(255)",-1);
+			else if (!strcmp(tree->String,"double")) xsConcatenate(clause,"double",6);
+			else if (!strcmp(tree->String,"money")) xsConcatenate(clause,"money",5);
+			else if (!strcmp(tree->String,"datetime")) xsConcatenate(clause,"datetime",8);
+			}
+		    else
+			{
+			if (strpbrk(tree->String,"\"' \t\r\n"))
+			    {
+			    mssError(1,"SYBD","Invalid datepart() parameters in Expression Tree");
+			    }
+			else
+			    {
+			    objDataToString(clause, DATA_T_STRING, tree->String, 0);
+			    }
+			}
+		    }
+		else
+		    {
+		    /** Autoconvert string to int, double, or money if comparing with a
+		     ** field of tht type.
+		     **/
+		    if (tree->Parent && tree->Parent->NodeType == EXPR_N_COMPARE)
+			{
+			/** Find other half of compare **/
+			exp = (pExpression)(tree->Parent->Children.Items[0]);
+			if (exp == tree)
+			    exp = (pExpression)(tree->Parent->Children.Items[1]);
+
+			/** Is it a property node? **/
+			if (exp && exp->NodeType == EXPR_N_OBJECT) exp = (pExpression)(exp->Children.Items[0]);
+			if (exp && exp->ObjID != -1)
+			    {
+			    colid = sybd_internal_ColNameToID(tdata[0], exp->Name);
+			    if (colid >= 0)
+				{
+				t = sybd_internal_AttrType(tdata[0], colid);
+				if (t == DATA_T_MONEY || t == DATA_T_INTEGER || t == DATA_T_DOUBLE)
+				    {
+				    objDataFromStringAlloc(&od, t, tree->String);
+				    if (t == DATA_T_MONEY)
+					{
+					objDataToString(clause, t, od.Money, 0);
+					nmFree(od.Money, sizeof(MoneyType));
+					return 0;
+					}
+				    else
+				    	{
+					objDataToString(clause, t, &od, 0);
+					return 0;
+					}
+				    }
+				}
+			    }
+			}
+
+		    objDataToString(clause, DATA_T_STRING, tree->String, DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		    }
+		break;
+
+	    default:
+		mssError(1, "SYBD", "Build clause: Unsupported constant data type %d", data_type);
+		return -1;
+	    }
+
+    return 0;
+    }
+
 
 /*** sybd_internal_TreeToClause - convert an expression tree to the appropriate
  *** WHERE clause for the SQL statement.
@@ -2055,9 +2204,10 @@ sybd_internal_DetermineType(pObject obj, pSybdData inf)
  *** the mqsyb multiquery sybase passthrough component.
  ***/
 int
-sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, pXString where_clause)
+sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess, pSybdTableInf *tdata, int n_tdata, pXString where_clause)
     {
-    pExpression subtree;
+    pExpression subtree, subtree2;
+    char* ptr;
     int i,id = 0;
     int add_rtrim;
 
@@ -2073,110 +2223,40 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 	/** If int or string, just put the content, otherwise recursively build **/
 	switch (tree->NodeType)
 	    {
-	    case EXPR_N_DATETIME:
-	  SYBD_DO_DATETIME:
-		if (tree->Flags & EXPR_F_NULL)
-		    xsConcatenate(where_clause, " NULL ", 6);
-		else
-		    objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
-	        break;
-
-	    case EXPR_N_MONEY:
-	  SYBD_DO_MONEY:
-		if (tree->Flags & EXPR_F_NULL)
-		    xsConcatenate(where_clause, " NULL ", 6);
-		else
-		    objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
-	        break;
-
-	    case EXPR_N_DOUBLE:
-	  SYBD_DO_DOUBLE:
-		if (tree->Flags & EXPR_F_NULL)
-		    xsConcatenate(where_clause, " NULL ", 6);
-		else
-		    objDataToString(where_clause, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
-	  	break;
-
-	    case EXPR_N_INTEGER:
-	  SYBD_DO_INTEGER:
-		if (tree->Flags & EXPR_F_NULL)
-		    xsConcatenate(where_clause, " NULL ", 6);
-		else
-		    {
-		    if (!tree->Parent || tree->Parent->NodeType == EXPR_N_AND ||
-			tree->Parent->NodeType == EXPR_N_OR)
-			{
-			if (tree->Integer)
-			    xsConcatenate(where_clause, " (1=1) ", 6);
-			else
-			    xsConcatenate(where_clause, " (1=0) ", 7);
-			}
-		    else
-			{
-			objDataToString(where_clause, DATA_T_INTEGER, &(tree->Integer), DATA_F_QUOTED);
-			}
-		    }
-		break;
-
 	    case EXPR_N_STRING:
-	  SYBD_DO_STRING:
-		if (tree->Flags & EXPR_F_NULL)
-		    xsConcatenate(where_clause, " NULL ", 6);
-		else
-		    {
-		    if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
-			(!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
-			(void*)tree == (void*)(tree->Parent->Children.Items[0]))
-			{
-			if (!strcmp(tree->Parent->Name,"convert"))
-			    {
-			    if (!strcmp(tree->String,"integer")) xsConcatenate(where_clause,"int",3);
-			    else if (!strcmp(tree->String,"string")) xsConcatenate(where_clause,"varchar(255)",-1);
-			    else if (!strcmp(tree->String,"double")) xsConcatenate(where_clause,"double",6);
-			    else if (!strcmp(tree->String,"money")) xsConcatenate(where_clause,"money",5);
-			    else if (!strcmp(tree->String,"datetime")) xsConcatenate(where_clause,"datetime",8);
-			    }
-			else
-			    {
-			    if (strpbrk(tree->String,"\"' \t\r\n"))
-				{
-				mssError(1,"SYBD","Invalid datepart() parameters in Expression Tree");
-				}
-			    else
-				{
-				objDataToString(where_clause, DATA_T_STRING, tree->String, 0);
-				}
-			    }
-			}
-		    else
-			{
-			objDataToString(where_clause, DATA_T_STRING, tree->String, DATA_F_QUOTED | DATA_F_SYBQUOTE);
-			}
-		    }
+	    case EXPR_N_INTEGER:
+	    case EXPR_N_DATETIME:
+	    case EXPR_N_MONEY:
+	    case EXPR_N_DOUBLE:
+		sybd_internal_TreeToClauseConstant(tree, -1, tdata, n_tdata, where_clause);
 		break;
 
 	    case EXPR_N_OBJECT:
 	        subtree = (pExpression)(tree->Children.Items[0]);
-	        sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+	        sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
 		break;
 
 	    case EXPR_N_PROPERTY:
 	        /** 'Frozen' object?  IF so, use current tree value **/
-		if ((tree->Flags & EXPR_F_FREEZEEVAL) || (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL)))
+		if ((tree->Flags & EXPR_F_FREEZEEVAL) || (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL)) || (tree->ObjID == -1))
 		    {
-		    if (tree->Flags & EXPR_F_NULL)
-		        {
-			xsConcatenate(where_clause, " NULL ", 6);
-			break;
+		    /** Direct ref object? **/
+		    if (tree->ObjID == -1)
+			{
+			/** This tdata->ObjList doesn't really fit, but we use it because
+			 ** we need something here with the objectsystem's session in it.
+			 **/
+			expEvalTree(tree,tdata[id]->ObjList);
 			}
-		    if (tree->DataType == DATA_T_INTEGER) goto SYBD_DO_INTEGER;
-		    else if (tree->DataType == DATA_T_STRING) goto SYBD_DO_STRING;
-		    else if (tree->DataType == DATA_T_DATETIME) goto SYBD_DO_DATETIME;
-		    else if (tree->DataType == DATA_T_MONEY) goto SYBD_DO_MONEY;
-		    else if (tree->DataType == DATA_T_DOUBLE) goto SYBD_DO_DOUBLE;
+
+		    /** Otherwise, treat like a normal constant **/
+		    sybd_internal_TreeToClauseConstant(tree, tree->DataType, tdata, n_tdata, where_clause);
 		    }
+		else
+		    {
 
 	        /** Direct ref object? **/
+#if 00
 	        if (tree->ObjID == -1)
 		    {
 		    /** This tdata->ObjList doesn't really fit, but we use it because
@@ -2212,6 +2292,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 		    }
 		else
 		    {
+#endif
 		    /** Is this a special type of property (i.e., name or annotation?) **/
 		    if (!strcmp(tree->Name,"name"))
 		        {
@@ -2231,7 +2312,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 			if (!tdata[id]->RowAnnotExpr)
 			    xsConcatenate(where_clause, " 1 ", 3);
 			else
-			    sybd_internal_TreeToClause(tdata[id]->RowAnnotExpr, tdata, n_tdata, where_clause);
+			    sybd_internal_TreeToClause(tdata[id]->RowAnnotExpr, node,sess,tdata, n_tdata, where_clause);
 			xsConcatenate(where_clause, ") ",2);
 			}
 		    else
@@ -2245,50 +2326,67 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 		break;
 
 	    case EXPR_N_COMPARE:
-	        xsConcatenate(where_clause, " (", 2);
+		/** Special case -- comparing :name with a constant value **/
 	        subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+	        subtree2 = (pExpression)(tree->Children.Items[1]);
+		if (tree->CompareType == MLX_CMP_EQUALS && 
+		    ( (subtree->NodeType == EXPR_N_PROPERTY && !strcmp(subtree->Name, "name") && subtree2->NodeType == EXPR_N_STRING && !(subtree2->Flags & EXPR_F_NULL)) ||
+		      (subtree2->NodeType == EXPR_N_PROPERTY && !strcmp(subtree2->Name, "name") && subtree->NodeType == EXPR_N_STRING && !(subtree->Flags & EXPR_F_NULL)) ))
+		    {
+		    ptr = sybd_internal_FilenameToKey(node, sess, tdata[id]->Table, (subtree->NodeType==EXPR_N_PROPERTY)?(subtree2->String):(subtree->String));
+		    if (ptr)
+			{
+			/** Use special case only if FilenameToKey generated a valid clause **/
+			xsConcatenate(where_clause, " (", 2);
+			xsConcatenate(where_clause, ptr, -1);
+			xsConcatenate(where_clause, ") ", 2);
+			break;
+			}
+		    }
+
+		/** Normal case **/
+	        xsConcatenate(where_clause, " (", 2);
+		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, " ", 1);
 		if (tree->CompareType & MLX_CMP_LESS) xsConcatenate(where_clause,"<",1);
 		if (tree->CompareType & MLX_CMP_GREATER) xsConcatenate(where_clause,">",1);
 		if (tree->CompareType & MLX_CMP_EQUALS) xsConcatenate(where_clause,"=",1);
 	        xsConcatenate(where_clause, " ", 1);
-	        subtree = (pExpression)(tree->Children.Items[1]);
-		sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree2,node,sess,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 	        break;
 
 	    case EXPR_N_AND:
 	        xsConcatenate(where_clause, " (",2);
 	        subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, " AND ",5);
 	        subtree = (pExpression)(tree->Children.Items[1]);
-		sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, ") ",2);
 	        break;
 
 	    case EXPR_N_OR:
                 xsConcatenate(where_clause, " (",2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+                sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
                 xsConcatenate(where_clause, " OR ",4);
                 subtree = (pExpression)(tree->Children.Items[1]);
-                sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+                sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
                 xsConcatenate(where_clause, ") ",2);
                 break;
 
 	    case EXPR_N_ISNULL:
 	        xsConcatenate(where_clause, " (",2);
 	        subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
 		xsConcatenate(where_clause, " IS NULL) ",10);
 		break;
 
 	    case EXPR_N_NOT:
 	        xsConcatenate(where_clause, " ( NOT ( ",9);
 		subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
 		xsConcatenate(where_clause, " ) ) ",5);
 		break;
 
@@ -2297,11 +2395,20 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 		if (!strcmp(tree->Name,"condition") && tree->Children.nItems == 3)
 		    {
 		    xsConcatenate(where_clause, " isnull((select substring(", -1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ",max(1),255) where ", -1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, "), ", 3);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") ", 2);
+		    }
+		else if (!strcmp(tree->Name,"atan2") && tree->Children.nItems == 2)
+		    {
+		    /** Sybase calls this function atn2() instead of atan2() **/
+		    xsConcatenate(where_clause, " atn2(", 6);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
 		else if (!strcmp(tree->Name,"ralign") && tree->Children.nItems == 2)
@@ -2310,16 +2417,16 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 		    for(i=0;i<255 && i<((pExpression)(tree->Children.Items[1]))->Integer;i++)
 		        xsConcatenate(where_clause, " ", 1);
 		    xsConcatenate(where_clause, "',1,", 4);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, " - char_length(", -1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ")) ", 3);
 		    }
 		else if (!strcmp(tree->Name,"eval"))
 		    {
 		    mssError(1,"SYBD","Sybase does not support eval() CXSQL function");
 		    /* just put silly thing as text instead of evaluated */
-		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 		    return -1;
 		    }
 		else
@@ -2334,7 +2441,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 			    xsConcatenate(where_clause, "rtrim(", 6);
 		        if (i != 0) xsConcatenate(where_clause,",",1);
 		        subtree = (pExpression)(tree->Children.Items[i]);
-		        sybd_internal_TreeToClause(subtree, tdata, n_tdata, where_clause);
+		        sybd_internal_TreeToClause(subtree, node,sess,tdata, n_tdata, where_clause);
 			if (i == 0 && add_rtrim)
 			    xsConcatenate(where_clause, ")", 1);
 		        }
@@ -2344,39 +2451,39 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 
 	    case EXPR_N_PLUS:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " + ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_MINUS:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " - ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_DIVIDE:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " / ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_MULTIPLY:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " * ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_IN:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " IN (", 5);
 		subtree = (pExpression)(tree->Children.Items[1]);
 		if (subtree->NodeType == EXPR_N_LIST)
@@ -2384,12 +2491,12 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 		    for(i=0;i<subtree->Children.nItems;i++)
 		        {
 			if (i != 0) xsConcatenate(where_clause, ",", 1);
-			sybd_internal_TreeToClause((pExpression)(subtree->Children.Items[i]), tdata, n_tdata, where_clause);
+			sybd_internal_TreeToClause((pExpression)(subtree->Children.Items[i]), node,sess,tdata, n_tdata, where_clause);
 			}
 		    }
 		else
 		    {
-	            sybd_internal_TreeToClause(subtree, tdata, n_tdata, where_clause);
+	            sybd_internal_TreeToClause(subtree, node,sess,tdata, n_tdata, where_clause);
 		    }
 	        xsConcatenate(where_clause, ") ) ", 4);
 		break;
@@ -2489,6 +2596,24 @@ sybd_internal_LookupRow(CS_CONNECTION* sess, pSybdData inf)
 	sybd_internal_Close(cmd);
 
     return cnt;
+    }
+
+
+/*** sybd_internal_ColNameToID() - determine the column ID of a column with the given
+ *** name, or return -1 if no such column.
+ ***/
+int
+sybd_internal_ColNameToID(pSybdTableInf tdata, char* colname)
+    {
+    int i;
+
+	for(i=0;i<tdata->nCols;i++)
+	    {
+	    if (!strcmp(colname, tdata->Cols[i]))
+		return i;
+	    }
+
+    return -1;
     }
 
 
@@ -2605,12 +2730,8 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** If a column is being accessed, verify its existence / open the metadata row **/
 	if (inf->Type == SYBD_T_COLUMN)
 	    {
-	    inf->ColID = -1;
-	    for(i=0;i<inf->TData->nCols;i++) if (!strcmp(inf->RowColPtr, inf->TData->Cols[i]))
-	        {
-		inf->ColID = i;
-		break;
-		}
+	    inf->ColID = sybd_internal_ColNameToID(inf->TData, inf->RowColPtr);
+
 	    if (inf->ColID == -1)
 	        {
 		/** User specified a column that doesn't exist. **/
@@ -3608,12 +3729,12 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	        /** Select the list of tables from the DB. **/
 		if (SYBD_USE_CURSORS)
 		    {
-		    snprintf(qy->SQLbuf,2048,"DECLARE _c CURSOR FOR SELECT name from sysobjects where type = 'U' ORDER BY name");
+		    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"DECLARE _c CURSOR FOR SELECT name from sysobjects where type = 'U' ORDER BY name");
 		    qy->Flags |= SYBD_QF_USECURSOR;
 		    }
 		else
 		    {
-		    snprintf(qy->SQLbuf,2048,"SELECT name from sysobjects where type = 'U' ORDER BY name");
+		    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"SELECT name from sysobjects where type = 'U' ORDER BY name");
 		    }
 		qy->SessionID = inf->SessionID;
 		qy->ObjSession = inf->SessionID;
@@ -3667,7 +3788,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    xsConcatenate(&sql, " WHERE ", 7);
 		    qy->TableInf->ObjList->Session = qy->ObjInf->Obj->Session;
 		    exp = expReducedDuplicate(query->Tree);
-		    sybd_internal_TreeToClause(exp, &(qy->TableInf), 1, &sql);
+		    sybd_internal_TreeToClause(exp, inf->Node, qy->SessionID, &(qy->TableInf), 1, &sql);
 		    expFreeExpression(exp);
 		    }
 		if (query->SortBy[0])
@@ -3676,17 +3797,17 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
 			{
 			if (i != 0) xsConcatenate(&sql, ", ", 2);
-			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->TableInf),1,&sql);
+			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),inf->Node, qy->SessionID,&(qy->TableInf),1,&sql);
 			}
 	  	    }
 		if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))
 		    {
-		    snprintf(qy->SQLbuf,2048,"DECLARE _c CURSOR FOR SELECT * FROM %s %s",inf->TablePtr, sql.String);
+		    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"DECLARE _c CURSOR FOR SELECT * FROM %s %s",inf->TablePtr, sql.String);
 		    qy->Flags |= SYBD_QF_USECURSOR;
 		    }
 		else
 		    {
-		    snprintf(qy->SQLbuf,2048,"SELECT * FROM %s %s",inf->TablePtr, sql.String);
+		    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"SELECT * FROM %s %s",inf->TablePtr, sql.String);
 		    }
 		if (strcmp(qy->SQLbuf, SYBD_INF.LastSQL.String) || 1)
 		    {
@@ -3717,7 +3838,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    while(ct_results(qy->Cmd,(CS_INT*)&restype)==CS_SUCCEED && restype != CS_CMD_DONE);
 	    sybd_internal_Close(qy->Cmd);
-	    snprintf(qy->SQLbuf,2048,"OPEN _c SET CURSOR ROWS %d FOR _c FETCH _c", SYBD_CURSOR_ROWCOUNT);
+	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"OPEN _c SET CURSOR ROWS %d FOR _c FETCH _c", SYBD_CURSOR_ROWCOUNT);
 	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
 	    if (!qy->Cmd)
 	        {
@@ -3725,7 +3846,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		mssError(0,"SYBD","Could not open cursor for query result set retrieval");
 		return NULL;
 		}
-	    snprintf(qy->SQLbuf,2048,"FETCH _c");
+	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"FETCH _c");
 	    qy->RowsSinceFetch = 0;
 	    }
 
@@ -3934,7 +4055,7 @@ sybdQueryClose(void* qy_v, pObjTrxTree* oxt)
 	/** Deallocate the cursor? **/
 	if ((qy->Flags & SYBD_QF_USECURSOR) && (qy->ObjInf->Type == SYBD_T_DATABASE || qy->ObjInf->Type == SYBD_T_ROWSOBJ))
 	    {
-	    snprintf(qy->SQLbuf,2048,"CLOSE _c DEALLOCATE CURSOR _c");
+	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"CLOSE _c DEALLOCATE CURSOR _c");
 	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
 	    if (qy->Cmd)
 	        {
@@ -3998,13 +4119,9 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (inf->Type == SYBD_T_ROW)
 	    {
 	    tdata = inf->TData;
-	    for(i=0;i<tdata->nCols;i++)
-	        {
-		if (!strcmp(attrname,tdata->Cols[i]))
-		    {
-		    return sybd_internal_AttrType(tdata, i);
-		    }
-		}
+	    i = sybd_internal_ColNameToID(tdata, attrname);
+	    if (i >= 0)
+		return sybd_internal_AttrType(tdata, i);
 	    }
 	else if (inf->Type == SYBD_T_COLUMN)
 	    {
@@ -4168,7 +4285,8 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    tdata=inf->TData;
 
 	    /** Search table info for this column. **/
-	    for(i=0;i<tdata->nCols;i++) if (!strcmp(tdata->Cols[i],inf->RowColPtr))
+	    i = sybd_internal_ColNameToID(tdata, inf->RowColPtr);
+	    if (i >= 0)
 	        {
 		val->String = inf->Node->Types[tdata->ColTypes[i]];
 		return 0;
@@ -4180,7 +4298,8 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    tdata = inf->TData;
 
 	    /** Search through the columns. **/
-	    for(i=0;i<tdata->nCols;i++) if (!strcmp(tdata->Cols[i],attrname))
+	    i = sybd_internal_ColNameToID(tdata, attrname);
+	    if (i >= 0)
 	        {
 		ptr = inf->ColPtrs[i];
 		t = tdata->ColTypes[i];
@@ -4527,7 +4646,7 @@ sybdExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree* ox
  *** such performed at the Sybase level.
  ***/
 int
-mqsybAnalyze(pMultiQuery mq)
+mqsybAnalyze(pQueryStatement stmt)
     {
     pQueryStructure where_qs = NULL, from_qs, with_qs, select_qs = NULL;
     pQueryStructure item, orderby_qs, groupby_qs;
@@ -4546,7 +4665,7 @@ mqsybAnalyze(pMultiQuery mq)
     pExpression new_exp;
 
     	/** First, search for SELECT clauses that are parts of PASSTHROUGH queries **/
-	while((select_qs = mq_internal_FindItem(mq->QTree, MQ_T_SELECTCLAUSE, select_qs)) != NULL)
+	while((select_qs = mq_internal_FindItem(stmt->QTree, MQ_T_SELECTCLAUSE, select_qs)) != NULL)
 	    {
 	    /** Is this SELECT a part of a passthrough query? **/
 	    is_passthrough = 0;
@@ -4562,12 +4681,12 @@ mqsybAnalyze(pMultiQuery mq)
 	    if (!is_passthrough) continue;
 
 	    /** Ok, is passthrough.  Find what FROM sources we can handle **/
-	    from_qs = mq_internal_FindItem(mq->QTree, MQ_T_FROMCLAUSE, NULL);
+	    from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMCLAUSE, NULL);
 	    if (!from_qs) continue;
 	    for(i=0;i<from_qs->Children.nItems;i++)
 	        {
 		item = (pQueryStructure)(from_qs->Children.Items[i]);
-		from_tmpobjs[i] = objOpen(mq->SessionID, item->Source, O_RDONLY, 0600, "system/directory");
+		from_tmpobjs[i] = objOpen(stmt->Query->SessionID, item->Source, O_RDONLY, 0600, "system/directory");
 		if (from_tmpobjs[i]->Driver == SYBD_INF.ObjDriver ||
 		    (from_tmpobjs[i]->Driver == OSYS.TransLayer && from_tmpobjs[i]->TLowLevelDriver == SYBD_INF.ObjDriver))
 		    {
@@ -4718,7 +4837,7 @@ mqsybAnalyze(pMultiQuery mq)
  *** starts the query.
  ***/
 int
-mqsybStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
+mqsybStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     return 0;
     }
@@ -4730,7 +4849,7 @@ mqsybStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
  ***  -1 == error occurred.
  ***/
 int
-mqsybNextItem(pQueryElement qe, pMultiQuery mq)
+mqsybNextItem(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -4739,7 +4858,7 @@ mqsybNextItem(pQueryElement qe, pMultiQuery mq)
 /*** mqsybFinish - End the current query.
  ***/
 int
-mqsybFinish(pQueryElement qe, pMultiQuery mq)
+mqsybFinish(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -4749,7 +4868,7 @@ mqsybFinish(pQueryElement qe, pMultiQuery mq)
  *** Analyze routine.
  ***/
 int
-mqsybRelease(pQueryElement qe, pMultiQuery mq)
+mqsybRelease(pQueryElement qe, pQueryStatement stmt)
     {
     return 0;
     }
@@ -4846,29 +4965,33 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    case SYBD_T_ROW:
 		/** the attributes of a row are the column names, with the values being the field values **/
 		/** find the name of the column, and get its data type **/
-		for (i=0;i<inf->TData->nCols;i++) 
+		i = sybd_internal_ColNameToID(inf->TData, attrname);
+		if (i >= 0)
 		    {
-		    if (!strcmp(attrname, inf->TData->Cols[i]))
-			{
-			datatype = inf->TData->ColTypes[i];
-			
-			/** Duplicate the hints structure **/
-			hints=objDuplicateHints(inf->Node->TypeHints[datatype]);
+		    datatype = inf->TData->ColTypes[i];
+		    
+		    /** Duplicate the hints structure **/
+		    hints=objDuplicateHints(inf->Node->TypeHints[datatype]);
 
-			/** TODO: pull stuff out of the node to flesh the structure out **/
-			
-			/** If this is a stringish datatype, set its length and visual length.
-			 ** It's important to make sure we don't override something the user
-			 ** might've set **/
-			if (sybd_internal_GetCxType(datatype) == DATA_T_STRING)
-			    {
-			    if (hints->Length == 0) hints->Length = inf->TData->ColLengths[i];
-			    if (hints->VisualLength == 0) hints->VisualLength = inf->TData->ColLengths[i];
-			    }
-			break;
+		    /** TODO: pull stuff out of the node to flesh the structure out **/
+		    
+		    /** If this is a stringish datatype, set its length and visual length.
+		     ** It's important to make sure we don't override something the user
+		     ** might've set.
+		     ** Note - don't set length for a text or image type.
+		     **/
+		    if (sybd_internal_GetCxType(datatype) == DATA_T_STRING && datatype != 19 && datatype != 20)
+			{
+			if (hints->Length == 0) hints->Length = inf->TData->ColLengths[i];
+			if (hints->VisualLength == 0) hints->VisualLength = inf->TData->ColLengths[i];
 			}
+
+		    /** Set the KEY style flag if the field is a part of the primary key **/
+		    if (inf->TData->ColFlags[i] & SYBD_CF_PRIKEY)
+			hints->Style |= OBJ_PH_STYLE_KEY;
+		    hints->StyleMask |= OBJ_PH_STYLE_KEY;
 		    }
-		if (i == inf->TData->nCols)
+		else
 		    {
 		    mssError(1, "SYBD", "No attribute '%s'", attrname);
 		    return NULL;
