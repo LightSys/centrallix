@@ -60,10 +60,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.58 2009/06/24 21:53:44 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.59 2010/09/09 01:15:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.59  2010/09/09 01:15:25  gbeeley
+    - (feature) table now displays a placeholder row for a new row that is
+      in the process of being created.  provides much better visual feedback
+      to the end-user.
+    - (feature) allow table to operate in 'properties' data_mode, which
+      results in a 'property sheet' list, one attribute per row instead of
+      one attribute per column
+    - (change) allow header to be omitted
+
     Revision 1.58  2009/06/24 21:53:44  gbeeley
     - (feature) adding show_selection, overlap_scrollbar, hide_scrollbar, and
       demand_scrollbar options.
@@ -560,10 +569,13 @@ typedef struct
     char textcolor[64];
     char textcolorhighlight[64];
     char titlecolor[64];
+    char newrow_bgnd[128];
+    char newrow_textcolor[64];
     char osrc[64];
     int x,y,w,h;
     int id;
     int mode;
+    int data_mode;		/* 0="rows" or 1="properties" */
     int outer_border;
     int inner_border;
     int inner_padding;
@@ -583,6 +595,7 @@ typedef struct
     int overlap_scrollbar;	/* scrollbar overlaps with table */
     int hide_scrollbar;		/* don't show scrollbar at all */
     int demand_scrollbar;	/* only show scrollbar when needed */
+    int has_header;		/* table has header/title row? */
     } httbl_struct;
 
 int
@@ -599,6 +612,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     int subcnt = 0;
     char *nptr;
     int h;
+    int first_offset = (t->has_header)?(t->rowheight):0;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
@@ -608,18 +622,19 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	/** STYLE for the layer **/
 	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+t->rowheight,t->h-t->rowheight,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; HEIGHT:18px; Z-INDEX:%POS; }\n",t->id,z+2);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+2);
 
 	/** HTML body <DIV> element for the layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\"></DIV>\n",t->id);
 	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSscroll\">\n",t->id);
 	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
 	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
-	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-t->rowheight-t->cellvspacing);
+	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-first_offset-t->cellvspacing);
 	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
 	htrAddBodyItem(s,"</TABLE>\n");
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);
+	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"></DIV>\n",t->id);
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_current","null",0);
@@ -631,7 +646,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->rowheight,
@@ -641,7 +656,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		t->colsep,t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
 		t->allow_selection, t->show_selection,
 		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
-		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0');
+		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
+		t->data_mode, t->has_header,
+		t->newrow_bgnd, t->newrow_textcolor);
 	
 	for(colid=0;colid<t->ncols;colid++)
 	    {
@@ -879,6 +896,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->outer_border=0;
 	t->inner_border=0;
 	t->inner_padding=0;
+	t->data_mode = 0;
     
     	/** Get an id for thit. **/
 	t->id = (HTTBL.idcnt++);
@@ -912,6 +930,16 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);
 	t->hide_scrollbar = htrGetBoolean(tree, "hide_scrollbar", 0);
 	t->demand_scrollbar = htrGetBoolean(tree, "demand_scrollbar", 0);
+	t->has_header = htrGetBoolean(tree, "titlebar", 1);
+
+	/** Which data mode to use? **/
+	if (wgtrGetPropertyValue(tree,"data_mode", DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    if (!strcmp(ptr, "rows"))
+		t->data_mode = 0;
+	    else if (!strcmp(ptr, "properties"))
+		t->data_mode = 1;
+	    }
 
 	/** Should we follow the current record around? **/
 	t->followcurrent = htrGetBoolean(tree, "followcurrent", 1);
@@ -954,6 +982,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	htrGetBackground(tree, "row2", !s->Capabilities.Dom0NS, t->row_bgnd2, sizeof(t->row_bgnd2));
 	htrGetBackground(tree, "rowhighlight", !s->Capabilities.Dom0NS, t->row_bgndhigh, sizeof(t->row_bgndhigh));
 	htrGetBackground(tree, "colsep", !s->Capabilities.Dom0NS, t->colsep_bgnd, sizeof(t->colsep_bgnd));
+	htrGetBackground(tree, "newrow", !s->Capabilities.Dom0NS, t->newrow_bgnd, sizeof(t->newrow_bgnd));
 
 	/** Get borders and padding information **/
 	wgtrGetPropertyValue(tree,"outer_border",DATA_T_INTEGER,POD(&(t->outer_border)));
@@ -967,6 +996,10 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	/** Text color information **/
 	if (wgtrGetPropertyValue(tree,"textcolorhighlight",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(t->textcolorhighlight,ptr,sizeof(t->textcolorhighlight));
+
+	/** Text color information for "new row" in process of being created **/
+	if (wgtrGetPropertyValue(tree,"textcolornew",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(t->newrow_textcolor,ptr,sizeof(t->newrow_textcolor));
 
 	/** Title text color information **/
 	if (wgtrGetPropertyValue(tree,"titlecolor",DATA_T_STRING,POD(&ptr)) == 0)
