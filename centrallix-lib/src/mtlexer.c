@@ -33,10 +33,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.12 2010/05/12 18:21:21 gbeeley Exp $
+    $Id: mtlexer.c,v 1.13 2010/09/09 01:58:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.13  2010/09/09 01:58:35  gbeeley
+    - (security) the mtlexer massive rewrite left mtlexer 8-bit clean, which
+      is *too* clean for some purposes.  This change causes a \0 byte in the
+      data stream to flag an error, unless ALLOWNUL is turned on.
+
     Revision 1.12  2010/05/12 18:21:21  gbeeley
     - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
       and for security.  Adding many test suite items for mtlexer, a good
@@ -326,6 +331,12 @@ mlxNextChar(pLxSession s)
 	if (v < 0) return MLX_ERROR;
 	if (v == 0) return MLX_EOF;
 
+	if (!(s->Flags & MLX_F_ALLOWNUL) && ((int)((unsigned char)(s->InpPtr[0]))) == 0)
+	    {
+	    mssError(1,"MLX","Invalid NUL character in input data stream");
+	    return MLX_ERROR;
+	    }
+
 	/** input buffer has a char? **/
 	ch = (int)((unsigned char)(s->InpPtr[0]));
 	mlxUseOneChar(s);
@@ -341,13 +352,21 @@ mlxNextChar(pLxSession s)
 int
 mlxPeekChar(pLxSession s, int offset)
     {
-    int v;
+    int v, ch;
 
 	v = mlx_internal_CheckBuffer(s, offset);
 	if (v < 0) return MLX_ERROR;
 	if (v <= offset) return MLX_EOF;
 
-    return (int)((unsigned char)(s->InpPtr[offset]));
+	ch = (int)((unsigned char)(s->InpPtr[offset]));
+
+	if (!(s->Flags & MLX_F_ALLOWNUL) && ch == 0)
+	    {
+	    mssError(1,"MLX","Invalid NUL character in input data stream");
+	    return MLX_ERROR;
+	    }
+
+    return ch;
     }
 
 

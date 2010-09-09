@@ -21,10 +21,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.h,v 1.4 2010/05/12 18:21:21 gbeeley Exp $
+    $Id: mtlexer.h,v 1.5 2010/09/09 01:58:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtlexer.h,v $
 
     $Log: mtlexer.h,v $
+    Revision 1.5  2010/09/09 01:58:35  gbeeley
+    - (security) the mtlexer massive rewrite left mtlexer 8-bit clean, which
+      is *too* clean for some purposes.  This change causes a \0 byte in the
+      data stream to flag an error, unless ALLOWNUL is turned on.
+
     Revision 1.4  2010/05/12 18:21:21  gbeeley
     - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
       and for security.  Adding many test suite items for mtlexer, a good
@@ -150,33 +155,34 @@ int mlxSetOffset(pLxSession this, unsigned long new_offset);
 #define MLX_CMP_LESS		4
 
 /** Flags **/
-#define MLX_F_INSTRING		1	/* in _long_ string (internal) */
-#define MLX_F_ICASEK		2	/* lowercase all keywords. */
-#define MLX_F_POUNDCOMM		4	/* Pound sign comments */
-#define MLX_F_CCOMM		8	/* C comments */
-#define MLX_F_CPPCOMM		16	/* C++ // comments */
-#define MLX_F_SEMICOMM		32	/* Semicolon comments */
-#define MLX_F_DASHCOMM		64	/* Double-dash -- comments */
-#define MLX_F_EOL		128	/* Return EOL as a token */
-#define MLX_F_EOF		256	/* Return EOF as a token */
-#define MLX_F_NOFILE		512	/* Source is a string, not file (int) */
-#define MLX_F_IFSONLY		1024	/* Only return ifs-sep strings. */
-#define MLX_F_DASHKW		2048	/* Keyword can include '-' */
-#define MLX_F_FOUNDEOL		4096	/* found an eol (internal) */
-#define MLX_F_NODISCARD		8192	/* don't discard buffer at close */
-#define MLX_F_FILENAMES		16384	/* treat as filename if /xx or ./xx */
-#define MLX_F_ICASER		32768	/* lowercase all reserved wds */
+#define MLX_F_INSTRING		(1<<0)	/* in _long_ string (internal) */
+#define MLX_F_ICASEK		(1<<1)	/* lowercase all keywords. */
+#define MLX_F_POUNDCOMM		(1<<2)	/* Pound sign comments */
+#define MLX_F_CCOMM		(1<<3)	/* C comments */
+#define MLX_F_CPPCOMM		(1<<4)	/* C++ // comments */
+#define MLX_F_SEMICOMM		(1<<5)	/* Semicolon comments */
+#define MLX_F_DASHCOMM		(1<<6)	/* Double-dash -- comments */
+#define MLX_F_EOL		(1<<7)	/* Return EOL as a token */
+#define MLX_F_EOF		(1<<8)	/* Return EOF as a token */
+#define MLX_F_NOFILE		(1<<9)	/* Source is a string, not file (int) */
+#define MLX_F_IFSONLY		(1<<10)	/* Only return ifs-sep strings. */
+#define MLX_F_DASHKW		(1<<11)	/* Keyword can include '-' */
+#define MLX_F_FOUNDEOL		(1<<12)	/* found an eol (internal) */
+#define MLX_F_NODISCARD		(1<<13)	/* don't discard buffer at close */
+#define MLX_F_FILENAMES		(1<<14)	/* treat as filename if /xx or ./xx */
+#define MLX_F_ICASER		(1<<15)	/* lowercase all reserved wds */
 #define MLX_F_ICASE		(MLX_F_ICASER | MLX_F_ICASEK)
-#define MLX_F_DBLBRACE		65536	/* {{ is double brace, not 2 singles */
-#define MLX_F_LINEONLY		131072	/* only parse into lines. */
-#define MLX_F_SYMBOLMODE	262144	/* return all symbols as same token */
-#define MLX_F_TOKCOMM		524288	/* return comments as a token */
-#define MLX_F_INCOMM		1048576	/* Inside a C-style comment (internal) */
-#define MLX_F_NOUNESC		2097152	/* Don't remove escapes in strings */
-#define MLX_F_SSTRING		4194304	/* Differentiate "" and '' strings */
-#define MLX_F_PROCLINE		8388608	/* (int) Line has been processed. */
+#define MLX_F_DBLBRACE		(1<<16)	/* {{ is double brace, not 2 singles */
+#define MLX_F_LINEONLY		(1<<17)	/* only parse into lines. */
+#define MLX_F_SYMBOLMODE	(1<<18)	/* return all symbols as same token */
+#define MLX_F_TOKCOMM		(1<<19)	/* return comments as a token */
+#define MLX_F_INCOMM		(1<<20)	/* Inside a C-style comment (internal) */
+#define MLX_F_NOUNESC		(1<<21)	/* Don't remove escapes in strings */
+#define MLX_F_SSTRING		(1<<22)	/* Differentiate "" and '' strings */
+#define MLX_F_PROCLINE		(1<<23)	/* (int) Line has been processed. */
+#define MLX_F_ALLOWNUL		(1<<24)	/* Allow nul (\0) bytes in input. */
 
-#define MLX_F_PUBLIC		(MLX_F_ICASE | MLX_F_POUNDCOMM | MLX_F_CCOMM | MLX_F_CPPCOMM | MLX_F_SEMICOMM | MLX_F_DASHCOMM | MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW | MLX_F_NODISCARD | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_LINEONLY | MLX_F_SYMBOLMODE | MLX_F_TOKCOMM | MLX_F_NOUNESC | MLX_F_SSTRING)
+#define MLX_F_PUBLIC		(MLX_F_ICASE | MLX_F_POUNDCOMM | MLX_F_CCOMM | MLX_F_CPPCOMM | MLX_F_SEMICOMM | MLX_F_DASHCOMM | MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW | MLX_F_NODISCARD | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_LINEONLY | MLX_F_SYMBOLMODE | MLX_F_TOKCOMM | MLX_F_NOUNESC | MLX_F_SSTRING | MLX_F_ALLOWNUL)
 #define	MLX_F_PRIVATE		(MLX_F_INSTRING | MLX_F_NOFILE | MLX_F_FOUNDEOL | MLX_F_INCOMM | MLX_F_PROCLINE)
 
 /** Other defines **/
