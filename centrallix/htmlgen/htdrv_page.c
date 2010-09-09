@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.86 2009/06/25 19:55:30 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.87 2010/09/09 01:11:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.87  2010/09/09 01:11:34  gbeeley
+    - (feature) adding application and session global variables, and
+      intelligent linking of windows which opened each other so that they
+      can share data/widgets in the session/application global namespaces
+
     Revision 1.86  2009/06/25 19:55:30  gbeeley
     - (change) adding a linkcolor setting on the page.
     - (change) swap the highlight colors used for mouse and keyboard focus
@@ -823,6 +828,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_tipindex", "0", 0);
 	htrAddScriptGlobal(s, "pg_tiptmout", "null", 0);
 	htrAddScriptGlobal(s, "pg_waitlyr", "null", 0);
+	htrAddScriptGlobal(s, "pg_appglobals", "[]", 0);
+	htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -866,6 +873,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
 		    name, path);
 	    }
+
+	/** Shutdown **/
+	htrAddScriptCleanup_va(s, "    pg_cleanup();\n");
 
 	if(s->Capabilities.HTML40)
 	    {
