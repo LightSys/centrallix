@@ -64,10 +64,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.9 2008/04/06 20:43:52 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.10 2010/09/09 01:44:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.10  2010/09/09 01:44:36  gbeeley
+    - (bugfix) fixed memory/resource leak in filepro driver
+
     Revision 1.9  2008/04/06 20:43:52  gbeeley
     - (bugfix) all three rdbms-style objectsystem drivers had memory leak
       issues relating to pathname structures.  The corrected interface in
@@ -1498,7 +1501,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Determine type and set pointers. **/
 	if (fp_internal_DetermineType(obj,inf) < 0)
 	    {
-	    nmFree(inf,sizeof(FpData));
+	    fp_internal_FreeInf(inf);
 	    return NULL;
 	    }
 
@@ -1507,7 +1510,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	if (!inf->Node)
 	    {
 	    if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-	    nmFree(inf,sizeof(FpData));
+	    fp_internal_FreeInf(inf);
 	    return NULL;
 	    }
 
@@ -1517,16 +1520,14 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    if (strpbrk(inf->TablePtr," \t\r\n"))
 		{
 		mssError(1,"FP","Requested table '%s' is invalid", inf->TablePtr);
-		if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-		nmFree(inf,sizeof(FpData));
+		fp_internal_FreeInf(inf);
 		return NULL;
 		}
 	    inf->TData = fp_internal_GetTData(inf);
 	    if (!inf->TData)
 		{
 		mssError(1,"FP","Requested table '%s' could not be accessed", inf->TablePtr);
-		if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-		nmFree(inf,sizeof(FpData));
+		fp_internal_FreeInf(inf);
 		return NULL;
 		}
 	    }
@@ -1536,8 +1537,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    {
 	    if (fp_internal_KeyToRow(inf, inf->RowColPtr) < 0)
 		{
-		if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-		nmFree(inf,sizeof(FpData));
+		fp_internal_FreeInf(inf);
 		return NULL;
 		}
 	    }
@@ -1607,6 +1607,21 @@ fp_internal_InsertRow(pFpData inf, pObjTrxTree oxt)
 #endif
 
 
+int
+fp_internal_FreeInf(pFpData inf)
+    {
+
+	/** Free the info structure **/
+	if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
+	obj_internal_FreePathStruct(&inf->Pathname);
+	if (inf->RowData) nmSysFree(inf->RowData);
+	if (inf->ParsedData) nmSysFree(inf->ParsedData);
+	nmFree(inf,sizeof(FpData));
+
+    return 0;
+    }
+
+
 /*** fpClose - close an open file or directory.
  ***/
 int
@@ -1634,13 +1649,8 @@ fpClose(void* inf_v, pObjTrxTree* oxt)
 		    break;
 		}
 	    }
-
-	/** Free the info structure **/
-	if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-	obj_internal_FreePathStruct(&inf->Pathname);
-	if (inf->RowData) nmSysFree(inf->RowData);
-	if (inf->ParsedData) nmSysFree(inf->ParsedData);
-	nmFree(inf,sizeof(FpData));
+	
+	fp_internal_FreeInf(inf);
 
     return 0;
     }
@@ -1682,7 +1692,7 @@ fpDelete(pObject obj, pObjTrxTree* oxt)
 	/** If a row, proceed else fail the delete. **/
 	if (inf->Type != FP_T_ROW)
 	    {
-	    nmFree(inf,sizeof(FpData));
+	    fp_internal_FreeInf(inf);
 	    puts("Unimplemented delete operation in FP.");
 	    mssError(1,"FP","Unimplemented delete operation in FP");
 	    return -1;
@@ -1691,7 +1701,7 @@ fpDelete(pObject obj, pObjTrxTree* oxt)
 	/** Access the DB node. **/
 
 	/** Free the structure **/
-	nmFree(inf,sizeof(FpData));
+	fp_internal_FreeInf(inf);
 
     return 0;
     }
@@ -1876,7 +1886,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			qy->LLObj2 = objQueryFetch(qy->LLQuery, O_RDONLY);
 			if (!qy->LLObj2)
 			    {
-			    nmFree(inf,sizeof(FpData));
+			    fp_internal_FreeInf(inf);
 			    return NULL;
 			    }
 			objUnmanageObject(inf->Obj->Session, qy->LLObj2);
@@ -1906,7 +1916,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			}
 		    else 
 			{
-			nmFree(inf,sizeof(FpData));
+			fp_internal_FreeInf(inf);
 			/*mssError(1,"FP","Table object has only two subobjects: 'rows' and 'columns'");*/
 			return NULL;
 			}
@@ -1918,12 +1928,12 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    inf->RowID = qy->LLRowCnt;
 		    if (fp_internal_ReadRow(inf, sizeof(FpKeyHdr) + tdata->PhysLen + (qy->LLRowCnt-1) * (tdata->PhysLen + sizeof(FpRecData))) < 0)
 			{
-			nmFree(inf,sizeof(FpData));
+			fp_internal_FreeInf(inf);
 			return NULL;
 			}
 		    if (inf->RowHeader.Any.RecordStatus != FP_RECORD_S_VALID)
 			{
-			nmFree(inf,sizeof(FpData));
+			fp_internal_FreeInf(inf);
 			inf = NULL;
 			}
 		    else
@@ -1932,7 +1942,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    {
 			    mssError(1, "FP", "Could not build filename for primary key on table %s, row #%d",
 				    tdata->Name, qy->LLRowCnt);
-			    nmFree(inf,sizeof(FpData));
+			    fp_internal_FreeInf(inf);
 			    return NULL;
 			    }
 			}
@@ -1975,7 +1985,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			}
 		    else
 			{
-			nmFree(inf,sizeof(FpData));
+			fp_internal_FreeInf(inf);
 			return NULL;
 			}
 		    break;
@@ -1987,7 +1997,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(filename) >= 255)
 		{
 		mssError(1,"FP","Pathname too long for internal representation");
-		nmFree(inf,sizeof(FpData));
+		fp_internal_FreeInf(inf);
 		return NULL;
 		}
 	    *(ptr++) = '/';
@@ -2007,8 +2017,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		if (!inf->TData)
 		    {
 		    //mssError(1,"FP","Requested table '%s' could not be accessed", inf->TablePtr);
-		    if (inf->OpenFiles) fp_internal_CloseFiles(inf->OpenFiles);
-		    nmFree(inf,sizeof(FpData));
+		    fp_internal_FreeInf(inf);
 		    inf = NULL;
 		    }
 		}
