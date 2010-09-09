@@ -69,6 +69,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     int id, i;
     int rval;
     int search_by_range;
+    int date_only = 0;
+    char default_time[32];
     DateTime dt;
     ObjData od;
     pObjQuery qy;
@@ -115,6 +117,17 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	else 
 	    fieldname[0]='\0';
 
+	/** Is this a date-only control rather than date-time combined? **/
+	date_only = htrGetBoolean(tree, "date_only", 0);
+	if (date_only == 1) h2 = 156;
+
+	/** If no time is entered (or if date-only), what is the default time? **/
+	if (wgtrGetPropertyValue(tree,"default_time",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(default_time, ptr, sizeof(default_time));
+	else
+	    strcpy(default_time, "");
+
+	/** When searching, do we use a start/end date range? **/
 	search_by_range = htrGetBoolean(tree, "search_by_range", 1);
 	
 	/** Get name **/
@@ -169,8 +182,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	
 
 	/** Get colors **/
-	htrGetBackground(tree, NULL, 0, bgcolor, sizeof(bgcolor));
-	if (!*bgcolor) strcpy(bgcolor,"bgcolor=#c0c0c0");
+	htrGetBackground(tree, NULL, 1, bgcolor, sizeof(bgcolor));
+	if (!*bgcolor) strcpy(bgcolor,"background-color:white;");
 	//else strcpy(bgcolor, "bgcolor=green");
 
 ///////////////////////////////////////
@@ -188,7 +201,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; %STR }\n",id,x,y,w,h,z, bgcolor);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 
@@ -208,17 +221,18 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT})\n",
+	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
 	    name,
 	    name,id, 
 	    name,id, 
 	    initialdate, bgcolor, fgcolor, fieldname, form,
 	    w-20, h, w2,h2,
-	    search_by_range);
+	    search_by_range,
+	    date_only, default_time);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n", id);
-	htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w, bgcolor);
+	htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -287,10 +301,14 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.43 2009/06/24 22:01:40 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.44 2010/09/09 01:06:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.44  2010/09/09 01:06:53  gbeeley
+    - (feature) date/time widget supports operating in date-only mode
+    - (feature) default time can be specified, esp. useful for date-only mode
+
     Revision 1.43  2009/06/24 22:01:40  gbeeley
     - (change) added an option to enable (default) or disable the search by
       date range feature.
