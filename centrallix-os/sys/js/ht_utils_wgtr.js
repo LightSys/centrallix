@@ -164,7 +164,7 @@ function wgtrProbeProperty(node, prop_name)
 		}
 	    else
 		{
-		return new UndefinedObject();
+		return new wgtrUndefinedObject();
 		}
 	    }
 
@@ -172,7 +172,7 @@ function wgtrProbeProperty(node, prop_name)
 	if (typeof (node[prop_name]) == 'undefined')
 	    {
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
-	    return new UndefinedObject();
+	    return new wgtrUndefinedObject();
 	    }
 
 	prop = node[prop_name];
@@ -213,7 +213,7 @@ function wgtrSetProperty(node, prop_name, value)
 	if (node.reference && (newnode = node.reference()))
 	    node = newnode;
 
-	// parameters?
+	// If the Page, Component-decl, or objectsource widget, check for params
 	if (node.__WgtrType == "widget/component-decl" || node.__WgtrType == "widget/page" || node.__WgtrType == "widget/osrc")
 	    {
 	    for(var child in node.__WgtrChildren)
@@ -271,9 +271,12 @@ function wgtrGetNode(tree, node_name, type)
 	    alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
 
 	// Indirect reference?
-	if (node && node.reference && (newnode = node.reference()))
+	if (node && node.reference)
 	    {
-	    node = newnode;
+	    if (newnode = node.reference())
+		node = newnode;
+	    else
+		return null;
 	    }
 
 	if (type && node.__WgtrType != type)
@@ -290,7 +293,7 @@ function wgtrAddEventFunc(node, event_name, func)
 
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
-	    { pg_debug("wgtrGetNode - node was not a WgtrNode!\n"); return false; }
+	    { pg_debug("wgtrAddEventFunc - node was not a WgtrNode!\n"); return false; }
 
 	if (node['Event'+event_name] == null)
 	    node['Event'+event_name] = new Array();
