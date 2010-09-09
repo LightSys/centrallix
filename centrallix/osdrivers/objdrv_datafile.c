@@ -17,6 +17,7 @@
 #include "cxlib/mtsession.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "cxlib/strtcpy.h"
 #include "st_node.h"
 #include "stparse.h"
 #include "stparse_ne.h"
@@ -55,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.26 2008/04/06 20:43:52 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.27 2010/09/09 01:43:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.27  2010/09/09 01:43:22  gbeeley
+    - (feature) stubed out functionality for fixed-field flat files
+
     Revision 1.26  2008/04/06 20:43:52  gbeeley
     - (bugfix) all three rdbms-style objectsystem drivers had memory leak
       issues relating to pathname structures.  The corrected interface in
@@ -268,6 +272,7 @@ typedef struct
     unsigned char	    ColTypes[256];
     unsigned char	    ColKeys[256];
     char*		    ColFmt[256];
+    int			    ColLength[256];
     int			    nCols;
     char*		    Keys[8];
     int			    KeyCols[8];
@@ -328,6 +333,7 @@ typedef struct
 
 #define DAT_NODE_T_CSV		1
 #define DAT_NODE_T_BCP		2
+#define DAT_NODE_T_FIXED	3
 
 #define DAT_NODE_F_HDRROW	1
 #define DAT_NODE_F_HDRTITLE	2
@@ -1432,6 +1438,19 @@ dat_internal_SortCols(pDatTableInf tdata)
     }
 
 
+/*** dat_fixed_OpenNode - handle fixed-field data files
+ ***/
+int
+dat_fixed_OpenNode(pDatNode dn)
+    {
+
+	/** No field separator **/
+	dn->FieldSep = '\0';
+
+    return 0;
+    }
+
+
 /*** dat_csv_OpenNode - CSV file specific node open functionality.
  ***/
 int
@@ -1470,7 +1489,7 @@ pDatNode
 dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, int is_toplevel, int create_mask)
     {
     pDatNode dn;
-    char nodefile[256];
+    char nodefile[OBJSYS_MAX_PATH];
     char* dot_pos = NULL;
     char* slash_pos = NULL;
     int is_datafile = 0;
@@ -1488,8 +1507,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    if (context->SpecName[0])
 		{
 		/** Specfile specified in open ctl **/
-		memccpy(nodefile, context->SpecName, 0, 255);
-		nodefile[255] = '\0';
+		strtcpy(nodefile, context->SpecName, sizeof(nodefile));
 		}
 	    else
 		{
@@ -1590,6 +1608,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	        {
 		case DAT_NODE_T_CSV:	dat_csv_OpenNode(dn); break;
 		case DAT_NODE_T_BCP:	dat_bcp_OpenNode(dn); break;
+		case DAT_NODE_T_FIXED:	dat_fixed_OpenNode(dn); break;
 		}
 
 	    /** Need to set the datafile path as well as .spec file path **/
@@ -1695,8 +1714,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    stAttrValue(stLookup(dn->Node->Data,"annotation"),NULL,&ptr,0);
 	    if (ptr)
 	        {
-	        memccpy(dn->TableInf->Annotation, ptr, 0, 255);
-		dn->TableInf->Annotation[255] = 0;
+	        strtcpy(dn->TableInf->Annotation, ptr, sizeof(dn->TableInf->Annotation));
 		}
 	    else
 	        {
@@ -1771,6 +1789,12 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 			if (!strcasecmp(ptr,"yes")) tdata->ColFlags[tdata->nCols] |= DAT_CF_QUOTED;
 			if (!strcasecmp(ptr,"no")) tdata->ColFlags[tdata->nCols] |= DAT_CF_NONQUOTED;
 			}
+
+		    /** Column physical length **/
+		    if (stAttrValue(stLookup(col_inf,"length"),&n,NULL,0) >= 0)
+			tdata->ColLength[tdata->nCols] = n;
+		    else
+			tdata->ColLength[tdata->nCols] = 0;
 
 		    /** Now for column id **/
 		    if (stAttrValue(stLookup(col_inf,"id"),&n,NULL,0) >= 0)
@@ -2215,8 +2239,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    stAttrValue_ne(openctl_data, &ptr);
 	    if (ptr)
 		{
-		memccpy(inf->SpecName, ptr, 0, OBJSYS_MAX_PATH-1);
-		inf->SpecName[OBJSYS_MAX_PATH-1] = '\0';
+		strtcpy(inf->SpecName, ptr, sizeof(inf->SpecName));
 		}
 	    }
 
@@ -2259,7 +2282,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    dat_internal_FindLastRow(inf, inf->Node);
 		    syGetSem(inf->Node->InsertSem, 1, 0);
 		    inf->Flags |= DAT_F_HOLDINSERTSEM;
-		    snprintf(inf->AutoName, 256, "%d", inf->Node->nRows);
+		    snprintf(inf->AutoName, sizeof(inf->AutoName), "%d", inf->Node->nRows);
 		    inf->RowID = inf->Node->nRows;
 		    }
 		else
@@ -3717,6 +3740,7 @@ datInitialize()
 	drv->Capabilities = OBJDRV_C_TRANS;
 	xaInit(&(drv->RootContentTypes),16);
 	xaAddItem(&(drv->RootContentTypes),"application/datafile");
+	xaAddItem(&(drv->RootContentTypes),"text/x-fixed-field");
 	xaAddItem(&(drv->RootContentTypes),"application/filespec");
 
 	/** Setup the function references. **/
@@ -3755,6 +3779,7 @@ datInitialize()
 	xhAdd(&DAT_INF.TypesByExt, "CSV", (void*)DAT_NODE_T_CSV);
 	xhAdd(&DAT_INF.TypesByExt, "BCP", (void*)DAT_NODE_T_BCP);
 	xhAdd(&DAT_INF.TypesByExt, "SYB", (void*)DAT_NODE_T_BCP);
+	xhAdd(&DAT_INF.TypesByExt, "FIXED", (void*)DAT_NODE_T_FIXED);
 
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
