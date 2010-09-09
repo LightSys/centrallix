@@ -21,7 +21,18 @@ function dd_getvalue()
 	return vals;
 	}
     if (!this.VisLayer.index) return null;
-    return this.Values[this.VisLayer.index].value;
+
+    // GRB - maybe this should just be "return this.value" unconditionally.
+    if (this.Values[this.VisLayer.index])
+	return this.Values[this.VisLayer.index].value;
+    else    
+	return this.value;
+    }
+
+function dd_action_set_value(aparam)
+    {
+    this.setvalue(aparam.Value);
+    this.ifcProbe(ifEvent).Activate('DataModify', {Value:this.Values[this.VisLayer.index].value});
     }
 
 function dd_setvalue(v) 
@@ -34,17 +45,22 @@ function dd_setvalue(v)
 	if (this.Values[i].value == v)
 	    {
 	    //pg_debug(' (' + this.Values[i].label + ')\n');
-	    dd_select_item(this, i);
+	    dd_select_item(this, i, 'osrc');
 	    return true;
 	    }
 	}
     //pg_debug(' (none)\n');
-    return false;
+    //return false;
+
+    // allow setting the value when dropdown doesn't contain it, cuz it might later.
+    this.value = v;
+    htr_setvisibility(this.VisLayer, 'hidden');
+    return true;
     }
 
 function dd_clearvalue()
     {
-    dd_select_item(this, null);
+    dd_select_item(this, null, 'osrc');
     }
 
 function dd_resetvalue()
@@ -55,6 +71,7 @@ function dd_resetvalue()
 function dd_enable()
     {
     pg_images(this)[4].src = '/sys/images/ico15b.gif';
+    htr_setbgcolor(this, this.bg);
     this.keyhandler = dd_keyhandler;
     this.enabled = 'full';
     }
@@ -62,6 +79,7 @@ function dd_enable()
 function dd_readonly()
     {
     pg_images(this)[4].src = '/sys/images/ico15b.gif';
+    htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
     this.enabled = 'readonly';
     }
@@ -74,6 +92,7 @@ function dd_disable()
 	dd_current = null;
 	}
     pg_images(this)[4].src = '/sys/images/ico15a.gif';
+    htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
     this.enabled = 'disabled';
     }
@@ -253,7 +272,7 @@ function dd_keyhandler(l,e,k)
 	    }
 	else
 	    {
-	    dd_select_item(this,this.SelectedItem);
+	    dd_select_item(this,this.SelectedItem, 'keyboard');
 	    dd_datachange(this);
 	    dd_collapse(this);
 	    dd_unhilight_item(this,this.SelectedItem);
@@ -266,7 +285,7 @@ function dd_keyhandler(l,e,k)
 	    if (this.PaneLayer && htr_getvisibility(this.PaneLayer) == 'inherit' && 
 		    this.SelectedItem)
 		{
-		dd_select_item(this,this.SelectedItem);
+		dd_select_item(this,this.SelectedItem, 'keyboard');
 		dd_datachange(this);
 		dd_collapse(this);
 		dd_unhilight_item(this,this.SelectedItem);
@@ -279,11 +298,34 @@ function dd_keyhandler(l,e,k)
 	}
     else if (k == 27)
 	{
-	if (this.PaneLayer && htr_getvisibility(this.PaneLayer) == 'inherit') {
+	if (this.PaneLayer && htr_getvisibility(this.PaneLayer) == 'inherit') 
+	    {
 	    dd_collapse(this);
-	}
+	    }
 	else
 	    if (dd.form) dd.form.EscNotify(dd);
+	}
+    else if (e.keyName == 'down')
+	{
+	if (!this.PaneLayer || htr_getvisibility(this.PaneLayer) == 'hidden')
+	    dd_expand(this);
+	for(var i=0;i<this.Values.length;i++)
+	    if ((this.SelectedItem == null || i > this.SelectedItem) && !this.Values[i].hide)
+		{
+		dd_hilight_item(this, i);
+		break;
+		}
+	}
+    else if (e.keyName == 'up')
+	{
+	if (!this.PaneLayer || htr_getvisibility(this.PaneLayer) == 'hidden')
+	    dd_expand(this);
+	for(var i=this.Values.length-1;i>=0;i--)
+	    if ((this.SelectedItem == null || i < this.SelectedItem) && !this.Values[i].hide)
+		{
+		dd_hilight_item(this, i);
+		break;
+		}
 	}
     dd_lastkey = k;
     return false;
@@ -302,7 +344,7 @@ function dd_hilight_item(l,i)
     {
     if (i == null)
 	{
-	if (l.Values[0].value == null)
+	if (l.Values && l.Values[0] && l.Values[0].value == null)
 	    i = 0;
 	else
 	    return;
@@ -310,8 +352,11 @@ function dd_hilight_item(l,i)
     if (l.SelectedItem != null && dd_notmember(l.SelectedItem, l.selectedItems))
 	dd_unhilight_item(l,l.SelectedItem);
     l.SelectedItem = i;
-    htr_setbgcolor(l.Items[i], l.hl);
-    dd_scroll_to(l,i);
+    if (l.Items[i])
+	{
+	htr_setbgcolor(l.Items[i], l.hl);
+	dd_scroll_to(l,i);
+	}
     }
 
 function dd_unhilight_item(l,i)
@@ -324,7 +369,8 @@ function dd_unhilight_item(l,i)
 	    return;
 	}
     l.SelectedItem = null;
-    htr_setbgcolor(l.Items[i], l.bg);
+    if (l.Items[i])
+	htr_setbgcolor(l.Items[i], l.bg);
     }
 
 function dd_collapse(l)
@@ -375,6 +421,12 @@ function dd_expand(l)
 		getClipHeight(l)+1+getClipHeight(l.PaneLayer),
 	    getPageX(l.PaneLayer) - getPageX(l) - 1,
 	    offs);
+	for(var i = 0; i<l.Values.length; i++)
+	    if (l.value == l.Values[i].value)
+		{
+		l.VisLayer.index = i;
+		break;
+		}
 	dd_hilight_item(l,l.VisLayer.index);
 	}
     }
@@ -389,7 +441,7 @@ function dd_contextmenu(e){
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 }
 
-function dd_select_item(l,i)
+function dd_select_item(l,i,from)
     {
     /*if (l.Values && l.Values[i] && l.Values[i].label)
 	pg_debug('dd_select_item: ' + i + ' (' + l.Values[i].label + ')\n');
@@ -450,8 +502,8 @@ function dd_select_item(l,i)
 	    }
 	}
     c += "</TD></TR></TABLE>";
-    //htr_write_content(l.HidLayer, c);
-    pg_serialized_write(l.HidLayer, c, null);
+    htr_write_content(l.HidLayer, c);
+    //pg_serialized_write(l.HidLayer, c, null);
     l.HidLayer.index = i;
     moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
     resizeTo(l.HidLayer, l.w, l.h);
@@ -477,16 +529,18 @@ function dd_select_item(l,i)
 	//alert(i);
 	//l.osrc.MoveToRecord(i);
 	}
-    cn_activate(l, "DataChange", {Value:l.value, Label:lbl});
+    cn_activate(l, "DataChange", {Value:l.value, Label:lbl, FromOSRC:(from == 'osrc')});
     }
 
 function dd_datachange(l)
     {
     if (l.form) l.form.DataNotify(l);
+    l.ifcProbe(ifEvent).Activate('DataModify', {Value:l.Values[l.VisLayer.index].value});
     }
 
 function dd_getfocus()
     {
+    if (this.enabled != 'full') return 0;
     //dd_expand(this);
     cn_activate(this, "GetFocus");
     return 1;
@@ -518,6 +572,7 @@ function dd_scroll_to(l, n)
     var top = getClipTop(dd_current.PaneLayer.ScrLayer);
     var btm=top+(getClipHeight(dd_current.PaneLayer)-4);
     var il=l.Items[n];
+    if (!il) return;
 
     if (getRelativeY(il)>=top && getRelativeY(il)+(pg_parah)<=btm) //none
 	return;
@@ -547,6 +602,7 @@ function dd_scroll(t)
     {
     var ti = dd_target_img;
     var px = dd_incr;
+    if (!dd_current) return;
     var ly = dd_current.PaneLayer.ScrLayer;
     var ht1 = getRelativeY(ly) - 2;
     var h = dd_current.PaneLayer.h;
@@ -585,7 +641,15 @@ function dd_create_pane(l)
 //	}
 
     // Create the layer
-    l.NumElements = l.Values.length;
+    var cnt = 0;
+    for (var i=0; i < l.Values.length; i++)
+	{
+	if (!l.Values[i].hide)
+	    {
+	    cnt++;
+	    }
+	}
+    l.NumElements = cnt;
     l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*(pg_parah))+4;
     var p = htr_new_layer(null,pg_toplevel_layer(l));
     //pg_debug(' x ');
@@ -664,25 +728,35 @@ function dd_create_pane(l)
     /**  Add items  **/
     var w = getClipWidth(p.ScrLayer);
     l.Items = [];
+    var cnt = 0;
     for (var i=0; i < l.Values.length; i++)
 	{
-	if (!l.Items[i])
+	if (!l.Values[i].hide)
 	    {
-	    l.Items[i] = htr_new_layer(w, p.ScrLayer);
-	    htr_init_layer(l.Items[i], l, 'dd_itm');
+	    if (!l.Items[i])
+		{
+		l.Items[i] = htr_new_layer(w, p.ScrLayer);
+		htr_init_layer(l.Items[i], l, 'dd_itm');
+		}
+	    moveTo(l.Items[i], 1, cnt*(pg_parah));
+	    setClipWidth(l.Items[i], w);
+	    setClipHeight(l.Items[i], (pg_parah));
+	    resizeTo(l.Items[i], w, (pg_parah));
+	    if (i==0 && l.Values[i].value == null)
+		htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
+		//pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
+	    else
+		htr_write_content(l.Items[i], l.Values[i].label);
+		//pg_serialized_write(l.Items[i], l.Values[i].label, null);
+	    htr_setvisibility(l.Items[i], 'inherit');
+	    l.Items[i].index = i;
+
+	    cnt++;
 	    }
-	moveTo(l.Items[i], 1, i*(pg_parah));
-	setClipWidth(l.Items[i], w);
-	setClipHeight(l.Items[i], (pg_parah));
-	resizeTo(l.Items[i], w, (pg_parah));
-	if (i==0 && l.Values[i].value == null)
-	    htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
-	    //pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
-	else
-	    htr_write_content(l.Items[i], l.Values[i].label);
-	    //pg_serialized_write(l.Items[i], l.Values[i].label, null);
-	htr_setvisibility(l.Items[i], 'inherit');
-	l.Items[i].index = i;
+	else if (l.Items[i])
+	    {
+	    htr_setvisibility(l.Items[i], 'hidden');
+	    }
 	}
 
     p.h = l.NumElements*(pg_parah);
@@ -692,9 +766,13 @@ function dd_create_pane(l)
     }
 
 
+/// REPLACE ITEMS IN DROPDOWN
 function dd_add_items(l,ary)
     {
+    var sel = null;
+    var vsel = null;
     l.Values = [];
+    l.allValues = null;
     for(var i in ary) 
 	{
 	ary[i].label = htutil_rtrim(ary[i].label);
@@ -705,8 +783,40 @@ function dd_add_items(l,ary)
 	    {
 	    ary[i].wname = htutil_rtrim(ary[i].wname);
 	    }
+	if (ary[i].sel) sel = i;
+	if (l.value != null && ary[i].value == l.value) vsel = i;
 	}
     l.Values = ary;
+    if (sel != null)
+	{
+	if (!l.form)
+	    dd_select_item(l, sel, 'init');
+	if (typeof ary[sel].value == 'number')
+	    cx_set_hints(this, "d=" + ary[sel].value, "widget");
+	else
+	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget");
+	}
+    else
+	{
+	cx_set_hints(this, "", "widget");
+	}
+    if (ary.length == 0 && l.value != null)
+	{
+	// temporarily hide it, no values matching the dd value.
+	htr_setvisibility(l.VisLayer, 'hidden');
+	//dd_select_item(l, null);
+	}
+    else
+	{
+	for (var i in l.Values)
+	    {
+	    if (l.Values[i].value == l.value)
+		{
+		dd_select_item(l, i, 'init');
+		break;
+		}
+	    }
+	}
     }
 
 // Event scripts
@@ -792,7 +902,7 @@ function dd_mousedown(e)
 		A related issue is that after you right click, the next click outside the widget will be trapped.
 	    */
 	    e.mainlayer.ifcProbe(ifEvent).Activate('RightClick',{Label:e.mainlayer.Values[e.layer.index].label,Value:e.mainlayer.Values[e.layer.index].value,X:e.pageX, Y:e.pageY});
-            dd_select_item(dd_current, e.layer.index);
+            dd_select_item(dd_current, e.layer.index, 'mouse');
             dd_datachange(dd_current);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
@@ -805,13 +915,14 @@ function dd_mousedown(e)
 	    }
 	else
 	    {
-	    dd_select_item(dd_current, e.layer.index);
+	    dd_select_item(dd_current, e.layer.index, 'mouse');
 	    dd_datachange(dd_current);
 	    }
 	if(!dd_current.form || dd_current.form.mode != 'Query' || !dd_current.query_multiselect)
 	    dd_collapse(dd_current);
 	else 
-	    htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
+	    if (dd_current.Items[e.layer.index])
+		htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
 	    //dd_hilight_item(dd_current, e.layer.index);
         }
     else if (e.kind == 'dd_sc')
@@ -880,15 +991,47 @@ function dd_update(p1)
 	    if(rec[k].oid == l.fieldname)
 		{
 		if(i==osrc.CurrentRecord) targetval = vals.length;
-		vals[vals.length] = new Object({osrcindex: i, label: rec[k].value, value: rec[k].value}); //append object
+		vals[vals.length] = new Object({osrcindex: parseInt(i), label: rec[k].value, value: rec[k].value}); //append object
 		break; //don't do duplicates
 		}
 	    }
 	}
     l.additems(l,vals);
-    dd_select_item(l,targetval); //select the correct index
+    dd_select_item(l,targetval, 'osrc'); //select the correct index
     dd_collapse(this);
     l.PaneLayer = null;
+    }
+
+function dd_action_set_group(aparam)
+    {
+    var oldval = this.value;
+    if (!this.allValues) this.allValues = this.Values;
+    this.currentGroup = aparam.Group;
+    this.currentMin = aparam.Min;
+    this.currentMax = aparam.Max;
+    dd_collapse(this);
+    this.PaneLayer = null;
+    this.Values = [];
+
+    // Only show entries matching the specified group
+    var new_select = null;
+    for(var i=0; i<this.allValues.length; i++)
+	{
+	if (!this.currentGroup || !this.allValues[i].grp || this.currentGroup == this.allValues[i].grp)
+	    {
+	    if (typeof aparam.Min == 'undefined' || aparam.Min === null || aparam.Min <= this.allValues[i].value)
+		{
+		if (typeof aparam.Max == 'undefined' || aparam.Max === null || aparam.Max >= this.allValues[i].value)
+		    {
+		    this.Values.push({label:this.allValues[i].label, value:this.allValues[i].value});
+		    if (this.allValues[i].value == oldval)
+			new_select = this.Values.length - 1;
+		    }
+		}
+	    }
+	}
+    if (new_select !== null)
+	dd_select_item(this, new_select, 'grp');
     }
 
 function dd_clear_layers()
@@ -904,7 +1047,7 @@ function dd_changemode()
 	{
 	this.selectedItems = null;
 	}
-    else
+    else if (this.form.mode == "View" || this.form.mode == "NoData")
 	{
 	//unselect items
 	this.selectedItems = null;
@@ -913,7 +1056,57 @@ function dd_changemode()
 	    htr_setbgcolor(this.Items[k],this.bg);
 	    }
 	}
-}
+    }
+
+function dd_sql_loaded()
+    {
+    var dd = this.dd;
+    var rows = htr_parselinks(pg_links(this));
+    var items = [];
+
+    // For Positional, the params are: label, value, selected, group, hidden.
+    for(var r in rows)
+	{
+	var row = rows[r];
+	var item = {};
+	for(var c in row)
+	    {
+	    var col = row[c];
+	    switch(c)
+		{
+		case 'label': item.label = col.value; break;
+		case 'value': item.value = col.value; break;
+		case 'selected': item.sel = col.value; break;
+		case 'grp': item.grp = col.value; break;
+		case 'hidden': item.hide = col.value; break;
+		}
+	    }
+	items.push(item);
+	}
+    dd.additems(dd,items);
+    dd_collapse(dd);
+    dd.PaneLayer = null;
+    dd.ifcProbe(ifAction).Invoke("SetGroup", {Group:dd.currentGroup, Min:dd.currentMin, Max:dd.currentMax});
+    }
+
+function dd_action_set_items(aparam)
+    {
+    if (aparam.SQL)
+	{
+	if (!this.sql_loader)
+	    {
+	    this.sql_loader = htr_new_loader(this);
+	    this.sql_loader.dd = this;
+	    this.sql_loader.dd_sql_loaded = dd_sql_loaded;
+	    htr_setvisibility(this.sql_loader, 'hidden');
+	    }
+
+	var rowlimit = parseInt(aparam.RowLimit)?parseInt(aparam.RowLimit):50;
+
+	var url = "/?cx__akey=" + akey + "&ls__mode=query&ls__rowcount=" + rowlimit + "&ls__sql=" + htutil_escape(aparam.SQL);
+	pg_serialized_load(this.sql_loader, url, dd_sql_loaded);
+	}
+    }
 
 function dd_deinit()
     {
@@ -963,6 +1156,7 @@ function dd_init(param)
 	    }
 	l.osrc.Register(l);
 	l.IsDiscardReady=new Function('return true;');
+	l.IsUnsaved = false;
 	l.DataAvailable=dd_clear_layers;
 	l.ObjectAvailable=dd_update;
 	l.ReplicaMoved=dd_update;
@@ -978,8 +1172,10 @@ function dd_init(param)
     l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
-    if (param.form) l.form = wgtrGetNode(l, param.form);
-    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
+    if (param.form)
+	l.form = wgtrGetNode(l, param.form);
+    else
+	l.form = wgtrFindContainer(l,"widget/form");
     l.query_multiselect = param.qms;
     l.value = null;
     htr_init_layer(l,l,'dd');
@@ -1003,9 +1199,16 @@ function dd_init(param)
     ie.Add("MouseOver");
     ie.Add("MouseMove");
     ie.Add("DataChange");
+    ie.Add("DataModify");
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
     ie.Add("RightClick");
+
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetValue", dd_action_set_value);
+    ia.Add("SetGroup", dd_action_set_group);
+    ia.Add("SetItems", dd_action_set_items);
+    ia.Add("ClearItems", dd_clear_layers);
 
     if (l.form)
 	{
