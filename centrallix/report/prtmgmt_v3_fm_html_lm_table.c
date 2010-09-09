@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html_lm_table.c,v 1.3 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html_lm_table.c,v 1.4 2010/09/09 00:46:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html_lm_table.c,v $
 
     $Log: prtmgmt_v3_fm_html_lm_table.c,v $
+    Revision 1.4  2010/09/09 00:46:13  gbeeley
+    - (bugfix) HTML table output - handle condition where row is entirely
+      empty (row->ContentHead == NULL)
+
     Revision 1.3  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -96,7 +100,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 
 	    /** Got a row.  Does it contain cells or otherwise? **/
 	    cell = row->ContentHead;
-	    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+	    if (cell && cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 		{
 		/** Got a cell.  Emit list of cells in the row **/
 		prt_htmlfm_Output(context, "<tr>", 4);
@@ -126,7 +130,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			(int)(row->Width*PRT_HTMLFM_XPIXEL),
 			lm_data->nColumns,
 			row->BGColor);
-		prt_htmlfm_InitStyle(context, &(cell->TextStyle));
+		prt_htmlfm_InitStyle(context, cell?(&(cell->TextStyle)):(&(row->TextStyle)));
 		for(subobj=row->ContentHead;subobj;subobj=subobj->Next)
 		    {
 		    prt_htmlfm_Generate_r(context, subobj);
