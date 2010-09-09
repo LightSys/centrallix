@@ -15,7 +15,7 @@ function dt_getvalue() {
 	else if(this.form && this.form.mode == 'Query' && this.DateObj)
 	    return dt_formatdate(this, this.DateObj, 3);
 	else if (this.DateObj)
-	    return dt_formatdate(this, this.DateObj, 0);
+	    return dt_formatdate(this, this.DateObj, 4);
 	else
 	    return null;
 }
@@ -43,7 +43,8 @@ function dt_setvalue(v,nodrawdate) {
 	if(!nodrawdate) dt_drawdate(this, this.DateObj);
 	if (this.PaneLayer) {
 		dt_drawmonth(this.PaneLayer, this.DateObj);
-		dt_drawtime(this.PaneLayer, this.DateObj);
+		if (!this.date_only)
+			dt_drawtime(this.PaneLayer, this.DateObj);
 	}
 }
 
@@ -62,7 +63,8 @@ function dt_setvalue2(v,nodrawdate) {
 	if(!nodrawdate) dt_writedate(this, dt_formatdate(this,this.DateObj2,2));
 	if (this.PaneLayer2) {
 		dt_drawmonth(this.PaneLayer2, this.DateObj2);
-		dt_drawtime(this.PaneLayer2, this.DateObj2);
+		if (!this.date_only)
+			dt_drawtime(this.PaneLayer2, this.DateObj2);
 	}
 }
 
@@ -78,12 +80,14 @@ function dt_resetvalue() {
 function dt_enable() {
 	this.enabled = 'full';
 	//this.bgColor = this.bg;
+	pg_images(this)[4].src = '/sys/images/ico17.gif';
 	if (this.bg) htr_setbgcolor(this, this.bg);
 	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
 
 function dt_readonly() {
 	this.enabled = 'readonly';
+	pg_images(this)[4].src = '/sys/images/ico17.gif';
 	if (this.bg) htr_setbgcolor(this, this.bg);
 	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
@@ -91,6 +95,7 @@ function dt_readonly() {
 function dt_disable() {
 	this.enabled = 'disabled';
 	//this.bgColor = '#e0e0e0';
+	pg_images(this)[4].src = '/sys/images/ico17d.gif';
 	if (this.bg) htr_setbgcolor(this, '#e0e0e0');
 }
 
@@ -162,6 +167,13 @@ function dt_init(param){
 	l.fg = param.foreground;
 	l.w2 = w2;
 	l.h2 = h2;
+
+	// Date only / default time setting
+	l.date_only = ((typeof param.donly) == 'undefined')?0:param.donly;
+	l.default_time = ((typeof param.dtime) == 'undefined')?'':param.dtime;
+	var regex_timeformat = /(\d{0,2}):(\d{0,2})(:(\d{0,2})){0,1}/;
+	l.dtime_vals = regex_timeformat.exec(l.default_time);
+
 	l.DateStr = param.id;
 	l.MonthsAbbrev = Array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 	l.VisLayer = c1;
@@ -179,8 +191,10 @@ function dt_init(param){
 		l.TmpDateObj2 = new Date();
 		dt_drawdate(l, '');
 	}
-	if (param.form) l.form = wgtrGetNode(l, param.form);
-	if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
+	if (param.form)
+	    l.form = wgtrGetNode(l, param.form);
+	else
+	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
 	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dt', 'dt', 3);
 
@@ -245,12 +259,14 @@ function dt_prepare(l) {
 	if(l.form && l.form.mode == 'Query' && l.sbr){
 	    l.TmpDateObj2 = (l.DateObj2?(new Date(l.DateObj2)):null);
 	    dt_drawmonth(l.PaneLayer2, l.TmpDateObj2);
-	    dt_drawtime(l.PaneLayer2, l.TmpDateObj2);
+	    if (!l.date_only)
+		dt_drawtime(l.PaneLayer2, l.TmpDateObj2);
 	    if (!l.TmpDateObj2) l.TmpDateObj2 = new Date();
 	}
 	l.TmpDateObj = (l.DateObj?(new Date(l.DateObj)):null);
 	dt_drawmonth(l.PaneLayer, l.TmpDateObj);
-	dt_drawtime(l.PaneLayer, l.TmpDateObj);
+	if (!l.date_only)
+	    dt_drawtime(l.PaneLayer, l.TmpDateObj);
 	if (!l.TmpDateObj) l.TmpDateObj = new Date();
 }
 
@@ -280,13 +296,25 @@ function dt_formatdate(l, d, fmt) {
 			str += htutil_strpad(d.getHours(), '0', 2)+':';
 			str += htutil_strpad(d.getMinutes(), '0', 2);
 			break;
-		case 0:
+		case 4:	// format for returned data value
+			str  = l.MonthsAbbrev[d.getMonth()] + ' ';
+			str += d.getDate() + ', ';
+			str += d.getYear()+1900;
+			str += ', ';
+			str += htutil_strpad(d.getHours(), '0', 2)+':';
+			str += htutil_strpad(d.getMinutes(), '0', 2)+':';
+			str += htutil_strpad(d.getSeconds(), '0', 2);
+			break;
+		case 0:	// format for visual
 		default:
 			str  = l.MonthsAbbrev[d.getMonth()] + ' ';
 			str += d.getDate() + ', ';
-			str += d.getYear()+1900 + ', ';
-			str += htutil_strpad(d.getHours(), '0', 2)+':';
-			str += htutil_strpad(d.getMinutes(), '0', 2);
+			str += d.getYear()+1900;
+			if (!l.date_only) {
+			    str += ', ';
+			    str += htutil_strpad(d.getHours(), '0', 2)+':';
+			    str += htutil_strpad(d.getMinutes(), '0', 2);
+			}
 	}
 	return str;
 }
@@ -318,6 +346,11 @@ function dt_drawmonth(l, d) {
 	    TmpDate = new Date(d);
 	else 
 	    TmpDate = new Date();
+	if (l.ml.default_time) {
+	    TmpDate.setHours(l.ml.dtime_vals[1]?l.ml.dtime_vals[1]:0);
+	    TmpDate.setMinutes(l.ml.dtime_vals[2]?l.ml.dtime_vals[2]:0);
+	    TmpDate.setSeconds(l.ml.dtime_vals[4]?l.ml.dtime_vals[4]:0);
+	}
 	TmpDate.setDate(1);
 	var col=TmpDate.getDay();
 	var num=htutil_days_in_month(TmpDate);
@@ -335,16 +368,20 @@ function dt_drawmonth(l, d) {
 	
 	rows=Math.ceil((num+col)/7);
 	if(l.ml.form && l.ml.form.mode == 'Query' && l.ml.sbr){
-	pg_set_style(l,'height',rows*20+110);
-	setClipHeight(l,rows*20+110);
-	moveTo(l.TimeHidLayer,0,rows*20+76);
-	moveTo(l.TimeVisLayer,0,rows*20+76);
+	    pg_set_style(l,'height',rows*20+110);
+	    setClipHeight(l,rows*20+110);
+	    if (!l.ml.date_only) {
+		moveTo(l.TimeHidLayer,0,rows*20+76);
+		moveTo(l.TimeVisLayer,0,rows*20+76);
+	    }
 	}
 	else{
-	pg_set_style(l,'height',rows*20+90);
-	setClipHeight(l,rows*20+90);
-	moveTo(l.TimeHidLayer,0,rows*20+56);
-	moveTo(l.TimeVisLayer,0,rows*20+56);
+	    pg_set_style(l,'height',rows*20+90);
+	    setClipHeight(l,rows*20+90);
+	    if (!l.ml.date_only) {
+		moveTo(l.TimeHidLayer,0,rows*20+56);
+		moveTo(l.TimeVisLayer,0,rows*20+56);
+	    }
 	}
 	var v='<TABLE width=175 height='+rows*20  +' border=0 cellpadding=0 cellspacing=0>';
 	for (var i=0; i<7*rows; i++) {
@@ -460,7 +497,7 @@ function dt_drawtime(l, d) {
 function dt_toggle(l) {
 	var imgs = pg_images(l);
 	//for (i=0; i<l.document.images.length;i++) {
-	for (i=0; i<imgs.length;i++) {
+	for (var i=0; i<imgs.length;i++) {
 		if (i == 4)
 			continue;
 		//else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
@@ -610,6 +647,7 @@ function dt_get_parsed_date(dt,origdate,vals,offset,now){
 	d.setDate((vals[2+offset])?vals[2+offset]:origdate.getDate());
 	d.setHours((vals[4+offset])?vals[4+offset]:origdate.getHours());
 	d.setMinutes((vals[5+offset])?vals[5+offset]:origdate.getMinutes());    
+	d.setSeconds((vals[5+offset])?0:origdate.getSeconds()); // if min specified, set sec=0
 	if (d.getFullYear() < now.getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0) //ten year window
 	    d.setFullYear(d.getFullYear() + 100);
 	if(!(vals[3+offset])){ //year not entered 
@@ -637,9 +675,14 @@ function dt_parsewords(dt) {
 }
 
 function dt_parse_date(dt,content,drawdate){
-    var now = new Date();
+    var defaults = new Date();
     var d1,d2;
     var regex_letters = /.*[a-zA-Z]+.*/; //if there are letters
+    if (dt.default_time) {
+	defaults.setHours(dt.dtime_vals[1]?dt.dtime_vals[1]:0);
+	defaults.setMinutes(dt.dtime_vals[2]?dt.dtime_vals[2]:0);
+	defaults.setSeconds(dt.dtime_vals[4]?dt.dtime_vals[4]:0);
+    }
     if(regex_letters.exec(content)){
 	d1 = dt_parsewords(dt);
 	dt.setvalue(d1,!drawdate);
@@ -648,20 +691,20 @@ function dt_parse_date(dt,content,drawdate){
 	if(dt.form && dt.form.mode == 'Query' && dt.sbr){
 	    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}(?:\s?-\s?)?(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
 	    var vals = regex_dateformat.exec(content);
-	    var origdate = (dt_current)?dt_current.TmpDateObj:now;
-	    d1 = dt_get_parsed_date(dt,origdate,vals,0,now);
-	    origdate = (dt_current)?dt_current.TmpDateObj2:now;
-	    d2 = dt_get_parsed_date(dt,origdate,vals,5,now);
+	    var origdate = (dt_current)?dt_current.TmpDateObj:defaults;
+	    d1 = dt_get_parsed_date(dt,origdate,vals,0,defaults);
+	    origdate = (dt_current)?dt_current.TmpDateObj2:defaults;
+	    d2 = dt_get_parsed_date(dt,origdate,vals,5,defaults);
 	    
 	    dt.setvalue(d1,!drawdate);
 	    dt.setvalue2(d2,!drawdate);
 	}
 	else{
 	    //if(drawdate) dt_setdata(dt,d);
-	    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
+	    var regex_dateformat = /(\d{0,2})[-\/]?(\d{0,2})[-\/]?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
 	    var vals = regex_dateformat.exec(content);
-	    var origdate = (dt_current)?dt_current.TmpDateObj:now;
-	    d1 = dt_get_parsed_date(dt,origdate,vals,0,now);
+	    var origdate = (dt_current)?dt_current.TmpDateObj:defaults;
+	    d1 = dt_get_parsed_date(dt,origdate,vals,0,defaults);
 	    dt.setvalue(d1,!drawdate);
 	}
     }
@@ -715,12 +758,21 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	// value after it transitions to 'new' mode from 'nodata'
 	if (e == 'dt_today') f.DateVal = new Date();
 	if(f.parentPaneId != 'PaneLayer2'){
-	    if (!dt_current.TmpDateObj) 
+	    if (!dt_current.TmpDateObj) {
 		    dt_current.TmpDateObj = new Date(dt_current.DateObj);
+		    if (dt_current.default_time) {
+			    dt_current.TmpDateObj.setHours(dt_current.dtime_vals[1]?dt_current.dtime_vals[1]:0);
+			    dt_current.TmpDateObj.setMinutes(dt_current.dtime_vals[2]?dt_current.dtime_vals[2]:0);
+			    dt_current.TmpDateObj.setSeconds(dt_current.dtime_vals[4]?dt_current.dtime_vals[4]:0);
+		    }
+	    }
 	    if (f.DateVal) {
 		dt_current.DateObj = new Date(f.DateVal);
-		if (dt_current.TmpDateObj && e != 'dt_today') {
-		    dt_current.DateObj.setHours(dt_current.TmpDateObj.getHours(), dt_current.TmpDateObj.getMinutes(), dt_current.TmpDateObj.getSeconds());
+		//if (dt_current.TmpDateObj && e != 'dt_today') {
+		    //dt_current.DateObj.setHours(dt_current.TmpDateObj.getHours(), dt_current.TmpDateObj.getMinutes(), dt_current.TmpDateObj.getSeconds());
+		var now = new Date();
+		if (!dt_current.default_time && dt_current.DateObj.getDate() == now.getDate() && dt_current.DateObj.getMonth() == now.getMonth() && dt_current.DateObj.getYear == now.getYear()) {
+		    dt_current.DateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
 		}
 	    } else {
 		dt_current.DateObj = null;
@@ -842,23 +894,29 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	l.MonHidLayer = htr_new_layer(116,l);
 	//l.MonVisLayer = new Layer(1024, l);
 	l.MonVisLayer = htr_new_layer(116,l);
-	l.TimeHidLayer = htr_new_layer(1024, l);
-	l.TimeVisLayer = htr_new_layer(1024, l);
+	if (!ml.date_only) {
+	    l.TimeHidLayer = htr_new_layer(1024, l);
+	    l.TimeVisLayer = htr_new_layer(1024, l);
+	}
 	if(ml.form && ml.form.mode == 'Query' && ml.sbr){
 	    moveTo(l.HidLayer, 0, 68);
 	    moveTo(l.VisLayer, 0, 68);
 	    moveTo(l.MonHidLayer, 38, 22);
 	    moveTo(l.MonVisLayer, 38, 22);
-	    moveTo(l.TimeHidLayer, 0, 176);
-	    moveTo(l.TimeVisLayer, 0, 176);
+	    if (!ml.date_only) {
+		moveTo(l.TimeHidLayer, 0, 176);
+		moveTo(l.TimeVisLayer, 0, 176);
+	    }
 	}
 	else{
-	moveTo(l.HidLayer, 0, 48);
-	moveTo(l.VisLayer, 0, 48);
-	moveTo(l.MonHidLayer, 38, 2);
-	moveTo(l.MonVisLayer, 38, 2);
-	moveTo(l.TimeHidLayer, 0, 156);
-	moveTo(l.TimeVisLayer, 0, 156);
+	    moveTo(l.HidLayer, 0, 48);
+	    moveTo(l.VisLayer, 0, 48);
+	    moveTo(l.MonHidLayer, 38, 2);
+	    moveTo(l.MonVisLayer, 38, 2);
+	    if (!ml.date_only) {
+		moveTo(l.TimeHidLayer, 0, 156);
+		moveTo(l.TimeVisLayer, 0, 156);
+	    }
 	}
 	//l.HidLayer.y = l.VisLayer.y = 48;
 	//l.MonHidLayer.x = l.MonVisLayer.x = 38;
@@ -876,8 +934,10 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	//htr_init_layer(l.VisLayer,l,'dt_pn');
 	htr_init_layer(l.MonHidLayer,l,'dt_pn');
 	htr_init_layer(l.MonVisLayer,l,'dt_pn');
-	htr_init_layer(l.TimeHidLayer,l,'dt_pn');
-	htr_init_layer(l.TimeVisLayer,l,'dt_pn');
+	if (!ml.date_only) {
+	    htr_init_layer(l.TimeHidLayer,l,'dt_pn');
+	    htr_init_layer(l.TimeVisLayer,l,'dt_pn');
+	}
 	//dt_tag_images(l.document, 'dt_pn', l);
 	htutil_tag_images(l,'dt_pn',l,l);
 	imgs = pg_images(l);
@@ -889,7 +949,8 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	imgs[6].kind = 'dtimg_mnup';
 	//l.document.images[7].kind = 'dtimg_yrup';
 	imgs[7].kind = 'dtimg_yrup';
-	dt_inittime(l);
+	if (!ml.date_only)
+	    dt_inittime(l);
 	return l;
 }
 
@@ -945,9 +1006,11 @@ function dt_domouseup(l) {
 		clearTimeout(dt_timeout);
 		dt_timeout = null;
 		dt_timeout_fn = null;
-		dt_set_rocker(l.TimeVisLayer.sc_img, null);
-		dt_set_rocker(l.TimeVisLayer.mn_img, null);
-		dt_set_rocker(l.TimeVisLayer.hr_img, null);
+		if (!l.ml.date_only) {
+			dt_set_rocker(l.TimeVisLayer.sc_img, null);
+			dt_set_rocker(l.TimeVisLayer.mn_img, null);
+			dt_set_rocker(l.TimeVisLayer.hr_img, null);
+		}
 	}
 }
 
