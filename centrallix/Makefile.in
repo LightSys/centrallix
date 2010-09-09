@@ -59,6 +59,7 @@ XSUPPORT=stparse.o \
 	 st_node.o \
 	 htmlparse.o \
 	 hints.o \
+	 mergesort.o \
 	 mime/mime_parse.o \
 	 mime/mime_address.o \
 	 mime/mime_encode.o \
@@ -160,6 +161,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_treeview.o \
 	wgtdrv_variable.o \
 	wgtdrv_window.o \
+	wgtdrv_uawindow.o \
 	wgtr.o \
 	apos.o
 
@@ -182,6 +184,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_pane.o \
 	   htdrv_table.o \
 	   htdrv_window.o \
+	   htdrv_uawindow.o \
 	   htdrv_checkbox.o \
 	   htdrv_radiobutton.o \
 	   htdrv_editbox.o \

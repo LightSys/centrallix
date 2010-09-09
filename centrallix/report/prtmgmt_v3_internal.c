@@ -15,6 +15,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "mergesort.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -50,10 +51,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.23 2009/07/01 18:50:09 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.24 2010/09/09 00:39:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.24  2010/09/09 00:39:13  gbeeley
+    - (change) allowing -pg (graph profiler) to be disabled by default
+      during compilation.  profile timer had some poor interaction with the
+      fork() system call, causing sporadic lockups.
+    - (feature) beginnings of "user agent window" widget
+    - (change) broke out mergesort() routine into its own independent function
+      instead of being a part of the prtmgmt module.
+
     Revision 1.23  2009/07/01 18:50:09  gbeeley
     - (bugfix) need to include limits.h to get INT_MAX on some systems.
 
@@ -567,6 +576,7 @@ prt_internal_YMergeCopy_r(pPrtObjStream obj, pPrtObjStream* arr)
     }
 
 
+#if 00
 /*** prt_internal_YMergeSort_r() - actually do the merge sort on the arrays
  *** of print objects
  ***/
@@ -627,6 +637,7 @@ prt_internal_YMergeSort_r(pPrtObjStream * arr1, pPrtObjStream * arr2, int cnt, i
 
     return 0;
     }
+#endif /* 00 */
 
 
 /*** prt_internal_YPrintArray() - show the contents of a y sort array ***/
@@ -653,7 +664,7 @@ prt_internal_YMergeSort(pPrtObjStream page)
     pPrtObjStream first;
     int cnt, i;
     pPrtObjStream * arr1;
-    pPrtObjStream * arr2;
+    /*pPrtObjStream * arr2;*/
 
 	/** Setup pageX, pageY, and count the number of objects **/
 	cnt = prt_internal_YMergeSetup_r(page);
@@ -662,24 +673,25 @@ prt_internal_YMergeSort(pPrtObjStream page)
 
 	/** Copy the objects into the array **/
 	arr1 = (pPrtObjStream *)nmSysMalloc(cnt * sizeof(pPrtObjStream));
-	arr2 = (pPrtObjStream *)nmSysMalloc(cnt * sizeof(pPrtObjStream));
+	/*arr2 = (pPrtObjStream *)nmSysMalloc(cnt * sizeof(pPrtObjStream));*/
 	arr1[0] = page;
 	prt_internal_YMergeCopy_r(page, arr1+1);
 
 	/** Now do the mergesort. **/
-	prt_internal_YMergeSort_r(arr1, arr2, cnt, 1);
+	mergesort((void**)arr1, cnt, prt_internal_YCompare);
+	/*prt_internal_YMergeSort_r(arr1, arr2, cnt, 1);*/
 
 	/** Set up the links **/
 	for(i=0;i<cnt-1;i++)
 	    {
-	    arr2[i]->YNext = arr2[i+1];
-	    arr2[i]->YNext->YPrev = arr2[i];
+	    arr1[i]->YNext = arr1[i+1];
+	    arr1[i]->YNext->YPrev = arr1[i];
 	    }
-	arr2[cnt-1]->YNext = NULL;
-	arr2[0]->YPrev = NULL;
-	first = arr2[0];
+	arr1[cnt-1]->YNext = NULL;
+	arr1[0]->YPrev = NULL;
+	first = arr1[0];
 	nmSysFree(arr1);
-	nmSysFree(arr2);
+	/*nmSysFree(arr2);*/
 
     return first;
     }

@@ -1063,6 +1063,20 @@ AC_DEFUN(CHECK_PROFILE,
 	    AC_MSG_RESULT(no)
 	fi
 	CFLAGS="$temp"
+
+	AC_MSG_CHECKING(if call graph profiling is desired)
+	AC_ARG_ENABLE(profile,
+	    AC_HELP_STRING([--enable-profile],
+		[enable call graph profiler]
+	    ),
+	    PROFILE="$PROFILE",
+	    PROFILE=""
+	)
+	if test "$PROFILE" = ""; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	fi
     ]
 )
 
