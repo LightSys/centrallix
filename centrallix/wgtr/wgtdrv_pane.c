@@ -50,6 +50,9 @@
 int
 wgtpnVerify(pWgtrVerifySession s)
     {
+    pWgtrNode pane = s->CurrWidget;
+    if (pane->Children.nItems == 0)
+	pane->Flags &= ~WGTR_F_CONTAINER;   
     return 0;
     }
 
