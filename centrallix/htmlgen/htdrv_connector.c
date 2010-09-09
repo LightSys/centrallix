@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.26 2009/06/24 22:00:21 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.27 2010/09/09 01:05:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.27  2010/09/09 01:05:08  gbeeley
+    - (bugfix) do not deploy 'condition' property as a connector action param
+
     Revision 1.26  2009/06/24 22:00:21  gbeeley
     - (feature) allow connectors to have a 'source' property, so they can be
       placed within the event source or action target, or be placed elsewhere
@@ -377,7 +380,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	first = 1;
 	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
 	    {
-	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action") || !strcmp(ptr, "source")) continue;
+	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action") || !strcmp(ptr, "source") || !strcmp(ptr, "condition")) continue;
 	    if (!first) xsConcatenate(&xs, ",", 1);
 	    first = 0;
 	    switch(wgtrGetPropertyType(tree, ptr))
