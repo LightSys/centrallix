@@ -51,10 +51,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.26 2009/10/20 23:14:03 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.27 2010/09/09 01:37:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.27  2010/09/09 01:37:20  gbeeley
+    - (feature) adding ability to have international currency formatting with
+      . and , reversed
+    - (feature) adding ability to specify special formatting for currency
+      zero values, such as "-0-", "0", or ""
+    - (bugfix) fix misspelling of Forty
+
     Revision 1.26  2009/10/20 23:14:03  gbeeley
     - (change) allow conversion of integer to datetime (using the integer as
       the raw value)
@@ -277,10 +284,14 @@ char* obj_long_week[] = {"Sunday","Monday","Tuesday","Wednesday","Thursday",
 char* obj_default_date_fmt = "dd MMM yyyy HH:mm";
 
 /*** money format:
+ ***   I = a leading 'I' is not printed but indicates the currency is in "international format" with commas and periods reversed.
+ ***   Z = a leading 'Z' is not printed but means zeros should be printed as "-0-"
+ ***   z = a leading 'z' is not printed but means zeros should be printed as "0"
+ ***   B = a leading 'B' is not printed but means zeros should be printed as "" (blank)
  ***   # = optional digit unless after the '.' or first before '.'
  ***   0 = mandatory digit, no zero suppression
- ***   , = insert a comma
- ***   . = decimal point (only one allowed)
+ ***   , = insert a comma (or a period, if in international format)
+ ***   . = decimal point (only one allowed) (prints a comma if in international format)
  ***   $ = dollar sign
  ***   + = mandatory sign, whether + or - (if 0, +)
  ***   - = optional sign, space if + or 0
@@ -606,9 +617,12 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
     int orig_print_whole;
     char tmp[20];
     XString xs;
+    int intl_format = 0;
+    int zero_type = 0; /* 0=normal, 1='-0-', 2='0', 3='' */
+    char* zero_strings[] = {NULL, "-0-", "0", ""};
+    char decimal = '.';
+    char comma = ',';
     
-	xsInit(&xs);
-
 	/** Get the format **/
 	if(format) fmt = format;
 	else fmt = mssGetParam("mfmt");
@@ -617,16 +631,40 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 
 	/** Determine number of explicitly-specified whole part digits **/
 	ptr = fmt;
-	while(*ptr && *ptr != '.')
+	while(*ptr && *ptr != decimal)
 	    {
 	    if (*ptr == '0' || *ptr == '#' || *ptr == '^' || *ptr == ' ' || *ptr == '*') 
 	        {
 		n_whole_digits++;
 		tens_multiplier *= 10;
 		}
+	    else if (*ptr == 'I')
+		{
+		intl_format = 1;
+		decimal = ',';
+		comma = '.';
+		}
+	    else if (*ptr == 'Z')
+		zero_type = 1;
+	    else if (*ptr == 'z')
+		zero_type = 2;
+	    else if (*ptr == 'B')
+		zero_type = 3;
 	    ptr++;
 	    }
 	if (tens_multiplier > 0) tens_multiplier /= 10;
+
+	/** Special handling of zeros **/
+	if (m->WholePart == 0 && m->FractionPart == 0 && zero_type != 0)
+	    {
+	    if (strlen(zero_strings[zero_type]) >= length)
+		return -1;
+	    else
+		strcpy(str, zero_strings[zero_type]);
+	    return 0;
+	    }
+
+	xsInit(&xs);
 
 	/** Any reasons to omit the automatic-sign? **/
 	if (strpbrk(fmt,"+-()[]")) automatic_sign = 0;
@@ -694,7 +732,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                 case ',':
 		    if (!suppressing_zeros) 
 		        {
-			xsConcatenate(&xs,",",1);
+			xsConcatenate(&xs,&comma,1);
 			}
 		    else
 		        {
@@ -715,7 +753,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                     in_decimal_part = 1;
 		    suppressing_zeros = 0;
 		    tens_multiplier = 1000;
-		    xsConcatenate(&xs,".",1);
+		    xsConcatenate(&xs,&decimal,1);
                     break;
     
                 case '-':
@@ -1449,13 +1487,34 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     int is_neg = 0;
     unsigned long intval;
     int scale;
+    char* fmt;
+    int intl_format;
+    char tmpbuf[40];
+    char* tptr;
 
     	/** Select the correct type. **/
 	switch(data_type)
 	    {
 	    case DATA_T_STRING:
+		fmt = mssGetParam("mfmt");
+		if (!fmt) fmt = obj_default_money_fmt;
+		intl_format = strchr(fmt,'I')?1:0;
+
 	        ptr = (char*)data_ptr;
 		while(*ptr == ' ') ptr++;
+		if (strlen(ptr) < sizeof(tmpbuf))
+		    {
+		    /** strip commas (or periods, if in intl format) **/
+		    tptr = tmpbuf;
+		    while(*ptr)
+			{
+			if (*ptr != (intl_format?'.':','))
+			    *(tptr++) = *ptr;
+			ptr++;
+			}
+		    *tptr = '\0';
+		    ptr = tmpbuf;
+		    }
 		if (*ptr == '-')
 		    {
 		    is_neg = 1;
@@ -1477,7 +1536,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    return -1;
 		m->WholePart = intval;
 		if (is_neg) m->WholePart = -m->WholePart;
-		if (*endptr == '.')
+		if (*endptr == (intl_format?',':'.'))
 		    {
 		    intval = strtoul(endptr+1, &endptr2, 10);
 		    scale = endptr2 - (endptr+1);
@@ -1486,6 +1545,12 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    while(scale < 4) { scale++; intval *= 10; }
 		    while(scale > 4) { scale--; intval /= 10; }
 		    m->FractionPart = intval;
+		    endptr = endptr2;
+		    }
+		if (*endptr == '-')
+		    {
+		    m->WholePart = -m->WholePart;
+		    is_neg = !is_neg;
 		    }
 		if (is_neg && m->FractionPart != 0)
 		    {
@@ -1882,7 +1947,7 @@ objDataToWords(int data_type, void* data_ptr)
     static int is_init = 0;
     static char* digits[11] = { "Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten" };
     static char* teens[9] = { "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen" };
-    static char* tens[9] = { "Ten","Twenty","Thirty","Fourty","Fifty","Sixty","Seventy","Eighty","Ninety" };
+    static char* tens[9] = { "Ten","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety" };
     static char* multiples[] = { "", "Thousand","Million","Billion","Trillion","Quadrillion" };
     unsigned long integer_part, fraction_part = 0;
     int multiple_cnt, n, i;
