@@ -176,7 +176,7 @@ wgtrParseParameter(pObject obj, pStruct inf)
 	    }
 	param->Value->DataType = t;
 	find_inf = stLookup_ne(inf, param->Name);
-	if (find_inf)
+	if (find_inf && t != DATA_T_CODE)
 	    {
 	    /** Use value from client **/
 	    str = NULL;
@@ -192,9 +192,14 @@ wgtrParseParameter(pObject obj, pStruct inf)
 		}
 	    else
 		{
-		mssError(1, "WGTR", "Parameter '%s' specified incorrectly", param->Name);
-		goto error;
+		/*mssError(1, "WGTR", "Parameter '%s' specified incorrectly", param->Name);
+		goto error;*/
+		param->Value->Flags |= DATA_TF_NULL;
 		}
+	    }
+	else if (t == DATA_T_CODE)
+	    {
+	    param->Value->Flags |= DATA_TF_NULL;
 	    }
 
 	/** set default value and/or verify that the given value is valid **/
@@ -920,7 +925,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		    objClose(rptrow);
 		    rptrow = NULL;
 		    }
-		expRemoveParamFromList(context_objlist, "repeat");
+		expRemoveParamFromList(context_objlist, this_node->Name);
 		objQueryClose(rptqy);
 		rptqy = NULL;
 		}
@@ -1128,7 +1133,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		    objClose(rptrow);
 		    rptrow = NULL;
 		    }
-		expRemoveParamFromList(context_objlist, "repeat");
+		expRemoveParamFromList(context_objlist, this_node->Name);
 		objQueryClose(rptqy);
 		rptqy = NULL;
 		}
@@ -1322,10 +1327,10 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 		}
 	    else if (!strncmp(name, "fl_", 3))
 		{
-		if (!strcmp(name+2, "x")) { val->Integer = widget->fl_x; return 0; }
-		if (!strcmp(name+2, "y")) { val->Integer = widget->fl_y; return 0; }
-		if (!strcmp(name+2, "width")) { val->Integer = widget->fl_width; return 0; }
-		if (!strcmp(name+2, "height")) { val->Integer = widget->fl_height; return 0; }
+		if (!strcmp(name+3, "x")) { val->Integer = widget->fl_x; return 0; }
+		if (!strcmp(name+3, "y")) { val->Integer = widget->fl_y; return 0; }
+		if (!strcmp(name+3, "width")) { val->Integer = widget->fl_width; return 0; }
+		if (!strcmp(name+3, "height")) { val->Integer = widget->fl_height; return 0; }
 		}
 	    }
 	else if (datatype == DATA_T_STRING)
