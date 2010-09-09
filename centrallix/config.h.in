@@ -171,6 +171,9 @@
 /* Define for MIME support */
 #undef USE_MIME
 
+/* Define for MySQL support */
+#undef USE_MYSQL
+
 /* Define for NFS netdriver support */
 #undef USE_NETNFS
 
