@@ -1,0 +1,88 @@
+$Version=2$
+file_selection "widget/component-decl"
+    {
+    width=640; height=480;
+
+    Cancel "widget/component-decl-event" { }
+    Selected "widget/component-decl-event" { }
+
+    selection_lbl "widget/label"
+	{
+	x=0;y=0;
+	width=640;height=20;
+	value=runclient("Selected Object: " + isnull(:sel_osrc:cx__pathname, '(none)'));
+	style=bold;
+	}
+
+    selection_hbox "widget/hbox"
+	{
+	x=0; y=30;
+	width=640; height=412;
+	spacing=10;
+
+	sel_tree "widget/component"
+	    {
+	    width=200;
+	    path = "/sys/cmp/framed_tree.cmp";
+	    bgcolor=white;
+	    source="/";
+	    show_root=yes;
+	    highlight_bgcolor="#000080";
+	    highlight_fgcolor=white;
+
+	    clickitem1 "widget/connector"
+		{
+		event = "ClickItem";
+		target = sel_osrc;
+		action = "ChangeSource";
+		Source = runclient(:Pathname);
+		}
+	    }
+
+	sel_tbl_pane "widget/pane"
+	    {
+	    width=430;
+	    bgcolor = white;
+	    style=lowered;
+
+	    sel_osrc "widget/osrc"
+		{
+		autoquery=oneachreveal;
+		baseobj = "/";
+		sql = "select :f:name, :f:cx__pathname, :f:size, type = isnull(:f:outer_type, '') from / f order by :name";
+		//sql = "select :f:name, :f:cx__pathname, :f:size, type = isnull(:t:type_description, '') from /sys/cx.sysinfo/osml/types t, identity / f where :f:outer_type *= :t:type_name";
+		replicasize=50;
+		readahead=50;
+
+		sel_tbl "widget/table"
+		    {
+		    width=428; height=410; x=0; y=0;
+		    mode=dynamicrow;
+
+		    t_name "widget/table-column" { title="Name"; fieldname="name"; width=200; }
+		    t_size "widget/table-column" { title="Size"; fieldname="size"; width=100; }
+		    t_type "widget/table-column" { title="Type"; fieldname="type"; width=110; }
+		    }
+		}
+	    }
+	}
+
+    ctls_hbox "widget/hbox"
+	{
+	align=center;
+	x=0; y=452; width=640; height=32;
+	spacing = 10;
+
+	cancel_btn "widget/textbutton"
+	    {
+	    text = "Cancel";
+	    cancel_cn "widget/connector" { event=Click; target=file_selection; action=Cancel; }
+	    }
+	select_btn "widget/textbutton"
+	    {
+	    text = "Select";
+	    enabled = runclient(char_length(:sel_osrc:cx__pathname) > 0);
+	    select_cn "widget/connector" { event=Click; target=file_selection; action=Selected; Pathname=runclient(:sel_osrc:cx__pathname); }
+	    }
+	}
+    }
