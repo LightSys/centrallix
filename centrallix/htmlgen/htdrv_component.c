@@ -47,10 +47,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.14 2009/06/24 21:58:51 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.15 2010/09/09 01:04:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.15  2010/09/09 01:04:17  gbeeley
+    - (bugfix) allow client to specify what scripts (cx__scripts) have already
+      been deployed to the app, to avoid having multiple copies of JS scripts
+      loaded on the client.
+    - (feature) component parameters may contain expressions
+    - (feature) presentation hints may be placed on a component, which can
+      specify what widget in the component those apply to
+
     Revision 1.14  2009/06/24 21:58:51  gbeeley
     - (bugfix) properly pass positioning data to components
     - (feature) add options to expose all actions/events/properties on a
@@ -174,7 +182,7 @@ static struct
  *** the wgtr rendering.
  ***/
 pStruct
-htcmp_internal_CreateParams(pWgtrNode tree)
+htcmp_internal_CreateParams(pHtSession s, pWgtrNode tree)
     {
     pStruct params = NULL;
     pStruct attr_inf;
@@ -303,6 +311,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char* templates[WGTR_MAX_TEMPLATE];
     int is_toplevel;
     int old_is_dynamic = 0;
+    char* scriptslist;
+    pStruct attr_inf;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -374,11 +384,28 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_component.js", 0);
 
 	/** Get list of parameters **/
-	params = htcmp_internal_CreateParams(tree);
+	params = htcmp_internal_CreateParams(s, tree);
+
+	/** Any params have expressions? **/
+	if (params)
+	    {
+	    for(i=0;i<params->nSubInf;i++)
+		{
+		htrCheckAddExpression(s, tree, name, params->SubInf[i]->Name);
+		}
+	    }
 
 	/** If static mode, load the component **/
 	if (is_static)
 	    {
+	    /** Copy in cx__scripts value **/
+	    scriptslist = htrParamValue(s, "cx__scripts");
+	    if (scriptslist)
+		{
+		attr_inf = stAddAttr_ne(params, "cx__scripts");
+		stAddValue_ne(attr_inf, scriptslist);
+		}
+
 	    /** Save the current graft point and render parameters **/
 	    old_graft = s->GraftPoint;
 	    qpfPrintf(NULL, sbuf, sizeof(sbuf), "%STR&SYM:%STR&SYM", wgtrGetRootDName(tree), name);

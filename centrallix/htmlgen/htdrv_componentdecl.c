@@ -48,10 +48,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.13 2009/06/24 21:58:51 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.14 2010/09/09 01:04:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.14  2010/09/09 01:04:17  gbeeley
+    - (bugfix) allow client to specify what scripts (cx__scripts) have already
+      been deployed to the app, to avoid having multiple copies of JS scripts
+      loaded on the client.
+    - (feature) component parameters may contain expressions
+    - (feature) presentation hints may be placed on a component, which can
+      specify what widget in the component those apply to
+
     Revision 1.13  2009/06/24 21:58:51  gbeeley
     - (bugfix) properly pass positioning data to components
     - (feature) add options to expose all actions/events/properties on a
@@ -243,6 +251,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     char expose_events_for[64] = "";
     char expose_actions_for[64] = "";
     char expose_props_for[64] = "";
+    char apply_hints_to[64] = "";
     int id;
     char* nptr;
 //    pObject subobj = NULL;
@@ -306,6 +315,10 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "expose_properties_for", DATA_T_STRING, POD(&ptr)) == 0)
 	    strtcpy(expose_props_for, ptr, sizeof expose_props_for);
 
+	/** Apply presentation hints to a subwidget? **/
+	if (wgtrGetPropertyValue(tree, "apply_hints_to", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(apply_hints_to, ptr, sizeof apply_hints_to);
+
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
@@ -342,9 +355,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Init component **/
-	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%STR&SYM\"], {vis:%POS, gns:%STR&SYM, gname:'%STR&SYM'%[, expe:'%STR&SYM'%]%[, expa:'%STR&SYM'%]%[, expp:'%STR&SYM'%]});\n", 
+	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%STR&SYM\"], {vis:%POS, gns:%STR&SYM, gname:'%STR&SYM'%[, expe:'%STR&SYM'%]%[, expa:'%STR&SYM'%]%[, expp:'%STR&SYM'%]%[, applyhint:'%STR&SYM'%]});\n", 
 		name, is_visual, gbuf, gname, *expose_events_for, expose_events_for, *expose_actions_for, expose_actions_for,
-		*expose_props_for, expose_props_for);
+		*expose_props_for, expose_props_for, *apply_hints_to, apply_hints_to);
 
 	/** Hunt for parameters for this component **/
 	xaInit(&attrs, 16);

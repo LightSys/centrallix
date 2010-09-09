@@ -53,10 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.79 2010/01/10 07:16:47 gbeeley Exp $
+    $Id: ht_render.c,v 1.80 2010/09/09 01:04:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.80  2010/09/09 01:04:17  gbeeley
+    - (bugfix) allow client to specify what scripts (cx__scripts) have already
+      been deployed to the app, to avoid having multiple copies of JS scripts
+      loaded on the client.
+    - (feature) component parameters may contain expressions
+    - (feature) presentation hints may be placed on a component, which can
+      specify what widget in the component those apply to
+
     Revision 1.79  2010/01/10 07:16:47  gbeeley
     - (bugfix) fix double-encoding of expressions deployed to Javascript
 
@@ -1341,6 +1349,15 @@ int
 htrAddScriptInclude(pHtSession s, char* filename, int flags)
     {
     pStrValue sv;
+    char* scripts_already;
+
+	/** What scripts has the client already loaded?  If the
+	 ** requested script is in the list, ignore it since the
+	 ** client already has it.
+	 **/
+	scripts_already = htrParamValue(s, "cx__scripts");
+	if (scripts_already && strstr(scripts_already, filename))
+	    return 0;
 
     	/** Alloc the string val. **/
 	if (xhLookup(&(s->Page.NameIncludes), filename)) return 0;

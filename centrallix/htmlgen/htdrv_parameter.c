@@ -46,10 +46,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.9 2009/12/15 21:55:50 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.10 2010/09/09 01:04:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.10  2010/09/09 01:04:17  gbeeley
+    - (bugfix) allow client to specify what scripts (cx__scripts) have already
+      been deployed to the app, to avoid having multiple copies of JS scripts
+      loaded on the client.
+    - (feature) component parameters may contain expressions
+    - (feature) presentation hints may be placed on a component, which can
+      specify what widget in the component those apply to
+
     Revision 1.9  2009/12/15 21:55:50  gbeeley
     - (change) allow parameters to have an operational name different from the
       widget name assigned to them.
@@ -206,7 +214,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Script init **/
 	    htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {name:'%STR&JSSTR', type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
-		    name, paramname, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
+		    name, paramname, type, findcontainer, !find_inf || !find_inf->StrVal, find_inf && find_inf->StrVal, find_inf?find_inf->StrVal:"");
 
 	    hints = wgtrWgtToHints(tree);
 	    if (!hints)
