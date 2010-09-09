@@ -40,10 +40,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.12 2009/06/26 16:26:32 gbeeley Exp $
+    $Id: hints.c,v 1.13 2010/09/09 01:24:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.13  2010/09/09 01:24:10  gbeeley
+    - (feature) stubbing out transaction log file functionality
+    - (change) extending pathnames to 32 possible elements instead of 16
+    - (change) stubbing out GetQueryCoverageMask functionality, to be used
+      for correlated vs non-correlated subqueries
+    - (change) adding hints flags for 'primary key' and 'apply hints on change'
+      which allows the user to temporarily have an invalid value in the field
+      that is only checked when the field loses focus
+
     Revision 1.12  2009/06/26 16:26:32  gbeeley
     - (change) switch to specifying the RUNCLIENT domain when generating hint
       expressions
@@ -193,17 +202,18 @@ hnt_internal_SetStyleItem(pObjPresentationHints ph, char* style)
 				    "strnull","grouped","readonly","hidden",
 				    "password","multiline","highlight","uppercase",
 				    "lowercase","tabpage","sepwindow","alwaysdef",
-				    "createonly", "multiselect", NULL };
+				    "createonly", "multiselect", "key", "applyonchange",
+				    NULL };
     static int style_ids[] = {	OBJ_PH_STYLE_BITMASK, OBJ_PH_STYLE_LIST, OBJ_PH_STYLE_BUTTONS, OBJ_PH_STYLE_NOTNULL,
 				OBJ_PH_STYLE_STRNULL, OBJ_PH_STYLE_GROUPED, OBJ_PH_STYLE_READONLY, OBJ_PH_STYLE_HIDDEN,
 				OBJ_PH_STYLE_PASSWORD, OBJ_PH_STYLE_MULTILINE, OBJ_PH_STYLE_HIGHLIGHT, OBJ_PH_STYLE_UPPERCASE,
 				OBJ_PH_STYLE_LOWERCASE, OBJ_PH_STYLE_TABPAGE, OBJ_PH_STYLE_SEPWINDOW, OBJ_PH_STYLE_ALWAYSDEF,
-				OBJ_PH_STYLE_CREATEONLY, OBJ_PH_STYLE_MULTISEL };
+				OBJ_PH_STYLE_CREATEONLY, OBJ_PH_STYLE_MULTISEL, OBJ_PH_STYLE_KEY, OBJ_PH_STYLE_APPLYCHG };
     static char* nstyle_names[] = { "nobitmask","nolist","nobuttons","allownull",
 				    "nostrnull","nogrouped","modifiable","visible",
 				    "nopassword","singleline","nohighlight","mixedcase",
 				    "mixedcase","notabpage","nosepwindow","noalwaysdef",
-				    "nocreateonly","singleselect",
+				    "nocreateonly","singleselect", "notkey", "applyonmodify",
 				    NULL };
     int i;
 

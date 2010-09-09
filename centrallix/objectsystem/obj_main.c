@@ -10,6 +10,9 @@
 #include "obj.h"
 #include "expression.h"
 #include "cxlib/xhandle.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/qprintf.h"
+#include <time.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.17 2008/06/25 18:40:16 gbeeley Exp $
+    $Id: obj_main.c,v 1.18 2010/09/09 01:24:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.18  2010/09/09 01:24:10  gbeeley
+    - (feature) stubbing out transaction log file functionality
+    - (change) extending pathnames to 32 possible elements instead of 16
+    - (change) stubbing out GetQueryCoverageMask functionality, to be used
+      for correlated vs non-correlated subqueries
+    - (change) adding hints flags for 'primary key' and 'apply hints on change'
+      which allows the user to temporarily have an invalid value in the field
+      that is only checked when the field loses focus
+
     Revision 1.17  2008/06/25 18:40:16  gbeeley
     - (change) moving OBJ_TYPE_NAMES_CNT to the public obj.h header file
 
@@ -536,6 +548,12 @@ objInitialize()
 	memccpy(OSYS.RootPath, filename, 0, 255);
 	OSYS.RootPath[255] = 0;
 
+	/** Transaction log? **/
+	filename = NULL;
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "transaction_log_file"), NULL, &filename, 0) < 0 || !filename)
+	    filename = "";
+	strtcpy(OSYS.TrxLogPath, filename, sizeof(OSYS.TrxLogPath));
+
 	/** Build the Is-A database **/
 	obj_internal_BuildIsA();
 
@@ -809,5 +827,62 @@ objUnRegisterEvent(char* class_code, char* xdata)
 	obj_internal_WriteEventFile();
 
     return 0;
+    }
+
+
+/*** obj_internal_TrxLog() - log a transaction to the transaction log, using
+ *** qprintf to format the log lines.  Each log entry always begins with the
+ *** timestamp, the username, the operation, and the path to the object in
+ *** question.  After that, the caller has discretion over the log entry
+ *** format.
+ ***/
+int
+obj_internal_TrxLog(pObject this, char* op, char* fmt, ...)
+    {
+    char* buf;
+    char* ptr;
+    struct tm* thetime;
+    time_t tval;
+    char tbuf[40];
+    va_list va;
+    int rval = 0;
+    pFile fd;
+
+	if (!(OSYS.TrxLogPath[0]))
+	    return 0;
+
+	/** Get the current date/time **/
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof(tbuf), "%Y-%b-%d %T", thetime);
+
+	/** Allocate a buffer **/
+	buf = (char*)nmMalloc(OBJSYS_MAX_PATH + 256);
+
+	/** Log header.  -1 leaves room for \n **/
+	if (qpfPrintf(NULL, buf, OBJSYS_MAX_PATH + 256 - 1, "%STR&DQUOT,%STR&DQUOT,%STR&DQUOT,%STR&DQUOT,", tbuf, mssUserName(), op, objGetPathname(this)) < 0)
+	    {
+	    nmFree(buf, OBJSYS_MAX_PATH + 256);
+	    return -1;
+	    }
+	ptr = buf + strlen(buf);
+
+	/** Custom part **/
+	va_start(va, fmt);
+	rval = qpfPrintf_va(NULL, ptr, (OBJSYS_MAX_PATH + 256 - 1) - (ptr - buf), fmt, va);
+	va_end(va);
+	strcat(ptr, "\n");
+
+	/** Write it **/
+	fd = fdOpen(OSYS.TrxLogPath, O_WRONLY | O_APPEND, 0600);
+	if (fd)
+	    {
+	    fdPrintf(fd, "%s", buf);
+	    fdClose(fd, 0);
+	    }
+
+	nmFree(buf, OBJSYS_MAX_PATH + 256);
+
+    return (rval<0)?(-1):0;
     }
 

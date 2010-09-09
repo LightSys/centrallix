@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.43 2009/07/14 22:08:08 gbeeley Exp $
+    $Id: obj.h,v 1.44 2010/09/09 01:24:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.44  2010/09/09 01:24:10  gbeeley
+    - (feature) stubbing out transaction log file functionality
+    - (change) extending pathnames to 32 possible elements instead of 16
+    - (change) stubbing out GetQueryCoverageMask functionality, to be used
+      for correlated vs non-correlated subqueries
+    - (change) adding hints flags for 'primary key' and 'apply hints on change'
+      which allows the user to temporarily have an invalid value in the field
+      that is only checked when the field loses focus
+
     Revision 1.43  2009/07/14 22:08:08  gbeeley
     - (feature) adding cx__download_as object attribute which is used by the
       HTTP interface to set the content disposition filename.
@@ -428,7 +437,7 @@
 #define OBJSYS_DEFAULT_TYPES_CFG	"/usr/local/etc/types.cfg"
 
 #define OBJSYS_MAX_PATH		256
-#define OBJSYS_MAX_ELEMENTS	16
+#define OBJSYS_MAX_ELEMENTS	32
 #define OBJSYS_MAX_ATTR		64
 
 #ifndef MAX
@@ -525,6 +534,8 @@ typedef struct _PH
 #define OBJ_PH_STYLE_ALWAYSDEF	32768	/* Always reset default value on any modify */
 #define OBJ_PH_STYLE_CREATEONLY	65536	/* Writable only during record creation */
 #define OBJ_PH_STYLE_MULTISEL	131072	/* Multiple select */
+#define OBJ_PH_STYLE_KEY	262144	/* Field is a primary key */
+#define OBJ_PH_STYLE_APPLYCHG	524288	/* Apply hints on DataChange, not on DataModify */
 
 
 /** objectsystem driver **/
@@ -558,6 +569,7 @@ typedef struct _OSD
     pObjPresentationHints (*PresentationHints)();
     int		(*Info)();
     int		(*Commit)();
+    int		(*GetQueryCoverageMask)();
     }
     ObjDriver, *pObjDriver;
 
@@ -816,6 +828,7 @@ typedef struct
     HandleContext SessionHandleCtx;	/* context for session handles */
     XHashTable	NotifiesByPath;		/* objects with RequestNotify() */
     long long	PathID;			/* pseudo-paths for multiquery */
+    char	TrxLogPath[OBJSYS_MAX_PATH]; /* path to osml trx log */
     }
     OSYS_t;
 
@@ -842,6 +855,7 @@ typedef struct _ORNI
     int		(*CallbackFn)();	/* callback function */
     void*	CallerContext;		/* passed in by caller */
     MTSecContext SavedSecContext;	/* security context of requestor */
+    XArray	Notifications;		/* active notifications on this item */
     }
     ObjReqNotifyItem, *pObjReqNotifyItem;
 
@@ -859,6 +873,7 @@ typedef struct
     int		NewSize;		/* if content, new size of content */
     void*	Ptr;			/* actual information */
     int		IsDel;			/* 1 if Name is being deleted, 0 if added */
+    pThread	Worker;			/* set if notify worker thread active */
     }
     ObjNotification, *pObjNotification;
 
@@ -944,6 +959,7 @@ int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
 int objQueryClose(pObjQuery this);
+int objGetQueryCoverageMask(pObjQuery this);
 
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);
@@ -987,6 +1003,7 @@ pPathname obj_internal_NormalizePath(char* cwd, char* name);
 int obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt);
 pObject obj_internal_AllocObj();
 int obj_internal_FreeObj(pObject);
+int obj_internal_TrxLog(pObject this, char* op, char* fmt, ...);
 
 /** objectsystem transaction functions **/
 int obj_internal_FreeTree(pObjTrxTree oxt);

@@ -13,6 +13,7 @@ centrallix "system/config"
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
+    transaction_log_file = "/var/log/cx_transaction_log";
 
     // Set this to 1 to allow Centrallix to send a user's login credentials
     // to another server, as a part of "single sign on" type authentication.
