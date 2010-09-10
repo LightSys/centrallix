@@ -56,10 +56,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.27 2010/09/09 01:43:22 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.28 2010/09/10 00:46:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.28  2010/09/10 00:46:31  gbeeley
+    - (bugfix) Fix a data corruption bug in the flat datafile driver (for
+      csv files and such) that could cause cross-contamination between two
+      data files.
+
     Revision 1.27  2010/09/09 01:43:22  gbeeley
     - (feature) stubed out functionality for fixed-field flat files
 
@@ -615,6 +620,7 @@ pDatPage
 dat_internal_GetPage(pDatData context)
     {
     pDatPage this,tmp;
+    int cnt;
 
     	/** Just malloc a new one? **/
 	if (DAT_INF.AllocPages < DAT_CACHE_MAXPAGES)
@@ -629,10 +635,19 @@ dat_internal_GetPage(pDatData context)
 	    while(1)
 	        {
 	        tmp = DAT_INF.PageList.Prev;
-	        while(tmp->Flags & DAT_CACHE_F_LOCKED) tmp=tmp->Prev;
+
+		/** Page can't be locked, and it can't be a dirty page from a different data file **/
+		cnt = 0;
+	        while(tmp->Flags & DAT_CACHE_F_LOCKED || ((tmp->Flags & DAT_CACHE_F_DIRTY) && tmp->Node != context->Node))
+		    {
+		    tmp=tmp->Prev;
+		    cnt++;
+		    }
+		if (cnt > DAT_CACHE_MAXPAGES / 4)
+		    printf("DAT - warning: %d pages were skipped during cache free page scan\n", cnt);
 	        if (tmp == &DAT_INF.PageList)
 	            {
-		    mssError(1,"DAT","Bark!  All pages in page cache are locked!");
+		    mssError(1,"DAT","Bark!  All pages in page cache are locked or unavailable!");
 		    return NULL;
 		    }
 
