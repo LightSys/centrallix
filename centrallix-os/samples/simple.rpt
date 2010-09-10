@@ -46,6 +46,13 @@ simple "system/report"
 	colsep=0.9;
 	//shadow=0.4;
 	source=files;
+	outerborder=0.1;
+	topborder=0.05;
+	bottomborder=0.05;
+	leftborder=0.05;
+	rightborder=0.05;
+	shadow=0.4;
+	innerborder=0.05;
 
 	rcpt_data_hdr "report/table-row"
 	    {

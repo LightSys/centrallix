@@ -3,6 +3,8 @@ labeled_checkbox "widget/component-decl"
     {
     width=200;height=20;
 
+    expose_properties_for = checkbox;
+
     form "widget/parameter" { type=object; find_container="widget/form"; }
     field "widget/parameter" { type=string; }
     text "widget/parameter" { type=string; }
@@ -18,7 +20,8 @@ labeled_checkbox "widget/component-decl"
 	fl_width=0;
 	fieldname=runserver(:this:field); 
 	form=form; 
-        ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
+        ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly,notnull; }
+        rw_hints "widget/hints" { condition=runserver(:this:type != 'readonly'); style=notnull; }
 	}
     label "widget/label" { x=24;y=0;height=20;width=176; text=runserver(:this:text); align=left; }
     }

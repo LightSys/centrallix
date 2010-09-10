@@ -3,6 +3,10 @@ labeled_editbox "widget/component-decl"
     {
     width=220;height=runserver(condition(char_length(:this:preview_sql)>0,88,20));
 
+    expose_properties_for = editbox;
+    expose_events_for = editbox;
+    expose_actions_for = editbox;
+
     form "widget/parameter" { type=object; find_container="widget/form"; }
     field "widget/parameter" { type=string; }
     text "widget/parameter" { type=string; }

@@ -3,6 +3,8 @@ labeled_datetime "widget/component-decl"
     {
     width=200;height=20;
 
+    expose_properties_for = dropdown;
+
     form "widget/parameter" { type=object; find_container="widget/form";}
     field "widget/parameter" { type=string; }
     text "widget/parameter" { type=string; }
