@@ -6,7 +6,7 @@ License: GPL
 Group: System Environment/Daemons
 Source: centrallix-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
-BuildPrereq: zlib-devel, centrallix-lib-devel = %{version}
+BuildPrereq: zlib-devel, centrallix-lib-devel = %{version}, imake
 Requires: zlib, centrallix-lib = %{version}, centrallix-os = %{version}
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org/)
