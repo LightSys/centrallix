@@ -6,7 +6,7 @@ License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
-BuildPrereq: zlib-devel
+BuildPrereq: zlib-devel imake
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org)
 %define librelease 0
