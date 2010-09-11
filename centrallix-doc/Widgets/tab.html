@@ -30,22 +30,37 @@
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
-<td class="description">An image to be used as the background of the tab control.This is useful for adding control.</td>
+<td class="description">An image to be used as the background of the tab control.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">As an alternate to "background", "bgcolor" can specify a color, either named or RGB, control.</td>
+<td class="description">As an alternate to "background", "bgcolor" can specify a color, either named or RGB.</td>
+</tr>
+<tr>
+<td class="name">inactive_background</td>
+<td class="type">string</td>
+<td class="description">An image to be used as the background of the tabs which are inactive (in the background).</td>
+</tr>
+<tr>
+<td class="name">inactive_bgcolor</td>
+<td class="type">string</td>
+<td class="description">As an alternate to "inactive_background", "inactive_bgcolor" can specify a color, either named or RGB.</td>
 </tr>
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">the height, in pixels, of the entire tab control, including the tabs and pages.</td>
+<td class="description">the height, in pixels, of the tab control, including the page height but not including the height of the tabs at the top.</td>
 </tr>
 <tr>
 <td class="name">selected</td>
 <td class="type">string</td>
-<td class="description">The name of the tab page that should be initially selected.</td>
+<td class="description">The name of the tab page that should be initially selected.  This can also contain a dynamic runclient() expression controlling which tab page is selected.</td>
+</tr>
+<tr>
+<td class="name">selected_index</td>
+<td class="type">integer</td>
+<td class="description">Similar to "selected", but selects the tab by numeric index.</td>
 </tr>
 <tr>
 <td class="name">textcolor</td>
@@ -55,7 +70,7 @@
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the entire tab control.</td>
+<td class="description">width, in pixels, of the tab control, including the page width but not the width of the tabs (if they are at the side).</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -66,6 +81,16 @@
 <td class="name">y</td>
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the control, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">tab_location</td>
+<td class="type">string</td>
+<td class="description">The location of the tabs:  "top" (default), "bottom", "left", "right", or "none".</td>
+</tr>
+<tr>
+<td class="name">tab_width</td>
+<td class="type">integer</td>
+<td class="description">The width of the tabs in pixels.  This is optional for tab_locations of "top", "bottom", and "none".</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -84,12 +109,17 @@
 <tr>
 <td class="name">type</td>
 <td class="type">string</td>
-<td class="description">If this is set to dynamic then the tabpage will act as an objectsource client, displaying a tab for each item in the replica with title set to the value of the fieldname.</td>
+<td class="description">If this is set to dynamic then the tabpage will act as an objectsource client, displaying zero or more tabs: one tab for each item in the replica with title set to the value of the fieldname.  In this way, a tab control can have a mix of dynamic tabs and static ones.</td>
 </tr>
 <tr>
 <td class="name">fieldname</td>
 <td class="type">string</td>
-<td class="description">This is the fieldname that the tabpage will use for its title.</td>
+<td class="description">This is the fieldname from the objectsource that the tabpage will use for its title.</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">integer</td>
+<td class="description">0 or 1.  Can contain a dynamic runclient() expression to control when the tab page is visible to the user.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>

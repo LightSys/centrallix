@@ -23,7 +23,7 @@
 	<p>"Client properties" are available for some widgets.  These properties may not be specified in the application file itself, but are available on the client during application operation.  They often relate to the status of a given widget.</p>
 	<p>Where possible, sample code is provided for each widget to show how the widget can be used.  In most cases the widget's code is displayed in isolation, although in practice widgets can never be used outside of a "widget/page" container widget at some level. In a few cases, a more complete mini-application is shown.</p>
 	<p>Sample code is generally given in "structure file" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
-	<p>Copyright (c)  1998-2003 LightSys Technology Services, Inc.</p>
+	<p>Copyright (c)  1998-2010 LightSys Technology Services, Inc.</p>
 	<br/>
 	<p><b>Documentation on the following widgets is available:</b></p>
 	<table>

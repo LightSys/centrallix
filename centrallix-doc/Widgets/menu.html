@@ -37,19 +37,54 @@
 <td class="description">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor background are specified, the menu is transparent.</td>
 </tr>
 <tr>
-<td class="name">orientation</td>
+<td class="name">fgcolor</td>
+<td class="type">string</td>
+<td class="description">A color for the menu's text.</td>
+</tr>
+<tr>
+<td class="name">active_background</td>
+<td class="type">string</td>
+<td class="description">A background image for a menu item that is selected (clicked on)</td>
+</tr>
+<tr>
+<td class="name">active_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as a selected (clicked) item's background.  If neither active_bgcolor nor active_background are specified, the 'highlight' color or background is used instead.</td>
+</tr>
+<tr>
+<td class="name">highlight_background</td>
+<td class="type">string</td>
+<td class="description">A background image for a menu item that is highlighted (pointed at).</td>
+</tr>
+<tr>
+<td class="name">highlight_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as a highlighted (pointed-at) item's background.  If neither highlight_bgcolor nor highlight_background are specified, the standard color or background is used instead.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
 <td class="type">string</td>
 <td class="description">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</td>
 </tr>
 <tr>
-<td class="name">type</td>
-<td class="type">string</td>
-<td class="description">Either "popup" (default) or "fixed".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
+<td class="name">popup</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
+</tr>
+<tr>
+<td class="name">row_height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the menu items in a menu.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the menu, for menus with a direction of 'horizontal'.</td>
 </tr>
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the menu.  The height is dynamically determined based on the contents.</td>
+<td class="description">width, in pixels, of the menu.  For menus with a direction of 'vertical', an unspecified width is determined dynamically based on the menu contents.</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -71,6 +106,21 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">icon</td>
+<td class="type">string</td>
+<td class="description">Optionally, the pathname of an image file to display to the left of the menu item.</td>
+</tr>
+<tr>
+<td class="name">checked</td>
+<td class="type">yes/no</td>
+<td class="description">Optionally, a checkbox can be displayed to the left of the menu item when 'checked' is specified.  In this case, the 'value' can also be a runclient() expression that controls whether the menu item is checked.</td>
+</tr>
+<tr>
+<td class="name">onright</td>
+<td class="type">yes/no</td>
+<td class="description">If set to "yes", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</td>
+</tr>
+<tr>
 <td class="name">label</td>
 <td class="type">string</td>
 <td class="description">The text to appear on the menu item.</td>
@@ -79,6 +129,21 @@
 <td class="name">value</td>
 <td class="type">string</td>
 <td class="description">The 'value' of the menu item, passed to the Selected event, below.  If not specified, it defaults to the name of the widget (not its label).</td>
+</tr>
+</table>
+<p class="childname">(of widget/menusep child widgets)</p>
+<p class="none">none currently available</p>
+<p class="childname">(of widget/menutitle child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">The text to appear on the menu title.</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -111,7 +176,7 @@ $Version=2$
 myMenu "widget/menu"
 	{
 	x = 10; y = 10; width = 72;
-	orientation = "vertical"; type = "popup";
+	direction = "vertical"; popup = yes;
 	bgcolor="#808080";
 	
 	m1 "widget/menuitem" { label="One"; }

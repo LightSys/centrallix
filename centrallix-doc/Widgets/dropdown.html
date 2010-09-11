@@ -59,6 +59,16 @@
 <td class="type">string</td>
 <td class="description">If this is set to objectsource then the dropdown acts an objectsource client.</td>
 </tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+</tr>
+<tr>
+<td class="name">query_multiselect</td>
+<td class="type">yes/no</td>
+<td class="description">If set to yes, this indicates that when the dropdown's form is in search (QBF) mode, the dropdown will allow multiple items to be selected, so the user can search for records/objects that match one of several values.  The values will be listed in the dropdown, separated by commas.</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of widget/dropdownitem child widgets)</p>
@@ -80,7 +90,20 @@
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetItems</td>
+<td class="description">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+</tr>
+<tr>
+<td class="name">SetGroup</td>
+<td class="description">This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>

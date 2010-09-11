@@ -14,12 +14,16 @@
 <p>"Client properties" are available for some widgets.  These properties may not be specified in the application file itself, but are available on the client during application operation.  They often relate to the status of a given widget.</p>
 <p>Where possible, sample code is provided for each widget to show how the widget can be used.  In most cases the widget's code is displayed in isolation, although in practice widgets can never be used outside of a "widget/page" container widget at some level. In a few cases, a more complete mini-application is shown.</p>
 <p>Sample code is generally given in "structure file" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
-<p>Copyright (c)  1998-2003 LightSys Technology Services, Inc.</p>
+<p>Copyright (c)  1998-2010 LightSys Technology Services, Inc.</p>
 <br><p><b>Documentation on the following widgets is available:</b></p>
 <table>
 <tr>
 <td><a href="#autolayout">autolayout</a></td>
 <td>Container which automatically positions its children</td>
+</tr>
+<tr>
+<td><a href="#button">button</a></td>
+<td>A multipurpose button</td>
 </tr>
 <tr>
 <td><a href="#calendar">calendar</a></td>
@@ -74,6 +78,10 @@
 <td>A visual container used to create a DHTML frameset within which page widgets can be placed</td>
 </tr>
 <tr>
+<td><a href="#hbox">hbox</a></td>
+<td>Container which automatically positions its children</td>
+</tr>
+<tr>
 <td><a href="#html">html</a></td>
 <td>A miniature HTML browser control, capable of viewing and navigating simple web documents.</td>
 </tr>
@@ -82,8 +90,20 @@
 <td>A dialog or application window which is a lightweight movable container.</td>
 </tr>
 <tr>
+<td><a href="#hints">hints</a></td>
+<td>Contains default values and modifier settings for various components</td>
+</tr>
+<tr>
+<td><a href="#image">image</a></td>
+<td>A picture (image).</td>
+</tr>
+<tr>
 <td><a href="#imagebutton">imagebutton</a></td>
 <td>A button widget which uses a set of images to control its appearance.</td>
+</tr>
+<tr>
+<td><a href="#label">label</a></td>
+<td>Form element capable of displaying text in a child window</td>
 </tr>
 <tr>
 <td><a href="#menu">menu</a></td>
@@ -114,8 +134,20 @@
 <td>Nonvisual widget permitting events to be passed in from a remote Centrallix application</td>
 </tr>
 <tr>
+<td><a href="#rule">rule</a></td>
+<td>Declares a rule - a behavior expected from a widget.</td>
+</tr>
+<tr>
 <td><a href="#remotemgr">remotemgr</a></td>
 <td>Nonvisual widget permitting the application to send events to a remote Centrallix application</td>
+</tr>
+<tr>
+<td><a href="#repeat">repeat</a></td>
+<td>Repeat a subtree of widgets</td>
+</tr>
+<tr>
+<td><a href="#scrollbar">scrollbar</a></td>
+<td>A scrollbar with a thumb</td>
 </tr>
 <tr>
 <td><a href="#scrollpane">scrollpane</a></td>
@@ -130,12 +162,12 @@
 <td>A visual widget providing a columnar presentation of multiple objects of the same type (such as query result records).</td>
 </tr>
 <tr>
-<td><a href="#textarea">textarea</a></td>
-<td>Visual multi-line text data entry widget.</td>
+<td><a href="#template">template</a></td>
+<td>templates are a way to provide default values (and default children) of different widget_class's</td>
 </tr>
 <tr>
-<td><a href="#button">button</a></td>
-<td>A multipurpose button</td>
+<td><a href="#textarea">textarea</a></td>
+<td>Visual multi-line text data entry widget.</td>
 </tr>
 <tr>
 <td><a href="#textbutton">textbutton</a></td>
@@ -154,8 +186,8 @@
 <td>A scalar variable object</td>
 </tr>
 <tr>
-<td><a href="#repeat">repeat</a></td>
-<td>Repeat a subtree of widgets</td>
+<td><a href="#vbox">vbox</a></td>
+<td>Container which automatically positions its children</td>
 </tr>
 </table>
 <br><br>
@@ -260,6 +292,106 @@ vbox1 "widget/vbox"
 	}
 		
 		</pre>
+<!-- PAGE BREAK: 'button.html' -->
+<h2 class="widgetname"><a name="button">button</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/button</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
+	    </span><h3 class="usage">Usage:</h3>
+<span class="usage">
+		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
+	    </span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</td>
+</tr>
+<tr>
+<td class="name">disable_color</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used for the button's text when it is disabled.</td>
+</tr>
+<tr>
+<td class="name">enabled</td>
+<td class="type">yes/no or expr</td>
+<td class="description">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</td>
+</tr>
+<tr>
+<td class="name">fgcolor1</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the text on the button.  Default "white".</td>
+</tr>
+<tr>
+<td class="name">fgcolor2</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">The text to appear on the button.</td>
+</tr>
+<tr>
+<td class="name">tristate</td>
+<td class="type">yes/no</td>
+<td class="description">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">The width, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the button, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the button, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">clickimage</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</td>
+</tr>
+<tr>
+<td class="name">disabledimage</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</td>
+</tr>
+<tr>
+<td class="name">image</td>
+<td class="type">string</td>
+<td class="description">The pathname of the image to be shown when the button is "idle".</td>
+</tr>
+<tr>
+<td class="name">pointimage</td>
+<td class="type">string</td>
+<td class="description">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</td>
+</tr>
+</table>
 <!-- PAGE BREAK: 'calendar.html' -->
 <h2 class="widgetname"><a name="calendar">calendar</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/calendar</span></p>
@@ -391,9 +523,29 @@ vbox1 "widget/vbox"
 <td class="description">name of objectsource field that should be associated with this checkbox.</td>
 </tr>
 <tr>
+<td class="name">fl_width</td>
+<td class="type">string</td>
+<td class="description">?</td>
+</tr>
+<tr>
 <td class="name">form</td>
 <td class="type">string</td>
 <td class="description">The name of the form that this checkbox is associated with.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">The height of the check box widget in pixels.</td>
+</tr>
+<tr>
+<td class="name">readonly</td>
+<td class="type">integer</td>
+<td class="description">(e.g. readonly=yes).</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">The width of the check box widget in pixels.</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -619,6 +771,11 @@ checkbox_test "widget/page"
 <td class="description">y-coordinate of the upper left corner of the component.  If unset, defaults to 0.</td>
 </tr>
 <tr>
+<td class="name">form</td>
+<td class="type">integer</td>
+<td class="description">Can specify another form to be a child of (if different than the implied form in which this control is nested).</td>
+</tr>
+<tr>
 <td class="name">width</td>
 <td class="type">integer</td>
 <td class="description">width, in pixels, of the component.  If unset, this defaults to the width of the component's containing widget.</td>
@@ -631,7 +788,7 @@ checkbox_test "widget/page"
 <tr>
 <td class="name">path</td>
 <td class="type">string</td>
-<td class="description">The path, in the OSML, to the component's definition (.cmp) file.</td>
+<td class="description">The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp)</td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -648,6 +805,111 @@ checkbox_test "widget/page"
 <td class="type">yes/no</td>
 <td class="description">If enabled (dynamic single-instantiation components only), when a component is instantiated a second time, the original component is automatically destroyed so there is at most one instance at a time in existence.  Defaults to 'yes'.</td>
 </tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">Set the Initial starting value contained in this component (Can this be directly accessed? as :widget_name:text?).</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">true/false</td>
+<td class="description">(e.g. visible=false).</td>
+</tr>
+<tr>
+<td class="name">field</td>
+<td class="type">string</td>
+<td class="description">The osrc field to which this this smartfield is linked/connected.</td>
+</tr>
+<tr>
+<td class="name">tooltip</td>
+<td class="type">string</td>
+<td class="description">The message to display when the user hovers their mouse over the smart field.</td>
+</tr>
+<tr>
+<td class="name">popup_source</td>
+<td class="type">string</td>
+<td class="description">PopUp tree of possible selections (in one example, it references a .qyt file).</td>
+</tr>
+<tr>
+<td class="name">popup_text</td>
+<td class="type">string</td>
+<td class="description">The text to display above the popup selection tree.</td>
+</tr>
+<tr>
+<td class="name">popup_order</td>
+<td class="type">string</td>
+<td class="description">(e.g. desc)</td>
+</tr>
+<tr>
+<td class="name">label_height</td>
+<td class="type">integer</td>
+<td class="description">The height of the label in pixels.</td>
+</tr>
+<tr>
+<td class="name">label_width</td>
+<td class="type">integer</td>
+<td class="description">The width of the label in pixels.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of /sys/cmp/smart_field.cmp child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ctl_type</td>
+<td class="type">string</td>
+<td class="description"> Type of smart field (e.g. label, editbox, checkbox, datetime).</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">(e.g. readonly). Must have field be set in order to be "readonly".</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">string</td>
+<td class="description">This is something which can accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</td>
+</tr>
+</table>
+<p class="childname">(of /sys/cmp/form_controls.cmp child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">deletable</td>
+<td class="type">yes/no</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">multienter</td>
+<td class="type">integer</td>
+<td class="description">(e.g. 1)</td>
+</tr>
+<tr>
+<td class="name">object_name</td>
+<td class="type">string</td>
+<td class="description">Title to put across the form control bar (Note: the form_controls.cmp allows the user to perform row operations on a given record set)</td>
+</tr>
+</table>
+<p class="childname">(of /apps/kardia/modules/base/editbox_tree.cmp child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">content</td>
+<td class="type">string</td>
+<td class="description">This is something which can accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</td>
+</tr>
 </table>
 <h3 class="actions">Actions:</h3>
 <table class="actions">
@@ -663,6 +925,10 @@ checkbox_test "widget/page"
 <td class="name">Destroy</td>
 <td class="description">Destroys the component.  If multiple instances exist, then all instances are destroyed.</td>
 </tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Called by a connector to this a smartfield with the parameter 'Value' set to the new value.</td>
+</tr>
 </table>
 <h3 class="events">Events:</h3>
 <table class="events">
@@ -673,6 +939,14 @@ checkbox_test "widget/page"
 <tr>
 <td class="name">LoadComplete</td>
 <td class="description">This event is triggered when a dynamic component completes loading from the server.</td>
+</tr>
+<tr>
+<td class="name">DataChange</td>
+<td class="description">This event is triggered when ...</td>
+</tr>
+<tr>
+<td class="name">LoseFocus</td>
+<td class="description"></td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -704,6 +978,7 @@ formctl "widget/component"
 			<p>To declare that a component generates an Event, place a "widget/component-decl-event" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.</p>
 			<p>Similarly, to declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
 			<p>Components can take parameters just like applications can.  See the "widget/parameter" widget for details on how to declare parameters on applications and components.</p>
+			<p>Several of the properties of a component-decl are used to make it easy to wrap another widget or component.  The expose_actions_for, expose_events_for, and expose_properties_for properties cause the actions, events, and properties of a widget or component inside the component-decl to be exposed to the "outside world".  The apply_hints_to property causes any presentation hints ("widget/hints") that are applied in the instantiation of a component-decl (inside the "widget/component") to be applied to the specified widget or component inside the component-decl.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -720,6 +995,26 @@ formctl "widget/component"
 <td class="name">height</td>
 <td class="type">integer</td>
 <td class="description">The design height, in pixels, of the component.</td>
+</tr>
+<tr>
+<td class="name">expose_actions_for</td>
+<td class="type">string</td>
+<td class="description">Specifies a widget inside the component-decl whose actions (methods) we want to expose on the external interface of this component-decl.</td>
+</tr>
+<tr>
+<td class="name">expose_events_for</td>
+<td class="type">string</td>
+<td class="description">Specifies a widget inside the component-decl whose events we want to expose on the external interface of this component-decl.</td>
+</tr>
+<tr>
+<td class="name">expose_properties_for</td>
+<td class="type">string</td>
+<td class="description">Specifies a widget inside the component-decl whose client-side properties we want to expose on the external interface of this component-decl.</td>
+</tr>
+<tr>
+<td class="name">apply_hints_to</td>
+<td class="type">string</td>
+<td class="description">Specifies a widget inside the component-decl that will receive any presentation hints constraints ("widget/hints") that are applied to the instantiation of this component-decl.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -782,9 +1077,39 @@ my_button "widget/component-decl"
 <td class="description">The name of the event that this connector will act on.</td>
 </tr>
 <tr>
+<td class="name">event_condition</td>
+<td class="type">integer</td>
+<td class="description">(optional) specifies a runclient() expression indicating the conditions under which the connector will be triggered.</td>
+</tr>
+<tr>
+<td class="name">event_confirm</td>
+<td class="type">string</td>
+<td class="description">(optional) specifies a string or runclient() expression that will be presented to the user in an "OK/Cancel" message box allowing the user to OK or Cancel the triggering of the connector.</td>
+</tr>
+<tr>
+<td class="name">event_cancel</td>
+<td class="type">integer</td>
+<td class="description">(optional) specifies a runclient() expression indicating whether the connector (and the operation generating the event, if it is cancelable), and further connectors on this event, should be canceled.</td>
+</tr>
+<tr>
+<td class="name">event_delay</td>
+<td class="type">integer</td>
+<td class="description">(optional) specifies an integer or runclient() expression indicating that the action should be triggered on the target after a delay of N milliseconds.</td>
+</tr>
+<tr>
+<td class="name">event_all_params</td>
+<td class="type">integer</td>
+<td class="description">(optional) specifies an integer or runclient() expression indicating that all of the parameters generated by the event should be passed as parameters to the action.  Particularly useful when "relaying" an action on a component-decl to another action inside the component-decl, as the individual parameters don't need to be listed separately.</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">The name of the widget generating the event (defaults to the widget the connector is placed inside of).</td>
+</tr>
+<tr>
 <td class="name">target</td>
 <td class="type">string</td>
-<td class="description">The name of another widget on the page whose action will be called by this connector.</td>
+<td class="description">The name of another widget on the page whose action will be called by this connector (if unspecified, defaults to the widget the connector is placed inside of).</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -874,6 +1199,21 @@ cn1 "widget/connector"
 <td class="name">fgcolor</td>
 <td class="type">string</td>
 <td class="description">the foreground color of the bar and pane. (named or numeric)</td>
+</tr>
+<tr>
+<td class="name">search_by_range</td>
+<td class="type">yes/no</td>
+<td class="description">Default "yes".  Specifies that when the datetime widget is in a form that is in search (QBF) mode, the datetime should display both a "start" and an "end" calendar so the user can search for records/objects matching a range of dates.</td>
+</tr>
+<tr>
+<td class="name">date_only</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If set to "yes" indicates that the datetime widget should only allow select and display a date, not a date and time.  It may be useful to set default_time when using this option.</td>
+</tr>
+<tr>
+<td class="name">default_time</td>
+<td class="type">string</td>
+<td class="description">When the user sets the date without selecting a time value (or if date_only is set), use this time as the "default" time.  This can be set to "00:00:00" or "23:59:59", for example, to specify a time at the start or end of a day.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -986,6 +1326,16 @@ cn1 "widget/connector"
 <td class="type">string</td>
 <td class="description">If this is set to objectsource then the dropdown acts an objectsource client.</td>
 </tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+</tr>
+<tr>
+<td class="name">query_multiselect</td>
+<td class="type">yes/no</td>
+<td class="description">If set to yes, this indicates that when the dropdown's form is in search (QBF) mode, the dropdown will allow multiple items to be selected, so the user can search for records/objects that match one of several values.  The values will be listed in the dropdown, separated by commas.</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of widget/dropdownitem child widgets)</p>
@@ -1007,7 +1357,20 @@ cn1 "widget/connector"
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetItems</td>
+<td class="description">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+</tr>
+<tr>
+<td class="name">SetGroup</td>
+<td class="description">This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>
@@ -1121,6 +1484,16 @@ myDropDown2 "widget/dropdown"
 <td class="description">A color, RGB or named, for the editbox contents. If neither bgcolor nor background is specified, the editbox is transparent.</td>
 </tr>
 <tr>
+<td class="name">description_fgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.</td>
+</tr>
+<tr>
+<td class="name">empty_description</td>
+<td class="type">string</td>
+<td class="description">The value description to display in the editbox when the editbox is empty.  For instance, "optional" or "required" or "type search and press ENTER" might be commonly used empty_description settings.</td>
+</tr>
+<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
 <td class="description">height, in pixels, of the editbox.</td>
@@ -1139,6 +1512,11 @@ myDropDown2 "widget/dropdown"
 <td class="name">style</td>
 <td class="type">string</td>
 <td class="description">Either "raised" or "lowered", and determines the style of the border drawn around the editbox.  Default is "lowered".</td>
+</tr>
+<tr>
+<td class="name">tooltip</td>
+<td class="type">string</td>
+<td class="description">A string to display in a tooltip when the user rests the mouse pointer over the editbox.  By default, the editbox will display a tooltip of its content if the content is too long to fit in the visible part of the editbox.</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -1167,6 +1545,10 @@ myDropDown2 "widget/dropdown"
 <tr>
 <td class="name">SetValue</td>
 <td class="description">The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).</td>
+</tr>
+<tr>
+<td class="name">SetValueDescription</td>
+<td class="description">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -1307,6 +1689,7 @@ mySoundPlayer "widget/execmethod"
 		<li> New - new object being entered/created.</li>
 		</ol>
 			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a "three-way confirm" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a "three-way confirm" window.  This should be a hidden (visible=no) "widget/htmlwindow" object which may contain any content, but should at least contain three buttons named "_3bConfirmSave", "_3bConfirmDiscard", and "_3bConfirmCancel" directly in the htmlwindow.  During a confirm operation, this window will become "application-modal"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
+			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
@@ -1318,29 +1701,69 @@ mySoundPlayer "widget/execmethod"
 <th class="description">Description</th>
 </tr>
 <tr class="notimplimented">
-<td class="name">AllowQuery</td>
-<td class="type">integer</td>
+<td class="name">allow_query</td>
+<td class="type">yes/no</td>
 <td class="description">Allow query by form</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">AllowNew</td>
-<td class="type">integer</td>
+<td class="name">allow_new</td>
+<td class="type">yes/no</td>
 <td class="description">Allow creation of new records</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">AllowModify</td>
-<td class="type">integer</td>
+<td class="name">allow_modify</td>
+<td class="type">yes/no</td>
 <td class="description">Allow modification of existing records</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">AllowView</td>
-<td class="type">integer</td>
+<td class="name">allow_view</td>
+<td class="type">yes/no</td>
 <td class="description">Allow viewing of existing data</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">AllowNoData</td>
-<td class="type">integer</td>
+<td class="name">allow_nodata</td>
+<td class="type">yes/no</td>
 <td class="description">Allow the 'no data' state</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">allow_delete</td>
+<td class="type">yes/no</td>
+<td class="description">Allow deletion of the displayed record</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">confirm_delete</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">auto_focus</td>
+<td class="type">yes/no</td>
+<td class="description">Default "yes".  Whether to automatically place the focus on the first form element in the form when the form transitions to the New, Modify, or Search mode for any reason other than the user manually putting focus on one of the form elements.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">enter_mode</td>
+<td class="type">string</td>
+<td class="description">Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">next_form</td>
+<td class="type">string</td>
+<td class="description">Specifies another form to transfer focus to when the user presses TAB at the end of the form.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">next_form_within</td>
+<td class="type">string</td>
+<td class="description">Similar to "next_form", but searches for the next form after this one within a given widget or component.  Transitioning from one component context to another is permitted (you could specify a "widget/page" widget here, and cause focus to transfer to another form in the same application, regardless of level of component nesting; this may or may not be desired behavior).</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">tab_revealed_only</td>
+<td class="type">yes/no</td>
+<td class="description">When tabbing between form elements, if this is set to "yes", do not transfer focus to form elements that are not currently visible to the user.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">allow_obscure</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If this is set to "yes", then the form will permit its data to be obscured (hidden from the user, via a window closure or tab page switch) and unsaved at the same time.  If set to "no", the form will require the user to save or cancel any data modifications before the form may be obscured.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">MultiEnter</td>
@@ -1661,7 +2084,16 @@ BigFrameset "widget/frameset"
 	}
 		
 		</pre>
-<!-- PAGE BREAK: 'html.html' -->
+<!-- PAGE BREAK: 'hbox.html' -->
+<h2 class="widgetname"><a name="hbox">hbox</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/hbox</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>An autolayout widget with style set to "hbox".  See "widget/autolayout".</p>
+		</span><!-- PAGE BREAK: 'html.html' -->
 <h2 class="widgetname"><a name="html">html</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/html</span></p>
 <p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
@@ -1809,6 +2241,16 @@ HTMLArea "widget/html"
 <td class="description">Either "dialog" or "window", and determines the style of the window's border.</td>
 </tr>
 <tr>
+<td class="name">modal</td>
+<td class="type">yes/no</td>
+<td class="description">If "yes", the window is modal (and IsModal need not be passed to "Open").  A modal window will force the user to close the window before anything else in the application can be accessed.</td>
+</tr>
+<tr>
+<td class="name">toplevel</td>
+<td class="type">yes/no</td>
+<td class="description">If "yes", the window will float above all other widgets in the application, otherwise it will be clipped by its own container.</td>
+</tr>
+<tr>
 <td class="name">textcolor</td>
 <td class="type">string</td>
 <td class="description">The color for the titlebar's text (window title).  Default "black".</td>
@@ -1816,7 +2258,7 @@ HTMLArea "widget/html"
 <tr>
 <td class="name">titlebar</td>
 <td class="type">yes/no</td>
-<td class="description">whether the window will have a titlebar. Default "yes".</td>
+<td class="description">whether the window will have a titlebar (and the close "X" in the upper right corner of the window). Default "yes".</td>
 </tr>
 <tr>
 <td class="name">title</td>
@@ -1902,6 +2344,123 @@ MyWindow "widget/childwindow"
 	}
 		
 		</pre>
+<!-- PAGE BREAK: 'hints.html' -->
+<h2 class="widgetname"><a name="hints">hints</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/hints</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The hints widget stores default values and other component modifying properties.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The hints widget can be placed inside of any visual component. Hints do not contain visual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">allowchars</td>
+<td class="type">string</td>
+<td class="description">Defines a set of acceptable characters (e.g. allowchars="0123456789").</td>
+</tr>
+<tr>
+<td class="name">default</td>
+<td class="type">mixed</td>
+<td class="description">A string or integer that specifies the initial, default, starting value for the component which containing this widget/hints widget.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Optional: contains a combination of 1 or more items following set {readonly, alwaysdef} separated by a comma if multiple items are chosen.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="properties">Client Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// Here is a checkbox which uses widget/hints.
+f_trx_mod "widget/checkbox"
+{
+	width=16;
+	y=4;
+	readonly=yes;
+	fieldname="a_modified";
+	f_trx_mod_h "widget/hints"
+	{
+		style=readonly,alwaysdef;
+		default=1;
+	}
+}		
+		</pre>
+<!-- PAGE BREAK: 'image.html' -->
+<h2 class="widgetname"><a name="image">image</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/image</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The image widget displays a picture (image).</p>
+			<p>This widget can be a form element, in which case it will display an image as specified by the data from the form.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The image widget can be placed inside any container that allows for visual widgets.  Only connectors may be placed inside it.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">If using a form for the image path, this is the name of the form.  If left unspecified, and fieldname is supplied, the default will be whatever form the image is inside.</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">If using a form for the image path, the name of the column in the datasource you want to reference.</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">An OSML pathname for the location of the image (such as a png or jpg file).</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the image.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the image.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the image, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the image, relative to its container.</td>
+</tr>
+</table>
 <!-- PAGE BREAK: 'imagebutton.html' -->
 <h2 class="widgetname"><a name="imagebutton">imagebutton</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/imagebutton</span></p>
@@ -1948,6 +2507,11 @@ MyWindow "widget/childwindow"
 <td class="name">pointimage</td>
 <td class="type">string</td>
 <td class="description">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</td>
+</tr>
+<tr>
+<td class="name">repeat</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to repeat the click event multiple times while the user holds down the button.</td>
 </tr>
 <tr>
 <td class="name">height</td>
@@ -2013,6 +2577,115 @@ MyButton "widget/imagebutton"
 	}
 		
 		</pre>
+<!-- PAGE BREAK: 'label.html' -->
+<h2 class="widgetname"><a name="label">label</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/label</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The label widget is used to display a non-editable string of text.  It displays as a simple label.</p>
+			<p>A label can be used as a form element; to do this, specify a fieldname, and optionally a form.</p>
+			<p>A label can behave like a "link": to do this, specify a point_fgcolor and a click_fgcolor.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The label widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Labels may not contain visual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">align</td>
+<td class="type">string</td>
+<td class="description">Describes how the text should align in the label (e.g. right).</td>
+</tr>
+<tr>
+<td class="name">font_size</td>
+<td class="type">integer</td>
+<td class="description">(e.g. 16, default: 12).</td>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">The name of the form that this label is associated with.</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">The name of the column in the datasource that will be used to supply the text of the label.</td>
+</tr>
+<tr>
+<td class="name">fgcolor</td>
+<td class="type">string</td>
+<td class="description">The color (named or #numeric) of the text in the label.</td>
+</tr>
+<tr>
+<td class="name">point_fgcolor</td>
+<td class="type">string</td>
+<td class="description">The color (named or #numeric) of the text in the label when the user hovers the mouse over the label.</td>
+</tr>
+<tr>
+<td class="name">click_fgcolor</td>
+<td class="type">string</td>
+<td class="description">The color (named or #numeric) of the text in the label when the user clicks on the label.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">(e.g. bold).</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">The text that the label is to display.</td>
+</tr>
+<tr>
+<td class="name">valign</td>
+<td class="type">string</td>
+<td class="description">Describes how the text should align vertically within the label (e.g. top, middle, or bottom).</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">string</td>
+<td class="description">This property allows a runclient() expression to dynamically supply the text to display in the label.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">The width of the label.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the checkbox, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the checkbox, default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="properties">Client Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// Here is a label.
+f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size=16; }
+
+		
+		</pre>
 <!-- PAGE BREAK: 'menu.html' -->
 <h2 class="widgetname"><a name="menu">menu</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/menu</span></p>
@@ -2045,19 +2718,54 @@ MyButton "widget/imagebutton"
 <td class="description">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor background are specified, the menu is transparent.</td>
 </tr>
 <tr>
-<td class="name">orientation</td>
+<td class="name">fgcolor</td>
+<td class="type">string</td>
+<td class="description">A color for the menu's text.</td>
+</tr>
+<tr>
+<td class="name">active_background</td>
+<td class="type">string</td>
+<td class="description">A background image for a menu item that is selected (clicked on)</td>
+</tr>
+<tr>
+<td class="name">active_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as a selected (clicked) item's background.  If neither active_bgcolor nor active_background are specified, the 'highlight' color or background is used instead.</td>
+</tr>
+<tr>
+<td class="name">highlight_background</td>
+<td class="type">string</td>
+<td class="description">A background image for a menu item that is highlighted (pointed at).</td>
+</tr>
+<tr>
+<td class="name">highlight_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as a highlighted (pointed-at) item's background.  If neither highlight_bgcolor nor highlight_background are specified, the standard color or background is used instead.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
 <td class="type">string</td>
 <td class="description">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</td>
 </tr>
 <tr>
-<td class="name">type</td>
-<td class="type">string</td>
-<td class="description">Either "popup" (default) or "fixed".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
+<td class="name">popup</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
+</tr>
+<tr>
+<td class="name">row_height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the menu items in a menu.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the menu, for menus with a direction of 'horizontal'.</td>
 </tr>
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the menu.  The height is dynamically determined based on the contents.</td>
+<td class="description">width, in pixels, of the menu.  For menus with a direction of 'vertical', an unspecified width is determined dynamically based on the menu contents.</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -2079,6 +2787,21 @@ MyButton "widget/imagebutton"
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">icon</td>
+<td class="type">string</td>
+<td class="description">Optionally, the pathname of an image file to display to the left of the menu item.</td>
+</tr>
+<tr>
+<td class="name">checked</td>
+<td class="type">yes/no</td>
+<td class="description">Optionally, a checkbox can be displayed to the left of the menu item when 'checked' is specified.  In this case, the 'value' can also be a runclient() expression that controls whether the menu item is checked.</td>
+</tr>
+<tr>
+<td class="name">onright</td>
+<td class="type">yes/no</td>
+<td class="description">If set to "yes", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</td>
+</tr>
+<tr>
 <td class="name">label</td>
 <td class="type">string</td>
 <td class="description">The text to appear on the menu item.</td>
@@ -2087,6 +2810,21 @@ MyButton "widget/imagebutton"
 <td class="name">value</td>
 <td class="type">string</td>
 <td class="description">The 'value' of the menu item, passed to the Selected event, below.  If not specified, it defaults to the name of the widget (not its label).</td>
+</tr>
+</table>
+<p class="childname">(of widget/menusep child widgets)</p>
+<p class="none">none currently available</p>
+<p class="childname">(of widget/menutitle child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">The text to appear on the menu title.</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -2119,7 +2857,7 @@ $Version=2$
 myMenu "widget/menu"
 	{
 	x = 10; y = 10; width = 72;
-	orientation = "vertical"; type = "popup";
+	direction = "vertical"; popup = yes;
 	bgcolor="#808080";
 	
 	m1 "widget/menuitem" { label="One"; }
@@ -2152,6 +2890,11 @@ myMenu "widget/menu"
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">autoquery</td>
+<td class="type">string</td>
+<td class="description">One of oneachreveal, never, onload, onfirstreveal.  (note: this autoquery setting is different from, but related to, the "widget/rule" "autoquery").  "onload" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  "onfirstreveal" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user (e.g., the containing childwindow becomes visible or tabpage is selected).  "oneachreveal" means to do so *each* time the data is displayed to the user.  "never" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.  Important Note:  If you expect to normally trigger the osrc via a relationship or via QueryParam, it is often *best* to set autoquery to 'never'.  Otherwise, unexpected results can sometimes occur.</td>
+</tr>
+<tr>
 <td class="name">baseobj</td>
 <td class="type">string</td>
 <td class="description">If inserts and deletes are to function, the ObjectSystem pathname in which those inserts and deletes should occur.  This should be one of the objects specified in the FROM clause of the SQL statement.</td>
@@ -2176,9 +2919,39 @@ myMenu "widget/menu"
 <td class="type">string</td>
 <td class="description">The SQL statement used to retrieve the data.</td>
 </tr>
+<tr>
+<td class="name">indicates_activity</td>
+<td class="type">yes/no</td>
+<td class="description">Whether normal query activity on this objectsource indicates to the server that the user is active.  Some objectsources (in conjunction with a widget/timer) regularly refresh their data; for those, indicates_activity can be set to "no" so that those refreshes don't cause a user's session to never time-out.</td>
+</tr>
+<tr>
+<td class="name">delay_query_until_reveal</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If the objectsource's clients (form/table/etc) are all obscured from the user (e.g., in a closed window or on a non-visible tab page), delay any queries until a Reveal occurs on one of the objectsource's clients.</td>
+</tr>
+<tr>
+<td class="name">use_having_clause</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If set to "yes", then queries will be performed using a HAVING clause instead of a WHERE clause.</td>
+</tr>
+<tr>
+<td class="name">key_objname</td>
+<td class="type">string</td>
+<td class="description">The name of the object in the SQL query that contains the primary key for the query.</td>
+</tr>
+<tr>
+<td class="name">send_updates</td>
+<td class="type">yes/no</td>
+<td class="description">Default "yes".  If set to "no", the objectsource will not relay any updates (modifications, etc.) that the user makes to the server.</td>
+</tr>
+<tr>
+<td class="name">receive_updates</td>
+<td class="type">yes/no</td>
+<td class="description">** This feature currently disabled in Centrallix 0.9.1 **  Default "no".  If set to "yes", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
-<p class="childname">(of rule with ruletype=osrc_relationship child widgets)</p>
+<p class="childname">(of rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync) child widgets)</p>
 <table class="childproperties">
 <tr>
 <th class="name">Property</th>
@@ -2191,6 +2964,11 @@ myMenu "widget/menu"
 <td class="description">The target objectsource that this objectsource will be related to</td>
 </tr>
 <tr>
+<td class="name">is_slave</td>
+<td class="type">yes/no</td>
+<td class="description">Defaults to 'yes'.  If it is set to 'no', then this osrc is set up to be a master of the target, otherwise the default is for it to be a slave of the target.</td>
+</tr>
+<tr>
 <td class="name">key_#</td>
 <td class="type">string</td>
 <td class="description">The field names in this objectsource to be used as the key value for the relationship.  Keys can be key_1 through key_5.</td>
@@ -2198,7 +2976,50 @@ myMenu "widget/menu"
 <tr>
 <td class="name">target_key_#</td>
 <td class="type">string</td>
-<td class="description">The field names in the target objectsource to be used for the key value for the relationship.  These keys can be target_key_1 through target_key_5.</td>
+<td class="description">The field names in the target objectsource to be used for the key value for the relationship (where # is an integer 1 through 5).  These keys can be target_key_1 through target_key_5.</td>
+</tr>
+<tr>
+<td class="name">autoquery</td>
+<td class="type">true/false</td>
+<td class="description">When autoquery is set to true, when the master changes, the slave automatially requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.</td>
+</tr>
+<tr>
+<td class="name">master_norecs_action</td>
+<td class="type">string</td>
+<td class="description">One of: allrecs, norecs, or sameasnull (the default).  If the master osrc has no data loaded in it (no records), this determines how the slave (child) osrc behaves.  'allrecs' means to query for all records that match the sql query for the osrc, without additional constraints.  'norecs' means the slave (child) will be empty.  'sameasnull' means to handle it as if the key value in the master were NULL (see master_null_action).</td>
+</tr>
+<tr>
+<td class="name">master_null_action</td>
+<td class="type">string</td>
+<td class="description">One of: allrecs, norecs, or nullisvalue (the default).  If the master osrc has a NULL value for its key (as defined by key_#/target_key_#), this setting determines how the slave (child) osrc behaves.  'allrecs' and 'norecs' have the same meaning as for master_norecs_action.  'nullisvalue' means to treat the NULL as a value, and query for slave records that have a matching NULL values in their key (as defined by key_#/target_key_#).  If no slave records have null values in the key, then 'nullisvalue' and 'norecs' have the same result.</td>
+</tr>
+</table>
+<p class="childname">(of rule with ruletype=osrc_key child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">keying_method</td>
+<td class="type">string</td>
+<td class="description">(e.g. counterosrc).</td>
+</tr>
+<tr>
+<td class="name">key_fieldname</td>
+<td class="type">string</td>
+<td class="description">The field name in this objectsource to be used as the key.</td>
+</tr>
+<tr>
+<td class="name">osrc</td>
+<td class="type">string</td>
+<td class="description">The osrc in which to store the next auto id / counting number.</td>
+</tr>
+<tr>
+<td class="name">counter_attribute</td>
+<td class="type">string</td>
+<td class="description">The field in the specified 'osrc' in which to store the auto number.</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -2209,11 +3030,11 @@ myMenu "widget/menu"
 </tr>
 <tr>
 <td class="name">DoubleSync</td>
-<td class="description">Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</td>
+<td class="description">DEPRECATED: Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</td>
 </tr>
 <tr>
 <td class="name">Sync</td>
-<td class="description">Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</td>
+<td class="description">DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">Clear</td>
@@ -2229,7 +3050,11 @@ myMenu "widget/menu"
 </tr>
 <tr>
 <td class="name">QueryParam</td>
-<td class="description">Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.</td>
+<td class="description">Refreshes the query, and allows new parameter values to be passed in.  Previous comment: Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.</td>
+</tr>
+<tr>
+<td class="name">QueryText</td>
+<td class="description">Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples:  'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case insensitive.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">OrderObject</td>
@@ -2263,6 +3088,18 @@ myMenu "widget/menu"
 <td class="name">Last</td>
 <td class="description">Returns last record in the replica</td>
 </tr>
+<tr>
+<td class="name">Refresh</td>
+<td class="description">Re-runs the SQL query using the previously stored parameter values (if any).  This is used when the data on the server is believed to have changed, and the new data is desired to be displayed in the application.  This action does not change the current row.</td>
+</tr>
+<tr>
+<td class="name">RefreshObject</td>
+<td class="description">Re-runs the SQL query for just the one current object (record).  This does not change the currently selected record in the osrc.  This should be used when the intent is to refresh the values of just the current object without affecting anything else.</td>
+</tr>
+<tr>
+<td class="name">FindObject</td>
+<td class="description">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.</td>
+</tr>
 </table>
 <h3 class="events">Events:</h3>
 <table class="events">
@@ -2291,6 +3128,11 @@ osrc1 "widget/osrc"
 	baseobj = "/samples";
 
 	// form or table widgets go here
+	// Notes: 
+	// 1. WHERE clause may require '*=' instead of '='
+	// 2. Be careful with string / integer parameters,
+	//    strings requires quotes, but using :parameters:paramname
+	//    in the sql query automatically adds quotes.
 	}
 		
 		</pre>
@@ -2374,6 +3216,36 @@ osrc1 "widget/osrc"
 <td class="type">string</td>
 <td class="description">The title which will appear in the browser's window title bar.</td>
 </tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">widget_template</td>
+<td class="type">string</td>
+<td class="description">One or more comma-separated pathnames for widget templates to use.  The specified files should contain "widget/template" objects (see "widget/template for details).</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">show_diagnostics</td>
+<td class="type">yes/no</td>
+<td class="description">Set this to "yes" to display message boxes when application errors occur, such as an undefined property reference.  The default is "no", but this is handy when debugging.</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
@@ -2427,6 +3299,11 @@ MyPage "widget/page"
 <td class="description">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor background is specified, the pane will be transparent.</td>
 </tr>
 <tr>
+<td class="name">border_color</td>
+<td class="type">string</td>
+<td class="description">For "bordered" pane styles, this is the color of the border, either named or a #number.</td>
+</tr>
+<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
 <td class="description">height, in pixels, of the pane.</td>
@@ -2434,7 +3311,7 @@ MyPage "widget/page"
 <tr>
 <td class="name">style</td>
 <td class="type">string</td>
-<td class="description">Either "raised" or "lowered", and determines the style of the pane's border.</td>
+<td class="description">"raised", "lowered", "bordered", or "flat".  Determines the style of the pane's border.</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -2492,9 +3369,19 @@ mypane "widget/pane"
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">type</td>
+<td class="name">allowchars</td>
 <td class="type">string</td>
-<td class="description">The data type of the parameter.  Can be "integer", "string", "double", "datetime", "money", or "object".</td>
+<td class="description"> The set of characters that are allowed. (e.g. allowchars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; )</td>
+</tr>
+<tr>
+<td class="name">default</td>
+<td class="type">mixed</td>
+<td class="description"> If a parameter is not passed in, then the (optional) default value is assigned to the parameter (e.g. default = null, or 2745).</td>
+</tr>
+<tr>
+<td class="name">deploy_to_client</td>
+<td class="type">yes/no</td>
+<td class="description">Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type "object", are not deployed to the client.  To override this behavior, set this option to "yes".</td>
 </tr>
 <tr>
 <td class="name">find_container</td>
@@ -2502,9 +3389,9 @@ mypane "widget/pane"
 <td class="description">If this is a parameter to a component, and the parameter has type "object", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the contianing application or component, without that form or objectsource having to be explicitly passed to the component.</td>
 </tr>
 <tr>
-<td class="name">deploy_to_client</td>
-<td class="type">yes/no</td>
-<td class="description">Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type "object", are not deployed to the client.  To override this behavior, set this option to "yes".</td>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">The data type of the parameter.  Can be "integer", "string", "double", "datetime", "money", or "object".</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -2577,7 +3464,12 @@ my_cmp "widget/component-decl"
 <td class="description">height, in pixels, of the panel.</td>
 </tr>
 <tr>
-<td class="name">outlinecolor</td>
+<td class="name">outline_background</td>
+<td class="type">string</td>
+<td class="description">An image to be used for the rectangular border drawn around the radio buttons.</td>
+</tr>
+<tr>
+<td class="name">outline_bgcolor</td>
 <td class="type">string</td>
 <td class="description">The color, RGB or named, of the rectangular border drawn around the radio buttons.</td>
 </tr>
@@ -2664,6 +3556,31 @@ testradio "widget/radiobuttonpanel"
 			<p>The remote control widget is a nonvisual widget and thus cannot contain visual widgets.  It is normally located at the top-level of an application, within a "widget/page" object.</p>
 		</span><h3 class="sample">Sample Code:</h3>
 <p class="none">none currently available</p>
+<!-- PAGE BREAK: 'rule.html' -->
+<h2 class="widgetname"><a name="rule">rule</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/rule</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The rule widget is used as an important part of Centrallix's declarative application development.  It specifies behavior expected from a widget or relationship between two widgets.  For instance, one type of rule, the osrc_relationship rule, ties two objectsources together to enforce a primary key / foreign key relationship between the two.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Various widgets can have rule widgets; the various types of rule widgets are described in the sections for the widgets that they relate to.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ruletype</td>
+<td class="type">string</td>
+<td class="description">The type of rule.  For instance, a "widget/osrc" can have "osrc_relationship" and "osrc_key" rules.</td>
+</tr>
+</table>
 <!-- PAGE BREAK: 'remotemgr.html' -->
 <h2 class="widgetname"><a name="remotemgr">remotemgr</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/remotemgr</span></p>
@@ -2681,6 +3598,114 @@ testradio "widget/radiobuttonpanel"
 			<p>The remote control manager widget is a nonvisual widget and thus cannot contain visual widgets.It is normally located at the top-level of an application, within a "widget/page" object.</p>
 		</span><h3 class="sample">Sample Code:</h3>
 <p class="none">none currently available</p>
+<!-- PAGE BREAK: 'repeat.html' -->
+<h2 class="widgetname"><a name="repeat">repeat</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/repeat</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.</p>
+	    </span><h3 class="usage">Usage:</h3>
+<span class="usage">
+		<p>This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.</p>
+		<p>The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.</p>
+	    </span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The sql query that will be run on the server</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// This is a repeat widget inside a vbox
+	vbox "widget/vbox"
+	    {
+	    x=10; y=10; cellsize=20; spacing=0;
+	    rpt "widget/repeat"
+		{
+		sql="SELECT :name FROM /samples WHERE substring(:name,1,1)='t'";
+		button "widget/button"
+		    {
+		    type="text";
+		    width=100; height=20;
+		    text=runserver(:rpt:name);
+		    }
+		}
+	    }
+		
+	    </pre>
+<!-- PAGE BREAK: 'scrollbar.html' -->
+<h2 class="widgetname"><a name="scrollbar">scrollbar</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/scrollbar</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
+			<p>Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>As a visual widget, the scrollbar can be placed anywhere a visual widget is permitted.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image to be placed behind the scrollbar.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the scrollbar background. If neither bgcolor nor background is supplied, the scrollbar is transparent.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
+<td class="type">string</td>
+<td class="description">Either "horizontal" or "vertical" indicating the visible direction that the scrollbar is oriented.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the scrollbar.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the scrollbar.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the scrollbar, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the scrollbar, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">range</td>
+<td class="type">integer</td>
+<td class="description">The upper limit of the range of the scrollbar's value.  The value will range from 0 to the number specified by 'range'.  This property can be set to a runclient() dynamic expression, in which case the range will change as the expression changes.</td>
+</tr>
+</table>
 <!-- PAGE BREAK: 'scrollpane.html' -->
 <h2 class="widgetname"><a name="scrollpane">scrollpane</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/scrollpane</span></p>
@@ -2784,22 +3809,37 @@ MyScrollPane "widget/scrollpane"
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
-<td class="description">An image to be used as the background of the tab control.This is useful for adding control.</td>
+<td class="description">An image to be used as the background of the tab control.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">As an alternate to "background", "bgcolor" can specify a color, either named or RGB, control.</td>
+<td class="description">As an alternate to "background", "bgcolor" can specify a color, either named or RGB.</td>
+</tr>
+<tr>
+<td class="name">inactive_background</td>
+<td class="type">string</td>
+<td class="description">An image to be used as the background of the tabs which are inactive (in the background).</td>
+</tr>
+<tr>
+<td class="name">inactive_bgcolor</td>
+<td class="type">string</td>
+<td class="description">As an alternate to "inactive_background", "inactive_bgcolor" can specify a color, either named or RGB.</td>
 </tr>
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">the height, in pixels, of the entire tab control, including the tabs and pages.</td>
+<td class="description">the height, in pixels, of the tab control, including the page height but not including the height of the tabs at the top.</td>
 </tr>
 <tr>
 <td class="name">selected</td>
 <td class="type">string</td>
-<td class="description">The name of the tab page that should be initially selected.</td>
+<td class="description">The name of the tab page that should be initially selected.  This can also contain a dynamic runclient() expression controlling which tab page is selected.</td>
+</tr>
+<tr>
+<td class="name">selected_index</td>
+<td class="type">integer</td>
+<td class="description">Similar to "selected", but selects the tab by numeric index.</td>
 </tr>
 <tr>
 <td class="name">textcolor</td>
@@ -2809,7 +3849,7 @@ MyScrollPane "widget/scrollpane"
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the entire tab control.</td>
+<td class="description">width, in pixels, of the tab control, including the page width but not the width of the tabs (if they are at the side).</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -2820,6 +3860,16 @@ MyScrollPane "widget/scrollpane"
 <td class="name">y</td>
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the control, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">tab_location</td>
+<td class="type">string</td>
+<td class="description">The location of the tabs:  "top" (default), "bottom", "left", "right", or "none".</td>
+</tr>
+<tr>
+<td class="name">tab_width</td>
+<td class="type">integer</td>
+<td class="description">The width of the tabs in pixels.  This is optional for tab_locations of "top", "bottom", and "none".</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -2838,12 +3888,17 @@ MyScrollPane "widget/scrollpane"
 <tr>
 <td class="name">type</td>
 <td class="type">string</td>
-<td class="description">If this is set to dynamic then the tabpage will act as an objectsource client, displaying a tab for each item in the replica with title set to the value of the fieldname.</td>
+<td class="description">If this is set to dynamic then the tabpage will act as an objectsource client, displaying zero or more tabs: one tab for each item in the replica with title set to the value of the fieldname.  In this way, a tab control can have a mix of dynamic tabs and static ones.</td>
 </tr>
 <tr>
 <td class="name">fieldname</td>
 <td class="type">string</td>
-<td class="description">This is the fieldname that the tabpage will use for its title.</td>
+<td class="description">This is the fieldname from the objectsource that the tabpage will use for its title.</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">integer</td>
+<td class="description">0 or 1.  Can contain a dynamic runclient() expression to control when the tab page is visible to the user.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -2910,6 +3965,11 @@ myTabControl "widget/tab"
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">allow_selection</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to permit the user to select rows in the table.  Default "yes".</td>
+</tr>
+<tr>
 <td class="name">background</td>
 <td class="type">string</td>
 <td class="description">A background image for the table. This "shows through" between table cells.</td>
@@ -2933,6 +3993,11 @@ myTabControl "widget/tab"
 <td class="name">colsep</td>
 <td class="type">integer</td>
 <td class="description">The width of the column separation lines in pixels.  Default is 1.</td>
+</tr>
+<tr>
+<td class="name">data_mode</td>
+<td class="type">string</td>
+<td class="description">Either "rows" (default) or "properties".  In "properties" mode, the table displays one row per attribute, and so only displays the current record in the objectsource.  In "rows" mode, the table displays one row per record in the objectsource.</td>
 </tr>
 <tr>
 <td class="name">dragcols</td>
@@ -2960,6 +4025,26 @@ myTabControl "widget/tab"
 <td class="description">A color, RGB or named, for the header row cells.</td>
 </tr>
 <tr>
+<td class="name">rowhighlight_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the current (selected) row cells.</td>
+</tr>
+<tr>
+<td class="name">rowhighlight_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the current (selected) row cells.</td>
+</tr>
+<tr>
+<td class="name">newrow_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the "new row" placeholder that is visible when a new object is being created.</td>
+</tr>
+<tr>
+<td class="name">newrow_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the "new row" placeholder that is visible when a new object is being created.</td>
+</tr>
+<tr>
 <td class="name">inner_border</td>
 <td class="type">integer</td>
 <td class="description">width of the inner spacing between cells in a table. Default0.</td>
@@ -2980,22 +4065,22 @@ myTabControl "widget/tab"
 <td class="description">width of the outer spacing around the outside of the table, in pixels.  Default0.</td>
 </tr>
 <tr>
-<td class="name">row_background1</td>
+<td class="name">row1_background</td>
 <td class="type">string</td>
 <td class="description">A background image for the table row cells.</td>
 </tr>
 <tr>
-<td class="name">row_bgcolor1</td>
+<td class="name">row1_bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, for the table row cells.</td>
 </tr>
 <tr>
-<td class="name">row_background2</td>
+<td class="name">row2_background</td>
 <td class="type">string</td>
 <td class="description">A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between "row_background1" and "row_background2".</td>
 </tr>
 <tr>
-<td class="name">row_bgcolor2</td>
+<td class="name">row2_bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between "row_bgcolor1" and "row_bgcolor2".</td>
 </tr>
@@ -3003,6 +4088,11 @@ myTabControl "widget/tab"
 <td class="name">rowheight</td>
 <td class="type">integer</td>
 <td class="description">The height of the individual rows in pixels.  Default is 15 pixels.</td>
+</tr>
+<tr>
+<td class="name">show_selection</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to highlight the currently selected row.  Default "yes".</td>
 </tr>
 <tr>
 <td class="name">sql</td>
@@ -3015,9 +4105,19 @@ myTabControl "widget/tab"
 <td class="description">A color, RGB or named, of the text in the normal data rows.</td>
 </tr>
 <tr>
+<td class="name">textcolornew</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, of the text in the "new row" placeholder.</td>
+</tr>
+<tr>
 <td class="name">textcolorhighlight</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, of the text in the highlighted data row.</td>
+</tr>
+<tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to show the title bar of the table.  Default "yes".</td>
 </tr>
 <tr>
 <td class="name">titlecolor</td>
@@ -3063,6 +4163,16 @@ myTabControl "widget/tab"
 <td class="type">integer</td>
 <td class="description">width of the column.</td>
 </tr>
+<tr>
+<td class="name">align</td>
+<td class="type">string</td>
+<td class="description">The alignment of the column:  "left" or "right".</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</td>
+</tr>
 </table>
 <h3 class="actions">Actions:</h3>
 <p class="none">none currently available</p>
@@ -3101,6 +4211,74 @@ tblFileList "widget/table"
 	name "widget/table-column" { title="Object Name";width=20; }
 	annotation "widget/table-column" { title="Annotation"; width=25; }
 	}
+		
+		</pre>
+<!-- PAGE BREAK: 'template.html' -->
+<h2 class="widgetname"><a name="template">template</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/template</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+		  <p>a widget/template must be a root widget of a file (which normally is given a .tpl extension) </p>
+		  <p>each child in a widget/template is a "rule". each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and "rule")) and 2) match the widget type of the child (eg "widget/imagebutton")</p>
+		  <p>every other property of the "rule" are default values</p>
+		  <p>all children of the "rule" are automatically inserted into the matched widgets</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name"></td>
+<td class="type"></td>
+<td class="description"></td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of any child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">widget_class</td>
+<td class="type">string</td>
+<td class="description">the value of this property must match another widget before said widget will "inherit" this "rule".</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="properties">Client Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+objcanvas_test "widget/template"
+    {
+    btnFirst "widget/imagebutton"
+	{
+	widget_class="FirstRecord";
+
+	width=18;
+	height=18;
+	image="/sys/images/ico16aa.gif";
+	pointimage="/sys/images/ico16ab.gif";
+	clickimage="/sys/images/ico16ac.gif";
+	disabledimage="/sys/images/ico16ad.gif";
+	enabled = runclient(:template_form:recid &gt; 1);
+	cnFirst "widget/connector" { event="Click"; target=template_form; action="First"; }
+	}
+    }
 		
 		</pre>
 <!-- PAGE BREAK: 'textarea.html' -->
@@ -3228,106 +4406,6 @@ tblFileList "widget/table"
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <p class="none">none currently available</p>
-<!-- PAGE BREAK: 'button.html' -->
-<h2 class="widgetname"><a name="button">button</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/button</span></p>
-<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
-<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
-<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
-<h3 class="overview">Overview:</h3>
-<span class="overview">
-		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
-	    </span><h3 class="usage">Usage:</h3>
-<span class="usage">
-		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
-	    </span><h3 class="properties">Properties:</h3>
-<table class="properties">
-<tr>
-<th class="name">Property</th>
-<th class="type">Type</th>
-<th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">type</td>
-<td class="type">string</td>
-<td class="description">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</td>
-</tr>
-<tr>
-<td class="name">bgcolor</td>
-<td class="type">string</td>
-<td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</td>
-</tr>
-<tr>
-<td class="name">disable_color</td>
-<td class="type">string</td>
-<td class="description">A color, RGB or named, to be used for the button's text when it is disabled.</td>
-</tr>
-<tr>
-<td class="name">enabled</td>
-<td class="type">yes/no or expr</td>
-<td class="description">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</td>
-</tr>
-<tr>
-<td class="name">fgcolor1</td>
-<td class="type">string</td>
-<td class="description">A color, RGB or named, for the text on the button.  Default "white".</td>
-</tr>
-<tr>
-<td class="name">fgcolor2</td>
-<td class="type">string</td>
-<td class="description">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</td>
-</tr>
-<tr>
-<td class="name">height</td>
-<td class="type">integer</td>
-<td class="description">height, in pixels, of the text button.</td>
-</tr>
-<tr>
-<td class="name">text</td>
-<td class="type">string</td>
-<td class="description">The text to appear on the button.</td>
-</tr>
-<tr>
-<td class="name">tristate</td>
-<td class="type">yes/no</td>
-<td class="description">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</td>
-</tr>
-<tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">The width, in pixels, of the text button.</td>
-</tr>
-<tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the button, relative to its container.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the button, relative to its container.</td>
-</tr>
-<tr>
-<td class="name">clickimage</td>
-<td class="type">string</td>
-<td class="description">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</td>
-</tr>
-<tr>
-<td class="name">disabledimage</td>
-<td class="type">string</td>
-<td class="description">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</td>
-</tr>
-<tr>
-<td class="name">image</td>
-<td class="type">string</td>
-<td class="description">The pathname of the image to be shown when the button is "idle".</td>
-</tr>
-<tr>
-<td class="name">pointimage</td>
-<td class="type">string</td>
-<td class="description">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</td>
-</tr>
-</table>
 <!-- PAGE BREAK: 'textbutton.html' -->
 <h2 class="widgetname"><a name="textbutton">textbutton</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/textbutton</span></p>
@@ -3386,7 +4464,7 @@ tblFileList "widget/table"
 <tr>
 <td class="name">text</td>
 <td class="type">string</td>
-<td class="description">The text to appear on the button.</td>
+<td class="description">The text to appear on the button.  This may be a dynamic runclient() expression to dynamically change the button's text.</td>
 </tr>
 <tr>
 <td class="name">tristate</td>
@@ -3412,7 +4490,16 @@ tblFileList "widget/table"
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetText</td>
+<td class="description">Called from a connector, this action sets the button's text to the value passed in through connector's "Text" parameter.</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>
@@ -3561,6 +4648,51 @@ mytimerTwo "widget/timer"
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the treeview's root object.</td>
 </tr>
+<tr>
+<td class="name">icon</td>
+<td class="type">string</td>
+<td class="description">A pathname to an image to be used as icons for the items in the treeview.</td>
+</tr>
+<tr>
+<td class="name">highlight_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the selected item in the treeview.</td>
+</tr>
+<tr>
+<td class="name">highlight_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the background for the selected item. If neither bgcolor nor background are specified, the selection is not visible.</td>
+</tr>
+<tr>
+<td class="name">highlight_fgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used for the text for the selected item.</td>
+</tr>
+<tr>
+<td class="name">fgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used for the text for the items in the treeview.</td>
+</tr>
+<tr>
+<td class="name">show_root</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display the root of the tree.  If "no", then the root is auto-expanded and only its children are visible.</td>
+</tr>
+<tr>
+<td class="name">show_branches</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display the connections between items in the tree using lines.</td>
+</tr>
+<tr>
+<td class="name">show_root_branch</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display the connection lines between the root and the root's immediate children.  If "no", the root's children are flush against the lefthand side of the treeview, otherwise the connecting lines show up.</td>
+</tr>
+<tr>
+<td class="name">use_3d_lines</td>
+<td class="type">yes/no</td>
+<td class="description">If set to "yes", the branch lines are drawn in a 3D style, otherwise they are drawn in a single color.</td>
+</tr>
 </table>
 <h3 class="events">Events:</h3>
 <table class="events">
@@ -3619,9 +4751,35 @@ mypane "widget/pane"
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">The field with which to link / connect to the variable.</td>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">(e.g. integer).</td>
+</tr>
+<tr>
 <td class="name">value</td>
-<td class="type">integer/string</td>
-<td class="description">initial value of the variable.</td>
+<td class="type">string</td>
+<td class="description">Can be accessed as :var_name:value.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Called by a widget/connector: Sets the value of the variable to whatever is specified by the "Value" parameter.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -3635,50 +4793,15 @@ counter "widget/variable"
 	}
 		
 		</pre>
-<!-- PAGE BREAK: 'repeat.html' -->
-<h2 class="widgetname"><a name="repeat">repeat</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/repeat</span></p>
-<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<!-- PAGE BREAK: 'vbox.html' -->
+<h2 class="widgetname"><a name="vbox">vbox</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/vbox</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
 <p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query</p>
-	    </span><h3 class="usage">Usage:</h3>
-<span class="usage"><p>This widget has no content of its own, so it is only useful if it has widgets inside it.  It can be put inside an autolayout widget (vbox/hbox) for layout purposes, or the x and y coordinates could be specified through another query (ala runserver/runclient)</p></span><h3 class="properties">Properties:</h3>
-<table class="properties">
-<tr>
-<th class="name">Property</th>
-<th class="type">Type</th>
-<th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">sql</td>
-<td class="type">string</td>
-<td class="description">The sql query that will be run on the server</td>
-</tr>
-</table>
-<h3 class="sample">Sample Code:</h3>
-<pre>
-		
-$Version=2$
-// This is a repeat widget inside a vbox
-	vbox "widget/vbox"
-	    {
-	    x=10; y=10; cellsize=20; spacing=0;
-	    rpt "widget/repeat"
-		{
-		sql="SELECT :name FROM /samples WHERE substring(:name,1,1)='t'";
-		button "widget/button"
-		    {
-		    type="text";
-		    width=100; height=20;
-		    text=runserver(:rpt:name);
-		    }
-		}
-	    }
-		
-	    </pre>
-<!-- PAGE BREAK: 'END' -->
+			<p>An autolayout widget with style set to "vbox".  See "widget/autolayout".</p>
+		</span><!-- PAGE BREAK: 'END' -->
 </body>
 </html>

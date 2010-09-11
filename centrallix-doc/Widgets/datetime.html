@@ -74,6 +74,21 @@
 <td class="type">string</td>
 <td class="description">the foreground color of the bar and pane. (named or numeric)</td>
 </tr>
+<tr>
+<td class="name">search_by_range</td>
+<td class="type">yes/no</td>
+<td class="description">Default "yes".  Specifies that when the datetime widget is in a form that is in search (QBF) mode, the datetime should display both a "start" and an "end" calendar so the user can search for records/objects matching a range of dates.</td>
+</tr>
+<tr>
+<td class="name">date_only</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If set to "yes" indicates that the datetime widget should only allow select and display a date, not a date and time.  It may be useful to set default_time when using this option.</td>
+</tr>
+<tr>
+<td class="name">default_time</td>
+<td class="type">string</td>
+<td class="description">When the user sets the date without selecting a time value (or if date_only is set), use this time as the "default" time.  This can be set to "00:00:00" or "23:59:59", for example, to specify a time at the start or end of a day.</td>
+</tr>
 </table>
 <h3 class="events">Events:</h3>
 <table class="events">

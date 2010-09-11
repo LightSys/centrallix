@@ -27,6 +27,11 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">allow_selection</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to permit the user to select rows in the table.  Default "yes".</td>
+</tr>
+<tr>
 <td class="name">background</td>
 <td class="type">string</td>
 <td class="description">A background image for the table. This "shows through" between table cells.</td>
@@ -50,6 +55,11 @@
 <td class="name">colsep</td>
 <td class="type">integer</td>
 <td class="description">The width of the column separation lines in pixels.  Default is 1.</td>
+</tr>
+<tr>
+<td class="name">data_mode</td>
+<td class="type">string</td>
+<td class="description">Either "rows" (default) or "properties".  In "properties" mode, the table displays one row per attribute, and so only displays the current record in the objectsource.  In "rows" mode, the table displays one row per record in the objectsource.</td>
 </tr>
 <tr>
 <td class="name">dragcols</td>
@@ -77,6 +87,26 @@
 <td class="description">A color, RGB or named, for the header row cells.</td>
 </tr>
 <tr>
+<td class="name">rowhighlight_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the current (selected) row cells.</td>
+</tr>
+<tr>
+<td class="name">rowhighlight_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the current (selected) row cells.</td>
+</tr>
+<tr>
+<td class="name">newrow_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the "new row" placeholder that is visible when a new object is being created.</td>
+</tr>
+<tr>
+<td class="name">newrow_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the "new row" placeholder that is visible when a new object is being created.</td>
+</tr>
+<tr>
 <td class="name">inner_border</td>
 <td class="type">integer</td>
 <td class="description">width of the inner spacing between cells in a table. Default0.</td>
@@ -97,22 +127,22 @@
 <td class="description">width of the outer spacing around the outside of the table, in pixels.  Default0.</td>
 </tr>
 <tr>
-<td class="name">row_background1</td>
+<td class="name">row1_background</td>
 <td class="type">string</td>
 <td class="description">A background image for the table row cells.</td>
 </tr>
 <tr>
-<td class="name">row_bgcolor1</td>
+<td class="name">row1_bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, for the table row cells.</td>
 </tr>
 <tr>
-<td class="name">row_background2</td>
+<td class="name">row2_background</td>
 <td class="type">string</td>
 <td class="description">A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between "row_background1" and "row_background2".</td>
 </tr>
 <tr>
-<td class="name">row_bgcolor2</td>
+<td class="name">row2_bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between "row_bgcolor1" and "row_bgcolor2".</td>
 </tr>
@@ -120,6 +150,11 @@
 <td class="name">rowheight</td>
 <td class="type">integer</td>
 <td class="description">The height of the individual rows in pixels.  Default is 15 pixels.</td>
+</tr>
+<tr>
+<td class="name">show_selection</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to highlight the currently selected row.  Default "yes".</td>
 </tr>
 <tr>
 <td class="name">sql</td>
@@ -132,9 +167,19 @@
 <td class="description">A color, RGB or named, of the text in the normal data rows.</td>
 </tr>
 <tr>
+<td class="name">textcolornew</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, of the text in the "new row" placeholder.</td>
+</tr>
+<tr>
 <td class="name">textcolorhighlight</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, of the text in the highlighted data row.</td>
+</tr>
+<tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to show the title bar of the table.  Default "yes".</td>
 </tr>
 <tr>
 <td class="name">titlecolor</td>
@@ -179,6 +224,16 @@
 <td class="name">width</td>
 <td class="type">integer</td>
 <td class="description">width of the column.</td>
+</tr>
+<tr>
+<td class="name">align</td>
+<td class="type">string</td>
+<td class="description">The alignment of the column:  "left" or "right".</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>

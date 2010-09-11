@@ -63,7 +63,7 @@
 <tr>
 <td class="name">text</td>
 <td class="type">string</td>
-<td class="description">The text to appear on the button.</td>
+<td class="description">The text to appear on the button.  This may be a dynamic runclient() expression to dynamically change the button's text.</td>
 </tr>
 <tr>
 <td class="name">tristate</td>
@@ -89,7 +89,16 @@
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetText</td>
+<td class="description">Called from a connector, this action sets the button's text to the value passed in through connector's "Text" parameter.</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>

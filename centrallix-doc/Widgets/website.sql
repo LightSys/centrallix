@@ -20,7 +20,7 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 	Sample code is generally given in \"structure file\" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.
 
-	Copyright (c)  1998-2008 LightSys Technology Services, Inc.
+	Copyright (c)  1998-2010 LightSys Technology Services, Inc.
 	
 	[b]Documentation on the following widgets is available:[/b]
 
@@ -28,9 +28,13 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/autolayout][/td][td]Container which automatically positions its children[/td][/tr]
 	
+		[tr][td][widget/button][/td][td]A multipurpose button[/td][/tr]
+	
 		[tr][td][widget/calendar][/td][td]Calendar-type view of event/schedule type data in an objectsource[/td][/tr]
 	
 		[tr][td][widget/checkbox][/td][td]Form element capable of selecting an on/off, yes/no, true/false, etc., type of value, via a visual 'check mark'.[/td][/tr]
+	
+		[tr][td][widget/childwindow][/td][td]A dialog or application window which is a lightweight movable container.[/td][/tr]
 	
 		[tr][td][widget/clock][/td][td]A simple clock widget which displays the current time on the client.[/td][/tr]
 	
@@ -54,11 +58,17 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/frameset][/td][td]A visual container used to create a DHTML frameset within which page widgets can be placed[/td][/tr]
 	
+		[tr][td][widget/hbox][/td][td]Container which automatically positions its children[/td][/tr]
+	
+		[tr][td][widget/hints][/td][td]Contains default values and modifier settings for various components[/td][/tr]
+	
 		[tr][td][widget/html][/td][td]A miniature HTML browser control, capable of viewing and navigating simple web documents.[/td][/tr]
 	
-		[tr][td][widget/childwindow][/td][td]A dialog or application window which is a lightweight movable container.[/td][/tr]
+		[tr][td][widget/image][/td][td]A picture (image).[/td][/tr]
 	
 		[tr][td][widget/imagebutton][/td][td]A button widget which uses a set of images to control its appearance.[/td][/tr]
+	
+		[tr][td][widget/label][/td][td]Form element capable of displaying text in a child window[/td][/tr]
 	
 		[tr][td][widget/menu][/td][td]A visual pop-up or drop-down menu widget.[/td][/tr]
 	
@@ -76,15 +86,21 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/remotemgr][/td][td]Nonvisual widget permitting the application to send events to a remote Centrallix application[/td][/tr]
 	
+		[tr][td][widget/repeat][/td][td]Repeat a subtree of widgets[/td][/tr]
+	
+		[tr][td][widget/rule][/td][td]Declares a rule - a behavior expected from a widget.[/td][/tr]
+	
+		[tr][td][widget/scrollbar][/td][td]A scrollbar with a thumb[/td][/tr]
+	
 		[tr][td][widget/scrollpane][/td][td]A visual container with a scrollbar allowing for content height that exceeds the display area[/td][/tr]
 	
 		[tr][td][widget/tab][/td][td]A tab (or notebook) widget allowing multiple pages to be layered and individually selected for viewing[/td][/tr]
 	
 		[tr][td][widget/table][/td][td]A visual widget providing a columnar presentation of multiple objects of the same type (such as query result records).[/td][/tr]
 	
-		[tr][td][widget/textarea][/td][td]Visual multi-line text data entry widget.[/td][/tr]
+		[tr][td][widget/template][/td][td]templates are a way to provide default values (and default children) of different widget_class's[/td][/tr]
 	
-		[tr][td][widget/button][/td][td]A multipurpose button[/td][/tr]
+		[tr][td][widget/textarea][/td][td]Visual multi-line text data entry widget.[/td][/tr]
 	
 		[tr][td][widget/textbutton][/td][td]A simple visual button widget built not from images but from a simple text string.[/td][/tr]
 	
@@ -94,7 +110,7 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/variable][/td][td]A scalar variable object[/td][/tr]
 	
-		[tr][td][widget/repeat][/td][td]Repeat a subtree of widgets[/td][/tr]
+		[tr][td][widget/vbox][/td][td]Container which automatically positions its children[/td][/tr]
 	
 	[/table]
 ");
@@ -232,6 +248,132 @@ vbox1 \"widget/vbox\"
 		
 		
 		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/button", null,
+"		[b]button[/b] :: A multipurpose button
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/button[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+		Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.
+
+	    
+	[b]Usage:[/b]
+	
+		A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored
+
+	    
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]type[/td]
+					[td]string[/td]
+					[td]There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)[/td]
+				[/tr]
+			
+				[tr]
+					[td]bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.[/td]
+				[/tr]
+			
+				[tr]
+					[td]disable_color[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used for the button's text when it is disabled.[/td]
+				[/tr]
+			
+				[tr]
+					[td]enabled[/td]
+					[td]yes/no or expr[/td]
+					[td]Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.[/td]
+				[/tr]
+			
+				[tr]
+					[td]fgcolor1[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, for the text on the button.  Default \"white\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]fgcolor2[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, for the text's 1-pixel drop-shadow.  Default \"black\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]height, in pixels, of the text button.[/td]
+				[/tr]
+			
+				[tr]
+					[td]text[/td]
+					[td]string[/td]
+					[td]The text to appear on the button.[/td]
+				[/tr]
+			
+				[tr]
+					[td]tristate[/td]
+					[td]yes/no[/td]
+					[td]Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]The width, in pixels, of the text button.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]x-coordinate of the upper left corner of the button, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]y-coordinate of the upper left corner of the button, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]clickimage[/td]
+					[td]string[/td]
+					[td]The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.[/td]
+				[/tr]
+			
+				[tr]
+					[td]disabledimage[/td]
+					[td]string[/td]
+					[td]The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.[/td]
+				[/tr]
+			
+				[tr]
+					[td]image[/td]
+					[td]string[/td]
+					[td]The pathname of the image to be shown when the button is \"idle\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]pointimage[/td]
+					[td]string[/td]
+					[td]The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.[/td]
+				[/tr]
+			
+		[/table]
 	
 ");
 	
@@ -408,9 +550,33 @@ insert into topic values(null, @newid, "widget/checkbox", null,
 				[/tr]
 			
 				[tr]
+					[td]fl_width[/td]
+					[td]string[/td]
+					[td]?[/td]
+				[/tr]
+			
+				[tr]
 					[td]form[/td]
 					[td]string[/td]
 					[td]The name of the form that this checkbox is associated with.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]The height of the check box widget in pixels.[/td]
+				[/tr]
+			
+				[tr]
+					[td]readonly[/td]
+					[td]integer[/td]
+					[td](e.g. readonly=yes).[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]The width of the check box widget in pixels.[/td]
 				[/tr]
 			
 				[tr]
@@ -699,6 +865,12 @@ insert into topic values(null, @newid, "widget/component", null,
 				[/tr]
 			
 				[tr]
+					[td]form[/td]
+					[td]integer[/td]
+					[td]Can specify another form to be a child of (if different than the implied form in which this control is nested).[/td]
+				[/tr]
+			
+				[tr]
 					[td]width[/td]
 					[td]integer[/td]
 					[td]width, in pixels, of the component.  If unset, this defaults to the width of the component's containing widget.[/td]
@@ -713,7 +885,7 @@ insert into topic values(null, @newid, "widget/component", null,
 				[tr]
 					[td]path[/td]
 					[td]string[/td]
-					[td]The path, in the OSML, to the component's definition (.cmp) file.[/td]
+					[td]The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp)[/td]
 				[/tr]
 			
 				[tr]
@@ -734,8 +906,127 @@ insert into topic values(null, @newid, "widget/component", null,
 					[td]If enabled (dynamic single-instantiation components only), when a component is instantiated a second time, the original component is automatically destroyed so there is at most one instance at a time in existence.  Defaults to 'yes'.[/td]
 				[/tr]
 			
+				[tr]
+					[td]text[/td]
+					[td]string[/td]
+					[td]Set the Initial starting value contained in this component (Can this be directly accessed? as :widget_name:text?).[/td]
+				[/tr]
+			
+				[tr]
+					[td]visible[/td]
+					[td]true/false[/td]
+					[td](e.g. visible=false).[/td]
+				[/tr]
+			
+				[tr]
+					[td]field[/td]
+					[td]string[/td]
+					[td]The osrc field to which this this smartfield is linked/connected.[/td]
+				[/tr]
+			
+				[tr]
+					[td]tooltip[/td]
+					[td]string[/td]
+					[td]The message to display when the user hovers their mouse over the smart field.[/td]
+				[/tr]
+			
+				[tr]
+					[td]popup_source[/td]
+					[td]string[/td]
+					[td]PopUp tree of possible selections (in one example, it references a .qyt file).[/td]
+				[/tr]
+			
+				[tr]
+					[td]popup_text[/td]
+					[td]string[/td]
+					[td]The text to display above the popup selection tree.[/td]
+				[/tr]
+			
+				[tr]
+					[td]popup_order[/td]
+					[td]string[/td]
+					[td](e.g. desc)[/td]
+				[/tr]
+			
+				[tr]
+					[td]label_height[/td]
+					[td]integer[/td]
+					[td]The height of the label in pixels.[/td]
+				[/tr]
+			
+				[tr]
+					[td]label_width[/td]
+					[td]integer[/td]
+					[td]The width of the label in pixels.[/td]
+				[/tr]
+			
 		[/table]
 	
+	[b]Child Properties:[/b]
+	
+			(of /sys/cmp/smart_field.cmp child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]ctl_type[/td]
+							[td]string[/td]
+							[td] Type of smart field (e.g. label, editbox, checkbox, datetime).[/td]
+						[/tr]
+					
+						[tr]
+							[td]type[/td]
+							[td]string[/td]
+							[td](e.g. readonly). Must have field be set in order to be \"readonly\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]value[/td]
+							[td]string[/td]
+							[td]This is something which can accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of /sys/cmp/form_controls.cmp child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]deletable[/td]
+							[td]yes/no[/td]
+							[td][/td]
+						[/tr]
+					
+						[tr]
+							[td]multienter[/td]
+							[td]integer[/td]
+							[td](e.g. 1)[/td]
+						[/tr]
+					
+						[tr]
+							[td]object_name[/td]
+							[td]string[/td]
+							[td]Title to put across the form control bar (Note: the form_controls.cmp allows the user to perform row operations on a given record set)[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of /apps/kardia/modules/base/editbox_tree.cmp child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]content[/td]
+							[td]string[/td]
+							[td]This is something which can accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.[/td]
+						[/tr]
+					
+				[/table]
+			
 	[b]Actions:[/b]
 	
 		[table]
@@ -751,6 +1042,11 @@ insert into topic values(null, @newid, "widget/component", null,
 					[td]Destroys the component.  If multiple instances exist, then all instances are destroyed.[/td]
 				[/tr]
 			
+				[tr]
+					[td]SetValue[/td]
+					[td]Called by a connector to this a smartfield with the parameter 'Value' set to the new value.[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Events:[/b]
@@ -761,6 +1057,16 @@ insert into topic values(null, @newid, "widget/component", null,
 				[tr]
 					[td]LoadComplete[/td]
 					[td]This event is triggered when a dynamic component completes loading from the server.[/td]
+				[/tr]
+			
+				[tr]
+					[td]DataChange[/td]
+					[td]This event is triggered when ...[/td]
+				[/tr]
+			
+				[tr]
+					[td]LoseFocus[/td]
+					[td][/td]
 				[/tr]
 			
 		[/table]
@@ -812,6 +1118,8 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 
 			Components can take parameters just like applications can.  See the \"widget/parameter\" widget for details on how to declare parameters on applications and components.
 
+			Several of the properties of a component-decl are used to make it easy to wrap another widget or component.  The expose_actions_for, expose_events_for, and expose_properties_for properties cause the actions, events, and properties of a widget or component inside the component-decl to be exposed to the \"outside world\".  The apply_hints_to property causes any presentation hints (\"widget/hints\") that are applied in the instantiation of a component-decl (inside the \"widget/component\") to be applied to the specified widget or component inside the component-decl.
+
 		
 	[b]Properties:[/b]
 	
@@ -828,6 +1136,30 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 					[td]height[/td]
 					[td]integer[/td]
 					[td]The design height, in pixels, of the component.[/td]
+				[/tr]
+			
+				[tr]
+					[td]expose_actions_for[/td]
+					[td]string[/td]
+					[td]Specifies a widget inside the component-decl whose actions (methods) we want to expose on the external interface of this component-decl.[/td]
+				[/tr]
+			
+				[tr]
+					[td]expose_events_for[/td]
+					[td]string[/td]
+					[td]Specifies a widget inside the component-decl whose events we want to expose on the external interface of this component-decl.[/td]
+				[/tr]
+			
+				[tr]
+					[td]expose_properties_for[/td]
+					[td]string[/td]
+					[td]Specifies a widget inside the component-decl whose client-side properties we want to expose on the external interface of this component-decl.[/td]
+				[/tr]
+			
+				[tr]
+					[td]apply_hints_to[/td]
+					[td]string[/td]
+					[td]Specifies a widget inside the component-decl that will receive any presentation hints constraints (\"widget/hints\") that are applied to the instantiation of this component-decl.[/td]
 				[/tr]
 			
 		[/table]
@@ -911,9 +1243,45 @@ insert into topic values(null, @newid, "widget/connector", null,
 				[/tr]
 			
 				[tr]
+					[td]event_condition[/td]
+					[td]integer[/td]
+					[td](optional) specifies a runclient() expression indicating the conditions under which the connector will be triggered.[/td]
+				[/tr]
+			
+				[tr]
+					[td]event_confirm[/td]
+					[td]string[/td]
+					[td](optional) specifies a string or runclient() expression that will be presented to the user in an \"OK/Cancel\" message box allowing the user to OK or Cancel the triggering of the connector.[/td]
+				[/tr]
+			
+				[tr]
+					[td]event_cancel[/td]
+					[td]integer[/td]
+					[td](optional) specifies a runclient() expression indicating whether the connector (and the operation generating the event, if it is cancelable), and further connectors on this event, should be canceled.[/td]
+				[/tr]
+			
+				[tr]
+					[td]event_delay[/td]
+					[td]integer[/td]
+					[td](optional) specifies an integer or runclient() expression indicating that the action should be triggered on the target after a delay of N milliseconds.[/td]
+				[/tr]
+			
+				[tr]
+					[td]event_all_params[/td]
+					[td]integer[/td]
+					[td](optional) specifies an integer or runclient() expression indicating that all of the parameters generated by the event should be passed as parameters to the action.  Particularly useful when \"relaying\" an action on a component-decl to another action inside the component-decl, as the individual parameters don't need to be listed separately.[/td]
+				[/tr]
+			
+				[tr]
+					[td]source[/td]
+					[td]string[/td]
+					[td]The name of the widget generating the event (defaults to the widget the connector is placed inside of).[/td]
+				[/tr]
+			
+				[tr]
 					[td]target[/td]
 					[td]string[/td]
-					[td]The name of another widget on the page whose action will be called by this connector.[/td]
+					[td]The name of another widget on the page whose action will be called by this connector (if unspecified, defaults to the widget the connector is placed inside of).[/td]
 				[/tr]
 			
 		[/table]
@@ -1027,6 +1395,24 @@ insert into topic values(null, @newid, "widget/datetime", null,
 					[td]fgcolor[/td]
 					[td]string[/td]
 					[td]the foreground color of the bar and pane. (named or numeric)[/td]
+				[/tr]
+			
+				[tr]
+					[td]search_by_range[/td]
+					[td]yes/no[/td]
+					[td]Default \"yes\".  Specifies that when the datetime widget is in a form that is in search (QBF) mode, the datetime should display both a \"start\" and an \"end\" calendar so the user can search for records/objects matching a range of dates.[/td]
+				[/tr]
+			
+				[tr]
+					[td]date_only[/td]
+					[td]yes/no[/td]
+					[td]Default \"no\".  If set to \"yes\" indicates that the datetime widget should only allow select and display a date, not a date and time.  It may be useful to set default_time when using this option.[/td]
+				[/tr]
+			
+				[tr]
+					[td]default_time[/td]
+					[td]string[/td]
+					[td]When the user sets the date without selecting a time value (or if date_only is set), use this time as the \"default\" time.  This can be set to \"00:00:00\" or \"23:59:59\", for example, to specify a time at the start or end of a day.[/td]
 				[/tr]
 			
 		[/table]
@@ -1170,6 +1556,18 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 					[td]If this is set to objectsource then the dropdown acts an objectsource client.[/td]
 				[/tr]
 			
+				[tr]
+					[td]sql[/td]
+					[td]string[/td]
+					[td]The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).[/td]
+				[/tr]
+			
+				[tr]
+					[td]query_multiselect[/td]
+					[td]yes/no[/td]
+					[td]If set to yes, this indicates that when the dropdown's form is in search (QBF) mode, the dropdown will allow multiple items to be selected, so the user can search for records/objects that match one of several values.  The values will be listed in the dropdown, separated by commas.[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Child Properties:[/b]
@@ -1195,7 +1593,20 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 			
 	[b]Actions:[/b]
 	
-		[i]none currently available[/i]
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]SetItems[/td]
+					[td]This specifies a SQL (use \"SQL\" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).[/td]
+				[/tr]
+			
+				[tr]
+					[td]SetGroup[/td]
+					[td]This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).[/td]
+				[/tr]
+			
+		[/table]
 	
 	[b]Events:[/b]
 	
@@ -1335,6 +1746,18 @@ insert into topic values(null, @newid, "widget/editbox", null,
 				[/tr]
 			
 				[tr]
+					[td]description_fgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.[/td]
+				[/tr]
+			
+				[tr]
+					[td]empty_description[/td]
+					[td]string[/td]
+					[td]The value description to display in the editbox when the editbox is empty.  For instance, \"optional\" or \"required\" or \"type search and press ENTER\" might be commonly used empty_description settings.[/td]
+				[/tr]
+			
+				[tr]
 					[td]height[/td]
 					[td]integer[/td]
 					[td]height, in pixels, of the editbox.[/td]
@@ -1356,6 +1779,12 @@ insert into topic values(null, @newid, "widget/editbox", null,
 					[td]style[/td]
 					[td]string[/td]
 					[td]Either \"raised\" or \"lowered\", and determines the style of the border drawn around the editbox.  Default is \"lowered\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]tooltip[/td]
+					[td]string[/td]
+					[td]A string to display in a tooltip when the user rests the mouse pointer over the editbox.  By default, the editbox will display a tooltip of its content if the content is too long to fit in the visible part of the editbox.[/td]
 				[/tr]
 			
 				[tr]
@@ -1390,6 +1819,11 @@ insert into topic values(null, @newid, "widget/editbox", null,
 				[tr]
 					[td]SetValue[/td]
 					[td]The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).[/td]
+				[/tr]
+			
+				[tr]
+					[td]SetValueDescription[/td]
+					[td]This action modifies the \"value description\" of the editbox, and takes a single parameter, 'Description' (string).[/td]
 				[/tr]
 			
 		[/table]
@@ -1579,6 +2013,8 @@ insert into topic values(null, @newid, "widget/form", null,
 		
 			Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a \"three-way confirm\" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a \"three-way confirm\" window.  This should be a hidden (visible=no) \"widget/htmlwindow\" object which may contain any content, but should at least contain three buttons named \"_3bConfirmSave\", \"_3bConfirmDiscard\", and \"_3bConfirmCancel\" directly in the htmlwindow.  During a confirm operation, this window will become \"application-modal\"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.
 
+			Several settings on the form widget control what state, or \"mode\", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.
+
 		
 	[b]Usage:[/b]
 	
@@ -1591,33 +2027,81 @@ insert into topic values(null, @newid, "widget/form", null,
 		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 		
 				[tr]
-					[td]AllowQuery[/td]
-					[td]integer[/td]
+					[td]allow_query[/td]
+					[td]yes/no[/td]
 					[td]Allow query by form[/td]
 				[/tr]
 			
 				[tr]
-					[td]AllowNew[/td]
-					[td]integer[/td]
+					[td]allow_new[/td]
+					[td]yes/no[/td]
 					[td]Allow creation of new records[/td]
 				[/tr]
 			
 				[tr]
-					[td]AllowModify[/td]
-					[td]integer[/td]
+					[td]allow_modify[/td]
+					[td]yes/no[/td]
 					[td]Allow modification of existing records[/td]
 				[/tr]
 			
 				[tr]
-					[td]AllowView[/td]
-					[td]integer[/td]
+					[td]allow_view[/td]
+					[td]yes/no[/td]
 					[td]Allow viewing of existing data[/td]
 				[/tr]
 			
 				[tr]
-					[td]AllowNoData[/td]
-					[td]integer[/td]
+					[td]allow_nodata[/td]
+					[td]yes/no[/td]
 					[td]Allow the 'no data' state[/td]
+				[/tr]
+			
+				[tr]
+					[td]allow_delete[/td]
+					[td]yes/no[/td]
+					[td]Allow deletion of the displayed record[/td]
+				[/tr]
+			
+				[tr]
+					[td]confirm_delete[/td]
+					[td]yes/no[/td]
+					[td]Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted[/td]
+				[/tr]
+			
+				[tr]
+					[td]auto_focus[/td]
+					[td]yes/no[/td]
+					[td]Default \"yes\".  Whether to automatically place the focus on the first form element in the form when the form transitions to the New, Modify, or Search mode for any reason other than the user manually putting focus on one of the form elements.[/td]
+				[/tr]
+			
+				[tr]
+					[td]enter_mode[/td]
+					[td]string[/td]
+					[td]Can be \"save\" (default), \"nextfield\", or \"lastsave\".  Controls what to do when the user presses ENTER while in a form element in this form.  \"save\" means to save the record immediately.  \"nextfield\" means to move to the next form field, as if TAB were pressed instead.  \"lastsave\" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer \"save\" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer \"lastsave\" since it allows them to perform high-speed data entry using a numeric keypad.[/td]
+				[/tr]
+			
+				[tr]
+					[td]next_form[/td]
+					[td]string[/td]
+					[td]Specifies another form to transfer focus to when the user presses TAB at the end of the form.[/td]
+				[/tr]
+			
+				[tr]
+					[td]next_form_within[/td]
+					[td]string[/td]
+					[td]Similar to \"next_form\", but searches for the next form after this one within a given widget or component.  Transitioning from one component context to another is permitted (you could specify a \"widget/page\" widget here, and cause focus to transfer to another form in the same application, regardless of level of component nesting; this may or may not be desired behavior).[/td]
+				[/tr]
+			
+				[tr]
+					[td]tab_revealed_only[/td]
+					[td]yes/no[/td]
+					[td]When tabbing between form elements, if this is set to \"yes\", do not transfer focus to form elements that are not currently visible to the user.[/td]
+				[/tr]
+			
+				[tr]
+					[td]allow_obscure[/td]
+					[td]yes/no[/td]
+					[td]Default \"no\".  If this is set to \"yes\", then the form will permit its data to be obscured (hidden from the user, via a window closure or tab page switch) and unsaved at the same time.  If set to \"no\", the form will require the user to save or cancel any data modifications before the form may be obscured.[/td]
 				[/tr]
 			
 				[tr]
@@ -2021,6 +2505,24 @@ BigFrameset \"widget/frameset\"
 	
 ");
 	
+insert into topic values(null, @newid, "widget/hbox", null,
+"		[b]hbox[/b] :: Container which automatically positions its children
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/hbox[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] yes[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			An autolayout widget with style set to \"hbox\".  See \"widget/autolayout\".
+
+		
+");
+	
 insert into topic values(null, @newid, "widget/html", null,
 "		[b]html[/b] :: A miniature HTML browser control, capable of viewing and navigating simple web documents.
 
@@ -2211,6 +2713,18 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 				[/tr]
 			
 				[tr]
+					[td]modal[/td]
+					[td]yes/no[/td]
+					[td]If \"yes\", the window is modal (and IsModal need not be passed to \"Open\").  A modal window will force the user to close the window before anything else in the application can be accessed.[/td]
+				[/tr]
+			
+				[tr]
+					[td]toplevel[/td]
+					[td]yes/no[/td]
+					[td]If \"yes\", the window will float above all other widgets in the application, otherwise it will be clipped by its own container.[/td]
+				[/tr]
+			
+				[tr]
 					[td]textcolor[/td]
 					[td]string[/td]
 					[td]The color for the titlebar's text (window title).  Default \"black\".[/td]
@@ -2219,7 +2733,7 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 				[tr]
 					[td]titlebar[/td]
 					[td]yes/no[/td]
-					[td]whether the window will have a titlebar. Default \"yes\".[/td]
+					[td]whether the window will have a titlebar (and the close \"X\" in the upper right corner of the window). Default \"yes\".[/td]
 				[/tr]
 			
 				[tr]
@@ -2325,6 +2839,166 @@ MyWindow \"widget/childwindow\"
 	
 ");
 	
+insert into topic values(null, @newid, "widget/hints", null,
+"		[b]hints[/b] :: Contains default values and modifier settings for various components
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/hints[/td][/tr]
+		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] yes[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The hints widget stores default values and other component modifying properties.
+
+		
+	[b]Usage:[/b]
+	
+			The hints widget can be placed inside of any visual component. Hints do not contain visual widgets.
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]allowchars[/td]
+					[td]string[/td]
+					[td]Defines a set of acceptable characters (e.g. allowchars=\"0123456789\").[/td]
+				[/tr]
+			
+				[tr]
+					[td]default[/td]
+					[td]mixed[/td]
+					[td]A string or integer that specifies the initial, default, starting value for the component which containing this widget/hints widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]style[/td]
+					[td]string[/td]
+					[td]Optional: contains a combination of 1 or more items following set {readonly, alwaysdef} separated by a comma if multiple items are chosen.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Child Properties:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Actions:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Events:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Client Properties:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+		
+$Version=2$
+// Here is a checkbox which uses widget/hints.
+f_trx_mod \"widget/checkbox\"
+{
+	width=16;
+	y=4;
+	readonly=yes;
+	fieldname=\"a_modified\";
+	f_trx_mod_h \"widget/hints\"
+	{
+		style=readonly,alwaysdef;
+		default=1;
+	}
+}		
+		
+		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/image", null,
+"		[b]image[/b] :: A picture (image).
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/image[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] yes[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The image widget displays a picture (image).
+
+			This widget can be a form element, in which case it will display an image as specified by the data from the form.
+
+		
+	[b]Usage:[/b]
+	
+			The image widget can be placed inside any container that allows for visual widgets.  Only connectors may be placed inside it.
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]form[/td]
+					[td]string[/td]
+					[td]If using a form for the image path, this is the name of the form.  If left unspecified, and fieldname is supplied, the default will be whatever form the image is inside.[/td]
+				[/tr]
+			
+				[tr]
+					[td]fieldname[/td]
+					[td]string[/td]
+					[td]If using a form for the image path, the name of the column in the datasource you want to reference.[/td]
+				[/tr]
+			
+				[tr]
+					[td]source[/td]
+					[td]string[/td]
+					[td]An OSML pathname for the location of the image (such as a png or jpg file).[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]height, in pixels, of the image.[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]width, in pixels, of the image.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]x-coordinate of the upper left corner of the image, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]y-coordinate of the upper left corner of the image, relative to its container.[/td]
+				[/tr]
+			
+		[/table]
+	
+");
+	
 insert into topic values(null, @newid, "widget/imagebutton", null,
 "		[b]imagebutton[/b] :: A button widget which uses a set of images to control its appearance.
 
@@ -2385,6 +3059,12 @@ insert into topic values(null, @newid, "widget/imagebutton", null,
 					[td]pointimage[/td]
 					[td]string[/td]
 					[td]The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.[/td]
+				[/tr]
+			
+				[tr]
+					[td]repeat[/td]
+					[td]yes/no[/td]
+					[td]Whether to repeat the click event multiple times while the user holds down the button.[/td]
 				[/tr]
 			
 				[tr]
@@ -2467,6 +3147,153 @@ MyButton \"widget/imagebutton\"
 	
 ");
 	
+insert into topic values(null, @newid, "widget/label", null,
+"		[b]label[/b] :: Form element capable of displaying text in a child window
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/label[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] yes[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The label widget is used to display a non-editable string of text.  It displays as a simple label.
+
+			A label can be used as a form element; to do this, specify a fieldname, and optionally a form.
+
+			A label can behave like a \"link\": to do this, specify a point_fgcolor and a click_fgcolor.
+
+		
+	[b]Usage:[/b]
+	
+			The label widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Labels may not contain visual widgets.
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]align[/td]
+					[td]string[/td]
+					[td]Describes how the text should align in the label (e.g. right).[/td]
+				[/tr]
+			
+				[tr]
+					[td]font_size[/td]
+					[td]integer[/td]
+					[td](e.g. 16, default: 12).[/td]
+				[/tr]
+			
+				[tr]
+					[td]form[/td]
+					[td]string[/td]
+					[td]The name of the form that this label is associated with.[/td]
+				[/tr]
+			
+				[tr]
+					[td]fieldname[/td]
+					[td]string[/td]
+					[td]The name of the column in the datasource that will be used to supply the text of the label.[/td]
+				[/tr]
+			
+				[tr]
+					[td]fgcolor[/td]
+					[td]string[/td]
+					[td]The color (named or #numeric) of the text in the label.[/td]
+				[/tr]
+			
+				[tr]
+					[td]point_fgcolor[/td]
+					[td]string[/td]
+					[td]The color (named or #numeric) of the text in the label when the user hovers the mouse over the label.[/td]
+				[/tr]
+			
+				[tr]
+					[td]click_fgcolor[/td]
+					[td]string[/td]
+					[td]The color (named or #numeric) of the text in the label when the user clicks on the label.[/td]
+				[/tr]
+			
+				[tr]
+					[td]style[/td]
+					[td]string[/td]
+					[td](e.g. bold).[/td]
+				[/tr]
+			
+				[tr]
+					[td]text[/td]
+					[td]string[/td]
+					[td]The text that the label is to display.[/td]
+				[/tr]
+			
+				[tr]
+					[td]valign[/td]
+					[td]string[/td]
+					[td]Describes how the text should align vertically within the label (e.g. top, middle, or bottom).[/td]
+				[/tr]
+			
+				[tr]
+					[td]value[/td]
+					[td]string[/td]
+					[td]This property allows a runclient() expression to dynamically supply the text to display in the label.[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]The width of the label.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]x-coordinate of the upper left corner of the checkbox, default is 0.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]y-coordinate of the upper left corner of the checkbox, default is 0.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Child Properties:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Actions:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Events:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Client Properties:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+		
+$Version=2$
+// Here is a label.
+f_trx_mod_l \"widget/label\" { width=86; text=\"User Edit?\"; align=right; font_size=16; }
+
+		
+		
+		[/code]
+	
+");
+	
 insert into topic values(null, @newid, "widget/menu", null,
 "		[b]menu[/b] :: A visual pop-up or drop-down menu widget.
 
@@ -2510,21 +3337,63 @@ insert into topic values(null, @newid, "widget/menu", null,
 				[/tr]
 			
 				[tr]
-					[td]orientation[/td]
+					[td]fgcolor[/td]
+					[td]string[/td]
+					[td]A color for the menu's text.[/td]
+				[/tr]
+			
+				[tr]
+					[td]active_background[/td]
+					[td]string[/td]
+					[td]A background image for a menu item that is selected (clicked on)[/td]
+				[/tr]
+			
+				[tr]
+					[td]active_bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used as a selected (clicked) item's background.  If neither active_bgcolor nor active_background are specified, the 'highlight' color or background is used instead.[/td]
+				[/tr]
+			
+				[tr]
+					[td]highlight_background[/td]
+					[td]string[/td]
+					[td]A background image for a menu item that is highlighted (pointed at).[/td]
+				[/tr]
+			
+				[tr]
+					[td]highlight_bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used as a highlighted (pointed-at) item's background.  If neither highlight_bgcolor nor highlight_background are specified, the standard color or background is used instead.[/td]
+				[/tr]
+			
+				[tr]
+					[td]direction[/td]
 					[td]string[/td]
 					[td]Either \"horizontal\" or \"vertical\" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).[/td]
 				[/tr]
 			
 				[tr]
-					[td]type[/td]
-					[td]string[/td]
-					[td]Either \"popup\" (default) or \"fixed\".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).[/td]
+					[td]popup[/td]
+					[td]yes/no[/td]
+					[td]Default \"no\".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).[/td]
+				[/tr]
+			
+				[tr]
+					[td]row_height[/td]
+					[td]integer[/td]
+					[td]height, in pixels, of the menu items in a menu.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]height, in pixels, of the menu, for menus with a direction of 'horizontal'.[/td]
 				[/tr]
 			
 				[tr]
 					[td]width[/td]
 					[td]integer[/td]
-					[td]width, in pixels, of the menu.  The height is dynamically determined based on the contents.[/td]
+					[td]width, in pixels, of the menu.  For menus with a direction of 'vertical', an unspecified width is determined dynamically based on the menu contents.[/td]
 				[/tr]
 			
 				[tr]
@@ -2549,6 +3418,24 @@ insert into topic values(null, @newid, "widget/menu", null,
 				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 				
 						[tr]
+							[td]icon[/td]
+							[td]string[/td]
+							[td]Optionally, the pathname of an image file to display to the left of the menu item.[/td]
+						[/tr]
+					
+						[tr]
+							[td]checked[/td]
+							[td]yes/no[/td]
+							[td]Optionally, a checkbox can be displayed to the left of the menu item when 'checked' is specified.  In this case, the 'value' can also be a runclient() expression that controls whether the menu item is checked.[/td]
+						[/tr]
+					
+						[tr]
+							[td]onright[/td]
+							[td]yes/no[/td]
+							[td]If set to \"yes\", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having \"File\" \"Edit\" \"Tools\" on the left, and \"Help\" on the far right).[/td]
+						[/tr]
+					
+						[tr]
 							[td]label[/td]
 							[td]string[/td]
 							[td]The text to appear on the menu item.[/td]
@@ -2558,6 +3445,23 @@ insert into topic values(null, @newid, "widget/menu", null,
 							[td]value[/td]
 							[td]string[/td]
 							[td]The 'value' of the menu item, passed to the Selected event, below.  If not specified, it defaults to the name of the widget (not its label).[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of widget/menusep child widgets)
+			
+				[i]none currently available[/i]
+			
+			(of widget/menutitle child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]label[/td]
+							[td]string[/td]
+							[td]The text to appear on the menu title.[/td]
 						[/tr]
 					
 				[/table]
@@ -2596,7 +3500,7 @@ $Version=2$
 myMenu \"widget/menu\"
 	{
 	x = 10; y = 10; width = 72;
-	orientation = \"vertical\"; type = \"popup\";
+	direction = \"vertical\"; popup = yes;
 	bgcolor=\"#808080\";
 	
 	m1 \"widget/menuitem\" { label=\"One\"; }
@@ -2644,6 +3548,12 @@ insert into topic values(null, @newid, "widget/osrc", null,
 		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 		
 				[tr]
+					[td]autoquery[/td]
+					[td]string[/td]
+					[td]One of oneachreveal, never, onload, onfirstreveal.  (note: this autoquery setting is different from, but related to, the \"widget/rule\" \"autoquery\").  \"onload\" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  \"onfirstreveal\" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user (e.g., the containing childwindow becomes visible or tabpage is selected).  \"oneachreveal\" means to do so *each* time the data is displayed to the user.  \"never\" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.  Important Note:  If you expect to normally trigger the osrc via a relationship or via QueryParam, it is often *best* to set autoquery to 'never'.  Otherwise, unexpected results can sometimes occur.[/td]
+				[/tr]
+			
+				[tr]
 					[td]baseobj[/td]
 					[td]string[/td]
 					[td]If inserts and deletes are to function, the ObjectSystem pathname in which those inserts and deletes should occur.  This should be one of the objects specified in the FROM clause of the SQL statement.[/td]
@@ -2673,11 +3583,47 @@ insert into topic values(null, @newid, "widget/osrc", null,
 					[td]The SQL statement used to retrieve the data.[/td]
 				[/tr]
 			
+				[tr]
+					[td]indicates_activity[/td]
+					[td]yes/no[/td]
+					[td]Whether normal query activity on this objectsource indicates to the server that the user is active.  Some objectsources (in conjunction with a widget/timer) regularly refresh their data; for those, indicates_activity can be set to \"no\" so that those refreshes don't cause a user's session to never time-out.[/td]
+				[/tr]
+			
+				[tr]
+					[td]delay_query_until_reveal[/td]
+					[td]yes/no[/td]
+					[td]Default \"no\".  If the objectsource's clients (form/table/etc) are all obscured from the user (e.g., in a closed window or on a non-visible tab page), delay any queries until a Reveal occurs on one of the objectsource's clients.[/td]
+				[/tr]
+			
+				[tr]
+					[td]use_having_clause[/td]
+					[td]yes/no[/td]
+					[td]Default \"no\".  If set to \"yes\", then queries will be performed using a HAVING clause instead of a WHERE clause.[/td]
+				[/tr]
+			
+				[tr]
+					[td]key_objname[/td]
+					[td]string[/td]
+					[td]The name of the object in the SQL query that contains the primary key for the query.[/td]
+				[/tr]
+			
+				[tr]
+					[td]send_updates[/td]
+					[td]yes/no[/td]
+					[td]Default \"yes\".  If set to \"no\", the objectsource will not relay any updates (modifications, etc.) that the user makes to the server.[/td]
+				[/tr]
+			
+				[tr]
+					[td]receive_updates[/td]
+					[td]yes/no[/td]
+					[td]** This feature currently disabled in Centrallix 0.9.1 **  Default \"no\".  If set to \"yes\", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Child Properties:[/b]
 	
-			(of rule with ruletype=osrc_relationship child widgets)
+			(of rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync) child widgets)
 			
 				[table]
 				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
@@ -2689,6 +3635,12 @@ insert into topic values(null, @newid, "widget/osrc", null,
 						[/tr]
 					
 						[tr]
+							[td]is_slave[/td]
+							[td]yes/no[/td]
+							[td]Defaults to 'yes'.  If it is set to 'no', then this osrc is set up to be a master of the target, otherwise the default is for it to be a slave of the target.[/td]
+						[/tr]
+					
+						[tr]
 							[td]key_#[/td]
 							[td]string[/td]
 							[td]The field names in this objectsource to be used as the key value for the relationship.  Keys can be key_1 through key_5.[/td]
@@ -2697,7 +3649,56 @@ insert into topic values(null, @newid, "widget/osrc", null,
 						[tr]
 							[td]target_key_#[/td]
 							[td]string[/td]
-							[td]The field names in the target objectsource to be used for the key value for the relationship.  These keys can be target_key_1 through target_key_5.[/td]
+							[td]The field names in the target objectsource to be used for the key value for the relationship (where # is an integer 1 through 5).  These keys can be target_key_1 through target_key_5.[/td]
+						[/tr]
+					
+						[tr]
+							[td]autoquery[/td]
+							[td]true/false[/td]
+							[td]When autoquery is set to true, when the master changes, the slave automatially requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.[/td]
+						[/tr]
+					
+						[tr]
+							[td]master_norecs_action[/td]
+							[td]string[/td]
+							[td]One of: allrecs, norecs, or sameasnull (the default).  If the master osrc has no data loaded in it (no records), this determines how the slave (child) osrc behaves.  'allrecs' means to query for all records that match the sql query for the osrc, without additional constraints.  'norecs' means the slave (child) will be empty.  'sameasnull' means to handle it as if the key value in the master were NULL (see master_null_action).[/td]
+						[/tr]
+					
+						[tr]
+							[td]master_null_action[/td]
+							[td]string[/td]
+							[td]One of: allrecs, norecs, or nullisvalue (the default).  If the master osrc has a NULL value for its key (as defined by key_#/target_key_#), this setting determines how the slave (child) osrc behaves.  'allrecs' and 'norecs' have the same meaning as for master_norecs_action.  'nullisvalue' means to treat the NULL as a value, and query for slave records that have a matching NULL values in their key (as defined by key_#/target_key_#).  If no slave records have null values in the key, then 'nullisvalue' and 'norecs' have the same result.[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of rule with ruletype=osrc_key child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]keying_method[/td]
+							[td]string[/td]
+							[td](e.g. counterosrc).[/td]
+						[/tr]
+					
+						[tr]
+							[td]key_fieldname[/td]
+							[td]string[/td]
+							[td]The field name in this objectsource to be used as the key.[/td]
+						[/tr]
+					
+						[tr]
+							[td]osrc[/td]
+							[td]string[/td]
+							[td]The osrc in which to store the next auto id / counting number.[/td]
+						[/tr]
+					
+						[tr]
+							[td]counter_attribute[/td]
+							[td]string[/td]
+							[td]The field in the specified 'osrc' in which to store the auto number.[/td]
 						[/tr]
 					
 				[/table]
@@ -2709,12 +3710,12 @@ insert into topic values(null, @newid, "widget/osrc", null,
 		
 				[tr]
 					[td]DoubleSync[/td]
-					[td]Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.[/td]
+					[td]DEPRECATED: Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.[/td]
 				[/tr]
 			
 				[tr]
 					[td]Sync[/td]
-					[td]Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.[/td]
+					[td]DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.[/td]
 				[/tr]
 			
 				[tr]
@@ -2734,7 +3735,12 @@ insert into topic values(null, @newid, "widget/osrc", null,
 			
 				[tr]
 					[td]QueryParam[/td]
-					[td]Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.[/td]
+					[td]Refreshes the query, and allows new parameter values to be passed in.  Previous comment: Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.[/td]
+				[/tr]
+			
+				[tr]
+					[td]QueryText[/td]
+					[td]Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples:  'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case insensitive.[/td]
 				[/tr]
 			
 				[tr]
@@ -2777,6 +3783,21 @@ insert into topic values(null, @newid, "widget/osrc", null,
 					[td]Returns last record in the replica[/td]
 				[/tr]
 			
+				[tr]
+					[td]Refresh[/td]
+					[td]Re-runs the SQL query using the previously stored parameter values (if any).  This is used when the data on the server is believed to have changed, and the new data is desired to be displayed in the application.  This action does not change the current row.[/td]
+				[/tr]
+			
+				[tr]
+					[td]RefreshObject[/td]
+					[td]Re-runs the SQL query for just the one current object (record).  This does not change the currently selected record in the osrc.  This should be used when the intent is to refresh the values of just the current object without affecting anything else.[/td]
+				[/tr]
+			
+				[tr]
+					[td]FindObject[/td]
+					[td]Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Events:[/b]
@@ -2810,6 +3831,11 @@ osrc1 \"widget/osrc\"
 	baseobj = \"/samples\";
 
 	// form or table widgets go here
+	// Notes: 
+	// 1. WHERE clause may require '*=' instead of '='
+	// 2. Be careful with string / integer parameters,
+	//    strings requires quotes, but using :parameters:paramname
+	//    in the sql query automatically adds quotes.
 	}
 		
 		
@@ -2870,6 +3896,18 @@ insert into topic values(null, @newid, "widget/page", null,
 				[/tr]
 			
 				[tr]
+					[td]font_name[/td]
+					[td]string[/td]
+					[td]The default font to use in the application (such as \"Arial\").[/td]
+				[/tr]
+			
+				[tr]
+					[td]font_size[/td]
+					[td]integer[/td]
+					[td]The default font size, in pixels (same as points on a typical 72dpi display), for text in the application.[/td]
+				[/tr]
+			
+				[tr]
 					[td]kbdfocus1[/td]
 					[td]string[/td]
 					[td]A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate keyboard focus (default is \"white\").[/td]
@@ -2903,6 +3941,42 @@ insert into topic values(null, @newid, "widget/page", null,
 					[td]title[/td]
 					[td]string[/td]
 					[td]The title which will appear in the browser's window title bar.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td][/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td][/td]
+				[/tr]
+			
+				[tr]
+					[td]widget_template[/td]
+					[td]string[/td]
+					[td]One or more comma-separated pathnames for widget templates to use.  The specified files should contain \"widget/template\" objects (see \"widget/template for details).[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td][/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td][/td]
+				[/tr]
+			
+				[tr]
+					[td]show_diagnostics[/td]
+					[td]yes/no[/td]
+					[td]Set this to \"yes\" to display message boxes when application errors occur, such as an undefined property reference.  The default is \"no\", but this is handy when debugging.[/td]
 				[/tr]
 			
 		[/table]
@@ -2980,6 +4054,12 @@ insert into topic values(null, @newid, "widget/pane", null,
 				[/tr]
 			
 				[tr]
+					[td]border_color[/td]
+					[td]string[/td]
+					[td]For \"bordered\" pane styles, this is the color of the border, either named or a #number.[/td]
+				[/tr]
+			
+				[tr]
 					[td]height[/td]
 					[td]integer[/td]
 					[td]height, in pixels, of the pane.[/td]
@@ -2988,7 +4068,7 @@ insert into topic values(null, @newid, "widget/pane", null,
 				[tr]
 					[td]style[/td]
 					[td]string[/td]
-					[td]Either \"raised\" or \"lowered\", and determines the style of the pane's border.[/td]
+					[td]\"raised\", \"lowered\", \"bordered\", or \"flat\".  Determines the style of the pane's border.[/td]
 				[/tr]
 			
 				[tr]
@@ -3072,9 +4152,21 @@ insert into topic values(null, @newid, "widget/parameter", null,
 		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 		
 				[tr]
-					[td]type[/td]
+					[td]allowchars[/td]
 					[td]string[/td]
-					[td]The data type of the parameter.  Can be \"integer\", \"string\", \"double\", \"datetime\", \"money\", or \"object\".[/td]
+					[td] The set of characters that are allowed. (e.g. allowchars=\"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\"; )[/td]
+				[/tr]
+			
+				[tr]
+					[td]default[/td]
+					[td]mixed[/td]
+					[td] If a parameter is not passed in, then the (optional) default value is assigned to the parameter (e.g. default = null, or 2745).[/td]
+				[/tr]
+			
+				[tr]
+					[td]deploy_to_client[/td]
+					[td]yes/no[/td]
+					[td]Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type \"object\", are not deployed to the client.  To override this behavior, set this option to \"yes\".[/td]
 				[/tr]
 			
 				[tr]
@@ -3084,9 +4176,9 @@ insert into topic values(null, @newid, "widget/parameter", null,
 				[/tr]
 			
 				[tr]
-					[td]deploy_to_client[/td]
-					[td]yes/no[/td]
-					[td]Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type \"object\", are not deployed to the client.  To override this behavior, set this option to \"yes\".[/td]
+					[td]type[/td]
+					[td]string[/td]
+					[td]The data type of the parameter.  Can be \"integer\", \"string\", \"double\", \"datetime\", \"money\", or \"object\".[/td]
 				[/tr]
 			
 		[/table]
@@ -3179,7 +4271,13 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 				[/tr]
 			
 				[tr]
-					[td]outlinecolor[/td]
+					[td]outline_background[/td]
+					[td]string[/td]
+					[td]An image to be used for the rectangular border drawn around the radio buttons.[/td]
+				[/tr]
+			
+				[tr]
+					[td]outline_bgcolor[/td]
 					[td]string[/td]
 					[td]The color, RGB or named, of the rectangular border drawn around the radio buttons.[/td]
 				[/tr]
@@ -3298,6 +4396,42 @@ insert into topic values(null, @newid, "widget/remotectl", null,
 	
 ");
 	
+insert into topic values(null, @newid, "widget/rule", null,
+"		[b]rule[/b] :: Declares a rule - a behavior expected from a widget.
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/rule[/td][/tr]
+		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The rule widget is used as an important part of Centrallix's declarative application development.  It specifies behavior expected from a widget or relationship between two widgets.  For instance, one type of rule, the osrc_relationship rule, ties two objectsources together to enforce a primary key / foreign key relationship between the two.
+
+		
+	[b]Usage:[/b]
+	
+			Various widgets can have rule widgets; the various types of rule widgets are described in the sections for the widgets that they relate to.
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]ruletype[/td]
+					[td]string[/td]
+					[td]The type of rule.  For instance, a \"widget/osrc\" can have \"osrc_relationship\" and \"osrc_key\" rules.[/td]
+				[/tr]
+			
+		[/table]
+	
+");
+	
 insert into topic values(null, @newid, "widget/remotemgr", null,
 "		[b]remotemgr[/b] :: Nonvisual widget permitting the application to send events to a remote Centrallix application
 
@@ -3328,6 +4462,149 @@ insert into topic values(null, @newid, "widget/remotemgr", null,
 	[b]Sample Code:[/b]
 	
 		[i]none currently available[/i]
+	
+");
+	
+insert into topic values(null, @newid, "widget/repeat", null,
+"		[b]repeat[/b] :: Repeat a subtree of widgets
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/repeat[/td][/tr]
+		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]container:[/td][td] yes[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+		The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.
+
+	    
+	[b]Usage:[/b]
+	
+		This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.
+
+		The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.
+
+	    
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]sql[/td]
+					[td]string[/td]
+					[td]The sql query that will be run on the server[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+		
+$Version=2$
+// This is a repeat widget inside a vbox
+	vbox \"widget/vbox\"
+	    {
+	    x=10; y=10; cellsize=20; spacing=0;
+	    rpt \"widget/repeat\"
+		{
+		sql=\"SELECT :name FROM /samples WHERE substring(:name,1,1)='t'\";
+		button \"widget/button\"
+		    {
+		    type=\"text\";
+		    width=100; height=20;
+		    text=runserver(:rpt:name);
+		    }
+		}
+	    }
+		
+	    
+		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/scrollbar", null,
+"		[b]scrollbar[/b] :: A scrollbar with a thumb
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/scrollbar[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.
+
+			Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.
+
+		
+	[b]Usage:[/b]
+	
+			As a visual widget, the scrollbar can be placed anywhere a visual widget is permitted.
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]background[/td]
+					[td]string[/td]
+					[td]A background image to be placed behind the scrollbar.[/td]
+				[/tr]
+			
+				[tr]
+					[td]bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used as the scrollbar background. If neither bgcolor nor background is supplied, the scrollbar is transparent.[/td]
+				[/tr]
+			
+				[tr]
+					[td]direction[/td]
+					[td]string[/td]
+					[td]Either \"horizontal\" or \"vertical\" indicating the visible direction that the scrollbar is oriented.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]height, in pixels, of the scrollbar.[/td]
+				[/tr]
+			
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]width, in pixels, of the scrollbar.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]x-coordinate of the upper left corner of the scrollbar, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]y-coordinate of the upper left corner of the scrollbar, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]range[/td]
+					[td]integer[/td]
+					[td]The upper limit of the range of the scrollbar's value.  The value will range from 0 to the number specified by 'range'.  This property can be set to a runclient() dynamic expression, in which case the range will change as the expression changes.[/td]
+				[/tr]
+			
+		[/table]
 	
 ");
 	
@@ -3466,25 +4743,43 @@ insert into topic values(null, @newid, "widget/tab", null,
 				[tr]
 					[td]background[/td]
 					[td]string[/td]
-					[td]An image to be used as the background of the tab control.This is useful for adding control.[/td]
+					[td]An image to be used as the background of the tab control.[/td]
 				[/tr]
 			
 				[tr]
 					[td]bgcolor[/td]
 					[td]string[/td]
-					[td]As an alternate to \"background\", \"bgcolor\" can specify a color, either named or RGB, control.[/td]
+					[td]As an alternate to \"background\", \"bgcolor\" can specify a color, either named or RGB.[/td]
+				[/tr]
+			
+				[tr]
+					[td]inactive_background[/td]
+					[td]string[/td]
+					[td]An image to be used as the background of the tabs which are inactive (in the background).[/td]
+				[/tr]
+			
+				[tr]
+					[td]inactive_bgcolor[/td]
+					[td]string[/td]
+					[td]As an alternate to \"inactive_background\", \"inactive_bgcolor\" can specify a color, either named or RGB.[/td]
 				[/tr]
 			
 				[tr]
 					[td]height[/td]
 					[td]integer[/td]
-					[td]the height, in pixels, of the entire tab control, including the tabs and pages.[/td]
+					[td]the height, in pixels, of the tab control, including the page height but not including the height of the tabs at the top.[/td]
 				[/tr]
 			
 				[tr]
 					[td]selected[/td]
 					[td]string[/td]
-					[td]The name of the tab page that should be initially selected.[/td]
+					[td]The name of the tab page that should be initially selected.  This can also contain a dynamic runclient() expression controlling which tab page is selected.[/td]
+				[/tr]
+			
+				[tr]
+					[td]selected_index[/td]
+					[td]integer[/td]
+					[td]Similar to \"selected\", but selects the tab by numeric index.[/td]
 				[/tr]
 			
 				[tr]
@@ -3496,7 +4791,7 @@ insert into topic values(null, @newid, "widget/tab", null,
 				[tr]
 					[td]width[/td]
 					[td]integer[/td]
-					[td]width, in pixels, of the entire tab control.[/td]
+					[td]width, in pixels, of the tab control, including the page width but not the width of the tabs (if they are at the side).[/td]
 				[/tr]
 			
 				[tr]
@@ -3509,6 +4804,18 @@ insert into topic values(null, @newid, "widget/tab", null,
 					[td]y[/td]
 					[td]integer[/td]
 					[td]y-coordinate of the upper left corner of the control, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]tab_location[/td]
+					[td]string[/td]
+					[td]The location of the tabs:  \"top\" (default), \"bottom\", \"left\", \"right\", or \"none\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]tab_width[/td]
+					[td]integer[/td]
+					[td]The width of the tabs in pixels.  This is optional for tab_locations of \"top\", \"bottom\", and \"none\".[/td]
 				[/tr]
 			
 		[/table]
@@ -3529,13 +4836,19 @@ insert into topic values(null, @newid, "widget/tab", null,
 						[tr]
 							[td]type[/td]
 							[td]string[/td]
-							[td]If this is set to dynamic then the tabpage will act as an objectsource client, displaying a tab for each item in the replica with title set to the value of the fieldname.[/td]
+							[td]If this is set to dynamic then the tabpage will act as an objectsource client, displaying zero or more tabs: one tab for each item in the replica with title set to the value of the fieldname.  In this way, a tab control can have a mix of dynamic tabs and static ones.[/td]
 						[/tr]
 					
 						[tr]
 							[td]fieldname[/td]
 							[td]string[/td]
-							[td]This is the fieldname that the tabpage will use for its title.[/td]
+							[td]This is the fieldname from the objectsource that the tabpage will use for its title.[/td]
+						[/tr]
+					
+						[tr]
+							[td]visible[/td]
+							[td]integer[/td]
+							[td]0 or 1.  Can contain a dynamic runclient() expression to control when the tab page is visible to the user.[/td]
 						[/tr]
 					
 				[/table]
@@ -3623,6 +4936,12 @@ insert into topic values(null, @newid, "widget/table", null,
 		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 		
 				[tr]
+					[td]allow_selection[/td]
+					[td]yes/no[/td]
+					[td]Whether to permit the user to select rows in the table.  Default \"yes\".[/td]
+				[/tr]
+			
+				[tr]
 					[td]background[/td]
 					[td]string[/td]
 					[td]A background image for the table. This \"shows through\" between table cells.[/td]
@@ -3650,6 +4969,12 @@ insert into topic values(null, @newid, "widget/table", null,
 					[td]colsep[/td]
 					[td]integer[/td]
 					[td]The width of the column separation lines in pixels.  Default is 1.[/td]
+				[/tr]
+			
+				[tr]
+					[td]data_mode[/td]
+					[td]string[/td]
+					[td]Either \"rows\" (default) or \"properties\".  In \"properties\" mode, the table displays one row per attribute, and so only displays the current record in the objectsource.  In \"rows\" mode, the table displays one row per record in the objectsource.[/td]
 				[/tr]
 			
 				[tr]
@@ -3683,6 +5008,30 @@ insert into topic values(null, @newid, "widget/table", null,
 				[/tr]
 			
 				[tr]
+					[td]rowhighlight_background[/td]
+					[td]string[/td]
+					[td]A background image for the current (selected) row cells.[/td]
+				[/tr]
+			
+				[tr]
+					[td]rowhighlight_bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, for the current (selected) row cells.[/td]
+				[/tr]
+			
+				[tr]
+					[td]newrow_background[/td]
+					[td]string[/td]
+					[td]A background image for the \"new row\" placeholder that is visible when a new object is being created.[/td]
+				[/tr]
+			
+				[tr]
+					[td]newrow_bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, for the \"new row\" placeholder that is visible when a new object is being created.[/td]
+				[/tr]
+			
+				[tr]
 					[td]inner_border[/td]
 					[td]integer[/td]
 					[td]width of the inner spacing between cells in a table. Default0.[/td]
@@ -3707,25 +5056,25 @@ insert into topic values(null, @newid, "widget/table", null,
 				[/tr]
 			
 				[tr]
-					[td]row_background1[/td]
+					[td]row1_background[/td]
 					[td]string[/td]
 					[td]A background image for the table row cells.[/td]
 				[/tr]
 			
 				[tr]
-					[td]row_bgcolor1[/td]
+					[td]row1_bgcolor[/td]
 					[td]string[/td]
 					[td]A color, RGB or named, for the table row cells.[/td]
 				[/tr]
 			
 				[tr]
-					[td]row_background2[/td]
+					[td]row2_background[/td]
 					[td]string[/td]
 					[td]A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between \"row_background1\" and \"row_background2\".[/td]
 				[/tr]
 			
 				[tr]
-					[td]row_bgcolor2[/td]
+					[td]row2_bgcolor[/td]
 					[td]string[/td]
 					[td]A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between \"row_bgcolor1\" and \"row_bgcolor2\".[/td]
 				[/tr]
@@ -3734,6 +5083,12 @@ insert into topic values(null, @newid, "widget/table", null,
 					[td]rowheight[/td]
 					[td]integer[/td]
 					[td]The height of the individual rows in pixels.  Default is 15 pixels.[/td]
+				[/tr]
+			
+				[tr]
+					[td]show_selection[/td]
+					[td]yes/no[/td]
+					[td]Whether to highlight the currently selected row.  Default \"yes\".[/td]
 				[/tr]
 			
 				[tr]
@@ -3749,9 +5104,21 @@ insert into topic values(null, @newid, "widget/table", null,
 				[/tr]
 			
 				[tr]
+					[td]textcolornew[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, of the text in the \"new row\" placeholder.[/td]
+				[/tr]
+			
+				[tr]
 					[td]textcolorhighlight[/td]
 					[td]string[/td]
 					[td]A color, RGB or named, of the text in the highlighted data row.[/td]
+				[/tr]
+			
+				[tr]
+					[td]titlebar[/td]
+					[td]yes/no[/td]
+					[td]Whether to show the title bar of the table.  Default \"yes\".[/td]
 				[/tr]
 			
 				[tr]
@@ -3805,6 +5172,18 @@ insert into topic values(null, @newid, "widget/table", null,
 							[td]width of the column.[/td]
 						[/tr]
 					
+						[tr]
+							[td]align[/td]
+							[td]string[/td]
+							[td]The alignment of the column:  \"left\" or \"right\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]type[/td]
+							[td]string[/td]
+							[td]The type of the column: \"text\", \"check\", or \"image\".  \"text\" is a normal column, and displays the textual value of the data element.  \"check\" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not \"N\" or \"No\".  \"image\" displays the image referred to by the pathname contained in the data value.[/td]
+						[/tr]
+					
 				[/table]
 			
 	[b]Actions:[/b]
@@ -3850,6 +5229,98 @@ tblFileList \"widget/table\"
 	name \"widget/table-column\" { title=\"Object Name\";width=20; }
 	annotation \"widget/table-column\" { title=\"Annotation\"; width=25; }
 	}
+		
+		
+		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/template", null,
+"		[b]template[/b] :: templates are a way to provide default values (and default children) of different widget_class's
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/template[/td][/tr]
+		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+		
+	[b]Usage:[/b]
+	
+		  a widget/template must be a root widget of a file (which normally is given a .tpl extension) 
+
+		  each child in a widget/template is a \"rule\". each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and \"rule\")) and 2) match the widget type of the child (eg \"widget/imagebutton\")
+
+		  every other property of the \"rule\" are default values
+
+		  all children of the \"rule\" are automatically inserted into the matched widgets
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td][/td]
+					[td][/td]
+					[td][/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Child Properties:[/b]
+	
+			(of any child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]widget_class[/td]
+							[td]string[/td]
+							[td]the value of this property must match another widget before said widget will \"inherit\" this \"rule\".[/td]
+						[/tr]
+					
+				[/table]
+			
+	[b]Actions:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Events:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Client Properties:[/b]
+	
+		[i]none currently available[/i]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+		
+objcanvas_test \"widget/template\"
+    {
+    btnFirst \"widget/imagebutton\"
+	{
+	widget_class=\"FirstRecord\";
+
+	width=18;
+	height=18;
+	image=\"/sys/images/ico16aa.gif\";
+	pointimage=\"/sys/images/ico16ab.gif\";
+	clickimage=\"/sys/images/ico16ac.gif\";
+	disabledimage=\"/sys/images/ico16ad.gif\";
+	enabled = runclient(:template_form:recid > 1);
+	cnFirst \"widget/connector\" { event=\"Click\"; target=template_form; action=\"First\"; }
+	}
+    }
 		
 		
 		[/code]
@@ -4019,132 +5490,6 @@ insert into topic values(null, @newid, "widget/textarea", null,
 	
 ");
 	
-insert into topic values(null, @newid, "widget/button", null,
-"		[b]button[/b] :: A multipurpose button
-
-		[b]Metadata:[/b]
-		[table]
-		[tr][td]type:[/td][td]widget/button[/td][/tr]
-		[tr][td]visual:[/td][td] yes[/td][/tr]
-		[tr][td]container:[/td][td] no[/td][/tr]
-		[tr][td]form element:[/td][td] no[/td][/tr]
-		[/table]
-		
-	[b]Overview:[/b]
-	
-		Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.
-
-	    
-	[b]Usage:[/b]
-	
-		A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored
-
-	    
-	[b]Properties:[/b]
-	
-		[table]
-		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]type[/td]
-					[td]string[/td]
-					[td]There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)[/td]
-				[/tr]
-			
-				[tr]
-					[td]bgcolor[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.[/td]
-				[/tr]
-			
-				[tr]
-					[td]disable_color[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, to be used for the button's text when it is disabled.[/td]
-				[/tr]
-			
-				[tr]
-					[td]enabled[/td]
-					[td]yes/no or expr[/td]
-					[td]Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.[/td]
-				[/tr]
-			
-				[tr]
-					[td]fgcolor1[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, for the text on the button.  Default \"white\".[/td]
-				[/tr]
-			
-				[tr]
-					[td]fgcolor2[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, for the text's 1-pixel drop-shadow.  Default \"black\".[/td]
-				[/tr]
-			
-				[tr]
-					[td]height[/td]
-					[td]integer[/td]
-					[td]height, in pixels, of the text button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]text[/td]
-					[td]string[/td]
-					[td]The text to appear on the button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]tristate[/td]
-					[td]yes/no[/td]
-					[td]Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.[/td]
-				[/tr]
-			
-				[tr]
-					[td]width[/td]
-					[td]integer[/td]
-					[td]The width, in pixels, of the text button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]x[/td]
-					[td]integer[/td]
-					[td]x-coordinate of the upper left corner of the button, relative to its container.[/td]
-				[/tr]
-			
-				[tr]
-					[td]y[/td]
-					[td]integer[/td]
-					[td]y-coordinate of the upper left corner of the button, relative to its container.[/td]
-				[/tr]
-			
-				[tr]
-					[td]clickimage[/td]
-					[td]string[/td]
-					[td]The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.[/td]
-				[/tr]
-			
-				[tr]
-					[td]disabledimage[/td]
-					[td]string[/td]
-					[td]The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image[/td]
-					[td]string[/td]
-					[td]The pathname of the image to be shown when the button is \"idle\".[/td]
-				[/tr]
-			
-				[tr]
-					[td]pointimage[/td]
-					[td]string[/td]
-					[td]The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.[/td]
-				[/tr]
-			
-		[/table]
-	
-");
-	
 insert into topic values(null, @newid, "widget/textbutton", null,
 "		[b]textbutton[/b] :: A simple visual button widget built not from images but from a simple text string.
 
@@ -4218,7 +5563,7 @@ insert into topic values(null, @newid, "widget/textbutton", null,
 				[tr]
 					[td]text[/td]
 					[td]string[/td]
-					[td]The text to appear on the button.[/td]
+					[td]The text to appear on the button.  This may be a dynamic runclient() expression to dynamically change the button's text.[/td]
 				[/tr]
 			
 				[tr]
@@ -4253,7 +5598,15 @@ insert into topic values(null, @newid, "widget/textbutton", null,
 	
 	[b]Actions:[/b]
 	
-		[i]none currently available[/i]
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]SetText[/td]
+					[td]Called from a connector, this action sets the button's text to the value passed in through connector's \"Text\" parameter.[/td]
+				[/tr]
+			
+		[/table]
 	
 	[b]Events:[/b]
 	
@@ -4441,6 +5794,60 @@ insert into topic values(null, @newid, "widget/treeview", null,
 					[td]y-coordinate of the upper left corner of the treeview's root object.[/td]
 				[/tr]
 			
+				[tr]
+					[td]icon[/td]
+					[td]string[/td]
+					[td]A pathname to an image to be used as icons for the items in the treeview.[/td]
+				[/tr]
+			
+				[tr]
+					[td]highlight_background[/td]
+					[td]string[/td]
+					[td]A background image for the selected item in the treeview.[/td]
+				[/tr]
+			
+				[tr]
+					[td]highlight_bgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used as the background for the selected item. If neither bgcolor nor background are specified, the selection is not visible.[/td]
+				[/tr]
+			
+				[tr]
+					[td]highlight_fgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used for the text for the selected item.[/td]
+				[/tr]
+			
+				[tr]
+					[td]fgcolor[/td]
+					[td]string[/td]
+					[td]A color, RGB or named, to be used for the text for the items in the treeview.[/td]
+				[/tr]
+			
+				[tr]
+					[td]show_root[/td]
+					[td]yes/no[/td]
+					[td]Whether to display the root of the tree.  If \"no\", then the root is auto-expanded and only its children are visible.[/td]
+				[/tr]
+			
+				[tr]
+					[td]show_branches[/td]
+					[td]yes/no[/td]
+					[td]Whether to display the connections between items in the tree using lines.[/td]
+				[/tr]
+			
+				[tr]
+					[td]show_root_branch[/td]
+					[td]yes/no[/td]
+					[td]Whether to display the connection lines between the root and the root's immediate children.  If \"no\", the root's children are flush against the lefthand side of the treeview, otherwise the connecting lines show up.[/td]
+				[/tr]
+			
+				[tr]
+					[td]use_3d_lines[/td]
+					[td]yes/no[/td]
+					[td]If set to \"yes\", the branch lines are drawn in a 3D style, otherwise they are drawn in a single color.[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Events:[/b]
@@ -4515,9 +5922,39 @@ insert into topic values(null, @newid, "widget/variable", null,
 		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 		
 				[tr]
+					[td]fieldname[/td]
+					[td]string[/td]
+					[td]The field with which to link / connect to the variable.[/td]
+				[/tr]
+			
+				[tr]
+					[td]form[/td]
+					[td]string[/td]
+					[td]The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).[/td]
+				[/tr]
+			
+				[tr]
+					[td]type[/td]
+					[td]string[/td]
+					[td](e.g. integer).[/td]
+				[/tr]
+			
+				[tr]
 					[td]value[/td]
-					[td]integer/string[/td]
-					[td]initial value of the variable.[/td]
+					[td]string[/td]
+					[td]Can be accessed as :var_name:value.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Actions:[/b]
+	
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]SetValue[/td]
+					[td]Called by a widget/connector: Sets the value of the variable to whatever is specified by the \"Value\" parameter.[/td]
 				[/tr]
 			
 		[/table]
@@ -4539,62 +5976,21 @@ counter \"widget/variable\"
 	
 ");
 	
-insert into topic values(null, @newid, "widget/repeat", null,
-"		[b]repeat[/b] :: Repeat a subtree of widgets
+insert into topic values(null, @newid, "widget/vbox", null,
+"		[b]vbox[/b] :: Container which automatically positions its children
 
 		[b]Metadata:[/b]
 		[table]
-		[tr][td]type:[/td][td]widget/repeat[/td][/tr]
-		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]type:[/td][td]widget/vbox[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
 		[tr][td]container:[/td][td] yes[/td][/tr]
 		[tr][td]form element:[/td][td] no[/td][/tr]
 		[/table]
 		
 	[b]Overview:[/b]
 	
-		The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query
+			An autolayout widget with style set to \"vbox\".  See \"widget/autolayout\".
 
-	    
-	[b]Usage:[/b]
-	This widget has no content of its own, so it is only useful if it has widgets inside it.  It can be put inside an autolayout widget (vbox/hbox) for layout purposes, or the x and y coordinates could be specified through another query (ala runserver/runclient)
-
-	[b]Properties:[/b]
-	
-		[table]
-		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 		
-				[tr]
-					[td]sql[/td]
-					[td]string[/td]
-					[td]The sql query that will be run on the server[/td]
-				[/tr]
-			
-		[/table]
-	
-	[b]Sample Code:[/b]
-	
-		[code]
-		
-		
-$Version=2$
-// This is a repeat widget inside a vbox
-	vbox \"widget/vbox\"
-	    {
-	    x=10; y=10; cellsize=20; spacing=0;
-	    rpt \"widget/repeat\"
-		{
-		sql=\"SELECT :name FROM /samples WHERE substring(:name,1,1)='t'\";
-		button \"widget/button\"
-		    {
-		    type=\"text\";
-		    width=100; height=20;
-		    text=runserver(:rpt:name);
-		    }
-		}
-	    }
-		
-	    
-		[/code]
-	
 ");
 	

@@ -27,24 +27,24 @@
 		    osrcclient     (yes|no)   #IMPLIED
 		    >
 	  <!ATTLIST property
-		    name           ID         #REQUIRED
+		    name           CDATA      #REQUIRED
 		    type           CDATA      #REQUIRED
 		    >
 	  <!ATTLIST child
 		    type           CDATA      #REQUIRED
 		    >
 	  <!ATTLIST childproperty
-		    name           ID         #REQUIRED
+		    name           CDATA      #REQUIRED
 		    type           CDATA      #REQUIRED
 		    >
 	  <!ATTLIST event
-		    name           ID         #REQUIRED
+		    name           CDATA      #REQUIRED
 		    >
 	  <!ATTLIST action
-		    name           ID         #REQUIRED
+		    name           CDATA      #REQUIRED
 		    >
 	  <!ATTLIST clientprop
-		    name           ID         #REQUIRED
+		    name           CDATA      #REQUIRED
 		    type           CDATA      #REQUIRED
 		    >
 ]>
@@ -93,6 +93,32 @@ vbox1 "widget/vbox"
 	}
 		]]>
 		</sample>
+	</widget>
+	<widget name="button" type="widget/button" visual="yes" container="no" formelement="no" description="A multipurpose button">
+	    <overview>
+		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
+	    </overview>
+	    <usage>
+		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
+	    </usage>
+	    <properties>
+		<property name="type" type="string">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</property>	
+		<property name="bgcolor" type="string">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</property>
+		<property name="disable_color" type="string">A color, RGB or named, to be used for the button's text when it is disabled.</property>
+		<property name="enabled" type="yes/no or expr">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</property>
+		<property name="fgcolor1" type="string">A color, RGB or named, for the text on the button.  Default "white".</property>
+		<property name="fgcolor2" type="string">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</property>
+		<property name="height" type="integer">height, in pixels, of the text button.</property>
+		<property name="text" type="string">The text to appear on the button.</property>
+		<property name="tristate" type="yes/no">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</property>
+		<property name="width" type="integer">The width, in pixels, of the text button.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="clickimage" type="string">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</property>
+		<property name="disabledimage" type="string">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</property>
+		<property name="image" type="string">The pathname of the image to be shown when the button is "idle".</property>
+		<property name="pointimage" type="string">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</property>
+	    </properties>
 	</widget>
 	<widget name="calendar" type="widget/calendar" description="Calendar-type view of event/schedule type data in an objectsource" visual="yes" formelement="no" container="no" osrcclient="yes">
 		<overview>
@@ -297,12 +323,15 @@ formctl "widget/component"
 			<p>To declare that a component generates an Event, place a "widget/component-decl-event" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.</p>
 			<p>Similarly, to declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
 			<p>Components can take parameters just like applications can.  See the "widget/parameter" widget for details on how to declare parameters on applications and components.</p>
+			<p>Several of the properties of a component-decl are used to make it easy to wrap another widget or component.  The expose_actions_for, expose_events_for, and expose_properties_for properties cause the actions, events, and properties of a widget or component inside the component-decl to be exposed to the "outside world".  The apply_hints_to property causes any presentation hints ("widget/hints") that are applied in the instantiation of a component-decl (inside the "widget/component") to be applied to the specified widget or component inside the component-decl.</p>
 		</usage>
 		<properties>
 			<property name="width" type="integer">The design width, in pixels, of the component.  When the component is instantiated, it is subject to resizing; this width value will be used as a reference in that process.</property>
 			<property name="height" type="integer">The design height, in pixels, of the component.</property>
-			<property name="expose_actions_for" type="string">specifies another component.</property>
-			<property name="expose_events_for" type="string">specifies another component.</property>
+			<property name="expose_actions_for" type="string">Specifies a widget inside the component-decl whose actions (methods) we want to expose on the external interface of this component-decl.</property>
+			<property name="expose_events_for" type="string">Specifies a widget inside the component-decl whose events we want to expose on the external interface of this component-decl.</property>
+			<property name="expose_properties_for" type="string">Specifies a widget inside the component-decl whose client-side properties we want to expose on the external interface of this component-decl.</property>
+			<property name="apply_hints_to" type="string">Specifies a widget inside the component-decl that will receive any presentation hints constraints ("widget/hints") that are applied to the instantiation of this component-decl.</property>
 		</properties>
 		<sample>
 			<![CDATA[
@@ -344,7 +373,13 @@ my_button "widget/component-decl"
 		<properties>
 		    <property name="action" type="string" subtype="widgetaction">The name of the action which will be activated on another widget on the page.</property>
 		    <property name="event" type="string" subtype="widgetevent">The name of the event that this connector will act on.</property>
-		    <property name="target" type="string" subtype="widget">The name of another widget on the page whose action will be called by this connector.</property>
+		    <property name="event_condition" type="integer">(optional) specifies a runclient() expression indicating the conditions under which the connector will be triggered.</property>
+		    <property name="event_confirm" type="string">(optional) specifies a string or runclient() expression that will be presented to the user in an "OK/Cancel" message box allowing the user to OK or Cancel the triggering of the connector.</property>
+		    <property name="event_cancel" type="integer">(optional) specifies a runclient() expression indicating whether the connector (and the operation generating the event, if it is cancelable), and further connectors on this event, should be canceled.</property>
+		    <property name="event_delay" type="integer">(optional) specifies an integer or runclient() expression indicating that the action should be triggered on the target after a delay of N milliseconds.</property>
+		    <property name="event_all_params" type="integer">(optional) specifies an integer or runclient() expression indicating that all of the parameters generated by the event should be passed as parameters to the action.  Particularly useful when "relaying" an action on a component-decl to another action inside the component-decl, as the individual parameters don't need to be listed separately.</property>
+		    <property name="source" type="string" subtype="widget">The name of the widget generating the event (defaults to the widget the connector is placed inside of).</property>
+		    <property name="target" type="string" subtype="widget">The name of another widget on the page whose action will be called by this connector (if unspecified, defaults to the widget the connector is placed inside of).</property>
 		</properties>
 		<sample>
 		<![CDATA[
@@ -383,6 +418,9 @@ cn1 "widget/connector"
 			<property name="initialdate" type="string">used to set the initialdate by a string</property>
 			<property name="bgcolor" type="string">the background color of the bar and pane. (named or numeric)</property>
 			<property name="fgcolor" type="string">the foreground color of the bar and pane. (named or numeric)</property>
+			<property name="search_by_range" type="yes/no">Default "yes".  Specifies that when the datetime widget is in a form that is in search (QBF) mode, the datetime should display both a "start" and an "end" calendar so the user can search for records/objects matching a range of dates.</property>
+			<property name="date_only" type="yes/no">Default "no".  If set to "yes" indicates that the datetime widget should only allow select and display a date, not a date and time.  It may be useful to set default_time when using this option.</property>
+			<property name="default_time" type="string">When the user sets the date without selecting a time value (or if date_only is set), use this time as the "default" time.  This can be set to "00:00:00" or "23:59:59", for example, to specify a time at the start or end of a day.</property>
 		</properties>
 		<events>
 			<event name="Click">This event occurs when the user clicks the widget. No parameters are available from this event.</event>
@@ -424,6 +462,8 @@ cn1 "widget/connector"
 			<property name="bgcolor" type="integer">The background color for the widget.</property>
 			<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
 			<property name="mode" type="string">If this is set to objectsource then the dropdown acts an objectsource client.</property>
+			<property name="sql" type="string">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</property>
+			<property name="query_multiselect" type="yes/no">If set to yes, this indicates that when the dropdown's form is in search (QBF) mode, the dropdown will allow multiple items to be selected, so the user can search for records/objects that match one of several values.  The values will be listed in the dropdown, separated by commas.</property>
 		</properties>
 		<children>
 			<child type="widget/dropdownitem">
@@ -442,6 +482,8 @@ cn1 "widget/connector"
 			<event name="GetFocus">This event occurs when the edit bar receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
 		</events>
 		<actions>
+			<action name="SetItems">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</action>
+			<action name="SetGroup">This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).</action>
 		</actions>
 		<sample>
 		<![CDATA[
@@ -493,10 +535,13 @@ myDropDown2 "widget/dropdown"
 			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
 			<property name="background" type="string">A background image for the contents of the editbox.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, for the editbox contents. If neither bgcolor nor background is specified, the editbox is transparent.</property>
+			<property name="description_fgcolor" type="string">A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.</property>
+			<property name="empty_description" type="string">The value description to display in the editbox when the editbox is empty.  For instance, "optional" or "required" or "type search and press ENTER" might be commonly used empty_description settings.</property>
 			<property name="height" type="integer">height, in pixels, of the editbox.</property>
 			<property name="maxchars" type="integer">number of characters to accept from the user.</property>
 			<property name="readonly" type="yes/no">set to 'yes' if the user cannot modify the value of the edit box (default 'no').</property>
 			<property name="style" type="string">Either "raised" or "lowered", and determines the style of the border drawn around the editbox.  Default is "lowered".</property>
+			<property name="tooltip" type="string">A string to display in a tooltip when the user rests the mouse pointer over the editbox.  By default, the editbox will display a tooltip of its content if the content is too long to fit in the visible part of the editbox.</property>
 
 			<property name="width" type="integer">width, in pixels, of the editbox.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
@@ -517,6 +562,7 @@ myDropDown2 "widget/dropdown"
 		</events>
 		<actions>
 			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).</action>
+			<action name="SetValueDescription">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</action>
 		</actions>
 		<sample>
 		<![CDATA[
@@ -576,16 +622,25 @@ mySoundPlayer "widget/execmethod"
 		<li> New - new object being entered/created.</li>
 		</ol>
 			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a "three-way confirm" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a "three-way confirm" window.  This should be a hidden (visible=no) "widget/htmlwindow" object which may contain any content, but should at least contain three buttons named "_3bConfirmSave", "_3bConfirmDiscard", and "_3bConfirmCancel" directly in the htmlwindow.  During a confirm operation, this window will become "application-modal"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
+			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
 		</overview>
 		<usage>
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
 		</usage>
 		<properties>
-			<property name="AllowQuery" type="integer"><ni/>Allow query by form</property>
-			<property name="AllowNew" type="integer"><ni/>Allow creation of new records</property>
-			<property name="AllowModify" type="integer"><ni/>Allow modification of existing records</property>
-			<property name="AllowView" type="integer"><ni/>Allow viewing of existing data</property>
-			<property name="AllowNoData" type="integer"><ni/>Allow the 'no data' state</property>
+			<property name="allow_query" type="yes/no"><ni/>Allow query by form</property>
+			<property name="allow_new" type="yes/no"><ni/>Allow creation of new records</property>
+			<property name="allow_modify" type="yes/no"><ni/>Allow modification of existing records</property>
+			<property name="allow_view" type="yes/no"><ni/>Allow viewing of existing data</property>
+			<property name="allow_nodata" type="yes/no"><ni/>Allow the 'no data' state</property>
+			<property name="allow_delete" type="yes/no"><ni/>Allow deletion of the displayed record</property>
+			<property name="confirm_delete" type="yes/no"><ni/>Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted</property>
+			<property name="auto_focus" type="yes/no"><ni/>Default "yes".  Whether to automatically place the focus on the first form element in the form when the form transitions to the New, Modify, or Search mode for any reason other than the user manually putting focus on one of the form elements.</property>
+			<property name="enter_mode" type="string"><ni/>Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</property>
+			<property name="next_form" type="string" subtype="widget"><ni/>Specifies another form to transfer focus to when the user presses TAB at the end of the form.</property>
+			<property name="next_form_within" type="string" subtype="widget"><ni/>Similar to "next_form", but searches for the next form after this one within a given widget or component.  Transitioning from one component context to another is permitted (you could specify a "widget/page" widget here, and cause focus to transfer to another form in the same application, regardless of level of component nesting; this may or may not be desired behavior).</property>
+			<property name="tab_revealed_only" type="yes/no"><ni/>When tabbing between form elements, if this is set to "yes", do not transfer focus to form elements that are not currently visible to the user.</property>
+			<property name="allow_obscure" type="yes/no"><ni/>Default "no".  If this is set to "yes", then the form will permit its data to be obscured (hidden from the user, via a window closure or tab page switch) and unsaved at the same time.  If set to "no", the form will require the user to save or cancel any data modifications before the form may be obscured.</property>
 			<property name="MultiEnter" type="integer"><ni/>Enable MultiEnter</property>
 			<property name="TabMode" type="string"><ni/>How to react to a tab in a control</property>
 			<property name="ReadOnly" type="integer"><ni/>Allow changes</property>
@@ -717,6 +772,11 @@ BigFrameset "widget/frameset"
 		]]>
 		</sample>
 	</widget>
+	<widget name="hbox" type="widget/hbox" description="Container which automatically positions its children" visual="yes" formelement="no" container="yes" osrcclient="no">
+		<overview>
+			<p>An autolayout widget with style set to "hbox".  See "widget/autolayout".</p>
+		</overview>
+	</widget>
 	<widget name="html" type="widget/html" visual="yes" container="no" formelement="no" description="A miniature HTML browser control, capable of viewing and navigating simple web documents.">
 		<overview>
 			<p>The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.</p>
@@ -770,6 +830,8 @@ HTMLArea "widget/html"
 		    <property name="height" type="integer">height, in pixels, of the window.</property>
 		    <property name="icon" type="string">A pathname to an icon to be used in the upper left corner of the window.  If unspecified, the default "CX" ichthus icon is used instead.</property>
 		    <property name="style" type="string">Either "dialog" or "window", and determines the style of the window's border.</property>
+		    <property name="modal" type="yes/no">If "yes", the window is modal (and IsModal need not be passed to "Open").  A modal window will force the user to close the window before anything else in the application can be accessed.</property>
+		    <property name="toplevel" type="yes/no">If "yes", the window will float above all other widgets in the application, otherwise it will be clipped by its own container.</property>
 		    <property name="textcolor" type="string" subtype="color">The color for the titlebar's text (window title).  Default "black".</property>
 		    <property name="titlebar" type="yes/no">whether the window will have a titlebar (and the close "X" in the upper right corner of the window). Default "yes".</property>
 		    <property name="title" type="string">The window's title.</property>
@@ -843,6 +905,24 @@ f_trx_mod "widget/checkbox"
 }		]]>
 		</sample>
 	</widget>
+	<widget name="image" type="widget/image" visual="yes" formelement="yes" container="no" osrcclient="no" description="A picture (image).">
+		<overview>
+			<p>The image widget displays a picture (image).</p>
+			<p>This widget can be a form element, in which case it will display an image as specified by the data from the form.</p>
+		</overview>
+		<usage>
+			<p>The image widget can be placed inside any container that allows for visual widgets.  Only connectors may be placed inside it.</p>
+		</usage>
+		<properties>
+			<property name="form" type="string" subtype="widget">If using a form for the image path, this is the name of the form.  If left unspecified, and fieldname is supplied, the default will be whatever form the image is inside.</property>
+			<property name="fieldname" type="string">If using a form for the image path, the name of the column in the datasource you want to reference.</property>
+			<property name="source" type="string">An OSML pathname for the location of the image (such as a png or jpg file).</property>
+			<property name="height" type="integer">height, in pixels, of the image.</property>
+			<property name="width" type="integer">width, in pixels, of the image.</property>
+			<property name="x" type="integer">x-coordinate of the upper left corner of the image, relative to its container.</property>
+			<property name="y" type="integer">y-coordinate of the upper left corner of the image, relative to its container.</property>
+		</properties>
+	</widget>
 	<widget name="imagebutton" type="widget/imagebutton" visual="yes" formelement="no" container="no" osrcclient="no" description="A button widget which uses a set of images to control its appearance.">
 		<overview>
 			<p>The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.  This provides a "tri-state" appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an "unclicked" and "clicked" version of the image.</p>
@@ -859,6 +939,7 @@ f_trx_mod "widget/checkbox"
 			<property name="enabled" type="yes/no or expr">Whether or not the imagebutton should be enabled.  Defaults to 'yes'.  Can be an expression that if uses runclient() will cause the enabled status of the imagebutton to 'follow' the value of that expression while the application is running.</property>
 			<property name="image" type="string">The pathname of the image to be shown when the button is "idle".</property>
 			<property name="pointimage" type="string">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</property>
+			<property name="repeat" type="yes/no">Whether to repeat the click event multiple times while the user holds down the button.</property>
 			<property name="height" type="integer">height, in pixels, of the image button.</property>
 			<property name="width" type="integer">width, in pixels, of the image button.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
@@ -890,7 +971,9 @@ MyButton "widget/imagebutton"
 	</widget>
 	<widget name="label" type="widget/label" description="Form element capable of displaying text in a child window" visual="yes" formelement="yes" container="no">
 		<overview>
-			<p>The label widget is used to display a value.  It displays as a simple label.</p>
+			<p>The label widget is used to display a non-editable string of text.  It displays as a simple label.</p>
+			<p>A label can be used as a form element; to do this, specify a fieldname, and optionally a form.</p>
+			<p>A label can behave like a "link": to do this, specify a point_fgcolor and a click_fgcolor.</p>
 		</overview>
 		<usage>
 			<p>The label widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Labels may not contain visual widgets.</p>
@@ -898,12 +981,15 @@ MyButton "widget/imagebutton"
 		<properties>
 			<property name="align" type="string">Describes how the text should align in the label (e.g. right).</property>
 			<property name="font_size" type="integer">(e.g. 16, default: 12).</property>
-			<property name="form" type="string">The name of the form that this checkbox is associated with.</property>
+			<property name="form" type="string">The name of the form that this label is associated with.</property>
+			<property name="fieldname" type="string">The name of the column in the datasource that will be used to supply the text of the label.</property>
+			<property name="fgcolor" type="string">The color (named or #numeric) of the text in the label.</property>
+			<property name="point_fgcolor" type="string">The color (named or #numeric) of the text in the label when the user hovers the mouse over the label.</property>
+			<property name="click_fgcolor" type="string">The color (named or #numeric) of the text in the label when the user clicks on the label.</property>
 			<property name="style" type="string">(e.g. bold).</property>
 			<property name="text" type="string">The text that the label is to display.</property>
-			<property name="valign" type="string">Describes how the text should align vertically within the label (e.g. middle).</property>
-			<property name="value" type="string">This property seems interchangable with text. (Choose only one).</property>
-			<property name="widget_class" type="string"> (e.g. label).</property>			
+			<property name="valign" type="string">Describes how the text should align vertically within the label (e.g. top, middle, or bottom).</property>
+			<property name="value" type="string">This property allows a runclient() expression to dynamically supply the text to display in the label.</property>
 			<property name="width" type="integer">The width of the label.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the checkbox, default is 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the checkbox, default is 0.</property>
@@ -937,16 +1023,31 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 		<properties>
 			<property name="background" type="string">A background image for the menu.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor background are specified, the menu is transparent.</property>
-			<property name="orientation" type="string">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</property>
-			<property name="type" type="string">Either "popup" (default) or "fixed".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</property>
-			<property name="width" type="integer">width, in pixels, of the menu.  The height is dynamically determined based on the contents.</property>
+			<property name="fgcolor" type="string">A color for the menu's text.</property>
+			<property name="active_background" type="string">A background image for a menu item that is selected (clicked on)</property>
+			<property name="active_bgcolor" type="string">A color, RGB or named, to be used as a selected (clicked) item's background.  If neither active_bgcolor nor active_background are specified, the 'highlight' color or background is used instead.</property>
+			<property name="highlight_background" type="string">A background image for a menu item that is highlighted (pointed at).</property>
+			<property name="highlight_bgcolor" type="string">A color, RGB or named, to be used as a highlighted (pointed-at) item's background.  If neither highlight_bgcolor nor highlight_background are specified, the standard color or background is used instead.</property>
+			<property name="direction" type="string">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</property>
+			<property name="popup" type="yes/no">Default "no".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</property>
+			<property name="row_height" type="integer">height, in pixels, of the menu items in a menu.</property>
+			<property name="height" type="integer">height, in pixels, of the menu, for menus with a direction of 'horizontal'.</property>
+			<property name="width" type="integer">width, in pixels, of the menu.  For menus with a direction of 'vertical', an unspecified width is determined dynamically based on the menu contents.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the menu, relative to its container.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the menu, relative to its container.</property>
 		</properties>
 		<children>
 			<child type="widget/menuitem">
+				<childproperty name="icon" type="string">Optionally, the pathname of an image file to display to the left of the menu item.</childproperty>
+				<childproperty name="checked" type="yes/no">Optionally, a checkbox can be displayed to the left of the menu item when 'checked' is specified.  In this case, the 'value' can also be a runclient() expression that controls whether the menu item is checked.</childproperty>
+				<childproperty name="onright" type="yes/no">If set to "yes", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</childproperty>
 				<childproperty name="label" type="string">The text to appear on the menu item.</childproperty>
 				<childproperty name="value" type="string">The 'value' of the menu item, passed to the Selected event, below.  If not specified, it defaults to the name of the widget (not its label).</childproperty>
+			</child>
+			<child type="widget/menusep">
+			</child>
+			<child type="widget/menutitle">
+				<childproperty name="label" type="string">The text to appear on the menu title.</childproperty>
 			</child>
 		</children>
 		<events>
@@ -962,7 +1063,7 @@ $Version=2$
 myMenu "widget/menu"
 	{
 	x = 10; y = 10; width = 72;
-	orientation = "vertical"; type = "popup";
+	direction = "vertical"; popup = yes;
 	bgcolor="#808080";
 	
 	m1 "widget/menuitem" { label="One"; }
@@ -990,6 +1091,12 @@ myMenu "widget/menu"
 			<property name="readahead" type="integer">Represents the number to fetch from the server when more records are needed from the server (such as when a form requests that the Current Record be a record beyond the end of the current replica contents).</property>
 			<property name="scrollahead" type="integer">Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  By default this is set to the value of 'readahead'.</property>
 			<property name="sql" type="string">The SQL statement used to retrieve the data.</property>
+			<property name="indicates_activity" type="yes/no">Whether normal query activity on this objectsource indicates to the server that the user is active.  Some objectsources (in conjunction with a widget/timer) regularly refresh their data; for those, indicates_activity can be set to "no" so that those refreshes don't cause a user's session to never time-out.</property>
+			<property name="delay_query_until_reveal" type="yes/no">Default "no".  If the objectsource's clients (form/table/etc) are all obscured from the user (e.g., in a closed window or on a non-visible tab page), delay any queries until a Reveal occurs on one of the objectsource's clients.</property>
+			<property name="use_having_clause" type="yes/no">Default "no".  If set to "yes", then queries will be performed using a HAVING clause instead of a WHERE clause.</property>
+			<property name="key_objname" type="string">The name of the object in the SQL query that contains the primary key for the query.</property>
+			<property name="send_updates" type="yes/no">Default "yes".  If set to "no", the objectsource will not relay any updates (modifications, etc.) that the user makes to the server.</property>
+			<property name="receive_updates" type="yes/no">** This feature currently disabled in Centrallix 0.9.1 **  Default "no".  If set to "yes", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).</property>
 		</properties>
 		<children>
 			<child type="rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync)">
@@ -1030,6 +1137,7 @@ myMenu "widget/menu"
 			<action name="Last"><ni/>Returns last record in the replica</action>
 			<action name="Refresh">Re-runs the SQL query using the previously stored parameter values (if any).  This is used when the data on the server is believed to have changed, and the new data is desired to be displayed in the application.  This action does not change the current row.</action>
 			<action name="RefreshObject">Re-runs the SQL query for just the one current object (record).  This does not change the currently selected record in the osrc.  This should be used when the intent is to refresh the values of just the current object without affecting anything else.</action>
+			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.</action>
 		</actions>
 		<sample>
 		<![CDATA[
@@ -1045,7 +1153,7 @@ osrc1 "widget/osrc"
 	// Notes: 
 	// 1. WHERE clause may require '*=' instead of '='
 	// 2. Be careful with string / integer parameters,
-	//    strings requires quotes, but using :this:parameters
+	//    strings requires quotes, but using :parameters:paramname
 	//    in the sql query automatically adds quotes.
 	}
 		]]>
@@ -1074,9 +1182,10 @@ osrc1 "widget/osrc"
 			<property name="title" type="string">The title which will appear in the browser's window title bar.</property>
 			<property name="x" type="integer"></property>
 			<property name="y" type="integer"></property>
-			<property name="widget_template" type="string">(e.g. "/apps/kardia/tpl/action-kardia.tpl").</property>
+			<property name="widget_template" type="string">One or more comma-separated pathnames for widget templates to use.  The specified files should contain "widget/template" objects (see "widget/template for details).</property>
 			<property name="width" type="integer"></property>
 			<property name="height" type="integer"></property>
+			<property name="show_diagnostics" type="yes/no">Set this to "yes" to display message boxes when application errors occur, such as an undefined property reference.  The default is "no", but this is handy when debugging.</property>
 		</properties>
 		<children>
 		</children>
@@ -1110,11 +1219,9 @@ MyPage "widget/page"
 		<properties>
 			<property name="background" type="string">A background image for the pane.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor background is specified, the pane will be transparent.</property>
-			<property name="border_color" type="string">e.g. #153f5f </property>
-			<property name="fl_height" type="integer">Unknown functionality.</property>
+			<property name="border_color" type="string">For "bordered" pane styles, this is the color of the border, either named or a #number.</property>
 			<property name="height" type="integer">height, in pixels, of the pane.</property>
-			<property name="style" type="string">Either "raised" or "lowered", and determines the style of the pane's border.</property>
-			<property name="widget_class" type="string">Options include: table_bgnd, label, or group.</property>
+			<property name="style" type="string">"raised", "lowered", "bordered", or "flat".  Determines the style of the pane's border.</property>
 			<property name="width" type="integer">width, in pixels, of the pane.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the pane, relative to its container.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the pane, relative to its container.</property>
@@ -1195,7 +1302,8 @@ my_cmp "widget/component-decl"
 		    <property name="background" type="string" subtype="image">A background image for the radio button panel.</property>
 		    <property name="bgcolor" type="string" subtype="color">A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.</property>
 		    <property name="height" type="integer">height, in pixels, of the panel.</property>
-		    <property name="outlinecolor" type="string" subtype="color">The color, RGB or named, of the rectangular border drawn around the radio buttons.</property>
+		    <property name="outline_background" type="string" subtype="color">An image to be used for the rectangular border drawn around the radio buttons.</property>
+		    <property name="outline_bgcolor" type="string" subtype="color">The color, RGB or named, of the rectangular border drawn around the radio buttons.</property>
 		    <property name="textcolor" type="string" subtype="color">The color, RGB or named, of the text within the panel.  Default: "black".</property>
 		    <property name="title" type="string">The title for the radio button panel, which appears superimposed on the rectangular   border around the radio buttons.</property>
 		    <property name="width" type="integer">width, in pixels, of the panel.</property>
@@ -1240,6 +1348,17 @@ testradio "widget/radiobuttonpanel"
 		]]>
 		</sample>
 	</widget>
+	<widget name="rule" type="widget/rule" visual="no" formelement="no" container="no" description="Declares a rule - a behavior expected from a widget.">
+		<overview>
+			<p>The rule widget is used as an important part of Centrallix's declarative application development.  It specifies behavior expected from a widget or relationship between two widgets.  For instance, one type of rule, the osrc_relationship rule, ties two objectsources together to enforce a primary key / foreign key relationship between the two.</p>
+		</overview>
+		<usage>
+			<p>Various widgets can have rule widgets; the various types of rule widgets are described in the sections for the widgets that they relate to.</p>
+		</usage>
+		<properties>
+			<property name="ruletype" type="string">The type of rule.  For instance, a "widget/osrc" can have "osrc_relationship" and "osrc_key" rules.</property>
+		</properties>
+	</widget>
 	<widget name="remotemgr" type="widget/remotemgr" visual="no" formelement="no" container="no" description="Nonvisual widget permitting the application to send events to a remote Centrallix application">
 		<overview>
 			<p>The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.</p>
@@ -1254,6 +1373,57 @@ testradio "widget/radiobuttonpanel"
 		<![CDATA[
 		]]>
 		</sample>
+	</widget>
+	<widget name="repeat" type="widget/repeat" visual="no" formelement="no" container="yes" description="Repeat a subtree of widgets">
+	    <overview>
+		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.</p>
+	    </overview>
+	    <usage>
+		<p>This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.</p>
+		<p>The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.</p>
+	    </usage>
+	    <properties>
+		<property name="sql" type="string">The sql query that will be run on the server</property>
+	    </properties>
+	    <sample>
+		<![CDATA[
+$Version=2$
+// This is a repeat widget inside a vbox
+	vbox "widget/vbox"
+	    {
+	    x=10; y=10; cellsize=20; spacing=0;
+	    rpt "widget/repeat"
+		{
+		sql="SELECT :name FROM /samples WHERE substring(:name,1,1)='t'";
+		button "widget/button"
+		    {
+		    type="text";
+		    width=100; height=20;
+		    text=runserver(:rpt:name);
+		    }
+		}
+	    }
+		]]>
+	    </sample>
+	</widget>
+	<widget name="scrollbar" type="widget/scrollbar" visual="yes" formelement="no" container="no" description="A scrollbar with a thumb">
+		<overview>
+			<p>The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
+			<p>Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.</p>
+		</overview>
+		<usage>
+			<p>As a visual widget, the scrollbar can be placed anywhere a visual widget is permitted.</p>
+		</usage>
+		<properties>
+		    <property name="background" type="string" subtype="image">A background image to be placed behind the scrollbar.</property>
+		    <property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the scrollbar background. If neither bgcolor nor background is supplied, the scrollbar is transparent.</property>
+		    <property name="direction" type="string">Either "horizontal" or "vertical" indicating the visible direction that the scrollbar is oriented.</property>
+		    <property name="height" type="integer">height, in pixels, of the scrollbar.</property>
+		    <property name="width" type="integer">width, in pixels, of the scrollbar.</property>
+		    <property name="x" type="integer">x-coordinate of the upper left corner of the scrollbar, relative to its container.</property>
+		    <property name="y" type="integer">y-coordinate of the upper left corner of the scrollbar, relative to its container.</property>
+		    <property name="range" type="integer">The upper limit of the range of the scrollbar's value.  The value will range from 0 to the number specified by 'range'.  This property can be set to a runclient() dynamic expression, in which case the range will change as the expression changes.</property>
+		</properties>
 	</widget>
 	<widget name="scrollpane" type="widget/scrollpane" visual="yes" formelement="no" container="yes" description="A visual container with a scrollbar allowing for content height that exceeds the display area">
 		<overview>
@@ -1305,20 +1475,26 @@ MyScrollPane "widget/scrollpane"
 			<p>Tab pages also have a 'visible' property which allows them to be hidden and revealed.  This is used if the type is set to dynamic, but can be used manually as well.</p>
 		</usage>
 		<properties>
-		    <property name="background" type="string" subtype="image">An image to be used as the background of the tab control.This is useful for adding control.</property>
-		    <property name="bgcolor" type="string" subtype="color">As an alternate to "background", "bgcolor" can specify a color, either named or RGB, control.</property>
-		    <property name="height" type="integer">the height, in pixels, of the entire tab control, including the tabs and pages.</property>
-		    <property name="selected" type="string">The name of the tab page that should be initially selected.</property>
+		    <property name="background" type="string" subtype="image">An image to be used as the background of the tab control.</property>
+		    <property name="bgcolor" type="string" subtype="color">As an alternate to "background", "bgcolor" can specify a color, either named or RGB.</property>
+		    <property name="inactive_background" type="string" subtype="image">An image to be used as the background of the tabs which are inactive (in the background).</property>
+		    <property name="inactive_bgcolor" type="string" subtype="color">As an alternate to "inactive_background", "inactive_bgcolor" can specify a color, either named or RGB.</property>
+		    <property name="height" type="integer">the height, in pixels, of the tab control, including the page height but not including the height of the tabs at the top.</property>
+		    <property name="selected" type="string">The name of the tab page that should be initially selected.  This can also contain a dynamic runclient() expression controlling which tab page is selected.</property>
+		    <property name="selected_index" type="integer">Similar to "selected", but selects the tab by numeric index.</property>
 		    <property name="textcolor" type="string" subtype="color">The color of the text to be used on the tabs to identify them.</property>
-		    <property name="width" type="integer">width, in pixels, of the entire tab control.</property>
+		    <property name="width" type="integer">width, in pixels, of the tab control, including the page width but not the width of the tabs (if they are at the side).</property>
 		    <property name="x" type="integer">x-coordinate of the upper left corner of the tab control, relative to the container.</property>
 		    <property name="y" type="integer">y-coordinate of the upper left corner of the control, relative to its container.</property>
+		    <property name="tab_location" type="string">The location of the tabs:  "top" (default), "bottom", "left", "right", or "none".</property>
+		    <property name="tab_width" type="integer">The width of the tabs in pixels.  This is optional for tab_locations of "top", "bottom", and "none".</property>
 		</properties>
 		<children>
 		    <child type="any">
 			    <childproperty name="title" type="string">The name of the tab page, which appears in the tab at the top of the control.</childproperty>
-			    <childproperty name="type" type="string">If this is set to dynamic then the tabpage will act as an objectsource client, displaying a tab for each item in the replica with title set to the value of the fieldname.</childproperty>
-			    <childproperty name="fieldname" type="string">This is the fieldname that the tabpage will use for its title.</childproperty>
+			    <childproperty name="type" type="string">If this is set to dynamic then the tabpage will act as an objectsource client, displaying zero or more tabs: one tab for each item in the replica with title set to the value of the fieldname.  In this way, a tab control can have a mix of dynamic tabs and static ones.</childproperty>
+			    <childproperty name="fieldname" type="string">This is the fieldname from the objectsource that the tabpage will use for its title.</childproperty>
+			    <childproperty name="visible" type="integer">0 or 1.  Can contain a dynamic runclient() expression to control when the tab page is visible to the user.</childproperty>
 		    </child>
 		</children>
 		<events>
@@ -1353,28 +1529,37 @@ myTabControl "widget/tab"
 			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 		</usage>
 		<properties>
+			<property name="allow_selection" type="yes/no">Whether to permit the user to select rows in the table.  Default "yes".</property>
 			<property name="background" type="string">A background image for the table. This "shows through" between table cells.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, to be used between table cells and rows.If neither bgcolor nor background are specified, the table is transparent.</property>
 			<property name="cellhspacing" type="integer">The horizontal spacing between cells in the table, in pixels.  Default is 1.</property>
 			<property name="cellvspacing" type="integer">The vertical spacing between cells in the table, in pixels.  Default is 1.</property>
 			<property name="colsep" type="integer">The width of the column separation lines in pixels.  Default is 1.</property>
+			<property name="data_mode" type="string">Either "rows" (default) or "properties".  In "properties" mode, the table displays one row per attribute, and so only displays the current record in the objectsource.  In "rows" mode, the table displays one row per record in the objectsource.</property>
 			<property name="dragcols" type="integer">Whether to allow dragging of column boundaries to resize columns; set to 1 to allow it and 0 to disallow.  Default is 1.</property>
 			<property name="followcurrent" type="yes/no">Set to 'yes' to cause the table's current row to follow the currently selected object in the ObjectSource, and 'no' to disable this behavior.  Default is 'yes'.</property>
 			<property name="gridinemptyrows" type="integer">Whether to show the table's grid in rows which do not hold data.  Set to 1 to show the grid or 0 to not show it; default is 1.</property>
 			<property name="hdr_background" type="string">A background image for the header row cells.</property>
 			<property name="hdr_bgcolor" type="string">A color, RGB or named, for the header row cells.</property>
+			<property name="rowhighlight_background" type="string">A background image for the current (selected) row cells.</property>
+			<property name="rowhighlight_bgcolor" type="string">A color, RGB or named, for the current (selected) row cells.</property>
+			<property name="newrow_background" type="string">A background image for the "new row" placeholder that is visible when a new object is being created.</property>
+			<property name="newrow_bgcolor" type="string">A color, RGB or named, for the "new row" placeholder that is visible when a new object is being created.</property>
 			<property name="inner_border" type="integer">width of the inner spacing between cells in a table. Default0.</property>
 			<property name="inner_padding" type="integer">margins within each cell, in pixels.  Default is 0 pixels.</property>
 			<property name="mode" type="string">The mode of operation of the table, either "static" to be generated on the server when the application is generated, "dynamicpage" to be generated on the client a page at a time, or "dynamicrow", to be generated on the client a row at a time.  Default is "static".</property>
 			<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>
-			<property name="row_background1" type="string">A background image for the table row cells.</property>
-			<property name="row_bgcolor1" type="string">A color, RGB or named, for the table row cells.</property>
-			<property name="row_background2" type="string">A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between "row_background1" and "row_background2".</property>
-			<property name="row_bgcolor2" type="string">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between "row_bgcolor1" and "row_bgcolor2".</property>
+			<property name="row1_background" type="string">A background image for the table row cells.</property>
+			<property name="row1_bgcolor" type="string">A color, RGB or named, for the table row cells.</property>
+			<property name="row2_background" type="string">A background image for the table row cells.  If this is specified, rows will alternate in backgrounds between "row_background1" and "row_background2".</property>
+			<property name="row2_bgcolor" type="string">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate in colors between "row_bgcolor1" and "row_bgcolor2".</property>
 			<property name="rowheight" type="integer">The height of the individual rows in pixels.  Default is 15 pixels.</property>
+			<property name="show_selection" type="yes/no">Whether to highlight the currently selected row.  Default "yes".</property>
 			<property name="sql" type="string">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</property>
 			<property name="textcolor" type="string">A color, RGB or named, of the text in the normal data rows.</property>
+			<property name="textcolornew" type="string">A color, RGB or named, of the text in the "new row" placeholder.</property>
 			<property name="textcolorhighlight" type="string">A color, RGB or named, of the text in the highlighted data row.</property>
+			<property name="titlebar" type="yes/no">Whether to show the title bar of the table.  Default "yes".</property>
 			<property name="titlecolor" type="string">A color, RGB or named, of the text in the header row.  If unset, defaults to textcolor.</property>
 			<property name="width" type="integer">width, in pixels, of the table.The height is determined dynamically.</property>
 			<property name="windowsize" type="integer">The maximum number of rows to show at any given time, for dynamic tables.</property>
@@ -1385,6 +1570,8 @@ myTabControl "widget/tab"
 			<child type="widget/table-column">
 				<childproperty name="title" type="string">The title of the column to be displayed in the header row.</childproperty>
 				<childproperty name="width" type="integer">width of the column.</childproperty>
+				<childproperty name="align" type="string">The alignment of the column:  "left" or "right".</childproperty>
+				<childproperty name="type" type="string">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</childproperty>
 			</child>
 		</children>
 		<events>
@@ -1412,6 +1599,50 @@ tblFileList "widget/table"
 	name "widget/table-column" { title="Object Name";width=20; }
 	annotation "widget/table-column" { title="Annotation"; width=25; }
 	}
+		]]>
+		</sample>
+	</widget>
+	<widget name="template" type="widget/template" visual="no" formelement="no" container="no" description="templates are a way to provide default values (and default children) of different widget_class's">
+		<overview>
+		</overview>
+		<usage>
+		  <p>a widget/template must be a root widget of a file (which normally is given a .tpl extension) </p>
+		  <p>each child in a widget/template is a "rule". each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and "rule")) and 2) match the widget type of the child (eg "widget/imagebutton")</p>
+		  <p>every other property of the "rule" are default values</p>
+		  <p>all children of the "rule" are automatically inserted into the matched widgets</p>
+		</usage>
+		<properties>
+		  <property name="" type=""></property>
+		</properties>
+		<children>
+		  <child type="any">
+		    <childproperty name="widget_class" type="string">the value of this property must match another widget before said widget will "inherit" this "rule".</childproperty>
+		  </child>
+		</children>
+		<events>
+		</events>
+		<actions>
+		</actions>
+		<clientprops>
+		</clientprops>
+		<sample>
+		<![CDATA[
+objcanvas_test "widget/template"
+    {
+    btnFirst "widget/imagebutton"
+	{
+	widget_class="FirstRecord";
+
+	width=18;
+	height=18;
+	image="/sys/images/ico16aa.gif";
+	pointimage="/sys/images/ico16ab.gif";
+	clickimage="/sys/images/ico16ac.gif";
+	disabledimage="/sys/images/ico16ad.gif";
+	enabled = runclient(:template_form:recid > 1);
+	cnFirst "widget/connector" { event="Click"; target=template_form; action="First"; }
+	}
+    }
 		]]>
 		</sample>
 	</widget>
@@ -1457,32 +1688,6 @@ tblFileList "widget/table"
 		]]>
 		</sample>
 	</widget>
-	<widget name="button" type="widget/button" visual="yes" container="no" formelement="no" description="A multipurpose button">
-	    <overview>
-		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
-	    </overview>
-	    <usage>
-		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
-	    </usage>
-	    <properties>
-		<property name="type" type="string">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</property>	
-		<property name="bgcolor" type="string">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</property>
-		<property name="disable_color" type="string">A color, RGB or named, to be used for the button's text when it is disabled.</property>
-		<property name="enabled" type="yes/no or expr">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</property>
-		<property name="fgcolor1" type="string">A color, RGB or named, for the text on the button.  Default "white".</property>
-		<property name="fgcolor2" type="string">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</property>
-		<property name="height" type="integer">height, in pixels, of the text button.</property>
-		<property name="text" type="string">The text to appear on the button.</property>
-		<property name="tristate" type="yes/no">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</property>
-		<property name="width" type="integer">The width, in pixels, of the text button.</property>
-		<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
-		<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
-		<property name="clickimage" type="string">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</property>
-		<property name="disabledimage" type="string">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</property>
-		<property name="image" type="string">The pathname of the image to be shown when the button is "idle".</property>
-		<property name="pointimage" type="string">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</property>
-	    </properties>
-	</widget>
 	<widget name="textbutton" type="widget/textbutton" visual="yes" container="no" formelement="no" description="A simple visual button widget built not from images but from a simple text string.">
 		<overview>
 			<p>A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.</p>
@@ -1499,7 +1704,7 @@ tblFileList "widget/table"
 			<property name="fgcolor1" type="string">A color, RGB or named, for the text on the button.  Default "white".</property>
 			<property name="fgcolor2" type="string">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</property>
 			<property name="height" type="integer">height, in pixels, of the text button.</property>
-			<property name="text" type="string">The text to appear on the button.</property>
+			<property name="text" type="string">The text to appear on the button.  This may be a dynamic runclient() expression to dynamically change the button's text.</property>
 			<property name="tristate" type="yes/no">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</property>
 			<property name="width" type="integer">The width, in pixels, of the text button.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
@@ -1589,6 +1794,15 @@ mytimerTwo "widget/timer"
 		    <property name="width" type="integer">width, in pixels, of the treeview.</property>
 		    <property name="x" type="integer">x-coordinate of the upper left corner of the treeview's root object.</property>
 		    <property name="y" type="integer">y-coordinate of the upper left corner of the treeview's root object.</property>
+		    <property name="icon" type="string">A pathname to an image to be used as icons for the items in the treeview.</property>
+		    <property name="highlight_background" type="string">A background image for the selected item in the treeview.</property>
+		    <property name="highlight_bgcolor" type="string">A color, RGB or named, to be used as the background for the selected item. If neither bgcolor nor background are specified, the selection is not visible.</property>
+		    <property name="highlight_fgcolor" type="string">A color, RGB or named, to be used for the text for the selected item.</property>
+		    <property name="fgcolor" type="string">A color, RGB or named, to be used for the text for the items in the treeview.</property>
+		    <property name="show_root" type="yes/no">Whether to display the root of the tree.  If "no", then the root is auto-expanded and only its children are visible.</property>
+		    <property name="show_branches" type="yes/no">Whether to display the connections between items in the tree using lines.</property>
+		    <property name="show_root_branch" type="yes/no">Whether to display the connection lines between the root and the root's immediate children.  If "no", the root's children are flush against the lefthand side of the treeview, otherwise the connecting lines show up.</property>
+		    <property name="use_3d_lines" type="yes/no">If set to "yes", the branch lines are drawn in a 3D style, otherwise they are drawn in a single color.</property>
 		</properties>
 		<events>
 		    <event name="ClickItem">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is "Pathname", or the ObjectSystem path to the object which was selected.</event>
@@ -1643,104 +1857,10 @@ counter "widget/variable"
 		]]>
 		</sample>
 	</widget>
-	<widget name="repeat" type="widget/repeat" visual="no" formelement="no" container="yes" description="Repeat a subtree of widgets">
-	    <overview>
-		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query</p>
-	    </overview>
-	    <usage><p>This widget has no content of its own, so it is only useful if it has widgets inside it.  It can be put inside an autolayout widget (vbox/hbox) for layout purposes, or the x and y coordinates could be specified through another query (ala runserver/runclient)</p></usage>
-	    <properties>
-		<property name="sql" type="string">The sql query that will be run on the server</property>
-	    </properties>
-	    <sample>
-		<![CDATA[
-$Version=2$
-// This is a repeat widget inside a vbox
-	vbox "widget/vbox"
-	    {
-	    x=10; y=10; cellsize=20; spacing=0;
-	    rpt "widget/repeat"
-		{
-		sql="SELECT :name FROM /samples WHERE substring(:name,1,1)='t'";
-		button "widget/button"
-		    {
-		    type="text";
-		    width=100; height=20;
-		    text=runserver(:rpt:name);
-		    }
-		}
-	    }
-		]]>
-	    </sample>
-	</widget>
-	<widget name="template" type="widget/template" visual="no" formelement="no" container="no" description="templates are a way to provide default values (and default children) of different widget_class's">
+	<widget name="vbox" type="widget/vbox" description="Container which automatically positions its children" visual="yes" formelement="no" container="yes" osrcclient="no">
 		<overview>
+			<p>An autolayout widget with style set to "vbox".  See "widget/autolayout".</p>
 		</overview>
-		<usage>
-		  <p>a widget/template must be a root widget of a file (which normally is given a .tpl extension) </p>
-		  <p>each child in a widget/template is a "rule". each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and "rule")) and 2) match the widget type of the child (eg "widget/imagebutton")</p>
-		  <p>every other property of the "rule" are default values</p>
-		  <p>all children of the "rule" are automatically inserted into the matched widgets</p>
-		</usage>
-		<properties>
-		  <property name="" type=""></property>
-		</properties>
-		<children>
-		  <child type="any">
-		    <childproperty name="widget_class" type="string">the value of this property must match another widget before said widget will "inheret" this "rule".</childproperty>
-		  </child>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
-		<clientprops>
-		</clientprops>
-		<sample>
-		<![CDATA[
-objcanvas_test "widget/template"
-    {
-    btnFirst "widget/imagebutton"
-	{
-	widget_class="FirstRecord";
-
-	width=18;
-	height=18;
-	image="/sys/images/ico16aa.gif";
-	pointimage="/sys/images/ico16ab.gif";
-	clickimage="/sys/images/ico16ac.gif";
-	disabledimage="/sys/images/ico16ad.gif";
-	enabled = runclient(:template_form:recid > 1);
-	cnFirst "widget/connector" { event="Click"; target=template_form; action="First"; }
-	}
-    }
-		]]>
-		</sample>
-	</widget>
-	<widget name="childwindow" type="widget/childwindow" description="a common top-level visual container" visual="yes" formelement="no" container="yes">
-		<overview>
-		</overview>
-		<usage>
-		  <p></p>
-		</usage>
-		<properties>
-		  <property name="x" type="integer"></property>
-		  <property name="y" type="integer"></property>
-		  <property name="width" type="integer"></property>
-		  <property name="height" type="integer"></property>
-		  <property name="y" type="integer"></property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
-		<clientprops>
-		</clientprops>
-		<sample>
-		<![CDATA[
-		]]>
-		</sample>
 	</widget>
 <!--
 	<widget name="" type="" description="" visual="" formelement="" container="">

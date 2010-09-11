@@ -25,9 +25,35 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">The field with which to link / connect to the variable.</td>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">(e.g. integer).</td>
+</tr>
+<tr>
 <td class="name">value</td>
-<td class="type">integer/string</td>
-<td class="description">initial value of the variable.</td>
+<td class="type">string</td>
+<td class="description">Can be accessed as :var_name:value.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Called by a widget/connector: Sets the value of the variable to whatever is specified by the "Value" parameter.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>

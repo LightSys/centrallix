@@ -41,6 +41,16 @@
 <td class="description">A color, RGB or named, for the editbox contents. If neither bgcolor nor background is specified, the editbox is transparent.</td>
 </tr>
 <tr>
+<td class="name">description_fgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.</td>
+</tr>
+<tr>
+<td class="name">empty_description</td>
+<td class="type">string</td>
+<td class="description">The value description to display in the editbox when the editbox is empty.  For instance, "optional" or "required" or "type search and press ENTER" might be commonly used empty_description settings.</td>
+</tr>
+<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
 <td class="description">height, in pixels, of the editbox.</td>
@@ -59,6 +69,11 @@
 <td class="name">style</td>
 <td class="type">string</td>
 <td class="description">Either "raised" or "lowered", and determines the style of the border drawn around the editbox.  Default is "lowered".</td>
+</tr>
+<tr>
+<td class="name">tooltip</td>
+<td class="type">string</td>
+<td class="description">A string to display in a tooltip when the user rests the mouse pointer over the editbox.  By default, the editbox will display a tooltip of its content if the content is too long to fit in the visible part of the editbox.</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -87,6 +102,10 @@
 <tr>
 <td class="name">SetValue</td>
 <td class="description">The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).</td>
+</tr>
+<tr>
+<td class="name">SetValueDescription</td>
+<td class="description">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
