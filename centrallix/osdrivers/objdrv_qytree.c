@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.18 2010/09/09 01:46:09 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.19 2010/09/13 23:28:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.19  2010/09/13 23:28:42  gbeeley
+    - (bugfix) fix regression causing free memory reuse since expression
+      did not remain valid during query lifetime
+
     Revision 1.18  2010/09/09 01:46:09  gbeeley
     - (change) permit deleting and creating objects through a querytree
     - (change) rework the passing through of where clauses to the underlying
@@ -217,6 +221,7 @@ typedef struct
     char*	ItemSrc;
     char*	ItemWhere;
     XHashTable	StructTable;
+    pExpression	Constraint;
     }
     QytQuery, *pQytQuery;
 
@@ -1189,6 +1194,8 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    else
 		{
 		objUnmanageQuery(qy->LLQueryObj->Session, qyinf);
+		qy->Constraint = expr;
+		expr = NULL;
 		}
 	    }
 
@@ -1228,6 +1235,7 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->NextSubInfID = 0;
 	qy->Query = query;
 	qy->ObjInf = inf;
+	qy->Constraint = NULL;
 	xhInit(&qy->StructTable,17,0);
 
 	/** Get the next subinf ready for retrieval. **/
@@ -1337,6 +1345,7 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
 	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
 
 	/** Free the structure **/
+	if (qy->Constraint) expFreeExpression(qy->Constraint);
 	xhClear(&qy->StructTable, NULL, NULL);
 	xhDeInit(&qy->StructTable);
 	nmFree(qy_v,sizeof(QytQuery));
