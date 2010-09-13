@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.23 2010/09/09 01:48:28 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.24 2010/09/13 23:30:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.24  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
+
     Revision 1.23  2010/09/09 01:48:28  gbeeley
     - (bugfix) used link counting to fix a race condition regarding report
       completion by worker thread vs caller
@@ -3306,7 +3310,6 @@ int
 rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
     {
     int i;
-    pXArray xa;
     pRptUserData ud;
 
 	/** Check recursion **/

@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.19 2010/09/08 21:55:09 gbeeley Exp $
+    $Id: exp_functions.c,v 1.20 2010/09/13 23:30:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.20  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
+
     Revision 1.19  2010/09/08 21:55:09  gbeeley
     - (bugfix) allow /file/name:"attribute" to be quoted.
     - (bugfix) order by ... asc/desc keywords are now case insenstive
@@ -1439,8 +1443,6 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 /*** constrain(value, min, max) ***/
 int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    int v;
-
     if (!i0 || !i1 || !i2 || (i0->DataType != i1->DataType) || i0->DataType != i2->DataType || !(i0->DataType == DATA_T_INTEGER || i0->DataType == DATA_T_MONEY || i0->DataType == DATA_T_DOUBLE))
 	{
 	mssError(1,"EXP","constrain() requires three numeric parameters of the same data type");

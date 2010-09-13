@@ -1,5 +1,30 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
+0.9.0 --> 0.9.1	    13-Sep-2010     MAJOR DEVELOPMENT RELEASE - CATCHUP
+
+    In this release, we're "catching up" with a lot of changes that have been
+    made but never formally released.
+
+    Changes:
+
+	1.  Driver for MySQL databases [Jon C]
+	2.  SQL updates:  DELETE support, multi-statement queries, performance
+	    improvements, INCLUSIVE option for SUBTREE, WILDCARD data sources,
+	    OBJECT keyword for data sources, and two-level aggregates.
+	3.  Many improvements to the HTML widget set, too many to list here,
+	    but including:  placeholder 'New row' for tables when creating a
+	    new record (object), app/session global scope, 'description'
+	    feature on editbox, 'link' styling for labels.
+	4.  New expression (sql) functions: truncate, constrain, dateadd,
+	    radians, degrees, sin, cos, tan, asin, acos, atan, atan2, sqrt,
+	    square.
+	5.  Report writer updates:  new CSV file output, and cx__download_as
+	    to specify a generated filename for report downloads.
+	6.  Many many bug fixes and efficiency improvements.
+	7.  Improvements in developer documentation [Seth B]
+	8.  QueryTree objects now support object creation and deletion.
+
+-------------------------------------------------------------------------------
 0.7.5 --> 0.9.0	    28-Mar-2008     MAJOR DEVELOPMENT RELEASE
 
     Changes:

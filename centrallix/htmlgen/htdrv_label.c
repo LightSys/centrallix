@@ -44,6 +44,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.39  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
+
     Revision 1.38  2009/06/25 17:51:14  gbeeley
     - (feature) labels can now be clickable, as if they were links
     - (feature) allow labels to be vertically aligned as well as horizontally
@@ -391,7 +395,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int x=-1,y=-1,w,h;
-    int id, i;
+    int id;
     /*int fontsize;*/
     int font_size;
     char *text;

@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.18 2010/09/09 01:33:27 gbeeley Exp $
+    $Id: obj_attr.c,v 1.19 2010/09/13 23:30:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.19  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
+
     Revision 1.18  2010/09/09 01:33:27  gbeeley
     - (feature) adding cx__pathname and cx__pathpartN system attributes
       which can be retrieved on an object.  Useful for when doing a WILDCARD
@@ -602,7 +606,6 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     int rval;
     TObjData tod;
     pObjVirtualAttr va;
-    char* str;
     
 	ASSERTMAGIC(this, MGK_OBJECT);
 

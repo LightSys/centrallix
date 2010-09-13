@@ -33,10 +33,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_conn.c,v 1.4 2010/09/09 01:29:00 gbeeley Exp $
+    $Id: net_http_conn.c,v 1.5 2010/09/13 23:30:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
 
     $Log: net_http_conn.c,v $
+    Revision 1.5  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
+
     Revision 1.4  2010/09/09 01:29:00  gbeeley
     - (change) ignore SIGPIPE from broken TCP connection from the user.
 
@@ -212,7 +216,6 @@ nht_internal_ConnHandler(void* connfd_v)
     unsigned char t_lsb;
     int noact = 0;
     int err;
-    int i;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 

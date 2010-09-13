@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2010 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -31,15 +31,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: copyright_stub.txt,v 1.1 2001/08/13 18:00:46 gbeeley Exp $
+    $Id: copyright_stub.txt,v 1.2 2010/09/13 23:30:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/copyright_stub.txt,v $
 
     $Log: copyright_stub.txt,v $
-    Revision 1.1  2001/08/13 18:00:46  gbeeley
-    Initial revision
-
-    Revision 1.1.1.1  2001/08/07 02:30:51  gbeeley
-    Centrallix Core Initial Import
+    Revision 1.2  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
 
 
  **END-CVSDATA***********************************************************/

@@ -1,5 +1,30 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
+Version 0.9.1, 13-Sep-2010
+
+This is a major development release of Centrallix.  See the release notes for
+the previous versions for further details.
+
+1.  Be sure to download at least centrallix, centrallix-lib, and centrallix-os.
+    Without those three packages, things will not work.
+
+2.  This version should not be considered secure enough to run on a computer
+    that can be accessed by a non-trusted network (internet, etc.).  Please
+    firewall your running Centrallix binary from such networks.
+
+3.  "makedepend" is REQUIRED for the build to work.  You can get it by 
+    installing your imake, XFree86-devel, or Xorg-devel package, if you
+    haven't already.
+
+4.  To be able to use 'altpasswd' authentication, you need to have a working
+    htpasswd command on your system - it comes with the httpd or apache
+    package.
+
+5.  See the online documentation http://www.centrallix.net/docs/docs.php for
+    instructions on building and installing from source.
+
+
+-------------------------------------------------------------------------------
 Version 0.9.0, 25-Mar-2008
 
 This is a major development release of Centrallix.  See the release notes for

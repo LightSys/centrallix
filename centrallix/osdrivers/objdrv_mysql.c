@@ -8,6 +8,7 @@
 #include "cxlib/xhash.h"
 #include "stparse.h"
 #include "st_node.h"
+#include "hints.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
 #include "cxlib/strtcpy.h"
@@ -49,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mysql.c,v 1.3 2008/08/16 00:53:24 jncraton Exp $
+    $Id: objdrv_mysql.c,v 1.4 2010/09/13 23:30:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mysql.c,v $
 
     $Log: objdrv_mysql.c,v $
+    Revision 1.4  2010/09/13 23:30:29  gbeeley
+    - (admin) prepping for 0.9.1 release, update text files, etc.
+    - (change) removing some 'unused local variables'
+
     Revision 1.3  2008/08/16 00:53:24  jncraton
     - (change) added some functionality and fixed some bugs
     - I'm done for the summer, so this will be my last commit

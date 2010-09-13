@@ -1,14 +1,9 @@
-Centrallix To-Do List	0.9.0	25-Mar-2008
+Centrallix To-Do List	0.9.1	13-Sep-2010
 -------------------------------------------------------------------------------
 
 Most of these items do have some existing design in place, though not all of
 the design documents may be in CVS at present.  If you'd like to work on one of
 these (woohoo!), please email the mailing list :)
-
-- MySQL Database Driver.  We'd like to take the current Sybase objectsystem
-  driver and create from it a generic SQL database access objectsystem driver,
-  with db-specific modules, the first of which would be the existing Sybase
-  driver; this would be the easiest way to add MySQL support.
 
 - Data/Domain Logic Object (DLO) objectsystem driver.  Providing business logic
   encapsulation of existing data sources.
