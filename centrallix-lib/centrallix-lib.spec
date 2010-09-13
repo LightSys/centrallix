@@ -1,12 +1,12 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
-Version: 0.9.0
+Version: 0.9.1
 Release: 0
 License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
-BuildPrereq: zlib-devel imake
+BuildPrereq: zlib-devel
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org)
 %define librelease 0
@@ -62,6 +62,12 @@ make install
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Mon Sep 13 2010 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.1-0
+- Update to 0.9.1
+- Many bug fixes, including a major rewrite of the 'mtlexer'
+  module for robustness and security reasons.
+- Disabled call graph profiler (-pg) by default.
+
 * Thu Mar 22 2008 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.0-0
 - Update to 0.9.0 to sync with main centrallix distribution.
 - Many bug fixes.

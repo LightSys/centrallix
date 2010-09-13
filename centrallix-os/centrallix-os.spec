@@ -1,6 +1,6 @@
 Summary: The core file-based ObjectSystem for the Centrallix server.
 Name: centrallix-os
-Version: 0.9.0
+Version: 0.9.1
 Release: 0
 License: LGPL (/sys directory), BSD (/samples directory)
 Group: System Environment/Libraries
@@ -58,6 +58,9 @@ cp LICENSE.txt INSTALL.txt index.app $RPM_BUILD_ROOT/var/centrallix/os/
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Mon Sep 13 2010 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.1-0
+- Following version 0.9.1 in the centrallix main package.
+
 * Tue Mar 25 2008 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.0-0
 - Following version 0.9.0 in the centrallix main package.
 

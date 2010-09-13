@@ -1,6 +1,6 @@
 Centrallix Base ObjectSystem
 
-Copyright (c) 1998-2008, LightSys Technology Services, Inc.
+Copyright (c) 1998-2010, LightSys Technology Services, Inc.
 
 PLEASE NOTE THAT OTHER COMPONENTS OF CENTRALLIX ARE UNDER 
 DIFFERENT LICENSES.  REFER TO THE LICENSE or LICENSE.txt

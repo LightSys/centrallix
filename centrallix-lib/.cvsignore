@@ -12,3 +12,5 @@ config.h.in~
 configure.lineno
 libCentrallix.so.0.9.0.0
 libStParse.so.0.9.0.0
+libCentrallix.so.0.9.1.0
+libStParse.so.0.9.1.0

@@ -35,7 +35,13 @@ TEST SUITE
 
       $ make test
 
-    The test suite should be run on a system 500MHz or faster; otherwise the
+    If you are using Valgrind, you can also run the test suite under Valgrind
+    by configuring centrallix-lib for Valgrind support and then running the
+    Valgrind-enabled version of the test suite:
+
+      $ make valtest
+
+    The test suite should be run on a system 1GHz or faster; otherwise the
     test suite may falsely report 'lockups' (the test suite lockup-detection
     timer in t_driver.c can be modified to wait longer than 10 seconds if the
     suite must be run on a slow machine).
@@ -55,6 +61,9 @@ TEST SUITE
     failure message goes along with the ABORT result for the corresponding
     test suite item.
 
+    [ ** Note:  we're aware that the 'smmalloc' module is not passing its test
+    suite.  That module is not currently used by Centrallix, however. ]
+
 
 COMPILE CENTRALLIX
 ==================
@@ -69,3 +78,8 @@ PROBLEMS?
     by going to the following link:
 
     http://lists.sourceforge.net/lists/listinfo/centrallix-users
+
+    OR, visit the documentation site:
+
+    http://www.centrallix.net/docs/docs.php
+

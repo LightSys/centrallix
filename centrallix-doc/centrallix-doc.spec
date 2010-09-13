@@ -1,6 +1,6 @@
 Summary: User, System admin, and Application developer docs for Centrallix
 Name: centrallix-doc
-Version: 0.9.0
+Version: 0.9.1
 Release: 0
 License: BSD
 Group: System Environment/Libraries
@@ -36,6 +36,9 @@ rm $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}/UserDocs/mkrpm
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Mon Sep 13 2010 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.1-0
+- Sync with 0.9.1 release of main code
+
 * Thu Mar 27 2008 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.0-0
 - Sync with 0.9.0 release of main code
 
