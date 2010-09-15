@@ -42,18 +42,26 @@
 				<h1>Download Centrallix...</h1>
 				    <p>To obtain the most recent release copy of Centrallix, visit our</p>
 				    <p style="margin-left: 32px;">
-				    <a href="http://sourceforge.net/project/showfiles.php?group_id=33299"><b>SourceForge
+				    <a href="http://sourceforge.net/projects/centrallix/files/"><b>SourceForge
 				    downloads page for Centrallix</b></a></p>
-				    <p><b>You MUST download at least the "centrallix", "centrallix-lib", and
+				    <p>We now are distributing the packages in "Everything" archives.  Choose
+				    whether you want to build from source, from source RPM's, or whether you
+				    want to install a binary distribution, such as EL4 (RHEL4/CentOS4) or EL5
+				    (RHEL5/CentOS5) or others that we may make available.  Download the
+				    "Everything" tgz bundle that you need, and extract it to get the individual
+				    packages.</p>
+				    <p><b>You MUST install at least the "centrallix", "centrallix-lib", and
 				    "centrallix-os" packages, otherwise things will not work!</b>  Build and
-				    install centrallix-lib and centrallix-os before centrallix.</p>
+				    install centrallix-lib and centrallix-os before building and installing
+				    the main centrallix package.</p>
 				    <p>Be sure to read the release notes that comes with the download!  Please
-				    note that "Development" (0.7.x, 0.9.x) releases should be considered buggy
-				    and unstable with incomplete security frameworks.</p>
+				    note that "Development" (0.7.x, 0.9.x) releases have a potentially higher
+				    level of bugs and may have incomplete security frameworks.</p>
 				    <p>Prebuilt RPM downloads have been tested on several RedHat/Fedora type
 				    Linux platforms.  TGZ files do contain a "spec" file suitable for building
 				    RPMs.</p>
-				    <p>Ideally, only "Stable" releases (1.0.x) should be used in production operations.</p>
+				    <p>Unless you're sure you know what you're doing, only "Stable" releases
+				    (1.0.x) should be used in production operations.</p>
 				    <p style="margin-left:32px;"><a href="quick.html"><b>Quick Install</b></a></p>
 				    <p style="margin-left:32px;"><a href="http://www.centrallix.net/docs/docs.php?t=1.1%20Installing%20Centrallix"><b>Detailed Installation Instructions</b></a></p>
 				<br>
@@ -65,38 +73,88 @@
 				    <p>See each individual downloadable package for further information about the 
 				    licensing of that package.</p>
 				    <br>
-				<h1>MD5/SHA1 Checksums...</h1>
-				    <p>On a Linux system, you can verify SHA1 and MD5 checksums from the command line, using the <code>md5sum</code> or <code>sha1sum</code> command.  Just type:</p>
-				    <p style="margin-left: 32px;"><code>sha1sum centrallix-*.rpm</code></p>
+				<h1>SHA1 Checksums and RPM Signatures...</h1>
+				    <p>On a Linux system, you can verify SHA1 checksums from the command line, using the <code>sha1sum</code> command.  Just type:</p>
+				    <p style="margin-left: 32px;"><code>sha1sum centrallix-*.rpm centrallix-*.tgz</code></p>
+				    <p>RPM's for Centrallix 0.9.x and newer are signed with LightSys' RPM GPG signing key (0xCBD237C2) which you can <a href="lskey.asc">download from us</a> or get from a public keyserver such as <a href="http://pgp.mit.edu/">pgp.mit.edu</a>.  <b>Note:</b> if you download the key from a keyserver, know that some versions of RPM have trouble with signed keys, and may import the key using an incorrect key ID.</p>
+				    <p style="margin-left: 32px;"><b><a href="lskey.asc">LightSys RPM Signing Key (DSA) 0xCBD237C2</a> (April 2008 - April 2013)</b></p>
+				    <p style="margin-left: 32px;"><b>Key Fingerprint:</b> <code>05ED D593 DB5C 8A31 5EFB  C57F 3C46 778D CBD2 37C2</code></p>
 				<br>
-				<table border="0" cellspacing="1" cellpadding="0" class="sum" width="100%">
-				    <tr><th>Ver.</th><th>Format</th><th>Package</th><th>MD5 / SHA1 Sum**</th></tr>
-				    <tr><td><b>0.7.4</b></td><td>RPM</td><td>centrallix-0.7.4-2.1.i386.rpm</td><td>ec7c7bfad494297dc1776f96c7d0d49d</td></tr>
-				    <tr><td></td><td></td><td>centrallix-sybase-0.7.4-2.1.i386.rpm</td><td>f9b616f2284b55be892cddc0c4776e88</td></tr>
-				    <tr><td></td><td></td><td>centrallix-xml-0.7.4-2.1.i386.rpm</td><td>d80325beb10826bc1c5b45ec451d5447</td></tr>
-				    <tr><td></td><td></td><td>centrallix-doc-0.7.4-2.noarch.rpm</td><td>1ab1ee24bcc5208268961d7076843c8b</td></tr>
-				    <tr><td></td><td></td><td>centrallix-lib-0.7.4-2.i386.rpm</td><td>178410c8bb5dd2c0e87407825b3f1b7a</td></tr>
-				    <tr><td></td><td></td><td>centrallix-lib-devel-0.7.4-2.i386.rpm</td><td>27fbbe5e13fc9b7676a57d9652d9dbc3</td></tr>
-				    <tr><td></td><td></td><td>centrallix-os-0.7.4-2.1.noarch.rpm</td><td>c040dcae5fbc4e4fbec378901e5d3c08</td></tr>
-				    <tr><td></td><td></td><td>centrallix-sysdoc-0.7.4-2.noarch.rpm</td><td>8aceb96d48589934bc75842c6ffec2bb</td></tr>
-				    <tr class="dk"><td></td><td>Src TGZ</td><td>centrallix-0.7.4.tgz</td><td>9944915fe2784d272df1592fa46bb412</td></tr>
-				    <tr class="dk"><td></td><td></td><td>centrallix-doc-0.7.4.tgz</td><td>4044548e4642df051a46e66625f77815</td></tr>
-				    <tr class="dk"><td></td><td></td><td>centrallix-lib-0.7.4.tgz</td><td>0fa4a3a13f58ce40aaf18bed562543b1</td></tr>
-				    <tr class="dk"><td></td><td></td><td>centrallix-os-0.7.4.tgz</td><td>63c631643f9691d24680798db6cf4904</td></tr>
-				    <tr class="dk"><td></td><td></td><td>centrallix-sysdoc-0.7.4.tgz</td><td>69be59bed84153eab64c7a8941bc46ad</td></tr>
-				    <tr><td></td><td>Src RPM</td><td>centrallix-0.7.4-2.src.rpm</td><td>7b15857ccbc36ee0c70e3b3e540635ba</td></tr>
-				    <tr><td></td><td></td><td>centrallix-doc-0.7.4-2.src.rpm</td><td>f3bc880cd0a82774d398b55df630296c</td></tr>
-				    <tr><td></td><td></td><td>centrallix-lib-0.7.4-2.src.rpm</td><td>1c9795f4e9b810de4551224b8a10296f</td></tr>
-				    <tr><td></td><td></td><td>centrallix-os-0.7.4-2.src.rpm</td><td>6fd135ce66676cd8056f2b7c38038f73</td></tr>
-				    <tr><td></td><td></td><td>centrallix-sysdoc-0.7.4-2.src.rpm</td><td>cb0cedab7014be789c2426c7c3141a30</td></tr>
-				</table>
+				<center><table class="illustration" width="750" border="0" cellspacing="4" cellpadding="6">
+				    <tr><th>Version</th><th>Checksums (SHA1)</th></tr>
+				    <tr><td><b>0.9.1</b></td>
+				    <td><pre>
+e6af6ddd46831a9bc60d1b8fc273d593d0c56baf  centrallix-everything-0.9.1-0-el4binary-rpm.tgz
+25940c82aaa4911c531f2b66b548c466eaca2e7c  centrallix-everything-0.9.1-0-el5binary-rpm.tgz
+e1e6660c8cc0a88064b94b2ec3a5e46f467c8a21  centrallix-everything-0.9.1-0-source-rpm.tgz
+d440d8c65870fb9d75a08e33398d5a71a5166ed9  centrallix-everything-0.9.1-0-source-tgz.tgz
+
+1f7a9f697e09f3dfc1821b3062ab55fc8eb16022  centrallix-0.9.1.tgz
+f3fdf6f95e862f5d58766be892240dfbc583579b  centrallix-doc-0.9.1.tgz
+6509383b50bfadb6db18f994103a58b3f7850e45  centrallix-lib-0.9.1.tgz
+a49e70c100abfec54d2b76dffd26fb25be8fc913  centrallix-os-0.9.1.tgz
+629279f535391e6d2721369a81a0025ab6890608  centrallix-sysdoc-0.9.1.tgz
+ed74cceed3cddce64a9bbaee78602e62a46d1cd2  centrallix-0.9.1-0.el5.i386.rpm
+6232d40aed9b55e8e733f917b41acde92c61ba97  centrallix-0.9.1-0.el5.src.rpm
+c4e71ba1c566ef52b5e6fe36d86faf00f94d6def  centrallix-debuginfo-0.9.1-0.el5.i386.rpm
+0d11fb19cfb95c20976576adf091bf0498dea20a  centrallix-doc-0.9.1-0.el5.noarch.rpm
+2776744167993a21285fc26c3cfdc68e8cd5f675  centrallix-doc-0.9.1-0.el5.src.rpm
+d05bddfbbde46161ed04e3f0611ae2a1fe85a0fa  centrallix-lib-0.9.1-0.el5.i386.rpm
+fe98678282b815b31050235ea9bf8b9e67045b3c  centrallix-lib-0.9.1-0.el5.src.rpm
+06f5a1035fb3a8a81546c7986d06c7d7b8ccd3eb  centrallix-lib-debuginfo-0.9.1-0.el5.i386.rpm
+886bf0cc4d56615920ad3091bbc868fa60f99ec6  centrallix-lib-devel-0.9.1-0.el5.i386.rpm
+26411ca9bd3324d11d8f29fec41a1d65c90922bb  centrallix-mysql-0.9.1-0.el5.i386.rpm
+5c2a56bf29a0eca45bb64993f560456e8d35ea6c  centrallix-os-0.9.1-0.el5.noarch.rpm
+6bf0859c28765d4270d47f3633c32a62b9bd6c0d  centrallix-os-0.9.1-0.el5.src.rpm
+d94bcc36d0c962599afc8de988bbc8fb6880656f  centrallix-sybase-0.9.1-0.el5.i386.rpm
+810cee59f1b279270df9cb24973d17b3707f4342  centrallix-sysdoc-0.9.1-0.el5.noarch.rpm
+a4fd146149fb25a9254f5259cf620285326caedf  centrallix-sysdoc-0.9.1-0.el5.src.rpm
+bb65014e8380ee1e2f11a9ea7fd805deb7f142f8  centrallix-xml-0.9.1-0.el5.i386.rpm
+3ace39e15d8b61be97af96dd75c8cf8f902244f8  centrallix-0.9.1-0.el4.i386.rpm
+92d6501f4bb4bc0a399ff3c2d0111fb4c205459d  centrallix-0.9.1-0.el4.src.rpm
+d64ceab1599d16afbf50ed3e7a0fc9b1b42c6c24  centrallix-debuginfo-0.9.1-0.el4.i386.rpm
+34bf49f2529d3d9c83d2e18f24c47cc49814542c  centrallix-doc-0.9.1-0.el4.noarch.rpm
+269591a66d90361aab973a42d65eecfe57ac28d6  centrallix-doc-0.9.1-0.el4.src.rpm
+28abab5e9843ac56909de0a37fa6acb517163786  centrallix-lib-0.9.1-0.el4.i386.rpm
+3e950178dcfda5d296c167a18f34127c18d9bae4  centrallix-lib-0.9.1-0.el4.src.rpm
+3e34b6ee56ef341bd5867b37e402140c54f5daa6  centrallix-lib-debuginfo-0.9.1-0.el4.i386.rpm
+69bf38bd8447087b374417b72bf3810c915f5d0e  centrallix-lib-devel-0.9.1-0.el4.i386.rpm
+51b0870c472f2d0157bd356801b38518f15253dd  centrallix-mysql-0.9.1-0.el4.i386.rpm
+c732fe7c96cf8e70be4433bb06ff680bdcc5123d  centrallix-os-0.9.1-0.el4.noarch.rpm
+7e503993b4915134f89c2b3dd00dcbd5dc4f71ff  centrallix-os-0.9.1-0.el4.src.rpm
+098833ba3f315e09b47e1f5a7d160ec03b118a07  centrallix-sybase-0.9.1-0.el4.i386.rpm
+df6dc41a6f4cac207c50d165de1318d81c655baf  centrallix-sysdoc-0.9.1-0.el4.noarch.rpm
+108ce46ee55b0aa36b3b380942eef8572091a572  centrallix-sysdoc-0.9.1-0.el4.src.rpm
+0430bd635db7ba760c66afdad617f22864d27516  centrallix-xml-0.9.1-0.el4.i386.rpm</pre></td></tr>
+				    <tr><td><b>0.9.0</b></td>
+				    <td><pre>
+6166cb88195b07a94d620c92267fc9f31e23d7ed  centrallix-0.9.0.tgz
+459e9cd32e3f13c88210e8e664e6b85fb3752ca0  centrallix-doc-0.9.0.tgz
+4d94e32ecb7f8d6a5c01ac23ca8b01c99305aaa6  centrallix-lib-0.9.0.tgz
+6186d5e8f892ac9901345d9e92e11078081a1749  centrallix-os-0.9.0.tgz
+ac29bc46068c45073cb963774b1c853913da51b0  centrallix-sysdoc-0.9.0.tgz
+439f971c81f2ec044fe6ab14bca2b75d517fffbb  centrallix-0.9.0-0.el4.i386.rpm
+04a179ec20e0c25c55f9a4fa1483229aaafc0518  centrallix-0.9.0-0.el4.src.rpm
+7081990635548b9994a4c32e29132e96d6d5c5fc  centrallix-debuginfo-0.9.0-0.el4.i386.rpm
+b56f956ea3d561b0a8cbf1538a7a6c8e744d2d65  centrallix-doc-0.9.0-0.el4.noarch.rpm
+3cd0eae404246a02ed7a04da4071c79e76e69c30  centrallix-doc-0.9.0-0.el4.src.rpm
+17e390d59d9fdd01909f750b55f2966454dc5d0d  centrallix-lib-0.9.0-0.el4.i386.rpm
+f8f900f958199e8681997dc4dafd55c67e68429c  centrallix-lib-0.9.0-0.el4.src.rpm
+c1384075f381ba234d2c0c46c0bb3bbef85e9e07  centrallix-lib-debuginfo-0.9.0-0.el4.i386.rpm
+d7162a7c668e0e48d0a98de6378cea2f4077d5c4  centrallix-lib-devel-0.9.0-0.el4.i386.rpm
+8114135bd2a70a046029d1fc621848473a561551  centrallix-os-0.9.0-0.el4.noarch.rpm
+0b55d7d99d44c44854f8bd863e4b09d90fc140bf  centrallix-os-0.9.0-0.el4.src.rpm
+c67e87cb97c932ea1a8281983118d9d9741936ec  centrallix-sybase-0.9.0-0.el4.i386.rpm
+2624bedb9cc660d95f2aee41d652a4806463f3d9  centrallix-sysdoc-0.9.0-0.el4.noarch.rpm
+072f3af984f67ef58d1f710d8572202870576b79  centrallix-sysdoc-0.9.0-0.el4.src.rpm
+b0be446d624adafe1fbec4091f4205e782d7669f  centrallix-xml-0.9.0-0.el4.i386.rpm</pre></td></tr>
+				</table></center>
 			    <br>
-			    <p><i>** Shorter 32-character sums are MD5.  Longer 40-character sums are SHA1.</i></p>
 			    <br>
 			    </td>
 			</tr>
 		    </table>
-		    <hr><i><small>(c) 2001-2008 LightSys Technology Services, Inc.  All trademarks are property of their respective owners.</small></i>
+		    <hr><i><small>(c) 2001-2010 LightSys Technology Services, Inc.  All trademarks are property of their respective owners.</small></i>
 		    <br>
 		    <p align="center"><small><b>Project Hosting Provided By:</b></small><br><a target="_top" href="http://sourceforge.net"><IMG src="http://sourceforge.net/sflogo.php?group_id=33299" width="88" height="31" border="0" alt="Hosted by Sourceforge"></a></p>
 		</td>
