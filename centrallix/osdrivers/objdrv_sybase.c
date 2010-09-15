@@ -72,10 +72,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.37 2010/09/09 00:58:48 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.38 2010/09/15 02:32:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.38  2010/09/15 02:32:42  gbeeley
+    - (admin) disabling SqlLog for the release version
+
     Revision 1.37  2010/09/09 00:58:48  gbeeley
     - (change) upped sql buffer size, queries are becoming more complex
       these days.  likely will need to go with a dynamic buffer / xstring
@@ -354,7 +357,7 @@ const unsigned short int* __ctype_b;
 /*** Module Controls ***/
 #define SYBD_USE_CURSORS	1	/* use cursors for all multirow SELECTs */
 #define SYBD_CURSOR_ROWCOUNT	20	/* # of rows to fetch at a time */
-#define SYBD_SHOW_SQL		1	/* debug printout SQL issued to Sybase */
+#define SYBD_SHOW_SQL		0	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
 
