@@ -24,6 +24,7 @@ function tx_getvalue()
 /** Set value function **/
 function tx_setvalue(txt)
     {
+    this.clearvalue();
     txt = htutil_obscure(txt);
     var reg = /(.*)(\n*)/;
     while(txt)
