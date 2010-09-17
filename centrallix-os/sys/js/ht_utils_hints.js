@@ -395,11 +395,11 @@ function cx_hints_checkmodify(e, ov, nv, type, onchange)
 	if (nv != null && h.Length && h.Length < ('' + nv).length) return ('' + nv).substr(0,h.Length);
 
 	// badchars/allowchars
-	if (h.AllowChars)
+	if (h.AllowChars && nv)
 	    {
 	    for(var i = 0; i<(''+nv).length; i++) if (h.AllowChars.indexOf((''+nv).charAt(i)) < 0) return ov;
 	    }
-	if (h.BadChars)
+	if (h.BadChars && nv)
 	    {
 	    for(var i = 0; i<h.BadChars.length; i++) if ((''+nv).indexOf(h.BadChars.charAt(i)) >= 0) return ov;
 	    }
