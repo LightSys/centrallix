@@ -69,10 +69,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.h,v 1.3 2009/06/26 18:31:03 gbeeley Exp $
+    $Id: net_http.h,v 1.4 2010/09/17 15:45:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.h,v $
 
     $Log: net_http.h,v $
+    Revision 1.4  2010/09/17 15:45:29  gbeeley
+    - (security) implement X-Frame-Options anti-clickjacking countermeasure
+
     Revision 1.3  2009/06/26 18:31:03  gbeeley
     - (feature) enhance ls__method=copy so that it supports srctype/dsttype
       like test_obj does
@@ -278,8 +281,13 @@ struct
     char	AccessLogFile[256];
     int		ClkTck;
     int		numbCachedApps;
+    int		XFrameOptions;		/* NHT_XFO_T_xxx */
     }
     NHT;
+
+#define NHT_XFO_T_NONE		0
+#define NHT_XFO_T_DENY		1
+#define NHT_XFO_T_SAMEORIGIN	2
 
 typedef struct
     {

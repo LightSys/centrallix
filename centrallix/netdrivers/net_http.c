@@ -33,10 +33,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.90 2010/09/09 01:25:41 gbeeley Exp $
+    $Id: net_http.c,v 1.91 2010/09/17 15:45:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.91  2010/09/17 15:45:29  gbeeley
+    - (security) implement X-Frame-Options anti-clickjacking countermeasure
+
     Revision 1.90  2010/09/09 01:25:41  gbeeley
     - (bugfix) overlay-building loop was using WGTR_MAX_TEMPLATE as its limit
 
@@ -1167,6 +1170,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* lptr;
     char* lptr2;
     char* pptr;
+    char* xfo_ptr;
     int rowlimit;
     int order_desc = 0;
     char* name;
@@ -1327,6 +1331,21 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    fdWrite(conn->ConnFD,"OK\r\n",4,0,0);
 	    objClose(target_obj);
 	    return 0;
+	    }
+
+	/** Add anti-clickjacking X-Frame-Options header?
+	 ** see: https://developer.mozilla.org/en/The_X-FRAME-OPTIONS_response_header
+	 **/
+	if (target_obj && (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset") || !strcmp(ptr,"widget/component-decl")))
+	    {
+	    xfo_ptr = NULL;
+	    if (objGetAttrValue(target_obj, "http_frame_options", DATA_T_STRING, POD(&xfo_ptr)) == 0 || NHT.XFrameOptions != NHT_XFO_T_NONE)
+		{
+		if ((xfo_ptr && !strcmp(xfo_ptr,"deny")) || (!xfo_ptr && NHT.XFrameOptions == NHT_XFO_T_DENY))
+		    fdPrintf(conn->ConnFD, "X-Frame-Options: DENY\r\n");
+		else if ((xfo_ptr && !strcmp(xfo_ptr,"sameorigin")) || (!xfo_ptr && NHT.XFrameOptions == NHT_XFO_T_SAMEORIGIN))
+		    fdPrintf(conn->ConnFD, "X-Frame-Options: SAMEORIGIN\r\n");
+		}
 	    }
 
 	/** Add content-disposition header with filename **/
@@ -2168,6 +2187,7 @@ nhtInitialize()
 	xaInit(&NHT.UsersList, 64);
 	NHT.AccCnt = 0;
 	NHT.RestrictToLocalhost = 0;
+	NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);

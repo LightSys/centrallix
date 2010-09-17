@@ -33,10 +33,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_conn.c,v 1.5 2010/09/13 23:30:29 gbeeley Exp $
+    $Id: net_http_conn.c,v 1.6 2010/09/17 15:45:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
 
     $Log: net_http_conn.c,v $
+    Revision 1.6  2010/09/17 15:45:29  gbeeley
+    - (security) implement X-Frame-Options anti-clickjacking countermeasure
+
     Revision 1.5  2010/09/13 23:30:29  gbeeley
     - (admin) prepping for 0.9.1 release, update text files, etc.
     - (change) removing some 'unused local variables'
@@ -703,6 +706,17 @@ nht_internal_Handler(void* v)
 	    stAttrValue(stLookup(my_config, "condense_js"), &(NHT.CondenseJS), NULL, 0);
 
 	    stAttrValue(stLookup(my_config, "accept_localhost_only"), &(NHT.RestrictToLocalhost), NULL, 0);
+
+	    /** X-Frame-Options anti-clickjacking header? **/
+	    if (stAttrValue(stLookup(my_config, "x_frame_options"), NULL, &strval, 0) >= 0)
+		{
+		if (!strcasecmp(strval, "none"))
+		    NHT.XFrameOptions = NHT_XFO_T_NONE;
+		else if (!strcasecmp(strval, "deny"))
+		    NHT.XFrameOptions = NHT_XFO_T_DENY;
+		else if (!strcasecmp(strval, "sameorigin")) /* default - see net_http.c */
+		    NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
+		}
 
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
