@@ -1,0 +1,279 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'osrc.html' -->
+<h2 class="widgetname"><a name="osrc">osrc</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/osrc</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The objectsource (osrc) widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of "replication" by maintaining a replica of a small segment of data in the user agent.</p>
+			<p>Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.</p>
+			<p>Objectsources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below) or rule-based connnectivity (see widget/rule).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.</p>
+			<p>An objectsource may also be used to run a query which does not return any rows, such as an insert, update, or delete query.  Under normal data maintenance conditions such queries are not needed as the objectsource handles those operations internally, however.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Objectsource widgets are often used at the top-level of an application, within a "widget/page" object, but can be used anywhere.  The forms/tables that use an objectsource are generally placed within that objectsource.  A page may have more than one objectsource widget.</p>
+			<p>Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">autoquery</td>
+<td class="type">string</td>
+<td class="description">One of oneachreveal, never, onload, onfirstreveal.  (note: this autoquery setting is different from, but related to, the "widget/rule" "autoquery").  "onload" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  "onfirstreveal" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user (e.g., the containing childwindow becomes visible or tabpage is selected).  "oneachreveal" means to do so *each* time the data is displayed to the user.  "never" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.  Important Note:  If you expect to normally trigger the osrc via a relationship or via QueryParam, it is often *best* to set autoquery to 'never'.  Otherwise, unexpected results can sometimes occur.</td>
+</tr>
+<tr>
+<td class="name">baseobj</td>
+<td class="type">string</td>
+<td class="description">If inserts and deletes are to function, the ObjectSystem pathname in which those inserts and deletes should occur.  This should be one of the objects specified in the FROM clause of the SQL statement.</td>
+</tr>
+<tr>
+<td class="name">replicasize</td>
+<td class="type">integer</td>
+<td class="description">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</td>
+</tr>
+<tr>
+<td class="name">readahead</td>
+<td class="type">integer</td>
+<td class="description">Represents the number to fetch from the server when more records are needed from the server (such as when a form requests that the Current Record be a record beyond the end of the current replica contents).</td>
+</tr>
+<tr>
+<td class="name">scrollahead</td>
+<td class="type">integer</td>
+<td class="description">Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  By default this is set to the value of 'readahead'.</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The SQL statement used to retrieve the data.</td>
+</tr>
+<tr>
+<td class="name">indicates_activity</td>
+<td class="type">yes/no</td>
+<td class="description">Whether normal query activity on this objectsource indicates to the server that the user is active.  Some objectsources (in conjunction with a widget/timer) regularly refresh their data; for those, indicates_activity can be set to "no" so that those refreshes don't cause a user's session to never time-out.</td>
+</tr>
+<tr>
+<td class="name">delay_query_until_reveal</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If the objectsource's clients (form/table/etc) are all obscured from the user (e.g., in a closed window or on a non-visible tab page), delay any queries until a Reveal occurs on one of the objectsource's clients.</td>
+</tr>
+<tr>
+<td class="name">use_having_clause</td>
+<td class="type">yes/no</td>
+<td class="description">Default "no".  If set to "yes", then queries will be performed using a HAVING clause instead of a WHERE clause.</td>
+</tr>
+<tr>
+<td class="name">key_objname</td>
+<td class="type">string</td>
+<td class="description">The name of the object in the SQL query that contains the primary key for the query.</td>
+</tr>
+<tr>
+<td class="name">send_updates</td>
+<td class="type">yes/no</td>
+<td class="description">Default "yes".  If set to "no", the objectsource will not relay any updates (modifications, etc.) that the user makes to the server.</td>
+</tr>
+<tr>
+<td class="name">receive_updates</td>
+<td class="type">yes/no</td>
+<td class="description">** This feature currently disabled in Centrallix 0.9.1 **  Default "no".  If set to "yes", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync) child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">target</td>
+<td class="type">string</td>
+<td class="description">The target objectsource that this objectsource will be related to</td>
+</tr>
+<tr>
+<td class="name">is_slave</td>
+<td class="type">yes/no</td>
+<td class="description">Defaults to 'yes'.  If it is set to 'no', then this osrc is set up to be a master of the target, otherwise the default is for it to be a slave of the target.</td>
+</tr>
+<tr>
+<td class="name">key_#</td>
+<td class="type">string</td>
+<td class="description">The field names in this objectsource to be used as the key value for the relationship.  Keys can be key_1 through key_5.</td>
+</tr>
+<tr>
+<td class="name">target_key_#</td>
+<td class="type">string</td>
+<td class="description">The field names in the target objectsource to be used for the key value for the relationship (where # is an integer 1 through 5).  These keys can be target_key_1 through target_key_5.</td>
+</tr>
+<tr>
+<td class="name">autoquery</td>
+<td class="type">true/false</td>
+<td class="description">When autoquery is set to true, when the master changes, the slave automatially requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.</td>
+</tr>
+<tr>
+<td class="name">master_norecs_action</td>
+<td class="type">string</td>
+<td class="description">One of: allrecs, norecs, or sameasnull (the default).  If the master osrc has no data loaded in it (no records), this determines how the slave (child) osrc behaves.  'allrecs' means to query for all records that match the sql query for the osrc, without additional constraints.  'norecs' means the slave (child) will be empty.  'sameasnull' means to handle it as if the key value in the master were NULL (see master_null_action).</td>
+</tr>
+<tr>
+<td class="name">master_null_action</td>
+<td class="type">string</td>
+<td class="description">One of: allrecs, norecs, or nullisvalue (the default).  If the master osrc has a NULL value for its key (as defined by key_#/target_key_#), this setting determines how the slave (child) osrc behaves.  'allrecs' and 'norecs' have the same meaning as for master_norecs_action.  'nullisvalue' means to treat the NULL as a value, and query for slave records that have a matching NULL values in their key (as defined by key_#/target_key_#).  If no slave records have null values in the key, then 'nullisvalue' and 'norecs' have the same result.</td>
+</tr>
+</table>
+<p class="childname">(of rule with ruletype=osrc_key child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">keying_method</td>
+<td class="type">string</td>
+<td class="description">(e.g. counterosrc).</td>
+</tr>
+<tr>
+<td class="name">key_fieldname</td>
+<td class="type">string</td>
+<td class="description">The field name in this objectsource to be used as the key.</td>
+</tr>
+<tr>
+<td class="name">osrc</td>
+<td class="type">string</td>
+<td class="description">The osrc in which to store the next auto id / counting number.</td>
+</tr>
+<tr>
+<td class="name">counter_attribute</td>
+<td class="type">string</td>
+<td class="description">The field in the specified 'osrc' in which to store the auto number.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">DoubleSync</td>
+<td class="description">DEPRECATED: Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</td>
+</tr>
+<tr>
+<td class="name">Sync</td>
+<td class="description">DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Clear</td>
+<td class="description">Clears the replica of data.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Query</td>
+<td class="description">Query.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">QueryObject</td>
+<td class="description">Query Object.  Primarily for internal use only.</td>
+</tr>
+<tr>
+<td class="name">QueryParam</td>
+<td class="description">Refreshes the query, and allows new parameter values to be passed in.  Previous comment: Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.</td>
+</tr>
+<tr>
+<td class="name">QueryText</td>
+<td class="description">Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples:  'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case insensitive.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">OrderObject</td>
+<td class="description">Order Object</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Delete</td>
+<td class="description">Deletes an object through OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Create</td>
+<td class="description">Creates an object though OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Modify</td>
+<td class="description">Modifies an object through OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">First</td>
+<td class="description">Returns first record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Next</td>
+<td class="description">Returns next record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Prev</td>
+<td class="description">Returns previous record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Last</td>
+<td class="description">Returns last record in the replica</td>
+</tr>
+<tr>
+<td class="name">Refresh</td>
+<td class="description">Re-runs the SQL query using the previously stored parameter values (if any).  This is used when the data on the server is believed to have changed, and the new data is desired to be displayed in the application.  This action does not change the current row.</td>
+</tr>
+<tr>
+<td class="name">RefreshObject</td>
+<td class="description">Re-runs the SQL query for just the one current object (record).  This does not change the currently selected record in the osrc.  This should be used when the intent is to refresh the values of just the current object without affecting anything else.</td>
+</tr>
+<tr>
+<td class="name">FindObject</td>
+<td class="description">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">DataFocusChanged</td>
+<td class="description">This event is invoked whenever the current record changes to a different record.</td>
+</tr>
+<tr>
+<td class="name">EndQuery</td>
+<td class="description">This event is invoked when a query is completed and the last row(s) retrieved.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+osrc1 "widget/osrc"
+	{
+	replicasize = 9;
+	readahead = 3;
+	sql = "select :name, :size from /samples";
+	baseobj = "/samples";
+
+	// form or table widgets go here
+	// Notes: 
+	// 1. WHERE clause may require '*=' instead of '='
+	// 2. Be careful with string / integer parameters,
+	//    strings requires quotes, but using :parameters:paramname
+	//    in the sql query automatically adds quotes.
+	}
+		
+		</pre>
+</body>
+</html>

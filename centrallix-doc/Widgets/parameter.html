@@ -1,0 +1,85 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'parameter.html' -->
+<h2 class="widgetname"><a name="parameter">parameter</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/parameter</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>Applications (.app) and components (.cmp) can accept parameters, which can then be used to control the way that the application or component is rendered or the way it functions.  The widget/parameter widget is used to declare a parameter on an application or component, and to specify data type, default values, and more.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Parameters must be placed inside a widget/page or widget/component-decl.  They cannot be used anywhere else, and cannot contain other widgets.</p>
+			<p>Parameters have a very similar set of properties to the widget/hints widget, which is used to attach "presentation hints" to a widget.</p>
+			<p>To use a parameter value, just reference it in a runserver() expression with object "this", as in :this:parametername.  For "object" parameters, reference them by just using the parameter name as if you would use the name of the object itself if the object were physically present in the component instead of being passed as a parameter (see sample code).</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">allowchars</td>
+<td class="type">string</td>
+<td class="description"> The set of characters that are allowed. (e.g. allowchars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; )</td>
+</tr>
+<tr>
+<td class="name">default</td>
+<td class="type">mixed</td>
+<td class="description"> If a parameter is not passed in, then the (optional) default value is assigned to the parameter (e.g. default = null, or 2745).</td>
+</tr>
+<tr>
+<td class="name">deploy_to_client</td>
+<td class="type">yes/no</td>
+<td class="description">Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type "object", are not deployed to the client.  To override this behavior, set this option to "yes".</td>
+</tr>
+<tr>
+<td class="name">find_container</td>
+<td class="type">string</td>
+<td class="description">If this is a parameter to a component, and the parameter has type "object", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the contianing application or component, without that form or objectsource having to be explicitly passed to the component.</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">The data type of the parameter.  Can be "integer", "string", "double", "datetime", "money", or "object".</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+			
+$Version=2$
+// Here is a component with two parameters, one a string, and one to
+// pass a form to the component.
+my_cmp "widget/component-decl"
+	{
+	width=200; height=32;
+	
+	field_name "widget/parameter"
+		{
+		type = string;
+		default = null;
+		}
+	form_to_use "widget/parameter"
+		{
+		type = object;
+		find_container = "widget/form";
+		}
+	my_label "widget/label"
+		{
+		x=0;y=0;width=200;height=32;
+		fieldname=runserver(:this:field_name);
+		form = form_to_use;
+		}
+	}
+			
+		</pre>
+</body>
+</html>

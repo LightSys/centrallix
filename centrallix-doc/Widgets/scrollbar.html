@@ -1,0 +1,70 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'scrollbar.html' -->
+<h2 class="widgetname"><a name="scrollbar">scrollbar</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/scrollbar</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
+			<p>Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>As a visual widget, the scrollbar can be placed anywhere a visual widget is permitted.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image to be placed behind the scrollbar.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the scrollbar background. If neither bgcolor nor background is supplied, the scrollbar is transparent.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
+<td class="type">string</td>
+<td class="description">Either "horizontal" or "vertical" indicating the visible direction that the scrollbar is oriented.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the scrollbar.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the scrollbar.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the scrollbar, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the scrollbar, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">range</td>
+<td class="type">integer</td>
+<td class="description">The upper limit of the range of the scrollbar's value.  The value will range from 0 to the number specified by 'range'.  This property can be set to a runclient() dynamic expression, in which case the range will change as the expression changes.</td>
+</tr>
+</table>
+</body>
+</html>

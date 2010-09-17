@@ -1,0 +1,109 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'button.html' -->
+<h2 class="widgetname"><a name="button">button</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/button</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
+	    </span><h3 class="usage">Usage:</h3>
+<span class="usage">
+		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
+	    </span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</td>
+</tr>
+<tr>
+<td class="name">disable_color</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used for the button's text when it is disabled.</td>
+</tr>
+<tr>
+<td class="name">enabled</td>
+<td class="type">yes/no or expr</td>
+<td class="description">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</td>
+</tr>
+<tr>
+<td class="name">fgcolor1</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the text on the button.  Default "white".</td>
+</tr>
+<tr>
+<td class="name">fgcolor2</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">The text to appear on the button.</td>
+</tr>
+<tr>
+<td class="name">tristate</td>
+<td class="type">yes/no</td>
+<td class="description">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">The width, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the button, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the button, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">clickimage</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</td>
+</tr>
+<tr>
+<td class="name">disabledimage</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</td>
+</tr>
+<tr>
+<td class="name">image</td>
+<td class="type">string</td>
+<td class="description">The pathname of the image to be shown when the button is "idle".</td>
+</tr>
+<tr>
+<td class="name">pointimage</td>
+<td class="type">string</td>
+<td class="description">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</td>
+</tr>
+</table>
+</body>
+</html>

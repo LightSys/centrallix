@@ -1,0 +1,56 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'repeat.html' -->
+<h2 class="widgetname"><a name="repeat">repeat</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/repeat</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.</p>
+	    </span><h3 class="usage">Usage:</h3>
+<span class="usage">
+		<p>This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.</p>
+		<p>The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.</p>
+	    </span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The sql query that will be run on the server</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// This is a repeat widget inside a vbox
+	vbox "widget/vbox"
+	    {
+	    x=10; y=10; cellsize=20; spacing=0;
+	    rpt "widget/repeat"
+		{
+		sql="SELECT :name FROM /samples WHERE substring(:name,1,1)='t'";
+		button "widget/button"
+		    {
+		    type="text";
+		    width=100; height=20;
+		    text=runserver(:rpt:name);
+		    }
+		}
+	    }
+		
+	    </pre>
+</body>
+</html>
