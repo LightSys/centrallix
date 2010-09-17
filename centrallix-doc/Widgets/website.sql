@@ -960,6 +960,12 @@ insert into topic values(null, @newid, "widget/component", null,
 					[td]The width of the label in pixels.[/td]
 				[/tr]
 			
+				[tr]
+					[td]http_frame_options[/td]
+					[td]string[/td]
+					[td]When the component is dynamically instantiated over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are \"none\", \"sameorigin\", and \"deny\".  The default value is set by the x_frame_options setting in the \"net_http\" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the component widget it is set in, not to any sub-components that the component loads (it can be set in those components separately if needed).  NOTE: Setting this to \"deny\" will entirely BLOCK the component from being loaded dynamically over HTTP/HTML; it can still be used statically.[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Child Properties:[/b]
@@ -2442,6 +2448,12 @@ insert into topic values(null, @newid, "widget/frameset", null,
 					[td]direction[/td]
 					[td]string[/td]
 					[td]Whether the frames are arranged in rows or columns.  Set this attribute to \"rows\" or \"columns\"respectively.[/td]
+				[/tr]
+			
+				[tr]
+					[td]http_frame_options[/td]
+					[td]string[/td]
+					[td]When the frameset is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are \"none\", \"sameorigin\", and \"deny\".  The default value is set by the x_frame_options setting in the \"net_http\" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the frameset widget it is set in, not to any pages or components that the frameset loads (it can be set in those pages/components separately if needed).[/td]
 				[/tr]
 			
 		[/table]
@@ -3977,6 +3989,12 @@ insert into topic values(null, @newid, "widget/page", null,
 					[td]show_diagnostics[/td]
 					[td]yes/no[/td]
 					[td]Set this to \"yes\" to display message boxes when application errors occur, such as an undefined property reference.  The default is \"no\", but this is handy when debugging.[/td]
+				[/tr]
+			
+				[tr]
+					[td]http_frame_options[/td]
+					[td]string[/td]
+					[td]When the application is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are \"none\", \"sameorigin\", and \"deny\".  The default value is set by the x_frame_options setting in the \"net_http\" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the page widget it is set in, not to any components that the page loads (it can be set in those components separately if needed).[/td]
 				[/tr]
 			
 		[/table]

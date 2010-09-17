@@ -39,6 +39,11 @@
 <td class="type">string</td>
 <td class="description">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</td>
 </tr>
+<tr>
+<td class="name">http_frame_options</td>
+<td class="type">string</td>
+<td class="description">When the frameset is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the frameset widget it is set in, not to any pages or components that the frameset loads (it can be set in those pages/components separately if needed).</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of any child widgets)</p>

@@ -272,6 +272,7 @@ checkbox_test "widget/page"
 			<property name="popup_order" type="string">(e.g. desc)</property>
 			<property name="label_height" type="integer">The height of the label in pixels.</property>
 			<property name="label_width" type="integer">The width of the label in pixels.</property>
+			<property name="http_frame_options" type="string">When the component is dynamically instantiated over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the component widget it is set in, not to any sub-components that the component loads (it can be set in those components separately if needed).  NOTE: Setting this to "deny" will entirely BLOCK the component from being loaded dynamically over HTTP/HTML; it can still be used statically.</property>
 		</properties>
 		<actions>
 			<action name="Instantiate">Instantiates the component.</action>
@@ -733,6 +734,7 @@ formstatus "widget/formstatus"
 		    <property name="title" type="string">Title of the frameset for an html page.</property>
 		    <property name="borderwidth" type="integer">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</property>
 		    <property name="direction" type="string" enum="rows,columns">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</property>
+		    <property name="http_frame_options" type="string">When the frameset is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the frameset widget it is set in, not to any pages or components that the frameset loads (it can be set in those pages/components separately if needed).</property>
 		</properties>
 		<children>
 		    <child type="any">
@@ -1186,6 +1188,7 @@ osrc1 "widget/osrc"
 			<property name="width" type="integer"></property>
 			<property name="height" type="integer"></property>
 			<property name="show_diagnostics" type="yes/no">Set this to "yes" to display message boxes when application errors occur, such as an undefined property reference.  The default is "no", but this is handy when debugging.</property>
+			<property name="http_frame_options" type="string">When the application is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the page widget it is set in, not to any components that the page loads (it can be set in those components separately if needed).</property>
 		</properties>
 		<children>
 		</children>

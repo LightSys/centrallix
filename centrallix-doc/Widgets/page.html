@@ -115,6 +115,11 @@
 <td class="type">yes/no</td>
 <td class="description">Set this to "yes" to display message boxes when application errors occur, such as an undefined property reference.  The default is "no", but this is handy when debugging.</td>
 </tr>
+<tr>
+<td class="name">http_frame_options</td>
+<td class="type">string</td>
+<td class="description">When the application is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the page widget it is set in, not to any components that the page loads (it can be set in those components separately if needed).</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
