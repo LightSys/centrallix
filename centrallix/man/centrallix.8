@@ -1,0 +1,177 @@
+.TH CENTRALLIX 8 "Sept 17, 2010" "Version 0.9.1" "Centrallix Manual"
+.SH NAME
+centrallix - the Centrallix Application Platform server daemon
+.SH SYNOPSIS
+.B centrallix
+[\-c \fI<config file>\fP] [\-d] [\-h] [\-q] [\-V]
+.SH DESCRIPTION
+.PP
+The Centrallix Application Platform is a highly flexible environment
+for developing rich internet applications (RIA's).  It features both
+data and application abstraction, a SQL engine for joining diverse
+data sources, declarative (not scripted) development, reports,
+components, and style templates.
+.PP
+Centrallix's application abstraction means that app developers do not
+code to the actual application deployment vehicle (presently RIA's via
+HTML/HTTP).  This should allow Centrallix apps to be deployed using
+other methods in the future, without requiring changes to the apps
+themselves.
+.PP
+Centrallix's data abstraction means that data can be spread across
+diverse data sources and still joined together using Centrallix's
+built-in SQL engine, simplifying data integration needs.  It also
+means that applications can be agnostic of the database backend that
+is in use.  Furthermore, Centrallix apps themselves are written as
+structured data, which could potentially be stored in a variety of
+formats.
+.PP
+The system also includes a report writer and formatter, which supports
+output in a variety of formats including plain text, PostScript, PDF, CSV
+files, PCL, and HTML.
+.SH OPTIONS
+.l
+Command-line options for the centrallix server binary:
+.TP 8
+.B  \-c \fIconfig file\fP
+Specify a configuration file to use.  The default is typically either
+/etc/centrallix.conf or /usr/local/etc/centrallix.conf, depending on
+how Centrallix was installed.
+.TP 8
+.B  \-d
+Run as a background service: fork and run in the background after
+starting up.
+.TP 8
+.B  \-h
+Print command-line options (help).
+.TP 8
+.B  \-q
+Initialize quietly (don't print copyright header and module information).
+.TP 8
+.B \-V
+Print Centrallix version and copyright information.
+.SH FILES
+.TP 8
+.B /etc/centrallix.conf
+The main configuration file for Centrallix.  See
+.BR centrallix.conf (5)
+.TP 8
+.B /etc/centrallix/rootnode
+The file that roots the Centrallix "ObjectSystem".  This file is an
+object, typically of type "system/uxfile", which establishes where
+the ObjectSystem "lives".  A typical location is /var/centrallix/os
+on managed installs.  It is possible for the ObjectSystem to be
+rooted in something other than a directory in the local filesystem,
+though that is not typically done at the time of writing of this
+document.
+.TP 8
+.B /etc/centrallix/types.cfg
+A hierarchical MIME types definition file for Centrallix.  This file
+defines types and file extensions, as well as relationships between
+types.
+.TP 8
+.B /etc/centrallix/useragent.cfg
+A definition file for user agents (browsers) that Centrallix's HTML
+application generation supports, including lists of capabilities in
+each user agent.
+.TP 8
+.B /usr/lib/libCentrallix.so
+A shared library from the centrallix-lib package which contains
+foundational functionality for Centrallix, including handling of
+strings, arrays, hash tables, string tokenizing, threading, the
+security-oriented "quoting printf" module, and more.
+.TP 8
+.B /usr/lib/libStParse.so
+A shared library permitting the parsing of Centrallix "structure
+files", without support for full expressions.  This library is used
+by some other programs, but not by the Centrallix server binary, as
+it has its own copy of the "structure file" parser which has full
+expression support.
+.TP 8
+.B /usr/lib/centrallix/ (directory)
+The location of loadable Centrallix modules, typically supplying
+additional (optional) data connectivity drivers (objectsystem drivers),
+or additional network interfaces other than HTTP.
+.TP 8
+.B /usr/include/cxlib/ (directory)
+The location of centrallix-lib development header files, if installed.
+.TP 8
+.B /var/centrallix/os/ (directory)
+The typical location of the Centrallix objectsystem root (see rootnode,
+above).  The ObjectSystem is analogous to a "web root" or "document
+root" for web servers.
+.SH EXAMPLES
+Below is an example /etc/centrallix/rootnode file that is typical of
+a Centrallix install:
+.RS 4
+.nf
+
+$Version=2$
+rootnode "system/uxfile"
+    {
+    // This should point to your ObjectSystem root directory.
+    path = "/var/centrallix/os";
+    }
+
+.fi
+.RE
+Here is a very simple Centrallix application, just consisting of a
+blank page with a title.  The file might typically be located at:
+/var/centrallix/os/hello_world.app
+.RS 4
+.nf
+
+$Version=2$
+hello_world "widget/page"
+    {
+    // Page title, shows up in browser titlebar
+    title = "Hello, World!";
+
+    // Design height and width, needed so that Centrallix can scale
+    // the application properly if the user's browser is a different
+    // size
+    width = 800;
+    height = 600;
+    }
+
+.fi
+.RE
+.SH "KNOWN BUGS"
+Below are a few known issues with the Centrallix platform.
+.IP 1.
+The policy-based security subsystem (CXSS) is, at present, mostly absent.  This
+means that, among other things, there is insufficient control on what
+"senses" a user can use to open an object.  For instance, without
+the security subsystem, filesystem-level permissions are insufficient
+to make a distinction between a user modifying a CSV file as a whole
+and that user modifying a field in a record in the CSV file (the former
+would typically require a higher security clearance, whereas the latter
+ensures the user doesn't damage the structure of the CSV file).
+.IP 2.
+The multithreading model currently used by Centrallix is non-preemptive.  This
+means that, depending on the flexibility of the underlying library,
+calls to external services (such as a database server) may block the
+entire Centrallix process, giving rise to the potential for application
+level deadlocks or denial of service situations.
+.IP 3.
+We are aware of some memory/resource leaks in the Centrallix codebase.
+.IP 4.
+Centrallix does not yet support SSL/TLS.  This means that connections to
+a Centrallix server over an untrusted network (e.g., the Internet) could
+allow logon credentials to be exposed.  If you require access across an
+untrusted network (such as the Internet), use software such as a VPN, SSH
+port forwarding, SSL tunneling (stunnel), or front the server with Apache
+using mod_ssl and set up as a reverse proxy.
+.SH "REPORTING BUGS"
+E-mail bug reports to:  centrallix-devel at lists.sourceforge.net
+
+If initial confidentiality is desired, sensitive security issues can
+be sent directly to the primary maintainer of Centrallix at:
+Greg.Beeley at LightSys.org
+.SH AUTHORS
+Greg Beeley, Josiah Ritchie, and other Centrallix developers.
+.SH COPYRIGHT
+Copyright (c) 1998-2010 LightSys Technology Services, Inc.
+.SH "SEE ALSO"
+.BR test_obj (1),
+.BR centrallix.conf (5)

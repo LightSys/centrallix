@@ -1,0 +1,312 @@
+.TH CENTRALLIX.CONF 5 "Sept 17, 2010" "Version 0.9.1" "Centrallix Manual"
+.SH NAME
+centrallix.conf - configuration file for the centrallix server
+.SH SYNOPSIS
+.B /etc/centrallix.conf
+.SH DESCRIPTION
+.PP
+/etc/centrallix.conf is the configuration file for the
+.BR centrallix(8)
+server.  It is in a Centrallix standard "structure file" format, and
+consists of a set of top-level settings for Centrallix as a whole plus
+several sections which define settings for various Centrallix subsystems
+and loadable modules.
+.SH "STRUCTURE FILE OVERVIEW"
+The centrallix.conf file is a "structure file".  A "structure file", so
+named because it loosely resembles a "struct" in the C programming
+language, begins with a line defining the version of the file format
+(currently version 2):
+.RS 4
+.nf
+
+$Version=2$
+
+.fi
+.RE
+After the version, the file consists of one top-level "group", plus any
+number of "attributes" and nested sub-"groups".  A "group" consists of
+the group name, the group type, an open brace, the contents of the "group"
+(attributes and/or sub-"groups"), and a close brace:
+.RS 4
+.nf
+
+group_name "group_type"
+    {
+    // attributes and subgroups go here
+    }
+
+.fi
+.RE
+All "groups" in centrallix.conf have a group_type of "system/config".
+
+Attributes consist of the attribute name, an equals sign, the attribute
+value (an integer or string, for instance), and then a semicolon:
+.RS 4
+.nf
+
+attribute_name = "attribute_value";
+
+.fi
+.RE
+Structure files also allow comments beginning with two slashes (//).
+.SH "SERVER GLOBALS"
+First, we'll cover the server globals, found as attributes inside the
+top-level "group" in the configuration file:
+.TP 8
+\fBtypes_config = "/path/to/types.cfg";\fP
+Specifies the location of the types.cfg file, typically /etc/centrallix/types.cfg
+on a managed install.
+.TP 8
+\fBuseragent_config = "/path/to/useragent.cfg";\fP
+Specifies the location of the useragent.cfg file, typically /etc/centrallix/useragent.cfg
+on a managed install.
+.TP 8
+\fBrootnode_type = "type";\fP
+Controls the type (as defined in types.cfg) of the rootnode.  Currently the
+common choice is "system/uxfile", which means the rootnode will point to a
+directory in the local filesystem, for a traditional "web document root" type
+ObjectSystem.
+.TP 8
+\fBrootnode = "/path/to/rootnode";\fP
+Specifies the location of the rootnode file.  The rootnode "anchors" the
+ObjectSystem, and its type is indicated by rootnode_type.  The standard
+location is /etc/centrallix/rootnode.
+.TP 8
+\fBenable_send_credentials = 0|1;\fP
+This boolean value, set to either 0 or 1, permits Centrallix to use the
+user's logon credentials to connect to other resources (such as a
+database server), behavior which is typically configured on a per-resource
+basis (such as in a _DB file for Sybase, for example). Note: at present,
+without the policy-based security subsystem, turning this option on has
+risks, since a malicious logged-in user could create a _DB file or whatnot
+which could conceivably connect to a malicious server, resulting in
+exposure of another user's credentials when that other user opens that _DB
+file.
+.SH "NET_HTTP SUBSYSTEM"
+The net_http "group", inside the top level "group", controls the HTTP
+network interface (Centrallix's builtin webserver).
+.TP 8
+\fBlisten_port = portnum;\fP
+This configures the TCP port that the HTTP server will listen on.  The
+typical value is 800.
+.TP 8
+\fBaccept_localhost_only = 0|1;\fP
+When set to 1, this causes Centrallix to only accept HTTP connections from
+localhost (127.0.0.1), which prevents connections from other computers.  This
+is set to 1 on development releases of Centrallix, since those releases often
+have known security weaknesses (see "KNOWN BUGS" in
+.BR centrallix(8)
+).
+.TP 8
+\fBuser_session_limit = limit;\fP
+This configures the limit on the number of sessions that a single username
+may have active on the server at one time.  This is mainly used to prevent
+resource exhaustion (denial of service).  A typical value is 100.
+.TP 8
+\fBserver_string = "HTTP Server String";\fP
+Sets the "server string" used by the HTTP server.  The typical server string
+is "Centrallix/version", such as "Centrallix/0.9.2", but can be changed to
+something else, such as "Apache", to provide some mild level of obscurity
+that a Centrallix server is being used.  Note that more sophisticated
+fingerprinting will likely identify the server type as Centrallix.  You may
+also choose to simply hide the version number by setting this just to
+"Centrallix".
+.TP 8
+\fBauth_realm = "Realm";\fP
+Sets the HTTP Basic authentication realm.  Typically this is set to
+"Centrallix", but can be changed.  The end-user will normally see this realm
+presented to them for the username/password dialog box, so you might change
+this to be consistent with the site or application being served by your
+Centrallix instance.
+.TP 8
+\fBsession_cookie = "CookieName";\fP
+Sets the name of the session cookie being used.  The typical default is
+"CXID"; this can be changed to help obscure the fact that a Centrallix
+server is in use (but see notes for server_string).
+.TP 8
+\fBsession_watchdog_timer = seconds;\fP
+How long (in seconds) before a user's session will be terminated if the
+user closes the browser window or browses to a different website (default
+180 seconds = 3 minutes).
+.TP 8
+\fBsession_inactivity_timer = seconds;\fP
+How long (in seconds) before a user's session will be terminated if the
+user leaves the Centrallix application open but does not use it (default
+1800 = 30 minutes).
+.TP 8
+\fBenable_gzip = 0|1;\fP
+Set to 1 to enable zlib compression of javascript files being sent to the
+browser.  This can help reduce network traffic, but might not be compatible
+with all browsers.
+.TP 8
+\fBdir_index = "filename1","filename2","filename3";\fP
+A comma-separated list of filenames that should be tried if the user
+opens a directory.  For instance, if the user opens "/" (the root of the
+ObjectSystem) via HTTP, and dir_index is set to "index.app", "index.html", 
+"index.htm", "index.rpt"; (a typical configuration), then the server will
+attempt to open "/index.app", "/index.html", "/index.htm", and "/index.rpt",
+in that order, before opening "/".  If no dir_index is specified, then no
+directory indexing will be done (in this case, only "/" will be tried).
+.TP 8
+\fBx_frame_options = none | sameorigin | deny;\fP
+Defaults to "sameorigin".  Controls the anti-clickjacking countermeasure HTTP header X-Frame-Options, which applies when the Centrallix server renders a widget/page, widget/frameset, or widget/component-decl, and can be overriden by those widgets (see widget reference for details). When set to "none", no restrictions are in effect. "deny" means that the frameset, page, or component cannot render inside a frame or iframe. "sameorigin" means that the frame or iframe have to originate from the same server. NOTE: using "deny" will prevent a widget/component-decl from being loaded dynamically, though components can still be used statically. If "deny" is needed, you will need to override it on a per-component basis in order to use dynamic-load components. Available in Centrallix 0.9.2 and newer.
+.SH "NET_NFS SUBSYSTEM"
+The net_nfs subsystem provides an NFS server interface to the Centrallix ObjectSystem, thus allowing the ObjectSystem to be "mounted" via NFS.  The Centrallix NFS server is currently
+.B EXPERIMENTAL
+in nature and should be considered insecure and unstable as a result.  The Centrallix NFS server also
+.B "does not interact with rpcbind"
+(the portmapper), so it will be necessary to manually specify the NFS and mountd ports when mounting a Centrallix NFS exported "directory".
+.TP 8
+\fBnfs_port = portnum;\fP
+Specifies the port number to use for the NFS listener.  This defaults to 5001.
+.TP 8
+\fBmount_port = portnum;\fP
+Specifies the port number to use for the mountd listener.  The default is 5000.
+.TP 8
+\fBnum_threads = count;\fP
+The number of worker threads to start for the NFS server.  The default is 10.  More threads mean that more requests can be handled simultaneously.  Remember that, due to the nature of Centrallix objects, processing a request to read from an object can take some time if the object's content is dynamically generated (as in a report, for instance).  If many such objects are simultaneously being accessed via NFS, the worker thread pool may be quickly exhausted.  But this number should not be set too large, as that will use excessive system resources.
+.TP 8
+\fBinode_map = "/path/to/inode.map";\fP
+Specifies the path to the inode.map file, which the NFS server uses to maintain state on what inode number is associated with what object pathname in the ObjectSystem.  The typical location is /etc/centrallix/inode.map.
+.TP 8
+\fBqueue_size = numrequests;\fP
+The number of NFS requests that can be queued before new requests are dropped (in which case the client will need to re-try).  The default is 100.
+.TP 0
+The net_nfs section also should have a subgroup in it called "exports" which itself contains one subgroup for each location in the ObjectSystem that will be exported via NFS.  For example:
+.RS 4
+.nf
+
+exports "system/config"
+    {
+    export1 "system/config" { path="/my/exported/directory"; }
+    }
+
+.fi
+.RE
+.SH "MTSESSION SUBSYSTEM"
+The mtsession subsystem controls session creation, error logging, and user authentication.
+.TP 8
+\fBauth_method = system | altpasswd;\fP
+The authentication method. Either "system" to use /etc/passwd and /etc/shadow, or "altpasswd" to use an alternate password file such as /etc/centrallix/cxpasswd.
+.TP 8
+\fBaltpasswd_file = "/path/to/altpasswd";\fP
+When using "altpasswd" authentication, this is the location of the password file to use. Use a utility such as
+.BR htpasswd (1)
+to build the altpasswd_file.
+.TP 8
+\fBlog_method = stdout | syslog;\fP
+Where to log errors. Either "stdout" to log errors on standard output, or "syslog" to log errors using the system log daemon.
+.TP 8
+\fBlog_all_errors = yes | no;\fP
+Whether to log all errors (yes) or just those occurring outside of a user's session (no).
+.TP 8
+\fBlog_progname = "programname";\fP
+The program name to use when logging via syslog, typically set to "centrallix".
+.SH "MODULES"
+Centrallix supports runtime-loadable modules, which are handy for providing optional functionality such as database server connectivity.  This allows binary distributions to be made of Centrallix where not all installations will have the runtime libraries needed to load all possible database drivers.
+
+To configure modules, a "modules" group should exist in the configuration.  In that group should be one subgroup for each module to be loaded.  Each subgroup can have the following attributes:
+.TP 8
+\fBenable_module = yes | no;\fP
+Valid in a module configuration entry. Set to "yes" to enable the module, "no" to disable it.
+.TP 8
+\fBpath = "/path/to/module.so";\fP
+The location of the module, usually in /usr/lib/centrallix.  For example, "/usr/lib/centrallix/objdrv_mysql.so".
+.TP 8
+\fBtype = osdriver | netdriver;\fP
+The type of the module. Modules can be ObjectSystem drivers "osdriver", or network drivers "netdriver".
+.TP 0
+Here is an example module configuration, which should be inside the top-level "group":
+.RS 4
+.nf
+
+modules "system/config"
+    {
+    mysd "system/config-module" { enable_module=yes; path="/usr/lib/centrallix/objdrv_mysql.so"; type="osdriver"; }
+    sybd "system/config-module" { enable_module=no; path="/usr/lib/centrallix/objdrv_sybase.so"; type="osdriver"; }
+    }
+
+.fi
+.RE
+.SH FILES
+.TP 8
+.B /etc/centrallix.conf
+.SH EXAMPLE
+Below is an example /etc/centrallix.conf file that is typical of
+a Centrallix install:
+.RS 4
+.nf
+
+$Version=2$
+centrallix "system/config"
+    {
+    // Server Globals
+    types_config = "/etc/centrallix/types.cfg";
+    useragent_config = "/etc/centrallix/useragent.cfg";
+    rootnode_type = "system/uxfile";
+    rootnode_file = "/etc/centrallix/rootnode";
+    enable_send_credentials = 0;
+
+    // The HTTP network interface subsystem.
+    net_http "system/config"
+        {
+        listen_port = 800;
+        accept_localhost_only = 1;
+        x_frame_options = sameorigin;
+        user_session_limit = 100;
+        server_string = "Centrallix/0.9.2";
+        auth_realm = "Centrallix";
+        session_cookie = "CXID";
+        session_watchdog_timer = 180;
+        session_inactivity_timer = 1800;
+        enable_gzip = 0;
+        dir_index = "index.app","index.html","index.htm","index.rpt";
+        }
+
+    // The NFS server subsystem - disabled below in the modules section.
+    net_nfs "system/config"
+        {
+        nfs_port=5167;
+        mount_port=5168;
+        exports "system/config"
+            {
+            export1 "system/config" { path="/"; }
+            }
+        inode_map = "/etc/centrallix/inode.map";
+        }
+
+    // The MSS MTask Session Manager subsystem.
+    mtsession "system/config"
+        {
+        auth_method = "system";
+        //altpasswd_file = "/etc/centrallix/cxpasswd";
+        log_method = "stdout";
+        log_all_errors = "yes";
+        log_progname = "centrallix";
+        }
+
+    // Loadable Modules
+    modules "system/config"
+        {
+        mysd "system/config-module" { enable_module=yes; path="/usr/lib/centrallix/objdrv_mysql.so"; type="osdriver"; }
+        sybd "system/config-module" { enable_module=yes; path="/usr/lib/centrallix/objdrv_sybase.so"; type="osdriver"; }
+        nnfs "system/config-module" { enable_module=no; path="/usr/lib/centrallix/net_nfs.so"; type="netdriver"; }
+        }
+    }
+
+.fi
+.RE
+.SH "REPORTING BUGS"
+E-mail bug reports to:  centrallix-devel at lists.sourceforge.net
+
+If initial confidentiality is desired, sensitive security issues can
+be sent directly to the primary maintainer of Centrallix at:
+Greg.Beeley at LightSys.org
+.SH AUTHORS
+Greg Beeley and other Centrallix developers.
+.SH COPYRIGHT
+Copyright (c) 1998-2010 LightSys Technology Services, Inc.
+.SH "SEE ALSO"
+.BR test_obj (1),
+.BR centrallix (8),
+.BR htpasswd (1)

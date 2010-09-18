@@ -46,9 +46,10 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_DATA = @INSTALL_DATA@
+GZIP = @GZIP@
 
 # VPATH - all the directories we manage.
-VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man
 
 # Support modules -- only basic utilities.
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
@@ -300,6 +301,10 @@ XTESTSUITE=ts1.c \
 	   ts3.c
 TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
 
+# Manual pages.
+XMANPAGES=$(shell echo man/*.[0-9])
+MANPAGES=$(patsubst %,%.gz,$(XMANPAGES))
+
 # Loadable modules.
 MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES) $(NETDRIVERMODULES)
 
@@ -340,8 +345,10 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY: config_install
 .PHONY: rhinit_install
 .PHONY: clean distclean distreallyclean
+.PHONY:	manpages
+.PHONY:	manpages_install
 
-all:	centrallix mods config
+all:	centrallix mods config manpages
 
 centrallix.o: $(V3LSOBJS) centrallix.c
 
@@ -354,10 +361,20 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	#@rm centrallix.o
 	@echo ''
 
-install: all config_install modules_install
+install: all config_install modules_install manpages_install
 	@mkdir -p "$(sbindir)"
 	@mkdir -p "$(sysconfdir)"
 	@$(INSTALL) centrallix "$(sbindir)"
+
+manpages: $(MANPAGES)
+
+manpages_install: manpages
+	@for MANPAGE in $(MANPAGES); do \
+		SECTION=$${MANPAGE%.*}; \
+		SECTION=$${SECTION##*.}; \
+		mkdir -p $(mandir)/man$${SECTION}; \
+		$(INSTALL) -m 664 $${MANPAGE} $(mandir)/man$${SECTION}; \
+	done
 
 # You can call "make mods" directly to avoid getting the warning about
 # make modules_install.  However, we recommend avoiding that habit if
@@ -416,6 +433,8 @@ clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) -shared -fPIC $< -o $@
 
+%.gz:	%
+	$(GZIP) -9 < $< > $@
 
 jsengine: $(JSVM)
 	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
@@ -467,6 +486,7 @@ clean:
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
+	@rm -f man/*.gz
 
 distclean: clean
 	@rm -f config.status config.cache config.log

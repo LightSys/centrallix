@@ -10,6 +10,7 @@ AC_PROG_CC
 CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
 AC_PROG_MAKE_SET
 AC_PROG_AWK
+AC_PATH_PROG([GZIP], [gzip], [])
 AC_PATH_PROG([STRIP], [strip], [])
 AC_PATH_PROG([SED], [sed], [])
 AC_PROG_INSTALL
