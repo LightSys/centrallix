@@ -1,0 +1,208 @@
+.TH TEST_OBJ 1 "Sept 17, 2010" "Version 0.9.1" "Centrallix Manual"
+.SH NAME
+test_obj - command-line version of Centrallix for testing purposes
+.SH SYNOPSIS
+.B test_obj
+[\-c \fI<configfile>\fP] [\-C \fI<command>\fP] [\-f \fI<cmdfile>\fP]
+[\-h] [\-o \fI<outputfile>\fP] [\-p \fI<password>\fP] [\-q]
+[\-u \fI<username>\fP]
+.SH DESCRIPTION
+.PP
+The
+.B test_obj
+program provides a command-line interface to the Centrallix OSML
+API (the ObjectSystem), and is a convenient way to test ObjectSystem
+drivers under development, run a quick SQL query, or run off a report
+without having to launch the full Centrallix server process.
+
+When invoked, test_obj asks the user for login credentials in order to
+set up the user's session.  It then presents the user with an OSML
+(ObjectSystem Management Layer) prompt, at which several commands are
+available for manipulating the ObjectSystem and its data.
+.SH OPTIONS
+.l
+Command-line options for the centrallix server binary:
+.TP 8
+.B  "\-c \fIconfigfile\fP"
+Specify a configuration file to use.  The default is typically either
+/etc/centrallix.conf or /usr/local/etc/centrallix.conf, depending on
+how Centrallix was installed.
+.TP 8
+.B "\-C \fIcommand\fP"
+The -C option provides test_obj with a single command to run, after
+which it will exit.  See COMMANDS, below.
+.TP 8
+.B "\-f \fIcmdfile\fP"
+Tells test_obj to, rather than prompting from standard input, read
+a series of commands from the file \fIcmdfile\fP.  Lines that are
+blank or which begin with a # (comment) symbol are ignored.
+.TP 8
+.B  \-h
+Print command-line options (help).
+.TP 8
+.B "\-o \fIoutputfile\fP"
+Specify a file in which to place output from the commands.  The output
+can also be specified via the 'output' command.  See COMMANDS.
+.TP 8
+.B "\-p \fIpassword\fP"
+Specify a login password to use.  If not specified, test_obj will prompt
+for the password (reminder: specifying the password on the command line
+can be dangerous; other users can observe the password by using the "ps"
+command).
+.TP 8
+.B  \-q
+Initialize quietly (don't print copyright header and module information).
+.TP 8
+.B "\-u \fIusername\fP"
+Specify a login username to use.  If not specified, test_obj will prompt
+for the username.
+.SH FILES
+(Also see the manual page for
+.BR centrallix (8)
+for more files and directories used by centrallix and test_obj)
+.TP 8
+.B /etc/centrallix.conf
+The main configuration file for Centrallix.  See
+.BR centrallix.conf (5)
+.TP 8
+.B "~/.cxhistory"
+The test_obj program supports command-line history at the OSML: prompt,
+and that command line history is stored in the .cxhistory file in the 
+user's home directory for future reference the next time test_obj is
+used.
+.SH COMMANDS
+When run, the test_obj command will present the user with an OSML:/>
+prompt, indicating the "current working directory" within the Centrallix
+ObjectSystem.  The following commands are supported:
+.TP 8
+.B annot /path/to/object
+Add or change the annotation on an object. An annotation is a standard property that all objects have which is used to briefly describe the object.
+.TP 8
+.B cd /path/to/new/working/directory
+Change the current working directory in the OSML.
+.TP 8
+.B copy { srctype | dsttype } /src/object /dest/object
+Copy one object's content to another.  The copy can be done with the type
+of the source (srctype) or the type of the destination (dsttype).  For
+instance, when running a report, 'dsttype' can be useful since it causes
+Centrallix to look at the type of the destination (e.g., via its filename
+extension, such as .pdf), and use that type when opening the source so
+that the report generates PDF output.
+.TP 8
+.B create /new/object/path
+Create a new object.  During creation, the user will be prompted for a set
+of initial attribute/value pairs for the object.
+
+If objectpath is "*", then the OSML will automatically name the object if
+it is appropriate for that to be done (for database table row objects, this
+means generating an automatic primary key value).
+.TP 8
+.B csv {sql-query}
+Run a SQL query and print the results in CSV format. Useful when exporting
+data or running a test suite item, especially in combination with the 'output'
+command. This is most useful when all objects in the query result set have
+the same set of attributes.
+.TP 8
+.B delete /path/to/object
+Delete an object.
+.TP 8
+.B exec /path/to/object {methodname} {parameter}
+Call a method on an object.
+.TP 8
+.B hints {objectpath} {attribute}
+Display presentation hints of a particular attribute on an object.
+Presentation hints include various types of data integrity and display
+rules, such as the maximum number of characters allowed in a string attribute,
+whether an attribute can be NULL, the default value for an attribute, and
+much more.
+.TP 8
+.B help
+Display a list of commands.
+.TP 8
+.B ls /path/to/object | list /path/to/object
+List the objects in the current directory in the objectsystem, or if an objectpath is supplied, list the objects within that object.
+.TP 8
+.B output {local-filename}
+Change where command output is sent. This command takes a filename, not an objectpath, as output is saved into the local filesystem, not into the OSML. This command will override any "-o" option passed to test_obj. If no filename is supplied, output reverts to standard output.
+.TP 8
+.B print /path/to/object
+Display an object's content.
+.TP 8
+.B query {sql-query}
+Run a SQL query, displaying every attribute from every object in the query result set on a separate line.
+.TP 8
+.B quit
+Exit from test_obj.
+.TP 8
+.B show /path/to/object
+Display an object's attributes and methods, as well as presentation hints where applicable and object flags.
+.SH EXAMPLES
+Below is an example run of test_obj:
+.RS 4
+.nf
+
+linux# test_obj 
+
+Centrallix/0.9.1 build #1358-1 [DEVELOPMENT]
+
+Copyright (C) 1998-2010 LightSys Technology Services, Inc.
+An open source community developed project.  Provided with
+ABSOLUTELY NO WARRANTY.  See the file 'COPYING' for details.
+
+mod: osdriver mysd (MySQL ObjectSystem Driver, 0.1.0)
+mod: osdriver sybd (Sybase ObjectSystem Driver, 0.9.0)
+mod: osdriver xml (XML ObjectSystem Driver, 0.0.1)
+
+Username: gbeeley
+Password: 
+OSML:/> csv select :name, :size from subtree /samples where right(:name,4) = ".app"
+"name","size"
+"basicform.app",8177
+"radiobutton.app",504
+"ors.app",12464
+"timer_test.app",1254
+"image_test.app",224
+"xml_test.app",2877
+"editbox_test2.app",862
+"dropdown.app",883
+"pane_test.app",649
+"repeat_test.app",660
+"objcanvas_test.app",4343
+"textbutton_test.app",2428
+"datetime.app",302
+"terminal.app",359
+"button_test.app",1016
+"textarea.app",376
+"checkbox.app",625
+"FourTabs.app",2903
+"fade_test.app",1174
+"clock.app",676
+"labeled_editbox_test.app",1298
+"index.app",2137
+"component_test.app",2712
+"osrc_rule_filter.app",759
+"Months.app",1903
+"simplerpt.app",875
+"scrollbar_test.app",1850
+"generic_form_test.app",1500
+"menu.app",2062
+"basicform2.app",8712
+"window_test.app",2013
+"window.app",468
+OSML:/> quit
+
+.fi
+.RE
+.SH "REPORTING BUGS"
+E-mail bug reports to:  centrallix-devel at lists.sourceforge.net
+
+If initial confidentiality is desired, sensitive security issues can
+be sent directly to the primary maintainer of Centrallix at:
+Greg.Beeley at LightSys.org
+.SH AUTHORS
+Greg Beeley, Josiah Ritchie, and other Centrallix developers.
+.SH COPYRIGHT
+Copyright (c) 1998-2010 LightSys Technology Services, Inc.
+.SH "SEE ALSO"
+.BR centrallix (8),
+.BR centrallix.conf (5)
