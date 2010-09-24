@@ -257,6 +257,7 @@ function tbld_clamp_window(desired_size, maxid)
 
 function tbld_set_thumb(maxid, startat, maxwindowsize)
     {
+    // Compute thumb size and position
     var tavail = getClipHeight(this.scrollbar) - 2*18 - 1;
     var rrows = maxid;
     if (rrows == 0) rrows = 1;
@@ -273,12 +274,10 @@ function tbld_set_thumb(maxid, startat, maxwindowsize)
 	var tpos = (startat - 1 + 0.001)/(maxfirst - 1) * (tavail - theight);
     setRelativeY(this.scrollbar.b, 18 + tpos);
     pg_set_style(this.scrollbar.b, "height", (theight - 2) + "px");
-    /*if(this.startat==1)
-	setRelativeY(this.scrollbar.b, 18);
-    else if(this.startat+this.windowsize-1==maxid)
-	setRelativeY(this.scrollbar.b, getClipHeight(this.scrollbar)-2*18);
-    else
-	setRelativeY(this.scrollbar.b, getClipHeight(this.scrollbar)/2-9);*/
+
+    // Set scrollbar visibility
+    if (this.demand_scrollbar)
+	htr_setvisibility(this.scrollbar, (theight == tavail)?"hidden":"visible");
     }
 
 function tbld_hide_unused_rows()
@@ -589,6 +588,7 @@ function tbld_init(param)
     t.showselect = param.show_selection;
     t.datamode = param.dm;
     t.has_header = param.hdr;
+    t.demand_scrollbar = param.demand_sb;
     t.cr = 0;
     t.is_new = 0;
     //t.showing_new = 0;
