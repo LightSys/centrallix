@@ -55,10 +55,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.53 2010/01/10 07:20:18 gbeeley Exp $
+    $Id: centrallix.c,v 1.54 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.54  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.53  2010/01/10 07:20:18  gbeeley
     - (feature) adding CSV file output from report writer.  Simply outputs
       only tabular data (report/table data) into a CSV file format.
@@ -741,6 +751,7 @@ cxInitialize(void* v)
 	mqisInitialize();			/* insert-select query mod */
 	mquInitialize();			/* update statement query mod */
 	mqdInitialize();			/* delete statement query mod */
+	mqobInitialize();			/* orderby module */
 
 	/** Init the objectsystem drivers **/
 	sysInitialize();			/* Sys info driver */

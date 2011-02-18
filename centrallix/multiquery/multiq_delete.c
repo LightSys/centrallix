@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_delete.c,v 1.3 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiq_delete.c,v 1.4 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_delete.c,v $
 
     $Log: multiq_delete.c,v $
+    Revision 1.4  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.3  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -147,6 +157,7 @@ mqdAnalyze(pQueryStatement stmt)
 	    if (stmt->Tree != NULL)
 	        {
 		xaAddItem(&qe->Children, (void*)(stmt->Tree));
+		stmt->Tree->Parent = qe;
 		}
 	    else
 		{
@@ -298,14 +309,7 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    goto error;
 
 	/** Delete the retrieved records **/
-	for(i=0;i<stmt->Query->ObjList->nObjects;i++)
-	    {
-	    if (stmt->Query->ObjList->Objects[i] && i >= stmt->Query->nProvidedObjects)
-		{
-		objClose(stmt->Query->ObjList->Objects[i]);
-		stmt->Query->ObjList->Objects[i] = NULL;
-		}
-	    }
+	expUnlinkParams(stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 	for(j=0;j<objects_to_delete->nItems;j++)
 	    {
 	    del = (pMqdDeletable)xaGetItem(objects_to_delete, j);

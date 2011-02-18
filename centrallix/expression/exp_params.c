@@ -46,10 +46,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.14 2010/09/08 21:55:09 gbeeley Exp $
+    $Id: exp_params.c,v 1.15 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.15  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.14  2010/09/08 21:55:09  gbeeley
     - (bugfix) allow /file/name:"attribute" to be quoted.
     - (bugfix) order by ... asc/desc keywords are now case insenstive
@@ -228,6 +238,42 @@ expFreeParamListWithCB(pParamObjects this, int (*free_fn)())
 	expFreeParamList(this);
 
     return 0;
+    }
+
+
+/*** expUnlinkParams - do an objClose() on the objects in the param list
+ ***/
+void
+expUnlinkParams(pParamObjects objlist, int start, int end)
+    {
+    int i;
+
+	end = (end >= 0)?end:(objlist->nObjects-1);
+
+	for(i=start; i<=end; i++)
+	    if (objlist->Objects[i])
+		{
+		objClose(objlist->Objects[i]);
+		expModifyParamByID(objlist, i, NULL);
+		}
+
+    return;
+    }
+
+/*** expLinkParams - do an objLinkTo() on the objects in the param list
+ ***/
+void
+expLinkParams(pParamObjects objlist, int start, int end)
+    {
+    int i;
+
+	end = (end >= 0)?end:(objlist->nObjects-1);
+
+	for(i=start; i<=end; i++)
+	    if (objlist->Objects[i])
+		objLinkTo(objlist->Objects[i]);
+
+    return;
     }
 
 

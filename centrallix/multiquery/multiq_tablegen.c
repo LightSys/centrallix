@@ -46,10 +46,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.12 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.13 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.13  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.12  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -184,9 +194,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
     {
     unsigned char* cur_buf;
     unsigned char* new_buf;
-    unsigned char* ptr;
-    int i, oldlen;
-    pExpression exp;
+    int oldlen;
 
     	/** Figure out which buffer is which. **/
 	if (!md->GroupByPtr || md->GroupByPtr == md->GroupByBuf[1])
@@ -201,7 +209,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 	    }
 
 	/** Build the binary image of the group by expression results **/
-/*#if 00*/
+#if 00
 	ptr = new_buf;
 	for(i=0;i<md->nGroupByItems;i++)
 	    {
@@ -250,12 +258,12 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 		    }
 		}
 	    }
-/* #endif 00 */
+#endif /** 00 **/
 
 	/** Ok, figure out if the group by columns changed **/
 	oldlen = md->GroupByLen;
-	md->GroupByLen = (ptr - new_buf);
-	/*md->GroupByLen = mq_internal_BuildBinaryImage(new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList);*/
+	/*md->GroupByLen = (ptr - new_buf);*/
+	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList);
 	if (md->GroupByLen < 0) return -1;
 	*new_ptr = new_buf;
 	if (md->GroupByPtr == NULL) return 1;
@@ -309,12 +317,12 @@ mqtAnalyze(pQueryStatement stmt)
 		if (item->Expr && item->Expr->AggLevel > md->AggLevel) md->AggLevel = item->Expr->AggLevel;
 		if (item->QELinkage)
 		    {
-		    if (item->QELinkage != recent)
+		    /*if (item->QELinkage != recent)
 			{
 			if (xaFindItem(&qe->Children, (void*)item->QELinkage) < 0)
 			    xaAddItem(&qe->Children, (void*)item->QELinkage);
 			}
-		    recent = item->QELinkage;
+		    recent = item->QELinkage;*/
 		    xaAddItem(&qe->AttrDeriv, (void*)item->QELinkage);
 		    }
 		else
@@ -361,6 +369,7 @@ mqtAnalyze(pQueryStatement stmt)
 		if (qe->Children.nItems == 0 && stmt->Tree != NULL)
 		    {
 		    xaAddItem(&qe->Children, (void*)(stmt->Tree));
+		    stmt->Tree->Parent = qe;
 		    }
 
 		/** Find the WHERE items that didn't specifically match anything else **/
@@ -441,6 +450,67 @@ mqtAnalyze(pQueryStatement stmt)
     }
 
 
+int
+mqt_internal_ResetAggregates(pQueryElement qe, int level)
+    {
+    int i;
+    pExpression exp;
+
+	/** Reset the SELECT item expressions **/
+	for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
+	    {
+	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+	    if (exp) expResetAggregates(exp, -1, level);
+	    }
+
+	/** Reset any ORDER BY expressions in the parent **/
+	if (qe->Parent)
+	    {
+	    for(i=0;i<24;i++)
+		if (qe->Parent->OrderBy[i])
+		    expResetAggregates(qe->Parent->OrderBy[i], -1, level);
+		else
+		    break;
+	    }
+    
+    return 0;
+    }
+
+
+int
+mqt_internal_UpdateAggregates(pQueryElement qe, int level, pParamObjects objlist)
+    {
+    int i;
+    pExpression exp;
+
+	/** Update our SELECT item expressions **/
+	for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
+	    {
+	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
+	    if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+		{
+		expUnlockAggregates(exp, level);
+		expEvalTree(exp, objlist);
+		}
+	    }
+
+	/** Update any ORDER BY expressions in the parent **/
+	if (qe->Parent)
+	    {
+	    for(i=0;i<24;i++)
+		if (qe->Parent->OrderBy[i])
+		    {
+		    expUnlockAggregates(qe->Parent->OrderBy[i], level);
+		    expEvalTree(qe->Parent->OrderBy[i], objlist);
+		    }
+		else
+		    break;
+	    }
+
+    return 0;
+    }
+
+
 /*** mqtStart - starts the query operation for a given tabular query
  *** element.  This evaluates the constant expressions and gets them
  *** ready for retrieval.
@@ -450,7 +520,6 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i;
     pQueryElement cld;
-    pExpression exp;
 
     	/** First, evaluate all of the attributes that we 'own' **/
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
@@ -463,11 +532,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    }
 
 	/** Clear aggregates - level 2 **/
-	for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
-	    {
-	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	    if (exp) expResetAggregates(exp, -1, 2);
-	    }
+	mqt_internal_ResetAggregates(qe, 2);
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
 	for(i=0;i<qe->Children.nItems;i++)
@@ -527,7 +592,6 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     int fetch_rval = 0;
     int ck;
     int i;
-    pExpression exp;
     pMQTData md = (pMQTData)(qe->PrivateData);
     unsigned char* bptr;
     pObject tmp_obj;
@@ -566,11 +630,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	else
 	    {
 	    /** Then, reset all aggregate counters/sums/etc - level 1 **/
-	    for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
-	        {
-	        exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	        if (exp) expResetAggregates(exp, -1, 1);
-	        }
+	    mqt_internal_ResetAggregates(qe, 1);
 
 	    /** Restore a saved object list? **/
 	    if (md->nObjects != 0 && qe->IterCnt > 1)
@@ -635,19 +695,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		while(1)
 		    {
 		    /** Update all aggregate counters - level 1 **/
-		    for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
-			{
-			exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-			if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
-			    {
-			    expUnlockAggregates(exp, 1);
-			    /*printf("\nBefore LEVEL 1 eval: \n");
-			    expDumpExpression(exp);*/
-			    expEvalTree(exp, stmt->Query->ObjList);
-			    /*printf("After LEVEL 1 eval: \n");
-			    expDumpExpression(exp);*/
-			    }
-			}
+		    mqt_internal_UpdateAggregates(qe, 1, stmt->Query->ObjList);
 
 		    /** Link to all objects in the current object list **/
 		    memcpy(md->SavedObjList, stmt->Query->ObjList->Objects, stmt->Query->ObjList->nObjects*sizeof(pObject));
@@ -722,19 +770,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		if (fetch_rval == 1 && md->AggLevel == 2)
 		    {
 		    /** Re-eval second level group **/
-		    for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
-			{
-			exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-			if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
-			    {
-			    expUnlockAggregates(exp, 2);
-			    /*printf("\nBefore eval: \n");
-			    expDumpExpression(exp);*/
-			    expEvalTree(exp, stmt->Query->ObjList);
-			    /*printf("After eval: \n");
-			    expDumpExpression(exp);*/
-			    }
-			}
+		    mqt_internal_UpdateAggregates(qe, 2, stmt->Query->ObjList);
 		    }
 
 		/** 2-level group and this is the last row?  If so, return. **/
@@ -742,11 +778,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    break;
 
 		/** Reset all aggregate counters/sums/etc - level 1 **/
-		for(i=0;i<qe->AttrCompiledExpr.nItems;i++) 
-		    {
-		    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-		    if (exp) expResetAggregates(exp, -1, 1);
-		    }
+		mqt_internal_ResetAggregates(qe, 1);
 
 		/** Force recalc **/
 		if (md->nObjects != 0)

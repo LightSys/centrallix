@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.40 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiquery.c,v 1.41 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.41  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.40  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -409,15 +419,18 @@ mq_internal_AllocQE()
     	/** Allocate and initialize the arrays, etc **/
 	qe = (pQueryElement)nmMalloc(sizeof(QueryElement));
 	if (!qe) return NULL;
+	memset(qe, 0, sizeof(QueryElement));
 	xaInit(&qe->Children,16);
 	xaInit(&qe->AttrNames,16);
 	xaInit(&qe->AttrDeriv,16);
 	xaInit(&qe->AttrExprPtr,16);
 	xaInit(&qe->AttrCompiledExpr,16);
 	xaInit(&qe->AttrAssignExpr,16);
+	qe->Parent = NULL;
 	qe->Constraint = NULL;
 	qe->Flags = 0;
 	qe->PrivateData = NULL;
+	qe->QSLinkage = NULL;
 
     return qe;
     }
@@ -468,78 +481,6 @@ mq_internal_AllocQS(int type)
 	xsInit(&this->AssignRawData);
 
     return this;
-    }
-
-
-/*** Build a 'binary image' of a list of fields that is suitable for comparison
- *** in grouping and ordering.  Places that image in 'buf' and returns the
- *** length in 'buf' that was used for the image.  Returns -1 on error.
- ***/
-int
-mq_internal_BuildBinaryImage(char* buf, int buflen, pExpression* fields, int n_fields, pParamObjects objlist)
-    {
-    int i;
-    pExpression exp;
-    char* ptr;
-    char* cptr;
-    int clen;
-
-	ptr = buf;
-	for(i=0;i<n_fields;i++)
-	    {
-	    /** Evaluate the item **/
-	    exp = fields[i];
-	    if (expEvalTree(exp, objlist) < 0)
-	        {
-		mssError(0,"MQT","Error evaluating group-by item #%d",i+1);
-		return -1;
-		}
-
-	    /** Pick the data type and copy the stinkin thing **/
-	    if (ptr >= buf+buflen) return -1;
-	    if (exp->Flags & EXPR_F_NULL)
-	        {
-		*(ptr++) = '0';
-		}
-	    else
-	        {
-		*(ptr++) = '1';
-		switch(exp->DataType)
-		    {
-		    case DATA_T_INTEGER:
-			cptr = (char*)(exp->Integer);
-			clen = 4;
-			break;
-
-		    case DATA_T_STRING:
-			cptr = exp->String;
-			clen = (strlen(exp->String)+1);
-			break;
-
-		    case DATA_T_DATETIME:
-			cptr = (char*)(&(exp->Types.Date));
-			clen = sizeof(DateTime);
-			break;
-
-		    case DATA_T_MONEY:
-		        cptr = (char*)(&(exp->Types.Money));
-			clen = sizeof(MoneyType);
-			break;
-
-		    case DATA_T_DOUBLE:
-		        cptr = (char*)(&(exp->Types.Double));
-			clen = sizeof(double);
-			break;
-
-		    default:
-			return -1;
-		    }
-		if (ptr+clen > buf+buflen) return -1;
-		memcpy(ptr, cptr, clen);
-		}
-	    }
-
-    return (ptr - buf);
     }
 
 
@@ -1369,9 +1310,22 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				    else
 				        {
 					if (mlxIntVal(lxs))
+					    {
 					    stmt->Query->Flags |= MQ_F_MULTISTATEMENT;
+					    }
 					else
-					    stmt->Query->Flags &= ~MQ_F_MULTISTATEMENT;
+					    {
+					    if (stmt->Query->Flags & MQ_F_ONESTATEMENT)
+						{
+						next_state = ParseError;
+						mssError(1,"MQ","SET MULTISTATEMENT disabled in this context");
+						mlxNoteError(lxs);
+						}
+					    else
+						{
+						stmt->Query->Flags &= ~MQ_F_MULTISTATEMENT;
+						}
+					    }
 					}
 				    }
 				else
@@ -2202,12 +2156,12 @@ mq_internal_UpdateNotify(void* v)
 	/*expSyncSeqID(&(p->ObjList), p->Query->QTree->ObjList);*/
 
 	/** Track down the entry in the objlist **/
-	objid = expObjChanged(&(p->ObjList), n->Obj);
+	objid = expObjChanged(p->ObjList, n->Obj);
 	/*objid = expObjChanged(&(p->Query->QTree->ObjList), n->Obj);*/
 	if (objid < 0) return -1;
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Find attributes affected by it **/
 	for(i=0;i<p->Stmt->Tree->AttrCompiledExpr.nItems;i++)
@@ -2248,11 +2202,11 @@ mq_internal_FinishStatement(pQueryStatement stmt)
 	    /** Make sure the cur objlist is correct, otherwise the Finish
 	     ** routines in the drivers might close up incorrect objects.
 	     **/
-	    if (qy->CurSerial != qy->CntSerial)
+	    /*if (qy->CurSerial != qy->CntSerial)
 		{
 		qy->CurSerial = qy->CntSerial;
 		memcpy(qy->ObjList, &qy->CurObjList, sizeof(ParamObjects));
-		}
+		}*/
 
 	    /** Shutdown the mq drivers.  This can implicitly modify the object list,
 	     ** so we update the serial# and save the new object list
@@ -2261,7 +2215,7 @@ mq_internal_FinishStatement(pQueryStatement stmt)
 		{
 		stmt->Tree->Driver->Finish(stmt->Tree,stmt);
 
-		memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));
+		/*memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));*/
 		qy->CntSerial = ++qy->CurSerial;
 		}
 
@@ -2315,6 +2269,10 @@ mq_internal_CloseStatement(pQueryStatement stmt)
 
 	/** List of query execution nodes **/
 	xaDeInit(&stmt->Trees);
+
+	/** Multistatement mode disabled? **/
+	if (!(stmt->Query->Flags & MQ_F_MULTISTATEMENT))
+	    stmt->Query->Flags |= MQ_F_ENDOFSQL;
 
 	/** Free the statement itself **/
 	nmFree(stmt, sizeof(QueryStatement));
@@ -2477,7 +2435,7 @@ mq_internal_NextStatement(pMultiQuery this)
 	/** Issuing a Start can implicitly modify the object list, so
 	 ** we save the new copy
 	 **/
-	memcpy(&this->CurObjList, this->ObjList, sizeof(ParamObjects));
+	/*memcpy(&this->CurObjList, this->ObjList, sizeof(ParamObjects));*/
 	this->CntSerial = ++this->CurSerial;
 
 	return 1;
@@ -2493,7 +2451,7 @@ mq_internal_NextStatement(pMultiQuery this)
  *** a pointer to a MultiQuery structure.
  ***/
 void*
-mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
+mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int flags)
     {
     pMultiQuery this;
 
@@ -2510,6 +2468,14 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	this->QueryText = nmSysStrdup(query_text);
 	this->RowCnt = 0;
 	this->QueryCnt = 0;
+	if (flags & OBJ_MQ_F_ONESTATEMENT)
+	    {
+	    this->Flags = MQ_F_ONESTATEMENT; /* multi statements disabled, cannot be enabled */
+	    }
+	else
+	    {
+	    this->Flags = MQ_F_MULTISTATEMENT; /* on by default, can be turned on/off */
+	    }
 
 	/** Parse the text of the query, building the syntax structure **/
 	this->LexerSession = mlxStringSession(this->QueryText, 
@@ -2525,6 +2491,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist)
 	if (objlist)
 	    {
 	    expCopyList(objlist, this->ObjList);
+	    /*expLinkParams(this->ObjList, 0, -1);*/
 	    this->nProvidedObjects = this->ObjList->nObjects;
 	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 	    }
@@ -2566,15 +2533,12 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
 	mq_internal_QueryClose(mq, oxt);
 
 	/** Release all objects in our param list **/
-	for(i=n;i<inf->ObjList.nObjects;i++) if (inf->ObjList.Objects[i])
+	/*for(i=n;i<inf->ObjList.nObjects;i++) if (inf->ObjList.Objects[i])
 	    {
-	    obj = (pObject)inf->ObjList.Objects[i];
-	    /*objRequestNotify(obj, mq_internal_UpdateNotify, inf, 0);*/
-	    objClose(obj);
-	    }
-
-	/** Release the param list **/
-	/*expFreeParamList(inf->ObjList);*/
+	    objRequestNotify(obj, mq_internal_UpdateNotify, inf, 0);
+	    }*/
+	expUnlinkParams(inf->ObjList, n, -1);
+	expFreeParamList(inf->ObjList);
 
 	/** Release the pseudo-object **/
 	nmFree(inf, sizeof(PseudoObject));
@@ -2597,7 +2561,7 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 
 	/** Do a 'delete obj' operation on the source object **/
 	objid = -1;
-	n = inf->ObjList.nObjects - inf->Stmt->Query->nProvidedObjects;
+	n = inf->ObjList->nObjects - inf->Stmt->Query->nProvidedObjects;
 	if (n == 0)
 	    {
 	    mssError(1,"MQ","Could not delete - query must have at least one FROM source");
@@ -2608,7 +2572,7 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    from_qs = NULL;
 	    while((from_qs = mq_internal_FindItem(inf->Stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
 		{
-		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && inf->ObjList.Objects[from_qs->QELinkage->SrcIndex])
+		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && inf->ObjList->Objects[from_qs->QELinkage->SrcIndex])
 		    {
 		    objid = from_qs->QELinkage->SrcIndex;
 		    break;
@@ -2624,8 +2588,8 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    mssError(1,"MQ","Could not delete - multi-source query must have one valid FROM source labled as the query IDENTITY source");
 	    return -1;
 	    }
-	rval = objDeleteObj((pObject)(inf->ObjList.Objects[objid]));
-	inf->ObjList.Objects[objid] = NULL;
+	rval = objDeleteObj((pObject)(inf->ObjList->Objects[objid]));
+	inf->ObjList->Objects[objid] = NULL;
 	if (rval < 0) return rval;
 	
     return mqClose(inf_v, oxt);
@@ -2646,6 +2610,7 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	p->Obj = hl_obj;
 	qy->LinkCnt++;
 	qy->CurStmt->LinkCnt++;
+	p->ObjList = expCreateParamList();
 
 	/** Record the Counters **/
 	p->QueryID = qy->QueryCnt - 1;
@@ -2659,13 +2624,15 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	 ** user skips back to previous objects temporarily and then
 	 ** goes and does another fetch.
 	 **/
-	memcpy(&p->ObjList, qy->ObjList, sizeof(ParamObjects));
+	/*memcpy(&p->ObjList, qy->ObjList, sizeof(ParamObjects));
 	memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));
 	for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList.nObjects;i++) 
 	    {
 	    obj = (pObject)(p->ObjList.Objects[i]);
 	    if (obj) objLinkTo(obj);
-	    }
+	    }*/
+	expCopyList(qy->ObjList, p->ObjList);
+	expLinkParams(p->ObjList, p->Stmt->Query->nProvidedObjects, -1);
 
 	p->Serial = qy->CurSerial;
 
@@ -2679,13 +2646,13 @@ mq_internal_FreePseudoObject(pPseudoObject p)
     int i;
     pMultiQuery qy = p->Stmt->Query;
 
-	for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++)
-	    if (p->ObjList.Objects[i])
-		objClose((pObject)(p->ObjList.Objects[i]));
-
 	mq_internal_CloseStatement(p->Stmt); /* unlink */
 	/*qy->LinkCnt--;*/
 	mq_internal_QueryClose(qy, NULL); /* unlink */
+
+	expUnlinkParams(p->ObjList, qy->nProvidedObjects, -1);
+	expFreeParamList(p->ObjList);
+
 	nmFree(p, sizeof(PseudoObject));
 
     return 0;
@@ -2739,11 +2706,11 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
     pObject obj;
 
 	/** Make sure the cur objlist is correct **/
-	if (qy->CurSerial != qy->CntSerial)
+	/*if (qy->CurSerial != qy->CntSerial)
 	    {
 	    qy->CurSerial = qy->CntSerial;
 	    memcpy(qy->ObjList, &qy->CurObjList, sizeof(ParamObjects));
-	    }
+	    }*/
 
 	if (!qy->CurStmt) return NULL;
 
@@ -2759,7 +2726,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	    if (qy->CurStmt->UserIterCnt < qy->CurStmt->LimitCnt)
 		{
 		rval = qy->CurStmt->Tree->Driver->NextItem(qy->CurStmt->Tree, qy->CurStmt);
-		memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));
+		/*memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));*/
 		}
 	    else
 		{
@@ -2845,9 +2812,9 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	/** If we have a pseudo-object, request update-notifies on its parts **/
 	if (p)
 	    {
-	    for(i=qy->nProvidedObjects;i<p->ObjList.nObjects;i++) 
+	    for(i=qy->nProvidedObjects;i<p->ObjList->nObjects;i++) 
 	        {
-	        obj = (pObject)(p->ObjList.Objects[i]);
+	        obj = (pObject)(p->ObjList->Objects[i]);
 		/*if (obj) 
 		    objRequestNotify(obj, mq_internal_UpdateNotify, p, OBJ_RN_F_ATTRIB);*/
 		}
@@ -2892,11 +2859,11 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 	/** Make sure the cur objlist is correct, otherwise the Finish
 	 ** routines in the drivers might close up incorrect objects.
 	 **/
-	if (qy->CurSerial != qy->CntSerial)
+	/*if (qy->CurSerial != qy->CntSerial)
 	    {
 	    qy->CurSerial = qy->CntSerial;
 	    memcpy(qy->ObjList, &qy->CurObjList, sizeof(ParamObjects));
-	    }
+	    }*/
 	qy->CurSerial = (++qy->CntSerial);
 
 	/** No more results possible after QueryClose(), so we call
@@ -2928,7 +2895,10 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 
 	/** Release the object list for the main query **/
 	if (qy->ObjList)
+	    {
+	    /*expUnlinkParams(qy->ObjList, 0, -1);*/
 	    expFreeParamList(qy->ObjList);
+	    }
 
 	if (qy->QueryText)
 	    nmSysFree(qy->QueryText);
@@ -2983,7 +2953,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    !strcmp(attrname,"cx__rowid_before_limit")) return DATA_T_INTEGER;
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Figure out which attribute... **/
 	for(i=0;i<p->Stmt->Tree->AttrNames.nItems;i++)
@@ -2998,9 +2968,9 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** If select *, then loop through FROM objects **/
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
-	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList.nObjects;i++)
+	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		dt = objGetAttrType(p->ObjList.Objects[i], attrname);
+		dt = objGetAttrType(p->ObjList->Objects[i], attrname);
 		if (dt > 0)
 		    return dt;
 		}
@@ -3015,7 +2985,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 
 	/** Evaluate the expression to get the data type **/
-	if (expEvalTree((pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id],p->Stmt->Query->ObjList) < 0)
+	if (expEvalTree((pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id],p->ObjList) < 0)
 	    return -1;
 	dt = ((pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id])->DataType;
 
@@ -3060,7 +3030,7 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	    }
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Figure out which attribute... **/
 	for(i=0;i<p->Stmt->Tree->AttrNames.nItems;i++)
@@ -3075,9 +3045,9 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	/** If select *, then loop through FROM objects **/
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
-	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList.nObjects;i++)
+	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		rval = objGetAttrValue(p->ObjList.Objects[i], attrname, datatype, value);
+		rval = objGetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
 		if (rval >= 0)
 		    return rval;
 		}
@@ -3093,14 +3063,14 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 		i = -1;
 		while((from_qs = mq_internal_FindItem(p->Stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
 		    {
-		    if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && p->ObjList.Objects[from_qs->QELinkage->SrcIndex])
+		    if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && p->ObjList->Objects[from_qs->QELinkage->SrcIndex])
 			{
 			i = from_qs->QELinkage->SrcIndex;
 			break;
 			}
 		    }
 	        if (i == -1) return -1;
-		rval = objGetAttrValue(p->ObjList.Objects[i], attrname, datatype, value);
+		rval = objGetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
 		return rval;
 		}
 	    else
@@ -3112,7 +3082,7 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 
 	/** Evaluate the expression to get the value **/
 	exp = (pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id];
-	if (expEvalTree(exp,p->Stmt->Query->ObjList) < 0) return 1;
+	if (expEvalTree(exp,p->ObjList) < 0) return 1;
 	if (exp->Flags & EXPR_F_NULL) return 1;
 	if (exp->DataType != datatype)
 	    {
@@ -3198,9 +3168,9 @@ mqGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     pPseudoObject p = (pPseudoObject)inf_v;
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
-    return mq_internal_QEGetNextAttr(p->Stmt->Query, p->Stmt->Tree, &p->ObjList, &p->AttrID, &p->AstObjID);
+    return mq_internal_QEGetNextAttr(p->Stmt->Query, p->Stmt->Tree, p->ObjList, &p->AttrID, &p->AstObjID);
     }
 
 
@@ -3231,7 +3201,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
     pExpression exp;
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Figure out which attribute needs updating... **/
 	id = -1;
@@ -3247,12 +3217,12 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	/** If select *, then loop through FROM objects **/
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
-	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList.nObjects;i++)
+	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		dt = objGetAttrType(p->ObjList.Objects[i], attrname);
+		dt = objGetAttrType(p->ObjList->Objects[i], attrname);
 		if (dt > 0)
 		    {
-		    rval = objSetAttrValue(p->ObjList.Objects[i], attrname, datatype, value);
+		    rval = objSetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
 		    return rval;
 		    }
 		}
@@ -3268,7 +3238,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	 ** ideal, but it'll work for now.
 	 **/
 	exp = (pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id];
-	if (expEvalTree(exp,p->Stmt->Query->ObjList) < 0) return -1;
+	if (expEvalTree(exp,p->ObjList) < 0) return -1;
 	if (exp->DataType == DATA_T_UNAVAILABLE) return -1;
 
 	/** Verify that the types match. **/
@@ -3315,7 +3285,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	    }
 
 	/** Evaluate the expression in reverse to set the value!! **/
-	if (expReverseEvalTree(exp, p->Stmt->Query->ObjList) < 0) return -1;
+	if (expReverseEvalTree(exp, p->ObjList) < 0) return -1;
 
     return 0;
     }
@@ -3386,7 +3356,7 @@ mqCommit(void* inf_v, pObjTrxTree* oxt)
     /*int i;*/
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Commit each underlying object **/
 	objCommit(p->Stmt->Query->SessionID);
@@ -3430,7 +3400,7 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	if (!strcmp(attrname,"ls__rowid")) return NULL;
 
     	/** Check to see whether we're on current object. **/
-	mq_internal_CkSetObjList(p->Stmt->Query, p);
+	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Figure out which attribute... **/
 	id = -1;
@@ -3446,11 +3416,14 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	/** If select *, then loop through FROM objects **/
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
-	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList.nObjects;i++)
+	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		ph = objPresentationHints(p->ObjList.Objects[i], attrname);
-		if (ph)
-		    return ph;
+		if (p->ObjList->Objects[i])
+		    {
+		    ph = objPresentationHints(p->ObjList->Objects[i], attrname);
+		    if (ph)
+			return ph;
+		    }
 		}
 	    }
 	    
@@ -3463,14 +3436,14 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    }
 
 	/** Evaluate the expression to get the data type **/
-	p->Stmt->Query->ObjList->Session = p->Stmt->Query->SessionID;
+	p->ObjList->Session = p->Stmt->Query->SessionID;
 	e = (pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id];
 	if (e->NodeType == EXPR_N_PROPERTY || e->NodeType == EXPR_N_OBJECT)
 	    {
 	    if (e->ObjID >= 0)
 		{
-		obj = p->Stmt->Query->ObjList->Objects[(int)e->ObjID];
-		if (obj && p->Stmt->Query->ObjList->GetTypeFn[(int)e->ObjID] == objGetAttrType)
+		obj = p->ObjList->Objects[(int)e->ObjID];
+		if (obj && p->ObjList->GetTypeFn[(int)e->ObjID] == objGetAttrType)
 		    {
 		    ph = objPresentationHints(obj, attrname);
 		    return ph;

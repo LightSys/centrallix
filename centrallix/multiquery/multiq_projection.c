@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.14 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.15 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.15  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.14  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -610,8 +620,7 @@ mqpAnalyze(pQueryStatement stmt)
 			while(qe->OrderBy[j]) j++;
 			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = item->Expr;
-			item->Expr = NULL;
+			qe->OrderBy[j] = exp_internal_CopyTree(item->Expr);
 			qe->OrderBy[j+1] = NULL;
 			expRemapID(qe->OrderBy[j], src_idx, 0);
 			}
@@ -818,18 +827,30 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
 	/** Get next source **/
-	if (mi->SourceIndex >= mi->SourceList.nItems) return 0;
-	src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
-	strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
-
-    	/** Open the data source in the objectsystem **/
-	qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
-	if (!qe->LLSource) 
+	while(1)
 	    {
-	    mssError(0,"MQP","Could not open source object for SQL projection");
-	    return -1;
+	    if (mi->SourceIndex >= mi->SourceList.nItems) return 0;
+	    src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
+	    strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
+
+	    /** Open the data source in the objectsystem **/
+	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
+	    if (!qe->LLSource) 
+		{
+		if (qe->Flags & MQ_EF_WILDCARD)
+		    {
+		    /** with wildcarding, it is ok for a source to not exist, we just ignore it. **/
+		    continue;
+		    }
+		else
+		    {
+		    mssError(0,"MQP","Could not open source object for SQL projection");
+		    return -1;
+		    }
+		}
+	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
+	    break;
 	    }
-	objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
 
 	/** Additional expression supplied?? **/
 	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;

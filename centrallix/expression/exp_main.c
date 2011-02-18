@@ -46,10 +46,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.15 2010/09/08 21:55:09 gbeeley Exp $
+    $Id: exp_main.c,v 1.16 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.16  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.15  2010/09/08 21:55:09  gbeeley
     - (bugfix) allow /file/name:"attribute" to be quoted.
     - (bugfix) order by ... asc/desc keywords are now case insenstive
@@ -317,6 +327,8 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
 	new_tree->ObjID = src->ObjID;
 	new_tree->ObjCoverageMask = src->ObjCoverageMask;
 	new_tree->ObjOuterMask = src->ObjOuterMask;
+	new_tree->ObjDelayChangeMask = src->ObjDelayChangeMask;
+	new_tree->AggLevel = src->AggLevel;
 	memcpy(&(new_tree->Types), &(src->Types), sizeof(src->Types));
 
 	/** String fields may need to be allocated.. **/
@@ -418,6 +430,19 @@ exp_internal_CopyTreeReduced(pExpression orig_exp)
 	    }
 
 	/** Optimize NULL IS NULL **/
+	if (new_exp->NodeType == EXPR_N_ISNOTNULL)
+	    {
+	    subexp = (pExpression)(new_exp->Children.Items[0]);
+	    if (subexp && expIsConstant(subexp) && !(subexp->Flags & EXPR_F_NULL))
+		{
+		expFreeExpression(subexp);
+		xaRemoveItem(&new_exp->Children, 0);
+		new_exp->NodeType = EXPR_N_INTEGER;
+		new_exp->DataType = DATA_T_INTEGER;
+		new_exp->Flags &= EXPR_F_NULL;
+		new_exp->Integer = 1;
+		}
+	    }
 	if (new_exp->NodeType == EXPR_N_ISNULL)
 	    {
 	    subexp = (pExpression)(new_exp->Children.Items[0]);
@@ -565,6 +590,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 	    case EXPR_N_OBJECT: printf("OBJECT ID = %d (%s)", this->ObjID, (this->ObjID == -1)?(this->Name):"-"); break;
 	    case EXPR_N_PROPERTY: printf("PROPERTY(%d) = <%s>", this->ObjID, this->Name); break;
 	    case EXPR_N_ISNULL: printf("IS NULL"); break;
+	    case EXPR_N_ISNOTNULL: printf("IS NOT NULL"); break;
 	    case EXPR_N_FUNCTION: printf("FUNCTION = <%s>", this->Name); break;
 	    case EXPR_N_LIST: printf("LIST OF VALUES"); break;
 	    case EXPR_N_SUBQUERY: printf("SUBQUERY"); break;
@@ -588,6 +614,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 	if (this->Flags & EXPR_F_AGGREGATEFN) printf(", AGGFN");
 	if (this->Flags & EXPR_F_AGGLOCKED) printf(", AGGLK");
 	if (this->Flags & EXPR_F_FREEZEEVAL) printf(", FRZ");
+	if (this->AggLevel) printf(", AGGLVL=%d", this->AggLevel);
 	if (this->ObjCoverageMask != 0) printf(", OCM=%d", this->ObjCoverageMask);
 	printf("\n");
 

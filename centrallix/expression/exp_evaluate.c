@@ -67,10 +67,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.26 2010/09/08 21:55:09 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.27 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.27  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.26  2010/09/08 21:55:09  gbeeley
     - (bugfix) allow /file/name:"attribute" to be quoted.
     - (bugfix) order by ... asc/desc keywords are now case insenstive
@@ -303,7 +313,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Run the query **/
-	qy = objMultiQuery(objlist->Session, tree->Name, objlist);
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT);
 	if (!qy)
 	    {
 	    mssError(1,"EXP","Failed to run subselect query");
@@ -975,6 +985,28 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 	    }
 
     return 0;
+    }
+
+
+/*** expEvalIsNotNull - evaluate an IS NOT NULL node type.
+ ***/
+int
+expEvalIsNotNull(pExpression tree, pParamObjects objlist)
+    {
+    int t;
+
+	/** Evaluate the child tree structure **/
+    	t = exp_internal_EvalTree((pExpression)(tree->Children.Items[0]),objlist);
+	if (t < 0) return -1;
+
+	/** Check null of the evaluated item. **/
+	tree->DataType = DATA_T_INTEGER;
+	if (((pExpression)(tree->Children.Items[0]))->Flags & EXPR_F_NULL)
+	    tree->Integer = 0;
+	else
+	    tree->Integer = 1;
+
+    return 1;
     }
 
 
@@ -2027,6 +2059,7 @@ exp_internal_DefineNodeEvals()
 	EXP.EvalFunctions[EXPR_N_LIKE] = NULL;
 	EXP.EvalFunctions[EXPR_N_CONTAINS] = NULL;
 	EXP.EvalFunctions[EXPR_N_ISNULL] = expEvalIsNull;
+	EXP.EvalFunctions[EXPR_N_ISNOTNULL] = expEvalIsNotNull;
 	EXP.EvalFunctions[EXPR_N_NOT] = expEvalNot;
 	EXP.EvalFunctions[EXPR_N_AND] = expEvalAnd;
 	EXP.EvalFunctions[EXPR_N_OR] = expEvalOr;
@@ -2052,6 +2085,7 @@ exp_internal_DefineNodeEvals()
 	EXP.Precedence[EXPR_N_LIKE] = 30;
 	EXP.Precedence[EXPR_N_CONTAINS] = 30;
 	EXP.Precedence[EXPR_N_ISNULL] = 30;
+	EXP.Precedence[EXPR_N_ISNOTNULL] = 30;
 	EXP.Precedence[EXPR_N_NOT] = 40;
 	EXP.Precedence[EXPR_N_AND] = 50;
 	EXP.Precedence[EXPR_N_OR] = 60;

@@ -47,10 +47,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.21 2010/09/08 21:55:09 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.22 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.22  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.21  2010/09/08 21:55:09  gbeeley
     - (bugfix) allow /file/name:"attribute" to be quoted.
     - (bugfix) order by ... asc/desc keywords are now case insenstive
@@ -787,6 +797,24 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			    {
 			    etmp->NodeType = EXPR_N_ISNULL;
 			    was_unary = 1;
+			    }
+			else if (!strcasecmp(sptr,"not"))
+			    {
+			    t = mlxNextToken(lxs);
+			    if (t != MLX_TOK_KEYWORD || (sptr = mlxStringVal(lxs,NULL)) == NULL || strcasecmp(sptr,"null") != 0)
+				{
+				mssError(1,"EXP","Expected NULL after IS NOT");
+				mlxNoteError(lxs);
+				expFreeExpression(etmp);
+				if (expr) expFreeExpression(expr);
+				err=1;
+				expr = NULL;
+				}
+			    else
+				{
+				etmp->NodeType = EXPR_N_ISNOTNULL;
+				was_unary = 1;
+				}
 			    }
 			else
 			    {

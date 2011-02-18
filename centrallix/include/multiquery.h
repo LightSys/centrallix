@@ -35,10 +35,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.16 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiquery.h,v 1.17 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.17  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.16  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -191,6 +201,7 @@ typedef struct
 /*** Structure for managing query elements (such as join, project, etc) ***/
 typedef struct _QE
     {
+    struct _QE*		Parent;
     XArray		Children;		/* child query items */
     XString		AttrNameBuf;		/* buffer for attr names */
     XArray		AttrNames;		/* ptrs to attribute names */
@@ -318,7 +329,7 @@ struct _MQ
     int			RowCnt;			/* last returned row# */
     pObjSession		SessionID;
     pParamObjects	ObjList;		/* master object list for query */
-    ParamObjects	CurObjList;		/* objlist used for next fetch */
+    /*ParamObjects	CurObjList;*/		/* objlist used for next fetch */
     int			nProvidedObjects;	/* number of objs in objlist provided to query externally */
     int			ProvidedObjMask;	/* mask of external object id's **/
     pLxSession		LexerSession;		/* tokenized query string */
@@ -328,13 +339,14 @@ struct _MQ
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
 #define MQ_F_MULTISTATEMENT	2		/* allow multiple statements separated by semicolons */
+#define MQ_F_ONESTATEMENT	4		/* disable use of multiple statements (such as in subquery) */
 
 
 /*** Pseudo-object structure. ***/
 typedef struct
     {
-    pQueryStatement	Stmt;
-    ParamObjects	ObjList;
+    pQueryStatement	Stmt;			/* statement that returned this row */
+    pParamObjects	ObjList;		/* copy of objlist specific to this result set row */
     int			Serial;
     int			AttrID;
     int			AstObjID;
@@ -363,6 +375,5 @@ int mq_internal_FreeQE(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
-int mq_internal_BuildBinaryImage(char* buf, int buflen, pExpression* fields, int n_fields, pParamObjects objlist);
 
 #endif  /* not defined _MULTIQUERY_H */

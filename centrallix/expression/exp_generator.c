@@ -46,10 +46,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.14 2009/06/24 17:33:19 gbeeley Exp $
+    $Id: exp_generator.c,v 1.15 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.15  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.14  2009/06/24 17:33:19  gbeeley
     - (change) adding domain param to expGenerateText, so it can be used to
       generate an expression string with lower domains converted to constants
@@ -429,6 +439,15 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		    exp_internal_WriteText(eg, ")");
 		break;
 
+	    case EXPR_N_ISNOTNULL:
+		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		    exp_internal_WriteText(eg, "(");
+	        if (exp_internal_GenerateText_cxsql((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
+		exp_internal_WriteText(eg, " IS NOT NULL");
+		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		    exp_internal_WriteText(eg, ")");
+		break;
+
 	    case EXPR_N_ISNULL:
 		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
 		    exp_internal_WriteText(eg, "(");
@@ -697,6 +716,15 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		exp_internal_WriteText(eg, ",");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
 		exp_internal_WriteText(eg, ")");
+		break;
+
+	    case EXPR_N_ISNOTNULL:
+		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		    exp_internal_WriteText(eg, "(");
+	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
+		exp_internal_WriteText(eg, " != null");
+		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		    exp_internal_WriteText(eg, ")");
 		break;
 
 	    case EXPR_N_ISNULL:

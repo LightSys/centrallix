@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.16 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.17 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.17  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.16  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -547,7 +557,9 @@ mqjAnalyze(pQueryStatement stmt)
 		    return -1;
 		    }
 		xaAddItem(&qe->Children,(void*)master);
+		master->Parent = qe;
 		xaAddItem(&qe->Children,(void*)slave);
+		slave->Parent = qe;
 		stmt->Tree = qe;
 		qe->QSLinkage = NULL;
 		qe->PrivateData = (void*)nmMalloc(sizeof(MqjJoinData));

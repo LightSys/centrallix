@@ -34,10 +34,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.20 2010/09/08 22:01:25 gbeeley Exp $
+    $Id: expression.h,v 1.21 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.21  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.20  2010/09/08 22:01:25  gbeeley
     - (bugfix) allow /file/name:"attribute" to be quoted.
     - (bugfix) order by ... asc/desc keywords are now case insenstive
@@ -363,6 +373,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_N_PROPERTY		22
 #define EXPR_N_LIST		23
 #define EXPR_N_SUBQUERY		24	/* such as "i = (select ...)" */
+#define EXPR_N_ISNOTNULL	25
 
 /*** Flags for expression nodes ***/
 #define EXPR_F_OPERATOR		1	/* node is an operator */
@@ -474,5 +485,7 @@ int expObjChanged(pParamObjects this, pObject obj);
 int expContainsAttr(pExpression exp, int objid, char* attrname);
 int expAllObjChanged(pParamObjects this);
 int expSetCurrentID(pParamObjects this, int current_id);
+void expLinkParams(pParamObjects this, int start, int end);
+void expUninkParams(pParamObjects this, int start, int end);
 
 #endif /* not defined _EXPRESSION_H */

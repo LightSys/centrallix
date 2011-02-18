@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_insertselect.c,v 1.4 2010/01/10 07:51:06 gbeeley Exp $
+    $Id: multiq_insertselect.c,v 1.5 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_insertselect.c,v $
 
     $Log: multiq_insertselect.c,v $
+    Revision 1.5  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.4  2010/01/10 07:51:06  gbeeley
     - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
       rather than subobjects of the object.
@@ -134,6 +144,7 @@ mqisAnalyze(pQueryStatement stmt)
 	n=0;
 	xaAddItem(&stmt->Trees, qe);
 	xaAddItem(&qe->Children, stmt->Tree);
+	stmt->Tree->Parent = qe;
 	stmt->Tree = qe;
 
     return 0;

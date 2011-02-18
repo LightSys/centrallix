@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_update.c,v 1.4 2010/09/08 22:22:43 gbeeley Exp $
+    $Id: multiq_update.c,v 1.5 2011/02/18 03:47:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_update.c,v $
 
     $Log: multiq_update.c,v $
+    Revision 1.5  2011/02/18 03:47:46  gbeeley
+    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
+
+    - adding multiq_orderby which adds limited high-level order by support
+    - adding IS NOT NULL support
+    - bug fix for issue involving object lists (param lists) in query
+      result items (pseudo objects) getting out of sorts
+    - as a part of bug fix above, reworked some MQ/EXP code to be much
+      cleaner
+
     Revision 1.4  2010/09/08 22:22:43  gbeeley
     - (bugfix) DELETE should only mark non-provided objects as null.
     - (bugfix) much more intelligent join dependency checking, as well as
@@ -151,6 +161,7 @@ mquAnalyze(pQueryStatement stmt)
 	    if (stmt->Tree != NULL)
 	        {
 		xaAddItem(&qe->Children, (void*)(stmt->Tree));
+		stmt->Tree->Parent = qe;
 		}
 	    else
 		{
@@ -291,10 +302,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		objlist = expCreateParamList();
 		if (!objlist) goto error;
 		expCopyList(stmt->Query->ObjList, objlist);
-		for(i=0;i<objlist->nObjects;i++)
-		    if (i >= stmt->Query->nProvidedObjects)
-			if (objlist->Objects[i])
-			    objLinkTo(objlist->Objects[i]);
+		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xaAddItem(objects_to_update, (void*)objlist);
 		}
 	    }
@@ -307,15 +315,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    goto error;
 
 	/** Update the retrieved records **/
-	for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
-	    {
-	    if (stmt->Query->ObjList->Objects[i]) 
-		if (i >= stmt->Query->nProvidedObjects) 
-		    if (stmt->Query->ObjList->Objects[i])
-			objClose(stmt->Query->ObjList->Objects[i]);
-	    expModifyParamByID(stmt->Query->ObjList, i, NULL);
-	    /*stmt->Query->ObjList->Objects[i] = NULL;*/
-	    }
+	expUnlinkParams(stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 	for(j=0;j<objects_to_update->nItems;j++)
 	    {
 	    objlist = (pParamObjects)xaGetItem(objects_to_update, j);
@@ -368,10 +368,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		objlist = (pParamObjects)xaGetItem(objects_to_update, i);
 		if (objlist)
 		    {
-		    for(j=0;j<objlist->nObjects;j++)
-			if (j >= stmt->Query->nProvidedObjects)
-			    if (objlist->Objects[j])
-				objClose(objlist->Objects[j]);
+		    expUnlinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		    expFreeParamList(objlist);
 		    }
 		}

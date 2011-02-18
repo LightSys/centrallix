@@ -226,6 +226,7 @@ XQYDRIVERS=multiq_tablegen.o \
 	   multiq_insertselect.o \
 	   multiq_update.o \
 	   multiq_delete.o \
+	   multiq_orderby.o \
 	   multiquery.o
 QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
