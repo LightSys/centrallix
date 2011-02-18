@@ -573,14 +573,18 @@ function cmp_value_changing(obj, prop, ov, nv)
     for(var i in this.components)
 	{
 	var cmp = this.components[i];
-	if (cmp.proptarget && obj == cmp.proptarget)
+	if ((cmp.proptarget && obj == cmp.proptarget) || wgtrGetRoot(obj) == cmp.cmp)
 	    {
-	    if (cmp.propwatched[prop])
+	    var realprop = prop;
+	    if (wgtrGetType(obj) == 'widget/parameter')
+		realprop = wgtrGetName(obj);
+	    if (cmp.propwatched[realprop])
 		{
-		return this.ifcProbe(ifValue).Changing(prop, nv, false, ov, true);
+		return this.ifcProbe(ifValue).Changing(realprop, nv, false, ov, true);
 		}
 	    }
 	}
+    return nv;
     }
 
 function cmp_endinit(c)
@@ -617,7 +621,15 @@ function cmp_value_getter(n)
 
 	// try param on the cmp
 	v = wgtrProbeProperty(cmp.cmp, n);
-	if (!wgtrIsUndefined(v)) return v;
+	if (!wgtrIsUndefined(v))
+	    {
+	    if (!(cmp.propwatched[n]))
+		{
+		cmp.propwatched[n] = true;
+		wgtrWatchProperty(cmp.cmp, n, this, 'cmp_value_changing');
+		}
+	    return v;
+	    }
 	}
 
     alert("Property " + n + " is undefined for component " + wgtrGetName(this));

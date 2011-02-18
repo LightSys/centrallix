@@ -182,6 +182,62 @@ function wgtrProbeProperty(node, prop_name)
     }
 
 
+// wgtrWatchProperty - watch a property for changes and call a callback
+// function when a change happens.
+
+function wgtrWatchProperty(node, prop_name, callback_obj, callback_fn)
+    {
+    var realnode = node;
+    var newnode;
+    var realprop = prop_name;
+
+	// make sure the parameters are legitimate
+	if (!node || !node.__WgtrName) 
+	    { 
+	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; 
+	    }
+
+	// Indirect reference?
+	if (realnode.reference && (newnode = realnode.reference()))
+	    realnode = newnode;
+
+	// Component/page/osrc?  Check params
+	if (realnode.__WgtrType == "widget/component-decl" || realnode.__WgtrType == "widget/page" || realnode.__WgtrType == "widget/osrc")
+	    {
+	    for(var child in node.__WgtrChildren)
+		{
+		child = node.__WgtrChildren[child];
+		if (child.__WgtrType == 'widget/parameter' && ((!child.realname && child.__WgtrName == realprop) || (child.realname == realprop)))
+		    {
+		    realnode = child;
+		    realprop = 'value';
+		    }
+		}
+	    }
+
+	// Implements ifValue?  If so, use that to watch.
+	if (realnode.ifcProbe(ifValue))
+	    {
+	    if (realnode.ifcProbe(ifValue).Exists(realprop))
+		{
+		realnode.ifcProbe(ifValue).Watch(realprop, callback_obj, callback_fn);
+		return true;
+		}
+	    else
+		return false;
+	    }
+
+	// Does not implement ifValue.  Check for property
+	if (typeof (realnode[realprop]) == 'undefined')
+	    return false;
+
+	// Watch using normal prop watch function.
+	htr_cwatch(realnode, realprop, callback_obj, callback_fn);
+
+    return true;
+    }
+
+
 // wgtrGetParent - returns the parent node of the given node
 // if there is no parent (top level in the tree), then return
 // null.
