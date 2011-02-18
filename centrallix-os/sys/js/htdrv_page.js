@@ -1244,8 +1244,14 @@ function pg_init(l,a,gs,ct) //SETH: ??
     if (typeof window.name == 'undefined')
 	window.name = 'window';
     pg_reveal_register_triggerer(window);
-    pg_reveal_event(window,null,'Reveal');
-    pg_addsched('pg_msg_init()', window,0);
+
+    // pg_init runs early in the init phase.  We delay the Reveal event
+    // until after everything else has had a chance to run.  pg_reveal_event
+    // also does addsched(), so that means everything has a chance to
+    // schedule 0-timeout events before the Reveal occurs.
+    pg_addsched("pg_reveal_event(window,null,'Reveal')", window, 0);
+
+    pg_addsched('pg_msg_init()', window, 0);
     ifc_init_widget(window);
 
     l.templates = [];

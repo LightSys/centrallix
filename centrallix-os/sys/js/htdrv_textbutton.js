@@ -117,7 +117,7 @@ function tb_propchange(prop, oldv, newv)
     }
 
 function tb_setenable(prop, oldv, newv)
-    {    
+    {
     if (cx__capabilities.Dom0IE) 
     	{
     	var e = window.event;
