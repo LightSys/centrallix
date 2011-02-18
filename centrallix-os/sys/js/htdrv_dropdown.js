@@ -20,7 +20,8 @@ function dd_getvalue()
 	    vals.push(this.Values[this.selectedItems[j]].value);
 	return vals;
 	}
-    if (!this.VisLayer.index) return null;
+    if (typeof this.VisLayer.index == 'undefined' || this.VisLayer.index == null)
+	return null;
 
     // GRB - maybe this should just be "return this.value" unconditionally.
     if (this.Values[this.VisLayer.index])
@@ -283,7 +284,7 @@ function dd_keyhandler(l,e,k)
 	if (this.form)
 	    {
 	    if (this.PaneLayer && htr_getvisibility(this.PaneLayer) == 'inherit' && 
-		    this.SelectedItem)
+		    (this.SelectedItem !== null))
 		{
 		dd_select_item(this,this.SelectedItem, 'keyboard');
 		dd_datachange(this);
