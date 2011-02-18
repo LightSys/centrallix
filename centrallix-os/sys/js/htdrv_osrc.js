@@ -64,6 +64,7 @@ function osrc_criteria_from_aparam(aparam)
 
 function osrc_action_query_param(aparam)
     {
+    this.init = true;
     if (this.query_delay_schedid)
 	{
 	pg_delsched(this.query_delay_schedid);
@@ -106,6 +107,7 @@ function osrc_action_change_source(aparam)
 
 function osrc_action_query_text(aparam)
     {
+    this.init = true;
     if (this.query_delay_schedid)
 	{
 	pg_delsched(this.query_delay_schedid);
@@ -221,6 +223,7 @@ function osrc_query_text_handler(aparam)
 
 function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
+    this.init = true;
     if (this.query_delay_schedid)
 	{
 	pg_delsched(this.query_delay_schedid);
@@ -658,6 +661,7 @@ function osrc_go_nogo(go_func, nogo_func, context)
 
 function osrc_action_query(aparam) //q, formobj)
     {
+    this.init = true;
     if (this.query_delay_schedid)
 	{
 	pg_delsched(this.query_delay_schedid);
@@ -2127,6 +2131,22 @@ function osrc_action_sync(param)
     this.ParentKey = [];
     this.ChildKey = [];
 
+    // Does a rule apply?
+    var rule = null;
+    var on_norecs = 'allrecs';
+    var on_null = 'allrecs';
+    for(var onerel in this.relationships)
+	{
+	if (this.parentosrc && this.relationships[onerel].master == this.parentosrc)
+	    {
+	    rule = this.relationships[onerel];
+	    on_null = rule.master_null_action;
+	    on_norecs = rule.master_norecs_action;
+	    if (on_norecs == 'sameasnull') on_norecs = on_null;
+	    break;
+	    }
+	}
+
     // Prevent sync loops
     if (this.SyncID == this.parentosrc.SyncID)
 	{
@@ -2153,6 +2173,12 @@ function osrc_action_sync(param)
 		t.oid = this.ChildKey[i];
 		t.value = null;
 		t.type = 'integer'; // type doesn't matter if it is null.
+		if (on_norecs == 'nullisvalue')
+		    t.nullisvalue = true;
+		else if (on_norecs == 'norecs')
+		    t.force_empty = true;
+		else
+		    t.nullisvalue = false;
 		query.push(t);
 		}
 	    else
@@ -2165,6 +2191,15 @@ function osrc_action_sync(param)
 			t.oid=this.ChildKey[i];
 			t.value=this.parentosrc.replica[p][j].value;
 			t.type=this.parentosrc.replica[p][j].type;
+			if (t.value === null)
+			    {
+			    if (on_null == 'nullisvalue')
+				t.nullisvalue = true;
+			    else if (on_null == 'norecs')
+				t.force_empty = true;
+			    else
+				t.nullisvalue = false;
+			    }
 			query.push(t);
 			}
 		    }
@@ -2528,6 +2563,7 @@ function osrc_apply_rel(obj, in_create)
 				break;
 			    case 'norecs':
 				obj[obj_index].nullisvalue = false;
+				obj[obj_index].force_empty = true;
 				break;
 			    }
 			}
@@ -2606,6 +2642,10 @@ function osrc_cb_control_msg(m)
     return;
     }
 
+function osrc_get_pending()
+    {
+    return (this.pending || this.masters_pending.length > 0)?1:0;
+    }
 
 function osrc_get_value(n)
     {
@@ -2736,18 +2776,21 @@ function osrc_add_rule(rule_widget)
 	// default to key objectname specified for osrc
 	if (!sobj)
 	    sobj = slave.key_objname;
-	var slaverule = {master:master, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], obj:sobj};
-	var masterrule = {slave:slave, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[]};
+	var slaverule = {master:master, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], obj:sobj, master_norecs_action:rl.master_norecs_action, master_null_action:rl.master_null_action};
+	var masterrule = {slave:slave, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], master_norecs_action:rl.master_norecs_action, master_null_action:rl.master_null_action};
 
 	// Keys
 	for(var keynum = 1; keynum <= 5; keynum++)
 	    {
 	    rl['key_' + keynum] = rule_widget['key_' + keynum];
 	    rl['target_key_' + keynum] = rule_widget['target_key_' + keynum];
-	    slaverule.key.push(rl[skey + keynum]);
-	    slaverule.tkey.push(rl[mkey + keynum]);
-	    masterrule.key.push(rl[mkey + keynum]);
-	    masterrule.tkey.push(rl[skey + keynum]);
+	    if (typeof rl[skey + keynum] != 'undefined')
+		{
+		slaverule.key.push(rl[skey + keynum]);
+		slaverule.tkey.push(rl[mkey + keynum]);
+		masterrule.key.push(rl[mkey + keynum]);
+		masterrule.tkey.push(rl[skey + keynum]);
+		}
 	    }
 
 	slave.relationships.push(slaverule);
@@ -2959,12 +3002,15 @@ function osrc_oc_operation_complete(is_success, master_osrc)
 // to osrc_init()
 function osrc_init_bh()
     {
+    var has_master = false;
+
     // Search for relationships... then register as an osrc client
     for(var i=0; i<this.relationships.length; i++)
 	{
 	var rule = this.relationships[i];
 	if (rule.master)
 	    {
+	    has_master = true;
 	    rule.master.Register(this);
 	    if (rule.revealed_only)
 		this.has_onreveal_relationship = true;
@@ -2973,12 +3019,22 @@ function osrc_init_bh()
 		//pg_addsched_fn(this, "Resync", [], 0);
 	    }
 	}
+
+    // Need to auto-determine AQnever vs AQonFirstReveal?
+    if (this.autoquery == this.AQunset)
+	{
+	if (has_master)
+	    this.autoquery = this.AQnever;
+	else
+	    this.autoquery = this.AQonFirstReveal;
+	}
+
     this.bh_finished = true;
 
     // Autoquery on load?  Reveal event already occurred?
-    /*if (this.autoquery == this.AQonLoad) 
+    if (this.autoquery == this.AQonLoad) 
 	pg_addsched_fn(this,'InitQuery', [], 0);
-    else if (this.revealed_children && (this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
+    /*else if (this.revealed_children && (this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);*/
     }
 
@@ -3100,7 +3156,10 @@ function osrc_encode_params()
 function osrc_set_pending(p)
     {
     var was_pending = this.pending;
+    var was_any_pending = (this.pending || this.masters_pending.length > 0);
     this.pending = p;
+    if (was_any_pending != (this.pending || this.masters_pending.length > 0) )
+	this.ifcProbe(ifValue).Changing("cx__pending", (this.pending || this.masters_pending.length > 0)?1:0, true, was_any_pending?1:0, true);
     if (!this.pending && was_pending)
 	this.Dispatch();
 
@@ -3118,6 +3177,7 @@ function osrc_set_pending(p)
 
 function osrc_set_master_pending(master, p)
     {
+    var was_any_pending = (this.pending || this.masters_pending.length > 0);
     if (master == this) return;
     var already_pending = -1;
     for(var i=0; i<this.masters_pending.length; i++)
@@ -3131,6 +3191,8 @@ function osrc_set_master_pending(master, p)
     else if (already_pending != -1 && !p)
 	this.masters_pending.splice(i,1);
 
+    if (was_any_pending != (this.pending || this.masters_pending.length > 0) )
+	this.ifcProbe(ifValue).Changing("cx__pending", (this.pending || this.masters_pending.length > 0)?1:0, true, was_any_pending?1:0, true);
     if (this.masters_pending.length == 0)
 	this.Dispatch();
 
@@ -3182,11 +3244,13 @@ function osrc_init(param)
 
     loader.pending = false;
     loader.masters_pending = [];
+    loader.any_pending = false;
 
     loader.SetPending = osrc_set_pending;
     loader.SetMasterPending = osrc_set_master_pending;
 
     // autoquery types - must match htdrv_osrc.c's enum declaration
+    loader.AQunset = -1;
     loader.AQnever = 0;
     loader.AQonLoad = 1;
     loader.AQonFirstReveal = 2;
@@ -3282,6 +3346,7 @@ function osrc_init(param)
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
     iv.SetNonexistentCallback(osrc_get_value);
+    iv.Add("cx__pending", osrc_get_pending, null);
 
     loader.ParamNotify = osrc_param_notify;
     loader.CreateCB2 = osrc_action_create_cb2;
@@ -3357,8 +3422,8 @@ function osrc_init(param)
     // Zero out the replica
     loader.ClearReplica();
 
-    if (loader.autoquery == loader.AQonLoad) 
-	pg_addsched_fn(loader,'InitQuery', [], 0);
+    /*if (loader.autoquery == loader.AQonLoad) 
+	pg_addsched_fn(loader,'InitQuery', [], 0);*/
 
     // Finish initialization...
     pg_addsched_fn(loader, "InitBH", [], 0);
