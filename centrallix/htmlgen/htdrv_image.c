@@ -43,6 +43,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.10  2011/02/18 03:53:34  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.9  2008/06/25 18:11:30  gbeeley
     - (feature) image widget can now be a form element, displaying an image
       referred to (in the objectsystem) by a value queried via an osrc widget.
@@ -236,8 +246,8 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** image source **/
-	htrCheckAddExpression(s, tree, name, "source");
-	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
+	ptr = "";
+	if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
 	    nmSysFree(text);

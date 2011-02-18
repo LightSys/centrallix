@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #endif
 #include "obj.h"
+#include "expression.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 
@@ -51,10 +52,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.27 2010/09/09 01:37:20 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.28 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.28  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.27  2010/09/09 01:37:20  gbeeley
     - (feature) adding ability to have international currency formatting with
       . and , reversed
@@ -2209,5 +2220,209 @@ objDataFromStringAlloc(pObjData pod, int type, char* str)
 	    pod->String = nmSysStrdup(pod->String);
 
     return 0;
+    }
+
+
+/*** BuildBinaryItem - returns 0 on success, -1 on failure, 1 if NULL.
+ *** Sets item to point to the data for the item, and sets itemlen to the length.
+ *** Requires a tmp_buf from the caller of at least 12 bytes.
+ ***/
+int
+obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamObjects objlist, unsigned char* tmp_buf)
+    {
+    int tmp_int;
+    double tmp_dbl;
+    int rval = 0;
+    int j;
+
+	/** Evaluate the item **/
+	if (expEvalTree(exp, objlist) < 0)
+	    {
+	    mssError(0,"MQ","Error evaluating expression");
+	    return -1;
+	    }
+
+	/** We'll return '1' if NULL. **/
+	if (exp->Flags & EXPR_F_NULL)
+	    return 1;
+
+	/** Pick the data type and copy the stinkin thing **/
+	switch(exp->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		/** XOR 0x80000000 to convert to Offset Zero form. **/
+		tmp_int = htonl(exp->Integer ^ 0x80000000);
+		memcpy(tmp_buf, &tmp_int, sizeof(tmp_int));
+		*item = (char*)tmp_buf;
+		*itemlen = sizeof(tmp_int);
+		break;
+
+	    case DATA_T_STRING:
+		*item = exp->String;
+		*itemlen = strlen(exp->String)+1;
+		break;
+
+	    case DATA_T_DATETIME:
+		((unsigned short*)tmp_buf)[0] = htons(exp->Types.Date.Part.Year);
+		tmp_buf[2] = exp->Types.Date.Part.Month;
+		tmp_buf[3] = exp->Types.Date.Part.Day;
+		tmp_buf[4] = exp->Types.Date.Part.Hour;
+		tmp_buf[5] = exp->Types.Date.Part.Minute;
+		tmp_buf[6] = exp->Types.Date.Part.Second;
+		*item = (char*)(tmp_buf);
+		*itemlen = 7;
+		break;
+
+	    case DATA_T_MONEY:
+		/** XOR 0x80000000 to convert to Offset Zero form. **/
+		((unsigned int*)tmp_buf)[0] = htonl(exp->Types.Money.WholePart ^ 0x80000000);
+		((unsigned short*)tmp_buf)[2] = htons(exp->Types.Money.FractionPart);
+		*item = (char*)(tmp_buf);
+		*itemlen = 6;
+		break;
+
+	    case DATA_T_DOUBLE:
+		/** IEEE double.  sign is most-sig, then 11 bit exponent, then 24 bit mantissa.
+		 ** for negatives, we need to invert the whole thing to force sorting in the
+		 ** opposite direction.  Note - little endianness affects doubles too.
+		 **/
+		tmp_dbl = exp->Types.Double;
+
+		/** Correct for byte ordering **/
+		if (htonl(0x12345678) != 0x12345678)
+		    for(j=0;j<=7;j++) tmp_buf[j+1] = ((char*)&tmp_dbl)[7-j];
+		else
+		    memcpy(tmp_buf+1, &tmp_dbl, sizeof(double));
+
+		/** Make it binary searchable by handling the negative **/
+		if (tmp_buf[1] >= 0x80)
+		    {
+		    tmp_buf[0] = 0;
+		    for(j=1; j<=8; j++) tmp_buf[j] = ~tmp_buf[j];
+		    }
+		else
+		    {
+		    tmp_buf[0] = 1;
+		    }
+		*item = (char*)tmp_buf;
+		*itemlen = 9;
+		break;
+
+	    default:
+		return -1;
+	    }
+
+    return rval;
+    }
+
+
+/*** Build a 'binary image' of a list of fields that is suitable for comparison
+ *** in grouping and ordering.  Places that image in 'buf' and returns the
+ *** length in 'buf' that was used for the image.  Returns -1 on error.
+ ***
+ *** This is binary sort safe -- meaning data values are copied here so that
+ *** doing a memcmp() on the resulting values is accurate both for equality and
+ *** ordering comparisons.
+ ***/
+int
+objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* objlist_v)
+    {
+    pExpression* fields = (pExpression*)fields_v;
+    pParamObjects objlist = (pParamObjects)objlist_v;
+    int rval;
+    int i,j;
+    pExpression exp;
+    char* ptr;
+    char* cptr;
+    char* fieldstart;
+    int clen;
+    unsigned char tmp_data[12];
+
+	ptr = buf;
+	for(i=0;i<n_fields;i++)
+	    {
+	    fieldstart = ptr;
+
+	    /** Evaluate the item **/
+	    exp = fields[i];
+	    rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
+	    if (rval < 0) return -1;
+
+	    /** NULL indication **/
+	    if (ptr+1 >= buf+buflen) return -1;
+	    if (rval == 1)
+		{
+		*(ptr++) = '0';
+		}
+	    else
+		{
+		/** Not null.  Copy null indication and data **/
+		*(ptr++) = '1';
+
+		/** Won't fit in buffer? **/
+		if (ptr+clen >= buf+buflen) return -1;
+
+		/** Copy the data to the binary image buffer **/
+		memcpy(ptr, cptr, clen);
+		ptr += clen;
+
+		/** If sorting in DESC order for this item... **/
+		if (exp->Flags & EXPR_F_DESC)
+		    {
+		    /** Start at the null ind. to pick up the null value flag too **/
+		    for(j=0;j<(ptr - fieldstart);j++) fieldstart[j] = ~fieldstart[j];
+		    }
+		}
+	    }
+
+    return (ptr - buf);
+    }
+
+
+/*** Same as above, just to an xstring instead of a c-string
+ ***/
+int
+objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* objlist_v)
+    {
+    pExpression* fields = (pExpression*)fields_v;
+    pParamObjects objlist = (pParamObjects)objlist_v;
+    int i,j;
+    int fieldoffset;
+    int startoffset;
+    int clen;
+    char* cptr;
+    unsigned char tmp_data[12];
+    int rval;
+    pExpression exp;
+
+	startoffset = str->Length;
+	for(i=0;i<n_fields;i++)
+	    {
+	    fieldoffset = str->Length;
+
+	    /** Evaluate the item **/
+	    exp = fields[i];
+	    rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
+	    if (rval < 0) return -1;
+
+	    if (rval == 1)
+		{
+		xsConcatenate(str, "0", 1);
+		}
+	    else
+		{
+		xsConcatenate(str, "1", 1);
+		xsConcatenate(str, cptr, clen);
+
+		/** If sorting in DESC order for this item... **/
+		if (exp->Flags & EXPR_F_DESC)
+		    {
+		    /** Start at null ind. to pick up the null value flag too **/
+		    for(j=fieldoffset;j<str->Length;j++) str->String[j] = ~str->String[j];
+		    }
+		}
+	    }
+
+    return str->Length - startoffset;
     }
 

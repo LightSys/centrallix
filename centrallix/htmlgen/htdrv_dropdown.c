@@ -201,7 +201,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	 ** For Named, the above names can appear in any order.
 	 ** label and value are required.
 	 **/
-	if ((qy = objMultiQuery(s->ObjSession, sql, NULL))) {
+	if ((qy = objMultiQuery(s->ObjSession, sql, NULL, 0))) {
 	    flag=0;
 	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%STR&SYM\"], [",name);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
@@ -375,10 +375,20 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.65 2010/09/09 01:08:18 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.66 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.66  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.65  2010/09/09 01:08:18  gbeeley
     - (feature) add Group and Hidden properties to the SQL result set used
       to populate a dropdown box

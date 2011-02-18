@@ -33,10 +33,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.91 2010/09/17 15:45:29 gbeeley Exp $
+    $Id: net_http.c,v 1.92 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.92  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.91  2010/09/17 15:45:29  gbeeley
     - (security) implement X-Frame-Options anti-clickjacking countermeasure
 
@@ -1645,7 +1655,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    /** Get the SQL **/
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
 	        {
-		query = objMultiQuery(nsess->ObjSess, ptr, NULL);
+		query = objMultiQuery(nsess->ObjSess, ptr, NULL, 0);
 		if (query)
 		    {
 		    rowid = 0;

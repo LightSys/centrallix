@@ -49,10 +49,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_query.c,v 1.5 2008/02/25 23:14:33 gbeeley Exp $
+    $Id: objdrv_query.c,v 1.6 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_query.c,v $
 
     $Log: objdrv_query.c,v $
+    Revision 1.6  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.5  2008/02/25 23:14:33  gbeeley
     - (feature) SQL Subquery support in all expressions (both inside and
       outside of actual queries).  Limitations:  subqueries in an actual
@@ -283,7 +293,7 @@ QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    	sprintf (sqlstring, "%s where :%s = %s",newsql,
 			find_inf->StrVal[0],
 			obj->Pathname->Elements[obj->SubPtr]);
-	        inf->MultiQuery = objMultiQuery(inf->Obj->Session, sqlstring, NULL);
+	        inf->MultiQuery = objMultiQuery(inf->Obj->Session, sqlstring, NULL, 0);
 /** Right now only returns one row **/
 	        inf->MultiQueryObject = objQueryFetch(inf->MultiQuery,0);
 		}
@@ -627,7 +637,7 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	tmpXString = stpSubstParam(inf->ParsedInf, sql);
 	memccpy(newsql,tmpXString->String,'\0',254);
 	newsql[254]='\0';
-	inf->MultiQuery = objMultiQuery(inf->Obj->Session, newsql, NULL);
+	inf->MultiQuery = objMultiQuery(inf->Obj->Session, newsql, NULL, 0);
     
     return (void*)qy;
     }

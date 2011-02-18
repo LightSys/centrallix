@@ -72,10 +72,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.38 2010/09/15 02:32:42 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.39 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.39  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.38  2010/09/15 02:32:42  gbeeley
     - (admin) disabling SqlLog for the release version
 
@@ -2378,6 +2388,13 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
                 sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
                 xsConcatenate(where_clause, ") ",2);
                 break;
+
+	    case EXPR_N_ISNOTNULL:
+	        xsConcatenate(where_clause, " (",2);
+	        subtree = (pExpression)(tree->Children.Items[0]);
+		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		xsConcatenate(where_clause, " IS NOT NULL) ",10);
+		break;
 
 	    case EXPR_N_ISNULL:
 	        xsConcatenate(where_clause, " (",2);

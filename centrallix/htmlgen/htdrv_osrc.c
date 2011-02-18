@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.69 2010/09/09 01:10:13 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.70 2011/02/18 03:53:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.70  2011/02/18 03:53:34  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.69  2010/09/09 01:10:13  gbeeley
     - (feature) permit OSRC to operate in client-only mode where changes to
       data values are not sent back to the server.
@@ -530,7 +540,7 @@ static struct {
    int     idcnt;
 } HTOSRC;
 
-enum htosrc_autoquery_types { Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3  };
+enum htosrc_autoquery_types { Unset=-1, Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3  };
 
 #if 00
 /*** AddRule: add a declarative osrc rule to the generated document.
@@ -684,7 +694,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       }
    else
       {
-      aq = OnFirstReveal;
+      aq = Unset;
       }
 
    /** Get replication updates from server? **/

@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.50 2009/06/24 22:16:30 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.51 2011/02/18 03:53:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.51  2011/02/18 03:53:34  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.50  2009/06/24 22:16:30  gbeeley
     - (feature) adding "description" to editbox - which adds text after the
       actual value, in a different color, so the user can see more information
@@ -609,6 +619,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV>\n");
+
+	nmSysFree(tooltip);
 
     return 0;
     }

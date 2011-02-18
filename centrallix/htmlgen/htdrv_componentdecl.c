@@ -48,10 +48,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.14 2010/09/09 01:04:17 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.15 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.15  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.14  2010/09/09 01:04:17  gbeeley
     - (bugfix) allow client to specify what scripts (cx__scripts) have already
       been deployed to the app, to avoid having multiple copies of JS scripts
@@ -253,7 +263,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     char expose_props_for[64] = "";
     char apply_hints_to[64] = "";
     int id;
-    char* nptr;
+    /*char* nptr;*/
 //    pObject subobj = NULL;
     pWgtrNode sub_tree = NULL;
     XArray attrs;
@@ -320,8 +330,8 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    strtcpy(apply_hints_to, ptr, sizeof apply_hints_to);
 
 	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
+	/*nptr = (char*)nmMalloc(strlen(name)+1);
+	strcpy(nptr,name);*/
 	/*htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);*/
 
 	/** Include the js module **/

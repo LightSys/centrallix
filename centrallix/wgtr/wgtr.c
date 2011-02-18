@@ -913,7 +913,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		mssError(1,"WGTR","Repeat widget %s must have a sql attribute", this_node->Name);
 		goto error;
 		}
-	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String,NULL)) != NULL)
+	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String,NULL,0)) != NULL)
 		{
 		/*the name will have to be changed from repeat to something unique */
 		expAddParamToList(context_objlist,this_node->Name,NULL,0);
@@ -1118,7 +1118,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		goto error;
 		}
 	    //mssError(1,"WGTR","%s",rptqysql);
-	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String,NULL)) != NULL)
+	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String,NULL,0)) != NULL)
 		{
 		//the name will have to be changed from repeat to something unique
 		expAddParamToList(context_objlist,this_node->Name,NULL,0);

@@ -33,10 +33,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http_osml.c,v 1.3 2010/09/09 01:30:53 gbeeley Exp $
+    $Id: net_http_osml.c,v 1.4 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_osml.c,v $
 
     $Log: net_http_osml.c,v $
+    Revision 1.4  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.3  2010/09/09 01:30:53  gbeeley
     - (change) allow a HAVING clause to be used instead of WHERE when doing
       the object reopen operation after a Create or Setattrs.
@@ -725,7 +735,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 
 			/** open the query with the osml **/
-			qy = nht_query->OsmlQuery = objMultiQuery(objsess, ptr, nht_query->ParamList);
+			qy = nht_query->OsmlQuery = objMultiQuery(objsess, ptr, nht_query->ParamList, 0);
 			if (!qy)
 			    query_handle = XHN_INVALID_HANDLE;
 			else
@@ -1033,7 +1043,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				{
 				reopen_having = stLookup_ne(req_inf,"ls__reopen_having")?1:0;
 				xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT", reopen_sql, !reopen_having, reopen_having, ptr);
-				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL);
+				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL, 0);
 				if (qy)
 				    {
 				    reopen_obj = objQueryFetch(qy, O_RDWR);

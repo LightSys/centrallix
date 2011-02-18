@@ -137,7 +137,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get initial date **/
 	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING,POD(&sql)) == 0) 
 	    {
-	    if ((qy = objMultiQuery(s->ObjSession, sql, NULL))) 
+	    if ((qy = objMultiQuery(s->ObjSession, sql, NULL, 0))) 
 		{
 		while ((qy_obj = objQueryFetch(qy, O_RDONLY)))
 		    {
@@ -301,10 +301,20 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.44 2010/09/09 01:06:53 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.45 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.45  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.44  2010/09/09 01:06:53  gbeeley
     - (feature) date/time widget supports operating in date-only mode
     - (feature) default time can be specified, esp. useful for date-only mode

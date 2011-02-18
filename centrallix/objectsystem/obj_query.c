@@ -47,10 +47,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.19 2010/09/09 01:40:58 gbeeley Exp $
+    $Id: obj_query.c,v 1.20 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.20  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.19  2010/09/09 01:40:58  gbeeley
     - (feature) stubbing out objGetQueryCoverageMask, to be used to distinguish
       between correlated and non-correlated subqueries
@@ -311,7 +321,7 @@ obj_internal_MergeSort(pObjQuerySort sortinf, int bufferid, int startid, int end
  *** the objectsystem, potentially performing joins.
  ***/
 pObjQuery 
-objMultiQuery(pObjSession session, char* query, void* objlist_v)
+objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
     {
     pObjQuery this;
     pParamObjects objlist = (pParamObjects)objlist_v;
@@ -331,7 +341,7 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v)
 	this->Obj = NULL;
 
 	/** Start the query. **/
-	this->Data = this->Drv->OpenQuery(session, query, objlist);
+	this->Data = this->Drv->OpenQuery(session, query, objlist, flags);
 	if (!this->Data)
 	    {
 	    nmFree(this,sizeof(ObjQuery));
@@ -384,6 +394,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     pExpression tree = (pExpression)tree_v;
     pExpression *orderbyexp = (pExpression*)orderby_exp_v;
     int i,n,len,j,t;
+    int n_sortby;
     short sn;
     pExpression sort_item;
     pLxSession lxs = NULL;
@@ -422,12 +433,14 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    }
 
 	/** Now, parse the order-by clause **/
+	n_sortby = 0;
 	if (orderbyexp)
 	    {
 	    for(i=0;i < sizeof(this->SortBy)/sizeof(void*);i++)
 	        {
 		this->SortBy[i] = orderbyexp[i];
 		if (!orderbyexp[i]) break;
+		n_sortby++;
 		}
 	    }
 	else if (order_by)
@@ -438,6 +451,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		sort_item = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);
 		this->SortBy[i] = sort_item;
 		if (!sort_item) break;
+		n_sortby++;
 		t = mlxNextToken(lxs);
 		if (t == MLX_TOK_EOF)
 		    {
@@ -493,6 +507,14 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		expModifyParam(this->ObjList, NULL, tmp_obj);
 		start_ptr = xsStringEnd(&this->SortInf->SortDataBuf);
 		xaAddItem(this->SortInf->SortPtr+0, (void*)(start_ptr - this->SortInf->SortDataBuf.String));
+
+		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList);
+		if (len < 0)
+		    {
+		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
+		    goto error_return;
+		    }
+#if 00
 		len = 0;
 		for(i=0;this->SortBy[i];i++)
 		    {
@@ -559,7 +581,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
 				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
 				    }
-				len+=4;
+				len+=7;
 				break;
 			    
 			    case DATA_T_STRING:
@@ -574,6 +596,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 			    }
 			}
 		    }
+#endif /* 00 */
 		xaAddItem(this->SortInf->SortPtrLen+0, (void*)len);
 		objClose(tmp_obj);
 		}

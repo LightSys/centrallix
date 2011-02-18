@@ -59,10 +59,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.24 2010/09/13 23:30:29 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.25 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.25  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.24  2010/09/13 23:30:29  gbeeley
     - (admin) prepping for 0.9.1 release, update text files, etc.
     - (change) removing some 'unused local variables'
@@ -1143,7 +1153,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	nmFree(sql_str, sizeof(XString));
 
 	/** Ok, now issue the query. **/
-	qy->Query = objMultiQuery(rs->ObjSess, newsql->String, inf->ObjList);
+	qy->Query = objMultiQuery(rs->ObjSess, newsql->String, inf->ObjList, 0);
         /*nmSysFree(newsql);*/
 	xsDeInit(newsql);
 	nmFree(newsql,sizeof(XString));

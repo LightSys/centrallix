@@ -35,10 +35,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.44 2010/09/09 01:24:10 gbeeley Exp $
+    $Id: obj.h,v 1.45 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.45  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.44  2010/09/09 01:24:10  gbeeley
     - (feature) stubbing out transaction log file functionality
     - (change) extending pathnames to 32 possible elements instead of 16
@@ -925,6 +935,10 @@ typedef struct
 #define OBJ_RN_F_SUBTREE	(1<<4)		/* all descendents */
 
 
+/*** Flags for objMultiQuery() ***/
+#define OBJ_MQ_F_ONESTATEMENT	(1<<0)		/* only permit one statement to run */
+
+
 /** objectsystem main functions **/
 int objInitialize();
 int rootInitialize();
@@ -953,7 +967,7 @@ pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
 
 /** objectsystem directory/query functions **/
-pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist);
+pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
 pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp);
 int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);
@@ -1035,6 +1049,8 @@ int objDataFromString(pObjData pod, int type, char* str);
 int objDataFromStringAlloc(pObjData pod, int type, char* str);
 char* objFormatMoneyTmp(pMoneyType m, char* format);
 int objCurrentDate(pDateTime dt);
+int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
+int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
 
 
 /** objectsystem replication services - open object notification (Rn) system **/

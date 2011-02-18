@@ -60,10 +60,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.59 2010/09/09 01:15:25 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.60 2011/02/18 03:53:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.60  2011/02/18 03:53:34  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.59  2010/09/09 01:15:25  gbeeley
     - (feature) table now displays a placeholder row for a new row that is
       in the process of being created.  provides much better visual feedback
@@ -736,7 +746,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    mssError(1,"HTTBL","Static datatable must have SQL property");
 	    return -1;
 	    }
-	qy = objMultiQuery(s->ObjSession, sql, NULL);
+	qy = objMultiQuery(s->ObjSession, sql, NULL, 0);
 	if (!qy)
 	    {
 	    mssError(0,"HTTBL","Could not open query for static datatable");
@@ -1031,26 +1041,17 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    stAddValue(attr_inf, NULL, -1);
 		attr_inf = stAddAttr(t->col_infs[i], "title");
 		if (wgtrGetPropertyValue(sub_tree, "title", DATA_T_STRING,POD(&ptr)) == 0)
-		    {
-		    str = nmSysStrdup(ptr);
-		    stAddValue(attr_inf, str, 0);
-		    }
+		    stAddValue(attr_inf, ptr, 0);
 		else
 		    stAddValue(attr_inf, t->col_infs[i]->Name, 0);
 		attr_inf = stAddAttr(t->col_infs[i], "align");
 		if (wgtrGetPropertyValue(sub_tree, "align", DATA_T_STRING,POD(&ptr)) == 0)
-		    {
-		    str = nmSysStrdup(ptr);
-		    stAddValue(attr_inf, str, 0);
-		    }
+		    stAddValue(attr_inf, ptr, 0);
 		else
 		    stAddValue(attr_inf, "left", 0);
 		attr_inf = stAddAttr(t->col_infs[i], "type");
 		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code")))
-		    {
-		    str = nmSysStrdup(ptr);
-		    stAddValue(attr_inf, str, 0);
-		    }
+		    stAddValue(attr_inf, ptr, 0);
 		else
 		    stAddValue(attr_inf, "text", 0);
 		if (htrGetBoolean(sub_tree, "group_by", 0) == 1)

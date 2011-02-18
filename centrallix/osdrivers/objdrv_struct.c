@@ -50,10 +50,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.12 2007/06/06 15:16:36 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.13 2011/02/18 03:53:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.13  2011/02/18 03:53:33  gbeeley
+    MultiQuery one-statement security, IS NOT NULL, memory leaks
+
+    - fixed some memory leaks, notated a few others needing to be fixed
+      (thanks valgrind)
+    - "is not null" support in sybase & mysql drivers
+    - objMultiQuery now has a flags option, which can control whether MQ
+      allows multiple statements (semicolon delimited) or not.  This is for
+      security to keep subqueries to a single SELECT statement.
+
     Revision 1.12  2007/06/06 15:16:36  gbeeley
     - (change) getting the obj_inherit module into the build
 
@@ -642,6 +652,7 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    mssError(1,"STX","Type mismatch getting attribute '%s' (should be stringvec)", attrname);
 		    return -1;
 		    }
+		/** FIXME - the below StringVec->Strings never gets freed **/
 		inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 		val->StringVec = &(inf->SVvalue);
 		val->StringVec->Strings = (char**)(inf->VecData);
