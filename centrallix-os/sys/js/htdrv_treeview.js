@@ -681,6 +681,11 @@ function tv_selectitem(item)
 	this.cur_selected.className = (this.divclass + 'h');
 	this.selected_name = this.cur_selected.objn;
 	this.selected_label = this.cur_selected.link_txt;
+	this.ifcProbe(ifEvent).Activate('SelectItem', {Pathname:item.fname, Name:this.selected_name, Label:this.selected_label, HRef:item.link_href, Caller:item.root});
+	}
+    else
+	{
+	this.ifcProbe(ifEvent).Activate('SelectItem', {Pathname:null, Name:null, Label:null, HRef:null, Caller:null});
 	}
     }
 
@@ -844,6 +849,7 @@ function tv_init(param)
 	ie.Add("MouseOut");
 	ie.Add("MouseMove");
 	ie.Add("ClickItem");
+	ie.Add("SelectItem");
 	ie.Add("RightClickItem");
 
 	// Request reveal/obscure notifications
