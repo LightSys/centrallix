@@ -186,7 +186,7 @@ function eb_settext(l,txt)
     if (l != eb_current && (l.content == '' || l.content == null) && l.empty_desc)
 	descr = l.empty_desc;
     if (descr)
-	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '"> (' + htutil_encode(htutil_obscure(descr)) + ')</span>';
+	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '">' + ((l.content == '' || l.content == null)?'':' ') + '(' + htutil_encode(htutil_obscure(descr)) + ')</span>';
     enctxt += '</pre>';
     if (!l.is_busy)
 	{
