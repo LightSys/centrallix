@@ -23,7 +23,7 @@ copy or distribute Centrallix, you are not required to retain
 this additional permission.  In that case, simply delete it 
 from this LICENSE file when you make the copy.
 
-Sybase CT-Lib:  AS a special additional permission, you may link
+Sybase CT-Lib:  As a special additional permission, you may link
 this application (the objdrv_sybase.c driver) with Sybase CT
 Library, for access to Sybase ASE servers.  If you copy or
 distribute Centrallix, you are not required to retain this
