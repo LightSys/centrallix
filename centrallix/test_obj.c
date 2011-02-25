@@ -866,7 +866,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		qy = objMultiQuery(s, cmd + 4, NULL);
+		qy = objMultiQuery(s, cmd + 4, NULL, 0);
 		if (!qy)
 		    {
 		    printf("csv: could not open query!\n");
@@ -931,7 +931,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		qy = objMultiQuery(s, cmd + 6, NULL);
+		qy = objMultiQuery(s, cmd + 6, NULL, 0);
 		if (!qy)
 		    {
 		    printf("query: could not open query!\n");

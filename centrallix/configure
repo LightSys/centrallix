@@ -311,7 +311,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE AWK STRIP SED INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA EXPORT_DYNAMIC CPP EGREP LIBOBJS BUILDDIR CXINCDIR CXLIBDIR CXOSDIR MAKEDEPEND DRIVERLIST ENABLE_GZIP GZIP_CFLAGS GZIP_LIBS ENABLE_HTTP ENABLE_MIME ENABLE_DBL ENABLE_FP ENABLE_SYBASE SYBASE_LIBS SYBASE_CFLAGS ENABLE_MYSQL MYSQL_LIBS MYSQL_CFLAGS xmlconfig ENABLE_XML XML_CFLAGS XML_LIBS ENABLE_MBOX ENABLE_POP3 ENABLE_SHELL ENABLE_BERK ENABLE_NETNFS OBJDRIVERMODULES OBJDRIVERS NETDRIVERMODULES NETDRIVERS STATIC_CFLAGS STATIC_LIBS PROFILE LOGMETHOD LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE AWK GZIP STRIP SED INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA EXPORT_DYNAMIC CPP EGREP LIBOBJS BUILDDIR CXINCDIR CXLIBDIR CXOSDIR MAKEDEPEND DRIVERLIST ENABLE_GZIP GZIP_CFLAGS GZIP_LIBS ENABLE_HTTP ENABLE_MIME ENABLE_DBL ENABLE_FP ENABLE_SYBASE SYBASE_LIBS SYBASE_CFLAGS ENABLE_MYSQL MYSQL_LIBS MYSQL_CFLAGS xmlconfig ENABLE_XML XML_CFLAGS XML_LIBS ENABLE_MBOX ENABLE_POP3 ENABLE_SHELL ENABLE_BERK ENABLE_NETNFS OBJDRIVERMODULES OBJDRIVERS NETDRIVERMODULES NETDRIVERS STATIC_CFLAGS STATIC_LIBS PROFILE LOGMETHOD LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -2362,6 +2362,45 @@ fi
 
   test -n "$AWK" && break
 done
+
+# Extract the first word of "gzip", so it can be a program name with args.
+set dummy gzip; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_path_GZIP+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  case $GZIP in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_GZIP="$GZIP" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_GZIP="$as_dir/$ac_word$ac_exec_ext"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+  ;;
+esac
+fi
+GZIP=$ac_cv_path_GZIP
+
+if test -n "$GZIP"; then
+  echo "$as_me:$LINENO: result: $GZIP" >&5
+echo "${ECHO_T}$GZIP" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
 
 # Extract the first word of "strip", so it can be a program name with args.
 set dummy strip; ac_word=$2
@@ -8314,6 +8353,7 @@ s,@EXEEXT@,$EXEEXT,;t t
 s,@OBJEXT@,$OBJEXT,;t t
 s,@SET_MAKE@,$SET_MAKE,;t t
 s,@AWK@,$AWK,;t t
+s,@GZIP@,$GZIP,;t t
 s,@STRIP@,$STRIP,;t t
 s,@SED@,$SED,;t t
 s,@INSTALL_PROGRAM@,$INSTALL_PROGRAM,;t t
