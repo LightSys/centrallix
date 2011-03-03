@@ -899,7 +899,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if(inf->LastModified.Value)
 		val->DateTime=&(inf->LastModified);
 	    else
-		return 0;
+		return 1; /* NULL */
 	    }
 	if(!strcmp(attrname,"Content-Length"))
 	    {
