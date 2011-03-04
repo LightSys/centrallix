@@ -3,7 +3,7 @@ index "widget/page"
     {
     title = "Welcome to Centrallix 0.9.1";
     bgcolor = "#ffffff";
-    height = 400;
+    height = 500;
     width = 620;
 
     cximg "widget/image"
@@ -20,62 +20,73 @@ index "widget/page"
 	text = "Welcome to Centrallix 0.9.1, released in September 2010.  If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are a few links to get you started.";
 	}
 
-    pnOptions "widget/pane"
+    count_em "widget/repeat"
 	{
-	x=16;y=160;width=588;height=128;
-	bgcolor="#c0c0c0";
-	style=raised;
-
-	btnSamples "widget/textbutton"
+	sql = "select cnt = count(1) from object wildcard '/apps/*/app_info.struct'";
+	pnOptions "widget/pane"
 	    {
-	    x=16; y=16; width=96; height=40;
-	    tristate=no;
-	    background="/sys/images/grey_gradient.png";
-	    fgcolor1=black; fgcolor2=white;
-	    text = "Samples";
+	    x=16;y=150;width=588;
+	    height=runserver(2 + 10 + 30 + (50 * :count_em:cnt));
+	    bgcolor="#c0c0c0";
+	    style=raised;
 
-	    onClick "widget/connector"
+	    apps_vbox "widget/vbox"
 		{
-		event = "Click";
-		target = index;
-		action = "LoadPage";
-		Source = runclient("/samples/");
-		}
-	    }
-	lblSamples "widget/label"
-	    {
-	    x=120; y=16; width=440; height=40;
-	    fontsize=4;
-	    text = "Click here to browse some Centrallix sample applications, reports, and more.";
-	    }
+		x=10; y=10; width=566;
+		height = runserver((50 * :count_em:cnt) - 16 + 36);
+		spacing = 10;
 
-	btnDemo "widget/textbutton"
-	    {
-	    x=16; y=72; width=96; height=40;
-	    tristate=no;
-	    background="/sys/images/grey_gradient.png";
-	    fgcolor1=black; fgcolor2=white;
-	    text = "Demo";
+		apps_label "widget/label"
+		    {
+		    height = 18;
+		    font_size = 16;
+		    style = bold;
+		    align = center;
+		    text = "Installed Applications:";
+		    }
 
-	    onDemoClick "widget/connector"
-		{
-		event = "Click";
-		target = index;
-		action = "LoadPage";
-		Source = runclient("/apps/widget_demo/");
+		apps_rpt "widget/repeat"
+		    {
+		    sql = "select file = :cx__pathpart2, :app_name, :app_info from object wildcard '/apps/*/app_info.struct";
+
+		    oneapp_hbox "widget/hbox"
+			{
+			height = 40;
+			spacing = 10;
+
+			btn "widget/textbutton"
+			    {
+			    width=140;
+			    fl_width = 0;
+			    tristate=no;
+			    background="/sys/images/grey_gradient.png";
+			    fgcolor1=black; fgcolor2=white;
+			    text = runserver(:apps_rpt:app_name);
+
+			    onClick "widget/connector"
+				{
+				event = "Click";
+				target = index;
+				action = "LoadPage";
+				Source = runserver("/apps/" + :apps_rpt:file + "/");
+				}
+			    }
+
+			lblSamples "widget/label"
+			    {
+			    width=400;
+			    font_size=13;
+			    text = runserver(:apps_rpt:app_info);
+			    }
+			}
+		    }
 		}
-	    }
-	lblDemo "widget/label"
-	    {
-	    x=120; y=72; width=440; height=40;
-	    fontsize=4;
-	    text = "Click here for a demo app showing the uses of a few of the many widgets that Centrallix supports, using a component-based approach.";
 	    }
 	}
 
     lblLicense "widget/label"
 	{
-	x=16; y=340; width=588; height=50;
+	x=16; y=440; width=588; height=50;
 	text="Centrallix 0.9.1 is Free Software, released under the GNU GPL version 2, or at your option any later version published by the Free Software Foundation.  Centrallix 0.9.1 is provided with ABSOLUTELY NO WARRANTY.  See the file COPYING, in the accompanying documentation, for details.";
 	fontsize=2;
 	}

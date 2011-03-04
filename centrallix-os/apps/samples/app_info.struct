@@ -1,0 +1,6 @@
+$Version=2$
+app_info "system/structure"
+    {
+    app_name="Samples";
+    app_info="Browse Centrallix sample applications, components, and reports, which illustrate widgets and programming features.";
+    }

@@ -1,0 +1,6 @@
+$Version=2$
+app_info "system/structure"
+    {
+    app_name="Widget Demo";
+    app_info="A demo application showing the uses fo a few of the many widgets that Centrallix supports, using components.";
+    }
