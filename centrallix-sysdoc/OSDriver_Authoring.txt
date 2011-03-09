@@ -1,8 +1,9 @@
 Title:	  ObjectSystem Driver Interface
 Author:	  Greg Beeley
 Date:	  January 13, 1999
-Updated:  July 3, 2001
-License:  Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
+Updated:  March 9, 2011
+License:  Copyright (C) 2001-2011 LightSys Technology Services.
+	  See LICENSE.txt for more information.
 -------------------------------------------------------------------------------
 
 TABLE OF CONTENTS:
@@ -30,6 +31,7 @@ V   OTHER UTILITY MODULES
 	2.  A warning about pointers to XString content
     D.  The Expression (EXP) module for expression compilation and evaluation
     E.  The MTSession (MSS) module for session management and error reporting.
+    F.	OSML Utility Functions (obj_internal_XxxYyy)
 VI  NETWORK CONNECTION FUNCTIONALITY
     A.  MTASK's network library - NET, FD
 VII PARSING DATA
@@ -1095,6 +1097,41 @@ IV  MEMORY MANAGEMENT IN CENTRALLIX
 	    and by how much, since the last nmDeltas() call.  This function is
 	    VERY USEFUL FOR MEMORY LEAK DETECTIVE WORK.
 
+	void* nmSysMalloc(int size)
+
+	    Allocates memory without using the block-caching algorithm.  This
+	    is roughly equivalent to malloc(), but pointers returned by malloc
+	    and this function are not compatible with each other - i.e., you
+	    cannot free() something that was nmSysMalloc'ed, nor can you
+	    nmSysFree() something that was malloc'ed.
+
+	    This function is much better to use on variable-sized blocks of
+	    memory.  nmMalloc is better for fixed-size blocks, such as for
+	    data structures.
+
+	void nmSysFree(void* ptr)
+
+	    Frees a block of memory allocated by nmSysMalloc, nmSysStrdup, or
+	    nmSysRealloc.
+
+	void* nmSysRealloc(void* ptr, int newsize)
+	
+	    Changes the size of an allocated block of memory that was
+	    obtained via nmSysMalloc or nmSysRealloc or nmSysStrdup.  The new
+	    pointer may be different if the block had to be moved.  This is
+	    the rough equivalent of realloc().  Usage Note:  If you are
+	    realloc'ing a block of memory, and need to store pointers to
+	    data somewhere inside the block, it is often better to store the
+	    offset rather than a full pointer, as a pointer would become
+	    invalid if a nmSysRealloc caused the block to move.
+
+	char* nmSysStrdup(const char* str)
+
+	    Allocates memory for a copy of the string str by using the
+	    nmSysMalloc function, and then makes a copy of the string str.
+	    It is a rough equivalent of strdup().  The resulting pointer can
+	    be free'd using nmSysFree().
+
     Calling free() on a block obtained from nmMalloc() or calling nmFree() on a
     block obtained from malloc() will not crash the program.  Instead, it will
     result in either inefficient use of the memory manager, or a huge memory
@@ -1110,6 +1147,8 @@ V   OTHER UTILITY MODULES
     keys, the xstring module used for managing growable strings; the expression
     module used for compiling and evaluating expressions; and the mtsession 
     module, used for managing session-level variables and reporting errors.
+
+    A.	XArray (XA) - Arrays
 
     The first is the xarray (XA) module.
 
@@ -1160,6 +1199,8 @@ V   OTHER UTILITY MODULES
 
 	    This function removes an item from the xarray at the given index.
 
+    B.	XHash (XH) - Hash Tables
+
     The xhash module provides an extensible hashing table interface.  The hash
     table is a table of linked lists of items, so collisions and overflows are
     not a problem as in conventional hash tables.
@@ -1200,6 +1241,8 @@ V   OTHER UTILITY MODULES
 
 	    Clears all items from a hash table.  If free_blk is set to 1, the
 	    items are free()'d as they are removed.
+
+    C.	XString (XS) - Strings
 
     The xstring (XS) module is used for managing growable strings.  It is based
     on a structure containing a small initial string buffer to avoid string
@@ -1277,7 +1320,9 @@ V   OTHER UTILITY MODULES
 	xsConcatenate(&xs, "This is the second sentence.", -1);
 	printf("A pointer to the second sentence is '%s'\n",xs->String+offset);
 
-    
+
+    D.	Expression (EXP) - Expression Trees
+
     The expression (EXP) module is used for compiling, evaluating, reverse-
     evaluating, and passing parameters to expression strings.  The expression
     strings are compiled and stored in an expression tree structure.
@@ -1340,7 +1385,7 @@ V   OTHER UTILITY MODULES
 		MLX_F_ICASER	automatically convert all reserved words to
 				lowercase.  The use of this flag is highly
 				recommended, and in some cases, required.
-		MLX_F_ICASE	same as MLX_F_ICASER | MLX_F_ICASE.
+		MLX_F_ICASE	same as MLX_F_ICASER | MLX_F_ICASEK.
 
 	    The 'cmpflags' is a bitmask parameter controlling the compilation
 	    of the expression.  It can contain the following values:
@@ -1421,7 +1466,9 @@ V   OTHER UTILITY MODULES
     here.
 
 
-    The last utility module to be described here is the mtsession module (MSS).
+    E.	MTSession (MSS) - Basic Session Management
+
+    The next utility module to be described here is the mtsession module (MSS).
     This module is used for session authentication, error reporting, and for
     storing session-wide variables such as the currently used date format, 
     current username, and current password (for issuing a login request to a
@@ -1498,6 +1545,52 @@ V   OTHER UTILITY MODULES
     The mssError() routines do not cause the calling function to return.  The
     function must still clean up after itself and return an appropriate value
     (like -1 or NULL) to indicate failure.
+
+
+    F.	OSML Utility Functions
+
+    The OSML provides a set of utility functions that make it easier to write
+    drivers.  Most of them are named obj_internal_XxxYyy or similar.
+
+	char* obj_internal_PathPart(pPathname path, int start, int length)
+
+	    The Pathname structure breaks down a pathname into path elements,
+	    which are text strings separated by the directory separator '/'.
+	    This function takes the given Pathname structure, and returns
+	    the number of path elements requested.  For instance, if you have
+	    a path:
+
+		/apps/kardia/data/Kardia_DB/p_partner/rows/1
+
+	    that path would be stored internally in Centrallix as:
+
+		./apps/kardia/data/Kardia_DB/p_partner/rows/1
+
+	    To just return "Kardia_DB/p_partner", you could call:
+
+		obj_internal_PathPart(pathstruct, 4, 2);
+
+	    Note that return values from obj_internal_PathPart are only valid
+	    until the next call to PathPart on the given pathname structure.
+
+	int obj_internal_AddToPath(pPathname path, char* new_element)
+
+	    This function lengthens the path by one element, adding
+	    new_element on to the end of the path.  This function is
+	    frequently useful for drivers in the QueryFetch routine where the
+	    new child object needs to be appended onto the end of the given
+	    path.
+	    
+	    This function returns < 0 on failure, or the index of the new
+	    element in the path on success.
+
+	int obj_internal_CopyPath(pPathname dest, pPathname src)
+
+	    Copies a pathname structure.
+
+	void obj_internal_FreePathStruct(pPathname path)
+	
+	    Frees a pathname structure.
 
 
 VI  NETWORK CONNECTION FUNCTIONALITY
@@ -1592,6 +1685,15 @@ VII PARSING DATA
 				fdRead()s on the file descriptor will start at
 				an undefined place in the file.
 
+		MLX_F_ALLOWNUL	Allow NUL characters ('\0') in the input
+				stream.  If this flag is not set, then NUL
+				characters result in an error condition.  This
+				prevents unwary callers from mis-reading a
+				token returned by mlxStringVal if the token
+				contains a NUL.  If ALLOWNUL is turned on,
+				then the caller must ensure that it is safely
+				handling values with NULs.  
+
 	pLxSession mlxStringSession(char* str, int flags)
 
 	    This function opens a lexer session from a text string.  Same as
@@ -1646,6 +1748,15 @@ VII PARSING DATA
 
 	    This routine MAY NOT be called twice for the same token.
 
+	    Note that if MLX_F_ALLOWNUL is enabled, there is no way to tell
+	    from the return value of mlxStringVal() whether a NUL in the
+	    returned string is the end-of-string terminator, or whether it
+	    existed in the input data stream.  Thus, this function should not
+	    be called when MLX_F_ALLOWNUL is being used.  Use mlxCopyToken
+	    instead on MLX_TOK_STRING's, as it gives a definitive answer on
+	    the token length.  (mlxStringVal can still be used on keywords
+	    since those will never contain a NUL, by definition).
+
 	int mlxIntVal(pLxSession this)
 
 	    Returns the integer value of MLX_TOK_INTEGER tokens, or returns
@@ -1666,7 +1777,9 @@ VII PARSING DATA
 	int mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 
 	    For use instead of mlxStringVal, copies the contents of the current
-	    token to a string buffer, up to 'maxlen' characters.
+	    token to a string buffer, up to 'maxlen' characters.  Returns the
+	    number of characters copied.  This function can be called multiple
+	    times if more data needs to be read from the token.
 
 	int mlxHoldToken(pLxSession this)
 
@@ -1771,12 +1884,17 @@ VIII OBJECTSYSTEM DRIVER TESTING
 	    using objClose().  Although it does more than just open and close,
 	    the "show" command in test_obj can be useful for testing this.
 
-	2.  New objects within the driver's subtree SHOULD be able to be
+	2.  Objects MUST be able to be opened regardless of the location of
+	    the node object in the ObjectSystem.  For example, don't just test
+	    the driver with the node object in the top level directory of the
+	    ObjectSystem - also try it in other subdirectories.
+
+	3.  New objects within the driver's subtree SHOULD be able to be
 	    created using objOpen with OBJ_O_CREAT, or using objCreate().  The
 	    flags OBJ_O_EXCL and OBJ_O_TRUNC should also be supported, where
 	    meaningful.
 
-	3.  Where possible, OBJ_O_AUTONAME should be supported on object
+	4.  Where possible, OBJ_O_AUTONAME should be supported on object
 	    creation.  With this, the name of the object will be set to "*" in
 	    the pathname structure, and OBJ_O_CREAT will also be set.  The
 	    driver should automatically determine a suitable "name" for the
@@ -1787,7 +1905,7 @@ VIII OBJECTSYSTEM DRIVER TESTING
 	    for the object name unless "*" is truly the name chosen for the
 	    object.
 
-	4.  A driver SHOULD support deletion of any object in its subtree with
+	5.  A driver SHOULD support deletion of any object in its subtree with
 	    the exception of the node object itself.  Deletion may be done
 	    directly with objDelete(), or on an already-open object using
 	    objDeleteObj().  A driver MAY refuse to delete an object if the
@@ -1902,6 +2020,13 @@ VIII OBJECTSYSTEM DRIVER TESTING
 	    "csv", and "ls" (or "list") commands.  To test for nested querying
 	    of objects returned from QueryFetch, a SUBTREE select can be used
 	    with the "query" or "csv" commands.
+
+	10. Drivers which support full sorting or full querying MUST be able
+	    to handle the attribute "name" in the expression tree for the sort
+	    or query criteria.  The "name" attribute SHOULD be mapped to an
+	    expression which reflects how "name" is constructed for objects,
+	    such as changing "name" to "convert(varchar, prikeyfield1) + '|' +
+	    convert(varchar, prikeyfield2)" or whatever is appropriate.
 
 -------------------------------------------------------------------------------
 
