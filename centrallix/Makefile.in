@@ -96,6 +96,7 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_qytree.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
+	    objdrv_link.o \
 	    @OBJDRIVERS@
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
 
@@ -112,6 +113,7 @@ XV3OBJDRIVERS= \
 	      objdrv_qytree.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \
+	      objdrv_link.o \
 	      @OBJDRIVERS@
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 

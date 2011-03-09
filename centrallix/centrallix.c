@@ -769,6 +769,7 @@ cxInitialize(void* v)
 	/*berkInitialize();*/			/* Berkeley Database support */
 	uxuInitialize();			/* UNIX users list driver */
 	audInitialize();			/* Audio file player driver */
+	lnkInitialize();			/* Symlink driver */
 
 	/** Init the reporting content drivers **/
 #if 0
