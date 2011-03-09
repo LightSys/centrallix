@@ -585,6 +585,53 @@ obj_internal_DiscardDC(pXHashQueue xhq, pXHQElement xe, int locked)
     }
 
 
+/*** obj_internal_TypeFromSfHeader - try to determine the type from an
+ *** object with content that is possibly a structure file.  We only return
+ *** a type here if the object is a structure file and only if that structure
+ *** file has a valid type in its top level group.
+ ***/
+pContentType
+obj_internal_TypeFromSfHeader(pObject obj)
+    {
+    char read_buf[16];
+    int cnt, rval;
+    char type_buf[64];
+    pContentType type;
+
+	/** Read in the first bit of the object. **/
+	if ((cnt=objRead(obj, read_buf, sizeof(read_buf)-1, 0, OBJ_U_SEEK)) <= 0)
+	    return NULL;
+	read_buf[cnt] = '\0';
+
+	/** Reset file seek pointer **/
+	objRead(obj, read_buf, 0, 0, OBJ_U_SEEK);
+
+	/** Is it a structure file? **/
+	if (strncmp(read_buf, "$Version=2$", 11) != 0)
+	    return NULL;
+
+	/** Ok, looks like a structure file.  Try to parse it enough to find
+	 ** the toplevel group type.
+	 **/
+	rval = stProbeTypeGeneric(obj, objRead, type_buf, sizeof(type_buf));
+	objRead(obj, read_buf, 0, 0, OBJ_U_SEEK);
+	if (rval < 0)
+	    return NULL;
+
+	/** Do we have a valid type? **/
+	type = xhLookup(&OSYS.Types, (void*)type_buf);
+	if (!type)
+	    return NULL;
+
+	/** Is the type a subtype of system/structure? **/
+	rval = obj_internal_IsA(type->Name, "system/structure");
+	if (rval == OBJSYS_NOT_ISA || rval < 0)
+	    return NULL;
+
+    return type;
+    }
+
+
 /*** obj_internal_TypeFromName - determine the apparent content type of
  *** an object given its name.
  ***/
@@ -642,7 +689,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pStruct inf;
     char* name;
     char* type;
-    pContentType apparent_type,ck_type = NULL,orig_ck_type;
+    pContentType apparent_type,ck_type = NULL,orig_ck_type, sf_type;
     pObjDriver drv;
     pDirectoryCache dc = NULL;
     pXHQElement xe;
@@ -810,6 +857,22 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    v = obj_internal_IsA(type, apparent_type->Name);
 	    if (v < 0 || v == OBJSYS_NOT_ISA) ck_type = apparent_type;
 	    else ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
+
+	    /** If our type is only application/octet-stream, try to determine
+	     ** a more specific type by testing to see if the object is a
+	     ** structure file (looking for $Version=2$) and pulling the type
+	     ** out of the structure file toplevel group.
+	     **/
+	    if (!strcmp(ck_type->Name, "application/octet-stream"))
+		{
+		sf_type = obj_internal_TypeFromSfHeader(this);
+		if (sf_type)
+		    {
+		    /** Found a structure file with a valid type in its header.
+		     **/
+		    ck_type = sf_type;
+		    }
+		}
 
 	    /** Check for ls__type "open-as" processing **/
 	    used_openas = 0;

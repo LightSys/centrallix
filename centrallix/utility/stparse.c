@@ -1261,6 +1261,64 @@ stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
     }
 
 
+/*** stProbeTypeGeneric() - read just enough of a structure file to figure
+ *** out the type of the top level group.
+ ***/
+int
+stProbeTypeGeneric(void* read_src, int (*read_fn)(), char* type, int type_maxlen)
+    {
+    pLxSession s = NULL;
+    int t;
+    char* str;
+
+	/** Open a session with the lexical analyzer **/
+	s = mlxGenericSession(read_src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	if (!s) 
+	    {
+	    mssError(0,"ST","Could not begin analysis of structure file");
+	    goto error;
+	    }
+
+	/** Read in the token stream until we hit the top level type. **/
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_DOLLAR)
+	    goto error;
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_KEYWORD || (str = mlxStringVal(s, NULL)) == NULL || strcmp(str, "Version") != 0)
+	    goto error;
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_EQUALS)
+	    goto error;
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_INTEGER || mlxIntVal(s) != 2)
+	    goto error;
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_DOLLAR)
+	    goto error;
+
+	/** Next we have the top level group name **/
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_KEYWORD && t != MLX_TOK_STRING)
+	    goto error;
+	t = mlxNextToken(s);
+	if (t != MLX_TOK_STRING)
+	    goto error;
+	str = mlxStringVal(s, NULL);
+	if (!str)
+	    goto error;
+
+	/** Return the type **/
+	mlxCloseSession(s);
+	strtcpy(type, str, type_maxlen);
+	return 0;
+
+    error:
+	if (s)
+	    mlxCloseSession(s);
+	return -1;
+    }
+
+
 /*** st_internal_CkAddBuf - check to see if we need to realloc on the buffer
  *** to add n characters.
  ***/
