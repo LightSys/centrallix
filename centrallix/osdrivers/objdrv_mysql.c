@@ -1864,6 +1864,10 @@ mysdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
                     }
                 }
             }
+	else if (inf->Type == MYSD_T_COLUMN)
+	    {
+	    if (!strcmp(attrname,"datatype")) return DATA_T_STRING;
+	    }
 
     return -1;
     }
@@ -1940,7 +1944,8 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 
             /** Search table info for this column. **/
-            for(i=0;i<inf->TData->nCols;i++)
+	    ptr = obj_internal_PathPart(&inf->Pathname, inf->Obj->SubPtr + 2, 1);
+            for(i=0;i<inf->TData->nCols;i++) if (!strcmp(inf->TData->Cols[i], ptr))
                 {
                 val->String = inf->TData->ColTypes[i];
                 return 0;
