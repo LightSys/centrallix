@@ -210,6 +210,9 @@ struct
     }
     MYSD_INF;
 
+MYSQL_RES* mysd_internal_RunQuery(pMysdNode node, char* stmt, ...);
+MYSQL_RES* mysd_internal_RunQuery_conn(pMysdConn conn, pMysdNode node, char* stmt, ...);
+MYSQL_RES* mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_list ap);
 
 /*** mysd_internal_GetConn() - given a specific database node, get a connection
  *** to the server with a given login (from mss thread structures).
@@ -217,6 +220,7 @@ struct
 pMysdConn
 mysd_internal_GetConn(pMysdNode node)
     {
+    MYSQL_RES * result;
     pMysdConn conn;
     int i, conn_cnt, found;
     int min_access;
@@ -303,11 +307,34 @@ mysd_internal_GetConn(pMysdNode node)
                 }
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)
                 {
-                mssError(1, "MYSD", "Could not connect to MySQL server [%s], DB [%s]: %s",
-                        node->Server, node->Database, mysql_error(&conn->Handle));
-                mysql_close(&conn->Handle);
-                nmFree(conn, sizeof(MysdConn));
-                return NULL;
+		if (node->Flags & MYSD_NODE_F_SETCXAUTH)
+		    {
+		    if (mysql_real_connect(&conn->Handle, node->Server, username, node->DefaultPassword, node->Database, 0, NULL, 0) == NULL)
+			{
+			mssError(1, "MYSD", "Could not connect to MySQL server [%s], DB [%s]: %s",
+				node->Server, node->Database, mysql_error(&conn->Handle));
+			mysql_close(&conn->Handle);
+			nmFree(conn, sizeof(MysdConn));
+			return NULL;
+			}
+
+		    /** Successfully connected using user default password.
+		     ** Now try to change the password.
+		     **/
+		    result = mysd_internal_RunQuery_conn(conn, node, "SET PASSWORD = PASSWORD('?')", password);
+
+		    if (mysql_errno(&conn->Handle))
+			mssError(1, "MYSD", "Warning: could not update password for user [%s]: %s",
+				username, mysql_error(&conn->Handle));
+		    }
+		else
+		    {
+		    mssError(1, "MYSD", "Could not connect to MySQL server [%s], DB [%s]: %s",
+			    node->Server, node->Database, mysql_error(&conn->Handle));
+		    mysql_close(&conn->Handle);
+		    nmFree(conn, sizeof(MysdConn));
+		    return NULL;
+		    }
                 }
 
             /** Success! **/
@@ -357,12 +384,10 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
 *** This WILL NOT WORK WITH BINARY DATA
 ***/
 MYSQL_RES*
-mysd_internal_RunQuery(pMysdNode node, char* stmt, ...)
+mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_list ap)
     {
     MYSQL_RES * result = NULL;
-    pMysdConn conn = NULL;
     XString query;
-    va_list ap;
     int i, j;
     int length = 0;
     char * start;
@@ -372,13 +397,8 @@ mysd_internal_RunQuery(pMysdNode node, char* stmt, ...)
     char quote = 0x00;
     char tmp[32];
 
-        /**start up ap and create query XString **/
-        
-        va_start(ap,stmt);
         xsInit(&query);
 
-        if(!(conn = mysd_internal_GetConn(node))) goto error;
-        
         length=-1;
         start=stmt;
         for(i = 0; stmt[i]; i++)
@@ -437,17 +457,50 @@ mysd_internal_RunQuery(pMysdNode node, char* stmt, ...)
          **/ 
         /* printf("TEST: query=\"%s\"\n",query.String); */
 
-        va_end(ap);
-
-
         if(mysql_query(&conn->Handle,query.String)) goto error;
         if(!(result = mysql_store_result(&conn->Handle))) goto error;
 
         error:
-            if(conn) mysd_internal_ReleaseConn(&conn);
             xsDeInit(&query);
             return result;
     }
+
+MYSQL_RES*
+mysd_internal_RunQuery_conn(pMysdConn conn, pMysdNode node, char* stmt, ...)
+    {
+    MYSQL_RES * result = NULL;
+    va_list ap;
+
+        va_start(ap,stmt);
+	result = mysd_internal_RunQuery_conn_va(conn, node, stmt, ap);
+	va_end(ap);
+
+    return result;
+    }
+
+MYSQL_RES*
+mysd_internal_RunQuery(pMysdNode node, char* stmt, ...)
+    {
+    MYSQL_RES * result = NULL;
+    pMysdConn conn = NULL;
+    va_list ap;
+
+        /**start up ap and create query XString **/
+        
+        va_start(ap,stmt);
+
+        if(!(conn = mysd_internal_GetConn(node)))
+	    return NULL;
+
+	result = mysd_internal_RunQuery_conn_va(conn, node, stmt, ap);
+       
+	mysd_internal_ReleaseConn(&conn);
+
+	va_end(ap);
+
+    return result;
+    }
+
 
 /*** mysd_internal_SafeAppend - appends a string on a query
  *** this uses mysql_real_escape_string and requires a connection
@@ -889,7 +942,15 @@ mysd_internal_GetTablenames(pMysdNode node)
         
         while((row = mysql_fetch_row(result)))
             {
-            if(xaAddItem(&node->Tablenames,row[0]) < 0) {mysql_free_result(result); return -1;};
+	    if (row[0])
+		{
+		tablename = nmSysStrdup((char*)(row[0]));
+		if(xaAddItem(&node->Tablenames, tablename) < 0)
+		    {
+		    mysql_free_result(result);
+		    return -1;
+		    }
+		}
             }
     
     mysql_free_result(result);
@@ -1097,10 +1158,10 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     {
                     if (!strcmp(tree->Parent->Name,"convert"))
                         {
-                        if (!strcmp(tree->String,"integer")) xsConcatenate(&tmp,"int",3);
-                        else if (!strcmp(tree->String,"string")) xsConcatenate(&tmp,"varchar(255)",-1);
+                        if (!strcmp(tree->String,"integer")) xsConcatenate(&tmp,"signed integer",3);
+                        else if (!strcmp(tree->String,"string")) xsConcatenate(&tmp,"char",-1);
                         else if (!strcmp(tree->String,"double")) xsConcatenate(&tmp,"double",6);
-                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"money",5);
+                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",5);
                         else if (!strcmp(tree->String,"datetime")) xsConcatenate(&tmp,"datetime",8);
                         }
                     else
@@ -1187,9 +1248,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                         for(i=0;i<tdata[id]->nKeys;i++)
                             {
                             if (i != 0) xsConcatenate(where_clause, " + '|' + ", 9);
-                            xsConcatenate(where_clause, "convert(varchar,", -1);
+                            xsConcatenate(where_clause, "cast(", -1);
                             xsConcatenate(where_clause, tdata[id]->Keys[i], -1);
-                            xsConcatenate(where_clause, ")", 1);
+                            xsConcatenate(where_clause, " as char)", 9);
                             }
                         xsConcatenate(where_clause, ") ",2);
                         }
@@ -1408,7 +1469,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
         /** get table name from path **/
         if(obj->SubCnt > 1)
             {
-            tablename = obj_internal_PathPart(obj->Pathname, 2, obj->SubPtr-1);
+            tablename = obj_internal_PathPart(obj->Pathname, obj->SubPtr, 1);
             length = obj->Pathname->Elements[obj->Pathname->nElements - 1] - obj->Pathname->Elements[obj->Pathname->nElements - 2];
             if(!(inf->TData = mysd_internal_GetTData(inf->Node,tablename)))
                 {
@@ -1434,7 +1495,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
             /** Autonaming a new object?  Won't be able to look it up if so. **/
             if (!(inf->Obj->Mode & OBJ_O_AUTONAME))
                 {
-                ptr = obj_internal_PathPart(obj->Pathname, 4, obj->SubPtr-3);
+                ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+2, 1);
                 if ((rval = mysd_internal_GetRowByKey(ptr,inf,tablename)) < 0)
                     {
                     mssError(1,"MYSD","Unable to fetch row by key.");
@@ -1722,7 +1783,11 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                 break;
 
         }
+
         /** Build the filename. **/
+	if (obj_internal_AddToPath(obj->Pathname, new_obj_name) < 0)
+	    return NULL;
+#if 0
         if (strlen(new_obj_name) > 255) 
             {
             mssError(1,"MYSQL","Query result pathname exceeds internal representation");
@@ -1732,6 +1797,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
         obj->Pathname->Elements[obj->Pathname->nElements] = obj->Pathname->Pathbuf + strlen(obj->Pathname->Pathbuf);
         obj->Pathname->nElements++;
         sprintf(obj->Pathname->Pathbuf,"%s\%s",qy->Data->Obj->Pathname->Pathbuf,new_obj_name);
+#endif
 
         obj_internal_CopyPath(&(inf->Pathname), obj->Pathname);
         inf->TData = qy->Data->TData;
