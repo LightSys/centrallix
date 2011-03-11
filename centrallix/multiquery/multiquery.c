@@ -867,7 +867,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 	    for(i=0;i<where_clause->Children.nItems;i++)
 	        {
 	        exp = (pExpression)(where_clause->Children.Items[i]);
-	        if (exp->ObjCoverageMask && (exp->ObjCoverageMask != sum_objmask))
+	        if (exp->ObjCoverageMask && ((exp->ObjCoverageMask & ~EXPR_MASK_EXTREF) != (sum_objmask & ~EXPR_MASK_EXTREF)))
 	            {
 		    is_covered = 0;
 		    break;
@@ -2521,8 +2521,6 @@ int
 mqClose(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject inf = (pPseudoObject)inf_v;
-    int i;
-    pObject obj;
     int n;
     pMultiQuery mq;
 
@@ -2600,8 +2598,6 @@ pPseudoObject
 mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
     {
     pPseudoObject p;
-    int i;
-    pObject obj;
 
 	/** Allocate the pseudo-object. **/
 	p = (pPseudoObject)nmMalloc(sizeof(PseudoObject));
@@ -2643,7 +2639,6 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 int
 mq_internal_FreePseudoObject(pPseudoObject p)
     {
-    int i;
     pMultiQuery qy = p->Stmt->Query;
 
 	mq_internal_CloseStatement(p->Stmt); /* unlink */
@@ -2970,9 +2965,12 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    {
 	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		dt = objGetAttrType(p->ObjList->Objects[i], attrname);
-		if (dt > 0)
-		    return dt;
+		if (p->ObjList->Objects[i])
+		    {
+		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
+		    if (dt > 0)
+			return dt;
+		    }
 		}
 	    }
 	    
@@ -3047,9 +3045,12 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	    {
 	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		rval = objGetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
-		if (rval >= 0)
-		    return rval;
+		if (p->ObjList->Objects[i])
+		    {
+		    rval = objGetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
+		    if (rval >= 0)
+			return rval;
+		    }
 		}
 	    }
 	    
@@ -3129,12 +3130,14 @@ mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlis
 		    if (*astobjid == -1)
 			{
 			/** First non-external object **/
-			attrname = objGetFirstAttr(objlist->Objects[mq->nProvidedObjects]);
+			if (mq->nProvidedObjects < objlist->nObjects && objlist->Objects[mq->nProvidedObjects])
+			    attrname = objGetFirstAttr(objlist->Objects[mq->nProvidedObjects]);
 			*astobjid = mq->nProvidedObjects;
 			}
 		    else	
 			{
-			attrname = objGetNextAttr(objlist->Objects[*astobjid]);
+			if (objlist->Objects[*astobjid])
+			    attrname = objGetNextAttr(objlist->Objects[*astobjid]);
 			}
 		    if (attrname == NULL)
 			{
@@ -3145,7 +3148,8 @@ mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlis
 			    (*attrid)++;
 			    break;
 			    }
-			attrname = objGetFirstAttr(objlist->Objects[*astobjid]);
+			if (objlist->Objects[*astobjid])
+			    attrname = objGetFirstAttr(objlist->Objects[*astobjid]);
 			}
 		    }
 		}
@@ -3219,11 +3223,14 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	    {
 	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
 		{
-		dt = objGetAttrType(p->ObjList->Objects[i], attrname);
-		if (dt > 0)
+		if (p->ObjList->Objects[i])
 		    {
-		    rval = objSetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
-		    return rval;
+		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
+		    if (dt > 0)
+			{
+			rval = objSetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
+			return rval;
+			}
 		    }
 		}
 	    }

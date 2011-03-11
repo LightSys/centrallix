@@ -550,7 +550,7 @@ mqpAnalyze(pQueryStatement stmt)
 		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
 		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if ((where_item->Expr->ObjCoverageMask & (~stmt->Query->ProvidedObjMask)) == (1<<src_idx))
+		    if (((where_item->Expr->ObjCoverageMask & ~EXPR_MASK_EXTREF) & (~stmt->Query->ProvidedObjMask)) == (1<<src_idx))
 		        {
 			/** Add this expression into the constraint for this element **/
 			if (qe->Constraint == NULL)
