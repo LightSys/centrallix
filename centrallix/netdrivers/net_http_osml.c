@@ -943,6 +943,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    subinf = req_inf->SubInf[i];
 		    if (strncmp(subinf->Name,"ls__",4) != 0 && strncmp(subinf->Name,"cx__",4) != 0)
 		        {
+			retval = 0;
 			t = objGetAttrType(obj, subinf->Name);
 			if (t < 0) continue;
 			switch(t)
