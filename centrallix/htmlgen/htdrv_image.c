@@ -284,7 +284,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "img%POS", id, 
-	    "\n<img id=im%POS width=%POS height=%POS src=\"%STR&HTE\">\n",id,w,h,src);
+	    "\n<img id=im%POS width=%POS height=%POS src=\"%STR&HTE\" style=\"display:block;\">\n",id,w,h,src);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
