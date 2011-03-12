@@ -380,15 +380,21 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
 *** This works simarly to prepared statments using the question mark syntax.
 *** Instead of calling bindParam for each argument as is done in general,
 *** all of the arguments to be replaced are passed as varargs
+***
 *** There are some differences:
 *** ?d => decimal. inserts using sprintf("%d",int)
+*** ?v => quoted or nonquoted, params are (char* str, int add_quote), see ?a.
 *** ?q => used for query clauses.
 ***     same as ? except without escaping
 ***     only use if you know the input is clean and is already a query segment
-*** ?a => array, params for this are (char** array, int length, char separator
+*** ?a => array, params for this are (char** array, char add_quote[], int length, char separator
 ***     it will become: item1,item2,items3 (length = 3, separator = ',')
 *** '?a' => same as array except with individual quoting specified
 ***     it will become: 'item1','item2','items3' (length = 3, separator = ',')
+*** add_quote can be left NULL, in which case nothing gets quoted with ?a.
+*** (add_quote has no effect on '?a' forms).  Otherwise, a non-'\0' value
+*** for add_quote[x] means to add single quotes '' onto the value.
+***
 *** All parameters are sanatized with mysql_real_escape_string before
 *** the query is built
 *** This WILL NOT WORK WITH BINARY DATA
@@ -406,6 +412,8 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char separator;
     char quote = 0x00;
     char tmp[32];
+    char * add_quote;
+    char * str;
 
         xsInit(&query);
 
@@ -422,6 +430,7 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
                 if(stmt[i+1]=='a') /** handle arrays **/
                     {
                     array = va_arg(ap,char**);
+                    add_quote = va_arg(ap,char*);
                     items = va_arg(ap,int);
                     separator = va_arg(ap,int);
                     if(stmt[i+2] == '\'' || stmt[i+2]=='`') quote = stmt[i+2]; else quote = 0x00;
@@ -433,11 +442,27 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
                             if(xsConcatenate(&query,&separator,1)) goto error;
                             if(quote) if(xsConcatenate(&query,&quote,1)) goto error;
                             }
+			if (!quote && add_quote && add_quote[j])
+			    xsConcatenate(&query, "'", 1);
                         if(mysd_internal_SafeAppend(&conn->Handle,&query,array[j])) goto error;
+			if (!quote && add_quote && add_quote[j])
+			    xsConcatenate(&query, "'", 1);
                         }
                     start = &stmt[i+2];
                     i++;
                     }
+		else if(stmt[i+1]=='v') /** quoted / nonquoted **/
+		    {
+			str = va_arg(ap,char*);
+			quote = va_arg(ap,int);
+			if (quote)
+			    xsConcatenate(&query, "'", 1);
+			if(mysd_internal_SafeAppend(&conn->Handle,&query,str)) goto error;
+			if (quote)
+			    xsConcatenate(&query, "'", 1);
+			start = &stmt[i+2];
+			i++;
+		    }
                 else if(stmt[i+1]=='d') /** handle integers **/
                     {
                         sprintf(tmp,"%d",va_arg(ap,int));
@@ -541,11 +566,12 @@ mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
 /*** mysd_internal_CxDataToMySQL() - convert cx data to mysql field values
  ***/
  char*
- mysd_internal_CxDataToMySQL(int type,pObjData val)
+ mysd_internal_CxDataToMySQL(int type, pObjData val)
     {
     char* tmp;
     int length;
     int j;
+
         if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
             {
             return objDataToStringTmp(type,val,0);
@@ -711,6 +737,53 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
     return tdata;
     }
 
+
+/*** mysd_internal_DupRow() - duplicate a MYSQL_ROW structure
+ ***/
+MYSQL_ROW
+mysd_internal_DupRow(MYSQL_ROW row, MYSQL_RES* result)
+    {
+    MYSQL_ROW new_row;
+    int n_fields;
+    int i;
+
+	n_fields = mysql_num_fields(result);
+	if (n_fields <= 0) return NULL;
+
+	new_row = nmSysMalloc((n_fields+1) * sizeof(char*));
+	if (!new_row) return NULL;
+
+	for(i=0;i<n_fields;i++)
+	    {
+	    if (row[i])
+		new_row[i] = nmSysStrdup(row[i]);
+	    else
+		new_row[i] = NULL;
+	    }
+	new_row[n_fields] = (char*)(-1L);
+
+    return new_row;
+    }
+
+
+/*** mysd_internal_FreeRow() - free a MYSQL_ROW structure that we
+ *** created.
+ ***/
+void
+mysd_internal_FreeRow(MYSQL_ROW row)
+    {
+    int i;
+
+	for(i=0;row[i] != (char*)(-1L);i++)
+	    {
+	    if (row[i]) nmSysFree(row[i]);
+	    }
+	nmSysFree(row);
+
+    return;
+    }
+
+
 /*** mysd_internal_GetNextRow() - get a given row from the database
  ***/
 
@@ -731,8 +804,12 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
             }
 
         filename[0] = 0x00;
+	if (data->Row) mysd_internal_FreeRow(data->Row);
+	data->Row = NULL;
+
         if((data->Row = mysql_fetch_row(data->Result)))
             {
+	    data->Row = mysd_internal_DupRow(data->Row, data->Result);
             for(i = 0; i<data->TData->nKeys; i++)
                 {
                 sprintf(filename,"%s%s|",filename,data->Row[i]);
@@ -762,15 +839,19 @@ mysd_internal_GetRowByKey(char* key, pMysdData data, char* tablename)
 
         if(!(data->TData)) return -1;
 
-        result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` WHERE CONCAT_WS('|',`?a`)='?' LIMIT 0,1",data->TData->Name,data->TData->Keys,data->TData->nKeys,',',key);
+        result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` WHERE CONCAT_WS('|',`?a`)='?' LIMIT 0,1",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',key);
 	if (!result || result == MYSD_RUNQUERY_ERROR)
 	    {
 	    result = NULL;
 	    ret = -1;
 	    }
 
+	if (data->Row) mysd_internal_FreeRow(data->Row);
+	data->Row = NULL;
+
         if(result && (data->Row = mysql_fetch_row(result)))
             {
+	    data->Row = mysd_internal_DupRow(data->Row, result);
 	    data->Result=result;
 	    ret = mysql_num_rows(result);
             }
@@ -840,6 +921,13 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 		n_keys_provided++;
 		keys_provided[j] = find_oxt;
 		ptr = mysd_internal_CxDataToMySQL(find_oxt->AttrType, find_oxt->AttrValue);
+		/*if (!strcmp(inf->TData->ColTypes[colid],"bit"))
+		    {
+		    if (strtol(ptr,NULL,10))
+			ptr = "1";
+		    else
+			ptr = "\\0";
+		    }*/
 		key_values[j] = nmSysStrdup(ptr);
 		if (!key_values[j])
 		    {
@@ -964,6 +1052,7 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
     char* filename;
     char tablename[MYSD_NAME_LEN];
     MYSQL_RES* result;
+    int is_int;
     
         /** get the filename from the path **/
         filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
@@ -972,8 +1061,18 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
         i = (data->Pathname.Elements[data->Pathname.nElements - 2] - data->Pathname.Elements[data->Pathname.nElements - 3]);
         memcpy(tablename, data->Pathname.Elements[data->Pathname.nElements - 3], i); 
         tablename[i-1]=0x00; /** clean trailing slash **/
+
+	/** Handle bits **/
+	/*if (!strcmp(data->TData->ColTypes[col], "bit") && newval)
+	    {
+	    if (strtol(newval, NULL, 10))
+		newval = "1";
+	    else
+		newval = "0";
+	    }*/
+	is_int = (data->TData->ColCxTypes[col] == DATA_T_INTEGER);
         
-        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`='?' WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval,data->TData->Keys,data->TData->nKeys,',',filename);
+        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval,!is_int, data->TData->Keys,NULL,data->TData->nKeys,',',filename);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
         return 0;
@@ -996,7 +1095,7 @@ mysd_internal_DeleteRow(pMysdData data)
         /** get the filename from the path **/
         filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
         
-        result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE CONCAT_WS('|',`?a`)='?'",data->TData->Name,data->TData->Keys,data->TData->nKeys,',',filename);
+        result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE CONCAT_WS('|',`?a`)='?'",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',filename);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
         return 0;
@@ -1022,6 +1121,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
     pMysdConn conn = NULL;
     char namebuf[OBJSYS_MAX_PATH];
     char* namekeys[MYSD_MAX_KEYS];
+    char use_quotes[MYSD_MAX_COLS];
 
         /** Allocate a buffer for our insert statement. **/
         insbuf = (pXString)nmMalloc(sizeof(XString));
@@ -1112,7 +1212,17 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
             else 
                 {
                 values[j] = (char*)insbuf->Length;
-                if(!find_str) find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
+                if(!find_str)
+		    {
+		    find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
+		    /*if (!strcmp(inf->TData->ColTypes[j],"bit"))
+			{
+			if (strtol(find_str,NULL,10))
+			    find_str = "1";
+			else
+			    find_str = "\\0";
+			}*/
+		    }
                 if(find_str)
                     xsConcatenate(insbuf,find_str,-1);
                 else
@@ -1131,12 +1241,13 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
                 {
                 cols[i] = inf->TData->Cols[j];
                 values[i] = (char*)((unsigned int)values[j] + (unsigned int)insbuf->String);
+		use_quotes[i] = (inf->TData->ColCxTypes[j] != DATA_T_INTEGER);
                 i++;
                 }
             }
 
 	/** Do the insert **/
-        result = mysd_internal_RunQuery_conn(conn, inf->Node,"INSERT INTO `?` (`?a`) VALUES('?a')",inf->TData->Name,cols,i,',',values,i,',');
+        result = mysd_internal_RunQuery_conn(conn, inf->Node,"INSERT INTO `?` (`?a`) VALUES(?a)",inf->TData->Name,cols,NULL,i,',',values,use_quotes,i,',');
         
         /** clean up **/
     error:
@@ -1559,23 +1670,24 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_FUNCTION:
-                /** Special case 'condition()' and 'ralign()' which Sybase doesn't have. **/
+                /** Special case functions which MySQL doesn't have. **/
 		fn_use_name = tree->Name;
 		use_stock_fn_call = 0;
                 if (!strcmp(tree->Name,"condition") && tree->Children.nItems == 3)
                     {
-                    xsConcatenate(where_clause, " ifnull((select substring(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-                    xsConcatenate(where_clause, ",max(1),255) where ", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                    xsConcatenate(where_clause, "), ", 3);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata,  where_clause,conn);
-                    xsConcatenate(where_clause, ") ", 2);
+		    fn_use_name = "if";
+		    use_stock_fn_call = 1;
                     }
 		else if (!strcmp(tree->Name,"isnull"))
 		    {
 		    /** MySQL isnull() does something different than CX isnull().  Use ifnull() instead. **/
 		    fn_use_name = "ifnull";
+		    use_stock_fn_call = 1;
+		    }
+		else if (!strcmp(tree->Name,"charindex"))
+		    {
+		    /** MySQL locate() function is the equivalent of CX charindex() **/
+		    fn_use_name = "locate";
 		    use_stock_fn_call = 1;
 		    }
 		else if (!strcmp(tree->Name,"getdate"))
@@ -1629,7 +1741,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 else if (!strcmp(tree->Name,"eval"))
                     {
-                    mssError(1,"mysd","Sybase does not support eval() CXSQL function");
+                    mssError(1,"MYSD","MySQL does not support eval() CXSQL function");
                     /* just put silly thing as text instead of evaluated */
                     if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
                     return -1;
@@ -1732,6 +1844,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
         inf->Obj = obj;
         inf->Mask = mask;
         inf->Result = NULL;
+	inf->Row = NULL;
 
         /** Determine the type **/
         if(mysd_internal_DetermineType(obj,inf))
@@ -1836,6 +1949,8 @@ mysdClose(void* inf_v, pObjTrxTree* oxt)
         /** Release the memory **/
         inf->Node->SnNode->OpenCnt --;
         obj_internal_FreePathStruct(&inf->Pathname);
+	if (inf->Row) mysd_internal_FreeRow(inf->Row);
+	inf->Row = NULL;
         nmFree(inf,sizeof(MysdData));
 
     return 0;
@@ -1897,6 +2012,8 @@ mysdDelete(pObject obj, pObjTrxTree* oxt)
         /** Release, don't call close because that might write data to a deleted object **/
         inf->Node->SnNode->OpenCnt --;
         obj_internal_FreePathStruct(&inf->Pathname);
+	if (inf->Row) mysd_internal_FreeRow(inf->Row);
+	inf->Row = NULL;
         nmFree(inf,sizeof(MysdData));
 
     return 0;
@@ -1928,6 +2045,8 @@ mysdDeleteObj(void* inf_v, pObjTrxTree* oxt)
         /** Release, don't call close because that might write data to a deleted object **/
         inf->Node->SnNode->OpenCnt --;
         obj_internal_FreePathStruct(&inf->Pathname);
+	if (inf->Row) mysd_internal_FreeRow(inf->Row);
+	inf->Row = NULL;
         nmFree(inf,sizeof(MysdData));
 
     return rval;
@@ -2027,7 +2146,11 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
         /** Alloc the structure **/
         if(!(inf = (pMysdData)nmMalloc(sizeof(MysdData)))) return NULL;
+	memset(inf, 0, sizeof(MysdData));
         inf->Pathname.OpenCtlBuf = NULL;
+	inf->Row = NULL;
+	inf->Result = NULL;
+
             /** Get the next name based on the query type. **/
         switch(qy->Data->Type)
             {
@@ -2070,6 +2193,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     {
                     inf->Type = MYSD_T_ROW;
                     inf->Row = qy->Data->Row;
+		    qy->Data->Row = NULL;
                     inf->Result = qy->Data->Result;
                     new_obj_name = name_buf;
                     }
@@ -2226,7 +2350,7 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
             {
             switch(inf->Type)
                 {
-                case MYSD_T_DATABASE: val->String = "application/sybase"; break;
+                case MYSD_T_DATABASE: val->String = "application/mysql"; break;
                 case MYSD_T_TABLE: val->String = "system/table"; break;
                 case MYSD_T_ROWSOBJ: val->String = "system/table-rows"; break;
                 case MYSD_T_COLSOBJ: val->String = "system/table-columns"; break;
@@ -2296,7 +2420,17 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                                 ret=0;
                                 break;
                             case DATA_T_INTEGER:
-                                val->Integer=objDataToInteger(DATA_T_STRING, inf->Row[i], NULL);
+				if (!strcmp(inf->TData->ColTypes[i], "bit"))
+				    {
+				    if (inf->Row[i][0] == 0x01 || inf->Row[i][0] == '1')
+					val->Integer = 1;
+				    else
+					val->Integer = 0;
+				    }
+				else
+				    {
+				    val->Integer=objDataToInteger(DATA_T_STRING, inf->Row[i], NULL);
+				    }
                                 ret=0;
                                 break;
                             case DATA_T_DOUBLE:
