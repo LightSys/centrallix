@@ -1475,6 +1475,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     XString tmp;
     char* fn_use_name;
     int use_stock_fn_call;
+    char quote;
     
         xsInit(&tmp);
 
@@ -1514,13 +1515,15 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
             case EXPR_N_STRING:
           mysd_DO_STRING:
+		quote = '\'';
                 if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
                     (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
                     (void*)tree == (void*)(tree->Parent->Children.Items[0]))
                     {
                     if (!strcmp(tree->Parent->Name,"convert"))
                         {
-                        if (!strcmp(tree->String,"integer")) xsConcatenate(&tmp,"signed integer",3);
+			quote = ' ';
+                        if (!strcmp(tree->String,"integer")) xsConcatenate(&tmp,"signed integer",-1);
                         else if (!strcmp(tree->String,"string"))
 			    {
 			    xsConcatenate(&tmp,"char",-1);
@@ -1546,9 +1549,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     {
                     objDataToString(&tmp, DATA_T_STRING, tree->String, 0);
                     }
-                xsConcatenate(where_clause, "'", 1);
+                xsConcatenate(where_clause, &quote, 1);
                 mysd_internal_SafeAppend(conn,where_clause,tmp.String);
-                xsConcatenate(where_clause, "'", 1);
+                xsConcatenate(where_clause, &quote, 1);
                 xsDeInit(&tmp);
                 xsInit(&tmp);
                 break;
@@ -1703,6 +1706,15 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** MySQL isnull() does something different than CX isnull().  Use ifnull() instead. **/
 		    fn_use_name = "ifnull";
 		    use_stock_fn_call = 1;
+		    }
+		else if (!strcmp(tree->Name,"convert"))
+		    {
+		    /** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect. **/
+		    xsConcatenate(where_clause, " convert(", -1);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+		    xsConcatenate(where_clause, " , ", 3);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+		    xsConcatenate(where_clause, ") ", 2);
 		    }
 		else if (!strcmp(tree->Name,"charindex"))
 		    {
