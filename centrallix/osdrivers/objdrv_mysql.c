@@ -269,7 +269,21 @@ mysd_internal_GetConn(pMysdNode node)
             {
             conn = (pMysdConn)xaGetItem(&node->Conns, i);
             if (!conn->Busy && !strcmp(username, conn->Username) && !strcmp(password, conn->Password))
+		{
+		if (mysql_ping(&conn->Handle) != 0)
+		    {
+		    /** Got disconnected.  Discard the connection. **/
+		    mysql_close(&conn->Handle);
+		    memset(conn->Password, 0, sizeof(conn->Password));
+		    xaRemoveItem(&node->Conns, i);
+		    nmFree(conn, sizeof(MysdConn));
+		    i--;
+		    conn_cnt--;
+		    conn = NULL;
+		    continue;
+		    }
                 break;
+		}
             conn = NULL;
             }
 
@@ -303,9 +317,11 @@ mysd_internal_GetConn(pMysdNode node)
                             node->MaxConn, node->Server);
                     return NULL;
                     }
+		conn = (pMysdConn)xaGetItem(&node->Conns, found);
                 mysql_close(&conn->Handle);
                 memset(conn->Password, 0, sizeof(conn->Password));
                 xaRemoveItem(&node->Conns, found);
+                nmFree(conn, sizeof(MysdConn));
                 }
 
             /** Attempt connection **/
@@ -1505,7 +1521,11 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     if (!strcmp(tree->Parent->Name,"convert"))
                         {
                         if (!strcmp(tree->String,"integer")) xsConcatenate(&tmp,"signed integer",3);
-                        else if (!strcmp(tree->String,"string")) xsConcatenate(&tmp,"char",-1);
+                        else if (!strcmp(tree->String,"string"))
+			    {
+			    xsConcatenate(&tmp,"char",-1);
+			    tree->Parent->DataType = DATA_T_STRING;
+			    }
                         else if (!strcmp(tree->String,"double")) xsConcatenate(&tmp,"double",6);
                         else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",5);
                         else if (!strcmp(tree->String,"datetime")) xsConcatenate(&tmp,"datetime",8);
@@ -1590,13 +1610,13 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     /** Is this a special type of property (i.e., name or annotation?) **/
                     if (!strcmp(tree->Name,"name"))
                         {
-                        xsConcatenate(where_clause, " (",2);
+                        xsConcatenate(where_clause, " CONCAT_WS('|', ", -1);
                         for(i=0;i<tdata[id]->nKeys;i++)
                             {
-                            if (i != 0) xsConcatenate(where_clause, " + '|' + ", 9);
-                            xsConcatenate(where_clause, "cast(", -1);
-                            xsConcatenate(where_clause, tdata[id]->Keys[i], -1);
-                            xsConcatenate(where_clause, " as char)", 9);
+                            if (i != 0) xsConcatenate(where_clause, " , ", 3);
+                            xsConcatenate(where_clause, "cast(`", -1);
+			    mysd_internal_SafeAppend(conn, where_clause, tdata[id]->Keys[i]);
+                            xsConcatenate(where_clause, "` as char)", 10);
                             }
                         xsConcatenate(where_clause, ") ",2);
                         }
@@ -1607,9 +1627,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     else
                         {
                         /** "Normal" type of object... **/
-                        xsConcatenate(where_clause, " ", 1);
-                        xsConcatenate(where_clause, tree->Name, -1);
-                        xsConcatenate(where_clause, " ", 1);
+                        xsConcatenate(where_clause, " `", 2);
+			mysd_internal_SafeAppend(conn, where_clause, tree->Name);
+                        xsConcatenate(where_clause, "` ", 2);
                         }
                     }
                 break;
@@ -1767,11 +1787,78 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_PLUS:
-                xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, " + ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, ") ", 2);
+		/** This is a toughie.  In Centrallix and Sybase/MSSQL, the + operator
+		 ** can be used for addition or for string concatenation, and so the
+		 ** behavior depends on the run-time type of the operands.  In MySQL
+		 ** we have to make this decision in advance, and use CONCAT() for
+		 ** strings and + for numbers.
+		 **
+		 ** If we know the type of operand 1 in advance, we choose + or CONCAT()
+		 ** statically.  Otherwise, we just have to punt...
+		 **/
+		if (tree->Children.nItems < 2)
+		    {
+		    mssError(1,"MYSD","Insufficient arguments to + operator");
+		    return -1;
+		    }
+		subtree = (pExpression)tree->Children.Items[0];
+		if (subtree->NodeType == EXPR_N_PROPERTY && !(subtree->Flags & EXPR_F_FREEZEEVAL) && subtree->DataType == DATA_T_UNAVAILABLE)
+		    {
+		    /** A property under our control **/
+		    for(i=0;i<tdata[0]->nCols;i++)
+			{
+			if (!strcmp(subtree->Name, tdata[0]->Cols[i]))
+			    {
+			    if (tdata[0]->ColCxTypes[i] == DATA_T_STRING)
+				subtree->DataType = DATA_T_STRING;
+			    }
+			}
+		    }
+		if (tree->Parent && tree->Parent->NodeType == EXPR_N_PLUS && tree->Parent->DataType == DATA_T_STRING)
+		    {
+		    /** We're within a string concatenation expression already... **/
+		    subtree->DataType = DATA_T_STRING;
+		    }
+		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "user_name") || !strcmp(subtree->Name, "substring") || !strcmp(subtree->Name, "right")))
+		    {
+		    /** These functions always invariably return a string... **/
+		    subtree->DataType = DATA_T_STRING;
+		    }
+		if (subtree->DataType == DATA_T_STRING)
+		    {
+		    /** We get here if 1) op 1 is a constant STRING, 2) op 1 is one of
+		     ** of our properties and we know it is a string, 3) the parent
+		     ** node of this + operator is another + operator and it used CONCAT,
+		     ** or 4) op 1 is a function call that is known to return a string.
+		     **/
+		    tree->DataType = DATA_T_STRING;
+		    xsConcatenate(where_clause, " CONCAT(", -1);
+		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+		    xsConcatenate(where_clause, " , ", 3);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+		    xsConcatenate(where_clause, ") ", 2);
+		    }
+		else
+		    {
+		    /** Let's leave room to change this into a CONCAT if after building
+		     ** the first subexpression we find out that it is a string.  After all,
+		     ** this needs to work, but it doesn't need to look pretty.
+		     **/
+		    i = strlen(where_clause->String);
+		    xsConcatenate(where_clause, "       (", -1);
+		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+		    if (subtree->DataType == DATA_T_STRING)
+			{
+			xsSubst(where_clause, i+1, 6, "CONCAT", 6);
+			xsConcatenate(where_clause, " , ", 3);
+			}
+		    else
+			{
+			xsConcatenate(where_clause, " + ", 3);
+			}
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+		    xsConcatenate(where_clause, ") ", 2);
+		    }
                 break;
 
             case EXPR_N_MINUS:
