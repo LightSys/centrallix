@@ -223,6 +223,7 @@ typedef struct
     DateTime	MTime;
     DateTime	CTime;
     pUxdNode	Node;
+    int		Mode;		/* the mode we actually use for this file */
     }
     UxdData, *pUxdData;
 
@@ -740,6 +741,12 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    obj->Mode |= O_RDONLY;
 	    }
 
+	/** Actual use mode - is this intermediate, or the actual end object? **/
+	if (obj->SubPtr + obj->SubCnt - 1 == obj->Pathname->nElements)
+	    inf->Mode = obj->Mode;
+	else
+	    inf->Mode = O_RDONLY;
+
 	/** Release the resources we temporarily used. **/
         nmFree(tmp_path, sizeof(Pathname));
 
@@ -870,7 +877,7 @@ uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	/** Ok, do we need to open the dumb thing? **/
 	if (!(inf->Flags & UXD_F_ISOPEN))
 	    {
-	    inf->fd = fdOpen(inf->RealPathname, inf->Obj->Mode, inf->Mask);
+	    inf->fd = fdOpen(inf->RealPathname, inf->Mode, inf->Mask);
 	    if (!(inf->fd)) 
 	        {
 		mssErrorErrno(1,"UXD","Could not read from file");
@@ -904,7 +911,7 @@ uxdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	/** Ok, do we need to open the dumb thing? **/
 	if (!(inf->Flags & UXD_F_ISOPEN))
 	    {
-	    inf->fd = fdOpen(inf->RealPathname, inf->Obj->Mode, inf->Mask);
+	    inf->fd = fdOpen(inf->RealPathname, inf->Mode, inf->Mask);
 	    if (!(inf->fd))
 	        {
 		mssErrorErrno(1,"UXD","Could not read from file");
@@ -1008,6 +1015,7 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->Node = qy->File->Node;
 	inf->Node->SnNode->OpenCnt++;
 	inf->Obj = obj;
+	inf->Mode = mode & ~(O_CREAT | O_TRUNC | O_EXCL);
 
     return (void*)inf;
     }
