@@ -34,7 +34,7 @@ function cmp_cb_load_complete_4()
 	{
 	var dname = pg_links(this.cmp.loader)[0].target;
 	var startupname = "startup_" + dname;
-	if (dname && window[startupname])
+	if (dname && window[startupname] && window['cmpd_init'])
 	    {
 	    window[startupname]();
 	    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});

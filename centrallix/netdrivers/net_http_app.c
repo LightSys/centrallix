@@ -34,7 +34,7 @@
 /**CVSDATA***************************************************************
 
     $Id: net_http_app.c,v 1.3 2010/09/13 23:30:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_app.c,v $
+    $Source: /cvsroot/centrallix/centrallix/netdrivers/net_http_app.c,v $
 
     $Log: net_http_app.c,v $
     Revision 1.3  2010/09/13 23:30:29  gbeeley
@@ -102,8 +102,8 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "        #l2 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
 			 "        body { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n"
 			 "    </style>\n"
+			 "<script type=\"text/javascript\" language=\"javascript\" src=\"/sys/js/startup.js\"></script>\n"
 			 "</head>\n"
-			 "<script language=\"javascript\" src=\"/sys/js/startup.js\" DEFER></script>\n"
 			 "<body %STR onload='startup();'>\n"
 			 "    <img src='/sys/images/loading.gif'>\n"
 			 "    <div id=\"l1\">x<br>x</div>\n"

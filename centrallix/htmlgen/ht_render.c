@@ -54,7 +54,7 @@
 /**CVSDATA***************************************************************
 
     $Id: ht_render.c,v 1.80 2010/09/09 01:04:17 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
+    $Source: /cvsroot/centrallix/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
     Revision 1.80  2010/09/09 01:04:17  gbeeley
@@ -1806,7 +1806,7 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	    if (include_file)
 		{
-		fdPrintf(output, "<SCRIPT language=\"javascript\" DEFER>\n// Included from: %s\n\n", filename);
+		fdPrintf(output, "<SCRIPT language=\"javascript\">\n// Included from: %s\n\n", filename);
 		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
 		    {
 		    fdWrite(output, buf, rcnt, 0, FD_U_PACKET);
@@ -1818,7 +1818,7 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	    }
 
 	/** Otherwise, just generate an include statement **/
-	fdPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%s\" DEFER></SCRIPT>\n", filename);
+	fdPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%s\"></SCRIPT>\n", filename);
 
     return 0;
     }
@@ -2192,7 +2192,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    }
 
 	/** Write the script globals **/
-	fdWrite(output, "<SCRIPT language=\"javascript\" DEFER>\n\n\n", 39,0,FD_U_PACKET);
+	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n\n", 33,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -2232,7 +2232,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
 	    htr_internal_GenInclude(output, s, sv->Name);
 	    }
-	fdWrite(output, "<SCRIPT language=\"javascript\" DEFER>\n\n", 38,0,FD_U_PACKET);
+	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n", 32,0,FD_U_PACKET);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)

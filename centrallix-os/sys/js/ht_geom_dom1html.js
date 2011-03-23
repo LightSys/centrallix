@@ -366,74 +366,87 @@ function ClipObject(o)
     this.obj = o;
 
     this.setall = ClipObject_SetAll;
-    this.getpart = ClipObject_GetPart
+    this.getpart = ClipObject_GetPart;
     }
 
-ClipObject.prototype.top getter = function () 
-    {
-    return this.getpart(1);
-    }
+ClipObject.prototype.__defineGetter__("top", function () 
+	{
+	return this.getpart(1);
+	}
+    );
 
-ClipObject.prototype.right getter = function () 
-    {
-    return this.getpart(2);
-    }
+ClipObject.prototype.__defineGetter__("right", function () 
+	{
+	return this.getpart(2);
+	}
+    );
 
-ClipObject.prototype.width getter = function () 
-    {
-    return this.right - this.left;
-    }
+ClipObject.prototype.__defineGetter__("width", function () 
+	{
+	return this.right - this.left;
+	}
+    );
 
-ClipObject.prototype.bottom getter = function () 
-    {
-    return this.getpart(3);
-    }
+ClipObject.prototype.__defineGetter__("bottom", function () 
+	{
+	return this.getpart(3);
+	}
+    );
 
-ClipObject.prototype.height getter = function () 
-    {
-    return this.bottom - this.top;
-    }
+ClipObject.prototype.__defineGetter__("height", function () 
+	{
+	return this.bottom - this.top;
+	}
+    );
 
-ClipObject.prototype.left getter = function () 
-    {
-    return this.getpart(4);
-    }
+ClipObject.prototype.__defineGetter__("left", function () 
+	{
+	return this.getpart(4);
+	}
+    );
 
-ClipObject.prototype.top setter = function (val) 
-    {
-    this.setall(val,this.right,this.bottom,this.left);
-    }
+ClipObject.prototype.__defineSetter__("top", function (val) 
+	{
+	this.setall(val,this.right,this.bottom,this.left);
+	}
+    );
 
-ClipObject.prototype.right setter = function (val) 
-    {
-    this.setall(this.top,val,this.bottom,this.left);
-    }
+ClipObject.prototype.__defineSetter__("right", function (val) 
+	{
+	this.setall(this.top,val,this.bottom,this.left);
+	}
+    );
 
-ClipObject.prototype.width setter = function (val) 
-    {
-    this.right = this.left + val;
-    }
+ClipObject.prototype.__defineSetter__("width", function (val) 
+	{
+	this.right = this.left + val;
+	}
+    );
 
-ClipObject.prototype.bottom setter = function (val) 
-    {
-    this.setall(this.top,this.right,val,this.left);
-    }
+ClipObject.prototype.__defineSetter__("bottom", function (val) 
+	{
+	this.setall(this.top,this.right,val,this.left);
+	}
+    );
 
-ClipObject.prototype.height setter = function (val) 
-    {
-    this.bottom = this.top + val;
-    }
+ClipObject.prototype.__defineSetter__("height", function (val) 
+	{
+	this.bottom = this.top + val;
+	}
+    );
 
-ClipObject.prototype.left setter = function (val) 
-    {
-    this.setall(this.top,this.right,this.bottom,val);
-    }
+ClipObject.prototype.__defineSetter__("left", function (val) 
+	{
+	this.setall(this.top,this.right,this.bottom,val);
+	}
+    );
 
-HTMLElement.prototype.clip getter = function () 
-    { 
-    /** keep the same ClipObject around -- that way we can use watches on it **/
-    if(this.cx__clip)
-	return this.cx__clip;
-    else
-	return this.cx__clip = new ClipObject(this);
-    }
+HTMLElement.prototype.__defineGetter__("clip", function () 
+	{ 
+	/** keep the same ClipObject around -- that way we can use watches on it **/
+	if(this.cx__clip)
+	    return this.cx__clip;
+	else
+	    return this.cx__clip = new ClipObject(this);
+	}
+    );
