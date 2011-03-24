@@ -82,3 +82,6 @@ function ibeam_init()
 	    ibeam_current.document.layer = ibeam_current;
 	}
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_cursor.js'] = true;

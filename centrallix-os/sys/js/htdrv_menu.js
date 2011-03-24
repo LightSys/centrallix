@@ -474,3 +474,6 @@ function mn_parent(node)
 	parent = wgtrGetParent(parent);
     return parent;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_menu.js'] = true;

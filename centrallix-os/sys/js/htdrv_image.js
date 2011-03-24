@@ -79,3 +79,6 @@ function im_init(l)
     return l;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_image.js'] = true;

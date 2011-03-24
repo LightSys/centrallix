@@ -36,6 +36,17 @@ pg_msg.MSG_EVENT=16;
 
 var pg_explog = [];
 
+
+function pg_scriptavailable(s)
+    {
+    if (!s.src) return true;
+    var s_name = s.src;
+    var pos = s_name.lastIndexOf("/");
+    var file = s_name.substr(pos+1);
+    return pg_scripts[file]?true:false;
+    }
+
+
 //START SECTION: DOM/CSS helper functions -----------------------------------
 
 /** returns an attribute of the element in pixels **/
@@ -2700,3 +2711,6 @@ function pg_keypress(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_page.js'] = true;

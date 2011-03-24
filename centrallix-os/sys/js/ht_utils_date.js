@@ -38,3 +38,6 @@ function htutil_is_leapyear(d) {
 		return false;
 	}
 }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_date.js'] = true;

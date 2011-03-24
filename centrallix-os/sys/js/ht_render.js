@@ -924,3 +924,6 @@ function htr_captureevents(elist)
 	document.captureEvents(pg_capturedevents);
 	}
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_render.js'] = true;

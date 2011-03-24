@@ -36,25 +36,46 @@ function cmp_cb_load_complete_4()
 	var startupname = "startup_" + dname;
 	if (dname && window[startupname] && window['cmpd_init'])
 	    {
-	    window[startupname]();
-	    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
-	    if (this.cmp.components.length)
-		this.cmp.components[this.cmp.components.length-1].cmp.HandleLoadComplete();
-	    return;
+	    // FF4 *NOT* obeying W3C async/defer setting to properly
+	    // serialize script loading, and is parsing the last script
+	    // before loading and parsing the other ones.  THUS we do
+	    // this hack to make sure all scripts are parsed.
+	    //
+	    var scripts = document.getElementsByTagName('script');
+	    var all_ready = true;
+	    for(var i=0;i<scripts.length;i++)
+		{
+		var s = scripts[i];
+		if (s && s.is_new)
+		    {
+		    if (!pg_scriptavailable(s))
+			all_ready = false;
+		    else
+			s.is_new = false;
+		    }
+		}
+	    if (all_ready)
+		{
+		window[startupname]();
+		this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
+		if (this.cmp.components.length)
+		    this.cmp.components[this.cmp.components.length-1].cmp.HandleLoadComplete();
+		return;
+		}
 	    }
 	}
 
     // argh, the DOM isn't ready yet from the xfer of elements.
     this.try_cnt++;
-    if (this.try_cnt > 15)
+    if (this.try_cnt > 100)
 	{
-	// after 3 seconds, lose all hope.
+	// after 5 seconds, lose all hope.
 	alert("Failed to load component for " + wgtrGetName(this));
 	}
     else
 	{
-	// try again in 0.2 seconds
-	pg_addsched_fn(this, 'cmp_cb_load_complete_4', [], 200);
+	// try again in 0.05 seconds
+	pg_addsched_fn(this, 'cmp_cb_load_complete_4', [], 50);
 	}
     }
 
@@ -92,13 +113,17 @@ function cmp_cb_load_complete_3()
 	//var oldsrc_regex = /([a-z]*:\/\/[^\/])(.*)/;
 	//var matches = oldsrc_regex.exec(oldsrc);
 	//if (matches && matches[1] && matches[2]) oldsrc = matches[2];
-	if (!curscripts[oldsrc])
+	//if (!curscripts[oldsrc])
+	if (!oldscript.src || !pg_scriptavailable(oldscript))
 	    {
 	    var newscript = document.createElement('script');
+	    newscript.async = (oldscript.text)?true:false; // for FF4
+	    newscript.defer = (oldscript.text)?true:false; // for FF4
 	    if (oldscript.src) newscript.src = oldscript.src;
 	    if (oldscript.type) newscript.type = oldscript.type;
 	    if (oldscript.language) newscript.language = oldscript.language;
 	    if (oldscript.text) newscript.text = oldscript.text;
+	    newscript.is_new = true;
 	    head.appendChild(newscript);
 	    this._oarr.push(newscript);
 	    }
@@ -757,3 +782,6 @@ function cmp_init_bh()
     this.init_bh_finished = true;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_component.js'] = true;

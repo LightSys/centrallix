@@ -3431,3 +3431,6 @@ function osrc_init(param)
     return loader;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_osrc.js'] = true;

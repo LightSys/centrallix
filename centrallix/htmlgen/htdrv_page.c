@@ -830,6 +830,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_waitlyr", "null", 0);
 	htrAddScriptGlobal(s, "pg_appglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0);
+	htrAddScriptGlobal(s, "pg_scripts", "[]", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)

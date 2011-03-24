@@ -263,3 +263,6 @@ function pg_keyhandler(k,m,e)
     return false;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_page_moz.js'] = true;

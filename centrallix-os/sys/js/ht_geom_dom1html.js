@@ -450,3 +450,6 @@ HTMLElement.prototype.__defineGetter__("clip", function ()
 	    return this.cx__clip = new ClipObject(this);
 	}
     );
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_geom_dom1html.js'] = true;

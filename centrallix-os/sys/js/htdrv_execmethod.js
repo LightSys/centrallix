@@ -38,3 +38,6 @@ function ex_init(param)
     return ex;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_execmethod.js'] = true;

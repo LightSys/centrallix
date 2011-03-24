@@ -1519,3 +1519,6 @@ function form_init(form,param)
     return form;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_form.js'] = true;

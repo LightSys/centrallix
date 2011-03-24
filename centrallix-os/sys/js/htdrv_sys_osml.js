@@ -17,3 +17,6 @@ function cn_init(p)
     this.LSParent = p;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_sys_osml.js'] = true;

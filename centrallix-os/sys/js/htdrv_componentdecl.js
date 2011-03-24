@@ -248,3 +248,6 @@ function cmpd_alert(aparam)
     return window.ifcProbe(ifAction).Invoke("Alert", aparam);
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_componentdecl.js'] = true;

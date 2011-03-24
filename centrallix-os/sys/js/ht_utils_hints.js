@@ -431,3 +431,6 @@ function cx_hints_datavalue(e)
     return v;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_hints.js'] = true;

@@ -1204,3 +1204,6 @@ function dt_mouseout(e) {
 	if (e.kind && e.kind == 'dt') cn_activate(e.mainlayer, 'MouseOut');
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_datetime.js'] = true;

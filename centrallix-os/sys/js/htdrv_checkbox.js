@@ -275,3 +275,6 @@ function checkbox_toggleMode(l, from_kbd)
     cn_activate(l, 'DataChange', {Value:l.value, FromKeyboard:from_kbd, FromOSRC:0});
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_checkbox.js'] = true;

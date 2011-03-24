@@ -772,3 +772,6 @@ function ifFormElement(field)
     this.KeyInput = iffe_keyinput;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_iface.js'] = true;

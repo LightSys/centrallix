@@ -737,3 +737,6 @@ function wgtrFindInSubtree(subtree, cur_node, nodetype)
     return find_node;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_wgtr.js'] = true;

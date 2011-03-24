@@ -19,3 +19,6 @@ function htutil_tag_images(d,t,l,ml)
 	if (ml) images[i].mainlayer = ml;
 	}
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_layers.js'] = true;

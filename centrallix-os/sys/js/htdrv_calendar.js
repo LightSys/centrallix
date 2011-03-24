@@ -445,3 +445,6 @@ function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfi
     return l;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_calendar.js'] = true;

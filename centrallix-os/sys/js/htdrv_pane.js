@@ -104,3 +104,6 @@ function pn_init(param)
 
     return ml;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_pane.js'] = true;

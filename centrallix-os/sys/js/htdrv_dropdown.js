@@ -1218,3 +1218,6 @@ function dd_init(param)
 
     return l;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_dropdown.js'] = true;
