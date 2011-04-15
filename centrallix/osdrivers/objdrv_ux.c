@@ -745,7 +745,7 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (obj->SubPtr + obj->SubCnt - 1 == obj->Pathname->nElements)
 	    inf->Mode = obj->Mode;
 	else
-	    inf->Mode = O_RDONLY;
+	    inf->Mode = obj->Mode & (O_ACCMODE);
 
 	/** Release the resources we temporarily used. **/
         nmFree(tmp_path, sizeof(Pathname));
