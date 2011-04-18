@@ -3070,7 +3070,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0) return -1;
 
 	/** Load the image **/
-	if (stGetAttrValue(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0) < 0) return -1;
+	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0, inf->Obj->Session) < 0) return -1;
 	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL) return -1;
 	img = prtCreateImageFromPNG(objRead, imgobj);
 	objClose(imgobj);

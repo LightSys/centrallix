@@ -594,10 +594,6 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    return 0;
 	    }
 
-	/** Correct type requested? **/
-	if (find_exp->Flags & EXPR_F_NULL) return 1;
-	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
-
 	/** If external ref, do eval **/
 	if ((find_exp->ObjCoverageMask & EXPR_MASK_EXTREF) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
@@ -606,6 +602,10 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    expEvalTree(find_exp, objlist);
 	    expFreeParamList(objlist);
 	    }
+
+	/** Correct type requested? **/
+	if (find_exp->Flags & EXPR_F_NULL) return 1;
+	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
 
     return expExpressionToPod(find_exp, find_exp->DataType, pod);
     }

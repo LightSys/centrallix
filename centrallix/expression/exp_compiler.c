@@ -536,7 +536,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			etmp->NameAlloc = 1;
 			etmp->Name = mlxStringVal(lxs,&(etmp->NameAlloc));
 			etmp->ObjID = -1;
-			etmp->ObjCoverageMask = 0;
+			etmp->ObjCoverageMask = EXPR_MASK_EXTREF;
 			if (mlxNextToken(lxs) != MLX_TOK_COLON || ((t = mlxNextToken(lxs)) != MLX_TOK_KEYWORD && t != MLX_TOK_STRING))
 			    {
                             expFreeExpression(etmp);
