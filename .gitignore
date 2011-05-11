@@ -28,3 +28,4 @@ centrallix/man/test_obj.1.gz
 centrallix/osdrivers/*.so
 centrallix/test_obj
 centrallix-os/apps/kardia
+centrallix-lib/include/cxlib
