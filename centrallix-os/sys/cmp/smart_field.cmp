@@ -55,6 +55,7 @@ smart_field "widget/component-decl"
 	{ 
 	condition=runserver(:this:ctl_type != 'checkboxleft' and :this:label_width >= 5);
 	x=0;y=0;height=20;width=runserver(:this:label_width - 5);
+	fl_width=0;
 	text=runserver(:this:text); 
 	align=right; 
 	}
