@@ -47,7 +47,7 @@ index "widget/page"
 
 		apps_rpt "widget/repeat"
 		    {
-		    sql = "select file = :cx__pathpart2, :app_name, :app_info from object wildcard '/apps/*/app_info.struct";
+		    sql = "select file = :cx__pathpart2, :app_name, :app_info from object wildcard '/apps/*/app_info.struct'";
 
 		    oneapp_hbox "widget/hbox"
 			{
