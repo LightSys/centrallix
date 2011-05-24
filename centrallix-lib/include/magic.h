@@ -94,7 +94,7 @@
 
 #ifdef 	DBMAGIC
 
-#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X for %8.8X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y),(int_ptr_t)(x)),(*((int*)(8)) = *((int*)(0)))))
+#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X for %8.8X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y),(intptr_t)(x)),(*((int*)(8)) = *((int*)(0)))))
 #define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(8)) = *((int*)(0)))))
 
 #else	/* defined DBMAGIC */
