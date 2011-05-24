@@ -107,7 +107,7 @@ function wgtrRemoveNamespace(ns)
 
 function wgtrUndefinedObject() { }
 
-function wgtrIsUndefined(v)
+function wgtrIsUndefined(prop)
     {
     return (typeof prop == 'object' && prop && prop.constructor == wgtrUndefinedObject);
     }
