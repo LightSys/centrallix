@@ -611,11 +611,11 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 
 	    /** Mergesort the result set. **/
 	    xaInit(this->SortInf->SortPtr+1, n);
-	    memcpy(this->SortInf->SortPtr[1].Items, this->SortInf->SortPtr[0].Items, n*4);
+	    memcpy(this->SortInf->SortPtr[1].Items, this->SortInf->SortPtr[0].Items, n*sizeof(void *));
 	    xaInit(this->SortInf->SortPtrLen+1, n);
-	    memcpy(this->SortInf->SortPtrLen[1].Items, this->SortInf->SortPtrLen[0].Items, n*4);
+	    memcpy(this->SortInf->SortPtrLen[1].Items, this->SortInf->SortPtrLen[0].Items, n*sizeof(void *));
 	    xaInit(this->SortInf->SortNames+1, n);
-	    memcpy(this->SortInf->SortNames[1].Items, this->SortInf->SortNames[0].Items, n*4);
+	    memcpy(this->SortInf->SortNames[1].Items, this->SortInf->SortNames[0].Items, n*sizeof(void *));
 	    obj_internal_MergeSort(this->SortInf, 1, 0, n - 1);
 	    this->RowID = 0;
 	    this->Flags |= OBJ_QY_F_FROMSORT;
