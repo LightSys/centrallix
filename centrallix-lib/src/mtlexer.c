@@ -12,6 +12,7 @@
 #include "mtlexer.h"
 #include "mtsession.h"
 #include "magic.h"
+#include "util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -941,7 +942,7 @@ mlxNextToken(pLxSession this)
 		    }
 		this->TokString[this->TokStrCnt] = '\0';
 		errno = 0;
-		this->TokInteger = strtol(this->TokString, NULL, 0);
+		this->TokInteger = strtoi(this->TokString, NULL, 0);
 		if (errno == ERANGE && this->TokType == MLX_TOK_INTEGER)
 		    {
 		    mssError(1,"MLX","Number exceeds 32-bit integer range");

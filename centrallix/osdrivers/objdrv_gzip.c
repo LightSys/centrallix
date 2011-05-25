@@ -153,10 +153,10 @@ gzip_internal_FillBuffer(pGzipData inf)
 	    }
 	if(GZIP_DEBUG & GZIP_DEBUG_READ)
 	    printf("lab: %i -- getting: %i\n",lab,GZIP_BUFFER_SIZE-lab);
-	inf->stream.avail_in=objRead(inf->Obj->Prev,(char*)inf->buffer+lab, GZIP_BUFFER_SIZE-lab, 0, 0);
+        inf->stream.avail_in=(uInt)objRead(inf->Obj->Prev,(char*)inf->buffer+lab, GZIP_BUFFER_SIZE-lab, 0, 0);
 	if(GZIP_DEBUG & GZIP_DEBUG_READ)
 	    printf("bytes read: %i\n",inf->stream.avail_in);
-	if (inf->stream.avail_in < 0)
+	if ((int)inf->stream.avail_in < 0)
 	    {
 	    /** there's no more data left to read.  
 	     ** the lookahead bytes are in both inf->buffer and inf->lookahead, and that's fine

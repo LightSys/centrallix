@@ -15,6 +15,7 @@
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -954,8 +955,8 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 
 	    case DATA_T_STRING: 
 	        if (format == NULL) base = 0;
-		else base = strtol(format,NULL,0);
-	        v = strtol((char*)data_ptr,&uptr,base); 
+		else base = strtoi(format,NULL,0);
+	        v = strtoi((char*)data_ptr,&uptr,base); 
 		if (format && strchr(format,'U') && uptr)
 		    {
 		    switch (*uptr)
@@ -1003,7 +1004,7 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 
 	    case DATA_T_STRINGVEC:
 	        sv = (pStringVec)data_ptr;
-		if (sv->nStrings == 0) v = 0; else v = strtol(sv->Strings[0],NULL,0);
+		if (sv->nStrings == 0) v = 0; else v = strtoi(sv->Strings[0],NULL,0);
 		break;
 	    
 	    default:
@@ -1302,7 +1303,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	    while(*startptr == ' ' || *startptr == '\t' || *startptr == ',') startptr++;
 
 	    /** Try to convert a number. **/
-	    last_num = strtol(startptr, &endptr, 10);
+	    last_num = strtoi(startptr, &endptr, 10);
 	    if (last_num < 0) last_num = -last_num;
 	    if (endptr != startptr)
 	        {
@@ -1647,7 +1648,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 
 		    case DATA_T_STRING:
-		        cmp_value = intval - strtol((char*)data_ptr_2, NULL, 0);
+		        cmp_value = intval - strtoi((char*)data_ptr_2, NULL, 0);
 			break;
 
 		    case DATA_T_DOUBLE:

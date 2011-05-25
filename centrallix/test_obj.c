@@ -6,6 +6,7 @@
 #include <signal.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/util.h"
 #include "obj.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -344,6 +345,7 @@ struct
     pFile   Output;
     char    OutputFilename[256];
     char    Command[1024];
+    unsigned int WaitSecs;
     }
     TESTOBJ;
 
@@ -1329,7 +1331,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		        {
 		        if (*stringval >= '0' && *stringval <= '9')
 		            {
-			    intval = strtol(stringval,NULL,10);
+			    intval = strtoi(stringval,NULL,10);
 			    objSetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval));
 			    }
 		        else
@@ -1452,6 +1454,18 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 	    else if (!strcmp(cmdname,"crash"))
 		{
 		raise(SIGSEGV);
+		}
+	    else if (!strcmp(cmdname,"sleep"))
+		{
+		if (!ptr)
+		    {
+		    mssError(1,"CX","Usage: sleep <n>");
+		    }
+		else
+		    {
+		    intval = strtoi(ptr, NULL, 10);
+		    sleep(intval);
+		    }
 		}
 	    else if (!strcmp(cmdname,"help"))
 		{
@@ -1629,6 +1643,26 @@ start(void* v)
     }
 
 
+void
+show_usage()
+    {
+    printf("Usage:  test_obj [-c <config-file>] [-f <command-file>] [-C <command>]\n"
+	   "                 [-u <user>] [-p <password>] [-q] [-o <output file>] \n"
+	   "                 [-i <wait-seconds>] [-h]\n"
+	   "        -h         Show this message\n"
+	   "        -q         Initialize quietly\n"
+	   "        -c file    Specify configuration file\n"
+	   "        -C command Run a single command\n"
+	   "        -f file    Run commands from a file\n"
+	   "        -u user    Login as user\n"
+	   "        -p pass    Specify password\n"
+	   "        -o file    Send output to specified file\n"
+	   "        -i secs    Terminate test_obj after secs with SIGALRM\n"
+	   "\n");
+    return;
+    }
+
+
 int 
 main(int argc, char* argv[])
     {
@@ -1641,12 +1675,15 @@ main(int argc, char* argv[])
 	CxGlobals.ModuleList = NULL;
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
+	TESTOBJ.WaitSecs = 0;
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:")) > 0)
+	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:")) > 0)
 	    {
 	    switch (ch)
 	        {
+		case 'i':	TESTOBJ.WaitSecs = strtoui(optarg, NULL, 10);
+				break;
 		case 'C':	memccpy(TESTOBJ.Command, optarg, 0, 1023);
 				TESTOBJ.Command[1023] = 0;
 				break;
@@ -1669,13 +1706,26 @@ main(int argc, char* argv[])
 		case 'o':	strtcpy(TESTOBJ.OutputFilename, optarg, sizeof(TESTOBJ.OutputFilename));
 				break;
 
-		case 'h':	printf("Usage:  test_obj [-c <config-file>]\n");
+		case 'h':	show_usage();
 				exit(0);
 
 		case '?':
-		default:	printf("Usage:  test_obj [-c <config-file>]\n");
+		default:	show_usage();
 				exit(1);
 		}
+	    }
+
+	/** No sense in command time-out if we are operating interactively. **/
+	if (TESTOBJ.WaitSecs && !(TESTOBJ.Command[0] || TESTOBJ.CmdFile[0]))
+	    {
+	    printf("Warning: -i specified but no command or command file given.  Forcing -i to 0.\n");
+	    TESTOBJ.WaitSecs = 0;
+	    }
+
+	/** Set SIGALRM if -i is specified **/
+	if (TESTOBJ.WaitSecs)
+	    {
+	    alarm(TESTOBJ.WaitSecs);
 	    }
 
     mtInitialize(0, start);

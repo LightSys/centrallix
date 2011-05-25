@@ -22,6 +22,7 @@ smart_field "widget/component-decl"
     search_by_range "widget/parameter" { type=integer; default=1; }
     date_only "widget/parameter" { type=integer; default=0; }
     default_time "widget/parameter" { type=string; default=""; }
+    invalid_select_default "widget/parameter" { type=string; default="no"; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
     preview_field "widget/parameter" { type=string; default=null; }
@@ -124,7 +125,8 @@ smart_field "widget/component-decl"
 	bgcolor=white; 
 	fieldname=runserver(:this:field); 
 	form=form; 
-	sql=runserver(:this:sql); 
+	sql=runserver(:this:sql);
+	invalid_select_default=runserver(:this:invalid_select_default);
 	mode=dynamic_server; 
 	hilight="#d0d0d0";
         ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }

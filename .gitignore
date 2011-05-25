@@ -11,6 +11,7 @@ centrallix-lib/libCentrallix.so.*
 centrallix-lib/libStParse.a
 centrallix-lib/libStParse.so
 centrallix-lib/libStParse.so.*
+centrallix-lib/tests/*.bin
 *.o
 *.lo
 stamp-h
@@ -31,5 +32,7 @@ centrallix/test_obj
 centrallix/test_prt
 centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
+*/nbproject/
+centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
 centrallix/tests/*.to.tmp

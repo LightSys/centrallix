@@ -23,6 +23,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -815,13 +816,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     pExpression exp;
     pStructInf subitem;
     int rval;
-
-    	/** Free existing query conn data buf? **/
-	if (qy->DataBuf)
-	    {
-	    nmSysFree(qy->DataBuf);
-	    qy->DataBuf = NULL;
-	    }
+    void* data_buf = NULL;
 
     	/** Search for aggregates first. **/
 	n = 0;
@@ -845,19 +840,19 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 			case DATA_T_INTEGER:	data_ptr->Integer = exp->Integer; break;
 			case DATA_T_DOUBLE:	data_ptr->Double = exp->Types.Double; break;
 			case DATA_T_STRING: 
-			    qy->DataBuf = (char*)nmSysMalloc(strlen(exp->String)+1);
-			    data_ptr->String = qy->DataBuf;
-			    strcpy(qy->DataBuf, exp->String);
+			    data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
+			    data_ptr->String = data_buf;
+			    strcpy(data_buf, exp->String);
 			    break;
 			case DATA_T_MONEY: 
-			    qy->DataBuf = (char*)nmSysMalloc(sizeof(MoneyType));
-			    memcpy(qy->DataBuf, &(exp->Types.Money), sizeof(MoneyType));
-			    data_ptr->Money = (pMoneyType)(qy->DataBuf);
+			    data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
+			    memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
+			    data_ptr->Money = (pMoneyType)(data_buf);
 			    break;
 			case DATA_T_DATETIME: 
-			    qy->DataBuf = (char*)nmSysMalloc(sizeof(DateTime));
-			    memcpy(qy->DataBuf, &(exp->Types.Date), sizeof(DateTime));
-			    data_ptr->DateTime = (pDateTime)(qy->DataBuf);
+			    data_buf = (char*)nmSysMalloc(sizeof(DateTime));
+			    memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
+			    data_ptr->DateTime = (pDateTime)(data_buf);
 			    break;
 			default: return -1;
 			}
@@ -866,6 +861,17 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 		        expResetAggregates(exp, -1,1);
 		        expEvalTree(exp,qy->ObjList);
 			}
+
+		    /** Free existing query conn data buf? **/
+		    if (qy->DataBuf)
+			{
+			nmSysFree(qy->DataBuf);
+			qy->DataBuf = NULL;
+			}
+
+		    /** Return our new data buffer for string/money/datetime **/
+		    qy->DataBuf = data_buf;
+
 		    return was_null;
 		    }
 	   	n++;
@@ -1126,7 +1132,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    if (sql[0] == '&' && (sql[1] >= '0' && sql[1] <= '9'))
 		{
 		/*newsql[cnt++] = '"';*/
-		v = strtol(sql+1,&endptr,10);
+		v = strtoi(sql+1,&endptr,10);
 		if (v == 0 || v > links.nItems)
 		    {
 		    mssError(1,"RPT","Parameter error in table/form '%s' source '%s' sql", object->Name, src);
@@ -2058,7 +2064,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
 				{
-				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
 				if (!ud->LastValue)
 				    {
 				    /** First record; not initialized. **/
@@ -2122,7 +2128,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
 				{
-				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
 				if (expEvalTree(ud->Exp, inf->ObjList) < 0)
 				    {
 				    mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
@@ -2144,23 +2150,37 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				    {
 				    /** See if value changed. **/
 				    changed = 0;
-				    switch(ud->LastValue->DataType)
+				    if ((ud->Exp->Flags & EXPR_F_NULL) != (ud->LastValue->Flags & EXPR_F_NULL))
 					{
-					case DATA_T_INTEGER:
-					    changed = ud->LastValue->Integer != ud->Exp->Integer;
-					    break;
-					case DATA_T_STRING:
-					    changed = strcmp(ud->LastValue->String, ud->Exp->String);
-					    break;
-					case DATA_T_MONEY:
-					    changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
-					    break;
-					case DATA_T_DATETIME:
-					    changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
-					    break;
-					case DATA_T_DOUBLE:
-					    changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
-					    break;
+					/** Changed to/from NULL **/
+					changed = 1;
+					}
+				    else if ((ud->Exp->Flags & EXPR_F_NULL) && (ud->LastValue->Flags & EXPR_F_NULL))
+					{
+					/** Both are null - do not compare **/
+					changed = 0;
+					}
+				    else
+					{
+					/** Compare values **/
+					switch(ud->LastValue->DataType)
+					    {
+					    case DATA_T_INTEGER:
+						changed = ud->LastValue->Integer != ud->Exp->Integer;
+						break;
+					    case DATA_T_STRING:
+						changed = strcmp(ud->LastValue->String, ud->Exp->String);
+						break;
+					    case DATA_T_MONEY:
+						changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
+						break;
+					    case DATA_T_DATETIME:
+						changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
+						break;
+					    case DATA_T_DOUBLE:
+						changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
+						break;
+					    }
 					}
 				    if (changed)
 					{
@@ -2336,7 +2356,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	t = stGetAttrType(value_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(value_inf->UserData));
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(value_inf->UserData));
 	    if (ud)
 		{
 		/** Evaluate the expression **/
@@ -2813,7 +2833,7 @@ rpt_internal_CheckCondition(pRptData inf, pStructInf config)
 	t = stGetAttrType(condition_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(condition_inf->UserData));
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(condition_inf->UserData));
 	    if (ud)
 		{
 		/** Evaluate the expression **/
@@ -2879,7 +2899,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    {
 	    if (ptr[0] == '#')
 		{
-		n = strtol(ptr+1, NULL, 16);
+		n = strtoi(ptr+1, NULL, 16);
 		prtSetColor(prt_obj, n);
 		}
 	    }
@@ -3184,10 +3204,10 @@ rpt_internal_PreBuildExp(pRptData inf, pStructInf obj, pParamObjects objlist)
 
 		/** ... and set it up in our user data slots structure **/
 		if (!(obj->UserData)) 
-		    obj->UserData = (void*)(inf->NextUserDataSlot++);
-		else if ((int)(obj->UserData) >= inf->NextUserDataSlot)
-		    inf->NextUserDataSlot = ((int)(obj->UserData))+1;
-		xaSetItem(&(inf->UserDataSlots), (int)(obj->UserData), (void*)ud);
+		    obj->UserData = (void*)(intptr_t)(inf->NextUserDataSlot++);
+		else if ((intptr_t)(obj->UserData) >= inf->NextUserDataSlot)
+		    inf->NextUserDataSlot = ((intptr_t)(obj->UserData))+1;
+		xaSetItem(&(inf->UserDataSlots), (intptr_t)(obj->UserData), (void*)ud);
 		}
 	    else
 		{
@@ -3613,7 +3633,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 			    do_reset = 1;
 			    stAttrValue(stLookup(subreq->SubInf[j], "reset"), &do_reset, NULL, 0);
-			    xaAddItem(&(qc->AggregateDoReset), (void*)do_reset);
+			    xaAddItem(&(qc->AggregateDoReset), (void*)(intptr_t)do_reset);
 
 			    ptr = NULL;
 			    stAttrValue(stLookup(subreq->SubInf[j], "where"), NULL, &ptr, 0);

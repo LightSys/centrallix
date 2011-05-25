@@ -90,15 +90,25 @@ function osrc_action_change_source(aparam)
     {
     if (!this.baseobj) return null;
     if (!aparam.Source) return null;
+    if (aparam.Source == '' || aparam.Source == this.baseobj) return;
     var l = (new String(this.baseobj)).length;
+    var newl = (new String(aparam.Source)).length;
     var s = new String(this.sql);
     var p = s.indexOf(this.baseobj);
-    if (p >= 0)	
-	this.sql = s.substr(0,p) + aparam.Source + s.substr(p+l);
+    while (p >= 0)
+	{
+	s = s.substr(0,p) + aparam.Source + s.substr(p+l);
+	p = s.indexOf(this.baseobj, p+newl);
+	}
+    this.sql = s;
     var s = new String(this.query);
     var p = s.indexOf(this.baseobj);
-    if (p >= 0)	
-	this.query = s.substr(0,p) + aparam.Source + s.substr(p+l);
+    while (p >= 0)
+	{
+	s = s.substr(0,p) + aparam.Source + s.substr(p+l);
+	p = s.indexOf(this.baseobj, p+newl);
+	}
+    this.query = s;
     this.baseobj = aparam.Source;
     if (typeof aparam.Refresh == 'undefined' || aparam.Refresh)
 	this.ifcProbe(ifAction).Invoke("Refresh", {});

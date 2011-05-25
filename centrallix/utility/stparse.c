@@ -723,11 +723,11 @@ stGetValueList(pStructInf this, int type, unsigned int* nval)
 	    (*nval)++;
 	    switch(subexp->DataType)
 		{
-		case DATA_T_STRING: n += 4; break;
-		case DATA_T_INTEGER: n += 4; break;
-		case DATA_T_DOUBLE: n += 8; break;
-		case DATA_T_MONEY: n += 4; break;
-		case DATA_T_DATETIME: n += 4; break;
+		case DATA_T_STRING: n += sizeof(void *); break;
+		case DATA_T_INTEGER: n += sizeof(int); break;
+		case DATA_T_DOUBLE: n += sizeof(double); break;
+		case DATA_T_MONEY: n += sizeof(void *); break;
+		case DATA_T_DATETIME: n += sizeof(void *); break;
 		}
 	    }
 
@@ -749,11 +749,11 @@ stGetValueList(pStructInf this, int type, unsigned int* nval)
 	    if (subexp->DataType != type && type != DATA_T_ANY) continue;
 	    switch(subexp->DataType)
 		{
-		case DATA_T_STRING: n += 4; break;
-		case DATA_T_INTEGER: n += 4; break;
-		case DATA_T_DOUBLE: n += 8; break;
-		case DATA_T_MONEY: n += 4; break;
-		case DATA_T_DATETIME: n += 4; break;
+		case DATA_T_STRING: n += sizeof(void *); break;
+		case DATA_T_INTEGER: n += sizeof(int); break;
+		case DATA_T_DOUBLE: n += sizeof(double); break;
+		case DATA_T_MONEY: n += sizeof(void *); break;
+		case DATA_T_DATETIME: n += sizeof(void *); break;
 		}
 	    }
 

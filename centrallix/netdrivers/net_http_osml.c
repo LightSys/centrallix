@@ -644,9 +644,9 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		/** Get the info and open the object **/
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__usrtype"),&usrtype) < 0) return -1;
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
-		mode = strtol(ptr,NULL,0);
+		mode = strtoi(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmask"),&ptr) < 0) return -1;
-		mask = strtol(ptr,NULL,0);
+		mask = strtoi(ptr,NULL,0);
 		obj = objOpen(objsess, req_inf->StrVal, mode, mask, usrtype);
 		if (!obj)
 		    obj_handle = XHN_INVALID_HANDLE;
@@ -778,15 +778,15 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			}
 
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
-		    mode = strtol(ptr,NULL,0);
+		    mode = strtoi(ptr,NULL,0);
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__rowcount"),&ptr) < 0)
 			n = 0x7FFFFFFF;
 		    else
-			n = strtol(ptr,NULL,0);
+			n = strtoi(ptr,NULL,0);
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__startat"),&ptr) < 0)
 			start = 0;
 		    else
-			start = strtol(ptr,NULL,0) - 1;
+			start = strtoi(ptr,NULL,0) - 1;
 		    if (start < 0) start = 0;
 		    if (!strcmp(request,"queryfetch"))
 			{
@@ -853,15 +853,15 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__bytecount"),&ptr) < 0)
 		    n = 0x7FFFFFFF;
 		else
-		    n = strtol(ptr,NULL,0);
+		    n = strtoi(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__offset"),&ptr) < 0)
 		    o = -1;
 		else
-		    o = strtol(ptr,NULL,0);
+		    o = strtoi(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__flags"),&ptr) < 0)
 		    flags = 0;
 		else
-		    flags = strtol(ptr,NULL,0);
+		    flags = strtoi(ptr,NULL,0);
 		start = 1;
 		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?flags|OBJ_U_SEEK:flags)) > 0)
 		    {
@@ -1181,7 +1181,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 		        /*if (search_inf->StrVal == NULL)
 		            n = search_inf->IntVal[0];
 		        else*/
-		            n = strtol(search_inf->StrVal, NULL, 10);
+		            n = strtoi(search_inf->StrVal, NULL, 10);
 		        objSetAttrValue(obj, search_inf->Name, DATA_T_INTEGER,POD(&n));
 			break;
 

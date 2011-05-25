@@ -318,7 +318,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
     pMQOData context;
     pMqobOrderable item;
     pParamObjects objlist;
-    int i, n;
+    int n;
     int rval = -1;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
@@ -394,7 +394,7 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
     pMQOData context = (pMQOData)(qe->PrivateData);
     pMqobOrderable item;
     pParamObjects objlist;
-    int i,j;
+    int i;
 
 	if (context)
 	    {

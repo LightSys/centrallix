@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 
 /************************************************************************/
@@ -125,7 +126,7 @@ mqdAnalyze(pQueryStatement stmt)
 		item = (pQueryStructure)(qs->Parent->Children.Items[i]);
 		if (item->NodeType == MQ_T_SETOPTION && !strcmp(item->Name,"rowcount"))
 		    {
-		    qe->SlaveIterCnt = strtol(item->Source, NULL, 10);
+		    qe->SlaveIterCnt = strtoi(item->Source, NULL, 10);
 		    break;
 		    }
 		}

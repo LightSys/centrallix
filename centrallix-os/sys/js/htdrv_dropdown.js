@@ -809,14 +809,18 @@ function dd_add_items(l,ary)
 	}
     else
 	{
+	var found = false;
 	for (var i in l.Values)
 	    {
 	    if (l.Values[i].value == l.value)
 		{
+		found = true;
 		dd_select_item(l, i, 'init');
 		break;
 		}
 	    }
+	if (!found && this.invalid_select_default && this.value)
+	    cx_hints_setdefault(this);
 	}
     }
 
@@ -1178,6 +1182,7 @@ function dd_init(param)
     else
 	l.form = wgtrFindContainer(l,"widget/form");
     l.query_multiselect = param.qms;
+    l.invalid_select_default = param.ivs;
     l.value = null;
     htr_init_layer(l,l,'dd');
     htutil_tag_images(l,'dd',l,l);

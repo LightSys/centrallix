@@ -30,6 +30,7 @@
 #include "htmlparse.h"
 #include "cxlib/xhandle.h"
 #include "cxlib/magic.h"
+#include "cxlib/util.h"
 #include "wgtr.h"
 #include "iface.h"
 #include "cxlib/strtcpy.h"

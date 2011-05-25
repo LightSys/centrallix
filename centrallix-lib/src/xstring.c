@@ -12,6 +12,7 @@
 #include "mtask.h"
 #include "newmalloc.h"
 #include "qprintf.h"
+#include "util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -374,11 +375,11 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		case '9':
 		    if (field_width == -999 && !found_field_width)
 			{
-			field_width = strtol(ptr+1,&nptr,10);
+			field_width = strtoi(ptr+1,&nptr,10);
 			found_field_width=1;
 			}
 		    else
-			precision = strtol(ptr+1,&nptr,10);
+			precision = strtoi(ptr+1,&nptr,10);
 		    ptr = nptr-1;
 		    continue;
 		case '%':

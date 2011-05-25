@@ -1,0 +1,23 @@
+$Version=2$
+app_diagram "system/querytree"
+    {
+    dirs "system/querytree"
+	{
+	sql = "select name=:cx__pathpart2, :cx__pathpart2, annotation=:app_name,type='system/directory', usage='', objpath='/apps/' + :cx__pathpart2 from object wildcard '/apps/*/app_info.struct'";
+	use_having = yes;
+
+	apps "system/querytree"
+	    {
+	    sql = runserver("select :name, type='widget/page', annotation='/apps/" + :dirs:name + "/' + :__cx_path, usage='', objpath='/apps/" + :dirs:cx__pathpart2 + "/' + :__cx_path, * from subtree /apps/" + :dirs:name + " having right(:name,4) = '.app'");
+	    force_leaf = yes;
+
+	    cmps "system/querytree"
+		{
+		sql = runserver("select :name, type='widget/component-decl', annotation=:path, objpath=:path, usage=:cx__pathname, * from subtree " + ::objpath + " having :outer_type = 'widget/component'");
+		//known_leaf = "char_length(isnull(:objpath,'')) < 1";
+		force_leaf = yes;
+		recurse = cmps;
+		}
+	    }
+	}
+    }

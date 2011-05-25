@@ -11,6 +11,7 @@
 #include "cxlib/strtcpy.h"
 #include "hints.h"
 #include "cxlib/cxsec.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -308,8 +309,8 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	if (xptr || yptr)
 	    {
 	    xoffs = yoffs = 0;
-	    if (xptr) xoffs = strtol(xptr, NULL, 10);
-	    if (yptr) yoffs = strtol(yptr, NULL, 10);
+	    if (xptr) xoffs = strtoi(xptr, NULL, 10);
+	    if (yptr) yoffs = strtoi(yptr, NULL, 10);
 	    wgtrMoveChildren(tree, xoffs, yoffs);
 	    }
 
@@ -451,7 +452,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 			    rval = -1;
 			    goto htcmpd_cleanup;
 			    }
-			param->TypedObjData.Data.Integer = strtol(param->StrVal,&ptr,10);
+			param->TypedObjData.Data.Integer = strtoi(param->StrVal,&ptr,10);
 			if (*ptr)
 			    {
 			    mssError(1,"HTCMPD","Failed to convert value '%s' for param '%s' to integer", param->StrVal, param->Name);

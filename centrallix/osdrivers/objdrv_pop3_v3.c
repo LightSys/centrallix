@@ -10,6 +10,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
 /** module definintions **/
 #include "centrallix.h"
 
@@ -155,6 +156,12 @@
 
 
  **END-CVSDATA***********************************************************/
+
+// Prototype for crypt - Defined because _XOPEN_SOURCE macro did not work
+// well with other necessary functions.
+#ifndef _XOPEN_SOURCE
+char * crypt(const char *key, const char *salt);
+#endif
 
 /*** The type of an object opened by this driver.
  *** Corresponds to the SubCnt of each type, by the way.
@@ -608,7 +615,7 @@ pop_internal_GetMaildrop(pPopData inf)
 
 	    /** Save the username and crypt()'d password of the centrallix user opening this **/
 	    drop->UserName = nmSysStrdup(mssUserName());
-	    drop->CryptPasswd = nmSysStrdup((const char*)crypt(mssPassword(), "fo"));
+	    drop->CryptPasswd = nmSysStrdup((const char*)crypt(mssPassword(),"fo"));
 
 	    /** Save the name of the drop **/
 	    drop->DropName = dropname;

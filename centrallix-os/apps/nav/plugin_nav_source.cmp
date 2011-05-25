@@ -1,0 +1,37 @@
+$Version=2$
+plugin_nav_source "widget/component-decl"
+    {
+    title = "Source Code";
+    seq = 1;
+    height=408; width=498;
+
+    detail_osrc "widget/parameter" { type=object; find_container="widget/osrc"; }
+
+    src_pane "widget/pane"
+	{
+	x=0; y=0; width=498; height=408;
+	widget_class="data";
+
+	src_scroll "widget/scrollpane"
+	    {
+	    x=0; y=0; width=496; height=406;
+
+	    src_html "widget/html"
+		{
+		x=0; y=0; width=472;
+		mode=dynamic;
+		source="";
+
+		set_view_source "widget/connector"
+		    {
+		    source=detail_osrc;
+		    event="EndQuery";
+		    event_condition=runclient(:detail_osrc:type != 'system/directory');
+		    target=src_html;
+		    action="LoadPage";
+		    Source=runclient(:detail_osrc:objpath + '?ls__type=text%2fplain');
+		    }
+		}
+	    }
+	}
+    }

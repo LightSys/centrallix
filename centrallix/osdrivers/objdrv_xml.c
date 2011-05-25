@@ -10,6 +10,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 /** module definintions **/
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -444,7 +445,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
     if(p)
 	{
 	int i=0; /* Number of nodes that match */
-	char *ptr; /* passed to strtol for so we can tell if a number was grabbed */
+	char *ptr; /* passed to strtoi for so we can tell if a number was grabbed */
 	int target=-1; /* the element number we're looking for */
 	int flag=0; /* did we find the target? */
 	char searchElement[XML_ELEMENT_SIZE];
@@ -1074,7 +1075,7 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	    if(inf->AttrValue)
 		{
-		(void)strtol(inf->AttrValue,&ptr,10);
+		(void)strtoi(inf->AttrValue,&ptr,10);
 		if(ptr && !*ptr)
 		    {
 		    free(inf->AttrValue);
@@ -1252,7 +1253,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		{
 		if(datatype==DATA_T_INTEGER)
 		    {
-		    val->Integer=strtol(inf->AttrValue,&ptr,10);
+		    val->Integer=strtoi(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
 			free(inf->AttrValue);

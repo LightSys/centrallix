@@ -1026,7 +1026,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject;
+    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr;
     char* ptr;
     int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
@@ -1707,6 +1707,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    subtr = 0;
 		    identity = 0;
 		    inclsubtr = 0;
+		    prunesubtr = 0;
 		    wildcard = 0;
 		    fromobject = 0;
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
@@ -1718,6 +1719,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			{
 			t = mlxNextToken(lxs);
 			fromobject = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("pruned", ptr))
+			{
+			t = mlxNextToken(lxs);
+			prunesubtr = 1;
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("inclusive", ptr))
 			{
@@ -1733,6 +1739,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			{
 			t = mlxNextToken(lxs);
 			wildcard = 1;
+			}
+		    if (prunesubtr && !subtr)
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","In FROM clause: PRUNED keyword is invalid without SUBTREE keyword");
+			mlxNoteError(lxs);
+			break;
 			}
 		    if (inclsubtr && !subtr)
 			{
@@ -1760,6 +1773,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    new_qs->Name[0] = 0;
 		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
 		    if (inclsubtr) new_qs->Flags |= MQ_SF_INCLSUBTREE;
+		    if (prunesubtr) new_qs->Flags |= MQ_SF_PRUNESUBTREE;
 		    if (identity) new_qs->Flags |= MQ_SF_IDENTITY;
 		    if (wildcard) new_qs->Flags |= MQ_SF_WILDCARD;
 		    if (fromobject) new_qs->Flags |= MQ_SF_FROMOBJECT;
@@ -1888,7 +1902,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			xsConcatenate(&having_cls->RawData," ",1);
 			}
 
-		    /** We'll break the having clause out later.  Now should be end of SQL. **/
+		    /** We'll break the having clause out later. **/
 		    if (t == MLX_TOK_EOF)
 		        {
 			mlxHoldToken(lxs);
@@ -2055,8 +2069,8 @@ mq_internal_DumpQE(pQueryElement tree, int level)
     int i;
 
     	/** print the driver type handling this tree **/
-	printf("%*.*sDRIVER=%s, CPTR=%8.8x, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
-	    (unsigned int)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
+	printf("%*.*sDRIVER=%s, CPTR=%8.8lx, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
+	    (unsigned long)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
 
 	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
 	    printf(", IDX=%d, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Source);
@@ -2418,6 +2432,13 @@ mq_internal_NextStatement(pMultiQuery this)
 		}
 	    }
 
+	/** General failure to parse... **/
+	if (!stmt->Tree)
+	    {
+	    mssError(0,"MQ","Error in SQL statement syntax");
+	    goto error;
+	    }
+
 	/** Build dependency mask **/
 	mq_internal_SetCoverage(stmt, stmt->Tree);
 	mq_internal_SetDependencies(stmt, stmt->Tree, NULL);
@@ -2545,32 +2566,30 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
     }
 
 
-/*** mqDeleteObj - delete an open query result item.  This only
- *** works on queries off of a single source.
+/*** Return the object id of the IDENTITY object or assumed IDENTITY object
+ *** Or, return -1 if not found.
  ***/
 int
-mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
+mq_internal_GetIdentObjId(pPseudoObject p)
     {
-    pPseudoObject inf = (pPseudoObject)inf_v;
-    int rval;
     int objid = 0;
     pQueryStructure from_qs;
     int n;
 
-	/** Do a 'delete obj' operation on the source object **/
 	objid = -1;
-	n = inf->ObjList->nObjects - inf->Stmt->Query->nProvidedObjects;
+	n = p->ObjList->nObjects - p->Stmt->Query->nProvidedObjects;
+
+	/** No objects?  Then no identity object. **/
 	if (n == 0)
 	    {
-	    mssError(1,"MQ","Could not delete - query must have at least one FROM source");
 	    return -1;
 	    }
 	else if (n > 1)
 	    {
 	    from_qs = NULL;
-	    while((from_qs = mq_internal_FindItem(inf->Stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+	    while((from_qs = mq_internal_FindItem(p->Stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
 		{
-		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && inf->ObjList->Objects[from_qs->QELinkage->SrcIndex])
+		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && p->ObjList->Objects[from_qs->QELinkage->SrcIndex])
 		    {
 		    objid = from_qs->QELinkage->SrcIndex;
 		    break;
@@ -2579,11 +2598,28 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    }
 	else if (n == 1)
 	    {
-	    objid = inf->Stmt->Query->nProvidedObjects;
+	    objid = p->Stmt->Query->nProvidedObjects;
 	    }
+
+    return objid;
+    }
+
+
+/*** mqDeleteObj - delete an open query result item.  This only
+ *** works on queries off of a single source.
+ ***/
+int
+mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    pPseudoObject inf = (pPseudoObject)inf_v;
+    int rval;
+    int objid;
+
+	/** Do a 'delete obj' operation on the source object **/
+	objid = mq_internal_GetIdentObjId(inf);
 	if (objid < 0)
 	    {
-	    mssError(1,"MQ","Could not delete - multi-source query must have one valid FROM source labled as the query IDENTITY source");
+	    mssError(1,"MQ","Could not delete - the query must have one valid FROM source labled as the query IDENTITY source");
 	    return -1;
 	    }
 	rval = objDeleteObj((pObject)(inf->ObjList->Objects[objid]));
@@ -2829,7 +2865,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 void*
 mqQueryCreate(void* qy_v, pObject new_obj, char* name, int mode, int permission_mask, pObjTrxTree *oxt)
     {
-    pPseudoObject p;
+    pPseudoObject p = NULL;
     pMultiQuery qy = (pMultiQuery)qy_v;
 
 	/** For now, we just fail if this involves a join operation. **/
@@ -2839,6 +2875,7 @@ mqQueryCreate(void* qy_v, pObject new_obj, char* name, int mode, int permission_
 	    return NULL;
 	    }
 
+    // TODO Implement the real return value!
     return (void*)p;
     }
 
@@ -2917,8 +2954,17 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 int
 mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    /*pPseudoObject p = (pPseudoObject)inf_v;*/
-    return -1; /* nyi - not yet implemented */
+    pPseudoObject p = (pPseudoObject)inf_v;
+    int objid;
+
+	objid = mq_internal_GetIdentObjId(p);
+	if (objid < 0)
+	    {
+	    mssError(1,"MQ","Could not read - the query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+
+    return objRead((pObject)(p->ObjList->Objects[objid]), buffer, maxcnt, offset, flags);
     }
 
 
@@ -2928,8 +2974,17 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
 int
 mqWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    /*pPseudoObject p = (pPseudoObject)inf_v;*/
-    return -1; /* nyi - not yet implemented */
+    pPseudoObject p = (pPseudoObject)inf_v;
+    int objid;
+
+	objid = mq_internal_GetIdentObjId(p);
+	if (objid < 0)
+	    {
+	    mssError(1,"MQ","Could not write - the query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+
+    return objWrite((pObject)(p->ObjList->Objects[objid]), buffer, cnt, offset, flags);
     }
 
 

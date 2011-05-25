@@ -16,6 +16,7 @@
 #include "stparse_ne.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -248,7 +249,7 @@ stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		        {
 			attr_inf = stAddAttr(node->Data, open_inf->Name);
 			endptr = NULL;
-			n = strtol(open_inf->StrVal,&endptr,0);
+			n = strtoi(open_inf->StrVal,&endptr,0);
 			if (endptr && *endptr == '\0')
 			    stSetAttrValue(attr_inf, DATA_T_INTEGER, POD(&n), 0);
 			else 
@@ -545,8 +546,9 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	find_inf = stLookup(inf->Data, attrname);
 	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
 	    {
+	    /** For unset attributes on a structure file, we default to a NULL integer **/
 	    /*mssError(1,"STX","Could not locate requested structure file attribute");*/
-	    return -1;
+	    return (find_inf)?(-1):DATA_T_INTEGER;
 	    }
 
 	/** Examine the expr to determine the type **/
@@ -560,6 +562,7 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    {
 	    return t;
 	    }
+
 
     return -1;
     }
@@ -627,8 +630,9 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	/** Not found? **/
-	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) return -1;
+	/** Not found, or not an attribute? **/
+	if (!find_inf) return 1;
+	if (stStructType(find_inf) != ST_T_ATTRIB) return -1;
 
 	/** Vector or scalar? **/
 	if (find_inf->Value->NodeType == EXPR_N_LIST)

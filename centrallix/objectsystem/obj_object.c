@@ -304,7 +304,7 @@ obj_internal_IsA(char* type1, char* type2)
 	    {
 	    if (t2 == (pContentType)(t1->RelatedTypes.Items[i]))
 	        {
-		l = (int)(t1->RelationLevels.Items[i]);
+		l = (intptr_t)(t1->RelationLevels.Items[i]);
 		break;
 		}
 	    }
@@ -406,7 +406,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 			/** the pointers.  We convert the offsets to pointers later.  The +1 below is **/
 			/** because otherwise the first pointer is at offset 0, which will be interpreted **/
 			/** incorrectly. **/
-			inf->StrVal = (void*)(pathinfo->OpenCtlCnt+1);
+			inf->StrVal = (void*)(intptr_t)(pathinfo->OpenCtlCnt+1);
 			inf->StrAlloc = 0;
 			ptr++;
 			for(endptr=ptr;*endptr != '\0' && *endptr != '&';endptr++);
@@ -619,7 +619,7 @@ obj_internal_TypeFromSfHeader(pObject obj)
 	    return NULL;
 
 	/** Do we have a valid type? **/
-	type = xhLookup(&OSYS.Types, (void*)type_buf);
+	type = (pContentType)xhLookup(&OSYS.Types, (void*)type_buf);
 	if (!type)
 	    return NULL;
 
@@ -696,6 +696,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     char prevname[256];
     int used_openas;
     pObject cached_obj = NULL;
+    pObjectInfo obj_info;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -734,7 +735,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    for(i=0;i<pathinfo->OpenCtl[j]->nSubInf;i++)
 	        {
 	        inf = pathinfo->OpenCtl[j]->SubInf[i];
-	        if (inf->StrVal) inf->StrVal = pathinfo->OpenCtlBuf + (((int)(inf->StrVal)) - 1);
+	        if (inf->StrVal) inf->StrVal = pathinfo->OpenCtlBuf + (((intptr_t)(inf->StrVal)) - 1);
 		}
 	    }
 
@@ -836,7 +837,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** intermediate object's name, and the SubCnt of the previous obj was 1. **/
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
-		apparent_type = obj_internal_TypeFromName(name);
+		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
+		obj_info = objInfo(this);
+		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
+		    {
+		    apparent_type = obj_internal_TypeFromName(name);
+		    }
 		}
 
 	    strcpy(prevname, name);

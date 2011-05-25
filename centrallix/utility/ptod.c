@@ -3,7 +3,10 @@
 #include <fcntl.h>
 #include <string.h>
 #include "cxlib/datatypes.h"
+#include "cxlib/newmalloc.h"
 #include "ptod.h"
+#include "obj.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
