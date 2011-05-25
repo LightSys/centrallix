@@ -648,7 +648,7 @@ prt_internal_PrintArray(pPrtObjStream * arr, int cnt)
 
 	for(i=0;i<cnt;i++)
 	    {
-	    printf("%2.2d %8.8x: (%.2lf,%.2lf)\n", arr[i]->ObjType->TypeID, (uInt)arr[i], arr[i]->PageX, arr[i]->PageY);
+	    printf("%2.2d %8.8x: (%.2lf,%.2lf)\n", arr[i]->ObjType->TypeID, (unsigned int)arr[i], arr[i]->PageX, arr[i]->PageY);
 	    }
 
     return 0;
