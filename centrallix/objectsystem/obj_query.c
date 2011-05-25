@@ -393,15 +393,13 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
     pExpression *orderbyexp = (pExpression*)orderby_exp_v;
-    int i,n,len,j,t;
+    int i,n,len,t;
     int n_sortby;
-    short sn;
     pExpression sort_item;
     pLxSession lxs = NULL;
     pObject tmp_obj;
     char* ptr;
     char* start_ptr;
-    char dbuf[8];
     pObject linked_obj = NULL;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);

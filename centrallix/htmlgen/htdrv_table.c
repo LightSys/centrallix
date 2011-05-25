@@ -882,7 +882,6 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     {
     pWgtrNode sub_tree;
     char* ptr;
-    char* str;
     pStructInf attr_inf;
     int n, i;
     httbl_struct* t;
