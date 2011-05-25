@@ -619,7 +619,7 @@ obj_internal_TypeFromSfHeader(pObject obj)
 	    return NULL;
 
 	/** Do we have a valid type? **/
-	type = xhLookup(&OSYS.Types, (void*)type_buf);
+	type = (pContentType)xhLookup(&OSYS.Types, (void*)type_buf);
 	if (!type)
 	    return NULL;
 
