@@ -451,7 +451,7 @@ evFile(int ev_type, void* obj)
     fd_set readfds,writefds,exceptfds;
     struct timeval tmout;
     int arg;
-    size_t len;
+    socklen_t len;
 
     	if (fd->Status == FD_S_CLOSING) return -1;
 
@@ -1046,7 +1046,7 @@ mtSched()
     pEventReq event;
     int k = 0;
     int arg;
-    size_t len;
+    socklen_t len;
     int x[1];
 
     	dbg_write(0,"x",1);
@@ -3388,7 +3388,7 @@ netAcceptTCP(pFile net_filedesc, int flags)
     int s;
     pEventReq event = NULL;
     struct sockaddr_in remoteaddr;
-    size_t addrlen;
+    socklen_t addrlen;
     int v;
     int arg;
 
@@ -3520,7 +3520,7 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
     pFile connected_fd;
     struct sockaddr_in remoteaddr;
     int s,arg;
-    size_t len;
+    socklen_t len;
     struct servent *srv;
     struct hostent *h;
     unsigned short port;
@@ -3820,7 +3820,7 @@ netConnectUDP(const char* host_name, const char* service_name, int flags)
     pFile connected_fd;
     struct sockaddr_in remoteaddr;
     int s,arg;
-    size_t len;
+    socklen_t len;
     struct servent *srv;
     struct hostent *h;
     unsigned short port;
