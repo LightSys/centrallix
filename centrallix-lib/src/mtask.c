@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include "qprintf.h"
+#include "util.h"
 
 #ifdef USING_VALGRIND
 #include "valgrind/valgrind.h"
@@ -220,7 +221,7 @@
      * changed pFile returned by netConnectTCP to include IP and port of remote computer
 
     Revision 1.14  2002/11/22 20:56:58  gbeeley
-    Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
+   Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
     basically allow printf() style functionality on top of any xxxWrite()
     type of routine (such as fdWrite, objWrite, etc).
 
@@ -3314,7 +3315,7 @@ netListenTCP(const char* service_name, int queue_length, int flags)
 	ioctl(s,FIONBIO,&arg);
 
 	/** Get the port number **/
-	port = htons(strtol(service_name, NULL, 10));
+	port = htons(strtoi(service_name, NULL, 10));
 	if (port == 0)
 	    {
 	    srv = getservbyname(service_name, "tcp");
@@ -3535,7 +3536,7 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 	ioctl(s,FIONBIO,&arg);
 
 	/** Lookup the service name. **/
-	port = htons(strtol(service_name,NULL,10));
+	port = htons(strtoi(service_name,NULL,10));
 	if (!port)
 	    {
 	    srv = getservbyname(service_name,"tcp");
@@ -3756,7 +3757,7 @@ netListenUDP(const char* service_name, int flags)
 	ioctl(s,FIONBIO,&arg);
 
 	/** Get the port number **/
-	port = htons(strtol(service_name, NULL, 10));
+	port = htons(strtoi(service_name, NULL, 10));
 	if (port == 0)
 	    {
 	    srv = getservbyname(service_name, "udp");
@@ -3835,7 +3836,7 @@ netConnectUDP(const char* host_name, const char* service_name, int flags)
 	ioctl(s,FIONBIO,&arg);
 
 	/** Lookup the service name. **/
-	port = htons(strtol(service_name,NULL,10));
+	port = htons(strtoi(service_name,NULL,10));
 	if (!port)
 	    {
 	    srv = getservbyname(service_name,"udp");
