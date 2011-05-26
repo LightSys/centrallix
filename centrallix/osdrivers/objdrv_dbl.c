@@ -25,6 +25,7 @@
 #include "multiquery.h"
 #include "cxlib/magic.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1690,7 +1691,7 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 	    {
 	    case DATA_T_INTEGER:
 		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		pod->Integer = strtol(ibuf, NULL, 10);
+		pod->Integer = strtoi(ibuf, NULL, 10);
 		break;
 	    case DATA_T_STRING:
 		pod->String = data;
@@ -1708,7 +1709,7 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 		break;
 	    case DATA_T_MONEY:
 		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		v = strtol(ibuf, NULL, 10);
+		v = strtoll(ibuf, NULL, 10);
 		f = 1;
 		for(i=0;i<column->DecimalOffset;i++) f *= 10;
 		pod->Money = (pMoneyType)data;

@@ -14,6 +14,7 @@
 #include "centrallix.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
+#include "cxlib/util.h"
 #include <assert.h>
 #include <mysql.h>
 
@@ -643,9 +644,9 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysdTable tdata)
             if ((pptr = strchr(data_desc, '(')) != NULL)
                 {
                 *pptr = '\0';
-                tdata->ColLengths[tdata->nCols] = strtol(pptr+1, NULL, 10);
+                tdata->ColLengths[tdata->nCols] = strtoui(pptr+1, NULL, 10);
                 if ((cptr = strchr(pptr+1, ',')) != NULL)
-                    len = strtol(cptr+1, NULL, 10);
+                    len = strtoi(cptr+1, NULL, 10);
                 }
                 
             /** set lengths for various text types **/
@@ -939,7 +940,7 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 		ptr = mysd_internal_CxDataToMySQL(find_oxt->AttrType, find_oxt->AttrValue);
 		/*if (!strcmp(inf->TData->ColTypes[colid],"bit"))
 		    {
-		    if (strtol(ptr,NULL,10))
+		    if (strtoi(ptr,NULL,10))
 			ptr = "1";
 		    else
 			ptr = "\\0";
@@ -1081,7 +1082,7 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 	/** Handle bits **/
 	/*if (!strcmp(data->TData->ColTypes[col], "bit") && newval)
 	    {
-	    if (strtol(newval, NULL, 10))
+	    if (strtoi(newval, NULL, 10))
 		newval = "1";
 	    else
 		newval = "0";
@@ -1233,7 +1234,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
 		    find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
 		    /*if (!strcmp(inf->TData->ColTypes[j],"bit"))
 			{
-			if (strtol(find_str,NULL,10))
+			if (strtoi(find_str,NULL,10))
 			    find_str = "1";
 			else
 			    find_str = "\\0";

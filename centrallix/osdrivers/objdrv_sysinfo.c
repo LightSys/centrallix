@@ -9,6 +9,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 /** module definintions **/
 #include "centrallix.h"
 #include "config.h"
@@ -1255,7 +1256,7 @@ sys_internal_MtaskAttrValue(void* ctx, char* objname, char* attrname, void* val_
 
 	sys_internal_MtaskLoad();
 	if (!objname) return -1;
-	n = strtol(objname, NULL, 16);
+	n = strtoi(objname, NULL, 16);
 	if (n < 0 || n >= SYS_INF.sys_thr_cnt) return -1;
 	if (!strcmp(attrname, "description"))
 	    {

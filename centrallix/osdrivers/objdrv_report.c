@@ -21,6 +21,7 @@
 #include "report.h"
 #include "prtmgmt.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 /** GRB - this file is becoming obsolete and should not be in any current
  ** build under 'normal' circumstances.  Will be removed from CVS later.
@@ -933,7 +934,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    if (sql[0] == '&' && (sql[1] >= '0' && sql[1] <= '9'))
 		{
 		/*newsql[cnt++] = '"';*/
-		v = strtol(sql+1,&endptr,10);
+		v = strtoi(sql+1,&endptr,10);
 		if (v == 0 || v > links.nItems)
 		    {
 		    mssError(1,"RPT","Parameter error in table/form '%s' source '%s' sql", object->Name, src);

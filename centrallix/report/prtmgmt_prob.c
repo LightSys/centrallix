@@ -6,6 +6,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
+#include "cxlib/util.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt.h"
 #include "htmlparse.h"
@@ -1465,23 +1466,23 @@ prtConvertHTML(int (*read_fn)(), void* read_arg, pPrtSession s)
 			    {
 			    ptr = htsTagValue(hts,2);
 			    if (!ptr) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    prtSetHPos(s, v1);
 			    }
 			else if (!strcmp(ptr,"LRMARGIN"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtSetLRMargins(s, v1, v2);
 			    }
 			else if (!strcmp(ptr,"SETCOLS"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtSetColumns(s, v1, v2);
 			    }
 			else if (!strcmp(ptr,"TABLE"))
@@ -1492,17 +1493,17 @@ prtConvertHTML(int (*read_fn)(), void* read_arg, pPrtSession s)
 			else if (!strcmp(ptr,"COLHDR"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtDoColHdr(s,(v2==0)?1:0,v1);
 			    }
 			else if (!strcmp(ptr,"COLUMN"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtDoColumn(s,(v2==0)?1:0,v1);
 			    }
 			else if (!strcmp(ptr,"TABLESEP"))

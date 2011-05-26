@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/util.h"
 #include "cxlib/exception.h"
 #include "obj.h"
 #include "stparse.h"
@@ -422,7 +423,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 		        /*if (search_inf->StrVal == NULL)
 		            n = search_inf->IntVal[0];
 		        else*/
-		            n = strtol(search_inf->StrVal, NULL, 10);
+		            n = strtoi(search_inf->StrVal, NULL, 10);
 		        objSetAttrValue(obj, search_inf->Name, &n);
 			break;
 
@@ -655,7 +656,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    type = objGetAttrType(target_obj, sub_inf->Name);
 	    if (type == DATA_T_INTEGER)
 	        {
-		v = strtol(sub_inf->StrVal,NULL,10);
+		v = strtoi(sub_inf->StrVal,NULL,10);
 		objSetAttrValue(target_obj, sub_inf->Name, &v);
 		}
 	    else if (type == DATA_T_STRING)

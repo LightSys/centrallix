@@ -13,6 +13,8 @@
 #include "obj.h"
 #include "st_node.h"
 #include "cxlib/magic.h"
+#include "cxlib/util.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -380,7 +382,7 @@ snSetParamInteger(pSnNode node, pObject obj, char* paramname, int default_val)
 	    }
 	else
 	    {
-	    val = strtol(intptr,NULL,10);
+	    val = strtoi(intptr,NULL,10);
 	    }
 
 	/** Make a copy and add to the node. **/

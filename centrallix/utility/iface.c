@@ -42,6 +42,7 @@
 #include "iface_private.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/util.h"
 #include "stparse.h"
 #include "obj.h"
 #include "centrallix.h"
@@ -194,7 +195,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		mssError(0, "IFC", "Couldn't get name for a minor version within '%s'", def->Pathname->Pathbuf+1);
 		goto error;
 		}
-	    if (Val.String[0] != 'v' || ( (i=strtol(Val.String+1, &ptr, 10))==0 && ptr != Val.String+strlen(Val.String)))
+	    if (Val.String[0] != 'v' || ( (i=strtoi(Val.String+1, &ptr, 10))==0 && ptr != Val.String+strlen(Val.String)))
 		{
 		mssError(0, "IFC", "Ilegal minor version name '%s' in '%s'", Val.String, def->Pathname->Pathbuf+1);
 		goto error;

@@ -21,6 +21,7 @@
 #include "cxlib/mtlexer.h"
 #include "prtmgmt.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -291,11 +292,11 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 	        {
 		/** Get rank, owner, jobid, filename **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		rank = strtol(mlxStringVal(lxs,0),NULL,10);
+		rank = strtoi(mlxStringVal(lxs,0),NULL,10);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,user,32);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		jobid = strtol(mlxStringVal(lxs,0),NULL,10);
+		jobid = strtoi(mlxStringVal(lxs,0),NULL,10);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,filename,128);
 
@@ -318,7 +319,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 
 		/** Get the file's size and skip to eol. **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		e->Size = strtol(mlxStringVal(lxs,0),NULL,10);
+		e->Size = strtoi(mlxStringVal(lxs,0),NULL,10);
 		while ((t=mlxNextToken(lxs) != MLX_TOK_EOL && t != MLX_TOK_ERROR));
 
 		/** Add entry to our queue list **/

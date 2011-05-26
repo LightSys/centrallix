@@ -23,6 +23,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1126,7 +1127,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    if (sql[0] == '&' && (sql[1] >= '0' && sql[1] <= '9'))
 		{
 		/*newsql[cnt++] = '"';*/
-		v = strtol(sql+1,&endptr,10);
+		v = strtoi(sql+1,&endptr,10);
 		if (v == 0 || v > links.nItems)
 		    {
 		    mssError(1,"RPT","Parameter error in table/form '%s' source '%s' sql", object->Name, src);
@@ -2879,7 +2880,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    {
 	    if (ptr[0] == '#')
 		{
-		n = strtol(ptr+1, NULL, 16);
+		n = strtoi(ptr+1, NULL, 16);
 		prtSetColor(prt_obj, n);
 		}
 	    }
