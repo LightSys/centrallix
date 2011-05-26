@@ -29,3 +29,7 @@ centrallix/osdrivers/*.so
 centrallix/test_obj
 centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
+/centrallix-lib/nbproject/private/
+/centrallix/nbproject/private/
+nbproject/
+centrallix-lib/tests/test_*.bin
