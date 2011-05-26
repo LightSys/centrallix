@@ -534,7 +534,7 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 static inline int
 qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* cursor;
     int ix;
