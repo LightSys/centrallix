@@ -23,6 +23,7 @@ extern "C" {
 
 
     int strtoi(const char *nptr, char **endptr, int base);
+    unsigned int strtoui(const char *nptr, char **endptr, int base);
 
 
 #ifdef	__cplusplus

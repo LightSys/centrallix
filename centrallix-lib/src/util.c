@@ -14,13 +14,15 @@
 /* Description:	Collection of utilities                                 */
 /************************************************************************/
 
+#include <stdio.h>
+
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
 #include "util.h"
 
 /**
- * Converts a string to the integer value repersented
+ * Converts a string to the integer value represented
  *  by the string, based on strtol.
  * @param nptr   the string
  * @param endptr if not NULL will be assigned the address of the first invalid character
@@ -39,13 +41,40 @@ int strtoi(const char *nptr, char **endptr, int base){
         return INT_MIN;
     }
     //now check for error in conversion to int
-    if(tmp>INT_MAX){
+    if(tmp>=INT_MAX){
         errno = ERANGE;
         return INT_MAX;   
-    }else if(tmp<INT_MIN){
+    }else if(tmp<=INT_MIN){
         errno = ERANGE;
         return INT_MIN;
     }
     //return as tmp;
     return (int)tmp;
+}
+
+/**
+ * Converts a string to the unsigned integer value represented
+ *  by the string, based on strtoul.
+ * @param nptr   the string
+ * @param endptr if not NULL will be assigned the address of the first invalid character
+ * @param base   the base to convert with
+ * @return the converted int or UINT_MAX on error
+ */
+unsigned int strtoui(const char *nptr, char **endptr, int base){
+    unsigned long tmp;
+    //try to convert
+    tmp = strtoul(nptr,endptr,base);
+    ///FOR DEBUGING!!!!
+    if(strtoi(nptr,endptr,base)<0)fprintf(stderr,"@@@%lu@@@\n",tmp);
+    //check for errors in conversion to long
+    if(tmp == ULONG_MAX){
+        return UINT_MAX;
+    }
+    //now check for error in conversion to int
+    if(tmp>=UINT_MAX){
+        errno = ERANGE;
+        return UINT_MAX;   
+    }  
+    //return as tmp;
+    return (unsigned int)tmp;
 }
