@@ -19,6 +19,14 @@
 #include <errno.h>
 #include "util.h"
 
+/**
+ * Converts a string to the integer value repersented
+ *  by the string, based on strtol.
+ * @param nptr   the string
+ * @param endptr if not NULL will be assigned the address of the first invalid character
+ * @param base   the base to convert with
+ * @return the converted int or INT_MAX/MIN on error
+ */
 int strtoi(const char *nptr, char **endptr, int base){
     long tmp;
     //try to convert

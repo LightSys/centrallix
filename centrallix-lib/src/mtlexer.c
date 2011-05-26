@@ -12,6 +12,7 @@
 #include "mtlexer.h"
 #include "mtsession.h"
 #include "magic.h"
+#include "util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

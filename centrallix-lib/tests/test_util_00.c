@@ -18,26 +18,33 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <limits.h>
+#include <stdio.h>
 
 #include "util.h"
 
-
+#define TXT_SIZE 1024
+#define RANGE    500000
 long long
 test(char** tname){
     int i;
-    int iter = 500000;
+    char text[TXT_SIZE]="";
     *tname = "util-00 convertion from strings to integers";
     
+    for(i=-RANGE; i<RANGE; i++){
+        snprintf(text,TXT_SIZE,"%d",i);
+        assert(strtoi(text,NULL,0)==i);
+    }//end for all range
     
-     for(i=0;i< iter; i++){
-        assert(strtoi("0",NULL,0)==0);
-        assert(strtoi("1235",NULL,0)==1235);
-        assert(strtoi("0xf0f",NULL,0)==0xf0f);
-        assert(strtoi("123154115463544623415345345622315465245351254354345453154532435561254512521435",
-                NULL,0)==INT_MAX);
-        assert(strtoi("-123154115463544623415345345622315465245351254354345453154532435561254512521435",
-                NULL,0)==INT_MIN);
-    }
+    //long too big for int
+    snprintf(text,TXT_SIZE,"%ld",INT_MAX+7L);
+    assert(strtoi(text,NULL,0)==INT_MAX);
+    snprintf(text,TXT_SIZE,"%ld",INT_MIN-7L);
+    assert(strtoi(text,NULL,0)==INT_MIN);
     
-    return 5*iter;
+    //too big for long?
+    assert(strtoi("121340193481047193741092347298347291391741",NULL,0)==INT_MAX);
+    assert(strtoi("-19874238479349128374239483948347834913498",NULL,0)==INT_MIN);
+    
+    //return what all we did
+    return 2*RANGE+4;
 }//end test
