@@ -1,0 +1,64 @@
+Attribute: [f_datetime]  DATETIME  01 Jan 1970 00:00
+Attribute: [equal_to]  STRING  "01 Jan 1970 00:00,"
+Attribute: [less_than]  STRING  NULL
+Attribute: [greater_than]  STRING  "01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  01 Feb 2000 00:00
+Attribute: [equal_to]  STRING  "01 Feb 2000 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,29 Feb 1996 00:00,"
+Attribute: [greater_than]  STRING  "31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  02 Jan 2000 00:00
+Attribute: [equal_to]  STRING  "02 Jan 2000 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,29 Feb 1996 00:00,"
+Attribute: [greater_than]  STRING  "01 Feb 2000 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  01 Jan 1970 23:59
+Attribute: [equal_to]  STRING  "01 Jan 1970 23:59,01 Jan 1970 23:59,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,"
+Attribute: [greater_than]  STRING  "01 Feb 2000 00:00,02 Jan 2000 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  01 Jan 1970 23:59
+Attribute: [equal_to]  STRING  "01 Jan 1970 23:59,01 Jan 1970 23:59,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,"
+Attribute: [greater_than]  STRING  "01 Feb 2000 00:00,02 Jan 2000 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  31 Dec 2004 00:00
+Attribute: [equal_to]  STRING  "31 Dec 2004 00:00,31 Dec 2004 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,29 Feb 2004 00:00,01 Feb 2000 00:00,29 Feb 2004 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,29 Feb 2008 00:00,"
+Attribute: [f_datetime]  DATETIME  29 Feb 2004 00:00
+Attribute: [equal_to]  STRING  "29 Feb 2004 00:00,29 Feb 2004 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,01 Feb 2000 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "31 Dec 2004 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2008 00:00,"
+Attribute: [f_datetime]  DATETIME  01 Feb 2000 00:00
+Attribute: [equal_to]  STRING  "01 Feb 2000 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,29 Feb 1996 00:00,"
+Attribute: [greater_than]  STRING  "31 Dec 2004 00:00,29 Feb 2004 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  01 Jan 2010 00:20
+Attribute: [equal_to]  STRING  "01 Jan 2010 00:20,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "01 Jan 2010 20:00,"
+Attribute: [f_datetime]  DATETIME  01 Jan 2010 20:00
+Attribute: [equal_to]  STRING  "01 Jan 2010 20:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  NULL
+Attribute: [f_datetime]  DATETIME  01 Jan 2010 00:00
+Attribute: [equal_to]  STRING  "01 Jan 2010 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "01 Jan 2010 00:20,01 Jan 2010 20:00,"
+Attribute: [f_datetime]  DATETIME  31 Dec 2004 00:00
+Attribute: [equal_to]  STRING  "31 Dec 2004 00:00,31 Dec 2004 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,29 Feb 2004 00:00,01 Feb 2000 00:00,29 Feb 2004 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,29 Feb 2008 00:00,"
+Attribute: [f_datetime]  DATETIME  29 Feb 2004 00:00
+Attribute: [equal_to]  STRING  "29 Feb 2004 00:00,29 Feb 2004 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,01 Feb 2000 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "31 Dec 2004 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2008 00:00,"
+Attribute: [f_datetime]  DATETIME  29 Feb 2008 00:00
+Attribute: [equal_to]  STRING  "29 Feb 2008 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 1996 00:00,28 Feb 2000 00:00,"
+Attribute: [greater_than]  STRING  "01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,"
+Attribute: [f_datetime]  DATETIME  29 Feb 1996 00:00
+Attribute: [equal_to]  STRING  "29 Feb 1996 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,"
+Attribute: [greater_than]  STRING  "01 Feb 2000 00:00,02 Jan 2000 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,01 Feb 2000 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,28 Feb 2000 00:00,"
+Attribute: [f_datetime]  DATETIME  28 Feb 2000 00:00
+Attribute: [equal_to]  STRING  "28 Feb 2000 00:00,"
+Attribute: [less_than]  STRING  "01 Jan 1970 00:00,01 Feb 2000 00:00,02 Jan 2000 00:00,01 Jan 1970 23:59,01 Jan 1970 23:59,01 Feb 2000 00:00,29 Feb 1996 00:00,"
+Attribute: [greater_than]  STRING  "31 Dec 2004 00:00,29 Feb 2004 00:00,01 Jan 2010 00:20,01 Jan 2010 20:00,01 Jan 2010 00:00,31 Dec 2004 00:00,29 Feb 2004 00:00,29 Feb 2008 00:00,"
