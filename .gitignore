@@ -34,4 +34,3 @@ centrallix-lib/include/cxlib
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
 centrallix/tests/*.to.tmp
-
