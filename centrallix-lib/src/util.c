@@ -61,7 +61,7 @@ int strtoi(const char *nptr, char **endptr, int base){
  * @return the converted int or UINT_MAX on error
  */
 unsigned int strtoui(const char *nptr, char **endptr, int base){
-    long tmp;
+    long long tmp;
     //try to convert
     tmp = strtoll(nptr,endptr,base);
     
