@@ -30,7 +30,7 @@ test(char** tname){
     char text[TXT_SIZE]="";
     *tname = "util-01 convertion from strings to unsigned integers";
          
-    for(i=0; i<RANGE; i++){
+    for(i=-RANGE; i<RANGE; i++){
         snprintf(text,TXT_SIZE,"%d",i);
         assert(strtoui(text,NULL,0)==(unsigned int)i);
     }//end for all range
@@ -42,13 +42,6 @@ test(char** tname){
     //too big for long?
     assert(strtoui("121340193481047193741092347298347291391741",NULL,0)==UINT_MAX);
     
-    //and what about negative numbers?
-    //fprintf(stderr,"###%u###\n",-512);
-    //unsigned int t=strtoui("-512",NULL,0);
-    //unsigned int u=(unsigned int)(-512);
-    //assert(t==u);
-    assert(strtoui("-512",NULL,0)==UINT_MAX);
-    
     //return what all we did
-    return 2*RANGE+3;
+    return 2*RANGE+2;
 }//end test

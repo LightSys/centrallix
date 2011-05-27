@@ -54,18 +54,17 @@ int strtoi(const char *nptr, char **endptr, int base){
 
 /**
  * Converts a string to the unsigned integer value represented
- *  by the string, based on strtoul, but returns error on negative 
+ *  by the string, based on strtoul
  * @param nptr   the string
  * @param endptr if not NULL will be assigned the address of the first invalid character
  * @param base   the base to convert with
- * @return the converted int or UINT_MAX on error (including negative)
+ * @return the converted int or UINT_MAX on error
  */
 unsigned int strtoui(const char *nptr, char **endptr, int base){
-    unsigned long tmp;
+    long tmp;
     //try to convert
-    tmp = strtoul(nptr,endptr,base);
-    ///FOR DEBUGING!!!!
-    //if(strtol(nptr,endptr,base)<0)fprintf(stderr,"@@@%lu@@@\n",tmp);
+    tmp = strtoll(nptr,endptr,base);
+    
     //check for errors in conversion to long
     if(tmp == ULONG_MAX){
         return UINT_MAX;
