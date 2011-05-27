@@ -36,7 +36,7 @@ test(char** tname){
     }//end for all range
     
     //long too big for uint
-    snprintf(text,TXT_SIZE,"%ld",UINT_MAX+7L);
+    snprintf(text,TXT_SIZE,"%lld",UINT_MAX+7LL);
     assert(strtoui(text,NULL,0)==UINT_MAX);
     
     //too big for long?

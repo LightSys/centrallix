@@ -36,9 +36,9 @@ test(char** tname){
     }//end for all range
     
     //long too big for int
-    snprintf(text,TXT_SIZE,"%ld",INT_MAX+7L);
+    snprintf(text,TXT_SIZE,"%lld",INT_MAX+7LL);
     assert(strtoi(text,NULL,0)==INT_MAX);
-    snprintf(text,TXT_SIZE,"%ld",INT_MIN-7L);
+    snprintf(text,TXT_SIZE,"%lld",INT_MIN-7LL);
     assert(strtoi(text,NULL,0)==INT_MIN);
     
     //too big for long?
