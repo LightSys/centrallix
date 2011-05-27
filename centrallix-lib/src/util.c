@@ -41,10 +41,10 @@ int strtoi(const char *nptr, char **endptr, int base){
         return INT_MIN;
     }
     //now check for error in conversion to int
-    if(tmp>=INT_MAX){
+    if(tmp>INT_MAX){
         errno = ERANGE;
         return INT_MAX;   
-    }else if(tmp<=INT_MIN){
+    }else if(tmp<INT_MIN){
         errno = ERANGE;
         return INT_MIN;
     }
@@ -70,7 +70,7 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
         return UINT_MAX;
     }
     //now check for error in conversion to int
-    if(tmp>=UINT_MAX){
+    if(tmp>UINT_MAX){
         errno = ERANGE;
         return UINT_MAX;   
     }  
