@@ -452,7 +452,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pSnNode node = NULL;
     char sbuf[256];
     int is_new = 0;
-    pLprPrintQueue pq;
+    pLprPrintQueue pq = NULL;
 
         /** Determine node path and attempt to open node. **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -530,6 +530,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** If print job, make sure it exists first in the printer's queue. **/
 	if (inf->Type == UXP_T_PRINTJOB)
 	    {
+            // TODO Initialize the pq object!
 	    if (uxp_internal_FindQueueItem(pq, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 0)) == NULL)
 	        {
 		nmFree(inf, sizeof(UxpData));

@@ -228,8 +228,8 @@ obj_internal_SortCompare(pObjQuerySort sortinf, int bufferid1, int bufferid2, in
     int r;
     char *ptr1, *ptr2;
     	
-	len1 = (int)(sortinf->SortPtrLen[bufferid1].Items[id1]);
-	len2 = (int)(sortinf->SortPtrLen[bufferid2].Items[id2]);
+	len1 = (intptr_t)(sortinf->SortPtrLen[bufferid1].Items[id1]);
+	len2 = (intptr_t)(sortinf->SortPtrLen[bufferid2].Items[id2]);
 	ptr1 = sortinf->SortPtr[bufferid1].Items[id1];
 	ptr2 = sortinf->SortPtr[bufferid2].Items[id2];
 	n = (len1>len2)?len2:len1;
@@ -328,7 +328,7 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objMultiQuery(%8.8X,%s)... ", (int)session, query);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objMultiQuery(%8.8lX,%s)... ", (long)session, query);
 
     	/** Allocate a query structure **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
@@ -352,7 +352,7 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
 	/** Add to session open queries... **/
 	xaAddItem(&(session->OpenQueries),(void*)this);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE," %8.8X\n", (int)this);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE," %8.8lX\n", (long)this);
 
     return this;
     }
@@ -404,7 +404,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpenQuery(%8.8X:%3.3s:%s,'%s','%s')... ", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf, query, order_by);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpenQuery(%8.8lX:%3.3s:%s,'%s','%s')... ", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf, query, order_by);
 
 	/** Allocate a query object **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
@@ -595,7 +595,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 			}
 		    }
 #endif /* 00 */
-		xaAddItem(this->SortInf->SortPtrLen+0, (void*)len);
+		xaAddItem(this->SortInf->SortPtrLen+0, (void*)(intptr_t)len);
 		objClose(tmp_obj);
 		}
 
@@ -603,8 +603,8 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    n = this->SortInf->SortPtr[0].nItems;
 	    for(i=0;i<n;i++)
 	        {
-		this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (int)(this->SortInf->SortNames[0].Items[i]);
-		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (int)(this->SortInf->SortPtr[0].Items[i]);
+		this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
+		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (intptr_t)(this->SortInf->SortPtr[0].Items[i]);
 		}
 
 	    /** Mergesort the result set. **/
@@ -619,7 +619,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    this->Flags |= OBJ_QY_F_FROMSORT;
 	    }
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8X\n", (int)this);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8lX\n", (long)this);
 
     return this;
 
@@ -684,7 +684,7 @@ objQueryFetch(pObjQuery this, int mode)
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryFetch(%8.8X:%3.3s)...", (int)this, this->Drv->Name);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryFetch(%8.8lX:%3.3s)...", (long)this, this->Drv->Name);
 
     	/** Multiquery? **/
 	if (this->Drv) 
@@ -710,7 +710,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    obj->Pathname->Elements[0] = obj->Pathname->Pathbuf;
 	    obj->Pathname->Elements[1] = obj->Pathname->Pathbuf+2;
 	    obj->Pathname->Elements[2] = obj->Pathname->Pathbuf+11;
-	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
 
@@ -720,7 +720,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
 	    snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
 	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
-	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
 
@@ -799,7 +799,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    break;
 	    }
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 
     return obj;
     }

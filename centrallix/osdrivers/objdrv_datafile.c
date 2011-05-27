@@ -1611,7 +1611,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		return NULL;
 		}
 	    for(i=0;i<=strlen(ptr);i++) dn->Ext[i] = toupper(ptr[i]);
-	    dn->Type = (int)xhLookup(&DAT_INF.TypesByExt, (void*)(dn->Ext));
+	    dn->Type = (intptr_t)xhLookup(&DAT_INF.TypesByExt, (void*)(dn->Ext));
 	    if (!dn->Type)
 	        {
 		mssError(1,"DAT","Unknown datafile type '%s'",ptr);

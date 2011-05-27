@@ -1048,6 +1048,7 @@ int objDebugDate(pDateTime dt);
 int objDataFromString(pObjData pod, int type, char* str);
 int objDataFromStringAlloc(pObjData pod, int type, char* str);
 char* objFormatMoneyTmp(pMoneyType m, char* format);
+char* objFormatDateTmp(pDateTime dt, char* format);
 int objCurrentDate(pDateTime dt);
 int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
 int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);

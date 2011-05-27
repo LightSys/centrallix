@@ -981,10 +981,11 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 		}
 
 	    /** Send ctl message header **/
-	    nht_internal_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%INT>CONTROL MESSAGE</A>\r\n",
+            // TODO Once LONG is implemented in qprintf, use it
+	    nht_internal_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%POS>CONTROL MESSAGE</A>\r\n",
 			    cm->MsgType,
 			    cm->Params.nItems,
-			    (unsigned int)cm);
+			    (unsigned int)(unsigned long)cm);
 
 	    /** Send parameters **/
 	    for(i=0;i<cm->Params.nItems;i++)

@@ -1228,7 +1228,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
                 }
             else 
                 {
-                values[j] = (char*)insbuf->Length;
+                values[j] = (char*)(uintptr_t)insbuf->Length;
                 if(!find_str)
 		    {
 		    find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
@@ -1257,7 +1257,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
             if(values[j] != (char*)-1)
                 {
                 cols[i] = inf->TData->Cols[j];
-                values[i] = (char*)((unsigned int)values[j] + (unsigned int)insbuf->String);
+                values[i] = (char*)((uintptr_t)values[j] + (uintptr_t)insbuf->String);
 		use_quotes[i] = (inf->TData->ColCxTypes[j] != DATA_T_INTEGER);
                 i++;
                 }
