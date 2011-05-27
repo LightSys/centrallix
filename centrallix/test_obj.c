@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <signal.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/util.h"
@@ -1448,6 +1449,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    TESTOBJ.Output = try_file;
 		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
 		    }
+		}
+	    else if (!strcmp(cmdname,"crash"))
+		{
+		raise(SIGSEGV);
 		}
 	    else if (!strcmp(cmdname,"help"))
 		{

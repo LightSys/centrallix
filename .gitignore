@@ -27,9 +27,11 @@ centrallix/man/centrallix.conf.5.gz
 centrallix/man/test_obj.1.gz
 centrallix/osdrivers/*.so
 centrallix/test_obj
+centrallix/test_prt
 centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
-/centrallix-lib/nbproject/private/
-/centrallix/nbproject/private/
-nbproject/
+*/nbproject/
 centrallix-lib/tests/test_*.bin
+centrallix/tests/*.out
+centrallix/tests/*.to.tmp
+

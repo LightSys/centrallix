@@ -604,6 +604,7 @@ mtSigPipe()
 void
 mtSigSegv()
     {
+    MTASK.MTFlags |= MT_F_SEGV;
     if (MTASK.CurrentThread)
         {
 	printf("Thread %s received SIGSEGV, terminating.\n", MTASK.CurrentThread->Name);
@@ -613,7 +614,7 @@ mtSigSegv()
     else
         {
 	printf("Scheduler received SIGSEGV, exiting process immediately!\n");
-	_exit(1);
+	_exit(127);
 	}
     return;
     }
@@ -1456,7 +1457,7 @@ mtSched()
 	    puts("MTASK: Failure: deadlock occurred, aborting...");
             /* Leave a stack trace behind, in case it is useful to someone */
             kill( getpid() , SIGABRT ) ;
-	    exit(1);
+	    exit(125);
 	    }
 
 	/** If locked, we need to continue with that thread. **/
@@ -1640,7 +1641,13 @@ thExit()
 	MTASK.CurrentThread = NULL;
 
 	/** No more threads? **/
-	if (MTASK.nThreads == 0) exit(0);
+	if (MTASK.nThreads == 0)
+	    {
+	    if (MTASK.MTFlags & MT_F_SEGV)
+		exit(126);
+	    else
+		exit(0);
+	    }
 
 	/** Call scheduler **/
 	MTASK.MTFlags &= ~MT_F_LOCKED;
