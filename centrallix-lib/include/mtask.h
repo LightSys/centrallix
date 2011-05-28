@@ -159,7 +159,7 @@
  **END-CVSDATA***********************************************************/
 #ifdef CONTEXTING
 #include <ucontext.h>
-#error "Contexing not yet functional"
+#warning "Contexing not yet functional"
 #else
 #include <setjmp.h>
 #endif
@@ -252,7 +252,11 @@ typedef struct _THR
     void	(*StartFn)();			/* start function */
     void*	StartParam;			/* Param to pass to start fn */
     int		BlkReturnCode;			/* Return code for longjmp */
+#ifdef CONTEXTING
+    ucontext_t  SavedCont;                      /* for context switches */
+#else
     jmp_buf	SavedEnv;			/* for context switches */
+#endif
     unsigned char*  Stack;			/* approx. stack start ptr */
     unsigned char*  StackBottom;		/* stack ptr at last entry into mtSched */
 #ifdef USING_VALGRIND

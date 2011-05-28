@@ -32,3 +32,4 @@ centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
 centrallix/tests/*.out
 centrallix/tests/*.to.tmp
+/centrallix-lib/nbproject/private/

@@ -873,7 +873,11 @@ mtInitialize(int flags, void (*start_fn)())
  *** calls will differ depending on what the calling thread is and what
  *** its current function-nest-level is.
  ***/
+#ifdef CONTEXTING
+static ucontext_t r_saved_cont;
+#else
 static jmp_buf r_saved_env;
+#endif
 static pThread r_newthr;
 static int r_newidx;
 int
@@ -888,12 +892,20 @@ mtRunStartFn(pThread new_thr, int idx)
         /** if thr is null, we prime the jmp buffer **/
         if (!r_newthr)
             {
+#ifdef CONTEXTING
+            if (getcontext(&r_saved_cont) == 0) return 0;
+#else
  	    if (setjmp(r_saved_env) == 0) return 0;
+#endif            
 	    r_mtRunStartFn();
 	    }
         else
 	    {
+#ifdef CONTEXTING
+            setcontext(&r_saved_cont);
+#else
 	    longjmp(r_saved_env,1);
+#endif
 	    }
 
     return 0; /* never returns */
@@ -1088,8 +1100,13 @@ mtSched()
 	    /** to credit time it used before sleeping against its sleep time. **/
 	    if (MTASK.CurrentThread->CntDown < 0) thr_sleep_init = MTASK.CurrentThread;
 
+#ifdef CONTEXTING            
+            /** Save our pace so we can return to caller after scheduling. **/
+	    if (getcontext(&(MTASK.CurrentThread->SavedCont)) != 0) 
+#else
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
+#endif           
 	        {
 		dbg_write(0,"s",1);
 		return 1;
@@ -1504,7 +1521,11 @@ mtSched()
 	else
 	    {
 	    dbg_write(0,"l",1);
+#ifdef CONTEXTING
+            setcontext(&(lowest_run_thr->SavedCont));
+#else            
 	    longjmp(lowest_run_thr->SavedEnv,1);
+#endif            
 	    }
 
     return 1;
