@@ -1106,7 +1106,9 @@ mtSched()
 
 #ifdef CONTEXTING            
             /** Save our place so we can return to caller after scheduling. **/
-	    if (getcontext(&(MTASK.CurrentThread->SavedCont)) != 0) 
+            MTASK.CurrentThread->SavedVal = 0;
+            getcontext(&(MTASK.CurrentThread->SavedCont));
+	    if ( MTASK.CurrentThread->SavedVal != 0) 
 #else
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
@@ -1526,6 +1528,7 @@ mtSched()
 	    {
 	    dbg_write(0,"l",1);
 #ifdef CONTEXTING
+            lowest_run_thr->SavedVal = 1;
             setcontext(&(lowest_run_thr->SavedCont));
 #else            
 	    longjmp(lowest_run_thr->SavedEnv,1);
