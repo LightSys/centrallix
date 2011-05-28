@@ -475,7 +475,8 @@ mboxQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(name) >= 255)
 	    {
 	    mssError(1,"MBOX","Pathname too long for internal representation");
-	    nmFree(inf,sizeof(MboxData));
+	    // TODO Initialize inf - it is never allocated
+            //nmFree(inf,sizeof(MboxData));
 	    return NULL;
 	    }
 	*(ptr++) = '/';

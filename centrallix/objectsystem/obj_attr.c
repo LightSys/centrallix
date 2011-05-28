@@ -11,6 +11,8 @@
 #include "stparse.h"
 #include "expression.h"
 #include "cxlib/magic.h"
+#include "cxlib/util.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -467,7 +469,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    /** What is the max length? **/
 	    ptr = (char*)mssGetParam("textsize");
 	    if (!ptr) maxbytes = 65536;
-	    else maxbytes = strtol(ptr,NULL,0);
+	    else maxbytes = strtoi(ptr,NULL,0);
 
 	    /** Now read the content into the string. **/
 	    bytes = 0;

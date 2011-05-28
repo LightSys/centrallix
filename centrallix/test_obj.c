@@ -6,6 +6,7 @@
 #include <signal.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/util.h"
 #include "obj.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -1329,7 +1330,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		        {
 		        if (*stringval >= '0' && *stringval <= '9')
 		            {
-			    intval = strtol(stringval,NULL,10);
+			    intval = strtoi(stringval,NULL,10);
 			    objSetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval));
 			    }
 		        else

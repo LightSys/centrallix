@@ -17,6 +17,7 @@
 #include "cxlib/xstring.h"
 #include "st_node.h"
 #include "stparse.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -143,7 +144,7 @@ typedef struct _DP
 
 /*** Structure used for row information ***/
 typedef struct
-    {
+    i
     }
     DatRowInfo, *pDatRowInfo;
 
@@ -1768,7 +1769,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    if (inf->Node->Flags & DAT_NODE_F_ROWIDKEY)
 	        {
-		inf->RowID = strtol(inf->RowColPtr,NULL,10);
+		inf->RowID = strtoi(inf->RowColPtr,NULL,10);
 		inf->Row = dat_internal_GetRow(inf->Node, inf->RowID);
 		if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
 		    {
@@ -2121,7 +2122,7 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Get the rowid and fetch the row **/
-	inf->RowID = strtol(inf->RowColPtr,NULL,10);
+	inf->RowID = strtoi(inf->RowColPtr,NULL,10);
 	inf->Row = dat_internal_GetRow(inf->Node, inf->RowID);
 	if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
 	    {

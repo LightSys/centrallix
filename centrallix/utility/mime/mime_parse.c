@@ -452,13 +452,14 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
     {
     char *ptr, *cptr;
     char maintype[32], tmpname[128];
-    int len,i;
+    int i;
+    ptrdiff_t len;
 
     /** Get the disp main type and subtype **/
     if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
     if ((cptr=strchr(ptr,'/')))
 	{
-	len = (int)cptr - (int)ptr;
+	len = cptr - ptr;
 	if (len>31) len=31;
 	strncpy(maintype, ptr, len);
 	maintype[len] = 0;

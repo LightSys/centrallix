@@ -11,7 +11,7 @@
 #include <time.h>
 #include <db.h>
 #include "centrallix.h"
-
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -221,9 +221,9 @@ berkInternalHexToKey(void* dest, char* src, int dL, int sL)
     for(i=0;src[i]&&i<sL;i+=2)
 	{
 	c[0]  = src[i];
-	value = strtol(c, NULL, 16) << 4;
+	value = strtoi(c, NULL, 16) << 4;
 	c[0]  = src[i+1];
-	value+= strtol(c, NULL, 16);
+	value+= strtoi(c, NULL, 16);
 	((char*)dest)[((int)(i/2))]=(char)value;
 	}
     if(i > sL)

@@ -321,7 +321,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrGetBackground(tree, NULL, 0, main_bg, sizeof(main_bg));
 
 	/** Military Time? **/
-	if (wgtrGetPropertyValue(tree,"hrtype",DATA_T_INTEGER,POD(&ptr)) == 0 && (int)ptr == 24)
+	if (wgtrGetPropertyValue(tree,"hrtype",DATA_T_INTEGER,POD(&ptr)) == 0 && (intptr_t)ptr == 24)
 	    {
 	    miltime = 1;
 	    showampm = 0;
@@ -346,11 +346,11 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 	        strcpy(fgcolor2,"#777777");
 	    if (wgtrGetPropertyValue(tree,"shadowx",DATA_T_INTEGER,POD(&ptr)) == 0)
-	        shadowx = (int)ptr;
+	        shadowx = (intptr_t)ptr;
 	    else
 	        shadowx = 1;
 	    if (wgtrGetPropertyValue(tree,"shadowy",DATA_T_INTEGER,POD(&ptr)) == 0)
-	        shadowy = (int)ptr;
+	        shadowy = (intptr_t)ptr;
 	    else
 	        shadowy = 1;
 	    }
@@ -361,7 +361,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Get text size **/
 	if (wgtrGetPropertyValue(tree,"size",DATA_T_INTEGER,POD(&ptr)) == 0)
-	    size = (int)ptr;
+	    size = (intptr_t)ptr;
 
 	/** Movable? **/
 	if (wgtrGetPropertyValue(tree,"moveable",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))

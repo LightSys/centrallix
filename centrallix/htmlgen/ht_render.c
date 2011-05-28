@@ -1177,7 +1177,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 #endif
 
 	/** Save the current va_list state so we can retry it. **/
-	orig_va = va;
+	va_copy(orig_va, va);
 
 	/** Attempt to print the thing to the tmpbuf. **/
 	while(1)

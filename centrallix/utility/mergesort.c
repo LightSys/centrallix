@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "cxlib/mtask.h"
+#include "cxlib/newmalloc.h"
 #include "cxlib/mtsession.h"
 #include "mergesort.h"
 

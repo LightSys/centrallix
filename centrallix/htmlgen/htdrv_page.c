@@ -764,7 +764,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Cx windows attract to browser edges? if so, by how much **/
 	if (wgtrGetPropertyValue(tree,"attract",DATA_T_INTEGER,POD(&ptr)) == 0)
-	    attract = (int)ptr;
+	    attract = (intptr_t)ptr;
 
 	show_diag = htrGetBoolean(tree, "show_diagnostics", 0);
 

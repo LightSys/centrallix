@@ -371,7 +371,7 @@ http_internal_GetPageStream(pHttpData inf)
 	{
 	inf->Socket=netConnectTCP(inf->ProxyServer,inf->ProxyPort,0);
 	if(!inf->Socket)
-	    return (int)http_internal_Cleanup(inf,"could not connect to proxy server");
+	    return (intptr_t)http_internal_Cleanup(inf,"could not connect to proxy server");
 	if(inf->Port[0])
 	    {
 	    snprintf(buf,256,"GET http://%s:%s%s HTTP/1.0\r\n",inf->Server,inf->Port,fullpath);
@@ -406,7 +406,7 @@ http_internal_GetPageStream(pHttpData inf)
 	else
 	    inf->Socket=netConnectTCP(inf->Server,"80",0);
 	if(!inf->Socket)
-	    return (int)http_internal_Cleanup(inf,"could not connect to server");
+	    return (intptr_t)http_internal_Cleanup(inf,"could not connect to server");
 	if(HTTP_OS_DEBUG) printf("connected\n");
 	sprintf(buf,"GET %s HTTP/1.0\r\n",fullpath);
 	if(HTTP_OS_DEBUG) printf("%s\n",buf);
@@ -478,7 +478,7 @@ http_internal_GetPageStream(pHttpData inf)
 #define COPY_FROM_PMATCH(p,m) \
 			if (p) nmSysFree(p); \
 			(p)=(char*)nmSysMalloc(pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
-			if(!(p)) return (int)http_internal_Cleanup(inf,"malloc error");\
+			if(!(p)) return (intptr_t)http_internal_Cleanup(inf,"malloc error");\
 			memset((p),0,pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
 			strncpy((p),ptr2+pmatch[(m)].rm_so,pmatch[(m)].rm_eo-pmatch[(m)].rm_so);
 
@@ -488,7 +488,7 @@ http_internal_GetPageStream(pHttpData inf)
 			    {
 			    if (inf->Port) nmSysFree(inf->Port);
 			    inf->Port=(char*)nmSysStrdup("");
-			    if(!inf->Port) return (int)http_internal_Cleanup(inf,"malloc error");
+			    if(!inf->Port) return (intptr_t)http_internal_Cleanup(inf,"malloc error");
 			    }
 			else
 			    {
@@ -561,7 +561,7 @@ http_internal_GetPageStream(pHttpData inf)
 			    {//don't need to check AllowSubDirs here -- SubCnt==1 if !AllowSubDirs
 			    if(alloc) nmSysFree(ptr);
 			    mlxCloseSession(lex);
-			    return (int)http_internal_Cleanup(inf,"object not accessible on server");   //failure
+			    return (intptr_t)http_internal_Cleanup(inf,"object not accessible on server");   //failure
 			    }
 			else
 			    {

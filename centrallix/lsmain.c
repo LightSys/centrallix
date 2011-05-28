@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#ifdef HAVE_LIBGEN_H
+//#ifdef HAVE_LIBGEN_H
 #include <libgen.h>
-#endif
+//#endif
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>

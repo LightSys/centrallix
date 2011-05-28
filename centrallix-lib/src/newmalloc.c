@@ -614,13 +614,13 @@ nmSysMalloc(int size)
     {
 #ifdef NM_USE_SYSMALLOC
     char* ptr;
-    ptr = (char*)nmDebugMalloc(size+4);
+    ptr = (char*)nmDebugMalloc(size+sizeof(int));
     if (!ptr) return NULL;
     *(int*)ptr = size;
 #ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
 #endif
-    return (void*)(ptr+4);
+    return (void*)(ptr+sizeof(int));
 #else
     return (void*)nmDebugMalloc(size);
 #endif
@@ -631,11 +631,11 @@ nmSysFree(void* ptr)
     {
 #ifdef NM_USE_SYSMALLOC
     int size;
-    size = *(int*)(((char*)ptr)-4);
+    size = *(int*)(((char*)ptr)-sizeof(int));
 #ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
 #endif
-    nmDebugFree(((char*)ptr)-4);
+    nmDebugFree(((char*)ptr)-sizeof(int));
 #else
     nmDebugFree(ptr);
 #endif
@@ -649,8 +649,8 @@ nmSysRealloc(void* ptr, int newsize)
     int size;
     char* newptr;
     if (!ptr) return nmSysMalloc(newsize);
-    size = *(int*)(((char*)ptr)-4);
-    newptr = (char*)nmDebugRealloc((((char*)ptr)-4), newsize+4);
+    size = *(int*)(((char*)ptr)-sizeof(int));
+    newptr = (char*)nmDebugRealloc((((char*)ptr)-sizeof(int)), newsize+sizeof(int));
     if (!newptr) return NULL;
 #ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
@@ -659,7 +659,7 @@ nmSysRealloc(void* ptr, int newsize)
 #ifdef SIZED_BLK_COUNTING
     if (newsize > 0 && newsize <= MAX_SIZE) nmsys_outcnt[newsize]++;
 #endif
-    return (void*)(newptr+4);
+    return (void*)(newptr+sizeof(int));
 #else
     return (void*)nmDebugRealloc(ptr,newsize);
 #endif

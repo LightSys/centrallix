@@ -8,6 +8,8 @@
 #include "stparse.h"
 #include "hints.h"
 #include "ptod.h"
+#include "cxlib/util.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -825,7 +827,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 		    for(i=0;i<ph->EnumList.nItems;i++)
 			{
 			if (ptod->DataType == DATA_T_INTEGER)
-			    found = (ptod->Data.Integer == strtol(ph->EnumList.Items[i], NULL, 10));
+			    found = (ptod->Data.Integer == strtoi(ph->EnumList.Items[i], NULL, 10));
 			else
 			    found = !strcmp(ptod->Data.String, ph->EnumList.Items[i]);
 			if (found) break;

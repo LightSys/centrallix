@@ -9,6 +9,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 /** module definintions **/
 #include "centrallix.h"
 #include "config.h"
@@ -262,7 +263,7 @@ sysAddAttrib(pSysInfoData sid, char* attrname, int type)
 	    }
 
 	/** Add the type **/
-	xaAddItem(sid->AttrTypes, (void*)type);
+	xaAddItem(sid->AttrTypes, (void*)(intptr_t)type);
 
     return 0;
     }
@@ -494,7 +495,7 @@ sysLoadAttrsArray(pSysData inf)
 		    t = -1;
 		else
 		    t = inf->Sid->GetAttrTypeFn(inf->Sid->Context, (inf->Flags & SYS_F_SUBOBJ)?inf->Name:NULL, xa->Items[i]);
-		xaAddItem(txa, (void*)t);
+		xaAddItem(txa, (void*)(intptr_t)t);
 		}
 	    }
 	inf->AttrTypesArray = txa;
@@ -901,7 +902,7 @@ sysGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    {
 	    if (!strcmp(inf->AttrsArray->Items[i], attrname))
 		{
-		t = (int)(inf->AttrTypesArray->Items[i]);
+		t = (intptr_t)(inf->AttrTypesArray->Items[i]);
 		return t;
 		}
 	    }
@@ -947,7 +948,7 @@ sysGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    {
 	    if (!strcmp(inf->AttrsArray->Items[i], attrname))
 		{
-		t = (int)(inf->AttrTypesArray->Items[i]);
+		t = (intptr_t)(inf->AttrTypesArray->Items[i]);
 		if (t != datatype)
 		    {
 		    mssError(1,"SYS","Type mismatch requesting attribute '%s'", attrname);
@@ -1255,7 +1256,7 @@ sys_internal_MtaskAttrValue(void* ctx, char* objname, char* attrname, void* val_
 
 	sys_internal_MtaskLoad();
 	if (!objname) return -1;
-	n = strtol(objname, NULL, 16);
+	n = strtoi(objname, NULL, 16);
 	if (n < 0 || n >= SYS_INF.sys_thr_cnt) return -1;
 	if (!strcmp(attrname, "description"))
 	    {

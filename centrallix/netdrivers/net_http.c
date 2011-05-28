@@ -981,10 +981,11 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 		}
 
 	    /** Send ctl message header **/
-	    nht_internal_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%INT>CONTROL MESSAGE</A>\r\n",
+            // TODO Once LONG is implemented in qprintf, use it
+	    nht_internal_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%POS>CONTROL MESSAGE</A>\r\n",
 			    cm->MsgType,
 			    cm->Params.nItems,
-			    (unsigned int)cm);
+			    (unsigned int)(unsigned long)cm);
 
 	    /** Send parameters **/
 	    for(i=0;i<cm->Params.nItems;i++)
@@ -1280,7 +1281,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    find_inf = stLookup_ne(url_inf,"ls__waitid");
 	    if (find_inf)
 	        {
-		tid = strtol(find_inf->StrVal,NULL,0);
+		tid = strtoi(find_inf->StrVal,NULL,0);
 		nht_internal_WaitTrigger(nsess,tid);
 		}
 	    }
@@ -1415,12 +1416,12 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		else
 		    {
 		    client_h = client_w = 0;
-		    /*client_w = strtol(gptr,&gptr,10);
+		    /*client_w = strtoi(gptr,&gptr,10);
 		    if (client_w < 0) client_w = 0;
 		    if (client_w > 10000) client_w = 10000;
 		    if (*gptr == 'x')
 			{
-			client_h = strtol(gptr+1,NULL,10);
+			client_h = strtoi(gptr+1,NULL,10);
 			if (client_h < 0) client_h = 0;
 			if (client_h > 10000) client_h = 10000;
 			}*/
@@ -1650,7 +1651,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    /** row limit? **/
 	    rowlimit = 0;
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__rowcount"),&ptr) >= 0)
-		rowlimit = strtol(ptr, NULL, 10);
+		rowlimit = strtoi(ptr, NULL, 10);
 
 	    /** Get the SQL **/
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
@@ -1774,7 +1775,7 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	    type = objGetAttrType(target_obj, sub_inf->Name);
 	    if (type == DATA_T_INTEGER)
 	        {
-		v = strtol(sub_inf->StrVal,NULL,10);
+		v = strtoi(sub_inf->StrVal,NULL,10);
 		objSetAttrValue(target_obj, sub_inf->Name, DATA_T_INTEGER,POD(&v));
 		}
 	    else if (type == DATA_T_STRING)
