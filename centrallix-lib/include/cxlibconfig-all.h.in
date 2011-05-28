@@ -1,5 +1,8 @@
 /* include/cxlibconfig-all.h.in.  Generated from configure.ac by autoheader.  */
 
+/* use get/set context */
+#undef CONTEXTING
+
 /* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
 #undef CXLIB_SECURITY_HARDENING
 
@@ -98,6 +101,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION

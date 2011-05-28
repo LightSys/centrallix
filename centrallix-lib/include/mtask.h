@@ -157,8 +157,12 @@
 
 
  **END-CVSDATA***********************************************************/
-
+#ifdef CONTEXTING
+#include <ucontext.h>
+#error "Contexing not yet functional"
+#else
 #include <setjmp.h>
+#endif
 #include <sys/types.h>
 #include <grp.h>
 #include <sys/socket.h>

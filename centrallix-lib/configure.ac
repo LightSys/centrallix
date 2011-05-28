@@ -50,6 +50,9 @@ CHECK_MTASK_DEBUG
 dnl Enable debugging
 CHECK_DEBUG
 
+dnl Enable context switching
+CHECK_CONTEXTING
+
 dnl Check security hardening facilities
 CHECK_HARDENING
 
