@@ -254,6 +254,7 @@ typedef struct _THR
     int		BlkReturnCode;			/* Return code for longjmp */
 #ifdef CONTEXTING
     ucontext_t  SavedCont;                      /* for context switches */
+    volatile int SavedVal;                /* value that would be set/returned by jmp*/
 #else
     jmp_buf	SavedEnv;			/* for context switches */
 #endif

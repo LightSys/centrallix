@@ -875,6 +875,7 @@ mtInitialize(int flags, void (*start_fn)())
  ***/
 #ifdef CONTEXTING
 static ucontext_t r_saved_cont;
+static volatile int r_saved_val;
 #else
 static jmp_buf r_saved_env;
 #endif
@@ -893,7 +894,9 @@ mtRunStartFn(pThread new_thr, int idx)
         if (!r_newthr)
             {
 #ifdef CONTEXTING
-            if (getcontext(&r_saved_cont) == 0) return 0;
+            r_saved_val = 0;
+            getcontext(&r_saved_cont);
+            if ( r_saved_val == 0) return 0;
 #else
  	    if (setjmp(r_saved_env) == 0) return 0;
 #endif            
@@ -902,6 +905,7 @@ mtRunStartFn(pThread new_thr, int idx)
         else
 	    {
 #ifdef CONTEXTING
+            r_saved_val = 1;
             setcontext(&r_saved_cont);
 #else
 	    longjmp(r_saved_env,1);
@@ -1101,7 +1105,7 @@ mtSched()
 	    if (MTASK.CurrentThread->CntDown < 0) thr_sleep_init = MTASK.CurrentThread;
 
 #ifdef CONTEXTING            
-            /** Save our pace so we can return to caller after scheduling. **/
+            /** Save our place so we can return to caller after scheduling. **/
 	    if (getcontext(&(MTASK.CurrentThread->SavedCont)) != 0) 
 #else
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
