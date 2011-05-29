@@ -433,16 +433,17 @@ test_install: test_obj test_prt
 test: test_install $(TOTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for TOFILE in $(TOTESTFILES); do \
+	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
 	    	TOBASE="$${TOFILE%.to}"; \
 		TONAME=$$(cat $$TOBASE.desc); \
 		TOSIMPLE="$${TOBASE#tests/test_}"; \
-	    	echo "output $$PWD/$$TOBASE.out" > "$$TOBASE.to.tmp"; \
-		cat "$$TOFILE" >> "$$TOBASE.to.tmp"; \
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to.tmp"; \
-		if [ "$$?" -gt 120 ]; then \
+	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3; \
+		RET="$$?"; \
+		if [ "$$RET" -eq 142 ]; then \
+		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "LOCKUP"; \
+		elif [ "$$RET" -gt 120 ]; then \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "CRASH"; \
 		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "Pass"; \
@@ -450,7 +451,6 @@ test: test_install $(TOTESTFILES)
 		    diff -U3 -N "$$TOBASE.cmp" "$$TOBASE.out"; \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "FAIL"; \
 		fi; \
-		/bin/rm -f "$$PWD/$$TOBASE.to.tmp"; \
 	    fi \
 	done 
 
