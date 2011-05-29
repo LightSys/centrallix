@@ -1,0 +1,52 @@
+$Version=2$
+Datatypes "system/report"
+    {
+    title = "Datatypes Report - CSV";
+
+    document_format="text/csv";
+
+    resolution = 300;
+    pagewidth=85;
+    pageheight=66;
+    marginleft=2.5;
+    marginright=2.5;
+    margintop=3;
+    marginbottom=3;
+
+    dt_qy "report/query"
+	{
+	sql = "select * from /tests/Datatypes.csv/rows";
+	}
+
+    dt_table "report/table"
+	{
+	source = dt_qy;
+	width=80;
+	height=0;
+	columns=3;
+	widths=10,15,53;
+	colsep=1;
+	margintop=0;
+	marginbottom=0;
+
+	dt_header "report/table-row"
+	    {
+	    margintop=0;
+	    marginbottom=0;
+	    bottomborder=1;
+	    header=yes;
+	    dt_hdr1 "report/table-cell" { value = runserver("Name"); }
+	    dt_hdr2 "report/table-cell" { value = runserver("Integer"); }
+	    dt_hdr3 "report/table-cell" { value = runserver("String"); }
+	    }
+
+	dt_row "report/table-row"
+	    {
+	    margintop=0;
+	    marginbottom=0;
+	    dt_data1 "report/table-cell" { value = runserver(:dt_qy:name); }
+	    dt_data2 "report/table-cell" { value = runserver(:dt_qy:f_integer); }
+	    dt_data3 "report/table-cell" { value = runserver(:dt_qy:f_string); }
+	    }
+	}
+    }
