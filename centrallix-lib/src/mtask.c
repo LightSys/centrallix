@@ -311,6 +311,11 @@ int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
 
+#ifdef CONTEXTING
+void thKickStart(int thread);
+void thCleanUp();
+#endif
+
 #define MAX_EVENTS		256
 #define MAX_THREADS		256
 #define MAX_STACK		(31 * 2048)
@@ -870,9 +875,15 @@ mtInitialize(int flags, void (*start_fn)())
 	signal(SIGPIPE, mtSigPipe);
 	signal(SIGSEGV, mtSigSegv);
 
+#ifdef CONTEXTING
         //return here when we get "lost"
         getcontext(&MTASK.DefaultContext);
-
+        MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        memset(MTASK.DefaultContext.uc_stack.ss_sp,0,MAX_STACK);
+        MTASK.DefaultContext.uc_stack.ss_size=MAX_STACK;        
+        makecontext(&MTASK.DefaultContext,thCleanUp,0);
+#endif
+        
 	/** Now start the real start function. **/
 	MTASK.CurrentThread = NULL;
 	mtSched();
@@ -2471,6 +2482,26 @@ thExcessiveRecursion()
 #endif
     }
 
+#ifdef CONTEXTING
+/**
+ * performs the real function start,
+ * by grabbing the thread info from the table
+ * @param thread thread to kick
+ */
+void thKickStart(int thread){
+    //actually call the thread
+    MTASK.ThreadTable[thread]->StartFn(MTASK.ThreadTable[thread]->StartParam);
+}//end thKickStart
+
+/**
+ * finished threads will end up back into this context,
+ * therefor, we should clean it of the threads
+ */
+void thCleanUp(){
+    thKill(thCurrent());
+    mtSched();
+}//end thCleanUp
+#endif
 
 /*** FDSETOPTIONS sets options on an open file descriptor.  These options
  *** are FD_UF_xxx in mtask.h.
