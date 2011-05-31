@@ -299,6 +299,7 @@
 
  **END-CVSDATA***********************************************************/
 
+#include "cxlibconfig-all.h"
 #include "newmalloc.h"
 #include "mtask.h"
 #include "xstring.h"
@@ -820,8 +821,13 @@ mtInitialize(int flags, void (*start_fn)())
 	    MTASK.CurrentThread->SecContext.nGroups = 0;
 	if (MTASK.CurrentThread->SecContext.nGroups > sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t))
 	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
-	MTASK.CurrentThread->Stack = NULL;
+#ifdef CONTEXTING
+        MTASK.CurrentThread->SavedVal = 0;
+        MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));
+#else
+        MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
+#endif
 #ifdef USING_VALGRIND
 	MTASK.CurrentThread->ValgrindStackID = 0;
 #endif
@@ -875,7 +881,7 @@ mtInitialize(int flags, void (*start_fn)())
  *** its current function-nest-level is.
  ***/
 #ifdef CONTEXTING
-static ucontext_t r_saved_cont;
+static ucontext_t *r_saved_cont;
 static volatile int r_saved_val;
 #else
 static jmp_buf r_saved_env;
@@ -896,18 +902,25 @@ mtRunStartFn(pThread new_thr, int idx)
             {
 #ifdef CONTEXTING
             r_saved_val = 0;
-            getcontext(&r_saved_cont);
+            r_saved_cont = nmMalloc(sizeof(ucontext_t));
+            memset(r_saved_cont,0,sizeof(ucontext_t));
+            getcontext(r_saved_cont);
+            if(r_saved_cont->uc_stack.ss_sp==NULL){
+                r_saved_cont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+                memset(r_saved_cont->uc_stack.ss_sp,0,MAX_STACK);
+                r_saved_cont->uc_stack.ss_size=MAX_STACK;
+            }
             if ( r_saved_val == 0) return 0;
 #else
  	    if (setjmp(r_saved_env) == 0) return 0;
-#endif            
-	    r_mtRunStartFn();
+#endif           
+            r_mtRunStartFn();
 	    }
         else
 	    {
 #ifdef CONTEXTING
             r_saved_val = 1;
-            setcontext(&r_saved_cont);
+            setcontext(r_saved_cont);
 #else
 	    longjmp(r_saved_env,1);
 #endif
@@ -928,6 +941,18 @@ r_mtRun_PokeStack()
 int
 r_mtRun_Spacer()
     {
+#ifdef CONTEXTING
+    //set up the context which we are about to switch to
+    //if(r_newthr->SavedCont->uc_stack.ss_sp==NULL){
+        r_newthr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        r_newthr->SavedCont->uc_stack.ss_size=MAX_STACK;
+        memset(r_newthr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
+        //r_newthr->SavedCont->uc_link = MTASK.ThreadTable[0]->SavedCont;
+        getcontext(r_newthr->SavedCont);
+        makecontext(r_newthr->SavedCont,r_newthr->StartFn,1,r_newthr->StartParam);
+    //}//end if need make context
+    setcontext(r_newthr->SavedCont);
+#else
     /** I know this issues a compiler warning.  This is here because
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
@@ -947,6 +972,7 @@ r_mtRun_Spacer()
 #endif
     if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
+#endif //contexting
     return 0; /* never returns */
     }
 
@@ -958,9 +984,10 @@ r_mtRunStartFn()
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy.
      **/
+#ifndef CONTEXTING
     char buf[MAX_STACK];
     buf[MAX_STACK-1] = buf[MAX_STACK-1];
-
+#endif
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
     /*r_mtRunStartFn();*/
@@ -1077,7 +1104,9 @@ mtSched()
 	tx=mtRealTicks();
 	if (MTASK.CurrentThread != NULL)
 	    {
+#ifndef CONTEXTING
 	    MTASK.CurrentThread->StackBottom = (unsigned char*)x;
+#endif
 	    /** If no tick and thread exec'able, return now; 0 means 'didnt run' **/
 	    /** If caller of mtSched sets status to runnable instead of **/
 	    /** executing,then this code will force a scheduler 'round' **/
@@ -1108,7 +1137,7 @@ mtSched()
 #ifdef CONTEXTING            
             /** Save our place so we can return to caller after scheduling. **/
             MTASK.CurrentThread->SavedVal = 0;
-            getcontext(&(MTASK.CurrentThread->SavedCont));
+            getcontext((MTASK.CurrentThread->SavedCont));
 	    if ( MTASK.CurrentThread->SavedVal != 0) 
 #else
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
@@ -1530,7 +1559,7 @@ mtSched()
 	    dbg_write(0,"l",1);
 #ifdef CONTEXTING
             lowest_run_thr->SavedVal = 1;
-            setcontext(&(lowest_run_thr->SavedCont));
+            setcontext(lowest_run_thr->SavedCont);
 #else            
 	    longjmp(lowest_run_thr->SavedEnv,1);
 #endif            
@@ -1574,8 +1603,12 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->SecContext.GroupID = MTASK.CurGroupID;
 	thr->SecContext.nGroups = MTASK.CurNGroups;
 	memcpy(thr->SecContext.GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t));
+#ifdef CONTEXTING
+        thr->SavedCont = nmMalloc(sizeof(ucontext_t));
+#else
 	thr->Stack = NULL;
 	thr->StackBottom = NULL;
+#endif
 #ifdef USING_VALGRIND
 	thr->ValgrindStackID = 0;
 #endif
@@ -2407,8 +2440,12 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
+#ifndef CONTEXTING
     unsigned char buf[1];
     return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+#else
+    return 0;
+#endif
     }
 
 

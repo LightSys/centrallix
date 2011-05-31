@@ -253,13 +253,13 @@ typedef struct _THR
     void*	StartParam;			/* Param to pass to start fn */
     int		BlkReturnCode;			/* Return code for longjmp */
 #ifdef CONTEXTING
-    ucontext_t  SavedCont;                      /* for context switches */
+    ucontext_t  *SavedCont;                      /* for context switches */
     volatile int SavedVal;                /* value that would be set/returned by jmp*/
 #else
     jmp_buf	SavedEnv;			/* for context switches */
-#endif
     unsigned char*  Stack;			/* approx. stack start ptr */
     unsigned char*  StackBottom;		/* stack ptr at last entry into mtSched */
+#endif//end CONTEXTING
 #ifdef USING_VALGRIND
     unsigned int    ValgrindStackID;
 #endif
