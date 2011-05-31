@@ -1633,9 +1633,8 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
         thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
         memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         thr->SavedCont->uc_stack.ss_size=MAX_STACK;
+        //what to do when finished
         thr->SavedCont->uc_link = &MTASK.DefaultContext;
-        //configure to run with the stack
-        makecontext(thr->SavedCont,thr->StartFn,1,thr->StartParam);
 #else
 	thr->Stack = NULL;
 	thr->StackBottom = NULL;
@@ -1657,6 +1656,8 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	    if (!MTASK.ThreadTable[i])
 	        {
 		MTASK.ThreadTable[i] = thr;
+                //configure to run with the stack
+                makecontext(thr->SavedCont,(void (*)(void))thKickStart,1,i);
 		break;
 		}
 	    }

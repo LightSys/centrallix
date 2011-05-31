@@ -159,7 +159,7 @@
  **END-CVSDATA***********************************************************/
 #ifdef CONTEXTING
 #include <ucontext.h>
-#warning "Contexing not yet functional"
+#warning "Contexing leaks memory"
 #else
 #include <setjmp.h>
 #endif
