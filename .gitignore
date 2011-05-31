@@ -11,6 +11,7 @@ centrallix-lib/libCentrallix.so.*
 centrallix-lib/libStParse.a
 centrallix-lib/libStParse.so
 centrallix-lib/libStParse.so.*
+centrallix-lib/tests/*.bin
 *.o
 *.lo
 stamp-h

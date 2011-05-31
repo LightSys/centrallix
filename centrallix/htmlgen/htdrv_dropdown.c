@@ -215,6 +215,13 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		}
 		type = objGetAttrType(qy_obj, attr);
 		rval = objGetAttrValue(qy_obj, attr, type,&od);
+
+                // Check if anything was returned
+                if(rval != 0){
+                    objClose(qy_obj);
+                    continue;
+                }
+                
 		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
 		    str = objDataToStringTmp(type, (void*)(&od), DATA_F_QUOTED);
 		} else {
