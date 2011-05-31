@@ -343,6 +343,9 @@ typedef struct _MTS
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
     XHashTable	SignalHandlers;
+#ifdef CONTEXTING
+    ucontext_t  DefaultContext;
+#endif
     }
     MTSystem, *pMTSystem;
 
@@ -824,6 +827,11 @@ mtInitialize(int flags, void (*start_fn)())
 #ifdef CONTEXTING
         MTASK.CurrentThread->SavedVal = 0;
         MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));
+        memset(MTASK.CurrentThread->SavedCont,0,sizeof(ucontext_t));
+        getcontext(MTASK.CurrentThread->SavedCont);
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        memset(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_size=MAX_STACK;
 #else
         MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
@@ -854,13 +862,16 @@ mtInitialize(int flags, void (*start_fn)())
 #else
 	MTASK.TicksPerSec = CLK_TCK;
 #endif
-	
+
 	/** Initialize the thread creation jmp buffer **/
 	mtRunStartFn(NULL,0);
 
 	/** Initialize signals **/
 	signal(SIGPIPE, mtSigPipe);
 	signal(SIGSEGV, mtSigSegv);
+
+        //return here when we get "lost"
+        getcontext(&MTASK.DefaultContext);
 
 	/** Now start the real start function. **/
 	MTASK.CurrentThread = NULL;
@@ -905,11 +916,9 @@ mtRunStartFn(pThread new_thr, int idx)
             r_saved_cont = nmMalloc(sizeof(ucontext_t));
             memset(r_saved_cont,0,sizeof(ucontext_t));
             getcontext(r_saved_cont);
-            if(r_saved_cont->uc_stack.ss_sp==NULL){
-                r_saved_cont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
-                memset(r_saved_cont->uc_stack.ss_sp,0,MAX_STACK);
-                r_saved_cont->uc_stack.ss_size=MAX_STACK;
-            }
+            r_saved_cont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+            memset(r_saved_cont->uc_stack.ss_sp,0,MAX_STACK);
+            r_saved_cont->uc_stack.ss_size=MAX_STACK;
             if ( r_saved_val == 0) return 0;
 #else
  	    if (setjmp(r_saved_env) == 0) return 0;
@@ -929,7 +938,7 @@ mtRunStartFn(pThread new_thr, int idx)
     return 0; /* never returns */
     }
 
-
+#ifndef CONTEXTING
 int
 r_mtRun_PokeStack()
     {
@@ -937,20 +946,19 @@ r_mtRun_PokeStack()
     buf[0] = buf[0];
     return 0;
     }
+#endif
 
 int
 r_mtRun_Spacer()
     {
 #ifdef CONTEXTING
     //set up the context which we are about to switch to
-    //if(r_newthr->SavedCont->uc_stack.ss_sp==NULL){
-        r_newthr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
-        r_newthr->SavedCont->uc_stack.ss_size=MAX_STACK;
-        memset(r_newthr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
-        //r_newthr->SavedCont->uc_link = MTASK.ThreadTable[0]->SavedCont;
-        getcontext(r_newthr->SavedCont);
-        makecontext(r_newthr->SavedCont,r_newthr->StartFn,1,r_newthr->StartParam);
-    //}//end if need make context
+    getcontext(r_newthr->SavedCont);
+    r_newthr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+    r_newthr->SavedCont->uc_stack.ss_size=MAX_STACK;
+    memset(r_newthr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
+    r_newthr->SavedCont->uc_link = &MTASK.DefaultContext;
+    makecontext(r_newthr->SavedCont,r_newthr->StartFn,1,r_newthr->StartParam);
     setcontext(r_newthr->SavedCont);
 #else
     /** I know this issues a compiler warning.  This is here because
@@ -1092,10 +1100,11 @@ mtSched()
     int k = 0;
     int arg;
     socklen_t len;
+#ifndef CONTEXTING
     int x[1];
-
+    
     	dbg_write(0,"x",1);
-
+#endif
 	/** Is scheduler locked? **/
 	if (MTASK.MTFlags & MT_F_LOCKED) locked_thr = MTASK.CurrentThread;
 
@@ -1604,7 +1613,18 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->SecContext.nGroups = MTASK.CurNGroups;
 	memcpy(thr->SecContext.GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t));
 #ifdef CONTEXTING
+        //alocate context
         thr->SavedCont = nmMalloc(sizeof(ucontext_t));
+        memset(thr->SavedCont,0,sizeof(ucontext_t));
+        //get a context
+        getcontext(thr->SavedCont);
+        //alocate a stack
+        thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
+        thr->SavedCont->uc_stack.ss_size=MAX_STACK;
+        thr->SavedCont->uc_link = &MTASK.DefaultContext;
+        //configure to run with the stack
+        makecontext(thr->SavedCont,thr->StartFn,1,thr->StartParam);
 #else
 	thr->Stack = NULL;
 	thr->StackBottom = NULL;
@@ -1765,7 +1785,10 @@ thKill(pThread thr)
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
 #endif
-
+        //Free the stack
+        nmFree(thr->SavedCont->uc_stack.ss_sp,thr->SavedCont->uc_stack.ss_size);
+        //Free the context
+        nmFree(thr->SavedCont,sizeof(ucontext_t));
 	/** Free the structure. **/
 	nmFree(thr, sizeof(Thread));
 
