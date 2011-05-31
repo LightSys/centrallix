@@ -163,7 +163,7 @@ install: all
 test:	$(TESTPROGS)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for PROG in $(( ls $(TESTPROGS) ); do \
+	@for PROG in $$( ls $(TESTPROGS) ); do \
 	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
 		$$PROG; \
 	    fi \
@@ -174,7 +174,7 @@ valtest:	$(TESTPROGS)
 	@printf "Running Regression Tests Under Valgrind...\n"
 	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for PROG in $(( ls $(TESTPROGS) ); do \
+	@for PROG in $$( ls $(TESTPROGS) ); do \
 	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
 		valgrind -q $$PROG; \
 	    fi \
