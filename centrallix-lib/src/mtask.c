@@ -836,7 +836,7 @@ mtInitialize(int flags, void (*start_fn)())
         getcontext(MTASK.CurrentThread->SavedCont);
         //where to go when were finished
         MTASK.CurrentThread->SavedCont->uc_link=&MTASK.DefaultContext;
-        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed by thKill?
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmSysMalloc(MAX_STACK);//freed by thKill?
         memset(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         MTASK.CurrentThread->SavedCont->uc_stack.ss_size=MAX_STACK;
         makecontext(MTASK.CurrentThread->SavedCont,(void (*)(void))thKickStart,1,0);
@@ -881,7 +881,7 @@ mtInitialize(int flags, void (*start_fn)())
 #ifdef CONTEXTING
         //return here when we get "lost"
         getcontext(&MTASK.DefaultContext);
-        MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);//not freed
+        MTASK.DefaultContext.uc_stack.ss_sp=nmSysMalloc(MAX_STACK);//not freed
         memset(MTASK.DefaultContext.uc_stack.ss_sp,0,MAX_STACK);
         MTASK.DefaultContext.uc_stack.ss_size=MAX_STACK;        
         makecontext(&MTASK.DefaultContext,thCleanUp,0);
@@ -961,11 +961,19 @@ r_mtRun_Spacer()
 #ifdef CONTEXTING
     //set up the context which we are about to switch to
     getcontext(r_newthr->SavedCont);
-    r_newthr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+    r_newthr->SavedCont->uc_stack.ss_sp=nmSysMalloc(MAX_STACK);
     r_newthr->SavedCont->uc_stack.ss_size=MAX_STACK;
     memset(r_newthr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
     r_newthr->SavedCont->uc_link = &MTASK.DefaultContext;
     makecontext(r_newthr->SavedCont,r_newthr->StartFn,1,r_newthr->StartParam);
+#ifdef USING_VALGRIND
+    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(
+            r_newthr->SavedCont->uc_stack.ss_size - MAX_STACK + MT_TASKSEP*2,
+            r_newthr->SavedCont->uc_stack.ss_size + 20);
+    printf("New stack %d at %8.8lX - %8.8lX\n", MTASK.CurrentThread->ValgrindStackID,
+                (unsigned long)(r_newthr->SavedCont->uc_stack.ss_size - MAX_STACK + MT_TASKSEP*2),
+                (unsigned long)(r_newthr->SavedCont->uc_stack.ss_size + 20));
+#endif
     setcontext(r_newthr->SavedCont);
 #else
     /** I know this issues a compiler warning.  This is here because
@@ -1626,7 +1634,7 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
         //get a context
         getcontext(thr->SavedCont);
         //alocate a stack
-        thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed in thKill
+        thr->SavedCont->uc_stack.ss_sp=nmSysMalloc(MAX_STACK);//freed in thKill
         memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         thr->SavedCont->uc_stack.ss_size=MAX_STACK;
         //what to do when finished
@@ -1652,8 +1660,10 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	    if (!MTASK.ThreadTable[i])
 	        {
 		MTASK.ThreadTable[i] = thr;
-                //configure to run with the stack
+#ifdef CONTEXTING                
+                //configure to run
                 makecontext(thr->SavedCont,(void (*)(void))thKickStart,1,i);
+#endif
 		break;
 		}
 	    }
@@ -1724,15 +1734,23 @@ thExit()
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
-        
-        //Free the stack
-        nmFree(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,MTASK.CurrentThread->SavedCont->uc_stack.ss_size);
-        //Free the context
-        nmFree(MTASK.CurrentThread->SavedCont,sizeof(ucontext_t));        
-	/** Destroy the thread's descriptor **/
-	nmFree(MTASK.CurrentThread,sizeof(Thread));
-	MTASK.CurrentThread = NULL;
-
+        if(MTASK.CurrentThread){
+#ifdef CONTEXTING
+            if(MTASK.CurrentThread->SavedCont){
+                if(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp){
+                    //Free the stack
+                    nmSysFree(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp);
+                    MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=NULL;
+                }//end if stack
+                //Free the context
+                nmFree(MTASK.CurrentThread->SavedCont,sizeof(ucontext_t));        
+                MTASK.CurrentThread->SavedCont=NULL;
+            }//end if context
+#endif
+            /** Destroy the thread's descriptor **/
+            nmFree(MTASK.CurrentThread,sizeof(Thread));
+            MTASK.CurrentThread = NULL;
+        }//end if thread
 	/** No more threads? **/
 	if (MTASK.nThreads == 0)
 	    {
@@ -1797,13 +1815,23 @@ thKill(pThread thr)
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
 #endif
-        //Free the stack
-        nmFree(thr->SavedCont->uc_stack.ss_sp,thr->SavedCont->uc_stack.ss_size);
-        //Free the context
-        nmFree(thr->SavedCont,sizeof(ucontext_t));
-	/** Free the structure. **/
-	nmFree(thr, sizeof(Thread));
-
+        if(thr){
+#ifdef CONTEXTING
+            if(thr->SavedCont){
+                if(thr->SavedCont->uc_stack.ss_sp){
+                    //Free the stack
+                    nmSysFree(thr->SavedCont->uc_stack.ss_sp);
+                    thr->SavedCont->uc_stack.ss_sp=NULL;
+                }//if stack
+                //Free the context
+                nmFree(thr->SavedCont,sizeof(ucontext_t));
+                thr->SavedCont=NULL;
+            }//if context
+#endif
+            /** Free the structure. **/
+            nmFree(thr, sizeof(Thread));
+            thr = NULL;
+        }//if thread
 	/** Schedule next thread **/
 	mtSched();
 
