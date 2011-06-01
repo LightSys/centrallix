@@ -831,12 +831,15 @@ mtInitialize(int flags, void (*start_fn)())
 	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
 #ifdef CONTEXTING
         MTASK.CurrentThread->SavedVal = 0;
-        MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));
+        MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));//freed by thKill?
         memset(MTASK.CurrentThread->SavedCont,0,sizeof(ucontext_t));
         getcontext(MTASK.CurrentThread->SavedCont);
-        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        //where to go when were finished
+        MTASK.CurrentThread->SavedCont->uc_link=&MTASK.DefaultContext;
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed by thKill?
         memset(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         MTASK.CurrentThread->SavedCont->uc_stack.ss_size=MAX_STACK;
+        makecontext(MTASK.CurrentThread->SavedCont,(void (*)(void))thKickStart,1,0);
 #else
         MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
@@ -878,7 +881,7 @@ mtInitialize(int flags, void (*start_fn)())
 #ifdef CONTEXTING
         //return here when we get "lost"
         getcontext(&MTASK.DefaultContext);
-        MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);//not freed
         memset(MTASK.DefaultContext.uc_stack.ss_sp,0,MAX_STACK);
         MTASK.DefaultContext.uc_stack.ss_size=MAX_STACK;        
         makecontext(&MTASK.DefaultContext,thCleanUp,0);
@@ -903,8 +906,8 @@ mtInitialize(int flags, void (*start_fn)())
  *** its current function-nest-level is.
  ***/
 #ifdef CONTEXTING
-static ucontext_t *r_saved_cont;
-static volatile int r_saved_val;
+//static ucontext_t *r_saved_cont;
+//static volatile int r_saved_val;
 #else
 static jmp_buf r_saved_env;
 #endif
@@ -922,15 +925,8 @@ mtRunStartFn(pThread new_thr, int idx)
         /** if thr is null, we prime the jmp buffer **/
         if (!r_newthr)
             {
-#ifdef CONTEXTING
-            r_saved_val = 0;
-            r_saved_cont = nmMalloc(sizeof(ucontext_t));
-            memset(r_saved_cont,0,sizeof(ucontext_t));
-            getcontext(r_saved_cont);
-            r_saved_cont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
-            memset(r_saved_cont->uc_stack.ss_sp,0,MAX_STACK);
-            r_saved_cont->uc_stack.ss_size=MAX_STACK;
-            if ( r_saved_val == 0) return 0;
+#ifdef CONTEXTING            
+            return 0;
 #else
  	    if (setjmp(r_saved_env) == 0) return 0;
 #endif           
@@ -939,8 +935,8 @@ mtRunStartFn(pThread new_thr, int idx)
         else
 	    {
 #ifdef CONTEXTING
-            r_saved_val = 1;
-            setcontext(r_saved_cont);
+            //r_saved_val = 1;
+            setcontext(new_thr->SavedCont);
 #else
 	    longjmp(r_saved_env,1);
 #endif
@@ -998,12 +994,12 @@ r_mtRun_Spacer()
 int
 r_mtRunStartFn()
     {
+#ifndef CONTEXTING
     /** I know this issues a compiler warning.  This is here because
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy.
      **/
-#ifndef CONTEXTING
     char buf[MAX_STACK];
     buf[MAX_STACK-1] = buf[MAX_STACK-1];
 #endif
@@ -1625,12 +1621,12 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	memcpy(thr->SecContext.GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t));
 #ifdef CONTEXTING
         //alocate context
-        thr->SavedCont = nmMalloc(sizeof(ucontext_t));
+        thr->SavedCont = nmMalloc(sizeof(ucontext_t));//freed in thKill
         memset(thr->SavedCont,0,sizeof(ucontext_t));
         //get a context
         getcontext(thr->SavedCont);
         //alocate a stack
-        thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);
+        thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed in thKill
         memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         thr->SavedCont->uc_stack.ss_size=MAX_STACK;
         //what to do when finished
@@ -1728,7 +1724,11 @@ thExit()
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
-
+        
+        //Free the stack
+        nmFree(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,MTASK.CurrentThread->SavedCont->uc_stack.ss_size);
+        //Free the context
+        nmFree(MTASK.CurrentThread->SavedCont,sizeof(ucontext_t));        
 	/** Destroy the thread's descriptor **/
 	nmFree(MTASK.CurrentThread,sizeof(Thread));
 	MTASK.CurrentThread = NULL;
