@@ -2475,11 +2475,13 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
-#ifndef CONTEXTING
     unsigned char buf[1];
+#ifndef CONTEXTING
     return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
 #else
-    return 0;
+    return ((unsigned long)(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp
+            +MTASK.CurrentThread->SavedCont->uc_stack.ss_size)
+            - (unsigned long)buf > MT_STACK_HIGHWATER);
 #endif
     }
 
@@ -2499,7 +2501,8 @@ void thKickStart(int thread){
  * therefor, we should clean it of the threads
  */
 void thCleanUp(){
-    thKill(thCurrent());
+    //kill ourself
+    thKill(NULL);
     mtSched();
 }//end thCleanUp
 #endif
