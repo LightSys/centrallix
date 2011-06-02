@@ -19,7 +19,7 @@ test(char** tname)
     int alloc;
     int j;
     int strcnt;
-    char str[65536] = "";
+    static char str[65536] = "";
     int n_tok = 3;
     int toktype[3] = {MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_EOF };
     char* tokstr[6];

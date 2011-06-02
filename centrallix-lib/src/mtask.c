@@ -318,7 +318,7 @@ void thCleanUp();
 
 #define MAX_EVENTS		256
 #define MAX_THREADS		256
-#define MAX_STACK		(255 * 2048)
+#define MAX_STACK		(31 * 2048)
 #define MT_STACK_HIGHWATER	(24 * 2048)
 /*#define MAX_STACK		(31 * 1024)
 #define MT_STACK_HIGHWATER	(24 * 1024)*/

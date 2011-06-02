@@ -16,7 +16,7 @@ test(char** tname)
     int iter;
     pLxSession lxs;
     int n;
-    char str[65536] = "";
+    static char str[65536] = "";
 
 	*tname = "mtlexer-13 normal/oversized integers";
 

@@ -18,7 +18,7 @@ test(char** tname)
     char* strval;
     int j;
     int strcnt;
-    char str[65536] = "select Select SELECT insert Insert INSERT what What WHAT";
+    static char str[65536] = "select Select SELECT insert Insert INSERT what What WHAT";
     char* reswds[] = {"select", "insert", NULL};
     int n_flagtype = 4;
     int n_tok = 9;
