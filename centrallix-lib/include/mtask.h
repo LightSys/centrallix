@@ -159,7 +159,6 @@
  **END-CVSDATA***********************************************************/
 #ifdef CONTEXTING
 #include <ucontext.h>
-#warning "Contexing causes segfaults"
 #else
 #include <setjmp.h>
 #endif
