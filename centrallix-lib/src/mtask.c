@@ -929,8 +929,8 @@ mtRunStartFn(pThread new_thr, int idx)
             return 0;
 #else
  	    if (setjmp(r_saved_env) == 0) return 0;
-#endif           
             r_mtRunStartFn();
+#endif           
 	    }
         else
 	    {
@@ -953,29 +953,10 @@ r_mtRun_PokeStack()
     buf[0] = buf[0];
     return 0;
     }
-#endif
 
 int
 r_mtRun_Spacer()
     {
-#ifdef CONTEXTING
-    //set up the context which we are about to switch to
-    getcontext(r_newthr->SavedCont);
-    r_newthr->SavedCont->uc_stack.ss_sp=nmSysMalloc(MAX_STACK);
-    r_newthr->SavedCont->uc_stack.ss_size=MAX_STACK;
-    memset(r_newthr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
-    r_newthr->SavedCont->uc_link = &MTASK.DefaultContext;
-    makecontext(r_newthr->SavedCont,r_newthr->StartFn,1,r_newthr->StartParam);
-#ifdef USING_VALGRIND
-    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(
-            r_newthr->SavedCont->uc_stack.ss_size - MAX_STACK + MT_TASKSEP*2,
-            r_newthr->SavedCont->uc_stack.ss_size + 20);
-    printf("New stack %d at %8.8lX - %8.8lX\n", MTASK.CurrentThread->ValgrindStackID,
-                (unsigned long)(r_newthr->SavedCont->uc_stack.ss_size - MAX_STACK + MT_TASKSEP*2),
-                (unsigned long)(r_newthr->SavedCont->uc_stack.ss_size + 20));
-#endif
-    setcontext(r_newthr->SavedCont);
-#else
     /** I know this issues a compiler warning.  This is here because
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
@@ -995,14 +976,12 @@ r_mtRun_Spacer()
 #endif
     if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
-#endif //contexting
     return 0; /* never returns */
     }
 
 int
 r_mtRunStartFn()
     {
-#ifndef CONTEXTING
     /** I know this issues a compiler warning.  This is here because
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
@@ -1010,7 +989,6 @@ r_mtRunStartFn()
      **/
     char buf[MAX_STACK];
     buf[MAX_STACK-1] = buf[MAX_STACK-1];
-#endif
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
     /*r_mtRunStartFn();*/
@@ -1018,6 +996,7 @@ r_mtRunStartFn()
     /* thExit(); */
     return 0;	/* should never return */
     }
+#endif //function for NOT CONTEXTING
 
 /*** mtProcessSignals is an internal-only function to process the list of pending signals
  ***   I had to add this, as there's three places to process signals, and I didn't want to put this code
@@ -1816,7 +1795,7 @@ thKill(pThread thr)
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
 #endif
         if(thr){
-/*#ifdef CONTEXTING
+#ifdef CONTEXTING
             if(thr->SavedCont){
                 if(thr->SavedCont->uc_stack.ss_sp){
                     //Free the stack
@@ -1827,7 +1806,7 @@ thKill(pThread thr)
                 nmFree(thr->SavedCont,sizeof(ucontext_t));
                 thr->SavedCont=NULL;
             }//if context
-#endif*/
+#endif
             /** Free the structure. **/
             nmFree(thr, sizeof(Thread));
             thr = NULL;
