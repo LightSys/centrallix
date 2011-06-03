@@ -816,13 +816,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     pExpression exp;
     pStructInf subitem;
     int rval;
-
-    	/** Free existing query conn data buf? **/
-	if (qy->DataBuf)
-	    {
-	    nmSysFree(qy->DataBuf);
-	    qy->DataBuf = NULL;
-	    }
+    void* data_buf = NULL;
 
     	/** Search for aggregates first. **/
 	n = 0;
@@ -846,19 +840,19 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 			case DATA_T_INTEGER:	data_ptr->Integer = exp->Integer; break;
 			case DATA_T_DOUBLE:	data_ptr->Double = exp->Types.Double; break;
 			case DATA_T_STRING: 
-			    qy->DataBuf = (char*)nmSysMalloc(strlen(exp->String)+1);
-			    data_ptr->String = qy->DataBuf;
-			    strcpy(qy->DataBuf, exp->String);
+			    data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
+			    data_ptr->String = data_buf;
+			    strcpy(data_buf, exp->String);
 			    break;
 			case DATA_T_MONEY: 
-			    qy->DataBuf = (char*)nmSysMalloc(sizeof(MoneyType));
-			    memcpy(qy->DataBuf, &(exp->Types.Money), sizeof(MoneyType));
-			    data_ptr->Money = (pMoneyType)(qy->DataBuf);
+			    data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
+			    memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
+			    data_ptr->Money = (pMoneyType)(data_buf);
 			    break;
 			case DATA_T_DATETIME: 
-			    qy->DataBuf = (char*)nmSysMalloc(sizeof(DateTime));
-			    memcpy(qy->DataBuf, &(exp->Types.Date), sizeof(DateTime));
-			    data_ptr->DateTime = (pDateTime)(qy->DataBuf);
+			    data_buf = (char*)nmSysMalloc(sizeof(DateTime));
+			    memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
+			    data_ptr->DateTime = (pDateTime)(data_buf);
 			    break;
 			default: return -1;
 			}
@@ -867,6 +861,17 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 		        expResetAggregates(exp, -1,1);
 		        expEvalTree(exp,qy->ObjList);
 			}
+
+		    /** Free existing query conn data buf? **/
+		    if (qy->DataBuf)
+			{
+			nmSysFree(qy->DataBuf);
+			qy->DataBuf = NULL;
+			}
+
+		    /** Return our new data buffer for string/money/datetime **/
+		    qy->DataBuf = data_buf;
+
 		    return was_null;
 		    }
 	   	n++;
