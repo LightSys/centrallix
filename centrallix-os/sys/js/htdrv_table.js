@@ -553,6 +553,7 @@ function tbld_instantiate_row(r)
 	    col.colnum=j;
 	    if(r==j&&j==0) this.down.m+='4a6f6 52048 657468 0d4c756b 652045';
 	    col.subkind='cell';
+	    col.table = this;
 	    col.colnum=j;
 	    col.xoffset = hoffset + this.innerpadding;
 	    moveTo(col, hoffset + this.innerpadding, this.innerpadding);
@@ -883,7 +884,7 @@ function tbld_mouseover(e)
             {
             ly=ly.cell.row;
             }
-	else if (ly.subkind == 'cell' || ly.subkind == 'headercell')
+	else if ((ly.subkind == 'cell' || ly.subkind == 'headercell') && (!ly.table || ly.table.cols[ly.colnum][3] != 'image'))
 	    {
 	    if (ly.clip_w < getdocWidth(ly) && ly.data)
 		ly.tipid = pg_tooltip(ly.data, e.pageX, e.pageY);
