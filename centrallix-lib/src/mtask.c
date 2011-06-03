@@ -1735,7 +1735,7 @@ thExit()
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
         if(MTASK.CurrentThread){
-#ifdef CONTEXTING
+/*#ifdef CONTEXTING
             if(MTASK.CurrentThread->SavedCont){
                 if(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp){
                     //Free the stack
@@ -1746,7 +1746,7 @@ thExit()
                 nmFree(MTASK.CurrentThread->SavedCont,sizeof(ucontext_t));        
                 MTASK.CurrentThread->SavedCont=NULL;
             }//end if context
-#endif
+#endif*/
             /** Destroy the thread's descriptor **/
             nmFree(MTASK.CurrentThread,sizeof(Thread));
             MTASK.CurrentThread = NULL;
@@ -1816,7 +1816,7 @@ thKill(pThread thr)
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
 #endif
         if(thr){
-#ifdef CONTEXTING
+/*#ifdef CONTEXTING
             if(thr->SavedCont){
                 if(thr->SavedCont->uc_stack.ss_sp){
                     //Free the stack
@@ -1827,7 +1827,7 @@ thKill(pThread thr)
                 nmFree(thr->SavedCont,sizeof(ucontext_t));
                 thr->SavedCont=NULL;
             }//if context
-#endif
+#endif*/
             /** Free the structure. **/
             nmFree(thr, sizeof(Thread));
             thr = NULL;
