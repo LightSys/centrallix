@@ -21,6 +21,7 @@
 #include "cxlib/mtlexer.h"
 #include "prtmgmt.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -284,11 +285,11 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 	        {
 		/** Get rank, owner, jobid, filename **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		rank = strtol(mlxStringVal(lxs,0),NULL,10);
+		rank = strtoi(mlxStringVal(lxs,0),NULL,10);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,user,32);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		jobid = strtol(mlxStringVal(lxs,0),NULL,10);
+		jobid = strtoi(mlxStringVal(lxs,0),NULL,10);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,filename,128);
 
@@ -311,7 +312,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 
 		/** Get the file's size and skip to eol. **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		e->Size = strtol(mlxStringVal(lxs,0),NULL,10);
+		e->Size = strtoi(mlxStringVal(lxs,0),NULL,10);
 		while ((t=mlxNextToken(lxs) != MLX_TOK_EOL && t != MLX_TOK_ERROR));
 
 		/** Add entry to our queue list **/
@@ -451,7 +452,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pSnNode node = NULL;
     char sbuf[256];
     int is_new = 0;
-    pLprPrintQueue pq;
+    pLprPrintQueue pq = NULL;
 
         /** Determine node path and attempt to open node. **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -529,6 +530,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** If print job, make sure it exists first in the printer's queue. **/
 	if (inf->Type == UXP_T_PRINTJOB)
 	    {
+            // TODO Initialize the pq object!
 	    if (uxp_internal_FindQueueItem(pq, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 0)) == NULL)
 	        {
 		nmFree(inf, sizeof(UxpData));

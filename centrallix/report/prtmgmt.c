@@ -11,6 +11,8 @@
 #include "prtmgmt.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -2101,58 +2103,58 @@ prtConvertHTML(int (*read_fn)(), void* read_arg, pPrtSession s)
 			    {
 			    ptr = htsTagValue(hts,2);
 			    if (!ptr) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    prtSetHPos(s, v1);
 			    skip_spaces = 1;
 			    }
 			else if (!strcmp(ptr,"LRMARGIN"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtSetLRMargins(s, v1, v2);
 			    }
 			else if (!strcmp(ptr,"SETCOLS"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,4))) break;
-			    v3 = strtol(ptr,NULL,10);
+			    v3 = strtoi(ptr,NULL,10);
 			    prtSetColumns(s, v1, v2, v3);
 			    }
 			else if (!strcmp(ptr,"TABLE"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtDoTable(s,v1,v2);
 			    intable = 1;
 			    }
 			else if (!strcmp(ptr,"COLHDR"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,4))) break;
-			    v3 = strtol(ptr,NULL,10);
+			    v3 = strtoi(ptr,NULL,10);
 			    prtDoColHdr(s,(v2==0)?1:0,v1, v3);
 			    skip_spaces = 1;
 			    }
 			else if (!strcmp(ptr,"COLUMN"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,4))) break;
-			    v3 = strtol(ptr,NULL,10);
+			    v3 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,5))) break;
-			    v4 = strtol(ptr,NULL,10);
+			    v4 = strtoi(ptr,NULL,10);
 			    prtDoColumn(s,(v2==0)?1:0,v3,v1,v4);
 			    skip_spaces = 1;
 			    }

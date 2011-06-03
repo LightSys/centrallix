@@ -2055,8 +2055,8 @@ mq_internal_DumpQE(pQueryElement tree, int level)
     int i;
 
     	/** print the driver type handling this tree **/
-	printf("%*.*sDRIVER=%s, CPTR=%8.8x, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
-	    (unsigned int)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
+	printf("%*.*sDRIVER=%s, CPTR=%8.8lx, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
+	    (unsigned long)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
 
 	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
 	    printf(", IDX=%d, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Source);
@@ -2829,7 +2829,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 void*
 mqQueryCreate(void* qy_v, pObject new_obj, char* name, int mode, int permission_mask, pObjTrxTree *oxt)
     {
-    pPseudoObject p;
+    pPseudoObject p = NULL;
     pMultiQuery qy = (pMultiQuery)qy_v;
 
 	/** For now, we just fail if this involves a join operation. **/
@@ -2839,6 +2839,7 @@ mqQueryCreate(void* qy_v, pObject new_obj, char* name, int mode, int permission_
 	    return NULL;
 	    }
 
+    // TODO Implement the real return value!
     return (void*)p;
     }
 

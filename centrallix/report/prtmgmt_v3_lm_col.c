@@ -395,7 +395,7 @@ int
 prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
     {
     int rval;
-    double oh, ow;
+    double oh = 0, ow = 0;
     pPrtObjStream col_obj;
     double npw, nph;
 
@@ -430,6 +430,7 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 		    col_obj->X += (new_width - ow);
 		    }
 		}
+            // TODO Initialize oh and ow before use
 	    if (rval >= 0 && new_height != oh)
 		{
 		this->Height = new_height;

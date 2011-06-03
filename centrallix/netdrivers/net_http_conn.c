@@ -521,7 +521,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** Need to start an available connection completion trigger on this? **/
 	if ((find_inf=stLookup_ne(url_inf,"ls__triggerid")))
 	    {
-	    tid = strtol(find_inf->StrVal,NULL,0);
+	    tid = strtoi(find_inf->StrVal,NULL,0);
 	    nht_internal_StartTrigger(conn->NhtSession, tid);
 	    }
 

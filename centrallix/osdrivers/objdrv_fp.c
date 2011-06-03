@@ -28,6 +28,7 @@
 #include "multiquery.h"
 #include "cxlib/magic.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -708,11 +709,11 @@ fp_internal_ParseDefinition(pFpTableInf tdata, pLxSession lxs)
 	tptr = strsep(&ptr, ":");
 	tptr = strsep(&ptr, ":");
 	if (!tptr) goto error;
-	n_bytes = strtol(tptr, NULL, 10);
+	n_bytes = strtoi(tptr, NULL, 10);
 	tptr = strsep(&ptr, ":");
 	tptr = strsep(&ptr, ":");
 	if (!tptr) goto error;
-	n_columns = strtol(tptr, NULL, 10);
+	n_columns = strtoi(tptr, NULL, 10);
 
 	/** Too many columns? **/
 	if (n_columns > FP_MAX_COLS)
@@ -751,7 +752,7 @@ fp_internal_ParseDefinition(pFpTableInf tdata, pLxSession lxs)
 	    /** Length and 'edit format' **/
 	    tptr = strsep(&ptr,":");
 	    if (!tptr) goto error;
-	    cdata->Length = strtol(tptr, NULL, 10);
+	    cdata->Length = strtoi(tptr, NULL, 10);
 	    cdata->RecordOffset = total_len;
 	    total_len += cdata->Length;
 	    tptr = strsep(&ptr,":");
@@ -1274,7 +1275,7 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
 	    {
 	    case DATA_T_INTEGER:
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		pod->Integer = strtol(ibuf, NULL, 10);
+		pod->Integer = strtoi(ibuf, NULL, 10);
 		break;
 	    case DATA_T_STRING:
 		pod->String = data;
@@ -1292,7 +1293,7 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
 		break;
 	    case DATA_T_MONEY:
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		v = strtol(ibuf, NULL, 10);
+		v = strtoll(ibuf, NULL, 10);
 		f = 1;
 		for(i=0;i<column->DecimalOffset;i++) f *= 10;
 		pod->Money = (pMoneyType)data;
@@ -1456,7 +1457,7 @@ fp_internal_KeyToRow(pFpData inf, char* rowkey)
 	/** No declared primary key?  go with row id **/
 	if (inf->TData->nPriKeyCols == 0)
 	    {
-	    inf->RowID = strtol(rowkey, NULL, 10);
+	    inf->RowID = strtoi(rowkey, NULL, 10);
 	    if (inf->RowID <= 0)
 		{
 		mssError(1,"FP","Row id '%d' in table '%s' is invalid",

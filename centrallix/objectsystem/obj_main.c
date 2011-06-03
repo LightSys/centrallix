@@ -232,19 +232,19 @@ obj_internal_BuildIsA()
 		/** for each relationship of level <-n>, scan through for level -1 ties **/
 		for(j=0;j<type->RelatedTypes.nItems;j++)
 		    {
-		    rel_level = (int)(type->RelationLevels.Items[j]);
+		    rel_level = (intptr_t)(type->RelationLevels.Items[j]);
 		    related_type = (pContentType)(type->RelatedTypes.Items[j]);
 		    if (rel_level == level || rel_level == -level)
 		        {
 			for(k=0;k<related_type->RelatedTypes.nItems;k++)
 			    {
-		    	    ind_rel_level = (int)(related_type->RelationLevels.Items[k]);
+		    	    ind_rel_level = (intptr_t)(related_type->RelationLevels.Items[k]);
 		    	    indirect_rel_type = (pContentType)(related_type->RelatedTypes.Items[k]);
 			    if ((ind_rel_level == 1 && rel_level == level) || (ind_rel_level == -1 && rel_level == -level))
 			        {
 				num_added++;
 				xaAddItem(&type->RelatedTypes, (void*)indirect_rel_type);
-				xaAddItem(&type->RelationLevels, (void*)(ind_rel_level + rel_level));
+				xaAddItem(&type->RelationLevels, (void*)(intptr_t)(ind_rel_level + rel_level));
 				}
 			    }
 			}

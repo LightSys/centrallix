@@ -237,6 +237,7 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 
 
 /*** htruleRegister() - register a new type of rule with the rule module
+ * Make sure the list is NULL terminated.
  ***/
 int
 htruleRegister(char* ruletype, ...)
@@ -254,19 +255,16 @@ htruleRegister(char* ruletype, ...)
 
 	/** Get the possible attributes for the rule **/
 	va_start(va, ruletype);
-	while(va && (attrname = va_arg(va, char*)) != NULL)
-	    {
-	    if (va)
-		{
-		attrtype = va_arg(va, int);
-		if (ruledef->nParams < sizeof(ruledef->ParamNames)/sizeof(char*))
-		    {
-		    ruledef->ParamNames[ruledef->nParams] = nmSysStrdup(attrname);
-		    ruledef->ParamTypes[ruledef->nParams] = attrtype;
-		    ruledef->nParams++;
-		    }
-		}
-	    }
+	while((attrname = va_arg(va, char*)) != NULL)
+            {
+            attrtype = va_arg(va, int);
+            if (ruledef->nParams < sizeof(ruledef->ParamNames)/sizeof(char*))
+                {
+                ruledef->ParamNames[ruledef->nParams] = nmSysStrdup(attrname);
+                ruledef->ParamTypes[ruledef->nParams] = attrtype;
+                ruledef->nParams++;
+                }
+            }
 	va_end(va);
 
 	/** Add it to the list **/

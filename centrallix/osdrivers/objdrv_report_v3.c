@@ -23,6 +23,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1126,7 +1127,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    if (sql[0] == '&' && (sql[1] >= '0' && sql[1] <= '9'))
 		{
 		/*newsql[cnt++] = '"';*/
-		v = strtol(sql+1,&endptr,10);
+		v = strtoi(sql+1,&endptr,10);
 		if (v == 0 || v > links.nItems)
 		    {
 		    mssError(1,"RPT","Parameter error in table/form '%s' source '%s' sql", object->Name, src);
@@ -2058,7 +2059,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
 				{
-				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
 				if (!ud->LastValue)
 				    {
 				    /** First record; not initialized. **/
@@ -2122,7 +2123,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
 				{
-				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
 				if (expEvalTree(ud->Exp, inf->ObjList) < 0)
 				    {
 				    mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
@@ -2336,7 +2337,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	t = stGetAttrType(value_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(value_inf->UserData));
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(value_inf->UserData));
 	    if (ud)
 		{
 		/** Evaluate the expression **/
@@ -2813,7 +2814,7 @@ rpt_internal_CheckCondition(pRptData inf, pStructInf config)
 	t = stGetAttrType(condition_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(condition_inf->UserData));
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(condition_inf->UserData));
 	    if (ud)
 		{
 		/** Evaluate the expression **/
@@ -2879,7 +2880,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    {
 	    if (ptr[0] == '#')
 		{
-		n = strtol(ptr+1, NULL, 16);
+		n = strtoi(ptr+1, NULL, 16);
 		prtSetColor(prt_obj, n);
 		}
 	    }
@@ -3184,10 +3185,10 @@ rpt_internal_PreBuildExp(pRptData inf, pStructInf obj, pParamObjects objlist)
 
 		/** ... and set it up in our user data slots structure **/
 		if (!(obj->UserData)) 
-		    obj->UserData = (void*)(inf->NextUserDataSlot++);
-		else if ((int)(obj->UserData) >= inf->NextUserDataSlot)
-		    inf->NextUserDataSlot = ((int)(obj->UserData))+1;
-		xaSetItem(&(inf->UserDataSlots), (int)(obj->UserData), (void*)ud);
+		    obj->UserData = (void*)(intptr_t)(inf->NextUserDataSlot++);
+		else if ((intptr_t)(obj->UserData) >= inf->NextUserDataSlot)
+		    inf->NextUserDataSlot = ((intptr_t)(obj->UserData))+1;
+		xaSetItem(&(inf->UserDataSlots), (intptr_t)(obj->UserData), (void*)ud);
 		}
 	    else
 		{
@@ -3613,7 +3614,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 			    do_reset = 1;
 			    stAttrValue(stLookup(subreq->SubInf[j], "reset"), &do_reset, NULL, 0);
-			    xaAddItem(&(qc->AggregateDoReset), (void*)do_reset);
+			    xaAddItem(&(qc->AggregateDoReset), (void*)(intptr_t)do_reset);
 
 			    ptr = NULL;
 			    stAttrValue(stLookup(subreq->SubInf[j], "where"), NULL, &ptr, 0);

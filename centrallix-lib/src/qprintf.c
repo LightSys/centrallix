@@ -13,6 +13,7 @@
 #include "mtask.h"
 #include "newmalloc.h"
 #include "cxsec.h"
+#include "util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -534,7 +535,7 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 static inline int
 qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* cursor;
     int ix;
@@ -911,7 +912,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			/** Is this a numerically-constrained spec? **/
 			if (*format >= '0' && *format <= '9')
 			    {
-			    n = strtol(format, (char**)&endptr, 10); /* cast is needed because endptr is const char* */
+			    n = strtoi(format, (char**)&endptr, 10); /* cast is needed because endptr is const char* */
 			    format = endptr;
 			    if (n < 0) n = 0;
 			    }

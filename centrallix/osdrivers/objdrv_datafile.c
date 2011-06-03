@@ -22,6 +22,7 @@
 #include "stparse.h"
 #include "stparse_ne.h"
 #include "hints.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1610,7 +1611,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		return NULL;
 		}
 	    for(i=0;i<=strlen(ptr);i++) dn->Ext[i] = toupper(ptr[i]);
-	    dn->Type = (int)xhLookup(&DAT_INF.TypesByExt, (void*)(dn->Ext));
+	    dn->Type = (intptr_t)xhLookup(&DAT_INF.TypesByExt, (void*)(dn->Ext));
 	    if (!dn->Type)
 	        {
 		mssError(1,"DAT","Unknown datafile type '%s'",ptr);
@@ -2302,7 +2303,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    }
 		else
 		    {
-		    inf->RowID = strtol(inf->RowColPtr,NULL,10);
+		    inf->RowID = strtoi(inf->RowColPtr,NULL,10);
 		    }
 		inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
 		if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
@@ -2690,7 +2691,7 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 	    return -1;
 	    }
 	
-	inf->RowID = strtol(inf->RowColPtr,NULL,10);
+	inf->RowID = strtoi(inf->RowColPtr,NULL,10);
 
 	/** Get the rowid and fetch the row **/
 	inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
