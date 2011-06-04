@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE language SYSTEM "language.dtd">
-<!--Created using the CPP.lang file as a template-->
-<language _name="Centrallix" version="1.0" _section="Sources">
+<language _name="Centrallix" version="1.0" _section="Sources" mimetypes="text/x-cmp">
 	
 	<escape-char>\</escape-char>
 
@@ -10,7 +9,7 @@
 	</line-comment>
 
 
-	<block-comment _name = "'#if 0' Comment" style = "Comment">
+	<block-comment _name = "Block Comment" style = "Comment">
 		<start-regex>/\*</start-regex>
         	<end-regex>\*/</end-regex>
 	</block-comment>
@@ -19,8 +18,13 @@
 		<start-regex>&quot;</start-regex>
 		<end-regex>&quot;</end-regex>
 	</string>
+	
 
+<!--      Here's a block if you would like to add your own list of keywords.
 
+	<keyword-list _name="Personalize" style="Preprocessor" case-sensitive="TRUE">
+        </keyword-list> 
+-->
 	<keyword-list _name = "Keywords" style = "Keyword" case-sensitive="TRUE">
 		<keyword>not</keyword>
                 <keyword>action</keyword>
@@ -254,9 +258,9 @@
                 <keyword>Time</keyword>
                 <keyword>_3bconfirmwindow</keyword>
 	</keyword-list>
-
-	<keyword-list _name = "Types" style = "Data Type" case-sensitive="TRUE">
-               <keyword>runserver</keyword>
+   
+	<keyword-list _name = "Functions" style = "Data Type" case-sensitive="TRUE">
+                <keyword>runserver</keyword>
                 <keyword>runclient</keyword>
                 <keyword>runstatic</keyword>
                 <keyword>abs</keyword>
@@ -305,7 +309,7 @@
 	<pattern-item _name = "Floating Point Number" style = "Floating Point">
 		<regex>\b([0-9]+[Ee][-]?[0-9]+|([0-9]*\.[0-9]+|[0-9]+\.)([Ee][-]?[0-9]+)?)[fFlL]?</regex>
 	</pattern-item>
-
+<!--
 	<pattern-item _name = "Octal Number" style = "Base-N Integer">
 		<regex>\b0[0-7]+([Uu]([Ll]|LL|ll)?|([Ll]|LL|ll)[Uu]?)?\b</regex>
 	</pattern-item>
@@ -313,6 +317,6 @@
 	<pattern-item _name = "Hex Number" style = "Base-N Integer">
 		<regex>\b0[xX][0-9a-fA-F]+([Uu]([Ll]|LL|ll)?|([Ll]|LL|ll)[Uu]?)?\b</regex>
 	</pattern-item>
-
+-->
 
 </language>
