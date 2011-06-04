@@ -1,0 +1,13 @@
+Place the centrallix.lang file in the following directory (in linux)
+
+/usr/share/gtksourceview-2.0/language-specs
+
+You may need to change permissions on this folder.
+
+This file is for gedit, and it is very easy to 
+add new keywords and function names.
+
+To use this language file as a syntax highlighter,
+open a *.cmp in gedit, then go to
+
+View -> Highlight Mode -> Source -> Centrallix
