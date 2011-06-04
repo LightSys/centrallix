@@ -831,12 +831,12 @@ mtInitialize(int flags, void (*start_fn)())
 	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
 #ifdef CONTEXTING
         MTASK.CurrentThread->SavedVal = 0;
-        MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));//freed by thKill?
+        MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));//freed by thKill
         memset(MTASK.CurrentThread->SavedCont,0,sizeof(ucontext_t));
         getcontext(MTASK.CurrentThread->SavedCont);
         //where to go when were finished
         MTASK.CurrentThread->SavedCont->uc_link=&MTASK.DefaultContext;
-        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmSysMalloc(MAX_STACK);//freed by thKill?
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed by thKill
         memset(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         MTASK.CurrentThread->SavedCont->uc_stack.ss_size=MAX_STACK;
         makecontext(MTASK.CurrentThread->SavedCont,(void (*)(void))thKickStart,1,0);
@@ -881,7 +881,7 @@ mtInitialize(int flags, void (*start_fn)())
 #ifdef CONTEXTING
         //return here when we get "lost"
         getcontext(&MTASK.DefaultContext);
-        MTASK.DefaultContext.uc_stack.ss_sp=nmSysMalloc(MAX_STACK);//not freed
+        MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);//not freed
         memset(MTASK.DefaultContext.uc_stack.ss_sp,0,MAX_STACK);
         MTASK.DefaultContext.uc_stack.ss_size=MAX_STACK;        
         makecontext(&MTASK.DefaultContext,thCleanUp,0);
@@ -905,10 +905,7 @@ mtInitialize(int flags, void (*start_fn)())
  *** calls will differ depending on what the calling thread is and what
  *** its current function-nest-level is.
  ***/
-#ifdef CONTEXTING
-//static ucontext_t *r_saved_cont;
-//static volatile int r_saved_val;
-#else
+#ifndef CONTEXTING
 static jmp_buf r_saved_env;
 #endif
 static pThread r_newthr;
@@ -1613,7 +1610,7 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
         //get a context
         getcontext(thr->SavedCont);
         //alocate a stack
-        thr->SavedCont->uc_stack.ss_sp=nmSysMalloc(MAX_STACK);//freed in thKill
+        thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed in thKill
         memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         thr->SavedCont->uc_stack.ss_size=MAX_STACK;
         //what to do when finished
@@ -1718,7 +1715,7 @@ thExit()
             if(MTASK.CurrentThread->SavedCont){
                 if(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp){
                     //Free the stack
-                    nmSysFree(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp);
+                    nmFree(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp);
                     MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=NULL;
                 }//end if stack
                 //Free the context
@@ -1799,7 +1796,8 @@ thKill(pThread thr)
             if(thr->SavedCont){
                 if(thr->SavedCont->uc_stack.ss_sp){
                     //Free the stack
-                    nmSysFree(thr->SavedCont->uc_stack.ss_sp);
+                    nmFree(thr->SavedCont->uc_stack.ss_sp,
+                            thr->SavedCont->uc_stack.ss_size);
                     thr->SavedCont->uc_stack.ss_sp=NULL;
                 }//if stack
                 //Free the context
