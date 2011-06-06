@@ -2496,7 +2496,8 @@ thExcessiveRecursion()
 void thKickStart(int thread){
     ucontext_t *tmp;
     //clean up old stuff from previous runs
-    while(xrqCount(&kilList)){//do the defered free's from thExit
+    while(xrqCount(&kilList)>0){
+        //do the defered free's from thExit
         tmp=xrqDequeue(&kilList);
         nmFree(tmp->uc_stack.ss_sp,tmp->uc_stack.ss_size);
         nmFree(tmp,sizeof(ucontext_t));
@@ -2506,12 +2507,12 @@ void thKickStart(int thread){
 }//end thKickStart
 
 /**
- * finished threads will end up back into this context,
- * therefor, we should clean it of the threads
+ * finished threads will revert back into this context,
+ * therefor, we should clean the last thread out of the system
  */
 void thCleanUp(){
     //kill ourself
-    thKill(NULL);
+    thExit();
     mtSched();
 }//end thCleanUp
 #endif
