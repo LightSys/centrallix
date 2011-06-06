@@ -315,6 +315,7 @@ int mtSched();
  XRingQueue kilList;
 void thKickStart(int thread);
 void thCleanUp();
+void thFreeUnusedStacks(void);
 #endif
 
 #define MAX_EVENTS		256
@@ -1608,13 +1609,26 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->SecContext.nGroups = MTASK.CurNGroups;
 	memcpy(thr->SecContext.GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t));
 #ifdef CONTEXTING
-        //alocate context
-        thr->SavedCont = nmMalloc(sizeof(ucontext_t));//freed in thKill
+        void *stack;
+        //find or alocate a context
+        if(xrqCount(&kilList) > 0)
+           {
+            //reuse, recycle, renew!
+            thr->SavedCont = xrqDequeue(&kilList);
+            //save the stack (assumes a fixed stack size!)
+            stack = thr->SavedCont->uc_stack.ss_sp;
+            }
+        else
+            {
+            //we needs explore a newland
+            thr->SavedCont = nmMalloc(sizeof(ucontext_t)); //freed in thKill
+            stack = nmMalloc(MAX_STACK); //freed in thKill
+            }//end if spare parts
         memset(thr->SavedCont,0,sizeof(ucontext_t));
         //get a context
         getcontext(thr->SavedCont);
-        //alocate a stack
-        thr->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed in thKill
+        //grab the stack
+        thr->SavedCont->uc_stack.ss_sp=stack;
         memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
         thr->SavedCont->uc_stack.ss_size=MAX_STACK;
         //what to do when finished
@@ -1714,7 +1728,8 @@ thExit()
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
-        if(MTASK.CurrentThread){
+        if(MTASK.CurrentThread)
+            {
 #ifdef CONTEXTING
                 //add this to the list of things to clean
                 xrqEnqueue(&kilList,MTASK.CurrentThread->SavedCont);
@@ -1723,10 +1738,13 @@ thExit()
             /** Destroy the thread's descriptor **/
             nmFree(MTASK.CurrentThread,sizeof(Thread));
             MTASK.CurrentThread = NULL;
-        }//end if thread
+            }//end if thread
 	/** No more threads? **/
 	if (MTASK.nThreads == 0)
 	    {
+#ifdef CONTEXTING
+            thFreeUnusedStacks();
+#endif
 	    if (MTASK.MTFlags & MT_F_SEGV)
 		exit(126);
 	    else
@@ -2494,14 +2512,6 @@ thExcessiveRecursion()
  * @param thread thread to kick
  */
 void thKickStart(int thread){
-    ucontext_t *tmp;
-    //clean up old stuff from previous runs
-    while(xrqCount(&kilList)>0){
-        //do the defered free's from thExit
-        tmp=xrqDequeue(&kilList);
-        nmFree(tmp->uc_stack.ss_sp,tmp->uc_stack.ss_size);
-        nmFree(tmp,sizeof(ucontext_t));
-    }
     //actually call the thread
     MTASK.ThreadTable[thread]->StartFn(MTASK.ThreadTable[thread]->StartParam);
 }//end thKickStart
@@ -2515,6 +2525,18 @@ void thCleanUp(){
     thExit();
     mtSched();
 }//end thCleanUp
+
+void thFreeUnusedStacks(void){
+    ucontext_t *tmp;
+    //clean up old stuff from previous runs
+    while(xrqCount(&kilList)>0){
+        //do the defered free's from thExit
+        tmp=xrqDequeue(&kilList);
+        nmFree(tmp->uc_stack.ss_sp,tmp->uc_stack.ss_size);
+        nmFree(tmp,sizeof(ucontext_t));
+    }
+    return;
+}
 #endif
 
 /*** FDSETOPTIONS sets options on an open file descriptor.  These options
