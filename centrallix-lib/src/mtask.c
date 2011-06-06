@@ -312,6 +312,7 @@ int r_mtRunStartFn();
 int mtSched();
 
 #ifdef CONTEXTING
+ XRingQueue kilList;
 void thKickStart(int thread);
 void thCleanUp();
 #endif
@@ -879,6 +880,9 @@ mtInitialize(int flags, void (*start_fn)())
 	signal(SIGSEGV, mtSigSegv);
 
 #ifdef CONTEXTING
+        //ready the list of things to kill
+        //(4 seems resonable)
+        xrqInit(&kilList,4);
         //return here when we get "lost"
         getcontext(&MTASK.DefaultContext);
         MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);//not freed
@@ -1711,18 +1715,11 @@ thExit()
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
         if(MTASK.CurrentThread){
-/*#ifdef CONTEXTING
-            if(MTASK.CurrentThread->SavedCont){
-                if(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp){
-                    //Free the stack
-                    nmFree(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp);
-                    MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=NULL;
-                }//end if stack
-                //Free the context
-                nmFree(MTASK.CurrentThread->SavedCont,sizeof(ucontext_t));        
+#ifdef CONTEXTING
+                //add this to the list of things to clean
+                xrqEnqueue(&kilList,MTASK.CurrentThread->SavedCont);
                 MTASK.CurrentThread->SavedCont=NULL;
-            }//end if context
-#endif*/
+#endif
             /** Destroy the thread's descriptor **/
             nmFree(MTASK.CurrentThread,sizeof(Thread));
             MTASK.CurrentThread = NULL;
@@ -1735,7 +1732,7 @@ thExit()
 	    else
 		exit(0);
 	    }
-
+        
 	/** Call scheduler **/
 	MTASK.MTFlags &= ~MT_F_LOCKED;
 	mtSched();
@@ -2497,6 +2494,13 @@ thExcessiveRecursion()
  * @param thread thread to kick
  */
 void thKickStart(int thread){
+    ucontext_t *tmp;
+    //clean up old stuff from previous runs
+    while(xrqCount(&kilList)){//do the defered free's from thExit
+        tmp=xrqDequeue(&kilList);
+        nmFree(tmp->uc_stack.ss_sp,tmp->uc_stack.ss_size);
+        nmFree(tmp,sizeof(ucontext_t));
+    }
     //actually call the thread
     MTASK.ThreadTable[thread]->StartFn(MTASK.ThreadTable[thread]->StartParam);
 }//end thKickStart
