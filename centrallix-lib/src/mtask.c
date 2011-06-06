@@ -937,7 +937,6 @@ mtRunStartFn(pThread new_thr, int idx)
         else
 	    {
 #ifdef CONTEXTING
-            //r_saved_val = 1;
             setcontext(new_thr->SavedCont);
 #else
 	    longjmp(r_saved_env,1);
@@ -998,7 +997,7 @@ r_mtRunStartFn()
     /* thExit(); */
     return 0;	/* should never return */
     }
-#endif //function for NOT CONTEXTING
+#endif //functions for NOT CONTEXTING
 
 /*** mtProcessSignals is an internal-only function to process the list of pending signals
  ***   I had to add this, as there's three places to process signals, and I didn't want to put this code
@@ -1806,24 +1805,16 @@ thKill(pThread thr)
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
 #endif
-        if(thr){
+        if(thr)
+            {
 #ifdef CONTEXTING
-            if(thr->SavedCont){
-                if(thr->SavedCont->uc_stack.ss_sp){
-                    //Free the stack
-                    nmFree(thr->SavedCont->uc_stack.ss_sp,
-                            thr->SavedCont->uc_stack.ss_size);
-                    thr->SavedCont->uc_stack.ss_sp=NULL;
-                }//if stack
-                //Free the context
-                nmFree(thr->SavedCont,sizeof(ucontext_t));
-                thr->SavedCont=NULL;
-            }//if context
+            xrqEnqueue(&kilList,thr->SavedCont);
+            thr->SavedCont=NULL;
 #endif
             /** Free the structure. **/
             nmFree(thr, sizeof(Thread));
             thr = NULL;
-        }//if thread
+            }//if thread
 	/** Schedule next thread **/
 	mtSched();
 
@@ -2511,32 +2502,39 @@ thExcessiveRecursion()
  * by grabbing the thread info from the table
  * @param thread thread to kick
  */
-void thKickStart(int thread){
+void 
+thKickStart(int thread)
+    {
     //actually call the thread
     MTASK.ThreadTable[thread]->StartFn(MTASK.ThreadTable[thread]->StartParam);
-}//end thKickStart
+    }//end thKickStart
 
 /**
  * finished threads will revert back into this context,
  * therefor, we should clean the last thread out of the system
  */
-void thCleanUp(){
+void 
+thCleanUp()
+    {
     //kill ourself
     thExit();
     mtSched();
-}//end thCleanUp
+    }//end thCleanUp
 
-void thFreeUnusedStacks(void){
+void 
+thFreeUnusedStacks(void)
+    {
     ucontext_t *tmp;
     //clean up old stuff from previous runs
-    while(xrqCount(&kilList)>0){
+    while(xrqCount(&kilList)>0)
+        {
         //do the defered free's from thExit
         tmp=xrqDequeue(&kilList);
         nmFree(tmp->uc_stack.ss_sp,tmp->uc_stack.ss_size);
         nmFree(tmp,sizeof(ucontext_t));
-    }
+        }//end while dead stacks
     return;
-}
+    }
 #endif
 
 /*** FDSETOPTIONS sets options on an open file descriptor.  These options
