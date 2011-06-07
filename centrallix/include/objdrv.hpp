@@ -64,17 +64,17 @@ public:
     virtual int Delete(pObject obj, pObjTrxTree* oxt);
     virtual int Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt);
     virtual int Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt);
-    virtual query_t* OpenQuery(pObjQuery query, pObjTrxTree* oxt);
-    virtual int GetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
-    virtual int GetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt);
-    virtual char* GetNextAttr(void* inf_v, pObjTrxTree oxt);
-    virtual char* GetFirstAttr(void* inf_v, pObjTrxTree oxt);
-    virtual int SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
-    virtual int AddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt);
-    virtual void* OpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt);
     virtual pObjPresentationHints PresentationHints(char* attrname, pObjTrxTree* oxt);
     virtual int Info(pObjectInfo info_struct);
     virtual int Commit(pObjTrxTree* oxt);
+    virtual query_t* OpenQuery(pObjQuery query, pObjTrxTree* oxt);
+//    virtual int GetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
+//    virtual int GetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt);
+//    virtual char* GetNextAttr(void* inf_v, pObjTrxTree oxt);
+//    virtual char* GetFirstAttr(void* inf_v, pObjTrxTree oxt);
+//    virtual int SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
+//    virtual int AddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt);
+//    virtual void* OpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt);
     
     //others
     virtual bool IsEmpty();
@@ -83,5 +83,10 @@ public:
 //get an instance of the class
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
 
+/*
+ * You need define:
+MODULE_DESC("ObjectSystem Driver Description");
+MODULE_VERSION(0,0,0);
+*/
 #endif	/* OBJDRV_HPP */
 

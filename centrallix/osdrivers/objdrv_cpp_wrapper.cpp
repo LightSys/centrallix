@@ -128,6 +128,9 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
     return 0;
     }
 
+int objdrv::Close(pObjTrxTree* oxt){
+    return 0;
+}
 
 /*** cppCreate - create a new object, without actually returning a
  *** descriptor for it.  For most drivers, it is safe to just call
@@ -198,6 +201,9 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
     return 0;
     }
 
+int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
+    return 0;
+}
 
 /*** cppRead - Structure elements have no content.  Fails.
  ***/
@@ -208,6 +214,9 @@ cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     return inf->Read(buffer, maxcnt, offset, flags, oxt);
     }
 
+int objdrv::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt){
+    return 0;
+}
 
 /*** cppWrite - Again, no content.  This fails.
  ***/
@@ -218,6 +227,9 @@ cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     return inf->Write(buffer,cnt,offset,flags,oxt);
     }
 
+int objdrv::Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt){
+    return 0;
+}
 
 /*** cppOpenQuery - open a directory query.  This driver is pretty 
  *** unintelligent about queries.  So, we leave the query matching logic
@@ -249,6 +261,9 @@ cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt){
     return (void*)qy->Fetch(obj,mode,oxt);
 }
 
+objdrv *query_t::Fetch(pObject obj, int mode, pObjTrxTree* oxt){
+    return NULL;
+}//end Fetch
 
 /*** cppQueryClose - close the query.
  ***/
@@ -261,6 +276,9 @@ cppQueryClose(void* qy_v, pObjTrxTree* oxt)
     return 0;
     }
 
+int query_t::Close(pObjTrxTree* oxt){
+    return 0;
+}//end Close
 
 /*** cppGetAttrType - get the type (DATA_T_cpp) of an attribute by name.
  ***/
@@ -396,13 +414,6 @@ cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
-	        /*if (strlen(inf->Obj->Pathname->Pathbuf) -
-	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(val->String) + 1 > 255)
-		    {
-		    mssError(1,"CPP","SetAttr 'name': name too large for internal representation");
-		    return -1;
-		    }*/
 	        inf->Pathname=std::string(inf->Obj->Pathname->Pathbuf);
                 std::string::iterator ch=inf->Pathname.begin();
                 while(ch!=inf->Pathname.end()) if(*(ch++)='/')break;
@@ -503,6 +514,10 @@ cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     return inf->PresentationHints(attrname,oxt);
     }
 
+pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt){
+    return NULL;
+}
+
 
 /*** cppInfo - return object metadata - about the object, not about a 
  *** particular attribute.
@@ -514,6 +529,9 @@ cppInfo(void* inf_v, pObjectInfo info_struct)
     return inf->Info(info_struct);
     }
 
+int objdrv::Info(pObjectInfo info_struct){
+    return 0;
+}
 
 /*** cppCommit - commit any changes made to the underlying data source.
  ***/
@@ -524,6 +542,13 @@ cppCommit(void* inf_v, pObjTrxTree* oxt)
     return inf->Commit(oxt);
     }
 
+int objdrv::Commit(pObjTrxTree* oxt){
+    return 0;
+}
+
+bool objdrv::IsEmpty(){
+    return true;
+}
 
 /*** cppInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -584,6 +609,4 @@ cppInitialize()
 
 MODULE_INIT(cppInitialize);
 MODULE_PREFIX("cpp");
-MODULE_DESC("CPP ObjectSystem Driver");
-MODULE_VERSION(0,0,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
