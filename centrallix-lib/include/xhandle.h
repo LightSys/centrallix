@@ -1,6 +1,8 @@
 #ifndef _XHANDLE_H
 #define _XHANDLE_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -89,8 +91,8 @@ typedef struct _HC
 
 
 /*** Handle context creation/destruction functions ***/
-int xhnInitContext(pHandleContext this);
-int xhnDeInitContext(pHandleContext this);
+int xhnInitContext(pHandleContext);
+int xhnDeInitContext(pHandleContext);
 
 /*** Handle management ***/
 handle_t xhnAllocHandle(pHandleContext ctx, void* ptr);
@@ -103,6 +105,9 @@ int xhnClearHandles(pHandleContext ctx, int (*iter_fn)());
 
 handle_t xhnStringToHandle(char* str, char** endptr, int base);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _XHANDLE_H */
 
 

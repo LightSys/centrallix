@@ -1,6 +1,9 @@
 #ifndef _XARRAY_H
 #define _XARRAY_H
 
+#ifdef __cplusplus
+ extern "C" {
+ #endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -60,20 +63,24 @@ typedef struct
     XArray, *pXArray;
 
 /** Functions **/
-int xaInit(pXArray this, int init_size);
-int xaDeInit(pXArray this);
-int xaAddItem(pXArray this, void* item);
-int xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen);
-int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset);
-void* xaGetItem(pXArray this, int index);
-int xaFindItem(pXArray this, void* item);
-int xaRemoveItem(pXArray this, int index);
-int xaClear(pXArray this);
-int xaCount(pXArray this);
-int xaSetItem(pXArray this, int index, void* item);
-int xaInsertBefore(pXArray this, int index, void* item);
-int xaInsertAfter(pXArray this, int index, void* item);
+int xaInit(pXArray, int init_size);
+int xaDeInit(pXArray);
+int xaAddItem(pXArray, void* item);
+int xaAddItemSorted(pXArray, void* item, int keyoffset, int keylen);
+int xaAddItemSortedInt32(pXArray, void* item, int keyoffset);
+void* xaGetItem(pXArray, int index);
+int xaFindItem(pXArray, void* item);
+int xaRemoveItem(pXArray, int index);
+int xaClear(pXArray);
+int xaCount(pXArray);
+int xaSetItem(pXArray, int index, void* item);
+int xaInsertBefore(pXArray, int index, void* item);
+int xaInsertAfter(pXArray, int index, void* item);
 
 #define CLD(x,y,z) ((x)((y)->Children.Items[(z)]))
+
+#ifdef __cplusplus
+ }
+ #endif
 
 #endif /* _XARRAY_H */

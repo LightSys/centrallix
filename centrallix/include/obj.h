@@ -428,6 +428,9 @@
 
 
  **END-CVSDATA***********************************************************/
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -947,61 +950,61 @@ int objRegisterDriver(pObjDriver drv);
 
 /** objectsystem session functions **/
 pObjSession objOpenSession(char* current_dir);
-int objCloseSession(pObjSession this);
-int objSetWD(pObjSession this, pObject wd);
-char* objGetWD(pObjSession this);
-int objSetDateFmt(pObjSession this, char* fmt);
-char* objGetDateFmt(pObjSession this);
-int objUnmanageObject(pObjSession this, pObject obj);
-int objUnmanageQuery(pObjSession this, pObjQuery qy);
-int objCommit(pObjSession this);
+int objCloseSession(pObjSession);
+int objSetWD(pObjSession, pObject wd);
+char* objGetWD(pObjSession);
+int objSetDateFmt(pObjSession, char* fmt);
+char* objGetDateFmt(pObjSession);
+int objUnmanageObject(pObjSession, pObject obj);
+int objUnmanageQuery(pObjSession, pObjQuery qy);
+int objCommit(pObjSession);
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);
-int objClose(pObject this);
+int objClose(pObject);
 int objCreate(pObjSession session, char* path, int permission_mask, char* type);
 int objDelete(pObjSession session, char* path);
-int objDeleteObj(pObject this);
-pObject objLinkTo(pObject this);
-pObjectInfo objInfo(pObject this);
-char* objGetPathname(pObject this);
+int objDeleteObj(pObject);
+pObject objLinkTo(pObject);
+pObjectInfo objInfo(pObject);
+char* objGetPathname(pObject);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
 pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp);
-int objQueryDelete(pObjQuery this);
-pObject objQueryFetch(pObjQuery this, int mode);
-pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
-int objQueryClose(pObjQuery this);
-int objGetQueryCoverageMask(pObjQuery this);
+int objQueryDelete(pObjQuery);
+pObject objQueryFetch(pObjQuery, int mode);
+pObject objQueryCreate(pObjQuery, char* name, int mode, int permission_mask, char* type);
+int objQueryClose(pObjQuery);
+int objGetQueryCoverageMask(pObjQuery);
 
 /** objectsystem content functions **/
-int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);
-int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
+int objRead(pObject, char* buffer, int maxcnt, int offset, int flags);
+int objWrite(pObject, char* buffer, int cnt, int offset, int flags);
 
 /** objectsystem attribute functions **/
-int objGetAttrType(pObject this, char* attrname);
-int objSetEvalContext(pObject this, void* objlist);
+int objGetAttrType(pObject, char* attrname);
+int objSetEvalContext(pObject, void* objlist);
 #if 1
-int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
-int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
+int objSetAttrValue(pObject, char* attrname, int data_type, pObjData val);
+int objGetAttrValue(pObject, char* attrname, int data_type, pObjData val);
 #else
 #define _OBJATTR_CONV
 int objSetAttrValue();
 int objGetAttrValue();
 #endif
-char* objGetFirstAttr(pObject this);
-char* objGetNextAttr(pObject this);
-pObject objOpenAttr(pObject this, char* attrname, int mode);
-int objAddAttr(pObject this, char* attrname, int type, pObjData val);
-pObjPresentationHints objPresentationHints(pObject this, char* attrname);
+char* objGetFirstAttr(pObject);
+char* objGetNextAttr(pObject);
+pObject objOpenAttr(pObject, char* attrname, int mode);
+int objAddAttr(pObject, char* attrname, int type, pObjData val);
+pObjPresentationHints objPresentationHints(pObject, char* attrname);
 int objFreeHints(pObjPresentationHints ph);
-int objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(), int (*get_fn)(), int (*set_fn)(), int (*finalize_fn)());
+int objAddVirtualAttr(pObject, char* attrname, void* context, int (*type_fn)(), int (*get_fn)(), int (*set_fn)(), int (*finalize_fn)());
 
 /** objectsystem method functions **/
-char* objGetFirstMethod(pObject this);
-char* objGetNextMethod(pObject this);
-int objExecuteMethod(pObject this, char* methodname, pObjData param);
+char* objGetFirstMethod(pObject);
+char* objGetNextMethod(pObject);
+int objExecuteMethod(pObject, char* methodname, pObjData param);
 
 /** objectsystem driver library functions **/
 pXArray objParamsRead(pFile fd);
@@ -1011,13 +1014,13 @@ char* objParamsLookupString(pXArray params, char* name);
 int objParamsSet(pXArray params, char* name, char* stringval, int intval);
 int objParamsFree(pXArray params);
 int obj_internal_IsA(char* type1, char* type2);
-int obj_internal_FreePath(pPathname this);
-int obj_internal_FreePathStruct(pPathname this);
+int obj_internal_FreePath(pPathname);
+int obj_internal_FreePathStruct(pPathname);
 pPathname obj_internal_NormalizePath(char* cwd, char* name);
 int obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt);
 pObject obj_internal_AllocObj();
 int obj_internal_FreeObj(pObject);
-int obj_internal_TrxLog(pObject this, char* op, char* fmt, ...);
+int obj_internal_TrxLog(pObject, char* op, char* fmt, ...);
 
 /** objectsystem transaction functions **/
 int obj_internal_FreeTree(pObjTrxTree oxt);
@@ -1055,15 +1058,19 @@ int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, in
 
 
 /** objectsystem replication services - open object notification (Rn) system **/
-int objRequestNotify(pObject this, int (*callback_fn)(), void* context, int what);
+int objRequestNotify(pObject, int (*callback_fn)(), void* context, int what);
 int obj_internal_RnDelete(pObjReqNotifyItem item);
-int obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, int send_this);
-int objDriverAttrEvent(pObject this, char* attr_name, pTObjData newvalue, int send_this);
+int obj_internal_RnNotifyAttrib(pObject, char* attrname, pTObjData newvalue, int send_this);
+int objDriverAttrEvent(pObject, char* attr_name, pTObjData newvalue, int send_this);
 
 
 /** objectsystem event handler stuff -- for os drivers etc **/
 int objRegisterEventHandler(char* class_code, int (*handler_function)());
 int objRegisterEvent(char* class_code, char* pathname, char* where_clause, int flags, char* xdata);
 int objUnRegisterEvent(char* class_code, char* xdata);
+
+#ifdef __cplusplus
+ }      //end extern "C"
+#endif
 
 #endif /*_OBJ_H*/

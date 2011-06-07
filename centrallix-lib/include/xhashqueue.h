@@ -1,6 +1,10 @@
 #ifndef _XHASHQUEUE_H
 #define _XHASHQUEUE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -142,21 +146,23 @@ typedef struct _HQ
 #define XHQ_UF_NOCALLDISCARD	2
 
 /*** Functions used to access the hashqueue ***/
-int xhqInit(pXHashQueue this, int maxcnt, int keylen, int hashtablesize, int (*discard_fn)(), int (*full_fn)());
-int xhqDeInit(pXHashQueue this);
-pXHQElement xhqAdd(pXHashQueue this, void* key, void* data);
-pXHQElement xhqLookup(pXHashQueue this, void* key);
-void* xhqGetData(pXHashQueue this, pXHQElement item, int flags);
-int xhqRemove(pXHashQueue this, pXHQElement item, int flags);
-int xhqUnlink(pXHashQueue this, pXHQElement item, int flags);
-int xhqLink(pXHashQueue this, pXHQElement item, int flags);
-int xhqLock(pXHashQueue this);
-int xhqUnlock(pXHashQueue this);
+int xhqInit(pXHashQueue, int maxcnt, int keylen, int hashtablesize, int (*discard_fn)(), int (*full_fn)());
+int xhqDeInit(pXHashQueue);
+pXHQElement xhqAdd(pXHashQueue, void* key, void* data);
+pXHQElement xhqLookup(pXHashQueue, void* key);
+void* xhqGetData(pXHashQueue, pXHQElement item, int flags);
+int xhqRemove(pXHashQueue, pXHQElement item, int flags);
+int xhqUnlink(pXHashQueue, pXHQElement item, int flags);
+int xhqLink(pXHashQueue, pXHQElement item, int flags);
+int xhqLock(pXHashQueue);
+int xhqUnlock(pXHashQueue);
 int xhqLockItem(pXHQElement item, int flags);
 int xhqUnlockItem(pXHQElement item, int flags);
-pXHQElement xhqGetFirst(pXHashQueue this);
-pXHQElement xhqGetNext(pXHashQueue this);
+pXHQElement xhqGetFirst(pXHashQueue);
+pXHQElement xhqGetNext(pXHashQueue);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* not defined _XHASHQUEUE_H */
 

@@ -494,7 +494,7 @@ typedef struct
         {
 	DateTime	Date;
 	MoneyType	Money;
-	IntVec		IV;
+	IntVec_t		IV;
 	StringVec	SV;
 	}
 	Types;

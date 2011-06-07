@@ -1,6 +1,9 @@
 #ifndef _STPARSE_H
 #define _STPARSE_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -161,21 +164,24 @@ pStructInf stCreateStruct(char* name, char* type);
 pStructInf stAddAttr(pStructInf inf, char* name);
 pStructInf stAddGroup(pStructInf inf, char* name, char* type);
 int stAddValue(pStructInf inf, char* strval, int intval);
-pStructInf stLookup(pStructInf this, char* name);
-int stAttrValue(pStructInf this, int* intval, char** strval, int nval);
+pStructInf stLookup(pStructInf, char* name);
+int stAttrValue(pStructInf, int* intval, char** strval, int nval);
 pStructInf stAllocInf();
 int stFreeInf(pStructInf inf);
 int stAddInf(pStructInf main_inf, pStructInf sub_inf);
 
 /*** new functions ***/
-int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
-int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);
-int stGetAttrType(pStructInf this, int nval);
-int stStructType(pStructInf this);
-int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);
-pExpression stGetExpression(pStructInf this, int nval);
-void* stGetValueList(pStructInf this, int type, unsigned int* nval);
-int stAttrIsList(pStructInf this);
+int stGetAttrValue(pStructInf, int type, pObjData value, int nval);
+int stGetAttrValueOSML(pStructInf, int type, pObjData value, int nval, pObjSession sess);
+int stGetAttrType(pStructInf, int nval);
+int stStructType(pStructInf);
+int stSetAttrValue(pStructInf, int type, pObjData value, int nval);
+pExpression stGetExpression(pStructInf, int nval);
+void* stGetValueList(pStructInf, int type, unsigned int* nval);
+int stAttrIsList(pStructInf);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _STPARSE_H */
 

@@ -144,7 +144,7 @@ ptodFree(pTObjData ptod)
 		    if (ptod->Data.StringVec) nmFree(ptod->Data.StringVec, sizeof(StringVec));
 		    break;
 		case DATA_T_INTVEC:
-		    if (ptod->Data.IntVec) nmFree(ptod->Data.IntVec, sizeof(IntVec));
+		    if (ptod->Data.IntVec) nmFree(ptod->Data.IntVec, sizeof(IntVec_t));
 		    break;
 		default:
 		    break;

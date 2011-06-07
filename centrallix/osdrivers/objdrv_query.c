@@ -128,7 +128,7 @@ typedef struct
     pStpInf	ParsedInf;
     pPseudoObject CurrentFetch;
     StringVec   SVvalue;
-    IntVec      IVvalue;
+    IntVec_t      IVvalue;
     int 	Type;
     pXString	Name;
     int		CurrAttr;

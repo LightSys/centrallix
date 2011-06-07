@@ -455,7 +455,7 @@ testobj_show_attr(pObject obj, char* attrname)
     int i;
     pStringVec sv;
     pIntVec iv;
-    Binary bn;
+    Binary_t bn;
     pObjPresentationHints hints;
 
 	type = objGetAttrType(obj,attrname);
@@ -812,7 +812,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     char* mptr;
     int t,i;
     pObjectInfo info;
-    Binary bn;
+    Binary_t bn;
     pFile try_file;
     char* attrnames[640];
     int attrtypes[640];

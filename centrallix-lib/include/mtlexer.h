@@ -1,6 +1,9 @@
 #ifndef _MTLEXER_H
 #define _MTLEXER_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -101,20 +104,20 @@ typedef struct _LX
 pLxSession mlxOpenSession(pFile fd, int flags);
 pLxSession mlxStringSession(char* str, int flags);
 pLxSession mlxGenericSession(void* src, int (*read_fn)(), int flags);
-int mlxCloseSession(pLxSession this);
-int mlxNextToken(pLxSession this);
-char* mlxStringVal(pLxSession this, int* alloc);
-int mlxIntVal(pLxSession this);
-double mlxDoubleVal(pLxSession this);
-int mlxCopyToken(pLxSession this, char* buffer, int maxlen);
-int mlxHoldToken(pLxSession this);
-int mlxSetOptions(pLxSession this, int options);
-int mlxUnsetOptions(pLxSession this, int options);
-int mlxSetReservedWords(pLxSession this, char** res_words);
-int mlxNoteError(pLxSession this);
-int mlxNotePosition(pLxSession this);
-unsigned long mlxGetOffset(pLxSession this);
-int mlxSetOffset(pLxSession this, unsigned long new_offset);
+int mlxCloseSession(pLxSession);
+int mlxNextToken(pLxSession);
+char* mlxStringVal(pLxSession, int* alloc);
+int mlxIntVal(pLxSession);
+double mlxDoubleVal(pLxSession);
+int mlxCopyToken(pLxSession, char* buffer, int maxlen);
+int mlxHoldToken(pLxSession);
+int mlxSetOptions(pLxSession, int options);
+int mlxUnsetOptions(pLxSession, int options);
+int mlxSetReservedWords(pLxSession, char** res_words);
+int mlxNoteError(pLxSession);
+int mlxNotePosition(pLxSession);
+unsigned long mlxGetOffset(pLxSession);
+int mlxSetOffset(pLxSession, unsigned long new_offset);
 
 /** Token types **/
 #define	MLX_TOK_BEGIN		0	/* beginning of input stream */
@@ -187,6 +190,10 @@ int mlxSetOffset(pLxSession this, unsigned long new_offset);
 
 /** Other defines **/
 #define MLX_BLK_SIZ		1024
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _MTLEXER_H */
 

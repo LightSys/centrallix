@@ -176,7 +176,7 @@ typedef struct
     int		CurAttr;
     pStructInf	Data;
     pSnNode	Node;
-    IntVec	IVvalue;
+    IntVec_t	IVvalue;
     StringVec	SVvalue;
     void*	VecData;
     }

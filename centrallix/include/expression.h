@@ -1,6 +1,8 @@
 #ifndef _EXPRESSION_H
 #define _EXPRESSION_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -283,7 +285,7 @@ typedef struct _ET
         MoneyType	Money;
         DateTime	Date;
         StringVec	StrVec;
-        IntVec		IntVec;
+        IntVec_t		IntVec;
 	}
 	Types;
     int			ObjCoverageMask;
@@ -410,16 +412,16 @@ extern pParamObjects expNullObjlist;
 
 /*** Functions ***/
 pExpression expAllocExpression();
-int expFreeExpression(pExpression this);
+int expFreeExpression(pExpression);
 pExpression expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflags);
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
-pExpression expLinkExpression(pExpression this);
+pExpression expLinkExpression(pExpression);
 pExpression expPodToExpression(pObjData pod, int type, pExpression exp);
-int expExpressionToPod(pExpression this, int type, pObjData pod);
-pExpression expDuplicateExpression(pExpression this);
-int expReplaceString(pExpression this, char* oldstr, char* newstr);
-int expIsConstant(pExpression this);
-pExpression expReducedDuplicate(pExpression this);
+int expExpressionToPod(pExpression, int type, pObjData pod);
+pExpression expDuplicateExpression(pExpression);
+int expReplaceString(pExpression, char* oldstr, char* newstr);
+int expIsConstant(pExpression);
+pExpression expReducedDuplicate(pExpression);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
@@ -462,13 +464,13 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 /*** Param-object functions ***/
 pParamObjects expCreateParamList();
 int expCopyList(pParamObjects src, pParamObjects dst);
-int expBindExpression(pExpression exp, pParamObjects this, int domain);
-int expFreeParamList(pParamObjects this);
-int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());
-int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
-int expModifyParam(pParamObjects this, char* name, pObject replace_obj);
-int expModifyParamByID(pParamObjects this, int id, pObject replace_obj);
-int expLookupParam(pParamObjects this, char* name);
+int expBindExpression(pExpression exp, pParamObjects, int domain);
+int expFreeParamList(pParamObjects);
+int expFreeParamListWithCB(pParamObjects, int (*free_fn)());
+int expAddParamToList(pParamObjects, char* name, pObject obj, int flags);
+int expModifyParam(pParamObjects, char* name, pObject replace_obj);
+int expModifyParamByID(pParamObjects, int id, pObject replace_obj);
+int expLookupParam(pParamObjects, char* name);
 int expSyncModify(pExpression tree, pParamObjects objlist);
 int expReplaceID(pExpression tree, int oldid, int newid);
 int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
@@ -477,15 +479,18 @@ int expReplaceVariableID(pExpression tree, int newid);
 int expResetAggregates(pExpression tree, int reset_id, int level);
 int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
 int expUnlockAggregates(pExpression tree, int level);
-int expRemoveParamFromList(pParamObjects this, char* name);
-int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
+int expRemoveParamFromList(pParamObjects, char* name);
+int expSetParamFunctions(pParamObjects, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);
-int expObjChanged(pParamObjects this, pObject obj);
+int expObjChanged(pParamObjects, pObject obj);
 int expContainsAttr(pExpression exp, int objid, char* attrname);
-int expAllObjChanged(pParamObjects this);
-int expSetCurrentID(pParamObjects this, int current_id);
-void expLinkParams(pParamObjects this, int start, int end);
-void expUninkParams(pParamObjects this, int start, int end);
+int expAllObjChanged(pParamObjects);
+int expSetCurrentID(pParamObjects, int current_id);
+void expLinkParams(pParamObjects, int start, int end);
+void expUninkParams(pParamObjects, int start, int end);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* not defined _EXPRESSION_H */

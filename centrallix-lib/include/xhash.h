@@ -1,6 +1,9 @@
 #ifndef _XHASH_H
 #define _XHASH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -74,12 +77,16 @@ typedef struct
     XHashTable, *pXHashTable;
 
 /** Functions **/
-int xhInit(pXHashTable this, int rows, int keylen);
-int xhDeInit(pXHashTable this);
-int xhAdd(pXHashTable this, char* key, char* data);
-int xhRemove(pXHashTable this, char* key);
-char* xhLookup(pXHashTable this, char* key);
-int xhClear(pXHashTable this, int (*free_fn)(), void* free_arg);
+int xhInit(pXHashTable, int rows, int keylen);
+int xhDeInit(pXHashTable);
+int xhAdd(pXHashTable, char* key, char* data);
+int xhRemove(pXHashTable, char* key);
+char* xhLookup(pXHashTable, char* key);
+int xhClear(pXHashTable, int (*free_fn)(), void* free_arg);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _XHASH_H */
 

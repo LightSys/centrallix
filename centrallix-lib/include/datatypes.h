@@ -1,6 +1,9 @@
 #ifndef _DATATYPES_H
 #define _DATATYPES_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -80,7 +83,7 @@ typedef struct _IV
     unsigned int        nIntegers;
     int*		Integers;
     }
-    IntVec, *pIntVec;
+    IntVec_t, *pIntVec;
 
 /** String Vector structure **/
 typedef struct _SV
@@ -99,12 +102,13 @@ typedef struct _MN
     MoneyType, *pMoneyType;
 
 /** Binary data (counted string) structure **/
+//
 typedef struct _BN
     {
     int			Size;
     unsigned char*	Data;
     }
-    Binary, *pBinary;
+    Binary_t, *pBinary;
 
 /** Data Types. **/
 #define DATA_T_UNAVAILABLE      0
@@ -125,7 +129,7 @@ typedef union _POD
     {
     int         Integer;
     char*       String;
-    Binary	Binary;
+    Binary_t	Binary;
     pMoneyType  Money;
     pDateTime   DateTime;
     double      Double;
@@ -137,5 +141,7 @@ typedef union _POD
 
 #define POD(x)  ((pObjData)(x))
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* _DATATYPES_H */

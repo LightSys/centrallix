@@ -68,7 +68,7 @@ typedef struct
 	char	    String[16];
 	MoneyType   Money;
 	DateTime    Date;
-	IntVec	    IV;
+	IntVec_t	    IV;
 	StringVec   SV;
 	}
 	Buf;	/** buffer for various data types **/

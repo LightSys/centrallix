@@ -326,7 +326,7 @@ typedef struct
     int		AttrID;
     pStructInf	AttrOverride;
     StringVec	SVvalue;
-    IntVec	IVvalue;
+    IntVec_t	IVvalue;
     void*	VecData;
     pParamObjects ObjList;
     pRptSession	RSess;
