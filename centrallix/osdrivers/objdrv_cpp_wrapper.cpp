@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2011 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,114 +36,14 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	<driver filename goes here>				*/
-/* Author:	<author name goes here>					*/
-/* Creation:	<create data goes here>					*/
-/* Description:	<replace this> This file is a prototype objectsystem	*/
-/*		driver skeleton.  It is used for 'getting started' on	*/
-/*		a new objectsystem driver.				*/
-/*									*/
-/*		To use, some global search/replace must be done.	*/
-/*		Replace all occurrenced of cpp, CPP, and Cpp with your	*/
-/*		driver's prefix in the same capitalization.  In vi,	*/
-/*									*/
-/*			:1,$s/Cpp/Pop/g					*/
-/*			:1,$s/CPP/POP/g					*/
-/*			:1,$s/cpp/pop/g					*/
+/* Module: 	objdrv_cpp_wrapper.cpp         				*/
+/* Author:	Micah Shennum                           		*/
+/* Creation:	Jun 6 2011                                      	*/
+/* Description:	This goes through the nasty bussness of binding a objdrv*/
+/*               class into the object driver system                    */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: OBJDRV_PROTOTYPE.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/OBJDRV_PROTOTYPE.c,v $
-
-    $Log: OBJDRV_PROTOTYPE.c,v $
-    Revision 1.7  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.6  2004/12/31 04:21:49  gbeeley
-    - bring prototype osdriver source file more up to date
-
-    Revision 1.5  2004/06/11 21:06:57  mmcgill
-    Did some code tree scrubbing.
-
-    Changed cppGetAttrValue(), cppSetAttrValue(), cppAddAttr(), and
-    cppExecuteMethod() to use pObjData as the type for val (or param in
-    the case of cppExecuteMethod) instead of void* for the audio, BerkeleyDB,
-    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
-    overflow in objdrv_shell.c (line 1046).
-
-    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
-    broken as of right now.
-
-    It should be noted that I haven't actually built the audio or Berkeley
-    drivers, so I *could* have messed up, but they look ok. The others
-    compiled, and passed a cursory testing.
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2002/07/29 01:18:07  jorupp
-     * added the include and calls to build as a module
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:00  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:02  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
-
-
-/*** Structure used by this driver internally. ***/
-typedef struct 
-    {
-    char	Pathname[256];
-    int		Flags;
-    pObject	Obj;
-    int		Mask;
-    int		CurAttr;
-    pSnNode	Node;
-    }
-    CppData, *pCppData;
-
-
-#define CPP(x) ((pCppData)(x))
-
-/*** Structure used by queries for this driver. ***/
-typedef struct
-    {
-    pCppData	Data;
-    char	NameBuf[256];
-    int		ItemCnt;
-    }
-    CppQuery, *pCppQuery;
+#include "objdrv.hpp"
 
 /*** GLOBALS ***/
 typedef struct
@@ -159,16 +59,15 @@ CPP_INF_t CPP_INF;
 void*
 cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    pCppData inf;
+    objdrv *inf;
     int rval;
     char* node_path;
     pSnNode node = NULL;
     char* ptr;
 
-	/** Allocate the structure **/
-	inf = (pCppData)nmMalloc(sizeof(CppData));
+	/** Allocate the structure! **/
+        inf=GetInstance();
 	if (!inf) return NULL;
-	memset(inf,0,sizeof(CppData));
 	inf->Obj = obj;
 	inf->Mask = mask;
 
@@ -181,7 +80,7 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    node = snNewNode(obj->Prev, usrtype);
 	    if (!node)
 	        {
-		nmFree(inf,sizeof(CppData));
+                delete inf;
 		mssError(0,"CPP","Could not create new node object");
 		return NULL;
 		}
@@ -202,14 +101,14 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** If _still_ no node, quit out. **/
 	if (!node)
 	    {
-	    nmFree(inf,sizeof(CppData));
+	    delete inf;
 	    mssError(0,"CPP","Could not open structure file");
 	    return NULL;
 	    }
 
 	/** Set object params. **/
 	inf->Node = node;
-	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
+	inf->Pathname=std::string(obj_internal_PathPart(obj->Pathname,0,0));
 	inf->Node->OpenCnt++;
 
     return (void*)inf;
@@ -221,14 +120,14 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 int
 cppClose(void* inf_v, pObjTrxTree* oxt)
     {
-    pCppData inf = CPP(inf_v);
-
+    objdrv *inf = (objdrv *)inf_v;
+    inf->Close(oxt);
     	/** Write the node first, if need be. **/
 	snWriteNode(inf->Obj->Prev, inf->Node);
 	
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
-	nmFree(inf,sizeof(CppData));
+	delete inf;
 
     return 0;
     }
@@ -263,13 +162,10 @@ int
 cppDelete(pObject obj, pObjTrxTree* oxt)
     {
     struct stat fileinfo;
-    pCppData inf, find_inf, search_inf;
-    int is_empty = 1;
-    int i;
-
+    objdrv *inf;
     	/** Open the thing first to get the inf ptrs **/
 	obj->Mode = O_WRONLY;
-	inf = (pCppData)cppOpen(obj, 0, NULL, "", oxt);
+	inf = (objdrv *)cppOpen(obj, 0, NULL, "", oxt);
 	if (!inf) return -1;
 
 	/** Check to see if user is deleting the 'node object'. **/
@@ -283,9 +179,7 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
 		}
 
 	    /** Need to do some checking to see if, for example, a non-empty object can't be deleted **/
-	    /** YOU WILL NEED TO REPLACE THIS CODE WITH YOUR OWN. **/
-	    is_empty = 0;
-	    if (!is_empty)
+	    if (!inf->IsEmpty())
 	        {
 		cppClose(inf, oxt);
 		mssError(1,"CPP","Cannot delete: object not empty");
@@ -293,7 +187,8 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
 		}
 	    stFreeInf(inf->Node->Data);
 
-	    /** Physically delete the node, and then remove it from the node cache **/
+            inf->Delete(obj,oxt);
+            /** Physically delete the node, and then remove it from the node cache **/
 	    unlink(inf->Node->NodePath);
 	    snDelete(inf->Node);
 	    }
@@ -303,7 +198,7 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Release, don't call close because that might write data to a deleted object **/
-	nmFree(inf,sizeof(CppData));
+	delete inf;
 
     return 0;
     }
@@ -314,8 +209,8 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
 int
 cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    pCppData inf = CPP(inf_v);
-    return -1;
+    objdrv *inf = (objdrv *)inf_v;
+    return inf->Read(buffer, maxcnt, offset, flags, oxt);
     }
 
 
@@ -324,8 +219,8 @@ cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 int
 cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    pCppData inf = CPP(inf_v);
-    return -1;
+    objdrv *inf = (objdrv *)inf_v;
+    return inf->Write(buffer,cnt,offset,flags,oxt);
     }
 
 
@@ -336,19 +231,20 @@ cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 void*
 cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
-    pCppData inf = CPP(inf_v);
-    pCppQuery qy;
-
-	/** Allocate the query structure **/
-	qy = (pCppQuery)nmMalloc(sizeof(CppQuery));
-	if (!qy) return NULL;
-	memset(qy, 0, sizeof(CppQuery));
-	qy->Data = inf;
-	qy->ItemCnt = 0;
-    
-    return (void*)qy;
+    objdrv *inf = (objdrv *)inf_v;
+    return (void*)inf->OpenQuery();
     }
 
+//constructor for query_t
+query_t::query_t(objdrv *data){
+        Data=data;
+        ItemCnt=0;
+}
+
+//default open query
+query_t *objdrv::OpenQuery(pObjQuery query, pObjTrxTree* oxt){
+    return new query_t(this);
+}
 
 /*** cppQueryFetch - get the next directory entry as an open object.
  ***/
@@ -390,10 +286,8 @@ cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 int
 cppQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
-
-	/** Free the structure **/
-	nmFree(qy_v,sizeof(CppQuery));
-
+        query_t *qy = (query_t *)qy_v;
+        delete qy;
     return 0;
     }
 
@@ -633,8 +527,8 @@ cppExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
 pObjPresentationHints
 cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    /** No hints yet on this **/
-    return NULL;
+    objdrv *inf = (objdrv *)inf_v;
+    return inf->PresentationHints(attrname,oxt);
     }
 
 
@@ -644,8 +538,8 @@ cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 cppInfo(void* inf_v, pObjectInfo info_struct)
     {
-    memset(info_struct, sizeof(ObjectInfo), 0);
-    return 0;
+    objdrv *inf = (objdrv *)inf_v;
+    return inf->Info(info_struct);
     }
 
 
@@ -654,8 +548,8 @@ cppInfo(void* inf_v, pObjectInfo info_struct)
 int
 cppCommit(void* inf_v, pObjTrxTree* oxt)
     {
-    /** no uncommitted changes yet **/
-    return 0;
+    objdrv *inf = (objdrv *)inf_v;
+    return inf->Commit(oxt);
     }
 
 
@@ -721,4 +615,3 @@ MODULE_PREFIX("cpp");
 MODULE_DESC("CPP ObjectSystem Driver");
 MODULE_VERSION(0,0,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
-
