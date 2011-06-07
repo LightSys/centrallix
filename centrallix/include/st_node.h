@@ -1,6 +1,8 @@
 #ifndef _ST_NODE_H
 #define _ST_NODE_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -102,4 +104,7 @@ pDateTime snGetLastModification(pSnNode node);
 int snSetParamString(pSnNode node, pObject obj, char* paramname, char* default_val);
 int snSetParamInteger(pSnNode node, pObject obj, char* paramname, int default_val);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _ST_NODE_H */

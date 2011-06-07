@@ -1,6 +1,8 @@
 #ifndef _MTSESSION_H
 #define _MTSESSION_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -100,5 +102,7 @@ int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif
