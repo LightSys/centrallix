@@ -36,16 +36,18 @@
 #include <string>
 #include "obj.h"
 #include "st_node.h"
-#include "query.hpp"
 
 class objdrv;
 
 /*** Structure used by queries for this driver. ***/
 class query_t{
+public:
     objdrv       *Data;
     std::string  NameBuff;
     int          ItemCnt;
     query_t(objdrv *data);
+    virtual objdrv* Fetch(pObject obj, int mode, pObjTrxTree* oxt);
+    virtual int Close(pObjTrxTree* oxt);
 };//end class query
 
 class objdrv {
@@ -58,15 +60,11 @@ public:
     pSnNode	Node;
         
     //from file handeling 
-    virtual void* Open(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
     virtual int Close(pObjTrxTree* oxt);
-    virtual int Create(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
     virtual int Delete(pObject obj, pObjTrxTree* oxt);
     virtual int Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt);
     virtual int Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt);
     virtual query_t* OpenQuery(pObjQuery query, pObjTrxTree* oxt);
-    virtual void* QueryFetch(pObject obj, int mode, pObjTrxTree* oxt);
-    virtual int QueryClose(void* qy_v, pObjTrxTree* oxt);
     virtual int GetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
     virtual int GetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt);
     virtual char* GetNextAttr(void* inf_v, pObjTrxTree oxt);
@@ -83,7 +81,7 @@ public:
 };//end class objdrv
 
 //get an instance of the class
-objdrv *GetInstance();
+objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
 
 #endif	/* OBJDRV_HPP */
 

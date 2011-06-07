@@ -60,16 +60,12 @@ void*
 cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     objdrv *inf;
-    int rval;
     char* node_path;
     pSnNode node = NULL;
-    char* ptr;
 
 	/** Allocate the structure! **/
-        inf=GetInstance();
+        inf=GetInstance(obj,mask,systype,usrtype,oxt);
 	if (!inf) return NULL;
-	inf->Obj = obj;
-	inf->Mask = mask;
 
 	/** Determine the node path **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -141,7 +137,6 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
 int
 cppCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    int fd;
     void* inf;
 
     	/** Call open() then close() **/
@@ -232,7 +227,7 @@ void*
 cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     objdrv *inf = (objdrv *)inf_v;
-    return (void*)inf->OpenQuery();
+    return (void*)inf->OpenQuery(query,oxt);
     }
 
 //constructor for query_t
@@ -249,36 +244,10 @@ query_t *objdrv::OpenQuery(pObjQuery query, pObjTrxTree* oxt){
 /*** cppQueryFetch - get the next directory entry as an open object.
  ***/
 void*
-cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
-    {
-    pCppQuery qy = ((pCppQuery)(qy_v));
-    pCppData inf;
-    char* new_obj_name = "newobj";
-
-    	/** PUT YOUR OBJECT-QUERY-RETRIEVAL STUFF HERE **/
-	/** RETURN NULL IF NO MORE ITEMS. **/
-	return NULL;
-
-	/** Build the filename. **/
-	/** REPLACE NEW_OBJ_NAME WITH YOUR NEW OBJECT NAME OF THE OBJ BEING FETCHED **/
-	if (strlen(new_obj_name) + 1 + strlen(qy->Data->Obj->Pathname->Pathbuf) > 255) 
-	    {
-	    mssError(1,"CPP","Query result pathname exceeds internal representation");
-	    return NULL;
-	    }
-	sprintf(obj->Pathname->Pathbuf,"%s/%s",qy->Data->Obj->Pathname->Pathbuf,new_obj_name);
-
-	/** Alloc the structure **/
-	inf = (pCppData)nmMalloc(sizeof(CppData));
-	if (!inf) return NULL;
-	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
-	inf->Node = qy->Data->Node;
-	inf->Node->OpenCnt++;
-	inf->Obj = obj;
-	qy->ItemCnt++;
-
-    return (void*)inf;
-    }
+cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt){
+    query_t *qy = (query_t *)qy_v;
+    return (void*)qy->Fetch(obj,mode,oxt);
+}
 
 
 /*** cppQueryClose - close the query.
@@ -287,6 +256,7 @@ int
 cppQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
         query_t *qy = (query_t *)qy_v;
+        qy->Close(oxt);
         delete qy;
     return 0;
     }
@@ -297,7 +267,7 @@ cppQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    pCppData inf = CPP(inf_v);
+    objdrv *inf = (objdrv *)inf_v;
     int i;
     pStructInf find_inf;
 
@@ -329,7 +299,7 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
-    pCppData inf = CPP(inf_v);
+    objdrv *inf = (objdrv *)inf_v;
     pStructInf find_inf;
     char* ptr;
     int i;
@@ -380,7 +350,7 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 char*
 cppGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
-    pCppData inf = CPP(inf_v);
+    objdrv *inf = (objdrv *)inf_v;
 
 	/** REPLACE THE IF(0) WITH A CONDITION IF THERE ARE MORE ATTRS **/
 	if (0)
@@ -398,7 +368,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree oxt)
 char*
 cppGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
-    pCppData inf = CPP(inf_v);
+    objdrv *inf = (objdrv *)inf_v;
     char* ptr;
 
 	/** Set the current attribute. **/
@@ -417,8 +387,7 @@ cppGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 int
 cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
-    pCppData inf = CPP(inf_v);
-    pStructInf find_inf;
+    objdrv *inf = (objdrv *)inf_v;
 
 	/** Choose the attr name **/
 	/** Changing name of node object? **/
@@ -427,21 +396,24 @@ cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
-	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
+	        /*if (strlen(inf->Obj->Pathname->Pathbuf) -
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
 		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"CPP","SetAttr 'name': name too large for internal representation");
 		    return -1;
-		    }
-	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
-	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
+		    }*/
+	        inf->Pathname=std::string(inf->Obj->Pathname->Pathbuf);
+                std::string::iterator ch=inf->Pathname.begin();
+                while(ch!=inf->Pathname.end()) if(*(ch++)='/')break;
+                inf->Pathname.erase(ch,inf->Pathname.end());
+                inf->Pathname.append(val->String);
+                if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname.c_str()) < 0)
 		    {
 		    mssError(1,"CPP","SetAttr 'name': could not rename structure file node object");
 		    return -1;
 		    }
-	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
+	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname.c_str());
 		}
 	    return 0;
 	    }
@@ -474,7 +446,7 @@ cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 int
 cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
-    pCppData inf = CPP(inf_v);
+    objdrv *inf = (objdrv *)inf_v;
     pStructInf new_inf;
     char* ptr;
 
@@ -601,8 +573,8 @@ cppInitialize()
 	drv->Info = (int (*)())cppInfo;
 	drv->Commit = (int (*)())cppCommit;
 
-	nmRegister(sizeof(CppData),"CppData");
-	nmRegister(sizeof(CppQuery),"CppQuery");
+//	nmRegister(sizeof(objdrv),"CppData");
+//	nmRegister(sizeof(query_t),"CppQuery");
 
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
