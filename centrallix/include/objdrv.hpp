@@ -34,6 +34,7 @@
 #error "This is a C++ class, and it looks like your using it in C"
 #endif
 #include <string>
+#include "centrallix.h"
 #include "obj.h"
 #include "st_node.h"
 
@@ -82,7 +83,8 @@ public:
 
 //get an instance of the class
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
-
+char *GetName();
+char *GetType();
 /*
  * You need define:
 MODULE_DESC("ObjectSystem Driver Description");

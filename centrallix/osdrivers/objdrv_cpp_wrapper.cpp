@@ -60,54 +60,12 @@ void*
 cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     objdrv *inf;
-    char* node_path;
-    pSnNode node = NULL;
+    /** Allocate the structure! **/
+    inf = GetInstance(obj, mask, systype, usrtype, oxt);
+    if (!inf) return NULL;
+    inf->Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
 
-	/** Allocate the structure! **/
-        inf=GetInstance(obj,mask,systype,usrtype,oxt);
-	if (!inf) return NULL;
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
-
-	/** If CREAT and EXCL, we only create, failing if already exists. **/
-	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
-	    {
-	    node = snNewNode(obj->Prev, usrtype);
-	    if (!node)
-	        {
-                delete inf;
-		mssError(0,"CPP","Could not create new node object");
-		return NULL;
-		}
-	    }
-	
-	/** Otherwise, try to open it first. **/
-	if (!node)
-	    {
-	    node = snReadNode(obj->Prev);
-	    }
-
-	/** If no node, and user said CREAT ok, try that. **/
-	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
-	    {
-	    node = snNewNode(obj->Prev, usrtype);
-	    }
-
-	/** If _still_ no node, quit out. **/
-	if (!node)
-	    {
-	    delete inf;
-	    mssError(0,"CPP","Could not open structure file");
-	    return NULL;
-	    }
-
-	/** Set object params. **/
-	inf->Node = node;
-	inf->Pathname=std::string(obj_internal_PathPart(obj->Pathname,0,0));
-	inf->Node->OpenCnt++;
-
-    return (void*)inf;
+    return (void*) inf;
     }
 
 
@@ -118,12 +76,7 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
     {
     objdrv *inf = (objdrv *)inf_v;
     inf->Close(oxt);
-    	/** Write the node first, if need be. **/
-	snWriteNode(inf->Obj->Prev, inf->Node);
-	
-	/** Release the memory **/
-	inf->Node->OpenCnt --;
-	delete inf;
+    delete inf;
 
     return 0;
     }
@@ -142,11 +95,11 @@ cppCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
     {
     void* inf;
 
-    	/** Call open() then close() **/
-	obj->Mode = O_CREAT | O_EXCL;
-	inf = cppOpen(obj, mask, systype, usrtype, oxt);
-	if (!inf) return -1;
-	cppClose(inf, oxt);
+    /** Call open() then close() **/
+    obj->Mode = O_CREAT | O_EXCL;
+    inf = cppOpen(obj, mask, systype, usrtype, oxt);
+    if (!inf) return -1;
+    cppClose(inf, oxt);
 
     return 0;
     }
@@ -166,36 +119,9 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
 	inf = (objdrv *)cppOpen(obj, 0, NULL, "", oxt);
 	if (!inf) return -1;
 
-	/** Check to see if user is deleting the 'node object'. **/
-	if (obj->Pathname->nElements == obj->SubPtr)
-	    {
-	    if (inf->Node->OpenCnt > 1) 
-	        {
-		cppClose(inf, oxt);
-		mssError(1,"CPP","Cannot delete structure file: object in use");
-		return -1;
-		}
-
-	    /** Need to do some checking to see if, for example, a non-empty object can't be deleted **/
-	    if (!inf->IsEmpty())
-	        {
-		cppClose(inf, oxt);
-		mssError(1,"CPP","Cannot delete: object not empty");
-		return -1;
-		}
-	    stFreeInf(inf->Node->Data);
-
-            inf->Delete(obj,oxt);
-            /** Physically delete the node, and then remove it from the node cache **/
-	    unlink(inf->Node->NodePath);
-	    snDelete(inf->Node);
-	    }
-	else
-	    {
-	    /** Delete of sub-object processing goes here **/
-	    }
-
-	/** Release, don't call close because that might write data to a deleted object **/
+	inf->Delete(obj,oxt);
+        
+        /** Release, don't call close because that might write data to a deleted object **/
 	delete inf;
 
     return 0;
@@ -568,10 +494,10 @@ cppInitialize()
 	CPP_INF.dmy_global_variable = 0;
 
 	/** Setup the structure **/
-	strcpy(drv->Name,"CPP - fake module, will be cpp wrapper ");/** <--- PUT YOUR DESCRIPTION HERE **/
+	strcpy(drv->Name,GetName());
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),16);
-	xaAddItem(&(drv->RootContentTypes),(void*)"cpp");/** <--- PUT YOUR OBJECT/TYPE HERE **/
+	xaAddItem(&(drv->RootContentTypes),(void*)GetType());
 
 	/** Setup the function references. **/
 	drv->Open = (void* (*)())cppOpen;
@@ -598,9 +524,6 @@ cppInitialize()
 	drv->Info = (int (*)())cppInfo;
 	drv->Commit = (int (*)())cppCommit;
 
-//	nmRegister(sizeof(objdrv),"CppData");
-//	nmRegister(sizeof(query_t),"CppQuery");
-
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
 
@@ -608,5 +531,4 @@ cppInitialize()
     }
 
 MODULE_INIT(cppInitialize);
-MODULE_PREFIX("cpp");
 MODULE_IFACE(CX_CURRENT_IFACE);
