@@ -2150,23 +2150,37 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				    {
 				    /** See if value changed. **/
 				    changed = 0;
-				    switch(ud->LastValue->DataType)
+				    if ((ud->Exp->Flags & EXPR_F_NULL) != (ud->LastValue->Flags & EXPR_F_NULL))
 					{
-					case DATA_T_INTEGER:
-					    changed = ud->LastValue->Integer != ud->Exp->Integer;
-					    break;
-					case DATA_T_STRING:
-					    changed = strcmp(ud->LastValue->String, ud->Exp->String);
-					    break;
-					case DATA_T_MONEY:
-					    changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
-					    break;
-					case DATA_T_DATETIME:
-					    changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
-					    break;
-					case DATA_T_DOUBLE:
-					    changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
-					    break;
+					/** Changed to/from NULL **/
+					changed = 1;
+					}
+				    else if ((ud->Exp->Flags & EXPR_F_NULL) && (ud->LastValue->Flags & EXPR_F_NULL))
+					{
+					/** Both are null - do not compare **/
+					changed = 0;
+					}
+				    else
+					{
+					/** Compare values **/
+					switch(ud->LastValue->DataType)
+					    {
+					    case DATA_T_INTEGER:
+						changed = ud->LastValue->Integer != ud->Exp->Integer;
+						break;
+					    case DATA_T_STRING:
+						changed = strcmp(ud->LastValue->String, ud->Exp->String);
+						break;
+					    case DATA_T_MONEY:
+						changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
+						break;
+					    case DATA_T_DATETIME:
+						changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
+						break;
+					    case DATA_T_DOUBLE:
+						changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
+						break;
+					    }
 					}
 				    if (changed)
 					{
