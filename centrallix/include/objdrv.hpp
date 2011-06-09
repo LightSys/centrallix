@@ -102,10 +102,5 @@ objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, 
 char *GetName();
 std::list<std::string> GetTypes();
 
-/*
- * You need define:
-MODULE_DESC("ObjectSystem Driver Description");
-MODULE_VERSION(0,0,0);
-*/
 #endif	/* OBJDRV_HPP */
 

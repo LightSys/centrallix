@@ -97,7 +97,7 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
 	    objdrv_link.o \
-	    objdrv_cpp_wrapper.o \
+	    objdrv_cppmem.o \
 	    @OBJDRIVERS@
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
 
@@ -569,8 +569,8 @@ osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
 osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
 	
-osdrivers/objdrv_cpp_wrapper.so: osdrivers/objdrv_cpp_wrapper.cpp
-	$(CXX) $(CFLAGS) @CXX_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @CXX_LIBS@ -o $@
+osdrivers/objdrv_cppmem.so: osdrivers/objdrv_cppmem.cpp osdrivers/objdrv_cpp_wrapper.cpp include/objdrv.hpp
+	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC osdrivers/objdrv_cppmem.cpp osdrivers/objdrv_cpp_wrapper.cpp -o $@
 	
 #osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
 #	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
