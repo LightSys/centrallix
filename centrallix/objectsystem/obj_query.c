@@ -420,7 +420,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	linked_obj = objLinkTo(obj);
 	this->Obj = linked_obj;
         this->ObjList = (void*)expCreateParamList();
-	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, 0);
+	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, EXPR_O_CURRENT);
 
 	/** Ok, first parse the query. **/
 	if (obj_internal_ParseCriteria(this, query, tree) < 0)
@@ -718,6 +718,7 @@ objQueryFetch(pObjQuery this, int mode)
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
+	    obj_internal_PathPart(this->Obj->Pathname, 0, 0);
 	    snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
 	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
