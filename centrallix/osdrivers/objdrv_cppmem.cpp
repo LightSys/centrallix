@@ -37,6 +37,7 @@ int cppmem::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* o
         *(buffer+i)=Buffer.front();
         Buffer.pop_front();
     }
+    if(cnt==0)return -1;
     return cnt;
 }
 
@@ -47,11 +48,19 @@ bool cppmem::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
 
 cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
         :objdrv(obj,mask,systype,usrtype,oxt){
-    Attributes["outer_type"]=new Attribute(DATA_T_STRING,POD("mem/list"));
+    obj->SubCnt=1;
+    this->Obj=obj;
+    this->Pathname=std::string(obj->Pathname->Pathbuf);
+    Attributes["name"]=new Attribute(DATA_T_STRING,obj->Pathname->Pathbuf);
+    Attributes["outer_type"]=new Attribute(DATA_T_STRING,"cpp/mem");
+    Attributes["inner_type"]=new Attribute(DATA_T_STRING,"system/void");
+    Attributes["content_type"]=Attributes["inner_type"];
+    Attributes["source_class"]=new Attribute(DATA_T_STRING,"cpp");
 }
 
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     cppmem *tmp;
+
     tmp=files[obj->Pathname];
     if(!tmp)tmp=files[obj->Pathname]=new cppmem(obj,mask,systype,usrtype,oxt);
     return tmp;
@@ -62,7 +71,7 @@ char *GetName(){
 }
 
 char *GetType(){
-    return "mem/list";
+    return "cpp/mem";
 }
 
 MODULE_PREFIX("mem");

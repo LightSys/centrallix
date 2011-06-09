@@ -59,17 +59,26 @@ public:
     
     Attribute(int type,pObjData value){
         Type=type;
-        Value=value;
+        Value= value;
+    }
+
+    Attribute(int type,std::string value){
+        Type=type;
+        Value= new ObjData;
+        Value->String=(char *)value.c_str();
+    }
+
+    Attribute(int type,int value){
+        Type=type;
+        Value= new ObjData;
+        Value->Integer=value;
     }
 };
 
 class objdrv {
 public:
     std::string Pathname;
-    int		Flags;
     pObject	Obj;
-    int		Mask;
-    pSnNode	Node;
     std::map<std::string,Attribute *> Attributes;
     std::map<std::string,Attribute *>::iterator CurrentAtrrib;
     

@@ -133,7 +133,7 @@ cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     }
 
 int objdrv::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt){
-    return 0;
+    return -1;
 }
 
 /*** cppWrite - calls the objdrv's write method
@@ -146,7 +146,7 @@ cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     }
 
 int objdrv::Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt){
-    return 0;
+    return -1;
 }
 
 /*** cppOpenQuery - open a directory query.  This driver is pretty 
@@ -212,10 +212,11 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     //do some generic setup
     Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
-    Attributes["name"]=new Attribute(DATA_T_STRING,POD(obj_internal_PathPart(obj->Pathname, 0, 0)));
-    Attributes["annotation"]=new Attribute(DATA_T_STRING,POD(""));
-    Attributes["outer_type"]=new Attribute(DATA_T_STRING,POD("sytem/object"));
-    Attributes["inner_type"]=new Attribute(DATA_T_STRING,POD("sytem/void"));
+    Attributes["name"]=new Attribute(DATA_T_STRING,obj_internal_PathPart(obj->Pathname, 0, 0));
+    Attributes["annotation"]=new Attribute(DATA_T_STRING,"");
+    Attributes["outer_type"]=new Attribute(DATA_T_STRING,"sytem/object");
+    Attributes["inner_type"]=new Attribute(DATA_T_STRING,"sytem/void");
+    Attributes["content_type"]=new Attribute(DATA_T_STRING,"sytem/void");
 }
 
 /*** cppGetAttrValue - get the value of an attribute by name.  The 'val'
@@ -226,8 +227,23 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     objdrv *inf = (objdrv *)inf_v;
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
         return -1;
-    datatype = inf->Attributes[std::string(attrname)]->Type;
-    val = inf->Attributes[std::string(attrname)]->Value;
+    if(datatype != inf->Attributes[std::string(attrname)]->Type)
+        return -1;
+    pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
+    *val = *(tmpval);
+//    switch(datatype){
+//        case DATA_T_STRING:
+//            val->String = inf->Attributes[std::string(attrname)]->Value->String;
+//            break;
+//        case DATA_T_INTEGER:
+//            val->Integer = inf->Attributes[std::string(attrname)]->Value->Integer;
+//            break;
+//        case DATA_T_DOUBLE:
+//            val->Double = inf->Attributes[std::string(attrname)]->Value->Double;
+//            break;
+//        default:
+//            *val = *(inf->Attributes[std::string(attrname)]->Value);
+//    }//end type switch
     return 0;
 }
 
@@ -240,7 +256,8 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     if(inf->CurrentAtrrib==inf->Attributes.end())return NULL;
     tmp=inf->CurrentAtrrib->first;
     inf->CurrentAtrrib++;
-    if(tmp.compare("name") || tmp.compare("annotation") || tmp.compare("content_type"))
+    if(tmp.compare("name") || tmp.compare("annotation") || tmp.compare("content_type")
+            || tmp.compare("inner_type") || tmp.compare("outer_type"))
         return cppGetNextAttr(inf_v,oxt);
     return (char *)(tmp.c_str());
     return NULL;
@@ -307,7 +324,7 @@ bool objdrv::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
 	if (!attrname.compare("outer_type"))return true;
 
 	/** Set dirty flag **/
-	Node->Status = SN_NS_DIRTY;
+	//Node->Status = SN_NS_DIRTY;
     return false;
 }//end UpdateAttr
 
