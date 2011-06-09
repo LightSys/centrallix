@@ -236,6 +236,7 @@ typedef struct _QE
 #define MQ_EF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
 #define MQ_EF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
+#define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -268,6 +269,7 @@ typedef struct _QS
 #define MQ_SF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
 #define MQ_SF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_SF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
+#define MQ_SF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -296,7 +298,7 @@ typedef struct _QST QueryStatement, *pQueryStatement;
 typedef struct _MQ MultiQuery, *pMultiQuery;
 
 /*** Structure for a multiquery Statement - one sql statement ***/
-struct _QST
+struct _QST /* QueryStatement */
     {
     int			LinkCnt;
     int			Flags;			/* bitmask MQ_TF_xxx */
@@ -319,7 +321,7 @@ struct _QST
 #define MQ_TF_FINISHED		8		/* Finish() called on this statement */
 
 /*** Structure for managing the multiquery. ***/
-struct _MQ
+struct _MQ /* MultiQuery */
     {
     int			Flags;			/* bitmask MQ_F_xxx */
     int			LinkCnt;		/* number of opens on this */
