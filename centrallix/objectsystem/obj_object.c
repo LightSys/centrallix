@@ -696,6 +696,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     char prevname[256];
     int used_openas;
     pObject cached_obj = NULL;
+    pObjectInfo obj_info;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -836,7 +837,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** intermediate object's name, and the SubCnt of the previous obj was 1. **/
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
-		apparent_type = obj_internal_TypeFromName(name);
+		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
+		obj_info = objInfo(this);
+		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
+		    {
+		    apparent_type = obj_internal_TypeFromName(name);
+		    }
 		}
 
 	    strcpy(prevname, name);

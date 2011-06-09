@@ -342,7 +342,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    }
 
 	/** Already exists? **/
-	if (expLookupParam(this, name) >= 0)
+	if (expLookupParam(this, name) >= 0 && !(flags & EXPR_O_ALLOWDUPS))
 	    {
 	    mssError(1,"EXP","Parameter Object name %s already exists", name);
 	    return -1;
@@ -371,7 +371,10 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		    }
 
 		/** Check for parent id and current id **/
-		if (flags & EXPR_O_PARENT) this->ParentID = i;
+		if (flags & EXPR_O_PARENT)
+		    this->ParentID = i;
+		else if ((flags & EXPR_O_CURRENT) && this->CurrentID >= 0)
+		    this->ParentID = this->CurrentID;
 		if (flags & EXPR_O_CURRENT) this->CurrentID = i;
 		if (this->nObjects == 1) this->CurrentID = i;
 

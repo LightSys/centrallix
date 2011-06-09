@@ -345,6 +345,7 @@ typedef struct _PO
 #define EXPR_O_PARENT		8	/* object is parent of current */
 #define EXPR_O_ALLOCNAME	16
 #define EXPR_O_REFERENCED	32	/* object was referenced */
+#define EXPR_O_ALLOWDUPS	64	/* allow duplicate object names */
 
 #define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
 

@@ -546,8 +546,9 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	find_inf = stLookup(inf->Data, attrname);
 	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
 	    {
+	    /** For unset attributes on a structure file, we default to a NULL integer **/
 	    /*mssError(1,"STX","Could not locate requested structure file attribute");*/
-	    return -1;
+	    return (find_inf)?(-1):DATA_T_INTEGER;
 	    }
 
 	/** Examine the expr to determine the type **/
@@ -561,6 +562,7 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    {
 	    return t;
 	    }
+
 
     return -1;
     }
@@ -628,8 +630,9 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	/** Not found? **/
-	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) return -1;
+	/** Not found, or not an attribute? **/
+	if (!find_inf) return 1;
+	if (stStructType(find_inf) != ST_T_ATTRIB) return -1;
 
 	/** Vector or scalar? **/
 	if (find_inf->Value->NodeType == EXPR_N_LIST)

@@ -695,6 +695,12 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w));
 	wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h));
 
+	/** Page icon? **/
+	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    htrAddHeaderItem_va(s, "    <link rel=\"shortcut icon\" href=\"%STR&HTE\" />\n",ptr);
+	    }
+
     	/** Check for a title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
