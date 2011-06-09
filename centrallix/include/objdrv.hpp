@@ -51,15 +51,29 @@ public:
     virtual int Close(pObjTrxTree* oxt);
 };//end class query
 
+//atribute of an object
+class Attribute{
+public:
+    int Type;
+    pObjData Value;
+    
+    Attribute(int type,pObjData value){
+        Type=type;
+        Value=value;
+    }
+};
+
 class objdrv {
 public:
     std::string Pathname;
     int		Flags;
     pObject	Obj;
     int		Mask;
-    int		CurAttr;
     pSnNode	Node;
-        
+    std::map<std::string,Attribute *> Attributes;
+    std::map<std::string,Attribute *>::iterator CurrentAtrrib;
+    
+    objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
     //from file handeling 
     virtual int Close(pObjTrxTree* oxt);
     virtual int Delete(pObject obj, pObjTrxTree* oxt);
@@ -69,14 +83,7 @@ public:
     virtual int Info(pObjectInfo info_struct);
     virtual int Commit(pObjTrxTree* oxt);
     virtual query_t* OpenQuery(pObjQuery query, pObjTrxTree* oxt);
-//    virtual int GetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
-//    virtual int GetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt);
-//    virtual char* GetNextAttr(void* inf_v, pObjTrxTree oxt);
-//    virtual char* GetFirstAttr(void* inf_v, pObjTrxTree oxt);
-//    virtual int SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
-//    virtual int AddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt);
-//    virtual void* OpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt);
-    
+    virtual bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
     //others
     virtual bool IsEmpty();
 };//end class objdrv

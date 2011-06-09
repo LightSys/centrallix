@@ -2,6 +2,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string>
+#include <list>
+#include <map>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -45,15 +48,6 @@
 
 #include "objdrv.hpp"
 
-/*** GLOBALS ***/
-typedef struct
-    {
-    int		dmy_global_variable;
-    }
-    CPP_INF_t;
-    
-CPP_INF_t CPP_INF;
-
 /*** cppOpen - open an object.
  ***/
 void*
@@ -63,7 +57,6 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     /** Allocate the structure! **/
     inf = GetInstance(obj, mask, systype, usrtype, oxt);
     if (!inf) return NULL;
-    inf->Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
 
     return (void*) inf;
     }
@@ -112,7 +105,6 @@ cppCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 cppDelete(pObject obj, pObjTrxTree* oxt)
     {
-    struct stat fileinfo;
     objdrv *inf;
     	/** Open the thing first to get the inf ptrs **/
 	obj->Mode = O_WRONLY;
@@ -131,7 +123,7 @@ int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
     return 0;
 }
 
-/*** cppRead - Structure elements have no content.  Fails.
+/*** cppRead - calls the objdrv's read method
  ***/
 int
 cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -144,7 +136,7 @@ int objdrv::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* o
     return 0;
 }
 
-/*** cppWrite - Again, no content.  This fails.
+/*** cppWrite - calls the objdrv's write method
  ***/
 int
 cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -212,182 +204,128 @@ int
 cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     objdrv *inf = (objdrv *)inf_v;
-    int i;
-    pStructInf find_inf;
-
-    	/** If name, it's a string **/
-	if (!strcmp(attrname,"name")) return DATA_T_STRING;
-
-	/** If 'content-type', it's also a string. **/
-	if (!strcmp(attrname,"content_type")) return DATA_T_STRING;
-	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
-	if (!strcmp(attrname,"inner_type")) return DATA_T_STRING;
-	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
-
-	/** Check for attributes in the node object if that was opened **/
-	if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
-	    {
-	    }
-
-	/** Put checking for your own attributes here. **/
-	/** You will want to likely make a list of 'em in a global array **/
-	/** or something like that. **/
-
-    return -1;
+    if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
+        return -1;
+    return inf->Attributes[std::string(attrname)]->Type;
     }
 
+objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
+    //do some generic setup
+    Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
+    Attributes["name"]=new Attribute(DATA_T_STRING,POD(obj_internal_PathPart(obj->Pathname, 0, 0)));
+    Attributes["annotation"]=new Attribute(DATA_T_STRING,POD(""));
+    Attributes["outer_type"]=new Attribute(DATA_T_STRING,POD("sytem/object"));
+    Attributes["inner_type"]=new Attribute(DATA_T_STRING,POD("sytem/void"));
+}
 
 /*** cppGetAttrValue - get the value of an attribute by name.  The 'val'
  *** pointer must point to an appropriate data type.
  ***/
 int
-cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
-    {
+cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     objdrv *inf = (objdrv *)inf_v;
-    pStructInf find_inf;
-    char* ptr;
-    int i;
-
-	/** Choose the attr name **/
-	if (!strcmp(attrname,"name"))
-	    {
-	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
-	    return 0;
-	    }
-
-	/** If content-type, return as appropriate **/
-	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
-	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
-	    {
-	    /*val->String = "application/octet-stream";*/
-	    val->String = "system/void";
-	    return 0;
-	    }
-
-	/** Object type. **/
-	/** REPLACE WITH SOMETHING MORE COHERENT **/
-	if (!strcmp(attrname,"outer_type"))
-	    {
-	    val->String = "system/object";
-	    return 0;
-	    }
-
-	/** DO YOUR ATTRIBUTE LOOKUP STUFF HERE **/
-	/** AND RETURN 0 IF GOT IT OR 1 IF NULL **/
-	/** CONTINUE ON DOWN IF NOT FOUND. **/
-
-	/** If annotation, and not found, return "" **/
-	if (!strcmp(attrname,"annotation"))
-	    {
-	    val->String = "";
-	    return 0;
-	    }
-
-	mssError(1,"CPP","Could not locate requested attribute");
-
-    return -1;
-    }
-
+    if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
+        return -1;
+    datatype = inf->Attributes[std::string(attrname)]->Type;
+    val = inf->Attributes[std::string(attrname)]->Value;
+    return 0;
+}
 
 /*** cppGetNextAttr - get the next attribute name for this object.
  ***/
 char*
-cppGetNextAttr(void* inf_v, pObjTrxTree oxt)
-    {
+cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     objdrv *inf = (objdrv *)inf_v;
-
-	/** REPLACE THE IF(0) WITH A CONDITION IF THERE ARE MORE ATTRS **/
-	if (0)
-	    {
-	    /** PUT YOUR ATTRIBUTE-NAME RETURN STUFF HERE. **/
-	    inf->CurAttr++;
-	    }
-
+    std::string tmp;
+    if(inf->CurrentAtrrib==inf->Attributes.end())return NULL;
+    tmp=inf->CurrentAtrrib->first;
+    inf->CurrentAtrrib++;
+    if(tmp.compare("name") || tmp.compare("annotation") || tmp.compare("content_type"))
+        return cppGetNextAttr(inf_v,oxt);
+    return (char *)(tmp.c_str());
     return NULL;
-    }
-
+}
 
 /*** cppGetFirstAttr - get the first attribute name for this object.
  ***/
 char*
-cppGetFirstAttr(void* inf_v, pObjTrxTree oxt)
+cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
     objdrv *inf = (objdrv *)inf_v;
-    char* ptr;
-
-	/** Set the current attribute. **/
-	inf->CurAttr = 0;
-
-	/** Return the next one. **/
-	ptr = cppGetNextAttr(inf_v, oxt);
-
-    return ptr;
-    }
+    inf->CurrentAtrrib=inf->Attributes.begin();
+    return cppGetNextAttr(inf_v, oxt);
+}
 
 
 /*** cppSetAttrValue - sets the value of an attribute.  'val' must
  *** point to an appropriate data type.
  ***/
 int
-cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
-    {
+cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
+    Attribute *tmp;
     objdrv *inf = (objdrv *)inf_v;
+    if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
+        return -1;
+    tmp=inf->Attributes[std::string(attrname)];
+    inf->Attributes[std::string(attrname)]=new Attribute(datatype,val);
+    if(inf->UpdateAttr(std::string(attrname),oxt)){
+        delete inf->Attributes[std::string(attrname)];
+        inf->Attributes[std::string(attrname)]=tmp;
+        return -1;
+    }//end objected
+    delete tmp;
+    return 0;
+}
 
-	/** Choose the attr name **/
-	/** Changing name of node object? **/
-	if (!strcmp(attrname,"name"))
-	    {
-	    if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
+/**
+ * default update, handels name updates and objects to changing of types
+ * @param attrname
+ * @param oxt
+ * @return 
+ */
+bool objdrv::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
+    /** Changing name of node object? **/
+	if (!attrname.compare("name")){
+	    if (Obj->Pathname->nElements == Obj->SubPtr)
 	        {
-	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
-	        inf->Pathname=std::string(inf->Obj->Pathname->Pathbuf);
-                std::string::iterator ch=inf->Pathname.begin();
-                while(ch!=inf->Pathname.end()) if(*(ch++)='/')break;
-                inf->Pathname.erase(ch,inf->Pathname.end());
-                inf->Pathname.append(val->String);
-                if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname.c_str()) < 0)
+	        if (!strcmp(Obj->Pathname->Pathbuf,".")) return -1;
+	        Pathname=std::string(Obj->Pathname->Pathbuf);
+                std::string::iterator ch=Pathname.begin();
+                while(ch!=Pathname.end()) if(*(ch++)=='/')break;
+                Pathname.erase(ch,Pathname.end());
+                Pathname.append(Attributes[attrname]->Value->String);
+                if (rename(Obj->Pathname->Pathbuf,Pathname.c_str()) < 0)
 		    {
 		    mssError(1,"CPP","SetAttr 'name': could not rename structure file node object");
-		    return -1;
+		    return true;
 		    }
-	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname.c_str());
+	        strcpy(Obj->Pathname->Pathbuf, Pathname.c_str());
 		}
-	    return 0;
+	    return false;
 	    }
-
-	/** Set content type if that was requested. **/
-	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
-	    {
-	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
-	    return -1;
-	    }
-	if (!strcmp(attrname,"outer_type"))
-	    {
-	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
-	    return -1;
-	    }
-
-	/** DO YOUR SEARCHING FOR ATTRIBUTES TO SET HERE **/
+	if (!attrname.compare("content_type") || !attrname.compare("inner_type"))return true;
+	if (!attrname.compare("outer_type"))return true;
 
 	/** Set dirty flag **/
-	inf->Node->Status = SN_NS_DIRTY;
-
-    return 0;
-    }
-
+	Node->Status = SN_NS_DIRTY;
+    return false;
+}//end UpdateAttr
 
 /*** cppAddAttr - add an attribute to an object.  This doesn't always work
  *** for all object types, and certainly makes no sense for some (like unix
  *** files).
  ***/
 int
-cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
+cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
     objdrv *inf = (objdrv *)inf_v;
-    pStructInf new_inf;
-    char* ptr;
-
-    return -1;
+    inf->Attributes[std::string(attrname)]=new Attribute(type,val);
+    if(inf->UpdateAttr(std::string(attrname),oxt)){
+        delete inf->Attributes[std::string(attrname)];
+        inf->Attributes.erase(std::string(attrname));
+        return -1;
+    }//end if objected
+    return 0;
     }
 
 
@@ -488,10 +426,6 @@ cppInitialize()
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
 	if (!drv) return -1;
 	memset(drv, 0, sizeof(ObjDriver));
-
-	/** Initialize globals **/
-	memset(&CPP_INF,0,sizeof(CPP_INF));
-	CPP_INF.dmy_global_variable = 0;
 
 	/** Setup the structure **/
 	strcpy(drv->Name,GetName());
