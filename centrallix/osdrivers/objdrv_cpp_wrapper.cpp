@@ -438,7 +438,7 @@ int
 cppInitialize()
     {
     pObjDriver drv;
-
+    std::list<std::string> Types=GetTypes();
 	/** Allocate the driver **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
 	if (!drv) return -1;
@@ -448,7 +448,10 @@ cppInitialize()
 	strcpy(drv->Name,GetName());
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),16);
-	xaAddItem(&(drv->RootContentTypes),(void*)GetType());
+        for(std::list<std::string>::iterator item=Types.begin();
+                item!=Types.end();item++)
+                xaAddItem(&(drv->RootContentTypes),
+                        (void*)item->c_str());
 
 	/** Setup the function references. **/
 	drv->Open = (void* (*)())cppOpen;

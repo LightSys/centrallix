@@ -100,7 +100,8 @@ public:
 //get an instance of the class
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
 char *GetName();
-char *GetType();
+std::list<std::string> GetTypes();
+
 /*
  * You need define:
 MODULE_DESC("ObjectSystem Driver Description");

@@ -70,8 +70,10 @@ char *GetName(){
     return "Virtual memory file";
 }
 
-char *GetType(){
-    return "cpp/mem";
+std::list<std::string> GetTypes(){
+    std::list<std::string> tmp;
+    tmp.push_back("cpp/mem");
+    return tmp;
 }
 
 MODULE_PREFIX("mem");
