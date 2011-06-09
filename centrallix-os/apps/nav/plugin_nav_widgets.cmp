@@ -1,0 +1,41 @@
+$Version=2$
+plugin_nav_structure "widget/component-decl"
+    {
+    title = "Widgets";
+    seq = 3;
+    height=408; width=498;
+
+    detail_osrc "widget/parameter" { type=object; find_container="widget/osrc"; }
+
+    cmps_osrc "widget/osrc"
+	{
+	sql = "select cnt = count(1), type = :outer_type, path=:path, viewtype=isnull('Component: ' + :path, :outer_type) from inclusive subtree /apps/nav/index.app group by :outer_type, isnull(:path,'') having char_length(:viewtype) > 0";
+	baseobj = "/apps/nav/index.app";
+	replicasize=35;
+	readahead=35;
+	autoquery = never;
+
+	update_cmps_osrc "widget/connector"
+	    {
+	    source = detail_osrc;
+	    event_condition=runclient(:detail_osrc:type == 'widget/page' or :detail_osrc:type == 'widget/component-decl');
+	    event = EndQuery;
+	    action = ChangeSource;
+	    Source = runclient(:detail_osrc:objpath);
+	    }
+
+	cmps_pane "widget/pane"
+	    {
+	    x=0; y=0; width=498; height=408;
+	    widget_class = table_bgnd;
+
+	    cmps_table "widget/table"
+		{
+		x=0; y=0; width=496; height=406;
+
+		t_cnt "widget/table-column" { title="#"; fieldname="cnt"; width=40; }
+		t_type "widget/table-column" { title="Widget Type / Component"; fieldname="viewtype"; width=440; }
+		}
+	    }
+	}
+    }
