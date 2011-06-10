@@ -73,12 +73,14 @@ extern CxGlobals_t CxGlobals;
 #ifdef __cplusplus
 #define MODULE_INIT(x)		extern "C" int moduleInitialize() { return (x)(); }
 #define MODULE_DEINIT(x)	extern "C" int moduleDeInitialize() { return (x)(); }
+#define MODULE_PREFIX(x)	char* modulePrefix = ((char *)x)
+#define MODULE_DESC(x)		char* moduleDescription = ((char*)x)
 #else
 #define MODULE_INIT(x)		int moduleInitialize() { return (x)(); }
 #define MODULE_DEINIT(x)	int moduleDeInitialize() { return (x)(); }
-#endif
 #define MODULE_PREFIX(x)	char* modulePrefix = (x)
 #define MODULE_DESC(x)		char* moduleDescription = (x)
+#endif
 #define MODULE_VERSION(x,y,z)	int moduleVersion = ((x<<24)+(y<<16)+z)
 #define MODULE_IFACE(x)		int moduleInterface = (x)
 #else

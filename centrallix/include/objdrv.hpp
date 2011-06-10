@@ -34,6 +34,8 @@
 #error "This is a C++ class, and it looks like your using it in C"
 #endif
 #include <string>
+#include <map>
+#include <list>
 #include "centrallix.h"
 #include "obj.h"
 #include "st_node.h"

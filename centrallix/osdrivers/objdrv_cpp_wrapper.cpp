@@ -1,20 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string>
-#include <list>
-#include <map>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "stparse.h"
-#include "st_node.h"
-#include "cxlib/mtsession.h"
-/** module definintions **/
-#include "centrallix.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -45,6 +28,12 @@
 /* Description:	This goes through the nasty bussness of binding a objdrv*/
 /*               class into the object driver system                    */
 /************************************************************************/
+
+#include <string.h>
+#include "obj.h"
+#include "cxlib/mtsession.h"
+/** module definintions **/
+#include "centrallix.h"
 
 #include "objdrv.hpp"
 
@@ -108,7 +97,7 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
     objdrv *inf;
     	/** Open the thing first to get the inf ptrs **/
 	obj->Mode = O_WRONLY;
-	inf = (objdrv *)cppOpen(obj, 0, NULL, "", oxt);
+	inf = (objdrv *)cppOpen(obj, 0, NULL, (char *)"", oxt);
 	if (!inf) return -1;
 
 	inf->Delete(obj,oxt);
@@ -149,9 +138,7 @@ int objdrv::Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt
     return -1;
 }
 
-/*** cppOpenQuery - open a directory query.  This driver is pretty 
- *** unintelligent about queries.  So, we leave the query matching logic
- *** to the ObjectSystem management layer in this case.
+/*** cppOpenQuery - open a directory query.
  ***/
 void*
 cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
@@ -231,19 +218,6 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
         return -1;
     pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
     *val = *(tmpval);
-//    switch(datatype){
-//        case DATA_T_STRING:
-//            val->String = inf->Attributes[std::string(attrname)]->Value->String;
-//            break;
-//        case DATA_T_INTEGER:
-//            val->Integer = inf->Attributes[std::string(attrname)]->Value->Integer;
-//            break;
-//        case DATA_T_DOUBLE:
-//            val->Double = inf->Attributes[std::string(attrname)]->Value->Double;
-//            break;
-//        default:
-//            *val = *(inf->Attributes[std::string(attrname)]->Value);
-//    }//end type switch
     return 0;
 }
 
@@ -256,6 +230,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     if(inf->CurrentAtrrib==inf->Attributes.end())return NULL;
     tmp=inf->CurrentAtrrib->first;
     inf->CurrentAtrrib++;
+    //check against the black list
     if(tmp.compare("name") || tmp.compare("annotation") || tmp.compare("content_type")
             || tmp.compare("inner_type") || tmp.compare("outer_type"))
         return cppGetNextAttr(inf_v,oxt);
@@ -302,30 +277,10 @@ cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
  */
 bool objdrv::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
     /** Changing name of node object? **/
-	if (!attrname.compare("name")){
-	    if (Obj->Pathname->nElements == Obj->SubPtr)
-	        {
-	        if (!strcmp(Obj->Pathname->Pathbuf,".")) return -1;
-	        Pathname=std::string(Obj->Pathname->Pathbuf);
-                std::string::iterator ch=Pathname.begin();
-                while(ch!=Pathname.end()) if(*(ch++)=='/')break;
-                Pathname.erase(ch,Pathname.end());
-                Pathname.append(Attributes[attrname]->Value->String);
-                if (rename(Obj->Pathname->Pathbuf,Pathname.c_str()) < 0)
-		    {
-		    mssError(1,"CPP","SetAttr 'name': could not rename structure file node object");
-		    return true;
-		    }
-	        strcpy(Obj->Pathname->Pathbuf, Pathname.c_str());
-		}
-	    return false;
-	    }
+	if (!attrname.compare("name"))return false;
 	if (!attrname.compare("content_type") || !attrname.compare("inner_type"))return true;
 	if (!attrname.compare("outer_type"))return true;
-
-	/** Set dirty flag **/
-	//Node->Status = SN_NS_DIRTY;
-    return false;
+        return false;
 }//end UpdateAttr
 
 /*** cppAddAttr - add an attribute to an object.  This doesn't always work
