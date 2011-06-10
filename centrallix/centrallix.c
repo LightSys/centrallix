@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <locale.h>
+#include <langinfo.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -672,6 +674,21 @@ cxInitialize(void* v)
 
 	CxGlobals.Flags = 0;
 	xaInit(&CxGlobals.ShutdownHandlers,4);
+
+        /** Set the current locale to user's locale for chars **/
+	setlocale(LC_CTYPE, "");
+
+	/** Check if UTF-8 or single byte encoding **/
+	if(MB_CUR_MAX == 1)
+            CxGlobals.CharacterMode = CharModeSigleByte;
+        else if(strcmp(nl_langinfo(CODESET), "UTF-8") == 0)
+            CxGlobals.CharacterMode = CharModeUTF8;
+        else
+            {
+            fprintf(stderr, "Current locale is not single byte encoding or"
+                            "UTF-8! Using C locale.\n");
+		setlocale(LC_CTYPE, "C");
+            }
 
 	/** set up the interrupt handler so we can shutdown properly **/
 	mtAddSignalHandler(SIGINT,cxShutdownThread);
