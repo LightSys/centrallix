@@ -30,6 +30,7 @@
 /************************************************************************/
 
 #include <string.h>
+#include <stdio.h>
 #include "obj.h"
 #include "cxlib/mtsession.h"
 /** module definintions **/
@@ -42,6 +43,7 @@
 void*
 cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    fprintf(stderr,"opening a cpp object\n");
     objdrv *inf;
     /** Allocate the structure! **/
     inf = GetInstance(obj, mask, systype, usrtype, oxt);
@@ -56,6 +58,7 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 int
 cppClose(void* inf_v, pObjTrxTree* oxt)
     {
+    fprintf(stderr,"closeing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     inf->Close(oxt);
     delete inf;
@@ -117,6 +120,7 @@ int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
 int
 cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
+    fprintf(stderr,"reading a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->Read(buffer, maxcnt, offset, flags, oxt);
     }
@@ -130,6 +134,7 @@ int objdrv::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* o
 int
 cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
+    fprintf(stderr,"writing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->Write(buffer,cnt,offset,flags,oxt);
     }
@@ -199,11 +204,6 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     //do some generic setup
     Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
-    Attributes["name"]=new Attribute(DATA_T_STRING,obj_internal_PathPart(obj->Pathname, 0, 0));
-    Attributes["annotation"]=new Attribute(DATA_T_STRING,"");
-    Attributes["outer_type"]=new Attribute(DATA_T_STRING,"sytem/object");
-    Attributes["inner_type"]=new Attribute(DATA_T_STRING,"sytem/void");
-    Attributes["content_type"]=new Attribute(DATA_T_STRING,"sytem/void");
 }
 
 /*** cppGetAttrValue - get the value of an attribute by name.  The 'val'
@@ -359,13 +359,14 @@ pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt
  *** particular attribute.
  ***/
 int
-cppInfo(void* inf_v, pObjectInfo info_struct)
+cppInfo(void* inf_v, pObjectInfo info)
     {
+    fprintf(stderr,"infoing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    return inf->Info(info_struct);
+    return inf->Info(info);
     }
 
-int objdrv::Info(pObjectInfo info_struct){
+int objdrv::Info(pObjectInfo info){
     return 0;
 }
 
@@ -392,6 +393,7 @@ bool objdrv::IsEmpty(){
 int
 cppInitialize()
     {
+    fprintf(stderr,"starting a cpp system\n");
     pObjDriver drv;
     std::list<std::string> Types=GetTypes();
 	/** Allocate the driver **/

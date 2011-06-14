@@ -1,10 +1,12 @@
 #include <list>
 #include <map>
+#include <iostream>
 #include "objdrv.hpp"
 
 
 class cppmem: public objdrv{
     std::list<char> Buffer;
+    pSnNode nodethingy;
 public:
     cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
     int Close(pObjTrxTree* oxt);
@@ -12,11 +14,13 @@ public:
     int Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt);
     int Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt);
     bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
+    int Info(pObjectInfo info);
 };//end cppmem
 
 std::map<pPathname, cppmem*> files;
 
 int cppmem::Close(pObjTrxTree* oxt){
+    this->nodethingy->OpenCnt--;
     return 0;
 }
 
@@ -46,23 +50,32 @@ bool cppmem::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
     return false;
 }
 
+int cppmem::Info(pObjectInfo info){
+    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_ADD_ATTR |
+		OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT);
+    if(Buffer.size())info->Flags |= OBJ_INFO_F_HAS_CONTENT;
+    return 0;
+}
+
 cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
         :objdrv(obj,mask,systype,usrtype,oxt){
     obj->SubCnt=1;
     this->Obj=obj;
-    this->Pathname=std::string(obj->Pathname->Pathbuf);
-    Attributes["name"]=new Attribute(DATA_T_STRING,obj->Pathname->Pathbuf);
-    Attributes["outer_type"]=new Attribute(DATA_T_STRING,"cpp/mem");
-    Attributes["inner_type"]=new Attribute(DATA_T_STRING,"system/void");
-    Attributes["content_type"]=Attributes["inner_type"];
+    this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
+    this->nodethingy = snReadNode(obj);
+    this->nodethingy->OpenCnt++;
     Attributes["source_class"]=new Attribute(DATA_T_STRING,"cpp");
+    std::cerr<<"New mem object "<< Attributes["name"]<<" as "<<usrtype<<std::endl;
 }
 
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     cppmem *tmp;
 
     tmp=files[obj->Pathname];
-    if(!tmp)tmp=files[obj->Pathname]=new cppmem(obj,mask,systype,usrtype,oxt);
+    if(!tmp){
+        tmp=files[obj->Pathname]=new cppmem(obj,mask,systype,usrtype,oxt);
+        tmp->Write("Hello world",12,0,0,0);
+    }
     return tmp;
 }
 
@@ -72,7 +85,7 @@ char *GetName(){
 
 std::list<std::string> GetTypes(){
     std::list<std::string> tmp;
-    tmp.push_back("cpp/mem");
+    tmp.push_back("text/mem");
     return tmp;
 }
 
