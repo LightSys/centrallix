@@ -396,12 +396,12 @@ cppInitialize()
     fprintf(stderr,"starting a cpp system\n");
     pObjDriver drv;
     std::list<std::string> Types=GetTypes();
-	/** Allocate the driver **/
+	// Allocate the driver
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
 	if (!drv) return -1;
 	memset(drv, 0, sizeof(ObjDriver));
 
-	/** Setup the structure **/
+	// Setup the structure
 	strcpy(drv->Name,GetName());
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),16);
@@ -410,7 +410,7 @@ cppInitialize()
                 xaAddItem(&(drv->RootContentTypes),
                         (void*)item->c_str());
 
-	/** Setup the function references. **/
+	// Setup the function references.
 	drv->Open = (void* (*)())cppOpen;
 	drv->Close = (int (*)())cppClose;
 	drv->Create = (int (*)())cppCreate;
@@ -435,7 +435,7 @@ cppInitialize()
 	drv->Info = (int (*)())cppInfo;
 	drv->Commit = (int (*)())cppCommit;
 
-	/** Register the driver **/
+	// Register the driver
 	if (objRegisterDriver(drv) < 0) return -1;
 
     return 0;
