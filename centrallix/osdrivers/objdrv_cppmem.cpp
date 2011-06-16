@@ -64,6 +64,9 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
     this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
     this->nodethingy = snReadNode(obj);
     this->nodethingy->OpenCnt++;
+    Attributes["name"]=new Attribute(DATA_T_STRING,obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
+    Attributes["outer_type"]=new Attribute(DATA_T_STRING,"text/mem");
+    Attributes["inner_type"]=new Attribute(DATA_T_STRING,"application/octet-stream");
     Attributes["source_class"]=new Attribute(DATA_T_STRING,"cpp");
     std::cerr<<"New mem object "<< Attributes["name"]<<" as "<<usrtype<<std::endl;
 }

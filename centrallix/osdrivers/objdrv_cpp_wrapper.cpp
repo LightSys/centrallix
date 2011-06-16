@@ -404,7 +404,7 @@ cppInitialize()
 	// Setup the structure
 	strcpy(drv->Name,GetName());
 	drv->Capabilities = 0;
-	xaInit(&(drv->RootContentTypes),16);
+	xaInit(&(drv->RootContentTypes),1);
         for(std::list<std::string>::iterator item=Types.begin();
                 item!=Types.end();item++)
                 xaAddItem(&(drv->RootContentTypes),
@@ -436,7 +436,10 @@ cppInitialize()
 	drv->Commit = (int (*)())cppCommit;
 
 	// Register the driver
-	if (objRegisterDriver(drv) < 0) return -1;
+	if (objRegisterDriver(drv) < 0){
+            fprintf(stderr,"cpp system Failed!\n");
+            return -1;
+        }
 
     return 0;
     }
