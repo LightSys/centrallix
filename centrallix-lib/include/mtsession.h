@@ -63,6 +63,10 @@ extern "C" {
 #endif
 
 
+/** optimum salt size for mssGenCred() **/
+#define	MSS_SALT_SIZE	4
+
+
 /** Structure for a session. **/
 typedef struct
     {
@@ -91,6 +95,7 @@ int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall,
 char* mssUserName();
 char* mssPassword();
 int mssAuthenticate(char* username, char* password);
+int mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen);
 int mssEndSession();
 int mssSetParam(char* paramname, void* param);
 void* mssGetParam(char* paramname);

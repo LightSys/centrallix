@@ -357,7 +357,7 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY:	test_install
 .PHONY:	test
 
-all:	centrallix mods config manpages
+all:	centrallix mods config manpages cxpasswd
 
 centrallix.o: $(V3LSOBJS) centrallix.c
 
@@ -370,10 +370,14 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	#@rm centrallix.o
 	@echo ''
 
+cxpasswd: cxpasswd.o $(STATIC_LIBS) $(CXSSMODS)
+	$(CC) cxpasswd.o $(CXSSMODS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+
 install: all config_install modules_install manpages_install
 	@mkdir -p "$(sbindir)"
 	@mkdir -p "$(sysconfdir)"
 	@$(INSTALL) centrallix "$(sbindir)"
+	@$(INSTALL) cxpasswd "$(sbindir)"
 
 manpages: $(MANPAGES)
 

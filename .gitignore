@@ -18,6 +18,7 @@ stamp-h
 centrallix/.subbuild
 centrallix/autom4te.cache
 centrallix/centrallix
+centrallix/cxpasswd
 centrallix/config.h
 centrallix/etc/centrallix.conf
 centrallix/etc/centrallix.conf.mk
