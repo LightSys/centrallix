@@ -2169,61 +2169,642 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     return 0;
     }
 
+int exp_fn_utf8_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    wchar_t firstChar;
+    size_t bytesParsed;
+    
+    tree->DataType = DATA_T_INTEGER;
+    if (!i0)
+        {
+        mssError(1, "EXP", "Parameter required for ascii() function.");
+        return -1;
+        }
+    if (i0->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "ascii() function takes a string parameter.");
+        return -1;
+        }
+    if (i0->String[0] == '\0')
+        tree->Flags |= EXPR_F_NULL;
+    
+    /** Parse first wide char **/
+    bytesParsed = mbrtowc(&firstChar, i0->String, strlen(i0->String), NULL);
+    if (bytesParsed == (size_t) - 1 || bytesParsed == (size_t) - 2)
+        {
+        goto errorInvalidUTF8Char;
+        }
+    else
+        tree->Integer = firstChar;
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
+
+int exp_fn_utf8_charindex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* ptr;
+    size_t tmpLen;
+    
+    tree->DataType = DATA_T_INTEGER;
+    if (!i0 || !i1)
+        {
+        mssError(1, "EXP", "Two string parameters required for charindex()");
+        return -1;
+        }
+    if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "Two string parameters required for charindex()");
+        return -1;
+        }
+    ptr = strstr(i1->String, i0->String);
+    if (ptr == NULL)
+        tree->Integer = 0;
+    else
+        {
+        tmpLen = mbstowcs(NULL, i1->String, ptr - i1->String) + 1;
+        if(tmpLen == (size_t)-1)
+            goto errorInvalidUTF8Char;
+        tree->Integer = tmpLen;
+        }
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
+
+int exp_fn_utf8_upper(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int i, oldStrLen, longStrLen, newStrLen;
+    
+    tree->DataType = DATA_T_STRING;
+    if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "One string parameter required for upper()");
+        return -1;
+        }
+    if (i0->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    oldStrLen = strlen(i0->String);
+    wchar_t longBuffer[oldStrLen + 1];
+    longStrLen = mbstowcs(longBuffer, i0->String, oldStrLen + 1);
+    if(longStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    for (i = 0; i < oldStrLen + 1; i++)
+        {
+        longBuffer[i] = towupper(longBuffer[i]);
+        }
+    newStrLen = wcstombs(NULL, longBuffer, oldStrLen + 1);
+    if(newStrLen == (size_t)-1)
+        goto errorCharacterConversion;
+    if (tree->Alloc && tree->String)
+        {
+        nmSysFree(tree->String);
+        tree->Alloc = 0;
+        }
+    if (newStrLen < 63)
+        {
+        tree->String = tree->Types.StringBuf;
+        tree->Alloc = 0;
+        }
+    else   
+        {
+        tree->String = (char*) nmSysMalloc(newStrLen + 1);
+        tree->Alloc = 1;
+        }
+    newStrLen = wcstombs(tree->String, longBuffer, oldStrLen + 1);
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    
+errorCharacterConversion:
+    mssError(1, "EXP", "Error converting characters");
+    return -1;
+    }
+
+int exp_fn_utf8_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int i, oldStrLen, longStrLen, newStrLen;
+    
+    tree->DataType = DATA_T_STRING;
+    if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "One string parameter required for upper()");
+        return -1;
+        }
+    if (i0->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    oldStrLen = strlen(i0->String);
+    wchar_t longBuffer[oldStrLen + 1];
+    longStrLen = mbstowcs(longBuffer, i0->String, oldStrLen + 1);
+    if(longStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    for (i = 0; i < oldStrLen + 1; i++)
+        {
+        longBuffer[i] = towlower(longBuffer[i]);
+        }
+    newStrLen = wcstombs(NULL, longBuffer, oldStrLen + 1);
+    if(newStrLen == (size_t)-1)
+        goto errorCharacterConversion;
+    if (tree->Alloc && tree->String)
+        {
+        nmSysFree(tree->String);
+        tree->Alloc = 0;
+        }
+    if (newStrLen < 63) 
+        {
+        tree->String = tree->Types.StringBuf;
+        tree->Alloc = 0;
+        }
+    else 
+        {
+        tree->String = (char*) nmSysMalloc(newStrLen + 1);
+        tree->Alloc = 1;
+        }
+    newStrLen = wcstombs(tree->String, longBuffer, oldStrLen + 1);
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    
+errorCharacterConversion:
+    mssError(1, "EXP", "Error converting characters");
+    return -1;
+    }
+
+int exp_fn_utf8_char_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t wideLen;
+    
+    tree->DataType = DATA_T_INTEGER;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (!i0 || i0->DataType != DATA_T_STRING) {
+        mssError(1, "EXP", "One string parameter required for char_length()");
+        return -1;
+        }
+    wideLen = mbstowcs(NULL, i0->String, strlen(i0->String) + 1);
+    if(wideLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    tree->Integer = wideLen;
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
+
+int exp_fn_utf8_right(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int offsetFromEnd, currentPos = 0, numScanned = 0;
+    size_t charStrLen, longStrLen, step = 0;
+    mbstate_t currentState;
+    
+    memset(&currentState, 0, sizeof(currentState));
+    
+    if (!i0 || !i1 || i0->Flags & EXPR_F_NULL || i1->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        tree->DataType = DATA_T_STRING;
+        return 0;
+        }
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "Invalid datatypes in right() function - takes (string,integer)");
+        return -1;
+        }
+    if (tree->Alloc && tree->String)
+        {
+        nmSysFree(tree->String);
+        }
+    charStrLen = strlen(i0->String);
+    longStrLen = mbstowcs(NULL, i0->String, charStrLen+1);
+    if(longStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    
+    offsetFromEnd = i1->Integer;
+    if (offsetFromEnd > longStrLen) offsetFromEnd = longStrLen;
+    if (offsetFromEnd < 0) offsetFromEnd = 0;
+    
+    while(numScanned < (longStrLen - offsetFromEnd))
+        {
+        step = mbrtowc(NULL, i0->String + currentPos, charStrLen + 1, &currentState);
+        if(step == (size_t)-1 || step == (size_t)-2)
+            goto errorInvalidUTF8Char;
+        if(step == 0)
+            break;
+        numScanned++;
+        currentPos += step;
+        }
+    
+    tree->DataType = DATA_T_STRING;
+    tree->String = i0->String + currentPos;
+    tree->Alloc = 0;
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
+
+int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    
+    size_t charStrLen, longStrLen, initial, len;
+    
+    if (!i0 || !i1 || i0->Flags & EXPR_F_NULL || i1->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        tree->DataType = DATA_T_STRING;
+        return 0;
+        }
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "Invalid datatypes in substring() - takes (string,integer,[integer])");
+        return -1;
+        }
+    if (i2 && i2->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "Invalid datatypes in substring() - takes (string,integer,[integer])");
+        return -1;
+        }
+    
+    /** Free any previous string in preparation for these results **/
+    if (tree->Alloc && tree->String)
+        {
+        nmSysFree(tree->String);
+        tree->Alloc = 0;
+        }
+    tree->DataType = DATA_T_STRING;
+    
+    /** String lengths and character lengths and parameters **/
+    initial = i0->Integer;
+    len = i2?i2->Integer:0;
+    charStrLen = strlen(i0->String);
+    longStrLen = mbstowcs(NULL, i0->String, charStrLen + 1);
+    if(longStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    
+    /** Check range of initial - shortcut if out of bounds **/
+    if(initial > longStrLen)
+        {
+        tree->Alloc = 0;
+        tree->String = i0->String + charStrLen;
+        return 0;
+        }
+    
+    /** Set length to length of string if too long **/
+    if(initial + len - 1 > longStrLen || len <= 0)
+        len = longStrLen + 1 - initial;
+    
+    /** Shortcut for right, returning a pointer inside of the string **/
+    if(initial + len - 1 >= longStrLen)
+        {
+        /** Variables for right **/
+        int currentPos = 0, step = 0, numScanned = 0;
+        mbstate_t currentState;
+        
+        /** Initialize current state **/
+        memset(&currentState, 0, sizeof(currentState));
+        
+        /** Scan over to the first char of the right substring to return **/
+        while(numScanned < longStrLen - len)
+            {
+            step = mbrtowc(NULL, i0->String + currentPos, charStrLen + 1, &currentState);
+            if(step == (size_t)-1 || step == (size_t)-2)
+                goto errorInvalidUTF8Char;
+            if(step == 0)
+                break;
+            numScanned++;
+            currentPos += step;
+            }
+        
+        tree->Alloc = 0;
+        tree->String = i0->String + currentPos;
+        }
+    
+    /** Allocate a separate string and copy data **/
+    else
+        {
+        
+        /** Variables for substring in middle of string **/
+        int currentPos = 0, step = 0, numScanned = 0, initialPos, i;
+        char * newStr;
+        mbstate_t currentState;
+        
+        memset(&currentState, 0, sizeof(currentState));
+        
+        /** Scan to initial position of wanted substring **/
+        while(numScanned < initial - 1) 
+            {
+            step = mbrtowc(NULL, i0->String + currentPos, charStrLen + 1, &currentState);
+            if(step == (size_t)-1 || step == (size_t)-2)
+                goto errorInvalidUTF8Char;
+            if(step == 0)
+                {
+                tree->Alloc = 0;
+                tree->String = i0->String + charStrLen;
+                return 0;
+                }
+            numScanned++;
+            currentPos += step;
+            }
+        initialPos = currentPos;
+        
+        /** Scan to final position of wanted substring **/
+        while(numScanned - initial < len - 1) 
+            {
+            step = mbrtowc(NULL, i0->String + currentPos, charStrLen + 1, &currentState);
+            if(step == (size_t)-1 || step == (size_t)-2)
+                goto errorInvalidUTF8Char;
+            if(step == 0)
+                break;
+            numScanned++;
+            currentPos += step;
+            }
+        
+        /** Now initialPos is the first char and finalPos is one after last **/
+        if(currentPos - initialPos > 63)  
+            {
+            tree->Alloc = 0;
+            newStr = tree->Types.StringBuf;
+            }
+        else
+            {
+            tree->Alloc = 1;
+            newStr = nmSysMalloc(currentPos - initialPos + 1);
+            }
+        for(i = initialPos; i < currentPos; i++)
+            {
+            newStr[i - initialPos] = i0->String[i];
+            }
+        newStr[currentPos - initialPos] = '\0';
+        tree->String = newStr;
+        }
+    
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
+
+/*** Pad string expression i0 with integer expression i1 number of spaces ***/
+int exp_fn_utf8_ralign(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t charStrLen, wideStrLen;
+    
+    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "ralign() requires string parameter #1 and integer parameter #2");
+        return -1;
+        }
+    tree->DataType = DATA_T_STRING;
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    charStrLen = strlen(i0->String);
+    wideStrLen = mbstowcs(NULL, i0->String, charStrLen);
+    if(wideStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    if (wideStrLen >= i1->Integer)
+        {
+        tree->Alloc = 0;
+        tree->String = i0->String;
+        }
+    else
+        {
+        if (i1->Integer - wideStrLen + charStrLen >= 64)
+            {
+            tree->Alloc = 1;
+            tree->String = (char*) nmSysMalloc(i1->Integer - wideStrLen + charStrLen + 1);
+            } 
+        else 
+            {
+            tree->Alloc = 0;
+            tree->String = tree->Types.StringBuf;
+            }
+        sprintf(tree->String, "%*.*s", i1->Integer, i1->Integer, i0->String);
+        }
+    return 0;
+    
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
+
+/** escape(string, escchars, badchars) **/
+int exp_fn_utf8_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    
+    /** Variables **/
+    int escCharLen, badCharLen, numEscapees = 0, i, j, strLen, readPos, insertPos;
+    wchar_t current;
+    mbstate_t state;
+    char * output, * esc, * bad;
+    size_t charLen, badStrLen, escStrLen;
+    
+    tree->DataType = DATA_T_STRING;
+    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING) 
+        {
+        mssError(1, "EXP", "escape() requires two or three string parameters");
+        return -1;
+        }
+    if (i2 && i2->DataType != DATA_T_STRING) {
+        mssError(1, "EXP", "the optional third escape() parameter must be a string");
+        bad = (i2->Flags & EXPR_F_NULL) ? "": i2->String;
+        return -1;
+        }
+    if ((i0->Flags & EXPR_F_NULL))
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (i1->Flags & EXPR_F_NULL)
+        esc = "";
+    else
+        esc = i1->String;
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    
+    /** The esc and bad parameters in wchar_t form **/
+    strLen = strlen(i0->String);
+    escCharLen = strlen(esc);
+    badCharLen = strlen(bad);
+    wchar_t escBuf[escCharLen + 2], badBuf[badCharLen + 1];
+    escStrLen = mbstowcs(escBuf, esc, escCharLen + 1);
+    if(escStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    escBuf[escStrLen] = '\\';
+    escBuf[++escStrLen] = '\0';
+    badStrLen = mbstowcs(badBuf, bad, badCharLen + 1);
+    if(badStrLen == (size_t)-1)
+        goto errorInvalidUTF8Char;
+    
+    /** Scan through to find all chars to escape **/
+    memset(&state, '\0', sizeof(state));
+    for(i = 0; i0->String[i] != '\0';) 
+        {
+        charLen = mbrtowc(&current, i0->String + i, strLen - i, &state);
+        if(charLen == (size_t)-1 || charLen == (size_t)-2)
+            {
+            goto errorInvalidUTF8Char;
+            }
+        i += charLen;
+        for(j = 0; j < badStrLen; j++) 
+            {
+            if(current == badBuf[j])
+                {
+                goto errorInvalidChar;
+                }
+            }
+        for(j = 0; j < escStrLen; j++)
+            {
+            if(current == escBuf[j])
+                {
+                numEscapees++;
+                break;
+                }
+            }
+        }
+    if(numEscapees == 0)
+        {
+        tree->Alloc = 0;
+        tree->String = i0->String;
+        return 0;
+        }
+    
+    memset(&state, '\0', sizeof(state));
+    if(numEscapees + strLen <= 63)
+        {
+        output = tree->Types.StringBuf;
+        tree->Alloc = 0;
+        }
+    else
+        {
+        output = nmSysMalloc(numEscapees + strLen + 1);
+        tree->Alloc = 1;
+        }
+    for(readPos = 0, insertPos = 0; readPos < strLen;)
+        {
+        charLen = mbrtowc(&current, i0->String + readPos, strLen - readPos, &state);
+        for(j = 0; j < escStrLen; j++)
+            {
+            if(current == escBuf[j])
+                {
+                output[insertPos] = '\\';
+                insertPos++;
+                break;
+                }
+            }
+        while(charLen--)
+            {
+            output[insertPos++] = i0->String[readPos++];
+            }
+        }
+    output[numEscapees + strLen] = '\0';
+    
+    tree->String = output;
+    return 0;
+    
+    /** Different types of errors **/
+errorInvalidChar:
+    mssError(1, "EXP", "WARNING!! String contains invalid character asc=%d", (int) (current));
+    return -1;
+errorInvalidUTF8Char:
+    mssError(1, "EXP", "String contains invalid UTF-8 character");
+    return -1;
+    }
 
 int
-exp_internal_DefineFunctions()
-    {
-
-	/** Function list for EXPR_N_FUNCTION nodes **/
-	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
-	xhAdd(&EXP.Functions, "user_name", (char*)exp_fn_user_name);
-	xhAdd(&EXP.Functions, "convert", (char*)exp_fn_convert);
-	xhAdd(&EXP.Functions, "wordify", (char*)exp_fn_wordify);
-	xhAdd(&EXP.Functions, "abs", (char*)exp_fn_abs);
-	xhAdd(&EXP.Functions, "ascii", (char*)exp_fn_ascii);
-	xhAdd(&EXP.Functions, "condition", (char*)exp_fn_condition);
-	xhAdd(&EXP.Functions, "charindex", (char*)exp_fn_charindex);
-	xhAdd(&EXP.Functions, "upper", (char*)exp_fn_upper);
-	xhAdd(&EXP.Functions, "lower", (char*)exp_fn_lower);
-	xhAdd(&EXP.Functions, "char_length", (char*)exp_fn_char_length);
-	xhAdd(&EXP.Functions, "datepart", (char*)exp_fn_datepart);
-	xhAdd(&EXP.Functions, "isnull", (char*)exp_fn_isnull);
-	xhAdd(&EXP.Functions, "ltrim", (char*)exp_fn_ltrim);
-	xhAdd(&EXP.Functions, "lztrim", (char*)exp_fn_lztrim);
-	xhAdd(&EXP.Functions, "rtrim", (char*)exp_fn_rtrim);
-	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
-	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
-	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
-	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
-	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
-	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
-	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
-	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
-	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
-	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
-	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
-	xhAdd(&EXP.Functions, "sin", (char*)exp_fn_sin);
-	xhAdd(&EXP.Functions, "cos", (char*)exp_fn_cos);
-	xhAdd(&EXP.Functions, "tan", (char*)exp_fn_tan);
-	xhAdd(&EXP.Functions, "asin", (char*)exp_fn_asin);
-	xhAdd(&EXP.Functions, "acos", (char*)exp_fn_acos);
-	xhAdd(&EXP.Functions, "atan", (char*)exp_fn_atan);
-	xhAdd(&EXP.Functions, "atan2", (char*)exp_fn_atan2);
-	xhAdd(&EXP.Functions, "sqrt", (char*)exp_fn_sqrt);
-	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
-	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
-	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
-
-	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
-	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
-	xhAdd(&EXP.Functions, "sum", (char*)exp_fn_sum);
-	xhAdd(&EXP.Functions, "max", (char*)exp_fn_max);
-	xhAdd(&EXP.Functions, "min", (char*)exp_fn_min);
-	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
-	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
-
-	/** Reverse functions **/
-	xhAdd(&EXP.ReverseFunctions, "isnull", (char*)exp_fn_reverse_isnull);
-
-    return 0;
+exp_internal_DefineFunctions() {
+    
+    /** Function list for EXPR_N_FUNCTION nodes **/
+    xhAdd(&EXP.Functions, "getdate", (char*) exp_fn_getdate);
+    xhAdd(&EXP.Functions, "user_name", (char*) exp_fn_user_name);
+    xhAdd(&EXP.Functions, "convert", (char*) exp_fn_convert);
+    xhAdd(&EXP.Functions, "wordify", (char*) exp_fn_wordify);
+    xhAdd(&EXP.Functions, "abs", (char*) exp_fn_abs);
+    xhAdd(&EXP.Functions, "condition", (char*) exp_fn_condition);
+    xhAdd(&EXP.Functions, "datepart", (char*) exp_fn_datepart);
+    xhAdd(&EXP.Functions, "isnull", (char*) exp_fn_isnull);
+    xhAdd(&EXP.Functions, "ltrim", (char*) exp_fn_ltrim);
+    xhAdd(&EXP.Functions, "lztrim", (char*) exp_fn_lztrim);
+    xhAdd(&EXP.Functions, "rtrim", (char*) exp_fn_rtrim);
+    xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
+    xhAdd(&EXP.Functions, "replicate", (char*) exp_fn_replicate);
+    xhAdd(&EXP.Functions, "quote", (char*) exp_fn_quote);
+    xhAdd(&EXP.Functions, "eval", (char*) exp_fn_eval);
+    xhAdd(&EXP.Functions, "round", (char*) exp_fn_round);
+    xhAdd(&EXP.Functions, "dateadd", (char*) exp_fn_dateadd);
+    xhAdd(&EXP.Functions, "truncate", (char*) exp_fn_truncate);
+    xhAdd(&EXP.Functions, "constrain", (char*) exp_fn_constrain);
+    xhAdd(&EXP.Functions, "sin", (char*) exp_fn_sin);
+    xhAdd(&EXP.Functions, "cos", (char*) exp_fn_cos);
+    xhAdd(&EXP.Functions, "tan", (char*) exp_fn_tan);
+    xhAdd(&EXP.Functions, "asin", (char*) exp_fn_asin);
+    xhAdd(&EXP.Functions, "acos", (char*) exp_fn_acos);
+    xhAdd(&EXP.Functions, "atan", (char*) exp_fn_atan);
+    xhAdd(&EXP.Functions, "atan2", (char*) exp_fn_atan2);
+    xhAdd(&EXP.Functions, "sqrt", (char*) exp_fn_sqrt);
+    xhAdd(&EXP.Functions, "square", (char*) exp_fn_square);
+    xhAdd(&EXP.Functions, "degrees", (char*) exp_fn_degrees);
+    xhAdd(&EXP.Functions, "radians", (char*) exp_fn_radians);
+    
+    xhAdd(&EXP.Functions, "count", (char*) exp_fn_count);
+    xhAdd(&EXP.Functions, "avg", (char*) exp_fn_avg);
+    xhAdd(&EXP.Functions, "sum", (char*) exp_fn_sum);
+    xhAdd(&EXP.Functions, "max", (char*) exp_fn_max);
+    xhAdd(&EXP.Functions, "min", (char*) exp_fn_min);
+    xhAdd(&EXP.Functions, "first", (char*) exp_fn_first);
+    xhAdd(&EXP.Functions, "last", (char*) exp_fn_last);
+    
+    /** Reverse functions **/
+    xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
+    
+    /** UTF-8/ASCII dependent **/
+    if (CxGlobals.CharacterMode == CharModeSigleByte) {
+        xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
+        xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
+        xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
+        xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
+        xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
+        xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
+        xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
+        xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
+    } else {
+        xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_utf8_ascii);
+        xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
+        xhAdd(&EXP.Functions, "upper", (char*) exp_fn_utf8_upper);
+        xhAdd(&EXP.Functions, "lower", (char*) exp_fn_utf8_lower);
+        xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_utf8_char_length);
+        xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
+        xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
+        xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
     }
+    
+    return 0;
+}
