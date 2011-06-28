@@ -44,6 +44,7 @@ class objdrv;
 
 /**
  * used by queries to the driver.
+ * @brief query to the driver
  */
 class query_t{
 public:
@@ -74,6 +75,7 @@ public:
 /**
  * An attribute, makes tracking both value
  * and connected type simple
+ * @brief attribute (of the a particular object)
  */
 class Attribute{
 public:
@@ -116,7 +118,8 @@ public:
 };
 
 /**
- * base class, which should be extended into your driver
+ * a base class, which should be extended as your driver
+ * @brief base class for object drivers
  */
 class objdrv {
 public:
