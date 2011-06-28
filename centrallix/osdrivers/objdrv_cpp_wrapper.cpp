@@ -238,7 +238,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     if(tmp.compare("name") || tmp.compare("annotation") || tmp.compare("content_type")
             || tmp.compare("inner_type") || tmp.compare("outer_type"))
         return cppGetNextAttr(inf_v,oxt);
-    return (char *)(tmp.c_str());
+    return (char *)(strdup(tmp.c_str()));
     return NULL;
 }
 

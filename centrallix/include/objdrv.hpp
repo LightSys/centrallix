@@ -36,6 +36,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <string.h>
 #include "centrallix.h"
 #include "obj.h"
 #include "st_node.h"
@@ -102,7 +103,7 @@ public:
     Attribute(int type,std::string value){
         Type=type;
         Value= new ObjData;
-        Value->String=(char *)value.c_str();
+        Value->String=(char *)strdup(value.c_str());
     }
 
     /**
