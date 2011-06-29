@@ -239,14 +239,35 @@ stAllocInf()
     return this;
     }
 
+int stSeparate(pStructInf this){
+    int i,j;
+    
+    /** Disconnect from parent if there is one. **/
+    if (this->Parent)
+    {
+        ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
+        for(i=0;i<this->Parent->nSubInf;i++)
+        {
+            if (this == this->Parent->SubInf[i])
+            {
+                this->Parent->nSubInf--;
+                for(j=i;j<this->Parent->nSubInf;j++)
+                {
+                    this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
+                }
+                this->Parent->SubInf[this->Parent->nSubInf] = NULL;
+            }
+        }
+    }
+    return 0;
+}
 
 /*** stFreeInf - release an existing StructInf, and any sub infs
  ***/
 int
 stFreeInf(pStructInf this)
     {
-    int i,j;
-
+        int i;
 	ASSERTMAGIC(this,MGK_STRUCTINF);
 
 	/** Free any subinfs first **/
@@ -263,23 +284,8 @@ stFreeInf(pStructInf this)
 	if (this->Value) expFreeExpression(this->Value);
 
 	/** Disconnect from parent if there is one. **/
-	if (this->Parent)
-	    {
-	    ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
-	    for(i=0;i<this->Parent->nSubInf;i++)
-	        {
-		if (this == this->Parent->SubInf[i])
-		    {
-		    this->Parent->nSubInf--;
-		    for(j=i;j<this->Parent->nSubInf;j++)
-		        {
-			this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
-			}
-		    this->Parent->SubInf[this->Parent->nSubInf] = NULL;
-		    }
-		}
-	    }
-
+	stSeparate(this);
+        
 	/** Free the current one. **/
 	nmFree(this,sizeof(StructInf));
 

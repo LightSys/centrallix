@@ -176,6 +176,14 @@ int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);
 pExpression stGetExpression(pStructInf this, int nval);
 void* stGetValueList(pStructInf this, int type, unsigned int* nval);
 int stAttrIsList(pStructInf this);
+/** \brief Separate a subtree from its parent.
+ 
+ After calling this, you are responsible to free both this subtree
+ and its parent if there is one.
+ \param toSeparate The tree to separate from its parent, i f it has one.
+ \return This returns 0 in all cases.
+ */
+int stSeparate(pStructInf toSeparate);
 
 #endif /* _STPARSE_H */
 
