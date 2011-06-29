@@ -61,7 +61,7 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
     //fprintf(stderr,"closeing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     inf->Close(oxt);
-    delete inf;
+    //delete inf;
 
     return 0;
     }
@@ -224,6 +224,7 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
     std::cerr << "Found: "<<inf->Attributes[std::string(attrname)]<<std::endl;
     //now the fun copy
+    //TODO include all types here
     switch(datatype){
         case DATA_T_STRING:
             val->String = tmpval->String;

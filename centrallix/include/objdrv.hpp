@@ -85,6 +85,8 @@ public:
     /**The actual value*/
     pObjData Value;
 
+    //TODO include constructor for all types here
+
     /**
      * builds based on arbatrary value
      * @param type
