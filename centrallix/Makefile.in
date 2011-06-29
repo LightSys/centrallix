@@ -66,7 +66,8 @@ XSUPPORT=stparse.o \
 	 mime/mime_encode.o \
 	 mime/mime_util.o \
 	 ptod.o	\
-	 iface.o
+	 iface.o \
+	 charsets.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 

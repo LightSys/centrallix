@@ -36,6 +36,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
+#include "charsets.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

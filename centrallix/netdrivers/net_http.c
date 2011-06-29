@@ -1451,7 +1451,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
 		    }
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
+                    
+                /** Print encoding type and content type **/
+		fdPrintf(conn->ConnFD,"Content-Type: text/html; charset=%s\r\nPragma: no-cache\r\n\r\n", chrGetEquivalentName("http"));
+                printf("UTF-8TestDebug Equivalent for HTTP is %s\n", chrGetEquivalentName("http"));
 		if(gzip==1)
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 

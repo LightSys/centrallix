@@ -23,6 +23,7 @@
 #include "wgtr.h"
 #include "iface.h"
 #include "cxss/cxss.h"
+#include "charsets.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -722,8 +723,8 @@ cxInitialize(void* v)
 	fdClose(cxconf, 0);
 
         /** Load the charsetmap file **/
-        if(stAttrValue(stLookup(CxGlobals.ParsedConfig, "charsetmap_file"), NULL, &charsetmapFileName, 0) != 0){
-            printf("centrallix: did not find required key 'charsetmap_file' in config file '%s'\n", CxGlobals.ConfigFileName);
+        if(stAttrValue(stLookup(CxGlobals.ParsedConfig, CHR_CHARSETMAP_FILE_KEY), NULL, &charsetmapFileName, 0) != 0){
+            printf("centrallix: did not find required key '%s' in config file '%s'\n", CHR_CHARSETMAP_FILE_KEY, CxGlobals.ConfigFileName);
             thExit();
         }
         printf("UTF-8TestDebug Charsetmap File: %s\n", charsetmapFileName);
@@ -742,7 +743,8 @@ cxInitialize(void* v)
         
         /** Now pull out the current charset and free the
          rest **/
-        if(thisCharsetPtr = stLookup(CxGlobals.CharsetMap, nl_langinfo(CODESET))){
+        thisCharsetPtr = stLookup(CxGlobals.CharsetMap, nl_langinfo(CODESET));
+        if(thisCharsetPtr){
             stSeparate(thisCharsetPtr);
             stFreeInf(CxGlobals.CharsetMap);
             CxGlobals.CharsetMap = thisCharsetPtr;
