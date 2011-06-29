@@ -43,7 +43,7 @@
 void*
 cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"opening a cpp object\n");
+    //fprintf(stderr,"opening a cpp object\n");
     objdrv *inf;
     /** Allocate the structure! **/
     inf = GetInstance(obj, mask, systype, usrtype, oxt);
@@ -58,7 +58,7 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 int
 cppClose(void* inf_v, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"closeing a cpp object\n");
+    //fprintf(stderr,"closeing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     inf->Close(oxt);
     delete inf;
@@ -120,7 +120,7 @@ int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
 int
 cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"reading a cpp object\n");
+    //fprintf(stderr,"reading a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->Read(buffer, maxcnt, offset, flags, oxt);
     }
@@ -134,7 +134,7 @@ int objdrv::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* o
 int
 cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"writing a cpp object\n");
+    //fprintf(stderr,"writing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->Write(buffer,cnt,offset,flags,oxt);
     }
@@ -148,7 +148,7 @@ int objdrv::Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt
 void*
 cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"beigining query of a cpp object\n");
+    //fprintf(stderr,"beigining query of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return (void*)inf->OpenQuery(query,oxt);
     }
@@ -196,7 +196,7 @@ int query_t::Close(pObjTrxTree* oxt){
 int
 cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"typing att of a cpp object\n");
+    //fprintf(stderr,"typing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
         return -1;
@@ -213,8 +213,10 @@ objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
  ***/
 int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
-    fprintf(stderr,"valuing att of a cpp object\n");
+    //fprintf(stderr,"valuing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
+    fprintf(stderr,"Request for att %s of object %s\n",
+            attrname,inf->Attributes.find(std::string("name")));
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
         return -1;
     if(datatype != inf->Attributes[std::string(attrname)]->Type)
@@ -228,10 +230,13 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
  ***/
 char*
 cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
-    fprintf(stderr,"next att of a cpp object\n");
+    //fprintf(stderr,"next att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     std::string tmp;
-    if(inf->CurrentAtrrib==inf->Attributes.end())return NULL;
+    if(inf->CurrentAtrrib==inf->Attributes.end()){
+        inf->CurrentAtrrib=inf->Attributes.begin();
+        return NULL;
+    }
     tmp=inf->CurrentAtrrib->first;
     inf->CurrentAtrrib++;
     //check against the black list
@@ -247,7 +252,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
 char*
 cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"begining att list of a cpp object\n");
+    //fprintf(stderr,"begining att list of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     inf->CurrentAtrrib=inf->Attributes.begin();
     return cppGetNextAttr(inf_v, oxt);
@@ -259,7 +264,7 @@ cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  ***/
 int
 cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
-    fprintf(stderr,"setting att of a cpp object\n");
+    //fprintf(stderr,"setting att of a cpp object\n");
     Attribute *tmp;
     objdrv *inf = (objdrv *)inf_v;
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
@@ -296,7 +301,7 @@ bool objdrv::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
 int
 cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"adding att to a cpp object\n");
+    //fprintf(stderr,"adding att to a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     inf->Attributes[std::string(attrname)]=new Attribute(type,val);
     if(inf->UpdateAttr(std::string(attrname),oxt)){
@@ -353,7 +358,7 @@ cppExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
 pObjPresentationHints
 cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"hinting about a cpp object\n");
+    //fprintf(stderr,"hinting about a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->PresentationHints(attrname,oxt);
     }
@@ -369,7 +374,7 @@ pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt
 int
 cppInfo(void* inf_v, pObjectInfo info)
     {
-    fprintf(stderr,"infoing a cpp object\n");
+    //fprintf(stderr,"infoing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->Info(info);
     }
@@ -383,7 +388,7 @@ int objdrv::Info(pObjectInfo info){
 int
 cppCommit(void* inf_v, pObjTrxTree* oxt)
     {
-    fprintf(stderr,"committing a cpp object\n");
+    //fprintf(stderr,"committing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     return inf->Commit(oxt);
     }
@@ -402,7 +407,7 @@ bool objdrv::IsEmpty(){
 int
 cppInitialize()
     {
-    fprintf(stderr,"starting a cpp system\n");
+    //fprintf(stderr,"starting a cpp system\n");
     pObjDriver drv;
     std::list<std::string> Types=GetTypes();
 	// Allocate the driver

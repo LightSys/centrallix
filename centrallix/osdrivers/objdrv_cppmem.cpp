@@ -17,7 +17,7 @@ public:
     int Info(pObjectInfo info);
 };//end cppmem
 
-std::map<pPathname, cppmem*> files;
+std::map<std::string, cppmem*> files;
 
 int cppmem::Close(pObjTrxTree* oxt){
     if(this->nodethingy)this->nodethingy->OpenCnt--;
@@ -73,10 +73,10 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
 
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     cppmem *tmp;
-
-    tmp=files[obj->Pathname];
+    std::string id=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
+    tmp=files[id];
     if(!tmp){
-        tmp=files[obj->Pathname]=new cppmem(obj,mask,systype,usrtype,oxt);
+        tmp=files[id]=new cppmem(obj,mask,systype,usrtype,oxt);
         tmp->Write("Hello world",12,0,0,0);
     }
     return tmp;

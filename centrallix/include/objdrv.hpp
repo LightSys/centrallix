@@ -26,7 +26,7 @@
 /* Author:	Micah Shennum   					*/
 /* Creation:	Jun 07 2011     					*/
 /* Description: Defines the objdrv class, which is implemented to make  */
-/*      a driver useing c++                                             */
+/*      a driver useing c++ (and a few other helping classes)           */
 /************************************************************************/
 #ifndef OBJDRV_HPP
 #define	OBJDRV_HPP
@@ -76,7 +76,7 @@ public:
 /**
  * An attribute, makes tracking both value
  * and connected type simple
- * @brief attribute (of the a particular object)
+ * @brief attribute (of the particular object)
  */
 class Attribute{
 public:
@@ -90,33 +90,31 @@ public:
      * @param type
      * @param value
      */
-    Attribute(int type,pObjData value){
-        Type=type;
-        Value= value;
-    }
-
+    Attribute(int type,pObjData value);
+    
     /**
      * builds based on a c++ string
      * @param type
      * @param value
      */
-    Attribute(int type,std::string value){
-        Type=type;
-        Value= new ObjData;
-        Value->String=(char *)strdup(value.c_str());
-    }
+    Attribute(int type,std::string value);
 
     /**
      * builds based on a int
      * @param type
      * @param value
      */
-    Attribute(int type,int value){
-        Type=type;
-        Value= new ObjData;
-        Value->Integer=value;
-    }
+    Attribute(int type,int value);
 };
+
+/**
+ * Writes an attribute to the stream, using the correct type
+ * @brief ostream operator for Attribute
+ * @param out stream to output on
+ * @param att Attribute * to display
+ * @return out
+ */
+std::ostream &operator <<(std::ostream &out,Attribute *att);
 
 /**
  * a base class, which should be extended as your driver
