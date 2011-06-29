@@ -77,6 +77,7 @@ public:
  * An attribute, makes tracking both value
  * and connected type simple
  * @brief attribute (of the particular object)
+ * @todo include constructor for all types here
  */
 class Attribute{
 public:
@@ -84,8 +85,6 @@ public:
     int Type;
     /**The actual value*/
     pObjData Value;
-
-    //TODO include constructor for all types here
 
     /**
      * builds based on arbatrary value
@@ -115,11 +114,12 @@ public:
 };
 
 /**
- * Writes an attribute to the stream, using the correct type
+ * Writes an attribute to the stream, first converting it to the correct type
  * @brief ostream operator for Attribute
  * @param out stream to output on
  * @param att Attribute * to display
  * @return out
+ * @todo include all types here
  */
 std::ostream &operator <<(std::ostream &out,Attribute *att);
 
@@ -136,7 +136,7 @@ public:
     /**Map of the attributes of this object, maintained by the wrapper*/
     std::map<std::string,Attribute *> Attributes;
     /**Points to the current attribute in the attribute listing, don't touch*/
-    std::map<std::string,Attribute *>::iterator CurrentAtrrib;
+    std::map<std::string,Attribute *>::const_iterator CurrentAtrrib;
 
     /**
      * Creates a new object

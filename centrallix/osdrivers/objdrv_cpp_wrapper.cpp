@@ -215,16 +215,16 @@ int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     //fprintf(stderr,"valuing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    fprintf(stderr,"Request for att::%s of object %s\n",
-            attrname,inf->Attributes[std::string("name")]->Value->String);
+//    fprintf(stderr,"Request for att::%s of object %s\n",
+//            attrname,inf->Attributes[std::string("name")]->Value->String);
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
         return -1;
     if(datatype != inf->Attributes[std::string(attrname)]->Type)
         return -1;
     pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
-    std::cerr << "Found: "<<inf->Attributes[std::string(attrname)]<<std::endl;
-    //now the fun copy
-    //TODO include all types here
+//    std::cerr << "Found: "<<inf->Attributes[std::string(attrname)]<<std::endl;
+    //now the fun copy part
+    /// @TODO include all types here
     switch(datatype){
         case DATA_T_STRING:
             val->String = tmpval->String;

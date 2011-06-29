@@ -59,14 +59,16 @@ int cppmem::Info(pObjectInfo info){
 
 cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
         :objdrv(obj,mask,systype,usrtype,oxt){
-    obj->SubCnt=1;
     this->Obj=obj;
     this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
-    this->nodethingy = snReadNode(obj->Prev);
+    //this->nodethingy = snReadNode(obj->Prev);
+    this->nodethingy = 0;
+    obj->SubCnt=obj->Pathname->nElements;
     if(this->nodethingy)this->nodethingy->OpenCnt++;
     Attributes["name"]=new Attribute(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
     Attributes["outer_type"]=new Attribute("text/mem");
     Attributes["inner_type"]=new Attribute("application/octet-stream");
+    Attributes["annotation"]=new Attribute("cpp object");
     Attributes["source_class"]=new Attribute("cpp");
     std::cerr<<"New mem object "<< Attributes["name"]<<" as "<<usrtype<<std::endl;
 }

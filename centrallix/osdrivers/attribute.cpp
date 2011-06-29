@@ -62,7 +62,6 @@ Attribute::~Attribute(){
 
 //stream operator
 std::ostream &operator <<(std::ostream &out,Attribute *att){
-    //TODO include all types here
     switch(att->Type){
         case DATA_T_STRING:
             out<<att->Value->String;
