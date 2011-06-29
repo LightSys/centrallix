@@ -663,7 +663,10 @@ int
 cxInitialize(void* v)
     {
     pFile cxconf;
+    pFile cxcharsetmap;
     pStructInf mss_conf;
+    pStructInf thisCharsetPtr;
+    char* charsetmapFileName;
     char* authmethod;
     char* authmethodfile;
     char* logmethod;
@@ -680,14 +683,13 @@ cxInitialize(void* v)
 
 	/** Check if UTF-8 or single byte encoding **/
 	if(MB_CUR_MAX == 1)
-            CxGlobals.CharacterMode = CharModeSigleByte;
+            CxGlobals.CharacterMode = CharModeSingleByte;
         else if(strcmp(nl_langinfo(CODESET), "UTF-8") == 0)
             CxGlobals.CharacterMode = CharModeUTF8;
         else
             {
-            fprintf(stderr, "Current locale is not single byte encoding or"
-                            "UTF-8! Using C locale.\n");
-		setlocale(LC_CTYPE, "C");
+            fprintf(stderr, "Current locale is not single byte encoding or UTF-8! Using C locale.\n");
+            setlocale(LC_CTYPE, "C");
             }
 
 	/** set up the interrupt handler so we can shutdown properly **/
@@ -719,6 +721,39 @@ cxInitialize(void* v)
 	    }
 	fdClose(cxconf, 0);
 
+        /** Load the charsetmap file **/
+        if(stAttrValue(stLookup(CxGlobals.ParsedConfig, "charsetmap_file"), NULL, &charsetmapFileName, 0) != 0){
+            printf("centrallix: did not find required key 'charsetmap_file' in config file '%s'\n", CxGlobals.ConfigFileName);
+            thExit();
+        }
+        printf("UTF-8TestDebug Charsetmap File: %s\n", charsetmapFileName);
+        cxcharsetmap = fdOpen(charsetmapFileName, O_RDONLY, 0600);
+        if(!cxcharsetmap){
+            printf("centrallix: could not open charsetmap file '%s'\n", charsetmapFileName);
+            thExit();
+        }
+        CxGlobals.CharsetMap = stParseMsg(cxcharsetmap, 0);
+	if (!CxGlobals.CharsetMap)
+        {
+	    printf("centrallix: error parsing charsetmap file '%s'\n", charsetmapFileName);
+	    thExit();
+        }
+        fdClose(cxcharsetmap, 0);
+        
+        /** Now pull out the current charset and free the
+         rest **/
+        if(thisCharsetPtr = stLookup(CxGlobals.CharsetMap, nl_langinfo(CODESET))){
+            stSeparate(thisCharsetPtr);
+            stFreeInf(CxGlobals.CharsetMap);
+            CxGlobals.CharsetMap = thisCharsetPtr;
+            
+        }
+        else{
+            printf("centrallix: could not find current charset '%s' in '%s'\n", nl_langinfo(CODESET), charsetmapFileName);
+            thExit();
+        }
+        
+        
 	/** This setting can be dangerous apart from the RBAC security subsystem.
 	 ** We default to Enabled here, but this is turned off in the default config.
 	 **/

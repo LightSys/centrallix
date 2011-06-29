@@ -19,10 +19,12 @@ typedef char CXCHAR;
 #define CX_CONV64(x)	((CX_CONV32((x)&0xffffffffLL)<<32)|CX_CONV32(((x)>>32)&0xffffffffLL))
 
 /** Different types of character modes that Centrallix supports. **/
-typedef enum{
-    CharModeUTF8, /*** For when the locale supports UTF-8 **/
-    CharModeSigleByte /** For when the locale is using a single byte encoding. **/
-} CharMode;
+typedef enum
+    {
+    CharModeUTF8, /* For when the locale supports UTF-8 */
+    CharModeSingleByte /* For when the locale is using a single byte encoding. */
+    }
+    CharMode;
 
 /*** Loaded module info ***/
 typedef struct _CXM
@@ -56,8 +58,8 @@ typedef struct _CXG
     pCxModule	ModuleList;
     XArray	ShutdownHandlers;
     int		Flags;
-    CharMode    CharacterMode; /* This and down deal with charsets */
-    pStruct     CharsetMap; /* This is the contents of the charset.cfg file */
+    CharMode    CharacterMode; /* This and CharsetMap deal with charsets */
+    pStructInf  CharsetMap; /* This is the contents of the charset.cfg file */
                             /* for looking up equivalent character sets.    */
     }
     CxGlobals_t, *pCxGlobals_t;

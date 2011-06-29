@@ -6,6 +6,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <wchar.h>
+#include <wctype.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -13,6 +15,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -2786,7 +2789,9 @@ exp_internal_DefineFunctions() {
     xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
     
     /** UTF-8/ASCII dependent **/
-    if (CxGlobals.CharacterMode == CharModeSigleByte) {
+    if (CxGlobals.CharacterMode == CharModeSingleByte)
+        {
+        fprintf(stderr, "UTF-8TestDebug - Launching in single byte char mode!\n");
         xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
         xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
@@ -2795,7 +2800,10 @@ exp_internal_DefineFunctions() {
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
-    } else {
+        }
+    else
+        {
+        fprintf(stderr, "UTF-8TestDebug - Launching in UTF-8 mode!\n");
         xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_utf8_ascii);
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
         xhAdd(&EXP.Functions, "upper", (char*) exp_fn_utf8_upper);
@@ -2804,7 +2812,7 @@ exp_internal_DefineFunctions() {
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
-    }
+        }
     
     return 0;
-}
+    }
