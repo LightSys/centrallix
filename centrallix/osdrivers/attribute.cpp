@@ -30,26 +30,34 @@
 /************************************************************************/
 
 #include <iostream>
+#include <string.h>
 #include "objdrv.hpp"
 
 //constructors!
 
 Attribute::Attribute(int type,pObjData value){
         Type=type;
-        Value= value;
+        Value = new ObjData;
+        memcpy(Value,value,sizeof(ObjData));
 }
 
-Attribute::Attribute(int type,std::string value){
-        Type=type;
+Attribute::Attribute(std::string value){
+        Type=DATA_T_STRING;
         Value= new ObjData;
         bzero(Value,sizeof(ObjData));
         Value->String=(char *)strdup(value.c_str());
 }
 
-Attribute::Attribute(int type,int value){
-        Type=type;
+Attribute::Attribute(int value){
+        Type=DATA_T_INTEGER;
         Value= new ObjData;
+        bzero(Value,sizeof(ObjData));
         Value->Integer=value;
+}
+
+//clean up after ourself
+Attribute::~Attribute(){
+    delete Value;
 }
 
 //stream operator
@@ -60,6 +68,9 @@ std::ostream &operator <<(std::ostream &out,Attribute *att){
             break;
         case DATA_T_INTEGER:
             out<<att->Value->Integer;
+            break;
+        case DATA_T_DOUBLE:
+            out<<att->Value->Double;
             break;
         default:
             out<<att->Value;

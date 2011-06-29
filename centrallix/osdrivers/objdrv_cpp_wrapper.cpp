@@ -28,7 +28,7 @@
 /* Description:	This goes through the nasty bussness of binding a objdrv*/
 /*               class into the object driver system                    */
 /************************************************************************/
-
+#include <iostream>
 #include <string.h>
 #include <stdio.h>
 #include "obj.h"
@@ -215,14 +215,28 @@ int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     //fprintf(stderr,"valuing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    fprintf(stderr,"Request for att %s of object %s\n",
-            attrname,inf->Attributes.find(std::string("name")));
+    fprintf(stderr,"Request for att::%s of object %s\n",
+            attrname,inf->Attributes[std::string("name")]->Value->String);
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
         return -1;
     if(datatype != inf->Attributes[std::string(attrname)]->Type)
         return -1;
     pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
-    *val = *(tmpval);
+    std::cerr << "Found: "<<inf->Attributes[std::string(attrname)]<<std::endl;
+    //now the fun copy
+    switch(datatype){
+        case DATA_T_STRING:
+            val->String = tmpval->String;
+            break;
+        case DATA_T_INTEGER:
+            val->Integer = tmpval->Integer;
+            break;
+        case DATA_T_DOUBLE:
+            val->Double = tmpval->Double;
+            break;
+        default://blindly copy anything we don't understand
+            memcpy(val,tmpval, sizeof(ObjData));
+    }
     return 0;
 }
 

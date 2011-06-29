@@ -97,14 +97,19 @@ public:
      * @param type
      * @param value
      */
-    Attribute(int type,std::string value);
+    Attribute(std::string value);
 
     /**
      * builds based on a int
      * @param type
      * @param value
      */
-    Attribute(int type,int value);
+    Attribute(int value);
+
+    /**
+     * Destructor
+     */
+    ~Attribute();
 };
 
 /**
