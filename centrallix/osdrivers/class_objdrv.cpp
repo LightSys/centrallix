@@ -78,6 +78,25 @@ bool objdrv::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
         return false;
 }//end UpdateAttr
 
+Attribute *objdrv::GetAtrribute(std::string name){
+    if(this->Attributes.find(name)==this->Attributes.end())
+        return NULL;
+    return this->Attributes[name];
+}//end GetAtrribute
+
+bool objdrv::SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt){
+    Attribute *tmp=this->Attributes[name];
+    if(this->Attributes.find(name)==this->Attributes.end())tmp=NULL;
+    this->Attributes[name]=value;
+    if(this->UpdateAttr(name,oxt)){
+        delete this->Attributes[name];
+        if(tmp)this->Attributes[name]=tmp;
+        return true;
+    }//end objected
+    delete tmp;
+    return false;
+}//end SetAtrribute
+
 //the constructor!
 objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     //do some generic setup

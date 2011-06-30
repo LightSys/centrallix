@@ -168,9 +168,9 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     //fprintf(stderr,"typing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
+    if(!inf->GetAtrribute(std::string(attrname)))
         return -1;
-    return inf->Attributes[std::string(attrname)]->Type;
+    return inf->GetAtrribute(std::string(attrname))->Type;
     }
 
 /*** cppGetAttrValue - get the value of an attribute by name.  The 'val'
@@ -180,11 +180,10 @@ int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     //fprintf(stderr,"valuing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
-        return -1;
-    if(datatype != inf->Attributes[std::string(attrname)]->Type)
-        return -1;
-    pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
+    Attribute *data=inf->GetAtrribute(std::string(attrname));
+    if(data==NULL)return -1;
+    if(datatype != data->Type)return -1;
+    pObjData tmpval =data->Value;
     //now the fun copy part
     /// @TODO include all types here
     switch(datatype){
@@ -221,7 +220,6 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
             || tmp.compare("inner_type") || tmp.compare("outer_type"))
         return cppGetNextAttr(inf_v,oxt);
     return (char *)(strdup(tmp.c_str()));
-    return NULL;
 }
 
 /*** cppGetFirstAttr - get the first attribute name for this object.
@@ -242,18 +240,11 @@ cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
 int
 cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     //fprintf(stderr,"setting att of a cpp object\n");
-    Attribute *tmp;
     objdrv *inf = (objdrv *)inf_v;
-    if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
+    if(!inf->GetAtrribute(std::string(attrname)))
         return -1;
-    tmp=inf->Attributes[std::string(attrname)];
-    inf->Attributes[std::string(attrname)]=new Attribute(datatype,val);
-    if(inf->UpdateAttr(std::string(attrname),oxt)){
-        delete inf->Attributes[std::string(attrname)];
-        inf->Attributes[std::string(attrname)]=tmp;
+    if(inf->SetAtrribute(std::string(attrname),new Attribute(datatype,val),oxt))
         return -1;
-    }//end objected
-    delete tmp;
     return 0;
 }
 
@@ -266,12 +257,8 @@ cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt
     {
     //fprintf(stderr,"adding att to a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    inf->Attributes[std::string(attrname)]=new Attribute(type,val);
-    if(inf->UpdateAttr(std::string(attrname),oxt)){
-        delete inf->Attributes[std::string(attrname)];
-        inf->Attributes.erase(std::string(attrname));
+    if(inf->SetAtrribute(std::string(attrname),new Attribute(type,val),oxt))
         return -1;
-    }//end if objected
     return 0;
     }
 

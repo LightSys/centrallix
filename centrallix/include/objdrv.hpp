@@ -128,15 +128,18 @@ std::ostream &operator <<(std::ostream &out,Attribute *att);
  * @brief base class for object drivers
  */
 class objdrv {
+private:
+    /**Map of the attributes of this object, maintained by the wrapper*/
+    std::map<std::string,Attribute *> Attributes;
+    /**Points to the current attribute in the attribute listing, don't touch*/
+    std::map<std::string,Attribute *>::const_iterator CurrentAtrrib;
+    friend char* cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt);
+    friend char* cppGetNextAttr(void* inf_v, pObjTrxTree* oxt);
 public:
     /**System name for this object */
     std::string Pathname;
     /**System object for this object*/
     pObject	Obj;
-    /**Map of the attributes of this object, maintained by the wrapper*/
-    std::map<std::string,Attribute *> Attributes;
-    /**Points to the current attribute in the attribute listing, don't touch*/
-    std::map<std::string,Attribute *>::const_iterator CurrentAtrrib;
 
     /**
      * Creates a new object
@@ -214,8 +217,26 @@ public:
      * @return         true if the change should be undone
      */
     virtual bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
-    //others
+    /**
+     * called before deletion to check if the object is empty
+     * @return true if empty
+     */
     virtual bool IsEmpty();
+
+    /**
+     * Fetches an attribute from the objects attribute list
+     * @param name which attribute is required
+     * @return the attribute (or NULL if no such attribute)
+     */
+    Attribute *GetAtrribute(std::string name);
+    /**
+     * Sets an give attribute to the given value
+     * @param name  which attribute to set
+     * @param value value to corollate with the name
+     * @param oxt   context, NULL if you don't know what it is
+     * @return true if the attribute should not be set
+     */
+    bool SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt);
 };//end class objdrv
 
 /**

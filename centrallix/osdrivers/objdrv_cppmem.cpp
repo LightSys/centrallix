@@ -64,12 +64,12 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
     //this->nodethingy = snReadNode(obj->Prev);
     this->nodethingy = 0;
     if(this->nodethingy)this->nodethingy->OpenCnt++;
-    Attributes["name"]=new Attribute(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
-    Attributes["outer_type"]=new Attribute("text/mem");
-    Attributes["inner_type"]=new Attribute("application/octet-stream");
-    Attributes["annotation"]=new Attribute("cpp object");
-    Attributes["source_class"]=new Attribute("cpp");
-    std::cerr<<"New mem object "<< Attributes["name"]<<" as "<<usrtype<<std::endl;
+    SetAtrribute("name",new Attribute(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr)),oxt);
+    SetAtrribute("outer_type",new Attribute("text/mem"),oxt);
+    SetAtrribute("inner_type",new Attribute("application/octet-stream"),oxt);
+    SetAtrribute("annotation",new Attribute("cpp object"),oxt);
+    SetAtrribute("source_class",new Attribute("cpp"),oxt);
+    std::cerr<<"New mem object "<< GetAtrribute("name") <<" as "<<usrtype<<std::endl;
 }
 
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
