@@ -220,8 +220,9 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     tmp=inf->CurrentAtrrib->first;
     inf->CurrentAtrrib++;
     //check against the black list
-//    if(!tmp.compare("name") || !tmp.compare("annotation") || !tmp.compare("content_type"))
-//        return cppGetNextAttr(inf_v,oxt);
+    if(!tmp.compare("name") || !tmp.compare("annotation") || !tmp.compare("content_type")
+            || !tmp.compare("inner_type") || !tmp.compare("outer_type") || !tmp.compare("last_modification"))
+        return cppGetNextAttr(inf_v,oxt);
     return (char *)(strdup(tmp.c_str()));
 }
 

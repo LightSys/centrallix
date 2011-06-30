@@ -55,7 +55,7 @@ bool cppmem::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
 }
 
 int cppmem::Info(pObjectInfo info){
-    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_ADD_ATTR |
+    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CAN_ADD_ATTR |
 		OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT);
     if(Buffer.size())info->Flags |= OBJ_INFO_F_HAS_CONTENT;
     return 0;

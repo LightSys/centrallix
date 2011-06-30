@@ -131,6 +131,9 @@ std::ostream &operator <<(std::ostream &out,Attribute *att);
 /**
  * a base class, which should be extended as your driver
  * @brief base class for object drivers
+ * @bug   att annot over written
+ * @todo  Method system
+ * @todo  test query system
  */
 class objdrv {
 private:
