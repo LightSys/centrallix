@@ -63,7 +63,6 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
     this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
     //this->nodethingy = snReadNode(obj->Prev);
     this->nodethingy = 0;
-    obj->SubCnt=obj->Pathname->nElements;
     if(this->nodethingy)this->nodethingy->OpenCnt++;
     Attributes["name"]=new Attribute(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
     Attributes["outer_type"]=new Attribute("text/mem");
@@ -76,11 +75,16 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     cppmem *tmp;
     std::string id=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
+    if(id.find(".mem",0)==id.npos){
+        std::cerr<<"Rejected opening "<< id <<" as "<<usrtype<<std::endl;
+        return NULL;
+    }
     tmp=files[id];
     if(!tmp){
         tmp=files[id]=new cppmem(obj,mask,systype,usrtype,oxt);
         tmp->Write("Hello world",12,0,0,0);
-    }
+    }else std::cerr<<"Retrieved mem object "<< id <<" as "<<usrtype<<std::endl;
+    obj->SubCnt=obj->Prev->SubCnt;
     return tmp;
 }
 
