@@ -66,10 +66,6 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
     return 0;
     }
 
-int objdrv::Close(pObjTrxTree* oxt){
-    return 0;
-}
-
 /*** cppCreate - create a new object, without actually returning a
  *** descriptor for it.  For most drivers, it is safe to just call
  *** the Open method with create/exclude set, and then close the
@@ -111,10 +107,6 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
     return 0;
     }
 
-int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
-    return 0;
-}
-
 /*** cppRead - calls the objdrv's read method
  ***/
 int
@@ -124,10 +116,6 @@ cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     objdrv *inf = (objdrv *)inf_v;
     return inf->Read(buffer, maxcnt, offset, flags, oxt);
     }
-
-int objdrv::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt){
-    return -1;
-}
 
 /*** cppWrite - calls the objdrv's write method
  ***/
@@ -139,10 +127,6 @@ cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     return inf->Write(buffer,cnt,offset,flags,oxt);
     }
 
-int objdrv::Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt){
-    return -1;
-}
-
 /*** cppOpenQuery - open a directory query.
  ***/
 void*
@@ -152,12 +136,6 @@ cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     objdrv *inf = (objdrv *)inf_v;
     return (void*)inf->OpenQuery(query,oxt);
     }
-
-//constructor for query_t
-query_t::query_t(objdrv *data){
-        Data=data;
-        ItemCnt=0;
-}
 
 //default open query
 query_t *objdrv::OpenQuery(pObjQuery query, pObjTrxTree* oxt){
@@ -172,10 +150,6 @@ cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt){
     return (void*)qy->Fetch(obj,mode,oxt);
 }
 
-objdrv *query_t::Fetch(pObject obj, int mode, pObjTrxTree* oxt){
-    return NULL;
-}//end Fetch
-
 /*** cppQueryClose - close the query.
  ***/
 int
@@ -186,10 +160,6 @@ cppQueryClose(void* qy_v, pObjTrxTree* oxt)
         delete qy;
     return 0;
     }
-
-int query_t::Close(pObjTrxTree* oxt){
-    return 0;
-}//end Close
 
 /*** cppGetAttrType - get the type (DATA_T_cpp) of an attribute by name.
  ***/
@@ -203,11 +173,6 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     return inf->Attributes[std::string(attrname)]->Type;
     }
 
-objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
-    //do some generic setup
-    Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
-}
-
 /*** cppGetAttrValue - get the value of an attribute by name.  The 'val'
  *** pointer must point to an appropriate data type.
  ***/
@@ -215,14 +180,11 @@ int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     //fprintf(stderr,"valuing att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-//    fprintf(stderr,"Request for att::%s of object %s\n",
-//            attrname,inf->Attributes[std::string("name")]->Value->String);
     if(inf->Attributes.find(std::string(attrname))==inf->Attributes.end())
         return -1;
     if(datatype != inf->Attributes[std::string(attrname)]->Type)
         return -1;
     pObjData tmpval =inf->Attributes[std::string(attrname)]->Value;
-//    std::cerr << "Found: "<<inf->Attributes[std::string(attrname)]<<std::endl;
     //now the fun copy part
     /// @TODO include all types here
     switch(datatype){
@@ -294,20 +256,6 @@ cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     delete tmp;
     return 0;
 }
-
-/**
- * default update, handels name updates and objects to changing of types
- * @param attrname
- * @param oxt
- * @return 
- */
-bool objdrv::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
-    /** Changing name of node object? **/
-	if (!attrname.compare("name"))return false;
-	if (!attrname.compare("content_type") || !attrname.compare("inner_type"))return true;
-	if (!attrname.compare("outer_type"))return true;
-        return false;
-}//end UpdateAttr
 
 /*** cppAddAttr - add an attribute to an object.  This doesn't always work
  *** for all object types, and certainly makes no sense for some (like unix
@@ -394,10 +342,6 @@ cppInfo(void* inf_v, pObjectInfo info)
     return inf->Info(info);
     }
 
-int objdrv::Info(pObjectInfo info){
-    return 0;
-}
-
 /*** cppCommit - commit any changes made to the underlying data source.
  ***/
 int
@@ -407,14 +351,6 @@ cppCommit(void* inf_v, pObjTrxTree* oxt)
     objdrv *inf = (objdrv *)inf_v;
     return inf->Commit(oxt);
     }
-
-int objdrv::Commit(pObjTrxTree* oxt){
-    return 0;
-}
-
-bool objdrv::IsEmpty(){
-    return true;
-}
 
 /*** cppInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.

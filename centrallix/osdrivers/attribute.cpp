@@ -72,6 +72,26 @@ std::ostream &operator <<(std::ostream &out,Attribute *att){
         case DATA_T_DOUBLE:
             out<<att->Value->Double;
             break;
+        //the following cases brazenly stollen from test_obj.c
+        case DATA_T_MONEY:
+            out<<objDataToStringTmp(DATA_T_MONEY, att->Value, 0);
+            break;
+        case DATA_T_BINARY:
+            out << att->Value->Binary.Size << " bytes: "<< std::hex;
+            for(int i=0;i<att->Value->Binary.Size;i++)
+                out << att->Value->Binary.Data[i];
+            //return to decimal
+            out << std::dec;
+            break;
+        case DATA_T_DATETIME:
+            //and it's like "WOMP"
+            out<<att->Value->DateTime->Part.Month+1<<"/"
+                    <<att->Value->DateTime->Part.Day+1<<"/"
+                    <<att->Value->DateTime->Part.Year+1900<<" "
+                    <<att->Value->DateTime->Part.Hour<<":"
+                    <<att->Value->DateTime->Part.Minute<<":"
+                    <<att->Value->DateTime->Part.Second;
+            break;
         default:
             out<<att->Value;
             break;
