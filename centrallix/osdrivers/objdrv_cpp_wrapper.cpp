@@ -196,8 +196,12 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
         case DATA_T_DOUBLE:
             val->Double = tmpval->Double;
             break;
+        case DATA_T_DATETIME:
+            val->DateTime = tmpval->DateTime;
+            break;
         default://blindly copy anything we don't understand
             memcpy(val,tmpval, sizeof(ObjData));
+            std::cerr<<attrname<<" of type "<<datatype<<" not properly handled"<<std::endl;
     }
     return 0;
 }
@@ -216,9 +220,8 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     tmp=inf->CurrentAtrrib->first;
     inf->CurrentAtrrib++;
     //check against the black list
-    if(tmp.compare("name") || tmp.compare("annotation") || tmp.compare("content_type")
-            || tmp.compare("inner_type") || tmp.compare("outer_type"))
-        return cppGetNextAttr(inf_v,oxt);
+//    if(!tmp.compare("name") || !tmp.compare("annotation") || !tmp.compare("content_type"))
+//        return cppGetNextAttr(inf_v,oxt);
     return (char *)(strdup(tmp.c_str()));
 }
 

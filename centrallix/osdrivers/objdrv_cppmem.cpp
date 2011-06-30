@@ -32,6 +32,8 @@ int cppmem::Delete(pObject obj, pObjTrxTree* oxt){
 int cppmem::Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt){
     for(int i=0;i<cnt;i++)
         Buffer.push_back(*(buffer+i));
+    SetAtrribute("last_modification",new Attribute((pDateTime)NULL),oxt);
+    SetAtrribute("size",new Attribute(Buffer.size()),oxt);
     return cnt;
 }
 
@@ -42,6 +44,8 @@ int cppmem::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* o
         Buffer.pop_front();
     }
     if(cnt==0)return -1;
+    SetAtrribute("last_modification",new Attribute((pDateTime)NULL),oxt);
+    SetAtrribute("size",new Attribute(Buffer.size()),oxt);
     return cnt;
 }
 

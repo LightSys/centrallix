@@ -55,6 +55,19 @@ Attribute::Attribute(int value){
         Value->Integer=value;
 }
 
+Attribute::Attribute(pDateTime value){
+        Type=DATA_T_DATETIME;
+        Value= new ObjData;
+        bzero(Value,sizeof(ObjData));
+        if(!value){
+            //default to now
+            pDateTime dt = new DateTime;
+            objCurrentDate(dt);
+            value=dt;
+        }
+        Value->DateTime=value;
+}
+
 //clean up after ourself
 Attribute::~Attribute(){
     delete Value;
@@ -62,6 +75,10 @@ Attribute::~Attribute(){
 
 //stream operator
 std::ostream &operator <<(std::ostream &out,Attribute *att){
+    if(!att){
+        out << "NULL";
+        return out;
+    }
     switch(att->Type){
         case DATA_T_STRING:
             out<<att->Value->String;

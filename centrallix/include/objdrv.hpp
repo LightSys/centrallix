@@ -95,17 +95,22 @@ public:
     
     /**
      * builds based on a c++ string
-     * @param type
      * @param value
      */
     Attribute(std::string value);
 
     /**
      * builds based on a int
-     * @param type
      * @param value
      */
     Attribute(int value);
+
+    /**
+     * build based on a DateTime,
+     * if passed null, will default to the current time
+     * @param value
+     */
+    Attribute(pDateTime value);
 
     /**
      * Destructor
