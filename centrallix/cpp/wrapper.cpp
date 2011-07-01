@@ -317,11 +317,6 @@ cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     return inf->PresentationHints(attrname,oxt);
     }
 
-pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt){
-    return NULL;
-}
-
-
 /*** cppInfo - return object metadata - about the object, not about a 
  *** particular attribute.
  ***/

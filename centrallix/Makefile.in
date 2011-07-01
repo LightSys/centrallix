@@ -578,12 +578,9 @@ osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 	$(CXX) $(CFLAGS) -DMODULE -fPIC -c $< -o $@
 
 #c++ bindings lib
-cpp/osdrv.a: cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
+cpp/objdrv.a: cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
 	$(AR) -rv $@ $^
 	$(AR) -sv $@
-
-cpp/libcpposdrv.so: cpp/attribute.cpp cpp/class_objdrv.cpp cpp/wrapper.cpp
-	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC $^ -o $@
 
 #osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
 #	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
@@ -591,7 +588,7 @@ cpp/libcpposdrv.so: cpp/attribute.cpp cpp/class_objdrv.cpp cpp/wrapper.cpp
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
-%.so: %.cpp cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
+%.so: %.cpp cpp/objdrv.a
 	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC $^ -o $@
 	
 # Dependencies made by "make depend"

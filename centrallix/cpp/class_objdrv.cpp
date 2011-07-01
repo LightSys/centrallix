@@ -64,6 +64,10 @@ int objdrv::Commit(pObjTrxTree* oxt){
     return 0;
 }
 
+pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt){
+    return NULL;
+}
+
 /*
  * default update, allows name change but objects to changing of types
  * @param attrname
