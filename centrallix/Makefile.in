@@ -575,7 +575,7 @@ osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 	
 #I think this need not be here, but should be generated into Makefile
 %.o:%.cpp
-	$(CXX) $(CFLAGS) -DMODULE -fPIC -c $< -o $@
+	$(CXX) $(CFLAGS:-Wno-implicit-function-declaration=-Wall) -DMODULE -fPIC -c $< -o $@
 
 #c++ bindings lib
 cpp/objdrv.a: cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
@@ -589,7 +589,7 @@ cpp/objdrv.a: cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
 %.so: %.cpp cpp/objdrv.a
-	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC $^ -o $@
+	$(CXX) $(CFLAGS:-Wno-implicit-function-declaration=-Wall) -DMODULE -shared -fPIC $^ -o $@
 	
 # Dependencies made by "make depend"
 include .depend
