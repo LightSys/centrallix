@@ -573,14 +573,26 @@ osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
 osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
 	
-osdrivers/objdrv_cppmem.so: osdrivers/attribute.cpp osdrivers/class_objdrv.cpp osdrivers/objdrv_cppmem.cpp osdrivers/objdrv_cpp_wrapper.cpp include/objdrv.hpp
-	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC osdrivers/attribute.cpp osdrivers/class_objdrv.cpp osdrivers/objdrv_cppmem.cpp osdrivers/objdrv_cpp_wrapper.cpp -o $@
-	
+#I think this need not be here, but should be generated into Makefile
+%.o:%.cpp
+	$(CXX) $(CFLAGS) -DMODULE -fPIC -c $< -o $@
+
+#c++ bindings lib
+cpp/osdrv.a: cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
+	$(AR) -rv $@ $^
+	$(AR) -sv $@
+
+cpp/libcpposdrv.so: cpp/attribute.cpp cpp/class_objdrv.cpp cpp/wrapper.cpp
+	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC $^ -o $@
+
 #osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
 #	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
+%.so: %.cpp cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
+	$(CXX) $(CFLAGS) -DMODULE -shared -fPIC $^ -o $@
 	
 # Dependencies made by "make depend"
 include .depend
