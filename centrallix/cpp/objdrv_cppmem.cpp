@@ -1,6 +1,7 @@
 #include <list>
 #include <map>
 #include <iostream>
+#include <algorithm>
 #include "st_node.h"
 #include "objdrv.hpp"
 
@@ -17,6 +18,8 @@ public:
     bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
     int Info(pObjectInfo info);
     query_t *OpenQuery (pObjQuery query, pObjTrxTree *oxt);
+    std::list<std::string> GetMethods();
+    int RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt);
     virtual ~cppmem();
 };//end cppmem
 
@@ -80,6 +83,35 @@ int cppmem::Info(pObjectInfo info){
     return 0;
 }
 
+std::list<std::string> cppmem::GetMethods(){
+    std::list<std::string> tmp;
+    tmp.push_back("dump");
+    tmp.push_back("genkey");
+    tmp.push_back("shuffle");
+    return tmp;
+}
+
+int cppmem::RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt){
+    if(!methodname.compare("dump")){
+        std::cerr<<"Dumping "<<GetAtrribute("name")<<std::endl;
+        Buffer.erase(Buffer.begin(),Buffer.end());
+        return 0;
+    }else if(!methodname.compare("genkey")){
+        srand(time(NULL));
+        std::cerr<<"Filling "<<GetAtrribute("name")<<
+                "with 1024 random char"<<std::endl;
+        for(int i=0; i<1024; i++){
+            char tmp=(char)((rand()%84)+32);
+            this->Write(&tmp,1,0,0,0);
+        }
+    }else if(!methodname.compare("shuffle")){
+        std::cerr<<"Shuffling "<<GetAtrribute("name")<<std::endl;
+        srand(time(NULL));
+        //std::random_shuffle(Buffer.begin(),Buffer.end());
+    }
+    return -1;
+}
+
 query_t *cppmem::OpenQuery (pObjQuery query, pObjTrxTree *oxt){
     return new query_mem(this);
 }
@@ -102,7 +134,7 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
 cppmem::~cppmem(){
     std::cerr<<"Mem object "<< GetAtrribute("name") <<" signing off."<<std::endl;
     if(this->nodethingy)this->nodethingy->OpenCnt--;
-    Buffer.empty();
+    Buffer.erase(Buffer.begin(),Buffer.end());
 }
 
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){

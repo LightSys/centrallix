@@ -68,6 +68,15 @@ pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt
     return NULL;
 }
 
+std::list<std::string> objdrv::GetMethods(){
+    std::list<std::string> tmp;
+    return tmp;
+}
+
+int objdrv::RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt){
+    return -1;
+}
+
 /*
  * default update, allows name change but objects to changing of types
  * @param attrname

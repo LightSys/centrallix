@@ -287,32 +287,31 @@ cppOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     return NULL;
     }
 
+/*** cppGetNextMethod -- return successive names of methods after the First one.
+ ***/
+char *cppGetNextMethod(void* inf_v, pObjTrxTree oxt){
+    objdrv *inf = (objdrv *)inf_v;
+    if(inf->CurrentMethod == inf->Methods.end())
+        return NULL;
+    return strdup((inf->CurrentMethod++)->c_str());
+}
 
 /*** cppGetFirstMethod -- return name of First method available on the object.
  ***/
-char*
-cppGetFirstMethod(void* inf_v, pObjTrxTree oxt)
-    {
-    return NULL;
-    }
-
-
-/*** cppGetNextMethod -- return successive names of methods after the First one.
- ***/
-char*
-cppGetNextMethod(void* inf_v, pObjTrxTree oxt)
-    {
-    return NULL;
-    }
-
+char *cppGetFirstMethod(void* inf_v, pObjTrxTree oxt){
+    objdrv *inf = (objdrv *)inf_v;
+    //get and store list so that we get a consistent view
+    inf->Methods = inf->GetMethods();
+    inf->CurrentMethod = inf->Methods.begin();
+    return cppGetNextMethod(inf_v, oxt);
+}
 
 /*** cppExecuteMethod - Execute a method, by name.
  ***/
-int
-cppExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
-    {
-    return -1;
-    }
+int cppExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt){
+    objdrv *inf = (objdrv *)inf_v;
+    return inf->RunMethod(std::string(methodname),param,oxt);
+}
 
 
 /*** cppPresentationHints - Return a structure containing "presentation hints"

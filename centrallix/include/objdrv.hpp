@@ -153,15 +153,20 @@ std::ostream &operator <<(std::ostream &out,Attribute *att);
  * @brief base class for object drivers
  * @bug   att annot over written
  * @bug   delete causes crash
- * @todo  Method system
- * @todo  test query system
+ * @todo  test method system
  */
 class objdrv {
 private:
+    /**List of the methods supported by this object*/
+    std::list<std::string> Methods;
+    /**Index into list of the methods supported by this object*/
+    std::list<std::string>::const_iterator CurrentMethod;
     /**Map of the attributes of this object, maintained by the wrapper*/
     std::map<std::string,Attribute *> Attributes;
     /**Points to the current attribute in the attribute listing, don't touch*/
     std::map<std::string,Attribute *>::const_iterator CurrentAtrrib;
+    friend char* cppGetFirstMethod(void* inf_v, pObjTrxTree oxt);
+    friend char* cppGetNextMethod(void* inf_v, pObjTrxTree oxt);
     friend char* cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt);
     friend char* cppGetNextAttr(void* inf_v, pObjTrxTree* oxt);
 public:
@@ -239,6 +244,19 @@ public:
      * @return        a new query object
      */
     virtual query_t* OpenQuery(pObjQuery query, pObjTrxTree* oxt);
+    /**
+     * Gets the list of methods this object supports
+     * @return at least an empty list
+     */
+    virtual std::list<std::string> GetMethods();
+    /**
+     * Runs a method of the object
+     * @param methodname method to run
+     * @param param      parameters to the method
+     * @param oxt        transaction context
+     * @return           
+     */
+    virtual int RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt);
     /**
      * called whenever an attribute is changed on the object
      * @param attrname attribute which has been updated
