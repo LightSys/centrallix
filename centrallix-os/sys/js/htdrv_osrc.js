@@ -1303,7 +1303,7 @@ function osrc_parse_one_attr(lnk)
     this.type_list[col.oid] = col.type;
     switch(lnk.text.charAt(0))
 	{
-	case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
+	case 'V': col.value = htutil_rtrim(decodeURIComponent(lnk.text.substr(2))); break;
 	case 'N': col.value = null; break;
 	case 'E': col.value = '** ERROR **'; break;
 	}

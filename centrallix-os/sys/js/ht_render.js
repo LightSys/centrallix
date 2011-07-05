@@ -400,7 +400,7 @@ function htr_parselinks(lnks)
 	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
 	    switch(lnk.text.charAt(0))
 		{
-		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
+		case 'V': col.value = htutil_rtrim(decodeURIComponent(lnk.text.substr(2))); break;
 		case 'N': col.value = null; break;
 		case 'E': col.value = '** ERROR **'; break;
 		}
