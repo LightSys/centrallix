@@ -15,6 +15,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxlib/util.h"
+#include "charsets.h"
 #include <assert.h>
 #include <mysql.h>
 
@@ -232,6 +233,7 @@ pMysdConn
 mysd_internal_GetConn(pMysdNode node)
     {
     MYSQL_RES * result;
+    MY_CHARSET_INFO currentCharsetInfo;
     pMysdConn conn;
     int i, conn_cnt, found;
     int min_access;
@@ -368,6 +370,26 @@ mysd_internal_GetConn(pMysdNode node)
             strtcpy(conn->Username, username, sizeof(conn->Username));
             strtcpy(conn->Password, password, sizeof(conn->Password));
             xaAddItem(&node->Conns, conn);
+                
+                printf("UTF-8TestDebug Previous Using character set: %s\n", mysql_character_set_name(&conn->Handle));
+                
+            /** Set up current character set **/
+            /** Please note that this assumes that if it is a one byte character encoding, that ASCII will be **/
+            /** a valid subset so that the commands still get through OK. **/
+            if(mysql_set_character_set(&conn->Handle, chrGetEquivalentName(CHR_MODULE_MYSQL)) != 0)
+                {
+                mysql_get_character_set_info(&conn->Handle, &currentCharsetInfo);
+                mssError(1, "MYSD", "Could not set character set of MySQL connection to '%s'!  Using '%s' instead!",
+                        chrGetEquivalentName(CHR_MODULE_MYSQL), currentCharsetInfo.name);
+                }
+            else
+                {
+                    printf("UTF-8TestDebug Set MySQL Connection charset to %s\n", chrGetEquivalentName(CHR_MODULE_MYSQL));
+                }
+                printf("UTF-8TestDebug After Using character set: %s\n", mysql_character_set_name(&conn->Handle));
+                printf("UTF-8TestDebug Extra Query Here! Hehehe Setting status to \xc2\xa9\xc2\xa9\xc2\xa9\xE2\x88\x82\n");
+                mysql_query(&conn->Handle, "UPDATE s_user_data SET s_status = '\xc2\xa9\xc2\xa9\xc2\xa9\xE2\x88\x82'  WHERE s_username = 'danielrothfus'");
+                /** Not quite fatal enough not to return a connection... **/
             }
 
         /** Make it busy **/
