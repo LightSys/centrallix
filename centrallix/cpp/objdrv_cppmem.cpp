@@ -15,9 +15,28 @@ public:
     int Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt);
     bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
     int Info(pObjectInfo info);
+    query_t *OpenQuery (pObjQuery query, pObjTrxTree *oxt);
 };//end cppmem
 
 std::map<std::string, cppmem*> files;
+
+class query_mem: public query_t{
+    std::map<std::string, cppmem*>::const_iterator file;
+public:
+    query_mem(objdrv *start):query_t(start){
+        std::cerr<<"New querymem "<<this<<std::endl;
+       file=files.begin();
+    }
+
+    objdrv *Fetch(pObject obj, int mode, pObjTrxTree *oxt){
+        objdrv *tmp;
+        std::cerr<<"Fetching from querymem "<<this<<std::endl;
+        if(file==files.end())
+            return NULL;
+        return (file++)->second;
+    }
+    
+};
 
 int cppmem::Close(pObjTrxTree* oxt){
     if(this->nodethingy)this->nodethingy->OpenCnt--;
@@ -59,6 +78,10 @@ int cppmem::Info(pObjectInfo info){
 		OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT);
     if(Buffer.size())info->Flags |= OBJ_INFO_F_HAS_CONTENT;
     return 0;
+}
+
+query_t *cppmem::OpenQuery (pObjQuery query, pObjTrxTree *oxt){
+    return new query_mem(this);
 }
 
 cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
