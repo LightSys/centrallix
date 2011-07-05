@@ -112,9 +112,7 @@ FORMATTING...
 	&ESCSP	Causes spaces to be escaped with a backslash.
 
 	&UNESC	Causes string to be unescaped (backslashes removed and escaped
-		values converted to their normal characters).  The JavaScript
-		equivalent is decodeURI and the characters returned by this
-		should be in UTF-8 encoding.
+		values converted to their normal characters).
 
 	&SSYB	Causes single quotes in the string to be doubled, sybase quote
 		style ' -> ''
