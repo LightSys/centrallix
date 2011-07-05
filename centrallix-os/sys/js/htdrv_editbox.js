@@ -366,10 +366,10 @@ function eb_keyhandler(l,e,k)
 	if (l.form) l.form.EscNotify(this);
 	cn_activate(l,'EscapePressed', {});
 	}
-    if (k >= 32 && k < 127)
+    if (k >= 32 && k < 127 || k > 127)
 	{
 	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + String.fromCharCode(k) + vistxt.substr(l.cursorCol,vistxt.length), l._form_type);
-	if (newtxt != txt)
+        if (newtxt != txt)
 	    {
 	    cursoradj = 1;
 	    }

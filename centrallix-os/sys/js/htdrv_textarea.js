@@ -368,7 +368,7 @@ function tx_keyhandler(l,e,k)
     if (tx_current.enabled!='full') return 1;
     if (k != 27 && k != 9 && tx_current.form) 
 	tx_current.form.DataNotify(tx_current);
-    if (k >= 32 && k < 127)
+    if (k >= 32 && k < 127 || k > 127)
         {
         txt = l.rows[l.cursorRow].content;
         if (l.rows[l.cursorRow+1] && l.cursorCol == l.rows[l.cursorRow].content.length && l.rows[l.cursorRow+1].content[0] != ' ' && k!=32 && !l.rows[l.cursorRow+1].newLine)
