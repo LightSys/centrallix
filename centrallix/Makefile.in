@@ -574,7 +574,7 @@ osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
 	
 #I think this need not be here, but should be generated into Makefile
-%.o:%.cpp
+%.o:%.cpp include/objdrv.hpp
 	$(CXX) $(CFLAGS:-Wno-implicit-function-declaration=-Wall) -DMODULE -fPIC -c $< -o $@
 
 #c++ bindings lib

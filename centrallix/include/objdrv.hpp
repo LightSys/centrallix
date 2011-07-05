@@ -39,7 +39,6 @@
 #include <string.h>
 #include "centrallix.h"
 #include "obj.h"
-#include "st_node.h"
 
 class objdrv;
 
@@ -246,6 +245,7 @@ public:
      * @return true if the attribute should not be set
      */
     bool SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt);
+    virtual ~objdrv(){};
 };//end class objdrv
 
 /**

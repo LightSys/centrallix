@@ -1,6 +1,7 @@
 #include <list>
 #include <map>
 #include <iostream>
+#include "st_node.h"
 #include "objdrv.hpp"
 
 
@@ -16,6 +17,7 @@ public:
     bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
     int Info(pObjectInfo info);
     query_t *OpenQuery (pObjQuery query, pObjTrxTree *oxt);
+    virtual ~cppmem();
 };//end cppmem
 
 std::map<std::string, cppmem*> files;
@@ -24,13 +26,10 @@ class query_mem: public query_t{
     std::map<std::string, cppmem*>::const_iterator file;
 public:
     query_mem(objdrv *start):query_t(start){
-        std::cerr<<"New querymem "<<this<<std::endl;
        file=files.begin();
     }
 
     objdrv *Fetch(pObject obj, int mode, pObjTrxTree *oxt){
-        objdrv *tmp;
-        std::cerr<<"Fetching from querymem "<<this<<std::endl;
         if(file==files.end())
             return NULL;
         return (file++)->second;
@@ -44,7 +43,8 @@ int cppmem::Close(pObjTrxTree* oxt){
 }
 
 int cppmem::Delete(pObject obj, pObjTrxTree* oxt){
-    Buffer.empty();
+    std::cerr<<"Dropping mem object "<< GetAtrribute("name")<<std::endl;
+    files.erase(std::string(GetAtrribute("name")->Value->String));
     return 0;
 }
 
@@ -97,6 +97,12 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
     SetAtrribute("annotation",new Attribute("cpp object"),oxt);
     SetAtrribute("source_class",new Attribute("cpp"),oxt);
     std::cerr<<"New mem object "<< GetAtrribute("name") <<" as "<<usrtype<<std::endl;
+}
+
+cppmem::~cppmem(){
+    std::cerr<<"Mem object "<< GetAtrribute("name") <<" signing off."<<std::endl;
+    if(this->nodethingy)this->nodethingy->OpenCnt--;
+    Buffer.empty();
 }
 
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){

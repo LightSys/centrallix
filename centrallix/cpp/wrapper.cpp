@@ -61,8 +61,6 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
     //fprintf(stderr,"closeing a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     inf->Close(oxt);
-    //delete inf;
-
     return 0;
     }
 
@@ -173,9 +171,10 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     return inf->GetAtrribute(std::string(attrname))->Type;
     }
 
-/*** cppGetAttrValue - get the value of an attribute by name.  The 'val'
- *** pointer must point to an appropriate data type.
- ***/
+/** cppGetAttrValue - get the value of an attribute by name.  The 'val'
+ * pointer must point to an appropriate data type.
+ * @TODO  Make this correctly fetch all types
+ */
 int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
     //fprintf(stderr,"valuing att of a cpp object\n");
