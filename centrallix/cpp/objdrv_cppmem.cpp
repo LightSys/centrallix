@@ -20,6 +20,7 @@ public:
     query_t *OpenQuery (pObjQuery query, pObjTrxTree *oxt);
     std::list<std::string> GetMethods();
     int RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt);
+    pObjPresentationHints PresentationHints(std::string attrname, pObjTrxTree* oxt);
     virtual ~cppmem();
 };//end cppmem
 
@@ -105,11 +106,25 @@ int cppmem::RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt){
             this->Write(&tmp,1,0,0,0);
         }
     }else if(!methodname.compare("shuffle")){
-        std::cerr<<"Shuffling "<<GetAtrribute("name")<<std::endl;
+        std::cerr<<"Shuffling "<<GetAtrribute("name")
+                <<" with "<< param->String << std::endl;
         srand(time(NULL));
         //std::random_shuffle(Buffer.begin(),Buffer.end());
     }
     return -1;
+}
+
+pObjPresentationHints cppmem::PresentationHints(std::string attrname, pObjTrxTree* oxt){
+    pObjPresentationHints hints=NewHints();
+    if(!attrname.compare("size")){
+        hints->Style = OBJ_PH_STYLE_READONLY;
+        return hints;
+    }
+    if(!attrname.compare("source_class")){
+        hints->Style = OBJ_PH_STYLE_LOWERCASE | OBJ_PH_STYLE_NOTNULL;
+        return hints;
+    }
+    return objdrv::PresentationHints(attrname,oxt);
 }
 
 query_t *cppmem::OpenQuery (pObjQuery query, pObjTrxTree *oxt){

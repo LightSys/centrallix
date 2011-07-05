@@ -64,7 +64,19 @@ int objdrv::Commit(pObjTrxTree* oxt){
     return 0;
 }
 
-pObjPresentationHints objdrv::PresentationHints(char* attrname, pObjTrxTree* oxt){
+//stolen from obj_attr.c:734-741, thanks gbeeley & mmcgill
+pObjPresentationHints objdrv::NewHints(){
+   pObjPresentationHints ph = (pObjPresentationHints)
+           nmMalloc(sizeof(ObjPresentationHints));
+   memset(ph,0,sizeof(ObjPresentationHints));
+   xaInit(&(ph->EnumList),16);
+   /** init the non-0 default values **/
+   ph->GroupID=-1;
+   ph->VisualLength2=1;
+   return ph;
+}
+
+pObjPresentationHints objdrv::PresentationHints(std::string attrname, pObjTrxTree* oxt){
     return NULL;
 }
 
@@ -99,13 +111,16 @@ Attribute *objdrv::GetAtrribute(std::string name){
 
 bool objdrv::SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt){
     Attribute *tmp=this->Attributes[name];
+    //check existance, and save if available
     if(this->Attributes.find(name)==this->Attributes.end())tmp=NULL;
     this->Attributes[name]=value;
+    //check that what we have done is OK
     if(this->UpdateAttr(name,oxt)){
         delete this->Attributes[name];
         if(tmp)this->Attributes[name]=tmp;
         return true;
     }//end objected
+    //drop the backup 
     delete tmp;
     return false;
 }//end SetAtrribute

@@ -324,7 +324,7 @@ cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     //fprintf(stderr,"hinting about a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
-    return inf->PresentationHints(attrname,oxt);
+    return inf->PresentationHints(std::string(attrname),oxt);
     }
 
 /*** cppInfo - return object metadata - about the object, not about a 

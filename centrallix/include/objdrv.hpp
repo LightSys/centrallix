@@ -224,7 +224,7 @@ public:
      * @param oxt      transaction context
      * @return         hints (or NULL is OK too)
      */
-    virtual pObjPresentationHints PresentationHints(char* attrname, pObjTrxTree* oxt);
+    virtual pObjPresentationHints PresentationHints(std::string attrname, pObjTrxTree* oxt);
     /**
      * gets the metadata for this object
      * @param info  points to storage for the information
@@ -270,6 +270,7 @@ public:
      */
     virtual bool IsEmpty();
 
+    pObjPresentationHints NewHints();
     /**
      * Fetches an attribute from the objects attribute list
      * @param name which attribute is required
