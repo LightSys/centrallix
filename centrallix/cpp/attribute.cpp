@@ -36,10 +36,37 @@
 //constructors!
 
 Attribute::Attribute(int type,pObjData value){
-        Type=type;
-        Value = new ObjData;
-        memcpy(Value,value,sizeof(ObjData));
-}
+    switch(type){
+        case DATA_T_INTEGER:
+            Attribute(value->Integer);
+            return;
+        case DATA_T_DOUBLE:
+            Attribute(value->Integer);
+            return;
+        case DATA_T_STRING:
+            Attribute(std::string(value->String));
+            return;
+        case DATA_T_BINARY:
+            Attribute(value->Binary);
+            return;
+        case DATA_T_DATETIME:
+            Attribute(value->DateTime);
+            return;
+        case DATA_T_MONEY:
+            Attribute(value->Money);
+            return;
+        case DATA_T_INTVEC:
+            Attribute(value->IntVec);
+            return;
+        case DATA_T_STRINGVEC:
+            Attribute(value->StringVec);
+            return;
+        default:
+            Type=type;
+            Value = new ObjData;
+            memcpy(Value,value,sizeof(ObjData));
+    }//end switch
+}//end constructor
 
 Attribute::Attribute(std::string value){
         Type=DATA_T_STRING;
@@ -68,6 +95,33 @@ Attribute::Attribute(pDateTime value){
         Value->DateTime=value;
 }
 
+Attribute::Attribute(pMoneyType value){
+        Type=DATA_T_MONEY;
+        Value= new ObjData;
+        bzero(Value,sizeof(ObjData));
+        Value->Money=value;
+}
+
+Attribute::Attribute(Binary_t value){
+        Type=DATA_T_BINARY;
+        Value= new ObjData;
+        bzero(Value,sizeof(ObjData));
+        Value->Binary.Size=value.Size;
+        Value->Binary.Data=value.Data;
+}
+
+Attribute::Attribute(pStringVec value){
+        Type=DATA_T_STRINGVEC;
+        Value= new ObjData;
+        memcpy(Value->StringVec,value,sizeof(StringVec));
+}
+
+Attribute::Attribute(pIntVec value){
+        Type=DATA_T_INTVEC;
+        Value= new ObjData;
+        memcpy(Value->IntVec,value,sizeof(IntVec_t));
+}
+
 //clean up after ourself
 Attribute::~Attribute(){
     delete Value;
@@ -79,6 +133,7 @@ std::ostream &operator <<(std::ostream &out,Attribute *att){
         out << "NULL";
         return out;
     }
+    ///@todo DATA_T_ARRAY, DATA_T_CODE
     switch(att->Type){
         case DATA_T_STRING:
             out<<att->Value->String;
@@ -100,6 +155,18 @@ std::ostream &operator <<(std::ostream &out,Attribute *att){
             //return to decimal
             out << std::dec;
             break;
+        case DATA_T_STRINGVEC:
+            if(att->Value->StringVec->nStrings<=0)break;
+            out <<att->Value->StringVec->Strings[0];
+            for(unsigned int i=1; i < att->Value->StringVec->nStrings; i++)
+                out <<", "<<att->Value->StringVec->Strings[i];
+            break;
+        case DATA_T_INTVEC:
+            if(att->Value->IntVec->nIntegers<=0)break;
+            out <<att->Value->IntVec->Integers[0];
+            for(unsigned int i=1; i < att->Value->IntVec->nIntegers; i++)
+                out <<", "<<att->Value->IntVec->Integers[i];
+            break;
         case DATA_T_DATETIME:
             //and it's like "WOMP"
             out<<att->Value->DateTime->Part.Month+1<<"/"
@@ -108,6 +175,7 @@ std::ostream &operator <<(std::ostream &out,Attribute *att){
                     <<att->Value->DateTime->Part.Hour<<":"
                     <<att->Value->DateTime->Part.Minute<<":"
                     <<att->Value->DateTime->Part.Second;
+            //and now it's in a taco
             break;
         default:
             out<<att->Value;

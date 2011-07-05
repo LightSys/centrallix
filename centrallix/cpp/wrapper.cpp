@@ -173,7 +173,6 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 /** cppGetAttrValue - get the value of an attribute by name.  The 'val'
  * pointer must point to an appropriate data type.
- * @TODO  Make this correctly fetch all types
  */
 int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
@@ -184,7 +183,7 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     if(datatype != data->Type)return -1;
     pObjData tmpval =data->Value;
     //now the fun copy part
-    /// @TODO include all types here
+    ///@todo DATA_T_ARRAY, DATA_T_CODE
     switch(datatype){
         case DATA_T_STRING:
             val->String = tmpval->String;
@@ -197,6 +196,19 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
             break;
         case DATA_T_DATETIME:
             val->DateTime = tmpval->DateTime;
+            break;
+        case DATA_T_MONEY:
+            val->Money = tmpval->Money;
+            break;
+        case DATA_T_INTVEC:
+            val->IntVec = tmpval->IntVec;
+            break;
+        case DATA_T_STRINGVEC:
+            val->StringVec = tmpval->StringVec;
+            break;
+        case DATA_T_BINARY:
+            val->Binary.Size = tmpval->Binary.Size;
+            val->Binary.Data = tmpval->Binary.Data;
             break;
         default://blindly copy anything we don't understand
             memcpy(val,tmpval, sizeof(ObjData));

@@ -76,7 +76,7 @@ public:
  * An attribute, makes tracking both value
  * and connected type simple
  * @brief attribute (of the particular object)
- * @todo include constructor for all types here
+ * @todo include constructors for DATA_T_CODE,DATA_T_ARRAY
  */
 class Attribute{
 public:
@@ -112,6 +112,28 @@ public:
     Attribute(pDateTime value);
 
     /**
+     * builds based on a Money value
+     * @param value
+     */
+    Attribute(pMoneyType value);
+    
+    /**
+     * builds based on a Binary data
+     * @param value
+     */
+    Attribute(Binary_t value);
+    /**
+     * builds based on a Vector of Strings
+     * @param value
+     */
+    Attribute(pStringVec value);
+    /**
+     * builds based on a Vector of Int's
+     * @param value
+     */
+    Attribute(pIntVec value);
+    
+    /**
      * Destructor
      */
     ~Attribute();
@@ -123,7 +145,6 @@ public:
  * @param out stream to output on
  * @param att Attribute * to display
  * @return out
- * @todo include all types here
  */
 std::ostream &operator <<(std::ostream &out,Attribute *att);
 
