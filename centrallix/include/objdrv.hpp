@@ -151,8 +151,6 @@ std::ostream &operator <<(std::ostream &out,Attribute *att);
 /**
  * a base class, which should be extended as your driver
  * @brief base class for object drivers
- * @bug   att annot over written
- * @bug   delete causes crash
  * @todo  test method system
  */
 class objdrv {
@@ -196,6 +194,7 @@ public:
      * @param obj the object being deleted
      * @param oxt transaction context
      * @return 0 on succeeding
+     * @bug   delete causes crash
      */
     virtual int Delete(pObject obj, pObjTrxTree* oxt);
     /**
@@ -270,6 +269,11 @@ public:
      */
     virtual bool IsEmpty();
 
+    /**
+     * @brief Creates and initializes a new pObjPresentationHints
+     * @return a shiny new pObjPresentationHints
+     * @bug   strings cause *** glibc detected *** when freed by Nm[Sys]Free
+     */
     pObjPresentationHints NewHints();
     /**
      * Fetches an attribute from the objects attribute list
@@ -283,6 +287,7 @@ public:
      * @param value value to corollate with the name
      * @param oxt   context, NULL if you don't know what it is
      * @return true if the attribute should not be set
+     * @bug   att annot over written
      */
     bool SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt);
     virtual ~objdrv(){};

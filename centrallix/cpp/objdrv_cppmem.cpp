@@ -122,6 +122,9 @@ pObjPresentationHints cppmem::PresentationHints(std::string attrname, pObjTrxTre
     }
     if(!attrname.compare("source_class")){
         hints->Style = OBJ_PH_STYLE_LOWERCASE | OBJ_PH_STYLE_NOTNULL;
+        hints->Length = 16;
+        hints->FriendlyName = strdup(std::string("Source Class of object").c_str());
+        hints->BadChars = strdup(std::string("!@#$%^&*()-_=+[]{}\\|;'\",.<>/?").c_str());
         return hints;
     }
     return objdrv::PresentationHints(attrname,oxt);
