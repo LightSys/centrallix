@@ -65,7 +65,8 @@ int objdrv::Commit(pObjTrxTree* oxt){
 }
 
 char *CentrallixString(std::string text){
-    char *string=(char *)nmSysMalloc(text.length());
+    char *string=(char *)nmSysMalloc(text.length()+1);
+    bzero(string,text.length()+1);
     memcpy(string,text.c_str(),text.length());
     return string;
 }
