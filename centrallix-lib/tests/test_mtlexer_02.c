@@ -18,7 +18,7 @@ test(char** tname)
     char* strval;
     int j;
     int strcnt;
-    char str[65536] = "'string one' 'string two'\n'string three' 'string four'\r\n'string five'";
+    static char str[65536] = "'string one' 'string two'\n'string three' 'string four'\r\n'string five'";
     int n_flagtype = 4;
     int n_tok = 9;
     int flagtype[4] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};

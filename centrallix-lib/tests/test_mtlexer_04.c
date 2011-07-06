@@ -14,7 +14,7 @@ test(char** tname)
     int i;
     int iter;
     pLxSession lxs;
-    char str[65536] = "";
+    static char str[65536] = "";
 
 	*tname = "mtlexer-04 open/close session";
 

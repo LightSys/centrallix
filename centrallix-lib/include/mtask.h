@@ -157,8 +157,11 @@
 
 
  **END-CVSDATA***********************************************************/
-
+#ifdef CONTEXTING
+#include <ucontext.h>
+#else
 #include <setjmp.h>
+#endif
 #include <sys/types.h>
 #include <grp.h>
 #include <sys/socket.h>
@@ -248,9 +251,14 @@ typedef struct _THR
     void	(*StartFn)();			/* start function */
     void*	StartParam;			/* Param to pass to start fn */
     int		BlkReturnCode;			/* Return code for longjmp */
+#ifdef CONTEXTING
+    ucontext_t  *SavedCont;                      /* for context switches */
+    volatile int SavedVal;                /* value that would be set/returned by jmp*/
+#else
     jmp_buf	SavedEnv;			/* for context switches */
     unsigned char*  Stack;			/* approx. stack start ptr */
     unsigned char*  StackBottom;		/* stack ptr at last entry into mtSched */
+#endif//end CONTEXTING
 #ifdef USING_VALGRIND
     unsigned int    ValgrindStackID;
 #endif

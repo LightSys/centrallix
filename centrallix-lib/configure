@@ -669,6 +669,7 @@ enable_option_checking
 enable_profile
 enable_mtask_debug
 enable_debugging
+enable_contexting
 with_hardening
 enable_optimization
 enable_valgrind_integration
@@ -1296,6 +1297,7 @@ Optional Features:
   --enable-mtask-debug    enable mTask debugging support
   --enable-debugging      enable debugging support (-g enabled regardless,
                           unless optimization also turned on)
+  --enable-contexting     use get/set context (instead of setjmp / longjmp)
   --enable-optimization   turn on build optimization; incompatible with the
                           --with-hardening=high option
   --enable-valgrind-integration
@@ -4157,6 +4159,31 @@ $as_echo "#define NMMALLOC_DEBUG 1" >>confdefs.h
 
 
 $as_echo "#define NMMALLOC_PROFILING 1" >>confdefs.h
+
+	fi
+
+
+
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if get/set context should be used" >&5
+$as_echo_n "checking if get/set context should be used... " >&6; }
+	# Check whether --enable-contexting was given.
+if test "${enable_contexting+set}" = set; then :
+  enableval=$enable_contexting; WITH_CONTEXTING="$enableval"
+else
+  WITH_CONTEXTING="no"
+
+fi
+
+	if test "$WITH_CONTEXTING" = "no"; then
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	else
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+            CFLAGS="$CFLAGS -DCONTEXTING"
+
+$as_echo "#define CONTEXTING 1" >>confdefs.h
 
 	fi
 

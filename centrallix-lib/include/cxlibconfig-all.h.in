@@ -1,5 +1,8 @@
 /* include/cxlibconfig-all.h.in.  Generated from configure.ac by autoheader.  */
 
+/* use get/set context */
+#undef CONTEXTING
+
 /* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
 #undef CXLIB_SECURITY_HARDENING
 
