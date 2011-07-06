@@ -31,14 +31,41 @@
 /************************************************************************/
 
 #include "objdrv.hpp"
-
+//define cleanup code such that it can be used anywhere!
+#define FREE_ALL_ATRRIBS() for(CurrentAtrrib=Attributes.begin();\
+                                CurrentAtrrib != Attributes.end();\
+                                CurrentAtrrib++)\
+                                delete CurrentAtrrib->second
+#define FREE_ALL_STRINGS() for(std::map<std::string,char *>::iterator str=Strings.begin();\
+                                str != Strings.end();\
+                                str++)\
+                                nmSysFree(str->second)
+#define FREE_ALL_HINTS()   for(std::list<pObjPresentationHints>::iterator hint=Hints.begin();\
+                                hint != Hints.end();\
+                                hint++)\
+                            nmFree(*hint,sizeof(ObjPresentationHints))
 //let's start with the depressing sounding ones
 
+//clean up time!
+objdrv::~objdrv(){
+    FREE_ALL_ATRRIBS();
+    FREE_ALL_STRINGS();
+    FREE_ALL_HINTS();
+}
+
+//drop all the attributes
 int objdrv::Close(pObjTrxTree* oxt){
+    FREE_ALL_ATRRIBS();
+    FREE_ALL_STRINGS();
+    FREE_ALL_HINTS();
     return 0;
 }
 
+//drop all the attributes
 int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
+    FREE_ALL_ATRRIBS();
+    FREE_ALL_STRINGS();
+    FREE_ALL_HINTS();
     return 0;
 }
 
@@ -64,15 +91,20 @@ int objdrv::Commit(pObjTrxTree* oxt){
     return 0;
 }
 
-char *CentrallixString(std::string text){
+char *objdrv::CentrallixString(std::string text){
+    //if we've done this before, don't bother to do it again
+    if(Strings.find(text) != Strings.end())
+        return Strings[text];
+    //other wise, go ahead and build a new one
     char *string=(char *)nmSysMalloc(text.length()+1);
     bzero(string,text.length()+1);
     memcpy(string,text.c_str(),text.length());
+    Strings[text]=string;
     return string;
 }
 
 //stolen from obj_attr.c:734-741, thanks gbeeley & mmcgill
-pObjPresentationHints NewHints(){
+pObjPresentationHints objdrv::NewHints(){
    pObjPresentationHints ph = (pObjPresentationHints)
            nmMalloc(sizeof(ObjPresentationHints));
    memset(ph,0,sizeof(ObjPresentationHints));
@@ -80,6 +112,7 @@ pObjPresentationHints NewHints(){
    /** init the non-0 default values **/
    ph->GroupID=-1;
    ph->VisualLength2=1;
+   Hints.push_back(ph);
    return ph;
 }
 

@@ -158,7 +158,11 @@ std::ostream &operator <<(std::ostream &out,Attribute *att);
  */
 class objdrv {
 private:
-    /**List of the methods supported by this object*/
+    /**List of c strings to free when closed*/
+    std::map<std::string,char *> Strings;
+    /**List of presentation hints, to be freed with strings*/
+    std::list<pObjPresentationHints> Hints;
+    /**List of the methods supported by this object, as last seen by wrapper*/
     std::list<std::string> Methods;
     /**Index into list of the methods supported by this object*/
     std::list<std::string>::const_iterator CurrentMethod;
@@ -287,25 +291,28 @@ public:
      * @bug   att annot over written
      */
     bool SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt);
-    virtual ~objdrv(){};
+    /**
+     * @brief converts c++ to c string
+     * Converts an instance of std::string into a
+     * c string which will be freed on: close, delete, or end
+     * additionally, it caches strings, so that only one c string will exist
+     * @param text   string to convert
+     * @return       c string allocated with Nm
+     */
+    char *CentrallixString(std::string text);
+    /**
+     * @brief Creates and initializes a new pObjPresentationHints
+     * Allocates the space and sets default values
+     * PLEASE use CentrallixString when assigning any strings in a
+     * pObjPresentationHints, glibc will hang the system if you don't
+     * @return a shiny new pObjPresentationHints
+     */
+    pObjPresentationHints NewHints();
+    /**
+     * Destructor (frees memory that we have allocated)
+     */
+    virtual ~objdrv();
 };//end class objdrv
-
-/**
- * @brief converts c++ to c string
- * Converts an instance of std::string into a 
- * c string which can (and should) be freed with NmSysFree
- * @param text   string to convert
- * @return       c string allocated with Nm
- */
-char *CentrallixString(std::string text);
-/**
- * @brief Creates and initializes a new pObjPresentationHints
- * Allocates the space and sets default values
- * PLEASE use CentrallixString when assigning any strings in a
- * pObjPresentationHints, glibc will hang the system if you don't
- * @return a shiny new pObjPresentationHints
- */
-pObjPresentationHints NewHints();
 
 /**
  * get an instance of the class

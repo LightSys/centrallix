@@ -88,12 +88,13 @@ Attribute::Attribute(pDateTime value){
         bzero(Value,sizeof(ObjData));
         if(!value){
             //default to now
-            pDateTime dt = new DateTime;
-            objCurrentDate(dt);
-            value=dt;
-        }
-        Value->DateTime=value;
-}
+            Value->DateTime = new DateTime;
+            objCurrentDate(Value->DateTime);
+            return;
+        }else{
+            memcpy(Value->DateTime,value,sizeof(DateTime));
+        }//end if now
+}//end new Att Date
 
 Attribute::Attribute(pMoneyType value){
         Type=DATA_T_MONEY;
@@ -124,6 +125,14 @@ Attribute::Attribute(pIntVec value){
 
 //clean up after ourself
 Attribute::~Attribute(){
+    switch(Type){
+        case DATA_T_STRING:
+            delete Value->String;
+            break;
+        case DATA_T_DATETIME:
+            delete Value->DateTime;
+            break;
+    }//end clean type
     delete Value;
 }
 
@@ -175,7 +184,7 @@ std::ostream &operator <<(std::ostream &out,Attribute *att){
                     <<att->Value->DateTime->Part.Hour<<":"
                     <<att->Value->DateTime->Part.Minute<<":"
                     <<att->Value->DateTime->Part.Second;
-            //and now it's in a taco
+            //and now it's in a burrito
             break;
         default:
             out<<att->Value;

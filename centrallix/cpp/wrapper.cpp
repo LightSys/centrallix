@@ -31,6 +31,7 @@
 #include <iostream>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "obj.h"
 #include "cxlib/mtsession.h"
 /** module definintions **/
@@ -227,7 +228,6 @@ cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
  ***/
 char*
 cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
-    //fprintf(stderr,"next att of a cpp object\n");
     objdrv *inf = (objdrv *)inf_v;
     std::string tmp;
     if(inf->CurrentAtrrib==inf->Attributes.end()){
@@ -240,7 +240,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
     if(!tmp.compare("name") || !tmp.compare("annotation") || !tmp.compare("content_type")
             || !tmp.compare("inner_type") || !tmp.compare("outer_type") || !tmp.compare("last_modification"))
         return cppGetNextAttr(inf_v,oxt);
-    return (char *)(strdup(tmp.c_str()));
+    return inf->CentrallixString(tmp);
 }
 
 /*** cppGetFirstAttr - get the first attribute name for this object.
@@ -289,7 +289,7 @@ char *cppGetNextMethod(void* inf_v, pObjTrxTree oxt){
     objdrv *inf = (objdrv *)inf_v;
     if(inf->CurrentMethod == inf->Methods.end())
         return NULL;
-    return strdup((inf->CurrentMethod++)->c_str());
+    return inf->CentrallixString(*(inf->CurrentMethod++));
 }
 
 /*** cppGetFirstMethod -- return name of First method available on the object.
