@@ -171,10 +171,6 @@ objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, 
     return tmp;
 }
 
-char *GetName(){
-    return (char *)"Virtual memory file";
-}
-
 std::list<std::string> GetTypes(){
     std::list<std::string> tmp;
     tmp.push_back("text/mem");
@@ -183,4 +179,6 @@ std::list<std::string> GetTypes(){
 
 MODULE_PREFIX("mem");
 MODULE_DESC("Virtual object in memory");
+MODULE_NAME("Virtual memory file");
+MODULE_CAP(0);
 MODULE_VERSION(0,0,1);

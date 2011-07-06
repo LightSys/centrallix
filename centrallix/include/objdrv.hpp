@@ -40,6 +40,9 @@
 #include "centrallix.h"
 #include "obj.h"
 
+#define MODULE_CAP(x)   int moduleCapabilities = (x)
+#define MODULE_NAME(x)  char* moduleName = ((char *)x)
+
 class objdrv;
 
 /**

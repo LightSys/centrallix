@@ -38,6 +38,12 @@
 
 #include "objdrv.hpp"
 
+//these are here since I did not want to place them in objdrv.hpp
+//but they are useful to the wrapper
+extern char *moduleName;
+extern char *modulePrefix;
+extern char *moduleDescription;
+extern int   moduleCapabilities;
 /*** cppOpen - open an object.
  ***/
 void*
@@ -277,16 +283,6 @@ cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt
     return 0;
     }
 
-
-/*** cppOpenAttr - open an attribute as if it were an object with content.
- *** Not all objects support this type of operation.
- ***/
-void*
-cppOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
-    {
-    return NULL;
-    }
-
 /*** cppGetNextMethod -- return successive names of methods after the First one.
  ***/
 char *cppGetNextMethod(void* inf_v, pObjTrxTree oxt){
@@ -363,8 +359,8 @@ cppInitialize()
 	memset(drv, 0, sizeof(ObjDriver));
 
 	// Setup the structure
-	strcpy(drv->Name,GetName());
-	drv->Capabilities = 0;
+	strncpy(drv->Name,moduleName,64);
+	drv->Capabilities = moduleCapabilities;
 	xaInit(&(drv->RootContentTypes),1);
         for(std::list<std::string>::iterator item=Types.begin();
                 item!=Types.end();item++)
@@ -376,10 +372,12 @@ cppInitialize()
 	drv->Close = (int (*)())cppClose;
 	drv->Create = (int (*)())cppCreate;
 	drv->Delete = (int (*)())cppDelete;
+        drv->DeleteObj = NULL;
 	drv->OpenQuery = (void* (*)())cppOpenQuery;
 	drv->QueryDelete = NULL;
 	drv->QueryFetch = (void* (*)())cppQueryFetch;
 	drv->QueryClose = (int (*)())cppQueryClose;
+        drv->GetQueryCoverageMask = NULL;
 	drv->Read = (int (*)())cppRead;
 	drv->Write = (int (*)())cppWrite;
 	drv->GetAttrType = (int (*)())cppGetAttrType;
@@ -388,7 +386,7 @@ cppInitialize()
 	drv->GetNextAttr = (char* (*)())cppGetNextAttr;
 	drv->SetAttrValue = (int (*)())cppSetAttrValue;
 	drv->AddAttr = (int (*)())cppAddAttr;
-	drv->OpenAttr = (void* (*)())cppOpenAttr;
+	drv->OpenAttr = NULL;
 	drv->GetFirstMethod = (char* (*)())cppGetFirstMethod;
 	drv->GetNextMethod = (char* (*)())cppGetNextMethod;
 	drv->ExecuteMethod = (int (*)())cppExecuteMethod;
@@ -398,7 +396,8 @@ cppInitialize()
 
 	// Register the driver
 	if (objRegisterDriver(drv) < 0){
-            fprintf(stderr,"cpp system Failed!\n");
+            std::cerr<<"registering cpp system for "
+                    <<modulePrefix<<" Failed!"<<std::endl;
             return -1;
         }
 
