@@ -35,15 +35,15 @@
 #define FREE_ALL_ATRRIBS() for(CurrentAtrrib=Attributes.begin();\
                                 CurrentAtrrib != Attributes.end();\
                                 CurrentAtrrib++)\
-                                delete CurrentAtrrib->second
+                             delete CurrentAtrrib->second
 #define FREE_ALL_STRINGS() for(std::map<std::string,char *>::iterator str=Strings.begin();\
                                 str != Strings.end();\
                                 str++)\
-                                nmSysFree(str->second)
-#define FREE_ALL_HINTS()   for(std::list<pObjPresentationHints>::iterator hint=Hints.begin();\
+                             nmSysFree(str->second)
+#define FREE_ALL_HINTS()   for(std::map<std::string,pObjPresentationHints>::iterator hint=Hints.begin();\
                                 hint != Hints.end();\
                                 hint++)\
-                            nmFree(*hint,sizeof(ObjPresentationHints))
+                             nmFree(hint->second,sizeof(ObjPresentationHints))
 //let's start with the depressing sounding ones
 
 //clean up time!
@@ -112,12 +112,18 @@ pObjPresentationHints objdrv::NewHints(){
    /** init the non-0 default values **/
    ph->GroupID=-1;
    ph->VisualLength2=1;
-   Hints.push_back(ph);
    return ph;
 }
 
+void objdrv::RegisterHints(std::string name, pObjPresentationHints hint){
+    Hints[name]=hint;
+    return;
+}
+
 pObjPresentationHints objdrv::PresentationHints(std::string attrname, pObjTrxTree* oxt){
-    return NULL;
+    if(Hints.find(attrname) != Hints.end())
+        return Hints[attrname];
+    else return NULL;
 }
 
 std::list<std::string> objdrv::GetMethods(){
