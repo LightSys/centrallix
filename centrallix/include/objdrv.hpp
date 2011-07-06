@@ -151,7 +151,7 @@ std::ostream &operator <<(std::ostream &out,Attribute *att);
 /**
  * a base class, which should be extended as your driver
  * @brief base class for object drivers
- * @todo  test method system
+ * 
  */
 class objdrv {
 private:
@@ -270,12 +270,6 @@ public:
     virtual bool IsEmpty();
 
     /**
-     * @brief Creates and initializes a new pObjPresentationHints
-     * @return a shiny new pObjPresentationHints
-     * @bug   strings cause *** glibc detected *** when freed by Nm[Sys]Free
-     */
-    pObjPresentationHints NewHints();
-    /**
      * Fetches an attribute from the objects attribute list
      * @param name which attribute is required
      * @return the attribute (or NULL if no such attribute)
@@ -292,6 +286,23 @@ public:
     bool SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt);
     virtual ~objdrv(){};
 };//end class objdrv
+
+/**
+ * @brief converts c++ to c string
+ * Converts an instance of std::string into a 
+ * c string which can (and should) be freed with NmSysFree
+ * @param text   string to convert
+ * @return       c string allocated with Nm
+ */
+char *CentrallixString(std::string text);
+/**
+ * @brief Creates and initializes a new pObjPresentationHints
+ * Allocates the space and sets default values
+ * PLEASE use CentrallixString when assigning any strings in a
+ * pObjPresentationHints, glibc will hang the system if you don't
+ * @return a shiny new pObjPresentationHints
+ */
+pObjPresentationHints NewHints();
 
 /**
  * get an instance of the class

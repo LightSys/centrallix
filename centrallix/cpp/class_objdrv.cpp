@@ -64,8 +64,14 @@ int objdrv::Commit(pObjTrxTree* oxt){
     return 0;
 }
 
+char *CentrallixString(std::string text){
+    char *string=(char *)nmSysMalloc(text.length());
+    memcpy(string,text.c_str(),text.length());
+    return string;
+}
+
 //stolen from obj_attr.c:734-741, thanks gbeeley & mmcgill
-pObjPresentationHints objdrv::NewHints(){
+pObjPresentationHints NewHints(){
    pObjPresentationHints ph = (pObjPresentationHints)
            nmMalloc(sizeof(ObjPresentationHints));
    memset(ph,0,sizeof(ObjPresentationHints));
