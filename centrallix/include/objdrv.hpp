@@ -253,7 +253,6 @@ public:
     /**
      * Gets the list of methods this object supports
      * @return at least an empty list
-     * @bug    last method name returned by this gets clobered
      */
     virtual std::list<std::string> *GetMethods();
     /**

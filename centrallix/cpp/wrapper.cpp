@@ -297,6 +297,7 @@ char *cppGetNextMethod(void* inf_v, pObjTrxTree oxt){
 char *cppGetFirstMethod(void* inf_v, pObjTrxTree oxt){
     objdrv *inf = (objdrv *)inf_v;
     //get and store list so that we get a consistent view
+    if(inf->Methods)delete inf->Methods;
     inf->Methods = inf->GetMethods();
     inf->CurrentMethod = inf->Methods->begin();
     return cppGetNextMethod(inf_v, oxt);

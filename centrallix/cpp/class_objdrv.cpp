@@ -168,6 +168,7 @@ bool objdrv::SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt){
 objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt){
     //do some generic setup
     Pathname = std::string(obj_internal_PathPart(obj->Pathname, 0, 0));
+    Methods = NULL;
 }
 
 
