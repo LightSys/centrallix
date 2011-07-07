@@ -36,33 +36,43 @@
 
 //constructors!
 
-Attribute::Attribute(int type,pObjData value){
-    Attribute *tmp;
+void Attribute::Build(int type,pObjData value){
+    Type=type;
+    Value= new ObjData;
+    bzero(Value,sizeof(ObjData));
     switch(type){
-        case DATA_T_INTEGER:
-            tmp=new Attribute(value->Integer);
-            break;
+        case DATA_T_INTEGER:        
+            Value->Integer=value->Integer;
+            return;
         case DATA_T_DOUBLE:
-            tmp=new Attribute(value->Double);
-            break;
+            Value->Double=value->Double;
+            return;
         case DATA_T_STRING:
-            tmp=new Attribute(std::string(value->String));
-            break;
+            Value->String=(char *)strdup(value->String);
+            return;
         case DATA_T_BINARY:
-            tmp=new Attribute(value->Binary);
-            break;
+            Value->Binary.Size=value->Binary.Size;
+            Value->Binary.Data=value->Binary.Data;
+            return;
         case DATA_T_DATETIME:
-            tmp=new Attribute(value->DateTime);
+            if(!value){
+                //default to now
+                Value->DateTime = new DateTime;
+                objCurrentDate(Value->DateTime);
+                return;
+            }else{
+                memcpy(Value->DateTime,value->DateTime,sizeof(DateTime));
+            }//end if now
             break;
         case DATA_T_MONEY:
-            tmp=new Attribute(value->Money);
-            break;
+            Value->Money=value->Money;
+            return;
         case DATA_T_INTVEC:
-            tmp=new Attribute(value->IntVec);
-            break;
+            memcpy(Value->IntVec,value,sizeof(IntVec_t));
+            return;
         case DATA_T_STRINGVEC:
-            tmp=new Attribute(value->StringVec);
-            break;
+            memcpy(Value->StringVec,value,sizeof(StringVec));
+            return;
         default:
             Type=type;
             Value = new ObjData;
@@ -70,13 +80,14 @@ Attribute::Attribute(int type,pObjData value){
             memcpy(Value,value,sizeof(ObjData));
             return;//exit NOW!
     }//end switch
-    Type = tmp->Type;
-    Value = new ObjData;
-    memcpy(Value,tmp->Value,sizeof(ObjData));
 }//end constructor
 
+Attribute::Attribute(int type, pObjData value){
+    Build(type,value);
+}
+
+//note that this is not handled above at the moment
 Attribute::Attribute(std::string value){
-    std::cerr<<"cpp string is "<<value<<std::endl;
         Type=DATA_T_STRING;
         Value= new ObjData;
         bzero(Value,sizeof(ObjData));
@@ -91,24 +102,11 @@ Attribute::Attribute(int value){
 }
 
 Attribute::Attribute(pDateTime value){
-        Type=DATA_T_DATETIME;
-        Value= new ObjData;
-        bzero(Value,sizeof(ObjData));
-        if(!value){
-            //default to now
-            Value->DateTime = new DateTime;
-            objCurrentDate(Value->DateTime);
-            return;
-        }else{
-            memcpy(Value->DateTime,value,sizeof(DateTime));
-        }//end if now
+        Build(DATA_T_DATETIME,POD(value));
 }//end new Att Date
 
 Attribute::Attribute(pMoneyType value){
-        Type=DATA_T_MONEY;
-        Value= new ObjData;
-        bzero(Value,sizeof(ObjData));
-        Value->Money=value;
+        Build(DATA_T_MONEY,POD(value));
 }
 
 Attribute::Attribute(Binary_t value){
@@ -120,15 +118,11 @@ Attribute::Attribute(Binary_t value){
 }
 
 Attribute::Attribute(pStringVec value){
-        Type=DATA_T_STRINGVEC;
-        Value= new ObjData;
-        memcpy(Value->StringVec,value,sizeof(StringVec));
+        Build(DATA_T_STRINGVEC,POD(value));
 }
 
 Attribute::Attribute(pIntVec value){
-        Type=DATA_T_INTVEC;
-        Value= new ObjData;
-        memcpy(Value->IntVec,value,sizeof(IntVec_t));
+        Build(DATA_T_INTVEC,POD(value));
 }
 
 //clean up after ourself

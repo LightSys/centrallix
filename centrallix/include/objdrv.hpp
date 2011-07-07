@@ -82,6 +82,8 @@ public:
  * @todo include constructors for DATA_T_CODE,DATA_T_ARRAY
  */
 class Attribute{
+private:
+    void Build(int type,pObjData value);
 public:
     /**Type of attribute*/
     int Type;
