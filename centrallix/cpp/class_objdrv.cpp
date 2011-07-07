@@ -55,17 +55,17 @@ objdrv::~objdrv(){
 
 //drop all the attributes
 int objdrv::Close(pObjTrxTree* oxt){
-    FREE_ALL_ATRRIBS();
-    FREE_ALL_STRINGS();
-    FREE_ALL_HINTS();
+//    FREE_ALL_ATRRIBS();
+//    FREE_ALL_STRINGS();
+//    FREE_ALL_HINTS();
     return 0;
 }
 
 //drop all the attributes
 int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
-    FREE_ALL_ATRRIBS();
-    FREE_ALL_STRINGS();
-    FREE_ALL_HINTS();
+//    FREE_ALL_ATRRIBS();
+//    FREE_ALL_STRINGS();
+//    FREE_ALL_HINTS();
     return 0;
 }
 
@@ -120,9 +120,8 @@ pObjPresentationHints objdrv::PresentationHints(std::string attrname, pObjTrxTre
     return NULL;
 }
 
-std::list<std::string> objdrv::GetMethods(){
-    std::list<std::string> tmp;
-    return tmp;
+std::list<std::string> *objdrv::GetMethods(){
+    return new std::list<std::string>();
 }
 
 int objdrv::RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt){

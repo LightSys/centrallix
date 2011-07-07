@@ -163,7 +163,7 @@ private:
     /**List of presentation hints, to be freed with strings*/
     std::list<pObjPresentationHints> Hints;
     /**List of the methods supported by this object, as last seen by wrapper*/
-    std::list<std::string> Methods;
+    std::list<std::string> *Methods;
     /**Index into list of the methods supported by this object*/
     std::list<std::string>::const_iterator CurrentMethod;
     /**Map of the attributes of this object, maintained by the wrapper*/
@@ -253,8 +253,9 @@ public:
     /**
      * Gets the list of methods this object supports
      * @return at least an empty list
+     * @bug    last method name returned by this gets clobered
      */
-    virtual std::list<std::string> GetMethods();
+    virtual std::list<std::string> *GetMethods();
     /**
      * Runs a method of the object
      * @param methodname method to run

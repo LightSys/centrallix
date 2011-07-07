@@ -287,7 +287,7 @@ cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt
  ***/
 char *cppGetNextMethod(void* inf_v, pObjTrxTree oxt){
     objdrv *inf = (objdrv *)inf_v;
-    if(inf->CurrentMethod == inf->Methods.end())
+    if(inf->CurrentMethod == inf->Methods->end())
         return NULL;
     return inf->CentrallixString(*(inf->CurrentMethod++));
 }
@@ -298,7 +298,7 @@ char *cppGetFirstMethod(void* inf_v, pObjTrxTree oxt){
     objdrv *inf = (objdrv *)inf_v;
     //get and store list so that we get a consistent view
     inf->Methods = inf->GetMethods();
-    inf->CurrentMethod = inf->Methods.begin();
+    inf->CurrentMethod = inf->Methods->begin();
     return cppGetNextMethod(inf_v, oxt);
 }
 

@@ -18,7 +18,7 @@ public:
     bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
     int Info(pObjectInfo info);
     query_t *OpenQuery (pObjQuery query, pObjTrxTree *oxt);
-    std::list<std::string> GetMethods();
+    std::list<std::string> *GetMethods();
     int RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt);
     pObjPresentationHints PresentationHints(std::string attrname, pObjTrxTree* oxt);
     virtual ~cppmem();
@@ -84,11 +84,11 @@ int cppmem::Info(pObjectInfo info){
     return 0;
 }
 
-std::list<std::string> cppmem::GetMethods(){
-    std::list<std::string> tmp;
-    tmp.push_back("dump");
-    tmp.push_back("genkey");
-    tmp.push_back("shuffle");
+std::list<std::string> *cppmem::GetMethods(){
+    std::list<std::string> *tmp=new std::list<std::string>();
+    tmp->push_front("dump");
+    tmp->push_front("genkey");
+    tmp->push_front("shuffle");
     return tmp;
 }
 
