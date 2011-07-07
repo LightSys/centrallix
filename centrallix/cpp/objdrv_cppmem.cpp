@@ -114,13 +114,28 @@ int cppmem::RunMethod(std::string methodname, pObjData param, pObjTrxTree oxt){
     return -1;
 }
 
+pObjPresentationHints cppmem::PresentationHints(std::string attrname, pObjTrxTree* oxt){
+    pObjPresentationHints hints=NewHints();
+    if(!attrname.compare("size")){
+        hints->Style = OBJ_PH_STYLE_READONLY;
+        return hints;
+    }
+    if(!attrname.compare("source_class")){
+        hints->Style = OBJ_PH_STYLE_LOWERCASE | OBJ_PH_STYLE_NOTNULL;
+        hints->Length = 16;
+        hints->FriendlyName = CentrallixString("Source Class of object");
+        hints->BadChars = CentrallixString("!@#$%^&*()-_=+[]{}\\|;'\",.<>/?");
+        return hints;
+    }
+    return objdrv::PresentationHints(attrname,oxt);
+}
+
 query_t *cppmem::OpenQuery (pObjQuery query, pObjTrxTree *oxt){
     return new query_mem(this);
 }
 
 cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
         :objdrv(obj,mask,systype,usrtype,oxt){
-    pObjPresentationHints hints;
     this->Obj=obj;
     this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
     //this->nodethingy = snReadNode(obj->Prev);
@@ -131,18 +146,6 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
     SetAtrribute("inner_type",new Attribute("application/octet-stream"),oxt);
     SetAtrribute("annotation",new Attribute("cpp object"),oxt);
     SetAtrribute("source_class",new Attribute("cpp"),oxt);
-    //hints for source_class
-    hints=NewHints();
-    hints->Style = OBJ_PH_STYLE_LOWERCASE | OBJ_PH_STYLE_NOTNULL;
-    hints->Length = 16;
-    hints->FriendlyName = CentrallixString("Source Class of object");
-    hints->BadChars = CentrallixString("!@#$%^&*()-_=+[]{}\\|;'\",.<>/?");
-    RegisterHints("source_class",hints);
-    //and size
-    hints=NewHints();
-    hints->Style = OBJ_PH_STYLE_READONLY;
-    hints->FriendlyName = CentrallixString("Number of char in buffer");
-    RegisterHints("size",hints);
     std::cerr<<"New mem object "<< GetAtrribute("name") <<" as "<<usrtype<<std::endl;
 }
 

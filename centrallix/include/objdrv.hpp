@@ -161,7 +161,7 @@ private:
     /**List of c strings to free when closed*/
     std::map<std::string,char *> Strings;
     /**List of presentation hints, to be freed with strings*/
-    std::map<std::string,pObjPresentationHints> Hints;
+    std::list<pObjPresentationHints> Hints;
     /**List of the methods supported by this object, as last seen by wrapper*/
     std::list<std::string> *Methods;
     /**Index into list of the methods supported by this object*/
@@ -224,6 +224,13 @@ public:
      * @return        amount read, or -1 if writing is not posable
      */
     virtual int Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt);
+    /**
+     * gets the presentation hints for an attribute
+     * @param attrname attribute we are interested in
+     * @param oxt      transaction context
+     * @return         hints (or NULL is OK too)
+     */
+    virtual pObjPresentationHints PresentationHints(std::string attrname, pObjTrxTree* oxt);
     /**
      * gets the metadata for this object
      * @param info  points to storage for the information
@@ -302,19 +309,6 @@ public:
      * @return a shiny new pObjPresentationHints
      */
     pObjPresentationHints NewHints();
-    /**
-     * @brief adds hints to an attribute
-     * @param name   attribute the hints apply to
-     * @param hint   hints about the attribute
-     */
-    void RegisterHints(std::string name, pObjPresentationHints hint);
-    /**
-     * gets the presentation hints for an attribute
-     * @param attrname attribute we are interested in
-     * @param oxt      transaction context
-     * @return         hints (or NULL is OK too)
-     */
-    pObjPresentationHints PresentationHints(std::string attrname, pObjTrxTree* oxt);
     /**
      * Destructor (frees memory that we have allocated)
      */
