@@ -49,6 +49,7 @@ int cppmem::Close(pObjTrxTree* oxt){
 int cppmem::Delete(pObject obj, pObjTrxTree* oxt){
     std::cerr<<"Dropping mem object "<< GetAtrribute("name")<<std::endl;
     files.erase(std::string(GetAtrribute("name")->Value->String));
+    throw "DELETE NOT YET FUNTIONAL";
     return 0;
 }
 
@@ -73,7 +74,9 @@ int cppmem::Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* o
 }
 
 bool cppmem::UpdateAttr(std::string attrname, pObjTrxTree* oxt){
-    objdrv::UpdateAttr(attrname,oxt);
+    if(attrname == "size" && 
+       GetAtrribute("size")->Value->Integer != Buffer.size())
+        return true;
     return false;
 }
 

@@ -43,6 +43,7 @@
 #define MODULE_CAP(x)   int moduleCapabilities = (x)
 #define MODULE_NAME(x)  char* moduleName = ((char *)x)
 
+///@todo iostream style way of read/write &etc
 class objdrv;
 
 /**
@@ -270,6 +271,7 @@ public:
      * @param attrname attribute which has been updated
      * @param oxt      transaction context
      * @return         true if the change should be undone
+     * @todo clear way for diver to know if it made a change to itself (via oxt?)
      */
     virtual bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
     /**

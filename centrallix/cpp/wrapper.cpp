@@ -39,6 +39,12 @@
 
 #include "objdrv.hpp"
 
+// *iron* hard execption catcher: whump! and it's caught
+#define CATCH_ERR(e)  catch(...){\
+                        std::cerr << "Uncaught exception in "<<__FUNCTION__<<std::endl;\
+                        return e;\
+                        }
+
 //these are here since I did not want to place them in objdrv.hpp
 //but they are useful to the wrapper
 extern char *moduleName;
@@ -50,13 +56,12 @@ extern int   moduleCapabilities;
 void*
 cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"opening a cpp object\n");
-    objdrv *inf;
-    /** Allocate the structure! **/
-    inf = GetInstance(obj, mask, systype, usrtype, oxt);
-    if (!inf) return NULL;
-
-    return (void*) inf;
+     try{
+        objdrv *inf;
+        /** Allocate the structure! **/
+        inf = GetInstance(obj, mask, systype, usrtype, oxt);
+        return (void*) inf;
+        }CATCH_ERR(NULL);
     }
 
 
@@ -65,10 +70,10 @@ cppOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 int
 cppClose(void* inf_v, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"closeing a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    inf->Close(oxt);
-    return 0;
+     try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->Close(oxt);
+     }CATCH_ERR(-1);
     }
 
 /*** cppCreate - create a new object, without actually returning a
@@ -79,15 +84,15 @@ cppClose(void* inf_v, pObjTrxTree* oxt)
 int
 cppCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    void* inf;
-
-    /** Call open() then close() **/
-    obj->Mode = O_CREAT | O_EXCL;
-    inf = cppOpen(obj, mask, systype, usrtype, oxt);
-    if (!inf) return -1;
-    cppClose(inf, oxt);
-
-    return 0;
+    try{
+        void* inf;
+        /** Call open() then close() **/
+        obj->Mode = O_CREAT | O_EXCL;
+        inf = cppOpen(obj, mask, systype, usrtype, oxt);
+        if (!inf) return -1;
+        cppClose(inf, oxt);
+        return 0;
+        }CATCH_ERR(-1);
     }
 
 
@@ -98,18 +103,17 @@ cppCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 cppDelete(pObject obj, pObjTrxTree* oxt)
     {
-    objdrv *inf;
+    try{
+        objdrv *inf;
     	/** Open the thing first to get the inf ptrs **/
 	obj->Mode = O_WRONLY;
 	inf = (objdrv *)cppOpen(obj, 0, NULL, (char *)"", oxt);
 	if (!inf) return -1;
-
 	inf->Delete(obj,oxt);
-        
         /** Release, don't call close because that might write data to a deleted object **/
 	delete inf;
-
-    return 0;
+        return 0;
+        }CATCH_ERR(-1);
     }
 
 /*** cppRead - calls the objdrv's read method
@@ -117,9 +121,10 @@ cppDelete(pObject obj, pObjTrxTree* oxt)
 int
 cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"reading a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    return inf->Read(buffer, maxcnt, offset, flags, oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->Read(buffer, maxcnt, offset, flags, oxt);
+        }CATCH_ERR(-1);
     }
 
 /*** cppWrite - calls the objdrv's write method
@@ -127,9 +132,10 @@ cppRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 int
 cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"writing a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    return inf->Write(buffer,cnt,offset,flags,oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->Write(buffer,cnt,offset,flags,oxt);
+        }CATCH_ERR(-1);
     }
 
 /*** cppOpenQuery - open a directory query.
@@ -137,9 +143,10 @@ cppWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 void*
 cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"beigining query of a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    return (void*)inf->OpenQuery(query,oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return (void*)inf->OpenQuery(query,oxt);
+        }CATCH_ERR(NULL);
     }
 
 //default open query
@@ -151,8 +158,10 @@ query_t *objdrv::OpenQuery(pObjQuery query, pObjTrxTree* oxt){
  ***/
 void*
 cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt){
-    query_t *qy = (query_t *)qy_v;
-    return (void*)qy->Fetch(obj,mode,oxt);
+    try{
+        query_t *qy = (query_t *)qy_v;
+        return (void*)qy->Fetch(obj,mode,oxt);
+        }CATCH_ERR(NULL);
 }
 
 /*** cppQueryClose - close the query.
@@ -160,10 +169,12 @@ cppQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt){
 int
 cppQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
+    try{
         query_t *qy = (query_t *)qy_v;
         qy->Close(oxt);
         delete qy;
-    return 0;
+        return 0;
+    }CATCH_ERR(-1);
     }
 
 /*** cppGetAttrType - get the type (DATA_T_cpp) of an attribute by name.
@@ -171,11 +182,12 @@ cppQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"typing att of a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    if(!inf->GetAtrribute(std::string(attrname)))
-        return -1;
-    return inf->GetAtrribute(std::string(attrname))->Type;
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        if(!inf->GetAtrribute(std::string(attrname)))
+            return -1;
+        return inf->GetAtrribute(std::string(attrname))->Type;
+        }CATCH_ERR(-1);
     }
 
 /** cppGetAttrValue - get the value of an attribute by name.  The 'val'
@@ -183,51 +195,53 @@ cppGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  */
 int
 cppGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
-    //fprintf(stderr,"valuing att of a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    Attribute *data=inf->GetAtrribute(std::string(attrname));
-    if(data==NULL)return -1;
-    if(datatype != data->Type)return -1;
-    pObjData tmpval =data->Value;
-    //now the fun copy part
-    ///@todo DATA_T_ARRAY, DATA_T_CODE
-    switch(datatype){
-        case DATA_T_STRING:
-            val->String = tmpval->String;
-            break;
-        case DATA_T_INTEGER:
-            val->Integer = tmpval->Integer;
-            break;
-        case DATA_T_DOUBLE:
-            val->Double = tmpval->Double;
-            break;
-        case DATA_T_DATETIME:
-            val->DateTime = tmpval->DateTime;
-            break;
-        case DATA_T_MONEY:
-            val->Money = tmpval->Money;
-            break;
-        case DATA_T_INTVEC:
-            val->IntVec = tmpval->IntVec;
-            break;
-        case DATA_T_STRINGVEC:
-            val->StringVec = tmpval->StringVec;
-            break;
-        case DATA_T_BINARY:
-            val->Binary.Size = tmpval->Binary.Size;
-            val->Binary.Data = tmpval->Binary.Data;
-            break;
-        default://blindly copy anything we don't understand
-            memcpy(val,tmpval, sizeof(ObjData));
-            std::cerr<<attrname<<" of type "<<datatype<<" not properly handled"<<std::endl;
-    }
-    return 0;
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        Attribute *data=inf->GetAtrribute(std::string(attrname));
+        if(data==NULL)return -1;
+        if(datatype != data->Type)return -1;
+        pObjData tmpval =data->Value;
+        //now the fun copy part
+        ///@todo DATA_T_ARRAY, DATA_T_CODE
+        switch(datatype){
+            case DATA_T_STRING:
+                val->String = tmpval->String;
+                break;
+            case DATA_T_INTEGER:
+                val->Integer = tmpval->Integer;
+                break;
+            case DATA_T_DOUBLE:
+                val->Double = tmpval->Double;
+                break;
+            case DATA_T_DATETIME:
+                val->DateTime = tmpval->DateTime;
+                break;
+            case DATA_T_MONEY:
+                val->Money = tmpval->Money;
+                break;
+            case DATA_T_INTVEC:
+                val->IntVec = tmpval->IntVec;
+                break;
+            case DATA_T_STRINGVEC:
+                val->StringVec = tmpval->StringVec;
+                break;
+            case DATA_T_BINARY:
+                val->Binary.Size = tmpval->Binary.Size;
+                val->Binary.Data = tmpval->Binary.Data;
+                break;
+            default://blindly copy anything we don't understand
+                memcpy(val,tmpval, sizeof(ObjData));
+                std::cerr<<attrname<<" of type "<<datatype<<" not properly handled"<<std::endl;
+        }
+        return 0;
+        }CATCH_ERR(-1);
 }
 
 /*** cppGetNextAttr - get the next attribute name for this object.
  ***/
 char*
 cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
+    try{
     objdrv *inf = (objdrv *)inf_v;
     std::string tmp;
     if(inf->CurrentAtrrib==inf->Attributes.end()){
@@ -241,6 +255,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
             || !tmp.compare("inner_type") || !tmp.compare("outer_type") || !tmp.compare("last_modification"))
         return cppGetNextAttr(inf_v,oxt);
     return inf->CentrallixString(tmp);
+    }CATCH_ERR(NULL);
 }
 
 /*** cppGetFirstAttr - get the first attribute name for this object.
@@ -248,7 +263,7 @@ cppGetNextAttr(void* inf_v, pObjTrxTree* oxt){
 char*
 cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"begining att list of a cpp object\n");
+    //NOT putting try / catch here, as cppGetNextAttr should be on top of things
     objdrv *inf = (objdrv *)inf_v;
     inf->CurrentAtrrib=inf->Attributes.begin();
     return cppGetNextAttr(inf_v, oxt);
@@ -260,13 +275,14 @@ cppGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  ***/
 int
 cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt){
-    //fprintf(stderr,"setting att of a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    if(!inf->GetAtrribute(std::string(attrname)))
-        return -1;
-    if(inf->SetAtrribute(std::string(attrname),new Attribute(datatype,val),oxt))
-        return -1;
-    return 0;
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        if(!inf->GetAtrribute(std::string(attrname)))
+            return -1;
+        if(inf->SetAtrribute(std::string(attrname),new Attribute(datatype,val),oxt))
+            return -1;
+        return 0;
+        }CATCH_ERR(-1);
 }
 
 /*** cppAddAttr - add an attribute to an object.  This doesn't always work
@@ -276,38 +292,45 @@ cppSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 int
 cppAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"adding att to a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    if(inf->SetAtrribute(std::string(attrname),new Attribute(type,val),oxt))
-        return -1;
-    return 0;
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        if(inf->SetAtrribute(std::string(attrname),new Attribute(type,val),oxt))
+            return -1;
+        return 0;
+        }CATCH_ERR(-1);
     }
 
 /*** cppGetNextMethod -- return successive names of methods after the First one.
  ***/
 char *cppGetNextMethod(void* inf_v, pObjTrxTree oxt){
-    objdrv *inf = (objdrv *)inf_v;
-    if(inf->CurrentMethod == inf->Methods->end())
-        return NULL;
-    return inf->CentrallixString(*(inf->CurrentMethod++));
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        if(inf->CurrentMethod == inf->Methods->end())
+            return NULL;
+        return inf->CentrallixString(*(inf->CurrentMethod++));
+        }CATCH_ERR(NULL);
 }
 
 /*** cppGetFirstMethod -- return name of First method available on the object.
  ***/
 char *cppGetFirstMethod(void* inf_v, pObjTrxTree oxt){
-    objdrv *inf = (objdrv *)inf_v;
-    //get and store list so that we get a consistent view
-    if(inf->Methods)delete inf->Methods;
-    inf->Methods = inf->GetMethods();
-    inf->CurrentMethod = inf->Methods->begin();
-    return cppGetNextMethod(inf_v, oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        //get and store list so that we get a consistent view
+        if(inf->Methods)delete inf->Methods;
+        inf->Methods = inf->GetMethods();
+        inf->CurrentMethod = inf->Methods->begin();
+        return cppGetNextMethod(inf_v, oxt);
+    }CATCH_ERR(NULL);
 }
 
 /*** cppExecuteMethod - Execute a method, by name.
  ***/
 int cppExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt){
-    objdrv *inf = (objdrv *)inf_v;
-    return inf->RunMethod(std::string(methodname),param,oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->RunMethod(std::string(methodname),param,oxt);
+        }CATCH_ERR(-1);
 }
 
 
@@ -319,9 +342,10 @@ int cppExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree 
 pObjPresentationHints
 cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"hinting about a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    return inf->PresentationHints(std::string(attrname),oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->PresentationHints(std::string(attrname),oxt);
+        }CATCH_ERR(NULL);
     }
 
 /*** cppInfo - return object metadata - about the object, not about a 
@@ -330,9 +354,10 @@ cppPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 cppInfo(void* inf_v, pObjectInfo info)
     {
-    //fprintf(stderr,"infoing a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    return inf->Info(info);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->Info(info);
+        }CATCH_ERR(-1);
     }
 
 /*** cppCommit - commit any changes made to the underlying data source.
@@ -340,9 +365,10 @@ cppInfo(void* inf_v, pObjectInfo info)
 int
 cppCommit(void* inf_v, pObjTrxTree* oxt)
     {
-    //fprintf(stderr,"committing a cpp object\n");
-    objdrv *inf = (objdrv *)inf_v;
-    return inf->Commit(oxt);
+    try{
+        objdrv *inf = (objdrv *)inf_v;
+        return inf->Commit(oxt);
+        }CATCH_ERR(-1);
     }
 
 /*** cppInitialize - initialize this driver, which also causes it to 
@@ -351,7 +377,7 @@ cppCommit(void* inf_v, pObjTrxTree* oxt)
 int
 cppInitialize()
     {
-    //fprintf(stderr,"starting a cpp system\n");
+    try{
     pObjDriver drv;
     std::list<std::string> Types=GetTypes();
 	// Allocate the driver
@@ -403,7 +429,8 @@ cppInitialize()
         }
 
     return 0;
-    }
+    }CATCH_ERR(-1);
+    }//end cppInitialize
 
 MODULE_INIT(cppInitialize);
 MODULE_IFACE(CX_CURRENT_IFACE);
