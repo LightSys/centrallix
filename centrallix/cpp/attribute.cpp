@@ -31,44 +31,52 @@
 
 #include <iostream>
 #include <string.h>
+#include <stdlib.h>
 #include "objdrv.hpp"
 
 //constructors!
 
 Attribute::Attribute(int type,pObjData value){
+    Attribute *tmp;
     switch(type){
         case DATA_T_INTEGER:
-            Attribute(value->Integer);
-            return;
+            tmp=new Attribute(value->Integer);
+            break;
         case DATA_T_DOUBLE:
-            Attribute(value->Integer);
-            return;
+            tmp=new Attribute(value->Double);
+            break;
         case DATA_T_STRING:
-            Attribute(std::string(value->String));
-            return;
+            tmp=new Attribute(std::string(value->String));
+            break;
         case DATA_T_BINARY:
-            Attribute(value->Binary);
-            return;
+            tmp=new Attribute(value->Binary);
+            break;
         case DATA_T_DATETIME:
-            Attribute(value->DateTime);
-            return;
+            tmp=new Attribute(value->DateTime);
+            break;
         case DATA_T_MONEY:
-            Attribute(value->Money);
-            return;
+            tmp=new Attribute(value->Money);
+            break;
         case DATA_T_INTVEC:
-            Attribute(value->IntVec);
-            return;
+            tmp=new Attribute(value->IntVec);
+            break;
         case DATA_T_STRINGVEC:
-            Attribute(value->StringVec);
-            return;
+            tmp=new Attribute(value->StringVec);
+            break;
         default:
             Type=type;
             Value = new ObjData;
+            //blind copy
             memcpy(Value,value,sizeof(ObjData));
+            return;//exit NOW!
     }//end switch
+    Type = tmp->Type;
+    Value = new ObjData;
+    memcpy(Value,tmp->Value,sizeof(ObjData));
 }//end constructor
 
 Attribute::Attribute(std::string value){
+    std::cerr<<"cpp string is "<<value<<std::endl;
         Type=DATA_T_STRING;
         Value= new ObjData;
         bzero(Value,sizeof(ObjData));
@@ -127,7 +135,7 @@ Attribute::Attribute(pIntVec value){
 Attribute::~Attribute(){
     switch(Type){
         case DATA_T_STRING:
-            delete Value->String;
+            free(Value->String);
             break;
         case DATA_T_DATETIME:
             delete Value->DateTime;

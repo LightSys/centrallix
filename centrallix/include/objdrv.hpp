@@ -288,7 +288,6 @@ public:
      * @param value value to corollate with the name
      * @param oxt   context, NULL if you don't know what it is
      * @return true if the attribute should not be set
-     * @bug   att annot over written
      */
     bool SetAtrribute(std::string name, Attribute *value, pObjTrxTree* oxt);
     /**
