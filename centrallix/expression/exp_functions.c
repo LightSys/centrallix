@@ -2557,7 +2557,6 @@ exp_internal_DefineFunctions() {
     /** UTF-8/ASCII dependent **/
     if (CxGlobals.CharacterMode == CharModeSingleByte)
         {
-        fprintf(stderr, "UTF-8TestDebug - Launching in single byte char mode!\n");
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
         xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
@@ -2570,7 +2569,6 @@ exp_internal_DefineFunctions() {
         }
     else
         {
-        fprintf(stderr, "UTF-8TestDebug - Launching in UTF-8 mode!\n");
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_utf8_substring);
         xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_utf8_ascii);
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);

@@ -370,9 +370,7 @@ mysd_internal_GetConn(pMysdNode node)
             strtcpy(conn->Username, username, sizeof(conn->Username));
             strtcpy(conn->Password, password, sizeof(conn->Password));
             xaAddItem(&node->Conns, conn);
-                
-                printf("UTF-8TestDebug Previous Using character set: %s\n", mysql_character_set_name(&conn->Handle));
-                
+                            
             /** Set up current character set **/
             /** Please note that this assumes that if it is a one byte character encoding, that ASCII will be **/
             /** a valid subset so that the commands still get through OK. **/
@@ -384,12 +382,8 @@ mysd_internal_GetConn(pMysdNode node)
                 }
             else
                 {
-                    printf("UTF-8TestDebug Set MySQL Connection charset to %s\n", chrGetEquivalentName(CHR_MODULE_MYSQL));
-                }
-                printf("UTF-8TestDebug After Using character set: %s\n", mysql_character_set_name(&conn->Handle));
-                printf("UTF-8TestDebug Extra Query Here! Hehehe Setting status to \xc2\xa9\xc2\xa9\xc2\xa9\xE2\x88\x82\n");
-                mysql_query(&conn->Handle, "UPDATE s_user_data SET s_status = '\xc2\xa9\xc2\xa9\xc2\xa9\xE2\x88\x82'  WHERE s_username = 'danielrothfus'");
                 /** Not quite fatal enough not to return a connection... **/
+                }
             }
 
         /** Make it busy **/

@@ -727,7 +727,6 @@ cxInitialize(void* v)
             printf("centrallix: did not find required key '%s' in config file '%s'\n", CHR_CHARSETMAP_FILE_KEY, CxGlobals.ConfigFileName);
             thExit();
         }
-        printf("UTF-8TestDebug Charsetmap File: %s\n", charsetmapFileName);
         cxcharsetmap = fdOpen(charsetmapFileName, O_RDONLY, 0600);
         if(!cxcharsetmap){
             printf("centrallix: could not open charsetmap file '%s'\n", charsetmapFileName);
