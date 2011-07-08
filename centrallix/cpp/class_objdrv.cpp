@@ -94,18 +94,19 @@ int objdrv::Commit(pObjTrxTree* oxt){
 
 char *objdrv::CentrallixString(std::string text){
     //if we've done this before, don't bother to do it again
-//    if(Strings.find(text) != Strings.end())
-//        return Strings[text];
+    if(Strings.find(text) != Strings.end())
+        return Strings[text];
     //other wise, go ahead and build a new one
     char *string=(char *)nmSysMalloc(text.length()+1);
+    bzero(string,text.length()+1);
     memcpy(string,text.c_str(),text.length());
-    string[text.length()] = (char)0;
     Strings[text]=string;
     return string;
 }
 
 //stolen from obj_attr.c:734-741, thanks gbeeley & mmcgill
 pObjPresentationHints objdrv::NewHints(){
+   ///@bug repetive runs of show a.mem cause a SIGSEGV in malloc_consolidate
    pObjPresentationHints ph = (pObjPresentationHints)
            nmMalloc(sizeof(ObjPresentationHints));
    memset(ph,0,sizeof(ObjPresentationHints));
