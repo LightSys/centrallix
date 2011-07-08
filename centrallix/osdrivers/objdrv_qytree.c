@@ -554,6 +554,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			if (test_obj) 
 			    {
 			    expModifyParam(objlist, NULL, test_obj);
+			    objUnmanageObject(test_obj->Session, test_obj);
 			    }
                         if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT))
                             {
