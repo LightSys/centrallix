@@ -1193,7 +1193,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     int i, v;
     double dv;
     long long mt, mv;
-    if (!i0 || (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY) || (i1 && i1->DataType != DATA_T_INTEGER) || (i1 && i2))
+    if (!i0)
 	{
 	mssError(1,"EXP","round() requires a numeric parameter and an optional integer parameter");
 	return -1;
@@ -1202,6 +1202,11 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    if ((i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY) || (i1 && i1->DataType != DATA_T_INTEGER) || (i1 && i2))
+	{
+	mssError(1,"EXP","round() requires a numeric parameter and an optional integer parameter");
+	return -1;
 	}
     if (i1) dec = i1->Integer;
     tree->DataType = i0->DataType;
