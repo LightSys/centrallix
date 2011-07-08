@@ -31,10 +31,6 @@
 /************************************************************************/
 
 #include "objdrv.hpp"
-//define cleanup code such that it can be used anywhere!
-#define FREE_ALL_ATRRIBS() 
-#define FREE_ALL_STRINGS() 
-#define FREE_ALL_HINTS() 
 //let's start with the depressing sounding ones
 
 //clean up time!
@@ -48,25 +44,15 @@ objdrv::~objdrv(){
                 str != Strings.end(); str++)
         nmSysFree(str->second);
     Strings.clear();
-    for(std::list<pObjPresentationHints>::iterator hint=Hints.begin();
-                    hint != Hints.end();  hint++)
-        nmFree(*hint,sizeof(ObjPresentationHints));
-    Hints.clear();
 }
 
 //drop all the attributes
 int objdrv::Close(pObjTrxTree* oxt){
-//    FREE_ALL_ATRRIBS();
-//    FREE_ALL_STRINGS();
-//    FREE_ALL_HINTS();
     return 0;
 }
 
 //drop all the attributes
-int objdrv::Delete(pObject obj, pObjTrxTree* oxt){
-//    FREE_ALL_ATRRIBS();
-//    FREE_ALL_STRINGS();
-//    FREE_ALL_HINTS();
+int objdrv::Delete(pObjTrxTree* oxt){
     return 0;
 }
 
@@ -100,7 +86,7 @@ char *objdrv::CentrallixString(std::string text){
     char *string=(char *)nmSysMalloc(text.length()+1);
     bzero(string,text.length()+1);
     memcpy(string,text.c_str(),text.length());
-    Strings[text]=string;
+    //Strings[text]=string;
     return string;
 }
 
@@ -114,7 +100,6 @@ pObjPresentationHints objdrv::NewHints(){
    /** init the non-0 default values **/
    ph->GroupID=-1;
    ph->VisualLength2=1;
-   Hints.push_back(ph);
    return ph;
 }
 

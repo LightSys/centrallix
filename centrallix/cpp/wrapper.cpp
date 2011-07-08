@@ -71,8 +71,11 @@ int
 cppClose(void* inf_v, pObjTrxTree* oxt)
     {
      try{
+        int tmp;
         objdrv *inf = (objdrv *)inf_v;
-        return inf->Close(oxt);
+        tmp=inf->Close(oxt);
+        FreeInstance(inf,oxt);
+        return tmp;
      }CATCH_ERR(-1);
     }
 
@@ -101,17 +104,13 @@ cppCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
  *** on it, and then "handle the close a bit differently" :)
  ***/
 int
-cppDelete(pObject obj, pObjTrxTree* oxt)
+cppDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
     try{
-        objdrv *inf;
-    	/** Open the thing first to get the inf ptrs **/
-	obj->Mode = O_WRONLY;
-	inf = (objdrv *)cppOpen(obj, 0, NULL, (char *)"", oxt);
-	if (!inf) return -1;
-	inf->Delete(obj,oxt);
+        objdrv *inf=(objdrv *)inf_v;
+	inf->Delete(oxt);
         /** Release, don't call close because that might write data to a deleted object **/
-	delete inf;
+	FreeInstance(inf,oxt);
         return 0;
         }CATCH_ERR(-1);
     }
@@ -393,8 +392,8 @@ cppInitialize()
 	drv->Open = (void* (*)())cppOpen;
 	drv->Close = (int (*)())cppClose;
 	drv->Create = (int (*)())cppCreate;
-	drv->Delete = (int (*)())cppDelete;
-        drv->DeleteObj = NULL;
+	drv->Delete = NULL;
+        drv->DeleteObj = (int (*)())cppDeleteObj;
 	drv->OpenQuery = (void* (*)())cppOpenQuery;
 	drv->QueryDelete = NULL;
 	drv->QueryFetch = (void* (*)())cppQueryFetch;

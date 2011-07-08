@@ -163,8 +163,6 @@ class objdrv {
 private:
     /**List of c strings to free when closed*/
     std::map<std::string,char *> Strings;
-    /**List of presentation hints, to be freed with strings*/
-    std::list<pObjPresentationHints> Hints;
     /**List of the methods supported by this object, as last seen by wrapper*/
     std::list<std::string> *Methods;
     /**Index into list of the methods supported by this object*/
@@ -201,12 +199,10 @@ public:
     virtual int Close(pObjTrxTree* oxt);
     /**
      * Deletes this object
-     * @param obj the object being deleted
      * @param oxt transaction context
      * @return 0 on succeeding
-     * @bug   delete causes crash
      */
-    virtual int Delete(pObject obj, pObjTrxTree* oxt);
+    virtual int Delete(pObjTrxTree* oxt);
     /**
      * Reads data from this object
      * @param buffer buffer to read data into
@@ -327,6 +323,12 @@ public:
  * @return pointer to the new object
  */
 objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
+/**
+ * This function is called after close, delete &etc
+ * @param inf
+ * @param oxt
+ */
+void FreeInstance(objdrv *inf, pObjTrxTree* oxt);
 /**
  * gets the name of the driver
  * @return name as a c string

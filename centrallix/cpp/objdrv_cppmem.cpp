@@ -9,10 +9,12 @@
 class cppmem: public objdrv{
     std::list<char> Buffer;
     pSnNode nodethingy;
+    bool Done;
+    friend void FreeInstance(objdrv *inf, pObjTrxTree* oxt);
 public:
     cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
     int Close(pObjTrxTree* oxt);
-    int Delete(pObject obj, pObjTrxTree* oxt);
+    int Delete(pObjTrxTree* oxt);
     int Write(char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt);
     int Read(char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt);
     bool UpdateAttr(std::string attrname, pObjTrxTree* oxt);
@@ -46,10 +48,10 @@ int cppmem::Close(pObjTrxTree* oxt){
     return 0;
 }
 
-int cppmem::Delete(pObject obj, pObjTrxTree* oxt){
+int cppmem::Delete(pObjTrxTree* oxt){
     std::cerr<<"Dropping mem object "<< GetAtrribute("name")<<std::endl;
+    this->Done=true;
     files.erase(std::string(GetAtrribute("name")->Value->String));
-    throw "DELETE NOT YET FUNTIONAL";
     return 0;
 }
 
@@ -139,6 +141,7 @@ query_t *cppmem::OpenQuery (pObjQuery query, pObjTrxTree *oxt){
 
 cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
         :objdrv(obj,mask,systype,usrtype,oxt){
+    this->Done=false;
     this->Obj=obj;
     this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
     //this->nodethingy = snReadNode(obj->Prev);
@@ -172,6 +175,11 @@ objdrv *GetInstance(pObject obj, int mask, pContentType systype, char* usrtype, 
     }else std::cerr<<"Retrieved mem object "<< id <<" as "<<usrtype<<std::endl;
     obj->SubCnt=obj->Prev->SubCnt;
     return tmp;
+}
+
+void FreeInstance(objdrv *inf, pObjTrxTree* oxt){
+    if(((cppmem *)inf)->Done)delete inf;
+    return;
 }
 
 std::list<std::string> GetTypes(){
