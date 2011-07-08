@@ -32,25 +32,26 @@
 
 #include "objdrv.hpp"
 //define cleanup code such that it can be used anywhere!
-#define FREE_ALL_ATRRIBS() for(CurrentAtrrib=Attributes.begin();\
-                                CurrentAtrrib != Attributes.end();\
-                                CurrentAtrrib++)\
-                                delete CurrentAtrrib->second
-#define FREE_ALL_STRINGS() for(std::map<std::string,char *>::iterator str=Strings.begin();\
-                                str != Strings.end();\
-                                str++)\
-                                nmSysFree(str->second)
-#define FREE_ALL_HINTS()   for(std::list<pObjPresentationHints>::iterator hint=Hints.begin();\
-                                hint != Hints.end();\
-                                hint++)\
-                            nmFree(*hint,sizeof(ObjPresentationHints))
+#define FREE_ALL_ATRRIBS() 
+#define FREE_ALL_STRINGS() 
+#define FREE_ALL_HINTS() 
 //let's start with the depressing sounding ones
 
 //clean up time!
 objdrv::~objdrv(){
-    FREE_ALL_ATRRIBS();
-    FREE_ALL_STRINGS();
-    FREE_ALL_HINTS();
+    for(CurrentAtrrib=Attributes.begin();
+            CurrentAtrrib != Attributes.end();
+            CurrentAtrrib++)
+            delete CurrentAtrrib->second;
+    Attributes.clear();
+    for(std::map<std::string,char *>::iterator str=Strings.begin();
+                str != Strings.end(); str++)
+        nmSysFree(str->second);
+    Strings.clear();
+    for(std::list<pObjPresentationHints>::iterator hint=Hints.begin();
+                    hint != Hints.end();  hint++)
+        nmFree(*hint,sizeof(ObjPresentationHints));
+    Hints.clear();
 }
 
 //drop all the attributes
@@ -105,6 +106,7 @@ char *objdrv::CentrallixString(std::string text){
 
 //stolen from obj_attr.c:734-741, thanks gbeeley & mmcgill
 pObjPresentationHints objdrv::NewHints(){
+   ///@bug repetive runs of show a.mem cause a SIGSEGV in malloc_consolidate
    pObjPresentationHints ph = (pObjPresentationHints)
            nmMalloc(sizeof(ObjPresentationHints));
    memset(ph,0,sizeof(ObjPresentationHints));
@@ -173,6 +175,11 @@ objdrv::objdrv(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
 
 
 //next comes the query stuff
+
+//default open query
+query_t *objdrv::OpenQuery(pObjQuery query, pObjTrxTree* oxt){
+    return new query_t(this);
+}
 
 //constructor for query_t
 query_t::query_t(objdrv *data){

@@ -38,7 +38,7 @@
 
 void Attribute::Build(int type,pObjData value){
     Type=type;
-    Value= new ObjData;
+    Value= POD(nmMalloc(sizeof(ObjData)));
     bzero(Value,sizeof(ObjData));
     switch(type){
         case DATA_T_INTEGER:        
@@ -57,7 +57,7 @@ void Attribute::Build(int type,pObjData value){
         case DATA_T_DATETIME:
             if(!value){
                 //default to now
-                Value->DateTime = new DateTime;
+                Value->DateTime = (pDateTime)nmMalloc(sizeof(DateTime));
                 objCurrentDate(Value->DateTime);
                 return;
             }else{
@@ -75,7 +75,7 @@ void Attribute::Build(int type,pObjData value){
             return;
         default:
             Type=type;
-            Value = new ObjData;
+            Value = POD(nmMalloc(sizeof(ObjData)));
             //blind copy
             memcpy(Value,value,sizeof(ObjData));
             return;//exit NOW!
@@ -89,14 +89,14 @@ Attribute::Attribute(int type, pObjData value){
 //note that this is not handled above at the moment
 Attribute::Attribute(std::string value){
         Type=DATA_T_STRING;
-        Value= new ObjData;
+        Value= POD(nmMalloc(sizeof(ObjData)));
         bzero(Value,sizeof(ObjData));
         Value->String=(char *)strdup(value.c_str());
 }
 
 Attribute::Attribute(int value){
         Type=DATA_T_INTEGER;
-        Value= new ObjData;
+        Value= POD(nmMalloc(sizeof(ObjData)));
         bzero(Value,sizeof(ObjData));
         Value->Integer=value;
 }
@@ -111,7 +111,7 @@ Attribute::Attribute(pMoneyType value){
 
 Attribute::Attribute(Binary_t value){
         Type=DATA_T_BINARY;
-        Value= new ObjData;
+        Value= POD(nmMalloc(sizeof(ObjData)));
         bzero(Value,sizeof(ObjData));
         Value->Binary.Size=value.Size;
         Value->Binary.Data=value.Data;
@@ -132,10 +132,10 @@ Attribute::~Attribute(){
             free(Value->String);
             break;
         case DATA_T_DATETIME:
-            delete Value->DateTime;
+            nmFree(Value->DateTime,sizeof(DateTime));
             break;
     }//end clean type
-    delete Value;
+    nmFree(Value,sizeof(ObjData));
 }
 
 //stream operator

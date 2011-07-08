@@ -588,7 +588,7 @@ cpp/objdrv.a: cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
-%.so: %.cpp cpp/objdrv.a
+%.so: %.cpp cpp/attribute.o cpp/class_objdrv.o cpp/wrapper.o
 	$(CXX) $(CFLAGS:-Wno-implicit-function-declaration=-Wall) -DMODULE -shared -fPIC $^ -o $@
 	
 # Dependencies made by "make depend"

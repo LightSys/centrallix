@@ -149,11 +149,6 @@ cppOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
         }CATCH_ERR(NULL);
     }
 
-//default open query
-query_t *objdrv::OpenQuery(pObjQuery query, pObjTrxTree* oxt){
-    return new query_t(this);
-}
-
 /*** cppQueryFetch - get the next directory entry as an open object.
  ***/
 void*
