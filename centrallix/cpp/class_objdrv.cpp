@@ -92,7 +92,6 @@ char *objdrv::CentrallixString(std::string text){
 
 //stolen from obj_attr.c:734-741, thanks gbeeley & mmcgill
 pObjPresentationHints objdrv::NewHints(){
-   ///@bug repetive runs of show a.mem cause a SIGSEGV in malloc_consolidate
    pObjPresentationHints ph = (pObjPresentationHints)
            nmMalloc(sizeof(ObjPresentationHints));
    memset(ph,0,sizeof(ObjPresentationHints));

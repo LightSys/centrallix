@@ -8,7 +8,6 @@
 
 class cppmem: public objdrv{
     std::list<char> Buffer;
-    pSnNode nodethingy;
     bool Done;
     friend void FreeInstance(objdrv *inf, pObjTrxTree* oxt);
 public:
@@ -44,7 +43,6 @@ public:
 };
 
 int cppmem::Close(pObjTrxTree* oxt){
-    if(this->nodethingy)this->nodethingy->OpenCnt--;
     return 0;
 }
 
@@ -144,9 +142,6 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
     this->Done=false;
     this->Obj=obj;
     this->Pathname=std::string(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr));
-    //this->nodethingy = snReadNode(obj->Prev);
-    this->nodethingy = 0;
-    if(this->nodethingy)this->nodethingy->OpenCnt++;
     SetAtrribute("name",new Attribute(obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr)),oxt);
     SetAtrribute("outer_type",new Attribute("text/mem"),oxt);
     SetAtrribute("inner_type",new Attribute("application/octet-stream"),oxt);
@@ -157,7 +152,6 @@ cppmem::cppmem(pObject obj, int mask, pContentType systype, char* usrtype, pObjT
 
 cppmem::~cppmem(){
     std::cerr<<"Mem object "<< GetAtrribute("name") <<" signing off."<<std::endl;
-    if(this->nodethingy)this->nodethingy->OpenCnt--;
     Buffer.erase(Buffer.begin(),Buffer.end());
 }
 
