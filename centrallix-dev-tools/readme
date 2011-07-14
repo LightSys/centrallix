@@ -22,3 +22,24 @@ To use this language file as a syntax highlighter, do one of the following
 
 The second option will cause any .cmp, .app, .struct, and .rpt files
 to be automatically assigned to the Centrallix type highlighting.
+
+-------------
+
+For nano
+execute the following commands
+
+cd /usr/local/src/cx-git/centrallix-dev-tools
+sudo cp nanorc /etc
+sudo cp cx.nanorc /usr/share/nano
+
+-------------
+
+For Vi/Vim
+execute the following commands
+
+cd /usr/local/src/cx-git/centrallix-dev-tools
+sudo cp .vimrc ~
+sudo cp cx.vim /usr/share/vim/vim70/syntax/cx.vim
+
+(Please do check that these directories exist)
+-------------

@@ -36,10 +36,6 @@
 /* Description:	Widget template module					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgttplVerify - allows the driver to check elsewhere in the tree

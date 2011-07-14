@@ -33,19 +33,6 @@
 /*		textflow type areas.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_lm_text.h,v 1.1 2003/04/21 21:00:51 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3_lm_text.h,v $
-
-    $Log: prtmgmt_v3_lm_text.h,v $
-    Revision 1.1  2003/04/21 21:00:51  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
- **END-CVSDATA**********************************************************/
 
 
 #define PRT_TEXTLM_F_RMSPACE    PRT_OBJ_F_LMFLAG1       /* space was removed at end */

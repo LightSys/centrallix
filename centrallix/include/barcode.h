@@ -36,20 +36,6 @@
 /*		bars.							*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: barcode.h,v 1.1 2001/08/13 18:00:52 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/barcode.h,v $
-
-    $Log: barcode.h,v $
-    Revision 1.1  2001/08/13 18:00:52  gbeeley
-    Initial revision
-
-    Revision 1.1.1.1  2001/08/07 02:31:19  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** Barcode types **/

@@ -43,297 +43,6 @@
 /*		the objMultiQuery routine (obj_query.c).		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiquery.c,v 1.41 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
-
-    $Log: multiquery.c,v $
-    Revision 1.41  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.40  2010/09/08 22:22:43  gbeeley
-    - (bugfix) DELETE should only mark non-provided objects as null.
-    - (bugfix) much more intelligent join dependency checking, as well as
-      fix for queries containing mixed outer and non-outer joins
-    - (feature) support for two-level aggregates, as in select max(sum(...))
-    - (change) make use of expModifyParamByID()
-    - (change) disable RequestNotify mechanism as it needs to be reworked.
-
-    Revision 1.39  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.38  2009/06/26 16:04:26  gbeeley
-    - (feature) adding DELETE support
-    - (change) HAVING clause now honored in INSERT ... SELECT
-    - (bugfix) some join order issues resolved
-    - (performance) cache 0 or 1 row result sets during a join
-    - (feature) adding INCLUSIVE option to SUBTREE selects
-    - (bugfix) switch to qprintf for building RawData sql data
-    - (change) some minor refactoring
-
-    Revision 1.37  2008/03/20 00:46:36  gbeeley
-    - (bugfix) Fixing a bug introduced in revision 1.11 which caused
-      reopen_sql to fail on record creation.
-
-    Revision 1.36  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-    Revision 1.35  2008/03/14 18:25:44  gbeeley
-    - (feature) adding INSERT INTO ... SELECT support, for creating new data
-      using SQL as well as using SQL to copy rows around between different
-      objects.
-
-    Revision 1.34  2008/03/09 08:00:10  gbeeley
-    - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
-      close (wait until all objects are closed too), we should shutdown the
-      query execution, thus closing the underlying queries; this prevents
-      some deadlocking issues at the remote RDBMS.
-
-    Revision 1.33  2008/03/06 01:16:34  gbeeley
-    - (bugfix) Use qprintf to fix the way that parsed FROM and WHERE items
-      in a query are encoded.
-    - (bugfix) Enforce having only one SELECT clause per query.
-
-    Revision 1.32  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.31  2008/02/17 07:43:25  gbeeley
-    - (change) handle system attrbutes (name, inner_type, etc.) automatically
-      on queries, even if query has a join.
-
-    Revision 1.30  2007/12/13 23:28:52  gbeeley
-    - (bugfix) when determining to which FROM source to attach an unqualified
-      WHERE item, and the item is mentioned twice in the SELECT clause since
-      it appears from more than one FROM source, give precedence to earlier
-      FROM sources, not earlier SELECT items.
-
-    Revision 1.29  2007/12/06 01:02:02  gbeeley
-    - (bugfix) partial correction for an issue where unqualified WHERE items
-      were not being attached to the correct FROM source.  This can only be
-      fully corrected once we have a way to determine subobject attributes
-      without actually querying for those subobjects.  Was an issue when
-      searching (via osrc) through a SQL join.
-
-    Revision 1.28  2007/12/05 18:57:17  gbeeley
-    - (bugfix) request-notify was causing trouble when a "select *" was being
-      done, causing updates through a select * query to cause a crash.
-
-    Revision 1.27  2007/09/18 17:59:07  gbeeley
-    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
-      combined using AND.  This permits more flexible building of dynamic SQL
-      (no need to do fancy text processing in order to add another WHERE
-      constraint to the query).
-    - (bugfix) fix for crash when using "SELECT *" with a join.
-    - (change) permit the specification of one FROM source to be an "IDENTITY"
-      data source for the query.  That data source will be the one affected by
-      any inserting and deleting through the query.
-
-    Revision 1.26  2007/07/31 17:39:59  gbeeley
-    - (feature) adding "SELECT *" capability, rather than having to name each
-      attribute in every query.  Note - "select *" does result in a query
-      result set in which each row may differ in what attributes it has,
-      depending on the data source(s) used.
-
-    Revision 1.25  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.24  2007/03/15 17:39:59  gbeeley
-    - (bugfix) reset the NULL flag on mqSetAttrValue
-
-    Revision 1.23  2007/03/10 17:57:48  gbeeley
-    - minor tweaks to INSERT function in multiquery; needed to commit in order
-      to transfer work to a different location...
-
-    Revision 1.22  2007/03/04 05:04:47  gbeeley
-    - (change) This is a change to the way that expressions track which
-      objects they were last evaluated against.  The old method was causing
-      some trouble with stale data in some expressions.
-
-    Revision 1.21  2007/01/31 22:32:19  gbeeley
-    - (bugfix) Return error instead of data type when expression evaluation
-      fails on error (not on NULL however).
-
-    Revision 1.20  2006/07/07 22:09:04  gbeeley
-    - patched up some 'unused variable' compile errors
-    - (bugfix) double objClose() caught by ASSERTMAGIC when the last object
-      in a query result set is modified after the query is closed, and then
-      that last object is closed.
-
-    Revision 1.19  2005/10/18 22:50:33  gbeeley
-    - (bugfix) properly detect which object to go to for presentation hints,
-      and if it is a composite property (computed), just return default hints
-      for now since we'd have to do some fancy stuff with the hints values.
-
-    Revision 1.18  2005/09/24 20:19:18  gbeeley
-    - Adding "select ... from subtree /path" support to the SQL engine,
-      allowing the retrieval of an entire subtree with one query.  Uses
-      the new virtual attr support to supply the relative path of each
-      retrieved object.  Much the reverse of what a querytree object can
-      do.
-    - Memory leak fixes in multiquery.c
-    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
-
-    Revision 1.17  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.16  2004/06/12 04:02:28  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.15  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.14  2003/08/03 01:00:53  gbeeley
-    Suppress attr-not-found warnings for certain attrs in mq.
-
-    Revision 1.13  2003/05/30 17:39:50  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.12  2003/03/12 03:19:08  lkehresman
-    * Added basic presentation hint support to multiquery.  It only returns
-      hints for the first result set, which is the wrong way to do it.  I went
-      ahead and committed this so that peter and rupp can start working on the
-      other stuff while I work on implementing this correctly.
-
-    * Hints are now presented to the client in the form:
-      <a target=XHANDLE HREF='http://ATTRIBUTE/?HINTS#TYPE'>
-      where HINTS = hintname=value&hintname=value
-
-    Revision 1.11  2002/11/14 03:46:39  gbeeley
-    Updated some files that were depending on the old xaAddItemSorted() to
-    use xaAddItemSortedInt32() because these uses depend on sorting on a
-    binary integer field, which changes its physical byte ordering based
-    on the architecture of the machine's CPU.
-
-    Revision 1.10  2002/08/10 02:09:44  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.9  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.8  2002/04/30 23:27:45  gbeeley
-    Fixed a bug which caused a segfault on update of the last record if
-    the query had already been closed.
-
-    Revision 1.7  2002/04/05 06:10:11  gbeeley
-    Updating works through a multiquery when "FOR UPDATE" is specified at
-    the end of the query.  Fixed a reverse-eval bug in the expression
-    subsystem.  Updated form so queries are not terminated by a semicolon.
-    The DAT module was accepting it as a part of the pathname, but that was
-    a fluke :)  After "for update" the semicolon caused all sorts of
-    squawkage...
-
-    Revision 1.6  2002/04/05 04:42:43  gbeeley
-    Fixed a bug involving inconsistent serial numbers and objlist states
-    for a multiquery if the user skips back to a previous fetched object
-    context and then continues on with the fetching.  Problem also did
-    surface if user switched to last-fetched-object after switching to
-    a previously fetched one.
-
-    Revision 1.5  2002/03/23 01:30:44  gbeeley
-    Added ls__startat option to the osml "queryfetch" mechanism, in the
-    net_http.c driver.  Set ls__startat to the number of the first object
-    you want returned, where 1 is the first object (in other words,
-    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
-    clause to the multiquery module, but thought this would be easier and
-    just as effective for now.
-
-    Revision 1.4  2002/03/16 04:26:25  gbeeley
-    Added functionality in net_http's object access routines so that it,
-    when appropriate, sends the metadata attributes also, including the
-    following:  "name", "inner_type", "outer_type", and "annotation".
-
-    Revision 1.3  2001/09/28 20:04:50  gbeeley
-    Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
-    are now self-contained and require no redundant OBJECT nodes as parent
-    nodes.  Substantial reduction in expression node allocation and
-    evaluation.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:00:55  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:58  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Globals ***/
@@ -1027,6 +736,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
     int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr;
+    int n_tok;
     char* ptr;
     int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
@@ -1345,6 +1055,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("delete",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","DELETE statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || insert_cls || update_cls)
 				{
 				next_state = ParseError;
@@ -1377,6 +1094,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("insert",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","INSERT statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || update_cls || delete_cls)
 				{
 				next_state = ParseError;
@@ -1450,6 +1174,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("update",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","UPDATE statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || insert_cls || delete_cls)
 				{
 				next_state = ParseError;
@@ -1492,6 +1223,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				    {
 				    next_state = ParseError;
 				    mssError(1,"MQ","FOR UPDATE allowed only with SELECT");
+				    mlxNoteError(lxs);
+				    break;
+				    }
+				if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","SELECT ... FOR UPDATE disallowed because data changes are forbidden");
 				    mlxNoteError(lxs);
 				    break;
 				    }
@@ -1643,37 +1381,56 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		    /** Copy the entire item literally to the RawData for later compilation **/
 		    parenlevel = 0;
+		    n_tok = 0;
 		    while(1)
 		        {
 			t = mlxNextToken(lxs);
 			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 			    break;
+			n_tok++;
 			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
 			    break;
 			if (t == MLX_TOK_OPENPAREN) 
 			    parenlevel++;
 			if (t == MLX_TOK_CLOSEPAREN)
 			    parenlevel--;
-			if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0 && parenlevel == 0)
+			if (n_tok == 2 && new_qs->Presentation[0] != 0)
+			    {
+			    /** Second token, and first might have been a label.  See if it is an = **/
+			    if (t == MLX_TOK_EQUALS)
+				{
+				/** Label. **/
+				xsCopy(&new_qs->RawData,"",-1);
+				continue;
+				}
+			    else
+				/** Was not a label **/
+				new_qs->Presentation[0] = '\0';
+			    }
+			/*if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0 && parenlevel == 0)
 			    {
 			    strtcpy(new_qs->Presentation, new_qs->RawData.String, sizeof(new_qs->Presentation));
 			    if (strrchr(new_qs->Presentation,' '))
 			        *(strrchr(new_qs->Presentation,' ')) = '\0';
 			    xsCopy(&new_qs->RawData,"",-1);
 			    continue;
-			    }
+			    }*/
 			ptr = mlxStringVal(lxs,NULL);
 			if (!ptr) break;
 			if (t == MLX_TOK_STRING)
-			    {
 			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
 			else
-			    {
 			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
 			xsConcatenate(&new_qs->RawData," ",1);
+
+			/** If first token, see if it might be a label **/
+			if (n_tok == 1 && (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD))
+			    strtcpy(new_qs->Presentation, ptr, sizeof(new_qs->Presentation));
 			}
+
+		    /** If just one string token, it is a data value, not a label **/
+		    if (n_tok == 1 && new_qs->Presentation[0] != 0)
+			new_qs->Presentation[0] = '\0';
 
 		    /** Where to from here? **/
 		    if (t == MLX_TOK_COMMA)
@@ -2390,8 +2147,9 @@ mq_internal_NextStatement(pMultiQuery this)
 
 	/** Build the one-object list for evaluating the Having clause, etc. **/
 	stmt->OneObjList = expCreateParamList();
+	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
 	stmt->OneObjList->Session = stmt->Query->SessionID;
-	expAddParamToList(stmt->OneObjList, "this", NULL, 0);
+	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
 	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Compile the having expression, if one. **/
@@ -2478,6 +2236,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 
     	/** Allocate the multiquery structure itself. **/
 	this = (pMultiQuery)nmMalloc(sizeof(MultiQuery));
+	/*printf("ALLOC %s\n", query_text);*/
 	if (!this) return NULL;
 	memset(this,0,sizeof(MultiQuery));
 	this->CntSerial = 0;
@@ -2497,6 +2256,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    {
 	    this->Flags = MQ_F_MULTISTATEMENT; /* on by default, can be turned on/off */
 	    }
+	if (flags & OBJ_MQ_F_NOUPDATE)
+	    this->Flags |= MQ_F_NOUPDATE;
 
 	/** Parse the text of the query, building the syntax structure **/
 	this->LexerSession = mlxStringSession(this->QueryText, 
@@ -2511,7 +2272,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->ObjList = expCreateParamList();
 	if (objlist)
 	    {
-	    expCopyList(objlist, this->ObjList);
+	    expCopyList(objlist, this->ObjList, -1);
 	    /*expLinkParams(this->ObjList, 0, -1);*/
 	    this->nProvidedObjects = this->ObjList->nObjects;
 	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
@@ -2663,7 +2424,7 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	    obj = (pObject)(p->ObjList.Objects[i]);
 	    if (obj) objLinkTo(obj);
 	    }*/
-	expCopyList(qy->ObjList, p->ObjList);
+	expCopyList(qy->ObjList, p->ObjList, -1);
 	expLinkParams(p->ObjList, p->Stmt->Query->nProvidedObjects, -1);
 
 	p->Serial = qy->CurSerial;
@@ -2932,6 +2693,7 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	    expFreeParamList(qy->ObjList);
 	    }
 
+	/*printf("CLOSE %s\n", qy->QueryText);*/
 	if (qy->QueryText)
 	    nmSysFree(qy->QueryText);
 
@@ -3261,6 +3023,13 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 
     	/** Check to see whether we're on current object. **/
 	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
+
+	/** Updates not permitted? **/
+	if (p->Stmt->Query->Flags & MQ_F_NOUPDATE)
+	    {
+	    mssError(1,"MQ","setattr '%s' disallowed because data changes are forbidden", attrname);
+	    return -1;
+	    }
 
 	/** Figure out which attribute needs updating... **/
 	id = -1;

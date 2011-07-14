@@ -19,17 +19,6 @@
 /*		sure the result is null-terminated.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: strtcpy.c,v 1.1 2006/06/21 21:22:44 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/strtcpy.c,v $
-
-    $Log: strtcpy.c,v $
-    Revision 1.1  2006/06/21 21:22:44  gbeeley
-    - Preliminary versions of strtcpy() and qpfPrintf() calls, which can be
-      used for better safety in handling string data.
-
- **END-CVSDATA***********************************************************/
 
 /** branch prediction pseudo-macro - define if compiler doesn't support it **/
 #ifndef __builtin_expect

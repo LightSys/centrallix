@@ -164,7 +164,7 @@ function pg_set_style(element,attr, value)
 	    element[attr] = value;
 	    return;
 	    }
-	if (isNaN(parseInt(value)))
+	if (isNaN(parseInt(value)) || (String(value)).indexOf(" ") >= 0)
 	    element.style.setProperty(attr,value,"");
 	else
 	    element.style.setProperty(attr,parseInt(value) + "px","");
@@ -1213,8 +1213,14 @@ function pg_appwindowbuild(seen)
     seen[wgtrGetNamespace(this)] = this.pg_appwindows[wgtrGetNamespace(this)];
     for(var win in this.pg_appwindows)
 	{
-	if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	if (this.pg_appwindows[win].wobj != 'undefined' && this.pg_appwindows[win].wobj.__WgtrNamespace != win)
 	    {
+	    // has been reloaded, ignore this instance
+	    delete pg_appwindows[win];
+	    }
+	else if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	    {
+	    // good window, unseen as of yet, and it is open... query it for its list.
 	    var otherlist = this.pg_appwindows[win].wobj.AppWindowBuild(seen);
 	    for(var otherwin in otherlist)
 		{
@@ -1304,6 +1310,9 @@ function pg_cleanup()
     // remove this window from the app window lists
     window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
     window.AppWindowPropagate();
+
+    // Deinit the tree.
+    wgtrDeinitTree(window);
     }
 
 function pg_alert(aparam)
@@ -1360,33 +1369,56 @@ function pg_launch(aparam)
 	w_name = "new_window";
     else
 	w_name = aparam.Name;
+    w_name = window.__WgtrNamespace + '_' + w_name;
 
     // build the URL with parameters
     var url = new String(aparam.Source);
     for(var p in aparam)
 	{
+	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source')
+	    continue;
 	var v = aparam[p];
+	var r = wgtrCheckReference(v);
+	if (r) v = r;
 	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
 	    url += '&';
 	else
 	    url += '?';
 	url += (htutil_escape(p) + '=' + htutil_escape(v));
 	}
-    
-    if (aparam.Multi != null && aparam.Multi == true)
+
+    if (obscure_data)
 	{
-	for(var i = 0; i < 32; i++) // 32 max multi-instanced windows
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += "cx__obscure=yes";
+	}
+ 
+    // Find a unique name for the new window.
+    if (aparam.Multi != null && (aparam.Multi == true || aparam.Multi == 1))
+	{
+	for(var i = 0; i < 64; i++) // 64 max multi-instanced windows
 	    {
-	    if (window.windowlist[w_name + '_' + i] == null || window.windowlist[w_name + '_' + i].close == null)
-		w_name = w_name + '_' + i;
+	    var w_instance_name = w_name + '_' + i;
+	    if (!window.windowlist[w_instance_name] || !window.windowlist[w_instance_name].close)
+		{
+		w_name = w_instance_name;
+		break;
+		}
 	    }
 	}
-    if (window.windowlist[w_name] != null && window.windowlist[w_name].close != null) w_exists = true;
-    if ((aparam.Multi == null || aparam.Multi == false) && w_exists) 
+
+    // Already exists?
+    if (window.windowlist[w_name] && window.windowlist[w_name].close) w_exists = true;
+    if (!aparam.Multi && w_exists) 
 	{
 	window.windowlist[w_name].close();
 	w_exists = false;
 	}
+
+    // Open it.
     if (!w_exists) 
 	{
 	if (aparam.UseragentMenu != null && aparam.UseragentMenu && aparam.UseragentMenu != 'no')
@@ -1397,7 +1429,11 @@ function pg_launch(aparam)
 	    var resizable = ",resizable=yes";
 	else
 	    var resizable = ",resizable=no";
-	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	if (aparam.UseragentScroll != null && aparam.UseragentScroll && aparam.UseragentScroll != 'no')
+	    var scroll = ",scrollbars=yes";
+	else
+	    var scroll = ",scrollbars=no";
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
 	}
     }
 
@@ -1559,6 +1595,37 @@ function pg_timestamp()
 
 //START SECTION: 'expression' functions ----------------------------------------
 
+function pg_explisten(exp, obj, prop)
+    {
+    obj.pg_expchange = pg_expchange;
+    if (obj.ifcProbe && obj.ifcProbe(ifValue) && obj.ifcProbe(ifValue).Exists(prop))
+	obj.ifcProbe(ifValue).Watch(prop, null, pg_expchange);
+    else
+	htr_watch(obj,prop,"pg_expchange");
+    }
+
+function pg_expaddpart(exp, obj, prop)
+    {
+    var ref;
+    if (obj.reference && (ref = obj.reference()))
+	obj = ref;
+    for(var i=0; i<exp.ParamList.length; i++)
+	{
+	var item = exp.ParamList[i];
+	if (obj == item[2] && prop == item[1]) return;
+	if (obj.__WgtrName == item[0] && !item[2] && prop == item[1])
+	    {
+	    item[2] = obj;
+	    return;
+	    }
+	}
+    var _context = window[exp.Context];
+    var nodelist = wgtrNodeList(_context);
+    var item=[obj.__WgtrName, prop, obj];
+    exp.ParamList.push(item);
+    pg_explisten(exp, obj, prop);
+    }
+
 function pg_expression(o,p,e,l,c)
     {
     var expobj = {};
@@ -1571,22 +1638,20 @@ function pg_expression(o,p,e,l,c)
     var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
+    window.__cur_exp = expobj;
     wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
 	{
 	var item = l[i];
 	var ref;
+	if (item[0] == "*") continue; // cannot handle global listening yet
 	item[2] = nodelist[item[0]]; // get obj reference
 	if (item[2])
 	    {
 	    if (item[2].reference && (ref = item[2].reference()))
 		item[2] = ref;
-	    item[2].pg_expchange = pg_expchange;
-	    if (item[2].ifcProbe && item[2].ifcProbe(ifValue) && item[2].ifcProbe(ifValue).Exists(item[1]))
-		item[2].ifcProbe(ifValue).Watch(item[1], null, pg_expchange);
-	    else
-		htr_watch(item[2],item[1],"pg_expchange");
+	    pg_explisten(expobj, item[2], item[1]);
 	    }
 	}
     }
@@ -1596,6 +1661,7 @@ function pg_expchange_cb(exp) //SETH: ??
     var node = wgtrGetNode(window[exp.Context], exp.Objname);
     var _context = window[exp.Context];
     var _this = node;
+    window.__cur_exp = exp;
     var v = eval(exp.Expression);
     //pg_explog.push('assign: obj ' + node.__WgtrName + ', prop ' + exp.Propname + ', nv ' + v + ', exp ' + exp.Expression);
     wgtrSetProperty(node, exp.Propname, v);
@@ -2387,6 +2453,7 @@ function pg_tooltip(msg, x, y)
     if (!pg_tiplayer)
 	pg_tiplayer = htr_new_layer(pg_width);
     htr_setvisibility(pg_tiplayer, "hidden");
+    //pg_set_style(pg_tiplayer, "box-shadow", "2px 2px 4px black");
     pg_tipindex++;
     pg_tipinfo = {msg:msg, x:x, y:y};
     if (pg_tiptmout) pg_delsched(pg_tiptmout);
@@ -2423,12 +2490,12 @@ function pg_dotip_complete()
     if (isNaN(x1)) x1 = imgs[0].offsetLeft + imgs[0].offsetParent.offsetLeft;
     var x2 = getRelativeX(imgs[1]);
     if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
-    var tipw = (x2 - x1) + 6;
+    var tipw = (x2 - x1) + 5;
     var pgx = pg_tipinfo.x;
     var pgy = pg_tipinfo.y + 20;
     if (pgx + tipw > pg_width) pgx = pg_width - tipw;
     if (pgx < 0) pgx = 0;
-    setClipWidth(pg_tiplayer, tipw);
+    //setClipWidth(pg_tiplayer, tipw);
     pg_set_style(pg_tiplayer, "width", tipw + "px");
     moveToAbsolute(pg_tiplayer, pgx, pgy);
     htr_setzindex(pg_tiplayer, 99999);

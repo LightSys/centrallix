@@ -42,29 +42,6 @@
 /*		using a ruler :)					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: hppcl_prt.c,v 1.2 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/hppcl_prt.c,v $
-
-    $Log: hppcl_prt.c,v $
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1.1.1  2001/08/13 18:01:13  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:14  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 typedef struct
     {

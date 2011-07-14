@@ -1,0 +1,10 @@
+#!/bin/bash
+# Written by : jimtahu, edited by sjirkjan
+sed "s/<IMG[[:blank:]]*SRC=\"/<IMG SRC=\"\/apps\/kardia\/help\/$1\/images\//I" < $2 > new$2
+
+# to auto edit an html file, go to the directory where the html file is located, then in the command line type
+#	fix_path language_name filename
+#		where language_name is the name of the folder in which you have all the documentation for that language
+# This will look for any <IMG SRC= tags and tell the parser to look in
+# modules/base/help/folder/images for the images.
+# Also, rename the html file because this script prepends new to the filename.

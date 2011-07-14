@@ -33,9 +33,6 @@
 /*		a DHTML page from an application.                      	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
- **END-CVSDATA***********************************************************/
 
 #include "obj.h"
 #include "expression.h"
@@ -71,6 +68,7 @@ typedef struct
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];
     char*	AppPath;
+    char*	BaseDir;
     }
     WgtrClientInfo, *pWgtrClientInfo;
 

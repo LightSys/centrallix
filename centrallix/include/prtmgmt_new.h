@@ -36,23 +36,6 @@
 /*		to hpos/vpos anywhere on the page during page layout.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_new.h,v 1.2 2001/09/25 18:03:44 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_new.h,v $
-
-    $Log: prtmgmt_new.h,v $
-    Revision 1.2  2001/09/25 18:03:44  gbeeley
-    A few changes for the upcoming prtmgmt update.
-
-    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 #include "report.h"
 #include "barcode.h"

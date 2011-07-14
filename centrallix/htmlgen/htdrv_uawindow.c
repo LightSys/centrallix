@@ -40,22 +40,6 @@
 /* Description:	HTML Widget driver for a user-agent window        	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_uawindow.c,v 1.1 2010/09/09 00:39:13 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_uawindow.c,v $
-
-    $Log: htdrv_uawindow.c,v $
-    Revision 1.1  2010/09/09 00:39:13  gbeeley
-    - (change) allowing -pg (graph profiler) to be disabled by default
-      during compilation.  profile timer had some poor interaction with the
-      fork() system call, causing sporadic lockups.
-    - (feature) beginnings of "user agent window" widget
-    - (change) broke out mergesort() routine into its own independent function
-      instead of being a part of the prtmgmt module.
-
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
