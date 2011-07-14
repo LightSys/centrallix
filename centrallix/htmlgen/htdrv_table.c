@@ -1049,7 +1049,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		else
 		    stAddValue(attr_inf, "left", 0);
 		attr_inf = stAddAttr(t->col_infs[i], "type");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link")))
 		    stAddValue(attr_inf, ptr, 0);
 		else
 		    stAddValue(attr_inf, "text", 0);
