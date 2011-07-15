@@ -16,7 +16,7 @@ test(char** tname)
     pLxSession lxs;
     char* strval;
     int alloc;
-    char str[65536] = "";
+    static char str[65536] = "";
 
 	*tname = "mtlexer-12 normal/oversized keywords";
 

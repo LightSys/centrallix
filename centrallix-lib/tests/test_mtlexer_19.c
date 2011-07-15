@@ -17,7 +17,7 @@ test(char** tname)
     char* strval;
     int j;
     int strcnt;
-    char str[65536] = "Header: 'Val1 Val2 Val3'\r\nHeader-2: Val1 'Val2 Val3'\r\nHeader-3: 'Val1 Val2' Val3\r\n";
+    static char str[65536] = "Header: 'Val1 Val2 Val3'\r\nHeader-2: Val1 'Val2 Val3'\r\nHeader-3: 'Val1 Val2' Val3\r\n";
     int n_tok = 16;
     int toktype[16] = {MLX_TOK_KEYWORD, MLX_TOK_COLON, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_KEYWORD, MLX_TOK_COLON, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_KEYWORD, MLX_TOK_COLON, MLX_TOK_STRING, MLX_TOK_KEYWORD, MLX_TOK_EOL, MLX_TOK_EOF};
     char* tokstr[10] = { "Header", "'Val1", "Val2", "Val3'", "Header-2", " Val1 'Val2 Val3'\r\n", "Header-3", "Val1 Val2", "Val3", NULL };
