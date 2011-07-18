@@ -257,7 +257,7 @@ wgtr_param_GetAttrValue(pWgtrAppParam params[], char* attrname, int type, pObjDa
     }
 
 
-int  ///@todo Take note of func workings
+int
 wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base_name)
     {
     pObjProperty p;
@@ -422,8 +422,8 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
   filename = (char *)malloc(strlen(path)+strlen((char *)mssGetParam("locale")));
   filename[0] = '\0';
   strcat(filename,path);
-  for(iter=filename+strlen(filename)-1;*iter != '.' && *iter != filename;iter--);
-  for(;*iter != '/' && *iter != filename;iter--)
+  for(iter=filename+strlen(filename)-1; *iter != '.' && iter != filename;iter--);
+  for(;*iter != '/' && iter != filename;iter--)
   *iter = '\0';
   strcat(filename,"/");
   strcat(filename,locales);
@@ -589,7 +589,10 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		    }
 		}
 	    }
+	
 	//Load localizations
+	if(!wgtrGetPropertyValue(this_node,"locale",DATA_T_STRING,&val))
+		mssSetParam("locale",val.String);
 	if(!wgtrGetPropertyValue(this_node,"locales",DATA_T_STRING,&val))
 		wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
 	/** loop through attributes to fill out the properties array **/
@@ -612,6 +615,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	    /** add property to node **/
 		// This looks like a good place to apply the localization
 		if (prop_type == DATA_T_STRING){
+			//if a locale file, update NOW
 			if(!strncmp(prop_name,"locales",7))
 				wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
 #ifdef LOC_DEBUG
