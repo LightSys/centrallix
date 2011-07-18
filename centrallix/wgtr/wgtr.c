@@ -589,12 +589,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		    }
 		}
 	    }
-	
-	//Load localizations
-	if(!wgtrGetPropertyValue(this_node,"locale",DATA_T_STRING,&val))
-		mssSetParam("locale",val.String);
-	if(!wgtrGetPropertyValue(this_node,"locales",DATA_T_STRING,&val))
-		wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
+
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
 	while (prop_name)
@@ -613,21 +608,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		}
 
 	    /** add property to node **/
-		// This looks like a good place to apply the localization
-		if (prop_type == DATA_T_STRING){
-			//if a locale file, update NOW
-			if(!strncmp(prop_name,"locales",7))
-				wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
-#ifdef LOC_DEBUG
-			mssError(0, "WGTR", "Checking for %s", val.String);
-#endif
-			if(xhLookup(&(WGTR.Translations),val.String)){
-			  val.String = xhLookup(&(WGTR.Translations),val.String);
-#ifdef LOC_DEBUG
-			  mssError(0, "WGTR", "Found %s", val.String);
-#endif
-			}
-		  }
+		
 	    /** see if it's a property we want to alias for easy access **/
 	    if (prop_type == DATA_T_INTEGER)
 		{
@@ -668,6 +649,33 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	/** Setup (call driver New function) **/
 	if (wgtrSetupNode(this_node) < 0)
 	    goto error;
+
+// This looks like a better place to apply the localization
+	//Load localizations
+	if(!wgtrGetPropertyValue(this_node,"locale",DATA_T_STRING,&val))
+		mssSetParam("locale",val.String);
+	if(!wgtrGetPropertyValue(this_node,"locales",DATA_T_STRING,&val))
+		wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
+	//now, apply what we learned
+	for(prop_name=wgtrFirstPropertyName(this_node);prop_name;
+			prop_name=wgtrNextPropertyName(this_node)){
+		//get type
+		prop_type = wgtrGetPropertyType(this_node,prop_name);
+		if (prop_type == DATA_T_STRING){
+			//get value
+			wgtrGetPropertyValue(this_node,prop_name,DATA_T_STRING,&val);
+#ifdef LOC_DEBUG
+			mssError(0, "WGTR", "Checking for %s", val.String);
+#endif
+			if(xhLookup(&(WGTR.Translations),val.String)){
+			  val.String = xhLookup(&(WGTR.Translations),val.String);
+			  wgtrSetProperty(this_node,prop_name,DATA_T_STRING,&val);
+#ifdef LOC_DEBUG
+			  mssError(0, "WGTR", "Found %s", val.String);
+#endif
+			}//end if translation
+		  }//end if string
+	  }//end for wgtrPropery
 
 	return this_node;
 
