@@ -51,6 +51,7 @@
 
 
 #define WGTR_MAX_PARAMS		(24)
+#define LOC_DEBUG
 
 //global prefix for repeat widget
 int prefix=1;
@@ -406,6 +407,7 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     }
 
 int wgtrLoadLocale(pObjSession s, const char *path){
+  int nxTok;
   char *filename,*iter;
   char *genword, *locword;
   pObject trans;
@@ -423,32 +425,36 @@ int wgtrLoadLocale(pObjSession s, const char *path){
   *iter = '\0';
   strcat(filename,".");
   strcat(filename,(char *)mssGetParam("locale"));
+#ifdef LOC_DEBUG
   mssError(0, "WGTR", "Translation for %s from %s", path, filename);
-
+#endif
   //open the file
   trans=objOpen(s,filename,OBJ_O_RDONLY,0600,"system/file");
   if(!trans)mssError(0, "WGTR", "Could not load locale file %s.", filename);
 
   //read in translations
-  lexer = mlxGenericSession(trans,objRead,MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
-  //mlxNextToken(lexer); //get MLX_TOK_BEGIN
+  lexer = mlxGenericSession(trans,objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
   //now, actually read the thing
   while(1){
-	if(mlxNextToken(lexer)!=MLX_TOK_STRING){
+	  nxTok = mlxNextToken(lexer);
+	  if(nxTok == MLX_TOK_EOF)break;
+	if(nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD){
 	  mssError(0, "WGTR", "Malformed translation file %s, wanted genword.",filename);	  
 	  break;
 	  }
-	genword = mlxStringVal(lexer,0);
-	if(mlxNextToken(lexer)!=MLX_TOK_EQUALS){
+	genword = nmSysStrdup(mlxStringVal(lexer,0));
+	if(mlxNextToken(lexer) != MLX_TOK_EQUALS){
 	  mssError(0, "WGTR", "Malformed translation file %s, wanted =.",filename);
 	  break;
 	  }
-	if(mlxNextToken(lexer)!=MLX_TOK_STRING){
+	if(mlxNextToken(lexer) != MLX_TOK_STRING){
 	  mssError(0, "WGTR", "Malformed translation file %s, wanted locword.",filename);
 	  break;
 	  }
-	locword = mlxStringVal(lexer,0);
+	locword = nmSysStrdup(mlxStringVal(lexer,0));
+#ifdef LOC_DEBUG
 	mssError(0, "WGTR", "%s means %s", genword, locword);
+#endif
 	xhAdd(&(WGTR.Translations), genword, locword);
 	}
   //alldone, cleanup
@@ -593,9 +599,17 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 
 	    /** add property to node **/
 		// This looks like a good place to apply the localization
-		if (prop_type == DATA_T_STRING && xhLookup(&(WGTR.Translations),val.String))
+		if (prop_type == DATA_T_STRING){
+#ifdef LOC_DEBUG
+			mssError(0, "WGTR", "Checking for %s", val.String);
+#endif
+			if(xhLookup(&(WGTR.Translations),val.String)){
 			  val.String = xhLookup(&(WGTR.Translations),val.String);
-		
+#ifdef LOC_DEBUG
+			  mssError(0, "WGTR", "Found %s", val.String);
+#endif
+			}
+		  }
 	    /** see if it's a property we want to alias for easy access **/
 	    if (prop_type == DATA_T_INTEGER)
 		{
