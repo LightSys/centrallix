@@ -46,6 +46,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/xhash.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/mtsession.h"
 #include "ht_render.h"
 
 
@@ -83,6 +84,7 @@ struct
     XHashTable	    Methods;		    /* deployment methods */
     XArray	    Drivers;		    /* simple driver listing */
     XHashTable	    DriversByType;
+	XHashTable	Translations;
     long	    SerialID;
     } WGTR;
 
@@ -254,7 +256,7 @@ wgtr_param_GetAttrValue(pWgtrAppParam params[], char* attrname, int type, pObjDa
     }
 
 
-int
+int  ///@todo Take note of func workings
 wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base_name)
     {
     pObjProperty p;
@@ -403,6 +405,58 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     return template;
     }
 
+int wgtrLoadLocale(pObjSession s, const char *path){
+  char *filename,*iter;
+  char *genword, *locword;
+  pObject trans;
+  pLxSession lexer;
+  
+  if(!mssGetParam("locale")){
+	  mssError(0, "WGTR", "Could not get a locale, none loaded!");
+	  return 0;
+	}
+  //build pathname and open file
+  filename = (char *)malloc(strlen(path)+strlen((char *)mssGetParam("locale")));
+  filename[0] = '\0';
+  strcat(filename,path);
+  for(iter=filename+strlen(filename); !(*iter == '.' || iter == filename); iter--);
+  *iter = '\0';
+  strcat(filename,".");
+  strcat(filename,(char *)mssGetParam("locale"));
+  mssError(0, "WGTR", "Translation for %s from %s", path, filename);
+
+  //open the file
+  trans=objOpen(s,filename,OBJ_O_RDONLY,0600,"system/file");
+  if(!trans)mssError(0, "WGTR", "Could not load locale file %s.", filename);
+
+  //read in translations
+  lexer = mlxGenericSession(trans,objRead,MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
+  //mlxNextToken(lexer); //get MLX_TOK_BEGIN
+  //now, actually read the thing
+  while(1){
+	if(mlxNextToken(lexer)!=MLX_TOK_STRING){
+	  mssError(0, "WGTR", "Malformed translation file %s, wanted genword.",filename);	  
+	  break;
+	  }
+	genword = mlxStringVal(lexer,0);
+	if(mlxNextToken(lexer)!=MLX_TOK_EQUALS){
+	  mssError(0, "WGTR", "Malformed translation file %s, wanted =.",filename);
+	  break;
+	  }
+	if(mlxNextToken(lexer)!=MLX_TOK_STRING){
+	  mssError(0, "WGTR", "Malformed translation file %s, wanted locword.",filename);
+	  break;
+	  }
+	locword = mlxStringVal(lexer,0);
+	mssError(0, "WGTR", "%s means %s", genword, locword);
+	xhAdd(&(WGTR.Translations), genword, locword);
+	}
+  //alldone, cleanup
+  if(lexer)mlxCloseSession(lexer);
+  if(trans)objClose(trans);
+  free(filename);
+  return 0;
+}
 
 pWgtrNode 
 wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, char* templates[])
@@ -518,7 +572,8 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		    }
 		}
 	    }
-	
+	//Load localizations
+	wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf);
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
 	while (prop_name)
@@ -537,7 +592,10 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		}
 
 	    /** add property to node **/
-
+		// This looks like a good place to apply the localization
+		if (prop_type == DATA_T_STRING && xhLookup(&(WGTR.Translations),val.String))
+			  val.String = xhLookup(&(WGTR.Translations),val.String);
+		
 	    /** see if it's a property we want to alias for easy access **/
 	    if (prop_type == DATA_T_INTEGER)
 		{
@@ -2014,7 +2072,8 @@ wgtrInitialize()
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
-
+	xhInit(&(WGTR.Translations), 16, 0);
+		
 	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/

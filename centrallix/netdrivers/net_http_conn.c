@@ -478,6 +478,8 @@ nht_internal_ConnHandler(void* connfd_v)
 	    nsess->CachedApps = (pXHashTable)nmSysMalloc(sizeof(XHashTable));
 	    xhInit(nsess->CachedApps, 127, 4);
 	    conn->NhtSession = nsess;
+		//default to en_US?
+		mssSetParam("locale","en_US");
 	    printf("NHT: new session for username [%s], cookie [%s]\n", nsess->Username, nsess->Cookie);
 	    nht_internal_LinkSess(conn->NhtSession);
 	    }
