@@ -406,7 +406,7 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     return template;
     }
 
-int wgtrLoadLocale(pObjSession s, const char *path){
+int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
   int nxTok;
   char *filename,*iter;
   char *genword, *locword;
@@ -417,25 +417,29 @@ int wgtrLoadLocale(pObjSession s, const char *path){
 	  mssError(0, "WGTR", "Could not get a locale, none loaded!");
 	  return 0;
 	}
+
   //build pathname and open file
   filename = (char *)malloc(strlen(path)+strlen((char *)mssGetParam("locale")));
   filename[0] = '\0';
   strcat(filename,path);
-  for(iter=filename+strlen(filename); !(*iter == '.' || iter == filename); iter--);
+  for(iter=filename+strlen(filename)-1;*iter != '.' && *iter != filename;iter--);
+  for(;*iter != '/' && *iter != filename;iter--)
   *iter = '\0';
-  strcat(filename,".");
+  strcat(filename,"/");
+  strcat(filename,locales);
+  strcat(filename,"/");
   strcat(filename,(char *)mssGetParam("locale"));
 #ifdef LOC_DEBUG
-  mssError(0, "WGTR", "Translation for %s from %s", path, filename);
+  mssError(0, "WGTR", "Translation from %s", filename);
 #endif
+  
   //open the file
   trans=objOpen(s,filename,OBJ_O_RDONLY,0600,"system/file");
   if(!trans){
 	  mssError(0, "WGTR", "Could not load locale file %s", filename);
 	  goto cleanup;
 	}
-  //clear old translations
-  xhClear(&(WGTR.Translations),0,0);
+  
   //read in translations
   lexer = mlxGenericSession(trans,objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
   //now, actually read the thing
@@ -459,6 +463,8 @@ int wgtrLoadLocale(pObjSession s, const char *path){
 #ifdef LOC_DEBUG
 	mssError(0, "WGTR", "%s means %s", genword, locword);
 #endif
+	//replace old translations
+	xhRemove(&(WGTR.Translations), genword);
 	xhAdd(&(WGTR.Translations), genword, locword);
 	}
   //alldone, cleanup
@@ -584,7 +590,8 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		}
 	    }
 	//Load localizations
-	wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf);
+	if(!wgtrGetPropertyValue(this_node,"locales",DATA_T_STRING,&val))
+		wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
 	while (prop_name)
@@ -605,6 +612,8 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	    /** add property to node **/
 		// This looks like a good place to apply the localization
 		if (prop_type == DATA_T_STRING){
+			if(!strncmp(prop_name,"locales",7))
+				wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
 #ifdef LOC_DEBUG
 			mssError(0, "WGTR", "Checking for %s", val.String);
 #endif
