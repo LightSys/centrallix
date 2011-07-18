@@ -277,7 +277,7 @@ function tbld_set_thumb(maxid, startat, maxwindowsize)
 
     // Set scrollbar visibility
     if (this.demand_scrollbar)
-	htr_setvisibility(this.scrollbar, (theight == tavail)?"hidden":"visible");
+	htr_setvisibility(this.scrollbar, (theight == tavail)?"hidden":"inherit");
     }
 
 function tbld_hide_unused_rows()
