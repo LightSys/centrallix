@@ -410,8 +410,8 @@ int wgtrLoadLocale(pObjSession s, const char *path){
   int nxTok;
   char *filename,*iter;
   char *genword, *locword;
-  pObject trans;
-  pLxSession lexer;
+  pObject trans=NULL;
+  pLxSession lexer=NULL;
   
   if(!mssGetParam("locale")){
 	  mssError(0, "WGTR", "Could not get a locale, none loaded!");
@@ -430,8 +430,12 @@ int wgtrLoadLocale(pObjSession s, const char *path){
 #endif
   //open the file
   trans=objOpen(s,filename,OBJ_O_RDONLY,0600,"system/file");
-  if(!trans)mssError(0, "WGTR", "Could not load locale file %s.", filename);
-
+  if(!trans){
+	  mssError(0, "WGTR", "Could not load locale file %s", filename);
+	  goto cleanup;
+	}
+  //clear old translations
+  xhClear(&(WGTR.Translations),0,0);
   //read in translations
   lexer = mlxGenericSession(trans,objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
   //now, actually read the thing
@@ -439,16 +443,16 @@ int wgtrLoadLocale(pObjSession s, const char *path){
 	  nxTok = mlxNextToken(lexer);
 	  if(nxTok == MLX_TOK_EOF)break;
 	if(nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD){
-	  mssError(0, "WGTR", "Malformed translation file %s, wanted genword.",filename);	  
+	  mssError(0, "WGTR", "Malformed translation file %s, wanted genword",filename);	  
 	  break;
 	  }
 	genword = nmSysStrdup(mlxStringVal(lexer,0));
 	if(mlxNextToken(lexer) != MLX_TOK_EQUALS){
-	  mssError(0, "WGTR", "Malformed translation file %s, wanted =.",filename);
+	  mssError(0, "WGTR", "Malformed translation file %s, wanted =",filename);
 	  break;
 	  }
 	if(mlxNextToken(lexer) != MLX_TOK_STRING){
-	  mssError(0, "WGTR", "Malformed translation file %s, wanted locword.",filename);
+	  mssError(0, "WGTR", "Malformed translation file %s, wanted locword",filename);
 	  break;
 	  }
 	locword = nmSysStrdup(mlxStringVal(lexer,0));
@@ -458,6 +462,7 @@ int wgtrLoadLocale(pObjSession s, const char *path){
 	xhAdd(&(WGTR.Translations), genword, locword);
 	}
   //alldone, cleanup
+  cleanup:
   if(lexer)mlxCloseSession(lexer);
   if(trans)objClose(trans);
   free(filename);
