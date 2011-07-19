@@ -433,7 +433,7 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
   strcat(filename,"/");
   strcat(filename,(char *)mssGetParam("locale"));
 #ifdef LOC_DEBUG
-  mssError(0, "WGTR", "Translation from %s", filename);
+  mssError(0, "I18N", "Translation from %s", filename);
 #endif
   
   //open the file
@@ -494,7 +494,7 @@ cleanup:
 
 char *translate(char *text,int *found){
   int i;
-  char *trans;
+  char *trans=NULL;
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Checking for %s", text);
 #endif
@@ -511,7 +511,7 @@ char *translate(char *text,int *found){
   for(i=0;i<xaCount(&(WGTR.TranslationsFront));i++){
 	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsFront),i));
 	  if(loc){
-		  trans = (char *)malloc(strlen(loc)
+		  trans = (char *)nmSysMalloc(strlen(loc)
 				  +strlen(xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsFront),i))));
 		  trans[0]='\0';
@@ -522,7 +522,7 @@ char *translate(char *text,int *found){
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
 		  if(found)*found=1;
-		  return trans;
+		  text = trans;
 		}//end if found
 	}//end for trans front
 
@@ -530,7 +530,7 @@ char *translate(char *text,int *found){
   for(i=0;i<xaCount(&(WGTR.TranslationsBack));i++){
 	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsBack),i));
 	  if(loc){
-		  trans = (char *)malloc(strlen(loc)
+		  trans = (char *)nmSysMalloc(strlen(loc)
 				  +strlen(xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsBack),i))));
 		  trans[0]='\0';
@@ -542,7 +542,7 @@ char *translate(char *text,int *found){
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
 		  if(found)*found=1;
-		  return trans;
+		  text = trans;
 		}//end if found
 	}//end for trans end
 
@@ -550,7 +550,7 @@ char *translate(char *text,int *found){
   for(i=0;i<xaCount(&(WGTR.TranslationsMid));i++){
 	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsMid),i));
 	  if(loc){
-		  trans = (char *)malloc(strlen(text)
+		  trans = (char *)nmSysMalloc(strlen(text)
 				  +strlen(xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsMid),i))));
 		  trans[0]='\0';
@@ -558,18 +558,17 @@ char *translate(char *text,int *found){
 		  strcat(trans,text);
 		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsMid),i)));
-		  strcat(trans,loc+strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid),i)))+1);
+		  strcat(trans,loc+strlen(xaGetItem(&(WGTR.TranslationsMid),i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
 		  if(found)*found=1;
-		  return trans;
+		  text = trans;
 		}//end if found
 	}//end for trans mid
 
-  //not found, return original
-  if(found)*found=0;
+  //if nothing found, return original
+  if(!trans)*found=0;
   return text;
 }//translate
 
