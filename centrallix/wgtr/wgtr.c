@@ -88,6 +88,7 @@ struct
 	XHashTable	TranslationsHash;
 	XArray		TranslationsFront;
 	XArray		TranslationsBack;
+	XArray		TranslationsMid;
     long	    SerialID;
     } WGTR;
 
@@ -463,7 +464,12 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
 	  }
 	locword = nmSysStrdup(mlxStringVal(lexer,0));
 	if(strchr(genword,'*')){
-		if(strchr(genword,'*')==genword){
+		if(strchr(genword,'*')==genword 
+				&& strrchr(genword,'*')==(genword+strlen(genword)-1)){
+			genword++;
+			*(genword+strlen(genword)-1)='\0';
+			xaAddItem(&(WGTR.TranslationsMid),genword);
+		}else if(strchr(genword,'*')==genword){
 			genword++;
 			xaAddItem(&(WGTR.TranslationsBack),genword);
 		}else{
@@ -538,7 +544,29 @@ char *translate(char *text,int *found){
 		  if(found)*found=1;
 		  return trans;
 		}//end if found
-	}//end for trans front
+	}//end for trans end
+
+  //now look for translations in the middle :D
+  for(i=0;i<xaCount(&(WGTR.TranslationsMid));i++){
+	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsMid),i));
+	  if(loc){
+		  trans = (char *)malloc(strlen(text)
+				  +strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsMid),i))));
+		  trans[0]='\0';
+		  loc[0]='\0';
+		  strcat(trans,text);
+		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsMid),i)));
+		  strcat(trans,loc+strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsMid),i)))+1);
+#ifdef LOC_DEBUG
+		  mssError(0, "I18N", "Found %s", trans);
+#endif
+		  if(found)*found=1;
+		  return trans;
+		}//end if found
+	}//end for trans mid
 
   //not found, return original
   if(found)*found=0;
@@ -2178,6 +2206,7 @@ wgtrInitialize()
 	xhInit(&(WGTR.TranslationsHash), 16, 0);
 	xaInit(&(WGTR.TranslationsFront), 16);
 	xaInit(&(WGTR.TranslationsBack), 16);
+	xaInit(&(WGTR.TranslationsMid), 16);
 	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/
