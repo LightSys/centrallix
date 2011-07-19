@@ -407,168 +407,189 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
 	template->ThisTemplatePath = nmSysStrdup(path);
 
     return template;
-    }
+}
 
-int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
+int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
+{
   int nxTok;
-  char *filename,*iter;
+  char *filename, *iter;
   char *genword, *locword;
-  pObject trans=NULL;
-  pLxSession lexer=NULL;
-  
-  if(!mssGetParam("locale")){
+  pObject trans = NULL;
+  pLxSession lexer = NULL;
+
+  if (!mssGetParam("locale"))
+	{
 	  mssError(0, "I18N", "Could not get a locale, none loaded!");
 	  return 0;
 	}
 
   //build pathname and open file
-  filename = (char *)malloc(strlen(path)+strlen((char *)mssGetParam("locale")));
+  filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
   filename[0] = '\0';
-  strcat(filename,path);
-  for(iter=filename+strlen(filename)-1; *iter != '.' && iter != filename;iter--);
-  for(;*iter != '/' && iter != filename;iter--);
+  strcat(filename, path);
+  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
+  for (; *iter != '/' && iter != filename; iter--);
   *iter = '\0';
-  strcat(filename,"/");
-  strcat(filename,locales);
-  strcat(filename,"/");
-  strcat(filename,(char *)mssGetParam("locale"));
+  strcat(filename, "/");
+  strcat(filename, locales);
+  strcat(filename, "/");
+  strcat(filename, (char *)mssGetParam("locale"));
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Translation from %s", filename);
 #endif
-  
+
   //open the file
-  trans=objOpen(s,filename,OBJ_O_RDONLY,0600,"system/file");
-  if(!trans){
+  trans = objOpen(s, filename, OBJ_O_RDONLY, 0600, "system/file");
+  if (!trans)
+	{
 	  mssError(0, "I18N", "Could not load locale file %s", filename);
 	  goto cleanup;
 	}
-  
+
   //read in translations
-  lexer = mlxGenericSession(trans,objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
+  lexer = mlxGenericSession(trans, objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
   //now, actually read the thing
-  while(1){
+  while (1)
+	{
 	  nxTok = mlxNextToken(lexer);
-	  if(nxTok == MLX_TOK_EOF)break;
-	if(nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD){
-	  mssError(0, "I18N", "Malformed translation file %s, wanted genword",filename);
-	  break;
-	  }
-	genword = nmSysStrdup(mlxStringVal(lexer,0));
-	if(mlxNextToken(lexer) != MLX_TOK_EQUALS){
-	  mssError(0, "I18N", "Malformed translation file %s, wanted =",filename);
-	  break;
-	  }
-	if(mlxNextToken(lexer) != MLX_TOK_STRING){
-	  mssError(0, "I18N", "Malformed translation file %s, wanted locword",filename);
-	  break;
-	  }
-	locword = nmSysStrdup(mlxStringVal(lexer,0));
-	if(strchr(genword,'*')){
-		if(strchr(genword,'*')==genword 
-				&& strrchr(genword,'*')==(genword+strlen(genword)-1)){
-			genword++;
-			*(genword+strlen(genword)-1)='\0';
-			xaAddItem(&(WGTR.TranslationsMid),genword);
-		}else if(strchr(genword,'*')==genword){
-			genword++;
-			xaAddItem(&(WGTR.TranslationsBack),genword);
-		}else{
-			*(genword+strlen(genword)-1)='\0';
-			xaAddItem(&(WGTR.TranslationsFront),genword);
+	  if (nxTok == MLX_TOK_EOF)break;
+	  if (nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD)
+		{
+		  mssError(0, "I18N", "Malformed translation file %s, wanted genword", filename);
+		  break;
 		}
-	}//end if *
+	  genword = nmSysStrdup(mlxStringVal(lexer, 0));
+	  if (mlxNextToken(lexer) != MLX_TOK_EQUALS)
+		{
+		  mssError(0, "I18N", "Malformed translation file %s, wanted =", filename);
+		  break;
+		}
+	  if (mlxNextToken(lexer) != MLX_TOK_STRING)
+		{
+		  mssError(0, "I18N", "Malformed translation file %s, wanted locword", filename);
+		  break;
+		}
+	  locword = nmSysStrdup(mlxStringVal(lexer, 0));
+	  if (strchr(genword, '*'))
+		{
+		  if (strchr(genword, '*') == genword
+				  && strrchr(genword, '*') == (genword + strlen(genword) - 1))
+			{
+			  genword++;
+			  *(genword + strlen(genword) - 1) = '\0';
+			  xaAddItem(&(WGTR.TranslationsMid), genword);
+			}
+		  else if (strchr(genword, '*') == genword)
+			{
+			  genword++;
+			  xaAddItem(&(WGTR.TranslationsBack), genword);
+			}
+		  else
+			{
+			  *(genword + strlen(genword) - 1) = '\0';
+			  xaAddItem(&(WGTR.TranslationsFront), genword);
+			}
+		}//end if *
 #ifdef LOC_DEBUG
-	mssError(0, "I18N", "%s means %s", genword, locword);
+	  mssError(0, "I18N", "%s means %s", genword, locword);
 #endif
-	//replace old translations
-	xhRemove(&(WGTR.TranslationsHash), genword);
-	xhAdd(&(WGTR.TranslationsHash), genword, locword);
+	  //replace old translations
+	  xhRemove(&(WGTR.TranslationsHash), genword);
+	  xhAdd(&(WGTR.TranslationsHash), genword, locword);
 	}
   //alldone, cleanup
 cleanup:
-  if(lexer)mlxCloseSession(lexer);
-  if(trans)objClose(trans);
+  if (lexer)mlxCloseSession(lexer);
+  if (trans)objClose(trans);
   free(filename);
   return 0;
 }
 
-char *translate(char *text,int *found){
+char *translate(char *text, int *found)
+{
   int i;
-  char *trans=NULL;
+  char *trans = NULL;
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Checking for %s", text);
 #endif
-  if (xhLookup(&(WGTR.TranslationsHash), text)){
+  if (xhLookup(&(WGTR.TranslationsHash), text))
+	{
 	  trans = xhLookup(&(WGTR.TranslationsHash), text);
 #ifdef LOC_DEBUG
 	  mssError(0, "I18N", "Found %s", trans);
 #endif
-	  if(found)*found=1;
+	  if (found)*found = 1;
 	  return trans;
 	}//end hash lookup
-  
+
   //now look for translations which start the same way
-  for(i=0;i<xaCount(&(WGTR.TranslationsFront));i++){
-	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsFront),i));
-	  if(loc){
+  for (i = 0; i < xaCount(&(WGTR.TranslationsFront)); i++)
+	{
+	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsFront), i));
+	  if (loc)
+		{
 		  trans = (char *)nmSysMalloc(strlen(loc)
-				  +strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsFront),i))));
-		  trans[0]='\0';
-		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsFront),i)));
-		  strcat(trans,loc+strlen(xaGetItem(&(WGTR.TranslationsFront),i)));
+				  + strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsFront), i))));
+		  trans[0] = '\0';
+		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsFront), i)));
+		  strcat(trans, loc + strlen(xaGetItem(&(WGTR.TranslationsFront), i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
-		  if(found)*found=1;
+		  if (found)*found = 1;
 		  text = trans;
 		}//end if found
 	}//end for trans front
 
   //now look for translations which *end* the same way
-  for(i=0;i<xaCount(&(WGTR.TranslationsBack));i++){
-	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsBack),i));
-	  if(loc){
+  for (i = 0; i < xaCount(&(WGTR.TranslationsBack)); i++)
+	{
+	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsBack), i));
+	  if (loc)
+		{
 		  trans = (char *)nmSysMalloc(strlen(loc)
-				  +strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack),i))));
-		  trans[0]='\0';
-		  loc[0]='\0';
-		  strcat(trans,text);
-		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack),i)));
+				  + strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsBack), i))));
+		  trans[0] = '\0';
+		  loc[0] = '\0';
+		  strcat(trans, text);
+		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsBack), i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
-		  if(found)*found=1;
+		  if (found)*found = 1;
 		  text = trans;
 		}//end if found
 	}//end for trans end
 
   //now look for translations in the middle :D
-  for(i=0;i<xaCount(&(WGTR.TranslationsMid));i++){
-	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsMid),i));
-	  if(loc){
+  for (i = 0; i < xaCount(&(WGTR.TranslationsMid)); i++)
+	{
+	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsMid), i));
+	  if (loc)
+		{
 		  trans = (char *)nmSysMalloc(strlen(text)
-				  +strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid),i))));
-		  trans[0]='\0';
-		  loc[0]='\0';
-		  strcat(trans,text);
-		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid),i)));
-		  strcat(trans,loc+strlen(xaGetItem(&(WGTR.TranslationsMid),i)));
+				  + strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsMid), i))));
+		  trans[0] = '\0';
+		  loc[0] = '\0';
+		  strcat(trans, text);
+		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsMid), i)));
+		  strcat(trans, loc + strlen(xaGetItem(&(WGTR.TranslationsMid), i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
-		  if(found)*found=1;
+		  if (found)*found = 1;
 		  text = trans;
 		}//end if found
 	}//end for trans mid
 
   //if nothing found, return original
-  if(!trans)*found=0;
+  if (!trans)*found = 0;
   return text;
 }//translate
 
@@ -748,24 +769,27 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	    goto error;
 
 // This looks like a better place to apply the localization
-	//Load localizations
-	if(!wgtrGetPropertyValue(this_node,"locale",DATA_T_STRING,&val))
-		mssSetParam("locale",val.String);
-	if(!wgtrGetPropertyValue(this_node,"locales",DATA_T_STRING,&val))
-		wgtrLoadLocale(obj->Session,obj->Pathname->Pathbuf,val.String);
-	//now, apply what we learned
-	for(prop_name=wgtrFirstPropertyName(this_node);prop_name;
-			prop_name=wgtrNextPropertyName(this_node)){
-		//get type
-		prop_type = wgtrGetPropertyType(this_node,prop_name);
-		if (prop_type == DATA_T_STRING){
-			//get value
-			wgtrGetPropertyValue(this_node,prop_name,DATA_T_STRING,&val);
-			val.String = translate(val.String,&trans_found);
-			///@bug calling get than set of a property causes errors
-			if(trans_found)wgtrSetProperty(this_node,prop_name,DATA_T_STRING,&val);
-		  }//end if string
-	  }//end for wgtrPropery
+  //Load localizations
+  if (!wgtrGetPropertyValue(this_node, "locale", DATA_T_STRING, &val))
+	mssSetParam("locale", val.String);
+  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRING, &val))
+	wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf, val.String);
+  //now, apply what we learned
+  for (prop_name = wgtrFirstPropertyName(this_node); prop_name;
+		  prop_name = wgtrNextPropertyName(this_node))
+	{
+	  //get type
+	  prop_type = wgtrGetPropertyType(this_node, prop_name);
+	  if (prop_type == DATA_T_STRING)
+		{
+		  //get value
+		  wgtrGetPropertyValue(this_node, prop_name, DATA_T_STRING, &val);
+		  val.String = translate(val.String, &trans_found);
+		  ///@bug calling get than set with out changing a property causes errors
+		  if (trans_found)
+			wgtrSetProperty(this_node, prop_name, DATA_T_STRING, &val);
+		}//end if string
+	}//end for wgtrPropery
 
 	return this_node;
 
