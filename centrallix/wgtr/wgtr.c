@@ -85,7 +85,9 @@ struct
     XHashTable	    Methods;		    /* deployment methods */
     XArray	    Drivers;		    /* simple driver listing */
     XHashTable	    DriversByType;
-	XHashTable	Translations;
+	XHashTable	TranslationsHash;
+	XArray		TranslationsFront;
+	XArray		TranslationsBack;
     long	    SerialID;
     } WGTR;
 
@@ -423,7 +425,7 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
   filename[0] = '\0';
   strcat(filename,path);
   for(iter=filename+strlen(filename)-1; *iter != '.' && iter != filename;iter--);
-  for(;*iter != '/' && iter != filename;iter--)
+  for(;*iter != '/' && iter != filename;iter--);
   *iter = '\0';
   strcat(filename,"/");
   strcat(filename,locales);
@@ -460,20 +462,88 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
 	  break;
 	  }
 	locword = nmSysStrdup(mlxStringVal(lexer,0));
+	if(strchr(genword,'*')){
+		if(strchr(genword,'*')==genword){
+			genword++;
+			xaAddItem(&(WGTR.TranslationsBack),genword);
+		}else{
+			*(genword+strlen(genword)-1)='\0';
+			xaAddItem(&(WGTR.TranslationsFront),genword);
+		}
+	}//end if *
 #ifdef LOC_DEBUG
 	mssError(0, "I18N", "%s means %s", genword, locword);
 #endif
 	//replace old translations
-	xhRemove(&(WGTR.Translations), genword);
-	xhAdd(&(WGTR.Translations), genword, locword);
+	xhRemove(&(WGTR.TranslationsHash), genword);
+	xhAdd(&(WGTR.TranslationsHash), genword, locword);
 	}
   //alldone, cleanup
-  cleanup:
+cleanup:
   if(lexer)mlxCloseSession(lexer);
   if(trans)objClose(trans);
   free(filename);
   return 0;
 }
+
+char *translate(char *text,int *found){
+  int i;
+  char *trans;
+#ifdef LOC_DEBUG
+  mssError(0, "I18N", "Checking for %s", text);
+#endif
+  if (xhLookup(&(WGTR.TranslationsHash), text)){
+	  trans = xhLookup(&(WGTR.TranslationsHash), text);
+#ifdef LOC_DEBUG
+	  mssError(0, "I18N", "Found %s", trans);
+#endif
+	  if(found)*found=1;
+	  return trans;
+	}//end hash lookup
+  
+  //now look for translations which start the same way
+  for(i=0;i<xaCount(&(WGTR.TranslationsFront));i++){
+	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsFront),i));
+	  if(loc){
+		  trans = (char *)malloc(strlen(loc)
+				  +strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsFront),i))));
+		  trans[0]='\0';
+		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsFront),i)));
+		  strcat(trans,loc+strlen(xaGetItem(&(WGTR.TranslationsFront),i)));
+#ifdef LOC_DEBUG
+		  mssError(0, "I18N", "Found %s", trans);
+#endif
+		  if(found)*found=1;
+		  return trans;
+		}//end if found
+	}//end for trans front
+
+  //now look for translations which *end* the same way
+  for(i=0;i<xaCount(&(WGTR.TranslationsBack));i++){
+	  char *loc=strstr(text,xaGetItem(&(WGTR.TranslationsBack),i));
+	  if(loc){
+		  trans = (char *)malloc(strlen(loc)
+				  +strlen(xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsBack),i))));
+		  trans[0]='\0';
+		  loc[0]='\0';
+		  strcat(trans,text);
+		  strcat(trans,xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsBack),i)));
+#ifdef LOC_DEBUG
+		  mssError(0, "I18N", "Found %s", trans);
+#endif
+		  if(found)*found=1;
+		  return trans;
+		}//end if found
+	}//end for trans front
+
+  //not found, return original
+  if(found)*found=0;
+  return text;
+}//translate
 
 pWgtrNode 
 wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, char* templates[])
@@ -542,7 +612,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
     int rval;
     int i,j;
     pStruct one_param;
-    int already_used;
+    int already_used,trans_found;
     pWgtrNode sub_node;
 
 	/** create this node **/
@@ -664,16 +734,9 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		if (prop_type == DATA_T_STRING){
 			//get value
 			wgtrGetPropertyValue(this_node,prop_name,DATA_T_STRING,&val);
-#ifdef LOC_DEBUG
-			mssError(0, "I18N", "Checking for %s", val.String);
-#endif
-			if(xhLookup(&(WGTR.Translations),val.String)){
-			  val.String = xhLookup(&(WGTR.Translations),val.String);
-			  wgtrSetProperty(this_node,prop_name,DATA_T_STRING,&val);
-#ifdef LOC_DEBUG
-			  mssError(0, "I18N", "Found %s", val.String);
-#endif
-			}//end if translation
+			val.String = translate(val.String,&trans_found);
+			///@bug calling get than set of a property causes errors
+			if(trans_found)wgtrSetProperty(this_node,prop_name,DATA_T_STRING,&val);
 		  }//end if string
 	  }//end for wgtrPropery
 
@@ -2112,8 +2175,9 @@ wgtrInitialize()
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
-	xhInit(&(WGTR.Translations), 16, 0);
-		
+	xhInit(&(WGTR.TranslationsHash), 16, 0);
+	xaInit(&(WGTR.TranslationsFront), 16);
+	xaInit(&(WGTR.TranslationsBack), 16);
 	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/
