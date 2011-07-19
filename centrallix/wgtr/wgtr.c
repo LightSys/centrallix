@@ -540,6 +540,7 @@ char *translate(char *text, int *found)
 #endif
 		  if (found)*found = 1;
 		  text = trans;
+		  break;
 		}//end if found
 	}//end for trans front
 
@@ -562,6 +563,7 @@ char *translate(char *text, int *found)
 #endif
 		  if (found)*found = 1;
 		  text = trans;
+		  break;
 		}//end if found
 	}//end for trans end
 
@@ -585,6 +587,7 @@ char *translate(char *text, int *found)
 #endif
 		  if (found)*found = 1;
 		  text = trans;
+		  break;
 		}//end if found
 	}//end for trans mid
 
