@@ -414,7 +414,7 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
   pLxSession lexer=NULL;
   
   if(!mssGetParam("locale")){
-	  mssError(0, "WGTR", "Could not get a locale, none loaded!");
+	  mssError(0, "I18N", "Could not get a locale, none loaded!");
 	  return 0;
 	}
 
@@ -436,7 +436,7 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
   //open the file
   trans=objOpen(s,filename,OBJ_O_RDONLY,0600,"system/file");
   if(!trans){
-	  mssError(0, "WGTR", "Could not load locale file %s", filename);
+	  mssError(0, "I18N", "Could not load locale file %s", filename);
 	  goto cleanup;
 	}
   
@@ -447,21 +447,21 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales){
 	  nxTok = mlxNextToken(lexer);
 	  if(nxTok == MLX_TOK_EOF)break;
 	if(nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD){
-	  mssError(0, "WGTR", "Malformed translation file %s, wanted genword",filename);	  
+	  mssError(0, "I18N", "Malformed translation file %s, wanted genword",filename);
 	  break;
 	  }
 	genword = nmSysStrdup(mlxStringVal(lexer,0));
 	if(mlxNextToken(lexer) != MLX_TOK_EQUALS){
-	  mssError(0, "WGTR", "Malformed translation file %s, wanted =",filename);
+	  mssError(0, "I18N", "Malformed translation file %s, wanted =",filename);
 	  break;
 	  }
 	if(mlxNextToken(lexer) != MLX_TOK_STRING){
-	  mssError(0, "WGTR", "Malformed translation file %s, wanted locword",filename);
+	  mssError(0, "I18N", "Malformed translation file %s, wanted locword",filename);
 	  break;
 	  }
 	locword = nmSysStrdup(mlxStringVal(lexer,0));
 #ifdef LOC_DEBUG
-	mssError(0, "WGTR", "%s means %s", genword, locword);
+	mssError(0, "I18N", "%s means %s", genword, locword);
 #endif
 	//replace old translations
 	xhRemove(&(WGTR.Translations), genword);
@@ -665,13 +665,13 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 			//get value
 			wgtrGetPropertyValue(this_node,prop_name,DATA_T_STRING,&val);
 #ifdef LOC_DEBUG
-			mssError(0, "WGTR", "Checking for %s", val.String);
+			mssError(0, "I18N", "Checking for %s", val.String);
 #endif
 			if(xhLookup(&(WGTR.Translations),val.String)){
 			  val.String = xhLookup(&(WGTR.Translations),val.String);
 			  wgtrSetProperty(this_node,prop_name,DATA_T_STRING,&val);
 #ifdef LOC_DEBUG
-			  mssError(0, "WGTR", "Found %s", val.String);
+			  mssError(0, "I18N", "Found %s", val.String);
 #endif
 			}//end if translation
 		  }//end if string
