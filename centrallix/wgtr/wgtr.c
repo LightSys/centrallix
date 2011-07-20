@@ -409,47 +409,31 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     return template;
 }
 
-int freeStrDuped(char *str,void *dup){
+int freeStrDuped(char *str,void *dup)
+{
   nmSysFree(str);
   return 0;
 }
 
-void wgtrCleanLocale(){
+void wgtrCleanLocale()
+{
   //reset translation tables
-  xhClear(&(WGTR.TranslationsHash),freeStrDuped,NULL);
+  xhClear(&(WGTR.TranslationsHash), freeStrDuped, NULL);
   xaDeInit(&(WGTR.TranslationsMid));
   xaDeInit(&(WGTR.TranslationsBack));
   xaDeInit(&(WGTR.TranslationsFront));
-  xaInit(&(WGTR.TranslationsFront),16);
-  xaInit(&(WGTR.TranslationsBack),16);
-  xaInit(&(WGTR.TranslationsMid),16);
+  xaInit(&(WGTR.TranslationsFront), 16);
+  xaInit(&(WGTR.TranslationsBack), 16);
+  xaInit(&(WGTR.TranslationsMid), 16);
 }
 
-int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
+int wgtrLoadFlatLocale(pObjSession s, const char *filename)
 {
   int nxTok;
-  char *filename, *iter;
   char *genword, *locword;
   pObject trans = NULL;
   pLxSession lexer = NULL;
 
-  if (!mssGetParam("locale"))
-	{
-	  mssError(0, "I18N", "Could not get a locale, none loaded!");
-	  return 0;
-	}
-
-  //build pathname and open file
-  filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
-  filename[0] = '\0';
-  strcat(filename, path);
-  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
-  for (; *iter != '/' && iter != filename; iter--);
-  *iter = '\0';
-  strcat(filename, "/");
-  strcat(filename, locales);
-  strcat(filename, "/");
-  strcat(filename, (char *)mssGetParam("locale"));
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Translation from %s", filename);
 #endif
@@ -522,6 +506,32 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
 cleanup:
   if (lexer)mlxCloseSession(lexer);
   if (trans)objClose(trans);
+  return 0;
+}
+
+int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
+{
+  char *filename, *iter;
+ 
+  if (!mssGetParam("locale"))
+	{
+	  mssError(0, "I18N", "Could not get a locale, none loaded!");
+	  return 0;
+	}
+  //build pathname and open file
+  filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
+  filename[0] = '\0';
+  if(locales[0]!='/'){
+	  strcat(filename, path);
+	  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
+	  for (; *iter != '/' && iter != filename; iter--);
+	  *iter = '\0';
+	  strcat(filename, "/");
+  }
+  strcat(filename, locales);
+  strcat(filename, "/");
+  strcat(filename, (char *)mssGetParam("locale"));
+  wgtrLoadFlatLocale(s,filename);
   free(filename);
   return 0;
 }
