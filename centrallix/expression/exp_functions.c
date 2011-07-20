@@ -1343,15 +1343,12 @@ int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     /** Adding days is more complicated **/
     while (diff_day > 0)
 	{
+	tree->Types.Date.Part.Day++;
 	if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
 	    {
 	    tree->Types.Date.Part.Day = 0;
 	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, 1, 12, &carry);
 	    tree->Types.Date.Part.Year += carry;
-	    }
-	else
-	    {
-	    tree->Types.Date.Part.Day++;
 	    }
 	diff_day--;
 	}
