@@ -1,0 +1,6 @@
+$Version=2$
+app_info "system/structure"
+    {
+    app_name="App Navigator";
+    app_info="Examine the structure of apps within an installed application, including components, data sources, relationships, and logic.";
+    }

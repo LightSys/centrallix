@@ -1,0 +1,173 @@
+$Version=2$
+nav "widget/component-decl"
+    {
+    width=780;
+    height=580;
+
+    app_list_vbox "widget/vbox"
+	{
+	x=0; y=0; width=250; height=580;
+	spacing=10;
+	fl_width=30;
+
+	app_list_hdr "widget/component"
+	    {
+	    height=20;
+	    path = "/apps/nav/section_label.cmp";
+	    text = "App Browser";
+	    }
+
+	nav_tab "widget/tab"
+	    {
+	    tab_location=bottom;
+	    height = 523;
+
+	    struct_tabpage "widget/tabpage"
+		{
+		title = "App Structure";
+
+		struct_vbox "widget/vbox"
+		    {
+		    x=4; y=4; width=240; height=511;
+		    spacing=10;
+
+		    search_eb "widget/editbox"
+			{
+			height=24;
+			empty_description = "Search for Apps and Components";
+			}
+
+		    app_list "widget/component"
+			{
+			height=479;
+			path = "/sys/cmp/framed_tree.cmp";
+			bgcolor = "#ffffff";
+			source = "/apps/nav/app_diagram.qyt/";
+			highlight_bgcolor = "#0000a0";
+			highlight_fgcolor = "#ffffff";
+			icon = "/apps/nav/object.gif";
+
+			sync_osrc_to_tree "widget/connector"
+			    {
+			    event = "ClickItem";
+			    target = detail_osrc;
+			    //action = "ChangeSource";
+			    //Source = runclient(:Pathname);
+			    action = Query;
+			    query = runclient("select :objpath, :usage, :type from object " + :Pathname);
+			    }
+			}
+		    }
+		}
+
+	    files_tabpage "widget/tabpage"
+		{
+		title = "Files";
+
+		files_vbox "widget/vbox"
+		    {
+		    x=4; y=4; width=240; height=511;
+		    spacing=10;
+
+		    files_search_eb "widget/editbox"
+			{
+			height=24;
+			empty_description = "Search for Files";
+			}
+
+		    files_list "widget/component"
+			{
+			height=479;
+			path = "/sys/cmp/framed_tree.cmp";
+			bgcolor = "#ffffff";
+			source = "/apps/";
+			highlight_bgcolor = "#0000a0";
+			highlight_fgcolor = "#ffffff";
+
+			sync_osrc_to_files_tree "widget/connector"
+			    {
+			    event = "ClickItem";
+			    target = detail_osrc;
+			    //action = "ChangeSource";
+			    //Source = runclient(:Pathname);
+			    action = Query;
+			    query = runclient("select objpath=:cx__pathname, usage='', type=:outer_type from object " + :Pathname);
+			    }
+			}
+		    }
+		}
+	    }
+	}
+
+    detail_osrc "widget/osrc"
+	{
+	sql = "select objpath=isnull(:objpath,'/' + :cx__pathname), usage=isnull(:usage,''), type=isnull(:type,'system/file') from object /apps/nav/app_diagram.qyt/nav";
+	baseobj = "/apps/nav/app_diagram.qyt/nav";
+	autoquery = never;
+	replicasize = 2;
+	readahead = 2;
+	}
+
+    app_detail_vbox "widget/vbox"
+	{
+	x=260; y=0; width=520; height=580;
+	spacing = 10;
+
+	app_detail_hdr "widget/component"
+	    {
+	    height=20;
+	    path = "/apps/nav/section_label.cmp";
+	    text = runclient("Details for: " + isnull(:app_list:selected_label,''));
+	    }
+
+	app_detail_pane "widget/tab"
+	    {
+	    tab_location = none;
+	    height=80;
+
+	    app_detail_tab1 "widget/tabpage"
+		{
+		app_detail_form "widget/form"
+		    {
+		    objectsource = detail_osrc;
+
+		    app_fields_vbox "widget/vbox"
+			{
+			x=10; y=10; width=518; height=78;
+			spacing=4;
+			cellsize=12;
+
+			show_type "widget/component" { path = "/sys/cmp/smart_field.cmp"; text="Type:"; ctl_type=label; label_width=70; field=type; }
+			show_path "widget/component" { path = "/sys/cmp/smart_field.cmp"; text="Path:"; ctl_type=label; label_width=70; field=objpath; }
+			show_use "widget/component" { path = "/sys/cmp/smart_field.cmp"; text="Used At:"; ctl_type=label; label_width=70; field=usage; }
+			}
+		    }
+		}
+	    }
+
+	app_functions "widget/tab"
+	    {
+	    tab_location = bottom;
+	    height=433;
+
+	    plugin_tabs "widget/repeat"
+		{
+		sql = "select path = :cx__pathname, component = :cx__pathpart3, :title, :seq from object wildcard '/apps/nav/plugin_nav_*.cmp' order by :seq";
+
+		plugin_tab "widget/tabpage"
+		    {
+		    title = runserver(:plugin_tabs:title);
+
+		    plugin_cmp "widget/component"
+			{
+			height=408; width=498; x=10; y=10;
+			path = runserver(:plugin_tabs:path);
+
+			detail_osrc = detail_osrc;
+			}
+		    }
+		}
+	    }
+	}
+    }
+

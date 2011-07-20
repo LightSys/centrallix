@@ -249,6 +249,7 @@ typedef struct _MPI
 #define MQP_MI_F_SOURCELIST	1	/* source list is valid */
 #define MQP_MI_F_USINGCACHE	2	/* using row cache */
 #define MQP_MI_F_SOURCEOPEN	4	/* source has been opened */
+#define MQP_MI_F_LASTMATCHED	8	/* last item returned matched (for pruning) */
 
 
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
@@ -389,7 +390,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
-	newqy = objOpenQuery(obj, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -638,6 +639,7 @@ mqpAnalyze(pQueryStatement stmt)
 	    /** Setup the object that this will use. **/
 	    qe->SrcIndex = src_idx;
 	    if (from_qs->Flags & MQ_SF_FROMSUBTREE) qe->Flags |= MQ_EF_FROMSUBTREE;
+	    if (from_qs->Flags & MQ_SF_PRUNESUBTREE) qe->Flags |= MQ_EF_PRUNESUBTREE;
 	    if (from_qs->Flags & MQ_SF_INCLSUBTREE) qe->Flags |= MQ_EF_INCLSUBTREE;
 	    if (from_qs->Flags & MQ_SF_WILDCARD) qe->Flags |= MQ_EF_WILDCARD;
 	    if (from_qs->Flags & MQ_SF_FROMOBJECT) qe->Flags |= MQ_EF_FROMOBJECT;
@@ -865,7 +867,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
 
-        if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, 0);
+        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE)) expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	/** Check for cached single row result set **/
 	if (mi->RowCache)
@@ -889,7 +891,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
-	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	    if (!qe->LLQuery) 
 		{
 		mqpFinish(qe,stmt);
@@ -1199,6 +1201,12 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    obj = objLinkTo(qe->LLSource);
 	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 
+	    if (qe->Flags & MQ_EF_FROMSUBTREE)
+		{
+		mqp_internal_SetupSubtreeAttrs(qe, obj);
+		return 1;
+		}
+
 	    if (mqp_internal_CheckConstraint(qe, stmt) > 0)
 		{
 		/** the top level one matches.  use it. **/
@@ -1214,7 +1222,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 
 	/** Attempt to recurse a subtree? **/
-	if (qe->Flags & MQ_EF_FROMSUBTREE && stmt->Query->ObjList->Objects[qe->SrcIndex])
+	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (!(mi->Flags & MQP_MI_F_LASTMATCHED) || !(qe->Flags & MQ_EF_PRUNESUBTREE)) && stmt->Query->ObjList->Objects[qe->SrcIndex])
 	    {
 	    obj = mqp_internal_Recurse(qe, stmt, stmt->Query->ObjList->Objects[qe->SrcIndex]);
 	    if (obj)
@@ -1291,8 +1299,30 @@ mqpNextItem(pQueryElement qe, pQueryStatement stmt)
 		if (rval != 1) break; /* return if no more sources (0) or error (-1) */
 		}
 
-	    rval = mqp_internal_NextItemFromSource(qe, stmt);
-	    if (rval != 0) break; /* return if valid row (1) or if error (-1) */
+	    /** Loop looking for a valid item from this source.  For SUBTREE selects
+	     ** we have to do this here because the WHERE can't be passed to the
+	     ** data source due to the need to search subobjects of objects (whether
+	     ** they match or not) too.
+	     **/
+	    while(1)
+		{
+		rval = mqp_internal_NextItemFromSource(qe, stmt);
+		if (rval == 1 && (qe->Flags & MQ_EF_FROMSUBTREE))
+		    {
+		    /** Subtree select, valid object -- handle WHERE condition here **/
+		    rval = mqp_internal_CheckConstraint(qe, stmt);
+		    mi->Flags &= ~MQP_MI_F_LASTMATCHED;
+		    if (rval == 1) mi->Flags |= MQP_MI_F_LASTMATCHED;
+		    if (rval != 0) break;
+		    }
+		else
+		    {
+		    break;
+		    }
+		}
+
+	    /** Return if valid row (1) or if error (-1) **/
+	    if (rval != 0) break;
 
 	    /** No more items in that source.  Try another one. **/
 	    mqp_internal_CloseSource(qe);

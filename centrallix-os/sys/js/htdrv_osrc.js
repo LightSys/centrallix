@@ -90,15 +90,25 @@ function osrc_action_change_source(aparam)
     {
     if (!this.baseobj) return null;
     if (!aparam.Source) return null;
+    if (aparam.Source == '' || aparam.Source == this.baseobj) return;
     var l = (new String(this.baseobj)).length;
+    var newl = (new String(aparam.Source)).length;
     var s = new String(this.sql);
     var p = s.indexOf(this.baseobj);
-    if (p >= 0)	
-	this.sql = s.substr(0,p) + aparam.Source + s.substr(p+l);
+    while (p >= 0)
+	{
+	s = s.substr(0,p) + aparam.Source + s.substr(p+l);
+	p = s.indexOf(this.baseobj, p+newl);
+	}
+    this.sql = s;
     var s = new String(this.query);
     var p = s.indexOf(this.baseobj);
-    if (p >= 0)	
-	this.query = s.substr(0,p) + aparam.Source + s.substr(p+l);
+    while (p >= 0)
+	{
+	s = s.substr(0,p) + aparam.Source + s.substr(p+l);
+	p = s.indexOf(this.baseobj, p+newl);
+	}
+    this.query = s;
     this.baseobj = aparam.Source;
     if (typeof aparam.Refresh == 'undefined' || aparam.Refresh)
 	this.ifcProbe(ifAction).Invoke("Refresh", {});
@@ -1199,6 +1209,50 @@ function osrc_cb_register(client)
 	client.__osrc_savable_changed = osrc_cb_savable_changed;
 	htr_watch(client, 'is_client_savable', '__osrc_savable_changed');
 	}
+    if (this.savable_client_count > 0 && !this.is_client_savable)
+	{
+	this.is_client_savable = true;
+	this.ifcProbe(ifValue).Changing("is_client_savable", 1, true, 0, true);
+	}
+    if (typeof client.is_discardable != 'undefined')
+	{
+	if (client.is_discardable)
+	    this.discardable_client_count++;
+	client.__osrc_discardable_changed = osrc_cb_discardable_changed;
+	htr_watch(client, 'is_discardable', '__osrc_discardable_changed');
+	}
+    else if (typeof client.is_client_discardable != 'undefined')
+	{
+	if (client.is_client_discardable)
+	    this.discardable_client_count++;
+	client.__osrc_discardable_changed = osrc_cb_discardable_changed;
+	htr_watch(client, 'is_client_discardable', '__osrc_discardable_changed');
+	}
+    if (this.discardable_client_count > 0 && !this.is_client_discardable)
+	{
+	this.is_client_discardable = true;
+	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
+	}
+    }
+
+function osrc_cb_discardable_changed(p,o,n)
+    {
+    var osrc = this.__osrc_osrc;
+    if (o && !n)
+	osrc.discardable_client_count--;
+    else if (!o && n)
+	osrc.discardable_client_count++;
+    if (osrc.is_client_discardable && osrc.discardable_client_count == 0)
+	{
+	osrc.is_client_discardable = false;
+	this.ifcProbe(ifValue).Changing("is_client_discardable", 0, true, 1, true);
+	}
+    else if (!osrc.is_client_discardable && osrc.discardable_client_count > 0)
+	{
+	osrc.is_client_discardable = true;
+	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
+	}
+    return n;
     }
 
 function osrc_cb_savable_changed(p,o,n)
@@ -1209,9 +1263,15 @@ function osrc_cb_savable_changed(p,o,n)
     else if (!o && n)
 	osrc.savable_client_count++;
     if (osrc.is_client_savable && osrc.savable_client_count == 0)
+	{
 	osrc.is_client_savable = false;
+	this.ifcProbe(ifValue).Changing("is_client_savable", 0, true, 1, true);
+	}
     else if (!osrc.is_client_savable && osrc.savable_client_count > 0)
+	{
 	osrc.is_client_savable = true;
+	this.ifcProbe(ifValue).Changing("is_client_savable", 1, true, 0, true);
+	}
     return n;
     }
 
@@ -2651,7 +2711,9 @@ function osrc_get_value(n)
     {
     var v = null;
     if (n == 'is_client_savable')
-	return this.is_client_savable;
+	return this.is_client_savable?1:0;
+    if (n == 'is_client_discardable')
+	return this.is_client_discardable?1:0;
     if (n == 'cx__current_id')
 	return this.CurrentRecord;
     if (this.CurrentRecord && this.replica && this.replica[this.CurrentRecord])
@@ -3039,6 +3101,27 @@ function osrc_init_bh()
     }
 
 
+function osrc_action_cancel_clients(aparam)
+    {
+    if (!this.is_client_discardable) return;
+
+    // Do this in two steps - discard our immediate clients first, then pass the word
+    // on to clients of clients.  This minimizes the chance of failures due to
+    // relational integrity constraints.
+    for (var c in this.child)
+	{
+	var cld = this.child[c];
+	if (typeof cld.is_discardable != 'undefined' && cld.is_discardable)
+	    cld.ifcProbe(ifAction).Invoke('Discard', {});
+	}
+    for (var c in this.child)
+	{
+	var cld = this.child[c];
+	if (typeof cld.is_client_discardable != 'undefined' && cld.is_client_discardable)
+	    cld.ifcProbe(ifAction).Invoke('DiscardClients', {});
+	}
+    }
+
 function osrc_action_save_clients(aparam)
     {
     if (!this.is_client_savable) return;
@@ -3292,6 +3375,7 @@ function osrc_init(param)
     loader.sid = null;
     loader.qid = null;
     loader.savable_client_count = 0;
+    loader.discardable_client_count = 0;
     loader.lastquery = null;
     loader.prevcurrent = null;
     loader.has_onreveal_relationship = false;
@@ -3327,6 +3411,7 @@ function osrc_init(param)
     ia.Add("Sync", osrc_action_sync);
     ia.Add("DoubleSync", osrc_action_double_sync);
     ia.Add("SaveClients", osrc_action_save_clients);
+    ia.Add("DiscardClients", osrc_action_cancel_clients);
     ia.Add("Refresh", osrc_action_refresh);
     ia.Add("RefreshObject", osrc_action_refresh_object);
     ia.Add("ChangeSource", osrc_action_change_source);
@@ -3403,6 +3488,7 @@ function osrc_init(param)
 
     // Client side maintained properties
     loader.is_client_savable = false;
+    loader.is_client_discardable = false;
 
     // Debugging functions
     loader.print_debug = osrc_print_debug;

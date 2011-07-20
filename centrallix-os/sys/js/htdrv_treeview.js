@@ -42,6 +42,7 @@ function tv_new_layer(width,pdoc,l)
 	    nl.className = l.divclass;
 	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
+	    pg_set_style(nl, 'overflow','visible');
 	    pdoc.appendChild(nl);
 	    }
 	else
@@ -408,8 +409,10 @@ function tv_BuildNewLayers(l, linkcnt)
 	var link_bold = 0;
 	var one_link;
 	//var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
-	var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
-	setClipWidth(one_layer, tgtClipWidth);
+	//var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
+	var one_layer = tv_new_layer(l.mainlayer.setwidth,l.pdoc,l.mainlayer);
+	//setClipWidth(one_layer, tgtClipWidth);
+	setClipWidth(one_layer, l.mainlayer.setwidth);
 	setClipHeight(one_layer, l.root.rowheight);
 	var im;
 	can_expand = null;
@@ -1128,7 +1131,7 @@ function tv_collapse()
     for(var i=len-1;i>=0;i--)
 	{
 	sl = lyrs[i];
-	if (sl.fname!=null && sl!=l && l.fname==sl.fname.substring(0,l.fname.length))
+	if (sl.fname!=null && sl!=l && sl.fname != l.fname && l.fname==sl.fname.substring(0,l.fname.length))
 	    {
 	    //pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);

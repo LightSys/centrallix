@@ -1379,7 +1379,7 @@ int
 expEvalProperty(pExpression tree, pParamObjects objlist)
     {
     int t,v=-1,n, id = 0;
-    pObject obj;
+    pObject obj = NULL;
     char* ptr;
     void* vptr;
     int (*getfn)();
@@ -1420,8 +1420,12 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		return 0;
 	    else if (id < 0)
 		{
-		mssError(1,"EXP","Undefined object property '%s' - no such object", tree->Name);
-		return -1;
+		/*mssError(1,"EXP","Undefined object property '%s' - no such object", tree->Name);
+		return -1;*/
+		/** enable late binding **/
+		tree->Flags |= EXPR_F_NULL;
+		tree->DataType = DATA_T_INTEGER;
+		return 0;
 		}
 	    else
 		{
@@ -1502,13 +1506,19 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		v = 1;
 		break;
 
+	    case DATA_T_CODE:
+		/** treat as NULL **/
+		tree->DataType = DATA_T_INTEGER;
+		v = 1;
+		break;
+
 	    default: 
-	        if (tree->ObjID == -1) objClose(obj);
+	        if (tree->ObjID == -1 && obj) objClose(obj);
 	        return -1;
 	    }
 
 	/** Check null field **/
-        if (tree->ObjID == -1) objClose(obj);
+        if (tree->ObjID == -1 && obj) objClose(obj);
 	if (v < 0) 
 	    {
 	    mssError(1,"EXP","Error accessing object attribute in expression");
@@ -1901,9 +1911,13 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	if (objlist)
 	    {
 	    objlist->ModCoverageMask = old_cm;
-	    tree->Control->PSeqID = objlist->PSeqID;
-	    memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
-	    objlist->MainFlags &= ~EXPR_MO_RECALC;
+	    if (v >= 0)
+		{
+		/** Don't update sequence ID's if evaluation failed. **/
+		tree->Control->PSeqID = objlist->PSeqID;
+		memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
+		objlist->MainFlags &= ~EXPR_MO_RECALC;
+		}
 	    objlist->CurControl = NULL;
 	    }
 

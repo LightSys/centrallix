@@ -696,6 +696,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     char prevname[256];
     int used_openas;
     pObject cached_obj = NULL;
+    pObjectInfo obj_info;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -836,7 +837,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** intermediate object's name, and the SubCnt of the previous obj was 1. **/
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
-		apparent_type = obj_internal_TypeFromName(name);
+		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
+		obj_info = objInfo(this);
+		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
+		    {
+		    apparent_type = obj_internal_TypeFromName(name);
+		    }
 		}
 
 	    strcpy(prevname, name);
@@ -1003,97 +1009,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 
     return this;
     }
-
-#if 00
-/*** obj_internal_GetDriver - determine the driver for a top-level file
- *** given the filename (determine via the file's extension) and stat()
- *** information in the directory cache structure.
- ***/
-pObjDriver
-obj_internal_GetDriver(pDirectoryCache dc_info)
-    {
-    pObjDriver drv = NULL;
-    pContentType ct;
-    char* dot_ptr;
-    char* slash_ptr;
-    char sbuf[256];
-    pFile fd;
-    int cnt;
-
-	/** Does this file have an extension? **/
-	dot_ptr = strrchr(dc_info->Pathname,'.');
-	if (dot_ptr)
-	    {
-	    /** Not an extension if '/' comes after the '.' **/
-	    if (strchr(dot_ptr,'/')) dot_ptr = NULL;
-	    }
-
-	/** If extension, we can lookup the driver directly. **/
-	if (dot_ptr)
-	    {
-	    dc_info->Type = (pContentType)xhLookup(&(OSYS.TypeExtensions),dot_ptr+1);
-	    if (dc_info->Type)
-		{
-	        drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),dc_info->Type->Name);
-		}
-	    }
-
-	/** Did we find the driver yet?  If not, can't depend on .ext **/
-	if (!drv)
-	    {
-	    /** Was the thing a directory?  If not, look for a .type file **/
-	    if (!(S_ISDIR((dc_info->fileinfo.st_mode))))
-		{
-		slash_ptr = strrchr(dc_info->Pathname,'/');
-		if (slash_ptr)
-		    {
-		    *slash_ptr = '\0';
-		    if ((slash_ptr - dc_info->Pathname) + 6 <= 255)
-			{
-			sprintf(sbuf,"%s/.type",dc_info->Pathname);
-			if (access(sbuf,F_OK) == 0)
-			    {
-			    fd = fdOpen(sbuf,O_RDONLY,0600);
-			    if (fd)
-				{
-				if ((cnt=fdRead(fd,sbuf,64,0,0)) > 0)
-				    {
-				    sbuf[cnt] = 0;
-				    if (strchr(sbuf,'\n')) *(strchr(sbuf,'\n')) = 0;
-				    dc_info->Type = (pContentType)xhLookup(&(OSYS.Types),sbuf);
-				    if (dc_info->Type) 
-					drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),sbuf);
-				    }
-				fdClose(fd,0);
-				}
-			    }
-			}
-		    *slash_ptr = '/';
-		    }
-
-		/** Was not a directory and still didn't find driver? **/
-		if (!drv)
-		    {
-		    /** Get default plain file driver. **/
-		    dc_info->Flags &= ~DC_F_ISDIR;
-		    dc_info->Type = (pContentType)xhLookup(&(OSYS.Types),"system/directory");
-		    if (dc_info->Type)
-			drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),"system/directory");
-		    }
-		}
-	    else
-		{
-		/** Was a directory.  Get directory driver. **/
-		dc_info->Flags |= DC_F_ISDIR;
-		dc_info->Type = (pContentType)xhLookup(&(OSYS.Types),"system/file");
-		if (dc_info->Type)
-		    drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),"system/file");
-		}
-	    }
-
-    return drv;
-    }
-#endif
 
 
 /*** obj_internal_NormalizePath - construct a completed normalized path
@@ -1382,129 +1297,6 @@ obj_internal_RenamePath(pPathname path, int element_id, char* new_element)
     }
 
 
-#if 00
-/*** obj_internal_ProcessPath - handles the preprocessing needs for the
- *** Open, Create, and Delete calls.  Determines the driver, content type,
- *** does the directory cache lookup, and so forth.
- ***/
-pObject
-obj_internal_ProcessPath(pObjSession session,char* path,int mode,char* type)
-    {
-    pObject this;
-    pDirectoryCache dc_ptr,del;
-    int l,i;
-    char* ptr;
-    struct stat fileinfo;
-
-	/** Go ahead and memory alloc the object **/
-	this = (pObject)nmMalloc(sizeof(Object));
-	if (!this) return NULL;
-	this->ContentPtr = NULL;
-
-	/** Normalize the path, possibly adding the CWD. **/
-	this->Pathname = obj_internal_NormalizePath(session->CurrentDirectory, path);
-	if (!(this->Pathname)) return NULL;
-
-	/** Ok, start looking in the directory cache for each directory prefix. **/
-	for(dc_ptr=NULL,i=this->Pathname->nElements;i;i--)
-	    {
-	    ptr = obj_internal_PathPart(this->Pathname,0,i);
-	    dc_ptr = (pDirectoryCache)xhLookup(&(OSYS.DirectoryCache),ptr);
-	    if (dc_ptr) 
-		{
-		this->SubPtr = i;
-		OSYS.UseCnt++;
-		dc_ptr->last_use = OSYS.UseCnt;
-		break;
-		}
-	    if (stat(ptr,&fileinfo) == 0)
-	        {
-	        /** Allocate a directory cache info structure **/
-	        dc_ptr = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
-	        if (!dc_ptr) 
-		    {
-		    nmFree(this->Pathname,sizeof(Pathname));
-		    nmFree(this,sizeof(Object));
-		    return NULL;
-		    }
-	        memset(dc_ptr,0,sizeof(DirectoryCache));
-
-		/** Setup the dc ptr structure **/
-		strcpy(dc_ptr->Pathname, ptr);
-		this->SubPtr = i;
-		memcpy(&(dc_ptr->fileinfo),&fileinfo,sizeof(struct stat));
-
-	        /** Found a top-level file.  Find its driver. **/
-	        dc_ptr->Driver = obj_internal_GetDriver(dc_ptr);
-	        if (!dc_ptr->Driver)
-		    {
-		    nmFree(dc_ptr,sizeof(DirectoryCache));
-		    nmFree(this->Pathname,sizeof(Pathname));
-		    nmFree(this,sizeof(Object));
-		    return NULL;
-		    }
-		break;
-		}
-	    }
-
-	/** If not cached, look for the driver linkage file. **/
-	if (!dc_ptr)
-	    {
-	    nmFree(this->Pathname,sizeof(Pathname));
-	    nmFree(this,sizeof(Object));
-	    return NULL;
-	    }
-
-	/** Returned directory driver and user requested create? **/
-	/** Also make sure user wanted a file _in_ the directory **/
-	if ((mode & O_CREAT) && this->SubPtr == this->Pathname->nElements-1 && 
-	    (dc_ptr->Flags & DC_F_ISDIR))
-	    {
-	    /** Ok, try and use user's content type. **/
-	    dc_ptr->Driver = (pObjDriver)xhLookup(&(OSYS.DriverTypes),type);
-	    if (!dc_ptr->Driver)
-	        {
-	        nmFree(dc_ptr,sizeof(DirectoryCache));
-		nmFree(this->Pathname,sizeof(Pathname));
-	        nmFree(this,sizeof(Object));
-	        return NULL;
-	        }
-	    this->SubPtr = this->Pathname->nElements;
-	    }
-
-	/** Got the driver. **/
-	this->Driver = dc_ptr->Driver;
-	this->Type = dc_ptr->Type;
-
-	/** Cache it if new **/
-	if (dc_ptr->last_use == 0)
-	    {
-	    if (OSYS.DirectoryQueue.nItems >= 1024)
-	        {
-		del = ((pDirectoryCache)(OSYS.DirectoryQueue.Items[0]));
-	        xhRemove(&(OSYS.DirectoryCache),del->Pathname);
-	        xaRemoveItem(&(OSYS.DirectoryQueue),0);
-		nmFree(del,sizeof(DirectoryCache));
-	        }
-	    dc_ptr->last_use = (OSYS.UseCnt++);
-	    xaAddItem(&(OSYS.DirectoryQueue),(char*)dc_ptr);
-	    xhAdd(&(OSYS.DirectoryCache), dc_ptr->Pathname, (char*)dc_ptr);
-	    }
-
-	/** Driver requested transactions? **/
-	if ((this->Driver->Capabilities & OBJDRV_C_TRANS) && OSYS.TransLayer)
-	    {
-	    this->LowLevelDriver = this->Driver;
-	    this->Driver = OSYS.TransLayer;
-	    }
-
-	obj_internal_PathPart(this->Pathname,0,0);
-
-    return this;
-    }
-#endif
-
-
 /*** objOpen - open an object for access to its content, attributes, and
  *** methods.  Optionally create a new object.  Open 'mode' uses flags
  *** like the UNIX open() call.
@@ -1519,21 +1311,10 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%p, \"%s\") = ", session, path);
 
 	/** Lookup the path, etc. **/
-	/*this = obj_internal_ProcessPath(session, path, mode, type);*/
 	this = obj_internal_ProcessOpen(session, path, mode, permission_mask, type);
 	if (!this) return NULL;
-	/*this->Mode = mode;*/ /* GRB ProcessOpen does this for us */
 	this->Obj = NULL;
 	this->Session = session;
-	/*this->LinkCnt = 1;*/
-
-	/** Ok, got the driver.  Now pass along the open() call. **/
-	/*this->Data = this->Driver->Open(this,permission_mask,this->Type,type,&(session->Trx));
-	if (!this->Data)
-	    {
-	    obj_internal_FreeObj(this);
-	    return NULL;
-	    }*/
 
 	/** Add to open objects this session. **/
 	xaAddItem(&(session->OpenObjects),(void*)this);
@@ -1635,7 +1416,6 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
     pObject tmp;
 
 	/** Lookup the directory path. **/
-	/*tmp = obj_internal_ProcessPath(session, path, O_CREAT, type);*/
 	tmp = obj_internal_ProcessOpen(session, path, O_CREAT | O_EXCL, permission_mask, type);
 	if (!tmp) 
 	    {
@@ -1663,26 +1443,39 @@ int
 objDelete(pObjSession session, char* path)
     {
     pObject tmp;
-	
+    int rval;
+
 	/** Lookup the directory path. **/
-	/*tmp = obj_internal_ProcessPath(session, path, 0, "");*/
 	tmp = obj_internal_ProcessOpen(session, path, O_RDWR, 0, "");
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to delete object - pathname invalid");
 	    return -1;
 	    }
+	tmp->Obj = NULL;
+	tmp->Session = session;
 
-	/** Pass along the delete call. **/
-	if (tmp->Driver->Delete(tmp, &(session->Trx)) <0) 
+	/** If driver supports newer objDeleteObj call, use that
+	 ** instead of objDelete.
+	 **/
+	if (tmp->Driver->DeleteObj)
 	    {
-	    obj_internal_FreeObj(tmp);
-	    return -1;
+	    /** New driver->DeleteObj() will be called on close **/
+	    tmp->Flags |= OBJ_F_DELETE;
+	    rval = 0;
+	    }
+	else
+	    {
+	    /** Pass along the old version of the delete call. **/
+	    rval = tmp->Driver->Delete(tmp, &(session->Trx));
+	    tmp->Data = NULL;
 	    }
 
-	obj_internal_FreeObj(tmp);
+	/** Clean up.  For DeleteObj(), this actually does the work. **/
+	if (obj_internal_FreeObj(tmp) < 0)
+	    rval = -1;
 
-    return 0;
+    return rval;
     }
 
 

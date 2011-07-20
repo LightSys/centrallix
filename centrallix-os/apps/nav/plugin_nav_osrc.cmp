@@ -1,0 +1,56 @@
+$Version=2$
+plugin_nav_structure "widget/component-decl"
+    {
+    title = "Data Model";
+    seq = 4;
+    height=408; width=498;
+
+    detail_osrc "widget/parameter" { type=object; find_container="widget/osrc"; }
+
+    osrcs_osrc "widget/osrc"
+	{
+	sql = "	select
+			:name,
+			parent = :__cx_parentpath,
+			baseobj=isnull(:baseobj,'(unspec)'),
+			:sql,
+			viewobj=isnull(:baseobj, :sql),
+			autoquery=isnull(:autoquery,'(unspec)'),
+			rels = (select sum(condition(:cmp2:target == :cmp:name, '->' + :cmp2:__cx_parentname, '<-' + :cmp2:target) + ', ') - ', ' from subtree /apps/nav/index.app cmp2 where (:cmp:__cx_path = :cmp2:__cx_parentpath or :cmp2:target == :cmp:name) and :cmp2:outer_type = 'widget/rule' and :cmp2:ruletype = 'osrc_relationship')
+		from
+			subtree /apps/nav/index.app cmp
+		where
+			:outer_type = 'widget/osrc'
+		";
+
+	baseobj = "/apps/nav/index.app";
+	replicasize=35;
+	readahead=35;
+	autoquery = never;
+
+	update_cmps_osrc "widget/connector"
+	    {
+	    source = detail_osrc;
+	    event_condition=runclient(:detail_osrc:type == 'widget/page' or :detail_osrc:type == 'widget/component-decl');
+	    event = EndQuery;
+	    action = ChangeSource;
+	    Source = runclient(:detail_osrc:objpath);
+	    }
+
+	osrcs_pane "widget/pane"
+	    {
+	    x=0; y=0; width=498; height=408;
+	    widget_class = table_bgnd;
+
+	    osrcs_table "widget/table"
+		{
+		x=0; y=0; width=496; height=406;
+
+		t_name "widget/table-column" { title="Name"; fieldname="name"; width=80; }
+		t_obj "widget/table-column" { title="Object / SQL"; fieldname="viewobj"; width=160; }
+		t_rels "widget/table-column" { title="Relationships"; fieldname="rels"; width=160; }
+		t_autoq "widget/table-column" { title="Autoquery"; fieldname="autoquery"; width=60; }
+		}
+	    }
+	}
+    }

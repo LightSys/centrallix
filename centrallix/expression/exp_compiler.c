@@ -1185,20 +1185,28 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
     int i,cm=0;
 
 	/** For a property node, check if the object should be set. **/
-	if (exp->NodeType == EXPR_N_PROPERTY && (exp->Flags & domain) && exp->ObjID == -1 && exp->Parent && exp->Parent->NodeType == EXPR_N_OBJECT)
+	if (exp->NodeType == EXPR_N_PROPERTY && (exp->Flags & domain))
 	    {
-	    for(i=0;i<objlist->nObjects;i++)
+	    if (exp->ObjID == -1 && exp->Parent && exp->Parent->NodeType == EXPR_N_OBJECT)
 		{
-		if (objlist->Names[i] && !strcmp(exp->Parent->Name, objlist->Names[i]))
+		for(i=0;i<objlist->nObjects;i++)
 		    {
-		    cm |= (1<<i);
-		    exp->ObjID = i;
-		    break;
+		    if (objlist->Names[i] && !strcmp(exp->Parent->Name, objlist->Names[i]))
+			{
+			cm |= (1<<i);
+			exp->ObjID = i;
+			break;
+			}
+		    }
+		if (exp->ObjID == -1)
+		    {
+		    cm |= EXPR_MASK_EXTREF;
 		    }
 		}
-	    if (exp->ObjID == -1)
+	    else if (exp->ObjID == -2 || exp->ObjID == -3)
 		{
-		cm |= EXPR_MASK_EXTREF;
+		if (exp->ObjID == -2) cm |= (1<<(objlist->CurrentID));
+		if (exp->ObjID == -3) cm |= (1<<(objlist->ParentID));
 		}
 	    }
 

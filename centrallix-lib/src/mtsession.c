@@ -22,6 +22,7 @@
 #include "xarray.h"
 #include "xstring.h"
 #include "xhash.h"
+#include "strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -232,6 +233,79 @@ mssPassword()
 	if (!s) return NULL;
 
     return s->Password;
+    }
+
+
+/*** mssGenCred - generate credential used for authentication.  This can
+ *** be stored in a cxpasswd file.  The credential points to a buffer where
+ *** we can store the encrypted version of the password.  'salt' and 'salt_len'
+ *** should indicate a series of random bytes.  How many we use depends on
+ *** whether the system supports MD5 passwords or not.  cred_maxlen indicates
+ *** the size of the buffer pointed to by credential.  If there is not enough
+ *** room, then we fail (return -1).
+ ***
+ *** Optimum salt length for MD5 passwords is 4 bytes - we expand it to 8 hex
+ *** bytes.  Salt should be full-range random bytes (0x00 - 0xFF).
+ ***
+ *** Successful return is 0.
+ ***/
+int
+mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen)
+    {
+    char salt_chars[] = "0123456789abcdef";
+    char salt_buf[9];
+    char *ptr;
+    char *dstptr;
+	
+	/** Minimum salt length is 1 byte **/
+	if (salt_len < 1) return -1;
+
+	/** Expand the salt to (up to) 8 bytes **/
+	ptr = salt;
+	dstptr = salt_buf;
+	while (*ptr)
+	    {
+	    *(dstptr++) = salt_chars[ptr[0] & 0xF];
+	    *(dstptr++) = salt_chars[(ptr[0]>>4) & 0xF];
+	    ptr++;
+	    }
+	*dstptr = '\0';
+
+	/** Try MD5 style **/
+	if (cred_maxlen >= 35)
+	    {
+	    /** Create initial salt for crypt() **/
+	    snprintf(credential, 35, "$1$%s$", salt_buf);
+
+	    /** Encrypt the password **/
+	    ptr = crypt(password, credential);
+
+	    /** Success? **/
+	    if (ptr && strlen(ptr) >= 27)
+		{
+		strtcpy(credential, ptr, cred_maxlen);
+		return 0;
+		}
+	    }
+
+	/** Try DES style **/
+	if (cred_maxlen >= 14)
+	    {
+	    /** Create initial salt for crypt() **/
+	    snprintf(credential, 14, "%.2s", salt_buf);
+
+	    /** Encrypt the password **/
+	    ptr = crypt(password, credential);
+
+	    /** Success? **/
+	    if (ptr)
+		{
+		strtcpy(credential, ptr, cred_maxlen);
+		return 0;
+		}
+	    }
+
+    return -1;
     }
 
 
