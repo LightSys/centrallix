@@ -409,6 +409,22 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     return template;
 }
 
+int freeStrDuped(char *str,void *dup){
+  nmSysFree(str);
+  return 0;
+}
+
+void wgtrCleanLocale(){
+  //reset translation tables
+  xhClear(&(WGTR.TranslationsHash),freeStrDuped,NULL);
+  xaDeInit(&(WGTR.TranslationsMid));
+  xaDeInit(&(WGTR.TranslationsBack));
+  xaDeInit(&(WGTR.TranslationsFront));
+  xaInit(&(WGTR.TranslationsFront),16);
+  xaInit(&(WGTR.TranslationsBack),16);
+  xaInit(&(WGTR.TranslationsMid),16);
+}
+
 int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
 {
   int nxTok;
@@ -446,6 +462,7 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
 	  goto cleanup;
 	}
 
+  wgtrCleanLocale();
   //read in translations
   lexer = mlxGenericSession(trans, objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM
 		  |  MLX_F_DASHCOMM | MLX_F_SEMICOMM | MLX_F_CCOMM);
