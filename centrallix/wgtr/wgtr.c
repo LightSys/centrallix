@@ -417,6 +417,9 @@ int freeStrDuped(char *str,void *dup)
 
 void wgtrCleanLocale()
 {
+#ifdef LOC_DEBUG
+  mssError(0, "I18N", "Flushing translations");
+#endif
   //reset translation tables
   xhClear(&(WGTR.TranslationsHash), freeStrDuped, NULL);
   xaDeInit(&(WGTR.TranslationsMid));
@@ -435,7 +438,7 @@ int wgtrLoadFlatLocale(pObjSession s, const char *filename)
   pLxSession lexer = NULL;
 
 #ifdef LOC_DEBUG
-  mssError(0, "I18N", "Translation from %s", filename);
+  mssError(0, "I18N", "Loading translation from %s", filename);
 #endif
 
   //open the file
@@ -445,8 +448,7 @@ int wgtrLoadFlatLocale(pObjSession s, const char *filename)
 	  mssError(0, "I18N", "Could not load locale file %s", filename);
 	  goto cleanup;
 	}
-
-  wgtrCleanLocale();
+  
   //read in translations
   lexer = mlxGenericSession(trans, objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM
 		  |  MLX_F_DASHCOMM | MLX_F_SEMICOMM | MLX_F_CCOMM);
@@ -509,7 +511,7 @@ cleanup:
   return 0;
 }
 
-int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
+int wgtrLoadLocale(pObjSession s, const char *path, const char *dir)
 {
   char *filename, *iter;
  
@@ -521,14 +523,14 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
   //build pathname and open file
   filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
   filename[0] = '\0';
-  if(locales[0]!='/'){
+  if(dir[0]!='/'){
 	  strcat(filename, path);
 	  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
 	  for (; *iter != '/' && iter != filename; iter--);
 	  *iter = '\0';
 	  strcat(filename, "/");
   }
-  strcat(filename, locales);
+  strcat(filename, dir);
   strcat(filename, "/");
   strcat(filename, (char *)mssGetParam("locale"));
   wgtrLoadFlatLocale(s,filename);
@@ -833,9 +835,27 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
   //Load localizations
   if (!wgtrGetPropertyValue(this_node, "locale", DATA_T_STRING, &val))
 	mssSetParam("locale", val.String);
-  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRING, &val))
-	wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf, val.String);
-  //now, apply what we learned
+  if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRINGVEC)
+	{
+	  int i;
+	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRINGVEC, &val))
+		{
+		  //flush table!
+		  wgtrCleanLocale();
+		  for (i = 0; i < val.StringVec->nStrings; i++)
+			wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf, val.StringVec->Strings[i]);
+		}//end if fetched
+	}
+  else if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRING)
+	{
+	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRING, &val))
+		{
+		  //flush table!
+		  wgtrCleanLocale();
+		  wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf, val.String);
+		}//end if fetched
+	}//end if property locales
+  //and so what we have learned applies to our life today, God has a lot to say in His book
   for (prop_name = wgtrFirstPropertyName(this_node); prop_name;
 		  prop_name = wgtrNextPropertyName(this_node))
 	{
