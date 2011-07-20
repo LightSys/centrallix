@@ -549,6 +549,12 @@ char *translate(WgtrTranTable *table, char *text, int *found)
   int i;
   char *trans = NULL;
   XArray hitlist;
+
+  if(strncmp(text,"i18n:",5)){
+	  if(found)*found=0;
+	  return text;
+	}
+  text+=5;
   xaInit(&hitlist,10);
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Checking for %s", text);
@@ -654,7 +660,7 @@ char *translate(WgtrTranTable *table, char *text, int *found)
   for(i=0;i<xaCount(&hitlist);i++)nmSysFree(xaGetItem(&hitlist,i));
   xaDeInit(&hitlist);
   //if nothing found, return original
-  if (!trans && found)*found = 0;
+  if (!trans && found)*found = 1;
   return text;
 majorerror:
 	mssError(0, "I18N", "Something truly horrendous has happened.");
