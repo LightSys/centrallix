@@ -447,7 +447,8 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
 	}
 
   //read in translations
-  lexer = mlxGenericSession(trans, objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM);
+  lexer = mlxGenericSession(trans, objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM
+		  |  MLX_F_DASHCOMM | MLX_F_SEMICOMM | MLX_F_CCOMM);
   //now, actually read the thing
   while (1)
 	{
@@ -477,17 +478,20 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *locales)
 			{
 			  genword++;
 			  *(genword + strlen(genword) - 1) = '\0';
-			  xaAddItem(&(WGTR.TranslationsMid), genword);
+			  if(xaFindItem(&(WGTR.TranslationsMid),genword)<0)
+				xaAddItem(&(WGTR.TranslationsMid), genword);
 			}
 		  else if (strchr(genword, '*') == genword)
 			{
 			  genword++;
-			  xaAddItem(&(WGTR.TranslationsBack), genword);
+			  if(xaFindItem(&(WGTR.TranslationsBack),genword)<0)
+				xaAddItem(&(WGTR.TranslationsBack), genword);
 			}
 		  else
 			{
 			  *(genword + strlen(genword) - 1) = '\0';
-			  xaAddItem(&(WGTR.TranslationsFront), genword);
+			  if(xaFindItem(&(WGTR.TranslationsFront),genword)<0)
+				xaAddItem(&(WGTR.TranslationsFront), genword);
 			}
 		}//end if *
 #ifdef LOC_DEBUG
@@ -528,9 +532,14 @@ char *translate(char *text, int *found)
 	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsFront), i));
 	  if (loc)
 		{
-		  trans = (char *)nmSysMalloc(strlen(loc)
+		  if(!xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsBack), i)))
+			goto majorerror;
+		  int size = strlen(text)
 				  + strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsFront), i))));
+				  xaGetItem(&(WGTR.TranslationsFront), i)))+1;
+		  if(size<0)goto majorerror;
+		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsFront), i)));
@@ -550,9 +559,14 @@ char *translate(char *text, int *found)
 	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsBack), i));
 	  if (loc)
 		{
-		  trans = (char *)nmSysMalloc(strlen(loc)
+		  if(!xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsBack), i)))
+			goto majorerror;
+		  int size = strlen(text)
 				  + strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack), i))));
+				  xaGetItem(&(WGTR.TranslationsBack), i)))+1;
+		  if(size<0)goto majorerror;
+		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  loc[0] = '\0';
 		  strcat(trans, text);
@@ -573,9 +587,14 @@ char *translate(char *text, int *found)
 	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsMid), i));
 	  if (loc)
 		{
-		  trans = (char *)nmSysMalloc(strlen(text)
+		  if(!xhLookup(&(WGTR.TranslationsHash),
+				  xaGetItem(&(WGTR.TranslationsMid), i)))
+			goto majorerror;
+		  int size = strlen(text)
 				  + strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid), i))));
+				  xaGetItem(&(WGTR.TranslationsMid), i))+1);
+		  if(size<0)goto majorerror;
+		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  loc[0] = '\0';
 		  strcat(trans, text);
@@ -587,13 +606,17 @@ char *translate(char *text, int *found)
 #endif
 		  if (found)*found = 1;
 		  text = trans;
-		  break;
+		  //break; not break, so we can find more
 		}//end if found
 	}//end for trans mid
 
   //if nothing found, return original
-  if (!trans)*found = 0;
+  if (!trans && found)*found = 0;
   return text;
+majorerror:
+	mssError(0, "I18N", "Something truly horrendous has happened.");
+	if(found)*found = 0;
+	return NULL;
 }//translate
 
 pWgtrNode 
