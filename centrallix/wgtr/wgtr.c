@@ -513,6 +513,8 @@ char *translate(char *text, int *found)
 {
   int i;
   char *trans = NULL;
+  XArray hitlist;
+  xaInit(&hitlist,10);
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Checking for %s", text);
 #endif
@@ -530,15 +532,17 @@ char *translate(char *text, int *found)
   for (i = 0; i < xaCount(&(WGTR.TranslationsFront)); i++)
 	{
 	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsFront), i));
-	  if (loc)
+	  if (loc == text)
 		{
 		  if(!xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack), i)))
+				  xaGetItem(&(WGTR.TranslationsFront), i)))
 			goto majorerror;
 		  int size = strlen(text)
 				  + strlen(xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsFront), i)))+1;
 		  if(size<0)goto majorerror;
+		  //shouldn't be, but lets be safe
+		  if(trans)xaAddItem(&hitlist,trans);
 		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
@@ -557,7 +561,7 @@ char *translate(char *text, int *found)
   for (i = 0; i < xaCount(&(WGTR.TranslationsBack)); i++)
 	{
 	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsBack), i));
-	  if (loc)
+	  if (loc == (text + strlen(text) - strlen(xaGetItem(&(WGTR.TranslationsBack), i))))
 		{
 		  if(!xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsBack), i)))
@@ -566,6 +570,7 @@ char *translate(char *text, int *found)
 				  + strlen(xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsBack), i)))+1;
 		  if(size<0)goto majorerror;
+		  if(trans)xaAddItem(&hitlist,trans);
 		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  loc[0] = '\0';
@@ -594,6 +599,7 @@ char *translate(char *text, int *found)
 				  + strlen(xhLookup(&(WGTR.TranslationsHash),
 				  xaGetItem(&(WGTR.TranslationsMid), i))+1);
 		  if(size<0)goto majorerror;
+		  if(trans)xaAddItem(&hitlist,trans);
 		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  loc[0] = '\0';
@@ -610,6 +616,8 @@ char *translate(char *text, int *found)
 		}//end if found
 	}//end for trans mid
 
+  for(i=0;i<xaCount(&hitlist);i++)nmSysFree(xaGetItem(&hitlist,i));
+  xaDeInit(&hitlist);
   //if nothing found, return original
   if (!trans && found)*found = 0;
   return text;
