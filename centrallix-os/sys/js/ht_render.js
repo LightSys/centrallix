@@ -95,6 +95,11 @@ function cxjs_isnull(v,d)
     else
 	return v;
     }
+function cxjs_ltrim(s)
+    {
+    if (s == null) return null;
+    return String(s).replace(/^ */, "");
+    }
 function cxjs_rtrim(s)
     {
     if (s == null) return null;
