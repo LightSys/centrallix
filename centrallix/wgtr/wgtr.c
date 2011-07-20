@@ -85,13 +85,9 @@ struct
     XHashTable	    Methods;		    /* deployment methods */
     XArray	    Drivers;		    /* simple driver listing */
     XHashTable	    DriversByType;
-	XHashTable	TranslationsHash;
-	XArray		TranslationsFront;
-	XArray		TranslationsBack;
-	XArray		TranslationsMid;
     long	    SerialID;
+	pWgtrTranTable table;
     } WGTR;
-
 
 pWgtrNode 
 wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
@@ -415,22 +411,32 @@ int freeStrDuped(char *str,void *dup)
   return 0;
 }
 
-void wgtrCleanLocale()
+WgtrTranTable *wgtrMakeTable(void)
+{
+  WgtrTranTable *table=nmMalloc(sizeof(WgtrTranTable));
+  xhInit(&(table->TranslationsHash), 16, 0);
+  xaInit(&(table->TranslationsFront), 16);
+  xaInit(&(table->TranslationsBack), 16);
+  xaInit(&(table->TranslationsMid), 16);
+  return table;
+}
+
+void wgtrCleanLocale(WgtrTranTable *table)
 {
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Flushing translations");
 #endif
   //reset translation tables
-  xhClear(&(WGTR.TranslationsHash), freeStrDuped, NULL);
-  xaDeInit(&(WGTR.TranslationsMid));
-  xaDeInit(&(WGTR.TranslationsBack));
-  xaDeInit(&(WGTR.TranslationsFront));
-  xaInit(&(WGTR.TranslationsFront), 16);
-  xaInit(&(WGTR.TranslationsBack), 16);
-  xaInit(&(WGTR.TranslationsMid), 16);
+  xhClear(&(table->TranslationsHash), freeStrDuped, NULL);
+  xaDeInit(&(table->TranslationsMid));
+  xaDeInit(&(table->TranslationsBack));
+  xaDeInit(&(table->TranslationsFront));
+  xaInit(&(table->TranslationsFront), 16);
+  xaInit(&(table->TranslationsBack), 16);
+  xaInit(&(table->TranslationsMid), 16);
 }
 
-int wgtrLoadFlatLocale(pObjSession s, const char *filename)
+int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, const char *filename)
 {
   int nxTok;
   char *genword, *locword;
@@ -481,28 +487,28 @@ int wgtrLoadFlatLocale(pObjSession s, const char *filename)
 			{
 			  genword++;
 			  *(genword + strlen(genword) - 1) = '\0';
-			  if(xaFindItem(&(WGTR.TranslationsMid),genword)<0)
-				xaAddItem(&(WGTR.TranslationsMid), genword);
+			  if(xaFindItem(&(table->TranslationsMid),genword)<0)
+				xaAddItem(&(table->TranslationsMid), genword);
 			}
 		  else if (strchr(genword, '*') == genword)
 			{
 			  genword++;
-			  if(xaFindItem(&(WGTR.TranslationsBack),genword)<0)
-				xaAddItem(&(WGTR.TranslationsBack), genword);
+			  if(xaFindItem(&(table->TranslationsBack),genword)<0)
+				xaAddItem(&(table->TranslationsBack), genword);
 			}
 		  else
 			{
 			  *(genword + strlen(genword) - 1) = '\0';
-			  if(xaFindItem(&(WGTR.TranslationsFront),genword)<0)
-				xaAddItem(&(WGTR.TranslationsFront), genword);
+			  if(xaFindItem(&(table->TranslationsFront),genword)<0)
+				xaAddItem(&(table->TranslationsFront), genword);
 			}
 		}//end if *
 #ifdef LOC_DEBUG
 	  mssError(0, "I18N", "%s means %s", genword, locword);
 #endif
 	  //replace old translations
-	  xhRemove(&(WGTR.TranslationsHash), genword);
-	  xhAdd(&(WGTR.TranslationsHash), genword, locword);
+	  xhRemove(&(table->TranslationsHash), genword);
+	  xhAdd(&(table->TranslationsHash), genword, locword);
 	}
   //alldone, cleanup
 cleanup:
@@ -511,7 +517,7 @@ cleanup:
   return 0;
 }
 
-int wgtrLoadLocale(pObjSession s, const char *path, const char *dir)
+int wgtrLoadLocale(WgtrTranTable *table, pObjSession s, const char *path, const char *dir)
 {
   char *filename, *iter;
  
@@ -533,12 +539,12 @@ int wgtrLoadLocale(pObjSession s, const char *path, const char *dir)
   strcat(filename, dir);
   strcat(filename, "/");
   strcat(filename, (char *)mssGetParam("locale"));
-  wgtrLoadFlatLocale(s,filename);
+  wgtrLoadFlatLocale(table, s,filename);
   free(filename);
   return 0;
 }
 
-char *translate(char *text, int *found)
+char *translate(WgtrTranTable *table, char *text, int *found)
 {
   int i;
   char *trans = NULL;
@@ -547,9 +553,9 @@ char *translate(char *text, int *found)
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Checking for %s", text);
 #endif
-  if (xhLookup(&(WGTR.TranslationsHash), text))
+  if (xhLookup(&(table->TranslationsHash), text))
 	{
-	  trans = xhLookup(&(WGTR.TranslationsHash), text);
+	  trans = xhLookup(&(table->TranslationsHash), text);
 #ifdef LOC_DEBUG
 	  mssError(0, "I18N", "Found %s", trans);
 #endif
@@ -558,25 +564,25 @@ char *translate(char *text, int *found)
 	}//end hash lookup
 
   //now look for translations which start the same way
-  for (i = 0; i < xaCount(&(WGTR.TranslationsFront)); i++)
+  for (i = 0; i < xaCount(&(table->TranslationsFront)); i++)
 	{
-	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsFront), i));
+	  char *loc = strstr(text, xaGetItem(&(table->TranslationsFront), i));
 	  if (loc == text)
 		{
-		  if(!xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsFront), i)))
+		  if(!xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsFront), i)))
 			goto majorerror;
 		  int size = strlen(text)
-				  + strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsFront), i)))+1;
+				  + strlen(xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsFront), i)))+1;
 		  if(size<0)goto majorerror;
 		  //shouldn't be, but lets be safe
 		  if(trans)xaAddItem(&hitlist,trans);
 		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
-		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsFront), i)));
-		  strcat(trans, loc + strlen(xaGetItem(&(WGTR.TranslationsFront), i)));
+		  strcat(trans, xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsFront), i)));
+		  strcat(trans, loc + strlen(xaGetItem(&(table->TranslationsFront), i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
@@ -587,25 +593,25 @@ char *translate(char *text, int *found)
 	}//end for trans front
 
   //now look for translations which *end* the same way
-  for (i = 0; i < xaCount(&(WGTR.TranslationsBack)); i++)
+  for (i = 0; i < xaCount(&(table->TranslationsBack)); i++)
 	{
-	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsBack), i));
-	  if (loc == (text + strlen(text) - strlen(xaGetItem(&(WGTR.TranslationsBack), i))))
+	  char *loc = strstr(text, xaGetItem(&(table->TranslationsBack), i));
+	  if (loc == (text + strlen(text) - strlen(xaGetItem(&(table->TranslationsBack), i))))
 		{
-		  if(!xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack), i)))
+		  if(!xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsBack), i)))
 			goto majorerror;
 		  int size = strlen(text)
-				  + strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack), i)))+1;
+				  + strlen(xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsBack), i)))+1;
 		  if(size<0)goto majorerror;
 		  if(trans)xaAddItem(&hitlist,trans);
 		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  loc[0] = '\0';
 		  strcat(trans, text);
-		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsBack), i)));
+		  strcat(trans, xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsBack), i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
@@ -616,26 +622,26 @@ char *translate(char *text, int *found)
 	}//end for trans end
 
   //now look for translations in the middle :D
-  for (i = 0; i < xaCount(&(WGTR.TranslationsMid)); i++)
+  for (i = 0; i < xaCount(&(table->TranslationsMid)); i++)
 	{
-	  char *loc = strstr(text, xaGetItem(&(WGTR.TranslationsMid), i));
+	  char *loc = strstr(text, xaGetItem(&(table->TranslationsMid), i));
 	  if (loc)
 		{
-		  if(!xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid), i)))
+		  if(!xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsMid), i)))
 			goto majorerror;
 		  int size = strlen(text)
-				  + strlen(xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid), i))+1);
+				  + strlen(xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsMid), i))+1);
 		  if(size<0)goto majorerror;
 		  if(trans)xaAddItem(&hitlist,trans);
 		  trans = (char *)nmSysMalloc(size);
 		  trans[0] = '\0';
 		  loc[0] = '\0';
 		  strcat(trans, text);
-		  strcat(trans, xhLookup(&(WGTR.TranslationsHash),
-				  xaGetItem(&(WGTR.TranslationsMid), i)));
-		  strcat(trans, loc + strlen(xaGetItem(&(WGTR.TranslationsMid), i)));
+		  strcat(trans, xhLookup(&(table->TranslationsHash),
+				  xaGetItem(&(table->TranslationsMid), i)));
+		  strcat(trans, loc + strlen(xaGetItem(&(table->TranslationsMid), i)));
 #ifdef LOC_DEBUG
 		  mssError(0, "I18N", "Found %s", trans);
 #endif
@@ -841,9 +847,9 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRINGVEC, &val))
 		{
 		  //flush table!
-		  wgtrCleanLocale();
+		  wgtrCleanLocale(WGTR.table);
 		  for (i = 0; i < val.StringVec->nStrings; i++)
-			wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf, val.StringVec->Strings[i]);
+			wgtrLoadLocale(WGTR.table, obj->Session, obj->Pathname->Pathbuf, val.StringVec->Strings[i]);
 		}//end if fetched
 	}
   else if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRING)
@@ -851,8 +857,8 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRING, &val))
 		{
 		  //flush table!
-		  wgtrCleanLocale();
-		  wgtrLoadLocale(obj->Session, obj->Pathname->Pathbuf, val.String);
+		  wgtrCleanLocale(WGTR.table);
+		  wgtrLoadLocale(WGTR.table, obj->Session, obj->Pathname->Pathbuf, val.String);
 		}//end if fetched
 	}//end if property locales
   //and so what we have learned applies to our life today, God has a lot to say in His book
@@ -865,8 +871,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		{
 		  //get value
 		  wgtrGetPropertyValue(this_node, prop_name, DATA_T_STRING, &val);
-		  val.String = translate(val.String, &trans_found);
-		  ///@bug calling get than set with out changing a property causes errors
+		  val.String = translate(WGTR.table,val.String, &trans_found);
 		  if (trans_found)
 			wgtrSetProperty(this_node, prop_name, DATA_T_STRING, &val);
 		}//end if string
@@ -2307,10 +2312,7 @@ wgtrInitialize()
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
-	xhInit(&(WGTR.TranslationsHash), 16, 0);
-	xaInit(&(WGTR.TranslationsFront), 16);
-	xaInit(&(WGTR.TranslationsBack), 16);
-	xaInit(&(WGTR.TranslationsMid), 16);
+	WGTR.table = wgtrMakeTable();
 	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/
