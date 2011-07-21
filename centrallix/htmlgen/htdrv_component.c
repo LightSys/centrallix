@@ -313,6 +313,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     int old_is_dynamic = 0;
     char* scriptslist;
     pStruct attr_inf;
+	pWgtrTranTable locale_table=0;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -440,6 +441,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		goto out;
 		}
 
+		//try to translate the thing
+		//locale_table=wgtrGetTable(cmp_tree);
+		//if(!locale_table)locale_table=wgtrGetTable(tree);
+		//wgtrLocalize(cmp_tree, locale_table);
+		
 	    /** Set up client params **/
 	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
 	    wgtr_params.MaxHeight = h;

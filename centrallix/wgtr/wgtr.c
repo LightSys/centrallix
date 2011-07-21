@@ -86,7 +86,6 @@ struct
     XArray	    Drivers;		    /* simple driver listing */
     XHashTable	    DriversByType;
     long	    SerialID;
-	pWgtrTranTable table;
     } WGTR;
 
 pWgtrNode 
@@ -414,10 +413,13 @@ int freeStrDuped(char *str,void *dup)
 WgtrTranTable *wgtrMakeTable(void)
 {
   WgtrTranTable *table=nmMalloc(sizeof(WgtrTranTable));
+  memset(table,0,sizeof(WgtrTranTable));
   xhInit(&(table->TranslationsHash), 16, 0);
   xaInit(&(table->TranslationsFront), 16);
   xaInit(&(table->TranslationsBack), 16);
   xaInit(&(table->TranslationsMid), 16);
+  table->Magic = MGK_TRANSTABLE;
+  ASSERTMAGIC(table, MGK_TRANSTABLE);
   return table;
 }
 
@@ -436,13 +438,13 @@ void wgtrCleanLocale(WgtrTranTable *table)
   xaInit(&(table->TranslationsMid), 16);
 }
 
-int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, const char *filename)
+int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, char *filename)
 {
   int nxTok;
   char *genword, *locword;
   pObject trans = NULL;
   pLxSession lexer = NULL;
-
+  ASSERTMAGIC(table, MGK_TRANSTABLE);
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Loading translation from %s", filename);
 #endif
@@ -530,13 +532,13 @@ int wgtrLoadLocale(WgtrTranTable *table, pObjSession s, const char *path, const 
   filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
   filename[0] = '\0';
   if(dir[0]!='/'){
-	  strcat(filename, path);
+	  if(path)strcat(filename, path);
 	  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
 	  for (; *iter != '/' && iter != filename; iter--);
 	  *iter = '\0';
 	  strcat(filename, "/");
   }
-  strcat(filename, dir);
+  if(dir)strcat(filename, dir);
   strcat(filename, "/");
   strcat(filename, (char *)mssGetParam("locale"));
   wgtrLoadFlatLocale(table, s,filename);
@@ -549,7 +551,8 @@ char *translate(WgtrTranTable *table, char *text, int *found)
   int i;
   char *trans = NULL;
   XArray hitlist;
-
+  ASSERTMAGIC(table, MGK_TRANSTABLE);
+  
   if(strncmp(text,"i18n:",5)){
 	  if(found)*found=0;
 	  return text;
@@ -719,8 +722,80 @@ wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* typ
 
     error:
 	return -1;
-    }
+}
 
+pWgtrTranTable internal_climb_table_tree(pWgtrNode node)
+{
+  if (!node)return NULL;
+  if (node->TransTable)return node->TransTable;
+  return internal_climb_table_tree(node->Parent);
+}
+
+pWgtrTranTable wgtrGetTable(pWgtrNode node)
+{
+  ObjData val;
+  pWgtrTranTable table;
+#ifdef LOC_DEBUG
+  mssError(0,"I18N","Finding translations for %s",node->Name);
+#endif
+  if (node->TransTable)return node->TransTable;
+  //Load localizations
+  if (!wgtrGetPropertyValue(node, "locale", DATA_T_STRING, &val))
+	mssSetParam("locale", val.String);
+  if (wgtrGetPropertyType(node, "locales") == DATA_T_STRINGVEC)
+	{
+	  int i;
+	  if (!wgtrGetPropertyValue(node, "locales", DATA_T_STRINGVEC, &val))
+		{
+		  //create table
+		  table = wgtrMakeTable();
+		  for (i = 0; i < val.StringVec->nStrings; i++)
+			wgtrLoadLocale(table, node->ObjSession, node->ObjSession->CurrentDirectory, val.StringVec->Strings[i]);
+		}//end if fetched
+	} else if (wgtrGetPropertyType(node, "locales") == DATA_T_STRING)
+	{
+	  if (!wgtrGetPropertyValue(node, "locales", DATA_T_STRING, &val))
+		{
+		  //create table
+		  table = wgtrMakeTable();
+		  wgtrLoadLocale(table, node->ObjSession, node->ObjSession->CurrentDirectory, val.String);
+		}//end if fetched
+	}//end if property locales
+  if (table)return node->TransTable = table;
+  table = internal_climb_table_tree(node->Parent);
+  if (table)return node->TransTable = table;
+  if(node->Root->TransTable)return node->TransTable = node->Root->TransTable;
+  return NULL;
+}
+
+// This looks like a even better place to apply the localization
+pWgtrNode wgtrLocalize(pWgtrNode this_node, pWgtrTranTable table)
+{
+  int prop_type, trans_found;
+  char* prop_name;
+  ObjData val;
+  //check for rationallity
+  if(!table){
+	  mssError(0,"I18N","Translation from NULL?");
+	  table = wgtrGetTable(this_node);
+	}
+  //and so what we have ^learned^ applies to our life today, God has a lot to say, in His book
+  for (prop_name = wgtrFirstPropertyName(this_node); prop_name;
+		  prop_name = wgtrNextPropertyName(this_node))
+	{
+	  //get type
+	  prop_type = wgtrGetPropertyType(this_node, prop_name);
+	  if (prop_type == DATA_T_STRING)
+		{
+		  //get value
+		  wgtrGetPropertyValue(this_node, prop_name, DATA_T_STRING, &val);
+		  val.String = translate(table, val.String, &trans_found);
+		  if (trans_found)
+			wgtrSetProperty(this_node, prop_name, DATA_T_STRING, &val);
+		}//end if string
+	}//end for wgtrPropery
+  return this_node;
+}//end wgtrLocalize
 
 pWgtrNode
 wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrNode root, int xoffset, int yoffset, pStruct client_params)
@@ -735,7 +810,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
     int rval;
     int i,j;
     pStruct one_param;
-    int already_used,trans_found;
+    int already_used;
     pWgtrNode sub_node;
 
 	/** create this node **/
@@ -842,47 +917,8 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	/** Setup (call driver New function) **/
 	if (wgtrSetupNode(this_node) < 0)
 	    goto error;
-
-// This looks like a better place to apply the localization
-  //Load localizations
-  if (!wgtrGetPropertyValue(this_node, "locale", DATA_T_STRING, &val))
-	mssSetParam("locale", val.String);
-  if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRINGVEC)
-	{
-	  int i;
-	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRINGVEC, &val))
-		{
-		  //flush table!
-		  wgtrCleanLocale(WGTR.table);
-		  for (i = 0; i < val.StringVec->nStrings; i++)
-			wgtrLoadLocale(WGTR.table, obj->Session, obj->Pathname->Pathbuf, val.StringVec->Strings[i]);
-		}//end if fetched
-	}
-  else if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRING)
-	{
-	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRING, &val))
-		{
-		  //flush table!
-		  wgtrCleanLocale(WGTR.table);
-		  wgtrLoadLocale(WGTR.table, obj->Session, obj->Pathname->Pathbuf, val.String);
-		}//end if fetched
-	}//end if property locales
-  //and so what we have learned applies to our life today, God has a lot to say in His book
-  for (prop_name = wgtrFirstPropertyName(this_node); prop_name;
-		  prop_name = wgtrNextPropertyName(this_node))
-	{
-	  //get type
-	  prop_type = wgtrGetPropertyType(this_node, prop_name);
-	  if (prop_type == DATA_T_STRING)
-		{
-		  //get value
-		  wgtrGetPropertyValue(this_node, prop_name, DATA_T_STRING, &val);
-		  val.String = translate(WGTR.table,val.String, &trans_found);
-		  if (trans_found)
-			wgtrSetProperty(this_node, prop_name, DATA_T_STRING, &val);
-		}//end if string
-	}//end for wgtrPropery
-
+	// This looks like a better place to apply the localization
+	wgtrLocalize(this_node,wgtrGetTable(this_node));
 	return this_node;
 
     error:
@@ -1864,7 +1900,8 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->DMPrivate = NULL;
 	node->top = node->bottom = node->right = node->left = 0;
 	node->Verified = 0;
-
+	node->TransTable = NULL;
+	
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
 	xaInit(&(node->Interfaces), 8);
@@ -2318,7 +2355,6 @@ wgtrInitialize()
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
-	WGTR.table = wgtrMakeTable();
 	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/

@@ -84,6 +84,14 @@ typedef struct
     }
     WgtrAppParam, *pWgtrAppParam;
 
+typedef struct
+    {
+    int         Magic;                  /** Magic number **/
+    XHashTable  TranslationsHash;       /** Actual translations **/
+    XArray      TranslationsFront;      /** List of beginnings **/
+    XArray      TranslationsBack;       /** List of endings **/
+    XArray      TranslationsMid;        /** List of middles **/
+    } WgtrTranTable, *pWgtrTranTable;
 
 typedef struct _WN
     {
@@ -118,17 +126,9 @@ typedef struct _WN
     void*	DMPrivate;			/** private data for use by deployment method **/
     char*	ThisTemplatePath;
     char*	TemplatePaths[WGTR_MAX_TEMPLATE];
+    pWgtrTranTable TransTable;
     }
     WgtrNode, *pWgtrNode;
-
-typedef struct
-    {
-    int         Magic;                  /** Magic number **/
-    XHashTable  TranslationsHash;       /** Actual translations **/
-    XArray      TranslationsFront;      /** List of beginnings **/
-    XArray      TranslationsBack;       /** List of endings **/
-    XArray      TranslationsMid;        /** List of middles **/
-    } WgtrTranTable, *pWgtrTranTable;
 
 typedef struct
     {
@@ -215,6 +215,8 @@ pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
 int wgtrGetMaxWidth(pWgtrNode widget, int height);	/** get max usable width at a given height **/
 int wgtrGetMaxHeight(pWgtrNode widget, int width);	/** get max usable height at a given width **/
+pWgtrNode wgtrLocalize(pWgtrNode this_node, pWgtrTranTable table); /** Apply localizations **/
+pWgtrTranTable wgtrGetTable(pWgtrNode node);            /** Find localizations **/
 
 /** verification functions **/
 int wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info);	/** Verify a widget-tree. s must be pHtSession **/
