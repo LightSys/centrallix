@@ -91,6 +91,7 @@ typedef struct
     XArray      TranslationsFront;      /** List of beginnings **/
     XArray      TranslationsBack;       /** List of endings **/
     XArray      TranslationsMid;        /** List of middles **/
+    int         OpenCnt;                /** Number of opens **/
     } WgtrTranTable, *pWgtrTranTable;
 
 typedef struct _WN

@@ -420,13 +420,17 @@ WgtrTranTable *wgtrMakeTable(void)
   xaInit(&(table->TranslationsFront), 16);
   xaInit(&(table->TranslationsBack), 16);
   xaInit(&(table->TranslationsMid), 16);
+  table->OpenCnt = 0;
   table->Magic = MGK_TRANSTABLE;
   ASSERTMAGIC(table, MGK_TRANSTABLE);
   return table;
 }
 
-void wgtrCleanLocale(WgtrTranTable *table)
+void wgtrFreeTable(WgtrTranTable *table)
 {
+  if(!table)return;
+  ASSERTMAGIC(table,MGK_TRANSTABLE);
+  if(--table->OpenCnt > 0)return;
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Flushing translations");
 #endif
@@ -435,9 +439,7 @@ void wgtrCleanLocale(WgtrTranTable *table)
   xaDeInit(&(table->TranslationsMid));
   xaDeInit(&(table->TranslationsBack));
   xaDeInit(&(table->TranslationsFront));
-  xaInit(&(table->TranslationsFront), 16);
-  xaInit(&(table->TranslationsBack), 16);
-  xaInit(&(table->TranslationsMid), 16);
+  return;
 }
 
 int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, char *filename)
@@ -722,10 +724,17 @@ pWgtrTranTable wgtrGetTable(pWgtrNode node)
 		  wgtrLoadLocale(table, node->ObjSession, node->ObjSession->CurrentDirectory, val.String);
 		}//end if fetched
 	}//end if property locales
-  if (table)return node->TransTable = table;
+  if (table){
+	node->TransTable = table;
+	table->OpenCnt++;
+	return node->TransTable;
+	}
   table = internal_climb_table_tree(node->Parent);
-  if (table)return node->TransTable = table;
-  if(node->Root->TransTable)return node->TransTable = node->Root->TransTable;
+  if (table){
+	node->TransTable = table;
+	table->OpenCnt++;
+	return node->TransTable;
+	}
   return NULL;
 }
 
@@ -1608,6 +1617,7 @@ wgtrFree(pWgtrNode tree)
 	xaDeInit(&(tree->Interfaces));
 
 	/** free the node itself **/
+	if(tree->TransTable)wgtrFreeTable(tree->TransTable);
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (tree->TemplatePaths[i]) nmSysFree(tree->TemplatePaths[i]);
 	if (tree->ThisTemplatePath) nmSysFree(tree->ThisTemplatePath);
