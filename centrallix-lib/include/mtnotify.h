@@ -90,7 +90,7 @@ void mtnDeinitialize();
  * @return This returns the new event that was created or NULL if the event could
  * not be created.
  */
-pEvent mtnCreateEvent(pXString typeOfEvent, void * data, int priority, int flags);
+pEvent mtnCreateEvent(char *typeOfEvent, void * data, int priority, int flags);
 
 /** @brief Delete an event structure 
  * @note NOTE THAT THIS SHOULD ONLY BE CALLED BY THE RECIEVER OF THE EVENT, NOT 

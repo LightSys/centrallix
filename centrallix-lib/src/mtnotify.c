@@ -50,12 +50,11 @@ void mtnDeinitialize(){
     nmFree(mtn_internal_currentlyWaiting, sizeof(XArray));
 }
 
-pEvent mtnCreateEvent(pXString typeOfEvent, void * data, int priority, int flags){
+pEvent mtnCreateEvent(char *typeOfEvent, void * data, int priority, int flags){
   // Allocate structure
   pEvent event = (pEvent)nmMalloc(sizeof(Event));
   // Allocate string
-  event->type = (char *)nmMalloc(typeOfEvent->Length + 1);
-  memcpy(event->type, typeOfEvent->String, typeOfEvent->Length + 1);
+  event->type = strdup(typeOfEvent);
   event->priority = priority;
   event->flags = flags;
   event->param = data;
@@ -65,12 +64,13 @@ pEvent mtnCreateEvent(pXString typeOfEvent, void * data, int priority, int flags
 
 void mtnDeleteEvent(pEvent event){
   if(--event->refcount > 0)return;
-  nmFree(event->type,strlen(event->type) + 1);
+  free(event->type);
   nmFree(event,sizeof(Event));
   return;
 }
 
 int mtnSendEvent(pEvent event){
+    int numSemaphores;
     
     // Set current event
     mtn_interal_currentEvent = event;
@@ -99,7 +99,7 @@ pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity){
 
         // Wait for semaphore to break
         if(blocking){
-            syPostSem(pSemaphore, 1, 0);
+            syPostSem(createdSemaphore, 1, 0);
         }
 
         // Iterate through all needed event types
@@ -112,18 +112,18 @@ pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity){
             }
 
             // If qualifies, remove semaphore from array and return the event
-            if(strcmp(((pXString)xaGetItem(eventStrings, numEventTypes))->String, mtn_interal_currentEvent->type) == 0 && mtn_interal_currentEvent->priority <= prioity){
+            if(strcmp((char *)xaGetItem(eventStrings, numEventTypes), mtn_interal_currentEvent->type) == 0 && mtn_interal_currentEvent->priority <= prioity){
 
                 // Remove this thread's semaphore from list and destroy semaphore
                 if(blocking){
                     
-                    numSemaphores = xaCount(currentSemaphores);
+                    numSemaphores = xaCount(mtn_internal_currentlyWaiting);
                     while(numSemaphores--){
-                        if(xaGetItem(currentSemaphores, numSemaphores) == createdSemaphore){
-                            xaRemoveItem(currentSemaphores, numSemaphores);
+                        if(xaGetItem(mtn_internal_currentlyWaiting, numSemaphores) == createdSemaphore){
+                            xaRemoveItem(mtn_internal_currentlyWaiting, numSemaphores);
                         }
                     }
-                    syDestroySem(createdSemaphore);
+                    syDestroySem(createdSemaphore, 0);
                 }
 
                 // Return needed event
@@ -134,7 +134,7 @@ pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity){
         // If not, increment semaphore again and start up
         mtnDeleteEvent(mtn_interal_currentEvent);
         if(blocking){
-            syGetSem(pSemaphore, 1, 0);
+            syGetSem(createdSemaphore, 1, 0);
         }
     }    
 }
