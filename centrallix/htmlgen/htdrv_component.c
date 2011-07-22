@@ -434,7 +434,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates);
+		locale_table=wgtrGetTable(tree);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates, locale_table);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
@@ -442,9 +443,9 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 		//try to translate the thing
-		//locale_table=wgtrGetTable(cmp_tree);
-		//if(!locale_table)locale_table=wgtrGetTable(tree);
-		//wgtrLocalize(cmp_tree, locale_table);
+		locale_table=wgtrGetTable(cmp_tree);
+		if(!locale_table)locale_table=wgtrGetTable(tree);
+		wgtrLocalize(cmp_tree, locale_table);
 		
 	    /** Set up client params **/
 	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));

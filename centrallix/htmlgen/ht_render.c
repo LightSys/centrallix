@@ -992,6 +992,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
     int rval;
+	pWgtrTranTable locale_table;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1030,7 +1031,8 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    mssError(1,"HTR","Unknown widget object type '%s'", widget->Type);
 	    return -1;
 	    }
-
+	locale_table = wgtrGetTable(widget);
+	wgtrLocalize(widget, locale_table);
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
 

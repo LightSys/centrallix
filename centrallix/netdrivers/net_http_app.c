@@ -123,7 +123,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 
     if (strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
 	{
-	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates)))
+	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates, NULL)))
 	    {
 	    if(tree) wgtrFree(tree);
 	    return -1;

@@ -170,8 +170,8 @@ typedef struct
 #define WGTR_TM_POSTORDER	3
 
 /** wgtr creation and destruction **/
-pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, char* templates[]);  /** parse osml object **/
-pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, char* templates[]);	/** parses an open OSML object into a widget tree **/
+pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, char* templates[], pWgtrTranTable table /* = NULL */);  /** parse osml object **/
+pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, char* templates[], pWgtrTranTable tree_table);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
