@@ -42,22 +42,18 @@ extern "C" {
  */
 typedef handle_t registered_event;
 
-#define ET_PHONESHOME   0
-#define ET_BLOCKS       1
-
-/// \brief One must fill out this event structure to get their event passed to
-/// them.
-typedef struct _ET{
-    int flags;
-    unsigned int numParams;
-} EventType, *pEventType;
-
+#define ET_PHONESHOME    0
+#define ET_HEALS         0
+#define ET_BLOCKS        0
+#define ET_NOTBLOCKS     1
+#define ET_POLL         (1<<1)
 
 typedef struct _EV{
     int flags;
-
+    /**@brief priority **/
+    int priority;
     pXArray paramArray;
-    pEventType type;
+    char *type;
 } Event, *pEvent;
 
 ///@brief Initializes the mtNotify system
@@ -71,7 +67,7 @@ int mtnDeinitialize();
  * \param typeOfEvent The type of event to create a new event of.
  * \return This returns the new event that was created.
  */
-pEvent mtnCreateEvent(pEventType typeOfEvent);
+pEvent mtnCreateEvent(char *typeOfEvent, int priority);
 
 /** \brief Delete an event structure - NOTE THAT THIS SHOULD ONLY BE CALLED BY
  THE RECIEVER OF THE EVENT, NOT THE SENDER!
@@ -82,14 +78,14 @@ void mtnDeleteEvent(pEvent event);
 /** \brief Send an event out to the necessary handler.
  * \param event The event to send out to some receiver.
  */
-int mtnSendEvent(pEvent event, receiver sendTo);
+int mtnSendEvent(pEvent event);
 
 /** \brief This is called by the thread that wants to receive the event when it
  happens.
  \param events The array of events to wait for.
  \return This returns the event that finally occurred.
  */
-pEvent mtnWaitForEvent(receiver thisReceiver, pXArray events);
+pEvent mtnWaitForEvent(pXArray events);
 
 ///\}
 
