@@ -19,13 +19,16 @@
 #include "xhash.h"
 #include "newmalloc.h"
 #include "mtask.h"
+#include "xstring.h"
+#include <stdlib.h>
+#include <string.h>
 
 volatile int running;
 pXArray currentlyWaiting; // List of semaphores waiting for events
 pEvent currentEvent;
 
 void mtn_internal_AddEventToQueue(pEvent event){
-    
+
 }
 
 int mtnInitialize(){
@@ -40,30 +43,35 @@ int mtnDeinitialize(){
     pSemaphore currentSemaphore;
     
     running = 0;
-    
+
     // Clear all contents and drop all semaphores
     numSemaphores = xaCount(currentlyWaiting);
     while(numSemaphores--){
         currentSemaphore = xaGetItem(currentlyWaiting, numSemaphores);
     }
+    
     xaDeInit(currentlyWaiting);
     nmFree(currentlyWaiting, sizeof(XArray));
 }
 
 pEvent mtnCreateEvent(pXString typeOfEvent, void * data, int priority, int flags){
-    
-    // Allocate structure
-    
-    // Allocate string
-    
+  // Allocate structure
+  pEvent event = (pEvent)nmMalloc(sizeof(Event));
+  // Allocate string
+  event->type = (pXString)nmMalloc(sizeof(XString));
+  memcmp(event->type, typeOfEvent, sizeof(XString));
+  event->priority = priority;
+  event->flags = flags;
+  event->param = data;
+  event->refcount = 0;
+  return event;
 }
 
 void mtnDeleteEvent(pEvent event){
-    
-    // Free string
-    
-    // Free structure
-    
+  if(--event->refcount > 0)return;
+  nmFree(event->type,sizeof(XString));
+  nmFree(event,sizeof(Event));
+  return;
 }
 
 int mtnSendEvent(pEvent event){
