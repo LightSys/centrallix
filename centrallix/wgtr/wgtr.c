@@ -467,25 +467,26 @@ int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, char *filename)
   //now, actually read the thing
   while (1)
 	{
+	  int alloc;
 	  nxTok = mlxNextToken(lexer);
 	  if (nxTok == MLX_TOK_EOF)break;
 	  if (nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD)
 		{
 		  mssError(0, "I18N", "Malformed translation file %s, wanted genword", filename);
-		  break;
+		  continue;
 		}
-	  genword = nmSysStrdup(mlxStringVal(lexer, 0));
+	  genword = nmSysStrdup(mlxStringVal(lexer, &alloc));
 	  if (mlxNextToken(lexer) != MLX_TOK_EQUALS)
 		{
 		  mssError(0, "I18N", "Malformed translation file %s, wanted =", filename);
-		  break;
+		  continue;
 		}
 	  if (mlxNextToken(lexer) != MLX_TOK_STRING)
 		{
 		  mssError(0, "I18N", "Malformed translation file %s, wanted locword", filename);
-		  break;
+		  continue;
 		}
-	  locword = nmSysStrdup(mlxStringVal(lexer, 0));
+	  locword = nmSysStrdup(mlxStringVal(lexer, &alloc));
 	  if (strchr(genword, '*'))
 		{
 		  if (strchr(genword, '*') == genword
