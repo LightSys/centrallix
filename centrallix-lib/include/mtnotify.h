@@ -70,13 +70,15 @@ typedef struct _EV{
     pXString        type;
 } Event, *pEvent;
 
-///@brief Initializes the mtNotify system
+/** @brief Initializes the mtNotify system
+ * @return This returns 0 if everything went well.
+ */
 int mtnInitialize();
 
 /** @brief Cleans up after the mtNotify system and sends necessary events to quit
  * threads that are waitng on events.
  **/
-int mtnDeinitialize();
+void mtnDeinitialize();
 
 /** @brief Create a new event of a given type.
  * @param typeOfEvent A string designating the type of event.
