@@ -46,9 +46,9 @@ extern "C" {
 /** @brief This is the structure that is passed all over when notfiying of events.
  *
  * These should always be created with mtnCreateEvent and deleted with mtnDeleteEvent
- * whenever they are recieved from mtnWaitForEvents.
+ * whenever they are received from mtnWaitForEvents.
  **/
-typedef struct _EV{
+typedef struct _EVNT{
     /** @brief Do not modify - reference counting data for an event. */
     unsigned short refcount;
     /** @brief These are some of the ET_* options. */
@@ -67,7 +67,7 @@ typedef struct _EV{
      *
      * There are a few disallowed names, specifically "quit" and "none".
      **/
-    pXString        type;
+    char            *type;
 } Event, *pEvent;
 
 /** @brief Initializes the mtNotify system
