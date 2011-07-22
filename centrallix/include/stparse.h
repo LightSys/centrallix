@@ -32,57 +32,6 @@
 /*		user.  Uses the MTLEXER module.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: stparse.h,v 1.5 2009/07/14 22:08:08 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/stparse.h,v $
-
-    $Log: stparse.h,v $
-    Revision 1.5  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.4  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.3  2005/02/26 06:42:38  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.2  2001/10/22 17:36:05  gbeeley
-    Beginning to add support for JS scripting facilities.
-
-    Revision 1.1  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 #include "cxlib/mtask.h"

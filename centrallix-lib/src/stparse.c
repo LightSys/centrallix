@@ -31,46 +31,6 @@
 /*		comments when generating a file.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: stparse.c,v 1.5 2005/02/06 02:35:41 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/stparse.c,v $
-
-    $Log: stparse.c,v $
-    Revision 1.5  2005/02/06 02:35:41  gbeeley
-    - Adding 'mkrpm' script for automating the RPM build process for this
-      package (script is portable to other packages).
-    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
-      between mtask threads)
-    - added xsString(xstr) for getting the string instead of xstr->String.
-
-    Revision 1.4  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.3  2002/06/20 15:57:05  gbeeley
-    Fixed some compiler warnings.  Repaired improper buffer handling in
-    mtlexer's mlxReadLine() function.
-
-    Revision 1.2  2002/04/25 17:54:39  gbeeley
-    Small update to stparse to fix some string length issues.
-
-    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.2  2001/07/04 02:57:58  gbeeley
-    Fixed a few error checking and array-overflow problems.
-
-    Revision 1.1.1.1  2001/07/03 01:02:59  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Some function headers ***/

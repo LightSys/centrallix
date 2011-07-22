@@ -21,33 +21,6 @@
 /*		values.							*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xarray.h,v 1.4 2004/07/22 00:20:52 mmcgill Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xarray.h,v $
-
-    $Log: xarray.h,v $
-    Revision 1.4  2004/07/22 00:20:52  mmcgill
-    Added a magic number define for WgtrNode, and added xaInsertBefore and
-    xaInsertAfter functions to the XArray module.
-
-    Revision 1.3  2003/06/27 21:18:34  gbeeley
-    Added xarray xaSetItem() method
-
-    Revision 1.2  2002/11/14 03:44:27  gbeeley
-    Added a new function to the XArray module to do sorted array adds
-    based on an integer field, which is portable between LSB and MSB
-    platforms.  Fixed the normal sorted add routine which was not
-    operating correctly anyhow.
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** Structure **/

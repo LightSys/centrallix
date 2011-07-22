@@ -20,17 +20,6 @@
 /*		values.	(I think)					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xringqueue.h,v 1.1 2003/03/15 06:50:47 jorupp Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xringqueue.h,v $
-
-    $Log: xringqueue.h,v $
-    Revision 1.1  2003/03/15 06:50:47  jorupp
-     * added XRingQueue -- a queue based on an auto-expanding ring buffer
-
-
- **END-CVSDATA***********************************************************/
 
 /** Structure **/
 typedef struct
