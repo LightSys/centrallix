@@ -18,7 +18,7 @@
 #include "mtnotify.h"
 #include "xhash.h"
 #include "newmalloc.h"
-#include <stdlib.h>
+#include "mtask.h"
 
 volatile int running;
 pXArray currentlyWaiting; // List of semaphores waiting for events
@@ -37,13 +37,14 @@ int mtnInitialize(){
 
 int mtnDeinitialize(){
     int numSemaphores;
+    pSemaphore currentSemaphore;
     
     running = 0;
     
     // Clear all contents and drop all semaphores
     numSemaphores = xaCount(currentlyWaiting);
     while(numSemaphores--){
-        xaGetItem(currentlyWaiting, numSemaphores);
+        currentSemaphore = xaGetItem(currentlyWaiting, numSemaphores);
     }
     xaDeInit(currentlyWaiting);
     nmFree(currentlyWaiting, sizeof(XArray));
@@ -67,26 +68,46 @@ void mtnDeleteEvent(pEvent event){
 
 int mtnSendEvent(pEvent event){
     
-    // Add into queue
+    // Set current event
+    currentEvent = event;
+    currentEvent->refcount += xaCount(currentlyWaiting);
     
     // Awake all semaphores
-    
+    numSemaphores = xaCount(currentlyWaiting);
+    while(numSemaphores--){
+        xaGetItem(currentlyWaiting, numSemaphores);
+    }
 }
 
 pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity ){
+    pSemaphore createdSemaphore;
+    int arrayLocation, numEventTypes;
     
     // Create semaphore and add into array
+    createdSemaphore = sySemCreate(XXX, 0);
+    xaAddItem(currentlyWaiting, createdSemaphore);
     
     // While has not found an event
+    while(1){
     
         // Wait for semaphore to break
+        
     
         // Check if qualifies
-    
+        numEventTypes = xaCount(eventStrings);
+        while(numEventTypes--){
+            
             // If is not running, return NULL
-    
+            if(running == 0){
+                return NULL;
+            }
+
             // If qualifies, remove semaphore from array and return that
-    
-            // If not, increment semaphore again
-    
+            if(xaGetItem(eventStrings, numEventTypes) == ?? || running = 0){
+                    
+            }   
+        }
+        
+        // If not, increment semaphore again and start up
+    }
 }
