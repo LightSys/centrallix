@@ -95,7 +95,7 @@ pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity){
     }
 
     // While has not found an event
-    while(blocking){
+    do{
 
         // Wait for semaphore to break
         if(blocking){
@@ -136,5 +136,5 @@ pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity){
         if(blocking){
             syGetSem(createdSemaphore, 1, 0);
         }
-    }    
-}
+    }while(blocking);
+}//end mtnWaitForEvents

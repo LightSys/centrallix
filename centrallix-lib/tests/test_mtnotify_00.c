@@ -31,13 +31,14 @@ void wait_fn(void *data) {
     int i;
     pEvent mess;
     XArray pinglist;
-    xaInit(&pinglist,1);
+    xaInit(&pinglist,4);
     xaAddItem(&pinglist,"ping");
     for(i=0; i<maxIters; i++){
         mess = mtnWaitForEvents(&pinglist,1,16);
         printf("Got: %s %s\n",mess->type,(char*)mess->param);
         mtnDeleteEvent(mess);
     }//end for
+    xaDeInit(&pinglist);
     thExit();
     return;
 }
@@ -46,9 +47,9 @@ void send_fn(void *data){
     int i;
     pEvent ping;
     for(i=0; i<maxIters; i++){
+        thSleep(200);
         ping=mtnCreateEvent("ping",data,i,0);
         mtnSendEvent(ping);
-        thSleep(200);
     }//end for
     thExit();
     return;
