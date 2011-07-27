@@ -49,8 +49,8 @@ inline void xt_internal_FreeNode(pXTreeNode toFree, int (*free_fn)(), void * fre
     }
 }
 
-inline int xt_internal_KeysSameBase(int from, char* key1, char* key2){
-    int to = from;
+inline int xt_internal_KeysSameBase(char* key1, char* key2){
+    int to = 0;
     while(key1[to] == key2[to] && key1[to++] != 0){} /* Run through until they characters are both null chars or 0 */
     return to;
 }
@@ -218,7 +218,7 @@ char* xtLookupBeginning(pXTree this, char* key){
         int compareResult;
         
         while(currentNode){
-            if((newCharFrom = xt_internal_KeysSameBase(charFrom, key, currentNode->key)) > charFrom){
+            if((newCharFrom = xt_internal_KeysSameBase(key, currentNode->key)) > charFrom){
                 charFrom = newCharFrom;
                 closestParentNode = currentNode;
             }
