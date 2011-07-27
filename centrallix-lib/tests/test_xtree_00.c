@@ -23,6 +23,8 @@
 #include "xtree.h"
 #include "newmalloc.h"
 
+#include "test_xtree_filedata.h"
+
 #define TESTSCOUNT    500000
 long long
 test(char** tname){
@@ -60,6 +62,15 @@ test(char** tname){
     assert(xtRemove(tree,"Luke")==-1);
 
     assert(tree->nItems==0);
+
+    //final stress test
+    i=-1;
+    while(filedata[++i][0]!=0)
+        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+
+    i=-1;
+    while(filedata[++i][0]!=0)
+        assert(!xtRemove(tree,filedata[i][1]));
 
     assert(xtDeInit(tree) == 0);
     return 2*TESTSCOUNT;

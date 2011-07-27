@@ -4,7 +4,7 @@ export targ=/usr/local
 
 echo -n "Building xtree filesystem data from $targ."
 
-tree -iflQp $targ > xtree_filedata
+tree -ifQp $targ > xtree_filedata
 echo -n ".."
 sed -e 's/\[/\{\"\[/' -e 's/\]/\]\",/' < xtree_filedata > xtree_filedata.tmp0
 echo -n "."
