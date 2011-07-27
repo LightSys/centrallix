@@ -96,6 +96,7 @@ int mssAuthenticate(char* username, char* password);
 int mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen);
 int mssEndSession();
 int mssSetParam(char* paramname, void* param);
+int mssSetParamSized(char* paramname, void* param, int size);
 void* mssGetParam(char* paramname);
 
 /** Error handling functions **/

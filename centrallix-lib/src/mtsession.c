@@ -773,11 +773,10 @@ mssStringError(pXString str)
     return 0;
     }
 
-
-/*** mssSetParam - sets a session parameter, for generic use.
+/*** mssSetParam - sets a session parameter, for generic use with given size.
  ***/
 int
-mssSetParam(char* paramname, void* value)
+mssSetParamSized(char* paramname, void* value, int size)
     {
     pMtSession s;
     pMtParam p;
@@ -786,6 +785,16 @@ mssSetParam(char* paramname, void* value)
 	s = (pMtSession)thGetParam(NULL,"mss");
 	if (!s) return -1;
 
+        if (!value)
+          {
+          p = (pMtParam) xhLookup(&s->Params, paramname);
+          if (p)
+            {
+            if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
+            nmFree(p, sizeof (MtParam));
+            }
+          return 0;
+          }
     	/** Need to delete first? **/
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
@@ -799,20 +808,28 @@ mssSetParam(char* paramname, void* value)
 	    if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
 	    }
 
-	if (strlen(value) < 64)
+	if (size < 64)
 	    {
 	    p->Value = p->ValueBuf;
 	    }
 	else
 	    {
-	    p->Value = (char*)nmSysMalloc(strlen(value)+1);
+	    p->Value = (char*)nmSysMalloc(size+1);
 	    }
-	strcpy(p->Value, value);
+	memcpy(p->Value, value, size);
 	if (is_new) xhAdd(&s->Params, paramname, (void*)p);
 
     return 0;
     }
 
+/*** mssSetParam - sets a session parameter, for generic use.
+ ***/
+int
+mssSetParam(char* paramname, void* value)
+    {
+    if(value) return mssSetParamSized(paramname,value,strlen(value));
+    else return mssSetParamSized(paramname,value,0);
+    }
 
 /*** mssGetParam - returns the value of the named session parameter.
  ***/
