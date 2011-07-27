@@ -55,6 +55,23 @@ inline int xt_internal_KeysSameBase(char* key1, char* key2){
     return to;
 }
 
+inline int xt_internal_KeysCompare(char *key1, char *key2, int keyLength){
+    if(keyLength == INT_MAX){
+        return strncmp(key1, key2, keyLength);
+    }
+    else{
+        int c = 0;
+        char compareResult;
+        while(c++ < keyLength){
+             compareResult = key1[c] - key2[c];
+             if(compareResult != 0){
+                 return compareResult;
+             }
+        }
+        return 0;
+    }
+}
+
 int xtInit(pXTree tree, int keyLength){
     tree->nItems = 0;
     tree->KeyLen = keyLength ? keyLength : INT_MAX;
@@ -76,7 +93,7 @@ int xtAdd(pXTree this, char* key, char* data){
     if(this->root){
         currentNode = this->root;
         while(1){
-            compareResult = strncmp(key, currentNode->key, this->KeyLen);
+            compareResult = xt_internal_KeysCompare(key, currentNode->key, this->KeyLen);
             if(compareResult < 0){
                 if(currentNode->less){
                     currentNode = currentNode->less;
@@ -132,7 +149,7 @@ int xtRemove(pXTree this, char* key){
     pXTreeNode* parentNodePointer = &this->root, *successorNodeParent;
     
     while(currentNode){
-        comparisonResult = strncmp(key, currentNode->key,this->KeyLen);
+        comparisonResult = xt_internal_KeysCompare(key, currentNode->key,this->KeyLen);
         if(comparisonResult < 0){
             parentNodePointer = &currentNode->less;
             currentNode = currentNode->less;
@@ -185,7 +202,7 @@ char* xtLookup(pXTree this, char* key){
     pXTreeNode currentNode = this->root;
     int compareResult;
     while(currentNode){
-        compareResult = strncmp(key, currentNode->key, this->KeyLen);
+        compareResult = xt_internal_KeysCompare(key, currentNode->key, this->KeyLen);
         if(compareResult < 0){
             currentNode = currentNode->less;
         }
@@ -222,7 +239,7 @@ char* xtLookupBeginning(pXTree this, char* key){
                 charFrom = newCharFrom;
                 closestParentNode = currentNode;
             }
-            compareResult = strncmp(key, currentNode->key, this->KeyLen);
+            compareResult = xt_internal_KeysCompare(key, currentNode->key, this->KeyLen);
             if(compareResult < 0){
                 currentNode = currentNode->less;
             }
