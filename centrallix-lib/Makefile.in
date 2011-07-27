@@ -159,8 +159,11 @@ install: all
 %.bin:	%.c tests/t_driver.c libCentrallix.a
 	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@ ${LIBS}
 
+tests/test_xtree_filedata.h: 
+	tests/mkxtreedata
+
 .PHONY: test
-test:	$(TESTPROGS)
+test:	tests/test_xtree_filedata.h $(TESTPROGS)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
 	@for PROG in $$( ls $(TESTPROGS) ); do \

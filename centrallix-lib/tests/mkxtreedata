@@ -1,0 +1,25 @@
+#!/bin/bash
+
+export targ=/usr/local
+
+echo -n "Building xtree filesystem data from $targ."
+
+tree -iflQp $targ > xtree_filedata
+echo -n ".."
+sed -e 's/\[/\{\"\[/' -e 's/\]/\]\",/' < xtree_filedata > xtree_filedata.tmp0
+echo -n "."
+sed -e '/->/d' -e '/\[error opening dir\]/d' < xtree_filedata.tmp0 > xtree_filedata.tmp1
+echo -n "."
+#thanks to http://www.dbforums.com/unix-shell-scripts/1625125-replace-new-line-comma.html
+sed -e :a -e N -e 's/\"\n/\"\},\n/' < xtree_filedata.tmp1 > xtree_filedata.tmp2
+echo -n "."
+sed -e '$d' -e '1d' < xtree_filedata.tmp2 > xtree_filedata.tmp3
+echo -n "."
+sed -e :a -e N -e 's/\"\n/\"\},\n/' < xtree_filedata.tmp3 > xtree_filedata.tmp4
+
+echo "char *filedata[][2] = {" > test_xtree_filedata.h
+cat xtree_filedata.tmp4 >> test_xtree_filedata.h
+echo "{0,0} };" >> test_xtree_filedata.h
+
+rm xtree_filedata xtree_filedata.tmp?
+echo " Done "

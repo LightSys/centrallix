@@ -22,10 +22,12 @@
 
 #include "xtree.h"
 #include "newmalloc.h"
-#include "xarray.h"
 #include "xhash.h"
 
-#define TESTSCOUNT    5000
+#include "test_xtree_filedata.h"
+
+#define TESTSCOUNT    50000
+
 long long
 test(char** tname){
     int i;
@@ -38,16 +40,16 @@ test(char** tname){
     tree=nmMalloc(sizeof(XTree));
     datalist=nmMalloc(sizeof(XHashTable));
 
-    xtInit(tree,0);
-    xhInit(datalist,500,0);
+    assert(!xtInit(tree,0));
+    xhInit(datalist,TESTSCOUNT,0);
     
     for(i=0;i<TESTSCOUNT;i++){
         name=nmMalloc(50);
         data=nmMalloc(50);
         snprintf(name,50,"key%x",i);
         snprintf(data,50,"%x%x",rand()%500,rand()%500);
-        xtAdd(tree,name,data);
-        xhAdd(datalist,name,data);
+        assert(!xtAdd(tree,name,data));
+        assert(!xhAdd(datalist,name,data));
     }
 
     for(i=0;i<TESTSCOUNT;i++){
@@ -55,12 +57,32 @@ test(char** tname){
         name=nmMalloc(50);
         snprintf(name,50,"key%x",i);
         dataT=xtLookup(tree,name);
+        assert(dataT);
         dataH=xhLookup(datalist,name);
+        assert(dataH);
         assert(!strncmp(dataH,dataT,50));
     }
     
+    for(i=0;i<TESTSCOUNT;i++){
+        name=nmMalloc(50);
+        snprintf(name,50,"key%x",i);
+        assert(!xtRemove(tree,name));
+    }
+
+    i=-1;
+    while(filedata[++i][0]!=0)
+        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+
+    i=-1;
+    while(filedata[++i][0]!=0)
+        assert(!strcmp(xtLookup(tree,filedata[i][1]),filedata[i][0]));
+
+    i=-1;
+    while(filedata[++i][0]!=0)
+        assert(!xtRemove(tree,filedata[i][1]));
+
     xhDeInit(datalist);
-    xtDeInit(tree);
+    assert(!xtDeInit(tree));
     //two loops with two ops each
     return 2*(TESTSCOUNT*2);
 }//end test
