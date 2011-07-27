@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "newmalloc.h"
 #include "xtree.h"
 
@@ -37,17 +38,15 @@ inline pXTreeNode xt_internal_AllocAndInitNode(){
 
 inline void xt_internal_FreeNode(pXTreeNode toFree, int (*free_fn)(), void * freeFnArg){
     
-    /** Do a postorder traversal of the tree to free data **/
-    if(toFree->greater){
+    if(toFree){
+        /** Do a postorder traversal of the tree to free data **/
         xt_internal_FreeNode(toFree->greater, free_fn, freeFnArg);
+        xt_internal_FreeNode(toFree->less, free_fn, freeFnArg);
+        if(free_fn){
+            free_fn(toFree->data, freeFnArg);
+        }
+        nmFree(toFree, sizeof(XTreeNode));
     }
-    if(toFree->less){
-        xt_internal_FreeNode(toFree->greater, free_fn, freeFnArg);
-    }
-    if(free_fn){
-        free_fn(toFree->data, freeFnArg);
-    }
-    nmFree(toFree, sizeof(XTreeNode));
 }
 
 inline int xt_internal_KeysSameBase(int from, char* key1, char* key2){
@@ -58,7 +57,7 @@ inline int xt_internal_KeysSameBase(int from, char* key1, char* key2){
 
 int xtInit(pXTree tree, int keyLength){
     tree->nItems = 0;
-    tree->KeyLen = keyLength;
+    tree->KeyLen = keyLength ? keyLength : INT_MAX;
     tree->root = NULL;
     return 0;
 }
@@ -67,12 +66,12 @@ int xtDeInit(pXTree tree){
     if(tree->root){
         xt_internal_FreeNode(tree->root, NULL, NULL);
     }
-    return 0;
+    return xtInit(tree, tree->KeyLen);
 }
 
 int xtAdd(pXTree this, char* key, char* data){
     pXTreeNode currentNode;
-    char compareResult;
+    int compareResult;
     
     if(this->root){
         currentNode = this->root;
@@ -93,7 +92,7 @@ int xtAdd(pXTree this, char* key, char* data){
                     return 0;
                 }
             }
-            if(compareResult > 0){
+            else if(compareResult > 0){
                 if(currentNode->greater){
                     currentNode = currentNode->greater;
                 }
@@ -128,7 +127,7 @@ int xtAdd(pXTree this, char* key, char* data){
 }
 
 int xtRemove(pXTree this, char* key){
-    char comparisonResult;
+    int comparisonResult;
     pXTreeNode currentNode = this->root, successorNode = NULL;
     pXTreeNode * parentNodePointer = &this->root, *successorNodeParent;
     
@@ -146,26 +145,31 @@ int xtRemove(pXTree this, char* key){
             if(currentNode->greater && currentNode->less){
                 /* Find successor - Could randomize which side this takes stuff from eventually! */
                 successorNode = currentNode->less;
-                while(successorNodeParent = &successorNode->greater, successorNode = successorNode->greater);
+                while(successorNode->greater && (successorNodeParent = &successorNode->greater) && (successorNode = successorNode->greater));
                 *successorNodeParent = successorNode->less;
+                successorNode->less = currentNode->less;
+                successorNode->greater = currentNode->greater;
+                //printf("Swapping successors\n");
             }
             else if(currentNode->less){
                 successorNode = currentNode->less;
+                //printf("Taking less node\n");
             }
             else if(currentNode->greater){
                 successorNode = currentNode->greater;
+                //printf("Taking greater node\n");
             }
             else{
+                //printf("Taking no node\n");
                 successorNode = NULL;
             }
             *parentNodePointer = successorNode;
-            if(successorNode){
-                successorNode->greater = currentNode->greater;
-                successorNode->less = currentNode->less; 
-            }
+            
+            /** Free the node that is it that we found **/
             currentNode->greater = NULL;
             currentNode->less = NULL;
             xt_internal_FreeNode(currentNode, NULL, NULL);
+            //printf("Freeing items\n");
             this->nItems--;
             return 0;
         }
@@ -175,7 +179,7 @@ int xtRemove(pXTree this, char* key){
 
 char* xtLookup(pXTree this, char* key){
     pXTreeNode currentNode = this->root;
-    char compareResult;
+    int compareResult;
     while(currentNode){
         compareResult = strncmp(key, currentNode->key, this->KeyLen);
         if(compareResult < 0){
@@ -204,10 +208,10 @@ int xtClear(pXTree this, int (*free_fn)(), void* free_arg){
 }
 
 char* xtLookupBeginning(pXTree this, char* key){
-    if(this->KeyLen == 0){
+    if(this->KeyLen == INT_MAX){
         int charFrom = 0, newCharFrom;
         pXTreeNode currentNode = this->root, closestParentNode = NULL;
-        char compareResult;
+        int compareResult;
         
         while(currentNode){
             if((newCharFrom = xt_internal_KeysSameBase(charFrom, key, currentNode->key)) > charFrom){

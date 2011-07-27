@@ -33,14 +33,15 @@ test(char** tname){
     *tname = "xtree-00 adding and removing from xtree";
     tree=nmMalloc(sizeof(XTree));
 
-    xtInit(tree,0);
+    assert(xtInit(tree,0) == 0);
     
     for(i=0;i<TESTSCOUNT;i++){
         name=nmMalloc(50);
         data=nmMalloc(50);
         snprintf(name,50,"key%x",i);
         snprintf(data,50,"%x%x",rand()%500,rand()%500);
-        xtAdd(tree,name,data);
+        //printf("Inserting data %s into %s\n", data, name);
+        assert(xtAdd(tree,name,data) == 0);
     }
 
     assert(tree->nItems==TESTSCOUNT);
@@ -48,11 +49,12 @@ test(char** tname){
     for(i=0;i<TESTSCOUNT;i++){
         name=nmMalloc(50);
         snprintf(name,50,"key%x",i);
-        xtRemove(tree,name);
+        //printf("Attempting to free item %s\n", name);
+        assert(xtRemove(tree,name) == 0);
     }
 
     assert(tree->nItems==0);
 
-    xtDeInit(tree);
+    assert(xtDeInit(tree) == 0);
     return 2*TESTSCOUNT;
 }//end test
