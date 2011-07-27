@@ -129,7 +129,7 @@ int xtAdd(pXTree this, char* key, char* data){
 int xtRemove(pXTree this, char* key){
     int comparisonResult;
     pXTreeNode currentNode = this->root, successorNode = NULL;
-    pXTreeNode * parentNodePointer = &this->root, *successorNodeParent;
+    pXTreeNode* parentNodePointer = &this->root, *successorNodeParent;
     
     while(currentNode){
         comparisonResult = strncmp(key, currentNode->key,this->KeyLen);
@@ -145,7 +145,11 @@ int xtRemove(pXTree this, char* key){
             if(currentNode->greater && currentNode->less){
                 /* Find successor - Could randomize which side this takes stuff from eventually! */
                 successorNode = currentNode->less;
-                while(successorNode->greater && (successorNodeParent = &successorNode->greater) && (successorNode = successorNode->greater));
+                successorNodeParent = &currentNode->less;
+                while(successorNode->greater){
+                    successorNodeParent = &successorNode->greater;
+                    successorNode = successorNode->greater;
+                }
                 *successorNodeParent = successorNode->less;
                 successorNode->less = currentNode->less;
                 successorNode->greater = currentNode->greater;
