@@ -431,6 +431,7 @@
 
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xtree.h"
 #include "cxlib/xstring.h"
 #include "cxlib/xhashqueue.h"
 #include "cxlib/mtask.h"
@@ -823,7 +824,7 @@ typedef struct
     XHashTable	TypeExtensions;		/* extension -> type mapping */
     XHashTable	DriverTypes;		/* type -> driver mapping */
     XArray	Drivers;		/* Registered driver list */
-    XHashTable  ObservedObjects;        /* List of objects watched for updates*/
+    XTree       ObservedObjects;        /* List of objects watched for updates*/
     XHashTable	Types;			/* Just a registered type list */
     XArray	TypeList;		/* Iterable registered type list */
     int		UseCnt;			/* for LRU cache list */
@@ -893,7 +894,6 @@ typedef struct
 typedef struct{
     pPathname   Pathname;               /* The pathname that is being observed. */
     short       numObservers;           /* Basically reference counting so that this can be removed when necessary.*/
-    
 };
     
 /*** New structure for receiving updates that changes happened to objects ***/
