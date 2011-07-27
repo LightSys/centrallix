@@ -25,7 +25,7 @@
 /* 		enables one to find the closest match if so desired.    */
 /************************************************************************/
 
-inline pXTreeNode xt_internal_InitNode(){
+inline pXTreeNode xt_internal_AllocAndInitNode(){
     pXTreeNode toReturn;
     toReturn = nmMalloc(sizeof(XTreeNode));
     if(toReturn){
@@ -83,12 +83,13 @@ int xtAdd(pXTree this, char* key, char* data){
                     currentNode = currentNode->less;
                 }
                 else{
-                    currentNode->less = xt_internal_InitNode();
+                    currentNode->less = xt_internal_AllocAndInitNode();
                     if(!currentNode->less){
                         return -1;
                     }
                     currentNode->less->data = data;
                     currentNode->less->key = key;
+                    this->nItems++;
                     return 0;
                 }
             }
@@ -97,12 +98,13 @@ int xtAdd(pXTree this, char* key, char* data){
                     currentNode = currentNode->greater;
                 }
                 else{
-                    currentNode->greater = xt_internal_InitNode();
+                    currentNode->greater = xt_internal_AllocAndInitNode();
                     if(!currentNode->greater){
                         return -1;
                     }
                     currentNode->greater->data = data;
                     currentNode->greater->key = key;
+                    this->nItems++;
                     return 0;
                 }
             }
@@ -114,12 +116,13 @@ int xtAdd(pXTree this, char* key, char* data){
         }
     }
     else{
-        this->root = xt_internal_InitNode();
+        this->root = xt_internal_AllocAndInitNode();
         if(!this->root){
             return -1;
         }
         this->root->key = key;
         this->root->data = data;
+        this->nItems++;
         return 0;
     }
 }
@@ -163,6 +166,7 @@ int xtRemove(pXTree this, char* key){
             currentNode->greater = NULL;
             currentNode->less = NULL;
             xt_internal_FreeNode(currentNode, NULL, NULL);
+            this->nItems--;
             return 0;
         }
     }
