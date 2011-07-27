@@ -823,6 +823,7 @@ typedef struct
     XHashTable	TypeExtensions;		/* extension -> type mapping */
     XHashTable	DriverTypes;		/* type -> driver mapping */
     XArray	Drivers;		/* Registered driver list */
+    XHashTable  ObservedObjects;        /* List of objects watched for updates*/
     XHashTable	Types;			/* Just a registered type list */
     XArray	TypeList;		/* Iterable registered type list */
     int		UseCnt;			/* for LRU cache list */
@@ -888,6 +889,19 @@ typedef struct
     }
     ObjNotification, *pObjNotification;
 
+/*** New structure for observing an object globally on the server ***/
+typedef struct{
+    pPathname   Pathname;               /* The pathname that is being observed. */
+    short       numObservers;           /* Basically reference counting so that this can be removed when necessary.*/
+    
+};
+    
+/*** New structure for receiving updates that changes happened to objects ***/
+typedef struct{
+    pPathname   Pathname;
+    pObjSession Session;
+    
+} ObjObserver, *pObjObserver;
 
 /*** OSML debugging flags ***/
 #define OBJ_DEBUG_F_APITRACE	1
@@ -956,6 +970,10 @@ char* objGetDateFmt(pObjSession this);
 int objUnmanageObject(pObjSession this, pObject obj);
 int objUnmanageQuery(pObjSession this, pObjQuery qy);
 int objCommit(pObjSession this);
+
+/** objectsystem observer functions **/
+pObjObserver objOpenObserver(pObjSession this, char* path);
+int objCloseObserver(pObjObserver);
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);

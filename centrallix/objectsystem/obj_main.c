@@ -337,6 +337,7 @@ objInitialize()
 	/*xhqInit(&(OSYS.DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);*/
 	/*xaInit(&(OSYS.DirectoryQueue), 256);*/
 	xaInit(&(OSYS.Drivers), 256);
+        xhInit(&(OSYS.ObservedObjects), 64, 0);
 	xhInit(&(OSYS.Types), 257, 0);
 	xaInit(&(OSYS.TypeList), 256);
 	xhnInitContext(&(OSYS.SessionHandleCtx));
