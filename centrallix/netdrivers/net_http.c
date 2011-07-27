@@ -1141,6 +1141,24 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
     return 0;
     }
 
+int nht_internal_GetUpdates(pNhtConn conn,pNhtSessionData nsess){
+    char *sid;
+    handle_t session_handle;
+    /** Get the session data **///stolen from net_http_osml.c:514
+    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
+    if (!sid || !strcmp(sid,"XDEFAULT"))
+        {
+        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+                 "Pragma: no-cache\r\n"
+                 "\r\n"
+                 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+        mssError(1,"NHT","Session ID required for OSML request '%s'",request);
+        return -1;
+        }
+    session_handle = xhnStringToHandle(sid+1,NULL,16);
+    da_thingy = (psomething)xhnHandlePtr(&(nsess->HctxUp), session_handle);
+}
 
 /*** nht_internal_GET - handle the HTTP GET method, reading a document or
  *** attribute list, etc.
@@ -1343,6 +1361,14 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    objClose(target_obj);
 	    return 0;
 	    }
+
+        //see if we just need send updates
+        if (find_inf && !strcmp(find_inf->StrVal,"osmldiff"))
+            {
+            //this is an update request
+            nht_internal_GetUpdates(conn,nsess);
+            return 0;
+            }
 
 	/** Add anti-clickjacking X-Frame-Options header?
 	 ** see: https://developer.mozilla.org/en/The_X-FRAME-OPTIONS_response_header

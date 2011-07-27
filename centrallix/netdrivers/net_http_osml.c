@@ -806,6 +806,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    obj_handle = n;
 			if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
 			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+                            //here be the place to ask for notifies
 			    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
 			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 			n--;

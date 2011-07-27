@@ -180,6 +180,7 @@ typedef struct
     XArray	ErrorList;	/* xarray of xstring */
     XArray	Triggers;	/* xarray of pNhtConnTrigger */
     HandleContext Hctx;
+    HandleContext HctxUp;
     handle_t	WatchdogTimer;
     handle_t	InactivityTimer;
     int		LinkCnt;
