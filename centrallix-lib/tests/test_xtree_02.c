@@ -49,7 +49,7 @@ test(char** tname){
     i=-1;
     while(filedata[++i][0]!=0){
         key=nmSysMalloc(strlen(filedata[i][1])+4);
-        snprintf(key,strlen(filedata[i][1])+4,"%s%x",strlen(filedata[i][1])+4,rand()%0xff);
+        snprintf(key,strlen(filedata[i][1])+4,"%s%x",filedata[i][1],rand()%0xff);
         assert(!strcmp(xtLookupBeginning(tree,key),filedata[i][0]));
         nmSysFree(key);
     }
