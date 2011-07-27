@@ -24,12 +24,13 @@
 #include <string.h>
 
 volatile int mtn_internal_running;
-pXArray mtn_internal_currentlyWaiting; // List of semaphores waiting for events
-pEvent mtn_interal_currentEvent;
+volatile pXArray mtn_internal_currentlyWaiting; // List of semaphores waiting for events
+volatile pEvent mtn_internal_currentEvent;
+volatile pSemaphore mtn_internal_sendEventSemaphore;
 
 int mtnInitialize(){
     mtn_internal_running = 1;
-    mtn_interal_currentEvent = NULL;
+    mtn_internal_currentEvent = NULL;
     mtn_internal_currentlyWaiting = (pXArray)nmMalloc(sizeof(XArray));
     xaInit(mtn_internal_currentlyWaiting, 16);
     return 0;
@@ -73,8 +74,8 @@ int mtnSendEvent(pEvent event){
     int numSemaphores;
     
     // Set current event
-    mtn_interal_currentEvent = event;
-    mtn_interal_currentEvent->refcount += xaCount(mtn_internal_currentlyWaiting);
+    mtn_internal_currentEvent = event;
+    mtn_internal_currentEvent->refcount += xaCount(mtn_internal_currentlyWaiting);
     
     // Awake all semaphores
     numSemaphores = xaCount(mtn_internal_currentlyWaiting);
@@ -101,38 +102,44 @@ pEvent mtnWaitForEvents(pXArray eventStrings, int blocking, int prioity){
         if(blocking){
             syPostSem(createdSemaphore, 1, 0);
         }
+        
+        // Make sure that there is an event to look at
+        if(mtn_internal_currentEvent){
 
-        // Iterate through all needed event types
-        numEventTypes = xaCount(eventStrings);
-        while(numEventTypes--){
+            // Iterate through all needed event types
+            numEventTypes = xaCount(eventStrings);
+            while(numEventTypes--){
 
-            // If is not running, return NULL
-            if(mtn_internal_running == 0){
-                return NULL;
-            }
-
-            // If qualifies, remove semaphore from array and return the event
-            if(strcmp((char *)xaGetItem(eventStrings, numEventTypes), mtn_interal_currentEvent->type) == 0 && mtn_interal_currentEvent->priority <= prioity){
-
-                // Remove this thread's semaphore from list and destroy semaphore
-                if(blocking){
-                    
-                    numSemaphores = xaCount(mtn_internal_currentlyWaiting);
-                    while(numSemaphores--){
-                        if(xaGetItem(mtn_internal_currentlyWaiting, numSemaphores) == createdSemaphore){
-                            xaRemoveItem(mtn_internal_currentlyWaiting, numSemaphores);
-                        }
-                    }
-                    syDestroySem(createdSemaphore, 0);
+                // If is not running, return NULL
+                if(mtn_internal_running == 0){
+                    return NULL;
                 }
 
-                // Return needed event
-                return mtn_interal_currentEvent;
-            }   
-        }
+                // If qualifies, remove semaphore from array and return the event
+                if(strcmp((char *)xaGetItem(eventStrings, numEventTypes), mtn_internal_currentEvent->type) == 0 && mtn_internal_currentEvent->priority <= prioity){
+
+                    // Remove this thread's semaphore from list and destroy semaphore
+                    if(blocking){
+
+                        numSemaphores = xaCount(mtn_internal_currentlyWaiting);
+                        while(numSemaphores--){
+                            if(xaGetItem(mtn_internal_currentlyWaiting, numSemaphores) == createdSemaphore){
+                                xaRemoveItem(mtn_internal_currentlyWaiting, numSemaphores);
+                            }
+                        }
+                        syDestroySem(createdSemaphore, 0);
+                    }
+
+                    // Return needed event
+                    return mtn_internal_currentEvent;
+                }  // End if to check if event types are same
+            } // End while(numEventTypes--) 
+            
+            // If there was an event, take place in getting rid of our part of it.
+            mtnDeleteEvent(mtn_internal_currentEvent);
+        }// End if to check if there is an event
 
         // If not, increment semaphore again and start up
-        mtnDeleteEvent(mtn_interal_currentEvent);
         if(blocking){
             syGetSem(createdSemaphore, 1, 0);
         }
