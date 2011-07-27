@@ -471,6 +471,7 @@ int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, const char *filename
 		{
 		  mssError(0, "I18N", "Malformed translation file %s, wanted genword on ",filename);
                   mlxNoteError(lexer);
+                  mlxNotePosition(lexer);
 		  break;
 		}
 	  genword = nmSysStrdup(mlxStringVal(lexer, &alloc));
@@ -478,12 +479,14 @@ int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, const char *filename
 		{
 		  mssError(0, "I18N", "Malformed translation file %s, wanted =", filename);
                   mlxNoteError(lexer);
+                  mlxNotePosition(lexer);
 		  break;
 		}
 	  if (mlxNextToken(lexer) != MLX_TOK_STRING)
 		{
 		  mssError(0, "I18N", "Malformed translation file %s, wanted locword", filename);
                   mlxNoteError(lexer);
+                  mlxNotePosition(lexer);
 		  break;
 		}
 	  locword = nmSysStrdup(mlxStringVal(lexer, &alloc));
