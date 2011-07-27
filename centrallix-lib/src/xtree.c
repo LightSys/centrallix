@@ -3,6 +3,7 @@
 #endif
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 #include "newmalloc.h"
 #include "xtree.h"
 
@@ -49,23 +50,6 @@ inline void xt_internal_FreeNode(pXTreeNode toFree, int (*free_fn)(), void * fre
     nmFree(toFree, sizeof(XTreeNode));
 }
 
-inline char xt_internal_CompareKeys(char* key1, char* key2, int keyLength){
-    int c = keyLength ? 0 : INT_MIN;
-    while(c < keyLength){    
-        if(key1[c] > key2[c]){
-            return 1;
-        }
-        else if(key1[c] < key2[c]){
-            return -1;
-        }
-        else if(key1[c] == 0 && !keyLength){
-            return 0;
-        }
-        c++;
-    }
-    return 0;
-}
-
 inline int xt_internal_KeysSameBase(int from, char* key1, char* key2){
     int to = from;
     while(key1[to] == key2[to] && key1[to++] != 0){} /* Run through until they characters are both null chars or 0 */
@@ -93,7 +77,7 @@ int xtAdd(pXTree this, char* key, char* data){
     if(this->root){
         currentNode = this->root;
         while(1){
-            compareResult = xt_internal_CompareKeys(key, currentNode->key, this->KeyLen);
+            compareResult = strncmp(key, currentNode->key, this->KeyLen);
             if(compareResult < 0){
                 if(currentNode->less){
                     currentNode = currentNode->less;
@@ -146,7 +130,7 @@ int xtRemove(pXTree this, char* key){
     pXTreeNode * parentNodePointer = &this->root, *successorNodeParent;
     
     while(currentNode){
-        comparisonResult = xt_internal_CompareKeys(key, currentNode->key,this->KeyLen);
+        comparisonResult = strncmp(key, currentNode->key,this->KeyLen);
         if(comparisonResult < 0){
             parentNodePointer = &currentNode->less;
             currentNode = currentNode->less;
@@ -189,7 +173,7 @@ char* xtLookup(pXTree this, char* key){
     pXTreeNode currentNode;
     char compareResult;
     while(currentNode){
-        compareResult = xt_internal_CompareKeys(key, currentNode->key, this->KeyLen);
+        compareResult = strncmp(key, currentNode->key, this->KeyLen);
         if(compareResult < 0){
             currentNode = currentNode->less;
         }
@@ -226,7 +210,7 @@ char* xtLookupBeginning(pXTree this, char* key){
                 charFrom = newCharFrom;
                 closestParentNode = currentNode;
             }
-            compareResult = xt_internal_CompareKeys(key, currentNode->key, this->KeyLen);
+            compareResult = strncmp(key, currentNode->key, this->KeyLen);
             if(compareResult < 0){
                 currentNode = currentNode->less;
             }
