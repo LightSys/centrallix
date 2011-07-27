@@ -124,10 +124,10 @@ typedef struct _WN
 typedef struct
     {
     int         Magic;                  /** Magic number **/
-    XHashTable  TranslationsHash;       /** Actual translations **/
-    XArray      TranslationsFront;      /** List of beginnings **/
-    XArray      TranslationsBack;       /** List of endings **/
-    XArray      TranslationsMid;        /** List of middles **/
+    pXHashTable  TranslationsHash;       /** Actual translations **/
+    pXArray      TranslationsFront;      /** List of beginnings **/
+    pXArray      TranslationsBack;       /** List of endings **/
+    pXArray      TranslationsMid;        /** List of middles **/
     } WgtrTranTable, *pWgtrTranTable;
 
 typedef struct
