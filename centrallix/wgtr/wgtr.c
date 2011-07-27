@@ -89,10 +89,10 @@ struct
     } WGTR;
 
 pWgtrNode 
-wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrTranTable table, pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
-pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrTranTable table, pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
-int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrTranTable table /* = table */, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
-int wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrTranTable table, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+int wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
 
 pWgtrDriver
 wgtr_internal_LookupDriver(pWgtrNode node)
@@ -391,7 +391,7 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     {
     pWgtrNode template;
 
-	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL, NULL);
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL);
 	if (!template) return NULL;
 	if (strcmp(template->Type, "widget/template"))
 	    {
@@ -403,8 +403,6 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
 
     return template;
 }
-
-//and now, i18n stuff!
 
 int freeStrDuped(char *str,void *dup)
 {
@@ -426,11 +424,8 @@ WgtrTranTable *wgtrMakeTable(void)
   return table;
 }
 
-void wgtrFreeTable(WgtrTranTable *table)
+void wgtrCleanLocale(WgtrTranTable *table)
 {
-  if(!table)return;
-  ASSERTMAGIC(table,MGK_TRANSTABLE);
-  if(--table->OpenCnt > 0)return;
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Flushing translations");
 #endif
@@ -444,13 +439,13 @@ void wgtrFreeTable(WgtrTranTable *table)
   xaInit(table->TranslationsMid, 16);
 }
 
-int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, char *filename)
+int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, const char *filename)
 {
   int nxTok;
   char *genword, *locword;
   pObject trans = NULL;
   pLxSession lexer = NULL;
-  ASSERTMAGIC(table, MGK_TRANSTABLE);
+
 #ifdef LOC_DEBUG
   mssError(0, "I18N", "Loading translation from %s", filename);
 #endif
@@ -516,9 +511,7 @@ int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, char *filename)
 	  mssError(0, "I18N", "%s means %s", genword, locword);
 #endif
 	  //replace old translations
-
-	  if(xhLookup(table->TranslationsHash, genword))
-		xhRemove(table->TranslationsHash, genword);
+	  xhRemove(table->TranslationsHash, genword);
 	  xhAdd(table->TranslationsHash, genword, locword);
 	}
   //alldone, cleanup
@@ -538,16 +531,16 @@ int wgtrLoadLocale(WgtrTranTable *table, pObjSession s, const char *path, const 
 	  return 0;
 	}
   //build pathname and open file
-  filename = (char *)malloc(strlen(path) + strlen(dir) + strlen((char *)mssGetParam("locale")));
+  filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
   filename[0] = '\0';
   if(dir[0]!='/'){
-	  if(path)strcat(filename, path);
+	  strcat(filename, path);
 	  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
 	  for (; *iter != '/' && iter != filename; iter--);
 	  *iter = '\0';
 	  strcat(filename, "/");
   }
-  if(dir)strcat(filename, dir);
+  strcat(filename, dir);
   strcat(filename, "/");
   strcat(filename, (char *)mssGetParam("locale"));
   wgtrLoadFlatLocale(table, s,filename);
@@ -561,17 +554,6 @@ char *translate(WgtrTranTable *table, char *text, int *found)
   char *trans = NULL;
   XArray hitlist;
 
-  if(!table){
-	  if(!strncmp(text,"i18n:",5)){
-		if(found)*found=1;
-		text+=5;
-	  }else{
-		if(found)*found=0;
-	  }
-	  return text;
-	}
-  ASSERTMAGIC(table, MGK_TRANSTABLE);
-  
   if(strncmp(text,"i18n:",5)){
 	  if(found)*found=0;
 	  return text;
@@ -690,91 +672,8 @@ majorerror:
 	return NULL;
 }//translate
 
-pWgtrTranTable internal_climb_table_tree(pWgtrNode node)
-{
-  if (!node)return NULL;
-  if (node->TransTable)return node->TransTable;
-  return internal_climb_table_tree(node->Parent);
-}
-
-pWgtrTranTable wgtrGetTable(pWgtrNode node)
-{
-  ObjData val;
-  pWgtrTranTable table=NULL;
-#ifdef LOC_DEBUG
-  mssError(0,"I18N","Finding translations for %s",node->Name);
-#endif
-  if (node->TransTable)return node->TransTable;
-  //Load localizations
-  if (!wgtrGetPropertyValue(node, "locale", DATA_T_STRING, &val))
-	mssSetParam("locale", val.String);
-  if (wgtrGetPropertyType(node, "locales") == DATA_T_STRINGVEC)
-	{
-	  int i;
-	  if (!wgtrGetPropertyValue(node, "locales", DATA_T_STRINGVEC, &val))
-		{
-		  //create table
-		  table = wgtrMakeTable();
-		  for (i = 0; i < val.StringVec->nStrings; i++)
-			wgtrLoadLocale(table, node->ObjSession, node->ObjSession->CurrentDirectory, val.StringVec->Strings[i]);
-		}//end if fetched
-	}
-  else if (wgtrGetPropertyType(node, "locales") == DATA_T_STRING)
-	{
-	  if (!wgtrGetPropertyValue(node, "locales", DATA_T_STRING, &val))
-		{
-		  //create table
-		  table = wgtrMakeTable();
-		  wgtrLoadLocale(table, node->ObjSession, node->ObjSession->CurrentDirectory, val.String);
-		}//end if fetched
-	}//end if property locales
-  if (table){
-	node->TransTable = table;
-	table->OpenCnt++;
-	return node->TransTable;
-	}
-  table = internal_climb_table_tree(node->Parent);
-  if (table){
-	node->TransTable = table;
-	table->OpenCnt++;
-	return node->TransTable;
-	}
-  return NULL;
-}
-
-// This looks like a even better place to apply the localization
-pWgtrNode wgtrLocalize(pWgtrNode this_node, pWgtrTranTable table)
-{
-  int prop_type, trans_found;
-  char* prop_name;
-  ObjData val;
-  //check for rationallity
-  if(!table){
-	  mssError(0,"I18N","Translation from NULL?");
-	  return this_node;
-	}
-  //and so what we have ^learned^ applies to our life today, God has a lot to say, in His book
-  for (prop_name = wgtrFirstPropertyName(this_node); prop_name;
-		  prop_name = wgtrNextPropertyName(this_node))
-	{
-	  //get type
-	  prop_type = wgtrGetPropertyType(this_node, prop_name);
-	  if (prop_type == DATA_T_STRING)
-		{
-		  //get value
-		  wgtrGetPropertyValue(this_node, prop_name, DATA_T_STRING, &val);
-		  val.String = translate(table, val.String, &trans_found);
-		  if (trans_found)
-			wgtrSetProperty(this_node, prop_name, DATA_T_STRING, &val);
-		}//end if string
-	}//end for wgtrPropery
-  return this_node;
-}//end wgtrLocalize
-
-//end locale stuff
-
 pWgtrNode 
-wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, char* templates[], pWgtrTranTable table)
+wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, char* templates[])
     {
     pObject obj;
     pWgtrNode results;
@@ -787,7 +686,7 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 	    }
 
 	/** call wgtrParseOpenObject and return results **/
-	results = wgtrParseOpenObject(obj, params, templates, table);
+	results = wgtrParseOpenObject(obj, params, templates);
 	objClose(obj);
         return results;
     }
@@ -824,10 +723,11 @@ wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* typ
 
     error:
 	return -1;
-}
+    }
+
 
 pWgtrNode
-wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrTranTable tree_table, pWgtrNode root, int xoffset, int yoffset, pStruct client_params)
+wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrNode root, int xoffset, int yoffset, pStruct client_params)
     {
     int rx, ry, rwidth, rheight, flx, fly, flwidth, flheight;
     pWgtrNode this_node = NULL;
@@ -839,7 +739,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
     int rval;
     int i,j;
     pStruct one_param;
-    int already_used;
+    int already_used,trans_found;
     pWgtrNode sub_node;
     pWgtrTranTable table;
 
@@ -947,14 +847,6 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	/** Setup (call driver New function) **/
 	if (wgtrSetupNode(this_node) < 0)
 	    goto error;
-	// This looks like a better place to apply the localization
-	table=wgtrGetTable(this_node);
-	if(!table)table=tree_table;
-	if(!table && root)table=wgtrGetTable(root);
-	if(table){
-		table->OpenCnt++;
-		this_node->TransTable=table;
-	}
 
         table=(pWgtrTranTable)mssGetParam("locale_table");
 // This looks like a better place to apply the localization
@@ -1014,7 +906,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 
 
 int
-wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrTranTable table, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
@@ -1047,7 +939,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 			    objGetAttrValue(child_obj, "name", DATA_T_STRING, &val2);
 			    widgetname = nmSysMalloc(strlen(val2.String)+23);
 			    qpfPrintf(NULL,widgetname,strlen(val2.String)+23,"_internalrpt%STR%POS",val2.String,prefix++);
-		    if ( (child_node = wgtr_internal_ParseOpenObjectRepeat(child_obj, templates, table, this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
+		    if ( (child_node = wgtr_internal_ParseOpenObjectRepeat(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
 			{
 			strtcpy(child_node->Name,widgetname,sizeof(child_node->Name));
 			nmSysFree(widgetname);
@@ -1076,7 +968,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 				goto error;
 			    /** Load in the properties and copy in the template **/
 			    
-			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, table, root, xoffset, yoffset, client_params)) == NULL)
+			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset, client_params)) == NULL)
 				goto error;
 
 			    /** compute actual offsets that would have been used had the
@@ -1090,7 +982,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 			    /** Add the grandchildren without actually rendering the child node
 			     ** in question here
 			     **/
-			    if (wgtr_internal_AddChildrenRepeat(child_obj, this_node, templates, NULL, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
+			    if (wgtr_internal_AddChildrenRepeat(child_obj, this_node, templates, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
 				goto error;
 			    }
 			}
@@ -1117,7 +1009,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 
 
 int
-wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrTranTable table /* = table */, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
@@ -1147,7 +1039,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 		if (t != DATA_T_INTEGER || (rval=objGetAttrValue(child_obj, "condition", t, &val)) != 0 || val.Integer != 0)
 		    {
 		    /** Try to add it. **/
-		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,templates, table, this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
+		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
 			{
 			wgtrAddChild(this_node, child_node);
 			child_node = NULL;
@@ -1173,7 +1065,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 				goto error;
 
 			    /** Load in the properties and copy in the template **/
-			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, table, root, xoffset, yoffset, client_params)) == NULL)
+			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset, client_params)) == NULL)
 				goto error;
 
 			    /** compute actual offsets that would have been used had the
@@ -1187,7 +1079,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 			    /** Add the grandchildren without actually rendering the child node
 			     ** in question here
 			     **/
-			    if (wgtr_internal_AddChildren(child_obj, this_node, templates, table, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
+			    if (wgtr_internal_AddChildren(child_obj, this_node, templates, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
 				goto error;
 			    }
 			}
@@ -1213,7 +1105,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 
 
 pWgtrNode 
-wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrTranTable table, pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pWgtrNode	this_node = NULL;
     pWgtrAppParam param;
@@ -1318,7 +1210,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrTra
 	    }
 
 	/** Load in the properties and copy in the template **/
-	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, table, root, xoffset, yoffset, client_params)) == NULL)
+	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset, client_params)) == NULL)
 	    goto error;
 
 	/** If this is a visual widget, clear the x/y offsets **/
@@ -1344,7 +1236,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrTra
 		while((rptrow = objQueryFetch(rptqy, O_RDONLY)) != NULL)
 		    {
 		    expModifyParam(context_objlist,this_node->Name, rptrow);
-		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, table, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
+		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
 		    objClose(rptrow);
 		    rptrow = NULL;
@@ -1370,7 +1262,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrTra
 		}
 	    objSetEvalContext(obj, context_objlist);*/
 	    }
-	else if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, table, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
+	else if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 	    goto error;
 
 	/** Free the template if we created it here. **/
@@ -1414,7 +1306,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrTra
 
 
 pWgtrNode 
-wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrTranTable table, pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pWgtrNode	this_node = NULL;
     pWgtrAppParam param;
@@ -1521,7 +1413,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrTranTable
 	    }
 
 	/** Load in the properties and copy in the template **/
-	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, table, root, xoffset, yoffset, client_params)) == NULL)
+	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset, client_params)) == NULL)
 	    goto error;
 
 	/** If this is a visual widget, clear the x/y offsets **/
@@ -1551,7 +1443,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrTranTable
 		    expModifyParam(context_objlist,this_node->Name, rptrow);
 		    
 		    //add children without adding the repeat
-		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, NULL, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
+		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
 
 		    objClose(rptrow);
@@ -1562,7 +1454,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrTranTable
 		rptqy = NULL;
 		}
 	    }
-	else if (wgtr_internal_AddChildren(obj, this_node, my_templates, table, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
+	else if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 	    goto error;
 
 	/** Free the template if we created it here. **/
@@ -1606,7 +1498,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrTranTable
 
 
 pWgtrNode
-wgtrParseOpenObject(pObject obj, pStruct params, char* templates[], pWgtrTranTable table)
+wgtrParseOpenObject(pObject obj, pStruct params, char* templates[])
     {
     pWgtrNode template_arr[WGTR_MAX_TEMPLATE];
     int i;
@@ -1620,7 +1512,7 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[], pWgtrTranTab
 		    template_arr[i] = wgtrLoadTemplate(obj->Session, templates[i], params);
 	    }
 
-    return wgtr_internal_ParseOpenObject(obj, template_arr, table, NULL, NULL, NULL, params, 0, 0);
+    return wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0);
     }
 
 
@@ -1676,7 +1568,6 @@ wgtrFree(pWgtrNode tree)
 	xaDeInit(&(tree->Interfaces));
 
 	/** free the node itself **/
-	if(tree->TransTable)wgtrFreeTable(tree->TransTable);
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (tree->TemplatePaths[i]) nmSysFree(tree->TemplatePaths[i]);
 	if (tree->ThisTemplatePath) nmSysFree(tree->ThisTemplatePath);
@@ -1985,8 +1876,7 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->DMPrivate = NULL;
 	node->top = node->bottom = node->right = node->left = 0;
 	node->Verified = 0;
-	node->TransTable = NULL;
-	
+
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
 	xaInit(&(node->Interfaces), 8);
@@ -2767,7 +2657,7 @@ wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, p
     int rval;
 
 
-    if(! (tree = wgtrParseOpenObject(obj, app_params, client_info->Templates, NULL)))
+    if(! (tree = wgtrParseOpenObject(obj, app_params, client_info->Templates)))
 	{
 	if(tree) wgtrFree(tree);
 	return -1;

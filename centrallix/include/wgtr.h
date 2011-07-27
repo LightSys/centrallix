@@ -84,15 +84,6 @@ typedef struct
     }
     WgtrAppParam, *pWgtrAppParam;
 
-typedef struct
-    {
-    int         Magic;                  /** Magic number **/
-    XHashTable  TranslationsHash;       /** Actual translations **/
-    XArray      TranslationsFront;      /** List of beginnings **/
-    XArray      TranslationsBack;       /** List of endings **/
-    XArray      TranslationsMid;        /** List of middles **/
-    int         OpenCnt;                /** Number of opens **/
-    } WgtrTranTable, *pWgtrTranTable;
 
 typedef struct _WN
     {
@@ -127,9 +118,17 @@ typedef struct _WN
     void*	DMPrivate;			/** private data for use by deployment method **/
     char*	ThisTemplatePath;
     char*	TemplatePaths[WGTR_MAX_TEMPLATE];
-    pWgtrTranTable TransTable;
     }
     WgtrNode, *pWgtrNode;
+
+typedef struct
+    {
+    int         Magic;                  /** Magic number **/
+    pXHashTable  TranslationsHash;       /** Actual translations **/
+    pXArray      TranslationsFront;      /** List of beginnings **/
+    pXArray      TranslationsBack;       /** List of endings **/
+    pXArray      TranslationsMid;        /** List of middles **/
+    } WgtrTranTable, *pWgtrTranTable;
 
 typedef struct
     {
@@ -170,8 +169,8 @@ typedef struct
 #define WGTR_TM_POSTORDER	3
 
 /** wgtr creation and destruction **/
-pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, char* templates[], pWgtrTranTable table /* = NULL */);  /** parse osml object **/
-pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, char* templates[], pWgtrTranTable tree_table);	/** parses an open OSML object into a widget tree **/
+pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, char* templates[]);  /** parse osml object **/
+pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, char* templates[]);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
@@ -216,8 +215,6 @@ pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
 int wgtrGetMaxWidth(pWgtrNode widget, int height);	/** get max usable width at a given height **/
 int wgtrGetMaxHeight(pWgtrNode widget, int width);	/** get max usable height at a given width **/
-pWgtrNode wgtrLocalize(pWgtrNode this_node, pWgtrTranTable table); /** Apply localizations **/
-pWgtrTranTable wgtrGetTable(pWgtrNode node);            /** Find localizations **/
 
 /** verification functions **/
 int wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info);	/** Verify a widget-tree. s must be pHtSession **/
