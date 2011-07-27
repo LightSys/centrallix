@@ -69,6 +69,18 @@ test(char** tname){
         assert(!xtRemove(tree,name));
     }
 
+    assert(!xtAdd(tree,"NullA",NULL));
+    assert(!xtAdd(tree,"NullB",NULL));
+    assert(!xtAdd(tree,"NullC",NULL));
+    
+    assert(xtLookup(tree,"NullA")==NULL);
+    assert(xtLookup(tree,"NullB")==NULL);
+    assert(xtLookup(tree,"NullC")==NULL);
+
+    assert(!xtRemove(tree,"NullA"));
+    assert(!xtRemove(tree,"NullB"));
+    assert(!xtRemove(tree,"NullC"));
+
     i=-1;
     while(filedata[++i][0]!=0)
         assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
