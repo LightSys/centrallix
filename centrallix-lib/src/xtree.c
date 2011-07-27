@@ -174,7 +174,7 @@ int xtRemove(pXTree this, char* key){
 }
 
 char* xtLookup(pXTree this, char* key){
-    pXTreeNode currentNode;
+    pXTreeNode currentNode = this->root;
     char compareResult;
     while(currentNode){
         compareResult = strncmp(key, currentNode->key, this->KeyLen);
@@ -206,7 +206,7 @@ int xtClear(pXTree this, int (*free_fn)(), void* free_arg){
 char* xtLookupBeginning(pXTree this, char* key){
     if(this->KeyLen == 0){
         int charFrom = 0, newCharFrom;
-        pXTreeNode currentNode, closestParentNode = NULL;
+        pXTreeNode currentNode = this->root, closestParentNode = NULL;
         char compareResult;
         
         while(currentNode){
