@@ -53,6 +53,12 @@ test(char** tname){
         assert(xtRemove(tree,name) == 0);
     }
 
+    //try removing non-existant data
+    assert(xtRemove(tree,"Han Solo")==-1);
+    assert(xtRemove(tree,"Yoda")==-1);
+    assert(xtRemove(tree,"Darth Maul")==-1);
+    assert(xtRemove(tree,"Luke")==-1);
+
     assert(tree->nItems==0);
 
     assert(xtDeInit(tree) == 0);
