@@ -1143,9 +1143,10 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
 
 int nht_internal_GetUpdates(pNhtConn conn,pNhtSessionData nsess){
     char *sid;
+    char sbuf[256];
     handle_t session_handle;
     /** Get the session data **///stolen from net_http_osml.c:514
-    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
+    //stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
     if (!sid || !strcmp(sid,"XDEFAULT"))
         {
         snprintf(sbuf,256,"Content-Type: text/html\r\n"
@@ -1153,11 +1154,11 @@ int nht_internal_GetUpdates(pNhtConn conn,pNhtSessionData nsess){
                  "\r\n"
                  "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
         fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-        mssError(1,"NHT","Session ID required for OSML request '%s'",request);
+        //mssError(1,"NHT","Session ID required for OSML request '%s'",request);
         return -1;
         }
     session_handle = xhnStringToHandle(sid+1,NULL,16);
-    da_thingy = (psomething)xhnHandlePtr(&(nsess->HctxUp), session_handle);
+    //da_thingy = (psomething)xhnHandlePtr(&(nsess->HctxUp), session_handle);
 }
 
 /*** nht_internal_GET - handle the HTTP GET method, reading a document or
