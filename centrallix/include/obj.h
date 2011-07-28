@@ -924,14 +924,12 @@ typedef enum{
  A node in the list of events to give to clients. 
  */
 typedef struct _OBSEVND{
-    /** \brief For internal use - do not use as part of the public observer API.
+    /** \brief For internal use - the after this.
      
-     This allows a queue of objects to be constructed. 
+     This will point to the head object in the global observer if it is the 
+     most recent.
      */
     struct _OBSEVND*            Next;
-    /** \brief The pointer to the pointer that points to this node.
-     */
-    struct _OBSEVND**           PreviousLinkToThis;
     /** \brief The specific pathname that was updated.
      */
     char*                       SpecificPathname;
@@ -953,9 +951,11 @@ typedef struct{
      necessary.  (When all observers using this are gone.)
      */
     short                       NumObservers;  
-    /** \brief The beginning of the list of events that have happened
+    /** \brief The end of the list of events that have happened.  New events
+     will be the same instance and then will be pushed backwards by a new empty
+     HeadEvent object.
      */
-    pObjObserverEventNode       ObserverEvents;
+    pObjObserverEventNode       HeadEvent;
 } GlobalObserver, *pGlobalObserver;
 
 /** \brief This is the structure that one holds on to to get events from an object change. 
