@@ -207,6 +207,17 @@ typedef struct
     }
     NhtQuery, *pNhtQuery;
 
+/**
+ * @brief Replication to client update request
+ */
+typedef struct
+    {
+    ///@brief Last know results of a query
+    pXHashTable Saved;
+    ///@brief Update notification requests we have open
+    pXHashTable Notifications;
+    }
+    NhtUpdate, *pNhtUpdate;
 
 /*** Timer structure.  The rule on the deallocation of these is that if
  *** you successfully remove it from the Timers list while holding the
@@ -310,5 +321,6 @@ int nht_internal_WTimeout(void* sess_v);
 
 int nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);
 void nht_internal_ErrorExit(pNhtConn conn, int code, char* text);
+int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf);
 
  #endif
