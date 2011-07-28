@@ -28,36 +28,119 @@
 /* Description:	Network handler providing updates to clients.			*/
 /************************************************************************/
 
+#include "obj.h"
 #include "net_http.h"
+#include "report/epsonfx_prt.c"
 
-int nht_internal_decompose_sql(const char *sql);
+pXArray nht_internal_decompose_sql(const char *sql){
+    return NULL;
+}
+
+pNhtUpdate nht_internal_createUpdates(){
+    pNhtUpdate update = nmMalloc(sizeof(NhtUpdate));
+    update->Saved = nmMalloc(sizeof(XHashTable));
+    xhInit(update->Saved,16,0);
+    update->Notifications = nmMalloc(sizeof(XHashTable));
+    xhInit(update->Notifications,8,0);
+    update->NotificationNames = nmMalloc(sizeof(XArray));
+    xaInit(update->NotificationNames,8);
+    return update;
+}//end nht_internal_createUpdates
+
+void nht_internal_freeUpdates(pNhtUpdate update){
+    xaDeInit(update->NotificationNames);
+    nmFree(update->NotificationNames,sizeof(XArray));
+    xhDeInit(update->Notifications);
+    nmFree(update->Notifications,sizeof(XHashTable));
+    xhDeInit(update->Saved);
+    nmFree(update->Saved,sizeof(XHashTable));
+    return;
+}//end nht_internal_freeUpdates
 
 /* We get:
      * ls__sid
-     * ls__sql
-     * ls__rowcount
-     * ls__notify
+     * ls__sql#
+     * ls__rowcount#
+     * ls__notify#
      * ls__req -- multiquery?
      * ls__autofetch
      * ls__autoclose_sr
      */
 int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
+    int i;
+    int reqc;
     char *sid;
-    char sbuf[256];
-    char *request;
-    handle_t session_handle;
+    char name[0xff];
+    pXArray waitfor;
+    pXArray sqlobjects;
     pNhtUpdate updates;
-    //Get requested sql
-    request = stLookup_ne(url_inf,"ls__sql")->StrVal;
-    /** Get the session data **///stolen from net_http_osml.c:514
+    pObjSession session;
+    handle_t session_handle;
+    /** Get the session data **///stolen from net_http_osml.c:514, but now unreconizable
     stAttrValue_ne(stLookup_ne(url_inf,"ls__sid"),&sid);
     if (!sid || !strcmp(sid,"XDEFAULT")){
-        mssError(1,"NHT","Session ID required for update request '%s'",request);
-        nht_internal_ErrorExit(1,405,"Update request without session ID.");
+        mssError(1,"NHT","Session ID required for update request");
+        nht_internal_ErrorExit(conn,405,"Update request without session ID.");
         return -1;
     }
     session_handle = xhnStringToHandle(sid+1,NULL,16);
-    updates = (pNhtUpdate)xhnHandlePtr(&(conn->NhtSession->HctxUp), session_handle);
-    
+    session = (pObjSession)xhnHandlePtr(&(conn->NhtSession->Hctx), session_handle);
+
+    ///@todo store this somewhere, since the xhnHandlePtr didn't work out
+    if(!updates || updates){
+        mssError(0,"NHT","Couldn't fetch list of update request!");
+        updates = nht_internal_createUpdates();
+    }
+
+    //load saved observers
+    waitfor = nmMalloc(sizeof(XArray));
+    xaInit(waitfor,xaCount(updates->NotificationNames));
+    for(i=0;i<xaCount(updates->NotificationNames);i++)
+        xaAddItem(waitfor,
+                xhLookup(updates->Notifications,
+                xaGetItem(updates->NotificationNames,i)));
+
+    //Get requested sql's
+    reqc = strtoi(stLookup_ne(url_inf,"cx__numObjs")->StrVal,NULL,16);
+    if(errno == ERANGE){
+        mssError(0,"NHT","Imposable number of sql request: %s",
+                stLookup_ne(url_inf,"cx__numObjs")->StrVal);
+        reqc=0;
+    }
+
+    //get all the object's observers
+    for(i=0;i<reqc;i++){
+        char *obj;
+        int j,save;
+        pObjObserver observer;
+        snprintf(name,0xff,"ls__notify%x",i);
+        save=(stLookup_ne(url_inf,name)->StrVal[1]!='0');
+        snprintf(name,0xff,"ls__sql%x",i);
+        sqlobjects = nht_internal_decompose_sql(stLookup_ne(url_inf,name)->StrVal);
+        if(!sqlobjects){
+            mssError(0,"NHT","Could not decompose sql statement %s",
+                    stLookup_ne(url_inf,name)->StrVal);
+            continue;
+        }//end if can't decompose
+        for(j=0;j<xaCount(sqlobjects);j++){
+            observer = NULL;
+            obj=xaGetItem(sqlobjects,j);
+            //if we don't already have it, open a observer for it
+            if(!xhLookup(updates->Notifications,obj)){
+                observer=objOpenObserver(session,obj);
+                xaAddItem(waitfor,observer);
+            }
+            //see if we should save
+            if(save && observer){
+                xhAdd(updates->Notifications,obj,(void *)observer);
+                xaAddItem(updates->NotificationNames,obj);
+            }//end if saveable
+        }//end for sqlobjects
+    }//end for reqc
+
+    //now that that's over, get some updates!
+
+    xaDeInit(waitfor);
+    nmFree(waitfor,sizeof(XArray));
     return 0;
-}
+}//end of nht_internal_GetUpdates
