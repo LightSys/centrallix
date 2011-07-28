@@ -901,39 +901,100 @@ typedef struct
  object can give.  
  */
 typedef enum{
-    OBSERVER_EVENT_NONE = 0,
-    OBSERVER_EVENT_MODIFY,
-    OBSERVER_EVENT_CREATE, 
-    OBSERVER_EVENT_DELETE
+    /** \brief This is when no event has occurred to an object or subobject.
+     */
+    OBJ_OBSERVER_EVENT_NONE = 0,
+    /** \brief The object or a subobject of the observed has been changed.
+     
+     This implies that the object being observed was modified.
+     */
+    OBJ_OBSERVER_EVENT_MODIFY,
+    /** \brief A new subobject of the object being observed was created.
+     */
+    OBJ_OBSERVER_EVENT_CREATE, 
+    /** \brief The object that was being observed or a subobject was deleted.
+     
+     This indeed implies that the observed object has been modified!
+     */
+    OBJ_OBSERVER_EVENT_DELETE
 } ObjObserverEventType;
 
-/** \brief This is a node in the list of events to give to clients.
+/** \brief This is an internal structure.
+  
+ A node in the list of events to give to clients. 
  */
 typedef struct _OBSEVND{
     /** \brief For internal use - do not use as part of the public observer API.
      
-     This allows a queue of objects to be constructed. */
-    struct _OBSEVND*    Next;
-    char*               SpecificPathname;
-    ObjObserverEventType   EventType;
-    int                 NumObservers;
+     This allows a queue of objects to be constructed. 
+     */
+    struct _OBSEVND*            Next;
+    /** \brief The pointer to the pointer that points to this node.
+     */
+    struct _OBSEVND**           PreviousLinkToThis;
+    /** \brief The specific pathname that was updated.
+     */
+    char*                       SpecificPathname;
+    /** \brief The event type that occurred on the object at SpecificPathname.
+     */
+    ObjObserverEventType        EventType;
+    /** \brief The number of ObjObserver objects that still need to get to this
+     node.
+     */
+    int                         NumObservers;
 } ObjObserverEventNode, *pObjObserverEventNode;
     
-/** \brief An internal structure for the program-wide observing of data.
- */
+/** \brief An internal structure for the program-wide observing of data. */
 typedef struct{
-    char*               Pathname;       /* The pathname that is being observed. */
-    short               NumObservers;   /* Basically reference counting so that this can be removed when necessary.*/
-    pObjObserverEventNode      ObserverEvents;
+    /** \brief The pathname that is being observed. 
+     */
+    char*                       Pathname;       
+    /** \brief Basically reference counting so that this can be removed when 
+     necessary.  (When all observers using this are gone.)
+     */
+    short                       NumObservers;  
+    /** \brief The beginning of the list of events that have happened
+     */
+    pObjObserverEventNode       ObserverEvents;
 } GlobalObserver, *pGlobalObserver;
 
 /** \brief This is the structure that one holds on to to get events from an object change. 
  */
 typedef struct{
-    char*               Pathname;
-    pObjObserverEventNode  CurrentEvent;
-    pGlobalObserver     GlobalObserver;
-    pObjSession         RegisteredSession; /* Stored so that the object can be deleted before the object session and it is removed properly.*/
+    /** \brief The pathname of the object that this observer watches. 
+     */
+    char*                       Pathname;
+    /** \brief An internal field showing the current event in the event stack 
+     of the globally observed object.
+     */
+    pObjObserverEventNode       CurrentEvent;
+    /** \brief An internal field pointing to the global observer of the object
+     that this observer must refer to.
+     */
+    pGlobalObserver             GlobalObserver;
+    /** \brief An internal field that tells what session the observer is in.
+     
+     This is stored so that the object can be deleted before the object session
+     and it is removed properly.
+     */
+    pObjSession                 RegisteredSession; 
+    /** \brief An internal field that tells if internal functions are free to 
+     delete the observer.
+     */
+    enum{
+       /** \brief The observer is in the middle of a poll and should not be 
+        deleted. 
+        
+        This can shift state to OBJ_OBSERVER_SHOULD_DELETE_IN_POLL.
+        */
+       OBJ_OBSERVER_NO_DELETE_POLLING = 0,
+       /** \brief The observer is OK to be deleted.
+        */
+       OBJ_OBSERVER_OK_DELETE,
+       /** \brief The observer should be deleted mid-blocking-poll.
+        */
+       OBJ_OBSERVER_DO_DELETE_IN_POLL
+    }                           DeleteAbilityState;
 } ObjObserver, *pObjObserver;
 
 /** \}
@@ -1032,11 +1093,28 @@ int objCloseObserver(pObjObserver obs);
  to return.
  \param specificPath A pointer to a char * (or NULL if you do not want the
  information) that will be changed to the path of the object that was modified.
- \return This returns the type of event that occurred to the object at 
- specificPath.  The object modified, though, may be an object contained by the
+ The object modified, though, may be an object contained by the
  object you were observing.
+ \return This returns the type of event that occurred to the object at 
+ specificPath oR OBSERVER_EVENT_NONE if no event occurred and the call was non-
+ blocking or the observer was  deleted and had to unblock. 
  */
 ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** specificPath);
+
+/** \brief Poll multiple observers for changes made to any of the object 
+ observers.
+ \param obss An XArray of different object observers to poll.
+ \param blocking If the poll should block until one of the object observers
+ gets an event to its object.
+ \param updated The object observer that got the event. (The one whose object
+ was updated or changed.)
+ \param specificPath The specific path of the object that was changed, which
+ may be a subobject of the observed object.
+ \return This returns the event that occurred or OBSSERVER_EVENT_NONE if there
+ were no events and you were not blocking or the observers were deleted and had
+ to unblock.
+ */
+ObjObserverEventType objPollObservers(XArray obss, int blocking, pObjObserver* updated, char** specificPath);
 
 /** \}
  */
