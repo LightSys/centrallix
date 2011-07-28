@@ -30,7 +30,6 @@
 
 #include "obj.h"
 #include "net_http.h"
-#include "report/epsonfx_prt.c"
 
 pXArray nht_internal_decompose_sql(const char *sql){
     return NULL;
