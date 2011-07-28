@@ -1114,7 +1114,7 @@ ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** spec
  were no events and you were not blocking or the observers were deleted and had
  to unblock.
  */
-ObjObserverEventType objPollObservers(XArray obss, int blocking, pObjObserver* updated, char** specificPath);
+ObjObserverEventType objPollObservers(pXArray obss, int blocking, pObjObserver* updated, char** specificPath);
 
 /** \}
  */

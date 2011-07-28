@@ -158,6 +158,6 @@ ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** spec
     return OBJ_OBSERVER_EVENT_NONE;
 }
 
-ObjObserverEventType objPollObservers(XArray obss, int blocking, pObjObserver* updated, char** specificPath){
+ObjObserverEventType objPollObservers(pXArray obss, int blocking, pObjObserver* updated, char** specificPath){
     return OBJ_OBSERVER_EVENT_NONE;
 }
