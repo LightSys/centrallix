@@ -628,6 +628,7 @@ typedef struct _OSS
     char		CurrentDirectory[OBJSYS_MAX_PATH];
     XArray		OpenObjects;
     XArray		OpenQueries;
+    XArray              OpenObservers;          /* The object observers that are currently attached to this session */
     pObjTrxTree		Trx;
     XHashQueue		DirectoryCache;		/* directory entry cache */
     handle_t		Handle;
@@ -890,18 +891,53 @@ typedef struct
     }
     ObjNotification, *pObjNotification;
 
-/*** New structure for observing an object globally on the server ***/
-typedef struct{
-    pPathname   Pathname;               /* The pathname that is being observed. */
-    short       numObservers;           /* Basically reference counting so that this can be removed when necessary.*/
-};
+/** \defgroup obj_observer Object Observers
+ \brief These functions are able to tell when updates that happen to objects on 
+ a program-wide basis.
+ \{
+ */
     
-/*** New structure for receiving updates that changes happened to objects ***/
-typedef struct{
-    pPathname   Pathname;
-    pObjSession Session;
+/** \brief These are all of the different types of events that an object in an observed
+ object can give.  
+ */
+typedef enum{
+    OBSERVER_EVENT_NONE = 0,
+    OBSERVER_EVENT_MODIFY,
+    OBSERVER_EVENT_CREATE, 
+    OBSERVER_EVENT_DELETE
+} ObjObserverEventType;
+
+/** \brief This is a node in the list of events to give to clients.
+ */
+typedef struct _OBSEVND{
+    /** \brief For internal use - do not use as part of the public observer API.
+     
+     This allows a queue of objects to be constructed. */
+    struct _OBSEVND*    Next;
+    char*               SpecificPathname;
+    ObjObserverEventType   EventType;
+    int                 NumObservers;
+} ObjObserverEventNode, *pObjObserverEventNode;
     
+/** \brief An internal structure for the program-wide observing of data.
+ */
+typedef struct{
+    char*               Pathname;       /* The pathname that is being observed. */
+    short               NumObservers;   /* Basically reference counting so that this can be removed when necessary.*/
+    pObjObserverEventNode      ObserverEvents;
+} GlobalObserver, *pGlobalObserver;
+
+/** \brief This is the structure that one holds on to to get events from an object change. 
+ */
+typedef struct{
+    char*               Pathname;
+    pObjObserverEventNode  CurrentEvent;
+    pGlobalObserver     GlobalObserver;
+    pObjSession         RegisteredSession; /* Stored so that the object can be deleted before the object session and it is removed properly.*/
 } ObjObserver, *pObjObserver;
+
+/** \}
+ */
 
 /*** OSML debugging flags ***/
 #define OBJ_DEBUG_F_APITRACE	1
@@ -971,9 +1007,39 @@ int objUnmanageObject(pObjSession this, pObject obj);
 int objUnmanageQuery(pObjSession this, pObjQuery qy);
 int objCommit(pObjSession this);
 
-/** objectsystem observer functions **/
-pObjObserver objOpenObserver(pObjSession this, char* path);
-int objCloseObserver(pObjObserver);
+/** \addgroup obj_observer
+ \{
+ */
+
+/** \brief Open an observer in the current object session on a specific object.
+ 
+ This observer will be deleted when the object session it is in is deleted.
+ \param objSess The object session you want the handler to be registered with.
+ \param path The object to look for changes to.
+ \return This returns the new object observer or NULL on error.
+ */
+pObjObserver objOpenObserver(pObjSession objSess, char* path);
+
+/** \brief Close an observer to stop it from collecting update notifications.
+ \param obs The object observer to delete.
+ \return This returns 0 on success.
+ */
+int objCloseObserver(pObjObserver obs);
+
+/** \brief Poll an object observer to see if any changes occurred.
+ \param obs The object observer to look for changes.
+ \param blocking If this poll should block until there is something meaningful
+ to return.
+ \param specificPath A pointer to a char * (or NULL if you do not want the
+ information) that will be changed to the path of the object that was modified.
+ \return This returns the type of event that occurred to the object at 
+ specificPath.  The object modified, though, may be an object contained by the
+ object you were observing.
+ */
+ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** specificPath);
+
+/** \}
+ */
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);

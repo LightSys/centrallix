@@ -83,7 +83,8 @@ XOBJECTSYSTEM=obj_main.o \
 	      obj_inherit.o \
 	      obj_datatypes.o \
 	      obj_rootnode.o \
-	      obj_replica.o
+	      obj_replica.o \
+	      obj_observer.o
 
 OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 
