@@ -1030,7 +1030,6 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    mssError(1,"HTR","Unknown widget object type '%s'", widget->Type);
 	    return -1;
 	    }
-
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
 

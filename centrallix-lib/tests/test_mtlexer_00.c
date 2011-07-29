@@ -16,7 +16,7 @@ test(char** tname)
     pLxSession lxs;
     int t;
     int j;
-    char str[65536] = "";
+    static char str[65536] = "";
     int n_flagtype = 4;
     int n_tok = 3;
     int flagtype[4] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};

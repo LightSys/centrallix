@@ -46,10 +46,12 @@
 #include "cxlib/magic.h"
 #include "cxlib/xhash.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/mtsession.h"
 #include "ht_render.h"
 
 
 #define WGTR_MAX_PARAMS		(24)
+#define LOC_DEBUG
 
 //global prefix for repeat widget
 int prefix=1;
@@ -85,7 +87,6 @@ struct
     XHashTable	    DriversByType;
     long	    SerialID;
     } WGTR;
-
 
 pWgtrNode 
 wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
@@ -401,8 +402,281 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
 	template->ThisTemplatePath = nmSysStrdup(path);
 
     return template;
-    }
+}
 
+int freeStrDuped(char *str,void *dup)
+{
+  nmSysFree(str);
+  return 0;
+}
+
+WgtrTranTable *wgtrMakeTable(void)
+{
+  WgtrTranTable *table=nmMalloc(sizeof(WgtrTranTable));
+  table->TranslationsHash = (pXHashTable)nmMalloc(sizeof(XHashTable));
+  xhInit(table->TranslationsHash, 64, 0);
+  table->TranslationsFront = (pXArray) nmMalloc(sizeof(XArray));
+  xaInit(table->TranslationsFront, 16);
+  table->TranslationsBack = (pXArray) nmMalloc(sizeof(XArray));
+  xaInit(table->TranslationsBack, 16);
+  table->TranslationsMid = (pXArray) nmMalloc(sizeof(XArray));
+  xaInit(table->TranslationsMid, 16);
+  return table;
+}
+
+void wgtrCleanLocale(WgtrTranTable *table)
+{
+#ifdef LOC_DEBUG
+  mssError(0, "I18N", "Flushing translations");
+#endif
+  //reset translation tables
+  xhClear(table->TranslationsHash, freeStrDuped, NULL);
+  xaDeInit(table->TranslationsMid);
+  xaDeInit(table->TranslationsBack);
+  xaDeInit(table->TranslationsFront);
+  xaInit(table->TranslationsFront, 64);
+  xaInit(table->TranslationsBack, 16);
+  xaInit(table->TranslationsMid, 16);
+}
+
+int wgtrLoadFlatLocale(WgtrTranTable *table, pObjSession s, const char *filename)
+{
+  int nxTok;
+  char *genword, *locword;
+  pObject trans = NULL;
+  pLxSession lexer = NULL;
+
+#ifdef LOC_DEBUG
+  mssError(0, "I18N", "Loading translation from %s", filename);
+#endif
+
+  //open the file
+  trans = objOpen(s, filename, OBJ_O_RDONLY, 0600, "system/file");
+  if (!trans)
+	{
+	  mssError(0, "I18N", "Could not load locale file %s", filename);
+	  goto cleanup;
+	}
+  
+  //read in translations
+  lexer = mlxGenericSession(trans, objRead, MLX_F_EOF | MLX_F_POUNDCOMM | MLX_F_CPPCOMM
+		  |  MLX_F_DASHCOMM | MLX_F_SEMICOMM | MLX_F_CCOMM);
+  //now, actually read the thing
+  while (1)
+	{
+	  int alloc;
+	  nxTok = mlxNextToken(lexer);
+	  if (nxTok == MLX_TOK_EOF)break;
+	  if (nxTok != MLX_TOK_STRING && nxTok != MLX_TOK_KEYWORD)
+		{
+		  mssError(0, "I18N", "Malformed translation file %s, wanted genword on ",filename);
+                  mlxNoteError(lexer);
+                  mlxNotePosition(lexer);
+		  break;
+		}
+	  genword = nmSysStrdup(mlxStringVal(lexer, &alloc));
+	  if (mlxNextToken(lexer) != MLX_TOK_EQUALS)
+		{
+		  mssError(0, "I18N", "Malformed translation file %s, wanted =", filename);
+                  mlxNoteError(lexer);
+                  mlxNotePosition(lexer);
+		  break;
+		}
+	  if (mlxNextToken(lexer) != MLX_TOK_STRING)
+		{
+		  mssError(0, "I18N", "Malformed translation file %s, wanted locword", filename);
+                  mlxNoteError(lexer);
+                  mlxNotePosition(lexer);
+		  break;
+		}
+	  locword = nmSysStrdup(mlxStringVal(lexer, &alloc));
+	  if (strchr(genword, '*'))
+		{
+		  if (strchr(genword, '*') == genword
+				  && strrchr(genword, '*') == (genword + strlen(genword) - 1))
+			{
+			  genword++;
+			  *(genword + strlen(genword) - 1) = '\0';
+			  if(xaFindItem(table->TranslationsMid,genword)<0)
+				xaAddItem(table->TranslationsMid, genword);
+			}
+		  else if (strchr(genword, '*') == genword)
+			{
+			  genword++;
+			  if(xaFindItem(table->TranslationsBack,genword)<0)
+				xaAddItem(table->TranslationsBack, genword);
+			}
+		  else
+			{
+			  *(genword + strlen(genword) - 1) = '\0';
+			  if(xaFindItem(table->TranslationsFront,genword)<0)
+				xaAddItem(table->TranslationsFront, genword);
+			}
+		}//end if *
+#ifdef LOC_DEBUG
+	  mssError(0, "I18N", "%s means %s", genword, locword);
+#endif
+	  //replace old translations
+	  xhRemove(table->TranslationsHash, genword);
+	  xhAdd(table->TranslationsHash, genword, locword);
+	}
+  //alldone, cleanup
+cleanup:
+  if (lexer)mlxCloseSession(lexer);
+  if (trans)objClose(trans);
+  return 0;
+}
+
+int wgtrLoadLocale(WgtrTranTable *table, pObjSession s, const char *path, const char *dir)
+{
+  char *filename, *iter;
+ 
+  if (!mssGetParam("locale"))
+	{
+	  mssError(0, "I18N", "Could not get a locale, none loaded!");
+	  return 0;
+	}
+  //build pathname and open file
+  filename = (char *)malloc(strlen(path) + strlen((char *)mssGetParam("locale")));
+  filename[0] = '\0';
+  if(dir[0]!='/'){
+	  strcat(filename, path);
+	  for (iter = filename + strlen(filename) - 1; *iter != '.' && iter != filename; iter--);
+	  for (; *iter != '/' && iter != filename; iter--);
+	  *iter = '\0';
+	  strcat(filename, "/");
+  }
+  strcat(filename, dir);
+  strcat(filename, "/");
+  strcat(filename, (char *)mssGetParam("locale"));
+  wgtrLoadFlatLocale(table, s,filename);
+  free(filename);
+  return 0;
+}
+
+char *translate(WgtrTranTable *table, char *text, int *found)
+{
+  int i;
+  char *trans = NULL;
+  XArray hitlist;
+
+  if(strncmp(text,"i18n:",5)){
+	  if(found)*found=0;
+	  return text;
+	}
+  text+=5;
+  xaInit(&hitlist,10);
+#ifdef LOC_DEBUG
+  mssError(0, "I18N", "Checking for %s", text);
+#endif
+  if (xhLookup(table->TranslationsHash, text))
+	{
+	  trans = xhLookup(table->TranslationsHash, text);
+#ifdef LOC_DEBUG
+	  mssError(0, "I18N", "Found %s", trans);
+#endif
+	  if (found)*found = 1;
+	  return trans;
+	}//end hash lookup
+
+  //now look for translations which start the same way
+  for (i = 0; i < xaCount(table->TranslationsFront); i++)
+	{
+	  char *loc = strstr(text, xaGetItem(table->TranslationsFront, i));
+	  if (loc == text)
+		{
+		  if(!xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsFront, i)))
+			goto majorerror;
+		  int size = strlen(text)
+				  + strlen(xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsFront, i)))+1;
+		  if(size<0)goto majorerror;
+		  //shouldn't be, but lets be safe
+		  if(trans)xaAddItem(&hitlist,trans);
+		  trans = (char *)nmSysMalloc(size);
+		  trans[0] = '\0';
+		  strcat(trans, xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsFront, i)));
+		  strcat(trans, loc + strlen(xaGetItem(table->TranslationsFront, i)));
+#ifdef LOC_DEBUG
+		  mssError(0, "I18N", "Found %s", trans);
+#endif
+		  if (found)*found = 1;
+		  text = trans;
+		  break;
+		}//end if found
+	}//end for trans front
+
+  //now look for translations which *end* the same way
+  for (i = 0; i < xaCount(table->TranslationsBack); i++)
+	{
+	  char *loc = strstr(text, xaGetItem(table->TranslationsBack, i));
+	  if (loc == (text + strlen(text) - strlen(xaGetItem(table->TranslationsBack, i))))
+		{
+		  if(!xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsBack, i)))
+			goto majorerror;
+		  int size = strlen(text)
+				  + strlen(xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsBack, i)))+1;
+		  if(size<0)goto majorerror;
+		  if(trans)xaAddItem(&hitlist,trans);
+		  trans = (char *)nmSysMalloc(size);
+		  trans[0] = '\0';
+		  loc[0] = '\0';
+		  strcat(trans, text);
+		  strcat(trans, xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsBack, i)));
+#ifdef LOC_DEBUG
+		  mssError(0, "I18N", "Found %s", trans);
+#endif
+		  if (found)*found = 1;
+		  text = trans;
+		  break;
+		}//end if found
+	}//end for trans end
+
+  //now look for translations in the middle :D
+  for (i = 0; i < xaCount(table->TranslationsMid); i++)
+	{
+	  char *loc = strstr(text, xaGetItem(table->TranslationsMid, i));
+	  if (loc)
+		{
+		  if(!xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsMid, i)))
+			goto majorerror;
+		  int size = strlen(text)
+				  + strlen(xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsMid, i))+1);
+		  if(size<0)goto majorerror;
+		  if(trans)xaAddItem(&hitlist,trans);
+		  trans = (char *)nmSysMalloc(size);
+		  trans[0] = '\0';
+		  loc[0] = '\0';
+		  strcat(trans, text);
+		  strcat(trans, xhLookup(table->TranslationsHash,
+				  xaGetItem(table->TranslationsMid, i)));
+		  strcat(trans, loc + strlen(xaGetItem(table->TranslationsMid, i)));
+#ifdef LOC_DEBUG
+		  mssError(0, "I18N", "Found %s", trans);
+#endif
+		  if (found)*found = 1;
+		  text = trans;
+		  //break; not break, so we can find more
+		}//end if found
+	}//end for trans mid
+
+  for(i=0;i<xaCount(&hitlist);i++)nmSysFree(xaGetItem(&hitlist,i));
+  xaDeInit(&hitlist);
+  //if nothing found, return original
+  if (!trans && found)*found = 1;
+  return text;
+majorerror:
+	mssError(0, "I18N", "Something truly horrendous has happened.");
+	if(found)*found = 0;
+	return NULL;
+}//translate
 
 pWgtrNode 
 wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, char* templates[])
@@ -471,8 +745,9 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
     int rval;
     int i,j;
     pStruct one_param;
-    int already_used;
+    int already_used,trans_found;
     pWgtrNode sub_node;
+    pWgtrTranTable table;
 
 	/** create this node **/
 	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
@@ -518,7 +793,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		    }
 		}
 	    }
-	
+
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
 	while (prop_name)
@@ -537,7 +812,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		}
 
 	    /** add property to node **/
-
+		
 	    /** see if it's a property we want to alias for easy access **/
 	    if (prop_type == DATA_T_INTEGER)
 		{
@@ -578,6 +853,53 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	/** Setup (call driver New function) **/
 	if (wgtrSetupNode(this_node) < 0)
 	    goto error;
+
+        table=(pWgtrTranTable)mssGetParam("locale_table");
+// This looks like a better place to apply the localization
+  //Load localizations
+  if (!wgtrGetPropertyValue(this_node, "locale", DATA_T_STRING, &val))
+	mssSetParam("locale", val.String);
+  if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRINGVEC)
+	{
+	  int i;
+	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRINGVEC, &val))
+		{
+		  //flush table!
+		  if(!table)
+                      table = wgtrMakeTable();
+                  //else wgtrCleanLocale(table);
+		  for (i = 0; i < val.StringVec->nStrings; i++)
+			wgtrLoadLocale(table, obj->Session, obj->Pathname->Pathbuf, val.StringVec->Strings[i]);
+                  mssSetParamSized("locale_table",table,sizeof(WgtrTranTable));
+		}//end if fetched
+	}
+  else if (wgtrGetPropertyType(this_node, "locales") == DATA_T_STRING)
+	{
+	  if (!wgtrGetPropertyValue(this_node, "locales", DATA_T_STRING, &val))
+		{
+		  //flush table!
+		  if(!table)
+                      table = wgtrMakeTable();
+                  //else wgtrCleanLocale(table);
+		  wgtrLoadLocale(table, obj->Session, obj->Pathname->Pathbuf, val.String);
+                  mssSetParamSized("locale_table",table,sizeof(WgtrTranTable));
+		}//end if fetched
+	}//end if property locales
+  //and so what we have learned applies to our life today, God has a lot to say in His book
+  for (prop_name = wgtrFirstPropertyName(this_node); prop_name && table;
+		  prop_name = wgtrNextPropertyName(this_node))
+	{
+	  //get type
+	  prop_type = wgtrGetPropertyType(this_node, prop_name);
+	  if (prop_type == DATA_T_STRING)
+		{
+		  //get value
+		  wgtrGetPropertyValue(this_node, prop_name, DATA_T_STRING, &val);
+		  val.String = translate(table,val.String, &trans_found);
+		  if (trans_found)
+			wgtrSetProperty(this_node, prop_name, DATA_T_STRING, &val);
+		}//end if string
+	}//end for wgtrPropery
 
 	return this_node;
 
@@ -2014,7 +2336,6 @@ wgtrInitialize()
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
-
 	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/

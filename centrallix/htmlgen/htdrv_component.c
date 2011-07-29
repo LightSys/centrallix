@@ -313,6 +313,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     int old_is_dynamic = 0;
     char* scriptslist;
     pStruct attr_inf;
+	pWgtrTranTable locale_table=0;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -439,7 +440,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto out;
 		}
-
+            
 	    /** Set up client params **/
 	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
 	    wgtr_params.MaxHeight = h;

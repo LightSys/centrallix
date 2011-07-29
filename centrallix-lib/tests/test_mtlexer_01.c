@@ -17,7 +17,7 @@ test(char** tname)
     int t;
     char* strval;
     int j;
-    char str[65536] = "'hello world'";
+    static char str[65536] = "'hello world'";
     int n_flagtype = 4;
     int n_tok = 4;
     int flagtype[4] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};

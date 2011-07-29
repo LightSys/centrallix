@@ -110,6 +110,26 @@ AC_DEFUN(CHECK_DEBUG,
     ]
 )
 
+AC_DEFUN(CHECK_CONTEXTING,
+    [
+	AC_MSG_CHECKING(if get/set context should be used)
+	AC_ARG_ENABLE(contexting,
+	    AC_HELP_STRING([--enable-contexting],
+		[use get/set context (instead of setjmp / longjmp)]
+	    ),
+	    WITH_CONTEXTING="$enableval",
+	    WITH_CONTEXTING="no"
+	)
+	if test "$WITH_CONTEXTING" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+            CFLAGS="$CFLAGS -DCONTEXTING"
+	    AC_DEFINE(CONTEXTING,1,[use get/set context])
+	fi
+    ]
+)
+
 AC_DEFUN(CHECK_HARDENING,
     [
 	AC_MSG_CHECKING(if application-level hardening desired)

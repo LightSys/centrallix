@@ -123,6 +123,15 @@ typedef struct _WN
 
 typedef struct
     {
+    int         Magic;                  /** Magic number **/
+    pXHashTable  TranslationsHash;       /** Actual translations **/
+    pXArray      TranslationsFront;      /** List of beginnings **/
+    pXArray      TranslationsBack;       /** List of endings **/
+    pXArray      TranslationsMid;        /** List of middles **/
+    } WgtrTranTable, *pWgtrTranTable;
+
+typedef struct
+    {
     int			Magic;		    /** Magic number **/
     pWgtrNode		Tree;		    /** Widget tree for this iterator **/
     int			TraversMethod;	    /** WGTR_TM_XXX **/

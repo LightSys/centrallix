@@ -15,7 +15,7 @@ test(char** tname)
     int iter;
     pLxSession lxs;
     double d;
-    char str[65536] = "";
+    static char str[65536] = "";
 
 	*tname = "mtlexer-14 normal/oversized double floating point";
 

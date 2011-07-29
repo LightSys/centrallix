@@ -299,6 +299,7 @@
 
  **END-CVSDATA***********************************************************/
 
+#include "cxlibconfig-all.h"
 #include "newmalloc.h"
 #include "mtask.h"
 #include "xstring.h"
@@ -309,6 +310,13 @@
 int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
+
+#ifdef CONTEXTING
+ XRingQueue kilList;
+void thKickStart(int thread);
+void thCleanUp();
+void thFreeUnusedStacks(void);
+#endif
 
 #define MAX_EVENTS		256
 #define MAX_THREADS		256
@@ -342,6 +350,9 @@ typedef struct _MTS
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
     XHashTable	SignalHandlers;
+#ifdef CONTEXTING
+    ucontext_t  DefaultContext;
+#endif
     }
     MTSystem, *pMTSystem;
 
@@ -820,8 +831,21 @@ mtInitialize(int flags, void (*start_fn)())
 	    MTASK.CurrentThread->SecContext.nGroups = 0;
 	if (MTASK.CurrentThread->SecContext.nGroups > sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t))
 	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
-	MTASK.CurrentThread->Stack = NULL;
+#ifdef CONTEXTING
+        MTASK.CurrentThread->SavedVal = 0;
+        MTASK.CurrentThread->SavedCont = (ucontext_t *)nmMalloc(sizeof(ucontext_t));//freed by thKill
+        memset(MTASK.CurrentThread->SavedCont,0,sizeof(ucontext_t));
+        getcontext(MTASK.CurrentThread->SavedCont);
+        //where to go when were finished
+        MTASK.CurrentThread->SavedCont->uc_link=&MTASK.DefaultContext;
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_sp=nmMalloc(MAX_STACK);//freed by thKill
+        memset(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
+        MTASK.CurrentThread->SavedCont->uc_stack.ss_size=MAX_STACK;
+        makecontext(MTASK.CurrentThread->SavedCont,(void (*)(void))thKickStart,1,0);
+#else
+        MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
+#endif
 #ifdef USING_VALGRIND
 	MTASK.CurrentThread->ValgrindStackID = 0;
 #endif
@@ -848,7 +872,7 @@ mtInitialize(int flags, void (*start_fn)())
 #else
 	MTASK.TicksPerSec = CLK_TCK;
 #endif
-	
+
 	/** Initialize the thread creation jmp buffer **/
 	mtRunStartFn(NULL,0);
 
@@ -856,6 +880,18 @@ mtInitialize(int flags, void (*start_fn)())
 	signal(SIGPIPE, mtSigPipe);
 	signal(SIGSEGV, mtSigSegv);
 
+#ifdef CONTEXTING
+        //ready the list of things to kill
+        //(4 seems resonable)
+        xrqInit(&kilList,4);
+        //return here when we get "lost"
+        getcontext(&MTASK.DefaultContext);
+        MTASK.DefaultContext.uc_stack.ss_sp=nmMalloc(MAX_STACK);//not freed
+        memset(MTASK.DefaultContext.uc_stack.ss_sp,0,MAX_STACK);
+        MTASK.DefaultContext.uc_stack.ss_size=MAX_STACK;        
+        makecontext(&MTASK.DefaultContext,thCleanUp,0);
+#endif
+        
 	/** Now start the real start function. **/
 	MTASK.CurrentThread = NULL;
 	mtSched();
@@ -874,7 +910,9 @@ mtInitialize(int flags, void (*start_fn)())
  *** calls will differ depending on what the calling thread is and what
  *** its current function-nest-level is.
  ***/
+#ifndef CONTEXTING
 static jmp_buf r_saved_env;
+#endif
 static pThread r_newthr;
 static int r_newidx;
 int
@@ -889,18 +927,26 @@ mtRunStartFn(pThread new_thr, int idx)
         /** if thr is null, we prime the jmp buffer **/
         if (!r_newthr)
             {
+#ifdef CONTEXTING            
+            return 0;
+#else
  	    if (setjmp(r_saved_env) == 0) return 0;
-	    r_mtRunStartFn();
+            r_mtRunStartFn();
+#endif           
 	    }
         else
 	    {
+#ifdef CONTEXTING
+            setcontext(new_thr->SavedCont);
+#else
 	    longjmp(r_saved_env,1);
+#endif
 	    }
 
     return 0; /* never returns */
     }
 
-
+#ifndef CONTEXTING
 int
 r_mtRun_PokeStack()
     {
@@ -944,7 +990,6 @@ r_mtRunStartFn()
      **/
     char buf[MAX_STACK];
     buf[MAX_STACK-1] = buf[MAX_STACK-1];
-
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
     /*r_mtRunStartFn();*/
@@ -952,6 +997,7 @@ r_mtRunStartFn()
     /* thExit(); */
     return 0;	/* should never return */
     }
+#endif //functions for NOT CONTEXTING
 
 /*** mtProcessSignals is an internal-only function to process the list of pending signals
  ***   I had to add this, as there's three places to process signals, and I didn't want to put this code
@@ -1049,10 +1095,11 @@ mtSched()
     int k = 0;
     int arg;
     socklen_t len;
+#ifndef CONTEXTING
     int x[1];
-
+    
     	dbg_write(0,"x",1);
-
+#endif
 	/** Is scheduler locked? **/
 	if (MTASK.MTFlags & MT_F_LOCKED) locked_thr = MTASK.CurrentThread;
 
@@ -1061,7 +1108,9 @@ mtSched()
 	tx=mtRealTicks();
 	if (MTASK.CurrentThread != NULL)
 	    {
+#ifndef CONTEXTING
 	    MTASK.CurrentThread->StackBottom = (unsigned char*)x;
+#endif
 	    /** If no tick and thread exec'able, return now; 0 means 'didnt run' **/
 	    /** If caller of mtSched sets status to runnable instead of **/
 	    /** executing,then this code will force a scheduler 'round' **/
@@ -1089,8 +1138,15 @@ mtSched()
 	    /** to credit time it used before sleeping against its sleep time. **/
 	    if (MTASK.CurrentThread->CntDown < 0) thr_sleep_init = MTASK.CurrentThread;
 
+#ifdef CONTEXTING            
+            /** Save our place so we can return to caller after scheduling. **/
+            MTASK.CurrentThread->SavedVal = 0;
+            getcontext((MTASK.CurrentThread->SavedCont));
+	    if ( MTASK.CurrentThread->SavedVal != 0) 
+#else
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
+#endif           
 	        {
 		dbg_write(0,"s",1);
 		return 1;
@@ -1505,7 +1561,12 @@ mtSched()
 	else
 	    {
 	    dbg_write(0,"l",1);
+#ifdef CONTEXTING
+            lowest_run_thr->SavedVal = 1;
+            setcontext(lowest_run_thr->SavedCont);
+#else            
 	    longjmp(lowest_run_thr->SavedEnv,1);
+#endif            
 	    }
 
     return 1;
@@ -1546,8 +1607,35 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->SecContext.GroupID = MTASK.CurGroupID;
 	thr->SecContext.nGroups = MTASK.CurNGroups;
 	memcpy(thr->SecContext.GroupList, MTASK.CurGroupList, MTASK.CurNGroups * sizeof(gid_t));
+#ifdef CONTEXTING
+        void *stack;
+        //find or alocate a context
+        if(xrqCount(&kilList) > 0)
+           {
+            //reuse, recycle, renew!
+            thr->SavedCont = xrqDequeue(&kilList);
+            //save the stack (assumes a fixed stack size!)
+            stack = thr->SavedCont->uc_stack.ss_sp;
+            }
+        else
+            {
+            //we needs explore a newland
+            thr->SavedCont = nmMalloc(sizeof(ucontext_t)); //freed in thKill
+            stack = nmMalloc(MAX_STACK); //freed in thKill
+            }//end if spare parts
+        memset(thr->SavedCont,0,sizeof(ucontext_t));
+        //get a context
+        getcontext(thr->SavedCont);
+        //grab the stack
+        thr->SavedCont->uc_stack.ss_sp=stack;
+        memset(thr->SavedCont->uc_stack.ss_sp,0,MAX_STACK);
+        thr->SavedCont->uc_stack.ss_size=MAX_STACK;
+        //what to do when finished
+        thr->SavedCont->uc_link = &MTASK.DefaultContext;
+#else
 	thr->Stack = NULL;
 	thr->StackBottom = NULL;
+#endif
 #ifdef USING_VALGRIND
 	thr->ValgrindStackID = 0;
 #endif
@@ -1565,6 +1653,10 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	    if (!MTASK.ThreadTable[i])
 	        {
 		MTASK.ThreadTable[i] = thr;
+#ifdef CONTEXTING                
+                //configure to run
+                makecontext(thr->SavedCont,(void (*)(void))thKickStart,1,i);
+#endif
 		break;
 		}
 	    }
@@ -1635,20 +1727,29 @@ thExit()
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
-
-	/** Destroy the thread's descriptor **/
-	nmFree(MTASK.CurrentThread,sizeof(Thread));
-	MTASK.CurrentThread = NULL;
-
+        if(MTASK.CurrentThread)
+            {
+#ifdef CONTEXTING
+                //add this to the list of things to clean
+                xrqEnqueue(&kilList,MTASK.CurrentThread->SavedCont);
+                MTASK.CurrentThread->SavedCont=NULL;
+#endif
+            /** Destroy the thread's descriptor **/
+            nmFree(MTASK.CurrentThread,sizeof(Thread));
+            MTASK.CurrentThread = NULL;
+            }//end if thread
 	/** No more threads? **/
 	if (MTASK.nThreads == 0)
 	    {
+#ifdef CONTEXTING
+            thFreeUnusedStacks();
+#endif
 	    if (MTASK.MTFlags & MT_F_SEGV)
 		exit(126);
 	    else
 		exit(0);
 	    }
-
+        
 	/** Call scheduler **/
 	MTASK.MTFlags &= ~MT_F_LOCKED;
 	mtSched();
@@ -1704,10 +1805,16 @@ thKill(pThread thr)
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
 #endif
-
-	/** Free the structure. **/
-	nmFree(thr, sizeof(Thread));
-
+        if(thr)
+            {
+#ifdef CONTEXTING
+            xrqEnqueue(&kilList,thr->SavedCont);
+            thr->SavedCont=NULL;
+#endif
+            /** Free the structure. **/
+            nmFree(thr, sizeof(Thread));
+            thr = NULL;
+            }//if thread
 	/** Schedule next thread **/
 	mtSched();
 
@@ -2380,9 +2487,55 @@ int
 thExcessiveRecursion()
     {
     unsigned char buf[1];
+#ifndef CONTEXTING
     return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+#else
+    return ((unsigned long)(MTASK.CurrentThread->SavedCont->uc_stack.ss_sp
+            +MTASK.CurrentThread->SavedCont->uc_stack.ss_size)
+            - (unsigned long)buf > MT_STACK_HIGHWATER);
+#endif
     }
 
+#ifdef CONTEXTING
+/**
+ * performs the real function start,
+ * by grabbing the thread info from the table
+ * @param thread thread to kick
+ */
+void 
+thKickStart(int thread)
+    {
+    //actually call the thread
+    MTASK.ThreadTable[thread]->StartFn(MTASK.ThreadTable[thread]->StartParam);
+    }//end thKickStart
+
+/**
+ * finished threads will revert back into this context,
+ * therefor, we should clean the last thread out of the system
+ */
+void 
+thCleanUp()
+    {
+    //kill ourself
+    thExit();
+    mtSched();
+    }//end thCleanUp
+
+void 
+thFreeUnusedStacks(void)
+    {
+    ucontext_t *tmp;
+    //clean up old stuff from previous runs
+    while(xrqCount(&kilList)>0)
+        {
+        //do the defered free's from thExit
+        tmp=xrqDequeue(&kilList);
+        nmFree(tmp->uc_stack.ss_sp,tmp->uc_stack.ss_size);
+        nmFree(tmp,sizeof(ucontext_t));
+        }//end while dead stacks
+    return;
+    }
+#endif
 
 /*** FDSETOPTIONS sets options on an open file descriptor.  These options
  *** are FD_UF_xxx in mtask.h.
