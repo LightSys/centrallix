@@ -56,12 +56,17 @@ void nht_internal_freeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
+void nht_internal_diffArrays(pXArray prevous, pXArray results, pFile fd){
+
+}//end nht_internal_diffArrays
+
 int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
     int rowid;
     char *sql;
     char *buff;
     pObject obj;
     pXArray results;
+    pXArray prevous;
     pObjQuery query;
     pFile savedConn, sendCon, recvCon;
 
@@ -87,8 +92,27 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
         fdRead(recvCon,buff,1024,0,0);
         xaAddItem(results,nmSysStrdup(buff));
     }
-    
+    objQueryClose(query);
+    //return to regularly scheduled broadcast
     conn->ConnFD = savedConn;
+
+    //now diff these things
+    nht_internal_diffArrays(prevous, results, conn->ConnFD);
+
+    //drop last results and save these
+    if(prevous)xhRemove(updates->Saved,sql);
+    xhAdd(updates->Saved,sql,results);
+
+    //clean up!
+    fdClose(sendCon,FD_U_IMMEDIATE);
+    fdClose(recvCon,FD_U_IMMEDIATE);
+    if(prevous){
+        for(rowid=0;rowid<xaCount(prevous);rowid++)
+            nmSysFree(xaGetItem(prevous,rowid));
+        xaDeInit(prevous);
+        nmFree(prevous,sizeof(XArray));
+    }
+    nmSysFree(buff);
     return 0;
 }
 
@@ -181,7 +205,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     //now that that's over, get some updates!
     event_t = objPollObservers(waitfor,1,&observer,&sid);
     //write header
-    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nTransfer-Encoding: chunked\r\n\r\n");
+    //fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nTransfer-Encoding: chunked\r\n\r\n");
 
     xaDeInit(waitfor);
     nmFree(waitfor,sizeof(XArray));
