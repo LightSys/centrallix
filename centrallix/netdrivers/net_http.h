@@ -328,6 +328,6 @@ int nht_internal_WTimeout(void* sess_v);
 int nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);
 void nht_internal_ErrorExit(pNhtConn conn, int code, char* text);
 int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf);
-pNhtUpdate nht_internal_createUpdates();
-void nht_internal_freeUpdates(pNhtUpdate update);
+pNhtUpdate nht_internal_CreateUpdates();
+void nht_internal_FreeUpdates(pNhtUpdate update);
  #endif
