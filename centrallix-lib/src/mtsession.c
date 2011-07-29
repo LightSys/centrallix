@@ -827,7 +827,7 @@ mssSetParamSized(char* paramname, void* value, int size)
 int
 mssSetParam(char* paramname, void* value)
     {
-    if(value) return mssSetParamSized(paramname,value,strlen(value));
+    if(value) return mssSetParamSized(paramname,value,strlen(value)+1);
     else return mssSetParamSized(paramname,value,0);
     }
 
