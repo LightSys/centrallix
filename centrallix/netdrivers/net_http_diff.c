@@ -56,6 +56,42 @@ void nht_internal_freeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
+int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
+    int rowid;
+    char *sql;
+    char *buff;
+    pObject obj;
+    pXArray results;
+    pObjQuery query;
+    pFile savedConn, sendCon, recvCon;
+
+    //save the real fd
+    savedConn = conn->ConnFD;
+    //open pipe
+    fdPipe(&sendCon,&recvCon);
+    //and redirect
+    conn->ConnFD = sendCon;
+    
+    //open the query
+    sql = xtLookupBeginning(updates->Querys,path);
+    query = objMultiQuery(session, sql, NULL, 0);
+    results = nmMalloc(sizeof(pXArray));
+    xaInit(results,64);
+
+    //now get results
+    buff = nmSysMalloc(1024);
+    rowid = 0;
+    while(obj=objQueryFetch(query,O_RDONLY)){
+        nht_internal_WriteAttrs(obj,conn,(handle_t)rowid,1);
+        objClose(obj);
+        fdRead(recvCon,buff,1024,0,0);
+        xaAddItem(results,nmSysStrdup(buff));
+    }
+    
+    conn->ConnFD = savedConn;
+    return 0;
+}
+
 /* We get:
      * ls__sid
      * ls__sql#
@@ -69,12 +105,16 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     int i;
     int reqc;
     char *sid;
+    char *sql;
     char name[0xff];
     pXArray waitfor;
     pXArray sqlobjects;
     pNhtUpdate updates;
     pObjSession session;
+    pObjObserver observer;
     handle_t session_handle;
+    ObjObserverEventType event_t;
+
     /** Get the session data **///stolen from net_http_osml.c:514, but now unreconizable
     stAttrValue_ne(stLookup_ne(url_inf,"ls__sid"),&sid);
     if (!sid || !strcmp(sid,"XDEFAULT")){
@@ -111,11 +151,11 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     for(i=0;i<reqc;i++){
         char *obj;
         int j,save;
-        pObjObserver observer;
         snprintf(name,0xff,"ls__notify%x",i);
         save=(stLookup_ne(url_inf,name)->StrVal[1]!='0');
         snprintf(name,0xff,"ls__sql%x",i);
-        sqlobjects = nht_internal_decompose_sql(stLookup_ne(url_inf,name)->StrVal);
+        sql = stLookup_ne(url_inf,name)->StrVal;
+        sqlobjects = nht_internal_decompose_sql(sql);
         if(!sqlobjects){
             mssError(0,"NHT","Could not decompose sql statement %s",
                     stLookup_ne(url_inf,name)->StrVal);
@@ -133,11 +173,15 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
             if(save && observer){
                 xhAdd(updates->Notifications,obj,(void *)observer);
                 xaAddItem(updates->NotificationNames,obj);
+                xtAdd(updates->Querys,obj,sql);
             }//end if saveable
         }//end for sqlobjects
     }//end for reqc
 
     //now that that's over, get some updates!
+    event_t = objPollObservers(waitfor,1,&observer,&sid);
+    //write header
+    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nTransfer-Encoding: chunked\r\n\r\n");
 
     xaDeInit(waitfor);
     nmFree(waitfor,sizeof(XArray));

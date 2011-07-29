@@ -212,6 +212,10 @@ typedef struct
  */
 typedef struct
     {
+    ///@brief Internal magic number
+    int Magic;
+    ///@brief Saved queries
+    pXTree Querys;
     ///@brief Last know results of a query
     pXHashTable Saved;
     ///@brief Update notification requests we have open
