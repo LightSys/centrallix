@@ -60,25 +60,23 @@ void nht_internal_diffArrays(pXArray prevous, pXArray results, pFile fd){
 
 }//end nht_internal_diffArrays
 
-int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
+///@brief fetches the result of a SQL statment as would be seen by the http client
+pXArray nht_internal_fetchSQL(char *sql, pObjSession session, pNhtConn conn){
     int rowid;
-    char *sql;
     char *buff;
     pObject obj;
     pXArray results;
-    pXArray prevous;
     pObjQuery query;
     pFile savedConn, sendCon, recvCon;
-
+    
     //save the real fd
     savedConn = conn->ConnFD;
     //open pipe
     fdPipe(&sendCon,&recvCon);
     //and redirect
     conn->ConnFD = sendCon;
-    
+
     //open the query
-    sql = xtLookupBeginning(updates->Querys,path);
     query = objMultiQuery(session, sql, NULL, 0);
     results = nmMalloc(sizeof(pXArray));
     xaInit(results,64);
@@ -95,24 +93,37 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
     objQueryClose(query);
     //return to regularly scheduled broadcast
     conn->ConnFD = savedConn;
+    //clean up!
+    nmSysFree(buff);
+    fdClose(sendCon,FD_U_IMMEDIATE);
+    fdClose(recvCon,FD_U_IMMEDIATE);
+    return results;
+}
+
+int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
+    int rowid;
+    char *sql;
+    pXArray results;
+    pXArray prevous;
+
+    //open the query
+    sql = xtLookupBeginning(updates->Querys,path);
+    results = nht_internal_fetchSQL(sql, session, conn);
 
     //now diff these things
+    prevous = xhLookup(updates->Saved,sql);
     nht_internal_diffArrays(prevous, results, conn->ConnFD);
 
     //drop last results and save these
     if(prevous)xhRemove(updates->Saved,sql);
     xhAdd(updates->Saved,sql,results);
 
-    //clean up!
-    fdClose(sendCon,FD_U_IMMEDIATE);
-    fdClose(recvCon,FD_U_IMMEDIATE);
     if(prevous){
         for(rowid=0;rowid<xaCount(prevous);rowid++)
             nmSysFree(xaGetItem(prevous,rowid));
         xaDeInit(prevous);
         nmFree(prevous,sizeof(XArray));
     }
-    nmSysFree(buff);
     return 0;
 }
 
@@ -206,6 +217,10 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     event_t = objPollObservers(waitfor,1,&observer,&sid);
     //write header
     //fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nTransfer-Encoding: chunked\r\n\r\n");
+    while(event_t != OBJ_OBSERVER_EVENT_NONE){
+        nht_internal_writeUpdate(conn,updates,session,sid);
+        event_t=objPollObservers(waitfor,0,&observer,&sid);
+    }
 
     xaDeInit(waitfor);
     nmFree(waitfor,sizeof(XArray));
