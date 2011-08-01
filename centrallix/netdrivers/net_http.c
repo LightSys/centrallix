@@ -2192,6 +2192,7 @@ nhtInitialize()
 	memset(&NHT, 0, sizeof(NHT));
 	xhInit(&(NHT.CookieSessions),255,0);
 	xaInit(&(NHT.Sessions),256);
+        xhInit(&(NHT.UpdateLists),256,sizeof(ObjSession));
 	NHT.TimerUpdateSem = syCreateSem(0, 0);
 	NHT.TimerDataMutex = syCreateSem(1, 0);
 	xhnInitContext(&(NHT.TimerHctx));

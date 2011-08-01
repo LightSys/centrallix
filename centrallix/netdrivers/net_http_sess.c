@@ -116,6 +116,10 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 	    /** Decrement user session count **/
 	    sess->User->SessionCnt--;
 
+            /** Remove Updates for this session **/
+            nht_internal_FreeUpdates(xhLookup(&(NHT.UpdateLists),(char *)sess));
+            xhRemove(&(NHT.UpdateLists),(char *)sess);
+            
 	    /** Remove the session from the global session list. **/
 	    xhRemove(&(NHT.CookieSessions), sess->Cookie);
 	    xaRemoveItem(&(NHT.Sessions), xaFindItem(&(NHT.Sessions), (void*)sess));

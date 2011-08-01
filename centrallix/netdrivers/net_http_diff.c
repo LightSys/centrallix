@@ -51,65 +51,6 @@ pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
     return names;
 }
 
-pNhtUpdate nht_internal_CreateUpdates(){
-    pNhtUpdate update = nmMalloc(sizeof(NhtUpdate));
-    update->Saved = nmMalloc(sizeof(XHashTable));
-    xhInit(update->Saved,16,sizeof(XArray));
-    update->Notifications = nmMalloc(sizeof(XHashTable));
-    xhInit(update->Notifications,8,0);
-    update->NotificationNames = nmMalloc(sizeof(XArray));
-    xaInit(update->NotificationNames,8);
-    return update;
-}//end nht_internal_createUpdates
-
-void nht_internal_FreeUpdates(pNhtUpdate update){
-    xaDeInit(update->NotificationNames);
-    nmFree(update->NotificationNames,sizeof(XArray));
-    xhDeInit(update->Notifications);
-    nmFree(update->Notifications,sizeof(XHashTable));
-    xhDeInit(update->Saved);
-    nmFree(update->Saved,sizeof(XHashTable));
-    return;
-}//end nht_internal_freeUpdates
-
-void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
-    int o;
-    int preI=0;
-    int resI=0;
-    char *A,*D;
-    while(preI<xaCount(prevous) && resI<xaCount(results)){
-        D=xaGetItem(prevous,preI);
-        A=xaGetItem(results,resI);
-        if(strcmp(D,A)){
-            if((o=xaFindItem(results,D))>0 && o>resI){
-                while(resI<o){
-                    fdWrite(fd,"A ",2,0,0);
-                    fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
-                    resI++;
-                }//end ff
-            }else if((o=xaFindItem(prevous,A))>0 && o>preI){
-                while(preI<o){
-                    fdWrite(fd,"D ",2,0,0);
-                    fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
-                    preI++;
-                }//end ff
-            }//end if in other
-        }//end if differant
-        preI++;resI++;
-    }//end while both
-    //delete anything left over
-    for(;preI<xaCount(prevous);preI++){
-        fdWrite(fd,"D ",2,0,0);
-        fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
-    }//end delete leftovers
-    //now grab anything left over
-    for(;resI<xaCount(results);resI++){
-        fdWrite(fd,"A ",2,0,0);
-        fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
-    }//end send all left over
-    return;
-}//end nht_internal_WriteDiff
-
 ///@brief fetches the result of a SQL statment as would be seen by the http client
 pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
     int rowid;
@@ -158,6 +99,80 @@ void nht_internal_FreeResults(pXArray results){
     xaDeInit(results);
     nmFree(results,sizeof(XArray));
 }//end nht_internal_FreeResults
+
+pNhtUpdate nht_internal_CreateUpdates(){
+    pNhtUpdate update = nmMalloc(sizeof(NhtUpdate));
+    update->Saved = nmMalloc(sizeof(XHashTable));
+    xhInit(update->Saved,16,0);
+    update->Notifications = nmMalloc(sizeof(XHashTable));
+    xhInit(update->Notifications,8,0);
+    update->NotificationNames = nmMalloc(sizeof(XArray));
+    xaInit(update->NotificationNames,8);
+    return update;
+}//end nht_internal_createUpdates
+
+int freeNotifyies(void *item,void *data){
+    objCloseObserver((pObjObserver)item);
+    return 0;
+}
+
+int freeResulties(void *item,void *data){
+    nht_internal_FreeResults(item);
+    return 0;
+}
+
+void nht_internal_FreeUpdates(pNhtUpdate update){
+    int i;
+    for(i=0;i<xaCount(update->NotificationNames);i++)
+        nmSysFree(xaGetItem(update->NotificationNames,i));
+    xaDeInit(update->NotificationNames);
+    nmFree(update->NotificationNames,sizeof(XArray));
+    xhClear(update->Notifications,freeNotifyies,NULL);
+    xhDeInit(update->Notifications);
+    nmFree(update->Notifications,sizeof(XHashTable));
+    xhClear(update->Saved,freeResulties,NULL);
+    xhDeInit(update->Saved);
+    nmFree(update->Saved,sizeof(XHashTable));
+    return;
+}//end nht_internal_freeUpdates
+
+void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
+    int o;
+    int preI=0;
+    int resI=0;
+    char *A,*D;
+    while(preI<xaCount(prevous) && resI<xaCount(results)){
+        D=xaGetItem(prevous,preI);
+        A=xaGetItem(results,resI);
+        if(strcmp(D,A)){
+            if((o=xaFindItem(results,D))>0 && o>resI){
+                while(resI<o){
+                    fdWrite(fd,"A ",2,0,0);
+                    fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
+                    resI++;
+                }//end ff
+            }else if((o=xaFindItem(prevous,A))>0 && o>preI){
+                while(preI<o){
+                    fdWrite(fd,"D ",2,0,0);
+                    fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
+                    preI++;
+                }//end ff
+            }//end if in other
+        }//end if differant
+        preI++;resI++;
+    }//end while both
+    //delete anything left over
+    for(;preI<xaCount(prevous);preI++){
+        fdWrite(fd,"D ",2,0,0);
+        fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
+    }//end delete leftovers
+    //now grab anything left over
+    for(;resI<xaCount(results);resI++){
+        fdWrite(fd,"A ",2,0,0);
+        fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
+    }//end send all left over
+    return;
+}//end nht_internal_WriteDiff
 
 int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
     int rowid;
@@ -221,11 +236,12 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     session_handle = xhnStringToHandle(sid+1,NULL,16);
     session = (pObjSession)xhnHandlePtr(&(conn->NhtSession->Hctx), session_handle);
 
-    ///@todo store this somewhere, since the xhnHandlePtr didn't work out
-    if(!updates || updates){
+    updates = (pNhtUpdate)xhLookup(&NHT.UpdateLists,(char *)session);
+    if(!updates){
         mssError(0,"NHT","Couldn't fetch list of update request!");
         updates = nht_internal_CreateUpdates();
-    }
+        xhAdd(&NHT.UpdateLists,(char *)session,(char *)updates);
+    }//end if new updates
 
     //load saved observers
     waitfor = nmMalloc(sizeof(XArray));
