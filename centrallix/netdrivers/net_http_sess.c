@@ -84,6 +84,9 @@ nht_internal_UnlinkSess_r(void* v)
     {
     if (ISMAGIC(v, MGK_OBJSESSION)) 
 	{
+        /** Remove Updates for this session **/
+        nht_internal_FreeUpdates(xhLookup(&(NHT.UpdateLists),(char *)v));
+        xhRemove(&(NHT.UpdateLists),(char *)v);
 	objCloseSession((pObjSession)v);
 	}
     return 0;
@@ -115,10 +118,6 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 
 	    /** Decrement user session count **/
 	    sess->User->SessionCnt--;
-
-            /** Remove Updates for this session **/
-            nht_internal_FreeUpdates(xhLookup(&(NHT.UpdateLists),(char *)sess));
-            xhRemove(&(NHT.UpdateLists),(char *)sess);
             
 	    /** Remove the session from the global session list. **/
 	    xhRemove(&(NHT.CookieSessions), sess->Cookie);
@@ -127,6 +126,9 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 	    /** First, close all open handles. **/
 	    xhnClearHandles(&(sess->Hctx), nht_internal_UnlinkSess_r);
 
+            /** Remove Updates for this session **/
+            nht_internal_FreeUpdates(xhLookup(&(NHT.UpdateLists),(char *)sess->ObjSess));
+            xhRemove(&(NHT.UpdateLists),(char *)sess->ObjSess);
 	    /** Close the master session. **/
 	    objCloseSession(sess->ObjSess);
 

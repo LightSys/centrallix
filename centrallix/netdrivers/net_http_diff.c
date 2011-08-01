@@ -233,9 +233,14 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         nht_internal_ErrorExit(conn,405,"Update request without session ID.");
         return -1;
     }
-    session_handle = xhnStringToHandle(sid+1,NULL,16);
+    sid++;
+    session_handle = xhnStringToHandle(sid,NULL,16);
     session = (pObjSession)xhnHandlePtr(&(conn->NhtSession->Hctx), session_handle);
-
+    if (!session){
+        mssError(1,"NHT","Session ID bad for update request %s",sid);
+        nht_internal_ErrorExit(conn,405,"Update request with bad session ID.");
+        return -1;
+    }
     updates = (pNhtUpdate)xhLookup(&NHT.UpdateLists,(char *)session);
     if(!updates){
         mssError(0,"NHT","Couldn't fetch list of update request!");
@@ -269,11 +274,13 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         snprintf(name,0xff,"ls__sql%x",i);
         sql = stLookup_ne(url_inf,name)->StrVal;
         if(!save){
+            mssError(0,"NHT","Add to fetch list",sql);
             xaAddItem(fetch,sql);
             continue;
         }
+        mssError(0,"NHT","Decomposing %s",sql);
         sqlobjects = nht_internal_DecomposeSQL(session,sql);
-        if(!sqlobjects){
+        if(!sqlobjects || xaCount(sqlobjects)<1){
             mssError(0,"NHT","Could not decompose sql statement %s",
                     stLookup_ne(url_inf,name)->StrVal);
             continue;
@@ -281,8 +288,10 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         for(j=0;j<xaCount(sqlobjects);j++){
             observer = NULL;
             obj=xaGetItem(sqlobjects,j);
+            mssError(0,"NHT","You pick up a %s",obj);
             //if we don't already have it, open a observer for it
             if(!xhLookup(updates->Notifications,obj)){
+                mssError(0,"NHT","Observing %s",obj);
                 observer=objOpenObserver(session,obj);
                 if(!xaFindItem(fetch,sql))
                     xaAddItem(fetch,sql);
