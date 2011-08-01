@@ -101,11 +101,11 @@ pXTree nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
     buff = nmSysMalloc(1024);
     rowid = 0;
     while((obj=objQueryFetch(query,O_RDONLY))){
-        nht_internal_WriteAttrs(obj,conn,(handle_t)rowid,1);
+        nht_internal_WriteAttrs(obj,conn,0,1);
         objClose(obj);
         fdRead(recvCon,buff,1024,0,0);
         //essentially random value, since we never need it again
-        xtAdd(results,nmSysStrdup(buff),(void *)0xdeafcaba9e);
+        xtAdd(results,nmSysStrdup(buff),(void *)0xdeafcab9);
     }
     objQueryClose(query);
     //return to regularly scheduled broadcast
