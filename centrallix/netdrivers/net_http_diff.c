@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2011 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -31,8 +31,24 @@
 #include "obj.h"
 #include "net_http.h"
 
-pXArray nht_internal_DecomposeSQL(const char *sql){
-    return NULL;
+pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
+    int i;
+    pObject obj;
+    pXArray cache;
+    pXArray names;
+    pObjQuery query;
+    
+    query = objMultiQuery(session, sql, NULL, 0);
+    if(!query)return NULL;
+    cache = objMultiQueryObjects(query);
+    names = nmMalloc(sizeof(XArray));
+    xaInit(names,xaCount(cache));
+    for(i=0;i<xaCount(cache);i++){
+        obj = xaGetItem(cache,i);
+        xaAddItem(names, objGetPathname(obj));
+    }
+    objQueryClose(query);
+    return names;
 }
 
 pNhtUpdate nht_internal_CreateUpdates(){
@@ -84,7 +100,7 @@ pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
     //now get results
     buff = nmSysMalloc(1024);
     rowid = 0;
-    while(obj=objQueryFetch(query,O_RDONLY)){
+    while((obj=objQueryFetch(query,O_RDONLY))){
         nht_internal_WriteAttrs(obj,conn,(handle_t)rowid,1);
         objClose(obj);
         fdRead(recvCon,buff,1024,0,0);
@@ -120,7 +136,7 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
     results = nht_internal_FetchSQL(sql, session, conn);
 
     //now diff these things
-    prevous = xhLookup(updates->Saved,sql);
+    prevous = (pXArray)xhLookup(updates->Saved,sql);
     nht_internal_DiffArrays(prevous, results, conn->ConnFD);
 
     //drop last results and save these
@@ -192,7 +208,8 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
                 stLookup_ne(url_inf,"cx__numObjs")->StrVal);
         reqc=0;
     }
-
+    fetch = nmMalloc(sizeof(XArray));
+    xaInit(fetch,16);
     //get all the requested queries
     for(i=0;i<reqc;i++){
         char *obj;
@@ -205,7 +222,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
             xaAddItem(fetch,sql);
             continue;
         }
-        sqlobjects = nht_internal_DecomposeSQL(sql);
+        sqlobjects = nht_internal_DecomposeSQL(session,sql);
         if(!sqlobjects){
             mssError(0,"NHT","Could not decompose sql statement %s",
                     stLookup_ne(url_inf,name)->StrVal);

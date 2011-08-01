@@ -10,6 +10,7 @@
 #include "expression.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtsession.h"
+#include "multiquery.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -357,6 +358,16 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
     return this;
     }
 
+/*** fetches the XArray of pObject *used* by the muti-query
+ ***/
+pXArray
+objMultiQueryObjects(pObjQuery this)
+    {
+    ASSERTMAGIC(this,MGK_OBJQUERY);
+    if(this->Drv != OSYS.MultiQueryLayer)
+        return NULL;
+    return mqGetQueryObjects((pMultiQuery)this->Data);
+    }
 
 /*** obj_internal_ParseCriteria() - set up query criteria when opening a
  *** new query.
