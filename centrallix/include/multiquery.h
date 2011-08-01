@@ -366,7 +366,7 @@ int mqInitialize();
 int mqRegisterQueryDriver(pQueryDriver drv);
 
 /*** Query set-up functions ***/
-
+pXArray mqGetQueryObjects(pMultiQuery mq);
 /*** INTERNAL functions ***/
 char* mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlist, int* attrid, int* astobjid);
 int mq_internal_FreeQS(pQueryStructure qstree);

@@ -1137,6 +1137,7 @@ pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
 int objQueryClose(pObjQuery this);
 int objGetQueryCoverageMask(pObjQuery this);
+pXArray objMultiQueryObjects(pObjQuery this);
 
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);

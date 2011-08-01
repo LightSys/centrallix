@@ -301,6 +301,7 @@ struct
     int		ClkTck;
     int		numbCachedApps;
     int		XFrameOptions;		/* NHT_XFO_T_xxx */
+    XHashTable  UpdateLists;
     }
     NHT;
 

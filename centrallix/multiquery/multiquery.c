@@ -348,6 +348,22 @@ int mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjT
 int mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
 int mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt);
 
+/*** returns (a copy of) the array of objects *used* by the query
+ ***/
+pXArray
+mqGetQueryObjects(pMultiQuery mq)
+    {
+    int i;
+    pXArray objects = nmMalloc(sizeof(XArray));
+    xaInit(objects,mq->ObjList->nObjects);
+    for(i=0;i<mq->ObjList->nObjects;i++)
+        {
+        if(mq->ObjList->Objects[i])
+            xaAddItem(objects,mq->ObjList->Objects[i]);
+        }
+    return objects;
+    }
+
 /*** mq_internal_FreeQS - releases memory used by the query syntax tree.
  ***/
 int 
