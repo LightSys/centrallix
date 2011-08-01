@@ -54,7 +54,7 @@ pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
 pNhtUpdate nht_internal_CreateUpdates(){
     pNhtUpdate update = nmMalloc(sizeof(NhtUpdate));
     update->Saved = nmMalloc(sizeof(XHashTable));
-    xhInit(update->Saved,16,sizeof(XTree));
+    xhInit(update->Saved,16,sizeof(XArray));
     update->Notifications = nmMalloc(sizeof(XHashTable));
     xhInit(update->Notifications,8,0);
     update->NotificationNames = nmMalloc(sizeof(XArray));
@@ -72,16 +72,16 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
-void nht_internal_DiffArrays(pXTree prevous, pXTree results, pFile fd){
+void nht_internal_DiffArrays(pXArray prevous, pXArray results, pFile fd){
 
 }//end nht_internal_diffArrays
 
 ///@brief fetches the result of a SQL statment as would be seen by the http client
-pXTree nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
+pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
     int rowid;
     char *buff;
     pObject obj;
-    pXTree results;
+    pXArray results;
     pObjQuery query;
     pFile savedConn, sendCon, recvCon;
     
@@ -94,8 +94,8 @@ pXTree nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
 
     //open the query
     query = objMultiQuery(session, sql, NULL, 0);
-    results = nmMalloc(sizeof(pXTree));
-    xtInit(results,0);
+    results = nmMalloc(sizeof(pXArray));
+    xaInit(results,64);
 
     //now get results
     buff = nmSysMalloc(1024);
@@ -104,8 +104,7 @@ pXTree nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
         nht_internal_WriteAttrs(obj,conn,0,1);
         objClose(obj);
         fdRead(recvCon,buff,1024,0,0);
-        //essentially random value, since we never need it again
-        xtAdd(results,nmSysStrdup(buff),(void *)0xdeafcab9);
+        xaAddItem(results,nmSysStrdup(buff));
     }
     objQueryClose(query);
     //return to regularly scheduled broadcast
@@ -117,37 +116,39 @@ pXTree nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
     return results;
 }//end nht_internal_FetchSQL
 
-static int freeRow(char *data, void *hints){
-    nmSysFree(data);
-    return 0;
-}
-
 //frees array of strings, as from above
-void nht_internal_FreeResults(pXTree results){
-    xtClear(results,freeRow,NULL);
-    xtDeInit(results);
-    nmFree(results,sizeof(XTree));
+void nht_internal_FreeResults(pXArray results){
+    int i;
+    for(i=0;i<xaCount(results);i++)
+        nmSysFree(xaGetItem(results,i));
+    xaDeInit(results);
+    nmFree(results,sizeof(XArray));
 }//end nht_internal_FreeResults
 
 int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
+    int rowid;
     char *sql;
-    pXTree results;
-    pXTree prevous;
+    pXArray results;
+    pXArray prevous;
 
     //open the query
     sql = xtLookupBeginning(updates->Querys,path);
     results = nht_internal_FetchSQL(sql, session, conn);
 
     //now diff these things
-    prevous = (pXTree)xhLookup(updates->Saved,sql);
+    prevous = (pXArray)xhLookup(updates->Saved,sql);
     nht_internal_DiffArrays(prevous, results, conn->ConnFD);
 
     //drop last results and save these
     if(prevous)xhRemove(updates->Saved,sql);
     xhAdd(updates->Saved,sql,(char *)results);
 
-    if(prevous)
-        nht_internal_FreeResults(prevous);
+    if(prevous){
+        for(rowid=0;rowid<xaCount(prevous);rowid++)
+            nmSysFree(xaGetItem(prevous,rowid));
+        xaDeInit(prevous);
+        nmFree(prevous,sizeof(XArray));
+    }
     return 0;
 }
 
@@ -166,9 +167,9 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     char *sid;
     char *sql;
     pXArray fetch;
-    pXTree results;
     char name[0xff];
     pXArray waitfor;
+    pXArray results;
     pXArray sqlobjects;
     pNhtUpdate updates;
     pObjSession session;
@@ -245,7 +246,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
 
     //send non-persistent request
     for(i=0;i<xaCount(fetch);i++){
-        results = nht_internal_FetchSQL((char *)xaGetItem(fetch,i), session, conn);
+        results = nht_internal_FetchSQL(xaGetItem(fetch,i), session, conn);
         nht_internal_DiffArrays(NULL,results,conn->ConnFD);
         nht_internal_FreeResults(results);
     }
