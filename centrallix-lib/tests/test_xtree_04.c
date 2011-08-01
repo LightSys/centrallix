@@ -28,8 +28,9 @@
 #define TESTSCOUNT    5000
 
 char *last;
+long long count;
 
-void freethingy(void *data, void *hits){
+void freethingy(char *data, void *hits){
     assert(data);
     return;
 }
@@ -38,6 +39,7 @@ void treeiter(char *key, char *data, void *userData){
     if(last)assert(strcmp(key,last)>0);
     assert(!strcmp(data,xtLookup(userData,key)));
     last=key;
+    count--;
     return;
 }
 
@@ -52,10 +54,14 @@ test(char** tname){
 
     for(test=0;test<TESTSCOUNT/8;test++){
     i=-1;
-    while(filedata[++i][0]!=0)
+    count=0;
+    while(filedata[++i][0]!=0){
             assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+            count++;
+    }
     last=NULL;
     xtTraverse(tree,treeiter,tree);
+    assert(count==0);
     assert(!xtClear(tree,freethingy,NULL));
     assert(xtDeInit(tree) == 0);
 
