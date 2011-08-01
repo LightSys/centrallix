@@ -72,9 +72,43 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
-void nht_internal_DiffArrays(pXArray prevous, pXArray results, pFile fd){
-
-}//end nht_internal_diffArrays
+void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
+    int o;
+    int preI=0;
+    int resI=0;
+    char *A,*D;
+    while(preI<xaCount(prevous) && resI<xaCount(results)){
+        D=xaGetItem(prevous,preI);
+        A=xaGetItem(results,resI);
+        if(strcmp(D,A)){
+            if((o=xaFindItem(results,D))>0 && o>resI){
+                while(resI<o){
+                    fdWrite(fd,"A ",2,0,0);
+                    fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
+                    resI++;
+                }//end ff
+            }else if((o=xaFindItem(prevous,A))>0 && o>preI){
+                while(preI<o){
+                    fdWrite(fd,"D ",2,0,0);
+                    fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
+                    preI++;
+                }//end ff
+            }//end if in other
+        }//end if differant
+        preI++;resI++;
+    }//end while both
+    //delete anything left over
+    for(;preI<xaCount(prevous);preI++){
+        fdWrite(fd,"D ",2,0,0);
+        fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
+    }//end delete leftovers
+    //now grab anything left over
+    for(;resI<xaCount(results);resI++){
+        fdWrite(fd,"A ",2,0,0);
+        fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
+    }//end send all left over
+    return;
+}//end nht_internal_WriteDiff
 
 ///@brief fetches the result of a SQL statment as would be seen by the http client
 pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
@@ -137,7 +171,7 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
 
     //now diff these things
     prevous = (pXArray)xhLookup(updates->Saved,sql);
-    nht_internal_DiffArrays(prevous, results, conn->ConnFD);
+    nht_internal_WriteDiff(prevous, results, conn->ConnFD);
 
     //drop last results and save these
     if(prevous)xhRemove(updates->Saved,sql);
@@ -247,7 +281,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     //send non-persistent request
     for(i=0;i<xaCount(fetch);i++){
         results = nht_internal_FetchSQL(xaGetItem(fetch,i), session, conn);
-        nht_internal_DiffArrays(NULL,results,conn->ConnFD);
+        nht_internal_WriteDiff(NULL,results,conn->ConnFD);
         nht_internal_FreeResults(results);
     }
 
