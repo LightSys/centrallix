@@ -100,7 +100,7 @@ char* xtLookup(pXTree this, char* key);
  \param free_arg A custom argument to pass to the function.
  \return This returns 0 on success and negative on error.
  */
-int xtClear(pXTree this, int (*free_fn)(), void* free_arg);
+int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_arg);
 
 /** \brief Lookup the item with the largest common beginning string.  This does
  not work on keys that are of a set length (Meaning you set the keyLength to 
@@ -113,6 +113,15 @@ int xtClear(pXTree this, int (*free_fn)(), void* free_arg);
  \param key The key to look up the nearest data by.
  */
 char* xtLookupBeginning(pXTree this, char* key);
+
+/** \brief Traverse over all elements in an XTree.
+ \param tree The tree to traverse over.
+ \param iterFunc The function that will iterate over the data in the tree.  The
+ first argument of this function is the key, the second the data, and the third
+ is the user data passed to the xtTraverse function.
+ \param userData The user data passed to the function.
+ */
+void xtTraverse(pXTree tree, void (*iterFunc)(char *key, char *data, void *userData), void *userData);
 
 /** \}
  */

@@ -72,6 +72,16 @@ inline int xt_internal_KeysCompare(char *key1, char *key2, int keyLength){
     }
 }
 
+/** \brief A recursive function for traversing the tree in an inorder traversal.
+ */
+inline void xt_internal_Traverse(pXTreeNode node, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
+    if(node){
+        xt_internal_Traverse(node->less, iterFunc, userData);
+        iterFunc(node->key, node->data, userData);
+        xt_internal_Traverse(node->greater, iterFunc, userData);
+    }
+}
+
 int xtInit(pXTree tree, int keyLength){
     tree->nItems = 0;
     tree->KeyLen = keyLength ? keyLength : INT_MAX;
@@ -221,7 +231,7 @@ char* xtLookup(pXTree this, char* key){
     }
 }
 
-int xtClear(pXTree this, int (*free_fn)(), void* free_arg){
+int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_arg){
     if(this->root){
         xt_internal_FreeNode(this->root, free_fn, free_arg);
     }
@@ -265,4 +275,8 @@ char* xtLookupBeginning(pXTree this, char* key){
     else{
         return NULL; /* It would not really make sense to do this comparison on anything but a string. */
     }
+}
+
+void xtTraverse(pXTree tree, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
+    xt_internal_Traverse(tree->root, iterFunc, userData);
 }
