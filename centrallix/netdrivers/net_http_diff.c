@@ -39,12 +39,14 @@ pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
     pObjQuery query;
     
     query = objMultiQuery(session, sql, NULL, 0);
+    objQueryFetch(query, 0);
     if(!query)return NULL;
     cache = objMultiQueryObjects(query);
     names = nmMalloc(sizeof(XArray));
     xaInit(names,xaCount(cache));
     for(i=0;i<xaCount(cache);i++){
         obj = xaGetItem(cache,i);
+        mssError(1,"NHT","Found %s",objGetPathname(obj));
         xaAddItem(names, objGetPathname(obj));
     }
     objQueryClose(query);
@@ -216,6 +218,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     char *sid;
     char *sql;
     pXArray fetch;
+    pStruct tmp_inf;
     char name[0xff];
     pXArray waitfor;
     pXArray results;
@@ -257,10 +260,14 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
                 xaGetItem(updates->NotificationNames,i)));
 
     //Get requested sql's
-    reqc = strtoi(stLookup_ne(url_inf,"cx__numObjs")->StrVal,NULL,16);
+    tmp_inf=stLookup_ne(url_inf,"cx__numObjs");
+    if(tmp_inf)reqc = strtoi(tmp_inf->StrVal,NULL,16);
+    else{
+        mssError(0,"NHT","Malformed update request");
+        return;
+    }
     if(errno == ERANGE){
-        mssError(0,"NHT","Imposable number of sql request: %s",
-                stLookup_ne(url_inf,"cx__numObjs")->StrVal);
+        mssError(0,"NHT","Imposable number of sql request: %s", tmp_inf->StrVal);
         reqc=0;
     }
     fetch = nmMalloc(sizeof(XArray));
@@ -270,9 +277,13 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         char *obj;
         int j,save;
         snprintf(name,0xff,"ls__notify%x",i);
-        save=(stLookup_ne(url_inf,name)->StrVal[1]!='0');
+        tmp_inf = stLookup_ne(url_inf,name);
+        if(!tmp_inf)break;
+        save=(tmp_inf->StrVal[1]!='0');
         snprintf(name,0xff,"ls__sql%x",i);
-        sql = stLookup_ne(url_inf,name)->StrVal;
+        tmp_inf = stLookup_ne(url_inf,name);
+        if(!tmp_inf)break;
+        sql = tmp_inf->StrVal;
         if(!save){
             mssError(0,"NHT","Add to fetch list",sql);
             xaAddItem(fetch,sql);
