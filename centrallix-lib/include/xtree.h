@@ -114,7 +114,7 @@ int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_
  */
 char* xtLookupBeginning(pXTree this, char* key);
 
-/** \brief Traverse over all elements in an XTree.
+/** \brief Traverse over all elements in an XTree in order of the key.
  \param tree The tree to traverse over.
  \param iterFunc The function that will iterate over the data in the tree.  The
  first argument of this function is the key, the second the data, and the third
