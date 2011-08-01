@@ -8,10 +8,10 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	test_xtree_00.c     					*/
+/* Module: 	test_xtree_04.c     					*/
 /* Author:	Micah Shennum 					        */
-/* Creation:	Jul 27, 2011 					        */
-/* Description: Test add remove                                         */
+/* Creation:	Aug 01, 2011 					        */
+/* Description: Test iterating over the tree                            */
 /************************************************************************/
 
 #include <string.h>
@@ -27,11 +27,17 @@
 
 #define TESTSCOUNT    5000
 
-long long hit_count;
+char *last;
 
-void freethingy(void *data, long long *hits){
+void freethingy(void *data, void *hits){
     assert(data);
-    (*hits)++;
+    return;
+}
+
+void treeiter(char *key, char *data, void *userData){
+    if(last)assert(strcmp(key,last)>0);
+    assert(!strcmp(data,xtLookup(userData,key)));
+    last=key;
     return;
 }
 
@@ -39,30 +45,21 @@ long long
 test(char** tname){
     int i,test;
     pXTree tree;
-    *tname = "xtree-03 adding and clearing xtree";
+    *tname = "xtree-04 iterating over xtree";
     tree=nmMalloc(sizeof(XTree));
 
     assert(xtInit(tree,0) == 0);
 
-    for(test=0;test<TESTSCOUNT;test++){
-        i=-1;
-        while(filedata[++i][0]!=0)
-            assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
-
-        assert(!xtClear(tree,NULL,NULL));
-        assert(tree->nItems==0);
-        assert(!xtClear(tree,NULL,NULL));
-        assert(!xtClear(tree,NULL,NULL));
-    }
-
+    for(test=0;test<TESTSCOUNT/8;test++){
     i=-1;
     while(filedata[++i][0]!=0)
             assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
-
-    hit_count = 0;
-    assert(!xtClear(tree,freethingy,&hit_count));
-    assert(hit_count == i);
-
+    last=NULL;
+    xtTraverse(tree,treeiter,tree);
+    assert(!xtClear(tree,freethingy,NULL));
     assert(xtDeInit(tree) == 0);
+
+    }
+
     return 2*TESTSCOUNT;
 }//end test
