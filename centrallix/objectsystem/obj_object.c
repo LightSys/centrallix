@@ -1320,6 +1320,12 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	xaAddItem(&(session->OpenObjects),(void*)this);
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%p/%s\n", this, this->Driver->Name);
+        
+        /** Send update to observers **/
+        if(permission_mask & OBJ_O_CREAT) /* WARNING - This can throw bogus updates to the notification system if an object was opened and not created! */
+            {
+            obj_internal_ObserverCheckObservers(path, OBJ_OBSERVER_EVENT_CREATE);
+            }
 
     return this;
     }
@@ -1431,6 +1437,9 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
 	    }*/
 
 	obj_internal_FreeObj(tmp);
+        
+        /** Give update to observers **/
+        obj_internal_ObserverCheckObservers(path, OBJ_OBSERVER_EVENT_CREATE);
 
     return 0;
     }
@@ -1474,6 +1483,9 @@ objDelete(pObjSession session, char* path)
 	/** Clean up.  For DeleteObj(), this actually does the work. **/
 	if (obj_internal_FreeObj(tmp) < 0)
 	    rval = -1;
+        
+        /** Send update to observers **/
+        obj_internal_ObserverCheckObservers(path, OBJ_OBSERVER_EVENT_DELETE);
 
     return rval;
     }
@@ -1516,6 +1528,9 @@ objDeleteObj(pObject this)
 	    return -1;
 	    }
 	this->Flags |= OBJ_F_DELETE;
+        
+        /** Give update to observers **/
+        obj_internal_ObserverCheckObservers(objGetPathname(this), OBJ_OBSERVER_EVENT_DELETE);
 
     return objClose(this);
     }

@@ -106,6 +106,9 @@ int
 objExecuteMethod(pObject this, char* methodname, pObjData param)
     {
     return this->Driver->ExecuteMethod(this->Data, methodname, param, &(this->Session->Trx));
+    
+    /** Notify the new notification system of the change **/
+    obj_internal_ObserverCheckObservers(objGetPathname(this), OBJ_OBSERVER_EVENT_MODIFY);
     }
 
 

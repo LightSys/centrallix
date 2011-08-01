@@ -113,6 +113,7 @@ objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
 int 
 objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
     {
+    int result;
     ASSERTMAGIC(this, MGK_OBJECT);
     /** Check recursion **/
     if (thExcessiveRecursion())
@@ -126,6 +127,12 @@ objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
 	mssError(1,"OSML","Parameter error calling objWrite()");
 	return -1;
 	}
-    return this->Driver->Write(this->Data, buffer, cnt, offset, flags, &(this->Session->Trx));
+    result =  this->Driver->Write(this->Data, buffer, cnt, offset, flags, &(this->Session->Trx));
+    if(result == 0)
+        {
+        /** Notify any observers about the change. */
+        obj_internal_ObserverCheckObservers(objGetPathname(this), OBJ_OBSERVER_EVENT_MODIFY);
+        }
+    return result;
     }
 

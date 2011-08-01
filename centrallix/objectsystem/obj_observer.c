@@ -1,6 +1,8 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "obj.h"
+#include <cxlib/mtask.h>
 #include <cxlib/newmalloc.h>
 
 /************************************************************************/
@@ -45,25 +47,86 @@
  session.
  \return If the initialization was successful.
  */
-int obj_internal_ObserverInitSession();
+int obj_internal_ObserverInitSession(pObjSession sess){
+    return xhInit(&sess->OpenObservers, 4, sizeof(pObjObserver));
+}
+
+/** \brief This is the free function to pass to the XHashTable to free items
+ */
+int obj_internal_HashFreeFunction(pObjObserver obs){
+    objCloseObserver(obs);
+    return 0;
+}
 
 /** \brief Clear out the observer related contents of an objectsystem session.
  */
-void obj_internal_ObserverDeInitSession();
-
-/** \brief This function is made for checking if an update of any type to an object
- needs to be registered with any object observers. 
- */
-inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType type);
+void obj_internal_ObserverDeInitSession(pObjSession sess){
+    
+    // Clear out observers from the list
+    xhClear(&sess->OpenObservers, (int (*)())obj_internal_HashFreeFunction, NULL);
+    
+    // Delete the list
+    xhDeInit(&sess->OpenObservers);
+}
 
 inline void obj_internal_PushHeadEvent(pGlobalObserver globalObserver){
     pObjObserverEventNode newNode;
     
     newNode = nmMalloc(sizeof(ObjObserverEventNode));
+    if(!newNode){
+        fprintf(stderr, "Could not allocate new event node!  Lossy observers coming up!\n");
+        return;
+    }
     newNode->Next = globalObserver->HeadEvent;
     newNode->SpecificPathname = NULL;
     newNode->NumObservers = globalObserver->NumObservers;
     globalObserver->HeadEvent = newNode;
+}
+
+/** \brief Free an event node.  Note that this does not free any nodes after
+ the event pointed to by next, because it does not know if it should.
+ */
+inline void obj_internal_FreeEventNode(pObjObserverEventNode node){
+    if(node){
+        nmFree(node, sizeof(ObjObserverEventNode));
+    }
+}
+
+/** \brief This frees the global observer specified and tries to release it 
+ from the global tree of global observers.
+ */
+inline void obj_internal_FreeGlobalObserver(pGlobalObserver globalObserver){
+    if(globalObserver){
+        xtRemove(&OSYS.ObservedObjects, globalObserver->Pathname); // Remove it from the tree if it is there
+
+        // Free if possible
+        if(globalObserver->Pathname){
+            nmFree(globalObserver->Pathname, strlen(globalObserver->Pathname) + 1);
+            obj_internal_FreeEventNode(globalObserver->HeadEvent);
+        }
+        nmFree(globalObserver, sizeof(GlobalObserver));
+    }
+}
+
+/** \brief This function is made for checking if an update of any type to an object
+ needs to be registered with any object observers. 
+ */
+inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType type){
+    pGlobalObserver globalObserver;
+    
+    // Lookup in global to see if there is something with this path
+    if((globalObserver = (pGlobalObserver)xtLookup(&OSYS.ObservedObjects, path))){
+       
+        // Add event parameters
+        globalObserver->HeadEvent->SpecificPathname = path; // Null terminate path
+        globalObserver->HeadEvent->EventType = type;
+        globalObserver->HeadEvent->NumObservers = globalObserver->NumObservers;
+
+        // Push new event
+        obj_internal_PushHeadEvent(globalObserver);
+        
+    }
+    
 }
 
 #endif
@@ -132,32 +195,98 @@ initialization_error: // Error handling!  Bad mallocs stop here!
         }
         nmFree(toReturn, sizeof(ObjObserver));
     }
-    if(globalObserver){
-        if(globalObserver->Pathname){
-            nmFree(globalObserver->Pathname, strlen(globalObserver->Pathname) + 1);
-            if(globalObserver->HeadEvent){
-                nmFree(globalObserver->HeadEvent, sizeof(ObjObserverEventNode));
-            }
-        }
-        nmFree(globalObserver, sizeof(GlobalObserver));
-    }
+    obj_internal_FreeGlobalObserver(globalObserver);
     return NULL;
 }
 
 int objCloseObserver(pObjObserver obs){
     
-    // See if it is necessary to clear out the global
+    // Remove from objectsystem session if necessary
+    if(obs->DeleteAbilityState != OBJ_OBSERVER_DO_DELETE_IN_POLL){
+        xhRemove(&obs->RegisteredSession->OpenObservers, obs->Pathname);
+    }
     
-    return -1;
+    // See if it is in a poll
+    if(obs->DeleteAbilityState == OBJ_OBSERVER_NO_DELETE_POLLING){
+        obs->DeleteAbilityState = OBJ_OBSERVER_DO_DELETE_IN_POLL;
+    }
+    
+    // If it is one of the two final deletion states, delete it
+    if(obs->DeleteAbilityState != OBJ_OBSERVER_NO_DELETE_POLLING){
+        // Walk up stack of events to free them if necessary
+        while(objPollObserver(obs, 0, NULL) != OBJ_OBSERVER_EVENT_NONE);
+
+        // See if it is necessary to clear out the global
+        if(--obs->GlobalObserver->NumObservers == 0){
+            obj_internal_FreeGlobalObserver(obs->GlobalObserver);
+        }
+        
+        nmFree(obs->Pathname, strlen(obs->Pathname) + 1);
+    }
+    
+    return 0;
 }
 
 ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** specificPath){
+    ObjObserverEventType toReturn = OBJ_OBSERVER_EVENT_NONE;
+    *specificPath = NULL;
     
+    while(1){
+        if(obs->GlobalObserver->HeadEvent != obs->CurrentEvent){
+            if(specificPath){
+                *specificPath = obs->CurrentEvent->SpecificPathname;
+            }
+            toReturn = obs->CurrentEvent->EventType;
+            break;
+        }
+        if(obs->DeleteAbilityState == OBJ_OBSERVER_DO_DELETE_IN_POLL){
+            objCloseObserver(obs);
+            break;
+        }
+        if(blocking){
+            thYield();
+        }
+        else{
+            break;
+        }
+    }
     
-    // Should we delete this returned event?
-    return OBJ_OBSERVER_EVENT_NONE;
+    // Check to delete the returned event
+    if(obs->GlobalObserver->HeadEvent != obs->CurrentEvent && obs->CurrentEvent->NumObservers-- == 0){
+        obj_internal_FreeEventNode(obs->CurrentEvent);
+    }
+    
+    return toReturn;
 }
 
 ObjObserverEventType objPollObservers(pXArray obss, int blocking, pObjObserver* updated, char** specificPath){
-    return OBJ_OBSERVER_EVENT_NONE;
+    ObjObserverEventType toReturn = OBJ_OBSERVER_EVENT_NONE;
+    pObjObserver currentObserver;
+    int arrayLen = xaCount(obss);
+    int c = arrayLen;
+    
+    while(1){
+        while(c--){
+            currentObserver = (pObjObserver)xaGetItem(obss, c);
+            if(currentObserver->DeleteAbilityState == OBJ_OBSERVER_DO_DELETE_IN_POLL){ // Catch one that should be deleted
+                xaRemoveItem(obss, c);
+                arrayLen--;
+                objPollObserver(currentObserver, 0, specificPath);
+                continue;
+            }
+            toReturn = objPollObserver(currentObserver, 0, specificPath); // Poll the observer
+            if(toReturn != OBJ_OBSERVER_EVENT_NONE){
+                break;
+            }
+        }
+        if(!blocking || arrayLen == 0){
+            break;
+        }
+        else{
+            c = arrayLen;
+            thYield();
+        }
+    }
+    
+    return toReturn;
 }

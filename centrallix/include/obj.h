@@ -628,7 +628,7 @@ typedef struct _OSS
     char		CurrentDirectory[OBJSYS_MAX_PATH];
     XArray		OpenObjects;
     XArray		OpenQueries;
-    XArray              OpenObservers;          /* The object observers that are currently attached to this session */
+    XHashTable          OpenObservers;          /* The object observers that are currently attached to this session */
     pObjTrxTree		Trx;
     XHashQueue		DirectoryCache;		/* directory entry cache */
     handle_t		Handle;

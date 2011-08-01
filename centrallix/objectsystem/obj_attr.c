@@ -643,7 +643,10 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    /*str = objDataToStringTmp(data_type, (data_type == DATA_T_INTEGER || data_type == DATA_T_DOUBLE)?val:val->Generic, 0);
 	    if (!str) str = "";
 	    obj_internal_TrxLog(this, "setattr", "%STR&DQUOT,%INT,%STR&DQUOT", attrname, data_type, str);*/
-	    }
+	    
+            /** Notify the new notification system of the change **/
+            obj_internal_ObserverCheckObservers(objGetPathname(this), OBJ_OBSERVER_EVENT_MODIFY);
+            }
 
     return rval;
     }
@@ -666,6 +669,9 @@ objAddAttr(pObject this, char* attrname, int type, pObjData val)
 	    tod.DataType = type;
 	    tod.Flags = 0;
 	    obj_internal_RnNotifyAttrib(this, attrname, &tod, 0);
+            
+            /** Notify the new notification system of the change **/
+            obj_internal_ObserverCheckObservers(objGetPathname(this), OBJ_OBSERVER_EVENT_MODIFY);
 	    }
 
     return rval;
