@@ -117,7 +117,7 @@ inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType
     mssError(0,"OBS","Found event at path %s", path);
     
     // Lookup in global to see if there is something with this path
-    if((globalObserver = (pGlobalObserver)xtLookup(&OSYS.ObservedObjects, path))){
+    if((globalObserver = (pGlobalObserver)xtLookupBeginning(&OSYS.ObservedObjects, path))){
         mssError(0,"OBS","Event triggers %s", globalObserver->Pathname);
         
         // Add event parameters
