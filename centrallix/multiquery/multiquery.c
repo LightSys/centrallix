@@ -355,11 +355,11 @@ mqGetQueryObjects(pMultiQuery mq)
     {
     int i;
     pXArray objects = nmMalloc(sizeof(XArray));
-    xaInit(objects,mq->ObjList->nObjects);
-    for(i=0;i<mq->ObjList->nObjects;i++)
+    xaInit(objects,xaCount(mq->FromItems));
+    for(i=0;i<xaCount(mq->FromItems);i++)
         {
         if(mq->ObjList->Objects[i])
-            xaAddItem(objects,mq->ObjList->Objects[i]);
+            xaAddItem(objects,nmSysStrdup(xaGetItem(mq->FromItems,i)));
         }
     return objects;
     }
@@ -627,6 +627,8 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
 		    }
+                //mssError(0,"MQS","FROM clause item %s",subtree->Source);
+                xaAddItem(stmt->Query->FromItems,nmSysStrdup(subtree->Source));
 		expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
 		}
 	    if (from->Children.nItems > 1 && !has_identity && up)
@@ -2505,6 +2507,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->QueryText = nmSysStrdup(query_text);
 	this->RowCnt = 0;
 	this->QueryCnt = 0;
+        this->FromItems = nmMalloc(sizeof(XArray));
+        xaInit(this->FromItems,8);
 	if (flags & OBJ_MQ_F_ONESTATEMENT)
 	    {
 	    this->Flags = MQ_F_ONESTATEMENT; /* multi statements disabled, cannot be enabled */
@@ -2933,9 +2937,18 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     {
+    int c;
 
     	/** Check the link cnt **/
 	if ((--qy->LinkCnt) > 0) return 0;
+
+        /** Free up the list of from items and the stuff inside **/
+        for (c = 0; c < xaCount(qy->FromItems); c++)
+            {
+            nmSysFree(xaGetItem(qy->FromItems, c));
+            }
+        xaDeInit(qy->FromItems);
+        nmFree(qy->FromItems, sizeof (XArray));
 
 	/** Release resources used by the one SQL statement **/
 	if (qy->CurStmt)

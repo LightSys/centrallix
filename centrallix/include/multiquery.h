@@ -337,6 +337,7 @@ struct _MQ /* MultiQuery */
     pLxSession		LexerSession;		/* tokenized query string */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
+    pXArray             FromItems;              /* list of items in all known from clauses*/
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */

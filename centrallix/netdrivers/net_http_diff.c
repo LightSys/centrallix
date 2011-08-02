@@ -32,40 +32,35 @@
 #include "net_http.h"
 
 pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
-    int i;
-    pObject obj;
     pXArray cache;
-    pXArray names;
     pObjQuery query;
     
     query = objMultiQuery(session, sql, NULL, 0);
     objQueryFetch(query, 0);
     if(!query)return NULL;
     cache = objMultiQueryObjects(query);
-    names = nmMalloc(sizeof(XArray));
-    xaInit(names,xaCount(cache));
-    for(i=0;i<xaCount(cache);i++){
-        obj = xaGetItem(cache,i);
-        mssError(1,"NHT","Found %s",objGetPathname(obj));
-        xaAddItem(names, objGetPathname(obj));
-    }
     objQueryClose(query);
-    return names;
+    return cache;
 }
 
 ///@brief fetches the result of a SQL statment as would be seen by the http client
 pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
+    int read;
     int rowid;
     char *buff;
     pObject obj;
     pXArray results;
     pObjQuery query;
     pFile savedConn, sendCon, recvCon;
-    
+
+    mssError(1,"NHT","Fetching %s",sql);
     //save the real fd
     savedConn = conn->ConnFD;
     //open pipe
-    fdPipe(&sendCon,&recvCon);
+    if(fdPipe(&sendCon,&recvCon)){
+        mssError(1,"NHT","Couldn't start pipe!");
+        return NULL;
+    }
     //and redirect
     conn->ConnFD = sendCon;
 
@@ -80,10 +75,19 @@ pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
     while((obj=objQueryFetch(query,O_RDONLY))){
         nht_internal_WriteAttrs(obj,conn,0,1);
         objClose(obj);
-        fdRead(recvCon,buff,1024,0,0);
-        xaAddItem(results,nmSysStrdup(buff));
+        if(fdRead(recvCon,buff,1024,0,0)){
+            mssError(1,"NHT","Got %s",buff);
+            xaAddItem(results,nmSysStrdup(buff));
+        }
     }
     objQueryClose(query);
+    //now read from pipe
+    while(read>0){
+        if((read=fdRead(recvCon,buff,1024,0,0))){
+            mssError(1,"NHT","Got %s",buff);
+            xaAddItem(results,nmSysStrdup(buff));
+        }//end if read
+    }//end while
     //return to regularly scheduled broadcast
     conn->ConnFD = savedConn;
     //clean up!
@@ -110,6 +114,8 @@ pNhtUpdate nht_internal_CreateUpdates(){
     xhInit(update->Notifications,8,0);
     update->NotificationNames = nmMalloc(sizeof(XArray));
     xaInit(update->NotificationNames,8);
+    update->Querys = nmMalloc(sizeof(XTree));
+    xtInit(update->Querys,0);
     return update;
 }//end nht_internal_createUpdates
 
@@ -125,6 +131,7 @@ int freeResulties(void *item,void *data){
 
 void nht_internal_FreeUpdates(pNhtUpdate update){
     int i;
+    if(!update)return;
     for(i=0;i<xaCount(update->NotificationNames);i++)
         nmSysFree(xaGetItem(update->NotificationNames,i));
     xaDeInit(update->NotificationNames);
@@ -135,6 +142,8 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
     xhClear(update->Saved,freeResulties,NULL);
     xhDeInit(update->Saved);
     nmFree(update->Saved,sizeof(XHashTable));
+    xtDeInit(update->Querys);
+    nmFree(update->Querys,sizeof(XTree));
     return;
 }//end nht_internal_freeUpdates
 
@@ -143,7 +152,9 @@ void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
     int preI=0;
     int resI=0;
     char *A,*D;
-    while(preI<xaCount(prevous) && resI<xaCount(results)){
+    int resMax=results?xaCount(results):0;
+    int preMax=prevous?xaCount(prevous):0;
+    while(preI<preMax && resI<resMax){
         D=xaGetItem(prevous,preI);
         A=xaGetItem(results,resI);
         if(strcmp(D,A)){
@@ -164,12 +175,12 @@ void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
         preI++;resI++;
     }//end while both
     //delete anything left over
-    for(;preI<xaCount(prevous);preI++){
+    for(;preI<preMax;preI++){
         fdWrite(fd,"D ",2,0,0);
         fdWrite(fd,xaGetItem(prevous,preI),strlen(xaGetItem(prevous,preI)),0,0);
     }//end delete leftovers
     //now grab anything left over
-    for(;resI<xaCount(results);resI++){
+    for(;resI<resMax;resI++){
         fdWrite(fd,"A ",2,0,0);
         fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
     }//end send all left over
@@ -264,7 +275,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     if(tmp_inf)reqc = strtoi(tmp_inf->StrVal,NULL,16);
     else{
         mssError(0,"NHT","Malformed update request");
-        return;
+        return -1;
     }
     if(errno == ERANGE){
         mssError(0,"NHT","Imposable number of sql request: %s", tmp_inf->StrVal);
@@ -279,13 +290,13 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         snprintf(name,0xff,"ls__notify%x",i);
         tmp_inf = stLookup_ne(url_inf,name);
         if(!tmp_inf)break;
-        save=(tmp_inf->StrVal[1]!='0');
+        save=(tmp_inf->StrVal[0]!='0');
         snprintf(name,0xff,"ls__sql%x",i);
         tmp_inf = stLookup_ne(url_inf,name);
         if(!tmp_inf)break;
         sql = tmp_inf->StrVal;
         if(!save){
-            mssError(0,"NHT","Add to fetch list",sql);
+            mssError(0,"NHT","Add to fetch list %s",sql);
             xaAddItem(fetch,sql);
             continue;
         }
