@@ -51,7 +51,7 @@
 
 
 #define WGTR_MAX_PARAMS		(24)
-#define LOC_DEBUG
+//#define LOC_DEBUG
 
 //global prefix for repeat widget
 int prefix=1;
@@ -670,6 +670,7 @@ char *translate(WgtrTranTable *table, char *text, int *found)
   for(i=0;i<xaCount(&hitlist);i++)nmSysFree(xaGetItem(&hitlist,i));
   xaDeInit(&hitlist);
   //if nothing found, return original
+  if(!trans)  mssError(0, "I18N", "No translation found for %s", text);
   if (!trans && found)*found = 1;
   return text;
 majorerror:
