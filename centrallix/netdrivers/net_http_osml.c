@@ -208,7 +208,50 @@ nht_internal_WaitTrigger(pNhtSessionData sess, int t_id)
     }
 
 
-int nht_internal_WriteOneAttrStr(pObject obj, pXString string, handle_t tgt, char* attrname){
+int nht_internal_WriteOneAttrStr(pObject obj, pXString xs, handle_t tgt, char* attrname){
+    ObjData od;
+    char* dptr;
+    int type,rval;
+    XString hints;
+    pObjPresentationHints ph;
+    static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
+
+	/** Get type **/
+	type = objGetAttrType(obj,attrname);
+	if (type < 0 || type > 7) return -1;
+
+	/** Presentation Hints **/
+	xsInit(&hints);
+	ph = objPresentationHints(obj, attrname);
+	hntEncodeHints(ph, &hints);
+	objFreeHints(ph);
+
+	/** Get value **/
+	rval = objGetAttrValue(obj,attrname,type,&od);
+	if (rval != 0) 
+	    dptr = "";
+	else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) 
+	    dptr = objDataToStringTmp(type, (void*)&od, 0);
+	else
+	    dptr = objDataToStringTmp(type, (void*)(od.String), 0);
+	if (!dptr) dptr = "";
+
+	/** Write the HTML output. **/
+	if (tgt != XHN_INVALID_HANDLE)
+	    xsConcatPrintf(xs, "<A TARGET=R HREF='http://");
+	else
+	    {
+	    xsPrintf(xs, "<A TARGET=X%%x HREF='http://");
+	    }
+	xsConcatQPrintf(xs, "%STR&HEX/?%STR#%STR'>%STR:", 
+		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
+
+	xsQPrintf(xs,"%STR%STR&URL",xs->String,dptr);
+
+	xsConcatenate(xs,"</A><br>\n",9);
+	xsDeInit(&hints);
+
+    return 0;
 }
 
 /*** nht_internal_WriteOneAttr - put one attribute's information into the
