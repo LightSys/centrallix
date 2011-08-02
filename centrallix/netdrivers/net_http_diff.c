@@ -45,55 +45,31 @@ pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
 
 ///@brief fetches the result of a SQL statment as would be seen by the http client
 pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
-    int read;
     int rowid;
-    char *buff;
     pObject obj;
+    XString str;
     pXArray results;
     pObjQuery query;
-    pFile savedConn, sendCon, recvCon;
 
     mssError(1,"NHT","Fetching %s",sql);
-    //save the real fd
-    savedConn = conn->ConnFD;
-    //open pipe
-    if(fdPipe(&sendCon,&recvCon)){
-        mssError(1,"NHT","Couldn't start pipe!");
-        return NULL;
-    }
-    //and redirect
-    conn->ConnFD = sendCon;
 
     //open the query
     query = objMultiQuery(session, sql, NULL, 0);
-    results = nmMalloc(sizeof(pXArray));
+    results = nmMalloc(sizeof(XArray));
     xaInit(results,64);
 
     //now get results
-    buff = nmSysMalloc(1024);
-    rowid = 0;
+    rowid = 1;
     while((obj=objQueryFetch(query,O_RDONLY))){
-        nht_internal_WriteAttrs(obj,conn,0,1);
+        xsInit(&str);
+        nht_internal_WriteAttrsStr(obj,&str,rowid,1);
         objClose(obj);
-        if(fdRead(recvCon,buff,1024,0,0)){
-            mssError(1,"NHT","Got %s",buff);
-            xaAddItem(results,nmSysStrdup(buff));
-        }
-    }
-    objQueryClose(query);
-    //now read from pipe
-    while(read>0){
-        if((read=fdRead(recvCon,buff,1024,0,0))){
-            mssError(1,"NHT","Got %s",buff);
-            xaAddItem(results,nmSysStrdup(buff));
-        }//end if read
+        mssError(1,"NHT","Got %s",xsString(&str));
+        xaAddItem(results,nmSysStrdup(xsString(&str)));
+        xsDeInit(&str);
+        rowid++;
     }//end while
-    //return to regularly scheduled broadcast
-    conn->ConnFD = savedConn;
-    //clean up!
-    nmSysFree(buff);
-    fdClose(sendCon,FD_U_IMMEDIATE);
-    fdClose(recvCon,FD_U_IMMEDIATE);
+    objQueryClose(query);
     return results;
 }//end nht_internal_FetchSQL
 

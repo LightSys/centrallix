@@ -237,11 +237,11 @@ int nht_internal_WriteOneAttrStr(pObject obj, pXString xs, handle_t tgt, char* a
 	if (!dptr) dptr = "";
 
 	/** Write the HTML output. **/
-	if (tgt != XHN_INVALID_HANDLE)
+	if (tgt == XHN_INVALID_HANDLE)
 	    xsConcatPrintf(xs, "<A TARGET=R HREF='http://");
 	else
 	    {
-	    xsPrintf(xs, "<A TARGET=X%%x HREF='http://");
+	    xsConcatPrintf(xs, "<A TARGET=X%%x HREF='http://");
 	    }
 	xsConcatQPrintf(xs, "%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
@@ -309,10 +309,28 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
     return 0;
     }
 
-
-int nht_internal_WriteAttrsStr(pObject obj, XString string, handle_t tgt, int put_meta){
-    
-}
+/*** nht_internal_WriteAttrs - write an HTML-encoded attribute list for the
+ *** object to a XString, given an object and a string.
+ ***/
+int nht_internal_WriteAttrsStr(pObject obj, pXString string, handle_t tgt, int put_meta)
+    {
+    char* attr;
+    if (put_meta)
+	    {
+	    nht_internal_WriteOneAttrStr(obj, string, tgt, "name");
+            tgt=XHN_INVALID_HANDLE;
+	    nht_internal_WriteOneAttrStr(obj, string, tgt, "inner_type");
+	    nht_internal_WriteOneAttrStr(obj, string, tgt, "outer_type");
+	    nht_internal_WriteOneAttrStr(obj, string, tgt, "annotation");
+	    }
+    /** Loop throught the attributes. **/
+    for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj))
+        {
+        nht_internal_WriteOneAttrStr(obj, string, tgt, attr);
+        tgt=XHN_INVALID_HANDLE;
+        }//end for attributes
+    return 0;
+    }//end nht_internal_WriteAttrsStr
 
 /*** nht_internal_WriteAttrs - write an HTML-encoded attribute list for the
  *** object to the connection, given an object and a connection.
@@ -322,7 +340,7 @@ nht_internal_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
     {
     char* attr;
 
-	conn->LastHandle = XHN_INVALID_HANDLE;
+    conn->LastHandle = XHN_INVALID_HANDLE;
 
 	/** Loop throught the attributes. **/
 	if (put_meta)
