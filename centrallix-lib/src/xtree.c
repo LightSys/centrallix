@@ -60,7 +60,7 @@ inline int xt_internal_KeysCompare(char *key1, char *key2, int keyLength){
         return strncmp(key1, key2, keyLength);
     }
     else{
-        int c = 0;
+        int c = -1;
         char compareResult;
         while(c++ < keyLength){
              compareResult = key1[c] - key2[c];

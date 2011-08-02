@@ -117,7 +117,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 	    sess->User->SessionCnt--;
 
             /** Remove Updates for this session **/
-            nht_internal_FreeUpdates(xhLookup(&(NHT.UpdateLists),(char *)sess));
+            nht_internal_FreeUpdates((pNhtUpdate)xhLookup(&(NHT.UpdateLists),(char *)sess));
             xhRemove(&(NHT.UpdateLists),(char *)sess);
             
 	    /** Remove the session from the global session list. **/
