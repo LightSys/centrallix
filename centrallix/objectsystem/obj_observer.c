@@ -71,7 +71,7 @@ void obj_internal_ObserverDeInitSession(pObjSession sess){
 
 inline void obj_internal_PushHeadEvent(pGlobalObserver globalObserver){
     pObjObserverEventNode newNode;
-    
+    mssError(0,"OBS","Pushing head event at %s", globalObserver->Pathname);
     newNode = nmMalloc(sizeof(ObjObserverEventNode));
     if(!newNode){
         fprintf(stderr, "Could not allocate new event node!  Lossy observers coming up!\n");
@@ -234,7 +234,7 @@ int objCloseObserver(pObjObserver obs){
 ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** specificPath){
     ObjObserverEventType toReturn = OBJ_OBSERVER_EVENT_NONE;
     *specificPath = NULL;
-    mssError(0, "OBS", "Observer polled at %s", obs->Pathname);
+    //mssError(0, "OBS", "Observer polled at %s", obs->Pathname);
     while(1){
         if(obs->GlobalObserver->HeadEvent != obs->CurrentEvent){
             if(specificPath){
