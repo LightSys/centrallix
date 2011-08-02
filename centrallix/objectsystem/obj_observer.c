@@ -113,6 +113,8 @@ inline void obj_internal_FreeGlobalObserver(pGlobalObserver globalObserver){
  */
 inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType type){
     pGlobalObserver globalObserver;
+
+    mssError(0,"OBS","Found event at path %s", path);
     
     // Lookup in global to see if there is something with this path
     if((globalObserver = (pGlobalObserver)xtLookup(&OSYS.ObservedObjects, path))){

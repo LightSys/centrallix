@@ -158,7 +158,8 @@ void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
     //now grab anything left over
     for(;resI<resMax;resI++){
         fdWrite(fd,"A ",2,0,0);
-        fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
+        if(fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0))
+           mssError(0,"NHT","Could not write %s to fd",xaGetItem(results,resI));
     }//end send all left over
     return;
 }//end nht_internal_WriteDiff
@@ -301,6 +302,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         }//end for sqlobjects
     }//end for reqc
 
+    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
     //send non-persistent request
     for(i=0;i<xaCount(fetch);i++){
         results = nht_internal_FetchSQL(xaGetItem(fetch,i), session, conn);
@@ -309,9 +311,8 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     }
 
     //now that that's over, get some updates!
-    event_t = objPollObservers(waitfor,xaCount(fetch),&observer,&sid);
+    event_t = objPollObservers(waitfor,!xaCount(fetch),&observer,&sid);
     //write header
-    //fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nTransfer-Encoding: chunked\r\n\r\n");
     while(event_t != OBJ_OBSERVER_EVENT_NONE){
         nht_internal_writeUpdate(conn,updates,session,sid);
         event_t=objPollObservers(waitfor,0,&observer,&sid);
