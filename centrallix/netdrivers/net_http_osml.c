@@ -208,6 +208,9 @@ nht_internal_WaitTrigger(pNhtSessionData sess, int t_id)
     }
 
 
+int nht_internal_WriteOneAttrStr(pObject obj, pXString string, handle_t tgt, char* attrname){
+}
+
 /*** nht_internal_WriteOneAttr - put one attribute's information into the
  *** outbound data connection stream.
  ***/
@@ -263,6 +266,10 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
     return 0;
     }
 
+
+int nht_internal_WriteAttrsStr(pObject obj, XString string, handle_t tgt, int put_meta){
+    
+}
 
 /*** nht_internal_WriteAttrs - write an HTML-encoded attribute list for the
  *** object to the connection, given an object and a connection.
