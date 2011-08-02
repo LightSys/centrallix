@@ -630,6 +630,11 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    mssError(1,"NHT","Illegal attempt to close the default OSML session.");
 		    return -1;
 		    }
+                    /** Remove Updates for this session **/
+                nht_internal_FreeUpdates(
+                        (pNhtUpdate)xhLookup(&(NHT.UpdateLists),
+                        (char *)objsess));
+                xhRemove(&(NHT.UpdateLists),(char *)objsess);
 		xhnFreeHandle(&(sess->Hctx), session_handle);
 	        objCloseSession(objsess);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
