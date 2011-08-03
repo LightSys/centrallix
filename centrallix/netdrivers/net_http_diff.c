@@ -158,8 +158,7 @@ void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
     //now grab anything left over
     for(;resI<resMax;resI++){
         fdWrite(fd,"A ",2,0,0);
-        if(fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0))
-           mssError(0,"NHT","Could not write %s to fd",xaGetItem(results,resI));
+        fdWrite(fd,xaGetItem(results,resI),strlen(xaGetItem(results,resI)),0,0);
     }//end send all left over
     return;
 }//end nht_internal_WriteDiff
@@ -280,8 +279,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         mssError(0,"NHT","Decomposing %s",sql);
         sqlobjects = nht_internal_DecomposeSQL(session,sql);
         if(!sqlobjects || xaCount(sqlobjects)<1){
-            mssError(0,"NHT","Could not decompose sql statement %s",
-                    stLookup_ne(url_inf,name)->StrVal);
+            mssError(0,"NHT","Could not decompose sql statement %s",sql);
             continue;
         }//end if can't decompose
         for(j=0;j<xaCount(sqlobjects);j++){

@@ -57,6 +57,14 @@ test(char** tname){
     i=-1;
     while(filedata[++i][0]!=0)
         assert(!xtRemove(tree,filedata[i][1]));
+    
+    assert(!xtAdd(tree,"/bin/cat","cat"));
+    assert(!xtAdd(tree,"/bin/tree","tree"));
+    assert(!xtAdd(tree,"/bin/bash","bash"));
+    assert(!xtLookupBeginning(tree,"/bin/zsh"));
+    assert(!xtAdd(tree,"/bin/","bin"));
+    assert(xtLookupBeginning(tree,"/bin/zsh"));
+    assert(!strcmp(xtLookupBeginning(tree,"/bin/zsh"),"bin"));
 
     assert(!xtDeInit(tree));
     alarm(5);
