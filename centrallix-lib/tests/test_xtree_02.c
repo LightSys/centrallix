@@ -33,7 +33,7 @@ test(char** tname){
     char *key;
     pXTree tree;
     *tname = "xtree-02 adding and fetching with xtLookupBeginning";
-    alarm(0);
+
     tree=nmMalloc(sizeof(XTree));
 
     assert(!xtInit(tree,0));
@@ -67,8 +67,7 @@ test(char** tname){
     assert(!strcmp(xtLookupBeginning(tree,"/bin/zsh"),"bin"));
 
     assert(!xtDeInit(tree));
-    alarm(5);
-    sleep(2);
+
     //three loops with one ops each
     return 3*(TESTSCOUNT);
 }//end test

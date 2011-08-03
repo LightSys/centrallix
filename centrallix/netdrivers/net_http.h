@@ -220,8 +220,6 @@ typedef struct
     pXHashTable Saved;
     ///@brief Update notification requests we have open
     pXHashTable Notifications;
-    ///@brief Update notification names (for iteration)
-    pXArray NotificationNames;
     }
     NhtUpdate, *pNhtUpdate;
 
