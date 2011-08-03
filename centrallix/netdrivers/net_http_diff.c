@@ -117,8 +117,8 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
 char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
     char *place, *line, *tmp;
     if(!(place=strstr(text,"##"))){
-        mssError(1,"Could not find place holder in diff item %s, giving up", text);
-        return NULL;
+        mssError(1,"Could not find place holder in diff item, giving up:", text);
+        return nmSysStrdup(text);
     }
     text=nmSysStrdup(text);
     //size of handle converted to hex + null
@@ -130,7 +130,7 @@ char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
     strcat(line,(add)?"A ":"D ");
     //place begining of line
     strcat(line,text);
-    place+=2;//eat %x
+    place+=2;//eat ##
     //add rest of line
     strcat(line,place);
     nmSysFree(tmp);
