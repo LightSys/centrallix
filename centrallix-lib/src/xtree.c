@@ -52,7 +52,7 @@ inline void xt_internal_FreeNode(pXTreeNode toFree, int (*free_fn)(), void * fre
 inline int xt_internal_KeysSameBase(char* key1, char* key2){
     int to = 0;
     while(key1[to] == key2[to] && key1[to++] != 0){} /* Run through until they characters are both null chars or 0 */
-    return to;
+    return key2[to] == '\0' ? to : 0; /* Only want to return if it is a beginning string, not just the same beginning. */
 }
 
 inline int xt_internal_KeysCompare(char *key1, char *key2, int keyLength){
