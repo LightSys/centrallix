@@ -29,32 +29,12 @@
 long long
 test(char** tname){
     int i;
-    char *name;
-    char *data;
     pXTree tree;
     *tname = "xtree-00 adding and removing from xtree";
     tree=nmMalloc(sizeof(XTree));
 
-    assert(xtInit(tree,0) == 0);
+    assert(xtInit(tree,'/') == 0);
     
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        data=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        snprintf(data,50,"%x%x",rand()%500,rand()%500);
-        //printf("Inserting data %s into %s\n", data, name);
-        assert(xtAdd(tree,name,data) == 0);
-    }
-
-    assert(tree->nItems==TESTSCOUNT);
-
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        //printf("Attempting to free item %s\n", name);
-        assert(xtRemove(tree,name) == 0);
-    }
-
     //try removing non-existant data
     assert(xtRemove(tree,"Han Solo")==-1);
     assert(xtRemove(tree,"Yoda")==-1);
@@ -67,6 +47,8 @@ test(char** tname){
     i=-1;
     while(filedata[++i][0]!=0)
         assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+
+    assert(tree->nItems==i);
 
     i=-1;
     while(filedata[++i][0]!=0)

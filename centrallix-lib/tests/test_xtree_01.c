@@ -31,8 +31,6 @@
 long long
 test(char** tname){
     int i;
-    char *name;
-    char *data;
     pXTree tree;
     pXHashTable datalist;
     *tname = "xtree-01 adding and fetching from xtree";
@@ -40,35 +38,9 @@ test(char** tname){
     tree=nmMalloc(sizeof(XTree));
     datalist=nmMalloc(sizeof(XHashTable));
 
-    assert(!xtInit(tree,0));
+    assert(!xtInit(tree,'/'));
     xhInit(datalist,TESTSCOUNT,0);
     
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        data=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        snprintf(data,50,"%x%x",rand()%500,rand()%500);
-        assert(!xtAdd(tree,name,data));
-        assert(!xhAdd(datalist,name,data));
-    }
-
-    for(i=0;i<TESTSCOUNT;i++){
-        char *dataH,*dataT;
-        name=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        dataT=xtLookup(tree,name);
-        assert(dataT);
-        dataH=xhLookup(datalist,name);
-        assert(dataH);
-        assert(!strncmp(dataH,dataT,50));
-    }
-    
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        assert(!xtRemove(tree,name));
-    }
-
     assert(!xtAdd(tree,"NullA",NULL));
     assert(!xtAdd(tree,"NullB",NULL));
     assert(!xtAdd(tree,"NullC",NULL));
