@@ -283,7 +283,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         mssError(0,"NHT","Add to fetch list %s",sql);
         xaAddItem(fetch,sql);
         if(xaFindItem(updates->KnownQuerys,sql)<0){
-                xaAddItem(updates->KnownQuerys,sql);
+                xaAddItem(updates->KnownQuerys,nmSysStrdup(sql));
                 xaAddItem(newqueries,sql);
         }
         mssError(0,"NHT","Decomposing %s",sql);
