@@ -214,12 +214,12 @@ typedef struct
     {
     ///@brief Internal magic number
     int Magic;
-    ///@brief Saved queries
+    ///@brief Saved objects -> query mapping
     pXTree Querys;
     ///@brief Last know results of a query
     pXHashTable Saved;
-    ///@brief Update notification requests we have open
-    pXHashTable Notifications;
+    ///@brief List of saved queries
+    pXArray KnownQuerys;
     }
     NhtUpdate, *pNhtUpdate;
 

@@ -49,7 +49,7 @@ pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
 }
 
 ///@brief fetches the result of a SQL statment as would be seen by the http client
-pXArray nht_internal_FetchSQL(char *sql, pObjSession session, pNhtConn conn){
+pXArray nht_internal_FetchSQL(char *sql, pObjSession session){
     int rowid;
     pObject obj;
     XString str;
@@ -91,17 +91,12 @@ pNhtUpdate nht_internal_CreateUpdates(){
     pNhtUpdate update = nmMalloc(sizeof(NhtUpdate));
     update->Saved = nmMalloc(sizeof(XHashTable));
     xhInit(update->Saved,16,0);
-    update->Notifications = nmMalloc(sizeof(XHashTable));
-    xhInit(update->Notifications,8,0);
     update->Querys = nmMalloc(sizeof(XTree));
     xtInit(update->Querys,0);
+    update->KnownQuerys = nmMalloc(sizeof(XArray));
+    xaInit(update->KnownQuerys,8);
     return update;
 }//end nht_internal_createUpdates
-
-int freeNotifyies(void *item,void *data){
-    objCloseObserver((pObjObserver)item);
-    return 0;
-}
 
 int freeResulties(void *item,void *data){
     nht_internal_FreeResults(item);
@@ -110,9 +105,7 @@ int freeResulties(void *item,void *data){
 
 void nht_internal_FreeUpdates(pNhtUpdate update){
     if(!update)return;
-    xhClear(update->Notifications,freeNotifyies,NULL);
-    xhDeInit(update->Notifications);
-    nmFree(update->Notifications,sizeof(XHashTable));
+    nht_internal_FreeResults(update->KnownQuerys);
     xhClear(update->Saved,freeResulties,NULL);
     xhDeInit(update->Saved);
     nmFree(update->Saved,sizeof(XHashTable));
@@ -121,48 +114,53 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
-void nht_internal_WriteDiffline(pFile fd, char add, int objid, char *text){
+char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
     char *place, *line, *tmp;
-    if(!strstr(text,"%x")){
+    if(!(place=strstr(text,"##"))){
         mssError(1,"Could not find place holder in diff item %s, giving up", text);
-        return;
+        return NULL;
     }
     text=nmSysStrdup(text);
     //size of handle converted to hex + null
     tmp = nmSysMalloc(sizeof(handle_t)*2+1);
+    snprintf(tmp,sizeof(handle_t)*2+1,XHN_HANDLE_PRT,objid);
     line = nmSysMalloc(strlen(text)+strlen(tmp));
     place[0]=0;
+    //place A/D
+    strcat(line,(add)?"A ":"D ");
     //place begining of line
     strcat(line,text);
     place+=2;//eat %x
+    //add rest of line
     strcat(line,place);
-    fdWrite(fd,(add)?"A ":"D ",2,0,0);
-    fdWrite(fd,line,strlen(line),0,0);
     nmSysFree(tmp);
-    nmSysFree(line);
     nmSysFree(text);
-    return;
+    return line;
 }
 
-void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
+pXArray nht_internal_DiffArray(pXArray prevous, pXArray results){
     int o;
     int preI=0;
     int resI=0;
     char *A,*D;
+    pXArray diffpatch;
     int resMax=results?xaCount(results):0;
     int preMax=prevous?xaCount(prevous):0;
+
+    diffpatch = nmMalloc(sizeof(XArray));
+    xaInit(diffpatch,16);
     while(preI<preMax && resI<resMax){
         D=xaGetItem(prevous,preI);
         A=xaGetItem(results,resI);
         if(strcmp(D,A)){
             if((o=xaFindItem(results,D))>0 && o>resI){
                 while(resI<o){
-                    nht_internal_WriteDiffline(fd,1,resI,xaGetItem(results,resI));
+                    xaAddItem(diffpatch,nht_internal_WriteDiffline(1,resI,xaGetItem(results,resI)));
                     resI++;
                 }//end ff
             }else if((o=xaFindItem(prevous,A))>0 && o>preI){
                 while(preI<o){
-                    nht_internal_WriteDiffline(fd,0,preI,xaGetItem(prevous,preI));
+                    xaAddItem(diffpatch,nht_internal_WriteDiffline(0,preI,xaGetItem(prevous,preI)));
                     preI++;
                 }//end ff
             }//end if in other
@@ -171,39 +169,41 @@ void nht_internal_WriteDiff(pXArray prevous, pXArray results, pFile fd){
     }//end while both
     //delete anything left over
     for(;preI<preMax;preI++){
-        nht_internal_WriteDiffline(fd,0,preI,xaGetItem(prevous,preI));
+        xaAddItem(diffpatch,nht_internal_WriteDiffline(0,preI,xaGetItem(prevous,preI)));
     }//end delete leftovers
     //now grab anything left over
     for(;resI<resMax;resI++){
-        nht_internal_WriteDiffline(fd,1,resI,xaGetItem(results,resI));
+        xaAddItem(diffpatch,nht_internal_WriteDiffline(1,resI,xaGetItem(results,resI)));
     }//end send all left over
-    return;
+    return diffpatch;
 }//end nht_internal_WriteDiff
 
-int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *path){
-    int rowid;
-    char *sql;
+int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *sql, int reqid){
+    int i;
+    pXArray diff;
     pXArray results;
     pXArray prevous;
 
     //open the query
-    sql = xtLookupBeginning(updates->Querys,path);
-    results = nht_internal_FetchSQL(sql, session, conn);
+    results = nht_internal_FetchSQL(sql, session);
 
     //now diff these things
     prevous = (pXArray)xhLookup(updates->Saved,sql);
-    nht_internal_WriteDiff(prevous, results, conn->ConnFD);
+    diff = nht_internal_DiffArray(prevous, results);
+    
+    if(xaCount(diff)){
+        fdPrintf(conn->ConnFD,"<div item=%x>",reqid);
+        for(i=0;i<xaCount(diff);i++)
+                fdWrite(conn->ConnFD,xaGetItem(diff,i),strlen(xaGetItem(diff,i)),0,0);
+        fdPrintf(conn->ConnFD,"</div>");
+    }//end if diff
 
+    nht_internal_FreeResults(diff);
     //drop last results and save these
     if(prevous)xhRemove(updates->Saved,sql);
     xhAdd(updates->Saved,sql,(char *)results);
 
-    if(prevous){
-        for(rowid=0;rowid<xaCount(prevous);rowid++)
-            nmSysFree(xaGetItem(prevous,rowid));
-        xaDeInit(prevous);
-        nmFree(prevous,sizeof(XArray));
-    }
+    if(prevous)nht_internal_FreeResults(prevous);
     return 0;
 }
 
@@ -225,7 +225,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     pStruct tmp_inf;
     char name[0xff];
     pXArray waitfor;
-    pXArray results;
+    pXArray newqueries;
     pXArray sqlobjects;
     pNhtUpdate updates;
     pObjSession session;
@@ -270,22 +270,21 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     xaInit(waitfor,reqc);
     fetch = nmMalloc(sizeof(XArray));
     xaInit(fetch,reqc);
+    newqueries = nmMalloc(sizeof(XArray));
+    xaInit(newqueries,reqc);
     //get all the requested queries
     for(i=0;i<reqc;i++){
         char *obj;
-        int j,save;
-        snprintf(name,0xff,"ls__notify%x",i);
-        tmp_inf = stLookup_ne(url_inf,name);
-        if(!tmp_inf)break;
-        save=(tmp_inf->StrVal[0]!='0');
+        int j;
         snprintf(name,0xff,"ls__sql%x",i);
         tmp_inf = stLookup_ne(url_inf,name);
         if(!tmp_inf)break;
         sql = tmp_inf->StrVal;
-        if(!save){
-            mssError(0,"NHT","Add to fetch list %s",sql);
-            xaAddItem(fetch,sql);
-            continue;
+        mssError(0,"NHT","Add to fetch list %s",sql);
+        xaAddItem(fetch,sql);
+        if(xaFindItem(updates->KnownQuerys,sql)<0){
+                xaAddItem(updates->KnownQuerys,sql);
+                xaAddItem(newqueries,sql);
         }
         mssError(0,"NHT","Decomposing %s",sql);
         sqlobjects = nht_internal_DecomposeSQL(session,sql);
@@ -296,35 +295,34 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
             obj=xaGetItem(sqlobjects,j);
             mssError(0,"NHT","You pick up a %s",obj);
             //if we don't already have it, open a observer for it
-            if(!xhLookup(updates->Notifications,obj)){
+            if(!xaFindItem(waitfor,obj)){
                 observer=objOpenObserver(session,obj);
                 if(!observer)
                     mssError(0,"NHT","Could not open observer for %s",obj);
-                if(!xaFindItem(fetch,sql))
-                    xaAddItem(fetch,sql);
                 xaAddItem(waitfor,observer);
-                xhAdd(updates->Notifications,obj,(void *)observer);
                 xtAdd(updates->Querys,obj,sql);
             }//end if saveable new observer
         }//end for sqlobjects
     }//end for reqc
 
+    //http header!
     fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-    //send non-persistent request
-    for(i=0;i<xaCount(fetch);i++){
-        results = nht_internal_FetchSQL(xaGetItem(fetch,i), session, conn);
-        nht_internal_WriteDiff(NULL,results,conn->ConnFD);
-        nht_internal_FreeResults(results);
-    }
-
+    //send new request
+    for(i=0;i<xaCount(newqueries);i++)
+        nht_internal_writeUpdate(conn,updates,session,
+                xaGetItem(newqueries,i),xaFindItem(fetch,sql));
+    
     //now that that's over, get some updates!
-    event_t = objPollObservers(waitfor,!xaCount(fetch),&observer,&sid);
+    event_t = objPollObservers(waitfor,!xaCount(newqueries),&observer,&sid);
     //write header
     while(event_t != OBJ_OBSERVER_EVENT_NONE){
-        nht_internal_writeUpdate(conn,updates,session,sid);
+        sql = xtLookupBeginning(updates->Querys,sid);
+        nht_internal_writeUpdate(conn,updates,session,sql,xaFindItem(fetch,sql));
         event_t=objPollObservers(waitfor,0,&observer,&sid);
     }
 
+    for(i=0;i<xaCount(waitfor);i++)
+        objCloseObserver(xaGetItem(waitfor,i));
     xaDeInit(waitfor);
     nmFree(waitfor,sizeof(XArray));
     return 0;

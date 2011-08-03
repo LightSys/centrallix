@@ -241,7 +241,7 @@ int nht_internal_WriteOneAttrStr(pObject obj, pXString xs, handle_t tgt, char* a
 	    xsConcatPrintf(xs, "<A TARGET=R HREF='http://");
 	else
 	    {
-	    xsConcatPrintf(xs, "<A TARGET=X%%x HREF='http://");
+	    xsConcatPrintf(xs, "<A TARGET=X%## HREF='http://");
 	    }
 	xsConcatQPrintf(xs, "%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
