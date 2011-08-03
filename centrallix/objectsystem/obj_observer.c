@@ -71,7 +71,7 @@ void obj_internal_ObserverDeInitSession(pObjSession sess){
 
 inline void obj_internal_PushHeadEvent(pGlobalObserver globalObserver){
     pObjObserverEventNode newNode;
-    
+    mssError(0,"OBS","Pushing head event at %s", globalObserver->Pathname);
     newNode = nmMalloc(sizeof(ObjObserverEventNode));
     if(!newNode){
         fprintf(stderr, "Could not allocate new event node!  Lossy observers coming up!\n");
@@ -117,8 +117,9 @@ inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType
     mssError(0,"OBS","Found event at path %s", path);
     
     // Lookup in global to see if there is something with this path
-    if((globalObserver = (pGlobalObserver)xtLookup(&OSYS.ObservedObjects, path))){
-       
+    if((globalObserver = (pGlobalObserver)xtLookupBeginning(&OSYS.ObservedObjects, path))){
+        mssError(0,"OBS","Event triggers %s", globalObserver->Pathname);
+        
         // Add event parameters
         globalObserver->HeadEvent->SpecificPathname = path; // Null terminate path
         globalObserver->HeadEvent->EventType = type;
@@ -134,6 +135,7 @@ inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType
 #endif
 
 pObjObserver objOpenObserver(pObjSession objSess, char* path){
+    mssError(0, "OBS", "Observer created at %s", path);
     pObjObserver toReturn = NULL;
     pGlobalObserver globalObserver = NULL;
     size_t pathLen;
@@ -202,7 +204,7 @@ initialization_error: // Error handling!  Bad mallocs stop here!
 }
 
 int objCloseObserver(pObjObserver obs){
-    
+    mssError(0, "OBS", "Observer closed at %s", obs->Pathname);
     // Remove from objectsystem session if necessary
     if(obs->DeleteAbilityState != OBJ_OBSERVER_DO_DELETE_IN_POLL){
         xhRemove(&obs->RegisteredSession->OpenObservers, obs->Pathname);
@@ -232,7 +234,7 @@ int objCloseObserver(pObjObserver obs){
 ObjObserverEventType objPollObserver(pObjObserver obs, int blocking, char** specificPath){
     ObjObserverEventType toReturn = OBJ_OBSERVER_EVENT_NONE;
     *specificPath = NULL;
-    
+    //mssError(0, "OBS", "Observer polled at %s", obs->Pathname);
     while(1){
         if(obs->GlobalObserver->HeadEvent != obs->CurrentEvent){
             if(specificPath){
