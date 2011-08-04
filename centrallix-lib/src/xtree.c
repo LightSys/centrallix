@@ -26,257 +26,198 @@
 /* 		enables one to find the closest match if so desired.    */
 /************************************************************************/
 
-inline pXTreeNode xt_internal_AllocAndInitNode(){
+// Initialization and deinitialization functions
+pXTreeNode xt_internal_CreateNode(){
     pXTreeNode toReturn;
-    toReturn = nmMalloc(sizeof(XTreeNode));
+    toReturn = nmSysMalloc(sizeof(XTreeNode));
     if(toReturn){
-        toReturn->greater = NULL;
-        toReturn->less = NULL;
+        toReturn->numObjs = 0;
+        toReturn->firstNode = NULL;
     }
     return toReturn;
 }
 
-inline void xt_internal_FreeNode(pXTreeNode toFree, int (*free_fn)(), void * freeFnArg){
-    
-    if(toFree){
-        /** Do a postorder traversal of the tree to free data **/
-        xt_internal_FreeNode(toFree->greater, free_fn, freeFnArg);
-        xt_internal_FreeNode(toFree->less, free_fn, freeFnArg);
-        if(free_fn){
-            free_fn(toFree->data, freeFnArg);
-        }
-        nmFree(toFree, sizeof(XTreeNode));
+pXTreeLinkedListNode xt_internal_CreateLinkedListNode(){
+    pXTreeLinkedListNode toReturn;
+    toReturn = nmSysMalloc(sizeof(XTreeLinkedListNode));
+    if(toReturn){
+        toReturn->next = NULL;
+        toReturn->node = NULL;
     }
+    return toReturn;
 }
 
-inline int xt_internal_KeysSameBase(char* key1, char* key2){
-    int to = 0;
-    while(key1[to] == key2[to] && key1[to++] != 0){} /* Run through until they characters are both null chars or 0 */
-    return key2[to] == '\0' ? to : 0; /* Only want to return if it is a beginning string, not just the same beginning. */
-}
-
-inline int xt_internal_KeysCompare(char *key1, char *key2, int keyLength){
-    if(keyLength == INT_MAX){
-        return strncmp(key1, key2, keyLength);
+char *xt_internal_NextChunk(char **str, char separator){
+    char *result, *toReturn;
+    result = strchr(*str, separator);
+    if(result){
+        toReturn = malloc(result - *str + 1);
+        if(toReturn){
+            strncpy(result, *str, result - *str);
+            result[result - *str] = '\0';
+        }
+        return toReturn;
     }
     else{
-        int c = -1;
-        char compareResult;
-        while(c++ < keyLength){
-             compareResult = key1[c] - key2[c];
-             if(compareResult != 0){
-                 return compareResult;
-             }
+        return strdup(*str);
+    }
+}
+
+char xt_internal_ComapreSegment(char **path, char *other, char separator){
+    while(*other == **path){
+        if(**path == separator){
+            *path++;
+            return 1;
         }
-        return 0;
+        if(**path == '\0'){
+            return 1;
+        }
+        other++;
+        *path++;
     }
-}
-
-/** \brief A recursive function for traversing the tree in an inorder traversal.
- */
-inline void xt_internal_Traverse(pXTreeNode node, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
-    if(node){
-        xt_internal_Traverse(node->less, iterFunc, userData);
-        iterFunc(node->key, node->data, userData);
-        xt_internal_Traverse(node->greater, iterFunc, userData);
-    }
-}
-
-int xtInit(pXTree tree, int keyLength){
-    tree->nItems = 0;
-    tree->KeyLen = keyLength ? keyLength : INT_MAX;
-    tree->root = NULL;
     return 0;
 }
 
-int xtDeInit(pXTree tree){
-    if(tree->root){
-        xt_internal_FreeNode(tree->root, NULL, NULL);
+int xtInit(pXTree tree, char separator){
+    tree->rootNode = xt_internal_CreateNode();
+    if(tree){
+        tree->separator = separator;
     }
-    return xtInit(tree, tree->KeyLen);
+    return tree != NULL;
+}
+
+int xtDeInit(pXTree tree){
+    xtClear(tree, NULL, NULL);
+    nmSysFree(tree->rootNode);
+    return 0;
 }
 
 int xtAdd(pXTree this, char* key, char* data){
-    pXTreeNode currentNode;
-    int compareResult;
     
-    if(this->root){
-        currentNode = this->root;
-        while(1){
-            compareResult = xt_internal_KeysCompare(key, currentNode->key, this->KeyLen);
-            if(compareResult < 0){
-                if(currentNode->less){
-                    currentNode = currentNode->less;
-                }
-                else{
-                    currentNode->less = xt_internal_AllocAndInitNode();
-                    if(!currentNode->less){
-                        return -1;
+}
+
+char xt_internal_RemoveInNode(pXTreeNode *ptrToNode, pXTreeNode node, char *key, char separator){
+    if(node){
+        pXTreeLinkedListNode currentLinkedListNode;
+        pXTreeLinkedListNode *ptrToLinkedListNode;
+        char *resetKey, toReturn;
+        
+        // Iterate through linked list trying to find the current key.
+        ptrToLinkedListNode = &node->firstNode;
+        currentLinkedListNode = node->firstNode;
+        while(currentLinkedListNode){
+            resetKey = key;
+            if(xt_internal_ComapreSegment(&resetKey, currentLinkedListNode->key, separator)){
+                if((toReturn = xt_internal_RemoveInNode(&currentLinkedListNode->node, currentLinkedListNode->node, resetKey, separator))){
+                    node->numObjs--; // Decrement the reference count
+                    if(node->numObjs == 0){
+                        // Remove this linked list from the list
+                        *ptrToNode = NULL;
+                        nmSysFree(node);
+                        free(currentLinkedListNode->key);
+                        (*ptrToLinkedListNode)->next = currentLinkedListNode->next;
                     }
-                    currentNode->less->data = data;
-                    currentNode->less->key = key;
-                    this->nItems++;
-                    return 0;
                 }
+                return toReturn;
             }
-            else if(compareResult > 0){
-                if(currentNode->greater){
-                    currentNode = currentNode->greater;
-                }
-                else{
-                    currentNode->greater = xt_internal_AllocAndInitNode();
-                    if(!currentNode->greater){
-                        return -1;
-                    }
-                    currentNode->greater->data = data;
-                    currentNode->greater->key = key;
-                    this->nItems++;
-                    return 0;
-                }
-            }
-            else{ /* The two are equal - overwrite */
-                currentNode->data = data;
-                currentNode->key = key; /* For memory purposes */
-                return 0;
-            }
+            // Check the next
+            ptrToLinkedListNode = &currentLinkedListNode->next;
+            currentLinkedListNode = currentLinkedListNode->next;
         }
+        return 0;
     }
     else{
-        this->root = xt_internal_AllocAndInitNode();
-        if(!this->root){
-            return -1;
+        if(*key == '\0'){
+            return 1; // We hit the end of the path, so we did find it!
         }
-        this->root->key = key;
-        this->root->data = data;
-        this->nItems++;
-        return 0;
+        else{
+            return 0; // We did not find the requested node!
+        }
     }
 }
 
 int xtRemove(pXTree this, char* key){
-    int comparisonResult;
-    pXTreeNode currentNode = this->root, successorNode = NULL;
-    pXTreeNode* parentNodePointer = &this->root, *successorNodeParent;
-    
-    while(currentNode){
-        comparisonResult = xt_internal_KeysCompare(key, currentNode->key,this->KeyLen);
-        if(comparisonResult < 0){
-            parentNodePointer = &currentNode->less;
-            currentNode = currentNode->less;
-        }
-        else if(comparisonResult > 0){
-            parentNodePointer = &currentNode->greater;
-            currentNode = currentNode->greater;
-        }
-        else{                                    /* Found node - delete it */
-            if(currentNode->greater && currentNode->less){
-                /* Find successor - Could randomize which side this takes stuff from eventually! */
-                successorNode = currentNode->less;
-                successorNodeParent = &currentNode->less;
-                while(successorNode->greater){
-                    successorNodeParent = &successorNode->greater;
-                    successorNode = successorNode->greater;
-                }
-                *successorNodeParent = successorNode->less;
-                successorNode->less = currentNode->less;
-                successorNode->greater = currentNode->greater;
-                //printf("Swapping successors\n");
-            }
-            else if(currentNode->less){
-                successorNode = currentNode->less;
-                //printf("Taking less node\n");
-            }
-            else if(currentNode->greater){
-                successorNode = currentNode->greater;
-                //printf("Taking greater node\n");
-            }
-            else{
-                //printf("Taking no node\n");
-                successorNode = NULL;
-            }
-            *parentNodePointer = successorNode;
-            
-            /** Free the node that is it that we found **/
-            currentNode->greater = NULL;
-            currentNode->less = NULL;
-            xt_internal_FreeNode(currentNode, NULL, NULL);
-            //printf("Freeing items\n");
-            this->nItems--;
-            return 0;
-        }
+    int toReturn;
+    toReturn = !xt_internal_RemoveInNode(&this->rootNode, this->rootNode, key, this->separator);
+    if(!this->rootNode){
+        toReturn &= xtInit(this, this->separator);
     }
-    return -1;
+    return toReturn;
 }
 
-char* xtLookup(pXTree this, char* key){
-    pXTreeNode currentNode = this->root;
-    int compareResult;
-    while(currentNode){
-        compareResult = xt_internal_KeysCompare(key, currentNode->key, this->KeyLen);
-        if(compareResult < 0){
-            currentNode = currentNode->less;
+char *xt_internal_LookupInNode(pXTreeNode node, char *key, char separator){
+    if(node){
+        pXTreeLinkedListNode currentLinkedListNode;
+        char *resetKey;
+        
+        // Iterate through linked list trying to find the current key.
+        currentLinkedListNode = node->firstNode;
+        while(currentLinkedListNode){
+            resetKey = key;
+            if(xt_internal_ComapreSegment(&resetKey, currentLinkedListNode->key, separator)){
+                if(*key == '\0'){ // If we hit this, we have reached the end of the given path
+                    return currentLinkedListNode->data;
+                }
+                else{
+                    return xt_internal_LookupInNode(currentLinkedListNode->node, resetKey, separator);
+                }
+            }
+            currentLinkedListNode = currentLinkedListNode->next;
         }
-        else if(compareResult > 0){
-            currentNode = currentNode->greater;
-        }
-        else{
-            break;
-        }
-    }
-    if(currentNode){
-        return currentNode->data;
+        return NULL;
     }
     else{
         return NULL;
     }
 }
 
+char *xtLookup(pXTree this, char* key){
+    return xt_internal_LookupInNode(this->rootNode, key, this->separator);
+}
+
 int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_arg){
-    if(this->root){
-        xt_internal_FreeNode(this->root, free_fn, free_arg);
+    
+}
+    
+char *xt_internal_LookupBeginning(pXTreeNode node, char *key, char separator){
+    pXTreeLinkedListNode currentLinkedListNode;
+    char *resetKey;
+
+    // Iterate through linked list trying to find the current key.
+    currentLinkedListNode = node->firstNode;
+    while(currentLinkedListNode){
+        resetKey = key;
+        if(xt_internal_ComapreSegment(&resetKey, currentLinkedListNode->key, separator)){
+            if(*key == '\0' || !currentLinkedListNode->node){ // If we hit this, we have reached the end of the given path
+                return currentLinkedListNode->data;
+            }
+            else{
+                return xt_internal_LookupInNode(currentLinkedListNode->node, resetKey, separator);
+            }
+        }
+        currentLinkedListNode = currentLinkedListNode->next;
     }
-    return xtInit(this, this->KeyLen);
+    return NULL;
 }
 
 char* xtLookupBeginning(pXTree this, char* key){
-    if(this->KeyLen == INT_MAX){
-        int charFrom = 0, newCharFrom;
-        pXTreeNode currentNode = this->root, closestParentNode = NULL;
-        int compareResult;
-        
-        while(currentNode){
-            if((newCharFrom = xt_internal_KeysSameBase(key, currentNode->key)) > charFrom){
-                charFrom = newCharFrom;
-                closestParentNode = currentNode;
-            }
-            compareResult = xt_internal_KeysCompare(key, currentNode->key, this->KeyLen);
-            if(compareResult < 0){
-                currentNode = currentNode->less;
-            }
-            else if(compareResult > 0){
-                currentNode = currentNode->greater;
-            }
-            else{
-                break;
-            }
+    return xt_internal_LookupBeginning(this->rootNode, key, this->separator);
+}
+
+void xt_internal_Traverse(pXTreeNode node, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
+    pXTreeLinkedListNode currentLLNode = node->firstNode;
+    
+    //Iterate through all items in the current linked list
+    while(currentLLNode){
+        // Call function
+        iterFunc(currentLLNode->key, currentLLNode->data, userData);
+        if(currentLLNode->node){
+            xt_internal_Traverse(currentLLNode->node, iterFunc, userData);
         }
-        if(currentNode){
-            return currentNode->data;
-        }
-        else{
-            if(closestParentNode){
-                return closestParentNode->data;
-            }
-            else{
-                return NULL;
-            }
-        }
-    }
-    else{
-        return NULL; /* It would not really make sense to do this comparison on anything but a string. */
+        currentLLNode = currentLLNode->next;
     }
 }
 
 void xtTraverse(pXTree tree, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
-    xt_internal_Traverse(tree->root, iterFunc, userData);
+    xt_internal_Traverse(tree->rootNode, iterFunc, userData);
 }

@@ -27,14 +27,24 @@
  \{
  */
 
+typedef struct _XTLLND  XTreeLinkedListNode,    *pXTreeLinkedListNode;
+typedef struct _XTND    XTreeNode,              *pXTreeNode;
+
+struct _XTLLND{
+    char                        *key;
+    char                        *data;
+    pXTreeLinkedListNode        next;
+    pXTreeNode                  node;
+};
+
 /** \brief A node in an XTree object. 
  * 
  This is an internal data type.  Please do not use this!
  */
-typedef struct _XTND{
-    char* key, *data;
-    struct _XTND* less, *greater;
-} XTreeNode,    *pXTreeNode;
+struct _XTND{
+    pXTreeLinkedListNode        firstNode;
+    unsigned int                numObjs;
+};
 
 /** \brief The XTree object.
  
@@ -44,9 +54,8 @@ typedef struct _XTND{
  removed!
  */
 typedef struct{
-    pXTreeNode  root;
-    int		KeyLen;
-    int		nItems;
+    pXTreeNode                  rootNode;
+    char                        separator;
 } XTree, *pXTree;
 
 /** \brief Initialize an already allocated tree.
@@ -56,7 +65,7 @@ typedef struct{
  characters are always compared.
  \return This returns 0 if it was successful or negative on failure.
  */
-int xtInit(pXTree tree, int keyLength);
+int xtInit(pXTree tree, char separator);
 
 /** \brief Deinitialize a tree.  This gets rid of the internal data with no
  free function.
