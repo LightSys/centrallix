@@ -31,6 +31,7 @@
 #include "obj.h"
 #include "net_http.h"
 
+///@brief used to break apart a sql query (as a string) into the object names in FROM
 pXArray nht_internal_DecomposeSQL(pObjSession session, char *sql){
     pXArray cache;
     pObjQuery query;
@@ -103,17 +104,28 @@ int freeResulties(void *item,void *data){
     return 0;
 }
 
+/**
+ * @brief frees a pNhtUpdate structure
+ * Every item in every storage structure contained is freed,
+ * along with the structures themselves and the pNhtUpdate itself.
+ */
 void nht_internal_FreeUpdates(pNhtUpdate update){
     if(!update)return;
+    //free XArray of strings
     nht_internal_FreeResults(update->KnownQuerys);
+    //empty the hashtable
     xhClear(update->Saved,freeResulties,NULL);
     xhDeInit(update->Saved);
     nmFree(update->Saved,sizeof(XHashTable));
+    //clear the query xtree
     xtDeInit(update->Querys);
     nmFree(update->Querys,sizeof(XTree));
+    //and finally ourself
+    nmFree(update,sizeof(NhtUpdate));
     return;
 }//end nht_internal_freeUpdates
 
+///@brief generates one line of a diff patch
 char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
     char *place, *line, *tmp;
     if(!(place=strstr(text,"##"))){
@@ -136,8 +148,9 @@ char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
     nmSysFree(tmp);
     nmSysFree(text);
     return line;
-}
+}//end nht_internal_WriteDiffline
 
+///@brief generates a diff patch between two arrays (of strings)
 pXArray nht_internal_DiffArray(pXArray prevous, pXArray results){
     int o;
     int preI=0;
@@ -149,9 +162,11 @@ pXArray nht_internal_DiffArray(pXArray prevous, pXArray results){
 
     diffpatch = nmMalloc(sizeof(XArray));
     xaInit(diffpatch,16);
+    //while we have data from both
     while(preI<preMax && resI<resMax){
         D=xaGetItem(prevous,preI);
         A=xaGetItem(results,resI);
+        //figure out the differances
         if(strcmp(D,A)){
             if((o=xaFindItem(results,D))>0 && o>resI){
                 while(resI<o){
@@ -171,13 +186,14 @@ pXArray nht_internal_DiffArray(pXArray prevous, pXArray results){
     for(;preI<preMax;preI++){
         xaAddItem(diffpatch,nht_internal_WriteDiffline(0,preI,xaGetItem(prevous,preI)));
     }//end delete leftovers
-    //now grab anything left over
+    //and add anything left over
     for(;resI<resMax;resI++){
         xaAddItem(diffpatch,nht_internal_WriteDiffline(1,resI,xaGetItem(results,resI)));
     }//end send all left over
     return diffpatch;
 }//end nht_internal_WriteDiff
 
+///@brief writes a diff patch to the client based on a given path having changed
 int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *sql, int reqid){
     int i;
     pXArray diff;
@@ -208,14 +224,11 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
 }
 
 /* We get:
-     * ls__sid
-     * ls__sql#
-     * ls__rowcount#
-     * ls__notify#
-     * ls__req -- multiquery?
-     * ls__autofetch
-     * ls__autoclose_sr
-     */
+ * (ls__mode=osmldiff)
+ * cx__numObjs
+ * ls__sid
+ * ls__sql#
+ */
 int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     int i;
     int reqc;
@@ -240,6 +253,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         nht_internal_ErrorExit(conn,405,"Update request without session ID.");
         return -1;
     }
+    //eat the X && convert id to session
     sid++;
     session_handle = xhnStringToHandle(sid,NULL,16);
     session = (pObjSession)xhnHandlePtr(&(conn->NhtSession->Hctx), session_handle);
@@ -248,6 +262,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         nht_internal_ErrorExit(conn,405,"Update request with bad session ID.");
         return -1;
     }
+    //fetch existing update structure (to see what they last got)
     updates = (pNhtUpdate)xhLookup(&NHT.UpdateLists,(char *)session);
     if(!updates){
         mssError(0,"NHT","Couldn't fetch list of update request, making new one");
@@ -255,7 +270,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         xhAdd(&NHT.UpdateLists,(char *)session,(char *)updates);
     }//end if new updates
 
-    //Get requested sql's
+    //Get count of requested sql's
     tmp_inf=stLookup_ne(url_inf,"cx__numObjs");
     if(tmp_inf)reqc = strtoi(tmp_inf->StrVal,NULL,16);
     else{
@@ -266,6 +281,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         mssError(0,"NHT","Imposable number of sql request: %s", tmp_inf->StrVal);
         reqc=0;
     }
+    //create XArrays for storage
     waitfor = nmMalloc(sizeof(XArray));
     xaInit(waitfor,reqc);
     fetch = nmMalloc(sizeof(XArray));
@@ -285,11 +301,13 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         if(xaFindItem(updates->KnownQuerys,sql)<0){
                 xaAddItem(updates->KnownQuerys,nmSysStrdup(sql));
                 xaAddItem(newqueries,sql);
-        }
+        }//end if not found
         mssError(0,"NHT","Decomposing %s",sql);
+        //get from clause items
         sqlobjects = nht_internal_DecomposeSQL(session,sql);
         if(!sqlobjects || xaCount(sqlobjects)<1)
             continue;
+        //open a observer for each one
         for(j=0;j<xaCount(sqlobjects);j++){
             observer = NULL;
             obj=xaGetItem(sqlobjects,j);
@@ -307,20 +325,23 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
 
     //http header!
     fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-    //send new request
+    //send new requests, as they have no last seen as &etc
     for(i=0;i<xaCount(newqueries);i++)
         nht_internal_writeUpdate(conn,updates,session,
                 xaGetItem(newqueries,i),xaFindItem(fetch,sql));
     
-    //now that that's over, get some updates!
+    //now that that's over, get some updates! (block if nothing new already
     event_t = objPollObservers(waitfor,!xaCount(newqueries),&observer,&sid);
-    //write header
     while(event_t != OBJ_OBSERVER_EVENT_NONE){
+        //find query for changed object
         sql = xtLookupBeginning(updates->Querys,sid);
+        //write updates
         nht_internal_writeUpdate(conn,updates,session,sql,xaFindItem(fetch,sql));
+        //look for more
         event_t=objPollObservers(waitfor,0,&observer,&sid);
-    }
+    }//end for updates
 
+    //clean up
     for(i=0;i<xaCount(waitfor);i++)
         objCloseObserver(xaGetItem(waitfor,i));
     xaDeInit(waitfor);
