@@ -42,7 +42,7 @@ test(char** tname){
     *tname = "xtree-03 adding and clearing xtree";
     tree=nmMalloc(sizeof(XTree));
 
-    assert(xtInit(tree,0) == 0);
+    assert(xtInit(tree,'/') == 0);
 
     for(test=0;test<TESTSCOUNT;test++){
         i=-1;

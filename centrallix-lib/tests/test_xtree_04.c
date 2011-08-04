@@ -50,7 +50,7 @@ test(char** tname){
     *tname = "xtree-04 iterating over xtree";
     tree=nmMalloc(sizeof(XTree));
 
-    assert(xtInit(tree,0) == 0);
+    assert(xtInit(tree,'/') == 0);
 
     for(test=0;test<TESTSCOUNT/8;test++){
     i=-1;
