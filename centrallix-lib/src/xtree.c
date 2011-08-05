@@ -73,6 +73,14 @@ char *pathtokey(pXArray path, char sep){
     return key;
 }//end pathtokey
 
+int findNodeinList(pXArray list, char *name){
+    int i;
+    for(i=0;i<xaCount(list);i++)
+        if(!strcmp(((pXTreeNode)xaGetItem(list,i))->key,name))
+            return i;
+    return -1;
+}//end findNodeinList
+
 //frees an array such as returned above
 void freePath(pXArray path){
     int i;
@@ -86,8 +94,8 @@ pXTreeNode xt_internal_CreateNode(){
     pXTreeNode toReturn;
     toReturn = nmMalloc(sizeof(XTreeNode));
     if(toReturn){//initialze internals
-        toReturn->subObjs = nmMalloc(sizeof(XHashTable));
-        xhInit(toReturn->subObjs,8,0);
+        toReturn->subObjs = nmMalloc(sizeof(XArray));
+        xaInit(toReturn->subObjs,8);
         toReturn->items = 0;
         toReturn->key = NULL;
         toReturn->data = FLG_NODE;
@@ -106,22 +114,22 @@ int xtInit(pXTree tree, char separator){
 
 void xt_internal_FreeNode(pXTreeNode node){
     if(!node)return;
-    xhDeInit(node->subObjs);
-    nmFree(node->subObjs,sizeof(XHashTable));
-    nmSysFree(node->key);
+    xaDeInit(node->subObjs);
+    nmFree(node->subObjs,sizeof(XArray));
+    if(node->key)nmSysFree(node->key);
     nmFree(node,sizeof(XTreeNode));
     return;
 }//end xt_internal_FreeNode
 
 int xtDeInit(pXTree tree){
     xtClear(tree, NULL, NULL);
-    nmSysFree(tree->rootNode);
     return 0;
 }
 
 //recursivly places an item into the tree
 int xt_internal_add(pXTreeNode node, pXArray path, int depth, char *data){
-    if(depth<0 || depth>xaCount(path))
+    int o;
+    if(depth<0 || depth>xaCount(path) || !node)
         return -3;
     if(depth == xaCount(path)){
         node->data=data;
@@ -132,13 +140,14 @@ int xt_internal_add(pXTreeNode node, pXArray path, int depth, char *data){
         mssError(0,"xtree","Could not add item, out of stack space!");
         return -2;
     }//end check for stack space
-    if(!xhLookup(node->subObjs,xaGetItem(path,depth))){
+    if((o=findNodeinList(node->subObjs,xaGetItem(path,depth)))<0){
         pXTreeNode tmp = xt_internal_CreateNode();
-        xhAdd(node->subObjs,(char *)xaGetItem(path,depth),(char *)tmp);
         node->items++;
         tmp->key = nmSysStrdup(xaGetItem(path,depth));
+        xaAddItem(node->subObjs,(char *)tmp);
+        return xt_internal_add(tmp,path,depth+1,data);
     }//end if node not exist
-    return xt_internal_add((pXTreeNode)xhLookup(node->subObjs,xaGetItem(path,depth)),
+    return xt_internal_add((pXTreeNode)xaGetItem(node->subObjs,o),
             path,depth+1,data);
 }//end xt_internal_add
 
@@ -151,7 +160,8 @@ int xtAdd(pXTree this, char* key, char* data){
 }//end xtAdd
 
 int xt_internal_del(pXTreeNode node, pXArray path, int depth){
-    if(depth<0 || depth>xaCount(path))
+    int o;
+    if(depth<0 || depth>xaCount(path) || !node)
         return -3;
     if(depth == xaCount(path)){
         //should not be removing root!
@@ -167,10 +177,9 @@ int xt_internal_del(pXTreeNode node, pXArray path, int depth){
         mssError(0,"xtree","Ironically, we could not delete a item, because we are out of stack space.");
         return -2;
     }//end check for stack space
-    if(!xhLookup(node->subObjs,xaGetItem(path,depth)))
+    if((o=findNodeinList(node->subObjs,xaGetItem(path,depth)))<0)
         return -1;
-    return xt_internal_del((pXTreeNode)xhLookup(node->subObjs,xaGetItem(path,depth)),
-            path,depth+1);
+    return xt_internal_del((pXTreeNode)xaGetItem(node->subObjs,o),path,depth+1);
 }//end xt_internal_delete
 
 int xtRemove(pXTree this, char* key){
@@ -185,6 +194,7 @@ int xtRemove(pXTree this, char* key){
 }
 
 pXTreeNode xt_internal_lookup(pXTreeNode node, pXArray path, int depth){
+    int o;
     if(depth<0 || depth>xaCount(path))
         return NULL;
     if(depth == xaCount(path))
@@ -193,10 +203,9 @@ pXTreeNode xt_internal_lookup(pXTreeNode node, pXArray path, int depth){
         mssError(0,"xtree","Search dropped, out of stack space.");
         return NULL;
     }//end check for stack space
-    if(!xhLookup(node->subObjs,xaGetItem(path,depth)))
+    if((o=findNodeinList(node->subObjs,xaGetItem(path,depth)))<0)
         return node;
-    return xt_internal_lookup((pXTreeNode)xhLookup(node->subObjs,xaGetItem(path,depth)),
-            path,depth+1);
+    return xt_internal_lookup((pXTreeNode)xaGetItem(node->subObjs,o),path,depth+1);
 }//end xt_internal_lookup
 
 char *xtLookup(pXTree this, char* key){
@@ -215,6 +224,7 @@ char *xtLookup(pXTree this, char* key){
 }//end xtLookup
 
 int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_arg){
+    xt_internal_FreeNode(this->rootNode);
     return -5;
 }
 

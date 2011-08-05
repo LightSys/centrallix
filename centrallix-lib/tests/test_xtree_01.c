@@ -26,11 +26,11 @@
 
 #include "test_xtree_filedata.h"
 
-#define TESTSCOUNT    50000
+#define TESTSCOUNT    500
 
 long long
 test(char** tname){
-    int i;
+    int i,j;
     pXTree tree;
     pXHashTable datalist;
     *tname = "xtree-01 adding and fetching from xtree";
@@ -53,18 +53,20 @@ test(char** tname){
     assert(!xtRemove(tree,"NullB"));
     assert(!xtRemove(tree,"NullC"));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+    //finally, a stress test
+    for(j=0;j<TESTSCOUNT;j++){
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!strcmp(xtLookup(tree,filedata[i][1]),filedata[i][0]));
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!strcmp(xtLookup(tree,filedata[i][1]),filedata[i][0]));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtRemove(tree,filedata[i][1]));
-
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtRemove(tree,filedata[i][1]));
+    }
     xhDeInit(datalist);
     assert(!xtDeInit(tree));
     //two loops with two ops each

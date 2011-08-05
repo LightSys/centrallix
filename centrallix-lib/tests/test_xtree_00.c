@@ -25,10 +25,10 @@
 
 #include "test_xtree_filedata.h"
 
-#define TESTSCOUNT    500000
+#define TESTSCOUNT    500
 long long
 test(char** tname){
-    int i;
+    int i,j;
     pXTree tree;
     *tname = "xtree-00 adding and removing from xtree";
     tree=nmMalloc(sizeof(XTree));
@@ -42,20 +42,20 @@ test(char** tname){
     assert(xtRemove(tree,"Luke")<0);
 
     //assert(tree->nItems==0);
+    //finally, a stress test
+    for(j=0;j<TESTSCOUNT;j++){
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
 
-    //final stress test
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+        //assert(tree->nItems==i);
 
-    //assert(tree->nItems==i);
-    
-    i=-1;
-    while(filedata[++i][0]!=0){
-        int val = xtRemove(tree,filedata[i][1]);
-        assert(!val);
-    }
-
+        i=-1;
+        while(filedata[++i][0]!=0){
+            int val = xtRemove(tree,filedata[i][1]);
+            assert(!val);
+        }
+    }//end j
     assert(xtDeInit(tree) == 0);
     return 2*TESTSCOUNT;
 }//end test

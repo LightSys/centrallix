@@ -40,7 +40,7 @@ typedef struct _XTND    XTreeNode,              *pXTreeNode;
  This is an internal data type.  Please do not use this!
  */
 struct _XTND{
-    pXHashTable                 subObjs;
+    pXArray                     subObjs;
     int                         items;
     char                        *key;
     char                        *data;
