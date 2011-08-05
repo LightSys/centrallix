@@ -98,9 +98,10 @@ start(void* v)
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
-	else
-	    printf("%-62.62s  PASS %lld\n", tname, rval*100/(long long)(end - start));
-
+	else{
+            if(!(end-start))printf("%-62.62s finished too fast to time\n",tname);
+	    printf("%-62.62s  PASS %lld\n", tname, rval*100/(long long)((end-start)?(end-start):1));
+        }
     return;
     }
 
