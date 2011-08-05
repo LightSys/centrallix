@@ -112,19 +112,28 @@ int xtInit(pXTree tree, char separator){
     return 0;
 }//end xtInit
 
-void xt_internal_FreeNode(pXTreeNode node){
-    if(!node)return;
+int xt_internal_FreeNode(pXTreeNode node,int (*free_fn)(char *data, void *free_arg), void* free_arg){
+    int i;
+    if(!node)return -1;
+    if(thExcessiveRecursion()){
+        mssError(0,"xtree","Could not free node, stack too small");
+        return -2;
+    }
+    for(i=0;i<xaCount(node->subObjs);i++){
+        xt_internal_FreeNode(xaGetItem(node->subObjs,i),free_fn,free_arg);
+    }//end for subitems
     xaDeInit(node->subObjs);
     nmFree(node->subObjs,sizeof(XArray));
+    if(free_fn && node->data!=FLG_NODE && node->data !=FLG_ROOT)
+        free_fn(node->data,free_arg);
     if(node->key)nmSysFree(node->key);
     nmFree(node,sizeof(XTreeNode));
-    return;
+    return 0;
 }//end xt_internal_FreeNode
 
 int xtDeInit(pXTree tree){
-    xtClear(tree, NULL, NULL);
-    return 0;
-}
+    return xt_internal_FreeNode(tree->rootNode,NULL,NULL);
+}//end xtDeInit
 
 //recursivly places an item into the tree
 int xt_internal_add(pXTreeNode node, pXArray path, int depth, char *data){
@@ -224,9 +233,10 @@ char *xtLookup(pXTree this, char* key){
 }//end xtLookup
 
 int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_arg){
-    xt_internal_FreeNode(this->rootNode);
-    return -5;
-}
+    int ret = xt_internal_FreeNode(this->rootNode,free_fn,free_arg);
+    this->rootNode = xt_internal_CreateNode();
+    return ret;
+}//end xtClear
 
 char* xtLookupBeginning(pXTree this, char* key){
     char *data;
