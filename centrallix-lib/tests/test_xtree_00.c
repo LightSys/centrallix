@@ -36,23 +36,25 @@ test(char** tname){
     assert(xtInit(tree,'/') == 0);
     
     //try removing non-existant data
-    assert(xtRemove(tree,"Han Solo")==-1);
-    assert(xtRemove(tree,"Yoda")==-1);
-    assert(xtRemove(tree,"Darth Maul")==-1);
-    assert(xtRemove(tree,"Luke")==-1);
+    assert(xtRemove(tree,"Han Solo")<0);
+    assert(xtRemove(tree,"Yoda")<0);
+    assert(xtRemove(tree,"Darth Maul")<0);
+    assert(xtRemove(tree,"Luke")<0);
 
-    assert(tree->nItems==0);
+    //assert(tree->nItems==0);
 
     //final stress test
     i=-1;
     while(filedata[++i][0]!=0)
         assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
 
-    assert(tree->nItems==i);
-
+    //assert(tree->nItems==i);
+    
     i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtRemove(tree,filedata[i][1]));
+    while(filedata[++i][0]!=0){
+        int val = xtRemove(tree,filedata[i][1]);
+        assert(!val);
+    }
 
     assert(xtDeInit(tree) == 0);
     return 2*TESTSCOUNT;
