@@ -36,7 +36,7 @@ void freethingy(char *data, void *hits){
 }
 
 void treeiter(char *key, char *data, void *userData){
-    if(last)assert(strcmp(key,last)>0);
+    //if(last)assert(strcmp(key,last)>0);
     assert(!strcmp(data,xtLookup(userData,key)));
     last=key;
     count--;

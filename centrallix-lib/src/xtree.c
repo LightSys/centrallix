@@ -36,8 +36,10 @@
 
 //breaks key into array over sep
 pXArray keytopath(char *key, char sep){
+    pXArray path;
     char *tmp, *del, **rr=0;
-    pXArray path = nmMalloc(sizeof(XArray));
+    if(!key)return NULL;
+    path = nmMalloc(sizeof(XArray));
     xaInit(path,8);
     del = malloc(2);
     del[0] = sep;
@@ -62,9 +64,10 @@ char *pathtokey(pXArray path, char sep){
     del = malloc(2);
     del[0] = sep;
     del[1] = 0;
+    if(!xaCount(path))return NULL;
     for(i=0;i<xaCount(path);i++)
         length += strlen((char*)xaGetItem(path,i));
-    key = nmSysMalloc(length+i);
+    key = nmSysMalloc(length+i+1);
     for(i=0;i<xaCount(path);i++){
         strcat(key,del);
         strcat(key,xaGetItem(path,i));
@@ -163,6 +166,7 @@ int xt_internal_add(pXTreeNode node, pXArray path, int depth, char *data){
 int xtAdd(pXTree this, char* key, char* data){
     int ret;
     pXArray path = keytopath(key,this->separator);
+    if(!path)return -1;
     ret = xt_internal_add(this->rootNode,path,0,data);
     freePath(path);
     return ret;
@@ -194,6 +198,7 @@ int xt_internal_del(pXTreeNode node, pXArray path, int depth){
 int xtRemove(pXTree this, char* key){
     int toReturn;
     pXArray path = keytopath(key,this->separator);
+    if(!path)return -1;
     toReturn = xt_internal_del(this->rootNode,path,0);
     if(!this->rootNode){
         toReturn &= xtInit(this, this->separator);
@@ -221,7 +226,9 @@ char *xtLookup(pXTree this, char* key){
     char *data;
     pXTreeNode node;
     pXArray path = keytopath(key,this->separator);
+    if(!path || !xaCount(path))return NULL;
     node = xt_internal_lookup(this->rootNode,path,0);
+    if(!node)return NULL;
     //only return sane data
     if(node->data==FLG_ROOT || node->data==FLG_NODE || node->data<=0)
         data = NULL;
@@ -234,7 +241,7 @@ char *xtLookup(pXTree this, char* key){
 
 int xtClear(pXTree this, int (*free_fn)(char *data, void *free_arg), void* free_arg){
     int ret = xt_internal_FreeNode(this->rootNode,free_fn,free_arg);
-    this->rootNode = xt_internal_CreateNode();
+    xtInit(this,this->separator);
     return ret;
 }//end xtClear
 
@@ -242,7 +249,9 @@ char* xtLookupBeginning(pXTree this, char* key){
     char *data;
     pXTreeNode node;
     pXArray path = keytopath(key,this->separator);
+    if(!path)return NULL;
     node = xt_internal_lookup(this->rootNode,path,0);
+    if(!node)return NULL;
     //only return sane data
     if(node->data==FLG_ROOT || node->data==FLG_NODE || node->data<=0)
         data = NULL;
@@ -251,6 +260,33 @@ char* xtLookupBeginning(pXTree this, char* key){
     return data;
 }//end xtLookupBeginning
 
+int xt_internal_travel(pXTreeNode node, pXArray path, char sep, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
+    int i;
+    char *key;
+    if(!node)return -1;
+    if(!iterFunc)return -1;
+    if(thExcessiveRecursion()){
+        mssError(0,"xtree","Could not look at node, stack too small");
+        return -2;
+    }
+    if(node->key)xaAddItem(path,node->key);
+    if(node->data!=FLG_ROOT && node->data!=FLG_NODE){
+        key=pathtokey(path,sep);
+        iterFunc(key,node->data,userData);
+        if(key)nmSysFree(key);
+    }
+    for(i=0;i<xaCount(node->subObjs);i++){
+        xt_internal_travel(xaGetItem(node->subObjs,i),path,sep,iterFunc,userData);
+    }//end for subitems
+    if(node->key)xaRemoveItem(path,xaCount(path)-1);
+    return 0;
+}//end xt_internal_traverse
+
 void xtTraverse(pXTree tree, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
+    pXArray path = nmMalloc(sizeof(XArray));
+    xaInit(path,8);
+    xt_internal_travel(tree->rootNode,path,tree->separator,iterFunc,userData);
+    xaDeInit(path);
+    nmFree(path,sizeof(XArray));
     return;
 }
