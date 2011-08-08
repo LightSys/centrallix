@@ -272,19 +272,19 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
     xsConcatPrintf(str, "{");
 
     /** Print name **/
-    xsConcatQPrintf(str, "\"name\"=%STR&JSSTR&DQUOT,", attribName);
+    xsConcatQPrintf(str, "\"name\"=\"%STR&JSSTR\",", attribName);
     
     /** Print type **/
     type = objGetAttrType(obj,attribName);
     if (type < 0 || type > 7) return -1;
-    xsConcatQPrintf(str, "\"type\"=%STR&JSSTR&DQUOT,", coltypenames[type]);
+    xsConcatQPrintf(str, "\"type\"=\"%STR&JSSTR\",", coltypenames[type]);
     
     /** Print hints **/
     xsInit(&hints);
     ph = objPresentationHints(obj, attribName);
     hntEncodeHints(ph, &hints);
     objFreeHints(ph);
-    xsConcatQPrintf(str, "\"hints\"=%STR&JSSTR&DQUOT,",xsString(&hints));
+    xsConcatQPrintf(str, "\"hint\"=\"%STR&JSSTR\",",xsString(&hints));
     xsDeInit(&hints);
             
     /** Get and print value (could be printing null) and closing **/
@@ -297,11 +297,11 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
         dptr = objDataToStringTmp(type, (void*)(od.String), 0);
     if (!dptr) dptr = "null";
     if(rval == 0)
-        xsConcatQPrintf(str,"\"value\"=%STR&JSSTR&DQUOT}", dptr); // Yes, this even quotes number values
+        xsConcatQPrintf(str,"\"val\"=\"%STR&JSSTR\"}", dptr); // Yes, this even quotes number values
     else if (rval == 1)
-        xsConcatPrintf(str,"\"value\"=null}");
+        xsConcatPrintf(str,"\"val\"=null}");
     else
-        xsConcatQPrintf(str,"\"value\"=undefined}", dptr); // undefined is printed on error!
+        xsConcatQPrintf(str,"\"val\"=undefined}", dptr); // undefined is printed on error!
 
     return 0;
 }
@@ -323,13 +323,15 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
  */
 int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int put_meta){
     char *attr;
+    char *genStr;
+    size_t genStrLen;
     
-    /** Write opening and handle **/
-    xsConcatPrintf(str, "{\"handle\"=%llu,", tgt);
+    /** Write opening and handle - the object ID**/
+    xsConcatPrintf(str, "{\"oid\"=%llu,", tgt);
     
     /** Write metadata if necessary **/
     if(put_meta){
-        xsConcatPrintf(str, "\"attributes\"=[");
+        xsConcatPrintf(str, "\"attr\"=[");
         if(nht_internal_WriteOneAttrJSONStr(obj, str, "name") != 0)
             return -1;
         if(nht_internal_WriteOneAttrJSONStr(obj, str, "inner_type") != 0)
@@ -347,8 +349,12 @@ int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int
     }
     
     /** Write closing **/
+    genStr = xsString(str);
+    genStrLen = strlen(genStr);
+    if(genStrLen > 0 && genStr[genStrLen - 1] == ',')
+        xsSubst(str, genStrLen - 1, 1, "", 0); /* Eliminate trailing comma */
     xsConcatPrintf(str, "]}");
- 
+    
     return 0;
 }
 
