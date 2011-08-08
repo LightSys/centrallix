@@ -18,6 +18,12 @@
 /* 		enables one to find the closest match if so desired.    */
 /************************************************************************/
 
+#ifdef CXLIB_INTERNAL
+#include "xhash.h"
+#else
+#include "cxlib/xhash.h"
+#endif
+
 /** \defgroup xtree XTree
  \brief A basic tree-based map module.
 
@@ -27,31 +33,21 @@
  \{
  */
 
-typedef struct _XTLLND  XTreeLinkedListNode,    *pXTreeLinkedListNode;
 typedef struct _XTND    XTreeNode,              *pXTreeNode;
-
-struct _XTLLND{
-    char                        *key;
-    char                        *data;
-    pXTreeLinkedListNode        next;
-    pXTreeNode                  node;
-};
 
 /** \brief A node in an XTree object. 
  * 
  This is an internal data type.  Please do not use this!
  */
 struct _XTND{
-    pXTreeLinkedListNode        firstNode;
-    unsigned int                numObjs;
+    pXArray                     subObjs;
+    int                         items;
+    char                        *key;
+    char                        *data;
 };
 
 /** \brief The XTree object.
- 
- The nItems field should be updated regularly, but it is not that useful to
- most people, so a function was not added to access this data, so only access
- this if you must at the risk of your program being broken if the member is 
- removed!
+ * 
  */
 typedef struct{
     pXTreeNode                  rootNode;

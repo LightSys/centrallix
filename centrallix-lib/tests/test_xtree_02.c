@@ -25,39 +25,41 @@
 
 #include "test_xtree_filedata.h"
 
-#define TESTSCOUNT    5000
+#define TESTSCOUNT    500
 
 long long
 test(char** tname){
-    int i;
+    int i,j;
     char *key;
     pXTree tree;
     *tname = "xtree-02 adding and fetching with xtLookupBeginning";
-    alarm(0);
+
     tree=nmMalloc(sizeof(XTree));
 
-    assert(!xtInit(tree,0));
-    
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+    assert(!xtInit(tree,'/'));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!strcmp(xtLookupBeginning(tree,filedata[i][1]),filedata[i][0]));
+    //finally, a stress test
+    for(j=0;j<TESTSCOUNT;j++){
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
 
-    i=-1;
-    while(filedata[++i][0]!=0){
-        key=nmSysMalloc(strlen(filedata[i][1])+4);
-        snprintf(key,strlen(filedata[i][1])+4,"%s%x",filedata[i][1],rand()%0xff);
-        assert(!strcmp(xtLookupBeginning(tree,key),filedata[i][0]));
-        nmSysFree(key);
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!strcmp(xtLookupBeginning(tree,filedata[i][1]),filedata[i][0]));
+
+        i=-1;
+        while(filedata[++i][0]!=0){
+            key=nmSysMalloc(strlen(filedata[i][1])+4);
+            snprintf(key,strlen(filedata[i][1])+4,"%s/%x",filedata[i][1],rand()%0xff);
+            assert(!strcmp(xtLookupBeginning(tree,key),filedata[i][0]));
+            nmSysFree(key);
+        }
+
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtRemove(tree,filedata[i][1]));
     }
-
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtRemove(tree,filedata[i][1]));
-    
     assert(!xtAdd(tree,"/bin/cat","cat"));
     assert(!xtAdd(tree,"/bin/tree","tree"));
     assert(!xtAdd(tree,"/bin/bash","bash"));
@@ -67,8 +69,7 @@ test(char** tname){
     assert(!strcmp(xtLookupBeginning(tree,"/bin/zsh"),"bin"));
 
     assert(!xtDeInit(tree));
-    alarm(5);
-    sleep(2);
+
     //three loops with one ops each
     return 3*(TESTSCOUNT);
 }//end test

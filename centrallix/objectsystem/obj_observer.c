@@ -135,6 +135,7 @@ inline void obj_internal_ObserverCheckObservers(char* path, ObjObserverEventType
 #endif
 
 pObjObserver objOpenObserver(pObjSession objSess, char* path){
+    char *tmp;
     mssError(0, "OBS", "Observer created at %s", path);
     pObjObserver toReturn = NULL;
     pGlobalObserver globalObserver = NULL;
@@ -147,13 +148,18 @@ pObjObserver objOpenObserver(pObjSession objSess, char* path){
     }
     pathLen = strlen(path);
     pathLen = ((path[pathLen - 2] == '/') ? pathLen - 1 : pathLen); // Get rid of trailing slash
-    toReturn->Pathname = nmMalloc(pathLen); 
+    toReturn->Pathname = nmSysMalloc(pathLen);
     if(!toReturn->Pathname){
         goto initialization_error;
     }
     strncpy(toReturn->Pathname, path, pathLen);
     toReturn->Pathname[pathLen - 1] = '\0'; // Make sure the path is null terminated
-    
+    //if there is a *, eat upto the previous /
+    tmp = strchr(toReturn->Pathname,'*');
+    if(tmp){
+        for(;*tmp!='/';tmp--);
+        *tmp = 0;
+    }
     toReturn->RegisteredSession = objSess;   
     toReturn->DeleteAbilityState = OBJ_OBSERVER_OK_DELETE;
     
@@ -225,7 +231,7 @@ int objCloseObserver(pObjObserver obs){
             obj_internal_FreeGlobalObserver(obs->GlobalObserver);
         }
         
-        nmFree(obs->Pathname, strlen(obs->Pathname) + 1);
+        nmSysFree(obs->Pathname);
     }
     
     return 0;

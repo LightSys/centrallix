@@ -26,13 +26,11 @@
 
 #include "test_xtree_filedata.h"
 
-#define TESTSCOUNT    50000
+#define TESTSCOUNT    500
 
 long long
 test(char** tname){
-    int i;
-    char *name;
-    char *data;
+    int i,j;
     pXTree tree;
     pXHashTable datalist;
     *tname = "xtree-01 adding and fetching from xtree";
@@ -40,35 +38,9 @@ test(char** tname){
     tree=nmMalloc(sizeof(XTree));
     datalist=nmMalloc(sizeof(XHashTable));
 
-    assert(!xtInit(tree,0));
+    assert(!xtInit(tree,'/'));
     xhInit(datalist,TESTSCOUNT,0);
     
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        data=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        snprintf(data,50,"%x%x",rand()%500,rand()%500);
-        assert(!xtAdd(tree,name,data));
-        assert(!xhAdd(datalist,name,data));
-    }
-
-    for(i=0;i<TESTSCOUNT;i++){
-        char *dataH,*dataT;
-        name=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        dataT=xtLookup(tree,name);
-        assert(dataT);
-        dataH=xhLookup(datalist,name);
-        assert(dataH);
-        assert(!strncmp(dataH,dataT,50));
-    }
-    
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        assert(!xtRemove(tree,name));
-    }
-
     assert(!xtAdd(tree,"NullA",NULL));
     assert(!xtAdd(tree,"NullB",NULL));
     assert(!xtAdd(tree,"NullC",NULL));
@@ -81,18 +53,20 @@ test(char** tname){
     assert(!xtRemove(tree,"NullB"));
     assert(!xtRemove(tree,"NullC"));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+    //finally, a stress test
+    for(j=0;j<TESTSCOUNT;j++){
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!strcmp(xtLookup(tree,filedata[i][1]),filedata[i][0]));
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!strcmp(xtLookup(tree,filedata[i][1]),filedata[i][0]));
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtRemove(tree,filedata[i][1]));
-
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtRemove(tree,filedata[i][1]));
+    }
     xhDeInit(datalist);
     assert(!xtDeInit(tree));
     //two loops with two ops each

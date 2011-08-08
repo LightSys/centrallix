@@ -25,53 +25,37 @@
 
 #include "test_xtree_filedata.h"
 
-#define TESTSCOUNT    500000
+#define TESTSCOUNT    500
 long long
 test(char** tname){
-    int i;
-    char *name;
-    char *data;
+    int i,j;
     pXTree tree;
     *tname = "xtree-00 adding and removing from xtree";
     tree=nmMalloc(sizeof(XTree));
 
-    assert(xtInit(tree,0) == 0);
+    assert(xtInit(tree,'/') == 0);
     
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        data=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        snprintf(data,50,"%x%x",rand()%500,rand()%500);
-        //printf("Inserting data %s into %s\n", data, name);
-        assert(xtAdd(tree,name,data) == 0);
-    }
-
-    assert(tree->nItems==TESTSCOUNT);
-
-    for(i=0;i<TESTSCOUNT;i++){
-        name=nmMalloc(50);
-        snprintf(name,50,"key%x",i);
-        //printf("Attempting to free item %s\n", name);
-        assert(xtRemove(tree,name) == 0);
-    }
-
     //try removing non-existant data
-    assert(xtRemove(tree,"Han Solo")==-1);
-    assert(xtRemove(tree,"Yoda")==-1);
-    assert(xtRemove(tree,"Darth Maul")==-1);
-    assert(xtRemove(tree,"Luke")==-1);
+    assert(xtRemove(tree,"Han Solo")<0);
+    assert(xtRemove(tree,"Yoda")<0);
+    assert(xtRemove(tree,"Darth Maul")<0);
+    assert(xtRemove(tree,"Luke")<0);
 
-    assert(tree->nItems==0);
+    //assert(tree->nItems==0);
+    //finally, a stress test
+    for(j=0;j<TESTSCOUNT;j++){
+        i=-1;
+        while(filedata[++i][0]!=0)
+            assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
 
-    //final stress test
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtAdd(tree,filedata[i][1],filedata[i][0]));
+        //assert(tree->nItems==i);
 
-    i=-1;
-    while(filedata[++i][0]!=0)
-        assert(!xtRemove(tree,filedata[i][1]));
-
+        i=-1;
+        while(filedata[++i][0]!=0){
+            int val = xtRemove(tree,filedata[i][1]);
+            assert(!val);
+        }
+    }//end j
     assert(xtDeInit(tree) == 0);
     return 2*TESTSCOUNT;
 }//end test
