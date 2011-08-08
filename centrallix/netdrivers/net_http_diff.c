@@ -68,7 +68,7 @@ pXArray nht_internal_FetchSQL(char *sql, pObjSession session){
     rowid = 1;
     while((obj=objQueryFetch(query,O_RDONLY))){
         xsInit(&str);
-        nht_internal_WriteObjectJSONStr(obj,&str,rowid,1);
+        nht_internal_WriteObjectJSONStr(obj,&str,XHN_INVALID_HANDLE,1);
         objClose(obj);
         mssError(1,"NHT","Got %s",xsString(&str));
         xaAddItem(results,nmSysStrdup(xsString(&str)));
@@ -125,26 +125,23 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
+#define FMT_SZ sizeof(handle_t)*2+strlen("{\"oid\":"XHN_HANDLE_PRT",")+1
+
 ///@brief generates one line of a diff patch
 char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
-    char *place, *line, *tmp;
-    if(!(place=strstr(text,"##"))){
-        mssError(1,"Could not find place holder in diff item, giving up:", text);
-        return nmSysStrdup(text);
-    }
+    char *line, *tmp;
     text=nmSysStrdup(text);
     //size of handle converted to hex + null
-    tmp = nmSysMalloc(sizeof(handle_t)*2+1);
-    snprintf(tmp,sizeof(handle_t)*2+1,XHN_HANDLE_PRT,objid);
+    tmp = nmSysMalloc(FMT_SZ);
+    snprintf(tmp,FMT_SZ,"{\"oid\":"XHN_HANDLE_PRT",",objid);
     line = nmSysMalloc(strlen(text)+strlen(tmp));
-    place[0]=0;
+    line[0]=0;
     //place A/D
     strcat(line,(add)?"A ":"D ");
-    //place begining of line
-    strcat(line,text);
-    place+=2;//eat ##
-    //add rest of line
-    strcat(line,place);
+    //place at beggining of line
+    strcat(line,tmp);
+    //and rest of line
+    strcat(line,text+1);
     nmSysFree(tmp);
     nmSysFree(text);
     return line;
@@ -216,18 +213,18 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
         //first one has no leading comma
         item = xaGetItem(diff,0);
         if(item[0]=='A')
-            fdPrintf(conn->ConnFD,"{\"stat\": true,");
+            fdPrintf(conn->ConnFD,"{\"stat\": \"new\",");
         else
-            fdPrintf(conn->ConnFD,"{\"stat\": false,");
+            fdPrintf(conn->ConnFD,"{\"stat\": \"del\",");
         item++;
         fdPrintf(conn->ConnFD,"%s",item);
         fdPrintf(conn->ConnFD,"}");
         for(i=1;i<xaCount(diff);i++){
             item = xaGetItem(diff,i);
             if(item[0]=='A')
-                fdPrintf(conn->ConnFD,",{\"stat\": true,");
+                fdPrintf(conn->ConnFD,",{\"stat\": \"new\",");
             else
-                fdPrintf(conn->ConnFD,",{\"stat\": false,");
+                fdPrintf(conn->ConnFD,",{\"stat\": \"del\",");
             item++;
             fdPrintf(conn->ConnFD,"%s",item);
             fdPrintf(conn->ConnFD,"}");
