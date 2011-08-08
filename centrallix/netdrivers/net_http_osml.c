@@ -272,19 +272,19 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
     xsConcatPrintf(str, "{");
 
     /** Print name **/
-    xsConcatQPrintf(str, "\"name\"=\"%STR&JSSTR\",", attribName);
+    xsConcatQPrintf(str, "\"name\":\"%STR&JSSTR\",", attribName);
     
     /** Print type **/
     type = objGetAttrType(obj,attribName);
     if (type < 0 || type > 7) return -1;
-    xsConcatQPrintf(str, "\"type\"=\"%STR&JSSTR\",", coltypenames[type]);
+    xsConcatQPrintf(str, "\"type\":\"%STR&JSSTR\",", coltypenames[type]);
     
     /** Print hints **/
     xsInit(&hints);
     ph = objPresentationHints(obj, attribName);
     hntEncodeHints(ph, &hints);
     objFreeHints(ph);
-    xsConcatQPrintf(str, "\"hint\"=\"%STR&JSSTR\",",xsString(&hints));
+    xsConcatQPrintf(str, "\"hint\":\"%STR&JSSTR\",",xsString(&hints));
     xsDeInit(&hints);
             
     /** Get and print value (could be printing null) and closing **/
@@ -297,11 +297,11 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
         dptr = objDataToStringTmp(type, (void*)(od.String), 0);
     if (!dptr) dptr = "null";
     if(rval == 0)
-        xsConcatQPrintf(str,"\"val\"=\"%STR&JSSTR\"}", dptr); // Yes, this even quotes number values
+        xsConcatQPrintf(str,"\"val\":\"%STR&JSSTR\"}", dptr); // Yes, this even quotes number values
     else if (rval == 1)
-        xsConcatPrintf(str,"\"val\"=null}");
+        xsConcatPrintf(str,"\"val\":null}");
     else
-        xsConcatPrintf(str,"\"val\"=undefined}", dptr); // undefined is printed on error!
+        xsConcatPrintf(str,"\"val\":undefined}", dptr); // undefined is printed on error!
 
     return 0;
 }
@@ -332,7 +332,7 @@ int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int
     if(tgt == XHN_INVALID_HANDLE)
         xsConcatPrintf(str, "{");
     else
-        xsConcatPrintf(str, "{\"oid\"=%llu,", tgt);
+        xsConcatPrintf(str, "{\"oid\":%llu,attr:[", tgt);
     
     /** Loop through all preset to write **/
     for(c = 0; put_meta && metaAttrsToWrite[c] ; c++){
