@@ -25,7 +25,7 @@
 
 #include "test_xtree_filedata.h"
 
-#define TESTSCOUNT    5000
+#define TESTSCOUNT    4000
 
 long long hit_count;
 

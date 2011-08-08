@@ -68,6 +68,7 @@ char *pathtokey(pXArray path, char sep){
     for(i=0;i<xaCount(path);i++)
         length += strlen((char*)xaGetItem(path,i));
     key = nmSysMalloc(length+i+1);
+    key[0]=0;
     for(i=0;i<xaCount(path);i++){
         strcat(key,del);
         strcat(key,xaGetItem(path,i));
@@ -89,6 +90,8 @@ void freePath(pXArray path){
     int i;
     for(i=0;i<xaCount(path);i++)
         nmSysFree(xaGetItem(path,i));
+    xaDeInit(path);
+    nmFree(path,sizeof(XArray));
     return;
 }//end freePath
 
@@ -119,11 +122,12 @@ int xt_internal_FreeNode(pXTreeNode node,int (*free_fn)(char *data, void *free_a
     int i;
     if(!node)return -1;
     if(thExcessiveRecursion()){
-        mssError(0,"xtree","Could not free node, stack too small");
+        fprintf(stderr,"xtree: %s\n","Could not free node, stack too small");
         return -2;
     }
     for(i=0;i<xaCount(node->subObjs);i++){
-        xt_internal_FreeNode(xaGetItem(node->subObjs,i),free_fn,free_arg);
+        if(xt_internal_FreeNode(xaGetItem(node->subObjs,i),free_fn,free_arg)<0)
+            break;
     }//end for subitems
     xaDeInit(node->subObjs);
     nmFree(node->subObjs,sizeof(XArray));
@@ -145,11 +149,10 @@ int xt_internal_add(pXTreeNode node, pXArray path, int depth, char *data){
         return -3;
     if(depth == xaCount(path)){
         node->data=data;
-        node->key=nmSysStrdup(xaGetItem(path,depth-1));
         return 0;
     }//end base case
     if(thExcessiveRecursion()){
-        mssError(0,"xtree","Could not add item, out of stack space!");
+        fprintf(stderr,"xtree: %s\n","Could not add item, out of stack space!");
         return -2;
     }//end check for stack space
     if((o=findNodeinList(node->subObjs,xaGetItem(path,depth)))<0){
@@ -187,7 +190,7 @@ int xt_internal_del(pXTreeNode node, pXArray path, int depth){
         return 0;
     }//end base case
     if(thExcessiveRecursion()){
-        mssError(0,"xtree","Ironically, we could not delete a item, because we are out of stack space.");
+        fprintf(stderr,"xtree: %s\n","Ironically, we could not delete a item, because we are out of stack space.");
         return -2;
     }//end check for stack space
     if((o=findNodeinList(node->subObjs,xaGetItem(path,depth)))<0)
@@ -214,7 +217,7 @@ pXTreeNode xt_internal_lookup(pXTreeNode node, pXArray path, int depth){
     if(depth == xaCount(path))
         return node;
     if(thExcessiveRecursion()){
-        mssError(0,"xtree","Search dropped, out of stack space.");
+        fprintf(stderr,"xtree: %s\n","Search dropped, out of stack space.");
         return NULL;
     }//end check for stack space
     if((o=findNodeinList(node->subObjs,xaGetItem(path,depth)))<0)
@@ -266,7 +269,7 @@ int xt_internal_travel(pXTreeNode node, pXArray path, char sep, void (*iterFunc)
     if(!node)return -1;
     if(!iterFunc)return -1;
     if(thExcessiveRecursion()){
-        mssError(0,"xtree","Could not look at node, stack too small");
+        fprintf(stderr,"xtree: %s\n","Could not look at node, stack too small");
         return -2;
     }
     if(node->key)xaAddItem(path,node->key);
@@ -276,13 +279,15 @@ int xt_internal_travel(pXTreeNode node, pXArray path, char sep, void (*iterFunc)
         if(key)nmSysFree(key);
     }
     for(i=0;i<xaCount(node->subObjs);i++){
-        xt_internal_travel(xaGetItem(node->subObjs,i),path,sep,iterFunc,userData);
-    }//end for subitems
+        if(xt_internal_travel(xaGetItem(node->subObjs,i),path,sep,iterFunc,userData)<0)
+            break;
+    }//end for subitems    
     if(node->key)xaRemoveItem(path,xaCount(path)-1);
     return 0;
 }//end xt_internal_traverse
 
 void xtTraverse(pXTree tree, void (*iterFunc)(char *key, char *data, void *userData), void *userData){
+    //abort();
     pXArray path = nmMalloc(sizeof(XArray));
     xaInit(path,8);
     xt_internal_travel(tree->rootNode,path,tree->separator,iterFunc,userData);
