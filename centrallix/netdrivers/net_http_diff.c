@@ -68,7 +68,7 @@ pXArray nht_internal_FetchSQL(char *sql, pObjSession session){
     rowid = 1;
     while((obj=objQueryFetch(query,O_RDONLY))){
         xsInit(&str);
-        nht_internal_WriteAttrsStr(obj,&str,rowid,1);
+        nht_internal_WriteObjectJSONStr(obj,&str,rowid,1);
         objClose(obj);
         mssError(1,"NHT","Got %s",xsString(&str));
         xaAddItem(results,nmSysStrdup(xsString(&str)));
@@ -194,8 +194,9 @@ pXArray nht_internal_DiffArray(pXArray prevous, pXArray results){
 }//end nht_internal_WriteDiff
 
 ///@brief writes a diff patch to the client based on a given path having changed
-int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *sql, int reqid){
+int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession session, char *sql, int reqid, int *first){
     int i;
+    char *item;
     pXArray diff;
     pXArray results;
     pXArray prevous;
@@ -208,10 +209,30 @@ int nht_internal_writeUpdate(pNhtConn conn, pNhtUpdate updates, pObjSession sess
     diff = nht_internal_DiffArray(prevous, results);
     
     if(xaCount(diff)){
-        fdPrintf(conn->ConnFD,"<div item=%x>",reqid);
-        for(i=0;i<xaCount(diff);i++)
-                fdWrite(conn->ConnFD,xaGetItem(diff,i),strlen(xaGetItem(diff,i)),0,0);
-        fdPrintf(conn->ConnFD,"</div>");
+        if(*first){
+                fdPrintf(conn->ConnFD,"{\"num\":%x,\"upds\":[",reqid);
+                *first=0;
+        }else fdPrintf(conn->ConnFD,",{\"num\":%x,\"upds\":[",reqid);
+        //first one has no leading comma
+        item = xaGetItem(diff,0);
+        if(item[0]=='A')
+            fdPrintf(conn->ConnFD,"{\"stat\": true,");
+        else
+            fdPrintf(conn->ConnFD,"{\"stat\": false,");
+        item++;
+        fdPrintf(conn->ConnFD,"%s",item);
+        fdPrintf(conn->ConnFD,"}");
+        for(i=1;i<xaCount(diff);i++){
+            item = xaGetItem(diff,i);
+            if(item[0]=='A')
+                fdPrintf(conn->ConnFD,",{\"stat\": true,");
+            else
+                fdPrintf(conn->ConnFD,",{\"stat\": false,");
+            item++;
+            fdPrintf(conn->ConnFD,"%s",item);
+            fdPrintf(conn->ConnFD,"}");
+        }//end for diff lines
+        fdPrintf(conn->ConnFD,"]}");
     }//end if diff
 
     nht_internal_FreeResults(diff);
@@ -234,6 +255,7 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
     int reqc;
     char *sid;
     char *sql;
+    int first;
     pXArray fetch;
     pStruct tmp_inf;
     char name[0xff];
@@ -323,12 +345,15 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         }//end for sqlobjects
     }//end for reqc
 
+    first = 1;
     //http header!
     fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+    //JSON header
+    fdPrintf(conn->ConnFD,"{\"objs\":[");
     //send new requests, as they have no last seen as &etc
     for(i=0;i<xaCount(newqueries);i++)
         nht_internal_writeUpdate(conn,updates,session,
-                xaGetItem(newqueries,i),xaFindItem(fetch,sql));
+                xaGetItem(newqueries,i),xaFindItem(fetch,sql),&first);
     
     //now that that's over, get some updates! (block if nothing new already
     event_t = objPollObservers(waitfor,!xaCount(newqueries),&observer,&sid);
@@ -336,11 +361,12 @@ int nht_internal_GetUpdates(pNhtConn conn,pStruct url_inf){
         //find query for changed object
         sql = xtLookupBeginning(updates->Querys,sid);
         //write updates
-        nht_internal_writeUpdate(conn,updates,session,sql,xaFindItem(fetch,sql));
+        nht_internal_writeUpdate(conn,updates,session,sql,xaFindItem(fetch,sql),&first);
         //look for more
         event_t=objPollObservers(waitfor,0,&observer,&sid);
     }//end for updates
-
+    //end of JSON and the scriptonaugts
+    fdPrintf(conn->ConnFD,"]}");
     //clean up
     for(i=0;i<xaCount(waitfor);i++)
         objCloseObserver(xaGetItem(waitfor,i));
