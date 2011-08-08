@@ -316,7 +316,8 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
  write quite compressed JSON.  Very little flare...
  \param obj The object to write into JSON.
  \param str The string to append the objects internals on to.
- \param tgt The target handle of the object.
+ \param tgt The target handle of the object.  If this is invalid, no handle will
+ be included in the object.
  \param put_meta If the metadata of the object should be written along with the
  rest of the object.
  \return This returns 0 on success and negative on error.
@@ -328,7 +329,10 @@ int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int
     char *metaAttrsToWrite[] = {"name", "inner_type", "outer_type", "annotation", NULL};
     
     /** Write opening and handle - the object ID**/
-    xsConcatPrintf(str, "{\"oid\"=%llu,", tgt);
+    if(tgt == XHN_INVALID_HANDLE)
+        xsConcatPrintf(str, "{");
+    else
+        xsConcatPrintf(str, "{\"oid\"=%llu,", tgt);
     
     /** Loop through all preset to write **/
     for(c = 0; put_meta && metaAttrsToWrite[c] ; c++){
