@@ -330,9 +330,9 @@ int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int
     
     /** Write opening and handle - the object ID**/
     if(tgt == XHN_INVALID_HANDLE)
-        xsConcatPrintf(str, "{");
+        xsConcatPrintf(str, "{\"attr\":[");
     else
-        xsConcatPrintf(str, "{\"oid\":%llu,attr:[", tgt);
+        xsConcatPrintf(str, "{\"oid\":%llu,\"attr\":[", tgt);
     
     /** Loop through all preset to write **/
     for(c = 0; put_meta && metaAttrsToWrite[c] ; c++){
