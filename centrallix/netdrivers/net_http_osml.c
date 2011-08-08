@@ -301,7 +301,7 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
     else if (rval == 1)
         xsConcatPrintf(str,"\"val\"=null}");
     else
-        xsConcatQPrintf(str,"\"val\"=undefined}", dptr); // undefined is printed on error!
+        xsConcatPrintf(str,"\"val\"=undefined}", dptr); // undefined is printed on error!
 
     return 0;
 }
@@ -323,36 +323,32 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
  */
 int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int put_meta){
     char *attr;
-    char *genStr;
-    size_t genStrLen;
+    int c;
+    char haveWrittenBefore = 0; /* Variable used as boolean to tell if the string has been written to before */
+    char *metaAttrsToWrite[] = {"name", "inner_type", "outer_type", "annotation", NULL};
     
     /** Write opening and handle - the object ID**/
     xsConcatPrintf(str, "{\"oid\"=%llu,", tgt);
     
-    /** Write metadata if necessary **/
-    if(put_meta){
-        xsConcatPrintf(str, "\"attr\"=[");
-        if(nht_internal_WriteOneAttrJSONStr(obj, str, "name") != 0)
+    /** Loop through all preset to write **/
+    for(c = 0; put_meta && metaAttrsToWrite[c] ; c++){
+        if(haveWrittenBefore)
+            xsConcatPrintf(str, ",");
+        if(nht_internal_WriteOneAttrJSONStr(obj, str, metaAttrsToWrite[c]) != 0)
             return -1;
-        if(nht_internal_WriteOneAttrJSONStr(obj, str, "inner_type") != 0)
-            return -1;
-        if(nht_internal_WriteOneAttrJSONStr(obj, str, "outer_type") != 0)
-            return -1;
-        if(nht_internal_WriteOneAttrJSONStr(obj, str, "annotation") != 0)
-            return -1;
+        haveWrittenBefore = 1;
     }
     
     /** Iterate through attributes and write **/
     for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj)){
+        if(haveWrittenBefore)
+            xsConcatPrintf(str, ",");
         if(nht_internal_WriteOneAttrJSONStr(obj, str, attr) != 0)
             return -1;
+        haveWrittenBefore = 1;
     }
     
     /** Write closing **/
-    genStr = xsString(str);
-    genStrLen = strlen(genStr);
-    if(genStrLen > 0 && genStr[genStrLen - 1] == ',')
-        xsSubst(str, genStrLen - 1, 1, "", 0); /* Eliminate trailing comma */
     xsConcatPrintf(str, "]}");
     
     return 0;
