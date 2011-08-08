@@ -3119,7 +3119,7 @@ var osrcReplicationCachedList = []; // This tells the current (or last if no
 // multiple requests to the server to update lots of different objects.
 // Daniel Rothfus
 function osrc_replication_start(){
-    if(!osrcReplicationRunning){
+    if(!osrcReplicationRunning){ // Can only run one at a time!
         
         // Cache the current list of things to replicate
         osrcReplicationCachedList = [];
@@ -3127,9 +3127,17 @@ function osrc_replication_start(){
             osrcReplicationCachedList.push(item); // Add reference to object 
         }                                         // that needs updates
         
-        // Generate all single keys
+        // Generate a dictionary to generate the URL from...
+        var url = {
+            "cx_numObjs":osrcReplicationCachedList.length,
+            "ls__mode": "osmldiff",
+            "cx__akey": akey,
+            "ls__req": "multiquery"
+        };
+        
         
         // Generate the object-specific URL
+        var index = 0;
         for(item in osrcReplicationCachedList){
             
             // Ripped from osrc_do_request
@@ -3138,7 +3146,13 @@ function osrc_replication_start(){
             params.cx__akey = akey;
             params.ls__mode = 'osml';
             params.ls__req = cmd;
-            if (this.sid) params.ls__sid = this.sid;
+            if (this.sid){
+                url["ls__sid" + index.toString(16)] = this.sid.toString(16);
+            }
+            else{
+                alert("An object did not have an object session id!  Quitting this run of replication!");
+                return;
+            }
             if (!this.ind_act && cmd != 'create' && cmd != 'setattrs') params.cx__noact = '1';
             for(var p in params)
                 {
@@ -3153,10 +3167,20 @@ function osrc_replication_start(){
         // Send the request
         req = new XMLHttpRequest();
         req.onreadystatechange = osrc_replication_callback;
+        req.onerror = osrc_replication_callback_error;
         req.open("GET", url);
+        req.
         req.send(null);
         console.log("REPL: Sendinding replication request!");
     }
+}
+
+// This function is called when there is an error in the connection
+function osrc_replication_callback_error(){
+    // Restart the request
+    console.log("Error with calling for replication from host!");
+    osrcReplicationRunning = false;
+    osrc_replication_start();
 }
 
 // This function is called when a request to the server with replication data is
@@ -3165,15 +3189,22 @@ function osrc_replication_start(){
 // there is practically always a connection open to the server.
 // Daniel Rothfus
 function osrc_replication_callback(){
-    // Collect the results
     
-    // Find each object needed by the results
-    
-        // Send the results to each waiting object
-    
-    // Restart the cycle
-    osrcReplicationRunning = false;
-    osrc_replication_start();
+    // Check if this callback is bearing good news.
+    if(this.readyState == 4 && this.status == 200){
+        // Collect the results
+        
+        // Find each object needed by the results
+        
+            // Send the results to each waiting object
+        
+        // Restart the cycle
+        osrcReplicationRunning = false;
+        osrc_replication_start();
+    }
+    else if(this.readyState == 4 && this.status != 200){ // There was an error!
+        osrc_replication_callback_error();
+    }
 }
 
 
