@@ -125,7 +125,7 @@ void nht_internal_FreeUpdates(pNhtUpdate update){
     return;
 }//end nht_internal_freeUpdates
 
-#define FMT_SZ sizeof(handle_t)*2+strlen("{\"oid\":"XHN_HANDLE_PRT",")+1
+#define FMT_SZ sizeof(handle_t)*2+strlen("{\"oid\":%llu,")+1
 
 ///@brief generates one line of a diff patch
 char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
@@ -133,7 +133,7 @@ char *nht_internal_WriteDiffline(char add, handle_t objid, char *text){
     text=nmSysStrdup(text);
     //size of handle converted to hex + null
     tmp = nmSysMalloc(FMT_SZ);
-    snprintf(tmp,FMT_SZ,"{\"oid\":"XHN_HANDLE_PRT",",objid);
+    snprintf(tmp,FMT_SZ,"\"obj\":{\"oid\":%llu,",objid);
     line = nmSysMalloc(strlen(text)+strlen(tmp));
     line[0]=0;
     //place A/D
