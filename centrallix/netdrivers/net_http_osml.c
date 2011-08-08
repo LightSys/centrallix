@@ -284,7 +284,7 @@ int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName
     ph = objPresentationHints(obj, attribName);
     hntEncodeHints(ph, &hints);
     objFreeHints(ph);
-    xsConcatPrintf(str, "\"hints\"=%STR&JSSTR&DQUOT,",xsString(&hints));
+    xsConcatQPrintf(str, "\"hints\"=%STR&JSSTR&DQUOT,",xsString(&hints));
     xsDeInit(&hints);
             
     /** Get and print value (could be printing null) and closing **/
