@@ -254,6 +254,104 @@ int nht_internal_WriteOneAttrStr(pObject obj, pXString xs, handle_t tgt, char* a
     return 0;
 }
 
+/** \brief Write one attribute of an object as a valid JSON string.
+ \param obj The object to write the attribute from.
+ \param str The string to append the data to.
+ \param attribName The name of the attribute to write.
+ \return This returns if 0 on success and negative on error.
+ */
+int nht_internal_WriteOneAttrJSONStr(pObject obj, pXString str, char* attribName){
+    ObjData od;
+    char* dptr;
+    int type,rval;
+    XString hints;
+    pObjPresentationHints ph;
+    static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
+
+    /** Print opening **/
+    xsConcatPrintf(str, "{");
+
+    /** Print name **/
+    xsConcatQPrintf(str, "\"name\"=%STR&JSSTR&DQUOT,", attribName);
+    
+    /** Print type **/
+    type = objGetAttrType(obj,attribName);
+    if (type < 0 || type > 7) return -1;
+    xsConcatQPrintf(str, "\"type\"=%STR&JSSTR&DQUOT,", coltypenames[type]);
+    
+    /** Print hints **/
+    xsInit(&hints);
+    ph = objPresentationHints(obj, attribName);
+    hntEncodeHints(ph, &hints);
+    objFreeHints(ph);
+    xsConcatPrintf(str, "\"hints\"=%STR&JSSTR&DQUOT,",xsString(&hints));
+    xsDeInit(&hints);
+            
+    /** Get and print value (could be printing null) and closing **/
+    rval = objGetAttrValue(obj,attribName,type,&od);
+    if (rval != 0)
+        dptr = "null";
+    else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) 
+        dptr = objDataToStringTmp(type, (void*)&od, 0);
+    else
+        dptr = objDataToStringTmp(type, (void*)(od.String), 0);
+    if (!dptr) dptr = "null";
+    if(rval == 0)
+        xsConcatQPrintf(str,"\"value\"=%STR&JSSTR&DQUOT}", dptr); // Yes, this even quotes number values
+    else if (rval == 1)
+        xsConcatPrintf(str,"\"value\"=null}");
+    else
+        xsConcatQPrintf(str,"\"value\"=undefined}", dptr); // undefined is printed on error!
+
+    return 0;
+}
+
+/** \brief Write out all attributes of an object as a JSON string.
+ 
+ The attributes of an object are treated as a dictionary, so if one wants to use
+ this function in other JSON writing code, they should specify what key this
+ output will go along with.  (OK, another attempt to describe the same thing...
+ This function writes the "{" and "}" around the data so as to make sure it is 
+ valid JSON and can stand on its own.  As a side note, this function tries to 
+ write quite compressed JSON.  Very little flare...
+ \param obj The object to write into JSON.
+ \param str The string to append the objects internals on to.
+ \param tgt The target handle of the object.
+ \param put_meta If the metadata of the object should be written along with the
+ rest of the object.
+ \return This returns 0 on success and negative on error.
+ */
+int nht_internal_WriteObjectJSONStr(pObject obj, pXString str, handle_t tgt, int put_meta){
+    char *attr;
+    
+    /** Write opening and handle **/
+    xsConcatPrintf(str, "{\"handle\"=%llu,", tgt);
+    
+    /** Write metadata if necessary **/
+    if(put_meta){
+        xsConcatPrintf(str, "\"attributes\"=[");
+        if(nht_internal_WriteOneAttrJSONStr(obj, str, "name") != 0)
+            return -1;
+        if(nht_internal_WriteOneAttrJSONStr(obj, str, "inner_type") != 0)
+            return -1;
+        if(nht_internal_WriteOneAttrJSONStr(obj, str, "outer_type") != 0)
+            return -1;
+        if(nht_internal_WriteOneAttrJSONStr(obj, str, "annotation") != 0)
+            return -1;
+    }
+    
+    /** Iterate through attributes and write **/
+    for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj)){
+        if(nht_internal_WriteOneAttrJSONStr(obj, str, attr) != 0)
+            return -1;
+    }
+    
+    /** Write closing **/
+    xsConcatPrintf(str, "]}");
+ 
+    return 0;
+}
+
 /*** nht_internal_WriteOneAttr - put one attribute's information into the
  *** outbound data connection stream.
  ***/
@@ -342,7 +440,7 @@ nht_internal_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
 
     conn->LastHandle = XHN_INVALID_HANDLE;
 
-	/** Loop throught the attributes. **/
+	/** Loop through the attributes. **/
 	if (put_meta)
 	    {
 	    nht_internal_WriteOneAttr(obj, conn, tgt, "name");

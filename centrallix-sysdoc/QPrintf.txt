@@ -114,6 +114,10 @@ FORMATTING...
 	&UNESC	Causes string to be unescaped (backslashes removed and escaped
 		values converted to their normal characters).
 
+	&JSSTR  Escapes the given string as it should be escaped for being 
+		valid JavaScript.  This does not add quotes around the escaped
+		string.
+
 	&SSYB	Causes single quotes in the string to be doubled, sybase quote
 		style ' -> ''
 
