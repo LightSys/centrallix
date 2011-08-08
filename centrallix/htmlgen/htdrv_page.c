@@ -837,6 +837,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_appglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_scripts", "[]", 0);
+        htrAddScriptGlobal(s, "pg_replication_items", "[]", 0); /* This is used for replication to the client.  All items needing replication are registered here. */
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)

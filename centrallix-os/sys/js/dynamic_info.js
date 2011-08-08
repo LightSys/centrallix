@@ -64,5 +64,6 @@ var cx__capabilities,
     pg_tiptmout,
     pg_waitlyr,
     tb_current,
+    pg_replication_items,
 
     IFC;

@@ -243,6 +243,7 @@ function osrc_action_query_object(aparam) //q, formobj, readonly)
     this.Dispatch();
     }
 
+// I think this builds the query for this object. - Daniel Rothfus
 function osrc_query_object_handler(aparam)
     {
     var formobj = aparam.client;
@@ -3094,11 +3095,86 @@ function osrc_init_bh()
     this.bh_finished = true;
 
     // Autoquery on load?  Reveal event already occurred?
-    if (this.autoquery == this.AQonLoad) 
-	pg_addsched_fn(this,'InitQuery', [], 0);
+    if (this.autoquery == this.AQonLoad)
+        pg_addsched_fn(this,'InitQuery', [], 0);
+    }
     /*else if (this.revealed_children && (this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);*/
+    
+// REPLICATION SYSTEM //////////////////////////////////////////////////////////
+// Daniel Rothfus //////////////////////////////////////////////////////////////
+
+// Replication variables
+var osrcReplicationRunning = false; // This tells if a replication update
+                                    // request is at the server right now.
+var osrcReplicationCachedList = []; // This tells the current (or last if no
+                                    // query is running) list of objects that
+                                    // are being requested in the update.
+
+// This function is meant to start another round of the querying of objects from
+// the server.  It takes the current list of objects and puts out a request for
+// them.  It then calls on them to update when it gets updates relevant to them.
+// This function checks to make sure another query to the server is not running
+// at the same time to make sure that the client does not get bogged down with
+// multiple requests to the server to update lots of different objects.
+// Daniel Rothfus
+function osrc_replication_start(){
+    if(!osrcReplicationRunning){
+        
+        // Cache the current list of things to replicate
+        osrcReplicationCachedList = [];
+        for(item in pg_replication_items){
+            osrcReplicationCachedList.push(item); // Add reference to object 
+        }                                         // that needs updates
+        
+        // Generate all single keys
+        
+        // Generate the object-specific URL
+        for(item in osrcReplicationCachedList){
+            
+            // Ripped from osrc_do_request
+            var first = true;
+            if (!target) target = this;
+            params.cx__akey = akey;
+            params.ls__mode = 'osml';
+            params.ls__req = cmd;
+            if (this.sid) params.ls__sid = this.sid;
+            if (!this.ind_act && cmd != 'create' && cmd != 'setattrs') params.cx__noact = '1';
+            for(var p in params)
+                {
+                url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
+                first = false;
+                }
+            this.request_start_ts = pg_timestamp();
+            pg_serialized_load(target, url, cb, !this.ind_act);
+            
+        }
+        
+        // Send the request
+        req = new XMLHttpRequest();
+        req.onreadystatechange = osrc_replication_callback;
+        req.open("GET", url);
+        req.send(null);
+        console.log("REPL: Sendinding replication request!");
     }
+}
+
+// This function is called when a request to the server with replication data is
+// finished.  It takes care of telling the osrcs they have a piece of data to
+// update with and it also takes care of restarting the query process, so that
+// there is practically always a connection open to the server.
+// Daniel Rothfus
+function osrc_replication_callback(){
+    // Collect the results
+    
+    // Find each object needed by the results
+    
+        // Send the results to each waiting object
+    
+    // Restart the cycle
+    osrcReplicationRunning = false;
+    osrc_replication_start();
+}
 
 
 function osrc_action_cancel_clients(aparam)
@@ -3498,8 +3574,13 @@ function osrc_init(param)
 
     // Request replication messages
     loader.request_updates = param.requestupdates?1:0;
-    if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
-    loader.ControlMsg = osrc_cb_control_msg;
+    if(loader.request_updates){
+        console.log("Sending to master updates list!");
+        pg_replication_items.push(loader); // Add this to the replication list if necessary 
+    }
+    
+    //if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
+    //loader.ControlMsg = osrc_cb_control_msg;
 
     // do sql loader
     loader.do_sql_loader = null;
