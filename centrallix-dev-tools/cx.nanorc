@@ -1,0 +1,42 @@
+## Centrallix syntax highlighting for nano
+## file extensions
+syntax "cx" "\.(cmp|app|struct|rpt)$"
+
+## function names
+color brightred "\<(runserver|runclient|runstatic|abs|ascii|avg|charindex|char_length|condition)\>" 
+color brightred "\<(convert|count|dateadd|datepart|escape|eval|first|getdate|isnull|last|lower)\>"
+color brightred "\<(ltrim|lztrim|max|min|quote|ralign|replicate|right|round|rtrim|substring|sum)\>"
+color brightred "\<(upper|user_name|wordify)\>"
+
+## variable names
+color green "\<(not|action|active_background|active_bgcolor|align|allowchars|allow_delete|allow_modify|allow_new|allow_nodata|allow_obscure|allow_query)\>"
+color green "\<(allow_selection|allow_view|ampm|apply_hints_to|autoquery|autolayout_order|auto_destroy|auto_focus|auto_reset|auto_start|background|baseobj)\>"
+color green "\<(bgcolor|borderwidth|border_color|cellhspacing|cellsize|cellvspacing|checked|clickimage|click_fgcolor|colsep|column_width|confirm_delete)\>"
+color green "\<(content|counter_attribute|ctl_type|c_message|c_to|c_from|c_date|c_viewed|datafocus1|datafocus2|data_mode|date_only|default|default_time)\>"
+color green "\<(delay_query_until_reveal|deletable|deploy_to_client|description_fgcolor|direction|disabledimage|disable_color|displaymode|dragcols)\>"
+color green "\<(empty_description|enabled|enter_mode|epilogue|event|eventdatefield|eventdescfield|eventnamefield|eventpriofield|event_all_params)\>"
+color green "\<(event_cancel|event_condition|event_confirm|event_delay|expose_actions_for|expose_events_for|expose_properties_for|fgcolor|fgcolor1)\>"
+color green "\<(fgcolor2|field|fieldname|field_list|find_container|fl_width|followcurrent|font_name|font_size|form|framesize|gridinemptyrows|hdr_background)\>"
+color green "\<(hdr_bgcolor|height|highlight|highlight_background|highlight_bgcolor|highlight_fgcolor|hrtype|icon|image|inactive_background|inactive_bgcolor)\>"
+color green "\<(indicates_activity|initialdate|inner_border|inner_padding|is_slave|kbdfocus1|kbdfocus2|key_objname|keying_method|key_fieldname|key_1)\>"
+color green "\<(key_2|key_3|key_4|key_5|label|label_height|label_width|location|marginwidth|master_norecs_action|master_null_action|maxchars|method)\>"
+color green "\<(minpriority|modal|mode|mousefocus1|mousefocus2|msec|multienter|multiple_instantiation|next_form|next_form_within|newrow_background)\>"
+color green "\<(newrow_bgcolor|object|objname|objectsource|object_name|ocpm|onright|osrc|outer_border|outline_background|outline_bgcolor|parameter)\>"
+color green "\<(partner_key|path|pointimage|point_fgcolor|popup|popup_order|popup_source|popup_text|prologue|query|query_multiselect|range|readahead)\>"
+color green "\<(readonly|receive_updates|repeat|replicasize|revealed_only|rowhighlight_background|rowhighlight_bgcolor|rowheight|row1_background|row1_bgcolor)\>"
+color green "\<(row2_background|row2_bgcolor|ruletype|scrollahead|search_by_range|seconds|selected|selected_index|send_updates|shadowed|shadowx|shadowy)\>"
+color green "\<(show_branches|show_diagnostics|show_root|show_root_branch|show_selection|size|source|spacing|sql|style|s_motd_id|tab_location)\>"
+color green "\<(tab_revealed_only|tab_width|target|target_key_1|target_key_2|target_key_3|target_key_4|target_key_5|text|textcolor|textcolorhighlight)\>"
+color green "\<(textcolornew|title|titlebar|titlecolor|tooltip|toplevel|tristate|type|use_having_clause|use_3d_lines|valign|value|visible|widget_template)\>"
+color green "\<(widget_class|width|windowsize|x|y)\>"
+
+## Numbers
+color yellow "[0-9][0-9]"
+
+## Quotation enclosed strings
+color brightcyan ""[^"]*""
+color brightcyan "'[^']*'"
+
+## Comment highlighting
+color blue "//.*"
+color blue start="/\*" end="\*/"
