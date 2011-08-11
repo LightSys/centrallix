@@ -33,3 +33,13 @@ sudo cp nanorc /etc
 sudo cp cx.nanorc /usr/share/nano
 
 -------------
+
+For Vi/Vim
+execute the following commands
+
+cd /usr/local/src/cx-git/centrallix-dev-tools
+sudo cp .vimrc ~
+sudo cp cx.vim /usr/share/vim/vim70/syntax/cx.vim
+
+(Please do check that these directories exist)
+-------------
