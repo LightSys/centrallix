@@ -50,6 +50,51 @@ function tx_setvalue(txt)
         htr_setvisibility(this.rows[i].contentLayer, 'inherit');
         this.rows[i].changed = 0;
         }
+    this.prev_x = getClipWidth(this);
+    this.prev_y = getClipHeight(this);
+    }
+
+function tx_action_set_value(ap)
+    {
+    var txt = ap.Value?ap.Value:"";
+    if (this.form) this.form.DataNotify(this, true);
+    this.setvalue(txt);
+    if (this.form) this.form.DataNotify(this, true);
+    cn_activate(this, 'DataChange');
+    }
+
+function tx_action_insert_text(ap)
+    {
+    var txt = ap.Text?ap.Text:"";
+    if (ap.SetFocus && tx_current != this)
+	{
+	pg_setkbdfocus(this, null, null, null);
+	}
+    if (tx_current == this)
+	{
+	// Insert at insertion point / i-beam cursor as if user typed it
+	for(var i = 0; i < txt.length; i++)
+	    {
+	    var k = txt.charCodeAt(i);
+	    if (k >= 32 && k < 127)
+		this.keyhandler(this, null, k);
+	    }
+	}
+    else
+	{
+	// Append
+	if (this.form) this.form.DataNotify(this, true);
+	this.setvalue(this.getvalue() + txt);
+	if (this.form) this.form.DataNotify(this, true);
+	cn_activate(this, 'DataChange');
+	}
+    }
+
+function tx_action_set_focus(aparam)
+    {
+    var x = (typeof aparam.X == 'undefined')?null:aparam.X;
+    var y = (typeof aparam.Y == 'undefined')?null:aparam.Y;
+    pg_setkbdfocus(this, null, x, y);
     }
 
 /** Clear function **/
@@ -67,7 +112,7 @@ function tx_clearvalue()
         {
         this.cursorRow = 0;
         this.cursorCol = 0;
-        moveToAbsolute(ibeam_current, getPageX(this.rows[this.cursorRow].contentLayer) + tx_xpos(this,this.cursorRow,this.cursorCol), getPageY(this.rows[this.cursorRow].contentLayer));
+        tx_move_cursor(this, getPageX(this.rows[this.cursorRow].contentLayer) + tx_xpos(this,this.cursorRow,this.cursorCol), getPageY(this.rows[this.cursorRow].contentLayer));
 	htr_setvisibility(ibeam_current, 'inherit');
         }
     }
@@ -511,16 +556,29 @@ function tx_keyhandler(l,e,k)
             l.rows[i].changed = 0;
             }
         }
-    moveToAbsolute(ibeam_current, getPageX(l.rows[l.cursorRow].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[l.cursorRow].contentLayer));
+    tx_move_cursor(l, getPageX(l.rows[l.cursorRow].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[l.cursorRow].contentLayer));
     htr_setvisibility(ibeam_current, 'inherit');
     cn_activate(l, 'DataChange');
     return false;
     }
 
 
-/** Set focus to a new textarea **/
-function tx_select(x,y,l,c,n)
+function tx_move_cursor(l,x,y)
     {
+    moveToAbsolute(ibeam_current, x, y);
+    l.prev_x = x - getPageX(l);
+    l.prev_y = y+1 - getPageY(l);
+    }
+
+
+/** Set focus to a new textarea **/
+function tx_select(x,y,l,c,n,a,k)
+    {
+    if (k)
+	{
+	x = l.prev_x;
+	y = l.prev_y;
+	}
     if (l.enabled != 'full') return 0;
     if (l.form) l.form.FocusNotify(l);
     var cheight = 0;
@@ -553,7 +611,7 @@ function tx_select(x,y,l,c,n)
     if (cx__capabilities.Dom1HTML)
 	l.appendChild(ibeam_current);
     moveAbove(ibeam_current,l);
-    moveToAbsolute(ibeam_current,getPageX(l.rows[0].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[0].contentLayer) + tx_ypos(l,l.cursorRow,l.cursorCol));
+    tx_move_cursor(l,getPageX(l.rows[0].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[0].contentLayer) + tx_ypos(l,l.cursorRow,l.cursorCol));
     htr_setzindex(ibeam_current, htr_getzindex(l)+2);
     pg_set_style(ibeam_current,'visibility','inherit');
     cn_activate(l, 'GetFocus');
@@ -635,6 +693,9 @@ function tx_init(param)
     if (l.form) l.form.Register(l);
     l.changed = false;
 
+    l.prev_x = getClipWidth(l);
+    l.prev_y = getClipHeight(l);
+
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
     ie.Add("MouseDown");
@@ -645,6 +706,11 @@ function tx_init(param)
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
     ie.Add("DataChange");
+
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("InsertText", tx_action_insert_text);
+    ia.Add("SetFocus", tx_action_set_focus);
+    ia.Add("SetValue", tx_action_set_value);
 
     return l;
     }
