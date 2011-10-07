@@ -329,13 +329,14 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     double vdbl;
     char name[64];
     char event[32];
-    char target[32];
-    char source[32];
+    char target[128];
+    char source[128];
     char action[32];
     int id, i;
     XString xs;
     pExpression code;
     int first;
+    char rpt_context[128];
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
 	    {
@@ -363,6 +364,18 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
+
+	/** Are we inside a widget/repeat context? **/
+	rpt_context[0] = '\0';
+	if (!strncmp(name, "_internalrpt_", 13))
+	    {
+	    ptr = strchr(name+13,'_');
+	    if (ptr)
+		{
+		strtcpy(rpt_context, name, sizeof(rpt_context));
+		rpt_context[ptr - name] = '\0';
+		}
+	    }
 
 	/** Source/target **/
 	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) != 0)
@@ -414,12 +427,26 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Add a script init to install the connector **/
-	htrAddScriptInit_va(s, "    %[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%], '%STR&SYM', {%STR});\n",
+	htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
 		!*source, name, 
-		*source, source,
-		event, 
+		*source, source);
+	if (*rpt_context && *source)
+	    {
+	    htrAddScriptInit_va(s, "    if(!src) src=nodes[\"%STR&SYM_%STR&SYM\"];\n",
+		    rpt_context,
+		    source);
+	    }
+	htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%];\n",
 		*target, target, 
-		!*target, name,
+		!*target, name);
+	if (*rpt_context && *target)
+	    {
+	    htrAddScriptInit_va(s, "    if(!nodes[tgt]) tgt=\"%STR&SYM_%STR&SYM\";\n",
+		    rpt_context,
+		    target);
+	    }
+	htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
+		event, 
 		action,
 		xs.String);
 	xsDeInit(&xs);

@@ -52,7 +52,7 @@
 #define WGTR_MAX_PARAMS		(24)
 
 //global prefix for repeat widget
-int prefix=1;
+int repeat_prefix=1;
 
 /** Generic property struct **/
 typedef struct
@@ -622,7 +622,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 		    /** Try to add it. **/
 			    objGetAttrValue(child_obj, "name", DATA_T_STRING, &val2);
 			    widgetname = nmSysMalloc(strlen(val2.String)+23);
-			    qpfPrintf(NULL,widgetname,strlen(val2.String)+23,"_internalrpt%STR%POS",val2.String,prefix++);
+			    qpfPrintf(NULL,widgetname,strlen(val2.String)+23,"_internalrpt_%POS_%STR",repeat_prefix,val2.String);
 		    if ( (child_node = wgtr_internal_ParseOpenObjectRepeat(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
 			{
 			strtcpy(child_node->Name,widgetname,sizeof(child_node->Name));
@@ -924,6 +924,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 			goto error;
 		    objClose(rptrow);
 		    rptrow = NULL;
+		    repeat_prefix++;
 		    }
 		expRemoveParamFromList(context_objlist, this_node->Name);
 		objQueryClose(rptqy);
@@ -1132,6 +1133,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 
 		    objClose(rptrow);
 		    rptrow = NULL;
+		    repeat_prefix++;
 		    }
 		expRemoveParamFromList(context_objlist, this_node->Name);
 		objQueryClose(rptqy);
@@ -1185,6 +1187,7 @@ pWgtrNode
 wgtrParseOpenObject(pObject obj, pStruct params, char* templates[])
     {
     pWgtrNode template_arr[WGTR_MAX_TEMPLATE];
+    pWgtrNode tree;
     int i;
 
 	/** Load templates? **/
@@ -1196,7 +1199,15 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[])
 		    template_arr[i] = wgtrLoadTemplate(obj->Session, templates[i], params);
 	    }
 
-    return wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0);
+	/** Load in the widget tree, using the templates **/
+	tree = wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0);
+
+	/** Free memory used by templates **/
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    if (template_arr[i])
+		wgtrFree(template_arr[i]);
+
+    return tree;
     }
 
 
