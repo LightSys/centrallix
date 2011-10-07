@@ -815,6 +815,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			{
 			/** if end of result set was reached before rowlimit ran out **/
 			xhnFreeHandle(&(sess->Hctx), query_handle);
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->OsmlQuery == qy)
+				{
+				xaRemoveItem(&sess->OsmlQueryList, i);
+				nht_internal_FreeQuery(nht_query);
+				break;
+				}
+			    }
 			objQueryClose(qy);
 			qy = NULL;
 			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n");
@@ -822,6 +832,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    else if (autoclose)
 			{
 			xhnFreeHandle(&(sess->Hctx), query_handle);
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->OsmlQuery == qy)
+				{
+				xaRemoveItem(&sess->OsmlQueryList, i);
+				nht_internal_FreeQuery(nht_query);
+				break;
+				}
+			    }
 			objQueryClose(qy);
 			qy = NULL;
 			}
