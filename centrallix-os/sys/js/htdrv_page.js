@@ -164,7 +164,7 @@ function pg_set_style(element,attr, value)
 	    element[attr] = value;
 	    return;
 	    }
-	if (isNaN(parseInt(value)))
+	if (isNaN(parseInt(value)) || (String(value)).indexOf(" ") >= 0)
 	    element.style.setProperty(attr,value,"");
 	else
 	    element.style.setProperty(attr,parseInt(value) + "px","");
@@ -1304,6 +1304,9 @@ function pg_cleanup()
     // remove this window from the app window lists
     window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
     window.AppWindowPropagate();
+
+    // Deinit the tree.
+    wgtrDeinitTree(window);
     }
 
 function pg_alert(aparam)
@@ -1360,33 +1363,47 @@ function pg_launch(aparam)
 	w_name = "new_window";
     else
 	w_name = aparam.Name;
+    w_name = window.__WgtrNamespace + '_' + w_name;
 
     // build the URL with parameters
     var url = new String(aparam.Source);
     for(var p in aparam)
 	{
+	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source')
+	    continue;
 	var v = aparam[p];
+	var r = wgtrCheckReference(v);
+	if (r) v = r;
 	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
 	    url += '&';
 	else
 	    url += '?';
 	url += (htutil_escape(p) + '=' + htutil_escape(v));
 	}
-    
-    if (aparam.Multi != null && aparam.Multi == true)
+ 
+    // Find a unique name for the new window.
+    if (aparam.Multi != null && (aparam.Multi == true || aparam.Multi == 1))
 	{
-	for(var i = 0; i < 32; i++) // 32 max multi-instanced windows
+	for(var i = 0; i < 64; i++) // 64 max multi-instanced windows
 	    {
-	    if (window.windowlist[w_name + '_' + i] == null || window.windowlist[w_name + '_' + i].close == null)
-		w_name = w_name + '_' + i;
+	    var w_instance_name = w_name + '_' + i;
+	    if (!window.windowlist[w_instance_name] || !window.windowlist[w_instance_name].close)
+		{
+		w_name = w_instance_name;
+		break;
+		}
 	    }
 	}
-    if (window.windowlist[w_name] != null && window.windowlist[w_name].close != null) w_exists = true;
-    if ((aparam.Multi == null || aparam.Multi == false) && w_exists) 
+
+    // Already exists?
+    if (window.windowlist[w_name] && window.windowlist[w_name].close) w_exists = true;
+    if (!aparam.Multi && w_exists) 
 	{
 	window.windowlist[w_name].close();
 	w_exists = false;
 	}
+
+    // Open it.
     if (!w_exists) 
 	{
 	if (aparam.UseragentMenu != null && aparam.UseragentMenu && aparam.UseragentMenu != 'no')
@@ -1397,7 +1414,11 @@ function pg_launch(aparam)
 	    var resizable = ",resizable=yes";
 	else
 	    var resizable = ",resizable=no";
-	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	if (aparam.UseragentScroll != null && aparam.UseragentScroll && aparam.UseragentScroll != 'no')
+	    var scroll = ",scrollbars=yes";
+	else
+	    var scroll = ",scrollbars=no";
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
 	}
     }
 
@@ -1577,6 +1598,7 @@ function pg_expression(o,p,e,l,c)
 	{
 	var item = l[i];
 	var ref;
+	if (item[0] == "*") continue; // cannot handle global listening yet
 	item[2] = nodelist[item[0]]; // get obj reference
 	if (item[2])
 	    {
@@ -2387,6 +2409,7 @@ function pg_tooltip(msg, x, y)
     if (!pg_tiplayer)
 	pg_tiplayer = htr_new_layer(pg_width);
     htr_setvisibility(pg_tiplayer, "hidden");
+    //pg_set_style(pg_tiplayer, "box-shadow", "2px 2px 4px black");
     pg_tipindex++;
     pg_tipinfo = {msg:msg, x:x, y:y};
     if (pg_tiptmout) pg_delsched(pg_tiptmout);
@@ -2423,12 +2446,12 @@ function pg_dotip_complete()
     if (isNaN(x1)) x1 = imgs[0].offsetLeft + imgs[0].offsetParent.offsetLeft;
     var x2 = getRelativeX(imgs[1]);
     if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
-    var tipw = (x2 - x1) + 6;
+    var tipw = (x2 - x1) + 5;
     var pgx = pg_tipinfo.x;
     var pgy = pg_tipinfo.y + 20;
     if (pgx + tipw > pg_width) pgx = pg_width - tipw;
     if (pgx < 0) pgx = 0;
-    setClipWidth(pg_tiplayer, tipw);
+    //setClipWidth(pg_tiplayer, tipw);
     pg_set_style(pg_tiplayer, "width", tipw + "px");
     moveToAbsolute(pg_tiplayer, pgx, pgy);
     htr_setzindex(pg_tiplayer, 99999);
