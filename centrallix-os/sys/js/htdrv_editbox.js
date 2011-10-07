@@ -12,7 +12,7 @@
 function eb_getlist(content)
     {
     if (!content) return content;
-    var vals = content.split(/,/);
+    var vals = String(content).split(/,/);
     if(content==vals[0])
 	return content;
     else
@@ -109,7 +109,10 @@ function eb_set_content(v)
     if (this.content != v)
 	{
 	htr_unwatch(this, "content", "content_changed");
-	this.content = v;
+	if (!v)
+	    this.content = v;
+	else
+	    this.content = String(v).valueOf();
 	htr_watch(this, "content", "content_changed");
 	}
     }
