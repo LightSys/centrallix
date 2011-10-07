@@ -474,6 +474,8 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int is_toplevel = 0;
     int is_modal = 0;
     char icon[128];
+    int shadow_offset;
+    char shadow_color[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -502,6 +504,17 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    mssError(1,"HTWIN","HTMLWindow widget must have a 'height' property");
 	    return -1;
+	    }
+
+	/** Drop shadow **/
+	shadow_offset=0;
+	wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset));
+	if (shadow_offset > 0)
+	    {
+	    if (wgtrGetPropertyValue(tree, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
+		strtcpy(shadow_color, ptr, sizeof(shadow_color));
+	    else
+		strcpy(shadow_color, "black");
 	    }
 
 	/** Get name **/
@@ -611,9 +624,15 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	if(s->Capabilities.HTML40 && s->Capabilities.CSS2)
 	    {
 	    /** Draw the main window layer and outer edge. **/
-	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; clip:rect(0px, %INTpx, %INTpx, 0px); Z-INDEX:%POS;}\n",
-		    id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, w, h, z+100);
+	    /*htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; clip:rect(0px, %INTpx, %INTpx, 0px); Z-INDEX:%POS;}\n",
+		    id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, w, h, z+100);*/
+	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; Z-INDEX:%POS;}\n",
+		    id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, z+100);
 	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { border-style: solid; border-width: 1px; border-color: white gray gray white; }\n", id);
+	    if (shadow_offset > 0)
+		{
+		htrAddStylesheetItem_va(s,"\t#wn%POSbase { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_offset+1, shadow_color);
+		}
 
 	    /** draw titlebar div **/
 	    if (has_titlebar)
