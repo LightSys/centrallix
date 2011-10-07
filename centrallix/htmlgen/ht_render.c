@@ -1711,7 +1711,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    prop = (char*)(props.Items[i]);
 	    if (obj && prop)
 		{
-		xsConcatQPrintf(&xs,"%[,%]['%STR&SYM','%STR&JSSTR']", !first, obj, prop);
+		xsConcatQPrintf(&xs,"%[,%]['%STR&JSSTR','%STR&JSSTR']", !first, obj, prop);
 		first = 0;
 		}
 	    }
