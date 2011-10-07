@@ -49,22 +49,6 @@
 /*		multicolumn layout sections.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_fm_html_lm_col.c,v 1.2 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html_lm_col.c,v $
-
-    $Log: prtmgmt_v3_fm_html_lm_col.c,v $
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1  2003/04/21 21:01:56  gbeeley
-    Adding LM specific components to the HTML formatter
-
- **END-CVSDATA***********************************************************/
 
 
 /*** prt_htmlfm_GenerateMultiCol() - generate a multicolumn section

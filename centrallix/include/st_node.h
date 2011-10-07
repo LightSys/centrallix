@@ -33,36 +33,6 @@
 /*		querytree object driver for config information.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: st_node.h,v 1.4 2005/02/26 06:42:38 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/st_node.h,v $
-
-    $Log: st_node.h,v $
-    Revision 1.4  2005/02/26 06:42:38  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2004/09/01 02:36:26  gbeeley
-    - get rid of last_modification warnings on qyt static elements by setting
-      static element last_modification to that of the node itself.
-
-    Revision 1.2  2004/08/30 03:18:48  gbeeley
-    - magic number checking in SnNode.
-
-    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 #include "stparse.h"
 #include "cxlib/xarray.h"

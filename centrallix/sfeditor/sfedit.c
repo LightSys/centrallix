@@ -41,43 +41,6 @@
 /*		configuration file.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: sfedit.c,v 1.4 2005/02/26 06:42:41 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/sfeditor/sfedit.c,v $
-
-    $Log: sfedit.c,v $
-    Revision 1.4  2005/02/26 06:42:41  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2002/10/17 18:45:49  gbeeley
-    Argh.  Retrofitting the original commit log message into this ol thing
-
-    Revision 1.2  2002/10/17 18:42:54  gbeeley
-    Added copyright stub...
-
-    Revision 1.1.1.1  2002/10/17 18:40:29  gbeeley
-    Adding Structure File Editor.  Program only loads structure files (both v1
-    and v2) currently, does not allow modification or saving yet.  We'll
-    probably wait on adding save functionality until stparse.c will preserve
-    comments and possibly formatting style when rewriting a structure file.
-    
-    This program isn't intended as a substitute or replacement for bojangles.
-    It isn't designed for GUI work... just for people who have a phobia of
-    editing text files ;)
-    
-    Hrmph... this program looks hideously like regedit...
-    
-    Usage:
-    
-         $ make sfedit
-         $ sfedit /usr/local/etc/centrallix.conf
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** icon table.  <grunt> move this to a file or something dynamic!! ***/

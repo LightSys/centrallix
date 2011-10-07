@@ -25,29 +25,6 @@
 /* Description: Shared memory segment memory manager.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: smmalloc_private.h,v 1.2 2005/03/14 20:41:24 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/smmalloc_private.h,v $
-
-    $Log: smmalloc_private.h,v $
-    Revision 1.2  2005/03/14 20:41:24  gbeeley
-    - changed configuration to allow different levels of hardening (mainly, so
-      asserts can be enabled without enabling the ds checksum stuff).
-    - initial working version of the smmalloc (shared memory malloc) module.
-    - test suite for smmalloc "make test".
-    - results from test suite run on 1.4GHz Athlon, GCC 2.96, RH73
-    - smmalloc not actually tested between two processes yet.
-    - TO-FIX: smmalloc interprocess locking needs to be reworked to prefer
-      spinlocks where doable instead of using sysv semaphores which are SLOW.
-
-    Revision 1.1  2005/02/26 04:32:59  gbeeley
-    - continued implementation of the shared-memory malloc module
-
-    Revision 1.1  2005/02/06 05:08:01  gbeeley
-    - Adding interface spec for shared memory management
-
- **END-CVSDATA***********************************************************/
 
 
 /*** alignment for blocks; must be a power of 2.  This also

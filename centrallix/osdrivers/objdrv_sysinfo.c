@@ -46,31 +46,6 @@
 /*		much like the /proc or /sys filesystem on Linux does.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_sysinfo.c,v 1.3 2007/04/08 03:52:01 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sysinfo.c,v $
-
-    $Log: objdrv_sysinfo.c,v $
-    Revision 1.3  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.2  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.1  2005/09/17 01:23:51  gbeeley
-    - Adding sysinfo objectsystem driver, which is roughly analogous to
-      the /proc filesystem in Linux.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/

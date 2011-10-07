@@ -48,35 +48,6 @@
 /*		html formatter which has intelligence about the tables.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_fm_html_lm_table.c,v 1.4 2010/09/09 00:46:13 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html_lm_table.c,v $
-
-    $Log: prtmgmt_v3_fm_html_lm_table.c,v $
-    Revision 1.4  2010/09/09 00:46:13  gbeeley
-    - (bugfix) HTML table output - handle condition where row is entirely
-      empty (row->ContentHead == NULL)
-
-    Revision 1.3  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1  2003/04/21 21:01:56  gbeeley
-    Adding LM specific components to the HTML formatter
-
- **END-CVSDATA***********************************************************/
 
 
 /*** prt_htmlfm_GenerateTable() - output a tabular data section,

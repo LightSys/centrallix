@@ -43,64 +43,6 @@
 /*		by the proxy agent... hmmm...				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htmlparse.c,v 1.6 2008/03/29 02:26:17 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/utility/htmlparse.c,v $
-
-    $Log: htmlparse.c,v $
-    Revision 1.6  2008/03/29 02:26:17  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.5  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.4  2006/11/16 20:15:54  gbeeley
-    - (change) move away from emulation of NS4 properties in Moz; add a separate
-      dom1html geom module for Moz.
-    - (change) add wgtrRenderObject() to do the parse, verify, and render
-      stages all together.
-    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
-      same way as buttons and editboxes.
-
-    Revision 1.3  2005/02/26 06:39:22  gbeeley
-    * SECURITY FIX: possible heap corruption bug in htmlparse.c regarding
-      illegal placement of % and & (and other chars) in the URL.
-
-    Revision 1.2  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:01:17  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:18  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** hts_internal_ReadBuffer - read data from the input stream into the

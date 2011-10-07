@@ -31,30 +31,6 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_http_app.c,v 1.3 2010/09/13 23:30:29 gbeeley Exp $
-    $Source: /cvsroot/centrallix/centrallix/netdrivers/net_http_app.c,v $
-
-    $Log: net_http_app.c,v $
-    Revision 1.3  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.2  2008/08/16 00:31:38  thr4wn
-    I made some more modification of documentation and begun logic for
-    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
-
-    Revision 1.1  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-
- **END-CVSDATA***********************************************************/
 
 /* This file will eventually contain much of the application logic from the GET and OSML fucntions */
 /* 11:38 AM 6/25/2008 jncraton */

@@ -43,37 +43,6 @@
 /*		mechanism in the OSML					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_inherit.c,v 1.4 2007/09/18 18:06:26 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_inherit.c,v $
-
-    $Log: obj_inherit.c,v $
-    Revision 1.4  2007/09/18 18:06:26  gbeeley
-    - (bugfix) OSML inheritance layer must not assume that the underlying
-      driver implements presentation hints on its attributes.
-
-    Revision 1.3  2007/06/06 15:16:36  gbeeley
-    - (change) getting the obj_inherit module into the build
-
-    Revision 1.2  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1  2003/05/30 17:39:52  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
- **END-CVSDATA***********************************************************/
 
 
 /** Data structures for handling the call indirection **/

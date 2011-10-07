@@ -49,26 +49,6 @@
 /*		data in tabular form and presents it as a CSV file.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_fm_csv.c,v 1.2 2010/09/09 00:51:07 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_csv.c,v $
-
-    $Log: prtmgmt_v3_fm_csv.c,v $
-    Revision 1.2  2010/09/09 00:51:07  gbeeley
-    - (bugfix) output money datatypes in a csv file in a way that will
-      consistently load right into OO Calc and Excel.
-    - (bugfix) handle space suppresion (when undoing word wrapping) correctly
-
-    Revision 1.1  2010/01/10 07:20:18  gbeeley
-    - (feature) adding CSV file output from report writer.  Simply outputs
-      only tabular data (report/table data) into a CSV file format.
-    - (change) API addition to prtmgmt -- report writer can specify data type
-      of a piece of printed data; used as "hints" by the CSV file output to
-      output a cell as a quoted string vs. an integer or currency value
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** GLOBAL DATA FOR THIS MODULE ***/
