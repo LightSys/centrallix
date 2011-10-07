@@ -833,7 +833,7 @@ int htosrcInitialize() {
 		"revealed_only",	HT_DATA_T_BOOLEAN,
 		"enforce_create",	HT_DATA_T_BOOLEAN,
 		"autoquery",		HT_DATA_T_BOOLEAN,
-		"master_norec_action",	DATA_T_STRING,		/* what to do if no record in master (allrecs, sameasnull, norecs) */
+		"master_norecs_action",	DATA_T_STRING,		/* what to do if no record in master (allrecs, sameasnull, norecs) */
 		"master_null_action",	DATA_T_STRING,		/* what to do if master key is null (allrecs, nullisvalue, norecs) */
 		"key_objname",		DATA_T_STRING,
 		"target_key_objname",	DATA_T_STRING,
