@@ -936,12 +936,17 @@ function tbld_contextmenu(e)
         {
         if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
             {
+	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
             if(ly.fg) ly=ly.fg;
 	    if(e.which == 3 && ly.table.ifcProbe(ifEvent).Exists("RightClick"))
 		{
 		var event = new Object();
 		event.Caller = ly.table;
+		if (orig_ly.subkind == 'cell')
+		    {
+		    event.Column = ly.table.cols[orig_ly.colnum][0];
+		    }
 		event.recnum = ly.recnum;
 		event.data = new Object();
 		event.X = e.pageX;
@@ -986,6 +991,7 @@ function tbld_mousedown(e)
             }
         if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
             {
+	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
             if(ly.fg) ly=ly.fg;
 	    if (ly.table.allowselect)
@@ -1000,6 +1006,10 @@ function tbld_mousedown(e)
 		if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
 		    {
 		    var event = new Object();
+		    if (orig_ly.subkind == 'cell')
+			{
+			event.Column = ly.table.cols[orig_ly.colnum][0];
+			}
 		    event.Caller = ly.table;
 		    event.recnum = ly.recnum;
 		    event.data = new Object();
@@ -1031,6 +1041,10 @@ function tbld_mousedown(e)
 			ly.table.clicked[ly.recnum] = 0;
 			clearTimeout(ly.table.tid[ly.recnum]);
 			var event = new Object();
+			if (orig_ly.subkind == 'cell')
+			    {
+			    event.Column = ly.table.cols[orig_ly.colnum][0];
+			    }
 			event.Caller = ly.table;
 			event.recnum = ly.recnum;
 			event.data = new Object();

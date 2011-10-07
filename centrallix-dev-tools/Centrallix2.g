@@ -1,5 +1,5 @@
 grammar Centrallix;
-
+// entirely reads through the first 5 (alphabetically) .cmp files in modules/base
 options {output=template;}
 
 scope slist {
@@ -22,14 +22,18 @@ brace
 	
 assignment
 	:	VARIABLE WIDGET_NAME
-
-	|	(VARIABLE | keywords) '=' (INTEGER | VARIABLE | WIDGET_NAME | function | sql_statement)';'
-	|	VARIABLE '=' '\"' (keywords | PATH | expression | '(' expression* ')' )+ '\"' ';'
-	|	VARIABLE '=' '\"' '\"' ';'
-	|	VARIABLE '=' '\'' (VARIABLE+ | PATH+) '\'' ';'
+	|	VARIABLE '=' WIDGET_NAME ';'
+	|	VARIABLE '=' INTEGER ';'
+	|	VARIABLE '=' VARIABLE ';'
+	|	VARIABLE '=' function ';'
+	|	VARIABLE '=' '\"' PATH '\"' ';'
+	|	VARIABLE '=' '\"' VARIABLE* '\"' ';'
+	|	VARIABLE '=' sql_statement ';'
+	|	VARIABLE '=' '\"' 'asc' '\"' ';'
+	|	VARIABLE '=' '\'' VARIABLE* '\'' ';'
 	;
 
-function // 'not' is not a function, but can be treated as one when followed by parentheses.
+function
 	:	( 'runserver' | 'runclient' | 'runstatic' |'abs' | 'ascii' 
 	| 'avg' | 'charindex' |	'char_length' | 'condition' | 'convert' 	
    	|	'count'	| 'dateadd' | 'datepart' | 'escape' | 'eval' | 'first' | 'getdate' | 'isnull'	
@@ -41,34 +45,27 @@ function // 'not' is not a function, but can be treated as one when followed by 
 
 		
 sql_statement
-	:	'\"' insert? select (from | where | group_by | order_by | having)* '\"' // update delete limit 
+	:	'\"' (insert | select | from | where | order_by | having)+ '\"'
 	;
 	
-	insert 
-		: 'insert' (expression+ | PATH)
-		;
-	select
-		: 	('select' | 'SELECT') (sql_function | expression | PATH)+
+	insert : 'insert' expression+;
+	select : 'select' (sql_function | expression)+
+	    | 	'select' '*'
 	    ;
 	from 
-		: ('from' | 'FROM') (expression | PATH)+
+		: 'from' expression+
 		;
 	where 
-		: 	('where' | 'WHERE') '(' ('\"' | expression | sql_function | PATH)+ ')' ('and' or_and+ | 'or' or_and+ )?
-		|	('where' | 'WHERE') (expression | sql_function | PATH)+
+		: 	'where' '(' ('\"' | expression | sql_function  )+ ')' 
+				('or' '(' ('\"' | expression | sql_function  )+ ')')*
+		|	'where' (expression | sql_function)+
 		;
-		or_and
-			:	'(' (expression | sql_function | '\"' | PATH)+ ')'
-			|	(sql_function | expression| PATH)
-			;
 	order_by 
-		: 	('order by'| 'ORDER BY') (expression | sql_function | PATH | 'asc' | 'desc')+
+		:'order by' expression* ('asc' | 'desc')?
 		;
-	group_by
-		:	'group by'(expression+ | PATH)
-		;	
+
 	having 
-		:	'having' (expression+ | PATH)
+		:'having' expression+
 		;
 
 	sql_function
@@ -76,19 +73,15 @@ sql_statement
 	   	|	'count'	| 'dateadd' | 'datepart' | 'escape' | 'eval' | 'first' | 'getdate' | 'isnull'	
 		| 	'last' | 'lower' | 'ltrim' | 'lztrim' | 'max' | 'min' | 'not' | 'quote' | 'ralign' | 'replicate' 
 		| 	'right'| 'round' | 'rtrim' | 'substring' | 'sum' | 'upper' | 'user_name' | 'wordify')
-		('(' (expression | sql_function | bracket_expression | PATH )+ ')' | '(' ')' )
+		('(' (expression | sql_function | quoted_bracket)+ ')' | '(' ')')	
 		;
-bracket_expression
-	:	 '(' (expression | PATH)+ ')' 
-	;		
+		
 expression
-	:	VARIABLE | LINE | INTEGER | '\'\\n\'' | '\'\'' | '[' | ']' | '\'' | '+' | ',' 
-	| '=' | ';' | '*' | '-' | '/' | 'NOT' | 'AND' | 'OR' | 'IS NULL' | 'IS NOT NULL' | 'or' | 'and'
-	| '==' | '!=' | '>' | '>='	|  '<' | '<=' | '*='| '<>' | '!<' | '!>' | 'ASC'|'DESC'
+	:	VARIABLE | LINE |  OPERATOR | INTEGER | PATH | '\'\\n\'' | '\'' | '\'\'' | '[' | ']' 
+	| '+' | ',' | 'or' | 'and' | '=' '*'? | '-'
 	;
-
-keywords
-	:	'first' | 'last' | 'not' | 'asc' | 'desc' | 'from' | 'condition' | 'order' | 'by'
+quoted_bracket
+	:	'\'(\'' | '\')\''
 	;
 WHITESPACE
     : ( '\t' | ' ' | '\r' | '\n')+ { $channel = HIDDEN;}
@@ -96,11 +89,11 @@ WHITESPACE
     
 COMMENT
     :   '//' .* '\n' {$channel=HIDDEN;}
-    |	'--' .* '\n' {$channel=HIDDEN;}
     |   '/*' .* '*/' {$channel=HIDDEN;}
     ;
-VARIABLE // the bracketes could be annoying ... 
-    : ('a'..'z'| 'A'..'Z' | '#' | '<' | '>' | '*' | '_')('a'..'z'| 'A'..'Z'|'0'..'9'| '_'| '/' | ':'| '<' | '>' | '*' | '!' | '.')*
+
+VARIABLE
+    : ('a'..'z'| 'A'..'Z' | '#' | '<' | '>')('a'..'z'| 'A'..'Z'|'0'..'9'| '_'| '/' | ':'| '<' | '>')*
     ;
 LINE
     : ':'('a'..'z'| 'A'..'Z' |'0'..'9'| '_' | ':')+
@@ -110,6 +103,10 @@ PATH
 	;
 INTEGER
 	:	('0' .. '9')+
+	;	
+OPERATOR
+	: '+' | '-' | '*' | '/' | 'NOT' | 'AND' | 'OR' | 'IS NULL' | 'IS NOT NULL' | '=' | '==' | '!=' | '>' | '>='
+	|  '<' | '<=' | '*='| '<>' | '!<' | '!>'
 	;
 WIDGET_NAME
     : 
@@ -118,7 +115,7 @@ WIDGET_NAME
 '\"widget/execmethod\"' | '\"widget/form\"' | '\"widget/formstatus\"' | '\"widget/frameset\"' | '\"widget/hbox\"' | '\"widget/hints\"' | '\"widget/html\"' |
 '\"widget/image\"' | '\"widget/imagebutton\"' | '\"widget/label\"' | '\"widget/menu\"' | '\"widget/osrc\"' |  '\"widget/page\"' | '\"widget/pane\"' |
 '\"widget/parameter\"' | '\"widget/radiobuttonpanel\"' | '\"widget/remotectl\"' | '\"widget/remotemgr\"' | '\"widget/repeat\"' | '\"widget/rule\"' |
-'\"widget/scrollbar\"' | '\"widget/scrollpane\"' | '\"widget/tab\"' | '\"widget/tabpage\"'  | '\"widget/table\"' | '\"widget/template\"' | '\"widget/textarea\"' |
+'\"widget/scrollbar\"' | '\"widget/scrollpane\"' | '\"widget/tab\"' | '\"widget/table\"' | '\"widget/template\"' | '\"widget/textarea\"' |
 '\"widget/textbutton\"' | '\"widget/timer\"' | '\"widget/treeview\"' | '\"widget/variable\"' | '\"widget/vbox\"' |  '\"widget/component-decl-event\"' |
 '\"widget/component-decl-action\"' | '\"widget/table-column\"')
     ;//list of all the different widgets

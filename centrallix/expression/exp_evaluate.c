@@ -548,7 +548,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			mv = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 			md = mv / i1->Types.Double;
 			if (md < 0) md -= 0.5;
 			else md += 0.5;
@@ -644,7 +644,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 
 	    case DATA_T_MONEY:
 		tree->DataType = DATA_T_MONEY;
-		mv = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+		mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 		switch(i1->DataType)
 		    {
 		    case DATA_T_INTEGER:
