@@ -1743,3 +1743,21 @@ objGetPathname(pObject this)
     return (obj_internal_PathPart(this->Pathname, 0, 0) + 1); 
     }
 
+/*((pDirectoryCache)((pObjSession)(OSYS.OpenSessions.Items[0]))->DirectoryCache.Queue.Next->Next->Next->Next->Next->Next->Next->DataPtr)->Pathname*/
+void
+obj_internal_DumpDC(pObjSession session)
+    {
+    pXHQElement xe = session->DirectoryCache.Queue.Next;
+    pDirectoryCache dc;
+
+	while (xe && xe != &(session->DirectoryCache.Queue))
+	    {
+	    dc = xe->DataPtr;
+	    xe = xe->Next;
+	    printf("%s\n", dc->Pathname);
+	    }
+	    
+    return;
+    }
+
+
