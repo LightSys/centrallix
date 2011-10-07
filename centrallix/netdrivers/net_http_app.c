@@ -121,8 +121,10 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
     int rval;
     int i = 0;
 
+#if 00
     if (strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
 	{
+#endif
 	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates)))
 	    {
 	    if(tree) wgtrFree(tree);
@@ -134,7 +136,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 	    return -1;
 	    }
 
-
+#if 00
 	/** cache the app **/
 	pCachedApp pca = (pCachedApp) nmSysMalloc(sizeof(CachedApp));
 	pca->Node = tree;
@@ -146,6 +148,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 	{
 	tree = ((pCachedApp)xhLookup(nsess->CachedApps, (void*)&i))->Node; //TODO: caching is not fully implemented
 	}
+#endif
 
     if(! (wgtrVerify(tree, client_info) >= 0))
 	{
@@ -155,6 +158,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 
     rval = wgtrRender(output, s, tree, url_inf, client_info, method);
 
+    if(tree) wgtrFree(tree);
     //if(tree) wgtrFree(tree); //by Seth: because all trees are being cached, the trees must be freed somewhere else. Probably at the closing of the session. //SETH: ?? is that already taken care of?
     return rval;
 
