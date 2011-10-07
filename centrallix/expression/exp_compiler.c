@@ -993,6 +993,10 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
 	    }
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"substitute")))
+	    {
+	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;
+	    }
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;

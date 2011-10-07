@@ -597,6 +597,11 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		    return exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg);
 	        snprintf(eg->TmpBuf,sizeof(eg->TmpBuf),"cxjs_%.250s(",exp->Name);
 		exp_internal_WriteText(eg, eg->TmpBuf);
+		if (!strcmp(exp->Name, "substitute"))
+		    {
+		    /** This function requires awareness of its object/property scope **/
+		    exp_internal_WriteText(eg, "_context,_this,");
+		    }
 		for(i=0;i<exp->Children.nItems;i++)
 		    {
 		    if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[i]), eg) < 0) return -1;
@@ -978,6 +983,11 @@ expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
 	    else
 		propn = NULL;
 	    exp_internal_AddPropToList(objs_xa, props_xa, objn, propn);
+	    }
+	else if (exp->NodeType == EXPR_N_FUNCTION && !strcmp(exp->Name, "substitute"))
+	    {
+	    /** This one could reference almost anything in the namespace **/
+	    exp_internal_AddPropToList(objs_xa, props_xa, "*", "*");
 	    }
 	else if (exp->NodeType == EXPR_N_PROPERTY)
 	    {

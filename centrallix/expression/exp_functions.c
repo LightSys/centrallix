@@ -803,6 +803,46 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
     }
 
 
+int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int len,i;
+    char ch;
+    if (i0 && (i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_STRING)
+	{
+	mssError(1,"EXP","reverse() expects one string parameter");
+	return -1;
+	}
+    if (tree->Alloc && tree->String)
+	nmSysFree(tree->String);
+    tree->DataType = DATA_T_STRING;
+    len = strlen(i0->String);
+    if (len >= 64)
+	{
+	tree->String = nmSysMalloc(len+1);
+	tree->Alloc = 1;
+	}
+    else
+	{
+	tree->Alloc = 0;
+	tree->String = tree->Types.StringBuf;
+	}
+    strcpy(tree->String, i0->String);
+    for(i=0;i<len/2;i++)
+	{
+	ch = tree->String[i];
+	tree->String[i] = tree->String[len-i-1];
+	tree->String[len-i-1] = ch;
+	}
+    return 0;
+    }
+
+
 int exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     char* ptr;
@@ -1156,6 +1196,302 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     *(dst++) = '"';
     *dst = '\0';
     return 0;
+    }
+
+
+int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* subst_ptr;
+    char* second_colon_ptr;
+    char* close_tag_ptr;
+    char* nl_ptr;
+    char fieldname[64];
+    char objname[64];
+    XString dest;
+    int subst_pos;
+    int placeholder_len;
+    int replace_len;
+    pObject obj;
+    int i;
+    int t;
+    int found;
+    ObjData od;
+    char* attr_string;
+    int rval;
+    int subst_len_this_line;
+    int subst_cnt_this_line;
+    int last_nl_pos;
+    int ign_char_cnt;
+    int len;
+    char* obj_name_list[64];
+    char* obj_remap_list[64];
+    char* tmpstr;
+    int n_obj_names = -1;
+    char* tmpptr;
+    char* eq_ptr;
+    int fn_rval = -1;
+
+    xsInit(&dest);
+
+    /** Validate the params **/
+    if (i0 && !i2 && i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	fn_rval = 0;
+	goto out;
+	}
+    if (!i0 || i2 || i0->DataType != DATA_T_STRING || (i1 && !(i1->Flags & EXPR_F_NULL) && i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","substitute() requires one or two string parameters");
+	goto out;
+	}
+
+    /** Object name/remapping list? **/
+    if (i1 && !(i1->Flags & EXPR_F_NULL))
+	{
+	n_obj_names = 0;
+	tmpstr = nmSysStrdup(i1->String);
+	tmpptr = strtok(tmpstr, ",");
+	while(tmpptr && n_obj_names < 64)
+	    {
+	    eq_ptr = strchr(tmpptr, '=');
+	    if (!eq_ptr)
+		{
+		/** No equals sign, so no remapping **/
+		obj_name_list[n_obj_names] = nmSysStrdup(tmpptr);
+		obj_remap_list[n_obj_names] = nmSysStrdup(tmpptr);
+		}
+	    else
+		{
+		/** This one remaps the object name **/
+		obj_name_list[n_obj_names] = nmSysStrdup(tmpptr);
+		*strchr(obj_name_list[n_obj_names], '=') = '\0';
+		obj_remap_list[n_obj_names] = nmSysStrdup(eq_ptr+1);
+		}
+	    n_obj_names++;
+	    tmpptr = strtok(NULL, ",");
+	    }
+	nmSysFree(tmpstr);
+	}
+
+    xsCopy(&dest, i0->String, -1);
+    xsConcatenate(&dest, "\n", 1);
+    subst_pos = 0;
+    subst_ptr = dest.String;
+    subst_len_this_line = 0;
+    subst_cnt_this_line = 0;
+    last_nl_pos = -1;
+    while(subst_ptr)
+	{
+	nl_ptr = strchr(subst_ptr, '\n');
+	subst_ptr = strstr(subst_ptr, "[:");
+
+	/** Passing a newline \n character? **/
+	if (nl_ptr && ((subst_ptr && nl_ptr < subst_ptr) || !subst_ptr))
+	    {
+	    ign_char_cnt = strspn(dest.String + last_nl_pos + 1, " ,\t.%");
+	    if (subst_len_this_line == 0 && ign_char_cnt == nl_ptr - (dest.String + last_nl_pos + 1) && subst_cnt_this_line > 0)
+		{
+		/** No substitution content this line, and nothing static either.  Delete the line. **/
+		xsSubst(&dest, last_nl_pos+1, ign_char_cnt+1, "", 0);
+		subst_ptr = dest.String + last_nl_pos + 1;
+		subst_cnt_this_line = 0;
+		continue;
+		}
+	    else
+		{
+		/** A new line.  Reset the counters. **/
+		subst_len_this_line = 0;
+		last_nl_pos = nl_ptr - dest.String;
+		subst_cnt_this_line = 0;
+		}
+	    }
+
+	/** Found a substitution?  Pull out the object name (optional) and field name (required) **/
+	if (subst_ptr)
+	    {
+	    subst_pos = subst_ptr - dest.String;
+	    second_colon_ptr = strchr(subst_ptr+2, ':');
+	    close_tag_ptr = strchr(subst_ptr, ']');
+	    if (!close_tag_ptr)
+		break;
+	    if (second_colon_ptr > close_tag_ptr)
+		second_colon_ptr = NULL;
+	    if (second_colon_ptr)
+		{
+		strtcpy(objname, subst_ptr+2, sizeof(objname));
+		strtcpy(fieldname, second_colon_ptr+1, sizeof(fieldname));
+		}
+	    else
+		{
+		strtcpy(fieldname, subst_ptr+2, sizeof(fieldname));
+		objname[0] = '\0';
+		}
+	    if (strchr(objname,':')) *strchr(objname, ':') = '\0';
+	    if (strchr(fieldname,']')) *strchr(fieldname, ']') = '\0';
+	    placeholder_len = close_tag_ptr - subst_ptr + 1;
+
+	    /** Next, lookup the field/object. **/
+	    obj = NULL;
+	    t = DATA_T_UNAVAILABLE;
+	    if (n_obj_names >= 0)
+		{
+		/** Using a remapping or scope-specification list, look up there. **/
+		if (!objname[0])
+		    strtcpy(objname, obj_name_list[0], sizeof(objname));
+		found=0;
+		for(i=0;i<n_obj_names;i++)
+		    {
+		    if (!strcmp(obj_name_list[i], objname))
+			{
+			found=1;
+			strtcpy(objname, obj_remap_list[i], sizeof(objname));
+			break;
+			}
+		    }
+		if (!found)
+		    {
+		    mssError(1,"EXP","substitute(): object name '%s' not in list",objname);
+		    goto out;
+		    }
+		}
+
+	    if (objname[0])
+		{
+		/** We have an object name, look it up **/
+		found = 0;
+		for(i=0;i<objlist->nObjects;i++)
+		    {
+		    if (objlist->Names[i] && !strcmp(objlist->Names[i], objname))
+			{
+			found = 1;
+			obj = objlist->Objects[i];
+			break;
+			}
+		    }
+		if (!found)
+		    {
+		    /** no such object **/
+		    mssError(1,"EXP","substitute(): no such object '%s'",objname);
+		    goto out;
+		    }
+		if (obj)
+		    {
+		    t = objGetAttrType(obj, fieldname);
+		    if (t <= 0)
+			{
+			/** no such field **/
+			mssError(1,"EXP","substitute(): no such attribute '%s' in object '%s'", fieldname, objname);
+			goto out;
+			}
+		    }
+		}
+	    else
+		{
+		/** No object name, see if any obj has the requested attribute **/
+		for(i=0;i<objlist->nObjects;i++)
+		    {
+		    if (objlist->Objects[i])
+			{
+			t = objGetAttrType(objlist->Objects[i], fieldname);
+			if (t > 0)
+			    {
+			    obj = objlist->Objects[i];
+			    break;
+			    }
+			}
+		    }
+		if (!obj)
+		    {
+		    /** no such field **/
+		    /*mssError(1,"EXP","substitute(): no such attribute '%s'", fieldname);
+		    return -1;*/
+		    /** We can't error out here, in case we are evaluating before
+		     ** any objects are set in the objlist.  So we return empty.
+		     **/
+		    attr_string = NULL;
+		    }
+		}
+
+	    /** Ok, found an object containing the attribute.  Get the string value of the attribute. **/
+	    if (obj && t > 0)
+		{
+		rval = objGetAttrValue(obj, fieldname, t, &od);
+		if (rval == 1)
+		    {
+		    attr_string = NULL;
+		    }
+		else if (rval < 0)
+		    {
+		    mssError(0, "EXP", "substitute(): error with attribute '%s'", fieldname);
+		    goto out;
+		    }
+		else
+		    {
+		    if (t == DATA_T_DATETIME || t == DATA_T_MONEY || t == DATA_T_STRING)
+			attr_string = objDataToStringTmp(t, od.Generic, 0);
+		    else
+			attr_string = objDataToStringTmp(t, &od, 0);
+		    }
+		}
+	    else
+		{
+		/** object not currently instantiated -- such as outer join type situation **/
+		attr_string = NULL;
+		}
+
+	    /** Got the string - do the replacement - auto-trim all fields. **/
+	    if (!attr_string) attr_string = "";
+	    while(*attr_string == ' ') attr_string++;
+	    attr_string = nmSysStrdup(attr_string);
+	    replace_len = strlen(attr_string);
+	    while (replace_len && attr_string[replace_len-1] == ' ')
+		{
+		attr_string[replace_len-1] = '\0';
+		replace_len--;
+		}
+	    subst_len_this_line += replace_len;
+	    subst_cnt_this_line++;
+	    xsSubst(&dest, subst_pos, placeholder_len, attr_string, replace_len);
+	    nmSysFree(attr_string);
+
+	    subst_ptr = dest.String + subst_pos + replace_len;
+	    }
+	}
+
+    /** Remove the trailing \n we added before. **/
+    len = strlen(dest.String);
+    if (len && dest.String[len-1] == '\n')
+	xsSubst(&dest, len-1, 1, "", 0);
+
+    /** Set replacement value **/
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    tree->Alloc = 0;
+    if (strlen(dest.String) >= 64)
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysStrdup(dest.String);
+	}
+    else
+	{
+	tree->String = tree->Types.StringBuf;
+	strcpy(tree->Types.StringBuf, dest.String);
+	}
+
+    /** Successful exit. **/
+    fn_rval = 0;
+
+  out:
+    if (n_obj_names > 0)
+	{
+	for(i=0;i<n_obj_names;i++)
+	    {
+	    nmSysFree(obj_name_list[i]);
+	    nmSysFree(obj_remap_list[i]);
+	    }
+	}
+    xsDeInit(&dest);
+    return fn_rval;
     }
 
 
@@ -2200,8 +2536,10 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
+	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
+	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
 	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
