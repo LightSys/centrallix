@@ -313,6 +313,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     int old_is_dynamic = 0;
     char* scriptslist;
     pStruct attr_inf;
+    char* slashptr;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -364,7 +365,15 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTCMP","Component must specify declaration location with 'path' attribute");
 	    return -1;
 	    }
-	strtcpy(cmp_path, ptr, sizeof(cmp_path));
+	if (ptr[0] != '/')
+	    {
+	    /** Relative pathname -- prepend base dir. **/
+	    snprintf(cmp_path, sizeof(cmp_path), "%s/%s", s->ClientInfo->BaseDir, ptr);
+	    }
+	else
+	    {
+	    strtcpy(cmp_path, ptr, sizeof(cmp_path));
+	    }
 
 	/** Load now, or dynamically later on? **/
 	if (wgtrGetPropertyValue(tree, "mode", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "dynamic"))
@@ -446,6 +455,14 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    wgtr_params.MinHeight = h;
 	    wgtr_params.MaxWidth = w;
 	    wgtr_params.MinWidth = w;
+
+	    /** Set base dir **/
+	    wgtr_params.BaseDir = nmSysStrdup(objGetPathname(cmp_obj));
+	    slashptr = strrchr(wgtr_params.BaseDir, '/');
+	    if (slashptr && slashptr != wgtr_params.BaseDir)
+		{
+		*slashptr = '\0';
+		}
 	    
 	    /** Do the layout for the component **/
 	    if (wgtrVerify(cmp_tree, &wgtr_params) < 0)

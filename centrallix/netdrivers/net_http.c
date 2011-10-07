@@ -1185,6 +1185,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int rowlimit;
     int order_desc = 0;
     char* name;
+    char* slashptr;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1498,6 +1499,14 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (akey_match && stAttrValue_ne(stLookup_ne(url_inf,"cx__app_path"),&pptr) == 0 && pptr)
 		    {
 		    wgtr_params.AppPath = pptr;
+		    }
+
+		/** Set the base directory pathname for the app -- for relative path references **/
+		wgtr_params.BaseDir = nmSysStrdup(objGetPathname(target_obj));
+		slashptr = strrchr(wgtr_params.BaseDir, '/');
+		if (slashptr && slashptr != wgtr_params.BaseDir)
+		    {
+		    *slashptr = '\0';
 		    }
 
 		/** Read the app spec, verify it, and generate it to DHTML **/

@@ -71,6 +71,7 @@ typedef struct
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];
     char*	AppPath;
+    char*	BaseDir;
     }
     WgtrClientInfo, *pWgtrClientInfo;
 
