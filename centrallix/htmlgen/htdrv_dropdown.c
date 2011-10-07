@@ -67,6 +67,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    int num_disp;
    int query_multiselect;
    int invalid_select_default;
+   int pop_w;
    ObjData od;
    XString xs;
    pObjQuery qy;
@@ -92,6 +93,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
    }
+   pop_w = w;
+
+   /** Width of popup dropdown list **/
+   wgtrGetPropertyValue(tree,"popup_width", DATA_T_INTEGER, POD(&pop_w));
 
    query_multiselect = htrGetBoolean(tree, "query_multiselect", 0);
    invalid_select_default = htrGetBoolean(tree, "invalid_select_default", 0);
@@ -177,7 +182,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', qms:%INT, ivs:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, query_multiselect, invalid_select_default);
+    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, query_multiselect, invalid_select_default, pop_w);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
@@ -320,6 +325,11 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		}
 	    wgtrGetPropertyValue(subtree,"name",DATA_T_STRING,POD(&ptr));
 	    xsConcatQPrintf(&xs,"{wname:'%STR&SYM', label:'%STR&JSSTR',", ptr, string);
+
+	    if (htrGetBoolean(subtree, "selected", 0) == 1)
+		{
+		xsConcatenate(&xs,"sel:1,",6);
+		}
 
 	    if (wgtrGetPropertyValue(subtree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
