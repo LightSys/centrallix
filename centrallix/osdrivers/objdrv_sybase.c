@@ -2133,7 +2133,7 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 
 	    case DATA_T_STRING:
 		if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
-		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
+		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart") || !strcmp(tree->Parent->Name,"dateadd")) &&
 		    (void*)tree == (void*)(tree->Parent->Children.Items[0]))
 		    {
 		    if (!strcmp(tree->Parent->Name,"convert"))
@@ -2148,7 +2148,7 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 			{
 			if (strpbrk(tree->String,"\"' \t\r\n"))
 			    {
-			    mssError(1,"SYBD","Invalid datepart() parameters in Expression Tree");
+			    mssError(1,"SYBD","Invalid datepart()/dateadd() parameters in Expression Tree");
 			    }
 			else
 			    {
