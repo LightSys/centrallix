@@ -165,7 +165,7 @@ char* chrSubstring(char* string, size_t begin, size_t end, char* buffer, size_t*
 size_t chrSubstringIndex(char* string, char* character)
     {
     char * ptr;
-    size_t tmpLen;
+    size_t tmpLen1, tmpLen2;
         if(!string || !character)
             return CHR_INVALID_ARGUMENT;
         ptr = strstr(string, character);
@@ -175,12 +175,13 @@ size_t chrSubstringIndex(char* string, char* character)
             }
         else
             {
-            tmpLen = mbstowcs(NULL, string, 0) - mbstowcs(NULL, ptr, 0);
-            if(tmpLen == (size_t)-1)
+	    tmpLen1 = mbstowcs(NULL, string, 0);
+	    tmpLen2 = mbstowcs(NULL, ptr, 0);
+            if(tmpLen1 == (size_t)-1 || tmpLen2 == (size_t)-1)
                 return CHR_INVALID_CHAR;
             else
                 {
-                return tmpLen;
+                return tmpLen1 - tmpLen2;
                 }
             }
     }
@@ -382,7 +383,16 @@ char* chrEscape(char* string, char* escape, char* bad, char* buffer, size_t* buf
         strByteLen = strlen(string);
         escCharLen = mbstowcs(NULL, escape, 0);
         badCharLen = mbstowcs(NULL, bad, 0);
-        
+	if (escCharLen == (size_t)-1 || badCharLen == (size_t)-1)
+	    {
+	    /** This is checked below, but we check here for clarity
+	     ** as well as to have the check before we pass the values
+	     ** to nmSysMalloc().
+	     **/
+            *bufferLength = CHR_INVALID_CHAR;
+            return NULL;
+            }
+
         /** Declare buffer variables here! **/
         escBuf = nmSysMalloc(sizeof(wchar_t) * (escCharLen + 2));
         if(!escBuf)
@@ -487,6 +497,14 @@ char* chrEscape(char* string, char* escape, char* bad, char* buffer, size_t* buf
         for(readPos = 0, insertPos = 0; readPos < strByteLen;)
             {
             charLen = mbrtowc(&current, string + readPos, strByteLen - readPos, &state);
+	    if (charLen == (size_t)-1 || charLen == (size_t)-2)
+		{
+		/** For clarity **/
+                nmSysFree(escBuf);
+                nmSysFree(badBuf);
+                *bufferLength = CHR_BAD_CHAR;
+                return NULL;
+		}
             for(j = 0; j < escCharLen; j++)
                 {
                 if(current == escBuf[j])
