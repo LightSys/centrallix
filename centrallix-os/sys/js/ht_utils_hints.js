@@ -244,7 +244,7 @@ function cx_parse_hints(hstr)
 		switch(attrval[0])
 		    {
 		    case "d":
-			ph.efaultExpr = decodeURIComponent(attrval[1]);
+			ph.DefaultExpr = decodeURIComponent(attrval[1]);
 			break;
 		    case "c":
 			ph.Constraint = decodeURIComponent(attrval[1]);
