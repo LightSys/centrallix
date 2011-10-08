@@ -432,7 +432,7 @@ int exp_fn_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	mssError(1,"EXP","ascii() function takes a string parameter.");
 	return -1;
 	}
-    if (i0->String[0] == '\0')
+    if ((i0->Flags & EXPR_F_NULL) || i0->String[0] == '\0')
 	tree->Flags |= EXPR_F_NULL;
     else
 	tree->Integer = i0->String[0];
@@ -2188,7 +2188,7 @@ int exp_fn_utf8_ascii(pExpression tree, pParamObjects objlist, pExpression i0, p
         mssError(1, "EXP", "ascii() function takes a string parameter.");
         return -1;
         }
-    if (i0->String[0] == '\0')
+    if ((i0->Flags & EXPR_F_NULL) || i0->String[0] == '\0')
         tree->Flags |= EXPR_F_NULL;
     
     charValue = chrGetCharNumber(i0->String);
@@ -2278,7 +2278,7 @@ int exp_fn_utf8_lower(pExpression tree, pParamObjects objlist, pExpression i0, p
     tree->DataType = DATA_T_STRING;
     if (!i0 || i0->DataType != DATA_T_STRING)
         {
-        mssError(1, "EXP", "One string parameter required for upper()");
+        mssError(1, "EXP", "One string parameter required for lower()");
         return -1;
         }
     if (i0->Flags & EXPR_F_NULL)
@@ -2510,8 +2510,8 @@ int exp_fn_utf8_escape(pExpression tree, pParamObjects objlist, pExpression i0, 
     }
 
 int
-exp_internal_DefineFunctions() {
-    
+exp_internal_DefineFunctions()
+    {
     /** Function list for EXPR_N_FUNCTION nodes **/
     xhAdd(&EXP.Functions, "getdate", (char*) exp_fn_getdate);
     xhAdd(&EXP.Functions, "user_name", (char*) exp_fn_user_name);
