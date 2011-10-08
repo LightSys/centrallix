@@ -205,6 +205,12 @@ char* chrEscape(char* string, char* escape, char* bad, char* buffer, size_t* buf
  */
 char* chrRightAlign(char* string, size_t minLength, char* buffer, size_t* bufferLength);
 
+/** \brief Convenience function for checking the validity of results.
+ \param result The result value obtained from the string function.
+ \return Returns 1 if valid, 0 if not valid.
+ */
+int chrValid(int result);
+
 /** \} */
 
 /** \} */

@@ -584,3 +584,9 @@ char* chrRightAlign(char* string, size_t minLength, char* buffer, size_t* buffer
         toReturn[newStrByteLen] = '\0';
         return toReturn;
     }
+
+int chrValid(int result)
+    {
+    return !(result == CHR_MEMORY_OUT || result == CHR_BAD_CHAR || result == CHR_INVALID_CHAR || result == CHR_INVALID_ARGUMENT || result == CHR_NOT_FOUND);
+    }
+

@@ -2323,7 +2323,7 @@ int exp_fn_utf8_char_length(pExpression tree, pParamObjects objlist, pExpression
         
     wideLen = chrCharLength(i0->String);
         
-    if(wideLen == (size_t)-1)
+    if(wideLen == CHR_INVALID_CHAR)
         {
         mssError(1, "EXP", "String contains invalid UTF-8 character");
         return -1;
@@ -2407,7 +2407,7 @@ int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i
         {
         if(bufferLength == CHR_MEMORY_OUT)
             {
-            mssError(1, "EXP", "Memory error!");
+            mssError(1, "EXP", "Memory exhausted!");
             return -1;
             }
         else
