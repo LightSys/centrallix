@@ -349,9 +349,8 @@ prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style, d
 	    if (((unsigned char*)str)[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
 		{
 		/** UTF-8 encoded character, skip entire encoded char. **/
-		str++;
 		n += 1.0;
-		while ((((unsigned char*)str)[0] & 0xC0) == 0x80)
+		while ((((unsigned char*)str)[1] & 0xC0) == 0x80)
 		    str++;
 		}
 	    else if (*str < 0x20 || *str > 0x7E)

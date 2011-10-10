@@ -695,9 +695,8 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	    if (str[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
 		{
 		/** UTF-8 encoded character, count entire encoded char as one. **/
-		str++;
 		n += 1.0;
-		while ((str[0] & 0xC0) == 0x80)
+		while ((str[1] & 0xC0) == 0x80)
 		    str++;
 		}
 	    else if (*str < 0x20 || *str > 0x7E)
