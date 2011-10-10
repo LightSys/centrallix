@@ -444,7 +444,8 @@ prt_internal_GetFontBaseline(pPrtObjStream obj)
 
 
 /*** prt_internal_GetStringWidth - obtain, via char metrics, the physical
- *** width of the given string of text.
+ *** width of the given string of text.  <n> is in bytes, not in characters
+ *** (this is singificant if the string is UTF-8 encoded).
  ***/
 double
 prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n)

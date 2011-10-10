@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <math.h>
+#include "centrallix.h"
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -359,8 +360,28 @@ void
 prt_textod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)
     {
     /*pPrtTextodInf context = (pPrtTextodInf)context_v;*/
-    *width = strlen((char*)str);
-    *height = 1;
+    double n = 0.0;
+    
+	while(*str)
+	    {
+	    if (str[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
+		{
+		/** UTF-8 encoded character, skip entire encoded char. **/
+		str++;
+		n += 1.0;
+		while ((str[0] & 0xC0) == 0x80)
+		    str++;
+		}
+	    else
+		{
+		str++;
+		n += 1.0;
+		}
+	    }
+
+	*width = n;
+	*height = 1;
+
     return;
     }
 

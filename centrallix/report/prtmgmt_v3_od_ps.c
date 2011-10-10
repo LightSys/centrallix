@@ -9,6 +9,7 @@
 #include <langinfo.h>
 #include <iconv.h>
 #include <errno.h>
+#include "centrallix.h"
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -691,7 +692,15 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	n = 0.0;
 	while(*str)
 	    {
-	    if (*str < 0x20 || *str > 0x7E)
+	    if (str[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
+		{
+		/** UTF-8 encoded character, count entire encoded char as one. **/
+		str++;
+		n += 1.0;
+		while ((str[0] & 0xC0) == 0x80)
+		    str++;
+		}
+	    else if (*str < 0x20 || *str > 0x7E)
 		{
 		/** No data for characters outside the range; assume 1.0 **/
 		n += 1.0;
