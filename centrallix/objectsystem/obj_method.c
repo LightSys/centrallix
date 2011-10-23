@@ -41,40 +41,6 @@
 /*		methods within objects.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_method.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_method.c,v $
-
-    $Log: obj_method.c,v $
-    Revision 1.4  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2004/06/15 19:43:03  gbeeley
-    - Fix for .c param not matching the .h param
-
-    Revision 1.2  2003/05/30 17:39:52  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.1.1.1  2001/08/13 18:00:58  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:00  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** objGetFirstMethod - get the name of the first method associated with

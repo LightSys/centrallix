@@ -277,7 +277,7 @@ function tbld_set_thumb(maxid, startat, maxwindowsize)
 
     // Set scrollbar visibility
     if (this.demand_scrollbar)
-	htr_setvisibility(this.scrollbar, (theight == tavail)?"hidden":"visible");
+	htr_setvisibility(this.scrollbar, (theight == tavail)?"hidden":"inherit");
     }
 
 function tbld_hide_unused_rows()
@@ -553,6 +553,7 @@ function tbld_instantiate_row(r)
 	    col.colnum=j;
 	    if(r==j&&j==0) this.down.m+='4a6f6 52048 657468 0d4c756b 652045';
 	    col.subkind='cell';
+	    col.table = this;
 	    col.colnum=j;
 	    col.xoffset = hoffset + this.innerpadding;
 	    moveTo(col, hoffset + this.innerpadding, this.innerpadding);
@@ -883,7 +884,7 @@ function tbld_mouseover(e)
             {
             ly=ly.cell.row;
             }
-	else if (ly.subkind == 'cell' || ly.subkind == 'headercell')
+	else if ((ly.subkind == 'cell' || ly.subkind == 'headercell') && (!ly.table || ly.table.cols[ly.colnum][3] != 'image'))
 	    {
 	    if (ly.clip_w < getdocWidth(ly) && ly.data)
 		ly.tipid = pg_tooltip(ly.data, e.pageX, e.pageY);
@@ -935,12 +936,17 @@ function tbld_contextmenu(e)
         {
         if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
             {
+	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
             if(ly.fg) ly=ly.fg;
 	    if(e.which == 3 && ly.table.ifcProbe(ifEvent).Exists("RightClick"))
 		{
 		var event = new Object();
 		event.Caller = ly.table;
+		if (orig_ly.subkind == 'cell')
+		    {
+		    event.Column = ly.table.cols[orig_ly.colnum][0];
+		    }
 		event.recnum = ly.recnum;
 		event.data = new Object();
 		event.X = e.pageX;
@@ -985,6 +991,7 @@ function tbld_mousedown(e)
             }
         if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
             {
+	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
             if(ly.fg) ly=ly.fg;
 	    if (ly.table.allowselect)
@@ -999,6 +1006,10 @@ function tbld_mousedown(e)
 		if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
 		    {
 		    var event = new Object();
+		    if (orig_ly.subkind == 'cell')
+			{
+			event.Column = ly.table.cols[orig_ly.colnum][0];
+			}
 		    event.Caller = ly.table;
 		    event.recnum = ly.recnum;
 		    event.data = new Object();
@@ -1030,6 +1041,10 @@ function tbld_mousedown(e)
 			ly.table.clicked[ly.recnum] = 0;
 			clearTimeout(ly.table.tid[ly.recnum]);
 			var event = new Object();
+			if (orig_ly.subkind == 'cell')
+			    {
+			    event.Column = ly.table.cols[orig_ly.colnum][0];
+			    }
 			event.Caller = ly.table;
 			event.recnum = ly.recnum;
 			event.data = new Object();
@@ -1145,3 +1160,6 @@ function tbld_mouseup(e)
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_table.js'] = true;

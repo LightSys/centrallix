@@ -21,3 +21,6 @@ function rl_init(node, ruletype, param)
 
     return node;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_rule.js'] = true;

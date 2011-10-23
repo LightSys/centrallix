@@ -33,3 +33,5 @@ function alrt_init(alrt)
     }
 
 
+// Load indication.
+if (window.pg_scripts) pg_scripts['htdrv_alerter.js'] = true;

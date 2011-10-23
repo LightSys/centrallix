@@ -43,20 +43,6 @@
 /*		when it comes to scrolling.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_multiscroll.c,v 1.1 2007/09/18 17:38:49 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_multiscroll.c,v $
-
-    $Log: htdrv_multiscroll.c,v $
-    Revision 1.1  2007/09/18 17:38:49  gbeeley
-    - (feature) stubbing out multiscroll widget.
-    - (change) adding capability to auto-position module to allow a container
-      to not resize its contents (horiz and/or vert) if the contents can be
-      scrolled.
-
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 

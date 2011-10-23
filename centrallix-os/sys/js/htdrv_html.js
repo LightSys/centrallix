@@ -297,3 +297,6 @@ function ht_init(param)
     pg_resize(l.parentLayer);
     return l;
     }    
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_html.js'] = true;

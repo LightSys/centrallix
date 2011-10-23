@@ -408,6 +408,23 @@ function ifEvent()
 	else if (pg_diag)
 	    alert("Hook event: " + this.obj.id + " does not implement event " + e);
 	}
+    function ifevent_unhook(e,f,t)
+	{
+	if (this.Events[e])
+	    {
+	    if (!t)
+		t = this.obj;
+	    for(var i=0; i<this.Events[e].length; i++) 
+		{
+		var eo2 = this.Events[e][i];
+		if (eo2.eo == t && eo2.name == e && eo2.fn == f)
+		    {
+		    this.Events[e].splice(i,1);
+		    break;
+		    }
+		}
+	    }
+	}
     function ifevent_activate(e,ep) //e = event (a string), ep = event parameters
 	{
 	var rval = null;
@@ -595,6 +612,7 @@ function ifEvent()
     this.Events = [];
     this.Add = ifevent_add;
     this.Hook = ifevent_hook;
+    this.UnHook = ifevent_unhook;
     this.Activate = ifevent_activate;
     this.Connect = ifevent_connect;
     this.Exists = ifevent_exists;
@@ -772,3 +790,6 @@ function ifFormElement(field)
     this.KeyInput = iffe_keyinput;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_iface.js'] = true;

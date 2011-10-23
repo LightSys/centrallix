@@ -11,6 +11,8 @@
 #include "stparse.h"
 #include "expression.h"
 #include "cxlib/magic.h"
+#include "cxlib/util.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,176 +48,6 @@
 /*		functions for the objectsystem.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_attr.c,v 1.19 2010/09/13 23:30:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
-
-    $Log: obj_attr.c,v $
-    Revision 1.19  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.18  2010/09/09 01:33:27  gbeeley
-    - (feature) adding cx__pathname and cx__pathpartN system attributes
-      which can be retrieved on an object.  Useful for when doing a WILDCARD
-      select and needing to find out what filled the wildcard spots in the
-      pathname.
-
-    Revision 1.17  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.16  2009/06/26 18:34:28  gbeeley
-    - (change) prevent virtual attributes from being added to an object if the
-      property already exists in the object itself
-    - (bugfix) runserver() expression fixes within OSML
-
-    Revision 1.15  2007/09/18 18:03:14  gbeeley
-    - (bugfix) when doing runserver() stuff in attributes, do not assume that
-      the underlying driver knows how to tell us that the "standard four"
-      attributes are all DATA_T_STRING.
-
-    Revision 1.14  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.13  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.12  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.11  2005/09/24 20:15:43  gbeeley
-    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
-      an attribute to an object which invokes callback functions to get the
-      attribute values, etc.
-    - Changing objLinkTo() to return the linked-to object (same thing that
-      got passed in, but good for style in reference counting).
-    - Cleanup of some memory leak issues in objOpenQuery()
-
-    Revision 1.10  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.9  2004/07/02 00:23:24  mmcgill
-    Changes include, but are not necessarily limitted to:
-        - fixed test_obj hints printing, added printing of hints to show command
-        to make them easier to read.
-        - added objDuplicateHints, for making deep copies of hints structures.
-        - made sure GroupID and VisualLength2 were set to their proper defualts
-          inf objPresentationHints() [obj_attr.c]
-        - did a bit of restructuring in the sybase OS driver:
-    	* moved the type conversion stuff in sybdGetAttrValue into a seperate
-    	  function (sybd_internal_GetCxValue, sybd_internal_GetCxType). In
-    	* Got rid of the Types union, made it an ObjData struct instead
-    	* Stored column lengths in ColLengths
-    	* Fixed a couple minor bugs
-        - Roughed out a preliminary hints implementation for the sybase driver,
-          in such a way that it shouldn't be *too* big a deal to add support for
-          user-defined types.
-
-    Revision 1.8  2004/06/12 04:02:28  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.7  2003/08/01 18:51:30  gbeeley
-    Move a little bit of work out of the osdrivers in GetAttrType.
-
-    Revision 1.6  2003/03/10 15:41:42  lkehresman
-    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
-    hints to the OSML.  To do this I had to:
-      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
-        is now located in utility/hints.c and the include is in include/hints.h.
-      * Added the presentation hints function to the CSV driver and called it
-        datPresentationHints() which returns a valid objPresentationHints object.
-      * Modified test_obj.c to fix a crash bug and reformatted the output to be
-        a little bit easier to read.
-      * Added utility/hints.c to Makefile.in (somebody please check and make sure
-        that I did this correctly).  Note that you will have to reconfigure
-        centrallix for this change to take effect.
-
-    Revision 1.5  2002/11/22 19:29:37  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2002/04/25 17:59:59  gbeeley
-    Added better magic number support in the OSML API.  ObjQuery and
-    ObjSession structures are now protected with magic numbers, and
-    support for magic numbers in Object structures has been improved
-    a bit.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:00:57  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:59  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** objAddVirtualAttr() - adds a virtual attribute to an open object.  The
@@ -467,7 +299,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    /** What is the max length? **/
 	    ptr = (char*)mssGetParam("textsize");
 	    if (!ptr) maxbytes = 65536;
-	    else maxbytes = strtol(ptr,NULL,0);
+	    else maxbytes = strtoi(ptr,NULL,0);
 
 	    /** Now read the content into the string. **/
 	    bytes = 0;

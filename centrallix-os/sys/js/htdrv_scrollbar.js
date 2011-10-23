@@ -235,3 +235,6 @@ function sb_mouseover(e)
     }
 
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_scrollbar.js'] = true;

@@ -107,7 +107,7 @@ function wgtrRemoveNamespace(ns)
 
 function wgtrUndefinedObject() { }
 
-function wgtrIsUndefined(v)
+function wgtrIsUndefined(prop)
     {
     return (typeof prop == 'object' && prop && prop.constructor == wgtrUndefinedObject);
     }
@@ -324,6 +324,17 @@ function wgtrGetNode(tree, node_name, type)
 	else if (pg_sessglobals[node_name])
 	    node = pg_sessglobals[node_name];
 	else
+	    {
+	    /** Search all pages in this session **/
+	    for(var win in window.pg_appwindows)
+		{
+		var w = window.pg_appwindows[win];
+		if (w && w.wobj && w.wobj.pg_sessglobals)
+		    node = w.wobj.pg_sessglobals[node_name];
+		if (node) break;
+		}
+	    }
+	if (!node)
 	    alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
 
 	// Indirect reference?
@@ -569,12 +580,24 @@ function wgtrDereference(r)
     if (!r || !r.split) return null;
     var n = r.split(":", 2);
     if (!n || !n[0] || !n[1]) return null;
-    if (!pg_namespaces[n[0]])
+    var ns = pg_namespaces[n[0]];
+    if (!ns)
+	{
+	// Look at other namespaces in other windows in this session.
+	for(var win in window.pg_appwindows)
+	    {
+	    var w = window.pg_appwindows[win];
+	    if (w && w.wobj && w.wobj.pg_namespaces)
+		ns = w.wobj.pg_namespaces[n[0]];
+	    if (ns) break;
+	    }
+	}
+    if (!ns)
 	{
 	alert('Application error: namespace "' + n[0] + '" is undefined');
 	return null;
 	}
-    return wgtrGetNode(pg_namespaces[n[0]], n[1]);
+    return wgtrGetNode(ns, n[1]);
     }
 
 function wgtrFind(v)
@@ -737,3 +760,6 @@ function wgtrFindInSubtree(subtree, cur_node, nodetype)
     return find_node;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_wgtr.js'] = true;

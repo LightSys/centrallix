@@ -345,12 +345,21 @@ function cx_hints_startnew(e)
 	// Set default all the time
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr) 
 	    {
-	    var _context = wgtrGetRoot(e);
-	    var _this = e;
-	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
-	    if (e.form) e.form.DataNotify(e);
+	    cx_hints_setdefault(e);
 	    }
 
+    return;
+    }
+
+// cx_hints_setdefault() - reset an element to its default value.
+function cx_hints_setdefault(e)
+    {
+
+	var _context = wgtrGetRoot(e);
+	var _this = e;
+	e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
+	if (e.form) e.form.DataNotify(e);
+    
     return;
     }
 
@@ -366,10 +375,7 @@ function cx_hints_startmodify(e)
 	// Set default only if 'alwaysdef' enabled
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr && (e.cx_hints['all'].Style & cx_hints_style.alwaysdef))
 	    {
-	    var _context = wgtrGetRoot(e);
-	    var _this = e;
-	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
-	    if (e.form) e.form.DataNotify(e);
+	    cx_hints_setdefault(e);
 	    }
 
     return;
@@ -431,3 +437,6 @@ function cx_hints_datavalue(e)
     return v;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_hints.js'] = true;

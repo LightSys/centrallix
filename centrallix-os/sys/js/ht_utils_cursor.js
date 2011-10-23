@@ -23,7 +23,7 @@ function ibeam_init()
 	    //text_metric.style.width = 24;
 	    text_metric.style.visibility = 'hidden';
 	    text_metric.style.position = 'absolute';
-	    text_metric.innerHTML = '<pre>xx</pre>';
+	    text_metric.innerHTML = '<pre>xxxxx</pre>';
 	    //setClip(text_metric, 0,16,32,0);
 	    document.body.appendChild(text_metric);
 	    }
@@ -32,7 +32,7 @@ function ibeam_init()
 	    // clip values will be written, each character (x) is 8px wide
 	    text_metric = new Layer(24);
 	    text_metric.visibility = 'hidden';
-	    text_metric.document.write('<pre>xx</pre>');
+	    text_metric.document.write('<pre>xxxxx</pre>');
 	    text_metric.document.close();
 	    }
 	    
@@ -56,7 +56,7 @@ function ibeam_init()
 	    }
 
 	text_metric.charHeight = getClipHeight(text_metric) - h1;
-	text_metric.charWidth = w2 - getClipWidth(text_metric);
+	text_metric.charWidth = (w2 - getClipWidth(text_metric)) / 4.0;
 	    
 	if (cx__capabilities.Dom1HTML)
 	    {
@@ -82,3 +82,6 @@ function ibeam_init()
 	    ibeam_current.document.layer = ibeam_current;
 	}
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_cursor.js'] = true;

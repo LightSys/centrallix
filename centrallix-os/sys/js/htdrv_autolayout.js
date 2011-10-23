@@ -14,3 +14,6 @@ function al_init(l, wparam)
     ifc_init_widget(l);
     return l;
     }
+
+// Load indication.
+if (window.pg_scripts) pg_scripts['htdrv_autolayout.js'] = true;

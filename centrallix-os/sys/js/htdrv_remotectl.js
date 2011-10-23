@@ -104,3 +104,6 @@ function ht_init(l,l2,source,pdoc,w,h,p)
     l.document.Layer = l;
     l2.document.Layer = l2;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_remotectl.js'] = true;

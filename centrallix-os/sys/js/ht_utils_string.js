@@ -148,3 +148,6 @@ function htutil_obscure(s)
     return new_s;
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_string.js'] = true;

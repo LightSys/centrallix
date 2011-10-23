@@ -36,10 +36,6 @@
 /* Description:								*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgthintVerify - allows the driver to check elsewhere in the tree
@@ -62,6 +58,7 @@ wgthintVerify(pWgtrVerifySession s)
 int
 wgthintNew(pWgtrNode node)
     {
+    node->Flags |= WGTR_F_NONVISUAL;
     return 0;
     }
 

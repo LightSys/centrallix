@@ -25,6 +25,7 @@
 #include "multiquery.h"
 #include "cxlib/magic.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -59,65 +60,6 @@
 /*		details.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_dbl.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_dbl.c,v $
-
-    $Log: objdrv_dbl.c,v $
-    Revision 1.7  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.6  2005/01/22 06:14:41  gbeeley
-    - don't depend on obj->Type during the open process, use systype passed
-      in to driver->Open.
-
-    Revision 1.5  2004/12/31 04:24:16  gbeeley
-    - DBL ISAM osdriver now can run SQL queries (readonly, no locking)
-      against the .ISM/.IS1 files.
-    - Changed primary mechanism for searching for a .def file for a given
-      .ism file - the node object specifies directories for the isam and
-      definition files.
-
-    Revision 1.4  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.3  2002/09/27 22:26:06  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.2  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.1  2002/07/29 17:47:36  kai5263499
-    Initial import of Greg's DBL object system driver...
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Module controls ***/
@@ -1690,7 +1632,7 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 	    {
 	    case DATA_T_INTEGER:
 		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		pod->Integer = strtol(ibuf, NULL, 10);
+		pod->Integer = strtoi(ibuf, NULL, 10);
 		break;
 	    case DATA_T_STRING:
 		pod->String = data;
@@ -1708,7 +1650,7 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 		break;
 	    case DATA_T_MONEY:
 		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		v = strtol(ibuf, NULL, 10);
+		v = strtoll(ibuf, NULL, 10);
 		f = 1;
 		for(i=0;i<column->DecimalOffset;i++) f *= 10;
 		pod->Money = (pMoneyType)data;

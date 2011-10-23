@@ -366,3 +366,6 @@ function moveBelow(lt, lb)
     	lt.parentLayer = lb.parentLayer;
         }
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_geom_dom0ie.js'] = true;

@@ -174,3 +174,6 @@ function ms_init(l, param)
 
     return l;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_multiscroll.js'] = true;

@@ -10,14 +10,28 @@ cancel_btn "widget/component-decl"
 	find_container = "widget/form";
 	}
 
+    osrc "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/osrc";
+	}
+
     object_name "widget/parameter"
 	{
 	type = "string";
 	default = "Record";
 	}
 
+    cancel_mode "widget/parameter"
+	{
+	type = "string";
+	default = "form";
+	}
+
     btnCancel "widget/imagebutton"
 	{
+	condition=runserver(:this:cancel_mode == "form");
+
 	x=0;y=0;
 	width=18;
 	height=18;
@@ -28,5 +42,21 @@ cancel_btn "widget/component-decl"
 	tooltip = "Cancel Changes";
 	enabled = runclient(:form:is_discardable);
 	cnCancel "widget/connector" { event="Click"; target=form; action="Discard"; }
+	}
+
+    btnCancelOsrc "widget/imagebutton"
+	{
+	condition=runserver(:this:cancel_mode == "osrc");
+
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico22a.gif";
+	pointimage="/sys/images/ico22b.gif";
+	clickimage="/sys/images/ico22c.gif";
+	disabledimage="/sys/images/ico22d.gif";
+	tooltip = "Cancel Changes";
+	enabled = runclient(:osrc:is_client_discardable);
+	cnCancel "widget/connector" { event="Click"; target=osrc; action="DiscardClients"; }
 	}
     }

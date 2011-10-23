@@ -1,7 +1,7 @@
 ####  Centrallix Makefile
 ####
 ####  LightSys Technology Services, Inc
-####  Copyright (C) 1998-2001.  All rights reserved.
+####  Copyright (C) 1998-2011.  All rights reserved.
 ####
 ####  If you're in this file looking for how to add a new objectsystem
 ####  driver to the build, add its .o file to the XOBJECTSYSTEM variable's
@@ -49,7 +49,7 @@ INSTALL_DATA = @INSTALL_DATA@
 GZIP = @GZIP@
 
 # VPATH - all the directories we manage.
-VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man:tests
 
 # Support modules -- only basic utilities.
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
@@ -96,6 +96,7 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_qytree.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
+	    objdrv_link.o \
 	    @OBJDRIVERS@
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
 
@@ -112,6 +113,7 @@ XV3OBJDRIVERS= \
 	      objdrv_qytree.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \
+	      objdrv_link.o \
 	      @OBJDRIVERS@
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
@@ -315,6 +317,9 @@ CONFFILES=centrallix.conf \
 	  types.cfg \
 	  useragent.cfg
 
+# testobj-driven test files
+TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
+
 # Some basic build parameters.
 PROFILE=@PROFILE@
 BUILD=$(shell cat .build)
@@ -348,8 +353,10 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY: clean distclean distreallyclean
 .PHONY:	manpages
 .PHONY:	manpages_install
+.PHONY:	test_install
+.PHONY:	test
 
-all:	centrallix mods config manpages
+all:	centrallix mods config manpages cxpasswd
 
 centrallix.o: $(V3LSOBJS) centrallix.c
 
@@ -362,10 +369,14 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	#@rm centrallix.o
 	@echo ''
 
+cxpasswd: cxpasswd.o $(STATIC_LIBS) $(CXSSMODS)
+	$(CC) cxpasswd.o $(CXSSMODS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+
 install: all config_install modules_install manpages_install
 	@mkdir -p "$(sbindir)"
 	@mkdir -p "$(sysconfdir)"
 	@$(INSTALL) centrallix "$(sbindir)"
+	@$(INSTALL) cxpasswd "$(sbindir)"
 
 manpages: $(MANPAGES)
 
@@ -421,6 +432,31 @@ test_install: test_obj test_prt
 	mkdir -p "$(bindir)"
 	$(INSTALL) -m 755 test_obj "$(bindir)"
 	$(INSTALL) -m 755 test_prt "$(bindir)"
+	$(INSTALL) -m 644 tests/cxpasswd-test "$(sysconfdir)/centrallix/cxpasswd-test"
+
+test: test_install $(TOTESTFILES)
+	@printf "%-62.62s  %s\n" "Test Name" "Stat"
+	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
+	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
+	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
+	    	TOBASE="$${TOFILE%.to}"; \
+		TONAME=$$(cat $$TOBASE.desc); \
+		TOSIMPLE="$${TOBASE#tests/test_}"; \
+		/bin/rm -f "$$PWD/$$TOBASE.out"; \
+	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3; \
+		RET="$$?"; \
+		if [ "$$RET" -eq 142 ]; then \
+		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "LOCKUP"; \
+		elif [ "$$RET" -gt 120 ]; then \
+		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "CRASH"; \
+		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
+		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "Pass"; \
+		else \
+		    diff -U3 -N "$$TOBASE.cmp" "$$TOBASE.out"; \
+		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "FAIL"; \
+		fi; \
+	    fi \
+	done 
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
@@ -488,6 +524,7 @@ clean:
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
 	@rm -f man/*.gz
+	@rm -f tests/*.to.tmp tests/*.out
 
 distclean: clean
 	@rm -f config.status config.cache config.log

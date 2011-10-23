@@ -36,10 +36,42 @@
 /* Description:								*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
 
- **END-CVSDATA***********************************************************/
+
+int
+wgttab_internal_SetTabpageGeom(pWgtrNode tab, pWgtrNode container)
+    {
+    int i=0;
+    int count = xaCount(&(container->Children));
+    pWgtrNode child;
+
+	    for(i=0; i<count; ++i)	//loop through tab children
+	        {
+		    child = (pWgtrNode)(xaGetItem(&(container->Children), i));
+		    if(!strcmp(child->Type, "widget/tabpage"))
+		        {
+			    /** Set geometry of tabpage, based on the tab control itself **/
+			    child->r_x = child->r_y = 0;
+			    child->r_width = tab->r_width;
+			    child->r_height = tab->r_height;
+			    child->pre_width = tab->pre_width;
+			    child->pre_height = tab->pre_height;
+			    child->min_width = tab->min_width;
+			    child->min_height = tab->min_height;
+			
+			    child->x = child->y = 0;
+			    child->width = tab->width;
+			    child->height = tab->height;
+		        }
+		    else if ((child->Flags & WGTR_F_NONVISUAL) && (child->Flags & WGTR_F_CONTAINER))
+			{
+			    /** Might be more tabpages within a nonvisual container like widget/repeat **/
+			    wgttab_internal_SetTabpageGeom(tab, child);
+			}
+		}
+
+    return 0;
+    }
 
 
 /*** wgttabVerify - allows the driver to check elsewhere in the tree
@@ -57,29 +89,9 @@ wgttabVerify(pWgtrVerifySession s)
      *** positioning.
      ***/
     pWgtrNode tab = s->CurrWidget;
-    pWgtrNode tabpage;
-    int i=0;
-    int count = xaCount(&(tab->Children));
     
 	if(!strcmp(tab->Type, "widget/tab"))
-	    for(i=0; i<count; ++i)	//loop through tabpage children
-	        {
-		    tabpage = (pWgtrNode)(xaGetItem(&(tab->Children), i));
-		    if(!strcmp(tabpage->Type, "widget/tabpage"))
-		        {
-			    tabpage->r_x = tabpage->r_y = 0;
-			    tabpage->r_width = tab->r_width;
-			    tabpage->r_height = tab->r_height;
-			    tabpage->pre_width = tab->pre_width;
-			    tabpage->pre_height = tab->pre_height;
-			    tabpage->min_width = tab->min_width;
-			    tabpage->min_height = tab->min_height;
-			
-			    tabpage->x = tabpage->y = 0;
-			    tabpage->width = tab->width;
-			    tabpage->height = tab->height;
-		        }
-		}
+	    wgttab_internal_SetTabpageGeom(tab, tab);
 	    
     return 0;
     }

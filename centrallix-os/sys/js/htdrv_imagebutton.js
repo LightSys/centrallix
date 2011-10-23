@@ -246,3 +246,6 @@ function ib_init(param)
 	l.curmode = 'd';
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_imagebutton.js'] = true;

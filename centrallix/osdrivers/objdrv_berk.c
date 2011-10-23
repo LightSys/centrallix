@@ -11,7 +11,7 @@
 #include <time.h>
 #include <db.h>
 #include "centrallix.h"
-
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,45 +45,6 @@
 /************************************************************************/
 
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_berk.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_berk.c,v $
-
-    $Log: objdrv_berk.c,v $
-    Revision 1.4  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2004/06/11 21:06:57  mmcgill
-    Did some code tree scrubbing.
-
-    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
-    xxxExecuteMethod() to use pObjData as the type for val (or param in
-    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
-    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
-    overflow in objdrv_shell.c (line 1046).
-
-    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
-    broken as of right now.
-
-    It should be noted that I haven't actually built the audio or Berkeley
-    drivers, so I *could* have messed up, but they look ok. The others
-    compiled, and passed a cursory testing.
-
-    Revision 1.2  2003/08/13 14:45:55  affert
-    Added a new attribute ('transdata') to allow data to be entered in hex
-    translated form.  This is a temporary solution to the problem of allowing
-    null bytes in a string attribute.
-    Also fixed a few small bugs and updated some comments.
-
-    Revision 1.1  2003/08/05 16:45:12  affert
-    Initial Berkeley DB support.
-
-
- **END-CVSDATA***********************************************************/
 
 
 #define	    BERK_TYPE_FILE	0
@@ -221,9 +182,9 @@ berkInternalHexToKey(void* dest, char* src, int dL, int sL)
     for(i=0;src[i]&&i<sL;i+=2)
 	{
 	c[0]  = src[i];
-	value = strtol(c, NULL, 16) << 4;
+	value = strtoi(c, NULL, 16) << 4;
 	c[0]  = src[i+1];
-	value+= strtol(c, NULL, 16);
+	value+= strtoi(c, NULL, 16);
 	((char*)dest)[((int)(i/2))]=(char)value;
 	}
     if(i > sL)

@@ -58,3 +58,6 @@ function cx_info_extract_str(a)
     /*var arr = a.split(":");
     return arr[2];*/
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_utils_info.js'] = true;

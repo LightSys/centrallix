@@ -449,3 +449,6 @@ function terminal_init(param)
 
     return term;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_terminal.js'] = true;

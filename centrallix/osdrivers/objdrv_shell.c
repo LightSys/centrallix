@@ -50,12 +50,6 @@
 /*									*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_shell.c,v 1.13 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/

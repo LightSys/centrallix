@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/util.h"
 #include "cxlib/exception.h"
 #include "obj.h"
 #include "stparse.h"
@@ -43,47 +44,6 @@
 /*		stdout for use with existing webservers.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_cgi.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_cgi.c,v $
-
-    $Log: net_cgi.c,v $
-    Revision 1.4  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2004/02/24 20:25:41  gbeeley
-    - misc changes: runclient check in evaltree in stparse, eval() function
-      rejected in sybase driver, update version in centrallix.conf, .cmp
-      extension added for component-decl in types.cfg
-
-    Revision 1.2  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:00:56  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:21  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** This is used to keep track of user/password/cookie information ***/
@@ -422,7 +382,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 		        /*if (search_inf->StrVal == NULL)
 		            n = search_inf->IntVal[0];
 		        else*/
-		            n = strtol(search_inf->StrVal, NULL, 10);
+		            n = strtoi(search_inf->StrVal, NULL, 10);
 		        objSetAttrValue(obj, search_inf->Name, &n);
 			break;
 
@@ -655,7 +615,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    type = objGetAttrType(target_obj, sub_inf->Name);
 	    if (type == DATA_T_INTEGER)
 	        {
-		v = strtol(sub_inf->StrVal,NULL,10);
+		v = strtoi(sub_inf->StrVal,NULL,10);
 		objSetAttrValue(target_obj, sub_inf->Name, &v);
 		}
 	    else if (type == DATA_T_STRING)

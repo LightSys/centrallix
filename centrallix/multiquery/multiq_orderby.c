@@ -42,24 +42,6 @@
 /* Description:	Provides support for high-level ORDER BY.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiq_orderby.c,v 1.1 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_orderby.c,v $
-
-    $Log: multiq_orderby.c,v $
-    Revision 1.1  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** High-level ORDER BY
@@ -318,7 +300,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
     pMQOData context;
     pMqobOrderable item;
     pParamObjects objlist;
-    int i, n;
+    int n;
     int rval = -1;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
@@ -394,7 +376,7 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
     pMQOData context = (pMQOData)(qe->PrivateData);
     pMqobOrderable item;
     pParamObjects objlist;
-    int i,j;
+    int i;
 
 	if (context)
 	    {

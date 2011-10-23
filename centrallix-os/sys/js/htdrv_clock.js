@@ -150,3 +150,6 @@ function cl_mousemove(e) {
 	}
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_clock.js'] = true;

@@ -31,45 +31,6 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_http_conn.c,v 1.6 2010/09/17 15:45:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
-
-    $Log: net_http_conn.c,v $
-    Revision 1.6  2010/09/17 15:45:29  gbeeley
-    - (security) implement X-Frame-Options anti-clickjacking countermeasure
-
-    Revision 1.5  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.4  2010/09/09 01:29:00  gbeeley
-    - (change) ignore SIGPIPE from broken TCP connection from the user.
-
-    Revision 1.3  2009/06/26 18:31:03  gbeeley
-    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
-      like test_obj does
-    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
-    - (change) some refactoring of error message handlers to clean things
-      up a bit
-    - (feature) adding last_activity to session objects (for sysinfo)
-    - (feature) parameterized OSML SQL queries over the http interface
-
-    Revision 1.2  2008/08/16 00:31:38  thr4wn
-    I made some more modification of documentation and begun logic for
-    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
-
-    Revision 1.1  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-
- **END-CVSDATA***********************************************************/
  
  /*** nht_internal_AllocConn() - allocates a connection structure and
  *** initializes it given a network connection.
@@ -521,7 +482,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** Need to start an available connection completion trigger on this? **/
 	if ((find_inf=stLookup_ne(url_inf,"ls__triggerid")))
 	    {
-	    tid = strtol(find_inf->StrVal,NULL,0);
+	    tid = strtoi(find_inf->StrVal,NULL,0);
 	    nht_internal_StartTrigger(conn->NhtSession, tid);
 	    }
 

@@ -47,230 +47,6 @@
 /*		methods, including open/close/create/delete.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_object.c,v 1.31 2010/09/09 01:40:10 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
-
-    $Log: obj_object.c,v $
-    Revision 1.31  2010/09/09 01:40:10  gbeeley
-    - (security) prevent conversion of %00 to a \0 character in the filename
-      component (path part)
-    - (bugfix) object caching problem in ProcessOpen
-
-    Revision 1.30  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.29  2008/04/06 20:37:36  gbeeley
-    - (change) adding obj_internal_FreePathStruct() to deinitialize a pathname
-      structure without actually freeing it (e.g. if the pathname structure is
-      a part of a larger structure).
-
-    Revision 1.28  2007/09/18 18:07:18  gbeeley
-    - (bugfix) off-by-one error in checking for whether we've chomped the entire
-      pathname with drivers when opening a new object.
-
-    Revision 1.27  2007/06/09 19:53:46  gbeeley
-    - (feature) adding objGetPathname() method to return the full path of an
-      object that is already open.
-
-    Revision 1.26  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.25  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.24  2005/10/18 22:48:59  gbeeley
-    - (bugfix) logic for autoname detection of "*" should be done after
-      the path is parsed into path elements.
-
-    Revision 1.23  2005/09/24 20:15:43  gbeeley
-    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
-      an attribute to an object which invokes callback functions to get the
-      attribute values, etc.
-    - Changing objLinkTo() to return the linked-to object (same thing that
-      got passed in, but good for style in reference counting).
-    - Cleanup of some memory leak issues in objOpenQuery()
-
-    Revision 1.22  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.21  2005/01/22 06:15:16  gbeeley
-    - I broke it.  This fixes it back.
-
-    Revision 1.20  2004/12/31 04:39:51  gbeeley
-    - I think this is what we want.  make sure Type is set correctly on
-      object open, even when openas is not used.
-
-    Revision 1.19  2004/08/27 01:28:32  jorupp
-     * cleaning up some compile warnings
-
-    Revision 1.18  2004/06/22 16:06:53  mmcgill
-    Added the flag OBJ_F_NOCACHE, which a driver can set in its xxxOpen call
-    to tell OSML not to add the opened object to the Directory Cache.
-
-    Revision 1.17  2004/06/12 04:02:28  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.16  2004/02/25 19:59:57  gbeeley
-    - fixing problem in net_http; nht_internal_GET should not open the
-      target_obj when operating in OSML-over-HTTP mode.
-    - adding OBJ_O_AUTONAME support to sybase driver.  Uses select max()+1
-      approach for integer fields which are left unspecified.
-
-    Revision 1.15  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.14  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.13  2003/08/01 15:53:07  gbeeley
-    Fix for objDelete on certain types of data sources which rely on the
-    writability of obj->Prev during delete operations.
-
-    Revision 1.12  2003/07/07 20:29:21  affert
-    Fixed a bug.
-
-    Revision 1.11  2003/05/30 17:39:52  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.10  2003/04/25 04:09:29  gbeeley
-    Adding insert and autokeying support to OSML and to CSV datafile
-    driver on a limited basis (in rowidkey mode only, which is the only
-    mode currently supported by the csv driver).
-
-    Revision 1.9  2003/04/25 02:43:28  gbeeley
-    Fixed some object open nuances with node object caching where a cached
-    object might be open readonly but we would need read/write.  Added a
-    xhandle-based session identifier for future use by objdrivers.
-
-    Revision 1.8  2003/04/24 19:28:12  gbeeley
-    Moved the OSML open node object cache to the session level rather than
-    global.  Otherwise, the open node objects could be accessed by the
-    wrong user in the wrong session context, which is, er, "bad".
-
-    Revision 1.7  2003/04/03 21:41:08  gbeeley
-    Fixed xstring modification problem in test_obj as well as const path
-    modification problem in the objOpen process.  Both were causing the
-    cxsec stuff in xstring to squawk.
-
-    Revision 1.6  2003/03/31 23:23:40  gbeeley
-    Added facility to get additional data about an object, particularly
-    with regard to its ability to have subobjects.  Added the feature at
-    the driver level to objdrv_ux, and to the "show" command in test_obj.
-
-    Revision 1.5  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.4  2002/04/25 17:59:59  gbeeley
-    Added better magic number support in the OSML API.  ObjQuery and
-    ObjSession structures are now protected with magic numbers, and
-    support for magic numbers in Object structures has been improved
-    a bit.
-
-    Revision 1.3  2002/03/23 05:09:16  gbeeley
-    Fixed a logic error in net_http's ls__startat osml feature.  Improved
-    OSML error text.
-
-    Revision 1.2  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:00  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** obj_internal_IsA - determines the possible relationship between two
@@ -304,7 +80,7 @@ obj_internal_IsA(char* type1, char* type2)
 	    {
 	    if (t2 == (pContentType)(t1->RelatedTypes.Items[i]))
 	        {
-		l = (int)(t1->RelationLevels.Items[i]);
+		l = (intptr_t)(t1->RelationLevels.Items[i]);
 		break;
 		}
 	    }
@@ -406,7 +182,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 			/** the pointers.  We convert the offsets to pointers later.  The +1 below is **/
 			/** because otherwise the first pointer is at offset 0, which will be interpreted **/
 			/** incorrectly. **/
-			inf->StrVal = (void*)(pathinfo->OpenCtlCnt+1);
+			inf->StrVal = (void*)(intptr_t)(pathinfo->OpenCtlCnt+1);
 			inf->StrAlloc = 0;
 			ptr++;
 			for(endptr=ptr;*endptr != '\0' && *endptr != '&';endptr++);
@@ -585,6 +361,53 @@ obj_internal_DiscardDC(pXHashQueue xhq, pXHQElement xe, int locked)
     }
 
 
+/*** obj_internal_TypeFromSfHeader - try to determine the type from an
+ *** object with content that is possibly a structure file.  We only return
+ *** a type here if the object is a structure file and only if that structure
+ *** file has a valid type in its top level group.
+ ***/
+pContentType
+obj_internal_TypeFromSfHeader(pObject obj)
+    {
+    char read_buf[16];
+    int cnt, rval;
+    char type_buf[64];
+    pContentType type;
+
+	/** Read in the first bit of the object. **/
+	if ((cnt=objRead(obj, read_buf, sizeof(read_buf)-1, 0, OBJ_U_SEEK)) <= 0)
+	    return NULL;
+	read_buf[cnt] = '\0';
+
+	/** Reset file seek pointer **/
+	objRead(obj, read_buf, 0, 0, OBJ_U_SEEK);
+
+	/** Is it a structure file? **/
+	if (strncmp(read_buf, "$Version=2$", 11) != 0)
+	    return NULL;
+
+	/** Ok, looks like a structure file.  Try to parse it enough to find
+	 ** the toplevel group type.
+	 **/
+	rval = stProbeTypeGeneric(obj, objRead, type_buf, sizeof(type_buf));
+	objRead(obj, read_buf, 0, 0, OBJ_U_SEEK);
+	if (rval < 0)
+	    return NULL;
+
+	/** Do we have a valid type? **/
+	type = (pContentType)xhLookup(&OSYS.Types, (void*)type_buf);
+	if (!type)
+	    return NULL;
+
+	/** Is the type a subtype of system/structure? **/
+	rval = obj_internal_IsA(type->Name, "system/structure");
+	if (rval == OBJSYS_NOT_ISA || rval < 0)
+	    return NULL;
+
+    return type;
+    }
+
+
 /*** obj_internal_TypeFromName - determine the apparent content type of
  *** an object given its name.
  ***/
@@ -642,13 +465,14 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pStruct inf;
     char* name;
     char* type;
-    pContentType apparent_type,ck_type = NULL,orig_ck_type;
+    pContentType apparent_type,ck_type = NULL,orig_ck_type, sf_type;
     pObjDriver drv;
     pDirectoryCache dc = NULL;
     pXHQElement xe;
     char prevname[256];
     int used_openas;
     pObject cached_obj = NULL;
+    pObjectInfo obj_info;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -687,7 +511,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    for(i=0;i<pathinfo->OpenCtl[j]->nSubInf;i++)
 	        {
 	        inf = pathinfo->OpenCtl[j]->SubInf[i];
-	        if (inf->StrVal) inf->StrVal = pathinfo->OpenCtlBuf + (((int)(inf->StrVal)) - 1);
+	        if (inf->StrVal) inf->StrVal = pathinfo->OpenCtlBuf + (((intptr_t)(inf->StrVal)) - 1);
 		}
 	    }
 
@@ -789,7 +613,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** intermediate object's name, and the SubCnt of the previous obj was 1. **/
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
-		apparent_type = obj_internal_TypeFromName(name);
+		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
+		obj_info = objInfo(this);
+		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
+		    {
+		    apparent_type = obj_internal_TypeFromName(name);
+		    }
 		}
 
 	    strcpy(prevname, name);
@@ -810,6 +639,22 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    v = obj_internal_IsA(type, apparent_type->Name);
 	    if (v < 0 || v == OBJSYS_NOT_ISA) ck_type = apparent_type;
 	    else ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
+
+	    /** If our type is only application/octet-stream, try to determine
+	     ** a more specific type by testing to see if the object is a
+	     ** structure file (looking for $Version=2$) and pulling the type
+	     ** out of the structure file toplevel group.
+	     **/
+	    if (!strcmp(ck_type->Name, "application/octet-stream"))
+		{
+		sf_type = obj_internal_TypeFromSfHeader(this);
+		if (sf_type)
+		    {
+		    /** Found a structure file with a valid type in its header.
+		     **/
+		    ck_type = sf_type;
+		    }
+		}
 
 	    /** Check for ls__type "open-as" processing **/
 	    used_openas = 0;
@@ -940,97 +785,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 
     return this;
     }
-
-#if 00
-/*** obj_internal_GetDriver - determine the driver for a top-level file
- *** given the filename (determine via the file's extension) and stat()
- *** information in the directory cache structure.
- ***/
-pObjDriver
-obj_internal_GetDriver(pDirectoryCache dc_info)
-    {
-    pObjDriver drv = NULL;
-    pContentType ct;
-    char* dot_ptr;
-    char* slash_ptr;
-    char sbuf[256];
-    pFile fd;
-    int cnt;
-
-	/** Does this file have an extension? **/
-	dot_ptr = strrchr(dc_info->Pathname,'.');
-	if (dot_ptr)
-	    {
-	    /** Not an extension if '/' comes after the '.' **/
-	    if (strchr(dot_ptr,'/')) dot_ptr = NULL;
-	    }
-
-	/** If extension, we can lookup the driver directly. **/
-	if (dot_ptr)
-	    {
-	    dc_info->Type = (pContentType)xhLookup(&(OSYS.TypeExtensions),dot_ptr+1);
-	    if (dc_info->Type)
-		{
-	        drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),dc_info->Type->Name);
-		}
-	    }
-
-	/** Did we find the driver yet?  If not, can't depend on .ext **/
-	if (!drv)
-	    {
-	    /** Was the thing a directory?  If not, look for a .type file **/
-	    if (!(S_ISDIR((dc_info->fileinfo.st_mode))))
-		{
-		slash_ptr = strrchr(dc_info->Pathname,'/');
-		if (slash_ptr)
-		    {
-		    *slash_ptr = '\0';
-		    if ((slash_ptr - dc_info->Pathname) + 6 <= 255)
-			{
-			sprintf(sbuf,"%s/.type",dc_info->Pathname);
-			if (access(sbuf,F_OK) == 0)
-			    {
-			    fd = fdOpen(sbuf,O_RDONLY,0600);
-			    if (fd)
-				{
-				if ((cnt=fdRead(fd,sbuf,64,0,0)) > 0)
-				    {
-				    sbuf[cnt] = 0;
-				    if (strchr(sbuf,'\n')) *(strchr(sbuf,'\n')) = 0;
-				    dc_info->Type = (pContentType)xhLookup(&(OSYS.Types),sbuf);
-				    if (dc_info->Type) 
-					drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),sbuf);
-				    }
-				fdClose(fd,0);
-				}
-			    }
-			}
-		    *slash_ptr = '/';
-		    }
-
-		/** Was not a directory and still didn't find driver? **/
-		if (!drv)
-		    {
-		    /** Get default plain file driver. **/
-		    dc_info->Flags &= ~DC_F_ISDIR;
-		    dc_info->Type = (pContentType)xhLookup(&(OSYS.Types),"system/directory");
-		    if (dc_info->Type)
-			drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),"system/directory");
-		    }
-		}
-	    else
-		{
-		/** Was a directory.  Get directory driver. **/
-		dc_info->Flags |= DC_F_ISDIR;
-		dc_info->Type = (pContentType)xhLookup(&(OSYS.Types),"system/file");
-		if (dc_info->Type)
-		    drv = (pObjDriver)xhLookup(&(OSYS.DriverTypes),"system/file");
-		}
-	    }
-
-    return drv;
-    }
-#endif
 
 
 /*** obj_internal_NormalizePath - construct a completed normalized path
@@ -1319,129 +1073,6 @@ obj_internal_RenamePath(pPathname path, int element_id, char* new_element)
     }
 
 
-#if 00
-/*** obj_internal_ProcessPath - handles the preprocessing needs for the
- *** Open, Create, and Delete calls.  Determines the driver, content type,
- *** does the directory cache lookup, and so forth.
- ***/
-pObject
-obj_internal_ProcessPath(pObjSession session,char* path,int mode,char* type)
-    {
-    pObject this;
-    pDirectoryCache dc_ptr,del;
-    int l,i;
-    char* ptr;
-    struct stat fileinfo;
-
-	/** Go ahead and memory alloc the object **/
-	this = (pObject)nmMalloc(sizeof(Object));
-	if (!this) return NULL;
-	this->ContentPtr = NULL;
-
-	/** Normalize the path, possibly adding the CWD. **/
-	this->Pathname = obj_internal_NormalizePath(session->CurrentDirectory, path);
-	if (!(this->Pathname)) return NULL;
-
-	/** Ok, start looking in the directory cache for each directory prefix. **/
-	for(dc_ptr=NULL,i=this->Pathname->nElements;i;i--)
-	    {
-	    ptr = obj_internal_PathPart(this->Pathname,0,i);
-	    dc_ptr = (pDirectoryCache)xhLookup(&(OSYS.DirectoryCache),ptr);
-	    if (dc_ptr) 
-		{
-		this->SubPtr = i;
-		OSYS.UseCnt++;
-		dc_ptr->last_use = OSYS.UseCnt;
-		break;
-		}
-	    if (stat(ptr,&fileinfo) == 0)
-	        {
-	        /** Allocate a directory cache info structure **/
-	        dc_ptr = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
-	        if (!dc_ptr) 
-		    {
-		    nmFree(this->Pathname,sizeof(Pathname));
-		    nmFree(this,sizeof(Object));
-		    return NULL;
-		    }
-	        memset(dc_ptr,0,sizeof(DirectoryCache));
-
-		/** Setup the dc ptr structure **/
-		strcpy(dc_ptr->Pathname, ptr);
-		this->SubPtr = i;
-		memcpy(&(dc_ptr->fileinfo),&fileinfo,sizeof(struct stat));
-
-	        /** Found a top-level file.  Find its driver. **/
-	        dc_ptr->Driver = obj_internal_GetDriver(dc_ptr);
-	        if (!dc_ptr->Driver)
-		    {
-		    nmFree(dc_ptr,sizeof(DirectoryCache));
-		    nmFree(this->Pathname,sizeof(Pathname));
-		    nmFree(this,sizeof(Object));
-		    return NULL;
-		    }
-		break;
-		}
-	    }
-
-	/** If not cached, look for the driver linkage file. **/
-	if (!dc_ptr)
-	    {
-	    nmFree(this->Pathname,sizeof(Pathname));
-	    nmFree(this,sizeof(Object));
-	    return NULL;
-	    }
-
-	/** Returned directory driver and user requested create? **/
-	/** Also make sure user wanted a file _in_ the directory **/
-	if ((mode & O_CREAT) && this->SubPtr == this->Pathname->nElements-1 && 
-	    (dc_ptr->Flags & DC_F_ISDIR))
-	    {
-	    /** Ok, try and use user's content type. **/
-	    dc_ptr->Driver = (pObjDriver)xhLookup(&(OSYS.DriverTypes),type);
-	    if (!dc_ptr->Driver)
-	        {
-	        nmFree(dc_ptr,sizeof(DirectoryCache));
-		nmFree(this->Pathname,sizeof(Pathname));
-	        nmFree(this,sizeof(Object));
-	        return NULL;
-	        }
-	    this->SubPtr = this->Pathname->nElements;
-	    }
-
-	/** Got the driver. **/
-	this->Driver = dc_ptr->Driver;
-	this->Type = dc_ptr->Type;
-
-	/** Cache it if new **/
-	if (dc_ptr->last_use == 0)
-	    {
-	    if (OSYS.DirectoryQueue.nItems >= 1024)
-	        {
-		del = ((pDirectoryCache)(OSYS.DirectoryQueue.Items[0]));
-	        xhRemove(&(OSYS.DirectoryCache),del->Pathname);
-	        xaRemoveItem(&(OSYS.DirectoryQueue),0);
-		nmFree(del,sizeof(DirectoryCache));
-	        }
-	    dc_ptr->last_use = (OSYS.UseCnt++);
-	    xaAddItem(&(OSYS.DirectoryQueue),(char*)dc_ptr);
-	    xhAdd(&(OSYS.DirectoryCache), dc_ptr->Pathname, (char*)dc_ptr);
-	    }
-
-	/** Driver requested transactions? **/
-	if ((this->Driver->Capabilities & OBJDRV_C_TRANS) && OSYS.TransLayer)
-	    {
-	    this->LowLevelDriver = this->Driver;
-	    this->Driver = OSYS.TransLayer;
-	    }
-
-	obj_internal_PathPart(this->Pathname,0,0);
-
-    return this;
-    }
-#endif
-
-
 /*** objOpen - open an object for access to its content, attributes, and
  *** methods.  Optionally create a new object.  Open 'mode' uses flags
  *** like the UNIX open() call.
@@ -1456,21 +1087,10 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%p, \"%s\") = ", session, path);
 
 	/** Lookup the path, etc. **/
-	/*this = obj_internal_ProcessPath(session, path, mode, type);*/
 	this = obj_internal_ProcessOpen(session, path, mode, permission_mask, type);
 	if (!this) return NULL;
-	/*this->Mode = mode;*/ /* GRB ProcessOpen does this for us */
 	this->Obj = NULL;
 	this->Session = session;
-	/*this->LinkCnt = 1;*/
-
-	/** Ok, got the driver.  Now pass along the open() call. **/
-	/*this->Data = this->Driver->Open(this,permission_mask,this->Type,type,&(session->Trx));
-	if (!this->Data)
-	    {
-	    obj_internal_FreeObj(this);
-	    return NULL;
-	    }*/
 
 	/** Add to open objects this session. **/
 	xaAddItem(&(session->OpenObjects),(void*)this);
@@ -1572,7 +1192,6 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
     pObject tmp;
 
 	/** Lookup the directory path. **/
-	/*tmp = obj_internal_ProcessPath(session, path, O_CREAT, type);*/
 	tmp = obj_internal_ProcessOpen(session, path, O_CREAT | O_EXCL, permission_mask, type);
 	if (!tmp) 
 	    {
@@ -1600,26 +1219,39 @@ int
 objDelete(pObjSession session, char* path)
     {
     pObject tmp;
-	
+    int rval;
+
 	/** Lookup the directory path. **/
-	/*tmp = obj_internal_ProcessPath(session, path, 0, "");*/
 	tmp = obj_internal_ProcessOpen(session, path, O_RDWR, 0, "");
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to delete object - pathname invalid");
 	    return -1;
 	    }
+	tmp->Obj = NULL;
+	tmp->Session = session;
 
-	/** Pass along the delete call. **/
-	if (tmp->Driver->Delete(tmp, &(session->Trx)) <0) 
+	/** If driver supports newer objDeleteObj call, use that
+	 ** instead of objDelete.
+	 **/
+	if (tmp->Driver->DeleteObj)
 	    {
-	    obj_internal_FreeObj(tmp);
-	    return -1;
+	    /** New driver->DeleteObj() will be called on close **/
+	    tmp->Flags |= OBJ_F_DELETE;
+	    rval = 0;
+	    }
+	else
+	    {
+	    /** Pass along the old version of the delete call. **/
+	    rval = tmp->Driver->Delete(tmp, &(session->Trx));
+	    tmp->Data = NULL;
 	    }
 
-	obj_internal_FreeObj(tmp);
+	/** Clean up.  For DeleteObj(), this actually does the work. **/
+	if (obj_internal_FreeObj(tmp) < 0)
+	    rval = -1;
 
-    return 0;
+    return rval;
     }
 
 
@@ -1673,4 +1305,22 @@ objGetPathname(pObject this)
     ASSERTMAGIC(this,MGK_OBJECT);
     return (obj_internal_PathPart(this->Pathname, 0, 0) + 1); 
     }
+
+/*((pDirectoryCache)((pObjSession)(OSYS.OpenSessions.Items[0]))->DirectoryCache.Queue.Next->Next->Next->Next->Next->Next->Next->DataPtr)->Pathname*/
+void
+obj_internal_DumpDC(pObjSession session)
+    {
+    pXHQElement xe = session->DirectoryCache.Queue.Next;
+    pDirectoryCache dc;
+
+	while (xe && xe != &(session->DirectoryCache.Queue))
+	    {
+	    dc = xe->DataPtr;
+	    xe = xe->Next;
+	    printf("%s\n", dc->Pathname);
+	    }
+	    
+    return;
+    }
+
 

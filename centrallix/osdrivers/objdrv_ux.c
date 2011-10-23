@@ -52,134 +52,6 @@
 /* Description:	UNIX filesystem objectsystem driver.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_ux.c,v 1.16 2005/09/24 20:19:18 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
-
-    $Log: objdrv_ux.c,v $
-    Revision 1.16  2005/09/24 20:19:18  gbeeley
-    - Adding "select ... from subtree /path" support to the SQL engine,
-      allowing the retrieval of an entire subtree with one query.  Uses
-      the new virtual attr support to supply the relative path of each
-      retrieved object.  Much the reverse of what a querytree object can
-      do.
-    - Memory leak fixes in multiquery.c
-    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
-
-    Revision 1.15  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.14  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.13  2004/05/04 18:20:15  gbeeley
-    - Another fix for the RDONLY vs RDWR issue
-
-    Revision 1.12  2004/02/24 20:10:59  gbeeley
-    - fixing some date/time related problems
-    - efficiency improvement for net_http allowing browser to actually
-      cache .js files and images.
-
-    Revision 1.11  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.10  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.9  2003/04/30 02:15:35  jorupp
-     * added stat calls before returning any data that would have come from it
-       -- it's a bit inefficent -- really should just set a flag after a write or
-          property change and clear that flag on stat(), and just run stat if
-    	  the flag is set and we need the data
-
-    Revision 1.8  2003/04/04 05:02:44  gbeeley
-    Added more flags to objInfo dealing with content and seekability.
-    Added objInfo capability to objdrv_struct.
-
-    Revision 1.7  2003/03/31 23:23:40  gbeeley
-    Added facility to get additional data about an object, particularly
-    with regard to its ability to have subobjects.  Added the feature at
-    the driver level to objdrv_ux, and to the "show" command in test_obj.
-
-    Revision 1.6  2002/09/27 22:26:06  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.5  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.4  2002/08/01 08:25:21  mattphillips
-    Include sys/time.h if configure tells us that struct tm is defined there.
-
-    Revision 1.3  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:11  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:11  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used for storing filename annotations ***/
@@ -223,6 +95,7 @@ typedef struct
     DateTime	MTime;
     DateTime	CTime;
     pUxdNode	Node;
+    int		Mode;		/* the mode we actually use for this file */
     }
     UxdData, *pUxdData;
 
@@ -740,6 +613,12 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    obj->Mode |= O_RDONLY;
 	    }
 
+	/** Actual use mode - is this intermediate, or the actual end object? **/
+	if (obj->SubPtr + obj->SubCnt - 1 == obj->Pathname->nElements)
+	    inf->Mode = obj->Mode;
+	else
+	    inf->Mode = obj->Mode & (O_ACCMODE);
+
 	/** Release the resources we temporarily used. **/
         nmFree(tmp_path, sizeof(Pathname));
 
@@ -870,7 +749,7 @@ uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	/** Ok, do we need to open the dumb thing? **/
 	if (!(inf->Flags & UXD_F_ISOPEN))
 	    {
-	    inf->fd = fdOpen(inf->RealPathname, inf->Obj->Mode, inf->Mask);
+	    inf->fd = fdOpen(inf->RealPathname, inf->Mode, inf->Mask);
 	    if (!(inf->fd)) 
 	        {
 		mssErrorErrno(1,"UXD","Could not read from file");
@@ -904,7 +783,7 @@ uxdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	/** Ok, do we need to open the dumb thing? **/
 	if (!(inf->Flags & UXD_F_ISOPEN))
 	    {
-	    inf->fd = fdOpen(inf->RealPathname, inf->Obj->Mode, inf->Mask);
+	    inf->fd = fdOpen(inf->RealPathname, inf->Mode, inf->Mask);
 	    if (!(inf->fd))
 	        {
 		mssErrorErrno(1,"UXD","Could not read from file");
@@ -1008,6 +887,7 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->Node = qy->File->Node;
 	inf->Node->SnNode->OpenCnt++;
 	inf->Obj = obj;
+	inf->Mode = mode & ~(O_CREAT | O_TRUNC | O_EXCL);
 
     return (void*)inf;
     }

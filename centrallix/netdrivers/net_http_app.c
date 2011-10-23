@@ -31,30 +31,6 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_http_app.c,v 1.3 2010/09/13 23:30:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_app.c,v $
-
-    $Log: net_http_app.c,v $
-    Revision 1.3  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.2  2008/08/16 00:31:38  thr4wn
-    I made some more modification of documentation and begun logic for
-    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
-
-    Revision 1.1  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-
- **END-CVSDATA***********************************************************/
 
 /* This file will eventually contain much of the application logic from the GET and OSML fucntions */
 /* 11:38 AM 6/25/2008 jncraton */
@@ -102,8 +78,8 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "        #l2 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
 			 "        body { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n"
 			 "    </style>\n"
+			 "<script type=\"text/javascript\" language=\"javascript\" src=\"/sys/js/startup.js\"></script>\n"
 			 "</head>\n"
-			 "<script language=\"javascript\" src=\"/sys/js/startup.js\" DEFER></script>\n"
 			 "<body %STR onload='startup();'>\n"
 			 "    <img src='/sys/images/loading.gif'>\n"
 			 "    <div id=\"l1\">x<br>x</div>\n"
@@ -121,8 +97,10 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
     int rval;
     int i = 0;
 
+#if 00
     if (strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
 	{
+#endif
 	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates)))
 	    {
 	    if(tree) wgtrFree(tree);
@@ -134,7 +112,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 	    return -1;
 	    }
 
-
+#if 00
 	/** cache the app **/
 	pCachedApp pca = (pCachedApp) nmSysMalloc(sizeof(CachedApp));
 	pca->Node = tree;
@@ -146,6 +124,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 	{
 	tree = ((pCachedApp)xhLookup(nsess->CachedApps, (void*)&i))->Node; //TODO: caching is not fully implemented
 	}
+#endif
 
     if(! (wgtrVerify(tree, client_info) >= 0))
 	{
@@ -155,6 +134,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 
     rval = wgtrRender(output, s, tree, url_inf, client_info, method);
 
+    if(tree) wgtrFree(tree);
     //if(tree) wgtrFree(tree); //by Seth: because all trees are being cached, the trees must be freed somewhere else. Probably at the closing of the session. //SETH: ?? is that already taken care of?
     return rval;
 

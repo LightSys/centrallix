@@ -11,12 +11,14 @@ centrallix-lib/libCentrallix.so.*
 centrallix-lib/libStParse.a
 centrallix-lib/libStParse.so
 centrallix-lib/libStParse.so.*
+centrallix-lib/tests/*.bin
 *.o
 *.lo
 stamp-h
 centrallix/.subbuild
 centrallix/autom4te.cache
 centrallix/centrallix
+centrallix/cxpasswd
 centrallix/config.h
 centrallix/etc/centrallix.conf
 centrallix/etc/centrallix.conf.mk
@@ -27,4 +29,10 @@ centrallix/man/centrallix.conf.5.gz
 centrallix/man/test_obj.1.gz
 centrallix/osdrivers/*.so
 centrallix/test_obj
+centrallix/test_prt
 centrallix-os/apps/kardia
+centrallix-lib/include/cxlib
+*/nbproject/
+centrallix-lib/tests/test_*.bin
+centrallix/tests/*.out
+centrallix/tests/*.to.tmp

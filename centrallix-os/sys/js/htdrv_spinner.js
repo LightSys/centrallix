@@ -197,3 +197,6 @@ function spnr_mousedown(e)
 	    }
 	}
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_spinner.js'] = true;

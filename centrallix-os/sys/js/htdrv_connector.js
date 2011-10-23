@@ -35,3 +35,6 @@ function cn_init(param)
     this.LSParent = param.parent;
     this.RunEvent = param.f;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_connector.js'] = true;

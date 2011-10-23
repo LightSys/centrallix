@@ -6,6 +6,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
+#include "cxlib/util.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt.h"
 #include "htmlparse.h"
@@ -42,26 +43,6 @@
 /*		functionality for the reporting output mechanism.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_prob.c,v 1.2 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_prob.c,v $
-
-    $Log: prtmgmt_prob.c,v $
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1.1.1  2001/08/13 18:01:16  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:17  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** GLOBALS **/
@@ -1465,23 +1446,23 @@ prtConvertHTML(int (*read_fn)(), void* read_arg, pPrtSession s)
 			    {
 			    ptr = htsTagValue(hts,2);
 			    if (!ptr) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    prtSetHPos(s, v1);
 			    }
 			else if (!strcmp(ptr,"LRMARGIN"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtSetLRMargins(s, v1, v2);
 			    }
 			else if (!strcmp(ptr,"SETCOLS"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtSetColumns(s, v1, v2);
 			    }
 			else if (!strcmp(ptr,"TABLE"))
@@ -1492,17 +1473,17 @@ prtConvertHTML(int (*read_fn)(), void* read_arg, pPrtSession s)
 			else if (!strcmp(ptr,"COLHDR"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtDoColHdr(s,(v2==0)?1:0,v1);
 			    }
 			else if (!strcmp(ptr,"COLUMN"))
 			    {
 			    if (!(ptr = htsTagValue(hts,2))) break;
-			    v1 = strtol(ptr,NULL,10);
+			    v1 = strtoi(ptr,NULL,10);
 			    if (!(ptr = htsTagValue(hts,3))) break;
-			    v2 = strtol(ptr,NULL,10);
+			    v2 = strtoi(ptr,NULL,10);
 			    prtDoColumn(s,(v2==0)?1:0,v1);
 			    }
 			else if (!strcmp(ptr,"TABLESEP"))

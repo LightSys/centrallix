@@ -5,7 +5,7 @@ tab "widget/component-decl"
 
     tab_cmp "widget/tab"
 	{
-	x=20; y=20; width=320; height=240;
+	x=20; y=20; width=320; height=215;
 	bgcolor= "#d0d0d0";
 
 	onetab "widget/tabpage" { title = "Tab #1"; }

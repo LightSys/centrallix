@@ -141,7 +141,7 @@ function dd_keyhandler(l,e,k)
 	    {
 	    for (var i=0; i < this.Values.length; i++)
 		{
-		if (this.Values[i].label == '(none selected)') continue;
+		if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		if (this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_upper) ||
 		    this.Values[i].label.substring(0, 1) == 
@@ -156,7 +156,7 @@ function dd_keyhandler(l,e,k)
 		{
 		for (var i=0; i < this.Values.length; i++)
 		    {
-		    if (this.Values[i].label == '(none selected)') continue;
+		    if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		    if (this.Values[i].label.toUpperCase().indexOf(String.fromCharCode(k_upper)) >= 0)
 			{
 			dd_hilight_item(this,i);
@@ -190,7 +190,7 @@ function dd_keyhandler(l,e,k)
 			
 	    for (var i=0; i < this.Values.length; i++) 
 		{
-		if (this.Values[i].label == '(none selected)') continue;
+		if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		if ((this.Values[i].label.substring(0, 
 			this.keystring.length).toLowerCase())
 			== this.keystring && !this.match)
@@ -205,7 +205,7 @@ function dd_keyhandler(l,e,k)
 		{
 		for (var i=0; i < this.Values.length; i++)
 		    {
-		    if (this.Values[i].label == '(none selected)') continue;
+		    if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		    if (this.Values[i].label.toUpperCase().indexOf(this.keystring.toUpperCase()) >= 0)
 			{
 			dd_hilight_item(this,i);
@@ -385,7 +385,7 @@ function dd_collapse(l)
     if (l && l.PaneLayer && htr_getvisibility(l.PaneLayer) == 'inherit')
 	{
 	//setClipHeight(l, getClipHeight(l) - getClipHeight(l.PaneLayer));
-	pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
+	//pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
 	htr_setvisibility(l.PaneLayer, 'hidden');
 	dd_current = null;
 	}
@@ -418,10 +418,10 @@ function dd_expand(l)
 	else
 	    offs = getPageY(l.PaneLayer) - getPageY(l) - 1 - getClipHeight(l);
 	//setClipHeight(l, getClipHeight(l) + getClipHeight(l.PaneLayer));
-	pg_resize_area(l.area, getClipWidth(l)+1, 
-		getClipHeight(l)+1+getClipHeight(l.PaneLayer),
-	    getPageX(l.PaneLayer) - getPageX(l) - 1,
-	    offs);
+	//pg_resize_area(l.area, getClipWidth(l)+1, 
+	//	getClipHeight(l)+1+getClipHeight(l.PaneLayer),
+	//    getPageX(l.PaneLayer) - getPageX(l) - 1,
+	//    offs);
 	for(var i = 0; i<l.Values.length; i++)
 	    if (l.value == l.Values[i].value)
 		{
@@ -530,7 +530,8 @@ function dd_select_item(l,i,from)
 	//alert(i);
 	//l.osrc.MoveToRecord(i);
 	}
-    cn_activate(l, "DataChange", {Value:l.value, Label:lbl, FromOSRC:(from == 'osrc')});
+    if (from != 'init')
+	cn_activate(l, "DataChange", {Value:l.value, Label:lbl, FromOSRC:(from == 'osrc')});
     }
 
 function dd_datachange(l)
@@ -542,6 +543,10 @@ function dd_datachange(l)
 function dd_getfocus()
     {
     if (this.enabled != 'full') return 0;
+    if(this.form)
+	{
+	if (!this.form.FocusNotify(this)) return 0;
+	}
     //dd_expand(this);
     cn_activate(this, "GetFocus");
     return 1;
@@ -550,7 +555,7 @@ function dd_getfocus()
 function dd_losefocus()
     {
     cn_activate(this, "LoseFocus");
-    dd_collapse(this);
+    //dd_collapse(this); // this now done in mousedown.
     return true;
     }
 
@@ -657,16 +662,16 @@ function dd_create_pane(l)
     htr_init_layer(p, l, 'dd_pn');
     htr_setvisibility(p, 'hidden');
     var c = "<BODY bgcolor="+l.bg+">";
-    c += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.w+" height="+l.h2+">";
+    c += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.popup_width+" height="+l.h2+">";
     c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
-    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.w-2)+"></TD>";
+    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.popup_width-2)+"></TD>";
     c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
     c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-2)+" width=1></TD>";
     c += "  <TD valign=top>";
     c += "  </TD>";
     c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-2)+" width=1></TD></TR>";
     c += "<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.w-2)+"></TD>";
+    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.popup_width-2)+"></TD>";
     c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>";
     c += "</TABLE>";
     c += "</BODY>";
@@ -676,7 +681,7 @@ function dd_create_pane(l)
     htutil_tag_images(p,'dt_pn',p,l);
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
-    setClipWidth(p, l.w);
+    setClipWidth(p, l.popup_width);
 
     /**  Create scroll background layer  **/
     p.ScrLayer = htr_new_layer(null, p);
@@ -690,7 +695,7 @@ function dd_create_pane(l)
 
 	p.BarLayer = htr_new_layer(null, p)
 	htr_init_layer(p.BarLayer, l, 'dd_sc');
-	moveTo(p.BarLayer, l.w-20, 2);
+	moveTo(p.BarLayer, l.popup_width-20, 2);
 	htr_setvisibility(p.BarLayer, 'inherit');
 	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
 	c += '<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>';
@@ -707,7 +712,7 @@ function dd_create_pane(l)
 
 	p.TmbLayer = htr_new_layer(null, p);
 	imgs[0].thum = imgs[1].thum = imgs[2].thum = p.TmbLayer;
-	moveTo(p.TmbLayer, l.w-20, 20);
+	moveTo(p.TmbLayer, l.popup_width-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
 	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
@@ -744,10 +749,10 @@ function dd_create_pane(l)
 	    setClipHeight(l.Items[i], (pg_parah));
 	    resizeTo(l.Items[i], w, (pg_parah));
 	    if (i==0 && l.Values[i].value == null)
-		htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
+		htr_write_content(l.Items[i], '<i>' + htutil_encode(l.Values[i].label) + '</i>');
 		//pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
 	    else
-		htr_write_content(l.Items[i], l.Values[i].label);
+		htr_write_content(l.Items[i], htutil_encode(l.Values[i].label));
 		//pg_serialized_write(l.Items[i], l.Values[i].label, null);
 	    htr_setvisibility(l.Items[i], 'inherit');
 	    l.Items[i].index = i;
@@ -791,7 +796,7 @@ function dd_add_items(l,ary)
     if (sel != null)
 	{
 	if (!l.form)
-	    dd_select_item(l, sel, 'init');
+	    dd_select_item(l, sel, l.init_items?'additems':'init');
 	if (typeof ary[sel].value == 'number')
 	    cx_set_hints(this, "d=" + ary[sel].value, "widget");
 	else
@@ -809,15 +814,20 @@ function dd_add_items(l,ary)
 	}
     else
 	{
+	var found = false;
 	for (var i in l.Values)
 	    {
 	    if (l.Values[i].value == l.value)
 		{
-		dd_select_item(l, i, 'init');
+		found = true;
+		dd_select_item(l, i, l.init_items?'additems':'init');
 		break;
 		}
 	    }
+	if (!found && this.invalid_select_default && this.value)
+	    cx_hints_setdefault(this);
 	}
+    l.init_items = true;
     }
 
 // Event scripts
@@ -895,6 +905,7 @@ function dd_mousedown(e)
     dd_target_img = e.target;
     if (e.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')
         {
+	var cur = dd_current;
 	if(e.which == 2 || e.which == 3)
 	    {
 	    /*	FIXME
@@ -909,6 +920,7 @@ function dd_mousedown(e)
 	    }
 	if(e.mainlayer.Mode == 3)
 	    {
+	    // OSRC-selector dropdown
 	    if(e.mainlayer.Values[e.layer.index].osrcindex)
 		e.mainlayer.osrc.MoveToRecord(e.mainlayer.Values[e.layer.index].osrcindex); 
 	    dd_collapse(dd_current);
@@ -925,6 +937,8 @@ function dd_mousedown(e)
 	    if (dd_current.Items[e.layer.index])
 		htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
 	    //dd_hilight_item(dd_current, e.layer.index);
+	// Re-select the dropdown
+	pg_setkbdfocus(cur, null, null, null);
         }
     else if (e.kind == 'dd_sc')
         {
@@ -1124,6 +1138,7 @@ function dd_init(param)
     l.NumDisplay = param.numDisplay;
     l.Mode = param.mode;
     l.SQL = param.sql;
+    l.popup_width = param.popup_width?param.popup_width:param.width;
     l.VisLayer = param.c1;
     l.HidLayer = param.c2;
     htr_init_layer(l.VisLayer, l, 'ddtxt');
@@ -1178,6 +1193,7 @@ function dd_init(param)
     else
 	l.form = wgtrFindContainer(l,"widget/form");
     l.query_multiselect = param.qms;
+    l.invalid_select_default = param.ivs;
     l.value = null;
     htr_init_layer(l,l,'dd');
     htutil_tag_images(l,'dd',l,l);
@@ -1192,6 +1208,7 @@ function dd_init(param)
     l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, 
 	    getClipHeight(l)+1, 'dd', 'dd', 3);
     if (l.form) l.form.Register(l);
+    l.init_items = false;
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -1218,3 +1235,6 @@ function dd_init(param)
 
     return l;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_dropdown.js'] = true;

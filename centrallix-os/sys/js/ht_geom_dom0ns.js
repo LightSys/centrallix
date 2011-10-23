@@ -248,3 +248,6 @@ function getHeight(l)
 	return getClipHeight(l);
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_geom_dom0ns.js'] = true;

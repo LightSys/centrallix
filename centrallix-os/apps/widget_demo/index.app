@@ -30,21 +30,21 @@ widget_demo "widget/page"
 			cellspacing=4;
 			cellsize=20;
 
-			list_lbl_1 "widget/label" { text = "Name of Widget:"; }
+//			list_lbl_1 "widget/label" { text = "Name of Widget:"; }
+//
+//			widget_eb "widget/editbox"
+//			    {
+//			    fieldname = "wname";
+//			    bgcolor="white";
+//			    }
+//
+//			list_sp1 "widget/autolayoutspacer" { height=8; }
 
-			widget_eb "widget/editbox"
-			    {
-			    fieldname = "wname";
-			    bgcolor="white";
-			    }
-
-			list_sp1 "widget/autolayoutspacer" { height=8; }
-
-			list_lbl_2 "widget/label" { text = "Select a Widget from this List:"; }
+			list_lbl_2 "widget/label" { style=bold; text = "Select a Widget:"; }
 
 			list_table "widget/table"
 			    {
-			    height=370;
+			    height=410;
 			    mode=dynamicrow;
 			    row1_bgcolor = "#ffffff";
 			    row2_bgcolor = "#e8e8e8";
@@ -54,8 +54,11 @@ widget_demo "widget/page"
 			    textcolorhighlight = "#ffffff";
 			    textcolor="#000000";
 			    gridinemptyrows=1;
-			    wname "widget/table-column" { fieldname="wname"; title="Widget Name"; width=99; }
-			    wname_cmp "widget/table-column" { fieldname="name"; title="Component"; width=99; }
+			    colsep = 0;
+			    demand_scrollbar = yes;
+			    overlap_scrollbar = yes;
+			    wname "widget/table-column" { fieldname="wname"; title="Widget"; width=84; }
+			    wname_cmp "widget/table-column" { fieldname="name"; title="Component"; width=100; }
 			    }
 			}
 		    }
@@ -65,7 +68,7 @@ widget_demo "widget/page"
 		    event="DataFocusChanged";
 		    target=info_html;
 		    action="LoadPage";
-		    Source=runclient("/apps/widget_demo/widgets/" + :widget_eb:content + '.cmp?ls__type=text%2fplain');
+		    Source=runclient("/apps/widget_demo/widgets/" + :list_osrc:wname + '.cmp?ls__type=text%2fplain');
 		    }
 
 		sync_widget "widget/connector"
@@ -75,7 +78,7 @@ widget_demo "widget/page"
 		    action = "Instantiate";
 
 		    // param to instantiate widget
-		    which = runclient(:widget_eb:content);
+		    which = runclient(:list_osrc:wname);
 		    }
 		}
 	    }
@@ -85,7 +88,7 @@ widget_demo "widget/page"
 	    style=lowered;
 	    bgcolor="#e0e0e0";
 
-	    src_lbl "widget/label" { x=8;y=8;width=150;height=20;text = "Sample Source Code:"; }
+	    src_lbl "widget/label" { x=8;y=8;width=200;height=20;text = "Sample Source Code:"; style=bold; }
 
 	    infopane "widget/pane"
 		{
@@ -106,7 +109,7 @@ widget_demo "widget/page"
 		    }
 		}
 
-	    ren_lbl "widget/label" { x=8;y=156;width=150;height=20;text = "Widget Renders Here:"; }
+	    ren_lbl "widget/label" { x=8;y=156;width=200;height=20;text = "Widget Renders Here:"; style=bold; }
 	    widget_cmp_pane "widget/pane"
 		{
 		x=8;y=176;width=374;height=334;

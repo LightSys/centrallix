@@ -52,96 +52,6 @@
 /*			:1,$s/mbox/pop/g					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_mbox.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mbox.c,v $
-
-    $Log: objdrv_mbox.c,v $
-    Revision 1.7  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.6  2004/06/23 21:33:55  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.5  2004/06/12 04:02:29  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.4  2004/06/11 21:06:57  mmcgill
-    Did some code tree scrubbing.
-
-    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
-    xxxExecuteMethod() to use pObjData as the type for val (or param in
-    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
-    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
-    overflow in objdrv_shell.c (line 1046).
-
-    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
-    broken as of right now.
-
-    It should be noted that I haven't actually built the audio or Berkeley
-    drivers, so I *could* have messed up, but they look ok. The others
-    compiled, and passed a cursory testing.
-
-    Revision 1.3  2003/06/04 08:55:14  jorupp
-     * a number of smaller osdriver patches that have been sitting in my copy for a while....
-       * couple better comments in http
-       * better file naming in mbox
-       * (slightly) better memory management in mime
-       * xml should actually work :) (no xmlGetAttrValue with a null pointer)
-
-    Revision 1.2  2002/11/06 19:32:26  jorupp
-     * throw errors when looking up the type of a non-existant attribute (for debugging)
-     * respond to inner_type _and_ content_type
-
-    Revision 1.1  2002/11/06 02:37:59  jorupp
-     * added mailbox (mbox) support (read-only) -- I want to read my mail in centrallix :)
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2002/07/29 01:18:07  jorupp
-     * added the include and calls to build as a module
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:00  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:02  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -475,7 +385,8 @@ mboxQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(name) >= 255)
 	    {
 	    mssError(1,"MBOX","Pathname too long for internal representation");
-	    nmFree(inf,sizeof(MboxData));
+	    // TODO Initialize inf - it is never allocated
+            //nmFree(inf,sizeof(MboxData));
 	    return NULL;
 	    }
 	*(ptr++) = '/';

@@ -13,6 +13,7 @@
 #include "mtask.h"
 #include "newmalloc.h"
 #include "cxsec.h"
+#include "util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -34,70 +35,6 @@
 /*		printf() library calls.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: qprintf.c,v 1.11 2008/09/21 00:32:30 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
-
-    $Log: qprintf.c,v $
-    Revision 1.11  2008/09/21 00:32:30  gbeeley
-    - (change) handle situation where 'strval' passed to qprintf is NULL
-    - (change) update .cvsignore for new object files (lib symlinks)
-
-    Revision 1.10  2008/06/26 23:36:22  jncraton
-    - DB64 filter now uses a proper grow function and is more efficient
-
-    Revision 1.9  2008/06/25 22:38:29  jncraton
-    (feature) adding URL and DB64 filters
-
-    Revision 1.8  2008/04/06 20:56:34  gbeeley
-    - (feature) adding DSYB filter in qprintf to use sybase/csv style quoting
-      of strings (by doubling the double quotes)
-
-    Revision 1.7  2008/03/29 01:03:36  gbeeley
-    - (change) changing integer type in IntVec to a signed integer
-    - (security) switching to size_t in qprintf where needed instead of using
-      bare integers.  Also putting in some checks for insanely huge amounts
-      of data in qprintf that would overflow many of the integer counters.
-    - (bugfix) several fixes to make the code compile cleanly at the newer
-      warning levels on newer compilers.
-
-    Revision 1.6  2008/03/03 09:04:31  gbeeley
-    - (feature) adding JSSTR, CSSVAL, and CSSURL filters to qprintf.  JSSTR
-      is to be used when encoding a JavaScript string in a document.  CSSVAL
-      is for ordinary CSS values in an HTML context, and CSSURL handles a
-      CSS value placed inside url().
-
-    Revision 1.5  2007/09/21 23:14:43  gbeeley
-    - (feature) adding ESCQWS and HTENLBR filters
-    - (change) the grow_fn interface needed to change in order to handle
-      sliding window buffer situations, such as those used by fdQPrintf()
-
-    Revision 1.4  2007/04/19 21:14:13  gbeeley
-    - (feature) adding &FILE and &PATH filters to qprintf.
-    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
-    - (tests) more tests cases (of course...)
-    - (feature) adding qprintf functionality to XString.
-
-    Revision 1.3  2007/04/18 18:42:07  gbeeley
-    - (feature) hex encoding in qprintf (&HEX filter).
-    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
-    - (bugfix) %[ %] conditional formatting didn't exclude everything.
-    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
-    - (performance) significant performance improvements in HEX, ESCQ, HTE.
-    - (change) qprintf API change - optional session, cumulative errors/flags
-    - (testsuite) lots of added testsuite entries.
-
-    Revision 1.2  2006/10/27 19:21:32  gbeeley
-    - (bugfix) qpfPrintf() %[ %] conditional formatting needs to still chomp
-      va_arg()'s that occur within the %[ %], to preserve the positions of
-      the supplied arguments.
-
-    Revision 1.1  2006/06/21 21:22:44  gbeeley
-    - Preliminary versions of strtcpy() and qpfPrintf() calls, which can be
-      used for better safety in handling string data.
-
- **END-CVSDATA***********************************************************/
 
 #ifndef __builtin_expect
 #define __builtin_expect(e,c) (e)
@@ -534,7 +471,7 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 static inline int
 qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* cursor;
     int ix;
@@ -911,7 +848,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			/** Is this a numerically-constrained spec? **/
 			if (*format >= '0' && *format <= '9')
 			    {
-			    n = strtol(format, (char**)&endptr, 10); /* cast is needed because endptr is const char* */
+			    n = strtoi(format, (char**)&endptr, 10); /* cast is needed because endptr is const char* */
 			    format = endptr;
 			    if (n < 0) n = 0;
 			    }

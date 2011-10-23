@@ -23,6 +23,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -57,233 +58,6 @@
 /*		server could generate them.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_report_v3.c,v 1.25 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
-
-    $Log: objdrv_report_v3.c,v $
-    Revision 1.25  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.24  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.23  2010/09/09 01:48:28  gbeeley
-    - (bugfix) used link counting to fix a race condition regarding report
-      completion by worker thread vs caller
-    - (change) permit xpos/ypos on a text snippet to have fractional parts
-    - (change) allow a table row without cells to contain a value= attribute
-
-    Revision 1.22  2010/01/10 07:20:18  gbeeley
-    - (feature) adding CSV file output from report writer.  Simply outputs
-      only tabular data (report/table data) into a CSV file format.
-    - (change) API addition to prtmgmt -- report writer can specify data type
-      of a piece of printed data; used as "hints" by the CSV file output to
-      output a cell as a quoted string vs. an integer or currency value
-
-    Revision 1.21  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.20  2009/06/26 18:16:26  gbeeley
-    - (change) support runserver() expressions in parameter defaults
-    - (change) allow setting of "reset" value for query aggregates, to specify
-      whether the value is reset to 0/null when it is read.
-    - (bugfix) max query count now matches size of expression param obj list
-
-    Revision 1.19  2008/04/06 20:52:16  gbeeley
-    - (change) allow value= et al in a report/area without having to embed a
-      report/data element.  This simplifies some report writing a bit.
-
-    Revision 1.18  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.17  2008/02/18 20:46:28  gbeeley
-    - (bugfix) report summary rows were not being issued if they only
-      "sumarized" one row and only a the start of a report/table.
-
-    Revision 1.16  2007/12/05 19:00:00  gbeeley
-    - (bugfix) null vs. not-null handling for aggregate values was not working
-      properly...
-
-    Revision 1.15  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.14  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.13  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.12  2007/02/17 04:34:51  gbeeley
-    - (bugfix) test_obj should open destination objects with O_TRUNC
-    - (bugfix) prtmgmt should remember 'configured' line height, so it can
-      auto-adjust height only if the line height is not explicitly set.
-    - (change) report writer should assume some default margin settings on
-      tables/table cells, so that tables aren't by default ugly :)
-    - (bugfix) various floating point comparison fixes
-    - (feature) allow top/bottom/left/right border options on the entire table
-      itself in a report.
-    - (feature) allow setting of text line height with "lineheight" attribute
-    - (change) allow table to auto-scale columns should the total of column
-      widths and separations exceed the available inner width of the table.
-    - (feature) full justification of text.
-
-    Revision 1.11  2005/02/26 06:36:59  gbeeley
-    - Adding document_format option so that .rpt author can specify what output
-      format (html, pdf, text, etc.) should be used for the report.
-
-    Revision 1.10  2004/06/23 21:33:56  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.9  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.8  2004/02/24 20:25:41  gbeeley
-    - misc changes: runclient check in evaltree in stparse, eval() function
-      rejected in sybase driver, update version in centrallix.conf, .cmp
-      extension added for component-decl in types.cfg
-
-    Revision 1.7  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.6  2003/07/09 18:13:20  gbeeley
-    Further polishing/work on the table output in the report writer.  Re-
-    enabled uxprint OSD once its dependence on prtmgmt was removed.
-
-    Revision 1.5  2003/06/27 21:19:47  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.4  2003/06/20 03:22:35  gbeeley
-    Updating changelog and release notes for 0.7.3
-
-    Revision 1.6  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.5  2002/06/19 23:20:42  gbeeley
-    Fixed some compiler warnings, repaired some potential security issues.
-
-    Revision 1.4  2002/05/03 03:48:16  gbeeley
-    Update due to modification in the xhClear() api.
-
-    Revision 1.3  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:09  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:08  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used for managing a reporting session ***/
@@ -815,13 +589,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     pExpression exp;
     pStructInf subitem;
     int rval;
-
-    	/** Free existing query conn data buf? **/
-	if (qy->DataBuf)
-	    {
-	    nmSysFree(qy->DataBuf);
-	    qy->DataBuf = NULL;
-	    }
+    void* data_buf = NULL;
 
     	/** Search for aggregates first. **/
 	n = 0;
@@ -845,19 +613,19 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 			case DATA_T_INTEGER:	data_ptr->Integer = exp->Integer; break;
 			case DATA_T_DOUBLE:	data_ptr->Double = exp->Types.Double; break;
 			case DATA_T_STRING: 
-			    qy->DataBuf = (char*)nmSysMalloc(strlen(exp->String)+1);
-			    data_ptr->String = qy->DataBuf;
-			    strcpy(qy->DataBuf, exp->String);
+			    data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
+			    data_ptr->String = data_buf;
+			    strcpy(data_buf, exp->String);
 			    break;
 			case DATA_T_MONEY: 
-			    qy->DataBuf = (char*)nmSysMalloc(sizeof(MoneyType));
-			    memcpy(qy->DataBuf, &(exp->Types.Money), sizeof(MoneyType));
-			    data_ptr->Money = (pMoneyType)(qy->DataBuf);
+			    data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
+			    memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
+			    data_ptr->Money = (pMoneyType)(data_buf);
 			    break;
 			case DATA_T_DATETIME: 
-			    qy->DataBuf = (char*)nmSysMalloc(sizeof(DateTime));
-			    memcpy(qy->DataBuf, &(exp->Types.Date), sizeof(DateTime));
-			    data_ptr->DateTime = (pDateTime)(qy->DataBuf);
+			    data_buf = (char*)nmSysMalloc(sizeof(DateTime));
+			    memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
+			    data_ptr->DateTime = (pDateTime)(data_buf);
 			    break;
 			default: return -1;
 			}
@@ -866,6 +634,17 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 		        expResetAggregates(exp, -1,1);
 		        expEvalTree(exp,qy->ObjList);
 			}
+
+		    /** Free existing query conn data buf? **/
+		    if (qy->DataBuf)
+			{
+			nmSysFree(qy->DataBuf);
+			qy->DataBuf = NULL;
+			}
+
+		    /** Return our new data buffer for string/money/datetime **/
+		    qy->DataBuf = data_buf;
+
 		    return was_null;
 		    }
 	   	n++;
@@ -1126,7 +905,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    if (sql[0] == '&' && (sql[1] >= '0' && sql[1] <= '9'))
 		{
 		/*newsql[cnt++] = '"';*/
-		v = strtol(sql+1,&endptr,10);
+		v = strtoi(sql+1,&endptr,10);
 		if (v == 0 || v > links.nItems)
 		    {
 		    mssError(1,"RPT","Parameter error in table/form '%s' source '%s' sql", object->Name, src);
@@ -2058,7 +1837,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
 				{
-				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
 				if (!ud->LastValue)
 				    {
 				    /** First record; not initialized. **/
@@ -2122,7 +1901,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
 				{
-				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
 				if (expEvalTree(ud->Exp, inf->ObjList) < 0)
 				    {
 				    mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
@@ -2144,23 +1923,37 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				    {
 				    /** See if value changed. **/
 				    changed = 0;
-				    switch(ud->LastValue->DataType)
+				    if ((ud->Exp->Flags & EXPR_F_NULL) != (ud->LastValue->Flags & EXPR_F_NULL))
 					{
-					case DATA_T_INTEGER:
-					    changed = ud->LastValue->Integer != ud->Exp->Integer;
-					    break;
-					case DATA_T_STRING:
-					    changed = strcmp(ud->LastValue->String, ud->Exp->String);
-					    break;
-					case DATA_T_MONEY:
-					    changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
-					    break;
-					case DATA_T_DATETIME:
-					    changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
-					    break;
-					case DATA_T_DOUBLE:
-					    changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
-					    break;
+					/** Changed to/from NULL **/
+					changed = 1;
+					}
+				    else if ((ud->Exp->Flags & EXPR_F_NULL) && (ud->LastValue->Flags & EXPR_F_NULL))
+					{
+					/** Both are null - do not compare **/
+					changed = 0;
+					}
+				    else
+					{
+					/** Compare values **/
+					switch(ud->LastValue->DataType)
+					    {
+					    case DATA_T_INTEGER:
+						changed = ud->LastValue->Integer != ud->Exp->Integer;
+						break;
+					    case DATA_T_STRING:
+						changed = strcmp(ud->LastValue->String, ud->Exp->String);
+						break;
+					    case DATA_T_MONEY:
+						changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
+						break;
+					    case DATA_T_DATETIME:
+						changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
+						break;
+					    case DATA_T_DOUBLE:
+						changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
+						break;
+					    }
 					}
 				    if (changed)
 					{
@@ -2336,7 +2129,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	t = stGetAttrType(value_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(value_inf->UserData));
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(value_inf->UserData));
 	    if (ud)
 		{
 		/** Evaluate the expression **/
@@ -2813,7 +2606,7 @@ rpt_internal_CheckCondition(pRptData inf, pStructInf config)
 	t = stGetAttrType(condition_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(condition_inf->UserData));
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(condition_inf->UserData));
 	    if (ud)
 		{
 		/** Evaluate the expression **/
@@ -2879,7 +2672,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    {
 	    if (ptr[0] == '#')
 		{
-		n = strtol(ptr+1, NULL, 16);
+		n = strtoi(ptr+1, NULL, 16);
 		prtSetColor(prt_obj, n);
 		}
 	    }
@@ -3070,7 +2863,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0) return -1;
 
 	/** Load the image **/
-	if (stGetAttrValue(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0) < 0) return -1;
+	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0, inf->Obj->Session) < 0) return -1;
 	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL) return -1;
 	img = prtCreateImageFromPNG(objRead, imgobj);
 	objClose(imgobj);
@@ -3184,10 +2977,10 @@ rpt_internal_PreBuildExp(pRptData inf, pStructInf obj, pParamObjects objlist)
 
 		/** ... and set it up in our user data slots structure **/
 		if (!(obj->UserData)) 
-		    obj->UserData = (void*)(inf->NextUserDataSlot++);
-		else if ((int)(obj->UserData) >= inf->NextUserDataSlot)
-		    inf->NextUserDataSlot = ((int)(obj->UserData))+1;
-		xaSetItem(&(inf->UserDataSlots), (int)(obj->UserData), (void*)ud);
+		    obj->UserData = (void*)(intptr_t)(inf->NextUserDataSlot++);
+		else if ((intptr_t)(obj->UserData) >= inf->NextUserDataSlot)
+		    inf->NextUserDataSlot = ((intptr_t)(obj->UserData))+1;
+		xaSetItem(&(inf->UserDataSlots), (intptr_t)(obj->UserData), (void*)ud);
 		}
 	    else
 		{
@@ -3613,7 +3406,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 			    do_reset = 1;
 			    stAttrValue(stLookup(subreq->SubInf[j], "reset"), &do_reset, NULL, 0);
-			    xaAddItem(&(qc->AggregateDoReset), (void*)do_reset);
+			    xaAddItem(&(qc->AggregateDoReset), (void*)(intptr_t)do_reset);
 
 			    ptr = NULL;
 			    stAttrValue(stLookup(subreq->SubInf[j], "where"), NULL, &ptr, 0);

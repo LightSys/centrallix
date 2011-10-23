@@ -18,10 +18,12 @@ smart_field "widget/component-decl"
     type "widget/parameter" { type=string; default="standard"; }
     ctl_type "widget/parameter" { type=string; default="editbox"; }
     label_width "widget/parameter" { type=integer; default=100; }
+    popup_width "widget/parameter" { type=integer; default=null; }
     empty_desc "widget/parameter" { type=string; default=""; }
     search_by_range "widget/parameter" { type=integer; default=1; }
     date_only "widget/parameter" { type=integer; default=0; }
     default_time "widget/parameter" { type=string; default=""; }
+    invalid_select_default "widget/parameter" { type=string; default="no"; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
     preview_field "widget/parameter" { type=string; default=null; }
@@ -55,6 +57,7 @@ smart_field "widget/component-decl"
 	{ 
 	condition=runserver(:this:ctl_type != 'checkboxleft' and :this:label_width >= 5);
 	x=0;y=0;height=20;width=runserver(:this:label_width - 5);
+	fl_width=0;
 	text=runserver(:this:text); 
 	align=right; 
 	}
@@ -123,9 +126,11 @@ smart_field "widget/component-decl"
 	bgcolor=white; 
 	fieldname=runserver(:this:field); 
 	form=form; 
-	sql=runserver(:this:sql); 
+	sql=runserver(:this:sql);
+	invalid_select_default=runserver(:this:invalid_select_default);
 	mode=dynamic_server; 
 	hilight="#d0d0d0";
+	popup_width=runserver(:this:popup_width);
         ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
 	}
     ctl "widget/textarea"

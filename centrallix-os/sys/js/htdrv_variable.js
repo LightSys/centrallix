@@ -90,3 +90,6 @@ function vbl_init(l, wparam)
 
     return l;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_variable.js'] = true;

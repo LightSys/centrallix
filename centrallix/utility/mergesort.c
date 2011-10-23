@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "cxlib/mtask.h"
+#include "cxlib/newmalloc.h"
 #include "cxlib/mtsession.h"
 #include "mergesort.h"
 
@@ -35,22 +36,6 @@
 /* Creation:	June 16, 2010 						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mergesort.c,v 1.1 2010/09/09 00:39:13 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/utility/mergesort.c,v $
-
-    $Log: mergesort.c,v $
-    Revision 1.1  2010/09/09 00:39:13  gbeeley
-    - (change) allowing -pg (graph profiler) to be disabled by default
-      during compilation.  profile timer had some poor interaction with the
-      fork() system call, causing sporadic lockups.
-    - (feature) beginnings of "user agent window" widget
-    - (change) broke out mergesort() routine into its own independent function
-      instead of being a part of the prtmgmt module.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** mergesort_r() - Recursive function doing the actual sorting.

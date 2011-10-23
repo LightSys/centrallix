@@ -46,36 +46,6 @@
 /*		rules are specific to the affected widget.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_rule.c,v 1.3 2008/06/25 18:27:25 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_rule.c,v $
-
-    $Log: htdrv_rule.c,v $
-    Revision 1.3  2008/06/25 18:27:25  gbeeley
-    - (bugfix) switch to JSSTR (qprintf) for string encoding of rule parameters
-
-    Revision 1.2  2008/03/04 01:10:57  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.1  2007/12/05 18:56:18  gbeeley
-    - (feature) adding declarative "widget/rule" widget, which has multiple
-      purposes in defining rule-based behavior for different kinds of widgets.
-      First use is replacing "osrc-rule" on objectsource widgets and in
-      providing osrc relationships to be declared rather than handled via
-      connectors.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Rule definition - for other drivers registering rule types
@@ -237,6 +207,7 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 
 
 /*** htruleRegister() - register a new type of rule with the rule module
+ * Make sure the list is NULL terminated.
  ***/
 int
 htruleRegister(char* ruletype, ...)
@@ -254,19 +225,16 @@ htruleRegister(char* ruletype, ...)
 
 	/** Get the possible attributes for the rule **/
 	va_start(va, ruletype);
-	while(va && (attrname = va_arg(va, char*)) != NULL)
-	    {
-	    if (va)
-		{
-		attrtype = va_arg(va, int);
-		if (ruledef->nParams < sizeof(ruledef->ParamNames)/sizeof(char*))
-		    {
-		    ruledef->ParamNames[ruledef->nParams] = nmSysStrdup(attrname);
-		    ruledef->ParamTypes[ruledef->nParams] = attrtype;
-		    ruledef->nParams++;
-		    }
-		}
-	    }
+	while((attrname = va_arg(va, char*)) != NULL)
+            {
+            attrtype = va_arg(va, int);
+            if (ruledef->nParams < sizeof(ruledef->ParamNames)/sizeof(char*))
+                {
+                ruledef->ParamNames[ruledef->nParams] = nmSysStrdup(attrname);
+                ruledef->ParamTypes[ruledef->nParams] = attrtype;
+                ruledef->nParams++;
+                }
+            }
 	va_end(va);
 
 	/** Add it to the list **/

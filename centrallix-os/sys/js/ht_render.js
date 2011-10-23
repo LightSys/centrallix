@@ -95,6 +95,11 @@ function cxjs_isnull(v,d)
     else
 	return v;
     }
+function cxjs_ltrim(s)
+    {
+    if (s == null) return null;
+    return String(s).replace(/^ */, "");
+    }
 function cxjs_rtrim(s)
     {
     if (s == null) return null;
@@ -146,6 +151,112 @@ function cxjs_lower(str)
     {
     if (str === null) return null;
     return String(str).toLowerCase();
+    }
+
+function cxjs_substitute(_context, _this, str, remaplist)
+    {
+    var remaps = [];
+    if (remaplist)
+	{
+	remaplist = String(remaplist);
+	remapstr = remaplist.split(",");
+	for(var i=0; i<remapstr.length; i++)
+	    {
+	    remaps[i] = {};
+	    remaps[i].parts = remapstr[i].split("=");
+	    if (remaps[i].parts.length == 1)
+		remaps[i].parts[1] = remaps[i].parts[0];
+	    }
+	}
+    if (str == null) return null;
+    str = String(str);
+    var lines = str.split("\n");
+    for(var i=0; i<lines.length; i++)
+	{
+	var line = lines[i];
+	var subst_pos = line.indexOf("[:");
+	var subst_len = 0;
+	var n_subst = 0;
+	if (subst_pos >= 0)
+	    {
+	    // has substitutions
+	    while(subst_pos >= 0)
+		{
+		end_pos = line.indexOf("]", subst_pos);
+		if (end_pos >= 0)
+		    {
+		    var id = line.substring(subst_pos+2, end_pos).split(":");
+		    if (id.length == 1)
+			{
+			if (remaps && remaps.length > 0)
+			    var obj = wgtrGetNode(_context,remaps[0].parts[1]);
+			else
+			    var obj = _this;
+			var fieldname = id[0];
+			}
+		    else
+			{
+			if (remaps && remaps.length > 0)
+			    {
+			    var found = false;
+			    for(var j=0; j<remaps.length; j++)
+				{
+				if (remaps[j].parts[0] == id[0])
+				    {
+				    id[0] = remaps[j].parts[1];
+				    found = true;
+				    }
+				}
+			    if (!found) return null;
+			    }
+			var obj = wgtrGetNode(_context,id[0]);
+			var fieldname = id[1];
+			}
+		    var prop = wgtrProbeProperty(obj, fieldname);
+		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
+			prop = "";
+		    else
+			prop = String(prop);
+		    prop=prop.replace(/^ */, "");
+		    prop=prop.replace(/ *$/, "");
+		    line = line.substring(0,subst_pos) + prop + line.substring(end_pos+1, line.length);
+		    subst_pos = line.indexOf("[:", subst_pos + prop.length);
+		    n_subst++;
+		    subst_len += prop.length;
+		    }
+		else
+		    {
+		    break;
+		    }
+		}
+	    lines[i] = line;
+	    if (n_subst > 0 && subst_len == 0)
+		{
+		if (line.search(/^[ ,.\t%]*$/) == 0)
+		    {
+		    lines.splice(i, 1);
+		    i--;
+		    }
+		}
+	    }
+	}
+    var rstr = "";
+    for(var i=0; i<lines.length; i++)
+	{
+	if (i > 0) rstr += "\n";
+	rstr += lines[i];
+	}
+    return rstr;
+    }
+
+function cxjs_reverse(s)
+    {
+    if (s == null) return null;
+    s = String(s);
+    var rs = "";
+    for(var i = s.length-1; i>=0; i--)
+	rs += s.substr(i,1);
+    return rs;
     }
 
 // Cross-browser support functions
@@ -924,3 +1035,6 @@ function htr_captureevents(elist)
 	document.captureEvents(pg_capturedevents);
 	}
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['ht_render.js'] = true;

@@ -71,3 +71,6 @@ function startup()
     window.location.replace(loc);
     }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['startup.js'] = true;

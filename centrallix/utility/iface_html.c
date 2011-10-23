@@ -31,9 +31,6 @@
 /*		has need of support for interfaces.                    	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
- **END-CVSDATA***********************************************************/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -197,7 +194,7 @@ ifcToHtml(pFile file, pObjSession s, char* def_str)
 		    {
 		    fdPrintf(file, "    <a target=\"start\" href=\"http://%s\"></a>\n",
 			IFC.CategoryNames[def->Type][k]);
-		    for (l=(int)xaGetItem(&(maj_v->Offsets[k]), j);l<xaCount(&(maj_v->Members[k]));l++)
+		    for (l=(intptr_t)xaGetItem(&(maj_v->Offsets[k]), j);l<xaCount(&(maj_v->Members[k]));l++)
 			{
 			fdPrintf(file, "      <a target=\"start\" href=\"http://%s\">", 
 			    xaGetItem(&(maj_v->Members[k]), l));
@@ -297,7 +294,7 @@ ifc_internal_HtmlInit_r(pHtSession s, pXString func, pWgtrNode tree, pXArray Alr
 			    xsConcatPrintf(func, "%s:{", IFC.CategoryNames[h->Type][cat]);
 			    first_member=1;
 			    /** for each member **/
-			    for (member=(int)xaGetItem(&(maj_v->Offsets[cat]), min_v_num);
+			    for (member=(intptr_t)xaGetItem(&(maj_v->Offsets[cat]), min_v_num);
 				 member<xaCount(&(maj_v->Members[cat]));member++)
 				{
 				if (!first_member) xsConcatPrintf(func, ",");

@@ -3,7 +3,10 @@
 #include <fcntl.h>
 #include <string.h>
 #include "cxlib/datatypes.h"
+#include "cxlib/newmalloc.h"
 #include "ptod.h"
+#include "obj.h"
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -38,52 +41,6 @@
 /*		centrallix.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: ptod.c,v 1.5 2007/03/21 04:48:09 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/utility/ptod.c,v $
-
-    $Log: ptod.c,v $
-    Revision 1.5  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.4  2005/02/26 06:42:41  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2004/08/27 01:28:33  jorupp
-     * cleaning up some compile warnings
-
-    Revision 1.2  2004/06/12 04:02:29  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.1  2004/05/04 18:19:48  gbeeley
-    - new definition location for PTOD type.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** ptodAllocate() - create a new, uninitialized PTOD object without any

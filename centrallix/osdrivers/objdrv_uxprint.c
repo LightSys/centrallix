@@ -21,6 +21,7 @@
 #include "cxlib/mtlexer.h"
 #include "prtmgmt.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -52,101 +53,6 @@
 /* Description:	UNIX printer objectsystem driver.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_uxprint.c,v 1.9 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint.c,v $
-
-    $Log: objdrv_uxprint.c,v $
-    Revision 1.9  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.8  2004/06/23 21:33:56  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.7  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.6  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.5  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.4  2002/06/19 23:29:34  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.3  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:12  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:11  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** A single lpr print queue entry ***/
@@ -291,11 +197,11 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 	        {
 		/** Get rank, owner, jobid, filename **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		rank = strtol(mlxStringVal(lxs,0),NULL,10);
+		rank = strtoi(mlxStringVal(lxs,0),NULL,10);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,user,32);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		jobid = strtol(mlxStringVal(lxs,0),NULL,10);
+		jobid = strtoi(mlxStringVal(lxs,0),NULL,10);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,filename,128);
 
@@ -318,7 +224,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 
 		/** Get the file's size and skip to eol. **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		e->Size = strtol(mlxStringVal(lxs,0),NULL,10);
+		e->Size = strtoi(mlxStringVal(lxs,0),NULL,10);
 		while ((t=mlxNextToken(lxs) != MLX_TOK_EOL && t != MLX_TOK_ERROR));
 
 		/** Add entry to our queue list **/

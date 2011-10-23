@@ -42,141 +42,6 @@
 /*		pulling data items from an ObjectSystem query.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiq_projection.c,v 1.15 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
-
-    $Log: multiq_projection.c,v $
-    Revision 1.15  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.14  2010/09/08 22:22:43  gbeeley
-    - (bugfix) DELETE should only mark non-provided objects as null.
-    - (bugfix) much more intelligent join dependency checking, as well as
-      fix for queries containing mixed outer and non-outer joins
-    - (feature) support for two-level aggregates, as in select max(sum(...))
-    - (change) make use of expModifyParamByID()
-    - (change) disable RequestNotify mechanism as it needs to be reworked.
-
-    Revision 1.13  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.12  2009/06/26 16:04:26  gbeeley
-    - (feature) adding DELETE support
-    - (change) HAVING clause now honored in INSERT ... SELECT
-    - (bugfix) some join order issues resolved
-    - (performance) cache 0 or 1 row result sets during a join
-    - (feature) adding INCLUSIVE option to SUBTREE selects
-    - (bugfix) switch to qprintf for building RawData sql data
-    - (change) some minor refactoring
-
-    Revision 1.11  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-    Revision 1.10  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.9  2007/09/18 17:59:07  gbeeley
-    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
-      combined using AND.  This permits more flexible building of dynamic SQL
-      (no need to do fancy text processing in order to add another WHERE
-      constraint to the query).
-    - (bugfix) fix for crash when using "SELECT *" with a join.
-    - (change) permit the specification of one FROM source to be an "IDENTITY"
-      data source for the query.  That data source will be the one affected by
-      any inserting and deleting through the query.
-
-    Revision 1.8  2007/07/31 17:39:59  gbeeley
-    - (feature) adding "SELECT *" capability, rather than having to name each
-      attribute in every query.  Note - "select *" does result in a query
-      result set in which each row may differ in what attributes it has,
-      depending on the data source(s) used.
-
-    Revision 1.7  2007/02/17 04:18:14  gbeeley
-    - (bugfix) SQL engine was not properly setting ObjCoverageMask on
-      expression trees built from components of the where clause, thus
-      expressions tended to not get re-evaluated when new values were
-      available.
-
-    Revision 1.6  2005/10/18 22:51:06  gbeeley
-    - (bugfix) request writability on objects when query open for update.
-
-    Revision 1.5  2005/09/24 20:19:18  gbeeley
-    - Adding "select ... from subtree /path" support to the SQL engine,
-      allowing the retrieval of an entire subtree with one query.  Uses
-      the new virtual attr support to supply the relative path of each
-      retrieved object.  Much the reverse of what a querytree object can
-      do.
-    - Memory leak fixes in multiquery.c
-    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
-
-    Revision 1.4  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2002/05/03 03:51:21  gbeeley
-    Added objUnmanageObject() and objUnmanageQuery() which cause an object
-    or query to not be closed automatically on session close.  This should
-    NEVER be used with the intent of keeping an object or query open after
-    session close, but rather it is used when the object or query would be
-    closed in some other way, such as 'hidden' objects and queries that the
-    multiquery layer opens behind the scenes (closing the multiquery objects
-    and queries will cause the underlying ones to be closed).
-    Also fixed some problems in the OSML where some objects and queries
-    were not properly being added to the session's open objects and open
-    queries lists.
-
-    Revision 1.2  2002/04/05 06:10:11  gbeeley
-    Updating works through a multiquery when "FOR UPDATE" is specified at
-    the end of the query.  Fixed a reverse-eval bug in the expression
-    subsystem.  Updated form so queries are not terminated by a semicolon.
-    The DAT module was accepting it as a part of the pathname, but that was
-    a fluke :)  After "for update" the semicolon caused all sorts of
-    squawkage...
-
-    Revision 1.1.1.1  2001/08/13 18:00:54  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:57  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 struct
     {
@@ -249,6 +114,7 @@ typedef struct _MPI
 #define MQP_MI_F_SOURCELIST	1	/* source list is valid */
 #define MQP_MI_F_USINGCACHE	2	/* using row cache */
 #define MQP_MI_F_SOURCEOPEN	4	/* source has been opened */
+#define MQP_MI_F_LASTMATCHED	8	/* last item returned matched (for pruning) */
 
 
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
@@ -389,7 +255,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
-	newqy = objOpenQuery(obj, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -550,7 +416,7 @@ mqpAnalyze(pQueryStatement stmt)
 		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
 		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if ((where_item->Expr->ObjCoverageMask & (~stmt->Query->ProvidedObjMask)) == (1<<src_idx))
+		    if (((where_item->Expr->ObjCoverageMask & ~EXPR_MASK_EXTREF) & (~stmt->Query->ProvidedObjMask)) == (1<<src_idx))
 		        {
 			/** Add this expression into the constraint for this element **/
 			if (qe->Constraint == NULL)
@@ -638,6 +504,7 @@ mqpAnalyze(pQueryStatement stmt)
 	    /** Setup the object that this will use. **/
 	    qe->SrcIndex = src_idx;
 	    if (from_qs->Flags & MQ_SF_FROMSUBTREE) qe->Flags |= MQ_EF_FROMSUBTREE;
+	    if (from_qs->Flags & MQ_SF_PRUNESUBTREE) qe->Flags |= MQ_EF_PRUNESUBTREE;
 	    if (from_qs->Flags & MQ_SF_INCLSUBTREE) qe->Flags |= MQ_EF_INCLSUBTREE;
 	    if (from_qs->Flags & MQ_SF_WILDCARD) qe->Flags |= MQ_EF_WILDCARD;
 	    if (from_qs->Flags & MQ_SF_FROMOBJECT) qe->Flags |= MQ_EF_FROMOBJECT;
@@ -865,7 +732,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
 
-        if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, 0);
+        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE)) expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	/** Check for cached single row result set **/
 	if (mi->RowCache)
@@ -889,7 +756,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
-	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	    if (!qe->LLQuery) 
 		{
 		mqpFinish(qe,stmt);
@@ -1199,6 +1066,12 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    obj = objLinkTo(qe->LLSource);
 	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 
+	    if (qe->Flags & MQ_EF_FROMSUBTREE)
+		{
+		mqp_internal_SetupSubtreeAttrs(qe, obj);
+		return 1;
+		}
+
 	    if (mqp_internal_CheckConstraint(qe, stmt) > 0)
 		{
 		/** the top level one matches.  use it. **/
@@ -1214,7 +1087,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 
 	/** Attempt to recurse a subtree? **/
-	if (qe->Flags & MQ_EF_FROMSUBTREE && stmt->Query->ObjList->Objects[qe->SrcIndex])
+	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (!(mi->Flags & MQP_MI_F_LASTMATCHED) || !(qe->Flags & MQ_EF_PRUNESUBTREE)) && stmt->Query->ObjList->Objects[qe->SrcIndex])
 	    {
 	    obj = mqp_internal_Recurse(qe, stmt, stmt->Query->ObjList->Objects[qe->SrcIndex]);
 	    if (obj)
@@ -1291,8 +1164,30 @@ mqpNextItem(pQueryElement qe, pQueryStatement stmt)
 		if (rval != 1) break; /* return if no more sources (0) or error (-1) */
 		}
 
-	    rval = mqp_internal_NextItemFromSource(qe, stmt);
-	    if (rval != 0) break; /* return if valid row (1) or if error (-1) */
+	    /** Loop looking for a valid item from this source.  For SUBTREE selects
+	     ** we have to do this here because the WHERE can't be passed to the
+	     ** data source due to the need to search subobjects of objects (whether
+	     ** they match or not) too.
+	     **/
+	    while(1)
+		{
+		rval = mqp_internal_NextItemFromSource(qe, stmt);
+		if (rval == 1 && (qe->Flags & MQ_EF_FROMSUBTREE))
+		    {
+		    /** Subtree select, valid object -- handle WHERE condition here **/
+		    rval = mqp_internal_CheckConstraint(qe, stmt);
+		    mi->Flags &= ~MQP_MI_F_LASTMATCHED;
+		    if (rval == 1) mi->Flags |= MQP_MI_F_LASTMATCHED;
+		    if (rval != 0) break;
+		    }
+		else
+		    {
+		    break;
+		    }
+		}
+
+	    /** Return if valid row (1) or if error (-1) **/
+	    if (rval != 0) break;
 
 	    /** No more items in that source.  Try another one. **/
 	    mqp_internal_CloseSource(qe);

@@ -31,9 +31,6 @@
 /*		has need of support for interfaces.                    	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
- **END-CVSDATA***********************************************************/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,6 +39,8 @@
 #include "iface_private.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/util.h"
+#include "cxlib/xarray.h"
 #include "stparse.h"
 #include "obj.h"
 #include "centrallix.h"
@@ -150,7 +149,7 @@ pIfcMajorVersion
 ifc_internal_NewMajorVersion(pObject def, int type)
     {
     int			    NumCategories, i, ExpectedMinorVersion, HighestMinorVersion, ThisMinorVersion,
-			    MemberCategory, ThisOffset, NumMinorVersions;
+			    MemberCategory, ThisOffset=0, NumMinorVersions;
     pIfcMajorVersion	    MajorVersion=NULL;
     pObject		    MinorObj=NULL, MemberObj=NULL;
     pObjQuery		    MinorQy=NULL, MemberQy=NULL;
@@ -194,7 +193,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		mssError(0, "IFC", "Couldn't get name for a minor version within '%s'", def->Pathname->Pathbuf+1);
 		goto error;
 		}
-	    if (Val.String[0] != 'v' || ( (i=strtol(Val.String+1, &ptr, 10))==0 && ptr != Val.String+strlen(Val.String)))
+	    if (Val.String[0] != 'v' || ( (i=strtoi(Val.String+1, &ptr, 10))==0 && ptr != Val.String+strlen(Val.String)))
 		{
 		mssError(0, "IFC", "Ilegal minor version name '%s' in '%s'", Val.String, def->Pathname->Pathbuf+1);
 		goto error;
@@ -249,7 +248,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		}
 	    /** Set all offsets **/
 	    for (i=0;i<IFC.NumCategories[type];i++)
-		xaSetItem(&(MajorVersion->Offsets[i]), ThisMinorVersion, (void*)xaCount(&(MajorVersion->Members[i])));
+		xaSetItem(&(MajorVersion->Offsets[i]), ThisMinorVersion, (void*)(intptr_t)xaCount(&(MajorVersion->Members[i])));
 	    /** Process the members **/
 	    if ( (MemberQy = objOpenQuery(MinorObj, NULL, NULL, NULL, NULL)) == NULL)
 		{
@@ -290,6 +289,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		    if (!strcmp(xaGetItem(&(MajorVersion->Members[MemberCategory]), i), MemberName))
 			{
 			/** is the duplicate within this minor version, or in another minor version? **/
+			// FIXME Make sure offset is computed!  It us currently set to 0
 			if (i >= ThisOffset)
 			    /** within this minor version **/
 			    {
@@ -527,7 +527,7 @@ ifc_internal_BuildHandle(pIfcDefinition def, int major, int minor)
 	/** get offsets into member and property arrays **/
 	for (i=0;i<IFC.NumCategories[def->Type];i++)
 	    {
-	    if ( (h->Offsets[i] = (int)xaGetItem(&(maj_v->Offsets[i]), minor)) < 0)
+	    if ( (h->Offsets[i] = (intptr_t)xaGetItem(&(maj_v->Offsets[i]), minor)) < 0)
 		{
 		mssError(1, "IFC", "'%s/v%d' does not contain a minor version %d", def->Path, major, minor);
 		ifcReleaseHandle(h);

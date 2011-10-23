@@ -31,47 +31,6 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_http_osml.c,v 1.4 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_osml.c,v $
-
-    $Log: net_http_osml.c,v $
-    Revision 1.4  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.3  2010/09/09 01:30:53  gbeeley
-    - (change) allow a HAVING clause to be used instead of WHERE when doing
-      the object reopen operation after a Create or Setattrs.
-    - (change) do the Reopen operation on both Create *and* Setattrs to
-      catch any changes to joined objects resulting from the setattrs.
-
-    Revision 1.2  2009/06/26 18:31:03  gbeeley
-    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
-      like test_obj does
-    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
-    - (change) some refactoring of error message handlers to clean things
-      up a bit
-    - (feature) adding last_activity to session objects (for sysinfo)
-    - (feature) parameterized OSML SQL queries over the http interface
-
-    Revision 1.1  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-
- **END-CVSDATA***********************************************************/
  
  
 /*** nht_internal_ConstructPathname - constructs the proper OSML pathname
@@ -644,9 +603,9 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		/** Get the info and open the object **/
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__usrtype"),&usrtype) < 0) return -1;
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
-		mode = strtol(ptr,NULL,0);
+		mode = strtoi(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmask"),&ptr) < 0) return -1;
-		mask = strtol(ptr,NULL,0);
+		mask = strtoi(ptr,NULL,0);
 		obj = objOpen(objsess, req_inf->StrVal, mode, mask, usrtype);
 		if (!obj)
 		    obj_handle = XHN_INVALID_HANDLE;
@@ -778,15 +737,15 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			}
 
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
-		    mode = strtol(ptr,NULL,0);
+		    mode = strtoi(ptr,NULL,0);
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__rowcount"),&ptr) < 0)
 			n = 0x7FFFFFFF;
 		    else
-			n = strtol(ptr,NULL,0);
+			n = strtoi(ptr,NULL,0);
 		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__startat"),&ptr) < 0)
 			start = 0;
 		    else
-			start = strtol(ptr,NULL,0) - 1;
+			start = strtoi(ptr,NULL,0) - 1;
 		    if (start < 0) start = 0;
 		    if (!strcmp(request,"queryfetch"))
 			{
@@ -815,6 +774,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			{
 			/** if end of result set was reached before rowlimit ran out **/
 			xhnFreeHandle(&(sess->Hctx), query_handle);
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->OsmlQuery == qy)
+				{
+				xaRemoveItem(&sess->OsmlQueryList, i);
+				nht_internal_FreeQuery(nht_query);
+				break;
+				}
+			    }
 			objQueryClose(qy);
 			qy = NULL;
 			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n");
@@ -822,6 +791,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    else if (autoclose)
 			{
 			xhnFreeHandle(&(sess->Hctx), query_handle);
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->OsmlQuery == qy)
+				{
+				xaRemoveItem(&sess->OsmlQueryList, i);
+				nht_internal_FreeQuery(nht_query);
+				break;
+				}
+			    }
 			objQueryClose(qy);
 			qy = NULL;
 			}
@@ -853,15 +832,15 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__bytecount"),&ptr) < 0)
 		    n = 0x7FFFFFFF;
 		else
-		    n = strtol(ptr,NULL,0);
+		    n = strtoi(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__offset"),&ptr) < 0)
 		    o = -1;
 		else
-		    o = strtol(ptr,NULL,0);
+		    o = strtoi(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__flags"),&ptr) < 0)
 		    flags = 0;
 		else
-		    flags = strtol(ptr,NULL,0);
+		    flags = strtoi(ptr,NULL,0);
 		start = 1;
 		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?flags|OBJ_U_SEEK:flags)) > 0)
 		    {
@@ -943,6 +922,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    subinf = req_inf->SubInf[i];
 		    if (strncmp(subinf->Name,"ls__",4) != 0 && strncmp(subinf->Name,"cx__",4) != 0)
 		        {
+			retval = 0;
 			t = objGetAttrType(obj, subinf->Name);
 			if (t < 0) continue;
 			switch(t)
@@ -1180,7 +1160,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 		        /*if (search_inf->StrVal == NULL)
 		            n = search_inf->IntVal[0];
 		        else*/
-		            n = strtol(search_inf->StrVal, NULL, 10);
+		            n = strtoi(search_inf->StrVal, NULL, 10);
 		        objSetAttrValue(obj, search_inf->Name, DATA_T_INTEGER,POD(&n));
 			break;
 

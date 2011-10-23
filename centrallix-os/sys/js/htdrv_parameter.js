@@ -119,6 +119,7 @@ function pa_init(l, wparam)
 	}
     l.datatype = wparam.type;
     l.findcontainer = wparam.findc;
+    l.destroy_widget = pa_deinit;
 
     if (!l.newvalue && l.findcontainer && wgtrGetType(wgtrGetParent(l)) == 'widget/component-decl')
 	{
@@ -144,3 +145,22 @@ function pa_init(l, wparam)
 
     return l;
     }
+
+function pa_deinit()
+    {
+    // Unhook from events so we don't shoot fish in a nonexistent barrel.
+    if (this.value)
+	{
+	if (this.value.ifcProbe && this.value.ifcProbe(ifEvent))
+	    {
+	    var el = this.value.ifcProbe(ifEvent).GetEventList();
+	    for(var e in el)
+		{
+		this.value.ifcProbe(ifEvent).UnHook(el[e], pa_event, this);
+		}
+	    }
+	}
+    }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_parameter.js'] = true;

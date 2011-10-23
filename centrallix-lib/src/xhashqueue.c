@@ -34,35 +34,6 @@
 /*		See the header file for more information.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xhashqueue.c,v 1.3 2007/04/08 03:43:06 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhashqueue.c,v $
-
-    $Log: xhashqueue.c,v $
-    Revision 1.3  2007/04/08 03:43:06  gbeeley
-    - (bugfix) some code quality fixes
-    - (feature) MTASK integration with the Valgrind debugger.  Still some
-      problems to be sorted out, but this does help.  Left to themselves,
-      MTASK and Valgrind do not get along, due to the approach to threading.
-
-    Revision 1.2  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.1.1.1  2001/08/13 18:04:23  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:02:57  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** xhqInit - initialize a (pre-allocated) xhashqueue data structure and

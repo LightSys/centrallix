@@ -56,3 +56,6 @@ function tm_init(param)
 	tm.timerid = null;
     return tm;
     }
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_timer.js'] = true;

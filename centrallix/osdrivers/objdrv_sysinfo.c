@@ -9,6 +9,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 /** module definintions **/
 #include "centrallix.h"
 #include "config.h"
@@ -45,31 +46,6 @@
 /*		much like the /proc or /sys filesystem on Linux does.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_sysinfo.c,v 1.3 2007/04/08 03:52:01 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sysinfo.c,v $
-
-    $Log: objdrv_sysinfo.c,v $
-    Revision 1.3  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.2  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.1  2005/09/17 01:23:51  gbeeley
-    - Adding sysinfo objectsystem driver, which is roughly analogous to
-      the /proc filesystem in Linux.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -262,7 +238,7 @@ sysAddAttrib(pSysInfoData sid, char* attrname, int type)
 	    }
 
 	/** Add the type **/
-	xaAddItem(sid->AttrTypes, (void*)type);
+	xaAddItem(sid->AttrTypes, (void*)(intptr_t)type);
 
     return 0;
     }
@@ -494,7 +470,7 @@ sysLoadAttrsArray(pSysData inf)
 		    t = -1;
 		else
 		    t = inf->Sid->GetAttrTypeFn(inf->Sid->Context, (inf->Flags & SYS_F_SUBOBJ)?inf->Name:NULL, xa->Items[i]);
-		xaAddItem(txa, (void*)t);
+		xaAddItem(txa, (void*)(intptr_t)t);
 		}
 	    }
 	inf->AttrTypesArray = txa;
@@ -901,7 +877,7 @@ sysGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    {
 	    if (!strcmp(inf->AttrsArray->Items[i], attrname))
 		{
-		t = (int)(inf->AttrTypesArray->Items[i]);
+		t = (intptr_t)(inf->AttrTypesArray->Items[i]);
 		return t;
 		}
 	    }
@@ -947,7 +923,7 @@ sysGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    {
 	    if (!strcmp(inf->AttrsArray->Items[i], attrname))
 		{
-		t = (int)(inf->AttrTypesArray->Items[i]);
+		t = (intptr_t)(inf->AttrTypesArray->Items[i]);
 		if (t != datatype)
 		    {
 		    mssError(1,"SYS","Type mismatch requesting attribute '%s'", attrname);
@@ -1255,7 +1231,7 @@ sys_internal_MtaskAttrValue(void* ctx, char* objname, char* attrname, void* val_
 
 	sys_internal_MtaskLoad();
 	if (!objname) return -1;
-	n = strtol(objname, NULL, 16);
+	n = strtoi(objname, NULL, 16);
 	if (n < 0 || n >= SYS_INF.sys_thr_cnt) return -1;
 	if (!strcmp(attrname, "description"))
 	    {

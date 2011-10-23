@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 
 
 /************************************************************************/
@@ -41,46 +42,6 @@
 /* Description:	Provides support for DELETE statements.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiq_delete.c,v 1.4 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_delete.c,v $
-
-    $Log: multiq_delete.c,v $
-    Revision 1.4  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.3  2010/09/08 22:22:43  gbeeley
-    - (bugfix) DELETE should only mark non-provided objects as null.
-    - (bugfix) much more intelligent join dependency checking, as well as
-      fix for queries containing mixed outer and non-outer joins
-    - (feature) support for two-level aggregates, as in select max(sum(...))
-    - (change) make use of expModifyParamByID()
-    - (change) disable RequestNotify mechanism as it needs to be reworked.
-
-    Revision 1.2  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.1  2009/06/24 15:49:13  gbeeley
-    - (feature) adding EpsonFX output driver support for continuous form
-      printers.
-    - (feature) adding DELETE sql statement support
-
-
- **END-CVSDATA***********************************************************/
 
 
 struct
@@ -125,7 +86,7 @@ mqdAnalyze(pQueryStatement stmt)
 		item = (pQueryStructure)(qs->Parent->Children.Items[i]);
 		if (item->NodeType == MQ_T_SETOPTION && !strcmp(item->Name,"rowcount"))
 		    {
-		    qe->SlaveIterCnt = strtol(item->Source, NULL, 10);
+		    qe->SlaveIterCnt = strtoi(item->Source, NULL, 10);
 		    break;
 		    }
 		}

@@ -306,3 +306,6 @@ HTMLElement.prototype.pageX getter = Element_PageXGetter;
 HTMLElement.prototype.pageX setter = Element_PageXSetter;
 HTMLElement.prototype.pageY getter = Element_PageYGetter;
 HTMLElement.prototype.pageY setter = Element_PageYSetter;
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_page_js15.js'] = true;

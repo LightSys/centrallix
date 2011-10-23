@@ -1,0 +1,31 @@
+$Version=2$
+plugin_nav_structure "widget/component-decl"
+    {
+    title = "Structure";
+    seq = 2;
+    height=408; width=498;
+
+    detail_osrc "widget/parameter" { type=object; find_container="widget/osrc"; }
+
+    src_tree "widget/component"
+	{
+	x=0; y=0; width=498; height=408;
+	path = "/sys/cmp/framed_tree.cmp";
+	bgcolor = "#ffffff";
+	source = "/";
+	highlight_bgcolor = "#0000a0";
+	highlight_fgcolor = "#ffffff";
+	icon = "/apps/nav/object.gif";
+
+	set_tree_source "widget/connector"
+	    {
+	    source=detail_osrc;
+	    event="EndQuery";
+	    event_condition=runclient(char_length(:detail_osrc:objpath) > 1);
+	    target=src_tree;
+	    action="SetRoot";
+	    NewRoot=runclient(:detail_osrc:objpath + '/');
+	    Expand=runclient("yes");
+	    }
+	}
+    }

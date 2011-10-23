@@ -149,3 +149,6 @@ function checkbox_toggleMode(layer) {
    }
 }
 
+
+// Load indication
+if (window.pg_scripts) pg_scripts['htdrv_checkbox_moz.js'] = true;
