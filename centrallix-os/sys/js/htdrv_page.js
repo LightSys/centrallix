@@ -1213,8 +1213,14 @@ function pg_appwindowbuild(seen)
     seen[wgtrGetNamespace(this)] = this.pg_appwindows[wgtrGetNamespace(this)];
     for(var win in this.pg_appwindows)
 	{
-	if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	if (this.pg_appwindows[win].wobj != 'undefined' && this.pg_appwindows[win].wobj.__WgtrNamespace != win)
 	    {
+	    // has been reloaded, ignore this instance
+	    delete pg_appwindows[win];
+	    }
+	else if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	    {
+	    // good window, unseen as of yet, and it is open... query it for its list.
 	    var otherlist = this.pg_appwindows[win].wobj.AppWindowBuild(seen);
 	    for(var otherwin in otherlist)
 		{
@@ -1379,6 +1385,15 @@ function pg_launch(aparam)
 	else
 	    url += '?';
 	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	}
+
+    if (obscure_data)
+	{
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += "cx__obscure=yes";
 	}
  
     // Find a unique name for the new window.
@@ -1580,6 +1595,37 @@ function pg_timestamp()
 
 //START SECTION: 'expression' functions ----------------------------------------
 
+function pg_explisten(exp, obj, prop)
+    {
+    obj.pg_expchange = pg_expchange;
+    if (obj.ifcProbe && obj.ifcProbe(ifValue) && obj.ifcProbe(ifValue).Exists(prop))
+	obj.ifcProbe(ifValue).Watch(prop, null, pg_expchange);
+    else
+	htr_watch(obj,prop,"pg_expchange");
+    }
+
+function pg_expaddpart(exp, obj, prop)
+    {
+    var ref;
+    if (obj.reference && (ref = obj.reference()))
+	obj = ref;
+    for(var i=0; i<exp.ParamList.length; i++)
+	{
+	var item = exp.ParamList[i];
+	if (obj == item[2] && prop == item[1]) return;
+	if (obj.__WgtrName == item[0] && !item[2] && prop == item[1])
+	    {
+	    item[2] = obj;
+	    return;
+	    }
+	}
+    var _context = window[exp.Context];
+    var nodelist = wgtrNodeList(_context);
+    var item=[obj.__WgtrName, prop, obj];
+    exp.ParamList.push(item);
+    pg_explisten(exp, obj, prop);
+    }
+
 function pg_expression(o,p,e,l,c)
     {
     var expobj = {};
@@ -1592,6 +1638,7 @@ function pg_expression(o,p,e,l,c)
     var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
+    window.__cur_exp = expobj;
     wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
@@ -1604,11 +1651,7 @@ function pg_expression(o,p,e,l,c)
 	    {
 	    if (item[2].reference && (ref = item[2].reference()))
 		item[2] = ref;
-	    item[2].pg_expchange = pg_expchange;
-	    if (item[2].ifcProbe && item[2].ifcProbe(ifValue) && item[2].ifcProbe(ifValue).Exists(item[1]))
-		item[2].ifcProbe(ifValue).Watch(item[1], null, pg_expchange);
-	    else
-		htr_watch(item[2],item[1],"pg_expchange");
+	    pg_explisten(expobj, item[2], item[1]);
 	    }
 	}
     }
@@ -1618,6 +1661,7 @@ function pg_expchange_cb(exp) //SETH: ??
     var node = wgtrGetNode(window[exp.Context], exp.Objname);
     var _context = window[exp.Context];
     var _this = node;
+    window.__cur_exp = exp;
     var v = eval(exp.Expression);
     //pg_explog.push('assign: obj ' + node.__WgtrName + ', prop ' + exp.Propname + ', nv ' + v + ', exp ' + exp.Expression);
     wgtrSetProperty(node, exp.Propname, v);

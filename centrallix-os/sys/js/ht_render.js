@@ -213,6 +213,8 @@ function cxjs_substitute(_context, _this, str, remaplist)
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);
+		    if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+			pg_expaddpart(window.__cur_exp, obj, fieldname);
 		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
 			prop = "";
 		    else
