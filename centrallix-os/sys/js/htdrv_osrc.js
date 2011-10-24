@@ -948,7 +948,12 @@ function osrc_refresh_object_handler(aparam)
     for(var k in keys)
 	{
 	if (first)
-	    sql += " WHERE ";
+	    {
+	    if (this.use_having)
+		sql += " HAVING ";
+	    else
+		sql += " WHERE ";
+	    }
 	else 
 	    sql += " AND ";
 	sql += this.MakeFilter([keys[k]]);
@@ -1262,12 +1267,12 @@ function osrc_cb_discardable_changed(p,o,n)
     if (osrc.is_client_discardable && osrc.discardable_client_count == 0)
 	{
 	osrc.is_client_discardable = false;
-	this.ifcProbe(ifValue).Changing("is_client_discardable", 0, true, 1, true);
+	osrc.ifcProbe(ifValue).Changing("is_client_discardable", 0, true, 1, true);
 	}
     else if (!osrc.is_client_discardable && osrc.discardable_client_count > 0)
 	{
 	osrc.is_client_discardable = true;
-	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
+	osrc.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
 	}
     return n;
     }
@@ -1282,12 +1287,12 @@ function osrc_cb_savable_changed(p,o,n)
     if (osrc.is_client_savable && osrc.savable_client_count == 0)
 	{
 	osrc.is_client_savable = false;
-	this.ifcProbe(ifValue).Changing("is_client_savable", 0, true, 1, true);
+	osrc.ifcProbe(ifValue).Changing("is_client_savable", 0, true, 1, true);
 	}
     else if (!osrc.is_client_savable && osrc.savable_client_count > 0)
 	{
 	osrc.is_client_savable = true;
-	this.ifcProbe(ifValue).Changing("is_client_savable", 1, true, 0, true);
+	osrc.ifcProbe(ifValue).Changing("is_client_savable", 1, true, 0, true);
 	}
     return n;
     }
