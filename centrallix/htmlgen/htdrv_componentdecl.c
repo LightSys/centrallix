@@ -483,7 +483,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 	    /** Verify the thing **/
-	    if (hntVerifyHints(param->Hints, &(param->TypedObjData), &ptr, NULL) < 0)
+	    if (hntVerifyHints(param->Hints, &(param->TypedObjData), &ptr, NULL, s->ObjSession) < 0)
 		{
 		mssError(1,"HTCMPD","Invalid value '%s' for component '%s' param '%s': %s", param->StrVal, name, param->Name, ptr);
 		rval = -1;

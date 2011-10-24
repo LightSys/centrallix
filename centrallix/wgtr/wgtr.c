@@ -203,7 +203,7 @@ wgtrParseParameter(pObject obj, pStruct inf)
 	    }
 
 	/** set default value and/or verify that the given value is valid **/
-	if (hntVerifyHints(param->Hints, param->Value, &str, NULL) < 0)
+	if (hntVerifyHints(param->Hints, param->Value, &str, NULL, obj->Session) < 0)
 	    {
 	    mssError(1, "WGTR", "Parameter '%s' specified incorrectly: %s", param->Name, str);
 	    goto error;
