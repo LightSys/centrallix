@@ -1189,7 +1189,7 @@ function form_action_submit(aparam)
     for(var i in this.elements)
 	{
 	var v = this.elements[i].getvalue();
-	if (v != null && v != '')
+	if (v !== null && v !== '')
 	    {
 	    param[this.elements[i].fieldname] = v;
 	    }
