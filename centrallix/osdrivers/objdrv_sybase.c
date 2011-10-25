@@ -881,7 +881,8 @@ sybd_internal_GetCxType(int ut)
 	if (ut == 8 || ut == 23) return DATA_T_DOUBLE;
 	if (ut == 11 || ut == 21) return DATA_T_MONEY;
 
-	mssError(1, "SYBD", "the usertype %d is not supported by Centrallix");
+	if (!CxGlobals.QuietInit)
+	    mssError(1, "SYBD", "the usertype %d is not supported by Centrallix");
 	return -1;
     }
 
@@ -1126,7 +1127,8 @@ sybd_internal_GetDefaultHints(int usertype)
 //	    case 80: /** timestamp **/
 //		break;
 	    default:
-		mssError(1, "SYBD", "%d not a supported type", usertype);
+		if (!CxGlobals.QuietInit)
+		    mssError(1, "SYBD", "%d not a supported type", usertype);
 		xaDeInit(&(hints->EnumList));
 		nmFree(hints, sizeof(ObjPresentationHints));
 		expFreeParamList(tmplist);
