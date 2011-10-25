@@ -32,23 +32,6 @@
 /*		functionality for the reporting output mechanism.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt.h,v $
-
-    $Log: prtmgmt.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 #include "report.h"
 #include "barcode.h"

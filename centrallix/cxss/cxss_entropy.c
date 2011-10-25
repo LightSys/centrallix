@@ -48,30 +48,6 @@
 /*		Centrallix application platform.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: cxss_entropy.c,v 1.3 2008/03/29 02:26:14 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/cxss/cxss_entropy.c,v $
-
-    $Log: cxss_entropy.c,v $
-    Revision 1.3  2008/03/29 02:26:14  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.2  2007/06/06 15:18:12  gbeeley
-    - (bugfix) fixing an issue with entropy pool handling
-
-    Revision 1.1  2007/02/22 23:25:14  gbeeley
-    - (feature) adding initial framework for CXSS, the security subsystem.
-    - (feature) CXSS entropy pool and key generation, basic framework.
-    - (feature) adding xmlhttprequest capability
-    - (change) CXSS requires OpenSSL, adding that check to the build
-    - (security) Adding application key to thwart request spoofing attacks.
-      Once the AML is active, application keying will be more important and
-      will be handled there instead of in net_http.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** InitEntropy -- initialize the entropy pool.  Pool size MUST be a

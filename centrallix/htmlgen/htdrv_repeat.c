@@ -42,23 +42,6 @@
 /*		render its subwidgets.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Log: htdrv_repeat.c,v $
-    Revision 1.3  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.2  2007/08/08 23:17:09  dkasper
-    - Added the correct widget tree linkage so that subobjects can find the
-      correct container.
-
-    Revision 1.1  2007/07/27 00:24:50  dkasper
-    - Simple driver for the repeat widget.  All it does is register itself
-      properly and render all its subwidgets since it is not a visual widget.
-
-
- **END-CVSDATA***********************************************************/
 
 /** Globals **/
 

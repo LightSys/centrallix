@@ -34,20 +34,6 @@
 /*              across the print drivers.                               */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: report.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/report.h,v $
-
-    $Log: report.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** Printer Driver Information **/

@@ -39,23 +39,6 @@
 /*		definitions that aren't visible from the exterior.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_private.h,v 1.2 2001/09/25 18:03:44 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_private.h,v $
-
-    $Log: prtmgmt_private.h,v $
-    Revision 1.2  2001/09/25 18:03:44  gbeeley
-    A few changes for the upcoming prtmgmt update.
-
-    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 #include "report.h"
 #include "barcode.h"

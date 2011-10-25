@@ -46,36 +46,6 @@
 /*		rules are specific to the affected widget.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_rule.c,v 1.3 2008/06/25 18:27:25 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_rule.c,v $
-
-    $Log: htdrv_rule.c,v $
-    Revision 1.3  2008/06/25 18:27:25  gbeeley
-    - (bugfix) switch to JSSTR (qprintf) for string encoding of rule parameters
-
-    Revision 1.2  2008/03/04 01:10:57  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.1  2007/12/05 18:56:18  gbeeley
-    - (feature) adding declarative "widget/rule" widget, which has multiple
-      purposes in defining rule-based behavior for different kinds of widgets.
-      First use is replacing "osrc-rule" on objectsource widgets and in
-      providing osrc relationships to be declared rather than handled via
-      connectors.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Rule definition - for other drivers registering rule types

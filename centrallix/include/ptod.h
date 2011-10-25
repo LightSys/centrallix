@@ -34,26 +34,6 @@
 /*		centrallix.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: ptod.h,v 1.3 2005/02/26 06:42:38 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/ptod.h,v $
-
-    $Log: ptod.h,v $
-    Revision 1.3  2005/02/26 06:42:38  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.2  2004/06/12 04:02:27  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.1  2004/05/04 18:19:48  gbeeley
-    - new definition location for PTOD type.
-
- **END-CVSDATA***********************************************************/
 
 #include "cxlib/datatypes.h"
 

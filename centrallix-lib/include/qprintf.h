@@ -29,43 +29,6 @@
 /*		printf() library calls.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: qprintf.h,v 1.5 2008/06/25 22:38:29 jncraton Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/qprintf.h,v $
-
-    $Log: qprintf.h,v $
-    Revision 1.5  2008/06/25 22:38:29  jncraton
-    (feature) adding URL and DB64 filters
-
-    Revision 1.4  2008/03/29 01:03:36  gbeeley
-    - (change) changing integer type in IntVec to a signed integer
-    - (security) switching to size_t in qprintf where needed instead of using
-      bare integers.  Also putting in some checks for insanely huge amounts
-      of data in qprintf that would overflow many of the integer counters.
-    - (bugfix) several fixes to make the code compile cleanly at the newer
-      warning levels on newer compilers.
-
-    Revision 1.3  2007/04/19 21:14:13  gbeeley
-    - (feature) adding &FILE and &PATH filters to qprintf.
-    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
-    - (tests) more tests cases (of course...)
-    - (feature) adding qprintf functionality to XString.
-
-    Revision 1.2  2007/04/18 18:42:07  gbeeley
-    - (feature) hex encoding in qprintf (&HEX filter).
-    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
-    - (bugfix) %[ %] conditional formatting didn't exclude everything.
-    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
-    - (performance) significant performance improvements in HEX, ESCQ, HTE.
-    - (change) qprintf API change - optional session, cumulative errors/flags
-    - (testsuite) lots of added testsuite entries.
-
-    Revision 1.1  2006/06/21 21:22:44  gbeeley
-    - Preliminary versions of strtcpy() and qpfPrintf() calls, which can be
-      used for better safety in handling string data.
-
- **END-CVSDATA***********************************************************/
 
 #include <stdarg.h>
 

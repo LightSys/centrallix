@@ -37,10 +37,6 @@
 /*              row that is retrieved in a given sql query.             */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgtformVerify - allows the driver to check elsewhere in the tree

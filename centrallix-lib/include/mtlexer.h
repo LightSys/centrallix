@@ -19,44 +19,6 @@
 /*		of the various files and http headers, etc.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mtlexer.h,v 1.5 2010/09/09 01:58:35 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtlexer.h,v $
-
-    $Log: mtlexer.h,v $
-    Revision 1.5  2010/09/09 01:58:35  gbeeley
-    - (security) the mtlexer massive rewrite left mtlexer 8-bit clean, which
-      is *too* clean for some purposes.  This change causes a \0 byte in the
-      data stream to flag an error, unless ALLOWNUL is turned on.
-
-    Revision 1.4  2010/05/12 18:21:21  gbeeley
-    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
-      and for security.  Adding many test suite items for mtlexer, a good
-      fraction of which fail on the old mtlexer module.  The new module is
-      currently mildly slower than the old one, but is more correct.
-
-    Revision 1.3  2005/02/26 04:32:02  gbeeley
-    - moving include file install directory to include a "cxlib/" prefix
-      instead of just putting 'em all in /usr/include with everything else.
-
-    Revision 1.2  2002/08/05 19:51:22  gbeeley
-    Adding only "mildly tested" support for getting/setting the seek offset
-    while in a lexer session.  The lexer does blocked/buffered I/O, so it
-    is otherwise difficult to know 'where' in the document one is at.  Note
-    that the offsets returned from mlxGetOffset and mlxGetCurOffset are
-    relative to the *start* of the lexer processing.  If data was read from
-    the file/object *before* processing with the lexer, that data is *not*
-    included in the seek counts/offsets.
-
-    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 #ifdef CXLIB_INTERNAL
 #include "mtask.h"
