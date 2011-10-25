@@ -542,15 +542,15 @@ int exp_fn_upper(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     int n,i;
 
     tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
     if (!i0 || i0->DataType != DATA_T_STRING)
         {
 	mssError(1,"EXP","One string parameter required for upper()");
 	return -1;
-	}
-    if (i0->Flags & EXPR_F_NULL)
-        {
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
 	}
     n = strlen(i0->String);
     if (tree->Alloc && tree->String)
@@ -582,15 +582,15 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     int n,i;
 
     tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
     if (!i0 || i0->DataType != DATA_T_STRING)
         {
 	mssError(1,"EXP","One string parameter required for lower()");
 	return -1;
-	}
-    if (i0->Flags & EXPR_F_NULL)
-        {
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
 	}
     n = strlen(i0->String);
     if (tree->Alloc && tree->String)
@@ -1230,8 +1230,12 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
     char* tmpptr;
     char* eq_ptr;
     int fn_rval = -1;
+    int (*getfn)();
+    int (*typefn)();
 
     xsInit(&dest);
+
+    tree->DataType = DATA_T_STRING;
 
     /** Validate the params **/
     if (i0 && !i2 && i0->Flags & EXPR_F_NULL)
@@ -1366,19 +1370,32 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 			{
 			found = 1;
 			obj = objlist->Objects[i];
+			getfn = objlist->GetAttrFn[i];
+			typefn = objlist->GetTypeFn[i];
 			break;
 			}
 		    }
 		if (!found)
 		    {
 		    /** no such object **/
-		    mssError(1,"EXP","substitute(): no such object '%s'",objname);
-		    goto out;
+		    if ((tree->Flags & EXPR_F_RUNSERVER) && (objlist->MainFlags & EXPR_MO_RUNSTATIC))
+			{
+			/** Not an error - just treat as a null. **/
+			tree->Flags |= EXPR_F_NULL;
+			fn_rval = 0;
+			goto out;
+			}
+		    else
+			{
+			mssError(1,"EXP","substitute(): no such object '%s'",objname);
+			goto out;
+			}
 		    }
 		if (obj)
 		    {
-		    t = objGetAttrType(obj, fieldname);
-		    if (t <= 0)
+		    if (!typefn) typefn = objGetAttrType;
+		    t = typefn(obj, fieldname);
+		    if (t < 0)
 			{
 			/** no such field **/
 			mssError(1,"EXP","substitute(): no such attribute '%s' in object '%s'", fieldname, objname);
@@ -1393,10 +1410,13 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 		    {
 		    if (objlist->Objects[i])
 			{
-			t = objGetAttrType(objlist->Objects[i], fieldname);
+			typefn = objlist->GetTypeFn[i];
+			if (!typefn) typefn = objGetAttrType;
+			t = typefn(objlist->Objects[i], fieldname);
 			if (t > 0)
 			    {
 			    obj = objlist->Objects[i];
+			    getfn = objlist->GetAttrFn[i];
 			    break;
 			    }
 			}
@@ -1416,7 +1436,8 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 	    /** Ok, found an object containing the attribute.  Get the string value of the attribute. **/
 	    if (obj && t > 0)
 		{
-		rval = objGetAttrValue(obj, fieldname, t, &od);
+		if (!getfn) getfn = objGetAttrValue;
+		rval = getfn(obj, fieldname, t, &od);
 		if (rval == 1)
 		    {
 		    attr_string = NULL;
