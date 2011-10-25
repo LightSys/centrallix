@@ -888,6 +888,11 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     int rval;
     pWgtrNode children[HTTBL_MAX_COLS];
 
+	/** Don't try to render table-column, etc.  We do that elsewhere **/
+	wgtrGetPropertyValue(tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	if (strcmp(ptr, "widget/table") != 0)
+	    return 0;
+
 	t = (httbl_struct*)nmMalloc(sizeof(httbl_struct));
 	if (!t) return -1;
 
