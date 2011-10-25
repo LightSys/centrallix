@@ -930,6 +930,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		}
 	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
+		nht_query = NULL;
+
 		/** First, if creating, open the new object. **/
 		if (!strcmp(request,"create"))
 		    {
@@ -1079,7 +1081,6 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				    }
 				}
 
-			    if (nht_query) nht_internal_FreeQuery(nht_query);
 			    xsDeInit(reopen_str);
 			    nmFree(reopen_str, sizeof(XString));
 			    }
@@ -1131,6 +1132,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (obj)
 			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 		    }
+
+		if (nht_query) nht_internal_FreeQuery(nht_query);
 		}
 	    else if (!strcmp(request,"delete"))
 		{
