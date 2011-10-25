@@ -198,6 +198,24 @@ expCreateParamList()
     }
 
 
+/*** expSetEvalDomain - sets the evaluation domain for an object list -
+ *** whether static or server (client doesn't make sense here).  The
+ *** domain should be one of EXPR_MO_RUNxxxxxx.  If the domain of the
+ *** objlist is lesser than the domain of the expression, then late
+ *** binding of properties is allowed (nonexistent objects return NULL
+ *** instead of an error).
+ ***/
+int
+expSetEvalDomain(pParamObjects this, int domain)
+    {
+
+	this->MainFlags &= ~EXPR_MO_DOMAINMASK;
+	this->MainFlags |= (domain & EXPR_MO_DOMAINMASK);
+
+    return 0;
+    }
+
+
 /*** expFreeParamList - frees memory used by, and deinitializes, an object
  *** parameter list structure.
  ***/
@@ -280,9 +298,13 @@ expLinkParams(pParamObjects objlist, int start, int end)
 /*** expCopyList - make a copy of a param objects list
  ***/
 int
-expCopyList(pParamObjects src, pParamObjects dst)
+expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
     {
     int i;
+
+	/** Copy all? **/
+	if (n_objects == -1)
+	    n_objects = EXPR_MAX_PARAMS;
 
 	/** Might need to deallocate strings in dst **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
@@ -293,12 +315,24 @@ expCopyList(pParamObjects src, pParamObjects dst)
 	memcpy(dst, src, sizeof(ParamObjects));
 
 	/** Make copies of all names **/
-	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	for(i=0;i<n_objects;i++)
 	    if (dst->Names[i] != NULL)
 		{
 		dst->Names[i] = nmSysStrdup(dst->Names[i]);
 		dst->Flags[i] |= EXPR_O_ALLOCNAME;
 		}
+
+	/** If not copying all, clear the ones we don't want **/
+	for(i=n_objects; i<EXPR_MAX_PARAMS; i++)
+	    {
+	    if (dst->Names[i] != NULL)
+		{
+		dst->Names[i] = NULL;
+		dst->Objects[i] = NULL;
+		dst->Flags[i] = 0;
+		dst->nObjects--;
+		}
+	    }
 
 	/** This is a transient property anyhow **/
 	dst->CurControl = NULL;
@@ -332,7 +366,7 @@ expLookupParam(pParamObjects this, char* name)
 int 
 expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
     {
-    int i;
+    int i, exist;
 
     	/** Too many? **/
 	if (this->nObjects >= EXPR_MAX_PARAMS) 
@@ -342,16 +376,19 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    }
 
 	/** Already exists? **/
-	if (expLookupParam(this, name) >= 0 && !(flags & EXPR_O_ALLOWDUPS))
+	exist = expLookupParam(this, name);
+	if (exist >= 0 && !(flags & (EXPR_O_ALLOWDUPS | EXPR_O_REPLACE)))
 	    {
 	    mssError(1,"EXP","Parameter Object name %s already exists", name);
 	    return -1;
 	    }
+	if (!(flags & EXPR_O_REPLACE))
+	    exist = -1;
 
 	/** Ok, add parameter. **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
 	    {
-	    if (this->Names[i] == NULL)
+	    if (this->Names[i] == NULL || i == exist)
 		{
 		/** Setup the entry for this parameter. **/
 		this->SeqIDs[i] = EXP.ModSeqID++;
@@ -361,6 +398,8 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		this->GetAttrFn[i] = objGetAttrValue;
 		this->SetAttrFn[i] = objSetAttrValue;
 		this->nObjects++;
+		if (this->Names[i] && (this->Flags[i] & EXPR_O_ALLOCNAME))
+		    nmSysFree(this->Names[i]);
 		if (flags & EXPR_O_ALLOCNAME)
 		    {
 		    this->Names[i] = nmSysStrdup(name);

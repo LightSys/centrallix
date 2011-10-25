@@ -1064,7 +1064,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    {
 	    xsInit(&sql);
 	    objlist = expCreateParamList();
-	    expCopyList(qy->ObjInf->ObjList, objlist);
+	    expCopyList(qy->ObjInf->ObjList, objlist, -1);
 	    expAddParamToList(objlist,"this",NULL,EXPR_O_CURRENT);
 
 	    /** Expression-based sql? **/
@@ -1106,7 +1106,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (where_clause)
 	    {
 	    objlist = expCreateParamList();
-	    expCopyList(qy->ObjInf->ObjList, objlist);
+	    expCopyList(qy->ObjInf->ObjList, objlist, -1);
 	    expAddParamToList(objlist,"this",NULL,EXPR_O_CURRENT);
 	    item_query = expCompileExpression(where_clause, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 	    if (!item_query)
@@ -1301,7 +1301,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Set up the param objects list for this fetched object. **/
 	inf->ObjList = expCreateParamList();
-	expCopyList(qy->ObjInf->ObjList, inf->ObjList);
+	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
 	expAddParamToList(inf->ObjList, objname, obj, EXPR_O_CURRENT);
 	expLinkParams(inf->ObjList, 0, -1);
 

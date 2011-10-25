@@ -342,6 +342,7 @@ struct _MQ /* MultiQuery */
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
 #define MQ_F_MULTISTATEMENT	2		/* allow multiple statements separated by semicolons */
 #define MQ_F_ONESTATEMENT	4		/* disable use of multiple statements (such as in subquery) */
+#define MQ_F_NOUPDATE		8		/* disallow changes to any data with this query. */
 
 
 /*** Pseudo-object structure. ***/

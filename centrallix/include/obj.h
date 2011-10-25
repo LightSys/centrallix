@@ -938,6 +938,7 @@ typedef struct
 
 /*** Flags for objMultiQuery() ***/
 #define OBJ_MQ_F_ONESTATEMENT	(1<<0)		/* only permit one statement to run */
+#define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
 
 
 /** objectsystem main functions **/

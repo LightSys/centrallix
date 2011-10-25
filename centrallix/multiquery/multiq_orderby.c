@@ -346,7 +346,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 		item = (pMqobOrderable)nmMalloc(sizeof(MqobOrderable));
 		objlist = expCreateParamList();
 		if (!objlist || !item) goto error;
-		expCopyList(stmt->Query->ObjList, objlist);
+		expCopyList(stmt->Query->ObjList, objlist, -1);
 		item->ObjList = objlist;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xsInit(&item->OrderBuf);
@@ -374,7 +374,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	/** Copy in the next item **/
 	item = context->Objects.Items[context->IterCnt];
 	objlist = item->ObjList;
-	expCopyList(objlist, stmt->Query->ObjList);
+	expCopyList(objlist, stmt->Query->ObjList, -1);
 	expFreeParamList(objlist);
 	item->ObjList = NULL;
 	rval = 1;
