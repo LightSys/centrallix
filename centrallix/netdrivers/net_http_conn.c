@@ -215,7 +215,7 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtUser usr;
     pNhtConn conn = NULL;
     pNhtSessionData nsess;
-    int akey[2];
+    int akey[4];
     unsigned char t_lsb;
     int noact = 0;
     int err;
@@ -470,7 +470,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaInit(&nsess->OsmlQueryList,64);
 	    nht_internal_CreateCookie(nsess->Cookie);
 	    cxssGenerateKey((unsigned char*)akey, sizeof(akey));
-	    sprintf(nsess->AKey, "%8.8x%8.8x", akey[0], akey[1]);
+	    sprintf(nsess->AKey, "%8.8x%8.8x%8.8x%8.8x", akey[0], akey[1], akey[2], akey[3]);
 	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
 	    usr->SessionCnt++;
