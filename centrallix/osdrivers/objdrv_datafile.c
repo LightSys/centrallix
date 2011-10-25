@@ -334,6 +334,7 @@ typedef struct
     DatTableInf		HeaderCols;
     int			nRows;		/* number of rows in table, or -1 if not yet determined */
     pSemaphore		InsertSem;	/* controls inserts at end of file */
+    DateTime		LastModification;
     }
     DatNode, *pDatNode;
 
@@ -611,6 +612,65 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	syPostSem(this->Node->FlushSem, 1, 0);
 
     return rval;
+    }
+
+
+/*** dat_internal_ClearPages - clears the page cache of all pages for a node (file)
+ ***/
+int
+dat_internal_ClearPages(pDatNode node)
+    {
+    pDatPage* tmp;
+    pDatPage del;
+
+    	/** Get the page flush semaphore **/
+	syGetSem(node->FlushSem, 1, 0);
+
+	/** Scan the page cache **/
+	tmp = &(DAT_INF.PageList.Next);
+	while(*tmp)
+	    {
+	    if ((*tmp)->Node == node)
+		{
+		/** Got a page in this node (file) - unlink it **/
+		del = (*tmp);
+		(*tmp) = del->Next;
+		if (del->Next) del->Next->Prev = del->Prev;
+		
+		/** BUG - we don't free the page if it is locked, thus it leaks... **/
+		if (!(del->Flags & DAT_CACHE_F_LOCKED))
+		    nmFree(del,sizeof(DatPage));
+		}
+	    else
+		{
+		tmp = &((*tmp)->Next);
+		}
+	    }
+
+	/** Release the flush semaphore **/
+	syPostSem(node->FlushSem, 1, 0);
+
+    return 0;
+    }
+
+
+/*** dat_internal_ClearRowIDs - clear the cache of Row ID pointers
+ ***/
+int
+dat_internal_ClearRowIDs(pDatNode node)
+    {
+    int i;
+
+	/** Set each row id ptr to EMPTY status **/
+	for(i=0;i<DAT_NODE_ROWIDPTRS;i++)
+	    {
+	    if (!(node->RowIDPtrCache[i].Flags & DAT_RI_F_EMPTY))
+		{
+		node->RowIDPtrCache[i].Flags = DAT_RI_F_EMPTY;
+		}
+	    }
+
+    return 0;
     }
 
 
