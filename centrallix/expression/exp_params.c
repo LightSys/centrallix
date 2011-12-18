@@ -268,7 +268,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		this->GetTypeFn[i] = objGetAttrType;
 		this->GetAttrFn[i] = objGetAttrValue;
 		this->SetAttrFn[i] = objSetAttrValue;
-		this->nObjects++;
+		if (i != exist) this->nObjects++;
 		if (this->Names[i] && (this->Flags[i] & EXPR_O_ALLOCNAME))
 		    nmSysFree(this->Names[i]);
 		if (flags & EXPR_O_ALLOCNAME)
