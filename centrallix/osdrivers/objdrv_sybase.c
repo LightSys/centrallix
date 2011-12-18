@@ -609,7 +609,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
     {
     int i,minus,n;
     unsigned int msl,lsl,divtmp;
-    int days,fsec;
+    unsigned int days,fsec;
     float f;
 
 	/** Make sure the passed in data type matches what we'll end up with **/
@@ -649,6 +649,13 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 	    val->DateTime->Part.Minute = fsec/60;
 	    fsec -= (val->DateTime->Part.Minute*60);
 	    val->DateTime->Part.Second = fsec;
+
+	    /** Date out of range? (max year value = 4096) **/
+	    if (days > 4096*365)
+		{
+		mssError(1, "SYBD", "Date/time out of range (n_days = %d)", days);
+		return -1;
+		}
 
 	    /** Convert the date **/
 	    if (days > 364) days++; /* hack to cover 1900 not being leap year */
@@ -4045,7 +4052,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		else if (datatype == DATA_T_MONEY) val->Money = &(inf->Types.Money);
 		if ((rval = sybd_internal_GetCxValue(ptr, t, val, datatype)) < 0)
 		    {
-		    mssError(1, "SYBD", "Couldn't get value for %s.", attrname);
+		    mssError(0, "SYBD", "Couldn't get value for %s.", attrname);
 		    return -1;
 		    }
 
