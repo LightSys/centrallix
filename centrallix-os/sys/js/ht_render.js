@@ -68,7 +68,20 @@ function cxjs_getdate()
 function cxjs_convert(dt,v)
     {
     if (v == null || dt == null) return null;
-    if (dt == 'integer') return parseInt(v);
+    if (dt == 'integer')
+	{
+	if (String(v).substr(1,1) == '$')
+	    return parseInt(String(v).substr(2));
+	else
+	    return parseInt(v);
+	}
+    if (dt == 'double')
+	{
+	if (String(v).substr(1,1) == '$')
+	    return parseFloat(String(v).substr(2));
+	else
+	    return parseFloat(v);
+	}
     if (dt == 'string') return '' + v;
     return v;
     }
