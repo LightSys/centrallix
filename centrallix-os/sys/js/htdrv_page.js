@@ -505,12 +505,18 @@ function pg_ping_recieve()
 	{
 	return false;
 	}
-    if(!link || link.target!=='OK')
+    if(!link || link.target==='ERR')
 	{
 	clearInterval(this.tid);
 	if (!window.pg_disconnected)
 	    confirm('you have been disconnected from the server');
 	window.pg_disconnected = true;
+	}
+    else if (link && link.target !== 'OK')
+	{
+	pg_servertime_notz = new Date(link.target);
+	pg_clienttime = new Date();
+	pg_clockoffset = pg_clienttime - pg_servertime_notz;
 	}
     }
     
@@ -1299,6 +1305,21 @@ function pg_init(l,a,gs,ct) //SETH: ??
 
     // Reveal
     l.Reveal = pg_reveal_cb;
+
+    // Check time
+    if (window.pg_servertime && window.pg_clienttime && window.pg_servertime_notz)
+	{
+	// Warn the user if their clock & server's clock are not in sync.
+	if (Math.abs(pg_servertime - pg_clienttime) > 60*10*1000)
+	    {
+	    var mins = Math.floor(Math.abs(pg_servertime - pg_clienttime) / 1000 / 60);
+	    alert("Please double-check your computer's date, time, and timezone; it is " + mins + " minutes different than the server's date & time");
+	    }
+
+	// Milliseconds our TZ is different than the server.
+	// A positive value means our TZ is further east.
+	pg_clockoffset = pg_clienttime - pg_servertime_notz;
+	}
 
     pg_addsched('window.ifcProbe(ifEvent).Activate("Load", {})', window, 100);
 
