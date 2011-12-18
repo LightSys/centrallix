@@ -1273,8 +1273,13 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	    dt->Part.Year = got_yr + 100;
 	else if (got_yr < 100)
 	    dt->Part.Year = got_yr + 0;
-	else if (got_yr >= 1900)
+	else if (got_yr >= 1900 && got_yr < (4096+1900))
 	    dt->Part.Year = got_yr - 1900;
+	else
+	    {
+	    printf("Warning: date exceeded internal representation (year = %d)\n", got_yr);
+	    dt->Part.Year = 4095;
+	    }
 
 	/** Next, month and day **/
 	dt->Part.Month = got_mo;
