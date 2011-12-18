@@ -59,6 +59,10 @@ function ib_setmode(ly, mode)
     ly.cursrc = newsrc;
     ly.curmode = mode;
     pg_set(ly.img, 'src', newsrc);
+    if (mode == 'd')
+	pg_set_style(ly, 'cursor', 'default');
+    else
+	pg_set_style(ly, 'cursor', 'pointer');
     }
 
 function ib_trigger()
