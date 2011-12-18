@@ -1199,7 +1199,7 @@ function form_action_submit(aparam)
 	node.ifcProbe(ifAction).Invoke("Instantiate", param);
     else if ((nodetype == "widget/page" || nodetype == "widget/component-decl") && aparam.NewPage)
 	node.ifcProbe(ifAction).Invoke("Launch", param);
-    else if (nodetype == "widget/page" || nodetype == "widget/component-decl")
+    else if (nodetype == "widget/page" || nodetype == "widget/component-decl" || nodetype == "widget/html")
 	node.ifcProbe(ifAction).Invoke("LoadPage", param);
     else
 	return false;

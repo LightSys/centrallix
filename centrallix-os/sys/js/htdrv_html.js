@@ -14,7 +14,21 @@ function ht_loadpage(aparam)
     //alert(aparam.Source);
     this.transition = aparam.Transition;
     this.mode = aparam.Mode;
-    this.source = aparam.Source;
+    var url = new String(aparam.Source);
+    for(var p in aparam)
+	{
+	if (p == '_Origin' || p == '_EventName' || p == 'Mode' || p == 'Name' || p == 'Transition' || p == 'Source')
+	    continue;
+	var v = aparam[p];
+	var r = wgtrCheckReference(v);
+	if (r) v = r;
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	}
+    this.source = url;
     }
 
 function ht_setvalue(aparam)
