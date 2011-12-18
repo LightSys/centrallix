@@ -421,6 +421,7 @@ prt_psod_OpenPDF(pPrtSession session)
     {
     pPrtPsodInf context;
     int i;
+    int maxfiles;
     char* cmd = NULL;
     int wfds[2];
     int rfds[2];
@@ -475,10 +476,16 @@ prt_psod_OpenPDF(pPrtSession session)
 	    dup2(wfds[1],0);
 	    dup2(rfds[1],1);
 	    dup2(rfds[1],2);
-	    for(i=3;i<2048;i++) close(i);
+	    maxfiles = sysconf(_SC_OPEN_MAX);
+	    if (maxfiles <= 0)
+		{
+		printf("Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.\n");
+		maxfiles = 2048;
+		}
+	    for(i=3;i<maxfiles;i++) close(i);
 
 	    /** Drop privs **/
-	    id = getuid();
+	    id = geteuid();
 	    setuid(0);
 	    setgroups(0, gidlist);
 	    if (setregid(getegid(), -1) < 0) _exit(1);
