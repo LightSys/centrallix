@@ -299,6 +299,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
     {
     int i,j,cnt;
     pQueryStructure subtree;
+    pQueryStructure having;
     char* ptr;
     int has_identity;
 
@@ -478,8 +479,37 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    /** merge **/
 		    ptr = nmSysStrdup(where->RawData.String);
 		    xsQPrintf(&where->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+		    nmSysFree(ptr);
 
 		    /** remove the extra where clause **/
+		    xaRemoveItem(&qs->Children,i);
+		    i--;
+		    cnt--;
+		    mq_internal_FreeQS(subtree);
+		    }
+		}
+	    }
+
+	/** Merge HAVING clauses if there are more than one **/
+	cnt = xaCount(&qs->Children);
+	having = NULL;
+	for(i=0;i<cnt;i++)
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    if (subtree->NodeType == MQ_T_HAVINGCLAUSE)
+		{
+		if (!having)
+		    {
+		    having = subtree;
+		    }
+		else
+		    {
+		    /** merge **/
+		    ptr = nmSysStrdup(having->RawData.String);
+		    xsQPrintf(&having->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+		    nmSysFree(ptr);
+
+		    /** remove the extra having clause **/
 		    xaRemoveItem(&qs->Children,i);
 		    i--;
 		    cnt--;
