@@ -238,6 +238,7 @@ typedef struct
     QPConvTable	cssval_matrix;
     QPConvTable	cssurl_matrix;
     QPConvTable	dsyb_matrix;
+    QPConvTable	ssyb_matrix;
     }
     QPF_t;
     
@@ -328,6 +329,10 @@ qpfInitialize()
 	memset(&QPF.dsyb_matrix, 0, sizeof(QPF.dsyb_matrix));
 	QPF.dsyb_matrix.Matrix['"'] = "\"\"";
 	qpf_internal_SetupTable(&QPF.dsyb_matrix);
+
+	memset(&QPF.ssyb_matrix, 0, sizeof(QPF.ssyb_matrix));
+	QPF.ssyb_matrix.Matrix['\''] = "''";
+	qpf_internal_SetupTable(&QPF.ssyb_matrix);
 
 	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
 	QPF.hte_matrix.Matrix['<'] = "&lt;";
@@ -1115,6 +1120,10 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 									quote = 0;
 									break;
 					    case QPF_SPEC_T_DSYB:	table = &QPF.dsyb_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_SSYB:	table = &QPF.ssyb_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
