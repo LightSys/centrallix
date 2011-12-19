@@ -57,139 +57,6 @@
 /*		that issue in exp_evaluate.c				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: exp_functions.c,v 1.20 2010/09/13 23:30:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
-
-    $Log: exp_functions.c,v $
-    Revision 1.20  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.19  2010/09/08 21:55:09  gbeeley
-    - (bugfix) allow /file/name:"attribute" to be quoted.
-    - (bugfix) order by ... asc/desc keywords are now case insenstive
-    - (bugfix) short-circuit eval was not resulting in aggregates properly
-      evaluating
-    - (change) new API function expModifyParamByID - use this for efficiency
-    - (feature) multi-level aggregate functions now supported, for use when
-      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
-    - (feature) added mathematical and trig functions radians, degrees, sin,
-      cos, tan, asin, acos, atan, atan2, sqrt, square
-
-    Revision 1.18  2009/10/20 23:07:20  gbeeley
-    - (feature) adding dateadd() function
-
-    Revision 1.17  2009/06/24 17:33:19  gbeeley
-    - (change) adding domain param to expGenerateText, so it can be used to
-      generate an expression string with lower domains converted to constants
-    - (bugfix) better handling of runserver() embedded within runclient(), etc
-    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
-    - (bugfix) after a property has been set using reverse evaluation, tag it
-      as modified so it shows up as changed in other expressions using that
-      same object param list
-    - (change) condition() function now uses short-circuit evaluation
-      semantics, so parameters are only evaluated as they are needed... e.g.
-      condition(a,b,c) if a is true, b is returned and c is never evaluated,
-      and vice versa.
-    - (feature) add structure for reverse-evaluation of functions.  The
-      isnull() function now supports this feature.
-    - (bugfix) save/restore the coverage mask before/after evaluation, so that
-      a nested subexpression (eval or subquery) using the same object list
-      will not cause an inconsistency.  Basically a reentrancy bug.
-    - (bugfix) some functions were erroneously depending on the data type of
-      a NULL value to be correct.
-    - (feature) adding truncate() function which is similar to round().
-    - (feature) adding constrain() function which limits a value to be
-      between a given minimum and maximum value.
-    - (bugfix) first() and last() functions were not properly resetting the
-      value to NULL between GROUP BY groups
-    - (bugfix) some expression-to-JS fixes
-
-    Revision 1.16  2008/04/06 20:36:16  gbeeley
-    - (feature) adding support for SQL round() function
-    - (change) adding support for division and multiplication with money
-      data types.  It is still not permitted to multiply one money type by
-      another money type, as 'money' is not a dimensionless value.
-
-    Revision 1.15  2008/03/08 00:41:59  gbeeley
-    - (bugfix) a double-free was being triggered on Subquery nodes as a
-      result of an obscure glitch in expCopyNode.  The string value should
-      be handled regardless of the DataType, as temporary data type changes
-      are possible.  Also cleaned up a number of other expression string
-      Alloc issues, many just for clarity.
-
-    Revision 1.14  2008/03/06 01:18:59  gbeeley
-    - (change) updates to centrallix.supp suppressions file for valgrind
-    - (bugfix) several issues fixed as a result of a Valgrind scan, one of
-      which has likely been causing a couple of recent crashes.
-
-    Revision 1.13  2008/02/21 21:45:52  gbeeley
-    - (bugfix) aggregate sum(), which can operate on strings, was not
-      properly resetting string allocation
-
-    Revision 1.12  2007/12/05 18:43:55  gbeeley
-    - (bugfix) fix for min(string) crashing due to invalid free()
-
-    Revision 1.11  2007/11/16 21:40:09  gbeeley
-    - (bugfix) quote() should return NULL if its parameter is NULL.
-
-    Revision 1.10  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.9  2005/09/30 04:37:10  gbeeley
-    - (change) modified expExpressionToPod to take the type.
-    - (feature) got eval() working
-    - (addition) added expReplaceString() to search-and-replace in an
-      expression tree.
-
-    Revision 1.8  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.7  2004/06/30 19:26:09  gbeeley
-    - Adding lztrim() function for suppressing leading zeroes.
-
-    Revision 1.6  2004/02/24 20:02:26  gbeeley
-    - adding proper support for external references in an expression, so
-      that they get re-evaluated each time.  Example - getdate().
-    - adding eval() function but no implementation at this time - it is
-      however supported for runclient() expressions (in javascript).
-    - fixing some quoting issues
-
-    Revision 1.5  2003/07/09 18:07:55  gbeeley
-    Added first() and last() aggregate functions.  Strictly speaking these
-    are not truly relational functions, since they are row order dependent,
-    but are useful for summary items in a sorted setting.
-
-    Revision 1.4  2003/04/24 02:54:48  gbeeley
-    Added quote() function as a special case of escape().
-
-    Revision 1.3  2003/04/24 02:13:22  gbeeley
-    Added functionality to handle "domain of execution" to the expression
-    module, allowing the developer to specify the nature of an expression
-    (run on client, server, or static on server).
-
-    Revision 1.2  2001/09/25 18:02:34  gbeeley
-    Added replicate() SQL function.
-
-    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:30:53  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 /****** Evaluator functions follow for expEvalFunction ******/
 
@@ -542,15 +409,15 @@ int exp_fn_upper(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     int n,i;
 
     tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
     if (!i0 || i0->DataType != DATA_T_STRING)
         {
 	mssError(1,"EXP","One string parameter required for upper()");
 	return -1;
-	}
-    if (i0->Flags & EXPR_F_NULL)
-        {
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
 	}
     n = strlen(i0->String);
     if (tree->Alloc && tree->String)
@@ -582,15 +449,15 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     int n,i;
 
     tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
     if (!i0 || i0->DataType != DATA_T_STRING)
         {
 	mssError(1,"EXP","One string parameter required for lower()");
 	return -1;
-	}
-    if (i0->Flags & EXPR_F_NULL)
-        {
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
 	}
     n = strlen(i0->String);
     if (tree->Alloc && tree->String)
@@ -798,6 +665,46 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
         {
 	strcpy(ptr,i0->String);
 	ptr += l;
+	}
+    return 0;
+    }
+
+
+int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int len,i;
+    char ch;
+    if (i0 && (i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_STRING)
+	{
+	mssError(1,"EXP","reverse() expects one string parameter");
+	return -1;
+	}
+    if (tree->Alloc && tree->String)
+	nmSysFree(tree->String);
+    tree->DataType = DATA_T_STRING;
+    len = strlen(i0->String);
+    if (len >= 64)
+	{
+	tree->String = nmSysMalloc(len+1);
+	tree->Alloc = 1;
+	}
+    else
+	{
+	tree->Alloc = 0;
+	tree->String = tree->Types.StringBuf;
+	}
+    strcpy(tree->String, i0->String);
+    for(i=0;i<len/2;i++)
+	{
+	ch = tree->String[i];
+	tree->String[i] = tree->String[len-i-1];
+	tree->String[len-i-1] = ch;
 	}
     return 0;
     }
@@ -1156,6 +1063,323 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     *(dst++) = '"';
     *dst = '\0';
     return 0;
+    }
+
+
+int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* subst_ptr;
+    char* second_colon_ptr;
+    char* close_tag_ptr;
+    char* nl_ptr;
+    char fieldname[64];
+    char objname[64];
+    XString dest;
+    int subst_pos;
+    int placeholder_len;
+    int replace_len;
+    pObject obj;
+    int i;
+    int t;
+    int found;
+    ObjData od;
+    char* attr_string;
+    int rval;
+    int subst_len_this_line;
+    int subst_cnt_this_line;
+    int last_nl_pos;
+    int ign_char_cnt;
+    int len;
+    char* obj_name_list[64];
+    char* obj_remap_list[64];
+    char* tmpstr;
+    int n_obj_names = -1;
+    char* tmpptr;
+    char* eq_ptr;
+    int fn_rval = -1;
+    int (*getfn)();
+    int (*typefn)();
+
+    xsInit(&dest);
+
+    tree->DataType = DATA_T_STRING;
+
+    /** Validate the params **/
+    if (i0 && !i2 && i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	fn_rval = 0;
+	goto out;
+	}
+    if (!i0 || i2 || i0->DataType != DATA_T_STRING || (i1 && !(i1->Flags & EXPR_F_NULL) && i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","substitute() requires one or two string parameters");
+	goto out;
+	}
+
+    /** Object name/remapping list? **/
+    if (i1 && !(i1->Flags & EXPR_F_NULL))
+	{
+	n_obj_names = 0;
+	tmpstr = nmSysStrdup(i1->String);
+	tmpptr = strtok(tmpstr, ",");
+	while(tmpptr && n_obj_names < 64)
+	    {
+	    eq_ptr = strchr(tmpptr, '=');
+	    if (!eq_ptr)
+		{
+		/** No equals sign, so no remapping **/
+		obj_name_list[n_obj_names] = nmSysStrdup(tmpptr);
+		obj_remap_list[n_obj_names] = nmSysStrdup(tmpptr);
+		}
+	    else
+		{
+		/** This one remaps the object name **/
+		obj_name_list[n_obj_names] = nmSysStrdup(tmpptr);
+		*strchr(obj_name_list[n_obj_names], '=') = '\0';
+		obj_remap_list[n_obj_names] = nmSysStrdup(eq_ptr+1);
+		}
+	    n_obj_names++;
+	    tmpptr = strtok(NULL, ",");
+	    }
+	nmSysFree(tmpstr);
+	}
+
+    xsCopy(&dest, i0->String, -1);
+    xsConcatenate(&dest, "\n", 1);
+    subst_pos = 0;
+    subst_ptr = dest.String;
+    subst_len_this_line = 0;
+    subst_cnt_this_line = 0;
+    last_nl_pos = -1;
+    while(subst_ptr)
+	{
+	nl_ptr = strchr(subst_ptr, '\n');
+	subst_ptr = strstr(subst_ptr, "[:");
+
+	/** Passing a newline \n character? **/
+	if (nl_ptr && ((subst_ptr && nl_ptr < subst_ptr) || !subst_ptr))
+	    {
+	    ign_char_cnt = strspn(dest.String + last_nl_pos + 1, " ,\t.%");
+	    if (subst_len_this_line == 0 && ign_char_cnt == nl_ptr - (dest.String + last_nl_pos + 1) && subst_cnt_this_line > 0)
+		{
+		/** No substitution content this line, and nothing static either.  Delete the line. **/
+		xsSubst(&dest, last_nl_pos+1, ign_char_cnt+1, "", 0);
+		subst_ptr = dest.String + last_nl_pos + 1;
+		subst_cnt_this_line = 0;
+		continue;
+		}
+	    else
+		{
+		/** A new line.  Reset the counters. **/
+		subst_len_this_line = 0;
+		last_nl_pos = nl_ptr - dest.String;
+		subst_cnt_this_line = 0;
+		}
+	    }
+
+	/** Found a substitution?  Pull out the object name (optional) and field name (required) **/
+	if (subst_ptr)
+	    {
+	    subst_pos = subst_ptr - dest.String;
+	    second_colon_ptr = strchr(subst_ptr+2, ':');
+	    close_tag_ptr = strchr(subst_ptr, ']');
+	    if (!close_tag_ptr)
+		break;
+	    if (second_colon_ptr > close_tag_ptr)
+		second_colon_ptr = NULL;
+	    if (second_colon_ptr)
+		{
+		strtcpy(objname, subst_ptr+2, sizeof(objname));
+		strtcpy(fieldname, second_colon_ptr+1, sizeof(fieldname));
+		}
+	    else
+		{
+		strtcpy(fieldname, subst_ptr+2, sizeof(fieldname));
+		objname[0] = '\0';
+		}
+	    if (strchr(objname,':')) *strchr(objname, ':') = '\0';
+	    if (strchr(fieldname,']')) *strchr(fieldname, ']') = '\0';
+	    placeholder_len = close_tag_ptr - subst_ptr + 1;
+
+	    /** Next, lookup the field/object. **/
+	    obj = NULL;
+	    t = DATA_T_UNAVAILABLE;
+	    if (n_obj_names >= 0)
+		{
+		/** Using a remapping or scope-specification list, look up there. **/
+		if (!objname[0])
+		    strtcpy(objname, obj_name_list[0], sizeof(objname));
+		found=0;
+		for(i=0;i<n_obj_names;i++)
+		    {
+		    if (!strcmp(obj_name_list[i], objname))
+			{
+			found=1;
+			strtcpy(objname, obj_remap_list[i], sizeof(objname));
+			break;
+			}
+		    }
+		if (!found)
+		    {
+		    mssError(1,"EXP","substitute(): object name '%s' not in list",objname);
+		    goto out;
+		    }
+		}
+
+	    if (objname[0])
+		{
+		/** We have an object name, look it up **/
+		found = 0;
+		for(i=0;i<objlist->nObjects;i++)
+		    {
+		    if (objlist->Names[i] && !strcmp(objlist->Names[i], objname))
+			{
+			found = 1;
+			obj = objlist->Objects[i];
+			getfn = objlist->GetAttrFn[i];
+			typefn = objlist->GetTypeFn[i];
+			break;
+			}
+		    }
+		if (!found)
+		    {
+		    /** no such object **/
+		    if ((tree->Flags & EXPR_F_RUNSERVER) && (objlist->MainFlags & EXPR_MO_RUNSTATIC))
+			{
+			/** Not an error - just treat as a null. **/
+			tree->Flags |= EXPR_F_NULL;
+			fn_rval = 0;
+			goto out;
+			}
+		    else
+			{
+			mssError(1,"EXP","substitute(): no such object '%s'",objname);
+			goto out;
+			}
+		    }
+		if (obj)
+		    {
+		    if (!typefn) typefn = objGetAttrType;
+		    t = typefn(obj, fieldname);
+		    if (t < 0)
+			{
+			/** no such field **/
+			mssError(1,"EXP","substitute(): no such attribute '%s' in object '%s'", fieldname, objname);
+			goto out;
+			}
+		    }
+		}
+	    else
+		{
+		/** No object name, see if any obj has the requested attribute **/
+		for(i=0;i<objlist->nObjects;i++)
+		    {
+		    if (objlist->Objects[i])
+			{
+			typefn = objlist->GetTypeFn[i];
+			if (!typefn) typefn = objGetAttrType;
+			t = typefn(objlist->Objects[i], fieldname);
+			if (t > 0)
+			    {
+			    obj = objlist->Objects[i];
+			    getfn = objlist->GetAttrFn[i];
+			    break;
+			    }
+			}
+		    }
+		if (!obj)
+		    {
+		    /** no such field **/
+		    /*mssError(1,"EXP","substitute(): no such attribute '%s'", fieldname);
+		    return -1;*/
+		    /** We can't error out here, in case we are evaluating before
+		     ** any objects are set in the objlist.  So we return empty.
+		     **/
+		    attr_string = NULL;
+		    }
+		}
+
+	    /** Ok, found an object containing the attribute.  Get the string value of the attribute. **/
+	    if (obj && t > 0)
+		{
+		if (!getfn) getfn = objGetAttrValue;
+		rval = getfn(obj, fieldname, t, &od);
+		if (rval == 1)
+		    {
+		    attr_string = NULL;
+		    }
+		else if (rval < 0)
+		    {
+		    mssError(0, "EXP", "substitute(): error with attribute '%s'", fieldname);
+		    goto out;
+		    }
+		else
+		    {
+		    if (t == DATA_T_DATETIME || t == DATA_T_MONEY || t == DATA_T_STRING)
+			attr_string = objDataToStringTmp(t, od.Generic, 0);
+		    else
+			attr_string = objDataToStringTmp(t, &od, 0);
+		    }
+		}
+	    else
+		{
+		/** object not currently instantiated -- such as outer join type situation **/
+		attr_string = NULL;
+		}
+
+	    /** Got the string - do the replacement - auto-trim all fields. **/
+	    if (!attr_string) attr_string = "";
+	    while(*attr_string == ' ') attr_string++;
+	    attr_string = nmSysStrdup(attr_string);
+	    replace_len = strlen(attr_string);
+	    while (replace_len && attr_string[replace_len-1] == ' ')
+		{
+		attr_string[replace_len-1] = '\0';
+		replace_len--;
+		}
+	    subst_len_this_line += replace_len;
+	    subst_cnt_this_line++;
+	    xsSubst(&dest, subst_pos, placeholder_len, attr_string, replace_len);
+	    nmSysFree(attr_string);
+
+	    subst_ptr = dest.String + subst_pos + replace_len;
+	    }
+	}
+
+    /** Remove the trailing \n we added before. **/
+    len = strlen(dest.String);
+    if (len && dest.String[len-1] == '\n')
+	xsSubst(&dest, len-1, 1, "", 0);
+
+    /** Set replacement value **/
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    tree->Alloc = 0;
+    if (strlen(dest.String) >= 64)
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysStrdup(dest.String);
+	}
+    else
+	{
+	tree->String = tree->Types.StringBuf;
+	strcpy(tree->Types.StringBuf, dest.String);
+	}
+
+    /** Successful exit. **/
+    fn_rval = 0;
+
+  out:
+    if (n_obj_names > 0)
+	{
+	for(i=0;i<n_obj_names;i++)
+	    {
+	    nmSysFree(obj_name_list[i]);
+	    nmSysFree(obj_remap_list[i]);
+	    }
+	}
+    xsDeInit(&dest);
+    return fn_rval;
     }
 
 
@@ -2197,8 +2421,10 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
+	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
+	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
 	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);

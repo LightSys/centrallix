@@ -129,7 +129,7 @@ function wgtrGetProperty(node, prop_name)
 
 function wgtrProbeProperty(node, prop_name)
     {
-    var prop;
+    var prop = null;
     var newnode;
 
 	// make sure the parameters are legitimate
@@ -164,7 +164,7 @@ function wgtrProbeProperty(node, prop_name)
 		}
 	    else
 		{
-		return new wgtrUndefinedObject();
+		prop = new wgtrUndefinedObject();
 		}
 	    }
 
@@ -172,10 +172,20 @@ function wgtrProbeProperty(node, prop_name)
 	if (typeof (node[prop_name]) == 'undefined')
 	    {
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
-	    return new wgtrUndefinedObject();
+	    prop = new wgtrUndefinedObject();
 	    }
 
-	prop = node[prop_name];
+	// some canonical properties
+	if (wgtrIsUndefined(prop))
+	    {
+	    if (prop_name == 'x') prop = getRelativeX(node);
+	    else if (prop_name == 'y') prop = getRelativeY(node);
+	    else if (prop_name == 'width') prop = pg_get_style(node, 'width');
+	    else if (prop_name == 'height') prop = pg_get_style(node, 'height');
+	    }
+
+	if (prop === null)
+	    prop = node[prop_name];
 
 	// return the property value
 	return prop;
@@ -324,6 +334,17 @@ function wgtrGetNode(tree, node_name, type)
 	else if (pg_sessglobals[node_name])
 	    node = pg_sessglobals[node_name];
 	else
+	    {
+	    /** Search all pages in this session **/
+	    for(var win in window.pg_appwindows)
+		{
+		var w = window.pg_appwindows[win];
+		if (w && w.wobj && w.wobj.pg_sessglobals)
+		    node = w.wobj.pg_sessglobals[node_name];
+		if (node) break;
+		}
+	    }
+	if (!node)
 	    alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
 
 	// Indirect reference?
@@ -569,12 +590,24 @@ function wgtrDereference(r)
     if (!r || !r.split) return null;
     var n = r.split(":", 2);
     if (!n || !n[0] || !n[1]) return null;
-    if (!pg_namespaces[n[0]])
+    var ns = pg_namespaces[n[0]];
+    if (!ns)
+	{
+	// Look at other namespaces in other windows in this session.
+	for(var win in window.pg_appwindows)
+	    {
+	    var w = window.pg_appwindows[win];
+	    if (w && w.wobj && w.wobj.pg_namespaces)
+		ns = w.wobj.pg_namespaces[n[0]];
+	    if (ns) break;
+	    }
+	}
+    if (!ns)
 	{
 	alert('Application error: namespace "' + n[0] + '" is undefined');
 	return null;
 	}
-    return wgtrGetNode(pg_namespaces[n[0]], n[1]);
+    return wgtrGetNode(ns, n[1]);
     }
 
 function wgtrFind(v)

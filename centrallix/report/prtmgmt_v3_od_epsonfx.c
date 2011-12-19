@@ -49,19 +49,6 @@
 /*		9-pin and 24-pin printers.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_od_epsonfx.c,v 1.1 2009/06/24 15:49:13 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_epsonfx.c,v $
-
-    $Log: prtmgmt_v3_od_epsonfx.c,v $
-    Revision 1.1  2009/06/24 15:49:13  gbeeley
-    - (feature) adding EpsonFX output driver support for continuous form
-      printers.
-    - (feature) adding DELETE sql statement support
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** dither table; make it *very* simple for now ***/

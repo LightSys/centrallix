@@ -1,0 +1,32 @@
+$Version=2$
+new_btn "widget/component-decl"
+    {
+    width=18;
+    height=18;
+
+    form "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/form";
+	}
+
+    object_name "widget/parameter"
+	{
+	type = "string";
+	default = "Record";
+	}
+
+    btnDelete "widget/imagebutton"
+	{
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico25a.gif";
+	pointimage="/sys/images/ico25b.gif";
+	clickimage="/sys/images/ico25c.gif";
+	disabledimage="/sys/images/ico25d.gif";
+	tooltip = runserver("Create a New " + :this:object_name);
+	enabled = runclient(:form:is_newable);
+	cnNew "widget/connector" { event="Click"; target=form; action="New"; }
+	}
+    }

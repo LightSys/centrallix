@@ -19,36 +19,6 @@
 /*		with structure pointers.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xhandle.h,v 1.4 2005/02/26 04:32:02 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhandle.h,v $
-
-    $Log: xhandle.h,v $
-    Revision 1.4  2005/02/26 04:32:02  gbeeley
-    - moving include file install directory to include a "cxlib/" prefix
-      instead of just putting 'em all in /usr/include with everything else.
-
-    Revision 1.3  2004/06/12 04:09:37  gbeeley
-    - supporting logic to allow saving of an MTask security context for later
-      use in a new thread.  This is needed for the asynchronous event delivery
-      mechanism for object-updates being sent to the client.
-
-    Revision 1.2  2002/05/03 03:46:29  gbeeley
-    Modifications to xhandle to support clearing the handle list.  Added
-    a param to xhClear to provide support for xhnClearHandles.  Added a
-    function in mtask.c to allow the retrieval of ticks-since-boot without
-    making a syscall.  Fixed an MTASK bug in the scheduler relating to
-    waiting on timers and some modulus arithmetic.
-
-    Revision 1.1  2002/04/25 17:56:54  gbeeley
-    Added Handle support (xhandle module, XHN).  This is used to provide a
-    more flexible abstraction between API return values (handles vs. ptrs)
-    and the underlying structures they actually reference.  Handles are
-    64bit on glibc2 ia32 platforms (unsigned long long int).
-
-
- **END-CVSDATA***********************************************************/
 
 #ifdef CXLIB_INTERNAL
 #include "xhash.h"

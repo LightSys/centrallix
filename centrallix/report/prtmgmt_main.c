@@ -51,31 +51,6 @@
 /*		and other internal functionality for prtmgmt.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_main.c,v 1.3 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_main.c,v $
-
-    $Log: prtmgmt_main.c,v $
-    Revision 1.3  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.2  2001/09/28 20:03:13  gbeeley
-    Updated magic number system syntax to remove the semicolons from within
-    the macro expansions.  Semicolons now are (more naturally) placed after
-    the macro calls.
-
-    Revision 1.1.1.1  2001/08/13 18:01:15  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:17  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** GLOBALS ***/

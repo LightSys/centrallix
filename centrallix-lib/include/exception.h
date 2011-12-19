@@ -32,20 +32,6 @@
 /*		if (error_condition) Throw(ex);				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: exception.h,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/exception.h,v $
-
-    $Log: exception.h,v $
-    Revision 1.1  2001/08/13 18:04:19  gbeeley
-    Initial revision
-
-    Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 #include "setjmp.h"

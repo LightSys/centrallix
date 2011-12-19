@@ -29,15 +29,3 @@
 /* Description:	_
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: copyright_stub.txt,v 1.2 2010/09/13 23:30:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/copyright_stub.txt,v $
-
-    $Log: copyright_stub.txt,v $
-    Revision 1.2  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-
- **END-CVSDATA***********************************************************/

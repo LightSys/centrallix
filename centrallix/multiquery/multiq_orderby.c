@@ -42,24 +42,6 @@
 /* Description:	Provides support for high-level ORDER BY.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiq_orderby.c,v 1.1 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_orderby.c,v $
-
-    $Log: multiq_orderby.c,v $
-    Revision 1.1  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** High-level ORDER BY
@@ -346,7 +328,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 		item = (pMqobOrderable)nmMalloc(sizeof(MqobOrderable));
 		objlist = expCreateParamList();
 		if (!objlist || !item) goto error;
-		expCopyList(stmt->Query->ObjList, objlist);
+		expCopyList(stmt->Query->ObjList, objlist, -1);
 		item->ObjList = objlist;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xsInit(&item->OrderBuf);
@@ -374,7 +356,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	/** Copy in the next item **/
 	item = context->Objects.Items[context->IterCnt];
 	objlist = item->ObjList;
-	expCopyList(objlist, stmt->Query->ObjList);
+	expCopyList(objlist, stmt->Query->ObjList, -1);
 	expFreeParamList(objlist);
 	item->ObjList = NULL;
 	rval = 1;

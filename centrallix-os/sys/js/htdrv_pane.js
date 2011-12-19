@@ -65,6 +65,13 @@ function pn_setbackground(aparam)
     else htr_setbackground(this, null);
     }
 
+function pn_action_resize(aparam)
+    {
+    var w = aparam.Width?aparam.Width:pg_get_style(this, 'width');
+    var h = aparam.Height?aparam.Height:pg_get_style(this, 'height');
+    resizeTo(this, w, h);
+    }
+
 function pn_init(param)
     {
     var l = param.layer;
@@ -95,6 +102,7 @@ function pn_init(param)
     // actions
     var ia = ml.ifcProbeAdd(ifAction);
     ia.Add("SetBackground", pn_setbackground);
+    ia.Add("Resize", pn_action_resize);
 
     var iv = ml.ifcProbeAdd(ifValue);
     iv.Add("enabled", pn_getval, pn_setval);

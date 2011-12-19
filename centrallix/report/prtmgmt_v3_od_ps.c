@@ -51,68 +51,6 @@
 /*		formatter module which outputs generic postscript       */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-    $Id: prtmgmt_v3_od_ps.c,v 1.9 2010/09/09 00:44:49 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
- 
-    $Log: prtmgmt_v3_od_ps.c,v $
-    Revision 1.9  2010/09/09 00:44:49  gbeeley
-    - (bugfix) attempted to fix profiler/fork() interaction by blocking
-      SIGPROF while fork() was running.  This is good practice, but it didn't
-      solve our problem (compiling without -pg did).
-
-    Revision 1.8  2009/06/26 16:18:59  gbeeley
-    - (change) GetCharacterMetric now returns both height and width
-    - (performance) change from bubble sort to merge sort for page generation
-      and output sequencing (this made a BIG difference)
-    - (bugfix) attempted fix of text output overlapping problems, but there
-      are still trouble points here.
-
-    Revision 1.7  2007/09/18 18:12:56  gbeeley
-    - (bugfix) clean up after yourself, you silly module!  Make sure to wait()
-      and clean up child processes so they aren't left hanging as zombies.
-
-    Revision 1.6  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.5  2007/03/10 05:14:54  gbeeley
-    - (performance) This one little fix improves report writer PDF output
-      performance by approximately 10-fold.
-
-    Revision 1.4  2007/02/28 06:07:56  gbeeley
-    - (workaround) This is a workaround for an apparent bug in Ghostscript,
-      or possibly in the way Centrallix generates the postscript data,
-      which caused successive postscript "show" operations to tend to
-      overlap each other.  This does not actually fix the problem, but it
-      does seem to for all practical purposes prevent it.
-
-    Revision 1.3  2005/03/01 07:09:55  gbeeley
-    - adding quality setting on ps2pdf conversion to gain better image
-      resolution.
-
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1  2005/02/24 05:44:32  gbeeley
-    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
-    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
-      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
-      PostScript support!!  See http://www.codn.net/
-    - More formats (maybe PNG?) should be easy to add.
-    - TODO: read the *real* font metric files to get font geometries!
-    - TODO: compress the images written into the .ps file!
-
- **END-CVSDATA***********************************************************/
 
 /* Postscript Language Reference Manual: http://partners.adobe.com/public/developer/en/ps/PLRM.pdf */
 /* PLRM quick ref: http://www.cs.indiana.edu/docproject/programming/postscript/operators.html */
@@ -483,6 +421,7 @@ prt_psod_OpenPDF(pPrtSession session)
     {
     pPrtPsodInf context;
     int i;
+    int maxfiles;
     char* cmd = NULL;
     int wfds[2];
     int rfds[2];
@@ -537,10 +476,16 @@ prt_psod_OpenPDF(pPrtSession session)
 	    dup2(wfds[1],0);
 	    dup2(rfds[1],1);
 	    dup2(rfds[1],2);
-	    for(i=3;i<2048;i++) close(i);
+	    maxfiles = sysconf(_SC_OPEN_MAX);
+	    if (maxfiles <= 0)
+		{
+		printf("Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.\n");
+		maxfiles = 2048;
+		}
+	    for(i=3;i<maxfiles;i++) close(i);
 
 	    /** Drop privs **/
-	    id = getuid();
+	    id = geteuid();
 	    setuid(0);
 	    setgroups(0, gidlist);
 	    if (setregid(getegid(), -1) < 0) _exit(1);

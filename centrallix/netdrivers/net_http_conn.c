@@ -31,45 +31,6 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_http_conn.c,v 1.6 2010/09/17 15:45:29 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_conn.c,v $
-
-    $Log: net_http_conn.c,v $
-    Revision 1.6  2010/09/17 15:45:29  gbeeley
-    - (security) implement X-Frame-Options anti-clickjacking countermeasure
-
-    Revision 1.5  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.4  2010/09/09 01:29:00  gbeeley
-    - (change) ignore SIGPIPE from broken TCP connection from the user.
-
-    Revision 1.3  2009/06/26 18:31:03  gbeeley
-    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
-      like test_obj does
-    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
-    - (change) some refactoring of error message handlers to clean things
-      up a bit
-    - (feature) adding last_activity to session objects (for sysinfo)
-    - (feature) parameterized OSML SQL queries over the http interface
-
-    Revision 1.2  2008/08/16 00:31:38  thr4wn
-    I made some more modification of documentation and begun logic for
-    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
-
-    Revision 1.1  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-
- **END-CVSDATA***********************************************************/
  
  /*** nht_internal_AllocConn() - allocates a connection structure and
  *** initializes it given a network connection.
@@ -215,10 +176,13 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtUser usr;
     pNhtConn conn = NULL;
     pNhtSessionData nsess;
-    int akey[2];
+    int akey[4];
     unsigned char t_lsb;
     int noact = 0;
     int err;
+    time_t t;
+    struct tm* timeptr;
+    char timestr[80];
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -368,13 +332,23 @@ nht_internal_ConnHandler(void* connfd_v)
 		    }
 		else
 		    {
-		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-				 "Server: %s\r\n"
+		    t = time(NULL);
+		    timeptr = localtime(&t);
+		    if (timeptr)
+			{
+			/** This isn't 100% ideal -- it causes a couple seconds of clock drift **/
+			if (strftime(timestr, sizeof(timestr), "%Y %m %d %T", timeptr) <= 0)
+			    {
+			    strcpy(timestr, "OK");
+			    }
+			}
+		    fdQPrintf(conn->ConnFD,"HTTP/1.0 200 OK\r\n"
+				 "Server: %STR\r\n"
 				 "Pragma: no-cache\r\n"
 				 "Content-Type: text/html\r\n"
 				 "\r\n"
-				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
-		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+				 "<A HREF=/ TARGET='%STR&HTE'></A>\r\n",
+				 NHT.ServerString, timestr);
 		    nht_internal_FreeConn(conn);
 		    thExit();
 		    }
@@ -470,7 +444,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaInit(&nsess->OsmlQueryList,64);
 	    nht_internal_CreateCookie(nsess->Cookie);
 	    cxssGenerateKey((unsigned char*)akey, sizeof(akey));
-	    sprintf(nsess->AKey, "%8.8x%8.8x", akey[0], akey[1]);
+	    sprintf(nsess->AKey, "%8.8x%8.8x%8.8x%8.8x", akey[0], akey[1], akey[2], akey[3]);
 	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
 	    usr->SessionCnt++;

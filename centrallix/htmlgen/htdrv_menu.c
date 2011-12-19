@@ -235,6 +235,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
     pWgtrNode sub_tree_child;
     pXString xs;
     int bx = 0;
+    int shadow_offset;
+    char shadow_color[128];
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.CSS2)
 	    {
@@ -253,6 +255,17 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	if (wgtrGetPropertyValue(menu,"width",DATA_T_INTEGER,POD(&w)) != 0) w = -1;
 	if (wgtrGetPropertyValue(menu,"column_width",DATA_T_INTEGER,POD(&col_w)) != 0) col_w = 0;
 	if (wgtrGetPropertyValue(menu,"row_height",DATA_T_INTEGER,POD(&row_h)) != 0) row_h = 0;
+
+	/** Drop shadow **/
+	shadow_offset=0;
+	wgtrGetPropertyValue(menu, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset));
+	if (shadow_offset > 0)
+	    {
+	    if (wgtrGetPropertyValue(menu, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
+		strtcpy(shadow_color, ptr, sizeof(shadow_color));
+	    else
+		strcpy(shadow_color, "black");
+	    }
 
 	/** Colors/Backgrounds **/
 	if (htrGetBackground(menu, NULL, s->Capabilities.CSS2, bgstr, sizeof(bgstr)) < 0)
@@ -278,6 +291,10 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 
 	/** Write the main style header item. **/
 	htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
+	if (shadow_offset > 0)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_offset+1, shadow_color);
+	    }
 	htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
 	if (s->Capabilities.CSS2)
 	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; color:%STR; %STR }\n", id, textcolor, bgstr);

@@ -12,7 +12,10 @@
 function tbld_format_cell(cell, color)
     {
     var txt;
-    var str = htutil_encode(String(cell.data));
+    if (cell.subkind != 'headercell' && this.cols[cell.colnum][3] != 'check' && this.cols[cell.colnum][3] != 'image')
+	var str = htutil_encode(String(htutil_obscure(cell.data)));
+    else
+	var str = htutil_encode(String(cell.data));
     if (cell.subkind != 'headercell' && this.cols[cell.colnum][3] == 'check')
 	{
 	if (str.toLowerCase() == 'n' || str.toLowerCase() == 'no' || str.toLowerCase == 'off' || str.toLowerCase == 'false' || str == '0' || str == '' || str == 'null')
@@ -213,7 +216,7 @@ function tbld_update(p1, force_datafetch)
 			    break;
 			    }
 			}
-		    this.rows[i].fg.cols[j].data=htutil_obscure(txt);
+		    this.rows[i].fg.cols[j].data=txt;
 		    if(this.rows[i].fg.cols[j].data == null || typeof this.rows[i].fg.cols[j].data == 'undefined')
 			this.rows[i].fg.cols[j].data='';
 		    }
@@ -946,6 +949,7 @@ function tbld_contextmenu(e)
 		if (orig_ly.subkind == 'cell')
 		    {
 		    event.Column = ly.table.cols[orig_ly.colnum][0];
+		    event.ColumnValue = orig_ly.data;
 		    }
 		event.recnum = ly.recnum;
 		event.data = new Object();
@@ -1009,6 +1013,7 @@ function tbld_mousedown(e)
 		    if (orig_ly.subkind == 'cell')
 			{
 			event.Column = ly.table.cols[orig_ly.colnum][0];
+			event.ColumnValue = orig_ly.data;
 			}
 		    event.Caller = ly.table;
 		    event.recnum = ly.recnum;
@@ -1044,6 +1049,7 @@ function tbld_mousedown(e)
 			if (orig_ly.subkind == 'cell')
 			    {
 			    event.Column = ly.table.cols[orig_ly.colnum][0];
+			    event.ColumnValue = orig_ly.data;
 			    }
 			event.Caller = ly.table;
 			event.recnum = ly.recnum;

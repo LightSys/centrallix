@@ -51,139 +51,6 @@
 /*		analogy to a database's VIEW.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_qytree.c,v 1.19 2010/09/13 23:28:42 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
-
-    $Log: objdrv_qytree.c,v $
-    Revision 1.19  2010/09/13 23:28:42  gbeeley
-    - (bugfix) fix regression causing free memory reuse since expression
-      did not remain valid during query lifetime
-
-    Revision 1.18  2010/09/09 01:46:09  gbeeley
-    - (change) permit deleting and creating objects through a querytree
-    - (change) rework the passing through of where clauses to the underlying
-      drivers/objects
-    - (change) pass presentation hints data through
-
-    Revision 1.17  2009/06/26 16:39:00  gbeeley
-    - (feature) adding a 'known_leaf' option to querytree nodes which have
-      recursion enabled, which helps SUBTREE select efficiency among other
-      things since queries don't need to be issued to find the nonexistent
-      child nodes of a known_leaf (if leaf status can be determined by the
-      data in the object itself rather than by the existence/nonexistence of
-      other objects)
-
-    Revision 1.16  2008/03/09 08:02:43  gbeeley
-    - (bugfix) you can't objUnmanageQuery a query which is NULL...
-
-    Revision 1.15  2006/04/07 06:47:23  gbeeley
-    - (bugfix) Don't try to compile the expression if we don't have any objects
-      open in the first place.
-    - (bugfix) memory_leaks -= 5;
-
-    Revision 1.14  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.13  2004/12/31 04:25:49  gbeeley
-    - allow querytree 'text' objects to have readable content (this helps in
-      situations like the index.app sample file).
-
-    Revision 1.12  2004/09/01 02:36:27  gbeeley
-    - get rid of last_modification warnings on qyt static elements by setting
-      static element last_modification to that of the node itself.
-
-    Revision 1.11  2004/08/30 19:07:07  gbeeley
-    - add driver-opened-objects management to qytree to avoid double closes
-      on objects when the session times out.
-
-    Revision 1.10  2004/08/30 03:15:56  gbeeley
-    - various bugfixes for qytree driver.  This driver needs a security audit
-      as well.
-
-    Revision 1.9  2004/06/23 21:33:55  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.8  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.7  2004/02/24 20:11:53  gbeeley
-    - better annotation support
-    - fixed query-related pathname bug
-
-    Revision 1.6  2003/06/04 19:17:44  gbeeley
-    Fixed bug in querytree relating to the use of string query criteria.
-
-    Revision 1.5  2002/11/22 19:29:37  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:07  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:06  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -1064,7 +931,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    {
 	    xsInit(&sql);
 	    objlist = expCreateParamList();
-	    expCopyList(qy->ObjInf->ObjList, objlist);
+	    expCopyList(qy->ObjInf->ObjList, objlist, -1);
 	    expAddParamToList(objlist,"this",NULL,EXPR_O_CURRENT);
 
 	    /** Expression-based sql? **/
@@ -1106,7 +973,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (where_clause)
 	    {
 	    objlist = expCreateParamList();
-	    expCopyList(qy->ObjInf->ObjList, objlist);
+	    expCopyList(qy->ObjInf->ObjList, objlist, -1);
 	    expAddParamToList(objlist,"this",NULL,EXPR_O_CURRENT);
 	    item_query = expCompileExpression(where_clause, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 	    if (!item_query)
@@ -1301,7 +1168,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Set up the param objects list for this fetched object. **/
 	inf->ObjList = expCreateParamList();
-	expCopyList(qy->ObjInf->ObjList, inf->ObjList);
+	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
 	expAddParamToList(inf->ObjList, objname, obj, EXPR_O_CURRENT);
 	expLinkParams(inf->ObjList, 0, -1);
 

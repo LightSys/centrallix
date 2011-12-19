@@ -31,47 +31,6 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: net_http_osml.c,v 1.4 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http_osml.c,v $
-
-    $Log: net_http_osml.c,v $
-    Revision 1.4  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.3  2010/09/09 01:30:53  gbeeley
-    - (change) allow a HAVING clause to be used instead of WHERE when doing
-      the object reopen operation after a Create or Setattrs.
-    - (change) do the Reopen operation on both Create *and* Setattrs to
-      catch any changes to joined objects resulting from the setattrs.
-
-    Revision 1.2  2009/06/26 18:31:03  gbeeley
-    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
-      like test_obj does
-    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
-    - (change) some refactoring of error message handlers to clean things
-      up a bit
-    - (feature) adding last_activity to session objects (for sysinfo)
-    - (feature) parameterized OSML SQL queries over the http interface
-
-    Revision 1.1  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-
- **END-CVSDATA***********************************************************/
  
  
 /*** nht_internal_ConstructPathname - constructs the proper OSML pathname
@@ -815,6 +774,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			{
 			/** if end of result set was reached before rowlimit ran out **/
 			xhnFreeHandle(&(sess->Hctx), query_handle);
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->OsmlQuery == qy)
+				{
+				xaRemoveItem(&sess->OsmlQueryList, i);
+				nht_internal_FreeQuery(nht_query);
+				break;
+				}
+			    }
 			objQueryClose(qy);
 			qy = NULL;
 			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n");
@@ -822,6 +791,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    else if (autoclose)
 			{
 			xhnFreeHandle(&(sess->Hctx), query_handle);
+			for(i=0;i<sess->OsmlQueryList.nItems;i++)
+			    {
+			    nht_query = (pNhtQuery)(sess->OsmlQueryList.Items[i]);
+			    if (nht_query->OsmlQuery == qy)
+				{
+				xaRemoveItem(&sess->OsmlQueryList, i);
+				nht_internal_FreeQuery(nht_query);
+				break;
+				}
+			    }
 			objQueryClose(qy);
 			qy = NULL;
 			}
@@ -910,6 +889,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		}
 	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
+		nht_query = NULL;
+
 		/** First, if creating, open the new object. **/
 		if (!strcmp(request,"create"))
 		    {
@@ -1059,7 +1040,6 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				    }
 				}
 
-			    if (nht_query) nht_internal_FreeQuery(nht_query);
 			    xsDeInit(reopen_str);
 			    nmFree(reopen_str, sizeof(XString));
 			    }
@@ -1111,6 +1091,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (obj)
 			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 		    }
+
+		if (nht_query) nht_internal_FreeQuery(nht_query);
 		}
 	    else if (!strcmp(request,"delete"))
 		{

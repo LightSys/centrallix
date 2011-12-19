@@ -50,42 +50,6 @@
 /*                an intelligent manner.                                    */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_mysql.c,v 1.5 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mysql.c,v $
-
-    $Log: objdrv_mysql.c,v $
-    Revision 1.5  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.4  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.3  2008/08/16 00:53:24  jncraton
-    - (change) added some functionality and fixed some bugs
-    - I'm done for the summer, so this will be my last commit
-
-    Revision 1.2  2008/07/31 17:57:56  jncraton
-    - (feature) lots more things work now
-    - (change) lots of bugs/leaks were fixed
-    - (unchanged) this still isn't totally stable or fully tested
-
-    Revision 1.1  2008/07/22 00:22:16  jncraton
-    - Initial integration of the MySQL driver
-    - The driver is far from complete and shouldn't be used for anything
-    - It is currently missing huge amounts of functionality
-
-
- **END-CVSDATA***********************************************************/
 
 #define MYSD_MAX_COLS                256
 #define MYSD_MAX_KEYS                8

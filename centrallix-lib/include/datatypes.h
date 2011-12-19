@@ -18,43 +18,6 @@
 /*		managing datatypes.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: datatypes.h,v 1.6 2008/03/29 01:03:36 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/datatypes.h,v $
-
-    $Log: datatypes.h,v $
-    Revision 1.6  2008/03/29 01:03:36  gbeeley
-    - (change) changing integer type in IntVec to a signed integer
-    - (security) switching to size_t in qprintf where needed instead of using
-      bare integers.  Also putting in some checks for insanely huge amounts
-      of data in qprintf that would overflow many of the integer counters.
-    - (bugfix) several fixes to make the code compile cleanly at the newer
-      warning levels on newer compilers.
-
-    Revision 1.5  2004/05/04 18:18:59  gbeeley
-    - Adding fdAccess() wrapper for access(2).
-    - Moving PTOD definition to module in centrallix core.
-
-    Revision 1.4  2004/02/24 05:08:26  gbeeley
-    - lengthen Value in DateTime datatype to 'long long' (64 bit).
-    - Add pTObjData (PTOD) as more descriptive of an atomic data element,
-      including data type and is-null status.
-
-    Revision 1.3  2003/05/30 17:40:42  gbeeley
-    - make magic number assertion tell us the bad pointer address
-
-    Revision 1.2  2001/12/28 21:53:25  gbeeley
-    Added some support for the new printmanagement system.
-
-    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** Date/time property structure **/
