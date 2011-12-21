@@ -1256,7 +1256,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	/** Get the current date/time to fill in some (possibly) blank values **/
 	int_time = time(NULL);
 	t = localtime(&int_time);
-	if (got_yr == -1) got_yr = t->tm_year;
+	if (got_yr == -1) got_yr = t->tm_year + 1900;
 	if (got_day == -1) got_day = t->tm_mday + 1;
 	if (got_mo == -1) got_mo = t->tm_mon;
 
