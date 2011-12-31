@@ -134,7 +134,7 @@ wgtr_param_Free(pWgtrAppParam param)
  *** corresponding data structure
  ***/
 pWgtrAppParam
-wgtrParseParameter(pObject obj, pStruct inf)
+wgtrParseParameter(pObject obj, pStruct inf, pParamObjects objlist)
     {
     pWgtrAppParam param = NULL;
     char* str;
@@ -200,7 +200,7 @@ wgtrParseParameter(pObject obj, pStruct inf)
 	    }
 
 	/** set default value and/or verify that the given value is valid **/
-	if (hntVerifyHints(param->Hints, param->Value, &str, NULL, obj->Session) < 0)
+	if (hntVerifyHints(param->Hints, param->Value, &str, objlist, obj->Session) < 0)
 	    {
 	    mssError(1, "WGTR", "Parameter '%s' specified incorrectly: %s", param->Name, str);
 	    goto error;
@@ -839,7 +839,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 			}
 		    if (context_objlist)
 			{
-			param = wgtrParseParameter(child_obj, client_params);
+			param = wgtrParseParameter(child_obj, client_params, context_objlist);
 			if (!param)
 			    goto error;
 			paramlist[n_params] = param;
@@ -1042,7 +1042,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 			}
 		    if (context_objlist)
 			{
-			param = wgtrParseParameter(child_obj, client_params);
+			param = wgtrParseParameter(child_obj, client_params, context_objlist);
 			if (!param)
 			    goto error;
 			paramlist[n_params] = param;
