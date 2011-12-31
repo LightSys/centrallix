@@ -68,7 +68,20 @@ function cxjs_getdate()
 function cxjs_convert(dt,v)
     {
     if (v == null || dt == null) return null;
-    if (dt == 'integer') return parseInt(v);
+    if (dt == 'integer')
+	{
+	if (String(v).substr(1,1) == '$')
+	    return parseInt(String(v).substr(2));
+	else
+	    return parseInt(v);
+	}
+    if (dt == 'double')
+	{
+	if (String(v).substr(1,1) == '$')
+	    return parseFloat(String(v).substr(2));
+	else
+	    return parseFloat(v);
+	}
     if (dt == 'string') return '' + v;
     return v;
     }
@@ -213,6 +226,8 @@ function cxjs_substitute(_context, _this, str, remaplist)
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);
+		    if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+			pg_expaddpart(window.__cur_exp, obj, fieldname);
 		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
 			prop = "";
 		    else

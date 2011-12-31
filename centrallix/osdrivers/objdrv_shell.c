@@ -147,6 +147,7 @@ shl_internal_Launch(pShlData inf)
     char tty_name[32];
     int pty;
     int i;
+    int maxfiles;
 
     for(i=0;i<xaCount(&inf->envList);i++)
 	{
@@ -253,10 +254,17 @@ shl_internal_Launch(pShlData inf)
 	    }
 
 	/** close all open fds (except for 0-2 -- std{in,out,err}) **/
-	for(fd=3;fd<64;fd++)
+	maxfiles = sysconf(_SC_OPEN_MAX);
+	if (maxfiles <= 0)
+	    {
+	    printf("Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.\n");
+	    maxfiles = 2048;
+	    }
+	for(fd=3;fd<maxfiles;fd++)
 	    close(fd);
-	
-	/** open the terminal **/
+
+	/** start a new process session and open the terminal **/
+	setsid();
 	fd = open(tty_name,O_RDWR);
 	
 	/** switch to terminal as stdout **/
@@ -269,7 +277,7 @@ shl_internal_Launch(pShlData inf)
 	dup2(fd,2);
 
 	/** close old copy of FD **/
-	close(fd);
+	if (fd > 2) close(fd);
 
 
 	/** make the exec() call **/

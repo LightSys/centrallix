@@ -390,6 +390,11 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     int rval;
     pWgtrNode children[HTTBL_MAX_COLS];
 
+	/** Don't try to render table-column, etc.  We do that elsewhere **/
+	wgtrGetPropertyValue(tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	if (strcmp(ptr, "widget/table") != 0)
+	    return 0;
+
 	t = (httbl_struct*)nmMalloc(sizeof(httbl_struct));
 	if (!t) return -1;
 
@@ -551,7 +556,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		else
 		    stAddValue(attr_inf, "left", 0);
 		attr_inf = stAddAttr(t->col_infs[i], "type");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link")))
 		    stAddValue(attr_inf, ptr, 0);
 		else
 		    stAddValue(attr_inf, "text", 0);

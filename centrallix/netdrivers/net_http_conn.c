@@ -176,10 +176,13 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtUser usr;
     pNhtConn conn = NULL;
     pNhtSessionData nsess;
-    int akey[2];
+    int akey[4];
     unsigned char t_lsb;
     int noact = 0;
     int err;
+    time_t t;
+    struct tm* timeptr;
+    char timestr[80];
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -329,13 +332,23 @@ nht_internal_ConnHandler(void* connfd_v)
 		    }
 		else
 		    {
-		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-				 "Server: %s\r\n"
+		    t = time(NULL);
+		    timeptr = localtime(&t);
+		    if (timeptr)
+			{
+			/** This isn't 100% ideal -- it causes a couple seconds of clock drift **/
+			if (strftime(timestr, sizeof(timestr), "%Y %m %d %T", timeptr) <= 0)
+			    {
+			    strcpy(timestr, "OK");
+			    }
+			}
+		    fdQPrintf(conn->ConnFD,"HTTP/1.0 200 OK\r\n"
+				 "Server: %STR\r\n"
 				 "Pragma: no-cache\r\n"
 				 "Content-Type: text/html\r\n"
 				 "\r\n"
-				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
-		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+				 "<A HREF=/ TARGET='%STR&HTE'></A>\r\n",
+				 NHT.ServerString, timestr);
 		    nht_internal_FreeConn(conn);
 		    thExit();
 		    }
@@ -431,7 +444,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaInit(&nsess->OsmlQueryList,64);
 	    nht_internal_CreateCookie(nsess->Cookie);
 	    cxssGenerateKey((unsigned char*)akey, sizeof(akey));
-	    sprintf(nsess->AKey, "%8.8x%8.8x", akey[0], akey[1]);
+	    sprintf(nsess->AKey, "%8.8x%8.8x%8.8x%8.8x", akey[0], akey[1], akey[2], akey[3]);
 	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
 	    usr->SessionCnt++;

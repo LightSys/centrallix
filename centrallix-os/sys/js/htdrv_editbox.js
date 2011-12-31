@@ -47,11 +47,11 @@ function eb_actionsetvaldesc(aparam)
     {
     if ((typeof aparam.Description) != 'undefined')
 	{
-	var olddesc = this.description;
+	var olddesc = this.saved_description;
 	var oldvdv = this.description_value;
-	this.description = aparam.Description;
+	this.saved_description = aparam.Description;
 	this.description_value = this.content;
-	if (olddesc != this.description || oldvdv != this.description_value)
+	if (olddesc != this.saved_description || oldvdv != this.description_value)
 	    this.Update(this.content, this.cursorCol);
 	}
     }
@@ -181,11 +181,13 @@ function eb_settext(l,txt)
     var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
     var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));
     var descr = '';
-    if ((new String(l.content)).valueOf() == (new String(l.description_value)).valueOf() && l.description)
+    if ((new String(l.content)).valueOf() == (new String(l.description_value)).valueOf() && l.saved_description)
 	{
 	if (l != eb_current || l.content)
-	    descr = l.description;
+	    descr = l.saved_description;
 	}
+    if (descr != l.description)
+	l.description = descr;
     if (l != eb_current && (l.content == '' || l.content == null) && l.empty_desc)
 	descr = l.empty_desc;
     if (descr)
@@ -676,6 +678,7 @@ function eb_init(param)
     l.content = '';
     l.value = '';
     l.description = '';
+    l.saved_description = '';
     l.description_value = '';
     l.Update = eb_update;
     l.addHistory = eb_add_history;

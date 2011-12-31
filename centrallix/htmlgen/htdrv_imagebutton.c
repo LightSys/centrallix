@@ -137,7 +137,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	button_repeat = htrGetBoolean(tree, "repeat", 0);
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ib%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#ib%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:pointer; }\n",id,x,y,w,z);
 
 	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"ib%POSpane\")", id);

@@ -90,7 +90,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Run the query **/
-	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT);
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE);
 	if (!qy)
 	    {
 	    mssError(1,"EXP","Failed to run subselect query");
@@ -1739,7 +1739,6 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	    objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
-	tree->Flags &= ~EXPR_F_NEW;
 
 	/** Call the appropriate evaluator fn based on type **/
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
@@ -1747,41 +1746,17 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	fn = EXP.EvalFunctions[tree->NodeType];
 	if (!fn)
 	    {
+	    tree->Flags &= ~EXPR_F_NEW;
 	    objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	rval = fn(tree,objlist);
+	if (rval >= 0)
+	    tree->Flags &= ~EXPR_F_NEW;
 	objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
-	return rval;
 
-#if 00
-	switch(tree->NodeType)
-	    {
-	    case EXPR_N_INTEGER: return 0;
-	    case EXPR_N_STRING: return 0;
-	    case EXPR_N_DOUBLE: return 0;
-	    case EXPR_N_MONEY: return 0;
-	    case EXPR_N_DATETIME: return 0;
-	    case EXPR_N_PLUS: return expEvalPlus(tree,objlist);
-	    case EXPR_N_MINUS: return expEvalMinus(tree,objlist);
-	    case EXPR_N_DIVIDE: return expEvalDivide(tree,objlist);
-	    case EXPR_N_MULTIPLY: return expEvalMultiply(tree,objlist);
-	    case EXPR_N_NOT: return expEvalNot(tree,objlist);
-	    case EXPR_N_AND: return expEvalAnd(tree,objlist);
-	    case EXPR_N_OR: return expEvalOr(tree,objlist);
-	    case EXPR_N_COMPARE: return expEvalCompare(tree,objlist);
-	    case EXPR_N_OBJECT: return expEvalObject(tree,objlist);
-	    case EXPR_N_PROPERTY: return expEvalProperty(tree,objlist);
-	    case EXPR_N_ISNULL: return expEvalIsNull(tree,objlist);
-	    case EXPR_N_FUNCTION: return expEvalFunction(tree,objlist);
-	    case EXPR_N_CONTAINS: return expEvalContains(tree,objlist);
-	    case EXPR_N_LIST: return -1;
-	    case EXPR_N_IN: return expEvalIn(tree,objlist);
-	    default: return -1;
-	    }
-#endif
-
+    return rval;
     }
 
 

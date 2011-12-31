@@ -1441,6 +1441,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     char* fn_use_name;
     int use_stock_fn_call;
     char quote;
+    char* ptr;
     
         xsInit(&tmp);
 
@@ -1449,7 +1450,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             {
             case EXPR_N_DATETIME:
           mysd_DO_DATETIME:
-                objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
+		ptr = objFormatDateTmp(&(tree->Types.Date),"yyyy-MM-dd HH:mm:ss");
+		xsConcatQPrintf(where_clause, "convert(%STR&DQUOT, datetime)", ptr);
+                /*objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);*/
                 break;
 
             case EXPR_N_MONEY:
@@ -1743,6 +1746,24 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
                     return -1;
                     }
+		else if (!strcmp(tree->Name,"datepart"))
+		    {
+		    /** MySQL uses year(), month(), day(), hour(), minute(), second() **/
+		    subtree = (pExpression)(tree->Children.Items[0]);
+		    if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "year") || !strcmp(subtree->String, "month") || !strcmp(subtree->String, "day") || !strcmp(subtree->String, "hour") || !strcmp(subtree->String, "minute") || !strcmp(subtree->String, "second")))
+			{
+			xsConcatenate(where_clause, " ", 1);
+			xsConcatenate(where_clause, subtree->String, -1);
+			xsConcatenate(where_clause, "(", 1);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    else
+			{
+			mssError(1,"MYSD","Invalid date part for datepart()");
+			return -1;
+			}
+		    }
                 else
                     {
 		    use_stock_fn_call = 1;

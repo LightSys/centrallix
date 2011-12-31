@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -67,6 +68,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     int w,h;
     char* path;
     pStruct c_param;
+    time_t t;
+    struct tm* timeptr;
+    char timestr[80];
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -250,6 +254,21 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Set the application key **/
 	htrAddScriptInit_va(s, "    if (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey);
+
+	/** Send server's time to the client. **/
+	t = time(NULL);
+	timeptr = localtime(&t);
+	if (timeptr)
+	    {
+	    /** This isn't 100% ideal -- it causes a couple seconds of clock drift **/
+	    if (strftime(timestr, sizeof(timestr), "%Y %m %d %T %Z", timeptr) > 0)
+		{
+		htrAddScriptInit_va(s, "    pg_servertime = new Date(%STR&DQUOT);\n", timestr);
+		if (strftime(timestr, sizeof(timestr), "%Y %m %d %T", timeptr) > 0)
+		    htrAddScriptInit_va(s, "    pg_servertime_notz = new Date(%STR&DQUOT);\n", timestr);
+		htrAddScriptInit_va(s, "    pg_clienttime = new Date();\n");
+		}
+	    }
 
 	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");

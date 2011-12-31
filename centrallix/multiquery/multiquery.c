@@ -299,6 +299,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
     {
     int i,j,cnt;
     pQueryStructure subtree;
+    pQueryStructure having;
     char* ptr;
     int has_identity;
 
@@ -478,8 +479,37 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    /** merge **/
 		    ptr = nmSysStrdup(where->RawData.String);
 		    xsQPrintf(&where->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+		    nmSysFree(ptr);
 
 		    /** remove the extra where clause **/
+		    xaRemoveItem(&qs->Children,i);
+		    i--;
+		    cnt--;
+		    mq_internal_FreeQS(subtree);
+		    }
+		}
+	    }
+
+	/** Merge HAVING clauses if there are more than one **/
+	cnt = xaCount(&qs->Children);
+	having = NULL;
+	for(i=0;i<cnt;i++)
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    if (subtree->NodeType == MQ_T_HAVINGCLAUSE)
+		{
+		if (!having)
+		    {
+		    having = subtree;
+		    }
+		else
+		    {
+		    /** merge **/
+		    ptr = nmSysStrdup(having->RawData.String);
+		    xsQPrintf(&having->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+		    nmSysFree(ptr);
+
+		    /** remove the extra having clause **/
 		    xaRemoveItem(&qs->Children,i);
 		    i--;
 		    cnt--;
@@ -736,6 +766,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
     int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr;
+    int n_tok;
     char* ptr;
     int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
@@ -1054,6 +1085,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("delete",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","DELETE statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || insert_cls || update_cls)
 				{
 				next_state = ParseError;
@@ -1086,6 +1124,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("insert",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","INSERT statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || update_cls || delete_cls)
 				{
 				next_state = ParseError;
@@ -1159,6 +1204,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("update",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","UPDATE statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || insert_cls || delete_cls)
 				{
 				next_state = ParseError;
@@ -1201,6 +1253,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				    {
 				    next_state = ParseError;
 				    mssError(1,"MQ","FOR UPDATE allowed only with SELECT");
+				    mlxNoteError(lxs);
+				    break;
+				    }
+				if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","SELECT ... FOR UPDATE disallowed because data changes are forbidden");
 				    mlxNoteError(lxs);
 				    break;
 				    }
@@ -1352,37 +1411,56 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		    /** Copy the entire item literally to the RawData for later compilation **/
 		    parenlevel = 0;
+		    n_tok = 0;
 		    while(1)
 		        {
 			t = mlxNextToken(lxs);
 			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 			    break;
+			n_tok++;
 			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
 			    break;
 			if (t == MLX_TOK_OPENPAREN) 
 			    parenlevel++;
 			if (t == MLX_TOK_CLOSEPAREN)
 			    parenlevel--;
-			if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0 && parenlevel == 0)
+			if (n_tok == 2 && new_qs->Presentation[0] != 0)
+			    {
+			    /** Second token, and first might have been a label.  See if it is an = **/
+			    if (t == MLX_TOK_EQUALS)
+				{
+				/** Label. **/
+				xsCopy(&new_qs->RawData,"",-1);
+				continue;
+				}
+			    else
+				/** Was not a label **/
+				new_qs->Presentation[0] = '\0';
+			    }
+			/*if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0 && parenlevel == 0)
 			    {
 			    strtcpy(new_qs->Presentation, new_qs->RawData.String, sizeof(new_qs->Presentation));
 			    if (strrchr(new_qs->Presentation,' '))
 			        *(strrchr(new_qs->Presentation,' ')) = '\0';
 			    xsCopy(&new_qs->RawData,"",-1);
 			    continue;
-			    }
+			    }*/
 			ptr = mlxStringVal(lxs,NULL);
 			if (!ptr) break;
 			if (t == MLX_TOK_STRING)
-			    {
 			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
 			else
-			    {
 			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
 			xsConcatenate(&new_qs->RawData," ",1);
+
+			/** If first token, see if it might be a label **/
+			if (n_tok == 1 && (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD))
+			    strtcpy(new_qs->Presentation, ptr, sizeof(new_qs->Presentation));
 			}
+
+		    /** If just one string token, it is a data value, not a label **/
+		    if (n_tok == 1 && new_qs->Presentation[0] != 0)
+			new_qs->Presentation[0] = '\0';
 
 		    /** Where to from here? **/
 		    if (t == MLX_TOK_COMMA)
@@ -2099,8 +2177,9 @@ mq_internal_NextStatement(pMultiQuery this)
 
 	/** Build the one-object list for evaluating the Having clause, etc. **/
 	stmt->OneObjList = expCreateParamList();
+	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
 	stmt->OneObjList->Session = stmt->Query->SessionID;
-	expAddParamToList(stmt->OneObjList, "this", NULL, 0);
+	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
 	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Compile the having expression, if one. **/
@@ -2187,6 +2266,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 
     	/** Allocate the multiquery structure itself. **/
 	this = (pMultiQuery)nmMalloc(sizeof(MultiQuery));
+	/*printf("ALLOC %s\n", query_text);*/
 	if (!this) return NULL;
 	memset(this,0,sizeof(MultiQuery));
 	this->CntSerial = 0;
@@ -2206,6 +2286,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    {
 	    this->Flags = MQ_F_MULTISTATEMENT; /* on by default, can be turned on/off */
 	    }
+	if (flags & OBJ_MQ_F_NOUPDATE)
+	    this->Flags |= MQ_F_NOUPDATE;
 
 	/** Parse the text of the query, building the syntax structure **/
 	this->LexerSession = mlxStringSession(this->QueryText, 
@@ -2220,7 +2302,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->ObjList = expCreateParamList();
 	if (objlist)
 	    {
-	    expCopyList(objlist, this->ObjList);
+	    expCopyList(objlist, this->ObjList, -1);
 	    /*expLinkParams(this->ObjList, 0, -1);*/
 	    this->nProvidedObjects = this->ObjList->nObjects;
 	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
@@ -2372,7 +2454,7 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	    obj = (pObject)(p->ObjList.Objects[i]);
 	    if (obj) objLinkTo(obj);
 	    }*/
-	expCopyList(qy->ObjList, p->ObjList);
+	expCopyList(qy->ObjList, p->ObjList, -1);
 	expLinkParams(p->ObjList, p->Stmt->Query->nProvidedObjects, -1);
 
 	p->Serial = qy->CurSerial;
@@ -2641,6 +2723,7 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	    expFreeParamList(qy->ObjList);
 	    }
 
+	/*printf("CLOSE %s\n", qy->QueryText);*/
 	if (qy->QueryText)
 	    nmSysFree(qy->QueryText);
 
@@ -2970,6 +3053,13 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 
     	/** Check to see whether we're on current object. **/
 	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
+
+	/** Updates not permitted? **/
+	if (p->Stmt->Query->Flags & MQ_F_NOUPDATE)
+	    {
+	    mssError(1,"MQ","setattr '%s' disallowed because data changes are forbidden", attrname);
+	    return -1;
+	    }
 
 	/** Figure out which attribute needs updating... **/
 	id = -1;

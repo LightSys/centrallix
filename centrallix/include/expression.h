@@ -139,7 +139,7 @@ typedef struct _PO
     unsigned char	nObjects;
     char		CurrentID;
     char		ParentID;
-    unsigned char	MainFlags;		/* bitmask EXPR_MO_xxx */
+    unsigned int	MainFlags;		/* bitmask EXPR_MO_xxx */
     unsigned int 	PSeqID;
     int			ModCoverageMask;
     pExpControl		CurControl;
@@ -155,8 +155,7 @@ typedef struct _PO
 #define EXPR_O_ALLOCNAME	16
 #define EXPR_O_REFERENCED	32	/* object was referenced */
 #define EXPR_O_ALLOWDUPS	64	/* allow duplicate object names */
-
-#define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
+#define EXPR_O_REPLACE		128	/* replace entry on duplicate */
 
 extern pParamObjects expNullObjlist;
 
@@ -210,6 +209,13 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_INDETERMINATE	32768	/* Value cannot yet be known */
 
 #define EXPR_F_HASRUNSERVER	65536	/* Expression contains runserver() */
+
+/*** Expression objlist MainFlags ***/
+#define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
+#define EXPR_MO_RUNSTATIC	EXPR_F_RUNSTATIC
+#define EXPR_MO_RUNSERVER	EXPR_F_RUNSERVER
+#define EXPR_MO_RUNCLIENT	EXPR_F_RUNCLIENT
+#define EXPR_MO_DOMAINMASK	EXPR_F_DOMAINMASK
 
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */
@@ -273,7 +279,8 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 
 /*** Param-object functions ***/
 pParamObjects expCreateParamList();
-int expCopyList(pParamObjects src, pParamObjects dst);
+int expSetEvalDomain(pParamObjects this, int domain);
+int expCopyList(pParamObjects src, pParamObjects dst, int n_objects);
 int expBindExpression(pExpression exp, pParamObjects this, int domain);
 int expFreeParamList(pParamObjects this);
 int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());

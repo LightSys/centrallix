@@ -142,6 +142,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    c2 = "white_1x1.png";
 	    }
 
+	/** enable/disable expression for editbox **/
+	/*htrCheckAddExpression(s, tree, name, "enabled");*/
+
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else
