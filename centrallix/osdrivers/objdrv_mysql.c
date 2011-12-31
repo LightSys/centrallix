@@ -1441,6 +1441,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     char* fn_use_name;
     int use_stock_fn_call;
     char quote;
+    char* ptr;
     
         xsInit(&tmp);
 
@@ -1449,7 +1450,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             {
             case EXPR_N_DATETIME:
           mysd_DO_DATETIME:
-                objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
+		ptr = objFormatDateTmp(&(tree->Types.Date),"yyyy-MM-dd HH:mm:ss");
+		xsConcatQPrintf(where_clause, "convert(%STR&DQUOT, datetime)", ptr);
+                /*objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);*/
                 break;
 
             case EXPR_N_MONEY:
