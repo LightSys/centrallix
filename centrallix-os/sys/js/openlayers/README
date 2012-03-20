@@ -1,0 +1,13 @@
+Revision History:
+
+20-Mar-2012:	OpenLayers 2.11
+
+The 'tests', 'examples', and 'docs' directories have been removed from this
+copy of OpenLayers so we aren't distributing all of that with the Centrallix
+platform packages.
+
+License:
+
+OpenLayers is distributed under a 2-clause BSD type license.  It is licensed
+separately from the rest of the Centrallix platform, but is compatible with
+the LGPL licensing of the centrallix-os package in the Centrallix platform.

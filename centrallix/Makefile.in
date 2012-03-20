@@ -140,6 +140,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_imagebutton.o \
 	wgtdrv_image.o \
 	wgtdrv_label.o \
+	wgtdrv_map.o \
 	wgtdrv_menu.o \
 	wgtdrv_multiscroll.o \
 	wgtdrv_objcanvas.o \
@@ -212,6 +213,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_hints.o \
 	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
+	   htdrv_map.o \
 	   htdrv_parameter.o \
 	   htdrv_autolayout.o \
 	   htdrv_repeat.o \

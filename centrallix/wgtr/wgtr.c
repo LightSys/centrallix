@@ -2056,6 +2056,7 @@ wgtrInitialize()
 	wgtlblInitialize();
 	wgtmenuInitialize();
 	wgtocInitialize();
+	wgtmapInitialize();
 	wgtosrcInitialize();
 	wgtpageInitialize();
 	wgtpnInitialize();
