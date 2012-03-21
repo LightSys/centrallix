@@ -111,6 +111,7 @@ htmapRender(pHtSession s, pWgtrNode map_node, int z)
 
 	/** Include our necessary supporting js files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_map.js", 0);
+	htrAddScriptInclude(s, "/sys/js/openlayers/OpenLayers.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Event Handlers **/

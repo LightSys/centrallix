@@ -16,8 +16,43 @@
 //
 function map_init(param)
     {
+   
     var l = param.layer;
-    htr_init_layer(l,l,"map");
+    
+    //htr_init_layer(l,l,"map");
+    
+    alert("before");
+    map = new OpenLayers.Map(l);
+    alert("after");
+     alert(map);
+   var layer = new OpenLayers.Layer.OSM( "Simple OSM Map");
+   var vector = new OpenLayers.Layer.Vector('vector');
+   map.addLayers([layer, vector]);
+   map.setCenter(
+		new OpenLayers.LonLat(-104.821363, 38.833882).transform(
+						new OpenLayers.Projection("EPSG:4326"),
+						map.getProjectionObject()
+						), 1
+	);
+ 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    /*
+    
+    
+    
     ifc_init_widget(l);
     l.w = getdocWidth(l);
 
@@ -59,7 +94,8 @@ function map_init(param)
 	l.osrc = wgtrFindContainer(l, "widget/osrc");
     if (l.osrc)
 	l.osrc.Register(l);
-
+	
+	*/
     return l;
     }
 
@@ -218,6 +254,7 @@ function map_select_item_by_id(id)
 //
 function map_getfocus(x,y,l,grp,id,a)
     {
+	
     if (id.osrc_id && this.param.allow_select && this.osrc)
 	this.osrc.MoveToRecord(id.osrc_id);
     if (this.param.allow_select)
