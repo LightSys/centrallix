@@ -21,10 +21,21 @@ function map_init(param)
    
     var l = param.layer;
     //htr_init_layer(l,l,"map");
-     map = new OpenLayers.Map(l.id);
+     
+     map = new OpenLayers.Map(l.id, {
+                    controls: [
+                        new OpenLayers.Control.Navigation(),
+                        new OpenLayers.Control.PanZoomBar(),
+                        new OpenLayers.Control.KeyboardDefaults()
+                    ],
+                    numZoomLevels: 6
+                    
+                });
     var layer = new OpenLayers.Layer.OSM( "Simple OSM Map");
     var vector = new OpenLayers.Layer.Vector('vector');
     map.addLayers([layer, vector]);
+    
+    
     map.setCenter(
 		new OpenLayers.LonLat(-104.821363, 38.833882).transform(
 						new OpenLayers.Projection("EPSG:4326"),
@@ -32,12 +43,6 @@ function map_init(param)
 						), 1
 	);
 	
-	  map.addControls([
-	    new OpenLayers.Control.Navigation(),
-            //new OpenLayers.Control.Attribution(),
-            new OpenLayers.Control.PanZoomBar()
-	    ]);
-       // map.setCenter(new OpenLayers.LonLat(43.653226,-79.383184), 1);
     
       markerLayer = new OpenLayers.Layer.Markers('Markers');
        map.addLayer(markerLayer);
@@ -232,8 +237,8 @@ function map_clear()
                    popup_text,
                    true);
 	popup.autoSize =true;
-	popup.addCloseBox();
-	
+	//popup.addCloseBox();
+	popup.closeBox =true;
 	
 	
 	map.addPopup(popup);
