@@ -22,6 +22,7 @@ function map_init(param)
     var l = param.layer;
     //htr_init_layer(l,l,"map");
      
+     //Create map with corresponding controllers from openLayers
      map = new OpenLayers.Map(l.id, {
                     controls: [
                         new OpenLayers.Control.Navigation(),
@@ -31,11 +32,12 @@ function map_init(param)
                     numZoomLevels: 6
                     
                 });
+    //load layers from StreetMap
     var layer = new OpenLayers.Layer.OSM( "Simple OSM Map");
     var vector = new OpenLayers.Layer.Vector('vector');
     map.addLayers([layer, vector]);
     
-    
+    //Center map to the US
     map.setCenter(
 		new OpenLayers.LonLat(-104.821363, 38.833882).transform(
 						new OpenLayers.Projection("EPSG:4326"),
@@ -43,9 +45,9 @@ function map_init(param)
 						), 1
 	);
 	
-    
+      //This layer will contain the makers that we will place on the screen
       markerLayer = new OpenLayers.Layer.Markers('Markers');
-       map.addLayer(markerLayer);
+      map.addLayer(markerLayer);
    
     
     
@@ -126,7 +128,6 @@ function map_refresh()
 function map_add_osrc_object(o)
     {
     // get needed props
-   
     var lat = map_get_osrc_property(o, 'lat');
     if (lat == null) lat = 0;
     var lon = map_get_osrc_property(o, 'lon');
@@ -146,9 +147,6 @@ function map_add_osrc_object(o)
     lat = parseFloat(lat);
     lon = parseFloat(lon);
     
-  
-    
-     
      var Onemarker = new OpenLayers.Marker(new OpenLayers.LonLat(lon, lat ).transform(
 		new OpenLayers.Projection("EPSG:4326"),
 				map.getProjectionObject()
@@ -158,7 +156,7 @@ function map_add_osrc_object(o)
 
 		
 		   /* Register the events */
-                Onemarker.events.register('mousedown', Onemarker, testFunc.bind(null, popup_text, Onemarker.lonlat) );
+                Onemarker.events.register('mousedown', Onemarker, testFunc.bind(this, popup_text, Onemarker.lonlat, o.id) );
 		//marker.events.register('mousedown', marker, function(evt) { alert(this.icon.url); OpenLayers.Event.stop(evt); });
 		
 		/* Add markers to the map */
@@ -228,22 +226,22 @@ function map_clear()
     }
 
     
-    function testFunc(popup_text, lonlat){
+function testFunc(popup_text, lonlat, id){
 	
-	
-		var popup = new OpenLayers.Popup("chicken",
-                  lonlat,
-                   null,
-                   popup_text,
-                   true);
+	var popup = new OpenLayers.Popup("chicken",
+					lonlat,
+					null,
+					popup_text,
+					true);
 	popup.autoSize =true;
-	//popup.addCloseBox();
-	popup.closeBox =true;
-	
-	
 	map.addPopup(popup);
 	
-	//popup.onmousedown(personalToggle(popup));
+	
+	
+	if (id && this.param.allow_select && this.osrc)
+	this.osrc.MoveToRecord(id);
+	 
+	
 }
 
 
@@ -334,6 +332,7 @@ function map_osrc_is_discard_ready()
 
 function map_osrc_object_available(o)
     {
+   
     this.Refresh();
     if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
     }
