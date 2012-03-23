@@ -455,6 +455,7 @@ cxHtInit()
 	htimgInitialize();			/* image widget */
 	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
+	htmapInitialize();			/* object canvas widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
