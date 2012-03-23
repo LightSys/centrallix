@@ -14,16 +14,16 @@
 
 // Map Widget Initialization 
 //
- var map;
-  var markerLayer;
+ //var map;
+  //var markerLayer;
 function map_init(param)
     {
-   
+	
     var l = param.layer;
     //htr_init_layer(l,l,"map");
      
      //Create map with corresponding controllers from openLayers
-     map = new OpenLayers.Map(l.id, {
+     l.map = new OpenLayers.Map(l.id, {
                     controls: [
                         new OpenLayers.Control.Navigation(),
                         new OpenLayers.Control.PanZoomBar(),
@@ -35,19 +35,19 @@ function map_init(param)
     //load layers from StreetMap
     var layer = new OpenLayers.Layer.OSM( "Simple OSM Map");
     var vector = new OpenLayers.Layer.Vector('vector');
-    map.addLayers([layer, vector]);
+    l.map.addLayers([layer, vector]);
     
     //Center map to the US
-    map.setCenter(
+    l.map.setCenter(
 		new OpenLayers.LonLat(-104.821363, 38.833882).transform(
 						new OpenLayers.Projection("EPSG:4326"),
-						map.getProjectionObject()
+						l.map.getProjectionObject()
 						), 1
 	);
 	
       //This layer will contain the makers that we will place on the screen
-      markerLayer = new OpenLayers.Layer.Markers('Markers');
-      map.addLayer(markerLayer);
+      l.markerLayer = new OpenLayers.Layer.Markers('Markers');
+      l.map.addLayer(l.markerLayer);
    
     
     
@@ -113,6 +113,7 @@ function map_get_osrc_property(o,n)
 //
 function map_refresh()
     {
+      this.markerLayer.clearMarkers();
     // First, clear all objects
     this.Clear();
 
@@ -127,6 +128,8 @@ function map_refresh()
 //
 function map_add_osrc_object(o)
     {
+    
+   
     // get needed props
     var lat = map_get_osrc_property(o, 'lat');
     if (lat == null) lat = 0;
@@ -149,7 +152,7 @@ function map_add_osrc_object(o)
     
      var Onemarker = new OpenLayers.Marker(new OpenLayers.LonLat(lon, lat ).transform(
 		new OpenLayers.Projection("EPSG:4326"),
-				map.getProjectionObject()
+				this.map.getProjectionObject()
 				));
 				
 				   
@@ -158,15 +161,15 @@ function map_add_osrc_object(o)
 		   /* Register the events */
                 Onemarker.events.register('mousedown', Onemarker, testFunc.bind(this, popup_text, Onemarker.lonlat, o.id) );
 		//marker.events.register('mousedown', marker, function(evt) { alert(this.icon.url); OpenLayers.Event.stop(evt); });
-		
+		  
 		/* Add markers to the map */
-                markerLayer.addMarker(Onemarker);
-		map.setCenter(new OpenLayers.LonLat(lon,lat).transform(
+                this.markerLayer.addMarker(Onemarker);
+		this.map.setCenter(new OpenLayers.LonLat(lon,lat).transform(
 		new OpenLayers.Projection("EPSG:4326"),
-				map.getProjectionObject()
+				this.map.getProjectionObject()
 				), 4);
     /*
-    // make and position the layer
+    // make and position the layer 
     var l = this.NewLayer();
     htr_init_layer(l, this, 'map');
     l.osrc_oid = o.oid;
@@ -234,7 +237,9 @@ function testFunc(popup_text, lonlat, id){
 					popup_text,
 					true);
 	popup.autoSize =true;
-	map.addPopup(popup);
+	
+	
+	this.map.addPopup(popup);
 	
 	
 	
@@ -332,7 +337,17 @@ function map_osrc_is_discard_ready()
 
 function map_osrc_object_available(o)
     {
-   
+	//link: http://dev.openlayers.org/docs/files/OpenLayers/Layer/Markers-js.html#OpenLayers.Layer.Markers.removeMarker
+	//This is not working yet because the layer needs to be redrawn after changing the icon size. 
+	//var size = new OpenLayers.Size(100,100);
+		//Onemarker.icon.size = size;
+	/*
+	for(var i in this.markerLayer.markers){
+		this.markerLayer.markers[i].icon.size = size;
+		
+        }*/
+	
+	
     this.Refresh();
     if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
     }
