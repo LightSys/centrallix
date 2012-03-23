@@ -1457,7 +1457,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
             case EXPR_N_MONEY:
           mysd_DO_MONEY:
-                objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
+		ptr = objFormatMoneyTmp(&(tree->Types.Money), "0.0000");
+		xsConcatenate(where_clause, ptr, -1);
+                /*objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);*/
                 break;
 
             case EXPR_N_DOUBLE:
@@ -1847,6 +1849,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
 		    if (subtree->DataType == DATA_T_STRING)
 			{
+			tree->DataType = DATA_T_STRING;
 			xsSubst(where_clause, i+1, 6, "CONCAT", 6);
 			xsConcatenate(where_clause, " , ", 3);
 			}
