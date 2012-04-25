@@ -182,10 +182,10 @@ typedef struct
  ***/
 typedef struct
     {
-    unsigned long	Time;		/* # msec this goes for */
+    unsigned int	Time;		/* # msec this goes for */
     int			(*ExpireFn)();
     void*		ExpireArg;
-    unsigned long	ExpireTick;	/* internal expiration time mark */
+    unsigned int	ExpireTick;	/* internal expiration time mark */
     int			SeqID;
     handle_t		Handle;
     }

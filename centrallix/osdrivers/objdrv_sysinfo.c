@@ -94,7 +94,7 @@ struct
     char*		sys_thr_status_char[256];
     int			sys_thr_flags[256];
     char*		sys_thr_flags_char[256];
-    unsigned long	sys_mt_last_tick;
+    unsigned int	sys_mt_last_tick;
     int			sys_thr_cnt;
     }
     SYS_INF;

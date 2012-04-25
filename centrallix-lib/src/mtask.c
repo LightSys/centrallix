@@ -95,7 +95,7 @@ typedef struct _MTS
     int		CurGroupID;
     int		CurNGroups;
     gid_t	CurGroupList[32];
-    unsigned long LastTick;
+    unsigned int LastTick;
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
     XHashTable	SignalHandlers;
@@ -477,7 +477,7 @@ int mtRemoveSignalHandler(int signum, void(*start_fn)())
 /*** MTTICKS is a friendly interface to times() so we can get the clock ticks 
  *** since the program started.
  ***/
-unsigned long
+unsigned int
 mtTicks()
     {
     static struct tms t;
@@ -491,7 +491,7 @@ mtTicks()
 /*** MTREALTICKS is another friendly interface to times() so that we can get
  *** "real time" clock ticks from point a to point b.
  ***/
-unsigned long
+unsigned int
 mtRealTicks()
     {
     static struct tms t;
@@ -503,7 +503,7 @@ mtRealTicks()
  *** scheduler.  Will be always valid following the return of a command which
  *** had to wait on other processes.
  ***/
-unsigned long
+unsigned int
 mtLastTick()
     {
     return MTASK.LastTick;
@@ -934,7 +934,7 @@ mtSched()
 		if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE)
 		    {
 		    n_runnable++;
-		    if (MTASK.ThreadTable[i]->CntDown < 0)
+		    if (MTASK.ThreadTable[i]->CntDown < 0) /* thread is sleeping... counting "up" to zero */
 		        {
 			if (MTASK.ThreadTable[i] != thr_sleep_init)
 			    {
@@ -1561,8 +1561,8 @@ thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec
     EventReq the_event, timer;
     pEventReq ev[2] = {&timer, &the_event};
     int rval;
-    unsigned long start_ticks;
-    unsigned long used_ticks;
+    unsigned int start_ticks;
+    unsigned int used_ticks;
 
 	/** set up **/
 	ev[0]->Object = NULL;
