@@ -544,7 +544,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 				break;
 			    case DATA_T_STRING:
 				/** FIXME: dangerous to set string ptr directly like this **/
-				ptod->Data.String = EXPR(ph->DefaultExpr)->String;
+				ptod->Data.String = nmSysStrdup(EXPR(ph->DefaultExpr)->String);
 				break;
 			    default:
 				rval = -1;

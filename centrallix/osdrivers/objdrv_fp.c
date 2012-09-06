@@ -2391,11 +2391,11 @@ fpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	    switch(inf->Type)
 	        {
 		case FP_T_DATABASE:
-		    strtcpy(inf->Node->Description, val->String, 256);
+		    strtcpy(inf->Node->Description, val?(val->String):"", 256);
 		    break;
 		    
 		case FP_T_TABLE:
-		    strtcpy(inf->TData->Annotation, val->String, sizeof(inf->TData->Annotation));
+		    strtcpy(inf->TData->Annotation, val?(val->String):"", sizeof(inf->TData->Annotation));
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    break;
 

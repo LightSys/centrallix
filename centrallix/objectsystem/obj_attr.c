@@ -456,6 +456,13 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    }
 #endif
 
+	/** Nulls not allowed on system attributes **/
+	if (!val && (!strcmp(attrname,"name") || !strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type")))
+	    {
+	    mssError(1, "OSML", "'%s' attribute cannot be set to NULL", attrname);
+	    return -1;
+	    }
+
 	/** Virtual attrs **/
 	for(va=this->VAttrs; va; va=va->Next)
 	    {
@@ -464,11 +471,14 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    }
 
 	rval = this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
-	if (rval >= 0) 
+	if (rval >= 0)
 	    {
-	    memcpy(&(tod.Data), val, sizeof(ObjData));
-	    tod.DataType = data_type;
 	    tod.Flags = 0;
+	    if (val)
+		memcpy(&(tod.Data), val, sizeof(ObjData));
+	    else
+		tod.Flags = DATA_TF_NULL;
+	    tod.DataType = data_type;
 	    obj_internal_RnNotifyAttrib(this, attrname, &tod, 0);
 	    /*str = objDataToStringTmp(data_type, (data_type == DATA_T_INTEGER || data_type == DATA_T_DOUBLE)?val:val->Generic, 0);
 	    if (!str) str = "";

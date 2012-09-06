@@ -102,9 +102,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Are we inside a widget/repeat context? **/
 	rpt_context[0] = '\0';
-	if (!strncmp(name, "_internalrpt_", 13))
+	if (!strncmp(name, WGTR_REPEAT_PREFIX, strlen(WGTR_REPEAT_PREFIX)))
 	    {
-	    ptr = strchr(name+13,'_');
+	    ptr = strchr(name+strlen(WGTR_REPEAT_PREFIX),'_');
 	    if (ptr)
 		{
 		strtcpy(rpt_context, name, sizeof(rpt_context));
@@ -162,23 +162,34 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Add a script init to install the connector **/
-	htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
-		!*source, name, 
-		*source, source);
 	if (*rpt_context && *source)
 	    {
-	    htrAddScriptInit_va(s, "    if(!src) src=nodes[\"%STR&SYM_%STR&SYM\"];\n",
+	    /** Try repeat-specific node first, then normally named node **/
+	    htrAddScriptInit_va(s, "    var src=nodes[\"%STR&SYM_%STR&SYM\"];\n",
 		    rpt_context,
 		    source);
+	    htrAddScriptInit_va(s, "    if(!src) src=nodes[\"%STR&SYM\"];\n",
+		    source);
 	    }
-	htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%];\n",
-		*target, target, 
-		!*target, name);
+	else
+	    {
+	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
+		    !*source, name, 
+		    *source, source);
+	    }
 	if (*rpt_context && *target)
 	    {
-	    htrAddScriptInit_va(s, "    if(!nodes[tgt]) tgt=\"%STR&SYM_%STR&SYM\";\n",
+	    htrAddScriptInit_va(s, "    var tgt=\"%STR&SYM_%STR&SYM\";\n",
 		    rpt_context,
 		    target);
+	    htrAddScriptInit_va(s, "    if(!nodes[tgt]) tgt='%STR&SYM';\n",
+		    target);
+	    }
+	else
+	    {
+	    htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%];\n",
+		    *target, target, 
+		    !*target, name);
 	    }
 	htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
 		event, 

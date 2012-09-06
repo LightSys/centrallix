@@ -835,9 +835,9 @@ function osrc_action_create_cb2()
     for(var i in this.createddata) if(i!='oid')
 	{
 	if (this.createddata[i]['value'] == null)
-	    reqparam[this.createddata[i]['oid']] = '';
+	    reqparam[this.createddata[i]['oid']] = 'N:';
 	else
-	    reqparam[this.createddata[i]['oid']] = this.createddata[i]['value'];
+	    reqparam[this.createddata[i]['oid']] = 'V:' + this.createddata[i]['value'];
 	}
     this.DoRequest('create', this.baseobj + '/*', reqparam, osrc_action_create_cb);
     }
@@ -1046,7 +1046,10 @@ function osrc_action_modify(aparam) //up,formobj)
     this.ApplyRelationships(this.modifieddata, false);
     for(var i in this.modifieddata) if(i!='oid')
 	{
-	reqparam[this.modifieddata[i]['oid']] = this.modifieddata[i]['value'];
+	if (this.modifieddata[i]['value'] == null)
+	    reqparam[this.modifieddata[i]['oid']] = 'N:';
+	else
+	    reqparam[this.modifieddata[i]['oid']] = 'V:' + this.modifieddata[i]['value'];
 	//src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
 	}
     if (this.send_updates)
@@ -1898,6 +1901,7 @@ function osrc_tell_all_replica_moved()
 
 function osrc_move_to_record(recnum, from_internal)
     {
+    if (typeof recnum != 'number') recnum = parseInt(recnum);
     this.QueueRequest({Request:'MoveTo', Param:{recnum:recnum, from_internal:from_internal}});
     this.Dispatch();
     }

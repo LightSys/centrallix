@@ -602,42 +602,51 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 	    exp = expAllocExpression();
 	exp->NodeType = expDataTypeToNodeType(type);
 
-	/** Based on type. **/
-	switch(type)
+	/** Null value **/
+	if (!pod)
 	    {
-	    case DATA_T_INTEGER:
-		exp->Integer = pod->Integer;
-		break;
-	    case DATA_T_STRING:
-		if (exp->Alloc)
-		    nmSysFree(exp->String);
-		n = strlen(pod->String);
-		if (n < sizeof(exp->Types.StringBuf))
-		    {
-		    exp->String = exp->Types.StringBuf;
-		    exp->Alloc = 0;
-		    }
-		else
-		    {
-		    exp->String = nmSysMalloc(n+1);
-		    exp->Alloc = 1;
-		    }
-		strcpy(exp->String, pod->String);
-		break;
-	    case DATA_T_DOUBLE:
-		exp->Types.Double = pod->Double;
-		break;
-	    case DATA_T_MONEY:
-		memcpy(&(exp->Types.Money), pod->Money, sizeof(MoneyType));
-		break;
-	    case DATA_T_DATETIME:
-		memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
-		break;
-	    default:
-		if (!provided_exp)
-		    expFreeExpression(exp);
-		return NULL;
+	    exp->Flags |= EXPR_F_NULL;
 	    }
+	else
+	    {
+	    /** Based on type. **/
+	    switch(type)
+		{
+		case DATA_T_INTEGER:
+		    exp->Integer = pod->Integer;
+		    break;
+		case DATA_T_STRING:
+		    if (exp->Alloc)
+			nmSysFree(exp->String);
+		    n = strlen(pod->String);
+		    if (n < sizeof(exp->Types.StringBuf))
+			{
+			exp->String = exp->Types.StringBuf;
+			exp->Alloc = 0;
+			}
+		    else
+			{
+			exp->String = nmSysMalloc(n+1);
+			exp->Alloc = 1;
+			}
+		    strcpy(exp->String, pod->String);
+		    break;
+		case DATA_T_DOUBLE:
+		    exp->Types.Double = pod->Double;
+		    break;
+		case DATA_T_MONEY:
+		    memcpy(&(exp->Types.Money), pod->Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME:
+		    memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
+		    break;
+		default:
+		    if (!provided_exp)
+			expFreeExpression(exp);
+		    return NULL;
+		}
+	    }
+
 	exp->DataType = type;
 	/*expEvalTree(exp,expNullObjlist);*/
 

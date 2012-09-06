@@ -3111,38 +3111,45 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	    }
 
 	/** Set the expression result to the given value. **/
-	exp->Flags &= ~(EXPR_F_NULL);
-	switch(exp->DataType)
+	if (value)
 	    {
-	    case DATA_T_INTEGER: 
-		exp->Integer = value->Integer; 
-		break;
-	    case DATA_T_STRING: 
-		if (exp->Alloc && exp->String)
-		    {
-		    nmSysFree(exp->String);
-		    exp->Alloc = 0;
-		    }
-		if (strlen(value->String) > 63)
-		    {
-		    exp->Alloc = 1;
-		    exp->String = nmSysMalloc(strlen(value->String)+1);
-		    }
-		else
-		    {
-		    exp->String = exp->Types.StringBuf;
-		    }
-		strcpy(exp->String, value->String);
-		break;
-	    case DATA_T_DOUBLE: 
-		exp->Types.Double = value->Double; 
-		break;
-	    case DATA_T_MONEY: 
-		memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
-		break;
-	    case DATA_T_DATETIME: 
-		memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
-		break;
+	    exp->Flags &= ~(EXPR_F_NULL);
+	    switch(exp->DataType)
+		{
+		case DATA_T_INTEGER: 
+		    exp->Integer = value->Integer; 
+		    break;
+		case DATA_T_STRING: 
+		    if (exp->Alloc && exp->String)
+			{
+			nmSysFree(exp->String);
+			exp->Alloc = 0;
+			}
+		    if (strlen(value->String) > 63)
+			{
+			exp->Alloc = 1;
+			exp->String = nmSysMalloc(strlen(value->String)+1);
+			}
+		    else
+			{
+			exp->String = exp->Types.StringBuf;
+			}
+		    strcpy(exp->String, value->String);
+		    break;
+		case DATA_T_DOUBLE: 
+		    exp->Types.Double = value->Double; 
+		    break;
+		case DATA_T_MONEY: 
+		    memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME: 
+		    memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
+		    break;
+		}
+	    }
+	else
+	    {
+	    exp->Flags |= EXPR_F_NULL;
 	    }
 
 	/** Evaluate the expression in reverse to set the value!! **/
