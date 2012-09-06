@@ -347,6 +347,7 @@ cxInitialize(void* v)
 
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
+	qyInitialize();				/* stored query (aka view) driver */
 	rptInitialize();			/* report writer driver */
 	uxpInitialize();			/* UNIX printer access driver */
 	datInitialize();			/* flat ascii datafile (CSV, etc) */
