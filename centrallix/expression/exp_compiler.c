@@ -961,6 +961,16 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
     {
     pExpression e = NULL;
     pLxSession lxs;
+    pParamObjects my_objlist;
+
+	/** Create a temporary objlist? **/
+	if (objlist)
+	    my_objlist = objlist;
+	else
+	    {
+	    my_objlist = expCreateParamList();
+	    expAddParamToList(my_objlist, "this", NULL, EXPR_O_CURRENT);
+	    }
 
 	/** Open the lexer on the input text. **/
 	lxs = mlxStringSession(text, MLX_F_EOF | lxflags);
@@ -974,6 +984,9 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
 
 	/** Close the lexer session. **/
 	mlxCloseSession(lxs);
+
+	if (!objlist)
+	    expFreeParamList(my_objlist);
 
     return e;
     }

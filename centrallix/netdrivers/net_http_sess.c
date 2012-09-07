@@ -166,7 +166,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 void
 nht_internal_Watchdog(void* v)
     {
-    unsigned long cur_tick, next_tick;
+    unsigned int cur_tick, next_tick;
     int i;
     pNhtTimer t;
     EventReq timer_event, semaphore_event;
@@ -191,7 +191,7 @@ nht_internal_Watchdog(void* v)
 	    for(i=0;i<NHT.Timers.nItems;i++)
 		{
 		t = (pNhtTimer)(NHT.Timers.Items[i]);
-		if (t->ExpireTick - next_tick > (unsigned long)0x80000000)
+		if (t->ExpireTick - next_tick > (unsigned int)0x80000000)
 		    {
 		    next_tick = t->ExpireTick;
 		    }
@@ -199,7 +199,7 @@ nht_internal_Watchdog(void* v)
 	    syPostSem(NHT.TimerDataMutex, 1, 0);
 
 	    /** Has the next tick already expired?  If not, wait for it **/
-	    if (cur_tick - next_tick > (unsigned long)0x80000000)
+	    if (cur_tick - next_tick > (unsigned int)0x80000000)
 		{
 		/** Setup our event list for the multiwait operation **/
 		ev[0]->Object = NULL;
@@ -237,7 +237,7 @@ nht_internal_Watchdog(void* v)
 		for(i=0;i<NHT.Timers.nItems;i++)
 		    {
 		    t = (pNhtTimer)(NHT.Timers.Items[i]);
-		    if (t->ExpireTick - cur_tick > (unsigned long)0x80000000)
+		    if (t->ExpireTick - cur_tick > (unsigned int)0x80000000)
 			{
 			xaRemoveItem(&(NHT.Timers), i);
 			expired_timer = t;

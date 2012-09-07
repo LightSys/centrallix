@@ -4171,7 +4171,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    switch(inf->Type)
 	        {
 		case SYBD_T_DATABASE:
-		    memccpy(inf->Node->Description, val->String, '\0', 255);
+		    memccpy(inf->Node->Description, val?(val->String):"", '\0', 255);
 		    inf->Node->Description[255] = 0;
 		    /**
 		    objParamsSet(inf->Node->Params, "description", val->String, 0);
@@ -4187,7 +4187,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    break;
 		    
 		case SYBD_T_TABLE:
-		    memccpy(inf->TData->Annotation, val->String, '\0', 255);
+		    memccpy(inf->TData->Annotation, val?(val->String):"", '\0', 255);
 		    inf->TData->Annotation[255] = 0;
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    if (inf->Node->AnnotTable[0])
@@ -4232,6 +4232,11 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		if (datatype != DATA_T_INTEGER)
 		    {
 		    mssError(1,"SYBD","Type mismatch setting attribute '%s' (should be integer)", attrname);
+		    return -1;
+		    }
+		if (!val)
+		    {
+		    mssError(1,"SYBD","Size attribute cannot be NULL");
 		    return -1;
 		    }
 		inf->Size = val->Integer;
@@ -4284,7 +4289,12 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
 			return -1;
 			}
-		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
+		    if (!val)
+			{
+			/** Handle NULLs **/
+	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=NULL WHERE %s",inf->TablePtr, attrname, ptr);
+			}
+		    else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
 		        {
 	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);

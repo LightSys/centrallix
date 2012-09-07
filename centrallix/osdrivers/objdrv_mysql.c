@@ -423,11 +423,18 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
                             if(xsConcatenate(&query,&separator,1)) goto error;
                             if(quote) if(xsConcatenate(&query,&quote,1)) goto error;
                             }
-			if (!quote && add_quote && add_quote[j])
-			    xsConcatenate(&query, "'", 1);
-                        if(mysd_internal_SafeAppend(&conn->Handle,&query,array[j])) goto error;
-			if (!quote && add_quote && add_quote[j])
-			    xsConcatenate(&query, "'", 1);
+			if (!array[j])
+			    {
+			    xsConcatenate(&query, "null", 4);
+			    }
+			else
+			    {
+			    if (!quote && add_quote && add_quote[j])
+				xsConcatenate(&query, "'", 1);
+			    if(mysd_internal_SafeAppend(&conn->Handle,&query,array[j])) goto error;
+			    if (!quote && add_quote && add_quote[j])
+				xsConcatenate(&query, "'", 1);
+			    }
                         }
                     start = &stmt[i+2];
                     i++;
@@ -436,11 +443,18 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 		    {
 			str = va_arg(ap,char*);
 			quote = va_arg(ap,int);
-			if (quote)
-			    xsConcatenate(&query, "'", 1);
-			if(mysd_internal_SafeAppend(&conn->Handle,&query,str)) goto error;
-			if (quote)
-			    xsConcatenate(&query, "'", 1);
+			if (!str)
+			    {
+			    xsConcatenate(&query, "null", 4);
+			    }
+			else
+			    {
+			    if (quote)
+				xsConcatenate(&query, "'", 1);
+			    if(mysd_internal_SafeAppend(&conn->Handle,&query,str)) goto error;
+			    if (quote)
+				xsConcatenate(&query, "'", 1);
+			    }
 			start = &stmt[i+2];
 			i++;
 		    }
@@ -546,13 +560,18 @@ mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
 
 /*** mysd_internal_CxDataToMySQL() - convert cx data to mysql field values
  ***/
- char*
- mysd_internal_CxDataToMySQL(int type, pObjData val)
+char*
+mysd_internal_CxDataToMySQL(int type, pObjData val)
     {
     char* tmp;
     int length;
     int j;
 
+	/** Handle nulls **/
+	if (!val)
+	    return NULL;
+
+	/** Convert based on data type **/
         if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
             {
             return objDataToStringTmp(type,val,0);
@@ -569,7 +588,7 @@ mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
             {
             return objDataToStringTmp(type,val,0);
             }
-        return 0;
+        return NULL;
     }
 
 /*** mysd_internal_ParseTData() - given a mysql result set, parse the table
@@ -1033,7 +1052,7 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
     char* filename;
     char tablename[MYSD_NAME_LEN];
     MYSQL_RES* result;
-    int is_int;
+    int use_quotes;
     
         /** get the filename from the path **/
         filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
@@ -1051,9 +1070,11 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 	    else
 		newval = "0";
 	    }*/
-	is_int = (data->TData->ColCxTypes[col] == DATA_T_INTEGER);
+
+	/** Quote the value if not an integer and value is not NULL **/
+	use_quotes = (data->TData->ColCxTypes[col] != DATA_T_INTEGER && newval != NULL);
         
-        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval,!is_int, data->TData->Keys,NULL,data->TData->nKeys,',',filename);
+        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval?newval:"NULL",use_quotes, data->TData->Keys,NULL,data->TData->nKeys,',',filename);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
         return 0;
@@ -1457,7 +1478,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
             case EXPR_N_MONEY:
           mysd_DO_MONEY:
-                objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
+		ptr = objFormatMoneyTmp(&(tree->Types.Money), "0.0000");
+		xsConcatenate(where_clause, ptr, -1);
+                /*objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);*/
                 break;
 
             case EXPR_N_DOUBLE:
@@ -1847,6 +1870,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
 		    if (subtree->DataType == DATA_T_STRING)
 			{
+			tree->DataType = DATA_T_STRING;
 			xsSubst(where_clause, i+1, 6, "CONCAT", 6);
 			xsConcatenate(where_clause, " , ", 3);
 			}
@@ -2681,7 +2705,11 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                         }
                     else
                         {
-                        if(datatype == DATA_T_DOUBLE || datatype == DATA_T_INTEGER) 
+			if (!val)
+			    {
+                            if(mysd_internal_UpdateRow(inf,NULL,i) < 0) return -1;
+			    }
+                        else if(datatype == DATA_T_DOUBLE || datatype == DATA_T_INTEGER) 
                             {
                             if(mysd_internal_UpdateRow(inf,mysd_internal_CxDataToMySQL(datatype,(ObjData*)val),i) < 0) return -1;
                             }
@@ -2817,6 +2845,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
                         {
                         /** Check to see if we already know the hints **/
                         if(inf->TData->ColHints[i]) return objDuplicateHints(inf->TData->ColHints[i]);
+
                         /** Otherwise compile them and add them to the table data **/
                         if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
                         memset(hints, 0, sizeof(ObjPresentationHints));
@@ -2825,6 +2854,12 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
                         hints->VisualLength2=1;
                         xaInit(&(hints->EnumList), 8);
 
+			/** Note whether it is a primary key field **/
+			if (inf->TData->ColFlags[i] & MYSD_COL_F_PRIKEY)
+			    hints->Style |= OBJ_PH_STYLE_KEY;
+			hints->StyleMask |= OBJ_PH_STYLE_KEY;
+
+			/** Set some hints info based on data type information **/
                         if (datatype == DATA_T_STRING)
                             {
                             /** use the length that we pulled when we grabbed the table data **/

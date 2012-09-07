@@ -209,7 +209,7 @@ typedef struct _EV
     int		ReqLen;				/* Requested length/count */
     int		ReqSeek;			/* Requested seek offset */
     int		ReqFlags;			/* Flags for request */
-    unsigned long TargetTickCnt;		/* Sleep exit point */
+    unsigned int TargetTickCnt;			/* Sleep exit point */
     struct _EV*	NextPeer;			/* Next related event */
     int		TableIdx;			/* Index in event-wait-tbl */
     }
@@ -299,9 +299,9 @@ typedef struct _OBJ
 /** MTASK General Functions. **/
 void mtSetDebug(int debuglevel);
 pThread mtInitialize(int flags, void (*start_fn)());
-unsigned long mtRealTicks();
-unsigned long mtTicks();
-unsigned long mtLastTick();
+unsigned int mtRealTicks();
+unsigned int mtTicks();
+unsigned int mtLastTick();
 
 
 /** MTASK Signal handing functions **/

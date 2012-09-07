@@ -1043,7 +1043,11 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    {
 		    free(pEV->value);
 		    }
-		if(datatype == DATA_T_STRING)
+		if (!val)
+		    {
+		    pEV->value = strdup("");
+		    }
+		else if (datatype == DATA_T_STRING)
 		    {
 		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
 		    pEV->value = (char*)malloc(strlen(val->String)+1);

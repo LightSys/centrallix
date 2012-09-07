@@ -1208,7 +1208,7 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    uxd_internal_ModifyAnnot(inf, val->String);
+	    uxd_internal_ModifyAnnot(inf, val?(val->String):"");
 	    }
 	else if (!strcmp(attrname,"content_type"))
 	    {

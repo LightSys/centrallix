@@ -97,7 +97,9 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     int src_idx;
     int mask;
     int n_orderby = 0;
+    int total_mask = 0;
     int n_sources;
+    int n_sources_total;
     int non_simple;
     int clauses[2] = {MQ_T_GROUPBYCLAUSE, MQ_T_ORDERBYCLAUSE};
 
@@ -106,6 +108,24 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 	qe->Driver = MQOBINF.BeforeGroupDriver;
 
     	/** Look for the GROUP BY and ORDER BY clause... **/
+	for(k=0; k<2; k++)
+	    {
+	    if ((qs = mq_internal_FindItem(stmt->QTree, clauses[k], NULL)) != NULL)
+		{
+		for(i=0;i<qs->Children.nItems;i++)
+		    {
+		    item = (pQueryStructure)(qs->Children.Items[i]);
+		    if (item->Expr && item->Expr->AggLevel == 0)
+			{
+			mask = item->Expr->ObjCoverageMask;
+			total_mask |= mask;
+			}
+		    }
+		}
+	    }
+	mask = total_mask;
+	for(n_sources_total = 0; mask; mask >>= 1)
+	    n_sources_total += (mask & 0x01);
 	for(k=0; k<2; k++)
 	    {
 	    if ((qs = mq_internal_FindItem(stmt->QTree, clauses[k], NULL)) != NULL)
@@ -144,7 +164,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 				    }
 				}
 			    }
-			if ((n_sources > 1 || non_simple) && n_orderby < 24)
+			if ((n_sources > 1 || non_simple || n_sources_total > 1) && n_orderby < 24)
 			    {
 			    /** Grab this one **/
 			    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(item->Expr);

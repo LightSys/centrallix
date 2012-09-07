@@ -1889,6 +1889,7 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
     int maxlen;
     pObjData val;
     pObjData oldval;
+    int found;
 
     	/** Allocate a buffer **/
 	maxlen = DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1);
@@ -1899,11 +1900,14 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 	for(i=0;i<inf->TData->nCols;i++)
 	    {
 	    val = NULL;
+	    found = 0;
+
 	    /** What's the source of this data? **/
 	    if (update_colid == i)
 	        {
 		/** Source: from UPDATE (SetAttrValue) command. **/
 		val = update_val;
+		found = 1;
 		}
 	    else if (oxt)
 	        {
@@ -1913,15 +1917,19 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 		    sub_oxt = (pObjTrxTree)(oxt->Children.Items[j]);
 		    if (sub_oxt->OpType == OXT_OP_SETATTR && !strcmp(sub_oxt->AttrName,inf->TData->Cols[i]))
 		        {
-			if (sub_oxt->AttrType == DATA_T_INTEGER || sub_oxt->AttrType == DATA_T_DOUBLE)
+			if (sub_oxt->AttrValue == NULL)
+			    val = NULL;
+			else if (sub_oxt->AttrType == DATA_T_INTEGER || sub_oxt->AttrType == DATA_T_DOUBLE)
 			    val = POD(sub_oxt->AttrValue);
 			else
 			    val = POD(&(sub_oxt->AttrValue));
+			found = 1;
 			break;
 			}
 		    }
 		}
-	    if (!val)
+
+	    if (!found)
 	        {
 		/** Source: from EXISTING ROW DATA **/
 		if (inf->ColPtrs[i] == NULL)
@@ -2011,6 +2019,44 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 				}
 			    break;
 			}
+		    }
+
+		/** Old value is set, but new value is NULL? **/
+		if (oldval && !val)
+		    {
+		    /** What size was the data item? **/
+		    switch(inf->TData->ColTypes[i])
+			{
+			case DATA_T_INTEGER:
+			    s = sizeof(int);
+			    break;
+			case DATA_T_DOUBLE:
+			    s = sizeof(double);
+			    break;
+			case DATA_T_MONEY:
+			    s = sizeof(MoneyType);
+			    break;
+			case DATA_T_DATETIME:
+			    s = sizeof(DateTime);
+			    break;
+			case DATA_T_STRING:
+			    s = strlen((char*)(inf->ColPtrs[i])) + 1;
+			    break;
+			default:
+			    s = 0;
+			    break;
+			}
+
+		    /** Adjust existing row data, to reclaim the space. **/
+		    for(j=0;j<inf->TData->nCols;j++)
+			{
+			if (inf->ColPtrs[j] && inf->ColPtrs[j] > inf->ColPtrs[i]) inf->ColPtrs[j] -= s;
+			}
+		    memmove(inf->ColPtrs[i], inf->ColPtrs[i]+s, inf->RowBufSize - (inf->ColPtrs[i] - inf->RowBuf) - s);
+		    inf->RowBufSize -= s;
+
+		    /** Set it to NULL. **/
+		    inf->ColPtrs[i] = NULL;
 		    }
 		}
 
@@ -3323,7 +3369,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    switch(inf->Type)
 	        {
 		case DAT_T_TABLE:
-		    ptr = (unsigned char*)nmSysStrdup(val->String);
+		    /*ptr = (unsigned char*)nmSysStrdup(val->String);*/
 		    node_inf = stLookup(inf->Node->Node->Data,"annotation");
 		    if (!node_inf) node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
 		    stSetAttrValue(node_inf, DATA_T_STRING, val, 0);

@@ -686,7 +686,6 @@ mqp_internal_CloseSource(pQueryElement qe)
 int
 mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     {
-    pExpression new_exp;
     pMqpRowCache rc;
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
@@ -718,21 +717,6 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
 	    break;
 	    }
-
-	/** Additional expression supplied?? **/
-	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;
-	if (qe->Constraint) qe->Flags |= MQ_EF_CONSTEXP;
-	if (mi->AddlExp && qe->Constraint)
-	    {
-	    new_exp = expAllocExpression();
-	    new_exp->NodeType = EXPR_N_AND;
-	    expAddNode(new_exp, qe->Constraint);
-	    expAddNode(new_exp, mi->AddlExp);
-	    qe->Constraint = new_exp;
-	    }
-	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
-
-        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE)) expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	/** Check for cached single row result set **/
 	if (mi->RowCache)
@@ -991,6 +975,7 @@ int
 mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pExpression new_exp;
 
 	if (additional_expr)
 	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);
@@ -998,6 +983,20 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	mi->AddlExp = additional_expr;
 	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
 	mi->SourceIndex = 0;
+
+	/** Additional expression supplied?? **/
+	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;
+	if (qe->Constraint) qe->Flags |= MQ_EF_CONSTEXP;
+	if (mi->AddlExp && qe->Constraint)
+	    {
+	    new_exp = expAllocExpression();
+	    new_exp->NodeType = EXPR_N_AND;
+	    expAddNode(new_exp, qe->Constraint);
+	    expAddNode(new_exp, mi->AddlExp);
+	    qe->Constraint = new_exp;
+	    }
+	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
+        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE)) expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	qe->LLSource = NULL;
 	qe->LLQuery = NULL;

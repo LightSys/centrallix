@@ -573,19 +573,21 @@ int exp_fn_reverse_isnull(pExpression tree, pParamObjects objlist, pExpression i
     if (tree->Flags & EXPR_F_NULL) 
 	i0->Flags |= EXPR_F_NULL;
     else
-	i0->Flags &= ~EXPR_F_NULL;
-    switch(tree->DataType)
 	{
-	case DATA_T_INTEGER: i0->Integer = tree->Integer; break;
-	case DATA_T_STRING:
-	    if (i0->Alloc && i0->String)
-		{
-		nmSysFree(i0->String);
-		}
-	    i0->Alloc = 0;
-	    i0->String = tree->String;
-	    break;
-	default: memcpy(&(i0->Types), &(tree->Types), sizeof(tree->Types)); break;
+	i0->Flags &= ~EXPR_F_NULL;
+	switch(tree->DataType)
+	    {
+	    case DATA_T_INTEGER: i0->Integer = tree->Integer; break;
+	    case DATA_T_STRING:
+		if (i0->Alloc && i0->String)
+		    {
+		    nmSysFree(i0->String);
+		    }
+		i0->Alloc = 0;
+		i0->String = tree->String;
+		break;
+	    default: memcpy(&(i0->Types), &(tree->Types), sizeof(tree->Types)); break;
+	    }
 	}
     i0->DataType = tree->DataType;
     return expReverseEvalTree(i0, objlist);

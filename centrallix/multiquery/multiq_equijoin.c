@@ -377,7 +377,7 @@ mqjAnalyze(pQueryStatement stmt)
 		    for(i=0;i<select_qs->Children.nItems;i++)
 			{
 			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | joined_objects | join_mask[found])) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
+			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | joined_objects | join_mask[found] | EXPR_MASK_EXTREF)) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
 			    {
 			    if (select_item->Flags & MQ_SF_ASTERISK)
 				stmt->Flags |= MQ_TF_ASTERISK;

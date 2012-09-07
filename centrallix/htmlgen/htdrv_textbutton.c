@@ -72,6 +72,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
     pExpression code;
     int box_offset;
     int clip_offset;
+    int border_radius;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -103,6 +104,10 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
 	    }
+
+	/** Border radius **/
+	if (wgtrGetPropertyValue(tree,"border_radius",DATA_T_INTEGER,POD(&border_radius)) != 0)
+	    border_radius=0;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -162,8 +167,9 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
 
 	dptr = wgtrGetDName(tree);
-	htrAddScriptInit_va(s, "    %STR&SYM = nodes['%STR&SYM'];\n", dptr, name);
+	/*htrAddScriptInit_va(s, "    %STR&SYM = nodes['%STR&SYM'];\n", dptr, name);*/
 
+#if 00
 	if(s->Capabilities.Dom0NS)
 	    {
 	    /** Ok, write the style header items. **/
@@ -198,32 +204,38 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%POSlft\"><IMG SRC=/sys/images/trans_1.gif height=%POS width=1></DIV>\n",id,(h<0)?1:h);
 	    htrAddBodyItem(s,   "</DIV>\n");
 	    }
-	else if(s->Capabilities.CSS2)
+	else
+#endif
+	if(s->Capabilities.CSS2)
 	    {
 	    if(h >=0 )
 		{
-		htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx %INTpx %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,h-1-2*box_offset+2*clip_offset,0);
-		htrAddStylesheetItem_va(s,"\t#tb%POSpane2, #tb%POSpane3 { height: %POSpx;}\n",id,id,h-3);
-		htrAddStylesheetItem_va(s,"\t#tb%POSpane { height: %POSpx;}\n",id,h-1-2*box_offset);
+		htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx %INTpx %INTpx)}\n", id, x, y, h-1-2*box_offset, w-1-2*box_offset, z, 0, w-1-2*box_offset+2*clip_offset, h-1-2*box_offset+2*clip_offset, 0);
+		/*htrAddStylesheetItem_va(s,"\t#tb%POSpane2, #tb%POSpane3 { height: %POSpx;}\n",id,id,h-3);*/
+		/*htrAddStylesheetItem_va(s,"\t#tb%POSpane { height: %POSpx;}\n",id,h-1-2*box_offset);*/
 		}
 	    else
 		{
 		htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx auto %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,0);
 		}
-	    htrAddStylesheetItem_va(s,"\t#tb%POSpane, #tb%POSpane2, #tb%POSpane3 { cursor:default; text-align: center; }\n",id,id,id);
-	    htrAddStylesheetItem_va(s,"\t#tb%POSpane { %STR border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
+	    /*htrAddStylesheetItem_va(s,"\t#tb%POSpane, #tb%POSpane2, #tb%POSpane3 { cursor:default; text-align: center; }\n",id,id,id);*/
+	    htrAddStylesheetItem_va(s,"\t#tb%POSpane { cursor:default; text-align: center; %STR border-width: 1px; border-style: solid; border-color: white gray gray white; border-radius: %INTpx; }\n",id,bgstyle, border_radius);
+	    if (is_enabled)
+		htrAddStylesheetItem_va(s,"\t#tb%POSspan { color:%STR&CSSVAL; text-shadow:1px 1px %STR&CSSVAL; }\n", id, fgcolor1, fgcolor2);
+	    else
+		htrAddStylesheetItem_va(s,"\t#tb%POSspan { color:%STR&CSSVAL; }\n", id, disable_color);
 	    /*htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; }\n",id,fgcolor2);*/
-	    htrAddStylesheetItem_va(s,"\t#tb%POSpane2 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:-1px; top: -1px; width:%POSpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
-	    htrAddStylesheetItem_va(s,"\t#tb%POSpane3 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:0px; top: 0px; width:%POSpx; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);
+	    /*htrAddStylesheetItem_va(s,"\t#tb%POSpane2 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:-1px; top: -1px; width:%POSpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
+	    htrAddStylesheetItem_va(s,"\t#tb%POSpane3 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:0px; top: 0px; width:%POSpx; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);*/
 
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center>\n",id,h-3,fgcolor2,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,fgcolor1,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,disable_color,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><span id=\"tb%POSspan\"><b>%STR&HTE</b></span></td></tr></table></center>\n", id, h-3, id, text);
+	    /*htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,fgcolor1,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,disable_color,text);*/
 	    htrAddBodyItem(s,   "</DIV>");
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    tb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
-		    dptr, dptr, id, dptr, id, w, h, is_ts, name, text);
+	    htrAddScriptInit_va(s, "    tb_init({layer:nodes['%STR&SYM'], span:document.getElementById(\"tb%POSspan\"), ena:%INT, " /*"layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"),"*/ " c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
+		    name, id, is_enabled, /*dptr, id, dptr, id,*/ fgcolor1, fgcolor2, disable_color, w, h, is_ts, name, text);
 	    }
 	else
 	    {

@@ -2574,12 +2574,12 @@ dblSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    switch(inf->Type)
 	        {
 		case DBL_T_DATABASE:
-		    memccpy(inf->Node->Description, val->String, '\0', 255);
+		    memccpy(inf->Node->Description, val?(val->String):"", '\0', 255);
 		    inf->Node->Description[255] = 0;
 		    break;
 		    
 		case DBL_T_TABLE:
-		    memccpy(inf->TData->Annotation, val->String, '\0', 255);
+		    memccpy(inf->TData->Annotation, val?(val->String):"", '\0', 255);
 		    inf->TData->Annotation[255] = 0;
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    break;
@@ -2606,6 +2606,11 @@ dblSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		if (datatype != DATA_T_INTEGER)
 		    {
 		    mssError(1,"DBL","Type mismatch setting attribute '%s' [should be integer]", attrname);
+		    return -1;
+		    }
+		if (!val)
+		    {
+		    mssError(1,"DBL","'size' property cannot be NULL");
 		    return -1;
 		    }
 		inf->Size = val->Integer;

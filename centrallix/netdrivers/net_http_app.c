@@ -95,13 +95,12 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
     {
     pWgtrNode tree;
     int rval;
-    int i = 0;
 
 #if 00
     if (strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
 	{
 #endif
-	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates)))
+	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates, 0)))
 	    {
 	    if(tree) wgtrFree(tree);
 	    return -1;

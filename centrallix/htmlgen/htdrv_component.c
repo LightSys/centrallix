@@ -320,7 +320,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates, 0);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
