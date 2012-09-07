@@ -453,7 +453,7 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 	    if (n == 0 && stringobj->Content[0] >= 'A' && stringobj->Prev && stringobj->Prev->ObjType->TypeID == PRT_OBJ_T_STRING)
 		{
 		sw = strlen((char*)stringobj->Prev->Content);
-		if (sw > 1 && stringobj->Prev->Content[sw-1] == '-' && stringobj->Prev->Content[sw-2] >= 'A')
+		if (sw > 1 && stringobj->Prev->Content[sw-1] == '-' && stringobj->Prev->Content[sw-2] >= 'A' && !(stringobj->Prev->Flags & PRT_OBJ_F_SOFTNEWLINE))
 		    {
 		    last_sep = n;
 		    lastw = w;
