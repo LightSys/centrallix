@@ -3526,6 +3526,15 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    }
 		qy->TableInf = sybd_internal_GetTableInf(inf->Node,qy->SessionID,inf->TablePtr);
 		xsInit(&sql);
+		if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))
+		    {
+		    xsPrintf(&sql,"DECLARE _c CURSOR FOR SELECT * FROM %s",inf->TablePtr);
+		    qy->Flags |= SYBD_QF_USECURSOR;
+		    }
+		else
+		    {
+		    xsPrintf(&sql,"SELECT * FROM %s",inf->TablePtr);
+		    }
 		query->Flags |= (OBJ_QY_F_FULLQUERY | OBJ_QY_F_FULLSORT);
 		if (query->Tree)
 		    {
@@ -3544,7 +3553,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),inf->Node, qy->SessionID,&(qy->TableInf),1,&sql);
 			}
 	  	    }
-		if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))
+		/*if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))
 		    {
 		    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"DECLARE _c CURSOR FOR SELECT * FROM %s %s",inf->TablePtr, sql.String);
 		    qy->Flags |= SYBD_QF_USECURSOR;
@@ -3552,21 +3561,22 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		else
 		    {
 		    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"SELECT * FROM %s %s",inf->TablePtr, sql.String);
-		    }
-		if (strcmp(qy->SQLbuf, SYBD_INF.LastSQL.String) || 1)
+		    }*/
+		if (strcmp(sql.String, SYBD_INF.LastSQL.String) || 1)
 		    {
 		    if (SYBD_INF.SqlLog)
-			fdPrintf(SYBD_INF.SqlLog, "SQL:  %s\n",qy->SQLbuf);
-		    xsCopy(&SYBD_INF.LastSQL, qy->SQLbuf, -1);
+			fdPrintf(SYBD_INF.SqlLog, "SQL:  %s\n",sql.String);
+		    xsCopy(&SYBD_INF.LastSQL, sql.String, -1);
 		    }
-		xsDeInit(&sql);
-		if ((qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf))==NULL)
+		if ((qy->Cmd = sybd_internal_Exec(qy->SessionID, sql.String))==NULL)
 		    {
 		    sybd_internal_ReleaseConn(inf->Node, qy->SessionID);
 		    nmFree(qy,sizeof(SybdQuery));
+		    xsDeInit(&sql);
 		    mssError(0,"SYBD","Could not execute SQL for query on table object");
 		    return NULL;
 		    }
+		xsDeInit(&sql);
 		break;
 
 	    case SYBD_T_COLUMN:
