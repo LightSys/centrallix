@@ -470,11 +470,18 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 		new_child_obj->X = parent_lm_inf->ColX[parent_lm_inf->CurColID];
 		new_child_obj->Width = parent_lm_inf->ColWidths[parent_lm_inf->CurColID];
+		for(i=1;i<lm_inf->ColSpan && i+parent_lm_inf->CurColID < parent_lm_inf->nColumns;i++)
+		    {
+		    new_child_obj->Width += parent_lm_inf->ColSep;
+		    new_child_obj->Width += parent_lm_inf->ColWidths[i+parent_lm_inf->CurColID];
+		    }
 		if (new_child_obj->Height < 0)
 		    new_child_obj->Height = prtInnerHeight(this);
 		new_child_obj->Y = 0.0;
 		new_child_obj->ObjID = parent_lm_inf->CurColID;
-		parent_lm_inf->CurColID++;
+		parent_lm_inf->CurColID += lm_inf->ColSpan;
+		if (parent_lm_inf->CurColID > parent_lm_inf->nColumns)
+		    parent_lm_inf->CurColID = parent_lm_inf->nColumns;
 		}
 	    else
 		{
@@ -829,6 +836,7 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
     pPrtTabLMData lm_inf = (pPrtTabLMData)(cell->LMData);
     char* attrname;
     pPrtBorder b;
+    int n;
 
 	/** Info already provided? **/
 	if (old_lm_data)
@@ -840,6 +848,7 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
 	/** Set up the defaults **/
 	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
 	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
+	lm_inf->ColSpan = 1;
 
 	/** Get params from the caller **/
 	while(va && (attrname = va_arg(va, char*)) != NULL)
@@ -892,6 +901,12 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->OuterBorder), b, sizeof(PrtBorder));
 		else memset(&(lm_inf->OuterBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "colspan"))
+		{
+		n = va_arg(va, int);
+		if (n >= 1)
+		    lm_inf->ColSpan = n;
 		}
 	    }
 

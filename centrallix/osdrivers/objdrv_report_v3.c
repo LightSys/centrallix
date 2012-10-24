@@ -1423,6 +1423,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
     pPrtBorder tb,bb,lb,rb,ib,ob;
     double dbl;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
+    int colspan;
 
 	rval = rpt_internal_CheckCondition(inf,tablerow);
 	if (rval < 0) return rval;
@@ -1482,6 +1483,10 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	    /** Is this a cell object, or do we have a general-purpose row here? **/
 	    if (stStructType(subinf) == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"report/table-cell"))
 		{
+		/** Check conditional cell **/
+		if (rpt_internal_CheckCondition(inf,subinf) != 1)
+		    continue;
+
 		if (is_generalrow)
 		    {
 		    mssError(1,"RPT","cannot mix a general purpose row (%s) contents with a cell (%s)", tablerow->Name, subinf->Name);
@@ -1492,7 +1497,10 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		is_cellrow = 1;
 
 		/** Init the cell **/
-		tablecell_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_TABLECELL, -1,-1,-1,-1, flags, NULL);
+		colspan = 1;
+		stAttrValue(stLookup(subinf,"colspan"),&colspan, NULL, 0);
+		if (colspan <= 0) colspan=1;
+		tablecell_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_TABLECELL, -1,-1,-1,-1, flags, "colspan", colspan, NULL);
 		if (tablecell_handle < 0)
 		    {
 		    mssError(0,"RPT","could not build table cell object '%s'", subinf->Name);
@@ -1608,7 +1616,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 int
 rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int container_handle)
     {
-    int i;
+    int i,j;
     pQueryConn qy = NULL;
     int n;
     double dbl;
@@ -1628,9 +1636,11 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     int numcols;
     pPrtBorder outerborder=NULL, innerborder=NULL, shadow=NULL;
     pPrtBorder tb=NULL, bb=NULL, lb=NULL, rb=NULL;
-    pStructInf rowinf, summarize_for_inf;
+    pStructInf rowinf, summarize_for_inf, cellinf;
     pRptUserData ud;
     int changed;
+    int colspan;
+    double cellwidth;
 
 	rval = rpt_internal_CheckCondition(inf,table);
 	if (rval < 0) return rval;
@@ -1653,16 +1663,63 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	numcols = 0;
 	while(numcols < 64 && rpt_internal_GetDouble(table, "widths", &(cwidths[numcols]), numcols) == 0) 
 	    numcols++;
-	if (numcols == 0)
-	    {
-	    mssError(1,"RPT","Table '%s' must have valid width info specifying at least one column.", table->Name);
-	    return -1;
-	    }
 	n = 0;
 	stAttrValue(stLookup(table,"columns"),&n, NULL, 0);
 	if (n != numcols)
 	    {
 	    mssError(1,"RPT","Table '%s' column count %d not specified or does not match number of column widths (%d).", table->Name, n, numcols);
+	    return -1;
+	    }
+
+	/** If not explicitly supplied, look inside a header row **/
+	if (numcols == 0)
+	    {
+	    /** scan for any header rows in the table **/
+	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
+		{
+		rowinf = table->SubInf[i];
+		if (!strcmp(rowinf->UsrType,"report/table-row"))
+		    {
+		    if (rpt_internal_GetBool(rowinf,"header",0,0))
+			{
+			if (rpt_internal_CheckCondition(inf,rowinf) == 1)
+			    {
+			    /** valid header -- look for width data in the cells **/
+			    for(j=0;j<rowinf->nSubInf;j++) if (stStructType(rowinf->SubInf[j]) == ST_T_SUBGROUP)
+				{
+				cellinf = rowinf->SubInf[j];
+				if (rpt_internal_CheckCondition(inf,cellinf) == 1)
+				    {
+				    colspan=1;
+				    stAttrValue(stLookup(cellinf,"colspan"),&colspan, NULL, 0);
+				    if (colspan != 1)
+					{
+					/** unsuitable header row to get widths -- cell spans more than one column **/
+					numcols = 0;
+					break;
+					}
+				    if (rpt_internal_GetDouble(cellinf, "width", &cellwidth, 0) != 0)
+					{
+					/** unsuitable header row for widths - width not specified on a valid header cell **/
+					numcols = 0;
+					break;
+					}
+				    cwidths[numcols] = cellwidth;
+				    numcols++;
+				    if (numcols == 64) break;
+				    }
+				}
+			    if (numcols > 0) break;
+			    }
+			}
+		    }
+		}
+	    }
+
+	/** No column/width information? **/
+	if (numcols == 0)
+	    {
+	    mssError(1,"RPT","Table '%s' must have valid width info specifying at least one column.", table->Name);
 	    return -1;
 	    }
 
