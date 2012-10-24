@@ -193,8 +193,7 @@ function checkbox_init(param)
     l.fieldname = param.fieldname;
     l.is_checked = param.checked;
     l.is_checked_initial = param.checked;
-    l.value = l.is_checked;
-    if (l.value == -1) l.value = null;
+    l.value = (l.is_checked == -1)?null:l.is_checked;
     l.enabled = param.enabled;
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
@@ -266,8 +265,7 @@ function checkbox_toggleMode(l, from_kbd)
 	l.is_checked = 0;
     this.is_checked_initial = null;
 
-    l.value = l.is_checked;
-    if (l.value == -1) l.value = null;
+    l.value = (l.is_checked == -1)?null:l.is_checked;
 
     // update the image
     pg_set(l.img, 'src', l.imgfiles[l.enabled][l.is_checked+1]);
