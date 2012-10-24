@@ -95,6 +95,7 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_report.o \
 	    objdrv_uxprint.o \
 	    objdrv_qytree.o \
+	    objdrv_qypivot.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
 	    objdrv_link.o \
@@ -112,6 +113,7 @@ XV3OBJDRIVERS= \
 	      objdrv_report_v3.o \
 	      objdrv_uxprint_v3.o \
 	      objdrv_qytree.o \
+	      objdrv_qypivot.o \
 	      objdrv_query.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \

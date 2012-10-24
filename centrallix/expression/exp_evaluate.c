@@ -1345,6 +1345,8 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
 	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
+	if (attr_type == DATA_T_UNAVAILABLE)
+	    attr_type = tree->DataType;
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)
