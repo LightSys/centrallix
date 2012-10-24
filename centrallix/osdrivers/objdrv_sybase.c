@@ -1829,7 +1829,9 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 	switch(data_type)
 	    {
 	    case DATA_T_DATETIME:
-		objDataToString(clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);
+		ptr = objFormatDateTmp(&(tree->Types.Date), obj_default_date_fmt);
+		xsConcatPrintf(clause, " \"%s\" ", ptr);
+		/*objDataToString(clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);*/
 	        break;
 
 	    case DATA_T_MONEY:
@@ -2056,7 +2058,10 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		        {
 		        /** "Normal" type of object... **/
 	                xsConcatenate(where_clause, " ", 1);
-	                xsConcatenate(where_clause, tree->Name, -1);
+			if (!strncmp(tree->Name, "__cx_literal_", 13) && tree->Name[13])
+			    xsConcatenate(where_clause, tree->Name+13, -1);
+			else
+			    xsConcatenate(where_clause, tree->Name, -1);
 	                xsConcatenate(where_clause, " ", 1);
 			}
 		    }
@@ -2117,7 +2122,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 	        xsConcatenate(where_clause, " (",2);
 	        subtree = (pExpression)(tree->Children.Items[0]);
 		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
-		xsConcatenate(where_clause, " IS NOT NULL) ",10);
+		xsConcatenate(where_clause, " IS NOT NULL) ",14);
 		break;
 
 	    case EXPR_N_ISNULL:
@@ -2815,7 +2820,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
                     /*if (((pSybdData)(attr_oxt->LLParam))->Type == SYBD_T_ATTR)*/
 		    if (attr_oxt->OpType == OXT_OP_SETATTR)
                         {
-                        if (!strcmp(attr_oxt->AttrName,inf->TData->Cols[j]))
+                        if (!strcmp(attr_oxt->AttrName,inf->TData->Cols[j]) || (!strncmp(attr_oxt->AttrName,"__cx_literal_",13) && !strcmp(attr_oxt->AttrName+13, inf->TData->Cols[j])))
                             {
                             find_oxt = attr_oxt;
                             find_oxt->Status = OXT_S_COMPLETE;
@@ -2847,7 +2852,10 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
                     }
                 else 
 		    {
-		    objDataToString(insbuf, find_oxt->AttrType, find_oxt->AttrValue, DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		    if (find_oxt->AttrType == DATA_T_DATETIME)
+			xsConcatPrintf(insbuf, " \"%s\" ", objFormatDateTmp(find_oxt->AttrValue, obj_default_date_fmt));
+		    else
+			objDataToString(insbuf, find_oxt->AttrType, find_oxt->AttrValue, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    }
                 }
 	    }
@@ -3869,6 +3877,10 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** Annotation?  String. **/
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
 
+	/** Bypass system names? **/
+	if (!strncmp(attrname, "__cx_literal_", 13))
+	    attrname = attrname + 13;
+
     	/** Attr type depends on object type. **/
 	if (inf->Type == SYBD_T_ROW)
 	    {
@@ -4048,6 +4060,10 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 	else if (inf->Type == SYBD_T_ROW)
 	    {
+	    /** Bypass system names? **/
+	    if (!strncmp(attrname, "__cx_literal_", 13))
+		attrname = attrname + 13;
+
 	    /** Get the table info. **/
 	    tdata = inf->TData;
 
@@ -4273,6 +4289,10 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    if (!sess) sess=sybd_internal_GetConn(inf->Node);
 		    if (!sess) return -1;
 
+		    /** Bypass system names? **/
+		    if (!strncmp(attrname, "__cx_literal_", 13))
+			attrname = attrname + 13;
+
 		    /** No transaction.  Simply do an update. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
@@ -4304,10 +4324,15 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
-		    else if (type == DATA_T_MONEY || type == DATA_T_DATETIME)
+		    else if (type == DATA_T_MONEY)
 		        {
 	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
+			}
+		    else if (type == DATA_T_DATETIME)
+			{
+	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=\"%s\" WHERE %s",inf->TablePtr, attrname,
+			    objFormatDateTmp(*(void**)val, obj_default_date_fmt), ptr);
 			}
 
 		    /** Start the update. **/
@@ -4728,6 +4753,11 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		break;
 	    case SYBD_T_ROW:
 		/** the attributes of a row are the column names, with the values being the field values **/
+
+		/** Bypass system names? **/
+		if (!strncmp(attrname, "__cx_literal_", 13))
+		    attrname = attrname + 13;
+
 		/** find the name of the column, and get its data type **/
 		i = sybd_internal_ColNameToID(inf->TData, attrname);
 		if (i >= 0)
