@@ -155,6 +155,12 @@ function osrc_query_text_handler(aparam)
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
 
+    // Evaluate default expression on parameters...
+    for(var pn in this.params)
+	{
+	this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:null});
+	}
+
     // build the search string from the criteria and field list
     var filter = '';
     var firstone=true;
