@@ -228,6 +228,7 @@ function form_cb_is_discard_ready()
 
     if(!this.confirm_discard)
 	{
+	this.ClearAll();
 	this.osrc.QueryContinue(this);
 	return false;
 	}
