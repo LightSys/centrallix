@@ -68,7 +68,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
-    char	AKey[64];
+    char	AKey[256];
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];
     char*	AppPath;

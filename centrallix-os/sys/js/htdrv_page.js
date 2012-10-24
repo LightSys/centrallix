@@ -530,7 +530,7 @@ function pg_ping_send(p)
 	        
     //p.onload=pg_ping_recieve;
    
-    pg_serialized_load(p, '/INTERNAL/ping', pg_ping_recieve);
+    pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_recieve);
     /*if(cx__capabilities.Dom1HTML)
 	{
 	p.setAttribute('src','/INTERNAL/ping');
@@ -1284,7 +1284,7 @@ function pg_init(l,a,gs,ct) //SETH: ??
 
     // update app window lists
     pg_appwindows[wgtrGetNamespace(window)] = {wname:wgtrGetName(window), wobj:window, opener:window.opener, namespace:wgtrGetNamespace(window)};
-    if (window.opener && typeof window.opener.akey != 'undefined' && window.opener.akey == window.akey)
+    if (window.opener && typeof window.opener.akey != 'undefined' && window.opener.akey.substr(0,49) == window.akey.substr(0,49))
 	{
 	// link with opener and propagate window lists
 	pg_appwindows[wgtrGetNamespace(window.opener)] = {wname:wgtrGetName(window.opener), wobj:window.opener, opener:window.opener.opener, namespace:wgtrGetNamespace(window.opener)};
@@ -1378,6 +1378,17 @@ function pg_load_page(aparam) //SETH: ??
 	    newurl += '?';
 	newurl += (htutil_escape(p) + '=' + htutil_escape(v));
 	}
+
+    // session linkage
+    if (newurl.substr(0,1) == '/')
+	{
+	if (newurl.lastIndexOf('?') > newurl.lastIndexOf('/'))
+	    newurl += '&';
+	else
+	    newurl += '?';
+	newurl += "cx__akey=" + window.akey.substr(0,49);
+	}
+
     window.location.href = newurl;
     }
 
@@ -1416,7 +1427,17 @@ function pg_launch(aparam)
 	    url += '?';
 	url += "cx__obscure=yes";
 	}
- 
+
+    // session linkage
+    if (url.substr(0,1) == '/')
+	{
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += "cx__akey=" + window.akey.substr(0,49);
+	}
+
     // Find a unique name for the new window.
     if (aparam.Multi != null && (aparam.Multi == true || aparam.Multi == 1))
 	{

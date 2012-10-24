@@ -125,7 +125,9 @@ typedef struct
     {
     char		Username[32];
     int			SessionCnt;
+    DateTime		FirstActivity;
     DateTime		LastActivity;
+    XArray		Sessions;
     }
     NhtUser, *pNhtUser;
 
@@ -136,7 +138,9 @@ typedef struct
     char	Username[32];
     char	Password[32];
     char	Cookie[64];
-    char	AKey[64];
+    char	SKey[64];
+    long long	S_ID;		/* incrementing session id counter */
+    char	S_ID_Text[24];
     char	HTTPVer[16];
     int		ver_10:1;	/* is HTTP/1.0 compatible */
     int		ver_11:1;	/* is HTTP/1.1 compatible */
@@ -148,6 +152,8 @@ typedef struct
     XArray	ErrorList;	/* xarray of xstring */
     XArray	Triggers;	/* xarray of pNhtConnTrigger */
     HandleContext Hctx;
+    DateTime	FirstActivity;
+    DateTime	LastActivity;
     handle_t	WatchdogTimer;
     handle_t	InactivityTimer;
     int		LinkCnt;
@@ -157,8 +163,48 @@ typedef struct
     int		LastAccess;
     pXHashTable	CachedApps;
     XArray	OsmlQueryList;	/* array of pNhtQuery */
+    XArray	AppGroups;	/* array of pNhtAppGroup */
     }
     NhtSessionData, *pNhtSessionData;
+
+
+/*** Application group.  Each time the user starts a new .app "from scratch"
+ *** (i.e., without passing in another app handle), a new application group
+ *** structure is created with a new key.
+ ***/
+typedef struct
+    {
+    char	GKey[64];	/* random application group identifier */
+    long long	G_ID;		/* incrementing app group id counter */
+    char	G_ID_Text[24+24];
+    char	StartURL[OBJSYS_MAX_PATH + 1];
+    DateTime	FirstActivity;
+    DateTime	LastActivity;
+    handle_t	WatchdogTimer;
+    handle_t	InactivityTimer;
+    pNhtSessionData Session;
+    XArray	Apps;		/* array of pNhtApp */
+    }
+    NhtAppGroup, *pNhtAppGroup;
+
+
+/*** One-page app data.  Each time the user launches an .app, a new app
+ *** structure is created with a new key.
+ ***/
+typedef struct
+    {
+    char	AKey[64];	/* random app ID */
+    long long	A_ID;		/* incrementing app id counter */
+    char	A_ID_Text[24+24+24];
+    char	AppPathname[OBJSYS_MAX_PATH + 1];
+    DateTime	FirstActivity;
+    DateTime	LastActivity;
+    handle_t	WatchdogTimer;
+    handle_t	InactivityTimer;
+    pObjSession	AppObjSess;
+    pNhtAppGroup    Group;
+    }
+    NhtApp, *pNhtApp;
 
 
 /*** Query structure.  Used for storing information about an open query.  These
@@ -218,6 +264,7 @@ typedef struct
     char	Password[32];
     char	IPAddr[20];
     int		Size;
+    int		NotActivity;
     handle_t	LastHandle;
     }
     NhtConn, *pNhtConn;
@@ -227,6 +274,7 @@ typedef struct
 struct 
     {
     XHashTable	CookieSessions;
+    XHashTable	SessionsByID;
     XArray	Sessions;
     char	ServerString[80];
     char	Realm[80];
@@ -251,6 +299,9 @@ struct
     int		ClkTck;
     int		numbCachedApps;
     int		XFrameOptions;		/* NHT_XFO_T_xxx */
+    long long	S_ID_Count;
+    long long	G_ID_Count;
+    long long	A_ID_Count;
     }
     NHT;
 
@@ -268,14 +319,27 @@ typedef struct
 pCachedApp CachedAppConstructor();
 int CachedAppInit(pCachedApp this);
 
+pNhtSessionData nht_internal_AllocSession(char* usrname);
+handle_t nht_internal_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
 int nht_internal_RemoveWatchdog(handle_t th);
 void nht_internal_Watchdog(void* v);
+
+int nht_internal_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
+
+pNhtApp nht_internal_AllocApp(char* path, pNhtAppGroup g);
+int nht_internal_FreeApp(pNhtApp app);
+pNhtAppGroup nht_internal_AllocAppGroup(char* path, pNhtSessionData s);
+int nht_internal_FreeAppGroup(pNhtAppGroup group);
 
 void nht_internal_Handler(void* v);
 int nht_internal_ITimeout(void* sess_v);
 int nht_internal_WTimeout(void* sess_v);
+int nht_internal_ITimeoutAppGroup(void* sess_v);
+int nht_internal_WTimeoutAppGroup(void* sess_v);
+int nht_internal_ITimeoutApp(void* sess_v);
+int nht_internal_WTimeoutApp(void* sess_v);
 
 int nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);
 void nht_internal_ErrorExit(pNhtConn conn, int code, char* text);
 
- #endif
+#endif
