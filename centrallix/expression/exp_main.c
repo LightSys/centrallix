@@ -70,6 +70,7 @@ expAllocExpression()
 	expr->Parent = NULL;
 	expr->Flags = EXPR_F_NEW;
 	expr->ObjCoverageMask = 0;
+	expr->ObjOuterMask = 0;
 	expr->ObjDelayChangeMask = 0;
 	expr->ObjID = -1;
 	expr->AggExp = NULL;
