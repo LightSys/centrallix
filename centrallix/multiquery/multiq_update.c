@@ -249,7 +249,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		/** Save it for later **/
 		objlist = expCreateParamList();
 		if (!objlist) goto error;
-		expCopyList(stmt->Query->ObjList, objlist);
+		expCopyList(stmt->Query->ObjList, objlist, -1);
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xaAddItem(objects_to_update, (void*)objlist);
 		}
@@ -267,7 +267,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	for(j=0;j<objects_to_update->nItems;j++)
 	    {
 	    objlist = (pParamObjects)xaGetItem(objects_to_update, j);
-	    expCopyList(objlist, stmt->Query->ObjList);
+	    expCopyList(objlist, stmt->Query->ObjList, -1);
 
 	    /** Loop through list of values to set **/
 	    for(i=0;i<qe->AttrNames.nItems;i++)

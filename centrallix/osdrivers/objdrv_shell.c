@@ -9,6 +9,8 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
 /** module definintions **/
 #include "centrallix.h"
 
@@ -92,7 +94,7 @@ free_EnvVar(void* p, void* arg)
     pEnvVar ptr = (pEnvVar)p;
     arg = NULL ; /* avoid complaints from picky compilers */
     if(ptr->shouldfree)
-	free(ptr->value); // value was malloc()ed, not nmMalloc()ed
+	nmSysFree(ptr->value); // value was malloc()ed, not nmMalloc()ed
     nmFree(ptr,sizeof(EnvVar));
     return 0   ; /* meaningless, but is needed for type safety */
     }
@@ -147,6 +149,8 @@ shl_internal_Launch(pShlData inf)
     char tty_name[32];
     int pty;
     int i;
+    int maxfiles;
+    gid_t gidlist[1];
 
     for(i=0;i<xaCount(&inf->envList);i++)
 	{
@@ -158,7 +162,7 @@ shl_internal_Launch(pShlData inf)
 	if(pEV)
 	    {
 	    int len = strlen(name)+2+(pEV->value?strlen(pEV->value):0);
-	    p = (char*)malloc(len);
+	    p = (char*)nmSysMalloc(len);
 	    snprintf(p,len,"%s=%s",name,pEV->value?pEV->value:"");
 	    p[len-1]='\0';
 	    xaAddItem(&inf->envArray,p);
@@ -208,13 +212,12 @@ shl_internal_Launch(pShlData inf)
     if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
 	printf("shell got tty: %s\n",(const char*)ptsname(pty));
 
-    strncpy(tty_name,(const char*)ptsname(pty),32);
-    tty_name[31]='\0';
+    strtcpy(tty_name,(const char*)ptsname(pty),sizeof(tty_name));
     
     inf->shell_pid=fork();
     if(inf->shell_pid < 0)
 	{
-	mssError(0,"SHL","Unable to fork");
+	mssErrorErrno(1,"SHL","Unable to fork");
 	inf->shell_pid=0;
 	return -1;
 	}
@@ -233,6 +236,7 @@ shl_internal_Launch(pShlData inf)
 	 ** and we need to get rid of the ruid=root here so that the
 	 ** command's privs are more appropriate.  Same for group id.
 	 **/
+	setgroups(0, gidlist);
 	if (getuid() != geteuid())
 	    {
 	    if (setreuid(geteuid(),-1) < 0)
@@ -253,10 +257,17 @@ shl_internal_Launch(pShlData inf)
 	    }
 
 	/** close all open fds (except for 0-2 -- std{in,out,err}) **/
-	for(fd=3;fd<64;fd++)
+	maxfiles = sysconf(_SC_OPEN_MAX);
+	if (maxfiles <= 0)
+	    {
+	    printf("Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.\n");
+	    maxfiles = 2048;
+	    }
+	for(fd=3;fd<maxfiles;fd++)
 	    close(fd);
-	
-	/** open the terminal **/
+
+	/** start a new process session and open the terminal **/
+	setsid();
 	fd = open(tty_name,O_RDWR);
 	
 	/** switch to terminal as stdout **/
@@ -269,7 +280,7 @@ shl_internal_Launch(pShlData inf)
 	dup2(fd,2);
 
 	/** close old copy of FD **/
-	close(fd);
+	if (fd > 2) close(fd);
 
 
 	/** make the exec() call **/
@@ -551,7 +562,8 @@ shlClose(void* inf_v, pObjTrxTree* oxt)
 	xaDeInit(&inf->argArray);
 	for(i=0;i<xaCount(&inf->envArray);i++)
 	    {
-	    free(xaGetItem(&inf->envArray,i));
+	    if (xaGetItem(&inf->envArray,i))
+		nmSysFree(xaGetItem(&inf->envArray,i));
 	    }
 	xaDeInit(&inf->envList);
 	xhClear(&inf->envHash,free_EnvVar,NULL);
@@ -685,7 +697,7 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 		    return -1;
 		inf->curRead+=i;
 		}
-	}
+	    }
 	/** this'll also catch if we scroll too far forward... **/
 	if(offset<inf->curRead)
 	    return -1;
@@ -860,7 +872,8 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    /*val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];*/
+	    val->String = inf->Node->Data->Name;
 	    return 0;
 	    }
 
@@ -1033,17 +1046,21 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		{
 		if(pEV->shouldfree)
 		    {
-		    free(pEV->value);
+		    nmSysFree(pEV->value);
 		    }
-		if(datatype == DATA_T_STRING)
+		if (!val)
+		    {
+		    pEV->value = strdup("");
+		    }
+		else if (datatype == DATA_T_STRING)
 		    {
 		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
-		    pEV->value = (char*)malloc(strlen(val->String)+1);
+		    pEV->value = (char*)nmSysMalloc(strlen(val->String)+1);
 		    strcpy(pEV->value,val->String);
 		    }
 		else //datatype == DATA_T_INTEGER
 		    {
-		    pEV->value = (char*)malloc(20);
+		    pEV->value = (char*)nmSysMalloc(20);
 		    snprintf(pEV->value,20,"%i",val->Integer);
 		    pEV->value[19]='\0';
 		    }
@@ -1109,6 +1126,20 @@ shlExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     }
 
 
+/*** shlInfo - Return the capabilities of the object.
+ ***/
+int
+shlInfo(void* inf_v, pObjectInfo info)
+    {
+
+	/** Shell objects have limited capability... **/
+	info->Flags = OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_SEEK;
+	info->nSubobjects = 0;
+
+    return 0;
+    }
+
+
 /*** shlInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -1148,6 +1179,7 @@ shlInitialize()
 	drv->GetNextMethod = shlGetNextMethod;
 	drv->ExecuteMethod = shlExecuteMethod;
 	drv->PresentationHints = NULL;
+	drv->Info = shlInfo;
 
 	nmRegister(sizeof(ShlData),"ShlData");
 

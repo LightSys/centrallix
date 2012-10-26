@@ -64,6 +64,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char* c1;
     char* c2;
     int box_offset;
+    int border_radius;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
@@ -87,6 +88,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
 	    }
+
+	/** Border radius, for raised/lowered/bordered panes **/
+	if (wgtrGetPropertyValue(tree,"border_radius",DATA_T_INTEGER,POD(&border_radius)) != 0)
+	    border_radius=0;
 
 	/** Background color/image? **/
 	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS,main_bg,sizeof(main_bg));
@@ -164,17 +169,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (style == 2) /* flat */
 		{
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { %STR}\n",id,main_bg);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 		}
 	    else if (style == 0 || style == 1) /* lowered or raised */
 		{
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; %STR}\n",id,c1,c2,c2,c1,main_bg);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 		}
 	    else if (style == 3) /* bordered */
 		{
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; %STR}\n",id,bdr,main_bg);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 		}
 	    }
 	else

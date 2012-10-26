@@ -43,6 +43,9 @@ nht_internal_UsersAttrList(void* ctx, char* objname)
 	xaInit(xa, 8);
 	xaAddItem(xa, "session_cnt");
 	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "group_cnt");
+	xaAddItem(xa, "app_cnt");
 
     return xa;
     }
@@ -72,6 +75,9 @@ nht_internal_UsersAttrType(void *ctx, char* objname, char* attrname)
 	if (!strcmp(attrname, "session_cnt")) return DATA_T_INTEGER;
 	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
 	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "group_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
 
     return -1;
     }
@@ -80,6 +86,10 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
     {
     pObjData val = (pObjData)val_v;
     pNhtUser usr;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    int cnt;
+    int i,j;
 
 	if (!objname || !attrname) return -1;
 	usr = (pNhtUser)xhLookup(&(NHT.UsersByName), objname);
@@ -90,6 +100,32 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
 	    val->String = usr->Username;
 	else if (!strcmp(attrname, "last_activity"))
 	    val->DateTime = &(usr->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(usr->FirstActivity);
+	else if (!strcmp(attrname, "group_cnt"))
+	    {
+	    cnt=0;
+	    for(i=0;i<usr->Sessions.nItems;i++)
+		{
+		s = (pNhtSessionData)(usr->Sessions.Items[i]);
+		cnt += s->AppGroups.nItems;
+		}
+	    val->Integer = cnt;
+	    }
+	else if (!strcmp(attrname, "app_cnt"))
+	    {
+	    cnt=0;
+	    for(i=0;i<usr->Sessions.nItems;i++)
+		{
+		s = (pNhtSessionData)(usr->Sessions.Items[i]);
+		for(j=0;j<s->AppGroups.nItems;j++)
+		    {
+		    g = (pNhtAppGroup)(s->AppGroups.Items[j]);
+		    cnt += g->Apps.nItems;
+		    }
+		}
+	    val->Integer = cnt;
+	    }
 	else
 	    return -1;
 
@@ -97,16 +133,357 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
     }
 
 
-/*** nht_internal_RegisterUsers() - register a handler for listing
+/*** Functions for enumerating sessions for the cx.sysinfo directory ***/
+pXArray
+nht_internal_SessionsAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "username");
+	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "group_cnt");
+	xaAddItem(xa, "app_cnt");
+	xaAddItem(xa, "last_ip");
+
+    return xa;
+    }
+
+pXArray
+nht_internal_SessionsObjList(void* ctx)
+    {
+    pXArray xa;
+    int i;
+    pNhtSessionData s;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.Sessions);i++) 
+	    {
+	    s = (pNhtSessionData)xaGetItem(&NHT.Sessions, i);
+	    if (s)
+		xaAddItem(xa, s->S_ID_Text);
+	    }
+
+    return xa;
+    }
+
+int
+nht_internal_SessionsAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "username")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "group_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "last_ip")) return DATA_T_STRING;
+
+    return -1;
+    }
+
+int
+nht_internal_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    int cnt;
+    int i;
+
+	if (!objname || !attrname) return -1;
+	s = (pNhtSessionData)xhLookup(&(NHT.SessionsByID), objname);
+	if (!s) return -1;
+	if (!strcmp(attrname, "username"))
+	    val->String = s->User->Username;
+	else if (!strcmp(attrname, "name"))
+	    val->String = s->S_ID_Text;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(s->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(s->FirstActivity);
+	else if (!strcmp(attrname, "group_cnt"))
+	    val->Integer = s->AppGroups.nItems;
+	else if (!strcmp(attrname, "app_cnt"))
+	    {
+	    cnt=0;
+	    for(i=0;i<s->AppGroups.nItems;i++)
+		{
+		g = (pNhtAppGroup)(s->AppGroups.Items[i]);
+		cnt += g->Apps.nItems;
+		}
+	    val->Integer = cnt;
+	    }
+	else if (!strcmp(attrname, "last_ip"))
+	    val->String = s->LastIPAddr;
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** Functions for enumerating application groups for the cx.sysinfo directory ***/
+pXArray
+nht_internal_GroupsAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "username");
+	xaAddItem(xa, "session_id");
+	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "start_app_path");
+	xaAddItem(xa, "app_cnt");
+
+    return xa;
+    }
+
+pXArray
+nht_internal_GroupsObjList(void* ctx)
+    {
+    pXArray xa;
+    int i,j;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.Sessions);i++) 
+	    {
+	    s = (pNhtSessionData)xaGetItem(&NHT.Sessions, i);
+	    if (s)
+		{
+		for(j=0;j<xaCount(&s->AppGroups);j++)
+		    {
+		    g = (pNhtAppGroup)xaGetItem(&s->AppGroups, j);
+		    if (g)
+			xaAddItem(xa, g->G_ID_Text);
+		    }
+		}
+	    }
+
+    return xa;
+    }
+
+int
+nht_internal_GroupsAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "username")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "start_app_path")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "session_id")) return DATA_T_STRING;
+
+    return -1;
+    }
+
+int
+nht_internal_GroupsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    int i;
+    char sessionid[24];
+
+	if (!objname || !attrname) return -1;
+	strtcpy(sessionid, objname, sizeof(sessionid));
+	if (!strchr(sessionid,'|')) return -1;
+	*(strchr(sessionid,'|')) = '\0';
+	s = (pNhtSessionData)xhLookup(&(NHT.SessionsByID), sessionid);
+	if (!s) return -1;
+	for(i=0;i<s->AppGroups.nItems;i++)
+	    {
+	    g = (pNhtAppGroup)(s->AppGroups.Items[i]);
+	    if (g && !strcmp(objname, g->G_ID_Text))
+		break;
+	    g = NULL;
+	    }
+	if (!g) return -1;
+	if (!strcmp(attrname, "username"))
+	    val->String = g->Session->User->Username;
+	else if (!strcmp(attrname, "start_app_path"))
+	    val->String = g->StartURL;
+	else if (!strcmp(attrname, "name"))
+	    val->String = g->G_ID_Text;
+	else if (!strcmp(attrname, "session_id"))
+	    val->String = g->Session->S_ID_Text;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(g->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(g->FirstActivity);
+	else if (!strcmp(attrname, "app_cnt"))
+	    {
+	    val->Integer = g->Apps.nItems;
+	    }
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** Functions for enumerating applications for the cx.sysinfo directory ***/
+pXArray
+nht_internal_AppsAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "username");
+	xaAddItem(xa, "session_id");
+	xaAddItem(xa, "group_id");
+	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "app_path");
+
+    return xa;
+    }
+
+pXArray
+nht_internal_AppsObjList(void* ctx)
+    {
+    pXArray xa;
+    int i,j,k;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    pNhtApp a;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.Sessions);i++) 
+	    {
+	    s = (pNhtSessionData)xaGetItem(&NHT.Sessions, i);
+	    if (s)
+		{
+		for(j=0;j<xaCount(&s->AppGroups);j++)
+		    {
+		    g = (pNhtAppGroup)xaGetItem(&s->AppGroups, j);
+		    if (g)
+			{
+			for(k=0;k<xaCount(&g->Apps);k++)
+			    {
+			    a = (pNhtApp)xaGetItem(&g->Apps, k);
+			    if (a)
+				xaAddItem(xa, a->A_ID_Text);
+			    }
+			}
+		    }
+		}
+	    }
+
+    return xa;
+    }
+
+int
+nht_internal_AppsAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "username")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "app_path")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "group_id")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "session_id")) return DATA_T_STRING;
+
+    return -1;
+    }
+
+int
+nht_internal_AppsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    pNhtApp a;
+    int i;
+    char sessionid[24];
+    char groupid[24];
+
+	if (!objname || !attrname) return -1;
+	strtcpy(sessionid, objname, sizeof(sessionid));
+	if (!strchr(sessionid,'|')) return -1;
+	*(strchr(sessionid,'|')) = '\0';
+	s = (pNhtSessionData)xhLookup(&(NHT.SessionsByID), sessionid);
+	if (!s) return -1;
+	strtcpy(groupid, objname, sizeof(groupid));
+	*(strrchr(groupid,'|')) = '\0';
+	for(i=0;i<s->AppGroups.nItems;i++)
+	    {
+	    g = (pNhtAppGroup)(s->AppGroups.Items[i]);
+	    if (g && !strcmp(groupid, g->G_ID_Text))
+		break;
+	    g = NULL;
+	    }
+	if (!g) return -1;
+	for(i=0;i<g->Apps.nItems;i++)
+	    {
+	    a = (pNhtApp)(g->Apps.Items[i]);
+	    if (a && !strcmp(objname, a->A_ID_Text))
+		break;
+	    a = NULL;
+	    }
+	if (!a) return -1;
+	if (!strcmp(attrname, "username"))
+	    val->String = a->Group->Session->User->Username;
+	else if (!strcmp(attrname, "app_path"))
+	    val->String = a->AppPathname;
+	else if (!strcmp(attrname, "name"))
+	    val->String = a->A_ID_Text;
+	else if (!strcmp(attrname, "session_id"))
+	    val->String = a->Group->Session->S_ID_Text;
+	else if (!strcmp(attrname, "group_id"))
+	    val->String = a->Group->G_ID_Text;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(a->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(a->FirstActivity);
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** nht_internal_RegisterSessionInfo() - register a handler for listing
  *** users logged into the server.
  ***/
 int
-nht_internal_RegisterUsers()
+nht_internal_RegisterSessionInfo()
     {
     pSysInfoData si;
 
-	/** thread list **/
-	si = sysAllocData("/users", nht_internal_UsersAttrList, nht_internal_UsersObjList, NULL, nht_internal_UsersAttrType, nht_internal_UsersAttrValue, NULL, 0);
+	/** users list **/
+	si = sysAllocData("/session/users", nht_internal_UsersAttrList, nht_internal_UsersObjList, NULL, nht_internal_UsersAttrType, nht_internal_UsersAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+	/** sessions list **/
+	si = sysAllocData("/session/sessions", nht_internal_SessionsAttrList, nht_internal_SessionsObjList, NULL, nht_internal_SessionsAttrType, nht_internal_SessionsAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+	/** groups list **/
+	si = sysAllocData("/session/appgroups", nht_internal_GroupsAttrList, nht_internal_GroupsObjList, NULL, nht_internal_GroupsAttrType, nht_internal_GroupsAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+	/** apps list **/
+	si = sysAllocData("/session/apps", nht_internal_AppsAttrList, nht_internal_AppsObjList, NULL, nht_internal_AppsAttrType, nht_internal_AppsAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
     return 0;
@@ -480,23 +857,6 @@ nht_internal_GenerateError(pNhtSessionData nsess)
     }
 
 
-/*** nht_internal_CreateCookie - generate a random string value that can
- *** be used as an HTTP cookie.
- ***/
-int
-nht_internal_CreateCookie(char* ck)
-    {
-    int key[4];
-
-	cxssGenerateKey((unsigned char*)key, sizeof(key));
-	sprintf(ck,"%s=%8.8x%8.8x%8.8x%8.8x",
-		NHT.SessionCookie,
-		key[0], key[1], key[2], key[3]);
-
-    return 0;
-    }
-
-
 /*** nht_internal_Hex16ToInt - convert a 16-bit hex value, in four chars, to
  *** an unsigned integer.
  ***/
@@ -520,7 +880,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
 
 	/** app key must be specified for all POST operations. **/
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (!find_inf || strcmp(find_inf->StrVal, nsess->AKey) != 0)
+	if (!find_inf || strcmp(find_inf->StrVal, nsess->SKey) != 0)
 	    return -1;
 
     return 0;
@@ -571,6 +931,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int order_desc = 0;
     char* name;
     char* slashptr;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -598,8 +960,22 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	/** app key specified? **/ //the app key feature is to prevent CSRFing attacks
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (find_inf && !strcmp(find_inf->StrVal, nsess->AKey))
-	    akey_match = 1;
+	if (find_inf)
+	    {
+	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+		akey_match = 1;
+	    }
+
+	/** Indicate activity... **/
+	if (!conn->NotActivity)
+	    {
+	    if (group) objCurrentDate(&(group->LastActivity));
+	    if (app) objCurrentDate(&(app->LastActivity));
+	    /*if (group) nht_internal_ResetWatchdog(group->InactivityTimer);
+	    if (app) nht_internal_ResetWatchdog(app->InactivityTimer);*/
+	    }
+	if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
+	if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
 
 	/** Check GET mode. **/
 	find_inf = stLookup_ne(url_inf,"ls__mode");
@@ -825,7 +1201,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		wgtr_params.AppMinHeight = client_h;
 		wgtr_params.AppMaxWidth = client_w;
 		wgtr_params.AppMinWidth = client_w;
-		strtcpy(wgtr_params.AKey, nsess->AKey, sizeof(wgtr_params.AKey));
 
 		/** Check for gzip encoding **/
 		gzip=0;
@@ -893,6 +1268,21 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    *slashptr = '\0';
 		    }
+
+		/** Create a new group and app if necessary **/
+		if (!strcmp(ptr, "widget/page"))
+		    {
+		    if (!group)
+			group = nht_internal_AllocAppGroup(url_inf->StrVal, nsess);
+		    if (group && !app)
+			app = nht_internal_AllocApp(url_inf->StrVal, group);
+		    }
+
+		/** Build the akey - CSRF prevention **/
+		if (group && app)
+		    snprintf(wgtr_params.AKey, sizeof(wgtr_params.AKey), "%s-%s-%s", nsess->SKey, group->GKey, app->AKey);
+		else
+		    strtcpy(wgtr_params.AKey, nsess->SKey, sizeof(wgtr_params.AKey));
 
 		/** Read the app spec, verify it, and generate it to DHTML **/
 		//pWgtrNode tree;
@@ -1579,6 +1969,7 @@ nhtInitialize()
 	NHT.numbCachedApps = 0;
 	memset(&NHT, 0, sizeof(NHT));
 	xhInit(&(NHT.CookieSessions),255,0);
+	xhInit(&(NHT.SessionsByID),255,0);
 	xaInit(&(NHT.Sessions),256);
 	NHT.TimerUpdateSem = syCreateSem(0, 0);
 	NHT.TimerDataMutex = syCreateSem(1, 0);
@@ -1600,7 +1991,11 @@ nhtInitialize()
         NHT.ClkTck = CLK_TCK;
 #endif
 
-	nht_internal_RegisterUsers();
+	NHT.A_ID_Count = 0;
+	NHT.G_ID_Count = 0;
+	NHT.S_ID_Count = 0;
+
+	nht_internal_RegisterSessionInfo();
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));

@@ -72,6 +72,16 @@ unsigned int xh_random[256] =
     };
 
 
+/*** xhInitialize() - rebuild the random number table used for the
+ *** hash computation.
+ ***/
+int
+xhInitialize()
+    {
+    return 0;
+    }
+
+
 /*** xh_internal_ComputeHash - calculates the hash value relative to the
  *** key and the number of rows in the hash table.
  ***/

@@ -948,6 +948,7 @@ st_internal_ParseStruct(pLxSession s, pStructInf *info)
 	if (!*info) return -1;
 	(*info)->Flags |= (ST_F_TOPLEVEL | ST_F_GROUP);
 	objlist = expCreateParamList();
+	expSetEvalDomain(objlist, EXPR_MO_RUNSTATIC);
 	/*expAddParamToList(objlist, "this", NULL, 0);*/
 
 	/** In case we get a parse error: **/

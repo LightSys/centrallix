@@ -53,6 +53,79 @@ function cx_count_divs(kind)
     }
 
 // Functions used for cxsql-to-js support
+function cxjs_min(v)
+    {
+    var lowest = undefined;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (lowest === undefined || isNaN(lowest) || lowest > v[i])
+		lowest = v[i];
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (lowest === undefined || isNaN(lowest) || lowest > v[i])
+		lowest = v[i];
+	    }
+	}
+    else
+	{
+	lowest = v;
+	}
+    return lowest;
+    }
+function cxjs_max(v)
+    {
+    var highest = undefined;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (highest === undefined || isNaN(highest) || highest < v[i])
+		highest = v[i];
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (highest === undefined || isNaN(highest) || highest < v[i])
+		highest = v[i];
+	    }
+	}
+    else
+	{
+	highest = v;
+	}
+    return highest;
+    }
+function cxjs_count(v)
+    {
+    var cnt = 0;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (v[i] != null && !isNaN(v[i])) cnt++;
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (v[i] != null && !isNaN(v[i])) cnt++;
+	    }
+	}
+    else
+	{
+	cnt = 1;
+	}
+    return cnt;
+    }
 function cxjs_user_name()
     {
     return pg_username;
@@ -68,7 +141,20 @@ function cxjs_getdate()
 function cxjs_convert(dt,v)
     {
     if (v == null || dt == null) return null;
-    if (dt == 'integer') return parseInt(v);
+    if (dt == 'integer')
+	{
+	if (String(v).substr(1,1) == '$')
+	    return parseInt(String(v).substr(2));
+	else
+	    return parseInt(v);
+	}
+    if (dt == 'double')
+	{
+	if (String(v).substr(1,1) == '$')
+	    return parseFloat(String(v).substr(2));
+	else
+	    return parseFloat(v);
+	}
     if (dt == 'string') return '' + v;
     return v;
     }
@@ -213,6 +299,8 @@ function cxjs_substitute(_context, _this, str, remaplist)
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);
+		    if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+			pg_expaddpart(window.__cur_exp, obj, fieldname);
 		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
 			prop = "";
 		    else

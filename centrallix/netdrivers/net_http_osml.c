@@ -445,6 +445,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     pObject reopen_obj;
     int reopen_success;
     pNhtQuery nht_query;
+    char* strval;
     
     handle_t session_handle;
     handle_t query_handle;
@@ -889,6 +890,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		}
 	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
+		nht_query = NULL;
+
 		/** First, if creating, open the new object. **/
 		if (!strcmp(request,"create"))
 		    {
@@ -925,52 +928,68 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			retval = 0;
 			t = objGetAttrType(obj, subinf->Name);
 			if (t < 0) continue;
-			switch(t)
+
+			/** Handle newer set-attr-value format that allows for nulls **/
+			if ((subinf->StrVal[0] == 'V' || subinf->StrVal[0] == 'N') && subinf->StrVal[1] == ':')
+			    strval = subinf->StrVal+2;
+			else
+			    strval = subinf->StrVal; /* deprecated - transition only */
+
+			/** set to NULL? **/
+			if (subinf->StrVal[0] == 'N' && subinf->StrVal[1] == ':')
 			    {
-			    case DATA_T_INTEGER:
-				if (subinf->StrVal[0])
-				    {
-				    n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
-				    }
-				break;
+			    retval = objSetAttrValue(obj, subinf->Name, t, NULL);
+			    }
+			else
+			    {
+			    /** Set to a value **/
+			    switch(t)
+				{
+				case DATA_T_INTEGER:
+				    if (*strval)
+					{
+					n = objDataToInteger(DATA_T_STRING, strval, NULL);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
+					}
+				    break;
 
-			    case DATA_T_DOUBLE:
-				if (subinf->StrVal[0])
-				    {
-				    dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
-				    }
-				break;
+				case DATA_T_DOUBLE:
+				    if (*strval)
+					{
+					dbl = objDataToDouble(DATA_T_STRING, strval);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
+					}
+				    break;
 
-			    case DATA_T_STRING:
-			        retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&(subinf->StrVal)));
-				break;
+				case DATA_T_STRING:
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&strval));
+				    break;
 
-			    case DATA_T_DATETIME:
-				if (subinf->StrVal[0])
-				    {
-				    objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
-				    pdt = &dt;
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
-				    }
-				break;
+				case DATA_T_DATETIME:
+				    if (*strval)
+					{
+					objDataToDateTime(DATA_T_STRING, strval, &dt, NULL);
+					pdt = &dt;
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
+					}
+				    break;
 
-			    case DATA_T_MONEY:
-				if (subinf->StrVal[0])
-				    {
-				    pm = &m;
-				    objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
-				    }
-				break;
+				case DATA_T_MONEY:
+				    if (*strval)
+					{
+					pm = &m;
+					objDataToMoney(DATA_T_STRING, strval, &m);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
+					}
+				    break;
 
-			    case DATA_T_STRINGVEC:
-			    case DATA_T_INTVEC:
-			    case DATA_T_UNAVAILABLE: 
-			    default:
-			        retval = -1;
-				break;
+				case DATA_T_STRINGVEC:
+				case DATA_T_INTVEC:
+				case DATA_T_UNAVAILABLE: 
+				default:
+				    retval = -1;
+				    break;
+				}
 			    }
 			if (retval < 0)
 			    {
@@ -1038,7 +1057,6 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				    }
 				}
 
-			    if (nht_query) nht_internal_FreeQuery(nht_query);
 			    xsDeInit(reopen_str);
 			    nmFree(reopen_str, sizeof(XString));
 			    }
@@ -1090,6 +1108,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (obj)
 			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
 		    }
+
+		if (nht_query) nht_internal_FreeQuery(nht_query);
 		}
 	    else if (!strcmp(request,"delete"))
 		{

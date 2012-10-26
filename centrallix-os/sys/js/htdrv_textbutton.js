@@ -12,14 +12,14 @@
 function tb_init(param)
     {
     var l = param.layer;
-    var l2 = param.layer2;
-    var l3 = param.layer3;
+    //var l2 = param.layer2;
+    //var l3 = param.layer3;
     //l.LSParent = param.parent;
     l.nofocus = true;
-    l2.nofocus = true;
+    //l2.nofocus = true;
     htr_init_layer(l,l,'tb');
-    htr_init_layer(l2,l,'tb');
-    htr_init_layer(l3,l,'tb');
+    //htr_init_layer(l2,l,'tb');
+    //htr_init_layer(l3,l,'tb');
     ifc_init_widget(l);
     if(!cx__capabilities.Dom2CSS && !cx__capabilities.Dom0IE)
 	{
@@ -30,9 +30,13 @@ function tb_init(param)
 	}
     l.buttonName = param.name;
     l.buttonText = param.text;
+    l.enab_c1 = param.c1;
+    l.enab_c2 = param.c2;
+    l.disab_c1 = param.dc1;
+    l.span = param.span;
 
-    l.l2 = l2;
-    l.l3 = l3;
+    //l.l2 = l2;
+    //l.l3 = l3;
     l.tp = param.top;
     l.btm = param.bottom;
     l.lft = param.left;
@@ -61,10 +65,11 @@ function tb_init(param)
     l.tristate = param.tristate;
     l.mode = -1;
     tb_setmode(l,0);
-    if (htr_getvisibility(l3) == 'inherit' || htr_getvisibility(l3) == 'visible')
+    /*if (htr_getvisibility(l3) == 'inherit' || htr_getvisibility(l3) == 'visible')
 	l.enabled = false;
     else
-	l.enabled = true;
+	l.enabled = true;*/
+    l.enabled = param.ena?true:false;
 	
     if (!cx__capabilities.Dom0IE)
         l.watch('enabled', tb_setenable);
@@ -95,8 +100,8 @@ function tb_init(param)
 function tb_action_settext(aparam)
     {
     this.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
-    this.l2.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
-    this.l3.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    //this.l2.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    //this.l3.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     }
 
 // used by ifValue
@@ -138,14 +143,18 @@ function tb_setenable(prop, oldv, newv)
     if (newv)
 	{
 	// make enabled
-	pg_set_style_string(this.l2,'visibility','inherit');
-	pg_set_style_string(this.l3,'visibility','hidden');
+	pg_set_style_string(this.span, 'color', this.enab_c1);
+	pg_set_style_string(this.span, 'text-shadow', '1px 1px ' + this.enab_c2);
+	//pg_set_style_string(this.l2,'visibility','inherit');
+	//pg_set_style_string(this.l3,'visibility','hidden');
 	}
     else
 	{
 	// make disabled
-	pg_set_style_string(this.l2,'visibility','hidden');
-	pg_set_style_string(this.l3,'visibility','inherit');
+	pg_set_style_string(this.span, 'color', this.disab_c1);
+	pg_set_style_string(this.span, 'text-shadow', '');
+	//pg_set_style_string(this.l2,'visibility','hidden');
+	//pg_set_style_string(this.l3,'visibility','inherit');
 	}
     //}
     return newv;

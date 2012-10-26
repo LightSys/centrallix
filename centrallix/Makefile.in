@@ -66,6 +66,7 @@ XSUPPORT=stparse.o \
 	 mime/mime_encode.o \
 	 mime/mime_util.o \
 	 ptod.o	\
+	 param.o \
 	 iface.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
@@ -94,6 +95,7 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_report.o \
 	    objdrv_uxprint.o \
 	    objdrv_qytree.o \
+	    objdrv_qypivot.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
 	    objdrv_link.o \
@@ -111,6 +113,8 @@ XV3OBJDRIVERS= \
 	      objdrv_report_v3.o \
 	      objdrv_uxprint_v3.o \
 	      objdrv_qytree.o \
+	      objdrv_qypivot.o \
+	      objdrv_query.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \
 	      objdrv_link.o \
@@ -140,6 +144,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_imagebutton.o \
 	wgtdrv_image.o \
 	wgtdrv_label.o \
+	wgtdrv_map.o \
 	wgtdrv_menu.o \
 	wgtdrv_multiscroll.o \
 	wgtdrv_objcanvas.o \
@@ -212,6 +217,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_hints.o \
 	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
+	   htdrv_map.o \
 	   htdrv_parameter.o \
 	   htdrv_autolayout.o \
 	   htdrv_repeat.o \

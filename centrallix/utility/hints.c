@@ -478,7 +478,7 @@ hnt_internal_SetAttrValue(pObject obj, char* attrname, int type, pObjData pod)
  *** should *only* be called if the value was modified.
  ***/
 int
-hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjects objlist)
+hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjects objlist, pObjSession session_ctx)
     {
     pParamObjects our_objlist = NULL;
     int rval = 0;
@@ -498,6 +498,8 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	expAddParamToList(our_objlist, "new", (pObject)ptod, 0);
 	expSetParamFunctions(our_objlist, "new", hnt_internal_GetAttrType,
 		hnt_internal_GetAttrValue, hnt_internal_SetAttrValue);
+	if (!objlist)
+	    our_objlist->Session = session_ctx;
 
 	/** If readonly, fail right away. **/
 	if (ph->Style & OBJ_PH_STYLE_READONLY)
@@ -542,7 +544,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 				break;
 			    case DATA_T_STRING:
 				/** FIXME: dangerous to set string ptr directly like this **/
-				ptod->Data.String = EXPR(ph->DefaultExpr)->String;
+				ptod->Data.String = nmSysStrdup(EXPR(ph->DefaultExpr)->String);
 				break;
 			    default:
 				rval = -1;

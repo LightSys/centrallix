@@ -347,6 +347,8 @@ cxInitialize(void* v)
 
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
+	qypInitialize();			/* Query Pivot driver */
+	qyInitialize();				/* stored query (aka view) driver */
 	rptInitialize();			/* report writer driver */
 	uxpInitialize();			/* UNIX printer access driver */
 	datInitialize();			/* flat ascii datafile (CSV, etc) */
@@ -455,6 +457,7 @@ cxHtInit()
 	htimgInitialize();			/* image widget */
 	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
+	htmapInitialize();			/* object canvas widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */

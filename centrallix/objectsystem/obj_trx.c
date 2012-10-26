@@ -77,6 +77,7 @@ obj_internal_AllocTree()
     memset(this,0,sizeof(ObjTrxTree));
     this->Status = OXT_S_PENDING;
     this->AllocObj = 0;
+    this->AttrValue = NULL;
     xaInit(&(this->Children),16);
     return this;
     }
@@ -181,6 +182,16 @@ obj_internal_SetTreeAttr(pObjTrxTree oxt, int type, pObjData val)
 
     	/** Set type **/
 	oxt->AttrType = type;
+
+	/** Already set?  Unset it if so. **/
+	if (oxt->AttrValue)
+	    {
+	    nmSysFree(oxt->AttrValue);
+	    oxt->AttrValue = NULL;
+	    }
+
+	/** NULL?  Return and leave value unset. **/
+	if (!val) return 0;
 
 	/** Figure length of allocated value space **/
 	switch(type)

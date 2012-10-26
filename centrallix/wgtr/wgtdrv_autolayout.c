@@ -88,7 +88,7 @@ wgtalVerify(pWgtrVerifySession s)
     int i, j;
     char* ptr;
     int wgt_cnt;
-    int n;
+    int n, n_remain;
     int next_wgt;
     int spacing;
     int cellsize = -1;
@@ -97,8 +97,12 @@ wgtalVerify(pWgtrVerifySession s)
     int possible_width, possible_height, tw, th, a1, a2;
     int column_width = -1, row_height = -1;
     int column_offset = 0, row_offset = 0;
-    int adj;
+    char* justify_mode;
+    int adj, adj_remain;
+    int this_adj;
     char* align;
+    int total_flex, total_size, total_product;
+    int after;
 
 	/** Ignore this if it is just a spacer **/
 	if (strcmp(al->Type, "widget/autolayoutspacer") != 0)
@@ -136,9 +140,11 @@ wgtalVerify(pWgtrVerifySession s)
 	    if (wgtrGetPropertyValue(al, "cellsize", DATA_T_INTEGER, POD(&cellsize)) != 0)
 		cellsize = -1;
 
-	    /** Justification **/
+	    /** Alignment and Justification **/
 	    if (wgtrGetPropertyValue(al, "align", DATA_T_STRING, POD(&align)) != 0)
 		align = "left";
+	    if (wgtrGetPropertyValue(al, "justify", DATA_T_STRING, POD(&justify_mode)) != 0)
+		justify_mode = "none";
 
 	    /** Auto-set width and height of this container? **/
 	    if (al->r_width < 0 && al->r_height >= 0)
@@ -314,7 +320,106 @@ wgtalVerify(pWgtrVerifySession s)
 		    al->r_width = al->pre_width = al->width = maxwidth + column_offset;
 		}
 
-	    /** Center or Right/Bottom jusitification? **/
+	    /** Full justification of some or all rows/columns? **/
+	    if (!strcmp(justify_mode, "all") || !strcmp(justify_mode, "filled"))
+		{
+		/** Loop through rows/columns **/
+		for(j=0;;j++)
+		    {
+		    /** Step One:  Total up the sizes and flexibilities **/
+		    total_flex = total_size = total_product = 0;
+		    for(after=n=i=0;i<wgt_cnt;i++)
+			{
+			child = sortarray[i];
+			after++;
+			if (al_type == 0 && ((j == 0 && row_height <= 0) || (row_height > 0 && spacing >= 0 && (int)(child->r_y / (row_height + spacing)) == j)))
+			    {
+			    /** widget in an hbox **/
+			    if (child->fl_width > 0)
+				{
+				total_flex += child->fl_width;
+				total_product += (child->fl_width * child->r_width);
+				}
+			    total_size += child->r_width;
+			    n++;
+			    after=0;
+			    }
+			else if (al_type == 1 && ((j == 0 && column_width <= 0) || (column_width > 0 && spacing >= 0 && (int)(child->r_x / (column_width + spacing)) == j)))
+			    {
+			    /** widget in a vbox **/
+			    if (child->fl_height > 0)
+				{
+				total_flex += child->fl_height;
+				total_product += (child->fl_height * child->r_height);
+				}
+			    total_size += child->r_height;
+			    n++;
+			    after=0;
+			    }
+			}
+
+		    /** No widgets in this row/col found?  End of columns/rows if so. **/
+		    if (n == 0)
+			{
+			break;
+			}
+
+		    /** Step Two:  Scale the widgets if justification is needed. **/
+		    if (!strcmp(justify_mode,"all") || (after > 0 && !strcmp(justify_mode,"filled")))
+			{
+			/** Determine how much total scaling is needed **/
+			if (al_type == 0)
+			    adj = al->r_width - total_size - (n-1)*spacing;
+			else
+			    adj = al->r_height - total_size - (n-1)*spacing;
+			adj_remain = adj;
+			n_remain = n;
+
+			/** Loop through the widgets and scale them. **/
+			for(i=0;i<wgt_cnt;i++)
+			    {
+			    child = sortarray[i];
+			    if (al_type == 0 && ((j == 0 && row_height <= 0) || (row_height > 0 && spacing >= 0 && (int)(child->r_y / (row_height + spacing)) == j)))
+				{
+				/** hbox **/
+				if (n_remain == 1)
+				    this_adj = adj_remain;
+				else
+				    this_adj = adj * (child->fl_width * child->r_width) / total_product;
+
+				/** We don't set the ->pre_* properties, in order for APOS to do its magic. **/
+				child->r_x += (adj - adj_remain);
+				child->x += (adj - adj_remain);
+				child->r_width += this_adj;
+				child->width += this_adj;
+				wgtrReverify(s, child);
+				adj_remain -= this_adj;
+				n_remain --;
+				}
+			    else if (al_type == 1 && ((j == 0 && column_width <= 0) || (column_width > 0 && spacing >= 0 && (int)(child->r_x / (column_width + spacing)) == j)))
+				{
+				/** vbox **/
+				if (n_remain == 1)
+				    this_adj = adj_remain;
+				else
+				    this_adj = adj * (child->fl_height * child->r_height) / total_product;
+
+				/** We don't set the ->pre_* properties, in order for APOS to do its magic. **/
+				child->r_y += (adj - adj_remain);
+				child->y += (adj - adj_remain);
+				child->r_height += this_adj;
+				child->height += this_adj;
+				wgtrReverify(s, child);
+				adj_remain -= this_adj;
+				n_remain --;
+				}
+			    if (n_remain == 0) break;
+			    }
+			}
+		    }
+		}
+
+	    /** Center or Right/Bottom alignment? **/
 	    if (!strcmp(align, "center") || !strcmp(align, "right") || !strcmp(align, "bottom"))
 		{
 		if (al_type == 0)	/* hbox */

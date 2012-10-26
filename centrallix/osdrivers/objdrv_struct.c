@@ -522,7 +522,11 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Vector or scalar? **/
 	if (find_inf->Value->NodeType == EXPR_N_LIST)
 	    {
-	    if (inf->VecData) nmSysFree(inf->VecData);
+	    if (inf->VecData)
+		{
+		nmSysFree(inf->VecData);
+		inf->VecData = NULL;
+		}
 	    if (stGetAttrType(find_inf, 0) == DATA_T_INTEGER)
 		{
 		if (datatype != DATA_T_INTVEC)

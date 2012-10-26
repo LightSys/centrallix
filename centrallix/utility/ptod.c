@@ -65,16 +65,12 @@ ptodAllocate()
     }
 
 
-/*** ptodFree() - unlink from the PTOD object, and if the link count goes
- *** to zero, free the memory.  If it was marked as being managed, also
- *** free memory for the pointed-to data itself.
+/*** ptod_internal_FreeData - release data value (ObjData) from ptod, if
+ *** the ptod is managed.
  ***/
 int
-ptodFree(pTObjData ptod)
+ptod_internal_FreeData(pTObjData ptod)
     {
-
-	/** Link count to 0? **/
-	if ((ptod->LinkCnt--) != 0) return 0;
 
 	/** Managed? free data memory as well if so **/
 	if (!(ptod->Flags & DATA_TF_UNMANAGED) && !(ptod->Flags & DATA_TF_ATTACHED))
@@ -103,7 +99,26 @@ ptodFree(pTObjData ptod)
 		default:
 		    break;
 		}
+	    ptod->Data.Generic = NULL;
 	    }
+
+    return 0;
+    }
+
+
+/*** ptodFree() - unlink from the PTOD object, and if the link count goes
+ *** to zero, free the memory.  If it was marked as being managed, also
+ *** free memory for the pointed-to data itself.
+ ***/
+int
+ptodFree(pTObjData ptod)
+    {
+
+	/** Link count to 0? **/
+	if ((ptod->LinkCnt--) != 0) return 0;
+
+	/** Free data memory **/
+	ptod_internal_FreeData(ptod);
 
 	/** Ok, now free the ptod itself **/
 	if (ptod->Flags & DATA_TF_ATTACHED)
@@ -129,29 +144,85 @@ ptodLink(pTObjData ptod)
     }
 
 
-/*** ptodCopy() - copy a ptod object.  If the original ptod is unmanaged, the
- *** copy also will be unmanaged and the data pointer(s) will point to the same
- *** place as the original!  Otherwise, a copy is made.  If the data is
- *** attached, then that data is copied.  An error occurs if there is not enough
- *** room to copy data to an 'attached' ptod.
+/*** ptodCopy() - copy a ptod object.  The unmanaged/attached settings on the
+ *** destination ptod control how the destination looks after the copy; thus
+ *** the caller should set those flags as desired before doing the copy.  If
+ *** the destination ptod is unmanaged, the data pointers will point where the
+ *** source ptod points, and it is up to the application to keep the source
+ *** data around until the destination ptod is destroyed or made independent.
  ***
- *** note that the managed/attached flags ARE HONORED on the destination ptod.
+ *** If the destination is attached, and its attached length is insufficient,
+ *** an error (-1) is returned.  AttachedLen must be valid in the destination
+ *** prior to calling this function, if the dst is marked as attached.
  ***/
 int
 ptodCopy(pTObjData src, pTObjData dst)
     {
 
-	if (src->Flags & DATA_TF_UNMANAGED)
+	/** Copy basic info **/
+	dst->DataType = src->DataType;
+	dst->Flags &= ~DATA_TF_NULL;
+	dst->Flags |= (src->Flags & DATA_TF_NULL);
+
+	/** Free old destination data (if needed) **/
+	ptod_internal_FreeData(dst);
+
+	/** Copy data, based on managed/attached status of ptod **/
+	if (dst->Flags & DATA_TF_UNMANAGED)
 	    {
 	    /** unmanaged/unattached copy? **/
+	    objCopyData(&src->Data, &dst->Data, src->DataType);
 	    }
-	else if (src->Flags & DATA_TF_ATTACHED)
+	else if (dst->Flags & DATA_TF_ATTACHED)
 	    {
 	    /** Attached copy? **/
+	    if (dst->AttachedLen < src->AttachedLen)
+		{
+		mssError(1,"PTOD","Could not copy: destination size %d is less than source size %d.",dst->AttachedLen,src->AttachedLen);
+		return -1;
+		}
+	    if (src->AttachedLen)
+		memcpy(((char*)dst)+sizeof(TObjData), ((char*)src)+sizeof(TObjData), src->AttachedLen);
+	    switch(src->DataType)
+		{
+		case DATA_T_INTEGER:
+		case DATA_T_DOUBLE:
+		    objCopyData(&src->Data, &dst->Data, src->DataType);
+		    break;
+		case DATA_T_STRING:
+		case DATA_T_MONEY:
+		case DATA_T_DATETIME:
+		case DATA_T_INTVEC:
+		case DATA_T_STRINGVEC:
+		default:
+		    dst->Data.Generic = ((char*)dst)+sizeof(TObjData);
+		    break;
+		}
 	    }
 	else
 	    {
 	    /** Managed copy **/
+	    switch(src->DataType)
+		{
+		case DATA_T_INTEGER:
+		case DATA_T_DOUBLE:
+		    objCopyData(&src->Data, &dst->Data, src->DataType);
+		    break;
+		case DATA_T_STRING:
+		    dst->Data.String = nmSysStrdup(src->Data.String);
+		    break;
+		case DATA_T_MONEY:
+		    dst->Data.Money = nmMalloc(sizeof(MoneyType));
+		    memcpy(dst->Data.Money, src->Data.Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME:
+		    dst->Data.DateTime = nmMalloc(sizeof(DateTime));
+		    memcpy(dst->Data.DateTime, src->Data.DateTime, sizeof(DateTime));
+		    break;
+		default:
+		    /** FIXME: how do we want to handle intvec/stringvec/binary/etc? **/
+		    break;
+		}
 	    }
 
     return 0;

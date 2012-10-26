@@ -137,6 +137,7 @@ typedef struct
     DatTableInf		HeaderCols;
     int			nRows;		/* number of rows in table, or -1 if not yet determined */
     pSemaphore		InsertSem;	/* controls inserts at end of file */
+    DateTime		LastModification;
     }
     DatNode, *pDatNode;
 
@@ -414,6 +415,65 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	syPostSem(this->Node->FlushSem, 1, 0);
 
     return rval;
+    }
+
+
+/*** dat_internal_ClearPages - clears the page cache of all pages for a node (file)
+ ***/
+int
+dat_internal_ClearPages(pDatNode node)
+    {
+    pDatPage* tmp;
+    pDatPage del;
+
+    	/** Get the page flush semaphore **/
+	syGetSem(node->FlushSem, 1, 0);
+
+	/** Scan the page cache **/
+	tmp = &(DAT_INF.PageList.Next);
+	while(*tmp)
+	    {
+	    if ((*tmp)->Node == node)
+		{
+		/** Got a page in this node (file) - unlink it **/
+		del = (*tmp);
+		(*tmp) = del->Next;
+		if (del->Next) del->Next->Prev = del->Prev;
+		
+		/** BUG - we don't free the page if it is locked, thus it leaks... **/
+		if (!(del->Flags & DAT_CACHE_F_LOCKED))
+		    nmFree(del,sizeof(DatPage));
+		}
+	    else
+		{
+		tmp = &((*tmp)->Next);
+		}
+	    }
+
+	/** Release the flush semaphore **/
+	syPostSem(node->FlushSem, 1, 0);
+
+    return 0;
+    }
+
+
+/*** dat_internal_ClearRowIDs - clear the cache of Row ID pointers
+ ***/
+int
+dat_internal_ClearRowIDs(pDatNode node)
+    {
+    int i;
+
+	/** Set each row id ptr to EMPTY status **/
+	for(i=0;i<DAT_NODE_ROWIDPTRS;i++)
+	    {
+	    if (!(node->RowIDPtrCache[i].Flags & DAT_RI_F_EMPTY))
+		{
+		node->RowIDPtrCache[i].Flags = DAT_RI_F_EMPTY;
+		}
+	    }
+
+    return 0;
     }
 
 
@@ -1829,6 +1889,7 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
     int maxlen;
     pObjData val;
     pObjData oldval;
+    int found;
 
     	/** Allocate a buffer **/
 	maxlen = DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1);
@@ -1839,11 +1900,14 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 	for(i=0;i<inf->TData->nCols;i++)
 	    {
 	    val = NULL;
+	    found = 0;
+
 	    /** What's the source of this data? **/
 	    if (update_colid == i)
 	        {
 		/** Source: from UPDATE (SetAttrValue) command. **/
 		val = update_val;
+		found = 1;
 		}
 	    else if (oxt)
 	        {
@@ -1853,15 +1917,19 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 		    sub_oxt = (pObjTrxTree)(oxt->Children.Items[j]);
 		    if (sub_oxt->OpType == OXT_OP_SETATTR && !strcmp(sub_oxt->AttrName,inf->TData->Cols[i]))
 		        {
-			if (sub_oxt->AttrType == DATA_T_INTEGER || sub_oxt->AttrType == DATA_T_DOUBLE)
+			if (sub_oxt->AttrValue == NULL)
+			    val = NULL;
+			else if (sub_oxt->AttrType == DATA_T_INTEGER || sub_oxt->AttrType == DATA_T_DOUBLE)
 			    val = POD(sub_oxt->AttrValue);
 			else
 			    val = POD(&(sub_oxt->AttrValue));
+			found = 1;
 			break;
 			}
 		    }
 		}
-	    if (!val)
+
+	    if (!found)
 	        {
 		/** Source: from EXISTING ROW DATA **/
 		if (inf->ColPtrs[i] == NULL)
@@ -1951,6 +2019,44 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 				}
 			    break;
 			}
+		    }
+
+		/** Old value is set, but new value is NULL? **/
+		if (oldval && !val)
+		    {
+		    /** What size was the data item? **/
+		    switch(inf->TData->ColTypes[i])
+			{
+			case DATA_T_INTEGER:
+			    s = sizeof(int);
+			    break;
+			case DATA_T_DOUBLE:
+			    s = sizeof(double);
+			    break;
+			case DATA_T_MONEY:
+			    s = sizeof(MoneyType);
+			    break;
+			case DATA_T_DATETIME:
+			    s = sizeof(DateTime);
+			    break;
+			case DATA_T_STRING:
+			    s = strlen((char*)(inf->ColPtrs[i])) + 1;
+			    break;
+			default:
+			    s = 0;
+			    break;
+			}
+
+		    /** Adjust existing row data, to reclaim the space. **/
+		    for(j=0;j<inf->TData->nCols;j++)
+			{
+			if (inf->ColPtrs[j] && inf->ColPtrs[j] > inf->ColPtrs[i]) inf->ColPtrs[j] -= s;
+			}
+		    memmove(inf->ColPtrs[i], inf->ColPtrs[i]+s, inf->RowBufSize - (inf->ColPtrs[i] - inf->RowBuf) - s);
+		    inf->RowBufSize -= s;
+
+		    /** Set it to NULL. **/
+		    inf->ColPtrs[i] = NULL;
 		    }
 		}
 
@@ -3263,7 +3369,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    switch(inf->Type)
 	        {
 		case DAT_T_TABLE:
-		    ptr = (unsigned char*)nmSysStrdup(val->String);
+		    /*ptr = (unsigned char*)nmSysStrdup(val->String);*/
 		    node_inf = stLookup(inf->Node->Node->Data,"annotation");
 		    if (!node_inf) node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
 		    stSetAttrValue(node_inf, DATA_T_STRING, val, 0);

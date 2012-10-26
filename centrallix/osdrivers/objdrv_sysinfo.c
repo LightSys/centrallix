@@ -94,7 +94,7 @@ struct
     char*		sys_thr_status_char[256];
     int			sys_thr_flags[256];
     char*		sys_thr_flags_char[256];
-    unsigned long	sys_mt_last_tick;
+    unsigned int	sys_mt_last_tick;
     int			sys_thr_cnt;
     }
     SYS_INF;
@@ -590,9 +590,9 @@ sysOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	obj->SubCnt = len + 1;
 
 	/** Try to open next obj in the path **/
-	if (obj->SubPtr + obj->SubCnt < obj->Pathname->nElements)
+	if (obj->SubPtr + obj->SubCnt <= obj->Pathname->nElements)
 	    {
-	    if (sysFindObj(inf, obj_internal_PathPart(obj->Pathname,obj->SubPtr + obj->SubCnt,1)) == 0)
+	    if (sysFindObj(inf, obj_internal_PathPart(obj->Pathname,obj->SubPtr + obj->SubCnt - 1,1)) == 0)
 		{
 		inf->Flags |= SYS_F_SUBOBJ;
 		obj->SubCnt++;

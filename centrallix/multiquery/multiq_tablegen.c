@@ -219,7 +219,7 @@ mqtAnalyze(pQueryStatement stmt)
 		else
 		    {
 		    /** No linkage but we can't handle it??? **/
-		    if (item->ObjCnt > 0)
+		    if (item->ObjCnt > 0 && !(item->Expr->ObjCoverageMask & EXPR_MASK_INDETERMINATE))
 			{
 			nmFree(qe->PrivateData,sizeof(MQTData));
 			nmFree(qe,sizeof(QueryElement));

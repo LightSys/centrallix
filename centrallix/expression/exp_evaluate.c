@@ -90,7 +90,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Run the query **/
-	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT);
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE);
 	if (!qy)
 	    {
 	    mssError(1,"EXP","Failed to run subselect query");
@@ -1127,21 +1127,25 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 	/** Copy data to the child, then eval it. **/
 	subtree = (pExpression)(tree->Children.Items[0]);
 	if (tree->Flags & EXPR_F_NULL) 
-	    subtree->Flags |= EXPR_F_NULL;
-	else
-	    subtree->Flags &= ~EXPR_F_NULL;
-	switch(tree->DataType)
 	    {
-	    case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
-	    case DATA_T_STRING:
-	        if (subtree->Alloc && subtree->String)
-	            {
-	            nmSysFree(subtree->String);
-	            }
-	        subtree->Alloc = 0;
-	        subtree->String = tree->String;
-		break;
-	    default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+	    subtree->Flags |= EXPR_F_NULL;
+	    }
+	else
+	    {
+	    subtree->Flags &= ~EXPR_F_NULL;
+	    switch(tree->DataType)
+		{
+		case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
+		case DATA_T_STRING:
+		    if (subtree->Alloc && subtree->String)
+			{
+			nmSysFree(subtree->String);
+			}
+		    subtree->Alloc = 0;
+		    subtree->String = tree->String;
+		    break;
+		default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+		}
 	    }
 	subtree->DataType = tree->DataType;
 
@@ -1322,6 +1326,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
     MoneyType m;
     int (*setfn)();
     int id;
+    int rval;
 
     	/** Which object are we getting at? **/
 	id = expObjID(tree,objlist);
@@ -1332,10 +1337,16 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	/** Set it as modified -- so it gets a new serial # **/
 	expModifyParamByID(objlist, id, obj);
 
+	/** Setting to NULL is simple... **/
+	if (tree->Flags & EXPR_F_NULL)
+	    return setfn(obj, tree->Name, tree->DataType, NULL);
+
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
 	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
+	if (attr_type == DATA_T_UNAVAILABLE)
+	    attr_type = tree->DataType;
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)
@@ -1369,23 +1380,23 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	switch(attr_type)
 	    {
 	    case DATA_T_INTEGER:
-	        setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
+	        rval = setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
 	        break;
 
 	    case DATA_T_STRING:
-	        setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
+	        rval = setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
 	        break;
 
 	    case DATA_T_DATETIME:
-	        setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
+	        rval = setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
 		break;
 
 	    case DATA_T_MONEY:
-	        setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
+	        rval = setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
 		break;
 
 	    case DATA_T_DOUBLE:
-	        setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
+	        rval = setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
 		break;
 
 	    default:
@@ -1393,7 +1404,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 		return -1;
 	    }
 
-    return 0;
+    return rval;
     }
 
 
@@ -1739,7 +1750,6 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	    objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
-	tree->Flags &= ~EXPR_F_NEW;
 
 	/** Call the appropriate evaluator fn based on type **/
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
@@ -1747,41 +1757,17 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	fn = EXP.EvalFunctions[tree->NodeType];
 	if (!fn)
 	    {
+	    tree->Flags &= ~EXPR_F_NEW;
 	    objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	rval = fn(tree,objlist);
+	if (rval >= 0)
+	    tree->Flags &= ~EXPR_F_NEW;
 	objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
-	return rval;
 
-#if 00
-	switch(tree->NodeType)
-	    {
-	    case EXPR_N_INTEGER: return 0;
-	    case EXPR_N_STRING: return 0;
-	    case EXPR_N_DOUBLE: return 0;
-	    case EXPR_N_MONEY: return 0;
-	    case EXPR_N_DATETIME: return 0;
-	    case EXPR_N_PLUS: return expEvalPlus(tree,objlist);
-	    case EXPR_N_MINUS: return expEvalMinus(tree,objlist);
-	    case EXPR_N_DIVIDE: return expEvalDivide(tree,objlist);
-	    case EXPR_N_MULTIPLY: return expEvalMultiply(tree,objlist);
-	    case EXPR_N_NOT: return expEvalNot(tree,objlist);
-	    case EXPR_N_AND: return expEvalAnd(tree,objlist);
-	    case EXPR_N_OR: return expEvalOr(tree,objlist);
-	    case EXPR_N_COMPARE: return expEvalCompare(tree,objlist);
-	    case EXPR_N_OBJECT: return expEvalObject(tree,objlist);
-	    case EXPR_N_PROPERTY: return expEvalProperty(tree,objlist);
-	    case EXPR_N_ISNULL: return expEvalIsNull(tree,objlist);
-	    case EXPR_N_FUNCTION: return expEvalFunction(tree,objlist);
-	    case EXPR_N_CONTAINS: return expEvalContains(tree,objlist);
-	    case EXPR_N_LIST: return -1;
-	    case EXPR_N_IN: return expEvalIn(tree,objlist);
-	    default: return -1;
-	    }
-#endif
-
+    return rval;
     }
 
 

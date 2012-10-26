@@ -11,6 +11,20 @@
 
 function wgtrSetupTree(tree, ns, parent)
     {
+    var w;
+
+    // Recursively set up the widget tree, connecting the tree with
+    // the DOM.
+    w = wgtrSetupTree_r(tree, ns, parent);
+
+    // Setup any composite nodes for repeated widgets.
+    wgtrSetupRepeats(w);
+
+    return w;
+    }
+
+function wgtrSetupTree_r(tree, ns, parent)
+    {
     var _parentobj = parent?parent.obj:null;
     var _parentctr = parent?parent.cobj:null;
 
@@ -31,8 +45,114 @@ function wgtrSetupTree(tree, ns, parent)
     wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.scope, tree.sn);
     if (tree.sub)
 	for(var i=0; i<tree.sub.length; i++)
-	    wgtrSetupTree(tree.sub[i], null, tree);
+	    wgtrSetupTree_r(tree.sub[i], null, tree);
     return tree.obj;
+    }
+
+
+// wgtrSetupRepeats - sets up composite tree nodes for repeated widgets.  This
+// allows repeated widgets to be referred to in aggregate - sending an Action
+// to all at once, receiving events from all, or retrieving properties from all
+// using aggregate functions like min(), max(), etc.
+function wgtrSetupRepeats(root)
+    {
+    var nodelist = wgtrNodeList(root);
+    var rptlist = {};
+
+    for(var nodename in nodelist)
+	{
+	var node = nodelist[nodename];
+	if (node.__WgtrName.substr(0,6) == '__rpt_')
+	    {
+	    var realname = node.__WgtrName.substr(node.__WgtrName.indexOf('_',6)+1);
+	    if (typeof rptlist[realname] == "undefined")
+		rptlist[realname] = [];
+	    rptlist[realname].push(node);
+	    }
+	}
+
+    for(var nodename in rptlist)
+	{
+	var rptnode = new wgtrRepeatNode(nodename, root, rptlist[nodename]);
+	wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", root, false, null, null);
+	}
+    }
+
+
+function wgtr_rn_Action(aparam, actionname)
+    {
+    var rval;
+    for(var i=0; i<this.nodelist.length; i++)
+	{
+	rval = this.nodelist[i].ifcProbe(ifAction).Invoke(actionname, aparam);
+	if (isCancel(rval)) return rval;
+	}
+    return 0;
+    }
+
+
+function wgtr_rn_ValueChanging(srcobj, prop, oldval, newval)
+    {
+    var newprops = [];
+    var oldprops = [];
+
+    for(var i=0; i<this.nodelist.length; i++)
+	{
+	if (this.nodelist[i] != srcobj)
+	    {
+	    newprops.push(wgtrGetProperty(this.nodelist[i], prop));
+	    oldprops.push(wgtrGetProperty(this.nodelist[i], prop));
+	    }
+	else
+	    {
+	    newprops.push(newval);
+	    oldprops.push(oldval);
+	    }
+	}
+    return this.ifcProbe(ifValue).Changing(prop, newprops, true, oldprops, true);
+    }
+
+
+function wgtr_rn_Value(propname)
+    {
+    var props = [];
+
+    for(var i=0; i<this.nodelist.length; i++)
+	{
+	props.push(wgtrGetProperty(this.nodelist[i], propname));
+	wgtrWatchProperty(this.nodelist[i], propname, this, wgtr_rn_ValueChanging);
+	}
+    return props;
+    }
+
+
+function wgtr_rn_NewEvent(eventname)
+    {
+    for(var i=0; i<this.nodelist.length; i++)
+	{
+	this.nodelist[i].ifcProbe(ifEvent).Hook(eventname, wgtr_rn_Event, this);
+	}
+    }
+
+
+function wgtr_rn_Event(eparam)
+    {
+    return this.ifcProbe(ifEvent).Activate(eparam._EventName, eparam);
+    }
+
+
+// wgtrRepeatNode - create a "repeat composite" nonvisual widget
+function wgtrRepeatNode(nodename, root, nodelist)
+    {
+    this.nodelist = nodelist;
+    this.wgtr_rn_ValueChanging = wgtr_rn_ValueChanging;
+    ifc_init_widget(this);
+    var ie = this.ifcProbeAdd(ifEvent);
+    ie.SetNewEventCallback(wgtr_rn_NewEvent);
+    var ia = this.ifcProbeAdd(ifAction);
+    ia.SetUndefinedAction(wgtr_rn_Action);
+    var iv = this.ifcProbeAdd(ifValue);
+    iv.SetNonexistentCallback(wgtr_rn_Value, null);
     }
 
 
@@ -129,7 +249,7 @@ function wgtrGetProperty(node, prop_name)
 
 function wgtrProbeProperty(node, prop_name)
     {
-    var prop;
+    var prop = null;
     var newnode;
 
 	// make sure the parameters are legitimate
@@ -164,7 +284,7 @@ function wgtrProbeProperty(node, prop_name)
 		}
 	    else
 		{
-		return new wgtrUndefinedObject();
+		prop = new wgtrUndefinedObject();
 		}
 	    }
 
@@ -172,10 +292,20 @@ function wgtrProbeProperty(node, prop_name)
 	if (typeof (node[prop_name]) == 'undefined')
 	    {
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
-	    return new wgtrUndefinedObject();
+	    prop = new wgtrUndefinedObject();
 	    }
 
-	prop = node[prop_name];
+	// some canonical properties
+	if (wgtrIsUndefined(prop))
+	    {
+	    if (prop_name == 'x') prop = getRelativeX(node);
+	    else if (prop_name == 'y') prop = getRelativeY(node);
+	    else if (prop_name == 'width') prop = pg_get_style(node, 'width');
+	    else if (prop_name == 'height') prop = pg_get_style(node, 'height');
+	    }
+
+	if (prop === null)
+	    prop = node[prop_name];
 
 	// return the property value
 	return prop;
