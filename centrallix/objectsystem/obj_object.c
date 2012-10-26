@@ -373,6 +373,12 @@ obj_internal_TypeFromSfHeader(pObject obj)
     int cnt, rval;
     char type_buf[64];
     pContentType type;
+    pObjectInfo obj_info;
+
+	/** Don't try this if we can't seek **/
+	obj_info = objInfo(obj);
+	if (obj_info && (obj_info->Flags & OBJ_INFO_F_CANT_SEEK))
+	    return NULL;
 
 	/** Read in the first bit of the object. **/
 	if ((cnt=objRead(obj, read_buf, sizeof(read_buf)-1, 0, OBJ_U_SEEK)) <= 0)
