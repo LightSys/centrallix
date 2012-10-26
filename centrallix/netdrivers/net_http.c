@@ -147,6 +147,7 @@ nht_internal_SessionsAttrList(void* ctx, char* objname)
 	xaAddItem(xa, "first_activity");
 	xaAddItem(xa, "group_cnt");
 	xaAddItem(xa, "app_cnt");
+	xaAddItem(xa, "last_ip");
 
     return xa;
     }
@@ -181,6 +182,7 @@ nht_internal_SessionsAttrType(void *ctx, char* objname, char* attrname)
 	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
 	else if (!strcmp(attrname, "group_cnt")) return DATA_T_INTEGER;
 	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "last_ip")) return DATA_T_STRING;
 
     return -1;
     }
@@ -206,9 +208,7 @@ nht_internal_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* v
 	else if (!strcmp(attrname, "first_activity"))
 	    val->DateTime = &(s->FirstActivity);
 	else if (!strcmp(attrname, "group_cnt"))
-	    {
 	    val->Integer = s->AppGroups.nItems;
-	    }
 	else if (!strcmp(attrname, "app_cnt"))
 	    {
 	    cnt=0;
@@ -219,6 +219,8 @@ nht_internal_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* v
 		}
 	    val->Integer = cnt;
 	    }
+	else if (!strcmp(attrname, "last_ip"))
+	    val->String = s->LastIPAddr;
 	else
 	    return -1;
 
@@ -969,8 +971,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    if (group) objCurrentDate(&(group->LastActivity));
 	    if (app) objCurrentDate(&(app->LastActivity));
-	    if (group) nht_internal_ResetWatchdog(group->InactivityTimer);
-	    if (app) nht_internal_ResetWatchdog(app->InactivityTimer);
+	    /*if (group) nht_internal_ResetWatchdog(group->InactivityTimer);
+	    if (app) nht_internal_ResetWatchdog(app->InactivityTimer);*/
 	    }
 	if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
 	if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);

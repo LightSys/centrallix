@@ -581,7 +581,7 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
 	objCurrentDate(&(app->LastActivity));
 	app->AppObjSess = objOpenSession("/");
 	app->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeoutApp, (void*)app);
-	app->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutApp, (void*)app);
+	/*app->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutApp, (void*)app);*/
 	xaAddItem(&group->Apps, (void*)app);
 
     return app;
@@ -599,7 +599,7 @@ nht_internal_FreeApp(pNhtApp app)
 
 	/** Clean up... **/
 	nht_internal_RemoveWatchdog(app->WatchdogTimer);
-	nht_internal_RemoveWatchdog(app->InactivityTimer);
+	/*nht_internal_RemoveWatchdog(app->InactivityTimer);*/
 	objCloseSession(app->AppObjSess);
 	nmFree(app, sizeof(NhtApp));
 
@@ -630,7 +630,7 @@ nht_internal_AllocAppGroup(char* path, pNhtSessionData s)
 	objCurrentDate(&(group->FirstActivity));
 	objCurrentDate(&(group->LastActivity));
 	group->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeoutAppGroup, (void*)group);
-	group->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutAppGroup, (void*)group);
+	/*group->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutAppGroup, (void*)group);*/
 	xaInit(&group->Apps, 16);
 	xaAddItem(&s->AppGroups, (void*)group);
 
@@ -656,7 +656,7 @@ nht_internal_FreeAppGroup(pNhtAppGroup group)
 	/** Clean up... **/
 	xaDeInit(&group->Apps);
 	nht_internal_RemoveWatchdog(group->WatchdogTimer);
-	nht_internal_RemoveWatchdog(group->InactivityTimer);
+	/*nht_internal_RemoveWatchdog(group->InactivityTimer);*/
 	nmFree(group, sizeof(NhtAppGroup));
 
     return 0;

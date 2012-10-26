@@ -439,6 +439,9 @@ nht_internal_ConnHandler(void* connfd_v)
 	    objCurrentDate(&(conn->NhtSession->LastActivity));
 	    }
 
+	/** Update most-recent-ipaddr in session **/
+	strtcpy(conn->NhtSession->LastIPAddr, conn->IPAddr, sizeof(conn->NhtSession->LastIPAddr));
+
 	/** Set nht session http ver **/
 	strtcpy(conn->NhtSession->HTTPVer, conn->HTTPVer, sizeof(conn->NhtSession->HTTPVer));
 

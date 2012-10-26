@@ -162,6 +162,7 @@ typedef struct
     pNhtUser	User;
     int		LastAccess;
     pXHashTable	CachedApps;
+    char	LastIPAddr[20];
     XArray	OsmlQueryList;	/* array of pNhtQuery */
     XArray	AppGroups;	/* array of pNhtAppGroup */
     }
@@ -181,7 +182,7 @@ typedef struct
     DateTime	FirstActivity;
     DateTime	LastActivity;
     handle_t	WatchdogTimer;
-    handle_t	InactivityTimer;
+    /*handle_t	InactivityTimer;*/
     pNhtSessionData Session;
     XArray	Apps;		/* array of pNhtApp */
     }
@@ -200,7 +201,7 @@ typedef struct
     DateTime	FirstActivity;
     DateTime	LastActivity;
     handle_t	WatchdogTimer;
-    handle_t	InactivityTimer;
+    /*handle_t	InactivityTimer;*/
     pObjSession	AppObjSess;
     pNhtAppGroup    Group;
     }
