@@ -174,6 +174,8 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
 	new_tree->ObjOuterMask = src->ObjOuterMask;
 	new_tree->ObjDelayChangeMask = src->ObjDelayChangeMask;
 	new_tree->AggLevel = src->AggLevel;
+	new_tree->CmpFlags = src->CmpFlags;
+	new_tree->LxFlags = src->LxFlags;
 	memcpy(&(new_tree->Types), &(src->Types), sizeof(src->Types));
 
 	/** String fields may need to be allocated.. **/
