@@ -1081,16 +1081,29 @@ function osrc_action_modify_cb()
 	var server_rec = this.ParseOneRow(links, 1);
 	var diff = 0;
 	for(var i in server_rec)
+	    {
+	    var found = 0;
 	    for(var j in cr)
 		{
-		if (cr[j].oid == server_rec[i].oid && cr[j].value != server_rec[i].value)
+		if (cr[j].oid == server_rec[i].oid)
 		    {
-		    cr[j].value = server_rec[i].value;
-		    cr[j].type = server_rec[i].type;
-		    diff = 1;
-		    //alert(cr[j].value + " != " + server_rec[i].value);
+		    found = 1;
+		    if (cr[j].value != server_rec[i].value)
+			{
+			cr[j].value = server_rec[i].value;
+			cr[j].type = server_rec[i].type;
+			diff = 1;
+			//alert(cr[j].value + " != " + server_rec[i].value);
+			}
 		    }
 		}
+	    if (!found)
+		{
+		// we haven't seen this property before, add it.
+		cr.push( {value:server_rec[i].value, type:server_rec[i].type, oid:server_rec[i].oid} );
+		diff = 1;
+		}
+	    }
 	this.osrc_action_modify_cb_2(diff);
 	}
     else
