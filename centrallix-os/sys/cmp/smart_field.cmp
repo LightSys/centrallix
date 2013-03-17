@@ -60,6 +60,8 @@ smart_field "widget/component-decl"
 	fl_width=0;
 	text=runserver(:this:text); 
 	align=right; 
+	allow_break=no;
+	overflow_ellipsis=yes;
 	}
     label_checkbox "widget/label"
 	{ 
