@@ -229,6 +229,7 @@ typedef struct _PS
     pPrtObjStream	StreamHead;
     double		PageWidth;
     double		PageHeight;
+    char		OutputType[64];
     pPrtUnits		Units;
     int			(*WriteFn)();
     void*		WriteArg;
