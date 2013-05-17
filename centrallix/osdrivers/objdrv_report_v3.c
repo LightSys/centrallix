@@ -2916,12 +2916,28 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 	/** Get area geometry **/
 	if (rpt_internal_GetDouble(image, "x", &x, 0) < 0) x = -1;
 	if (rpt_internal_GetDouble(image, "y", &y, 0) < 0) y = -1;
-	if (rpt_internal_GetDouble(image, "width", &w, 0) < 0) return -1;
-	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0) return -1;
+	if (rpt_internal_GetDouble(image, "width", &w, 0) < 0)
+	    {
+	    mssError(1,"RPT","report/image must have a valid 'width' attribute");
+	    return -1;
+	    }
+	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0)
+	    {
+	    mssError(1,"RPT","report/image must have a valid 'height' attribute");
+	    return -1;
+	    }
 
 	/** Load the image **/
-	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0, inf->Obj->Session) < 0) return -1;
-	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL) return -1;
+	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0, inf->Obj->Session) != 0)
+	    {
+	    mssError(1,"RPT","report/image object must have a valid 'source' attribute");
+	    return -1;
+	    }
+	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL)
+	    {
+	    mssError(1,"RPT","Could not open 'source' image for report/image object");
+	    return -1;
+	    }
 	img = prtCreateImageFromPNG(objRead, imgobj);
 	objClose(imgobj);
 	if (!img) return -1;
