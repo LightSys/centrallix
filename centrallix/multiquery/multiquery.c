@@ -649,6 +649,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 
 	    /** Convert the AND clause to an INTEGER node with value 1 **/
 	    where_clause->NodeType = EXPR_N_INTEGER;
+	    where_clause->DataType = DATA_T_INTEGER;
 	    where_clause->ObjCoverageMask = 0;
 	    where_clause->ObjOuterMask = 0;
 	    where_clause->Integer = 1;
