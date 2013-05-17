@@ -596,9 +596,12 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 	    }
 	
 	/** loop through attributes to fill out the properties array **/
-	prop_name = objGetFirstAttr(obj);
-	while (prop_name)
+	for(prop_name = objGetFirstAttr(obj); prop_name; prop_name = objGetNextAttr(obj))
 	    {
+	    /** properties to ignore **/
+	    if (!strcmp(prop_name, "condition") || !strcmp(prop_name, "cond_add_children"))
+		continue;
+
 	    /** Get the type **/
 	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0) 
 		{
@@ -628,9 +631,6 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
 	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
-
-	    /** get the name of the next one **/
-	    prop_name = objGetNextAttr(obj);
 	    }
 
 	/** Add offsets? **/

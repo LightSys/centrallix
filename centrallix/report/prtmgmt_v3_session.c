@@ -12,6 +12,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -75,6 +76,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this->ImageOpenFn = NULL;
 	this->ImageWriteFn = NULL;
 	this->ImageCloseFn = NULL;
+	strtcpy(this->OutputType, output_type, sizeof(this->OutputType));
 
 	/** Search for a formatter module that will do this content type **/
 	this->Formatter = NULL;

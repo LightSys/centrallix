@@ -830,7 +830,8 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream split_obj = NULL;
     pPrtObjStream split_obj_list = NULL;
     pPrtObjStream new_parent;
-    double x,y;
+    pPrtObjStream search;
+    double x,y,yb;
     int handle_id;
 
 	/** Need to adjust the height/width if unspecified? **/
@@ -876,8 +877,25 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Where will this go, by default?  X is pretty easy... **/
 		x = this->ContentTail->X + this->ContentTail->Width;
 
-		/** for the Y location, we have to look at the baseline for text. **/
-		y = this->ContentTail->Y + this->ContentTail->YBase - objptr->YBase;
+		/** for the Y location, we have to look at the baseline for text.  If
+		 ** the baseline for the new object is unset (0), we ignore the previous
+		 ** baseline.
+		 **/
+		y = this->ContentTail->Y;
+		if (objptr->YBase > 0)
+		    {
+		    //y = this->ContentTail->Y + this->ContentTail->YBase - objptr->YBase;
+		    for(search=this->ContentTail; search; search=search->Prev)
+			{
+			if (search->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))
+			    break;
+			if (search->YBase > 0)
+			    {
+			    y = search->Y + search->YBase - objptr->YBase;
+			    break;
+			    }
+			}
+		    }
 		if (y < top && !(objptr->Flags & PRT_OBJ_F_YSET))
 		    {
 		    prt_textlm_UpdateLineY(this->ContentTail, top - y);

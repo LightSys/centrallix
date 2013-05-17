@@ -197,7 +197,7 @@ static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center",
 
 int rpt_internal_DoTable(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle, double colsep);
-int rpt_internal_DoSection(pRptData, pStructInf, pRptSession, pQueryConn);
+int rpt_internal_DoSection(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoField(pRptData, pStructInf, pRptSession, pQueryConn);
 int rpt_internal_DoComment(pRptData, pStructInf, pRptSession);
 int rpt_internal_DoData(pRptData, pStructInf, pRptSession, int container_handle);
@@ -949,155 +949,95 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
     }
 
 
-#if 00
 /*** rpt_internal_DoSection - process a report section, which is an 
  *** abstract division in the report normally used simply to change the
  *** formatting style, such as margins, columns, etc.
  ***/
 int
-rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, pQueryConn this_qy)
+rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int container_handle)
     {
-    int style,oldstyle=0;
-    char* title = NULL;
-    int cols=1,colsep=4,lmargin=0,rmargin=0;
-    int oldcols=-1, oldcolsep, oldlmargin=-1, oldrmargin;
-    int oldspacing=-1,spacing;
-    int err=0,i;
-    char oldmfmt[32],olddfmt[32],oldnfmt[32];
-    char* saved_font = NULL;
-    int n;
+    int section_handle = -1;
+    int area_handle = -1;
+    double x, y, w, h, bw;
+    double sepw;
+    int flags;
+    pPrtBorder bdr = NULL;
+    int rval = 0;
+    int is_balanced;
+    int n_cols;
 
-	/** Get style information **/
-	style = rpt_internal_GetStyle(section);
-	rpt_internal_CheckFormats(section, oldmfmt, olddfmt, oldnfmt, 0);
-	rpt_internal_CheckFont(rs,section,&saved_font);
+	rval = rpt_internal_CheckCondition(inf,section);
+	if (rval < 0)
+	    goto error;
+	if (rval == 0)
+	    return 0;
 
-	/** Check for set-page-number? **/
-	if (stAttrValue(stLookup(section,"page"),&n,NULL,0) >= 0) prtSetPageNumber(rs->PSession, n);
-
-	/** Title? **/
-	stAttrValue(stLookup(section, "title"),NULL,&title,0);
-	if (title)
+	/** Get section geometry **/
+	if (rpt_internal_GetDouble(section, "x", &x, 0) < 0) x = -1;
+	if (rpt_internal_GetDouble(section, "y", &y, 0) < 0) y = -1;
+	if (rpt_internal_GetDouble(section, "width", &w, 0) < 0) w = -1;
+	if (rpt_internal_GetDouble(section, "height", &h, 0) < 0) h = -1;
+	if (rpt_internal_GetDouble(section, "colsep", &sepw, 0) < 0) sepw = 0;
+	n_cols = -1;
+	stAttrValue(stLookup(section,"columns"), &n_cols, NULL, 0);
+	if (n_cols <= 0)
 	    {
-	    oldstyle = prtGetAttr(rs->PSession);
-	    prtSetAttr(rs->PSession, oldstyle | RS_TX_CENTER | RS_TX_BOLD);
-	    prtWriteString(rs->PSession, title, -1);
-	    prtSetAttr(rs->PSession, oldstyle);
-	    prtWriteNL(rs->PSession);
+	    mssError(1,"RPT","The 'columns' attribute must specify a valid number of columns");
+	    goto error;
 	    }
 
-	/** Set the style for the printer? **/
-	if (style >= 0)
+	/** Check for flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+	if (rpt_internal_GetBool(section, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(section, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	is_balanced = rpt_internal_GetBool(section, "balanced", 0, 0);
+
+	/** Check for border **/
+	if (stGetAttrValue(stLookup(section, "border"), DATA_T_DOUBLE, POD(&bw), 0) == 0)
 	    {
-	    oldstyle = prtGetAttr(rs->PSession);
-	    prtSetAttr(rs->PSession, style);
+	    bdr = prtAllocBorder(1, 0.0, 0.0, bw, 0x000000);
 	    }
 
-	/** Set line spacing? **/
-	if (stAttrValue(stLookup(section,"linespacing"),&spacing,NULL,0) >= 0)
+	/** Create the section **/
+	if (bdr)
+	    section_handle = prtAddObject(container_handle, PRT_OBJ_T_SECTION, x, y, w, h, flags, "numcols", n_cols, "colsep", sepw, "balanced", is_balanced, "separator", bdr, NULL);
+	else
+	    section_handle = prtAddObject(container_handle, PRT_OBJ_T_SECTION, x, y, w, h, flags, "numcols", n_cols, "colsep", sepw, "balanced", is_balanced, NULL);
+	if (bdr)
 	    {
-	    oldspacing = prtGetLineSpacing(rs->PSession);
-	    prtSetLineSpacing(rs->PSession, spacing);
+	    prtFreeBorder(bdr);
+	    bdr = NULL;
 	    }
+	if (section_handle < 0)
+	    goto error;
 
-	/** Set margins? **/
-	if (stAttrValue(stLookup(section,"margins"),&lmargin,NULL,0) >= 0)
-	    {
-	    prtGetLRMargins(rs->PSession, &oldlmargin, &oldrmargin);
-	    stAttrValue(stLookup(section,"margins"),&rmargin,NULL,1);
-	    prtSetLRMargins(rs->PSession, lmargin, rmargin);
-	    }
+	area_handle = prtAddObject(section_handle, PRT_OBJ_T_AREA, 0, 0, -1, 0, PRT_OBJ_U_ALLOWBREAK, NULL);
+	if (area_handle < 0)
+	    goto error;
 
-	/** Set columns? **/
-	if (stAttrValue(stLookup(section,"columns"),&cols,NULL,0) >= 0)
-	    {
-	    prtGetColumns(rs->PSession, &oldcols, &oldcolsep);
-	    stAttrValue(stLookup(section,"colsep"),&colsep,NULL,0);
-	    prtSetColumns(rs->PSession, cols, colsep, 0);
-	    }
+	/** Set the style for the section **/
+	rpt_internal_SetStyle(inf, section, rs, area_handle);
+	rpt_internal_SetMargins(section, area_handle, 0, 0, 0, 0);
 
 	/** Now do sub-components. **/
-        for(i=0;i<section->nSubInf;i++) if (stStructType(section->SubInf[i]) == ST_T_SUBGROUP)
-            {
-            if (!strcmp("report/column",section->SubInf[i]->UsrType))
-                {
-                if (rpt_internal_DoField(inf, section->SubInf[i],rs,this_qy) <0) 
-                    {
-                    err = 1;
-                    break;
-                    }
-                }
-            else if (!strcmp("report/form",section->SubInf[i]->UsrType))
-                {
-                if (rpt_internal_DoForm(inf, section->SubInf[i],rs) <0)
-                    {
-                    err = 1;
-                    break;
-                    }
-                }
-            else if (!strcmp("report/comment",section->SubInf[i]->UsrType))
-                {
-                if (rpt_internal_DoComment(inf, section->SubInf[i],rs) <0)
-                    {
-                    err = 1;
-                    break;
-                    }
-                }
-            else if (!strcmp("report/data",section->SubInf[i]->UsrType))
-                {
-                if (rpt_internal_DoData(inf, section->SubInf[i],rs) <0)
-                    {
-                    err = 1;
-                    break;
-                    }
-                }
-            else if (!strcmp("report/table",section->SubInf[i]->UsrType))
-                {
-                if (rpt_internal_DoTable(inf, section->SubInf[i],rs) <0)
-                    {
-                    err = 1;
-                    break;
-                    }
-                }
-            else if (!strcmp("report/section",section->SubInf[i]->UsrType))
-                {
-                if (rpt_internal_DoSection(inf, section->SubInf[i],rs,this_qy) <0)
-                    {
-                    err = 1;
-                    break;
-                    }
-                }
-            }
+	if (rpt_internal_DoContainer(inf, section, rs, area_handle) < 0)
+	    goto error;
 
-	/** Reset columns? **/
-	if (oldcols != -1)
-	    {
-	    prtSetColumns(rs->PSession, oldcols, oldcolsep, 0);
-	    }
+	/** End the section **/
+	prtEndObject(area_handle);
+	prtEndObject(section_handle);
 
-	/** Reset columns? **/
-	if (oldspacing != -1)
-	    {
-	    prtSetLineSpacing(rs->PSession, oldspacing);
-	    }
+	return 0;
 
-	/** Reset margins? **/
-	if (oldlmargin != -1)
-	    {
-	    prtSetLRMargins(rs->PSession, oldlmargin, oldrmargin);
-	    }
-
-	/** If style changed, change it back. **/
-	if (style >= 0)
-	    {
-	    prtSetAttr(rs->PSession, oldstyle);
-	    }
-	rpt_internal_CheckFormats(section, oldmfmt, olddfmt, oldnfmt, 1);
-	rpt_internal_CheckFont(rs,section,&saved_font);
-
-    return err?-1:0;
+    error:
+	if (bdr) prtFreeBorder(bdr);
+	if (area_handle >= 0) prtEndObject(area_handle);
+	if (section_handle >= 0) prtEndObject(section_handle);
+	return -1;
     }
-#endif
+
 
 /*** rpt_internal_NextRecord_Parallel - processes the next row, but operates
  *** the queries in parallel instead of nested.  It keeps on returning more
@@ -2473,6 +2413,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
     }
 #endif
 
+
 /*** rpt_internal_DoForm - creates a free-form style report element, 
  *** which can contain fields, comments, tables, and other forms.
  ***/
@@ -2480,11 +2421,12 @@ int
 rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container_handle)
     {
     pQueryConn qy;
-    int rulesep=0,ffsep=0;
+    int rulesep=0;
+    int ffsep=0;
     char* ptr;
     int err=0;
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
-    int relylimit = -1;
+    /*int relylimit = -1;*/
     int reclimit = -1;
     int outer_mode = 0;
     int inner_mode = 0;
@@ -2495,17 +2437,19 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
     int rval;
     int n;
 
+	/** Conditional check - do we print this form? **/
 	rval = rpt_internal_CheckCondition(inf,form);
 	if (rval < 0) return rval;
 	if (rval == 0) return 0;
 
 	/** Issue horizontal rule between records? **/
-	if (stAttrValue(stLookup(form,"rulesep"),NULL,&ptr,0) >= 0 && ptr && !strcmp(ptr,"yes"))
+	/** This feature currently isn't available **/
+	/*if (stAttrValue(stLookup(form,"rulesep"),NULL,&ptr,0) >= 0 && ptr && !strcmp(ptr,"yes"))
 	    {
 	    rulesep=1;
-	    }
+	    }*/
 
-	/** Issue form feed between records? **/
+	/** Issue form feed (page break) between records? **/
 	if (stAttrValue(stLookup(form,"ffsep"),NULL,&ptr,0) >= 0 && ptr && !strcmp(ptr,"yes"))
 	    {
 	    ffsep=1;
@@ -2521,8 +2465,9 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	    if (!strcmp(ptr,"inner")) inner_mode = 1;
 	    }
 
-	/** Relative-Y record limiter? **/
-	if (stAttrValue(stLookup(form,"relylimit"),&relylimit,NULL,0) >= 0)
+	/** Relative-Y record limiter? (maximum vertical space we can use) **/
+	/** This feature currently isn't available **/
+	/*if (stAttrValue(stLookup(form,"relylimit"),&relylimit,NULL,0) >= 0)
 	    {
 	    if (outer_mode)
 	        {
@@ -2534,7 +2479,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		mssError(1,"RPT","relylimit is incompatible with rulesep/ffsep in form '%s'", form->Name);
 		return -1;
 		}
-	    }
+	    }*/
 
 	/** Record-count limiter? **/
 	if (stAttrValue(stLookup(form,"reclimit"),&reclimit,NULL,0) >= 0)
@@ -2567,6 +2512,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	qy = ac->Queries[ac->Count-1];
 	while(rval == 0)
 	    {
+	    /** Record limit reached? **/
 	    if (/*(relylimit != -1 && prtGetRelVPos(rs->PSession) >= relylimit) || */
 	        (reclimit != -1 && reccnt >= reclimit))
 	        {
@@ -2577,23 +2523,32 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		err = 1;
 		break;
 		}
+
+	    /** Print out the contents of the form **/
 	    rval = rpt_internal_DoContainer(inf, form, rs, container_handle);
 	    if (rval < 0) err = 1;
+
+	    /** Outer/Inner mode check **/
 	    if (outer_mode && qy->InnerExecCnt == 0)
 	        {
 		mssError(err?0:1,"RPT","No inner-mode form/table was run for outer-mode '%s'",form->Name);
 		err = 1;
 		}
+
+	    /** Emit a page break if requested **/
 	    if (ffsep) prtWriteFF(container_handle);
-	    expModifyParam(inf->ObjList, "this", inf->Obj); /* page no changed, force re-eval */
+
+	    expModifyParam(inf->ObjList, "this", inf->Obj); /* page number changed, force re-eval */
 	    /*if (rulesep) prtWriteLine(rs->PSession);*/
 	    rval = rpt_internal_NextRecord(ac, inf, form, rs, 0);
 	    reccnt++;
 	    if (err) break;
 	    }
 
+	/** We're finished with the query **/
 	rpt_internal_Deactivate(inf, ac);
 
+	/** Set formatting/style information back to how it was before **/
 	rpt_internal_CheckFormats(form, oldmfmt, olddfmt, oldnfmt, 1);
 	prtSetTextStyle(container_handle, &oldstyle);
 
@@ -2602,6 +2557,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 
     return 0;
     }
+
 
 #if 00
 /*** rpt_internal_DoFooter - generate a report footer on demand.  This is
@@ -2890,6 +2846,11 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
 		    rval = rpt_internal_DoTable(inf, subobj, rs, container_handle);
 		    if (rval < 0) break;
 		    }
+                else if (!strcmp(subobj->UsrType, "report/section"))
+                    {
+                    rval = rpt_internal_DoSection(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+                    }
 		}
 	    }
 
@@ -3284,6 +3245,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     pExpression exp;
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
     int resolution;
+    char* res_str;
     double pagewidth, pageheight;
     int do_reset;
 
@@ -3305,8 +3267,10 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    }
 
 	/** Resolution specified? **/
-	if (stAttrValue(rpt_internal_GetParam(inf,"resolution"), &resolution, NULL, 0) == 0)
+	res_str = NULL;
+	if (stAttrValue(rpt_internal_GetParam(inf,"resolution"), &resolution, &res_str, 0) == 0)
 	    {
+	    if (res_str) resolution = strtol(res_str, NULL, 10);
 	    prtSetResolution(ps, resolution);
 	    }
 
@@ -3521,15 +3485,15 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 			break;
 			}
 		    }
+#endif
                 else if (!strcmp(subreq->UsrType,"report/section"))
                     {
-                    if (rpt_internal_DoSection(inf, subreq, rs, NULL) <0)
+                    if (rpt_internal_DoSection(inf, subreq, rs, rs->PageHandle) <0)
                         {
                         err = 1;
                         break;
                         }
                     }
-#endif
 		else if (!strcmp(subreq->UsrType,"report/table"))
 		    {
 		    if (rpt_internal_DoTable(inf, subreq,rs,rs->PageHandle) <0)

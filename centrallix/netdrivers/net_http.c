@@ -1770,9 +1770,9 @@ nht_internal_ParseHeaders(pNhtConn conn)
 	 ** tail, as in standard goto-based error handling.
 	 **/
 	toktype = mlxNextToken(s);
-	if (toktype == MLX_TOK_EOF)
+	if (toktype == MLX_TOK_EOF || toktype == MLX_TOK_EOL)
 	    {
-	    /** MSIE likes to open connections and then close them without
+	    /** Browsers like to open connections and then close them without
 	     ** sending a request; don't print errors on this condition.
 	     **/
 	    mlxCloseSession(s);
