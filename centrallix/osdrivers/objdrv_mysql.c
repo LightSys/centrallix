@@ -398,6 +398,8 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char tmp[32];
     char * add_quote;
     char * str;
+    int err;
+    char * errtxt;
 
         xsInit(&query);
 
@@ -492,10 +494,17 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 
         if(mysql_query(&conn->Handle,query.String)) goto error;
         result = mysql_store_result(&conn->Handle);
-	if (mysql_errno(&conn->Handle))
+	err = mysql_errno(&conn->Handle);
+	if (err)
 	    {
+	    errtxt = mysql_error(&conn->Handle);
+	    mssError(1,"MYSD","SQL command failed: %s", errtxt);
 	    if (result) mysql_free_result(result);
 	    result = MYSD_RUNQUERY_ERROR;
+	    if (err == 1022 || err == 1061 || err == 1062)
+		errno = EEXIST;
+	    else
+		errno = EINVAL;
 	    }
 
     error:
