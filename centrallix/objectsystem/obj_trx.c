@@ -365,7 +365,7 @@ oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
 	/** Set the trx pointer for later use. **/
@@ -532,7 +532,7 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
     return 0;
@@ -587,7 +587,7 @@ oxtDelete(pObject obj, pObjTrxTree* oxt)
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
     return 0;
