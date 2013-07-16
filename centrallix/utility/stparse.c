@@ -398,6 +398,27 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     }
 
 
+/*** stGetObjAttrValue - return the value of an expression in a structure
+ *** file, given the struct node containing the attribute.  This call is
+ *** designed to have the same API as objGetAttrValue().
+ ***/
+int
+stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
+    {
+    pStructInf attr_inf;
+
+	/** Find the attribute **/
+	attr_inf = stLookup(this, attrname);
+	if (!attr_inf)
+	    {
+	    /** NULL value - attribute does not exist **/
+	    return 1;
+	    }
+
+    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL);
+    }
+
+
 /*** stGetAttrValueOSML - return the value of an expression, evaluated
  *** in the context of an OSML session.
  ***/
@@ -1588,4 +1609,5 @@ stPrint_ne(pStruct inf)
     {
     return stPrint_ne_r(inf, 0);
     }
+
 
