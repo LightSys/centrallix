@@ -1,4 +1,5 @@
 #include "net_http.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -170,7 +171,8 @@ nht_internal_ConnHandler(void* connfd_v)
     char* ptr;
     char* usrname;
     char* passwd = NULL;
-    pStruct url_inf,find_inf,akey_inf;
+    pStruct url_inf = NULL;
+    pStruct find_inf,akey_inf;
     int tid = -1;
     handle_t w_timer = XHN_INVALID_HANDLE, i_timer = XHN_INVALID_HANDLE;
     pNhtConn conn = NULL;
@@ -181,6 +183,7 @@ nht_internal_ConnHandler(void* connfd_v)
     char timestr[80];
     pNhtApp app;
     pNhtAppGroup group;
+    int context_started = 0;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -195,7 +198,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	if (!conn)
 	    {
 	    netCloseTCP(connfd, 1000, 0);
-	    thExit();
+	    goto out;
 	    }
 
 	/** Restrict access to connections from localhost only? **/
@@ -228,8 +231,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    /*if (*(conn->Cookie))
 		printf("Warning: session %s did not provide an Auth header.\n", conn->Cookie);*/
-	    nht_internal_FreeConn(conn);
-	    thExit();
+	    goto out;
 	    }
 
 	/** Got authentication.  Parse the auth string. **/
@@ -244,8 +246,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "\r\n"
 			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    nht_internal_FreeConn(conn);
-	    thExit();
+	    goto out;
 	    }
 
 	/** Check for a cookie -- if one, try to resume a session. **/
@@ -274,8 +275,7 @@ nht_internal_ConnHandler(void* connfd_v)
 		    printf("\nAuth Data: ");
 		    for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
 		    printf("\n");*/
-		    nht_internal_FreeConn(conn);
-	            thExit();
+		    goto out;
 		    }
 		thSetParam(NULL,"mss",conn->NhtSession->Session);
 		/*thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);*/
@@ -299,9 +299,9 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
+	    mssError(1,"NHT","Failed to handle HTTP request, exiting thread (could not parse URL).");
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    nht_internal_FreeConn(conn);
-	    conn = NULL;
+	    goto out;
 	    }
 	nht_internal_ConstructPathname(url_inf);
 
@@ -326,8 +326,7 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		    nht_internal_FreeConn(conn);
-		    thExit();
+		    goto out;
 		    }
 		else
 		    {
@@ -361,8 +360,7 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<A HREF=/ TARGET='%STR&HTE'></A>\r\n",
 				 NHT.ServerString, timestr);
-		    nht_internal_FreeConn(conn);
-		    thExit();
+		    goto out;
 		    }
 		}
 	    else
@@ -378,8 +376,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		nht_internal_FreeConn(conn);
-		thExit();
+		goto out;
 		}
 	    }
 	else if (conn->NhtSession)
@@ -401,8 +398,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		nht_internal_FreeConn(conn);
-		thExit();
+		goto out;
 		}
 	    }
 
@@ -422,14 +418,20 @@ nht_internal_ConnHandler(void* connfd_v)
 		/*printf("\nNew session requested, but user supplied invalid auth data: ");
 		for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
 		printf("\n");*/
-		nht_internal_FreeConn(conn);
-	        thExit();
+		goto out;
 		}
 
 	    /** Authentication succeeded - start a new session **/
 	    conn->NhtSession = nht_internal_AllocSession(usrname);
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
 	    nht_internal_LinkSess(conn->NhtSession);
+	    }
+
+	/** Start the application security context **/
+	if (conn->NhtSession && conn->NhtSession->Session)
+	    {
+	    cxssPushContext();
+	    context_started = 1;
 	    }
 
 	/** Bump last activity dates. **/
@@ -495,8 +497,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		nht_internal_FreeConn(conn);
-		thExit();
+		goto out;
 		}
 	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
@@ -580,15 +581,19 @@ nht_internal_ConnHandler(void* connfd_v)
 	if (url_inf) stFreeInf_ne(url_inf);
 	nht_internal_FreeConn(conn);
 	conn = NULL;
-
-    thExit();
+	if (context_started) cxssPopContext();
+	thExit();
 
     error:
 	mssError(1,"NHT","Failed to handle HTTP request, exiting thread (%s).",msg);
 	snprintf(sbuf,160,"HTTP/1.0 400 Request Error\r\n\r\n%s\r\n",msg);
 	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+
+    out:
+	if (url_inf) stFreeInf_ne(url_inf);
 	if (conn) nht_internal_FreeConn(conn);
-    thExit();
+	if (context_started) cxssPopContext();
+	thExit();
     }
 
 

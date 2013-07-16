@@ -2421,7 +2421,6 @@ int
 rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container_handle)
     {
     pQueryConn qy;
-    int rulesep=0;
     int ffsep=0;
     char* ptr;
     int err=0;
@@ -3737,6 +3736,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pStructInf ct_param;
     pStructInf find_inf;
     char* ptr;
+    char* endorsement_name;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
 	/*if (obj->SubPtr != obj->Pathname->nElements)
@@ -3754,6 +3754,13 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (!node)
 	    {
 	    mssError(0,"RPT","Could not open report node object");
+	    return NULL;
+	    }
+
+	/** Security check **/
+	if (endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    mssError(1,"RPT","Security check failed - endorsement '%s' required", endorsement_name);
 	    return NULL;
 	    }
 
