@@ -77,6 +77,9 @@ typedef struct _MSEC
 #else
     void*	ThrParam;
 #endif
+    void*	SecParam;			/* Security data handled by application */
+    int		(*SecParamCopyConstructor)(void* src, void** dst);
+    int		(*SecParamDestructor)(void*);
     }
     MTSecContext, *pMTSecContext;
 
@@ -342,6 +345,8 @@ int thGetGroupID(pThread thr);
 int thSetSupplementalGroups(pThread thr, int n_groups, gid_t* grouplist);
 int thGetSecContext(pThread thr, pMTSecContext context);
 int thSetSecContext(pThread thr, pMTSecContext context);
+int thSetSecParam(pThread thr, void* param, int (*copy_constructor)(void* src, void** dst), int (*destructor)(void*));
+void* thGetSecParam(pThread thr);
 
 
 /** MTASK File i/o functions **/
