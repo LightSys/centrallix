@@ -67,7 +67,8 @@ XSUPPORT=stparse.o \
 	 mime/mime_util.o \
 	 ptod.o	\
 	 param.o \
-	 iface.o
+	 iface.o \
+	 endorsement_utils.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
@@ -293,7 +294,8 @@ EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 
 XCXSSMODS=cxss_main.o \
 	  cxss_utility.o \
-	  cxss_entropy.o
+	  cxss_entropy.o \
+	  cxss_authstack.o
 CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
 
 # Javascript VM modules... for Centrallix side of things.
