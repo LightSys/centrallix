@@ -56,6 +56,41 @@ function im_set_source(a, v)
     pg_set(this.img, "src", v);
     }
 
+function im_action_load_image(aparam)
+    {
+    var newurl = '';
+    if (typeof aparam.Source != 'undefined')
+	newurl = aparam.Source;
+    else
+	return;
+
+    // parameters
+    for(var p in aparam)
+	{
+	if (p == '_Origin' || p == 'Source' || p == '_EventName') continue;
+	var v = aparam[p];
+	if (newurl.lastIndexOf('?') > newurl.lastIndexOf('/'))
+	    newurl += '&';
+	else
+	    newurl += '?';
+	newurl += (htutil_escape(p) + '=' + htutil_escape(v));
+	}
+
+    // session linkage
+    if (newurl.substr(0,1) == '/')
+	{
+	if (newurl.lastIndexOf('?') > newurl.lastIndexOf('/'))
+	    newurl += '&';
+	else
+	    newurl += '?';
+	newurl += "cx__akey=" + window.akey.substr(0,49);
+	}
+
+    this.source = newurl;
+    //pg_set(this.img, "src", newurl);
+    pg_serialized_load(this.img, newurl);
+    }
+
 function im_init(l)
     {
     htr_init_layer(l,l,"im");
@@ -75,6 +110,9 @@ function im_init(l)
 
     var iv = l.ifcProbeAdd(ifValue);
     iv.Add("source", im_get_source, im_set_source);
+
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("LoadImage", im_action_load_image);
 
     return l;
     }

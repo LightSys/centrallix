@@ -57,7 +57,7 @@
 /*** Structure for a password file entry. **/
 typedef struct
     {
-    char	Name[16];
+    char	Name[32];
     char	Passwd[20];
     int		Uid;
     int		Gid;
@@ -149,8 +149,8 @@ uxu_internal_CopyPwEnt(struct passwd* pwent)
 	if (!this) return NULL;
 
 	/** Fill it in **/
-	memccpy(this->Name, pwent->pw_name, '\0', 15);
-	this->Name[15]=0;
+	memccpy(this->Name, pwent->pw_name, '\0', 31);
+	this->Name[31]=0;
 	memccpy(this->Passwd, pwent->pw_passwd, '\0', 19);
 	this->Passwd[19] = 0;
 	this->Uid = pwent->pw_uid;

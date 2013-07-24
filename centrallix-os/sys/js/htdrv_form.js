@@ -228,6 +228,7 @@ function form_cb_is_discard_ready()
 
     if(!this.confirm_discard)
 	{
+	this.ClearAll();
 	this.osrc.QueryContinue(this);
 	return false;
 	}
@@ -1197,6 +1198,8 @@ function form_action_submit(aparam)
     var nodetype = wgtrGetType(node);
     if (nodetype == "widget/component")
 	node.ifcProbe(ifAction).Invoke("Instantiate", param);
+    else if (nodetype == "widget/image")
+	node.ifcProbe(ifAction).Invoke("LoadImage", param);
     else if ((nodetype == "widget/page" || nodetype == "widget/component-decl") && aparam.NewPage)
 	node.ifcProbe(ifAction).Invoke("Launch", param);
     else if (nodetype == "widget/page" || nodetype == "widget/component-decl" || nodetype == "widget/html")

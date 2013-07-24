@@ -13,6 +13,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -573,19 +574,21 @@ int exp_fn_reverse_isnull(pExpression tree, pParamObjects objlist, pExpression i
     if (tree->Flags & EXPR_F_NULL) 
 	i0->Flags |= EXPR_F_NULL;
     else
-	i0->Flags &= ~EXPR_F_NULL;
-    switch(tree->DataType)
 	{
-	case DATA_T_INTEGER: i0->Integer = tree->Integer; break;
-	case DATA_T_STRING:
-	    if (i0->Alloc && i0->String)
-		{
-		nmSysFree(i0->String);
-		}
-	    i0->Alloc = 0;
-	    i0->String = tree->String;
-	    break;
-	default: memcpy(&(i0->Types), &(tree->Types), sizeof(tree->Types)); break;
+	i0->Flags &= ~EXPR_F_NULL;
+	switch(tree->DataType)
+	    {
+	    case DATA_T_INTEGER: i0->Integer = tree->Integer; break;
+	    case DATA_T_STRING:
+		if (i0->Alloc && i0->String)
+		    {
+		    nmSysFree(i0->String);
+		    }
+		i0->Alloc = 0;
+		i0->String = tree->String;
+		break;
+	    default: memcpy(&(i0->Types), &(tree->Types), sizeof(tree->Types)); break;
+	    }
 	}
     i0->DataType = tree->DataType;
     return expReverseEvalTree(i0, objlist);
@@ -2038,6 +2041,31 @@ int exp_fn_square(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+int exp_fn_has_endorsement(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* context;
+    if (!i0 || (i0->DataType != DATA_T_STRING) || (i1 && i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","has_endorsement() requires one or two string parameters");
+	return -1;
+	}
+    tree->DataType = DATA_T_INTEGER;
+    tree->Integer = 0;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i1 || (i1->Flags & EXPR_F_NULL))
+	context="";
+    else
+	context = i1->String;
+    if (cxssHasEndorsement(i0->String, context) > 0)
+	tree->Integer = 1;
+    return 0;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -2441,6 +2469,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
 	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
 	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
+	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);

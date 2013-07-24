@@ -420,6 +420,19 @@ prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	/** Just makin' sure... **/
 	if (!lm_inf) return -1;
 
+	/** Sequence the objects in the column if Y not specified **/
+	if (!(new_child_obj->Flags & PRT_OBJ_F_YSET))
+	    {
+	    new_child_obj->X = 0;
+	    }
+	if (!(new_child_obj->Flags & PRT_OBJ_F_YSET))
+	    {
+	    if (!lm_inf->CurrentCol->ContentTail)
+		new_child_obj->Y = 0;
+	    else
+		new_child_obj->Y = lm_inf->CurrentCol->ContentTail->Y + lm_inf->CurrentCol->ContentTail->Height;
+	    }
+
 	/** Need to adjust the height/width if unspecified? **/
 	if (new_child_obj->Width < 0)
 	    new_child_obj->Width = prtInnerWidth(lm_inf->CurrentCol);

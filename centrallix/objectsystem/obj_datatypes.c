@@ -405,8 +405,10 @@ objFormatDateTmp(pDateTime dt, char* format)
      ** but format strings better not be user supplied...
      **/
     static char tmp[80];
-    
+
+	if (!dt) return NULL;
         if(obj_internal_FormatDate(dt,tmp,format,80)) return NULL;
+
     return tmp;
     }
 

@@ -1,4 +1,5 @@
 #include "net_http.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -170,19 +171,19 @@ nht_internal_ConnHandler(void* connfd_v)
     char* ptr;
     char* usrname;
     char* passwd = NULL;
-    pStruct url_inf,find_inf,akey_inf;
+    pStruct url_inf = NULL;
+    pStruct find_inf,akey_inf;
     int tid = -1;
     handle_t w_timer = XHN_INVALID_HANDLE, i_timer = XHN_INVALID_HANDLE;
-    pNhtUser usr;
     pNhtConn conn = NULL;
-    pNhtSessionData nsess;
-    int akey[4];
     unsigned char t_lsb;
-    int noact = 0;
     int err;
     time_t t;
     struct tm* timeptr;
     char timestr[80];
+    pNhtApp app;
+    pNhtAppGroup group;
+    int context_started = 0;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -197,7 +198,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	if (!conn)
 	    {
 	    netCloseTCP(connfd, 1000, 0);
-	    thExit();
+	    goto out;
 	    }
 
 	/** Restrict access to connections from localhost only? **/
@@ -230,8 +231,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    /*if (*(conn->Cookie))
 		printf("Warning: session %s did not provide an Auth header.\n", conn->Cookie);*/
-	    nht_internal_FreeConn(conn);
-	    thExit();
+	    goto out;
 	    }
 
 	/** Got authentication.  Parse the auth string. **/
@@ -246,8 +246,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "\r\n"
 			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    nht_internal_FreeConn(conn);
-	    thExit();
+	    goto out;
 	    }
 
 	/** Check for a cookie -- if one, try to resume a session. **/
@@ -276,8 +275,7 @@ nht_internal_ConnHandler(void* connfd_v)
 		    printf("\nAuth Data: ");
 		    for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
 		    printf("\n");*/
-		    nht_internal_FreeConn(conn);
-	            thExit();
+		    goto out;
 		    }
 		thSetParam(NULL,"mss",conn->NhtSession->Session);
 		/*thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);*/
@@ -301,19 +299,20 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
+	    mssError(1,"NHT","Failed to handle HTTP request, exiting thread (could not parse URL).");
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    nht_internal_FreeConn(conn);
-	    conn = NULL;
+	    goto out;
 	    }
 	nht_internal_ConstructPathname(url_inf);
 
 	/** Watchdog ping? **/
+	conn->NotActivity = 0;
 	if ((find_inf=stLookup_ne(url_inf,"cx__noact")))
 	    {
 	    if (strtol(find_inf->StrVal,NULL,0) != 0)
-		noact = 1;
+		conn->NotActivity = 1;
 	    }
-	if (!strcmp(conn->URL,"/INTERNAL/ping"))
+	if (!strcmp(url_inf->StrVal,"/INTERNAL/ping"))
 	    {
 	    if (conn->NhtSession)
 		{
@@ -327,11 +326,23 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		    nht_internal_FreeConn(conn);
-		    thExit();
+		    goto out;
 		    }
 		else
 		    {
+		    /** Update watchdogs on app and group, if specified **/
+		    find_inf = stLookup_ne(url_inf,"cx__akey");
+		    if (find_inf)
+			{
+			if (nht_internal_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) == 0)
+			    {
+			    /** session key matched... now update app and group **/
+			    if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
+			    if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
+			    }
+			}
+
+		    /** Report current time to client as a part of ping response **/
 		    t = time(NULL);
 		    timeptr = localtime(&t);
 		    if (timeptr)
@@ -349,8 +360,7 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<A HREF=/ TARGET='%STR&HTE'></A>\r\n",
 				 NHT.ServerString, timestr);
-		    nht_internal_FreeConn(conn);
-		    thExit();
+		    goto out;
 		    }
 		}
 	    else
@@ -366,8 +376,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		nht_internal_FreeConn(conn);
-		thExit();
+		goto out;
 		}
 	    }
 	else if (conn->NhtSession)
@@ -376,7 +385,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	     ** however if cx__noact is set, only reset the watchdog timer.
 	     **/
 	    err = 0;
-	    if (!noact && err == 0)
+	    if (!conn->NotActivity && err == 0)
 		err = nht_internal_ResetWatchdog(i_timer);
 	    if (err == 0)
 		err = nht_internal_ResetWatchdog(w_timer);
@@ -389,14 +398,14 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		nht_internal_FreeConn(conn);
-		thExit();
+		goto out;
 		}
 	    }
 
 	/** No cookie or no session for the given cookie? **/
 	if (!conn->NhtSession)
 	    {
+	    /** Attempt authentication **/
 	    if (mssAuthenticate(usrname, passwd) < 0)
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
@@ -409,55 +418,31 @@ nht_internal_ConnHandler(void* connfd_v)
 		/*printf("\nNew session requested, but user supplied invalid auth data: ");
 		for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
 		printf("\n");*/
-		nht_internal_FreeConn(conn);
-	        thExit();
+		goto out;
 		}
-	    usr = (pNhtUser)xhLookup(&(NHT.UsersByName), usrname);
-	    if (!usr)
-		{
-		usr = (pNhtUser)nmMalloc(sizeof(NhtUser));
-		usr->SessionCnt = 0;
-		strtcpy(usr->Username, usrname, sizeof(usr->Username));
-		xhAdd(&(NHT.UsersByName), usr->Username, (void*)(usr));
-		xaAddItem(&NHT.UsersList, (void*)usr);
-		}
-	    if (usr->SessionCnt >= NHT.UserSessionLimit)
-		{
-		nht_internal_DiscardASession(usr);
-		}
-	    nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
-	    strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
-	    strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
-	    thGetSecContext(NULL, &(nsess->SecurityContext));
-	    nsess->User = usr;
-	    nsess->Session = thGetParam(NULL,"mss");
-	    nsess->IsNewCookie = 1;
-	    nsess->ObjSess = objOpenSession("/");
-	    nsess->Errors = syCreateSem(0,0);
-	    nsess->ControlMsgs = syCreateSem(0,0);
-	    nsess->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeout, (void*)nsess);
-	    nsess->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeout, (void*)nsess);
-	    nsess->LinkCnt = 1;
-	    xaInit(&nsess->Triggers,16);
-	    xaInit(&nsess->ErrorList,16);
-	    xaInit(&nsess->ControlMsgsList,16);
-	    xaInit(&nsess->OsmlQueryList,64);
-	    nht_internal_CreateCookie(nsess->Cookie);
-	    cxssGenerateKey((unsigned char*)akey, sizeof(akey));
-	    sprintf(nsess->AKey, "%8.8x%8.8x%8.8x%8.8x", akey[0], akey[1], akey[2], akey[3]);
-	    xhnInitContext(&(nsess->Hctx));
-	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
-	    usr->SessionCnt++;
-	    xaAddItem(&(NHT.Sessions), (void*)nsess);
-	    nsess->CachedApps = (pXHashTable)nmSysMalloc(sizeof(XHashTable));
-	    xhInit(nsess->CachedApps, 127, 4);
-	    conn->NhtSession = nsess;
-	    printf("NHT: new session for username [%s], cookie [%s]\n", nsess->Username, nsess->Cookie);
+
+	    /** Authentication succeeded - start a new session **/
+	    conn->NhtSession = nht_internal_AllocSession(usrname);
+	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
 	    nht_internal_LinkSess(conn->NhtSession);
 	    }
 
-	if (!noact)
+	/** Start the application security context **/
+	if (conn->NhtSession && conn->NhtSession->Session)
+	    {
+	    cxssPushContext();
+	    context_started = 1;
+	    }
+
+	/** Bump last activity dates. **/
+	if (!conn->NotActivity)
+	    {
 	    objCurrentDate(&(conn->NhtSession->User->LastActivity));
+	    objCurrentDate(&(conn->NhtSession->LastActivity));
+	    }
+
+	/** Update most-recent-ipaddr in session **/
+	strtcpy(conn->NhtSession->LastIPAddr, conn->IPAddr, sizeof(conn->NhtSession->LastIPAddr));
 
 	/** Set nht session http ver **/
 	strtcpy(conn->NhtSession->HTTPVer, conn->HTTPVer, sizeof(conn->NhtSession->HTTPVer));
@@ -503,7 +488,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
 	    akey_inf = stLookup_ne(url_inf,"cx__akey");
-	    if (!akey_inf || strcmp(akey_inf->StrVal, conn->NhtSession->AKey))
+	    if (!akey_inf || strcmp(akey_inf->StrVal, conn->NhtSession->SKey))
 		{
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
@@ -512,8 +497,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		nht_internal_FreeConn(conn);
-		thExit();
+		goto out;
 		}
 	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
@@ -597,15 +581,19 @@ nht_internal_ConnHandler(void* connfd_v)
 	if (url_inf) stFreeInf_ne(url_inf);
 	nht_internal_FreeConn(conn);
 	conn = NULL;
-
-    thExit();
+	if (context_started) cxssPopContext();
+	thExit();
 
     error:
 	mssError(1,"NHT","Failed to handle HTTP request, exiting thread (%s).",msg);
 	snprintf(sbuf,160,"HTTP/1.0 400 Request Error\r\n\r\n%s\r\n",msg);
 	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+
+    out:
+	if (url_inf) stFreeInf_ne(url_inf);
 	if (conn) nht_internal_FreeConn(conn);
-    thExit();
+	if (context_started) cxssPopContext();
+	thExit();
     }
 
 

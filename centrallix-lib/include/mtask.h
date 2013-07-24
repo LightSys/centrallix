@@ -77,6 +77,9 @@ typedef struct _MSEC
 #else
     void*	ThrParam;
 #endif
+    void*	SecParam;			/* Security data handled by application */
+    int		(*SecParamCopyConstructor)(void* src, void** dst);
+    int		(*SecParamDestructor)(void*);
     }
     MTSecContext, *pMTSecContext;
 
@@ -209,7 +212,7 @@ typedef struct _EV
     int		ReqLen;				/* Requested length/count */
     int		ReqSeek;			/* Requested seek offset */
     int		ReqFlags;			/* Flags for request */
-    unsigned long TargetTickCnt;		/* Sleep exit point */
+    unsigned int TargetTickCnt;			/* Sleep exit point */
     struct _EV*	NextPeer;			/* Next related event */
     int		TableIdx;			/* Index in event-wait-tbl */
     }
@@ -299,9 +302,9 @@ typedef struct _OBJ
 /** MTASK General Functions. **/
 void mtSetDebug(int debuglevel);
 pThread mtInitialize(int flags, void (*start_fn)());
-unsigned long mtRealTicks();
-unsigned long mtTicks();
-unsigned long mtLastTick();
+unsigned int mtRealTicks();
+unsigned int mtTicks();
+unsigned int mtLastTick();
 
 
 /** MTASK Signal handing functions **/
@@ -342,6 +345,8 @@ int thGetGroupID(pThread thr);
 int thSetSupplementalGroups(pThread thr, int n_groups, gid_t* grouplist);
 int thGetSecContext(pThread thr, pMTSecContext context);
 int thSetSecContext(pThread thr, pMTSecContext context);
+int thSetSecParam(pThread thr, void* param, int (*copy_constructor)(void* src, void** dst), int (*destructor)(void*));
+void* thGetSecParam(pThread thr);
 
 
 /** MTASK File i/o functions **/

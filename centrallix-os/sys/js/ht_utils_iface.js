@@ -319,12 +319,12 @@ function isCancel(c)
 
 // the Action interface Initializer - allows outside objects to invoke
 // 'actions' on a given widget.
-function ifAction()
-    {
     function ifaction_invoke(a,ap) //ap stands for [a]ction [p]arameters (a hash of parameters)
 	{
 	if (this.Actions[a]) 
 	    return this.Actions[a].call(this.obj, ap, a);
+	else if (this.undefined_action)
+	    return this.undefined_action.call(this.obj, ap, a);
 	else if (pg_diag)
 	    alert("Invoke action: " + this.obj.id + " does not implement action " + a);
 	return null;
@@ -359,12 +359,20 @@ function ifAction()
 	    }
 	return alist;
 	}
+    function ifaction_setundefined(cb)
+	{
+	this.undefined_action = cb;
+	}
+function ifAction()
+    {
+    this.undefined_action = null;
     this.Actions = [];
     this.Add = ifaction_add;
     this.Exists = ifaction_exists;
     this.Invoke = ifaction_invoke;
     this.SchedInvoke = ifaction_schedinvoke;
     this.GetActionList = ifaction_getactionlist;
+    this.SetUndefinedAction = ifaction_setundefined;
     }
 
 
@@ -375,8 +383,6 @@ function ifAction()
 // management functions that differ from the already in-built event
 // management functions in the browser. (to allow custom events).
 //
-function ifEvent()
-    {
     function ifevent_add(e)
 	{
 	if (!this.Events[e]) this.Events[e] = [];
@@ -574,6 +580,8 @@ function ifEvent()
 	if (this.late_binding && !this.Events[e])
 	    {
 	    this.Add(e);
+	    if (this.new_event_callback)
+		this.new_event_callback.call(this.obj, e);
 	    }
 	if (this.Events[e])
 	    {
@@ -606,9 +614,17 @@ function ifEvent()
 	{
 	return this.late_binding;
 	}
+    function ifevent_set_new_callback(cb)
+	{
+	this.new_event_callback = cb;
+	}
+function ifEvent()
+    {
     this.late_binding = false;
+    this.new_event_callback = null;
     this.EnableLateConnectBinding = ifevent_enable_late;
     this.IsLateBindingEnabled = ifevent_is_late_bind;
+    this.SetNewEventCallback = ifevent_set_new_callback;
     this.Events = [];
     this.Add = ifevent_add;
     this.Hook = ifevent_hook;
@@ -623,8 +639,6 @@ function ifEvent()
 
 // Value interface. A Value instance is really just a container of
 // key/value pairs.
-function ifValue()
-    {
     function ifvalue_checkexist(n)
 	{
 	if (!this._Attributes[n])
@@ -750,6 +764,8 @@ function ifValue()
 	return value;
 	}
 
+function ifValue()
+    {
     // Internal declarations
     this._CheckExist = ifvalue_checkexist;
     this._NullNotExist = null; // if defined, this is the handler that runs whenever a value is null or does not exist (instead of an error occurring)

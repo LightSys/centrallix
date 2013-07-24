@@ -77,6 +77,7 @@ obj_internal_AllocTree()
     memset(this,0,sizeof(ObjTrxTree));
     this->Status = OXT_S_PENDING;
     this->AllocObj = 0;
+    this->AttrValue = NULL;
     xaInit(&(this->Children),16);
     return this;
     }
@@ -181,6 +182,16 @@ obj_internal_SetTreeAttr(pObjTrxTree oxt, int type, pObjData val)
 
     	/** Set type **/
 	oxt->AttrType = type;
+
+	/** Already set?  Unset it if so. **/
+	if (oxt->AttrValue)
+	    {
+	    nmSysFree(oxt->AttrValue);
+	    oxt->AttrValue = NULL;
+	    }
+
+	/** NULL?  Return and leave value unset. **/
+	if (!val) return 0;
 
 	/** Figure length of allocated value space **/
 	switch(type)
@@ -354,7 +365,7 @@ oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
 	/** Set the trx pointer for later use. **/
@@ -521,7 +532,7 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
     return 0;
@@ -576,7 +587,7 @@ oxtDelete(pObject obj, pObjTrxTree* oxt)
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
     return 0;

@@ -649,6 +649,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 
 	    /** Convert the AND clause to an INTEGER node with value 1 **/
 	    where_clause->NodeType = EXPR_N_INTEGER;
+	    where_clause->DataType = DATA_T_INTEGER;
 	    where_clause->ObjCoverageMask = 0;
 	    where_clause->ObjOuterMask = 0;
 	    where_clause->Integer = 1;
@@ -2788,6 +2789,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
     int id=-1,i,dt;
+    int any_dt;
 
     	/** Request for ls__rowid? **/
 	if (!strcmp(attrname,"ls__rowid") || !strcmp(attrname,"cx__rowid") ||
@@ -2808,6 +2810,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 
 	/** If select *, then loop through FROM objects **/
+	any_dt = 0;
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
 	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
@@ -2817,12 +2820,25 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
 		    if (dt > 0)
 			return dt;
+
+		    /** source doesn't know the attribute, but might accept
+		     ** a setattr on it?
+		     **/
+		    if (dt == DATA_T_UNAVAILABLE)
+			any_dt = 1;
 		    }
 		}
 	    }
-	    
+
+	/** Didn't find it? **/
 	if (id == -1) 
 	    {
+	    /** Return 'unavailable' if a source indicated that it might
+	     ** accept a new/non-null attribute.
+	     **/
+	    if (any_dt)
+		return DATA_T_UNAVAILABLE;
+
 	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
 	        return -1;
 	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
@@ -3080,7 +3096,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 		if (p->ObjList->Objects[i])
 		    {
 		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
-		    if (dt > 0)
+		    if (dt >= 0)
 			{
 			rval = objSetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
 			return rval;
@@ -3111,38 +3127,45 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	    }
 
 	/** Set the expression result to the given value. **/
-	exp->Flags &= ~(EXPR_F_NULL);
-	switch(exp->DataType)
+	if (value)
 	    {
-	    case DATA_T_INTEGER: 
-		exp->Integer = value->Integer; 
-		break;
-	    case DATA_T_STRING: 
-		if (exp->Alloc && exp->String)
-		    {
-		    nmSysFree(exp->String);
-		    exp->Alloc = 0;
-		    }
-		if (strlen(value->String) > 63)
-		    {
-		    exp->Alloc = 1;
-		    exp->String = nmSysMalloc(strlen(value->String)+1);
-		    }
-		else
-		    {
-		    exp->String = exp->Types.StringBuf;
-		    }
-		strcpy(exp->String, value->String);
-		break;
-	    case DATA_T_DOUBLE: 
-		exp->Types.Double = value->Double; 
-		break;
-	    case DATA_T_MONEY: 
-		memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
-		break;
-	    case DATA_T_DATETIME: 
-		memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
-		break;
+	    exp->Flags &= ~(EXPR_F_NULL);
+	    switch(exp->DataType)
+		{
+		case DATA_T_INTEGER: 
+		    exp->Integer = value->Integer; 
+		    break;
+		case DATA_T_STRING: 
+		    if (exp->Alloc && exp->String)
+			{
+			nmSysFree(exp->String);
+			exp->Alloc = 0;
+			}
+		    if (strlen(value->String) > 63)
+			{
+			exp->Alloc = 1;
+			exp->String = nmSysMalloc(strlen(value->String)+1);
+			}
+		    else
+			{
+			exp->String = exp->Types.StringBuf;
+			}
+		    strcpy(exp->String, value->String);
+		    break;
+		case DATA_T_DOUBLE: 
+		    exp->Types.Double = value->Double; 
+		    break;
+		case DATA_T_MONEY: 
+		    memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME: 
+		    memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
+		    break;
+		}
+	    }
+	else
+	    {
+	    exp->Flags |= EXPR_F_NULL;
 	    }
 
 	/** Evaluate the expression in reverse to set the value!! **/
@@ -3254,7 +3277,7 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
     pPseudoObject p = (pPseudoObject)inf_v;
     pObjPresentationHints ph;
     pObject obj;
-    int i, id;
+    int i, id, objid;
     pExpression e;
 
     	/** Request for ls__rowid? **/
@@ -3296,15 +3319,16 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    return NULL;
 	    }
 
-	/** Evaluate the expression to get the data type **/
+	/** Can we figure out what object this expression is referencing? **/
 	p->ObjList->Session = p->Stmt->Query->SessionID;
 	e = (pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id];
 	if (e->NodeType == EXPR_N_PROPERTY || e->NodeType == EXPR_N_OBJECT)
 	    {
-	    if (e->ObjID >= 0)
+	    objid = expObjID(e,p->ObjList);
+	    if (objid >= 0)
 		{
-		obj = p->ObjList->Objects[(int)e->ObjID];
-		if (obj && p->ObjList->GetTypeFn[(int)e->ObjID] == objGetAttrType)
+		obj = p->ObjList->Objects[objid];
+		if (obj && p->ObjList->GetTypeFn[objid] == objGetAttrType)
 		    {
 		    ph = objPresentationHints(obj, attrname);
 		    return ph;

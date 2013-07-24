@@ -13,12 +13,14 @@
 #include "cxlib/mtsession.h"
 #include "multiquery.h"
 #include "st_param.h"
+#include "param.h"
+#include "cxlib/qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -39,15 +41,17 @@
 /* distribution in the file "COPYING".					*/
 /* 									*/
 /* Module: 	objdrv_query.c						*/
-/* Author:	Tim Young						*/
-/* Creation:	<create data goes here>					*/
+/* Author:	Tim Young (TCY) / Greg Beeley (GRB)			*/
 /* Description:	This driver offers the ability to use a query stored	*/
 /*		in a structure file as a single entity.  You can     	*/
-/*		reference a .qy file as a sybase table, csl, etc...	*/
+/*		reference a .qy file as a sybase table, csv, etc...	*/
+/*		These stored queries are much like Views in traditional	*/
+/*		RDBMS systems.						*/
 /*									*/
 /************************************************************************/
 
 
+#define QY_MAX_PARAM	(16)
 
 /*** Structure used by this driver internally. ***/
 typedef struct 
@@ -56,19 +60,28 @@ typedef struct
     int		Flags;
     pObject	Obj;
     int		Mask;
+    int		Mode;
     pSnNode	Node;
     pStpInf	ParsedInf;
     pPseudoObject CurrentFetch;
     StringVec   SVvalue;
     IntVec      IVvalue;
     int 	Type;
-    pXString	Name;
+    char*	Name;
     int		CurrAttr;
     int		Version;
-    pObjQuery	MultiQuery;
     pObject	MultiQueryObject;
+    pParam	Parameters[QY_MAX_PARAM];
+    int		nParameters;
+    char*	SQL;
+    pParamObjects   ObjList;
     }
     QyData, *pQyData;
+
+
+/*** Flags for QyData and QyQuery ***/
+#define QY_F_USEHAVING_NAME		1	/* use HAVING clause when looking up by NAME */
+#define QY_F_USEHAVING_CRITERIA		2	/* use HAVING clause when applying additional criteria */
 
 
 #define QY(x) ((pQyData)(x))
@@ -76,10 +89,13 @@ typedef struct
 #define QY_T_ITEM	1
 #define QY_T_LIST	2
 
+
 /*** Structure used by queries for this driver. ***/
 typedef struct
     {
     pQyData	Data;
+    pObjQuery	MultiQuery;
+    int		Flags;
     char	NameBuf[256];
     int		ItemCnt;
     }
@@ -91,38 +107,128 @@ struct
     {
     int		dmy_global_variable;
     }
-    Qy_INF;
+    QY_INF;
 
 
-/*** QyOpen - open an object.
+/*** qy_internal_NameToExpression - create an expression tree that will
+ *** be passed to the query to look up one particular row using the 'name'
+ *** attribute.
+ ***/
+pExpression
+qy_internal_NameToExpression(char* name)
+    {
+    pExpression exp;
+    char expstr[128];
+
+	/** Build the string **/
+	if (qpfPrintf(NULL, expstr, sizeof(expstr), ":name = %STR&DQUOT", name) < 0)
+	    return NULL;
+
+	/** Compile it. **/
+	exp = expCompileExpression(expstr, NULL, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+    
+    return exp;
+    }
+
+
+/*** qy_internal_StartQuery - start the query, as specified by the sql
+ *** setting in the .qy file, and applying any query/parameter objects
+ *** that are needed (visible as ":parameters:xyz" in the query itself).
+ ***
+ *** Returns the resulting open MultiQuery handle.
+ ***/
+pObjQuery
+qy_internal_StartQuery(pQyData inf, char* name, pExpression criteria)
+    {
+    XString sql_string;
+    pObjQuery mq;
+
+	/** Build the SQL string **/
+	xsInit(&sql_string);
+	xsQPrintf(&sql_string, "%STR %[WHERE%] %[:name = %STR&DQUOT%] %[AND%] ",
+		inf->SQL,
+		(name != NULL || criteria != NULL),
+		name != NULL,
+		name,
+		(name != NULL && criteria != NULL));
+
+	/** Append on the criteria, if needed **/
+	if (criteria)
+	    expGenerateText(criteria, inf->ObjList, xsWrite, &sql_string, '\0', "cxsql", 0);
+
+	/** Fire off the query **/
+	mq = objMultiQuery(inf->Obj->Session, sql_string.String, inf->ObjList, 0);
+
+	/** Release memory for the SQL string **/
+	xsDeInit(&sql_string);
+
+    return mq;
+    }
+
+
+/*** internal close & cleanup routine
+ ***/
+int
+qy_internal_Close(pQyData inf)
+    {
+
+	if (inf && inf->MultiQueryObject)
+	    objClose(inf->MultiQueryObject);
+	if (inf && inf->SQL)
+	    nmSysFree(inf->SQL);
+	if (inf && inf->Node)
+	    inf->Node->OpenCnt--;
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
+	if (inf->Name)
+	    {
+	    nmSysFree(inf->Name);
+	    inf->Name = NULL;
+	    }
+	if (inf)
+	    nmFree(inf, sizeof(QyData));
+
+    return 0;
+    }
+
+
+/*** qyOpen - open an object.
  ***/
 void*
-QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pQyData inf;
-    int rval;
     char* node_path;
     pSnNode node = NULL;
-    pStructInf find_inf;
-    char* ptr;
-    char* name;
+    pStructInf param_inf;
     char* sql;
-    char newsql[254];
-    char sqlstring[254];
-    pXString tmpXString;
-    struct passwd* pwent;
+    int i,j;
+    pParam one_param;
+    pStruct one_open_ctl, open_ctl;
+    pObjQuery lookup_qy;
 
 	/** Allocate the structure **/
 	inf = (pQyData)nmMalloc(sizeof(QyData));
-	if (!inf) return NULL;
-	/** Zero out the record **/
+	if (!inf) goto error;
+
+	/** Zero out the structure **/
 	memset(inf,0,sizeof(QyData));
+
 	/** Set the parent Object **/
 	inf->Obj = obj;
+
 	/** Set the mask passed in from opening (see ../doc/OSDrivers.txt) **/
 	inf->Mask = mask;
+
 	/** Multiquery **/
 	inf->CurrentFetch=NULL;
+
+	inf->CurrAttr = 0;
+
+	/** Object List **/
+	inf->ObjList = expCreateParamList();
+	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
+	expAddParamToList(inf->ObjList,"parameters",NULL,0);
 
 	/** Determine the node path **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -133,9 +239,8 @@ QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    node = snNewNode(obj->Prev, usrtype);
 	    if (!node)
 	        {
-		nmFree(inf,sizeof(QyData));
 		mssError(0,"QY","Could not create new node object");
-		return NULL;
+		goto error;
 		}
 	    }
 	
@@ -154,26 +259,62 @@ QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** If _still_ no node, quit out. **/
 	if (!node)
 	    {
-	    nmFree(inf,sizeof(QyData));
 	    mssError(0,"QY","Could not open node object");
-	    return NULL;
+	    goto error;
 	    }
 
 	/** Set object params. **/
 	inf->Node = node;
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
-	/** increase the count of open items **/
+
+	/** Link to the node, increasing its reference count **/
 	inf->Node->OpenCnt++;
-	 /** Check format version **/
-        if (stAttrValue(stLookup(inf->Node->Data,"version"),&(inf->Version),NULL,0) < 0)
-            {
-	    inf->Version = 1;
-	    }
-	else
+
+	/** Get SQL string **/
+	if (stAttrValue(stLookup(inf->Node->Data,"sql"),NULL,&sql,0) < 0)
 	    {
-	    inf->Version = 2;
+	    mssError(1,"QY","'sql' property must be supplied for query objects");
+	    goto error;
+	    }
+	inf->SQL = nmSysStrdup(sql);
+
+	/** Get parameter list **/
+	for(i=0; i<inf->Node->Data->nSubInf; i++)
+	    {
+	    if (inf->nParameters >= QY_MAX_PARAM)
+		{
+		mssError(1,"QY","Too many parameters in query; maximum is %d", QY_MAX_PARAM);
+		goto error;
+		}
+	    param_inf = inf->Node->Data->SubInf[i];
+	    if (stStructType(param_inf) == ST_T_SUBGROUP && !strcmp(param_inf->UsrType,"query/parameter"))
+		{
+		/** Found a parameter.  Now set it up **/
+		one_param = paramCreateFromInf(param_inf);
+		if (!one_param) goto error;
+		inf->Parameters[inf->nParameters++] = one_param;
+
+		/** Set the value supplied by the user, if needed. **/
+		open_ctl = obj->Pathname->OpenCtl[obj->SubPtr-1];
+		if (open_ctl)
+		    {
+		    for(j=0; j<open_ctl->nSubInf; j++)
+			{
+			one_open_ctl = open_ctl->SubInf[j];
+			if (!strcmp(one_open_ctl->Name, one_param->Name))
+			    {
+			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    break;
+			    }
+			}
+		    }
+
+		/** Apply hints **/
+		paramEvalHints(one_param, NULL);
+		}
 	    }
 
+#if 00
 	    /** If this is not the first object opened **/	
 	    if ((pQyData)(obj->Data))
 		{
@@ -188,25 +329,43 @@ QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 
 /** **/
+#endif
 
 	/** If the .qy file is the end of the Pathname, We  **/
 	/** will not need to chop apart extra where clauses **/
 	if (obj->SubPtr == obj->Pathname->nElements)
 	    {
 	    inf->Type = QY_T_LIST;
-	    inf->CurrAttr = 0;
-	    inf->Name = NULL;
+	    inf->Name = nmSysStrdup(inf->Node->Data->Name);
 	    /** Number of path items we have looked at **/
 	    obj->SubCnt = 1;
 	    }
 	else
 	    {
+	    inf->Type = QY_T_ITEM;
+	    obj->SubCnt = 2;
+	    inf->Name = nmSysStrdup(obj->Pathname->Elements[obj->SubPtr + 1]);
+
+	    /** Run the query to find the requested object, by name **/
+	    lookup_qy = qy_internal_StartQuery(inf, inf->Name, NULL);
+	    if (!lookup_qy)
+		{
+		mssError(1,"QY","Could not open SQL query to fetch requested object '%s'", inf->Name);
+		goto error;
+		}
+	    inf->MultiQueryObject = objQueryFetch(lookup_qy, inf->Obj->Mode);
+	    objQueryClose(lookup_qy);
+	    lookup_qy = NULL;
+
+	    /** Didn't find it? **/
+	    if (!inf->MultiQueryObject)
+		goto error;
+	    }
+
+#if 00
 /** This code is not completely working yet.  do show query.qy/primarykey and watch it blow **/
 	    /** Pass the override parameter the next pathpart, that could be "where" info **/
 	    stpParsePathOverride(inf->ParsedInf,obj->Pathname->Elements[obj->SubPtr + 1]);
-
-	    inf->Type = QY_T_ITEM;
-	    obj->SubCnt = 2;
 	    if ((pQyData)(obj->Data)) 
 		{
 		/** If the multiquery object is already open **/
@@ -229,16 +388,21 @@ QyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 /** Right now only returns one row **/
 	        inf->MultiQueryObject = objQueryFetch(inf->MultiQuery,0);
 		}
-	    }
+#endif
 
-    return (void*)inf;
+	return (void*)inf;
+
+    error:
+	/** Erroring out.  Clean up after ourselves, then return NULL **/
+	qy_internal_Close(inf);
+	return NULL;
     }
 
 
-/*** QyClose - close an open object.
+/*** qyClose - close an open object.
  ***/
 int
-QyClose(void* inf_v, pObjTrxTree* oxt)
+qyClose(void* inf_v, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
 
@@ -251,65 +415,88 @@ QyClose(void* inf_v, pObjTrxTree* oxt)
 	
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
+#if 00
 	inf->ParsedInf->OpenCnt --;
 	if (inf->ParsedInf->OpenCnt == 0)
 	    stpFreeInf(inf->ParsedInf);
-	if (inf->Name)
-	    {
-	    xsDeInit(inf->Name);
-	    nmFree(inf->Name, sizeof(XString));
-	    inf->Name = NULL;
-	    }
-	nmFree(inf,sizeof(QyData));
+#endif
+
+	qy_internal_Close(inf);
 
     return 0;
     }
 
 
-/*** QyCreate - create a new object, without actually returning a
+/*** qyCreate - create a new object, without actually returning a
  *** descriptor for it.  For most drivers, it is safe to just call
  *** the Open method with create/exclude set, and then close the
  *** object immediately.
  ***/
 int
-QyCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+qyCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    int fd;
     void* inf;
 
     	/** Call open() then close() **/
 	obj->Mode = O_CREAT | O_EXCL;
-	inf = QyOpen(obj, mask, systype, usrtype, oxt);
+	inf = qyOpen(obj, mask, systype, usrtype, oxt);
 	if (!inf) return -1;
-	QyClose(inf, oxt);
+	qyClose(inf, oxt);
 
     return 0;
     }
 
 
-/*** QyDelete - delete an existing object.  For most drivers, it works to
+/*** qyDeleteObj - delete and close an open object.
+ ***/
+int
+qyDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    pQyData inf = (pQyData)inf_v;
+    int rval = 0;
+
+	/** Delete the underlying object, if we can. **/
+	if (inf->Type == QY_T_ITEM && inf->MultiQueryObject)
+	    {
+	    rval = objDeleteObj(inf->MultiQueryObject);
+	    inf->MultiQueryObject = NULL;
+	    }
+	else
+	    {
+	    rval = -1;
+	    }
+
+	/** Clean up. **/
+	qy_internal_Close(inf);
+
+    return rval;
+    }
+
+
+/*** qyDelete - delete an existing object.  For most drivers, it works to
  *** call open() first to make sure the thing exists and get information
  *** on it, and then "handle the close a bit differently" :)
  ***/
 int
-QyDelete(pObject obj, pObjTrxTree* oxt)
+qyDelete(pObject obj, pObjTrxTree* oxt)
     {
-    struct stat fileinfo;
-    pQyData inf, find_inf, search_inf;
-    int is_empty = 1;
-    int i;
+    pQyData inf;
 
     	/** Open the thing first to get the inf ptrs **/
 	obj->Mode = O_WRONLY;
-	inf = (pQyData)QyOpen(obj, 0, NULL, "", oxt);
+	inf = (pQyData)qyOpen(obj, 0, NULL, "", oxt);
 	if (!inf) return -1;
 
+	/** Call DeleteObj with it **/
+	return qyDeleteObj(inf, oxt);
+
+#if 00
 	/** Check to see if user is deleting the 'node object'. **/
 	if (obj->Pathname->nElements == obj->SubPtr)
 	    {
 	    if (inf->Node->OpenCnt > 1) 
 	        {
-		QyClose(inf, oxt);
+		qyClose(inf, oxt);
 		mssError(1,"QY","Cannot delete structure file: object in use");
 		return -1;
 		}
@@ -319,7 +506,7 @@ QyDelete(pObject obj, pObjTrxTree* oxt)
 	    is_empty = 1;
 	    if (!is_empty)
 	        {
-		QyClose(inf, oxt);
+		qyClose(inf, oxt);
 		mssError(1,"QY","Cannot delete: object not empty");
 		return -1;
 		}
@@ -350,37 +537,36 @@ QyDelete(pObject obj, pObjTrxTree* oxt)
 	nmFree(inf,sizeof(QyData));
 
     return 0;
+#endif
     }
 
 
-/*** QyRead - Structure elements have no content.  Fails.
+/*** qyRead - Structure elements have no content.  Fails.
  ***/
 int
-QyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
+qyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
-    mssError(1,"QY","Multiqueries do not have content.");
-    return -1;
+    return (inf->Type == QY_T_ITEM && inf->MultiQueryObject)?(objRead(inf->MultiQueryObject, buffer, maxcnt, offset, flags)):-1;
     }
 
 
-/*** QyWrite - Again, no content.  This fails.
+/*** qyWrite - Again, no content.  This fails.
  ***/
 int
-QyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
+qyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
-    mssError(1,"QY","Multiqueries do not have content.");
-    return -1;
+    return (inf->Type == QY_T_ITEM && inf->MultiQueryObject)?(objWrite(inf->MultiQueryObject, buffer, cnt, offset, flags)):-1;
     }
 
 
-/*** QyOpenQuery - open a directory query.  This driver is pretty 
+/*** qyOpenQuery - open a directory query.  This driver is pretty 
  *** unintelligent about queries.  So, we leave the query matching logic
  *** to the ObjectSystem management layer in this case.
  ***/
 void*
-QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
+qyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
 #if 00
     pObjQuery qyinf = NULL;
@@ -401,7 +587,7 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
     	/** Get the where clause restrictions **/
 	where_clause = qy->ItemWhere;
-	usr_where_clause = qy->Query->QyText;
+	usr_where_clause = qy->Query->qyText;
 	if (!usr_where_clause) usr_where_clause = "";
 	if (*usr_where_clause || *where_clause) 
 	    len = strlen(usr_where_clause) + strlen(where_clause) + 12;
@@ -470,14 +656,14 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 
 	/** Allocate memory for the new where clause **/
-	if (len) qy->QyText = (char*)nmMalloc(len);
-	if (len && !(qy->QyText)) 
+	if (len) qy->qyText = (char*)nmMalloc(len);
+	if (len && !(qy->qyText)) 
 	    {
 	    return NULL;
 	    }
 
 	/** Build the "final" where clause to use **/
-	ptr = qy->QyText;
+	ptr = qy->qyText;
 	if (*usr_where_clause)
 	    {
 	    ptr = memccpy(ptr, "(", '\0', len)-1;
@@ -536,25 +722,30 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->LLQueryObj = objOpen(qy->ObjInf->Obj->Session, qy->ItemSrc, O_RDONLY, 0600, "system/directory");
 	if (qy->LLQueryObj) 
 	    {
-	    qyinf = objOpenQuery(qy->LLQueryObj, qy->QyText, NULL,NULL,NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, qy->qyText, NULL,NULL,NULL);
 	    if (!qyinf) objClose(qy->LLQueryObj);
 	    }
 #endif
 
     pQyData inf = QY(inf_v);
     pQyQuery qy;
-    char* sql;
-    char newsql[255];
-    pXString tmpXString;
-    pStructInf find_inf;
 
+	/** Not supported for QY_T_ITEM **/
+	if (inf->Type == QY_T_ITEM)
+	    {
+	    mssError(1,"QY","Queries not supported on query object's row items");
+	    return NULL;
+	    }
+
+#if 00
     	/** If there are more parameters, they are part of the where **/
 	/** clause and need to be parsed out.  For now, just exit    **/
 	if (inf->Obj->SubPtr != inf->Obj->Pathname->nElements)
 	    {
-	    mssError(1,"STP","A where in this form is unsupported");
+	    mssError(1,"QY","A where in this form is unsupported");
 	    return NULL;
 	    }
+#endif
 
 	/** Allocate the query structure **/
 	qy = (pQyQuery)nmMalloc(sizeof(QyQuery));
@@ -564,87 +755,99 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->Data = inf;
 	qy->ItemCnt = 0;
 
+#if 00
 	find_inf = stLookup(inf->Node->Data,"sql");
 	sql = (char*)find_inf->StrVal[0];
 	tmpXString = stpSubstParam(inf->ParsedInf, sql);
 	memccpy(newsql,tmpXString->String,'\0',254);
 	newsql[254]='\0';
 	inf->MultiQuery = objMultiQuery(inf->Obj->Session, newsql, NULL, 0);
+#endif
+
+	qy->MultiQuery = qy_internal_StartQuery(inf, NULL, query->Tree);
     
     return (void*)qy;
     }
 
 
-/*** QyQueryFetch - get the next directory entry as an open object.
+/*** qyQueryFetch - get the next object from the underlying multiquery.
  ***/
 void*
-QyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
+qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pQyQuery qy = ((pQyQuery)(qy_v));
     pQyData inf;
-    char* new_obj_name = "newobj";
     char* ptr;
 
-    	/** PUT YOUR OBJECT-QUERY-RETRIEVAL STUFF HERE **/
-	/** RETURN NULL IF NO MORE ITEMS. **/
+	/** Alloc the structure **/
+	inf = (pQyData)nmMalloc(sizeof(QyData));
+	if (!inf) return NULL;
+	memset(inf, 0, sizeof(QyData));
+	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
+	inf->Node = qy->Data->Node;
+	inf->Mode = mode;
 
+	/** increase count of open objects to the node **/
+	inf->Node->OpenCnt++;
+	inf->Type = QY_T_ITEM;
+	inf->Name = NULL;
+	inf->Obj = obj;
+#if 00
+	inf->ParsedInf = qy->Data->ParsedInf;
+	inf->ParsedInf->OpenCnt++;
+
+	/** increase count of open objects to query **/
+	/** This variable holds the CurrAttr number for next **/
+	inf->CurrAttr = qy->ItemCnt;
+	inf->MultiQuery = qy->Data->MultiQuery;
+#endif
+
+	/** Fetch next result from underlying multiquery **/
+	inf->MultiQueryObject = objQueryFetch(qy->MultiQuery, mode);
+	if (!inf->MultiQueryObject)
 	    {
-	    /** if ((qy->Data->Type == QY_T_LIST) &&
-	        (qy->ItemCnt > qy->Data->Node->Data->nSubInf)) return NULL; **/
-	    /** Alloc the structure **/
-	    inf = (pQyData)nmMalloc(sizeof(QyData));
-	    if (!inf) return NULL;
-	    strcpy(inf->Pathname, obj->Pathname->Pathbuf);
-	    inf->Node = qy->Data->Node;
-	    inf->ParsedInf = qy->Data->ParsedInf;
-	    /** increase count of open objects to the node **/
-	    inf->Node->OpenCnt++;
-	    inf->ParsedInf->OpenCnt++;
-	    inf->Type = QY_T_ITEM;
-	    inf->Name = NULL;
-	    inf->Obj = obj;
-	    /** increase count of open objects to query **/
-	    /** This variable holds the CurrAttr number for next **/
-	    inf->CurrAttr = qy->ItemCnt;
-	    inf->MultiQuery = qy->Data->MultiQuery;
-	    inf->MultiQueryObject = objQueryFetch(qy->Data->MultiQuery,mode);
-	    if (!inf->MultiQueryObject)
-		{
-		/** if no more items, return NULL **/
-		nmFree(inf, sizeof(QyData));
-		return NULL;
-		}
-	    qy->ItemCnt++;
-    	    return (void*)inf;
+	    /** if no more items, return NULL **/
+	    qy_internal_Close(inf);
+	    return NULL;
 	    }
- 	return NULL;
+	qy->ItemCnt++;
 
+	/** Get the name of the query subobject. **/
+	ptr = NULL;
+	objGetAttrValue(inf->MultiQueryObject, "name", DATA_T_STRING, POD(&ptr));
+	if (obj_internal_AddToPath(obj->Pathname, ptr) < 0)
+	    {
+	    mssError(1,"QUERY","Query result pathname exceeds internal limits");
+	    qy_internal_Close(inf);
+	    return NULL;
+	    }
+	inf->Name = nmSysStrdup(ptr);
+
+    return (void*)inf;
     }
 
 
-/*** QyQueryClose - close the query.
+/*** qyQueryClose - close the query.
  ***/
 int
-QyQueryClose(void* qy_v, pObjTrxTree* oxt)
+qyQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
-    int i;
     pQyQuery qy = (pQyQuery)qy_v;
 
 	/** Free the structure **/
-	if (!qy->Data->MultiQuery) objQueryClose(qy->Data->MultiQuery); 
+	if (qy->MultiQuery) objQueryClose(qy->MultiQuery); 
 	nmFree(qy,sizeof(QyQuery));
+
     return 0;
     }
 
 
-/*** QyGetAttrType - get the type (DATA_T_Qy) of an attribute by name.
+/*** qyGetAttrType - get the type (DATA_T_qy) of an attribute by name.
  ***/
 int
-QyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
+qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
-    int i;
-    pStructInf find_inf;
 
 	if (inf == NULL) return -1;
 
@@ -659,36 +862,34 @@ QyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** Put checking for your own attributes here. **/
 	if (inf->Type == QY_T_LIST)
 	    {
-	    return stpAttrType(inf->ParsedInf,attrname);
+	    /** None, currently **/
+	    return -1;
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
-	    /** return DATA_T_STRING; **/
-	    return objGetAttrType((void*)inf->MultiQueryObject, attrname);
+	    return objGetAttrType(inf->MultiQueryObject, attrname);
 	    }
 
     return -1;
     }
 
 
-/*** QyGetAttrValue - get the value of an attribute by name.  The 'val'
+/*** qyGetAttrValue - get the value of an attribute by name.  The 'val'
  *** pointer must point to an appropriate data type.
  ***/
 int
-QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
+qyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
-    pStructInf find_inf, tmp_inf;
-    char* ptr;
-    int i;
-    int tmptype;
-    char* tstr;
 
 	if (inf == NULL) return -1;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    val->String = inf->Name;
+	    return 0;
+#if 00
 	    if (inf->Type == QY_T_LIST)
 		{
 	    	find_inf = stpLookup(inf->ParsedInf,"primarykey");
@@ -714,7 +915,9 @@ QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	   	val->String = inf->Name->String;
 	    	return 0;
 		}
+#endif
 	    }
+#if 00
 	if (!strcmp(attrname,"annotation"))
 	    {
 		find_inf = stpLookup(inf->ParsedInf, "annotation");
@@ -747,9 +950,9 @@ QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 		   }
 	    	return 1;
 	    }
+#endif
 
 	/** If content-type, return as appropriate **/
-	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
 	    if (inf->Type == QY_T_LIST) *((char**)val) = "system/void";
@@ -763,16 +966,15 @@ QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	    return 0;
 	    }
 
-	/** DO YOUR ATTRIBUTE LOOKUP STUFF HERE **/
-	/** AND RETURN 0 IF GOT IT OR 1 IF NULL **/
-	/** CONTINUE ON DOWN IF NOT FOUND. **/
 	if (inf->Type == QY_T_ITEM)
 	    {
 	    /** Pass the attribute question to the multiquery **/
-	    return objGetAttrValue((void*)inf->MultiQueryObject, attrname, datatype, val);
+	    return objGetAttrValue(inf->MultiQueryObject, attrname, datatype, val);
 	    }
 	if (inf->Type == QY_T_LIST)
 	    {
+	    return -1;
+#if 00
 	    find_inf = stpLookup(inf->ParsedInf,attrname);
 	    return stpAttrValue(find_inf,inf->Obj,&val->Integer,&val->String,0);
 /*	    find_inf = stpLookup(inf->ParsedInf,attrname);
@@ -795,6 +997,7 @@ QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
                 return 0;
 		}
 */
+#endif
 	    }
 
 	mssError(1,"QY","Could not locate requested attribute");
@@ -803,15 +1006,17 @@ QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
     }
 
 
-/*** QyGetNextAttr - get the next attribute name for this object.
+/*** qyGetNextAttr - get the next attribute name for this object.
  ***/
 char*
-QyGetNextAttr(pQyData inf, pObjTrxTree oxt)
+qyGetNextAttr(pQyData inf, pObjTrxTree oxt)
     {
     char* ptr;
 
 	if (inf->Type == QY_T_LIST)
 	    {
+	    return NULL;
+#if 00
 	    /** do not display annotation, sql, primarykey, or version **/
 	    while(1)
 		{
@@ -821,25 +1026,30 @@ QyGetNextAttr(pQyData inf, pObjTrxTree oxt)
 		    (strcmp(ptr,"annotation")) && (strcmp(ptr,"version")))
 	    		return ptr;
 		}
+#endif
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
-	    ptr = objGetNextAttr((void*)inf->MultiQueryObject);
+	    ptr = objGetNextAttr(inf->MultiQueryObject);
 	    return ptr;
 	    }
+
         /** No find? **/
     return NULL;
     }
 
 
-/*** QyGetFirstAttr - get the first attribute name for this object.
+/*** qyGetFirstAttr - get the first attribute name for this object.
  ***/
 char*
-QyGetFirstAttr(pQyData inf, pObjTrxTree oxt)
+qyGetFirstAttr(pQyData inf, pObjTrxTree oxt)
     {
     char* ptr;
+
 	if (inf->Type == QY_T_LIST)
 	    {
+	    return NULL;
+#if 00
 	    ptr = stpGetFirstAttr(inf->ParsedInf);
 	    if (ptr == NULL) return ptr;
 	    if ((strcmp(ptr,"sql")) && (strcmp(ptr,"primarykey")) &&
@@ -853,29 +1063,32 @@ QyGetFirstAttr(pQyData inf, pObjTrxTree oxt)
 		    (strcmp(ptr,"annotation")) && (strcmp(ptr,"version")))
 	    		return ptr;
 		}
+#endif
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
-	    ptr = objGetFirstAttr((void*)inf->MultiQueryObject);
+	    ptr = objGetFirstAttr(inf->MultiQueryObject);
 	    return ptr;
 	    }
-    return ;
+
+    return NULL;
     }
 
 
-/*** QySetAttrValue - sets the value of an attribute.  'val' must
+/*** qySetAttrValue - sets the value of an attribute.  'val' must
  *** point to an appropriate data type.
  ***/
 int
-QySetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+qySetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
     pQyData inf = QY(inf_v);
-    pStructInf find_inf;
 
 	/** Choose the attr name **/
 	/** Changing name of node object? **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    return -1;
+#if 00
 	    if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
@@ -883,101 +1096,142 @@ QySetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
 		    strlen(*(char**)(val)) + 1 > 255)
 		    {
-		    mssError(1,"STP","SetAttr 'name': name too large for internal representation");
+		    mssError(1,"QY","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
 	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
-		    mssError(1,"STP","SetAttr 'name': could not rename structure file node object");
+		    mssError(1,"QY","SetAttr 'name': could not rename structure file node object");
 		    return -1;
 		    }
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
 	    return 0;
+#endif
 	    }
 
 	/** Set content type if that was requested. **/
 	if (!strcmp(attrname,"content_type"))
 	    {
-	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
 	    return -1;
 	    }
 
-	/** DO YOUR SEARCHING FOR ATTRIBUTES TO SET HERE **/
 	if (inf->Type == QY_T_LIST)
 	    {
+	    return -1;
+#if 00
 		/** deal with parameters **/
 		stpSetAttrValue(inf->ParsedInf, attrname, val);
 		return 0;
+#endif
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
-		objSetAttrValue(inf->MultiQueryObject, attrname, datatype, val);
-		return 0;
+	    return objSetAttrValue(inf->MultiQueryObject, attrname, datatype, val);
 	    }
-	return -1;
+
+    return -1;
     }
 
 
-/*** QyAddAttr - add an attribute to an object.  This doesn't always work
+/*** qyAddAttr - add an attribute to an object.  This doesn't always work
  *** for all object types, and certainly makes no sense for some.
  ***/
 int
-QyAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+qyAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     {
     pQyData inf = QY(inf_v);
-    pStructInf new_inf;
-    char* ptr;
     /** Pass on to Multiquery **/
     return objAddAttr(inf->MultiQueryObject, attrname, type, val);	
     }
 
 
-/*** QyOpenAttr - open an attribute as if it were an object with content.
+/*** qyOpenAttr - open an attribute as if it were an object with content.
  *** Not all objects support this type of operation.
  ***/
 void*
-QyOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
+qyOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     {
     return NULL;
     }
 
 
-/*** QyGetFirstMethod -- there are no methods yet, so this just always
+/*** qyGetFirstMethod -- there are no methods yet, so this just always
  *** fails.
  ***/
 char*
-QyGetFirstMethod(void* inf_v, pObjTrxTree oxt)
+qyGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     {
     return NULL;
     }
 
 
-/*** QyGetNextMethod -- same as above.  Always fails. 
+/*** qyGetNextMethod -- same as above.  Always fails. 
  ***/
 char*
-QyGetNextMethod(void* inf_v, pObjTrxTree oxt)
+qyGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
     return NULL;
     }
 
 
-/*** QyExecuteMethod - No methods to execute, so this fails.
+/*** qyExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-QyExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+qyExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
     {
     return -1;
     }
 
 
-/*** QyInitialize - initialize this driver, which also causes it to 
+/*** qyPresentationHints - return the presentation hints for the object.
+ *** Here, we just pass it through to the MQ layer.
+ ***/
+pObjPresentationHints
+qyPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
+    {
+    pQyData inf = QY(inf_v);
+    pObjPresentationHints hints;
+
+	if (inf->Type == QY_T_ITEM && inf->MultiQueryObject)
+	    hints = objPresentationHints(inf->MultiQueryObject, attrname);
+	else
+	    hints = NULL;
+
+    return hints;
+    }
+
+
+/*** qyInfo - Return the capabilities of the object.
+ ***/
+int
+qyInfo(void* inf_v, pObjectInfo info)
+    {
+    pQyData inf = QY(inf_v);
+    pObjectInfo ll_info;
+
+	if (inf->Type == QY_T_ITEM && inf->MultiQueryObject) 
+	    {
+	    /** Get basic character of object from underlying object **/
+	    ll_info = objInfo(inf->MultiQueryObject);
+	    if (ll_info)
+		{
+		memcpy(info, ll_info, sizeof(ObjectInfo));
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** qyInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
 int
-QyInitialize()
+qyInitialize()
     {
     pObjDriver drv;
 
@@ -987,36 +1241,38 @@ QyInitialize()
 	memset(drv, 0, sizeof(ObjDriver));
 
 	/** Initialize globals **/
-	memset(&Qy_INF,0,sizeof(Qy_INF));
-	Qy_INF.dmy_global_variable = 0;
+	memset(&QY_INF,0,sizeof(QY_INF));
+	QY_INF.dmy_global_variable = 0;
 
 	/** Setup the structure **/
-	strcpy(drv->Name,"QY -  Query Driver");		/** <--- PUT YOUR DESCRIPTION HERE **/
+	strcpy(drv->Name,"QY - Query Driver");
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),16);
-	xaAddItem(&(drv->RootContentTypes),"system/query");	/** <--- PUT YOUR OBJECT/TYPE HERE **/
+	xaAddItem(&(drv->RootContentTypes),"system/query");
 
 	/** Setup the function references. **/
-	drv->Open = QyOpen;
-	drv->Close = QyClose;
-	drv->Create = QyCreate;
-	drv->Delete = QyDelete;
-	drv->OpenQuery = QyOpenQuery;
+	drv->Open = qyOpen;
+	drv->Close = qyClose;
+	drv->Create = qyCreate;
+	drv->Delete = qyDelete;
+	drv->DeleteObj = qyDeleteObj;
+	drv->OpenQuery = qyOpenQuery;
 	drv->QueryDelete = NULL;
-	drv->QueryFetch = QyQueryFetch;
-	drv->QueryClose = QyQueryClose;
-	drv->Read = QyRead;
-	drv->Write = QyWrite;
-	drv->GetAttrType = QyGetAttrType;
-	drv->GetAttrValue = QyGetAttrValue;
-	drv->GetFirstAttr = QyGetFirstAttr;
-	drv->GetNextAttr = QyGetNextAttr;
-	drv->SetAttrValue = QySetAttrValue;
-	drv->AddAttr = QyAddAttr;
-	drv->OpenAttr = QyOpenAttr;
-	drv->GetFirstMethod = QyGetFirstMethod;
-	drv->GetNextMethod = QyGetNextMethod;
-	drv->ExecuteMethod = QyExecuteMethod;
+	drv->QueryFetch = qyQueryFetch;
+	drv->QueryClose = qyQueryClose;
+	drv->Read = qyRead;
+	drv->Write = qyWrite;
+	drv->GetAttrType = qyGetAttrType;
+	drv->GetAttrValue = qyGetAttrValue;
+	drv->GetFirstAttr = qyGetFirstAttr;
+	drv->GetNextAttr = qyGetNextAttr;
+	drv->SetAttrValue = qySetAttrValue;
+	drv->AddAttr = qyAddAttr;
+	drv->OpenAttr = qyOpenAttr;
+	drv->GetFirstMethod = qyGetFirstMethod;
+	drv->GetNextMethod = qyGetNextMethod;
+	drv->ExecuteMethod = qyExecuteMethod;
+	drv->Info = qyInfo;
 	drv->PresentationHints = NULL;
 
 	nmRegister(sizeof(QyData),"QyData");

@@ -1512,8 +1512,13 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    mssError(0, "BERK", "Trying to set 'annotation' attribute, datatype needs to be DATA_T_STRING");
 	    return -1;
 	    }
-	memccpy(inf->Annotation, val->String, '\0', 255);
-	inf->Annotation[255] = 0;
+	if (val)
+	    {
+	    memccpy(inf->Annotation, val->String, '\0', 255);
+	    inf->Annotation[255] = 0;
+	    }
+	else
+	    inf->Annotation[0] = '\0';
 	return 0;
 	}
     /* all other attributes are unique to there inf->Type */
@@ -1556,9 +1561,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if(!strcmp(attrname, "data"))
 		{
-		if(datatype != DATA_T_STRING)
+		if(datatype != DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "Trying to set 'data' attribute, datatype needs to be string");
+		    mssError(0, "BERK", "Trying to set 'data' attribute, datatype needs to be non-null string");
 		    return -1;
 		    }
 		/* make sure it has writing allowed */
@@ -1574,9 +1579,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if(!strcmp(attrname, "transdata"))
 		{
-		if(datatype!= DATA_T_STRING)
+		if(datatype!= DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "Trying to set 'transdata' attribute, datatype needs to be string");
+		    mssError(0, "BERK", "Trying to set 'transdata' attribute, datatype needs to be non-null string");
 		    return -1;
 		    }
 		//i = strlen(*(const char**)val);
@@ -1622,9 +1627,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if(!strcmp(attrname, "key"))
 		{
 		/* grrr, you're making me support renaming of objects */
-		if(datatype != DATA_T_STRING)
+		if(datatype != DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "Ha! You can't rename this key because datatype != DATA_T_STRING");
+		    mssError(0, "BERK", "Key can only be renamed to a non-null string");
 		    return -1;
 		    }
 		/* the name has finally arrived */
@@ -1666,9 +1671,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if(!strcmp(attrname, "access_method"))
 		{
 		/* make sure all our ducks are in a row */
-		if(datatype != DATA_T_STRING)
+		if(datatype != DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "datatype must be DATA_T_STRING for you to set the access_method");
+		    mssError(0, "BERK", "datatype must be non-null DATA_T_STRING for you to set the access_method");
 		    return -1;
 		    }
 		if(inf->pMyEnvNode->TheDatabaseIni)
@@ -1690,7 +1695,7 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    if(r == EINVAL)
 			mssError(0, "BERK", "Yeah, dang (IE something went wrong: Tried to create the database, which isn't supported yet");
 		    mssError(0, "BERK", "SetAttrValue: Setting access_method.  open failed: (cont. in next error message)");
-		    mssError(0, "BERK", "	Filename = '%s' and access_method = '%s'", inf->Filename, val->String);
+		    mssError(0, "BERK", "	Filename = '%s' and access_method = '%s'", inf->Filename, val);
 		    berkInternalDestructor(inf);
 		    }
 		inf->pMyEnvNode->TheDatabaseIni = 1;

@@ -562,6 +562,8 @@ char* objGetDateFmt(pObjSession this);
 int objUnmanageObject(pObjSession this, pObject obj);
 int objUnmanageQuery(pObjSession this, pObjQuery qy);
 int objCommit(pObjSession this);
+pObjTrxTree objSuspendTransaction(pObjSession this);
+int objResumeTransaction(pObjSession this, pObjTrxTree trx);
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);

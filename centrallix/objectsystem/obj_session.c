@@ -187,3 +187,39 @@ objCommit(pObjSession this)
     return rval;
     }
 
+
+/*** objSuspendTransaction - take the existing transaction tree, and suspend
+ *** it temporarily.  The transaction tree is returned from this function.  It
+ *** can be resumed by calling objResumeTransaction with the returned tree. 
+ *** This is used in layered situations to prevent the creation of a tree that
+ *** contains data from more than one layer simultaneously.
+ ***/
+pObjTrxTree
+objSuspendTransaction(pObjSession this)
+    {
+    pObjTrxTree trx;
+
+	trx = this->Trx;
+	this->Trx = NULL;
+
+    return trx;
+    }
+
+
+/*** objResumeTransaction - see above.
+ ***/
+int
+objResumeTransaction(pObjSession this, pObjTrxTree trx)
+    {
+
+	if (this->Trx)
+	    {
+	    mssError(1,"OSML","Attempt to resume transaction while existing transaction is in progress");
+	    return -1;
+	    }
+
+	this->Trx = trx;
+
+    return 0;
+    }
+

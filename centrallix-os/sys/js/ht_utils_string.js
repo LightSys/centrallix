@@ -43,6 +43,7 @@ function htutil_encode(s, allowbrk)
 	else if (s.charAt(i) == "'") rs += '&#39;';
 	else if (s.charAt(i) == "\"") rs += '&quot;';
 	else if (s.charAt(i) == "-" && !allowbrk) rs += '&#8209;';
+	else if (s.charAt(i) == "," && s.charAt(i+1) != " " && allowbrk) rs += ',&#8203;';
 	else rs += s.charAt(i);
         }
     return rs;

@@ -56,6 +56,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char string[HT_SBUF_SIZE];
    char fieldname[30];
    char form[64];
+   char osrc[64];
    char name[64];
    char *ptr;
    char *sql;
@@ -127,6 +128,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	strtcpy(form,ptr,sizeof(form));
    else
 	form[0]='\0';
+   if (wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr)) == 0)
+	strtcpy(osrc,ptr,sizeof(osrc));
+   else
+	osrc[0]='\0';
 
     /** Get name **/
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -182,7 +187,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, query_multiselect, invalid_select_default, pop_w);
+    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);

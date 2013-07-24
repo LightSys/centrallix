@@ -53,6 +53,79 @@ function cx_count_divs(kind)
     }
 
 // Functions used for cxsql-to-js support
+function cxjs_min(v)
+    {
+    var lowest = undefined;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (lowest === undefined || isNaN(lowest) || lowest > v[i])
+		lowest = v[i];
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (lowest === undefined || isNaN(lowest) || lowest > v[i])
+		lowest = v[i];
+	    }
+	}
+    else
+	{
+	lowest = v;
+	}
+    return lowest;
+    }
+function cxjs_max(v)
+    {
+    var highest = undefined;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (highest === undefined || isNaN(highest) || highest < v[i])
+		highest = v[i];
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (highest === undefined || isNaN(highest) || highest < v[i])
+		highest = v[i];
+	    }
+	}
+    else
+	{
+	highest = v;
+	}
+    return highest;
+    }
+function cxjs_count(v)
+    {
+    var cnt = 0;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (v[i] != null && !isNaN(v[i])) cnt++;
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (v[i] != null && !isNaN(v[i])) cnt++;
+	    }
+	}
+    else
+	{
+	cnt = 1;
+	}
+    return cnt;
+    }
 function cxjs_user_name()
     {
     return pg_username;

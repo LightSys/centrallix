@@ -12,6 +12,7 @@
 #include "cxlib/cxsec.h"
 #include "stparse_ne.h"
 #include "cxlib/qprintf.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -192,6 +193,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char* scriptslist;
     pStruct attr_inf;
     char* slashptr;
+    int new_sec_context = 0;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -313,6 +315,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
 		    templates[i] = path;
 
+	    /** Start a new security authstack context **/
+	    cxssPushContext();
+	    new_sec_context = 1;
+
 	    /** Open and parse the component **/
 	    cmp_obj = objOpen(s->ObjSession, cmp_path, O_RDONLY, 0600, "system/structure");
 	    if (!cmp_obj)
@@ -320,7 +326,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates, 0);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
@@ -366,6 +372,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** End Init component **/
 	    htrAddScriptInit_va(s, "    cmp_endinit(nodes[\"%STR&SYM\"]);\n", name);
+
+	    /** Return to previous security context **/
+	    if (new_sec_context) cxssPopContext();
+	    new_sec_context = 0;
 
 	    /** Restore original graft point and parameters **/
 	    s->Params = old_params;
@@ -416,6 +426,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
     out:
 	/** Clean up **/
+	if (new_sec_context) cxssPopContext();
 	if (params)
 	    stFreeInf_ne(params);
 	if (s->IsDynamic == 0 && old_is_dynamic)

@@ -155,6 +155,12 @@ function osrc_query_text_handler(aparam)
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
 
+    // Evaluate default expression on parameters...
+    for(var pn in this.params)
+	{
+	this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:null});
+	}
+
     // build the search string from the criteria and field list
     var filter = '';
     var firstone=true;
@@ -378,7 +384,7 @@ function osrc_make_filter_integer(col,val)
 	return this.MFCol(col) + ' is null ';
     else if (val == null)
 	return this.MFCol(col) + ' = null ';
-    else if (typeof val != 'number' && (new String(val)).search(/-/)>=0)
+    else if (!col.plainsearch && typeof val != 'number' && (new String(val)).search(/-/)>=0)
 	{
 	var parts = (new String(val)).split(/-/);
 	return '(' + this.MFCol(col) + ' >=' + parts[0] + ' AND ' + this.MFCol(col) + ' <=' + parts[1] + ')';
@@ -399,6 +405,8 @@ function osrc_make_filter_string(col, val, icase)
 	str=colref + ' is null ';
     else if (val == null)
 	str=colref + ' = null ';
+    else if (col.plainsearch)
+	str=ifunc + '(' + colref + ')='+ifunc+'("'+val+'")';
     else
 	if (val.search(/^\*.+\*$/)>=0)
 	    {
@@ -835,9 +843,9 @@ function osrc_action_create_cb2()
     for(var i in this.createddata) if(i!='oid')
 	{
 	if (this.createddata[i]['value'] == null)
-	    reqparam[this.createddata[i]['oid']] = '';
+	    reqparam[this.createddata[i]['oid']] = 'N:';
 	else
-	    reqparam[this.createddata[i]['oid']] = this.createddata[i]['value'];
+	    reqparam[this.createddata[i]['oid']] = 'V:' + this.createddata[i]['value'];
 	}
     this.DoRequest('create', this.baseobj + '/*', reqparam, osrc_action_create_cb);
     }
@@ -1046,7 +1054,10 @@ function osrc_action_modify(aparam) //up,formobj)
     this.ApplyRelationships(this.modifieddata, false);
     for(var i in this.modifieddata) if(i!='oid')
 	{
-	reqparam[this.modifieddata[i]['oid']] = this.modifieddata[i]['value'];
+	if (this.modifieddata[i]['value'] == null)
+	    reqparam[this.modifieddata[i]['oid']] = 'N:';
+	else
+	    reqparam[this.modifieddata[i]['oid']] = 'V:' + this.modifieddata[i]['value'];
 	//src+='&'+htutil_escape(this.modifieddata[i]['oid'])+'='+htutil_escape(this.modifieddata[i]['value']);
 	}
     if (this.send_updates)
@@ -1072,16 +1083,29 @@ function osrc_action_modify_cb()
 	var server_rec = this.ParseOneRow(links, 1);
 	var diff = 0;
 	for(var i in server_rec)
+	    {
+	    var found = 0;
 	    for(var j in cr)
 		{
-		if (cr[j].oid == server_rec[i].oid && cr[j].value != server_rec[i].value)
+		if (cr[j].oid == server_rec[i].oid)
 		    {
-		    cr[j].value = server_rec[i].value;
-		    cr[j].type = server_rec[i].type;
-		    diff = 1;
-		    //alert(cr[j].value + " != " + server_rec[i].value);
+		    found = 1;
+		    if (cr[j].value != server_rec[i].value)
+			{
+			cr[j].value = server_rec[i].value;
+			cr[j].type = server_rec[i].type;
+			diff = 1;
+			//alert(cr[j].value + " != " + server_rec[i].value);
+			}
 		    }
 		}
+	    if (!found)
+		{
+		// we haven't seen this property before, add it.
+		cr.push( {value:server_rec[i].value, type:server_rec[i].type, oid:server_rec[i].oid} );
+		diff = 1;
+		}
+	    }
 	this.osrc_action_modify_cb_2(diff);
 	}
     else
@@ -1898,6 +1922,7 @@ function osrc_tell_all_replica_moved()
 
 function osrc_move_to_record(recnum, from_internal)
     {
+    if (typeof recnum != 'number') recnum = parseInt(recnum);
     this.QueueRequest({Request:'MoveTo', Param:{recnum:recnum, from_internal:from_internal}});
     this.Dispatch();
     }
@@ -2252,6 +2277,7 @@ function osrc_action_sync(param)
 	    if (!this.parentosrc.replica[p])
 		{
 		var t = new Object();
+		t.plainsearch = true;
 		t.oid = this.ChildKey[i];
 		t.value = null;
 		t.type = 'integer'; // type doesn't matter if it is null.
@@ -2270,6 +2296,7 @@ function osrc_action_sync(param)
 		    if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])
 			{
 			var t = new Object();
+			t.plainsearch = true;
 			t.oid=this.ChildKey[i];
 			t.value=this.parentosrc.replica[p][j].value;
 			t.type=this.parentosrc.replica[p][j].type;
@@ -2637,6 +2664,9 @@ function osrc_apply_rel(obj, in_create)
 				break;
 			    }
 			}
+
+		    // Force plain search - no wildcards, etc.
+		    obj[obj_index].plainsearch=true;
 
 		    // Type not available?
 		    if (obj[obj_index] && typeof obj[obj_index].type == "undefined" && this.type_list[obj[obj_index].oid])

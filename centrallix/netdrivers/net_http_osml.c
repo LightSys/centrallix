@@ -445,6 +445,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     pObject reopen_obj;
     int reopen_success;
     pNhtQuery nht_query;
+    char* strval;
     
     handle_t session_handle;
     handle_t query_handle;
@@ -927,55 +928,84 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			retval = 0;
 			t = objGetAttrType(obj, subinf->Name);
 			if (t < 0) continue;
-			switch(t)
+
+			/** Handle newer set-attr-value format that allows for nulls **/
+			if ((subinf->StrVal[0] == 'V' || subinf->StrVal[0] == 'N') && subinf->StrVal[1] == ':')
+			    strval = subinf->StrVal+2;
+			else
+			    strval = subinf->StrVal; /* deprecated - transition only */
+
+			/** set to NULL? **/
+			if (subinf->StrVal[0] == 'N' && subinf->StrVal[1] == ':')
 			    {
-			    case DATA_T_INTEGER:
-				if (subinf->StrVal[0])
-				    {
-				    n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
-				    }
-				break;
+			    retval = objSetAttrValue(obj, subinf->Name, t, NULL);
+			    }
+			else
+			    {
+			    /** Set to a value **/
+			    switch(t)
+				{
+				case DATA_T_INTEGER:
+				    if (*strval)
+					{
+					n = objDataToInteger(DATA_T_STRING, strval, NULL);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
+					}
+				    break;
 
-			    case DATA_T_DOUBLE:
-				if (subinf->StrVal[0])
-				    {
-				    dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
-				    }
-				break;
+				case DATA_T_DOUBLE:
+				    if (*strval)
+					{
+					dbl = objDataToDouble(DATA_T_STRING, strval);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
+					}
+				    break;
 
-			    case DATA_T_STRING:
-			        retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&(subinf->StrVal)));
-				break;
+				case DATA_T_STRING:
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&strval));
+				    break;
 
-			    case DATA_T_DATETIME:
-				if (subinf->StrVal[0])
-				    {
-				    objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
-				    pdt = &dt;
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
-				    }
-				break;
+				case DATA_T_DATETIME:
+				    if (*strval)
+					{
+					objDataToDateTime(DATA_T_STRING, strval, &dt, NULL);
+					pdt = &dt;
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
+					}
+				    break;
 
-			    case DATA_T_MONEY:
-				if (subinf->StrVal[0])
-				    {
-				    pm = &m;
-				    objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
-				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
-				    }
-				break;
+				case DATA_T_MONEY:
+				    if (*strval)
+					{
+					pm = &m;
+					objDataToMoney(DATA_T_STRING, strval, &m);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
+					}
+				    break;
 
-			    case DATA_T_STRINGVEC:
-			    case DATA_T_INTVEC:
-			    case DATA_T_UNAVAILABLE: 
-			    default:
-			        retval = -1;
-				break;
+				case DATA_T_UNAVAILABLE: 
+				    /** Attribute probably doesn't exist yet.  Until we have info
+				     ** from the client on the attr type, assume it is a string or an
+				     ** integer, and try to set it that way.
+				     **/
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&strval));
+				    if (retval < 0 && *strval && strspn(strval, "0123456789-") == strlen(strval) && strchr(strval+1, '-') == NULL)
+					{
+					n = objDataToInteger(DATA_T_STRING, strval, NULL);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
+					}
+				    break;
+
+				case DATA_T_STRINGVEC:
+				case DATA_T_INTVEC:
+				default:
+				    retval = -1;
+				    break;
+				}
 			    }
 			if (retval < 0)
 			    {
+			    mssError(0, "NHT", "Failed to set attribute <%s> on object <%s>", subinf->Name, obj->Pathname->Pathbuf + 1);
 			    snprintf(sbuf,256,"Content-Type: text/html\r\n"
 				     "Pragma: no-cache\r\n"
 				     "\r\n"
@@ -1036,8 +1066,20 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					obj = reopen_obj;
 					reopen_success = 1;
 					}
+				    else
+					{
+					mssError(1,"NHT","Could not retrieve updated object in re-open");
+					}
 				    objQueryClose(qy);
 				    }
+				else
+				    {
+				    mssError(0,"NHT","Could not run SQL query to re-open updated object");
+				    }
+				}
+			    else
+				{
+				mssError(0,"NHT","Could not obtain <name> property of object in order to do the re-open");
 				}
 
 			    xsDeInit(reopen_str);

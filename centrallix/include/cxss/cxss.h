@@ -35,6 +35,7 @@
 
 
 #include <openssl/sha.h>
+#include "cxlib/xarray.h"
 
 #define CXSS_ENTROPY_SIZE	1280
 
@@ -55,6 +56,25 @@ typedef struct _EP
     CxssEntropyPool, *pCxssEntropyPool;
 
 
+/*** Auth/Endorsement stack data structure ***/
+typedef struct _AS
+    {
+    XArray		Endorsements;
+    struct _AS*		Prev;
+    int			CopyCnt;		/* COW semantics */
+    }
+    CxssAuthStack, *pCxssAuthStack;
+
+
+/*** Endorsement info ***/
+typedef struct _EN
+    {
+    char		Endorsement[32];
+    char		Context[64];
+    }
+    CxssEndorsement, *pCxssEndorsement;
+
+
 /*** CXSS module-wide data structure ***/
 typedef struct _CXSS
     {
@@ -72,6 +92,12 @@ int cxssInitialize();
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
 int cxssShred(unsigned char* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
+
+/*** Authentication/Endorsement stack functions ***/
+int cxssPopContext();
+int cxssPushContext();
+int cxssAddEndorsement(char* endorsement, char* context);
+int cxssHasEndorsement(char* endorsement, char* context);
 
 /*** Entropy functions - internal ***/
 int cxss_internal_InitEntropy(int pool_size);

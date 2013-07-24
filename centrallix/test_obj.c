@@ -512,7 +512,7 @@ int handle_tab(int unused_1, int unused_2)
 
 
 int
-testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
+testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     {
     char sbuf[BUFF_SIZE];
     char* ptr;
@@ -551,6 +551,8 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     int attrtypes[640];
     int n_attrs;
     int name_was_null;
+    XString xs;
+    int did_alloc;
 
 	    /** Just a comment? **/
 	    if (cmd[0] == '#')
@@ -659,15 +661,56 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    }
 		objQueryClose(qy);
 		}
-	    else if (!strcmp(cmdname,"query"))
+	    else if (!strcmp(cmdname,"query") || !strcmp(cmdname,"mlquery"))
 	        {
-		if (!ptr)
+		if (!strcmp(cmdname, "query"))
 		    {
-		    printf("Usage: query <query-text>\n");
-		    mlxCloseSession(ls);
-		    return -1;
+		    if (!ptr)
+			{
+			printf("Usage: query <query-text>\n");
+			mlxCloseSession(ls);
+			return -1;
+			}
+		    qy = objMultiQuery(s, cmd + 6, NULL, 0);
 		    }
-		qy = objMultiQuery(s, cmd + 6, NULL, 0);
+		else
+		    {
+		    /** multiline query **/
+		    if (!ptr)
+			{
+			printf("Usage: mlquery <query-text>\n");
+			mlxCloseSession(ls);
+			return -1;
+			}
+		    xsInit(&xs);
+		    xsCopy(&xs, cmd + 8, -1);
+		    if (inp_lx)
+			{
+			while((t = mlxNextToken(inp_lx)) > 0)
+			    {
+			    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;
+			    did_alloc = 1;
+			    ptr = mlxStringVal(inp_lx, &did_alloc);
+			    if (!ptr || strlen(ptr) == strspn(ptr, "\r\n\t "))
+				break;
+			    xsConcatenate(&xs, " ", 1);
+			    xsConcatenate(&xs, ptr, -1);
+			    }
+			}
+		    else
+			{
+			while(1)
+			    {
+			    char* slbuf = readline("");
+			    if (!slbuf || strlen(slbuf) == strspn(slbuf, "\r\n\t "))
+				break;
+			    xsConcatenate(&xs, " ", 1);
+			    xsConcatenate(&xs, slbuf, -1);
+			    }
+			}
+		    qy = objMultiQuery(s, xs.String, NULL, 0);
+		    xsDeInit(&xs);
+		    }
 		if (!qy)
 		    {
 		    printf("query: could not open query!\n");
@@ -1213,6 +1256,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		printf("  hints    - Show the presentation hints of an attribute (or object)\n");
 		printf("  help     - Displays this help screen.\n");
 		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
+		printf("  mlquery  - Runs a SQL query, reading in multiple lines until a blank line.\n");
 		printf("  output   - Change where output goes.\n");
 		printf("  print    - Displays an object's content.\n");
 		printf("  query    - Runs a SQL query.\n");
@@ -1304,7 +1348,7 @@ start(void* v)
 	/** -C cmd provided on command line? **/
 	if (TESTOBJ.Command[0])
 	    {
-	    rval = testobj_do_cmd(s, TESTOBJ.Command, 1);
+	    rval = testobj_do_cmd(s, TESTOBJ.Command, 1, NULL);
 	    }
 
 	/** Command file provided? **/
@@ -1325,7 +1369,7 @@ start(void* v)
 		    ptr = mlxStringVal(input_lx, &alloc);
 		    if (ptr) 
 			{
-			rval = testobj_do_cmd(s, ptr, 1);
+			rval = testobj_do_cmd(s, ptr, 1, input_lx);
 			nmSysFree(ptr);
 			if (rval == 1) break;
 			}
@@ -1366,7 +1410,7 @@ start(void* v)
 		thExit();
 		}
 
-	    rval = testobj_do_cmd(s, inbuf, 0);
+	    rval = testobj_do_cmd(s, inbuf, 0, NULL);
 	    if (rval == 1) break;
 	    }
 

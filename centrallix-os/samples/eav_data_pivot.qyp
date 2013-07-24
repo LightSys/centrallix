@@ -1,0 +1,10 @@
+$Version=2$
+eav_data_pivot "system/querypivot"
+    {
+    source = "/samples/eav_data.csv/rows";
+
+    id "system/querypivot" { type=integer; usage=key; }
+    attr_name "system/querypivot" { type=string; usage=name; }
+    attr_int_val "system/querypivot" { type=integer; usage=value; }
+    attr_string_val "system/querypivot" { type=string; usage=value; }
+    }

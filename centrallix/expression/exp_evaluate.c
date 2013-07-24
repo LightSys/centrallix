@@ -1127,21 +1127,25 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 	/** Copy data to the child, then eval it. **/
 	subtree = (pExpression)(tree->Children.Items[0]);
 	if (tree->Flags & EXPR_F_NULL) 
-	    subtree->Flags |= EXPR_F_NULL;
-	else
-	    subtree->Flags &= ~EXPR_F_NULL;
-	switch(tree->DataType)
 	    {
-	    case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
-	    case DATA_T_STRING:
-	        if (subtree->Alloc && subtree->String)
-	            {
-	            nmSysFree(subtree->String);
-	            }
-	        subtree->Alloc = 0;
-	        subtree->String = tree->String;
-		break;
-	    default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+	    subtree->Flags |= EXPR_F_NULL;
+	    }
+	else
+	    {
+	    subtree->Flags &= ~EXPR_F_NULL;
+	    switch(tree->DataType)
+		{
+		case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
+		case DATA_T_STRING:
+		    if (subtree->Alloc && subtree->String)
+			{
+			nmSysFree(subtree->String);
+			}
+		    subtree->Alloc = 0;
+		    subtree->String = tree->String;
+		    break;
+		default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+		}
 	    }
 	subtree->DataType = tree->DataType;
 
@@ -1322,6 +1326,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
     MoneyType m;
     int (*setfn)();
     int id;
+    int rval;
 
     	/** Which object are we getting at? **/
 	id = expObjID(tree,objlist);
@@ -1332,10 +1337,16 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	/** Set it as modified -- so it gets a new serial # **/
 	expModifyParamByID(objlist, id, obj);
 
+	/** Setting to NULL is simple... **/
+	if (tree->Flags & EXPR_F_NULL)
+	    return setfn(obj, tree->Name, tree->DataType, NULL);
+
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
 	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
+	if (attr_type == DATA_T_UNAVAILABLE)
+	    attr_type = tree->DataType;
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)
@@ -1369,23 +1380,23 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	switch(attr_type)
 	    {
 	    case DATA_T_INTEGER:
-	        setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
+	        rval = setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
 	        break;
 
 	    case DATA_T_STRING:
-	        setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
+	        rval = setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
 	        break;
 
 	    case DATA_T_DATETIME:
-	        setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
+	        rval = setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
 		break;
 
 	    case DATA_T_MONEY:
-	        setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
+	        rval = setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
 		break;
 
 	    case DATA_T_DOUBLE:
-	        setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
+	        rval = setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
 		break;
 
 	    default:
@@ -1393,7 +1404,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 		return -1;
 	    }
 
-    return 0;
+    return rval;
     }
 
 
