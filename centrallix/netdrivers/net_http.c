@@ -1,4 +1,5 @@
 #include "net_http.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -963,7 +964,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	if (find_inf)
 	    {
 	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+		{
+		cxssAddEndorsement("system:from_application", "*");
 		akey_match = 1;
+		}
 	    }
 
 	/** Indicate activity... **/
@@ -1292,7 +1296,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    //|| nht_internal_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
 		if (nhtRenderApp(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
-		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
+		    mssError(0, "HTTP", "Unable to render application %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
 		    mssPrintError(conn->ConnFD);
 		    objClose(target_obj);

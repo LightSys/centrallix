@@ -671,6 +671,35 @@ mssStringError(pXString str)
     }
 
 
+/*** mssSetParamPtr - sets a session parameter, given an opaque
+ *** pointer.  For strings, use mssSetParam().
+ ***/
+int
+mssSetParamPtr(char* paramname, void* ptr)
+    {
+    pMtSession s;
+    pMtParam p;
+    int is_new = 0;
+
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s) return -1;
+
+    	/** Need to delete first? **/
+	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	    {
+	    p = (pMtParam)nmMalloc(sizeof(MtParam));
+	    memccpy(p->Name, paramname, 0, 31);
+	    p->Name[31] = 0;
+	    is_new = 1;
+	    }
+
+	p->Value = ptr;
+	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
+
+    return 0;
+    }
+
+
 /*** mssSetParam - sets a session parameter, for generic use.
  ***/
 int
@@ -705,7 +734,7 @@ mssSetParam(char* paramname, void* value)
 	    p->Value = (char*)nmSysMalloc(strlen(value)+1);
 	    }
 	strcpy(p->Value, value);
-	if (is_new) xhAdd(&s->Params, paramname, (void*)p);
+	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
 
     return 0;
     }

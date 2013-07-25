@@ -324,6 +324,52 @@ shl_internal_Launch(pShlData inf)
     }
 
 
+/*** shl_internal_SetParam() - sets a parameter to pass to the system command,
+ *** via a "changeable" environment variable.
+ ***/
+int
+shl_internal_SetParam(pShlData inf, char* paramname, int type, pObjData paramvalue)
+    {
+    pEnvVar pEV;
+
+	/** only do the change if the subprocess hasn't started yet -- now these 
+	 ** will always reflect the values used to start the subprocess
+	 **/
+	if(inf->shell_pid == -1)
+	    {
+	    pEV = (pEnvVar)xhLookup(&inf->envHash,paramname);
+	    if(pEV && pEV->changeable && (type==DATA_T_STRING || type==DATA_T_INTEGER) )
+		{
+		if(pEV->shouldfree)
+		    {
+		    nmSysFree(pEV->value);
+		    }
+		if (!paramvalue)
+		    {
+		    pEV->value = nmSysStrdup("");
+		    }
+		else if (type == DATA_T_STRING)
+		    {
+		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
+		    pEV->value = (char*)nmSysMalloc(strlen(paramvalue->String)+1);
+		    strcpy(pEV->value,paramvalue->String);
+		    }
+		else if (type == DATA_T_INTEGER)
+		    {
+		    pEV->value = (char*)nmSysMalloc(20);
+		    snprintf(pEV->value,20,"%i", paramvalue->Integer);
+		    pEV->value[19]='\0';
+		    }
+		else
+		    pEV->value = nmSysStrdup("");
+		pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
     
 /*** shlOpen - open an object.
  ***/
@@ -338,6 +384,9 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pStructInf argStruct;
     pStructInf changeStruct;
     int i,j;
+    pStruct paramdata;
+    int nameindex;
+    char* endorsement_name;
 
 	/** Allocate the structure **/
 	inf = (pShlData)nmMalloc(sizeof(ShlData));
@@ -392,6 +441,15 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Node = node;
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
 	inf->Node->OpenCnt++;
+
+	/** Security check **/
+	if (endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    inf->Node->OpenCnt --;
+	    nmFree(inf,sizeof(ShlData));
+	    mssError(1,"SHL","Security check failed - endorsement '%s' required", endorsement_name);
+	    return NULL;
+	    }
 
 	/** figure out command to run **/
 	if(stAttrValue(stLookup(node->Data,"program"),NULL,&ptr,0)<0) ptr="";
@@ -497,6 +555,18 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
 	    printf("SHELL: returning object: %p\n",inf);
+
+	/** Set initial param values? **/
+	nameindex = obj->SubPtr - 1 + obj->SubCnt - 1;
+	if (obj->Pathname->OpenCtl[nameindex])
+	    {
+	    paramdata = obj->Pathname->OpenCtl[nameindex];
+	    for(i=0;i<paramdata->nSubInf;i++)
+		{
+		shl_internal_SetParam(inf, paramdata->SubInf[i]->Name, DATA_T_STRING, POD(&(paramdata->SubInf[i]->StrVal)));
+		}
+	    }
+
     return (void*)inf;
     }
 
@@ -1004,8 +1074,6 @@ int
 shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pShlData inf = SHL(inf_v);
-    pStructInf find_inf;
-    pEnvVar pEV;
 
 	/** Choose the attr name **/
 	/** Changing name of node object? **/
@@ -1037,37 +1105,9 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	if(inf->shell_pid == -1)
-	    {
-	    /** only do the change if the subprocess hasn't started yet -- now these 
-	        will always reflect the values used to start the subprocess **/
-	    pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
-	    if(pEV && pEV->changeable && (datatype==DATA_T_STRING || datatype==DATA_T_INTEGER) )
-		{
-		if(pEV->shouldfree)
-		    {
-		    nmSysFree(pEV->value);
-		    }
-		if (!val)
-		    {
-		    pEV->value = strdup("");
-		    }
-		else if (datatype == DATA_T_STRING)
-		    {
-		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
-		    pEV->value = (char*)nmSysMalloc(strlen(val->String)+1);
-		    strcpy(pEV->value,val->String);
-		    }
-		else //datatype == DATA_T_INTEGER
-		    {
-		    pEV->value = (char*)nmSysMalloc(20);
-		    snprintf(pEV->value,20,"%i",val->Integer);
-		    pEV->value[19]='\0';
-		    }
-		pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
-		return 0;
-		}
-	    }
+	/** Try to set a command parameter (env variable) **/
+	if (shl_internal_SetParam(inf, attrname, datatype, val) < 0)
+	    return -1;
 
     return -1;
     }

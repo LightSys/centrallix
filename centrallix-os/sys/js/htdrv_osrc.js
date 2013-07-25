@@ -384,7 +384,7 @@ function osrc_make_filter_integer(col,val)
 	return this.MFCol(col) + ' is null ';
     else if (val == null)
 	return this.MFCol(col) + ' = null ';
-    else if (typeof val != 'number' && (new String(val)).search(/-/)>=0)
+    else if (!col.plainsearch && typeof val != 'number' && (new String(val)).search(/-/)>=0)
 	{
 	var parts = (new String(val)).split(/-/);
 	return '(' + this.MFCol(col) + ' >=' + parts[0] + ' AND ' + this.MFCol(col) + ' <=' + parts[1] + ')';
@@ -405,6 +405,8 @@ function osrc_make_filter_string(col, val, icase)
 	str=colref + ' is null ';
     else if (val == null)
 	str=colref + ' = null ';
+    else if (col.plainsearch)
+	str=ifunc + '(' + colref + ')='+ifunc+'("'+val+'")';
     else
 	if (val.search(/^\*.+\*$/)>=0)
 	    {
@@ -2275,6 +2277,7 @@ function osrc_action_sync(param)
 	    if (!this.parentosrc.replica[p])
 		{
 		var t = new Object();
+		t.plainsearch = true;
 		t.oid = this.ChildKey[i];
 		t.value = null;
 		t.type = 'integer'; // type doesn't matter if it is null.
@@ -2293,6 +2296,7 @@ function osrc_action_sync(param)
 		    if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])
 			{
 			var t = new Object();
+			t.plainsearch = true;
 			t.oid=this.ChildKey[i];
 			t.value=this.parentosrc.replica[p][j].value;
 			t.type=this.parentosrc.replica[p][j].type;
@@ -2660,6 +2664,9 @@ function osrc_apply_rel(obj, in_create)
 				break;
 			    }
 			}
+
+		    // Force plain search - no wildcards, etc.
+		    obj[obj_index].plainsearch=true;
 
 		    // Type not available?
 		    if (obj[obj_index] && typeof obj[obj_index].type == "undefined" && this.type_list[obj[obj_index].oid])

@@ -39,6 +39,7 @@
 #include "apos.h"
 #include "hints.h"
 #include "param.h"
+#include "endorsement_utils.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/magic.h"
@@ -107,8 +108,8 @@ struct
 
 
 pWgtrNode 
-wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
-pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
+wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, int* err);
+pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, int* err);
 int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
 int wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
 pWgtrNode wgtrLoadTemplate(pObjSession s, char* path, pStruct params);
@@ -444,8 +445,8 @@ wgtrLoadAddTemplate(pObjSession s, char* path, pStruct params, pWgtrNode templat
 	    /** Check duplicates **/
 	    if (templates && !strcmp(path, templates[i]->ThisTemplatePath))
 		{
-		mssError(1,"WGTR","Cannot add duplicate template '%s'", path);
-		return -1;
+		mssError(1,"WGTR","Warning - cannot add duplicate template '%s'", path);
+		return 0;
 		}
 	    }
 
@@ -460,7 +461,7 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     {
     pWgtrNode template;
 
-	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL, WGTR_PF_NOTEMPLATE);
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL, WGTR_PF_NOTEMPLATE | WGTR_PF_NOSECURITY);
 	if (!template) return NULL;
 	if (strcmp(template->Type, "widget/template"))
 	    {
@@ -801,6 +802,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
     char name[64];
     char rptname[64];
     char type[64];
+    int errstat;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -821,7 +823,8 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 		if (t != DATA_T_INTEGER || (rval=objGetAttrValue(child_obj, "condition", t, &val)) != 0 || val.Integer != 0)
 		    {
 		    /** Parse the widget subtree and add it to this_node. **/
-		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset, flags)) != NULL)
+		    child_node = wgtr_internal_ParseOpenObject(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset, flags, &errstat);
+		    if (child_node != NULL)
 			{
 			/** Inside a widget/repeat?  If so, we need to mangle the name to
 			 ** ensure that the resulting widget name is unique in the tree.  We
@@ -838,10 +841,21 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 			wgtrAddChild(this_node, child_node);
 			child_node = NULL;
 			}
-		    else
+		    else if (errstat < 0)
 			{
+			/** Could not render child, and it is an error.  Stop now. **/
 			mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
 			goto error;
+			}
+		    else
+			{
+			/** Could not render child, but it is not an error, so we just
+			 ** continue on without this child being added (same as if the
+			 ** condition had failed)
+			 **/
+			objClose(child_obj);
+			child_obj = NULL;
+			continue;
 			}
 		    }
 		else if (t == DATA_T_INTEGER && rval == 0 && val.Integer == 0)
@@ -1149,11 +1163,98 @@ wgtr_internal_CheckLoadTemplates(pObject obj, pStruct client_params, pWgtrNode m
     }
 
 
+/*** wgtr_internal_LoadEndorsements - look for security endorsements specified in
+ *** the app or component.
+ ***/
+int
+wgtr_internal_LoadEndorsements(pObject obj, pWgtrNode node)
+    {
+    char* endorsement_sql;
+    pObjQuery eqy;
+    pObject eobj;
+    char* one_endorsement;
+    char* one_context;
+
+	/** Check for endorsements to load **/
+	if (wgtrGetPropertyValue(node, "add_endorsements_sql", DATA_T_STRING, POD(&endorsement_sql)) == 0)
+	    {
+	    /** Run the SQL to fetch the endorsements **/
+	    eqy = objMultiQuery(obj->Session, endorsement_sql, NULL, 0);
+	    if (eqy)
+		{
+		/** Loop through returned rows **/
+		while ((eobj = objQueryFetch(eqy, O_RDONLY)) != NULL)
+		    {
+		    if (objGetAttrValue(eobj, "endorsement", DATA_T_STRING, POD(&one_endorsement)) == 0)
+			{
+			if (objGetAttrValue(eobj, "context", DATA_T_STRING, POD(&one_context)) == 0)
+			    {
+			    cxssAddEndorsement(one_endorsement, one_context);
+			    }
+			}
+		    objClose(eobj);
+		    }
+		objQueryClose(eqy);
+		}
+	    }
+
+    return 0;
+    }
+
+
+/*** wgtr_internal_VerifyEndorsements() - see if this widget is requiring certain
+ *** security endorsements.  If so, check them.  Returns 0 if endorsements pass or
+ *** no endorsements are required.  Returns 1 if endorsements are required but it
+ *** is not considered an "error" (just don't give the user the widget).  Returns
+ *** -1 if endorsements are required, the user doesn't have them, and it is an
+ *** error condition that should prevent the rendering of the entire application.
+ ***/
+int
+wgtr_internal_VerifyEndorsements(pWgtrNode node)
+    {
+    char* endorsement_name;
+    char* endorsement_action;
+    int err;
+    int endorsement_ok = 1;
+
+	/** Check endorsements **/
+	if (endVerifyEndorsements(node, wgtrGetPropertyValue, &endorsement_name) < 0)
+	    endorsement_ok = 0;
+
+	/** Don't have it - error or not?  If we are trying to render the top level of
+	 ** a page or component, it is by default an error.  Otherwise, this is by default
+	 ** something we ignore - i.e. just leave the widget out of the application.
+	 **/
+	if (!endorsement_ok)
+	    {
+	    if (!strcmp(node->Type, "widget/page") || !strcmp(node->Type, "widget/component-decl"))
+		err = -1;
+	    else
+		err = 1;
+
+	    /** App author may have specified explicitly how to handle it. **/
+	    if (wgtrGetPropertyValue(node, "missing_endorsement_action", DATA_T_STRING, POD(&endorsement_action)) == 0)
+		{
+		if (!strcmp(endorsement_action,"error"))
+		    err = -1;
+		else if (!strcmp(endorsement_action,"ignore"))
+		    err = 1;
+		}
+
+	    if (err == -1)
+		mssError(1,"WGTR","Missing security endorsement '%s' is required by widget '%s'", endorsement_name, node->Name);
+	    return err;
+	    }
+
+    return 0;
+    }
+
+
 /*** wgtr_internal_ParseOpenObject - recursively load in one widget and
  *** its child widget trees.
  ***/
 pWgtrNode 
-wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags)
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, int* err)
     {
     pWgtrNode	this_node = NULL;
     pParam param;
@@ -1166,6 +1267,11 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
     int created_objlist = 0;
     int i;
     ObjData rptqysql;
+    int new_sec_context = 0;
+    int rval;
+
+	/** Default state on error exit **/
+	*err = -1;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1245,6 +1351,31 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	/** Load in the attributes for the widget and copy in the template **/
 	if ((this_node = wgtr_internal_LoadAttrs(obj, name, type, my_templates, root, xoffset, yoffset, client_params)) == NULL)
 	    goto error;
+
+	/** Now that the templates and attributes are loaded, we can do the security check **/
+	if (!(flags & WGTR_PF_NOSECURITY))
+	    {
+	    if (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl"))
+		{
+		/** Start the new context for this component/app **/
+		/*cxssPushContext();
+		new_sec_context = 1;*/
+
+		/** Load our available endorsements for this app/component **/
+		wgtr_internal_LoadEndorsements(obj, this_node);
+		}
+
+	    /** Check for required endorsements **/
+	    rval = wgtr_internal_VerifyEndorsements(this_node);
+
+	    /** Endorsement failed but it is not an error? **/
+	    if (rval == 1)
+		*err = 0;
+
+	    /** Could not add this widget? **/
+	    if (rval != 0)
+		goto error;
+	    }
 
 	/** Inherit the parent's repeat prefix, or establish a NEW repeat
 	 ** prefix if the parent is a widget/repeat itself.
@@ -1326,10 +1457,15 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    for(i=0;i<n_params;i++) paramFree(paramlist[i]);
 	    }
 
+	/** Release the security context? **/
+	if (new_sec_context) cxssPopContext();
+
 	/** return the completed node and subtree **/
+	*err = 0;
 	return this_node;
 
     error:
+	if (new_sec_context) cxssPopContext();
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (my_templates[i] != templates[i])
 		wgtrFree(my_templates[i]);
@@ -1359,6 +1495,7 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[], int flags)
     pWgtrNode template_arr[WGTR_MAX_TEMPLATE];
     pWgtrNode tree;
     int i;
+    int errstat;
 
 	/** Load templates? **/
 	memset(template_arr, 0, sizeof(template_arr));
@@ -1373,7 +1510,7 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[], int flags)
 	    }
 
 	/** Load in the widget tree, using the templates **/
-	tree = wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0, flags);
+	tree = wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0, flags, &errstat);
 
 	/** Free memory used by templates **/
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)

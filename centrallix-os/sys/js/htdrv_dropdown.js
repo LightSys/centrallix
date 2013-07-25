@@ -1165,7 +1165,10 @@ function dd_init(param)
 
     if(l.Mode == 3)
 	{
-	l.osrc = wgtrFindContainer(l, "widget/osrc");
+	if (param.osrc)
+	    l.osrc = wgtrGetNode(l, param.osrc);
+	else
+	    l.osrc = wgtrFindContainer(l, "widget/osrc");
         if(!l.osrc)
 	    {
 	    alert("Drop Down in objectsource mode needs to be inside an osrc widget!");
@@ -1188,10 +1191,13 @@ function dd_init(param)
     l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
-    if (param.form)
-	l.form = wgtrGetNode(l, param.form);
-    else
-	l.form = wgtrFindContainer(l,"widget/form");
+    if (l.Mode != 3)
+	{
+	if (param.form)
+	    l.form = wgtrGetNode(l, param.form);
+	else
+	    l.form = wgtrFindContainer(l,"widget/form");
+	}
     l.query_multiselect = param.qms;
     l.invalid_select_default = param.ivs;
     l.value = null;
