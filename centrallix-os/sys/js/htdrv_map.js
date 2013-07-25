@@ -14,10 +14,43 @@
 
 // Map Widget Initialization 
 //
+ //var map;
+  //var markerLayer;
 function map_init(param)
     {
+	
     var l = param.layer;
-    htr_init_layer(l,l,"map");
+    //htr_init_layer(l,l,"map");
+     
+     //Create map with corresponding controllers from openLayers
+     l.map = new OpenLayers.Map(l.id, {
+                    controls: [
+                        new OpenLayers.Control.Navigation(),
+                        new OpenLayers.Control.PanZoomBar(),
+                        new OpenLayers.Control.KeyboardDefaults()
+                    ],
+                    numZoomLevels: 6
+                    
+                });
+    //load layers from StreetMap
+    var layer = new OpenLayers.Layer.OSM( "Simple OSM Map");
+    var vector = new OpenLayers.Layer.Vector('vector');
+    l.map.addLayers([layer, vector]);
+    
+    //Center map to the US
+    l.map.setCenter(
+		new OpenLayers.LonLat(-104.821363, 38.833882).transform(
+						new OpenLayers.Projection("EPSG:4326"),
+						l.map.getProjectionObject()
+						), 1
+	);
+	
+      //This layer will contain the makers that we will place on the screen
+      l.markerLayer = new OpenLayers.Layer.Markers('Markers');
+      l.map.addLayer(l.markerLayer);
+   
+    
+    
     ifc_init_widget(l);
     l.w = getdocWidth(l);
 
@@ -59,7 +92,8 @@ function map_init(param)
 	l.osrc = wgtrFindContainer(l, "widget/osrc");
     if (l.osrc)
 	l.osrc.Register(l);
-
+	
+	
     return l;
     }
 
@@ -79,6 +113,7 @@ function map_get_osrc_property(o,n)
 //
 function map_refresh()
     {
+      this.markerLayer.clearMarkers();
     // First, clear all objects
     this.Clear();
 
@@ -93,26 +128,48 @@ function map_refresh()
 //
 function map_add_osrc_object(o)
     {
+    
+   
     // get needed props
-    var x = map_get_osrc_property(o, 'x');
-    if (x == null) x = 0;
-    var y = map_get_osrc_property(o, 'y');
-    if (y == null) y = 0;
-    var w = map_get_osrc_property(o, 'width');
-    var h = map_get_osrc_property(o, 'height');
+    var lat = map_get_osrc_property(o, 'lat');
+    if (lat == null) lat = 0;
+    var lon = map_get_osrc_property(o, 'lon');
+    if (lon == null) lon = 0;
+    //var w = map_get_osrc_property(o, 'width');
+    //var h = map_get_osrc_property(o, 'height');
     var c = map_get_osrc_property(o, 'color');
     if (c == '') c = null;
     var i = map_get_osrc_property(o, 'image');
     if (i == '') i = null;
     var lbl = map_get_osrc_property(o, 'label');
+    var popup_text = map_get_osrc_property(o, 'popup_text');
     if (lbl == '') lbl = null;
     if ((lbl == null && c == null && i == null)) return false;
-    if (w != null) w = parseInt(w);
-    if (h != null) h = parseInt(h);
-    x = parseInt(x);
-    y = parseInt(y);
+   
+    
+    lat = parseFloat(lat);
+    lon = parseFloat(lon);
+    
+     var Onemarker = new OpenLayers.Marker(new OpenLayers.LonLat(lon, lat ).transform(
+		new OpenLayers.Projection("EPSG:4326"),
+				this.map.getProjectionObject()
+				));
+				
+				   
 
-    // make and position the layer
+		
+		   /* Register the events */
+                Onemarker.events.register('mousedown', Onemarker, testFunc.bind(this, popup_text, Onemarker.lonlat, o.id) );
+		//marker.events.register('mousedown', marker, function(evt) { alert(this.icon.url); OpenLayers.Event.stop(evt); });
+		  
+		/* Add markers to the map */
+                this.markerLayer.addMarker(Onemarker);
+		this.map.setCenter(new OpenLayers.LonLat(lon,lat).transform(
+		new OpenLayers.Projection("EPSG:4326"),
+				this.map.getProjectionObject()
+				), 4);
+    /*
+    // make and position the layer 
     var l = this.NewLayer();
     htr_init_layer(l, this, 'map');
     l.osrc_oid = o.oid;
@@ -149,11 +206,11 @@ function map_add_osrc_object(o)
 	l.area = pg_addarea(this, x-1, y-1, w+1, h+1, this.param.name, l, this.param.allow_select?1:0);
 	//htr_alert(l.area, 1);
 	}
-
+*/
     // add to the list
-    this.objects.push(l);
+  //  this.objects.push(l);
     // tag the images so they do not steal focus from the focus area
-    htutil_tag_images(l, 'map', l, this);    
+   // htutil_tag_images(l, 'map', l, this);    
 
     return true;
     }
@@ -170,6 +227,28 @@ function map_clear()
 	this.FreeLayer(l);
 	}
     }
+
+    
+function testFunc(popup_text, lonlat, id){
+	
+	var popup = new OpenLayers.Popup("chicken",
+					lonlat,
+					null,
+					popup_text,
+					true);
+	popup.autoSize =true;
+	
+	
+	this.map.addPopup(popup);
+	
+	
+	
+	if (id && this.param.allow_select && this.osrc)
+	this.osrc.MoveToRecord(id);
+	 
+	
+}
+
 
 // Create a new layer, possibly from the cache
 //
@@ -197,6 +276,7 @@ function map_free_layer(l)
 //
 function map_select_item(l)
     {
+    alert("select item");
     if (l.area && this.param.show_select)
 	pg_setdatafocus(l.area);
     this.selected_item = l;
@@ -218,6 +298,7 @@ function map_select_item_by_id(id)
 //
 function map_getfocus(x,y,l,grp,id,a)
     {
+	alert("focus");
     if (id.osrc_id && this.param.allow_select && this.osrc)
 	this.osrc.MoveToRecord(id.osrc_id);
     if (this.param.allow_select)
@@ -256,6 +337,17 @@ function map_osrc_is_discard_ready()
 
 function map_osrc_object_available(o)
     {
+	//link: http://dev.openlayers.org/docs/files/OpenLayers/Layer/Markers-js.html#OpenLayers.Layer.Markers.removeMarker
+	//This is not working yet because the layer needs to be redrawn after changing the icon size. 
+	//var size = new OpenLayers.Size(100,100);
+		//Onemarker.icon.size = size;
+	/*
+	for(var i in this.markerLayer.markers){
+		this.markerLayer.markers[i].icon.size = size;
+		
+        }*/
+	
+	
     this.Refresh();
     if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
     }
