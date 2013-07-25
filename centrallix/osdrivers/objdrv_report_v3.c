@@ -10,6 +10,9 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <mgl/mgl_c.h>
+#include <ctype.h>
+#include <math.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -1853,7 +1856,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			}
 		    }
 		}
-
+            
 	    /** Search for 'normal' rows **/
 	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 		{
@@ -1870,6 +1873,8 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			}
 		    }
 		}
+            
+
 
 	    if (err) break;
 	    if (ac) rval = rpt_internal_NextRecord(ac, inf, table, rs, 0);
@@ -2113,7 +2118,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    {
 	    if (ptr && !strcmp(ptr,"yes")) nl=1;
 	    }
-
+        
 	/** Get the expression itself **/
 	value_inf = stLookup(data,"value");
 	if (!value_inf)
@@ -2523,7 +2528,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		err = 1;
 		break;
 		}
-
+            
 	    /** Print out the contents of the form **/
 	    rval = rpt_internal_DoContainer(inf, form, rs, container_handle);
 	    if (rval < 0) err = 1;
@@ -2558,7 +2563,409 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
     return 0;
     }
 
+/* DoChart prints a bar, line, or pie chart on the report based on the information provided by the user. */
+int
+rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int container_handle)
+{
+    int MAX_VALS = 1000;
+    double maxchartvals[MAX_VALS];
+    char* max_x_labels[MAX_VALS];
+    pQueryConn qy;
+    pRptActiveQueries ac;
+    int reccnt;
+    int rval;
+    int t,i;
+    double max;
+    pStructInf value_inf, x_label_inf;
+    pRptUserData ud;
+    pPrtImage img;
+    pObject imgobj;
+    int flags;
+    double x,y,w,h;
+    double stand_w,stand_h;
+    int xres,yres;
+    int x_pixels,y_pixels;
+    char* chart_type;
+    char* title;
+    char* x_axis_label;
+    char* y_axis_label;
+    char* color;
+    
+	/** Start the query. **/
+	if ((ac = rpt_internal_Activate(inf, chart, rs)) == NULL) return -1;
 
+	/** Fetch the first row. **/
+	if ((rval = rpt_internal_NextRecord(ac, inf, chart, rs, 1)) < 0) return -1;
+
+	/** Enter the row retrieval loop.  For each row, do all sub-parts **/
+	reccnt = 0;
+	qy = ac->Queries[ac->Count-1];
+	while(rval == 0)
+            {
+            /* Get the labels for the x-axis */
+            value_inf = stLookup(chart,"x_labels");
+	    if (value_inf)
+                {
+                t = stGetAttrType(value_inf, 0);
+                if (t == DATA_T_CODE)
+                    {
+                    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(value_inf->UserData));
+                    if (ud)
+                        {
+                        /** Evaluate the expression **/
+                        rval = expEvalTree(ud->Exp, inf->ObjList);
+                        if (rval < 0)
+                            {
+                            mssError(0,"RPT","Could not evaluate %s '%s' value expression", chart->UsrType, chart->Name);
+                            return -1;
+                            }
+                        else
+                            {
+                            if(!(ud->Exp->Flags == EXPR_F_NULL))
+                                 {
+                                 /** Store the labels in a char* array. **/
+                                 /* numSysStrdup is a function for copying string pointer */
+                                 max_x_labels[reccnt] = nmSysStrdup(ud->Exp->String); 
+                                 }
+                            }
+                        }
+                    }
+                }
+            
+            /* Get the y values*/
+      	    value_inf = stLookup(chart,"y_values");
+	    if (!value_inf)
+                {
+	        mssError(0,"RPT","%s '%s' must have a value expression", chart->UsrType, chart->Name);
+                return -1;
+                }
+            t = stGetAttrType(value_inf, 0);
+            if (t == DATA_T_CODE)
+                {
+                ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(value_inf->UserData));
+                if (ud)
+                    {
+                    /** Evaluate the expression **/
+                    rval = expEvalTree(ud->Exp, inf->ObjList);
+                    if (rval < 0)
+                        {
+                        mssError(0,"RPT","Could not evaluate %s '%s' value expression", chart->UsrType, chart->Name);
+                        return -1;
+                        }
+                    else
+                        {
+                        /** Store y values in a double array **/
+                        if(!(ud->Exp->Flags == EXPR_F_NULL))
+                            {
+                            unsigned char type = ud->Exp->DataType;
+                            char* string;
+                            switch(type)
+                                {
+                                case DATA_T_DOUBLE:
+                                    maxchartvals[reccnt] = ud->Exp->Types.Double;
+                                    break;
+                                case DATA_T_INTEGER:
+                                    maxchartvals[reccnt] = objDataToDouble(type, &(ud->Exp->Integer));
+                                    break;
+                                case DATA_T_MONEY:
+                                    maxchartvals[reccnt] = objDataToDouble(type, &(ud->Exp->Types.Money));
+                                    break;
+                                case DATA_T_STRING:
+                                    string = ud->Exp->String;
+                                    if( !isdigit(string[0]) ) //take off first char if currency sign
+                                        {
+                                        string++;
+                                        }
+                                    maxchartvals[reccnt] = objDataToDouble(type, &(string));
+                                default:
+                                    return -1;
+                                 }
+                             }
+                        else //if the expression evaluates to NULL,
+                            {
+                            reccnt--; //pretend like you haven't gone through the loop
+                            }
+                        }
+                    }
+                }
+            
+	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
+	    reccnt++;
+            }
+
+	/** We're finished with the query **/
+	rpt_internal_Deactivate(inf, ac);
+        
+        /** Cut down the size of x label array and the y value array. */
+        /*The first and the last items are zeros/whitepace. This is for creating the chart */
+        char* x_labels[reccnt];
+        double chartvals[reccnt];
+        for (i=0; i < reccnt; i++)
+            {
+            x_labels[i] = max_x_labels[i];
+            chartvals[i] = maxchartvals[i];
+            }
+
+        /** Get area geometry in given units **/
+        if (rpt_internal_GetDouble(chart, "x", &x, 0) < 0) x = -1;
+	if (rpt_internal_GetDouble(chart, "y", &y, 0) < 0) y = -1;
+	if (rpt_internal_GetDouble(chart, "width", &w, 0) < 0) return -1;
+	if (rpt_internal_GetDouble(chart, "height", &h, 0) < 0) return -1;
+
+        /* Convert to standard units */
+        stand_w = prtUnitX(rs->PSession, w);
+        stand_h = prtUnitY(rs->PSession, h);
+        
+        /* Get the resolution */
+        prtGetResolution(rs->PSession, &xres, &yres);
+        
+        /* Get Actual pixel dimensions */
+        x_pixels = stand_w * (double)xres / 10;
+        y_pixels = stand_h * (double)yres / 6;
+        
+        /* Check for title and axis labels */
+        if(stAttrValue(stLookup(chart, "title"), NULL, &title, 0) < 0)
+            {
+            title = " ";
+            }
+        if(stAttrValue(stLookup(chart, "x_axis_label"), NULL, &x_axis_label, 0) < 0)
+            {
+            x_axis_label = " ";
+            }
+        if(stAttrValue(stLookup(chart, "y_axis_label"), NULL, &y_axis_label, 0) < 0)
+            {
+            y_axis_label = " ";
+            }
+        if(stAttrValue(stLookup(chart, "color"), NULL, &color, 0) < 0)
+            {
+            color = "b";
+            }
+        /* Determine chart type */
+        if(stAttrValue(stLookup(chart, "chart_type"), NULL, &chart_type, 0) < 0)
+            {
+            mssError(0,"RPT","Chart type required");
+            return -1;
+            }
+        
+        /* Draw the chart, depending on type */
+        if(!strcmp(chart_type, "bar"))
+            {
+            rpt_internal_DrawBarChart(chartvals, x_labels, title, x_axis_label, y_axis_label,
+                                        x_pixels, y_pixels, color, reccnt);
+            }
+        else if(!strcmp(chart_type, "line"))
+            {
+            rpt_internal_DrawLineChart(chartvals, x_labels, title, x_axis_label, y_axis_label,
+                                        x_pixels, y_pixels, color, reccnt);
+            }
+        else if(!strcmp(chart_type, "pie"))
+            {
+            if(reccnt > 28) return -1; /* There are only 28 colors for the pie chart*/
+            rpt_internal_DrawPieChart(chartvals, x_labels, title, x_axis_label, y_axis_label,
+                                        x_pixels, y_pixels, reccnt);
+            }
+        else
+            {
+            mssError(0,"RPT","Invalid chart type: %s", chart_type);
+            return -1;
+            }
+        
+        /* I don't know what this does */
+	rval = rpt_internal_CheckCondition(inf,chart);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Load the image **/
+	if ((imgobj = objOpen(inf->Obj->Session, "/tmp/chart.png", O_RDONLY, 0400, "image/png")) == NULL) return -1;
+	img = prtCreateImageFromPNG(objRead, imgobj);
+	objClose(imgobj);
+	if (!img) return -1;
+
+	/** Check flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+
+	/** Add it to its container **/
+	if (prtWriteImage(container_handle, img, x,y,w,h, flags) < 0) return -1;
+        
+        /* Free the memory used by nmSysStrdup */
+        for(i = 0; i < reccnt; i++)
+            {
+            nmSysFree(max_x_labels[i]);
+            }
+        
+    return 0;
+}
+
+/*draw the bar chart*/
+void
+rpt_internal_DrawBarChart(double chartvals[], char* x_labels[], char* title, char* x_axis_label, char* y_axis_label,
+                                int x_pixels, int y_pixels, char* color, int reccnt)
+{
+    int i,j;
+    double max;
+    int tickDist;
+    char* padded_x_labels[reccnt+2];
+    double padded_chartvals[reccnt+2];
+    
+    /*find the max value of chartvals and add 0 at the beginning and end of the chartvals*/
+    max = 0;
+    padded_x_labels[0] = padded_x_labels[reccnt+1] = " ";
+    padded_chartvals[0] = padded_chartvals[reccnt+1] = 0;
+    for (i=0; i < reccnt; i++)
+        {
+        padded_x_labels[i+1] = x_labels[i];
+        padded_chartvals[i+1] = chartvals[i];
+        if(padded_chartvals[i+1] > max) max = padded_chartvals[i+1];
+        }
+    tickDist = rpt_internal_getTickDist(max);
+    
+    /*draw the chart*/
+    HMGL gr = mgl_create_graph_zb(x_pixels,y_pixels);
+    mgl_title(gr, title, "", 8);
+    HMDT dat = mgl_create_data_size(reccnt+2,1,1);
+    mgl_data_set_double(dat,padded_chartvals, reccnt+2,1,1);
+    mgl_set_axis_2d(gr,0,0,(reccnt+1)*2, max+tickDist);
+    mgl_set_origin(gr,0.,0.,0.);
+    float b[reccnt+2];
+    for(i=0;i<(reccnt+2);i++)
+        {
+        b[i]=i*2.0;
+        }
+    mgl_set_ticks(gr, -((reccnt+1)*2+1), tickDist, 1);
+    /*convert each value in padded_chartvals to char**/
+    char pc[10];
+    char pcs[6];
+    for(i=1;i<(reccnt+1);i++)
+        {
+        sprintf(pc,"%f",padded_chartvals[i]);
+        for(j=0;j<5;j++)
+            {
+            pcs[j]=pc[j];
+            }
+        pcs[5]='\0';
+        mgl_puts(gr,i*2,padded_chartvals[i]+0.5,0.,pcs);
+        }
+    mgl_set_font_size(gr,3);
+    mgl_set_ticks_vals(gr,'x',reccnt+2,b,padded_x_labels);
+    mgl_axis(gr,"xy");
+    mgl_label_ext(gr,'x',x_axis_label,0,10,-0.5);
+    mgl_label_ext(gr,'y',y_axis_label,0,10,-0.5);
+    mgl_box(gr,1);
+    mgl_bars(gr,dat,color);
+    mgl_write_png(gr,"/usr/local/src/cx-git/centrallix-os/tmp/chart.png",0); /* Later this will be changed to a relative path */
+    mgl_delete_data(dat);
+    return;
+}
+
+/*draw the line chart*/
+void
+rpt_internal_DrawLineChart(double chartvals[], char* x_labels[], char* title, char* x_axis_label, char* y_axis_label,
+                                int x_pixels, int y_pixels, char* color, int reccnt)
+{
+    int i,j;
+    double max;
+    int tickDist;
+    
+    max = 0;
+    for (i=0; i < reccnt; i++)
+        {
+        if(chartvals[i] > max) max = chartvals[i];
+        }
+    tickDist = rpt_internal_getTickDist(max);
+    
+    HMGL gr = mgl_create_graph_zb(x_pixels,y_pixels);
+    mgl_title(gr, title, "", 8);
+    HMDT dat = mgl_create_data_size(reccnt,1,1);
+    mgl_data_set_double(dat,chartvals, reccnt,1,1);
+    mgl_set_axis_2d(gr,0,0,(reccnt-1)*2,max+tickDist);
+    mgl_set_origin(gr,0.,0.,0.);
+    float b[reccnt];
+    for(i=0;i<reccnt;i++)
+        {
+        b[i]=i*2.0;
+        }
+    mgl_set_ticks(gr, -((reccnt-1)*2+1), tickDist, 1);
+    char pc[10];
+    char pcs[6];
+    for(i=0;i<reccnt;i++)
+        {
+        sprintf(pc,"%f",chartvals[i]);
+        for(j=0;j<5;j++)
+            {
+            pcs[j]=pc[j];
+            }
+        pcs[5]='\0';
+        mgl_puts(gr,i*2,chartvals[i]+0.5,0.,pcs);
+        }
+    mgl_set_font_size(gr,3);
+    mgl_set_ticks_vals(gr,'x',reccnt,b,x_labels);
+    mgl_axis(gr,"xy");
+    mgl_label_ext(gr,'x',x_axis_label,0,10,-0.5);
+    mgl_label_ext(gr,'y',y_axis_label,0,10,-0.5);
+    mgl_box(gr,1);
+    mgl_plot(gr,dat,color);
+    mgl_write_png(gr,"/usr/local/src/cx-git/centrallix-os/tmp/chart.png",0); /* Later this will be changed to a relative path */
+    mgl_delete_data(dat);
+    return;
+}
+
+/*draw the pie chart*/
+void
+rpt_internal_DrawPieChart(double chartvals[], char* x_labels[], char* title, char* x_axis_label, char* y_axis_label,
+                                int x_pixels, int y_pixels, int reccnt)
+{
+    int i,j;
+    double t,r=1.3;
+    double sumValues=0.0;
+    double sumPreviousAngles = 0.0;
+    double angles[reccnt];
+    char string[50];
+    char* color;
+    
+    HMGL gr = mgl_create_graph_zb(x_pixels,y_pixels);
+    mgl_title(gr, title, "", 8);
+    HMDT dat = mgl_create_data_size(reccnt,1,1);
+    mgl_data_set_double(dat,chartvals, reccnt,1,1);
+    mgl_set_func(gr,"(y+1)/2*cos(pi*x)","(y+1)/2*sin(pi*x)",0);   //make it to a cylinder 
+    char pc[10];
+    char pcs[6];
+    char colorString[3];
+    color = ":bgrhBGRHWcmywpCMYkPlenuqLENUQ"; 
+    for(i=0;i<reccnt;i++)
+        {
+        char legend[strlen(x_labels[i]) + 1];
+        sprintf(pc,"%f",chartvals[i]);
+        for(j=0;j<5;j++)
+            {
+            pcs[j]=pc[j];
+            }
+        pcs[5]='\0';
+        sprintf(legend,"%s: ",x_labels[i]);
+        sprintf(colorString, "%c", color[i+1]);
+        strncat(colorString,"7",1);
+        mgl_add_legend(gr,legend,colorString);
+        }
+    mgl_legend_xy(gr,-0.28,0.,"",4,0.1);
+    mgl_chart(gr,dat,color);
+
+    /* Correctly position percentages around the chart */
+    for(i=0; i<reccnt; i++) sumValues += chartvals[i];
+    for(i=0; i<reccnt; i++)
+        {
+        angles[i] = chartvals[i] / sumValues * 2*M_PI;
+        t = sumPreviousAngles + angles[i] / 2.0 - M_PI;
+        t /= 3; /* We don't know how this works, but this line fixed the shifting problem. */
+        sprintf(string,"%d%%", (int)(chartvals[i]/sumValues*100+0.5));
+        mgl_puts(gr,t,r,0,string);
+        sumPreviousAngles += angles[i];
+        }
+    
+    mgl_write_png(gr,"/usr/local/src/cx-git/centrallix-os/tmp/chart.png",0); /* Later this will be changed to a relative path */
+    mgl_delete_data(dat);
+    return;
+}
 #if 00
 /*** rpt_internal_DoFooter - generate a report footer on demand.  This is
  *** a callback function from the print management layer when a page reaches
@@ -2851,6 +3258,11 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
                     rval = rpt_internal_DoSection(inf, subobj, rs, container_handle);
 		    if (rval < 0) break;
                     }
+                else if (!strcmp(subobj->UsrType, "report/chart"))
+                    {
+                    rval = rpt_internal_DoChart(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+                    }
 		}
 	    }
 
@@ -3029,6 +3441,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     pXArray xa = NULL;
     int err = 0;
     pStructInf expr_inf;
+    pStructInf x_labels;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -3069,6 +3482,21 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 		    }
 		}
 	    }
+        
+        if (!strcmp(object->UsrType, "report/chart"))
+        {
+            expr_inf = stLookup(object, "y_values");
+            if(expr_inf && rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
+            {
+                expr_inf->UserData = NULL;
+            }
+            
+            x_labels = stLookup(object, "x_labels");
+            if(x_labels && rpt_internal_PreBuildExp(inf, x_labels, use_objlist) < 0)
+            {
+                x_labels->UserData = NULL;
+            }
+        }
 
 	/** If no errors, proceed... **/
 	if (!err)
@@ -3513,6 +3941,14 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		else if (!strcmp(subreq->UsrType,"report/form"))
 		    {
 		    if (rpt_internal_DoForm(inf, subreq,rs, rs->PageHandle) <0)
+		        {
+			err = 1;
+			break;
+			}
+		    }
+                else if (!strcmp(subreq->UsrType,"report/chart"))
+		    {
+		    if (rpt_internal_DoChart(inf, subreq,rs, rs->PageHandle) <0)
 		        {
 			err = 1;
 			break;
@@ -4632,3 +5068,16 @@ rptInitialize()
     return 0;
     }
 
+/* Returns the tick distance that is 1x10^n, 2x10^n, or 5x10^n.
+   The number of tick marks is between 4 and 10*/
+int rpt_internal_getTickDist(double maxBar)
+        {
+	int tickDist;
+		tickDist = pow(10,floor(log10(maxBar)));
+		if(maxBar/tickDist < 5){
+			tickDist /= 2;
+			if(maxBar/tickDist < 4) tickDist /= 2.5;
+		}
+	if(tickDist == 0) tickDist = 1;
+	return tickDist;
+        }

@@ -255,6 +255,18 @@ prtSetResolution(pPrtSession s, int dpi)
     }
 
 
+/*** prtGetResolution() - return the x and y resolution, in dpi, via the
+ *** given integer pointers.
+ ***/
+int
+prtGetResolution(pPrtSession s, int* xres, int* yres)
+    {
+    if (xres) *xres = s->ResolutionX;
+    if (yres) *yres = s->ResolutionY;
+    return 0;
+    }
+
+
 /*** prtSetImageStore() - set the image store location, which is used by
  *** output formats which do not allow embedding of images physically in
  *** the byte stream of the format itself, but rather must link to those
