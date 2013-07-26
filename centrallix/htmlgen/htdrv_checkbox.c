@@ -90,7 +90,6 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** Write named global **/
    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"cb%INTmain\")", id);
-   htrAddWgtrCtrLinkage(s, tree, "_obj");
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);

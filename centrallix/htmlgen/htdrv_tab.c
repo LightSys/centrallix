@@ -197,7 +197,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** DOM Linkages **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tc%POSbase\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script include **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0);

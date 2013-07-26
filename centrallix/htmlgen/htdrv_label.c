@@ -206,7 +206,6 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 	stylestr[0] = '\0';
 	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",

@@ -187,7 +187,6 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** DOM Linkage on client **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tv%POSroot\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
