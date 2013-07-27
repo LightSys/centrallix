@@ -1282,14 +1282,16 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR%[, namespace:'%STR&SYM'%]", 
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
 		ctrinit, ctrinit,
 		scope, scope,
 		scopename, scopename,
-		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
+		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
+		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
+		tree->Namespace);
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
 	for(rendercnt=i=0;i<childcnt;i++)

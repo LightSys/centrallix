@@ -1,21 +1,41 @@
 //
-// DHTML wgtr module
-// Netscape 4 version
+// Widget Tree module
+// (c) 2004-2013 LightSys Technology Services, Inc.
 //
+// You may use these files and this library under the terms of the
+// GNU Lesser General Public License, Version 2.1, contained in the
+// included file "COPYING" or http://www.gnu.org/licenses/lgpl.txt.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+
+// wgtrNamespace - an object representing a namespace of object names,
+// typically a complete widget tree, or perhaps a subset of widgets inside
+// a widget/repeat.
+function wgtrNamespace(namespace_id, parent_namespace)
+    {
+    // Set up the namespace
+    this.NamespaceID = namespace_id;
+    this.WidgetList = {};
+    this.ParentNamespace = parent_namespace;
+    }
 
 
 // wgtrSetupTree - walk a given widget tree, and set up the wgtr properties.
 // Pass in the declared tree, and this thing returns the actual tree of real
 // widgets.
 //
-
-function wgtrSetupTree(tree, ns, parent)
+function wgtrSetupTree(tree, parent)
     {
     var w;
+    var nsobj;
 
     // Recursively set up the widget tree, connecting the tree with
     // the DOM.
-    w = wgtrSetupTree_r(tree, ns, parent);
+    w = wgtrSetupTree_r(tree, null, parent);
 
     // Setup any composite nodes for repeated widgets.
     wgtrSetupRepeats(w);
@@ -23,16 +43,20 @@ function wgtrSetupTree(tree, ns, parent)
     return w;
     }
 
+
 function wgtrSetupTree_r(tree, ns, parent)
     {
     var _parentobj = parent?parent.obj:null;
     var _parentctr = parent?parent.cobj:null;
 
+    // Setup the DOM object representing this widget.
     if (!tree.obj)
 	tree.obj = {};
     else
 	with (tree) tree.obj = eval(tree.obj);
 
+    // Setup the DOM object that will contain sub-widgets of this widget (this
+    // could be an inner DIV, for instance).
     var _obj = tree.obj;
     if (!tree.cobj)
 	tree.cobj = _obj;
@@ -41,11 +65,19 @@ function wgtrSetupTree_r(tree, ns, parent)
     else
 	with (tree) tree.cobj = eval(tree.cobj);
 
-    if (ns) tree.obj.__WgtrNamespace = ns;
-    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.scope, tree.sn);
+    // Create and/or switch to a new namespace if required
+    if (tree.namespace && (!ns || tree.namespace != ns.NamespaceID))
+	{
+	if (!pg_namespaces[tree.namespace])
+	    pg_namespaces[tree.namespace] = new wgtrNamespace(tree.namespace, ns);
+	ns = pg_namespaces[tree.namespace];
+	}
+
+    // Initialize the widget and its sub-widgets.
+    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.scope, tree.sn, ns);
     if (tree.sub)
 	for(var i=0; i<tree.sub.length; i++)
-	    wgtrSetupTree_r(tree.sub[i], null, tree);
+	    wgtrSetupTree_r(tree.sub[i], ns, tree);
     return tree.obj;
     }
 
@@ -56,25 +88,51 @@ function wgtrSetupTree_r(tree, ns, parent)
 // using aggregate functions like min(), max(), etc.
 function wgtrSetupRepeats(root)
     {
-    var nodelist = wgtrNodeList(root);
-    var rptlist = {};
+    wgtrSetupRepeats_r(root, null);
+    }
 
-    for(var nodename in nodelist)
+function wgtrSetupRepeats_r(node, rptnodelist)
+    {
+    // Are we in a repeat widget?
+    if (node.__WgtrType == "widget/repeat" && rptnodelist == null)
+	rptnodelist = {};
+
+    // Set up all child widgets first, so we have the list from them.
+    for(var i=0; i<node.__WgtrChildren.length; i++)
 	{
-	var node = nodelist[nodename];
-	if (node.__WgtrName.substr(0,6) == '__rpt_')
+	var sublist = rptnodelist?{}:null;
+	wgtrSetupRepeats_r(node.__WgtrChildren[i], sublist);
+
+	if (rptnodelist)
 	    {
-	    var realname = node.__WgtrName.substr(node.__WgtrName.indexOf('_',6)+1);
-	    if (typeof rptlist[realname] == "undefined")
-		rptlist[realname] = [];
-	    rptlist[realname].push(node);
+	    for(var n in sublist)
+		{
+		if(rptnodelist[n])
+		    rptnodelist[n] = rptnodelist[n].concat(sublist[n]);
+		else
+		    rptnodelist[n] = sublist[n];
+		}
 	    }
 	}
 
-    for(var nodename in rptlist)
+    // If this is a repeat node, add the virtual (composite) nodes to it
+    // so that the repeated nodes can be referenced en masse, via actions,
+    // events, and aggregate functions like min() and max().
+    if (node.__WgtrType == "widget/repeat")
 	{
-	var rptnode = new wgtrRepeatNode(nodename, root, rptlist[nodename]);
-	wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", root, false, null, null);
+	for(var nodename in rptnodelist)
+	    {
+	    var rptnode = new wgtrRepeatNode(nodename, rptnodelist[nodename]);
+	    wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", node, false, null, null, node.__WgtrNamespace);
+	    }
+	}
+
+    // Add this node to the list
+    if (rptnodelist)
+	{
+	if (typeof rptnodelist[node.__WgtrName] == "undefined")
+	    rptnodelist[node.__WgtrName] = [];
+	rptnodelist[node.__WgtrName].push(node);
 	}
     }
 
@@ -142,7 +200,7 @@ function wgtr_rn_Event(eparam)
 
 
 // wgtrRepeatNode - create a "repeat composite" nonvisual widget
-function wgtrRepeatNode(nodename, root, nodelist)
+function wgtrRepeatNode(nodename, nodelist)
     {
     this.nodelist = nodelist;
     this.wgtr_rn_ValueChanging = wgtr_rn_ValueChanging;
@@ -165,7 +223,8 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 			    parent,	    // the parent node of this object
 			    is_visual,	    // is the node a visual node?
 			    scope,	    // scope of widget -- local vs application vs session
-			    scopename	    // name of widget to use in extended scope
+			    scopename,	    // name of widget to use in extended scope
+			    ns		    // namespace object (type wgtrNamespace)
 			)
     {
 	if (!obj) alert('no object for wgtr node: ' + name);
@@ -175,6 +234,7 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 	obj.__WgtrName = name;
 	obj.__WgtrContainer = cobj;
 	obj.__WgtrScope = scope?scope:"local";
+	obj.__WgtrNamespace = ns;
 
 	if (scope)
 	    {
@@ -194,11 +254,10 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 	else
 	    {
 	    obj.__WgtrParent = null;
-	    obj.__WgtrChildList = [];
 	    obj.__WgtrRoot = obj;
 	    }
 	
-	obj.__WgtrRoot.__WgtrChildList[name] = obj;
+	obj.__WgtrNamespace.WidgetList[name] = obj;
 
     }
 
@@ -437,35 +496,46 @@ function wgtrGetNode(tree, node_name, type)
     var child;
     var node = null;
     var newnode;
+    var ns;
 
 	// make sure the parameters are legitimate
 	if (!tree || !tree.__WgtrName) 
 	    { pg_debug("wgtrGetNode - node was not a WgtrNode!\n"); return false; }
-	
-	/*for (i=0;i<tree.children.length;i++)
+
+	// Search the namespace for the widget.
+	ns = tree.__WgtrNamespace;
+	while (ns)
 	    {
-	    if (tree.WgtrChildren[i].WgtrName == node_name) return tree.WgtrChildren[i];
-	    if ( (child = wgtrGetNode(tree.WgtrChildren[i], node_name)) != null) return child;
-	    }*/
-	if (tree.__WgtrRoot.__WgtrChildList[node_name]) 
-	    node = tree.__WgtrRoot.__WgtrChildList[node_name];
-	else if (pg_appglobals[node_name])
-	    node = pg_appglobals[node_name];
-	else if (pg_sessglobals[node_name])
-	    node = pg_sessglobals[node_name];
-	else
-	    {
-	    /** Search all pages in this session **/
-	    for(var win in window.pg_appwindows)
+	    if (ns.WidgetList[node_name])
 		{
-		var w = window.pg_appwindows[win];
-		if (w && w.wobj && w.wobj.pg_sessglobals)
-		    node = w.wobj.pg_sessglobals[node_name];
-		if (node) break;
+		node = ns.WidgetList[node_name];
+		break;
 		}
+	    ns = ns.ParentNamespace;
 	    }
+
+	// If not found, search application and session global scopes
 	if (!node)
-	    alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
+	    {
+	    if (pg_appglobals[node_name])
+		node = pg_appglobals[node_name];
+	    else if (pg_sessglobals[node_name])
+		node = pg_sessglobals[node_name];
+	    else
+		{
+		// Still not found? Search all pages in this session for
+		// session globals that might match
+		for(var win in window.pg_appwindows)
+		    {
+		    var w = window.pg_appwindows[win];
+		    if (w && w.wobj && w.wobj.pg_sessglobals)
+			node = w.wobj.pg_sessglobals[node_name];
+		    if (node) break;
+		    }
+		}
+	    if (!node)
+		alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
+	    }
 
 	// Indirect reference?
 	if (node && node.reference)
@@ -554,7 +624,7 @@ function wgtrNodeList(node)
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
 	    { pg_debug("wgtrNodeList - node was not a WgtrNode!\n"); return false; }
-	return node.__WgtrRoot.__WgtrChildList;
+	return node.__WgtrNamespace.WidgetList;
     }
 
 
@@ -669,7 +739,7 @@ function wgtrGetNamespace(node)
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
 	    { pg_debug("wgtrGetName - node was not a WgtrNode!\n"); return false; }
-	return node.__WgtrRoot.__WgtrNamespace;
+	return node.__WgtrNamespace.NamespaceID;
     }
 
 function wgtrGetRoot(node)
@@ -734,8 +804,8 @@ function wgtrFind(v)
     {
     for(var n in pg_namespaces)
 	{
-	if ((typeof pg_namespaces[n].__WgtrChildList[v]) != 'undefined')
-	    return pg_namespaces[n].__WgtrChildList[v];
+	if ((typeof pg_namespaces[n].WidgetList[v]) != 'undefined')
+	    return pg_namespaces[n].WidgetList[v];
 	}
     return null;
     }
@@ -756,7 +826,7 @@ function wgtrRegisterContainer(node, container)
 	    { pg_debug("wgtrRegisterContainer - node was not a WgtrNode!\n"); return false; }
 	if (!container || !container.__WgtrName) 
 	    { pg_debug("wgtrRegisterContainer - container was not a WgtrNode!\n"); return false; }
-	node.__WgtrCmpContainer = container;
+	node.__WgtrTreeContainer = container;
 	return;
     }
 
@@ -768,11 +838,10 @@ function wgtrIsChild(node, subnode)
 	if (!subnode || !subnode.__WgtrName) 
 	    { pg_debug("wgtrGetChild - subnode was not a WgtrNode!\n"); return false; }
 
-	var nodert = wgtrGetRoot(node);
 	while(subnode)
 	    {
-	    if (subnode.__WgtrCmpContainer)
-		subnode = subnode.__WgtrCmpContainer;
+	    if (subnode.__WgtrTreeContainer)
+		subnode = subnode.__WgtrTreeContainer;
 	    else
 		subnode = wgtrGetParent(subnode);
 	    if (subnode == node)

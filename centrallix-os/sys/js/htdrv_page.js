@@ -1661,8 +1661,8 @@ function pg_expaddpart(exp, obj, prop)
 	    return;
 	    }
 	}
-    var _context = window[exp.Context];
-    var nodelist = wgtrNodeList(_context);
+    //var _context = window[exp.Context];
+    //var nodelist = wgtrNodeList(_context);
     var item=[obj.__WgtrName, prop, obj];
     exp.ParamList.push(item);
     pg_explisten(exp, obj, prop);
@@ -1677,7 +1677,7 @@ function pg_expression(o,p,e,l,c)
     expobj.ParamList = l;
     expobj.Context = c;
     var _context = window[c];
-    var nodelist = wgtrNodeList(_context);
+    //var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
     window.__cur_exp = expobj;
@@ -1688,11 +1688,12 @@ function pg_expression(o,p,e,l,c)
 	var item = l[i];
 	var ref;
 	if (item[0] == "*") continue; // cannot handle global listening yet
-	item[2] = nodelist[item[0]]; // get obj reference
+	//item[2] = nodelist[item[0]]; // get obj reference
+	item[2] = wgtrGetNode(_context, item[0]); // get obj reference
 	if (item[2])
 	    {
-	    if (item[2].reference && (ref = item[2].reference()))
-		item[2] = ref;
+	    //if (item[2].reference && (ref = item[2].reference()))
+	    //	item[2] = ref;
 	    pg_explisten(expobj, item[2], item[1]);
 	    }
 	}

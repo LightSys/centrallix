@@ -71,7 +71,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     XString xs;
     pExpression code;
     int first;
-    char rpt_context[128];
+    /*char rpt_context[128];*/
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
 	    {
@@ -101,7 +101,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Are we inside a widget/repeat context? **/
-	rpt_context[0] = '\0';
+	/*rpt_context[0] = '\0';
 	if (!strncmp(name, WGTR_REPEAT_PREFIX, strlen(WGTR_REPEAT_PREFIX)))
 	    {
 	    ptr = strchr(name+strlen(WGTR_REPEAT_PREFIX),'_');
@@ -110,7 +110,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(rpt_context, name, sizeof(rpt_context));
 		rpt_context[ptr - name] = '\0';
 		}
-	    }
+	    }*/
 
 	/** Source/target **/
 	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) != 0)
@@ -162,6 +162,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Add a script init to install the connector **/
+#if 00
 	if (*rpt_context && *source)
 	    {
 	    /** Try repeat-specific node first, then normally named node **/
@@ -174,8 +175,11 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
+#endif
+	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[wgtrGetNode(nodes[\"%STR&SYM\"], \"%STR&SYM\")%];\n",
 		    !*source, name, 
-		    *source, source);
+		    *source, name, source);
+#if 00
 	    }
 	if (*rpt_context && *target)
 	    {
@@ -187,10 +191,13 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
+#endif
 	    htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%];\n",
 		    *target, target, 
 		    !*target, name);
+#if 00
 	    }
+#endif
 	htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
 		event, 
 		action,
