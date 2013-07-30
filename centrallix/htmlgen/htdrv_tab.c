@@ -370,7 +370,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Add script initialization to add a new tabpage **/
 	    if (tloc == None)
-		htrAddScriptInit_va(s,"    wgtrGetNodeRef('%STR&SYM', '%STR&SYM').addTab(null,wgtrGetContainer(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\")),wgtrGetNodeRef('%STR&SYM,'%STR&SYM'),'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
+		htrAddScriptInit_va(s,"    wgtrGetNodeRef('%STR&SYM', '%STR&SYM').addTab(null,wgtrGetContainer(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\")),wgtrGetNodeRef('%STR&SYM','%STR&SYM'),'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
 		    wgtrGetNamespace(tree), name,
 		    wgtrGetNamespace(tabpage_obj), ptr, wgtrGetNamespace(tree), name, ptr,page_type,fieldname);
 	    else

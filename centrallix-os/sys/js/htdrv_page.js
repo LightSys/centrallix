@@ -1677,7 +1677,8 @@ function pg_expression(o,p,e,l,c)
     expobj.Expression = e;
     expobj.ParamList = l;
     expobj.Context = c;
-    var _context = window[c];
+    //var _context = window[c];
+    var _context = c;
     //var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
