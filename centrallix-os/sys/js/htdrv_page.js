@@ -1703,8 +1703,9 @@ function pg_expression(o,p,e,l,c)
 
 function pg_expchange_cb(exp) //SETH: ??
     {
-    var node = wgtrGetNode(window[exp.Context], exp.Objname);
-    var _context = window[exp.Context];
+    //var _context = window[exp.Context];
+    var _context = exp.Context;
+    var node = wgtrGetNode(_context, exp.Objname);
     var _this = node;
     window.__cur_exp = exp;
     var v = eval(exp.Expression);
