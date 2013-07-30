@@ -90,7 +90,7 @@ htmapRender(pHtSession s, pWgtrNode map_node, int z)
 
 	/** objectsource specified? **/
 	if (wgtrGetPropertyValue(map_node, "source", DATA_T_STRING, POD(&ptr)) != 0)
-	    strcpy(osrc, "null");
+	    strcpy(osrc, "");
 	else
 	    strtcpy(osrc, ptr, sizeof(osrc));
 
@@ -122,8 +122,8 @@ htmapRender(pHtSession s, pWgtrNode map_node, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "map", "map_mouseout");
    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    map_init({layer:nodes[\"%STR&SYM\"], osrc:nodes[\"%STR&SYM\"], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
-		name, osrc, allow_select, show_select, name);
+	htrAddScriptInit_va(s, "    map_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), osrc:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
+		name, *osrc, osrc, !*osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element to be used by the OpenLayers map. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"map%POSbase\">\n",id);

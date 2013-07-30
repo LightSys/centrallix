@@ -195,7 +195,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), %[c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"),%] form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
+	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),\"eb%POScon1\"), %[c2:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),\"eb%POScon2\"),%] form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
 	    name,  name,id,  dbl_buffer,name,id, 
 	    form, fieldname, is_readonly, main_bg,
 	    tooltip, descfg, descr);

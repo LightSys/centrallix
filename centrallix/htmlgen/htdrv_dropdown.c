@@ -186,7 +186,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
+    htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
@@ -214,7 +214,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	 **/
 	if ((qy = objMultiQuery(s->ObjSession, sql, NULL, 0))) {
 	    flag=0;
-	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%STR&SYM\"], [",name);
+	    htrAddScriptInit_va(s,"    dd_add_items(wgtrGetNodeRef(ns,\"%STR&SYM\"), [",name);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
 		// Label
 		attr = objGetFirstAttr(qy_obj);
@@ -324,7 +324,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    else 
 		{
 		xsInit(&xs);
-		xsConcatQPrintf(&xs, "    dd_add_items(nodes[\"%STR&SYM\"], [", name);
+		xsConcatQPrintf(&xs, "    dd_add_items(wgtrGetNodeRef(ns,\"%STR&SYM\"), [", name);
 		flag=1;
 		}
 	    wgtrGetPropertyValue(subtree,"name",DATA_T_STRING,POD(&ptr));

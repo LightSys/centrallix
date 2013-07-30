@@ -185,7 +185,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    cl_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"],\"cl%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"],\"cl%POScon2\"), fieldname:\"%STR&JSSTR\", background:\"%STR&JSSTR\", shadowed:%POS, foreground1:\"%STR&JSSTR\", foreground2:\"%STR&JSSTR\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
+	htrAddScriptInit_va(s, "    cl_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon2\"), fieldname:\"%STR&JSSTR\", background:\"%STR&JSSTR\", shadowed:%POS, foreground1:\"%STR&JSSTR\", foreground2:\"%STR&JSSTR\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
 	    name,
 	    name, id,
 	    name, id,

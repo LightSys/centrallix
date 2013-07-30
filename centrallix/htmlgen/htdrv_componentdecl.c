@@ -154,6 +154,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	/** Include the js module **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_componentdecl.js", 0);
 
+	/** parameters for this component **/
+	xaInit(&attrs, 16);
+
 	/** DOM Linkages **/
 	if (s->GraftPoint)
 	    {
@@ -165,29 +168,26 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		goto htcmpd_cleanup;
 		}
 	    *(gname++) = '\0';
-	    if (strpbrk(gname,"'\"\\<>\r\n\t ") || strspn(gbuf,"w0123456789abcdef") != strlen(gbuf))
+	    if (strpbrk(gname,"'\"\\<>\r\n\t ") || strspn(gbuf,"w0123456789abcdef_") != strlen(gbuf))
 		{
 		mssError(1,"HTCMPD", "Invalid graft point");
 		goto htcmpd_cleanup;
 		}
 	    htrAddWgtrCtrLinkage_va(s, tree, 
-		    "wgtrGetContainer(wgtrGetNode(%STR&SYM,\"%STR&SYM\"))", gbuf, gname);
+		    "wgtrGetContainer(wgtrGetNode(\"%STR&SYM\",\"%STR&SYM\"))", gbuf, gname);
 	    htrAddBodyItem_va(s, "<a id=\"dname\" target=\"%STR&SYM\" href=\".\"></a>", s->Namespace->DName);
 	    }
 	else
 	    {
-	    strcpy(gbuf,"null");
+	    strcpy(gbuf,"");
 	    gname="";
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	    }
 
 	/** Init component **/
-	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%STR&SYM\"], {vis:%POS, gns:%STR&SYM, gname:'%STR&SYM'%[, expe:'%STR&SYM'%]%[, expa:'%STR&SYM'%]%[, expp:'%STR&SYM'%]%[, applyhint:'%STR&SYM'%]});\n", 
-		name, is_visual, gbuf, gname, *expose_events_for, expose_events_for, *expose_actions_for, expose_actions_for,
+	htrAddScriptInit_va(s, "    cmpd_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {vis:%POS, gns:%[\"%STR&SYM\"%]%[null%], gname:'%STR&SYM'%[, expe:'%STR&SYM'%]%[, expa:'%STR&SYM'%]%[, expp:'%STR&SYM'%]%[, applyhint:'%STR&SYM'%]});\n", 
+		name, is_visual, *gbuf, gbuf, !*gbuf, gname, *expose_events_for, expose_events_for, *expose_actions_for, expose_actions_for,
 		*expose_props_for, expose_props_for, *apply_hints_to, apply_hints_to);
-
-	/** Hunt for parameters for this component **/
-	xaInit(&attrs, 16);
 #if 0
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
@@ -326,17 +326,17 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
 	    if (!strcmp(ptr,"widget/component-decl-action"))
 		{
-		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addAction('%STR&SYM');\n", name, subobj_name);
+		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").addAction('%STR&SYM');\n", name, subobj_name);
 		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 		}
 	    else if (!strcmp(ptr,"widget/component-decl-event"))
 		{
-		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addEvent('%STR&SYM');\n", name, subobj_name);
+		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").addEvent('%STR&SYM');\n", name, subobj_name);
 		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 		}
 	    else if (!strcmp(ptr,"widget/component-decl-cprop"))
 		{
-		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addProp('%STR&SYM');\n", name, subobj_name);
+		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").addProp('%STR&SYM');\n", name, subobj_name);
 		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 		}
 
@@ -357,7 +357,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** End init for component **/
-	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%STR&SYM\"]);\n", name);
+	htrAddScriptInit_va(s, "    cmpd_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
 
     htcmpd_cleanup:
 //	if (subobj) objClose(subobj);

@@ -488,9 +488,10 @@ function wgtrSetProperty(node, prop_name, value)
 	return true;
     }
 
-// wgtrGetNode - gets a particular node in the tree based on its name
-// returns the node, or null on fail.
-function wgtrGetNode(tree, node_name, type)
+
+// wgtrGetNode, wgtrGetNodeRef, wgtrGetNodeUnchecked - gets a particular node
+// in the tree based on its name returns the node, or null on fail.
+function wgtrGetNodeUnchecked(tree, node_name, type)
     {
     var i;
     var child;
@@ -498,12 +499,19 @@ function wgtrGetNode(tree, node_name, type)
     var newnode;
     var ns;
 
-	// make sure the parameters are legitimate
-	if (!tree || !tree.__WgtrName) 
-	    { pg_debug("wgtrGetNode - node was not a WgtrNode!\n"); return false; }
-
 	// Search the namespace for the widget.
-	ns = tree.__WgtrNamespace;
+	if (typeof tree == 'string')
+	    {
+	    ns = pg_namespaces[tree];
+	    }
+	else
+	    {
+	    // make sure the parameters are legitimate
+	    if (!tree || !tree.__WgtrName) 
+		{ pg_debug("wgtrGetNode - node was not a WgtrNode!\n"); return false; }
+
+	    ns = tree.__WgtrNamespace;
+	    }
 	while (ns)
 	    {
 	    if (ns.WidgetList[node_name])
@@ -533,7 +541,21 @@ function wgtrGetNode(tree, node_name, type)
 		    if (node) break;
 		    }
 		}
-	    if (!node)
+	    }
+
+    return node;
+    }
+
+
+function wgtrGetNode(tree, node_name, type)
+    {
+    var node = wgtrGetNodeUnchecked(tree, node_name, type);
+
+	if (!node)
+	    {
+	    if (typeof tree == 'string')
+		alert('Application error: "' + node_name + '" is undefined in namespace "' + tree + '"');
+	    else
 		alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
 	    }
 
@@ -546,11 +568,31 @@ function wgtrGetNode(tree, node_name, type)
 		return null;
 	    }
 
-	if (type && node.__WgtrType != type)
+	if (node && type && node.__WgtrType != type)
 	    alert('Application error: "' + node_name + '" (type ' + node.__WgtrType + ') is not of expected type "' + type + '"');
 
 	return node;
     }
+
+
+function wgtrGetNodeRef(tree, node_name, type)
+    {
+    var node = wgtrGetNodeUnchecked(tree, node_name, type);
+
+	if (!node)
+	    {
+	    if (typeof tree == 'string')
+		alert('Application error: "' + node_name + '" is undefined in namespace "' + tree + '"');
+	    else
+		alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
+	    }
+
+	if (node && type && node.__WgtrType != type)
+	    alert('Application error: "' + node_name + '" (type ' + node.__WgtrType + ') is not of expected type "' + type + '"');
+
+	return node;
+    }
+
 
 // wgtrAddEventFunc - associate a function with an event for a particular widget.
 // returns true on success, false on error
@@ -619,6 +661,12 @@ function wgtrGetContainer(tree)
     }
 
 
+function wgtrGetParentContainer(tree)
+    {
+    return wgtrGetContainer(wgtrGetParent(tree));
+    }
+
+
 function wgtrNodeList(node)
     {
 	// make sure this is actually a tree
@@ -655,7 +703,7 @@ function wgtrReplaceNode(oldnode, newnode, newcont)
 	var children = oldnode.__WgtrChildren;
 
 	if (!newcont) newcont = newnode;
-	wgtrAddToTree(newnode, newcont, oldnode.__WgtrName, oldnode.__WgtrType, oldnode.__WgtrParent, oldnode.__WgtrVisual);
+	wgtrAddToTree(newnode, newcont, oldnode.__WgtrName, oldnode.__WgtrType, oldnode.__WgtrParent, oldnode.__WgtrVisual, null, null, oldnode.__WgtrNamespace);
 
 	for(var i=0; i<children.length; i++)
 	    {
@@ -797,7 +845,7 @@ function wgtrDereference(r)
 	alert('Application error: namespace "' + n[0] + '" is undefined');
 	return null;
 	}
-    return wgtrGetNode(ns, n[1]);
+    return wgtrGetNode(ns.NamespaceID, n[1]);
     }
 
 function wgtrFind(v)
@@ -858,8 +906,8 @@ function wgtrGetGeom(node)
 	if (wgtrGetType(node) == "widget/component")
 	    {
 	    var cmp_geom = node.getGeom();
-	    return {x:getPageX(wgtrGetContainer(wgtrGetParent(node))) + cmp_geom.x,
-		    y:getPageY(wgtrGetContainer(wgtrGetParent(node))) + cmp_geom.y,
+	    return {x:getPageX(wgtrGetParentContainer(node)) + cmp_geom.x,
+		    y:getPageY(wgtrGetParentContainer(node)) + cmp_geom.y,
 		    width:cmp_geom.width,
 		    height:cmp_geom.height};
 	    }

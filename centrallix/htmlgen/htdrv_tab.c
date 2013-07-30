@@ -212,7 +212,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEOVER","tc","tc_mouseover");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tc_init({layer:nodes[\"%STR&SYM\"], tloc:%INT, mainBackground:\"%STR&JSSTR\", inactiveBackground:\"%STR&JSSTR\"});\n",
+	htrAddScriptInit_va(s,"    tc_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), tloc:%INT, mainBackground:\"%STR&JSSTR\", inactiveBackground:\"%STR&JSSTR\"});\n",
 		name, tloc, main_bg, inactive_bg);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
@@ -341,72 +341,68 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	/*tabcnt = 0;*/
 	for (i=0;i<tabcnt;i++)
 	    {
-	    /*tabpage_obj = xaGetItem(&(tree->Children), i);*/
 	    tabpage_obj = children[i];
-	    /*wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-	    if (!strcmp(ptr,"widget/tabpage"))
-		{*/
-		/** First, render the tabpage and add stuff for it **/
-		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
-		/*tabcnt++;*/
-		is_selected = (i+1 == sel_idx || (!*sel && i == 0) || !strcmp(sel,ptr));
-		if(wgtrGetPropertyValue(tabpage_obj,"type",DATA_T_STRING,POD(&type)) != 0)
-		    strcpy(page_type,"static");
-		else if(!strcmp(type,"static") || !strcmp(type,"dynamic"))
-		    strcpy(page_type,type);
-		else
-		    strcpy(page_type,"static");
-		strcpy(fieldname,"");
-		if(!strcmp(page_type,"dynamic"))
-		    {
-		    if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) == 0)
-			strtcpy(fieldname,field,sizeof(fieldname));
-		    }
 
-		/** Add the pane **/
-		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    {
-		    htrAddStylesheetItem_va(s,"\t#tc%POSpane%POS { POSITION:absolute; VISIBILITY:%STR; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",
-			    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
-		    }
-		
-		/** Add script initialization to add a new tabpage **/
-		if (tloc == None)
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(null,wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
-			name, ptr, name, ptr,page_type,fieldname);
-		else
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tc%POStab%POS\"),wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
-			name, name, id, i+1, ptr, name, ptr,page_type,fieldname);
+	    htrCheckNSTransition(s, tree, tabpage_obj);
 
-		/** Add named global for the tabpage **/
-		subnptr = nmSysStrdup(ptr);
-		/*if (tloc == None)*/
-		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%POSpane%POS\")", id, i+1);
-		/*else
-		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(wgtrGetContainer(wgtrGetParent(_parentobj)), \"tc%POStab%POS\")", id, i+1);*/
-		htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
-
-		/** Add DIV section for the tabpage. **/
-		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    htrAddBodyItem_va(s,"<DIV ID=\"tc%POSpane%POS\">\n",id,i+1);
-		else
-		    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
-			    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
-
-		/** Now look for sub-items within the tabpage. **/
-		for (j=0;j<xaCount(&(tabpage_obj->Children));j++)
-		    htrRenderWidget(s, xaGetItem(&(tabpage_obj->Children), j), z+3);
-
-		htrAddBodyItem(s, "</DIV>\n");
-
-		nmSysFree(subnptr);
-		/** Add the visible property **/
-		htrCheckAddExpression(s, tabpage_obj, ptr, "visible");
-		/*}
-	    else if (!strcmp(ptr,"widget/connector"))
+	    /** First, render the tabpage and add stuff for it **/
+	    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
+	    is_selected = (i+1 == sel_idx || (!*sel && i == 0) || !strcmp(sel,ptr));
+	    if(wgtrGetPropertyValue(tabpage_obj,"type",DATA_T_STRING,POD(&type)) != 0)
+		strcpy(page_type,"static");
+	    else if(!strcmp(type,"static") || !strcmp(type,"dynamic"))
+		strcpy(page_type,type);
+	    else
+		strcpy(page_type,"static");
+	    strcpy(fieldname,"");
+	    if(!strcmp(page_type,"dynamic"))
 		{
-		htrRenderWidget(s, tabpage_obj, z+2);
-		}*/
+		if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) == 0)
+		    strtcpy(fieldname,field,sizeof(fieldname));
+		}
+
+	    /** Add the pane **/
+	    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+		{
+		htrAddStylesheetItem_va(s,"\t#tc%POSpane%POS { POSITION:absolute; VISIBILITY:%STR; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",
+			id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
+		}
+	    
+	    /** Add script initialization to add a new tabpage **/
+	    if (tloc == None)
+		htrAddScriptInit_va(s,"    wgtrGetNodeRef('%STR&SYM', '%STR&SYM').addTab(null,wgtrGetContainer(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\")),wgtrGetNodeRef('%STR&SYM,'%STR&SYM'),'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
+		    wgtrGetNamespace(tree), name,
+		    wgtrGetNamespace(tabpage_obj), ptr, wgtrGetNamespace(tree), name, ptr,page_type,fieldname);
+	    else
+		htrAddScriptInit_va(s,"    wgtrGetNodeRef('%STR&SYM','%STR&SYM').addTab(htr_subel(wgtrGetParentContainer(wgtrGetNodeRef('%STR&SYM','%STR&SYM')),\"tc%POStab%POS\"),wgtrGetContainer(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\")),wgtrGetNodeRef('%STR&SYM','%STR&SYM'),'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
+		    wgtrGetNamespace(tree), name,
+		    wgtrGetNamespace(tree), name,
+		    id, i+1, wgtrGetNamespace(tabpage_obj), ptr, wgtrGetNamespace(tree), name, ptr,page_type,fieldname);
+
+	    /** Add named global for the tabpage **/
+	    subnptr = nmSysStrdup(ptr);
+	    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%POSpane%POS\")", id, i+1);
+	    htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
+
+	    /** Add DIV section for the tabpage. **/
+	    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+		htrAddBodyItem_va(s,"<DIV ID=\"tc%POSpane%POS\">\n",id,i+1);
+	    else
+		htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
+			id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
+
+	    /** Now look for sub-items within the tabpage. **/
+	    for (j=0;j<xaCount(&(tabpage_obj->Children));j++)
+		htrRenderWidget(s, xaGetItem(&(tabpage_obj->Children), j), z+3);
+
+	    htrAddBodyItem(s, "</DIV>\n");
+
+	    nmSysFree(subnptr);
+
+	    /** Add the visible property **/
+	    htrCheckAddExpression(s, tabpage_obj, ptr, "visible");
+
+	    htrCheckNSTransitionReturn(s, tree, tabpage_obj);
 	    }
 
 	/** Need to do other subwidgets (connectors, etc.) now **/

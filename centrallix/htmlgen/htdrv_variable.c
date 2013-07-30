@@ -106,7 +106,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s, "    vbl_init(nodes[\"%STR&SYM\"], {type:\"%STR&JSSTR\", value:%[null%]%[\"%STR&JSSTR\"%]%[%INT%], field:\"%STR&JSSTR\", form:\"%STR&JSSTR\"} );\n",
+	htrAddScriptInit_va(s, "    vbl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {type:\"%STR&JSSTR\", value:%[null%]%[\"%STR&JSSTR\"%]%[%INT%], field:\"%STR&JSSTR\", form:\"%STR&JSSTR\"} );\n",
 		name,
 		obj_type_names[t],
 		is_null,

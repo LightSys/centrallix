@@ -210,7 +210,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
 		w,align,is_bold,font_size > 0,font_size,fgcolor);*/
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
+	htrAddScriptInit_va(s, "    lbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
 		name, fieldname, form, text, stylestr, tooltip, is_link, pfgcolor);
 
 	/** Script include to get functions **/

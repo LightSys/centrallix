@@ -181,7 +181,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(font_name, "");
 
 	/** Add global for page metadata **/
-	htrAddScriptGlobal(s, "page", "new Object()", 0);
+	htrAddScriptGlobal(s, "page", "{}", 0);
 
 	/** Add a list of highlightable areas **/
 	/** These are javascript global variables**/
@@ -272,7 +272,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
-	htrAddScriptInit_va(s, "    pg_init(nodes['%STR&SYM'],%INT);\n", name, attract);
+	htrAddScriptInit_va(s, "    pg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
 	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
 	htrAddScriptInit_va(s, "    pg_height = %INT;\n", h);
@@ -290,7 +290,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    {
 	    if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
+		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
 		    name, path);
 	    }
 
@@ -370,7 +370,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s, "\n");
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(nodes[\"%STR&SYM\"],\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
+	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pg", "pg_mousemove");

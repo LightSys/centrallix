@@ -303,19 +303,19 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Script initialization call. **/
 	    if (has_titlebar)
 		{
-		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:htr_subel(nodes[\"%STR&SYM\"],'wn%POStitlebar')});\n", 
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), clayer:wgtrGetContainer(wgtrGetNodeRef(ns,'%STR&SYM')), gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),'wn%POStitlebar')});\n", 
 			name,name,gshade,closetype, is_toplevel, is_modal, name, id);
 		}
 	    else
 		{
-		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:nodes[\"%STR&SYM\"], gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:null});\n", 
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), clayer:wgtrGetNodeRef(ns,'%STR&SYM'), gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:null});\n", 
 			name,name,gshade,closetype, is_toplevel, is_modal);
 		}
 	    }
 	else if(s->Capabilities.Dom0NS)
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:null});\n", 
+	    htrAddScriptInit_va(s,"    wn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), clayer:wgtrGetContainer(wgtrGetNodeRef(ns,'%STR&SYM')), gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:null});\n", 
 		    name,name,gshade,closetype,is_toplevel);
 	    }
 

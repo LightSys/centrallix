@@ -187,8 +187,8 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Script Init **/
-	htrAddScriptInit_va(s, "    rl_init(nodes[\"%STR&SYM\"], \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
-	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%STR&SYM\"]).addRule(nodes[\"%STR&SYM\"]);\n", nptr, nptr);
+	htrAddScriptInit_va(s, "    rl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
+	htrAddScriptInit_va(s, "    wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")).addRule(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", nptr, nptr);
 
 	/** mark this node as not being associated with a DHTML object **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;

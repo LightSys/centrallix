@@ -63,7 +63,6 @@ htalRenderSpacer(pHtSession s, pWgtrNode tree, int z)
 int
 htalRender(pHtSession s, pWgtrNode tree, int z)
     {
-    char* ptr;
     char name[64];
     int x=-1,y=-1,w,h;
     int id;
@@ -97,8 +96,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(name,ptr,sizeof(name));
+	strtcpy(name,wgtrGetName(tree),sizeof(name));
 
 	/** Add the stylesheet for the layer **/
 	htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx); Z-INDEX:%POS; }\n",
@@ -113,7 +111,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    al_init(nodes['%STR&SYM'], {});\n", name);
+	htrAddScriptInit_va(s, "    al_init(wgtrGetNodeRef(ns,'%STR&SYM'), {});\n", name);
 
 	/** Start of container **/
 	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id);

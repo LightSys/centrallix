@@ -194,15 +194,17 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%STR&SYM\"], {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:nodes[\"%STR&SYM\"], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%]});\n",
+	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%]});\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard,
-		multienter,name,_3bconfirmwindow,readonly,allowobscure,autofocus,
+		multienter,name,
+		strcmp(_3bconfirmwindow,"null") != 0, _3bconfirmwindow, strcmp(_3bconfirmwindow,"null") == 0,
+		readonly,allowobscure,autofocus,
 		*osrc != '\0', osrc, *osrc == '\0',
 		tro, enter_mode,
 		*link_next != '\0', link_next, *link_next == '\0',
 		*link_next_within != '\0', link_next_within, *link_next_within == '\0'
 		);
-	htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].ChangeMode('NoData');\n",name);
+	htrAddScriptInit_va(s,"    wgtrGetNodeRef(ns,\"%STR&SYM\").ChangeMode('NoData');\n",name);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/

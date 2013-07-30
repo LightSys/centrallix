@@ -150,7 +150,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"        .fixed%POS {font-family: fixed; }\n",id);
 
 	/** init line **/
-	htrAddScriptInit_va(s,"    terminal_init({layer:nodes[\"%STR&SYM\"], rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", root:rootname, source:'%STR&JSSTR', rows:%INT, cols:%INT, colors:new Array(",
+	htrAddScriptInit_va(s,"    terminal_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", source:'%STR&JSSTR', rows:%INT, cols:%INT, colors:new Array(",
 		name,id,id,id,source.String,rows,cols);
 	for(i=0;i<MAX_COLORS;i++)
 	    {

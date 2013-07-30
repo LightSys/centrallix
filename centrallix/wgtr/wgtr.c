@@ -2863,3 +2863,22 @@ wgtrGetMaxHeight(pWgtrNode widget, int width)
     return h;
     }
 
+
+/*** wgtrGetName - return the name of the widget
+ ***/
+char*
+wgtrGetName(pWgtrNode widget)
+    {
+    return widget->Name;
+    }
+
+
+/*** wgtrGetNamespace - return the namespace of the widget
+ ***/
+char*
+wgtrGetNamespace(pWgtrNode widget)
+    {
+    return widget->Namespace;
+    }
+
+

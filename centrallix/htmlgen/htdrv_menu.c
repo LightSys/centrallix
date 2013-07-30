@@ -61,7 +61,6 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
     {
     char* ptr;
     int rval, n;
-    pExpression code;
     char name[64];
 
 	xsPrintf(xs, "enabled:1, onright:%d", is_onright);
@@ -72,8 +71,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** image used to track position **/
 	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
 
-	wgtrGetPropertyValue(menu_item,"name", DATA_T_STRING, POD(&ptr));
-	strtcpy(name, ptr, sizeof(name));
+	strtcpy(name, wgtrGetName(menu_item), sizeof(name));
 
 	/** icon **/
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
@@ -89,13 +87,6 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	    {
 	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked");
 	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
-
-	    /** User requesting expression for value? **/
-	    if (wgtrGetPropertyType(menu_item,"value") == DATA_T_CODE)
-		{
-		wgtrGetPropertyValue(menu_item,"value",DATA_T_CODE,POD(&code));
-		htrAddExpression(s, name, "value", code);
-		}
 	    }
 	else
 	    htrAddBodyItem(s, "<td></td>");
@@ -126,13 +117,13 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 
 	if (is_submenu)
 	    {
-	    xsConcatQPrintf(xs, ", submenu:'%STR&SYM'", name);
+	    xsConcatQPrintf(xs, ", submenu:'%STR&SYM', submenu_ns:'%STR&SYM'", name, wgtrGetNamespace(menu_item));
 	    }
 
 	if (is_submenu) 
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddItem({%STR});\n", nptr, xs->String);
+	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({%STR});\n", nptr, xs->String);
 	else
-	    htrAddScriptInit_va(s, "    wgtrReplaceNode(nodes[\"%STR&SYM\"], nodes[\"%STR&SYM\"].AddItem({%STR}));\n", name, nptr, xs->String);
+	    htrAddScriptInit_va(s, "    wgtrReplaceNode(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\"), wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({%STR}));\n", wgtrGetNamespace(menu_item), name, nptr, xs->String);
 
     return 0;
     }
@@ -156,7 +147,7 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
 	    {
 	    htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
 	    }
-	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddItem({sep:true});\n", nptr);
+	htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({sep:true});\n", nptr);
 
     return 0;
     }
@@ -176,7 +167,7 @@ htmenu_internal_AddTitle(pHtSession s, pWgtrNode menu_title, int is_horizontal, 
 	    ptr = "";
 
 	htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr);
-	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddItem({sep:true});\n", nptr);
+	htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({sep:true});\n", nptr);
 
     return 0;
     }
@@ -329,7 +320,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
 
 	/** Initialization **/
-	htrAddScriptInit_va(s,"    mn_init({layer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), hlayer:htr_subel(nodes[\"%STR&SYM\"], \"mn%POShigh\"), bgnd:\"%STR&JSSTR\", high:\"%STR&JSSTR\", actv:\"%STR&JSSTR\", txt:\"%STR&JSSTR\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
+	htrAddScriptInit_va(s,"    mn_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), clayer:wgtrGetContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), hlayer:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"mn%POShigh\"), bgnd:\"%STR&JSSTR\", high:\"%STR&JSSTR\", actv:\"%STR&JSSTR\", txt:\"%STR&JSSTR\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
 		name, name, name, id, 
 		bgstr, highlight, active, textcolor, 
 		w, h, is_horizontal, is_popup, name);
@@ -527,6 +518,14 @@ htmenuRender_ttl(pHtSession s, pWgtrNode menutitle, int z)
 int 
 htmenuRender_item(pHtSession s, pWgtrNode menuitem, int z) 
     {
+    pExpression code;
+
+	/** User requesting expression for value? **/
+	if (wgtrGetPropertyType(menuitem,"value") == DATA_T_CODE)
+	    {
+	    wgtrGetPropertyValue(menuitem,"value",DATA_T_CODE,POD(&code));
+	    htrAddExpression(s, wgtrGetName(menuitem), "value", code);
+	    }
 
 	htrRenderSubwidgets(s, menuitem, z);
 

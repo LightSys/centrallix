@@ -103,7 +103,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
    
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
+   htrAddScriptInit_va(s,"    checkbox_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id);

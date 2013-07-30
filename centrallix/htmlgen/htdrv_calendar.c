@@ -154,7 +154,7 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ca_init(nodes[\"%STR&SYM\"], \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
+	htrAddScriptInit_va(s, "    ca_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
 	    name,
 	    main_bg, cell_bg, textcolor, dispmode,
 	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,

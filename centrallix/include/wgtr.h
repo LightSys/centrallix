@@ -188,6 +188,8 @@ char* wgtrGetDName(pWgtrNode widget);	/** returns the deployment name of the tre
 char* wgtrGetTemplatePath(pWgtrNode widget, int n);	/** returns the path to the template used **/
 pWgtrNode wgtrGetRoot(pWgtrNode widget);
 int wgtrGetMatchingChildList(pWgtrNode parent, char* childtype, pWgtrNode* list, int max_items);
+char* wgtrGetName(pWgtrNode widget);
+char* wgtrGetNamespace(pWgtrNode widget);
 
 /** modifiers **/
 int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int isnull); /** add a property to the widget **/

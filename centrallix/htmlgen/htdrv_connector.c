@@ -176,9 +176,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
 #endif
-	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[wgtrGetNode(nodes[\"%STR&SYM\"], \"%STR&SYM\")%];\n",
+	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%];\n",
 		    !*source, name, 
-		    *source, name, source);
+		    *source, source);
 #if 00
 	    }
 	if (*rpt_context && *target)
@@ -192,7 +192,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 #endif
-	    htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(nodes[\"%STR&SYM\"]))%];\n",
+	    htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%];\n",
 		    *target, target, 
 		    !*target, name);
 #if 00

@@ -214,10 +214,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes['%STR&SYM'], layer:htr_subel(nodes['%STR&SYM'], \"pn%POSmain\")});\n", 
+		htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), layer:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'), \"pn%POSmain\")});\n", 
 			name, name, id);
 	    else
-		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes[\"%STR&SYM\"], layer:nodes[\"%STR&SYM\"]});\n",
+		htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer:wgtrGetNodeRef(ns,\"%STR&SYM\")});\n",
 			name, name);
 
 	    /** HTML body <DIV> element for the base layer. **/

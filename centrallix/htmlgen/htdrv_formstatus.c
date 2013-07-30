@@ -94,7 +94,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%STR&SYM\"],form:\"%STR&JSSTR\",style:\"%STR&JSSTR\"});\n",
+   htrAddScriptInit_va(s,"    fs_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"),form:\"%STR&JSSTR\",style:\"%STR&JSSTR\"});\n",
 	    name, form, style);
 
    /** HTML body <DIV> element for the layers. **/

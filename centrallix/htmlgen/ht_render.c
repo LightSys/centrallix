@@ -196,7 +196,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 void
 htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     {
-    fdWrite(out,"    cx__capabilities = new Object();\n",37,0,FD_U_PACKET);
+    fdWrite(out,"    cx__capabilities = {};\n",27,0,FD_U_PACKET);
 #define PROCESS_CAP_OUT(attr) \
     fdWrite(out,"    cx__capabilities.",21,0,FD_U_PACKET); \
     fdWrite(out, # attr ,strlen( # attr ),0,FD_U_PACKET); \
@@ -454,10 +454,50 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    return -1;
 	    }
 
+	/** Crossing a namespace boundary? **/
+	htrCheckNSTransition(session, widget->Parent, widget);
+
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
 
+	/** Going back to previous namespace? **/
+	htrCheckNSTransitionReturn(session, widget->Parent, widget);
+
     return rval;
+    }
+
+
+/*** htrCheckNSTransition -- check to see if we are transitioning between
+ *** namespaces, and if so, emit the code to switch the context.
+ ***/
+int
+htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
+    {
+
+	/** Crossing a namespace boundary? **/
+	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	    {
+	    htrAddNamespace(s, NULL, child->Namespace, 1);
+	    }
+
+    return 0;
+    }
+
+
+/*** htrCheckNSTransitionReturn -- check to see if we are transitioning between
+ *** namespaces, and if so, emit the code to switch the context.
+ ***/
+int
+htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
+    {
+
+	/** Crossing a namespace boundary? **/
+	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	    {
+	    htrLeaveNamespace(s);
+	    }
+
+    return 0;
     }
 
 
@@ -741,12 +781,23 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     {
     va_list va;
 
+	if (!s->Namespace->HasScriptInits)
+	    {
+	    /** No script inits for this namespace yet?  Issue the context
+	     ** switch if no inits yet.
+	     **/
+	    s->Namespace->HasScriptInits = 1;
+	    /*htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n", s->Namespace->DName);*/
+	    htrAddScriptInit_va(s, "\n    ns = \"%STR&SYM\";\n", s->Namespace->DName);
+	    }
+
 	va_start(va, fmt);
 	htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
 	va_end(va);
 
     return 0;
     }
+
 
 /*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to cleanup function of the document.
@@ -1353,14 +1404,17 @@ htr_internal_InitNamespace(pHtSession s, pHtNamespace ns)
 	 ** init by setting 'cobj', otherwise leave the parent linkage totally
 	 ** empty.
 	 **/
-	if (ns->ParentCtr[0] && ns->Parent)
-	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(%STR&SYM,\"%STR&SYM\"))});\n",
-		    ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
-	else
-	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
-		    ns->DName, ns->DName, ns->DName);
-	htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
-		ns->DName, ns->DName);
+	if (!ns->IsSubnamespace)
+	    {
+	    if (ns->ParentCtr[0] && ns->Parent)
+		htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(\"%STR&SYM\",\"%STR&SYM\"))});\n",
+			ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
+	    else
+		htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
+			ns->DName, ns->DName, ns->DName);
+	    /*htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
+		    ns->DName, ns->DName);*/
+	    }
 
 	/** Init child namespaces too **/
 	for(child = ns->FirstChild; child; child=child->NextSibling)
@@ -1434,6 +1488,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->ObjSession = obj_s;
 	s->ClientInfo = c_info;
 	s->Namespace = &(s->Page.RootNamespace);
+	s->Namespace->IsSubnamespace = 0;
+	s->Namespace->HasScriptInits = 1;
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 	s->IsDynamic = 1;
 
@@ -1541,9 +1597,10 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	/** first thing in the startup() function should be calling build_wgtr **/
 	htrAddScriptInit_va(s, "    build_wgtr_%STR&SYM();\n",
 		s->Namespace->DName);
-	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    var rootname = \"%STR&SYM\";\n",
-		s->Namespace->DName, s->Namespace->DName);
+	/*htrAddScriptInit_va(s, "\n    var nodes = wgtrNodeList(%STR&SYM);\n",*/
+	htrAddScriptInit_va(s, "\n    var ns = \"%STR&SYM\";\n",
+			       /*"    var rootname = \"%STR&SYM\";\n", */
+		s->Namespace->DName /*, s->Namespace->DName */);
 	/*htrAddStylesheetItem(s, "\tdiv {position:absolute; visibility:inherit; overflow:hidden; }\n");*/
 
 	/** Render the top-level widget -- the function that's run
@@ -2258,7 +2315,7 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
  *** et al.
  ***/
 int
-htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
+htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
     {
     pHtNamespace new_ns;
     char* ptr;
@@ -2268,7 +2325,12 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	if (!new_ns) return -1;
 	new_ns->Parent = s->Namespace;
 	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
-	wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
+
+	new_ns->IsSubnamespace = is_subns;
+	if (is_subns)
+	    ptr = s->Namespace->ParentCtr;
+	else
+	    wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
 	strtcpy(new_ns->ParentCtr, ptr, sizeof(new_ns->ParentCtr));
 
 	/** Link it in **/
@@ -2276,11 +2338,14 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	new_ns->NextSibling = s->Namespace->FirstChild;
 	s->Namespace->FirstChild = new_ns;
 	s->Namespace = new_ns;
+	s->Namespace->HasScriptInits = 0;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    rootname = \"%STR&SYM\";\n",
-		nspace, nspace);
+#if 00
+	htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n"
+			       /*"    rootname = \"%STR&SYM\";\n" */ ,
+		nspace /*, nspace */);
+#endif
 
     return 0;
     }
@@ -2294,11 +2359,14 @@ htrLeaveNamespace(pHtSession s)
     {
 
 	s->Namespace = s->Namespace->Parent;
+	s->Namespace->HasScriptInits = 0;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    rootname = \"%STR&SYM\";\n",
-		s->Namespace->DName, s->Namespace->DName);
+#if 00
+	htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n"
+			       /*"    rootname = \"%STR&SYM\";\n" */ ,
+		s->Namespace->DName /*, s->Namespace->DName */);
+#endif
 
     return 0;
     }

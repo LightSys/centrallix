@@ -189,7 +189,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tv%POSroot\")",id);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
+	htrAddScriptInit_va(s,"    tv_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
 		name, src, name, id, w, show_branches, use_3d_lines, show_root_branch, icon, id, selected_bg, order_desc);
 
 	/** Script includes **/

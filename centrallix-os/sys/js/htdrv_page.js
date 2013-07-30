@@ -1649,13 +1649,14 @@ function pg_explisten(exp, obj, prop)
 function pg_expaddpart(exp, obj, prop)
     {
     var ref;
+    var objname = obj.__WgtrName;
     if (obj.reference && (ref = obj.reference()))
 	obj = ref;
     for(var i=0; i<exp.ParamList.length; i++)
 	{
 	var item = exp.ParamList[i];
 	if (obj == item[2] && prop == item[1]) return;
-	if (obj.__WgtrName == item[0] && !item[2] && prop == item[1])
+	if (objname == item[0] && !item[2] && prop == item[1])
 	    {
 	    item[2] = obj;
 	    return;
@@ -1663,7 +1664,7 @@ function pg_expaddpart(exp, obj, prop)
 	}
     //var _context = window[exp.Context];
     //var nodelist = wgtrNodeList(_context);
-    var item=[obj.__WgtrName, prop, obj];
+    var item=[objname, prop, obj];
     exp.ParamList.push(item);
     pg_explisten(exp, obj, prop);
     }
@@ -1689,11 +1690,11 @@ function pg_expression(o,p,e,l,c)
 	var ref;
 	if (item[0] == "*") continue; // cannot handle global listening yet
 	//item[2] = nodelist[item[0]]; // get obj reference
-	item[2] = wgtrGetNode(_context, item[0]); // get obj reference
+	item[2] = wgtrGetNodeUnchecked(_context, item[0]); // get obj reference
 	if (item[2])
 	    {
-	    //if (item[2].reference && (ref = item[2].reference()))
-	    //	item[2] = ref;
+	    if (item[2].reference && (ref = item[2].reference()))
+	    	item[2] = ref;
 	    pg_explisten(expobj, item[2], item[1]);
 	    }
 	}

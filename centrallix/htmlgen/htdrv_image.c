@@ -126,7 +126,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Init image widget (?) **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%POS\")",id);
-	htrAddScriptInit_va(s, "    im_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
+	htrAddScriptInit_va(s, "    im_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
 		name, fieldname, form);
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 
