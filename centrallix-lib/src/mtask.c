@@ -1326,6 +1326,8 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->SecContext.SecParam = NULL;
 	if (MTASK.CurrentThread)
 	    {
+	    thr->SecContext.SecParamCopyConstructor = MTASK.CurrentThread->SecContext.SecParamCopyConstructor;
+	    thr->SecContext.SecParamDestructor = MTASK.CurrentThread->SecContext.SecParamDestructor;
 	    if (MTASK.CurrentThread->SecContext.SecParam && MTASK.CurrentThread->SecContext.SecParamCopyConstructor)
 		{
 		MTASK.CurrentThread->SecContext.SecParamCopyConstructor(MTASK.CurrentThread->SecContext.SecParam, &(thr->SecContext.SecParam));
