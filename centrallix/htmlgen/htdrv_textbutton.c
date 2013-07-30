@@ -161,7 +161,6 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** DOM Linkages **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tb%POSpane\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Include the javascript code for the textbutton **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);

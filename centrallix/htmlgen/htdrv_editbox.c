@@ -177,7 +177,6 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write named global **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"eb%POSbase\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);

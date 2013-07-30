@@ -155,7 +155,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddScriptGlobal(s, "gb_cur_img", "null", 0);
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
 		htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"gb%POSpane\")", id);
-		htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 		/** User requesting expression for enabled? **/
 		if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
@@ -216,7 +215,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 		/** DOM Linkages **/
 		htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"gb%POSpane\")",id);
-		htrAddWgtrCtrLinkage(s, tree, "_obj");
 		
 		/** Include the javascript code for the button **/
 		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
