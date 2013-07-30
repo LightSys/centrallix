@@ -996,7 +996,8 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    qe->Constraint = new_exp;
 	    }
 	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
-        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE)) expRemapID(qe->Constraint, qe->SrcIndex, 0);
+        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_FROMOBJECT))
+	    expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	qe->LLSource = NULL;
 	qe->LLQuery = NULL;
