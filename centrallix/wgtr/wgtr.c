@@ -1947,6 +1947,8 @@ wgtrAddChild(pWgtrNode widget, pWgtrNode child)
 	xaAddItem(&(widget->Children), child);
 	child->Parent = widget;
 	child->Root = widget->Root;
+	if (child->Namespace[0] == '\0')
+	    strtcpy(child->Namespace, widget->Namespace, sizeof(child->Namespace));
 	return 0;
     }
 
