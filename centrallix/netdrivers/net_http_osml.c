@@ -345,6 +345,8 @@ nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObj
     pNhtQuery nhtqy = (pNhtQuery)nhtqy_v;
     pStruct find_inf;
     char* ptr;
+    static DateTime dt;
+    static MoneyType m;
 
 	/** search through the list of params **/
 	find_inf = stLookup_ne(nhtqy->ParamData, attrname);
@@ -359,6 +361,12 @@ nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObj
 	ptr = strchr(ptr,':');
 	if (!ptr) return -1;
 	ptr++;
+
+	/** Memory for date and money types **/
+	if (datatype == DATA_T_DATETIME)
+	    val->DateTime = &dt;
+	else if (datatype == DATA_T_MONEY)
+	    val->Money = &m;
 
     return objDataFromString(val, datatype, ptr);
     }
