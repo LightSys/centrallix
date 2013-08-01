@@ -161,7 +161,11 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	objDataToMoney(i1->DataType, vptr, &(tree->Types.Money));
+	if (objDataToMoney(i1->DataType, vptr, &(tree->Types.Money)) < 0)
+	    {
+	    mssError(1,"EXP","convert(): invalid conversion to money value");
+	    return -1;
+	    }
 	}
     else if (!strcmp(i0->String,"datetime"))
         {
@@ -171,11 +175,16 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	objDataToDateTime(i1->DataType, vptr, &(tree->Types.Date), NULL);
+	if (objDataToDateTime(i1->DataType, vptr, &(tree->Types.Date), NULL) < 0)
+	    {
+	    mssError(1,"EXP","convert(): invalid conversion to datetime value");
+	    return -1;
+	    }
 	}
     else
         {
-	mssError(1,"EXP","convert() datatype '%s' is invalid", i0->String);
+	mssError(1,"EXP","convert(): datatype '%s' is invalid", i0->String);
+	return -1;
 	}
     return 0;
     }

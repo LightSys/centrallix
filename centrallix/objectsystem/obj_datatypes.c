@@ -1077,6 +1077,10 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     int reversed_day=0;
     int iso = 0;
 
+    	/** Only accept string, datetime, integer... **/
+	if (data_type != DATA_T_STRING && data_type != DATA_T_DATETIME) return -1;
+
+	/** Integer conversion **/
 	if (data_type == DATA_T_INTEGER)
 	    {
 	    memset(dt, 0, sizeof(DateTime));
@@ -1084,8 +1088,12 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	    return 0;
 	    }
 
-    	/** Only accept string... **/
-	if (data_type != DATA_T_STRING) return -1;
+	/** "Conversion" of dt->dt? **/
+	if (data_type == DATA_T_DATETIME)
+	    {
+	    memcpy(dt, data_ptr, sizeof(DateTime));
+	    return 0;
+	    }
 
 	/** Default is to interpret as mm-dd-yyyy (U.S. format)
 	 ** "II" uses the more common non-U.S. format, dd-mm-yyyy
