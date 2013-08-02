@@ -1219,7 +1219,7 @@ function pg_appwindowbuild(seen)
     seen[wgtrGetNamespace(this)] = this.pg_appwindows[wgtrGetNamespace(this)];
     for(var win in this.pg_appwindows)
 	{
-	if (this.pg_appwindows[win].wobj != 'undefined' && this.pg_appwindows[win].wobj.__WgtrNamespace != win)
+	if (this.pg_appwindows[win].wobj != 'undefined' && wgtrGetNamespace(this.pg_appwindows[win].wobj) != win)
 	    {
 	    // has been reloaded, ignore this instance
 	    delete pg_appwindows[win];
@@ -1401,7 +1401,7 @@ function pg_launch(aparam)
 	w_name = "new_window";
     else
 	w_name = aparam.Name;
-    w_name = window.__WgtrNamespace + '_' + w_name;
+    w_name = wgtrGetNamespace(window) + '_' + w_name;
 
     // build the URL with parameters
     var url = new String(aparam.Source);

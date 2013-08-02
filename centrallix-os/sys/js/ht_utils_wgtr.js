@@ -845,7 +845,14 @@ function wgtrDereference(r)
 	alert('Application error: namespace "' + n[0] + '" is undefined');
 	return null;
 	}
-    return wgtrGetNode(ns.NamespaceID, n[1]);
+    // get first widget in Namespace
+    for(var wname in ns.WidgetList)
+	{
+	var nswidget = ns.WidgetList[wname];
+	break;
+	}
+    //return wgtrGetNode(ns.NamespaceID, n[1]);
+    return wgtrGetNode(nswidget, n[1]);
     }
 
 function wgtrFind(v)
