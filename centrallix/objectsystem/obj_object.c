@@ -1330,3 +1330,85 @@ obj_internal_DumpDC(pObjSession session)
     }
 
 
+/*** objImportFile() - given an operating system file, such as a file in a /tmp
+ *** directory, import (move) that file into the ObjectSystem so that it can be
+ *** accessed via the OSML API.
+ ***
+ *** source_filename: the pathname to the file in the operating system.
+ *** dest_osml_dir:   the target OSML directory into which to move the file.
+ *** new_osml_name:   a buffer which will contain the new name of the file.  If
+ ***                  possible, the original name of the file will be
+ ***                  preserved, but if not possible, the name will be changed
+ ***                  so that the file's name doesn't conflict with other files
+ ***                  in the destination.
+ *** new_osml_name_len: the size of the buffer pointed to by new_osml_name.
+ ***
+ *** Returns: 0 on success, 1 if the file was renamed, and < 0 on error.
+ ***/
+int
+objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len)
+    {
+    pFile source_fd;
+    pObject dest_obj;
+    char buf[256];
+    int rcnt;
+    int wcnt;
+    char* sourcename;
+    int sourcelen;
+
+	/** Find the source's basename (filename without directory location) **/
+	sourcelen = strlen(source_filename);
+	if (!sourcelen)
+	    {
+	    mssError(1,"OSML","Source file for objImportFile cannot be blank");
+	    goto error;
+	    }
+	if (source_filename[sourcelen-1] == '/')
+	    {
+	    mssError(1,"OSML","Source file for objImportFile cannot be a directory");
+	    goto error;
+	    }
+	sourcename = strrchr(source_filename, '/');
+	if (!sourcename)
+	    sourcename = source_filename;
+	else
+	    sourcename = sourcename + 1;
+
+	/** Destination name buffer too small? **/
+	if (new_osml_name_len < strlen(dest_osml_dir) + 1 + strlen(sourcename) + 1)
+	    {
+	    mssError(1,"OSML","Name buffer for objImportFile is too small");
+	    goto error;
+	    }
+
+	/** Open the source **/
+	source_fd = fdOpen(source_filename, O_RDONLY, 0600);
+	if (!source_fd)
+	    goto error;
+
+	/** Build the new destination name **/
+	snprintf(new_osml_name, new_osml_name_len, "%s/%s", dest_osml_dir, sourcename);
+
+	/** Try to create the new object **/
+	dest_obj = objOpen(sess, new_osml_name, O_WRONLY | O_CREAT | O_EXCL, 0600, "system/file");
+	if (!dest_obj)
+	    {
+	    /** Munge the dest name **/
+	    if (new_osml_name_len < strlen(dest_osml_dir) + 1 + strlen(sourcename) + 1 + 5)
+		{
+		mssError(1,"OSML","Name buffer for objImportFile is too small");
+		goto error;
+		}
+	    while(!dest_obj)
+		{
+		}
+	    }
+
+	return 0;
+
+    error:
+	if (source_fd)
+	    fdClose(source_fd, 0);
+	return -1;
+    }
+

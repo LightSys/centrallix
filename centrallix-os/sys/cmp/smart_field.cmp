@@ -23,6 +23,7 @@ smart_field "widget/component-decl"
     search_by_range "widget/parameter" { type=integer; default=1; }
     date_only "widget/parameter" { type=integer; default=0; }
     default_time "widget/parameter" { type=string; default=""; }
+    initialdate "widget/parameter" { type=string; default=""; }
     invalid_select_default "widget/parameter" { type=string; default="no"; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
@@ -101,6 +102,7 @@ smart_field "widget/component-decl"
 	form=form; 
 	search_by_range = runserver(:this:search_by_range);
 	default_time = runserver(:this:default_time);
+	initialdate = runserver(:this:initialdate);
 	date_only = runserver(:this:date_only);
         create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(getdate()); style=readonly; }
         modify_hints "widget/hints" { condition=runserver(:this:type == 'modify'); default = runclient(getdate()); style=readonly,alwaysdef; }
