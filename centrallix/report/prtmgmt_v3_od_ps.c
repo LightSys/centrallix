@@ -92,7 +92,7 @@ void* prt_psod_OpenPDF(pPrtSession);
 static PrtPsodFormat PsFormats[] =
     {
 	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - -" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
 	{ NULL,		NULL,			NULL,			0,	NULL }
     };
 
