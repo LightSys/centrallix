@@ -574,6 +574,7 @@ int objDeleteObj(pObject this);
 pObject objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
+int objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
