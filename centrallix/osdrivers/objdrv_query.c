@@ -145,12 +145,12 @@ qy_internal_StartQuery(pQyData inf, char* name, pExpression criteria)
 
 	/** Build the SQL string **/
 	xsInit(&sql_string);
-	xsQPrintf(&sql_string, "%STR %[WHERE%] %[:name = %STR&DQUOT%] %[AND%] ",
+	xsQPrintf(&sql_string, "%STR %[WHERE%] %[:name = %STR&DQUOT%] %[HAVING%] ",
 		inf->SQL,
-		(name != NULL || criteria != NULL),
+		(name != NULL),
 		name != NULL,
 		name,
-		(name != NULL && criteria != NULL));
+		(criteria != NULL));
 
 	/** Append on the criteria, if needed **/
 	if (criteria)
@@ -158,6 +158,7 @@ qy_internal_StartQuery(pQyData inf, char* name, pExpression criteria)
 
 	/** Fire off the query **/
 	mq = objMultiQuery(inf->Obj->Session, sql_string.String, inf->ObjList, 0);
+	if (mq) objUnmanageQuery(inf->Obj->Session, mq);
 
 	/** Release memory for the SQL string **/
 	xsDeInit(&sql_string);
@@ -360,6 +361,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    /** Didn't find it? **/
 	    if (!inf->MultiQueryObject)
 		goto error;
+	    else
+		objUnmanageObject(inf->Obj->Session, inf->MultiQueryObject);
 	    }
 
 #if 00
@@ -810,6 +813,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    qy_internal_Close(inf);
 	    return NULL;
 	    }
+	objUnmanageObject(inf->Obj->Session, inf->MultiQueryObject);
 	qy->ItemCnt++;
 
 	/** Get the name of the query subobject. **/
