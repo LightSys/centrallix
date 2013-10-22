@@ -1,1 +1,2 @@
+##NAME SELECT main datatypes from CSV
 query select * from /tests/Datatypes.csv/rows
