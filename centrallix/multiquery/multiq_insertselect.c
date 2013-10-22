@@ -59,7 +59,6 @@ mqisAnalyze(pQueryStatement stmt)
     {
     pQueryStructure select_qs, insert_qs;
     pQueryElement qe;
-    int n;
     int i;
 
     	/** Search for an INSERT and a SELECT statement... **/
@@ -91,7 +90,6 @@ mqisAnalyze(pQueryStatement stmt)
 	    }
 
 	/** Link the qe into the multiquery **/
-	n=0;
 	xaAddItem(&stmt->Trees, qe);
 	xaAddItem(&qe->Children, stmt->Tree);
 	stmt->Tree->Parent = qe;
@@ -120,7 +118,6 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     ObjData od;
     int t;
     int use_attrid;
-    pPseudoObject p;
     int hc_rval;
 
 	/** Prepare for the inserts **/
@@ -141,9 +138,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	while((sel_rval = sel->Driver->NextItem(sel, stmt)) == 1)
 	    {
 	    /** check HAVING clause **/
-	    p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
-	    hc_rval = mq_internal_EvalHavingClause(stmt, p);
-	    mq_internal_FreePseudoObject(p);
+	    hc_rval = mq_internal_EvalHavingClause(stmt, NULL);
 	    if (hc_rval < 0)
 		goto error;
 	    else if (hc_rval == 0)

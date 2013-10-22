@@ -334,6 +334,7 @@ cxInitialize(void* v)
 	mqjInitialize();			/* join query module */
 	mqisInitialize();			/* insert-select query mod */
 	mquInitialize();			/* update statement query mod */
+	mqusInitialize();			/* upsert statement query mod */
 	mqdInitialize();			/* delete statement query mod */
 	mqobInitialize();			/* orderby module */
 

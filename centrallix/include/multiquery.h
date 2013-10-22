@@ -105,7 +105,7 @@ typedef struct _QS
     int			NodeType;		/* one-of MQ_T_xxx */
     XArray		Children;
     char		Presentation[32];
-    char		Source[256];
+    char		Source[OBJSYS_MAX_PATH+1];
     char		Name[32];
     int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;
@@ -152,6 +152,9 @@ typedef struct _QS
 #define MQ_T_UPDATEITEM		19
 #define MQ_T_WITHCLAUSE		20
 #define MQ_T_LIMITCLAUSE	21
+#define MQ_T_ONDUPCLAUSE	22
+#define MQ_T_ONDUPITEM		23
+#define MQ_T_ONDUPUPDATEITEM	24
 
 typedef struct _QST QueryStatement, *pQueryStatement;
 typedef struct _MQ MultiQuery, *pMultiQuery;

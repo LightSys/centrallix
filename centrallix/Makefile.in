@@ -236,6 +236,7 @@ XQYDRIVERS=multiq_tablegen.o \
 	   multiq_update.o \
 	   multiq_delete.o \
 	   multiq_orderby.o \
+	   multiq_upsert.o \
 	   multiquery.o
 QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
@@ -442,25 +443,45 @@ test_install: test_obj test_prt
 	$(INSTALL) -m 755 test_prt "$(bindir)"
 	$(INSTALL) -m 644 tests/cxpasswd-test "$(sysconfdir)/centrallix/cxpasswd-test"
 
-test: test_install $(TOTESTFILES)
+tests/centrallix.conf-test: tests/centrallix.conf-test.in
+	@SYSCONFDIR=$(sysconfdir); \
+	RUNSYSCONFDIR=$${SYSCONFDIR#$(builddir)}; \
+	LIBDIR=$(libdir); \
+	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
+	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
+
+
+test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
 	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
+		CXOS=$$(sed -n 's/^[ 	]*path *= *"\([^"]*\).*/\1/p' < "$(sysconfdir)/centrallix/rootnode"); \
 	    	TOBASE="$${TOFILE%.to}"; \
-		TONAME=$$(cat $$TOBASE.desc); \
+		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
 		TOSIMPLE="$${TOBASE#tests/test_}"; \
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
+		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
+		/usr/bin/tput setaf 4; \
 	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3; \
 		RET="$$?"; \
+		/usr/bin/tput setaf 1; \
+		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
 		if [ "$$RET" -eq 142 ]; then \
+		    /usr/bin/tput sgr0; \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "LOCKUP"; \
 		elif [ "$$RET" -gt 120 ]; then \
+		    /usr/bin/tput sgr0; \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "CRASH"; \
 		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
+		    /usr/bin/tput sgr0; \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "Pass"; \
+		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
 		else \
 		    diff -U3 -N "$$TOBASE.cmp" "$$TOBASE.out"; \
+		    /usr/bin/tput sgr0; \
 		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "FAIL"; \
 		fi; \
 	    fi \
