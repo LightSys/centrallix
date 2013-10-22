@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "obj.h"
+#include "centrallix.h"
 
 
 /************************************************************************/
@@ -287,8 +288,11 @@ obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, in
     int i;
     pObjReqNotifyItem one_item;
 
-	printf("RnNotifyAttrib: %s: ", attrname);
-	ptodPrint(newvalue);
+	if (!CxGlobals.QuietInit)
+	    {
+	    printf("RnNotifyAttrib: %s: ", attrname);
+	    ptodPrint(newvalue);
+	    }
 
 	/** GRB FIXME - disabling until we can make this work correctly. **/
 	return 0;

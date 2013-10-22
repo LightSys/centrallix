@@ -462,27 +462,28 @@ test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
 		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
 		TOSIMPLE="$${TOBASE#tests/test_}"; \
+		CBLUE=$$(/usr/bin/tput setaf 4); \
+		CRED=$$(/usr/bin/tput setaf 1); \
+		CGREEN=$$(/usr/bin/tput setaf 2); \
+		CBOLD=$$(/usr/bin/tput bold); \
+		CNORM=$$(/usr/bin/tput sgr0); \
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
 		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
-		/usr/bin/tput setaf 4; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3; \
-		RET="$$?"; \
-		/usr/bin/tput setaf 1; \
+		echo -n "$$CBLUE"; \
+	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | sed 's/^/    /'; \
+		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
 		if [ "$$RET" -eq 142 ]; then \
-		    /usr/bin/tput sgr0; \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "LOCKUP"; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
 		elif [ "$$RET" -gt 120 ]; then \
-		    /usr/bin/tput sgr0; \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "CRASH"; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
 		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-		    /usr/bin/tput sgr0; \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "Pass"; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
 		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
 		else \
-		    diff -U3 -N "$$TOBASE.cmp" "$$TOBASE.out"; \
-		    /usr/bin/tput sgr0; \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "FAIL"; \
+		    echo -n "$$CRED"; \
+		    diff --label EXPECTED -U3 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
 		fi; \
 	    fi \
 	done 
