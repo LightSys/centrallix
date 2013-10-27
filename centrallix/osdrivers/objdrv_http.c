@@ -17,6 +17,8 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -117,6 +119,7 @@ struct
     regex_t	parsehttp;
     regex_t	httpheader;
     SSL_CTX*	SSL_ctx;
+    char	HashInit[SHA_DIGEST_LENGTH + sizeof(int)];
     }
     HTTP_INF;
 
@@ -556,6 +559,39 @@ http_internal_SendRequest(pHttpData inf, char* path)
     int rval;
     int i;
     pHttpHeader hdr;
+    char* nonce;
+    unsigned char hash[20];
+    int cnt;
+    unsigned char noncelen;
+    int hashpos;
+    char hexval[17] = "0123456789abcdef";
+
+	/** Compute header nonce.  This is used for functionally nothing, but
+	 ** it causes the content and offsets to values in the header to change
+	 ** with each request; this can help frustrate certain types of 
+	 ** cryptographic attacks.
+	 **/
+	if (inf->SSLpid)
+	    {
+	    nonce = nmSysMalloc(256+16+1);
+	    memcpy(&cnt, HTTP_INF.HashInit + SHA_DIGEST_LENGTH, sizeof(int));
+	    cnt++;
+	    memcpy(HTTP_INF.HashInit + SHA_DIGEST_LENGTH, &cnt, sizeof(int));
+	    SHA1((unsigned char*)HTTP_INF.HashInit, sizeof(HTTP_INF.HashInit), hash);
+	    memcpy(&noncelen, hash + SHA_DIGEST_LENGTH - sizeof(unsigned char), sizeof(unsigned char));
+	    cnt = noncelen;
+	    cnt += 16;
+	    for(i=0;i<cnt;i++)
+		{
+		hashpos = i % 37; /* 37 = largest prime less than 40 */
+		if (hashpos & 1)
+		    nonce[i] = hexval[hash[hashpos/2] & 0xf];
+		else
+		    nonce[i] = hexval[hash[hashpos/2] >> 4];
+		}
+	    nonce[cnt] = '\0';
+	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1);
+	    }
 
 	/** Send GET line **/
 	if (strpbrk(path, " \t\r\n") || strpbrk(inf->Server, " \t\r\n:/") || strpbrk(inf->Port, " \t\r\n:/"))
@@ -987,6 +1023,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Mask = mask;
 	xaInit(&inf->RequestHeaders, 16);
 	xaInit(&inf->ResponseHeaders, 16);
+	http_internal_AddRequestHeader(inf, "X-Nonce", "", 0);
 
 	//printf("objdrv_http.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
 	//	obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
@@ -1564,6 +1601,10 @@ httpInitialize()
 	    regerror(retval,&HTTP_INF.httpheader,temp,sizeof(temp));
 	    mssError(0,"HTTP","Error while building regex: %s",temp);
 	    }
+
+	/** Set up header nonce **/
+	cxssGenerateKey((unsigned char*)temp, 8);
+	SHA1((unsigned char*)temp, 8, (unsigned char*)HTTP_INF.HashInit);
 
 	/** Set up OpenSSL **/
 	HTTP_INF.SSL_ctx = SSL_CTX_new(SSLv23_client_method());
