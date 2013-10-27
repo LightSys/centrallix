@@ -14,6 +14,7 @@ centrallix "system/config"
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
     transaction_log_file = "/var/log/cx_transaction_log";
+    ssl_cipherlist = "DEFAULT";
 
     // Set this to 1 to allow Centrallix to send a user's login credentials
     // to another server, as a part of "single sign on" type authentication.
@@ -27,6 +28,10 @@ centrallix "system/config"
     net_http "system/config"
         {
 	listen_port = 800;
+	ssl_listen_port = 843;
+	ssl_key = "##SYSCONFDIR##/centrallix/snakeoil.key";
+	ssl_crt = "##SYSCONFDIR##/centrallix/snakeoil.crt";
+	ssl_cipherlist = "HIGH:MEDIUM:!ADH";
 
 	// Set this to 0 to allow connections from anywhere.  Note:  this
 	// is a development release and it is recommended to restrict access
