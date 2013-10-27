@@ -1401,6 +1401,7 @@ xmlInitialize()
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
 	xaAddItem(&(drv->RootContentTypes),"text/xml");
+	xaAddItem(&(drv->RootContentTypes),"application/xml");
 
 	/** Setup the function references. **/
 	drv->Open = xmlOpen;
