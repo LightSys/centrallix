@@ -35,6 +35,7 @@
 
 
 #include <openssl/sha.h>
+#include <openssl/ssl.h>
 #include "cxlib/xarray.h"
 
 #define CXSS_ENTROPY_SIZE	1280
@@ -104,6 +105,11 @@ int cxss_internal_InitEntropy(int pool_size);
 int cxss_internal_AddToPool(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 int cxss_internal_StirPool();
 int cxss_internal_GetBytes(unsigned char* data, size_t n_bytes);
+
+/*** TLS helper functions ***/
+int cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server);
+int cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream);
+int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
 
 #endif /* not defined _CXSS_H */
 

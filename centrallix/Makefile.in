@@ -296,7 +296,8 @@ EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 XCXSSMODS=cxss_main.o \
 	  cxss_utility.o \
 	  cxss_entropy.o \
-	  cxss_authstack.o
+	  cxss_authstack.o \
+	  cxss_tlshelper.o
 CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
 
 # Javascript VM modules... for Centrallix side of things.
@@ -506,7 +507,7 @@ clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
 jsengine: $(JSVM)
 	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
 
-test_obj: test_obj.o centrallix.o $(V3LSOBJS)
+test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)
