@@ -355,6 +355,7 @@ cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_
 	if (pid == 0)
 	    {
 	    /** subprocess **/
+	    thLock();
 	    fdClose(mainprocess_fd, 0);
 	    fdClose(mainprocess_report_fd, 0);
 	    cxss_internal_DoTLS(context, *ext_conn, subprocess_fd, subprocess_report_fd, as_server);
