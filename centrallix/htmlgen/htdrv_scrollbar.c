@@ -186,7 +186,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    sb_init({layer:nodes[\"%STR&SYM\"], tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
+	htrAddScriptInit_va(s,"    sb_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);

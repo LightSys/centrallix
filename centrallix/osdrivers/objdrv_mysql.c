@@ -111,6 +111,9 @@ typedef struct
     int                KeyCols[MYSD_MAX_KEYS];
     int                nKeys;
     pMysdNode        Node;
+    char*		Annotation;
+    pParamObjects	ObjList;
+    pExpression		RowAnnotExpr;
     }
     MysdTable, *pMysdTable;
 
@@ -395,6 +398,8 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char tmp[32];
     char * add_quote;
     char * str;
+    int err;
+    char * errtxt;
 
         xsInit(&query);
 
@@ -489,10 +494,17 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 
         if(mysql_query(&conn->Handle,query.String)) goto error;
         result = mysql_store_result(&conn->Handle);
-	if (mysql_errno(&conn->Handle))
+	err = mysql_errno(&conn->Handle);
+	if (err)
 	    {
+	    errtxt = mysql_error(&conn->Handle);
+	    mssError(1,"MYSD","SQL command failed: %s", errtxt);
 	    if (result) mysql_free_result(result);
 	    result = MYSD_RUNQUERY_ERROR;
+	    if (err == 1022 || err == 1061 || err == 1062)
+		errno = EEXIST;
+	    else
+		errno = EINVAL;
 	    }
 
     error:
@@ -693,6 +705,7 @@ pMysdTable
 mysd_internal_GetTData(pMysdNode node, char* tablename)
     {
     MYSQL_RES * result = NULL;
+    MYSQL_ROW row;
     pMysdTable tdata = NULL;
     int length;
     int rowcnt;
@@ -726,6 +739,25 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
             nmFree(tdata, sizeof(MysdTable));
             tdata = NULL;
             }
+
+	/** Get annotation data **/
+        if (result && result != MYSD_RUNQUERY_ERROR)
+            mysql_free_result(result);
+	result = mysd_internal_RunQuery(node, "SELECT a,b,c FROM `?` WHERE a = '?'", node->AnnotTable, tablename);
+        if (result && result != MYSD_RUNQUERY_ERROR)
+	    {
+	    if (mysql_num_rows(result) == 1)
+		{
+		row = mysql_fetch_row(result);
+		if (row)
+		    {
+		    tdata->Annotation = nmSysStrdup((row[1])?(row[1]):"");
+		    tdata->ObjList = expCreateParamList();
+		    expAddParamToList(tdata->ObjList, NULL, NULL, 0);
+		    tdata->RowAnnotExpr = (pExpression)expCompileExpression((row[2])?(row[2]):"''", tdata->ObjList, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    }
+		}
+	    }
 
     error:
         if (result && result != MYSD_RUNQUERY_ERROR)
@@ -928,11 +960,14 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 		    else
 			ptr = "\\0";
 		    }*/
-		key_values[j] = nmSysStrdup(ptr);
-		if (!key_values[j])
+		if (ptr)
 		    {
-		    rval = -ENOMEM;
-		    goto exit_BuildAutoname;
+		    key_values[j] = nmSysStrdup(ptr);
+		    if (!key_values[j])
+			{
+			rval = -ENOMEM;
+			goto exit_BuildAutoname;
+			}
 		    }
 		}
 	    }
@@ -1213,26 +1248,42 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
                 }
             else 
                 {
-                values[j] = (char*)(uintptr_t)insbuf->Length;
-                if(!find_str)
+		if ((!find_oxt || !find_oxt->AttrValue) && !find_str)
 		    {
-		    find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
-		    /*if (!strcmp(inf->TData->ColTypes[j],"bit"))
+		    if (inf->TData->ColFlags[j] & MYSD_COL_F_NULL)
 			{
-			if (strtoi(find_str,NULL,10))
-			    find_str = "1";
-			else
-			    find_str = "\\0";
-			}*/
+			/** Mark the field as NULL with a unique value here **/
+			values[j] = (char*)-1;
+			}
+		    else
+			{
+			mssError(1,"MYSD","Required column '%s' set to NULL in object create", inf->TData->Cols[j]);
+			goto error;
+			}
 		    }
-                if(find_str)
-                    xsConcatenate(insbuf,find_str,-1);
-                else
-                    {
-                    mssError(1,"MYSD","Unable to convert data");
-		    goto error;
-                    }
-                }
+		else
+		    {
+		    values[j] = (char*)(uintptr_t)insbuf->Length;
+		    if(!find_str)
+			{
+			find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
+			/*if (!strcmp(inf->TData->ColTypes[j],"bit"))
+			    {
+			    if (strtoi(find_str,NULL,10))
+				find_str = "1";
+			    else
+				find_str = "\\0";
+			    }*/
+			}
+		    if(find_str)
+			xsConcatenate(insbuf,find_str,-1);
+		    else
+			{
+			mssError(1,"MYSD","Unable to convert data");
+			goto error;
+			}
+		    }
+		}
             }
 
 	/** Entirely leave NULLs out of the insert **/
@@ -2471,8 +2522,49 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
         if (!strcmp(attrname,"annotation"))
             {
-            /** annotation is not supported at the moment **/
-            val->String = "";
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"MYSD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
+	    /** Different for various objects. **/
+	    switch(inf->Type)
+	        {
+		case MYSD_T_DATABASE:
+		    val->String = inf->Node->Description;
+		    break;
+		case MYSD_T_TABLE:
+		    val->String = (inf->TData->Annotation)?(inf->TData->Annotation):"";
+		    break;
+		case MYSD_T_ROWSOBJ:
+		    val->String = "Contains rows for this table";
+		    break;
+		case MYSD_T_COLSOBJ:
+		    val->String = "Contains columns for this table";
+		    break;
+		case MYSD_T_COLUMN:
+		    val->String = "Column within this table";
+		    break;
+		case MYSD_T_ROW:
+		    if (!inf->TData->RowAnnotExpr)
+		        {
+			val->String = "";
+			break;
+			}
+		    expModifyParam(inf->TData->ObjList, NULL, inf->Obj);
+		    inf->TData->ObjList->Session = inf->Obj->Session;
+		    expEvalTree(inf->TData->RowAnnotExpr, inf->TData->ObjList);
+		    if (inf->TData->RowAnnotExpr->Flags & EXPR_F_NULL ||
+		        inf->TData->RowAnnotExpr->String == NULL)
+			{
+			val->String = "";
+			}
+		    else
+		        {
+			val->String = inf->TData->RowAnnotExpr->String;
+			}
+		    break;
+		}
             return 0;
             }
 
@@ -2822,7 +2914,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
             case MYSD_T_COLUMN:
                 if (strcmp(attrname, "datatype"))
                     {
-                    mssError(1, "SYBD", "No attribute %s", attrname);
+                    mssError(1, "MYSD", "No attribute %s", attrname);
                     return NULL;
                     }
 

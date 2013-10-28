@@ -39,6 +39,7 @@
 #include "apos.h"
 #include "hints.h"
 #include "param.h"
+#include "endorsement_utils.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/magic.h"
@@ -102,14 +103,14 @@ struct
     XArray	    Drivers;		    /* simple driver listing */
     XHashTable	    DriversByType;
     long	    SerialID;
-    int		    RepeatID;		    /* global prefix for repeat widget */
+    int		    RepeatID;		    /* global namespace suffix counter, for repeat widgets */
     } WGTR;
 
 
 pWgtrNode 
-wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
-pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
-int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
+wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, int* err, char* namespace);
+pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, int* err, char* namespace);
+int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, char* namespace);
 int wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags);
 pWgtrNode wgtrLoadTemplate(pObjSession s, char* path, pStruct params);
 int wgtrLoadAddTemplate(pObjSession s, char* path, pStruct params, pWgtrNode templates[]);
@@ -444,8 +445,8 @@ wgtrLoadAddTemplate(pObjSession s, char* path, pStruct params, pWgtrNode templat
 	    /** Check duplicates **/
 	    if (templates && !strcmp(path, templates[i]->ThisTemplatePath))
 		{
-		mssError(1,"WGTR","Cannot add duplicate template '%s'", path);
-		return -1;
+		mssError(1,"WGTR","Warning - cannot add duplicate template '%s'", path);
+		return 0;
 		}
 	    }
 
@@ -460,7 +461,7 @@ wgtrLoadTemplate(pObjSession s, char* path, pStruct params)
     {
     pWgtrNode template;
 
-	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL, WGTR_PF_NOTEMPLATE);
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", params, NULL, WGTR_PF_NOTEMPLATE | WGTR_PF_NOSECURITY);
 	if (!template) return NULL;
 	if (strcmp(template->Type, "widget/template"))
 	    {
@@ -596,9 +597,12 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 	    }
 	
 	/** loop through attributes to fill out the properties array **/
-	prop_name = objGetFirstAttr(obj);
-	while (prop_name)
+	for(prop_name = objGetFirstAttr(obj); prop_name; prop_name = objGetNextAttr(obj))
 	    {
+	    /** properties to ignore **/
+	    if (!strcmp(prop_name, "condition") || !strcmp(prop_name, "cond_add_children"))
+		continue;
+
 	    /** Get the type **/
 	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0) 
 		{
@@ -628,9 +632,6 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
 	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
-
-	    /** get the name of the next one **/
-	    prop_name = objGetNextAttr(obj);
 	    }
 
 	/** Add offsets? **/
@@ -790,7 +791,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 #endif
 
 int
-wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags)
+wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, char* namespace)
     {
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
@@ -799,8 +800,9 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
     ObjData val;
     int nxo=0, nyo=0;
     char name[64];
-    char rptname[64];
+    /*char rptname[64];*/
     char type[64];
+    int errstat;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -821,27 +823,39 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 		if (t != DATA_T_INTEGER || (rval=objGetAttrValue(child_obj, "condition", t, &val)) != 0 || val.Integer != 0)
 		    {
 		    /** Parse the widget subtree and add it to this_node. **/
-		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset, flags)) != NULL)
+		    child_node = wgtr_internal_ParseOpenObject(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset, flags, &errstat, namespace);
+		    if (child_node != NULL)
 			{
 			/** Inside a widget/repeat?  If so, we need to mangle the name to
 			 ** ensure that the resulting widget name is unique in the tree.  We
 			 ** do this by prepending the RepeatPrefix, which is set if we are
 			 ** inside a widget/repeat.
 			 **/
-			if (child_node->RepeatPrefix[0])
+			/*if (child_node->RepeatPrefix[0])
 			    {
 			    qpfPrintf(NULL, rptname, sizeof(rptname), "%STR_%STR", child_node->RepeatPrefix, child_node->Name);
 			    strtcpy(child_node->Name, rptname, sizeof(child_node->Name));
-			    }
+			    }*/
 
 			/** Add it. **/
 			wgtrAddChild(this_node, child_node);
 			child_node = NULL;
 			}
-		    else
+		    else if (errstat < 0)
 			{
+			/** Could not render child, and it is an error.  Stop now. **/
 			mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
 			goto error;
+			}
+		    else
+			{
+			/** Could not render child, but it is not an error, so we just
+			 ** continue on without this child being added (same as if the
+			 ** condition had failed)
+			 **/
+			objClose(child_obj);
+			child_obj = NULL;
+			continue;
 			}
 		    }
 		else if (t == DATA_T_INTEGER && rval == 0 && val.Integer == 0)
@@ -881,7 +895,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 			    /** Add the grandchildren without actually rendering the child node
 			     ** in question here.
 			     **/
-			    if (wgtr_internal_AddChildren(child_obj, this_node, templates, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo, flags) < 0)
+			    if (wgtr_internal_AddChildren(child_obj, this_node, templates, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo, flags, namespace) < 0)
 				goto error;
 			    }
 			}
@@ -1149,11 +1163,98 @@ wgtr_internal_CheckLoadTemplates(pObject obj, pStruct client_params, pWgtrNode m
     }
 
 
+/*** wgtr_internal_LoadEndorsements - look for security endorsements specified in
+ *** the app or component.
+ ***/
+int
+wgtr_internal_LoadEndorsements(pObject obj, pWgtrNode node)
+    {
+    char* endorsement_sql;
+    pObjQuery eqy;
+    pObject eobj;
+    char* one_endorsement;
+    char* one_context;
+
+	/** Check for endorsements to load **/
+	if (wgtrGetPropertyValue(node, "add_endorsements_sql", DATA_T_STRING, POD(&endorsement_sql)) == 0)
+	    {
+	    /** Run the SQL to fetch the endorsements **/
+	    eqy = objMultiQuery(obj->Session, endorsement_sql, NULL, 0);
+	    if (eqy)
+		{
+		/** Loop through returned rows **/
+		while ((eobj = objQueryFetch(eqy, O_RDONLY)) != NULL)
+		    {
+		    if (objGetAttrValue(eobj, "endorsement", DATA_T_STRING, POD(&one_endorsement)) == 0)
+			{
+			if (objGetAttrValue(eobj, "context", DATA_T_STRING, POD(&one_context)) == 0)
+			    {
+			    cxssAddEndorsement(one_endorsement, one_context);
+			    }
+			}
+		    objClose(eobj);
+		    }
+		objQueryClose(eqy);
+		}
+	    }
+
+    return 0;
+    }
+
+
+/*** wgtr_internal_VerifyEndorsements() - see if this widget is requiring certain
+ *** security endorsements.  If so, check them.  Returns 0 if endorsements pass or
+ *** no endorsements are required.  Returns 1 if endorsements are required but it
+ *** is not considered an "error" (just don't give the user the widget).  Returns
+ *** -1 if endorsements are required, the user doesn't have them, and it is an
+ *** error condition that should prevent the rendering of the entire application.
+ ***/
+int
+wgtr_internal_VerifyEndorsements(pWgtrNode node)
+    {
+    char* endorsement_name;
+    char* endorsement_action;
+    int err;
+    int endorsement_ok = 1;
+
+	/** Check endorsements **/
+	if (endVerifyEndorsements(node, wgtrGetPropertyValue, &endorsement_name) < 0)
+	    endorsement_ok = 0;
+
+	/** Don't have it - error or not?  If we are trying to render the top level of
+	 ** a page or component, it is by default an error.  Otherwise, this is by default
+	 ** something we ignore - i.e. just leave the widget out of the application.
+	 **/
+	if (!endorsement_ok)
+	    {
+	    if (!strcmp(node->Type, "widget/page") || !strcmp(node->Type, "widget/component-decl"))
+		err = -1;
+	    else
+		err = 1;
+
+	    /** App author may have specified explicitly how to handle it. **/
+	    if (wgtrGetPropertyValue(node, "missing_endorsement_action", DATA_T_STRING, POD(&endorsement_action)) == 0)
+		{
+		if (!strcmp(endorsement_action,"error"))
+		    err = -1;
+		else if (!strcmp(endorsement_action,"ignore"))
+		    err = 1;
+		}
+
+	    if (err == -1)
+		mssError(1,"WGTR","Missing security endorsement '%s' is required by widget '%s'", endorsement_name, node->Name);
+	    return err;
+	    }
+
+    return 0;
+    }
+
+
 /*** wgtr_internal_ParseOpenObject - recursively load in one widget and
  *** its child widget trees.
  ***/
 pWgtrNode 
-wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags)
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset, int flags, int* err, char* namespace)
     {
     pWgtrNode	this_node = NULL;
     pParam param;
@@ -1166,6 +1267,12 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
     int created_objlist = 0;
     int i;
     ObjData rptqysql;
+    int new_sec_context = 0;
+    int rval;
+    char rpt_ns[64];
+
+	/** Default state on error exit **/
+	*err = -1;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1246,16 +1353,50 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	if ((this_node = wgtr_internal_LoadAttrs(obj, name, type, my_templates, root, xoffset, yoffset, client_params)) == NULL)
 	    goto error;
 
+	/** Set root namespace if this is the root node **/
+	if (root == NULL)
+	    {
+	    strtcpy(this_node->Namespace, this_node->DName, sizeof(this_node->Namespace));
+	    namespace = this_node->Namespace;
+	    }
+	else if (namespace)
+	    strtcpy(this_node->Namespace, namespace, sizeof(this_node->Namespace));
+
+	/** Now that the templates and attributes are loaded, we can do the security check **/
+	if (!(flags & WGTR_PF_NOSECURITY))
+	    {
+	    if (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl"))
+		{
+		/** Start the new context for this component/app **/
+		/*cxssPushContext();
+		new_sec_context = 1;*/
+
+		/** Load our available endorsements for this app/component **/
+		wgtr_internal_LoadEndorsements(obj, this_node);
+		}
+
+	    /** Check for required endorsements **/
+	    rval = wgtr_internal_VerifyEndorsements(this_node);
+
+	    /** Endorsement failed but it is not an error? **/
+	    if (rval == 1)
+		*err = 0;
+
+	    /** Could not add this widget? **/
+	    if (rval != 0)
+		goto error;
+	    }
+
 	/** Inherit the parent's repeat prefix, or establish a NEW repeat
 	 ** prefix if the parent is a widget/repeat itself.
 	 **/
-	if (parent)
+	/*if (parent)
 	    {
 	    if (parent->RepeatID)
 		snprintf(this_node->RepeatPrefix, sizeof(this_node->RepeatPrefix), WGTR_REPEAT_PREFIX "%.3x", parent->RepeatID);
 	    else
 		strtcpy(this_node->RepeatPrefix, parent->RepeatPrefix, sizeof(this_node->RepeatPrefix));
-	    }
+	    }*/
 
 	/** If this is a visual widget, clear the x/y offsets. **/
 	if (!(this_node->Flags & WGTR_F_NONVISUAL))
@@ -1288,14 +1429,14 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		while((rptrow = objQueryFetch(rptqy, O_RDONLY)) != NULL)
 		    {
 		    /** The RepeatID is what gives this particular repeated subtree
-		     ** a unique name, so we don't have namespace conflicts between
-		     ** the repeated subtrees.
+		     ** a unique namespace, to avoid name conflicts between repeated
+		     ** widgets.
 		     **/
-		    this_node->RepeatID = WGTR.RepeatID++;
+		    snprintf(rpt_ns, sizeof(rpt_ns), "%s_%6.6x", root->DName, (WGTR.RepeatID++) & 0xffffff);
 		    expModifyParam(context_objlist,this_node->Name, rptrow);
 		   
 		    /** Add the children of the repeat widget **/
-		    if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset, flags) < 0)
+		    if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset, flags, rpt_ns) < 0)
 			goto error;
 
 		    objClose(rptrow);
@@ -1309,7 +1450,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	else
 	    {
 	    /** Not a repeat widget.  Just add the children.  Once. **/
-	    if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset, flags) < 0)
+	    if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset, flags, namespace) < 0)
 		goto error;
 	    }
 
@@ -1326,10 +1467,15 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    for(i=0;i<n_params;i++) paramFree(paramlist[i]);
 	    }
 
+	/** Release the security context? **/
+	if (new_sec_context) cxssPopContext();
+
 	/** return the completed node and subtree **/
+	*err = 0;
 	return this_node;
 
     error:
+	if (new_sec_context) cxssPopContext();
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (my_templates[i] != templates[i])
 		wgtrFree(my_templates[i]);
@@ -1359,6 +1505,7 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[], int flags)
     pWgtrNode template_arr[WGTR_MAX_TEMPLATE];
     pWgtrNode tree;
     int i;
+    int errstat;
 
 	/** Load templates? **/
 	memset(template_arr, 0, sizeof(template_arr));
@@ -1373,7 +1520,7 @@ wgtrParseOpenObject(pObject obj, pStruct params, char* templates[], int flags)
 	    }
 
 	/** Load in the widget tree, using the templates **/
-	tree = wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0, flags);
+	tree = wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0, flags, &errstat, NULL);
 
 	/** Free memory used by templates **/
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
@@ -1800,6 +1947,8 @@ wgtrAddChild(pWgtrNode widget, pWgtrNode child)
 	xaAddItem(&(widget->Children), child);
 	child->Parent = widget;
 	child->Root = widget->Root;
+	if (child->Namespace[0] == '\0')
+	    strtcpy(child->Namespace, widget->Namespace, sizeof(child->Namespace));
 	return 0;
     }
 
@@ -2071,6 +2220,7 @@ wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info)
     WgtrVerifySession vs;
     pWgtrDriver drv;
     XArray Names;
+    char name_ns[128];
     int i;
 
 	/** initialize datastructures **/
@@ -2098,14 +2248,15 @@ wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info)
 	    /** Make sure its name is unique **/
 	    for (i=0;i<xaCount(&Names);i++)
 		{
-		if (!strcmp(vs.CurrWidget->Name, xaGetItem(&Names, i)))
+		snprintf(name_ns, sizeof(name_ns), "%s:%s", vs.CurrWidget->Namespace, vs.CurrWidget->Name);
+		if (!strcmp(name_ns, xaGetItem(&Names, i)))
 		    {
 		    mssError(1, "WGTR", "Widget name '%s' is not unique - widget names must be unique within an application",
 				vs.CurrWidget->Name);
 		    goto error;
 		    }
 		}
-	    xaAddItem(&Names, vs.CurrWidget->Name);
+	    xaAddItem(&Names, nmSysStrdup(name_ns));
 
 	    /** Get the driver for this node **/
 	    drv = wgtr_internal_LookupDriver(vs.CurrWidget);
@@ -2133,6 +2284,8 @@ wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info)
 	    }
 	
 	/** free up data structures **/
+	for(i=0;i<xaCount(&Names);i++)
+	    nmSysFree(xaGetItem(&Names, i));
 	xaDeInit(&Names);
 	xaDeInit(&(vs.VerifyQueue));
 
@@ -2711,4 +2864,23 @@ wgtrGetMaxHeight(pWgtrNode widget, int width)
 
     return h;
     }
+
+
+/*** wgtrGetName - return the name of the widget
+ ***/
+char*
+wgtrGetName(pWgtrNode widget)
+    {
+    return widget->Name;
+    }
+
+
+/*** wgtrGetNamespace - return the namespace of the widget
+ ***/
+char*
+wgtrGetNamespace(pWgtrNode widget)
+    {
+    return widget->Namespace;
+    }
+
 

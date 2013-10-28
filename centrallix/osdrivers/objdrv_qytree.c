@@ -1228,6 +1228,7 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     {
     pQytData inf = QYT(inf_v);
     pStructInf content_inf;
+    int rval;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1306,7 +1307,21 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    }
 
 	/** Low-level object?  Lookup the attribute in it **/
-	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, val);
+	if (inf->LLObj)
+	    {
+	    rval = objGetAttrValue(inf->LLObj, attrname, datatype, val);
+	    if (rval != 0 && (!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && datatype == DATA_T_STRING)
+		{
+		val->String = "application/octet-stream";
+		return 0;
+		}
+	    if (rval != 0 && !strcmp(attrname,"outer_type") && datatype == DATA_T_STRING)
+		{
+		val->String = "system/object";
+		return 0;
+		}
+	    return rval;
+	    }
 
 	/** last_modification?  Lookup from node **/
 	if (!strcmp(attrname,"last_modification"))

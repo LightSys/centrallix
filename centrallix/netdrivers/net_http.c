@@ -1,4 +1,5 @@
 #include "net_http.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -963,7 +964,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	if (find_inf)
 	    {
 	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+		{
+		cxssAddEndorsement("system:from_application", "*");
 		akey_match = 1;
+		}
 	    }
 
 	/** Indicate activity... **/
@@ -1292,7 +1296,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    //|| nht_internal_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
 		if (nhtRenderApp(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
-		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
+		    mssError(0, "HTTP", "Unable to render application %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
 		    mssPrintError(conn->ConnFD);
 		    objClose(target_obj);
@@ -1770,9 +1774,9 @@ nht_internal_ParseHeaders(pNhtConn conn)
 	 ** tail, as in standard goto-based error handling.
 	 **/
 	toktype = mlxNextToken(s);
-	if (toktype == MLX_TOK_EOF)
+	if (toktype == MLX_TOK_EOF || toktype == MLX_TOK_EOL)
 	    {
-	    /** MSIE likes to open connections and then close them without
+	    /** Browsers like to open connections and then close them without
 	     ** sending a request; don't print errors on this condition.
 	     **/
 	    mlxCloseSession(s);
@@ -1958,9 +1962,9 @@ nht_internal_ParseHeaders(pNhtConn conn)
 int
 nhtInitialize()
     {
-    /*int i;
-
-	printf("nhtInit called, stack ptr = %8.8X\n",&i);*/
+    pStructInf my_config;
+    char* strval;
+    int i;
 
     	/** Initialize the random number generator. **/
 	srand48(time(NULL));
@@ -2005,13 +2009,87 @@ nhtInitialize()
 	    return -1;
 	    }
 
+	/** Read configuration data **/
+	my_config = stLookup(CxGlobals.ParsedConfig, "net_http");
+	if (my_config)
+	    {
+	    /** Find out what server string we should use **/
+	    if (stAttrValue(stLookup(my_config, "server_string"), NULL, &strval, 0) >= 0)
+		{
+		strtcpy(NHT.ServerString, strval, sizeof(NHT.ServerString));
+		}
+	    else
+		{
+		snprintf(NHT.ServerString, 80, "Centrallix/%.16s", cx__version);
+		}
+
+	    /** Get the realm name **/
+	    if (stAttrValue(stLookup(my_config, "auth_realm"), NULL, &strval, 0) >= 0)
+		{
+		strtcpy(NHT.Realm, strval, sizeof(NHT.Realm));
+		}
+	    else
+		{
+		snprintf(NHT.Realm, 80, "Centrallix");
+		}
+
+	    /** Directory indexing? **/
+	    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
+		{
+		stAttrValue(stLookup(my_config,"dir_index"), NULL, &(NHT.DirIndex[i]), i);
+		}
+
+	    /** Should we enable gzip? **/
+#ifdef HAVE_LIBZ
+	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
+#endif
+	    stAttrValue(stLookup(my_config, "condense_js"), &(NHT.CondenseJS), NULL, 0);
+
+	    stAttrValue(stLookup(my_config, "accept_localhost_only"), &(NHT.RestrictToLocalhost), NULL, 0);
+
+	    /** X-Frame-Options anti-clickjacking header? **/
+	    if (stAttrValue(stLookup(my_config, "x_frame_options"), NULL, &strval, 0) >= 0)
+		{
+		if (!strcasecmp(strval, "none"))
+		    NHT.XFrameOptions = NHT_XFO_T_NONE;
+		else if (!strcasecmp(strval, "deny"))
+		    NHT.XFrameOptions = NHT_XFO_T_DENY;
+		else if (!strcasecmp(strval, "sameorigin")) /* default - see net_http.c */
+		    NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
+		}
+
+	    /** Get the timer settings **/
+	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
+	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
+
+	    /** Session limits **/
+	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
+
+	    /** Cookie name **/
+	    if (stAttrValue(stLookup(my_config, "session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = "CXID";
+		}
+	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
+
+	    /** Access log file **/
+	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
+		{
+		strtcpy(NHT.AccessLogFile, strval, sizeof(NHT.AccessLogFile));
+		NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_WRONLY | O_APPEND, 0600);
+		if (!NHT.AccessLogFD)
+		    {
+		    mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
+		    }
+		}
+	    }
+
 	/** Start the watchdog timer thread **/
 	thCreate(nht_internal_Watchdog, 0, NULL);
 
-	/** Start the network listener. **/
+	/** Start the network listeners. **/
 	thCreate(nht_internal_Handler, 0, NULL);
-
-	/*printf("nhtInit return from thCreate, stack ptr = %8.8X\n",&i);*/
+	thCreate(nht_internal_TLSHandler, 0, NULL);
 
     return 0;
     }

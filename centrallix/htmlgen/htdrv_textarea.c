@@ -176,7 +176,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",
+	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",
 	    name, fieldname, form, is_readonly, mode, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/

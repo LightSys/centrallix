@@ -134,11 +134,13 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "spnr", "spnr_mousedown");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    spnr_init({main:nodes[\"%STR&SYM\"], layer:htr_subel(nodes[\"%STR&SYM\"],\"spnr%POSbase\"), c1:htr_subel(htr_subel(nodes[\"%STR&SYM\"],\"spnr%POSbase\"),\"spnr%POScon1\"), c2:htr_subel(htr_subel(nodes[\"%STR&SYM\"],\"spnr%POSbase\"),\"spnr%POScon2\")});\n",
+	htrAddScriptInit_va(s,
+		"    var spnr = wgtrGetNodeRef(ns, \"%STR&SYM\");\n"
+		"    spnr_init({main:spnr, layer:htr_subel(spnr,\"spnr%POSbase\"), c1:htr_subel(htr_subel(spnr,\"spnr%POSbase\"),\"spnr%POScon1\"), c2:htr_subel(htr_subel(spnr,\"spnr%POSbase\"),\"spnr%POScon2\")});\n",
 		name,
-                name, id,
-		name, id, id, 
-		name, id, id);
+                id,
+		id, id, 
+		id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\">\n",id);

@@ -212,7 +212,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dt%POSbtn\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
@@ -221,7 +220,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
+	htrAddScriptInit_va(s, "    dt_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"),c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon1\"),c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
 	    name,
 	    name,id, 
 	    name,id, 

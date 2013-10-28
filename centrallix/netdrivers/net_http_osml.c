@@ -345,6 +345,8 @@ nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObj
     pNhtQuery nhtqy = (pNhtQuery)nhtqy_v;
     pStruct find_inf;
     char* ptr;
+    static DateTime dt;
+    static MoneyType m;
 
 	/** search through the list of params **/
 	find_inf = stLookup_ne(nhtqy->ParamData, attrname);
@@ -359,6 +361,12 @@ nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObj
 	ptr = strchr(ptr,':');
 	if (!ptr) return -1;
 	ptr++;
+
+	/** Memory for date and money types **/
+	if (datatype == DATA_T_DATETIME)
+	    val->DateTime = &dt;
+	else if (datatype == DATA_T_MONEY)
+	    val->Money = &m;
 
     return objDataFromString(val, datatype, ptr);
     }
@@ -983,9 +991,21 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					}
 				    break;
 
+				case DATA_T_UNAVAILABLE: 
+				    /** Attribute probably doesn't exist yet.  Until we have info
+				     ** from the client on the attr type, assume it is a string or an
+				     ** integer, and try to set it that way.
+				     **/
+				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&strval));
+				    if (retval < 0 && *strval && strspn(strval, "0123456789-") == strlen(strval) && strchr(strval+1, '-') == NULL)
+					{
+					n = objDataToInteger(DATA_T_STRING, strval, NULL);
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
+					}
+				    break;
+
 				case DATA_T_STRINGVEC:
 				case DATA_T_INTVEC:
-				case DATA_T_UNAVAILABLE: 
 				default:
 				    retval = -1;
 				    break;
@@ -993,6 +1013,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    }
 			if (retval < 0)
 			    {
+			    mssError(0, "NHT", "Failed to set attribute <%s> on object <%s>", subinf->Name, obj->Pathname->Pathbuf + 1);
 			    snprintf(sbuf,256,"Content-Type: text/html\r\n"
 				     "Pragma: no-cache\r\n"
 				     "\r\n"
@@ -1053,8 +1074,20 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					obj = reopen_obj;
 					reopen_success = 1;
 					}
+				    else
+					{
+					mssError(1,"NHT","Could not retrieve updated object in re-open");
+					}
 				    objQueryClose(qy);
 				    }
+				else
+				    {
+				    mssError(0,"NHT","Could not run SQL query to re-open updated object");
+				    }
+				}
+			    else
+				{
+				mssError(0,"NHT","Could not obtain <name> property of object in order to do the re-open");
 				}
 
 			    xsDeInit(reopen_str);

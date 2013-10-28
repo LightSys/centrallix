@@ -55,16 +55,13 @@ static struct
 int
 htalrtRender(pHtSession s, pWgtrNode tree, int z)
     {
-    char* ptr;
     int id;
     
     	/** Get an id for this. **/
 	id = (HTALRT.idcnt++);
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-
-	htrAddScriptInit_va(s,"    alrt_init(nodes[\"%STR&SYM\"]);\n", ptr);
+	htrAddScriptInit_va(s,"    alrt_init(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", wgtrGetName(tree));
 
 	htrAddScriptInclude(s,"/sys/js/htdrv_alerter.js",0);
 

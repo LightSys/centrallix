@@ -275,7 +275,7 @@ function cxjs_substitute(_context, _this, str, remaplist)
 		    if (id.length == 1)
 			{
 			if (remaps && remaps.length > 0)
-			    var obj = wgtrGetNode(_context,remaps[0].parts[1]);
+			    var obj = wgtrGetNodeRef(_context,remaps[0].parts[1]);
 			else
 			    var obj = _this;
 			var fieldname = id[0];
@@ -295,7 +295,7 @@ function cxjs_substitute(_context, _this, str, remaplist)
 				}
 			    if (!found) return null;
 			    }
-			var obj = wgtrGetNode(_context,id[0]);
+			var obj = wgtrGetNodeRef(_context,id[0]);
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);

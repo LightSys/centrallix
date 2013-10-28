@@ -12,6 +12,7 @@
 #include "cxlib/cxsec.h"
 #include "stparse_ne.h"
 #include "cxlib/qprintf.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -192,6 +193,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char* scriptslist;
     pStruct attr_inf;
     char* slashptr;
+    int new_sec_context = 0;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -295,7 +297,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Save the current graft point and render parameters **/
 	    old_graft = s->GraftPoint;
-	    qpfPrintf(NULL, sbuf, sizeof(sbuf), "%STR&SYM:%STR&SYM", wgtrGetRootDName(tree), name);
+	    qpfPrintf(NULL, sbuf, sizeof(sbuf), "%STR&SYM:%STR&SYM", wgtrGetNamespace(tree), name);
 	    s->GraftPoint = nmSysStrdup(sbuf);
 	    old_params = s->Params;
 	    s->Params = params;
@@ -304,7 +306,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
+		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
 		    name, w,h,x,y);
 
 	    /** Are there any templates we should use **/
@@ -312,6 +314,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
 		    templates[i] = path;
+
+	    /** Start a new security authstack context **/
+	    cxssPushContext();
+	    new_sec_context = 1;
 
 	    /** Open and parse the component **/
 	    cmp_obj = objOpen(s->ObjSession, cmp_path, O_RDONLY, 0600, "system/structure");
@@ -354,7 +360,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
 
 	    /** Switch namespaces **/
-	    htrAddNamespace(s, tree, wgtrGetRootDName(cmp_tree));
+	    htrAddNamespace(s, tree, wgtrGetRootDName(cmp_tree), 0);
 
 	    /** Generate the component **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
@@ -365,7 +371,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htrLeaveNamespace(s);
 
 	    /** End Init component **/
-	    htrAddScriptInit_va(s, "    cmp_endinit(nodes[\"%STR&SYM\"]);\n", name);
+	    htrAddScriptInit_va(s, "    cmp_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
+
+	    /** Return to previous security context **/
+	    if (new_sec_context) cxssPopContext();
+	    new_sec_context = 0;
 
 	    /** Restore original graft point and parameters **/
 	    s->Params = old_params;
@@ -380,7 +390,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
+		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
 		    name, is_toplevel, allow_multi, auto_destroy, cmp_path,
 		    name, id,
 		    w, h, x, y);
@@ -389,7 +399,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		{
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
+		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
 			name, path);
 		}
 
@@ -398,7 +408,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		for(i=0;i<params->nSubInf;i++)
 		    {
-		    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
+		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
 			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal,
 			params->SubInf[i]->StrVal);
 		    }
@@ -416,6 +426,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
     out:
 	/** Clean up **/
+	if (new_sec_context) cxssPopContext();
 	if (params)
 	    stFreeInf_ne(params);
 	if (s->IsDynamic == 0 && old_is_dynamic)

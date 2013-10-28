@@ -758,6 +758,7 @@ qyp_internal_Update(pQypData inf)
     char source_path[OBJSYS_MAX_PATH + 1];
     int j;
     char* ptr;
+    pDateTime dt;
 
 	/** Loop through all data items **/
 	for(i=0;i<inf->PivotData.nItems;i++)
@@ -830,14 +831,20 @@ qyp_internal_Update(pQypData inf)
 			objSetAttrValue(source_obj, inf->Node->CreateUserField, DATA_T_STRING, POD(&ptr));
 			}
 		    if (inf->Node->CreateDateField)
-			objSetAttrValue(source_obj, inf->Node->CreateDateField, DATA_T_DATETIME, POD(&datum->CreateDate));
+			{
+			dt = &(datum->CreateDate);
+			objSetAttrValue(source_obj, inf->Node->CreateDateField, DATA_T_DATETIME, POD(&dt));
+			}
 		    if (inf->Node->ModifyUserField)
 			{
 			ptr = datum->ModifyBy;
 			objSetAttrValue(source_obj, inf->Node->ModifyUserField, DATA_T_STRING, POD(&ptr));
 			}
 		    if (inf->Node->ModifyDateField)
-			objSetAttrValue(source_obj, inf->Node->ModifyDateField, DATA_T_DATETIME, POD(&datum->ModifyDate));
+			{
+			dt = &(datum->ModifyDate);
+			objSetAttrValue(source_obj, inf->Node->ModifyDateField, DATA_T_DATETIME, POD(&dt));
+			}
 
 		    /** Commit the changes **/
 		    if (objCommit(source_obj->Session) < 0)
@@ -879,7 +886,10 @@ qyp_internal_Update(pQypData inf)
 			objSetAttrValue(source_obj, inf->Node->ModifyUserField, DATA_T_STRING, POD(&ptr));
 			}
 		    if (inf->Node->ModifyDateField)
-			objSetAttrValue(source_obj, inf->Node->ModifyDateField, DATA_T_DATETIME, POD(&datum->ModifyDate));
+			{
+			dt = &(datum->ModifyDate);
+			objSetAttrValue(source_obj, inf->Node->ModifyDateField, DATA_T_DATETIME, POD(&dt));
+			}
 		    }
 
 		/** Close the object - we're done **/
@@ -902,7 +912,7 @@ qyp_internal_Update(pQypData inf)
  *** object.
  ***/
 int
-qyp_internal_New(pQypData inf)
+qyp_internal_New(pQypData inf, pObjTrxTree *oxt)
     {
     int i,j;
     pQypDatum datum;
@@ -910,6 +920,8 @@ qyp_internal_New(pQypData inf)
     int offset;
     char intbuf[12];
     int len;
+    pObjTrxTree suspended_trx;
+    int rval;
 
 	/** Mark KEY datum items as NEW.  This is because they may have been
 	 ** created from the provided object name, and not marked NEW then.
@@ -922,7 +934,10 @@ qyp_internal_New(pQypData inf)
 	    }
 
 	/** Send the updates to the underlying objects **/
-	if (qyp_internal_Update(inf) < 0)
+	suspended_trx = objSuspendTransaction(inf->Obj->Session);
+	rval = qyp_internal_Update(inf);
+	objResumeTransaction(inf->Obj->Session, suspended_trx);
+	if (rval < 0)
 	    return -1;
 
 	/** Create our object name **/
@@ -960,6 +975,8 @@ qyp_internal_New(pQypData inf)
 
 	/** Object is no longer "new" **/
 	inf->Flags &= ~QYP_F_NEW;
+	if (*oxt && (*oxt)->OpType == OXT_OP_CREATE)
+	    (*oxt)->Status = OXT_S_COMPLETE;
 
     return 0;
     }
@@ -1051,7 +1068,14 @@ qypOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	    /** Creating a new object **/
 	    if (rval == 1)
+		{
 		inf->Flags |= QYP_F_NEW;
+                if (!*oxt) *oxt = obj_internal_AllocTree();
+                (*oxt)->OpType = OXT_OP_CREATE;
+                (*oxt)->LLParam = (void*)inf;
+                (*oxt)->Object = obj;
+                (*oxt)->Status = OXT_S_VISITED;
+		}
 	    }
 	obj_internal_PathPart(obj->Pathname,0,0);
 
@@ -1070,7 +1094,7 @@ qypClose(void* inf_v, pObjTrxTree* oxt)
 
 	/** Send any changes to the underlying data source **/
 	if (inf->Flags & QYP_F_NEW)
-	    qyp_internal_New(inf);
+	    qyp_internal_New(inf, oxt);
 
     	/** Write the node first **/
 	snWriteNode(inf->Obj->Prev, inf->Node->BaseNode);
@@ -1707,7 +1731,7 @@ qypCommit(void* inf_v, pObjTrxTree *oxt)
     pQypData inf = QYP(inf_v);
 
 	if (inf->Flags & QYP_F_NEW)
-	    return qyp_internal_New(inf);
+	    return qyp_internal_New(inf, oxt);
 
     return 0;
     }

@@ -145,6 +145,7 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     {
     int i;
     int nodetype;
+    int id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -373,16 +374,17 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PROPERTY:
-	        switch(exp->ObjID)
+		id = expObjID(exp, eg->Objlist);
+	        switch(id)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
 		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, ":"); break;
 		    default: 
-		        if (exp->ObjID >= 0) 
+		        if (id >= 0) 
 			    {
 			    exp_internal_WriteText(eg, ":");
-		            exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+		            exp_internal_WriteText(eg, eg->Objlist->Names[id]);
 			    }
 			break;
 		    }
@@ -422,6 +424,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     int i;
     int prop_func;
     int nodetype;
+    int id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -673,16 +676,17 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PROPERTY:
-	        switch(exp->ObjID)
+		id = expObjID(exp,eg->Objlist);
+	        switch(id)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
 		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, "this."); break;
 		    default: 
-		        if (exp->ObjID >= 0)
+		        if (id)
 			    {
 			    if (eg->Objlist) 
-				exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+				exp_internal_WriteText(eg, eg->Objlist->Names[id]);
 			    else
 				exp_internal_WriteText(eg, exp->Name);
 			    }
@@ -745,6 +749,8 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 	eg->WriteArg = write_arg;
 	eg->EscChar = quote_char;
 	eg->Domain = domain;
+	if (objlist && !objlist->CurControl && exp->Control)
+	    objlist->CurControl = exp->Control;
 
 	/** Call the internal recursive version of this function **/
 	if (!strcasecmp(language,"cxsql"))

@@ -262,7 +262,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    best_dist = dist;
 		    best_res = res;
 		    }
-		if (dist > best_greater_dist && context->Session->ResolutionX < res->Xres && context->Session->ResolutionY < res->Yres)
+		if (dist > best_greater_dist && context->Session->ResolutionX <= res->Xres && context->Session->ResolutionY <= res->Yres)
 		    {
 		    best_greater_dist = dist;
 		    best_greater_res = res;

@@ -204,7 +204,7 @@ function cmp_instantiate(aparam)
 	}
     if (this.is_static)
 	return false;
-    var p = wgtrGetContainer(wgtrGetParent(this));
+    var p = wgtrGetParentContainer(this);
     var w,h;
     if (this.orig_h > 0 && this.orig_w > 0)
 	{

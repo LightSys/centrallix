@@ -577,6 +577,9 @@ mtInitialize(int flags, void (*start_fn)())
 	    MTASK.CurrentThread->SecContext.nGroups = 0;
 	if (MTASK.CurrentThread->SecContext.nGroups > sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t))
 	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
+	MTASK.CurrentThread->SecContext.SecParam = NULL;
+	MTASK.CurrentThread->SecContext.SecParamCopyConstructor = NULL;
+	MTASK.CurrentThread->SecContext.SecParamDestructor = NULL;
 	MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
 #ifdef USING_VALGRIND
@@ -1316,6 +1319,25 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	else
 	    thr->SecContext.ThrParam = NULL;
 
+	/** Copy the security parameter.  This is an application-managed
+	 ** context that we propagate from one thread to another as new
+	 ** threads are created.
+	 **/
+	thr->SecContext.SecParam = NULL;
+	if (MTASK.CurrentThread)
+	    {
+	    thr->SecContext.SecParamCopyConstructor = MTASK.CurrentThread->SecContext.SecParamCopyConstructor;
+	    thr->SecContext.SecParamDestructor = MTASK.CurrentThread->SecContext.SecParamDestructor;
+	    if (MTASK.CurrentThread->SecContext.SecParam && MTASK.CurrentThread->SecContext.SecParamCopyConstructor)
+		{
+		MTASK.CurrentThread->SecContext.SecParamCopyConstructor(MTASK.CurrentThread->SecContext.SecParam, &(thr->SecContext.SecParam));
+		}
+	    else
+		{
+		thr->SecContext.SecParam = MTASK.CurrentThread->SecContext.SecParam;
+		}
+	    }
+
 	/** Add to the thread table. **/
 	for(i=0;i<MAX_THREADS;i++)
 	    {
@@ -1389,6 +1411,10 @@ thExit()
 	    MTASK.EventWaitTable[i]->Thr->Status = THR_S_RUNNABLE;
 	    }
 
+	/** Security settings? **/
+	if (MTASK.CurrentThread->SecContext.SecParam && MTASK.CurrentThread->SecContext.SecParamDestructor)
+	    MTASK.CurrentThread->SecContext.SecParamDestructor(MTASK.CurrentThread->SecContext.SecParam);
+
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
@@ -1457,6 +1483,10 @@ thKill(pThread thr)
 	    MTASK.nThreads--;
 	    break;
 	    }
+
+	/** Security settings? **/
+	if (thr->SecContext.SecParam && thr->SecContext.SecParamDestructor)
+	    thr->SecContext.SecParamDestructor(thr->SecContext.SecParam);
 
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
@@ -1990,36 +2020,15 @@ thSetSecContext(pThread thr, pMTSecContext context)
 	if (MTASK.CurrentThread->SecContext.UserID != 0) return -1;
 
 	/** Update thread context **/
+	if (thr->SecContext.SecParam && thr->SecContext.SecParamDestructor)
+	    thr->SecContext.SecParamDestructor(thr->SecContext.SecParam);
 	memcpy(&(thr->SecContext), context, sizeof(MTSecContext));
-	/*thr->SecContext.UserID = context->UserID;
-	thr->SecContext.GroupID = context->GroupID;
-	thr->SecContext.ThrParam = context->ThrParam;*/
+	if (context->SecParamCopyConstructor)
+	    context->SecParamCopyConstructor(context->SecParam, &(thr->SecContext.SecParam));
 
 	/** Update current run settings if thread is current thread **/
 	if (thr == MTASK.CurrentThread)
 	    mt_internal_SwitchToContext(&(thr->SecContext));
-
-	/*if (thr == MTASK.CurrentThread)
-	    {
-	    if (thr->SecContext.UserID != MTASK.CurUserID)
-		{
-		if (MTASK.CurUserID) seteuid(0);
-		if (thr->SecContext.UserID) seteuid(thr->SecContext.UserID);
-		MTASK.CurUserID = thr->SecContext.UserID;
-		}
-	    if (thr->SecContext.GroupID != MTASK.CurGroupID)
-		{
-		if (MTASK.CurGroupID) setegid(0);
-		if (thr->SecContext.GroupID) setegid(thr->SecContext.GroupID);
-		MTASK.CurGroupID = thr->SecContext.GroupID;
-		}
-	    if (MTASK.CurNGroups != thr->SecContext.nGroups || !memcmp(MTASK.CurGroupList, thr->SecContext.GroupList, thr->SecContext.nGroups * sizeof(gid_t)))
-		{
-		setgroups(thr->SecContext.nGroups, thr->SecContext.GroupList);
-		MTASK.CurNGroups = thr->SecContext.nGroups;
-		memcpy(MTASK.CurGroupList, thr->SecContext.GroupList, thr->SecContext.nGroups * sizeof(gid_t));
-		}
-	    }*/
 
     return 0;
     }
@@ -2041,6 +2050,8 @@ thGetSecContext(pThread thr, pMTSecContext context)
 
 	/** Save it **/
 	memcpy(context, &(thr->SecContext), sizeof(MTSecContext));
+	if (thr->SecContext.SecParam && thr->SecContext.SecParamCopyConstructor)
+	    thr->SecContext.SecParamCopyConstructor(thr->SecContext.SecParam, &(context->SecParam));
 	/*context->UserID = thr->SecContext.UserID;
 	context->GroupID = thr->SecContext.GroupID;
 	context->ThrParam = thr->SecContext.ThrParam;*/
@@ -2138,6 +2149,35 @@ thExcessiveRecursion()
     {
     unsigned char buf[1];
     return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    }
+
+
+/*** THSETSECPARAM - set an application-specified opaque security
+ *** parameter for the thread, as well as (optionally) a copy constructor
+ *** and destructor for that opaque object.
+ ***
+ *** Setting this parameter does NOT call a previous parameter's
+ *** destructor, nor is the copy constructor called on the new parameter
+ *** (this is for efficiency, to avoid needless copying and allocation).
+ ***/
+int
+thSetSecParam(pThread thr, void* param, int (*copy_constructor)(void* src, void** dst), int (*destructor)(void*))
+    {
+    if (!thr) thr=MTASK.CurrentThread;
+    thr->SecContext.SecParam = param;
+    thr->SecContext.SecParamCopyConstructor = copy_constructor;
+    thr->SecContext.SecParamDestructor = destructor;
+    return 0;
+    }
+
+
+/*** THGETSECPARAM - get the opaque security parameter for the thread.
+ ***/
+void*
+thGetSecParam(pThread thr)
+    {
+    if (!thr) thr=MTASK.CurrentThread;
+    return thr->SecContext.SecParam;
     }
 
 

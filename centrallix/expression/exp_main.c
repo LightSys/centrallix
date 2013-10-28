@@ -138,7 +138,7 @@ expObjID(pExpression exp, pParamObjects objlist)
     if (exp->ObjID == EXPR_OBJID_CURRENT && objlist) id = objlist->CurrentID;
     else if (exp->ObjID == EXPR_OBJID_PARENT && objlist) id = objlist->ParentID;
     else id = exp->ObjID;
-    if ((!objlist->CurControl && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
+    if (((!objlist || !objlist->CurControl) && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
     if (exp->Control && exp->Control->Remapped) 
         id = exp->Control->ObjMap[id];
     else if (objlist && objlist->CurControl && objlist->CurControl->Remapped)
@@ -174,6 +174,8 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
 	new_tree->ObjOuterMask = src->ObjOuterMask;
 	new_tree->ObjDelayChangeMask = src->ObjDelayChangeMask;
 	new_tree->AggLevel = src->AggLevel;
+	new_tree->CmpFlags = src->CmpFlags;
+	new_tree->LxFlags = src->LxFlags;
 	memcpy(&(new_tree->Types), &(src->Types), sizeof(src->Types));
 
 	/** String fields may need to be allocated.. **/

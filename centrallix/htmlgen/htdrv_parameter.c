@@ -121,7 +121,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	if (deploy_to_client)
 	    {
 	    /** Script init **/
-	    htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {name:'%STR&JSSTR', type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
+	    htrAddScriptInit_va(s, "    pa_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {name:'%STR&JSSTR', type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
 		    name, paramname, type, findcontainer, !find_inf || !find_inf->StrVal, find_inf && find_inf->StrVal, find_inf?find_inf->StrVal:"");
 
 	    hints = wgtrWgtToHints(tree);
@@ -132,12 +132,12 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    xsInit(&xs);
 	    hntEncodeHints(hints, &xs);
-	    htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%STR&SYM\"], '%STR&JSSTR', 'app');\n",
+	    htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetNodeRef(ns,\"%STR&SYM\"), '%STR&JSSTR', 'app');\n",
 		    name, xs.String);
 	    xsDeInit(&xs);
 	    objFreeHints(hints);
 
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].Verify();\n", name);
+	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").Verify();\n", name);
 	    }
 	else
 	    {

@@ -13,6 +13,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -160,7 +161,11 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	objDataToMoney(i1->DataType, vptr, &(tree->Types.Money));
+	if (objDataToMoney(i1->DataType, vptr, &(tree->Types.Money)) < 0)
+	    {
+	    mssError(1,"EXP","convert(): invalid conversion to money value");
+	    return -1;
+	    }
 	}
     else if (!strcmp(i0->String,"datetime"))
         {
@@ -170,11 +175,16 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	objDataToDateTime(i1->DataType, vptr, &(tree->Types.Date), NULL);
+	if (objDataToDateTime(i1->DataType, vptr, &(tree->Types.Date), NULL) < 0)
+	    {
+	    mssError(1,"EXP","convert(): invalid conversion to datetime value");
+	    return -1;
+	    }
 	}
     else
         {
-	mssError(1,"EXP","convert() datatype '%s' is invalid", i0->String);
+	mssError(1,"EXP","convert(): datatype '%s' is invalid", i0->String);
+	return -1;
 	}
     return 0;
     }
@@ -2040,6 +2050,31 @@ int exp_fn_square(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+int exp_fn_has_endorsement(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* context;
+    if (!i0 || (i0->DataType != DATA_T_STRING) || (i1 && i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","has_endorsement() requires one or two string parameters");
+	return -1;
+	}
+    tree->DataType = DATA_T_INTEGER;
+    tree->Integer = 0;
+    if (i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i1 || (i1->Flags & EXPR_F_NULL))
+	context="";
+    else
+	context = i1->String;
+    if (cxssHasEndorsement(i0->String, context) > 0)
+	tree->Integer = 1;
+    return 0;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -2443,6 +2478,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
 	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
 	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
+	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);

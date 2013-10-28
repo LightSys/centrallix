@@ -99,7 +99,7 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s, "    uw_init(nodes[\"%STR&SYM\"], {shared:%INT, multi:%INT, routing:%INT, path:\"%STR&JSSTR\", w:%INT, h:%INT} );\n",
+	htrAddScriptInit_va(s, "    uw_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {shared:%INT, multi:%INT, routing:%INT, path:\"%STR&JSSTR\", w:%INT, h:%INT} );\n",
 		name, is_shared, is_multi, action_routing, path, width, height
 		);
 

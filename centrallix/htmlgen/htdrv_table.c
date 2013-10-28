@@ -158,7 +158,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->rowheight,
@@ -371,7 +371,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddBodyItem(s,"</TABLE></TD></TR></TABLE>\n");
 
 	/** Call init function **/
- 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), name:\"%STR&SYM\", width:%INT, cp:%INT, cs:%INT});\n",t->name,t->name,t->w,t->inner_padding,t->inner_border);
+ 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), name:\"%STR&SYM\", width:%INT, cp:%INT, cs:%INT});\n",t->name,t->name,t->w,t->inner_padding,t->inner_border);
  
     return 0;
     }

@@ -798,7 +798,7 @@ function tv_init(param)
 	l.img.layer = l;
 	l.img.kind = 'tv';
 	}
-    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    l.pdoc = wgtrGetParentContainer(l);
     //l.pdoc = pdoc;
     l.ld = param.loader;
     l.ld.mainlayer = l;

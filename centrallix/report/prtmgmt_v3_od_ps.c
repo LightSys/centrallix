@@ -59,6 +59,13 @@
 /*** our list of resolutions ***/
 PrtResolution prt_psod_resolutions[] =
     {
+    {5,5,PRT_COLOR_T_FULL},
+    {10,10,PRT_COLOR_T_FULL},
+    {20,20,PRT_COLOR_T_FULL},
+    {30,30,PRT_COLOR_T_FULL},
+    {40,40,PRT_COLOR_T_FULL},
+    {50,50,PRT_COLOR_T_FULL},
+    {60,60,PRT_COLOR_T_FULL},
     {75,75,PRT_COLOR_T_FULL},
     {100,100,PRT_COLOR_T_FULL},
     {150,150,PRT_COLOR_T_FULL},
@@ -66,6 +73,7 @@ PrtResolution prt_psod_resolutions[] =
     {600,600,PRT_COLOR_T_FULL},
     {1200,1200,PRT_COLOR_T_FULL},
     };
+#define PRT_PSOD_DEFAULT_RES	10
 
 
 /*** list of output formats ***/
@@ -74,6 +82,7 @@ typedef struct _PPSF
     char*		Name;
     char*		ContentType;
     void*		(*OpenFn)(pPrtSession);
+    int			MaxPages;
     char*		Command;
     }
     PrtPsodFormat, *pPrtPsodFormat;
@@ -82,8 +91,9 @@ void* prt_psod_OpenPDF(pPrtSession);
 
 static PrtPsodFormat PsFormats[] =
     {
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - -" },
-	{ NULL,		NULL,			NULL,			NULL }
+	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
+	{ NULL,		NULL,			NULL,			0,	NULL }
     };
 
 
@@ -103,6 +113,7 @@ typedef struct _PPS
     int			MarginLeft;
     int			MarginRight;
     int			PageNum;
+    int			MaxPages;
     char*		Buf;
     int			BufSize;
     int			Flags;		/* PRT_PSOD_F_xxx, see below */
@@ -368,6 +379,7 @@ void*
 prt_psod_Open(pPrtSession s)
     {
     pPrtPsodInf context;
+    int i;
 
 	/** Set up the context structure for this printing session **/
 	context = (pPrtPsodInf)nmMalloc(sizeof(PrtPsodInf));
@@ -390,6 +402,7 @@ prt_psod_Open(pPrtSession s)
 	context->MarginLeft = 0;
 	context->MarginRight = 0;
 	context->PageNum = 0;
+	context->MaxPages = 999999;
 
 	/** Set up data path **/
 	context->IntWriteFn = s->WriteFn;
@@ -398,10 +411,12 @@ prt_psod_Open(pPrtSession s)
 	context->TransWPipe = NULL;
 
 	/** Right now, just support 75, 100, 150, and 300 dpi **/
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+0));
+	for(i=0;i<sizeof(prt_psod_resolutions)/sizeof(PrtResolution);i++)
+	    xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+i));
+	/*xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+0));
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+1));
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+2));
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+3));
+	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+3));*/
 
 	/** Setup base text style **/
 	context->SelectedStyle.Attr = 0;
@@ -441,9 +456,10 @@ prt_psod_OpenPDF(pPrtSession session)
 	/** Find our cmd **/
 	for(i=0;PsFormats[i].Name;i++)
 	    {
-	    if (!strcmp(PsFormats[i].Name, "pdf"))
+	    if (!strcmp(PsFormats[i].ContentType, session->OutputType))
 		{
 		cmd = PsFormats[i].Command;
+		context->MaxPages = PsFormats[i].MaxPages;
 		break;
 		}
 	    }
@@ -543,7 +559,7 @@ prt_psod_Close(void* context_v)
     }
 
 
-/*** prt_psod_GetResolutions() - return the list of supported resolutions
+/*** prt_psod_eetResolutions() - return the list of supported resolutions
  *** for this printing session.
  ***/
 pXArray
@@ -563,6 +579,8 @@ prt_psod_SetResolution(void* context_v, pPrtResolution r)
     pPrtPsodInf context = (pPrtPsodInf)context_v;
 
 	/** Set it. **/
+	if (!r)
+	    r = &(prt_psod_resolutions[PRT_PSOD_DEFAULT_RES]);
 	context->SelectedResolution = r;
 
     return 0;
@@ -784,6 +802,8 @@ prt_psod_WriteText(void* context_v, char* str)
     double bl;
     int i,psbuflen;
 
+	if (context->PageNum >= context->MaxPages) return 0;
+
 	prt_psod_BeforeDraw(context);
 
 	/** Move the starting point and adjust for the baseline before outputting the text. **/
@@ -824,6 +844,8 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     int rows,cols,x,y,pix;
+
+	if (context->PageNum >= context->MaxPages) return 0;
 
 	/** Determine how many actual rows/cols we are looking at for the
 	 ** target resolution.
@@ -887,6 +909,8 @@ prt_psod_WriteFF(void* context_v)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
 
+	if (context->PageNum >= context->MaxPages) return 0;
+
 	/** End page if one was started **/
 	prt_psod_EndPage(context);
 
@@ -908,6 +932,8 @@ prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double x1,x2,y1,y2;
+
+	if (context->PageNum >= context->MaxPages) return 0;
 
 	/** Make sure width and height meet the minimum required by the
 	 ** currently selected resolution

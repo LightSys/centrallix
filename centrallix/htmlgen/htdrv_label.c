@@ -74,6 +74,9 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char stylestr[128];
     int is_bold = 0;
     int is_link = 0;
+    int is_italic = 0;
+    int allow_break = 0;
+    int overflow_ellipsis = 0;
     pExpression code;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -154,6 +157,15 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "style", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"bold"))
 	    is_bold = 1;
 
+	/** Italic? **/
+	if (wgtrGetPropertyValue(tree, "style", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"italic"))
+	    is_italic = 1;
+
+	/** Allow text break/wrap? **/
+	allow_break = htrGetBoolean(tree, "allow_break", 1);
+	overflow_ellipsis = htrGetBoolean(tree, "overflow_ellipsis", 0);
+
+	/** alignment **/
 	align[0]='\0';
 	if(wgtrGetPropertyValue(tree,"align",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(align,ptr,sizeof(align));
@@ -179,9 +191,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; }\n",
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
 		id,x,y,h,w,z, 
-		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign);
+		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign,
+		!allow_break, overflow_ellipsis, is_italic);
 	if (is_link)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
 	if (is_link && *cfgcolor)
@@ -193,12 +206,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 	stylestr[0] = '\0';
 	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
 		w,align,is_bold,font_size > 0,font_size,fgcolor);*/
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
+	htrAddScriptInit_va(s, "    lbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
 		name, fieldname, form, text, stylestr, tooltip, is_link, pfgcolor);
 
 	/** Script include to get functions **/

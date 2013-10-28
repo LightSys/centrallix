@@ -68,6 +68,8 @@ typedef struct _HTN
     {
     char	DName[64];		/* deployment name for subtree root */
     char	ParentCtr[64];		/* name of parent container */
+    int		IsSubnamespace;
+    int		HasScriptInits;
     struct _HTN* Parent;
     struct _HTN* FirstChild;
     struct _HTN* NextSibling;
@@ -308,6 +310,8 @@ int htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* prop
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pWgtrNode widget, int z);
 int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel);
+int htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child);
+int htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child);
 
 int htrAddScriptWgtr(pHtSession s, char* wgtr_text);
 /*int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3))); */
@@ -319,7 +323,7 @@ int htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage);
 /*int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));*/
 int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...);
 int htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...);
-int htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace);
+int htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns);
 int htrLeaveNamespace(pHtSession s);
 
 /** Utility routines **/

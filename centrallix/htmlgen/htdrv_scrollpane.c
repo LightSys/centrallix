@@ -139,7 +139,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
-	htrAddScriptInit_va(s,"    sp_init({layer:nodes[\"%STR&SYM\"], aname:\"sp%POSarea\", tname:\"sp%POSthum\"});\n", name,id,id);
+	htrAddScriptInit_va(s,"    sp_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), aname:\"sp%POSarea\", tname:\"sp%POSthum\"});\n", name,id,id);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if(s->Capabilities.Dom0NS)

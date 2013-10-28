@@ -243,7 +243,7 @@ function ht_init(param)
     l.loader = param.loader;
     l2.loader = param.loader;
     //l.pdoc = param.pdoc;
-    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    l.pdoc = wgtrGetParentContainer(l);
     l2.pdoc = l.pdoc;
     l.curLayer = l;
     l.altLayer = l2;

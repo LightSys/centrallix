@@ -159,6 +159,8 @@ typedef enum
     GroupByItem,
     HavingItem,
     UpdateItem,
+    OnDupItem,
+    OnDupUpdateItem,
 
     /** Misc **/
     ParseDone,
@@ -295,7 +297,8 @@ mq_internal_SetDependencies(pQueryStatement stmt, pQueryElement tree, pQueryElem
  ***/
 int
 mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructure sel, pQueryStructure from, pQueryStructure where, 
-		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc)
+		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc,
+			pQueryStructure odc)
     {
     int i,j,cnt;
     pQueryStructure subtree;
@@ -392,6 +395,21 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		}
 	    }
 
+	/** The on-duplicate clause items **/
+	if (odc) for(i=0;i<odc->Children.nItems;i++)
+	    {
+	    /** Compile the on-duplicate clause expression **/
+	    subtree = (pQueryStructure)(odc->Children.Items[i]);
+	    if (subtree->NodeType != MQ_T_ONDUPITEM)
+		continue;
+	    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->OneObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->Expr) 
+		{
+		mssError(0,"MQ","Error in ON DUPLICATE expression <%s>", subtree->RawData.String);
+		return -1;
+		}
+	    }
+
 	/** Compile the order by expressions **/
 	if (ob) for(i=0;i<ob->Children.nItems;i++)
 	    {
@@ -460,6 +478,26 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		if (subtree->ObjFlags[j] & EXPR_O_REFERENCED) cnt++;
 		}
 	    subtree->ObjCnt = cnt;
+	    }
+
+	/** Compile the on-duplicate update expressions **/
+	if (odc) for(i=0;i<odc->Children.nItems;i++)
+	    {
+	    subtree = (pQueryStructure)(odc->Children.Items[i]);
+	    if (subtree->NodeType != MQ_T_ONDUPUPDATEITEM)
+		continue;
+	    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->Expr)
+	        {
+		mssError(0,"MQ","Error in UPDATE SET expression <%s>", subtree->RawData.String);
+		return -1;
+		}
+	    subtree->AssignExpr = expCompileExpression(subtree->AssignRawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->AssignExpr)
+	        {
+		mssError(0,"MQ","Error in UPDATE SET assignment expression <%s>", subtree->AssignRawData.String);
+		return -1;
+		}
 	    }
 
 	/** Merge WHERE clauses if there are more than one **/
@@ -649,6 +687,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 
 	    /** Convert the AND clause to an INTEGER node with value 1 **/
 	    where_clause->NodeType = EXPR_N_INTEGER;
+	    where_clause->DataType = DATA_T_INTEGER;
 	    where_clause->ObjCoverageMask = 0;
 	    where_clause->ObjOuterMask = 0;
 	    where_clause->Integer = 1;
@@ -753,6 +792,140 @@ mq_internal_ProcessWhere(pExpression where_clause, pExpression search_at, pQuery
     }
 
 
+/*** mq_internal_ParseSelectItem - create a single SELECT item.  This is also
+ *** used by the Upsert logic to create ON DUPLICATE items, which have an
+ *** identical syntax.
+ ***/
+int
+mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
+    {
+    int t;
+    int parenlevel;
+    int n_tok;
+    char* ptr;
+
+	/** Copy the entire item literally to the RawData for later compilation **/
+	item_qs->Presentation[0] = 0;
+	item_qs->Name[0] = 0;
+	parenlevel = 0;
+	n_tok = 0;
+	while(1)
+	    {
+	    t = mlxNextToken(lxs);
+	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+		break;
+	    n_tok++;
+	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+		break;
+	    if (t == MLX_TOK_OPENPAREN) 
+		parenlevel++;
+	    if (t == MLX_TOK_CLOSEPAREN)
+		parenlevel--;
+	    if (n_tok == 2 && item_qs->Presentation[0] != 0)
+		{
+		/** Second token, and first might have been a label.  See if it is an = **/
+		if (t == MLX_TOK_EQUALS)
+		    {
+		    /** Label. **/
+		    xsCopy(&item_qs->RawData,"",-1);
+		    continue;
+		    }
+		else
+		    /** Was not a label **/
+		    item_qs->Presentation[0] = '\0';
+		}
+	    /*if (t == MLX_TOK_EQUALS && item_qs->Presentation[0] == 0 && parenlevel == 0)
+		{
+		strtcpy(item_qs->Presentation, item_qs->RawData.String, sizeof(item_qs->Presentation));
+		if (strrchr(item_qs->Presentation,' '))
+		    *(strrchr(item_qs->Presentation,' ')) = '\0';
+		xsCopy(&item_qs->RawData,"",-1);
+		continue;
+		}*/
+	    ptr = mlxStringVal(lxs,NULL);
+	    if (!ptr) break;
+	    if (t == MLX_TOK_STRING)
+		xsConcatQPrintf(&item_qs->RawData, "%STR&DQUOT", ptr);
+	    else
+		xsConcatenate(&item_qs->RawData,ptr,-1);
+	    xsConcatenate(&item_qs->RawData," ",1);
+
+	    /** If first token, see if it might be a label **/
+	    if (n_tok == 1 && (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD))
+		strtcpy(item_qs->Presentation, ptr, sizeof(item_qs->Presentation));
+	    }
+
+	/** If just one string token, it is a data value, not a label **/
+	if (n_tok == 1 && item_qs->Presentation[0] != 0)
+	    item_qs->Presentation[0] = '\0';
+
+    return t;
+    }
+
+
+/*** mq_internal_ParseUpdateItem - parse one assignment in an UPDATE ... SET
+ *** clause.  This is used both by traditional UPDATE ... SET statements as
+ *** well as by ON DUPLICATE ... UPDATE SET ... statements.
+ ***/
+int
+mq_internal_ParseUpdateItem(pQueryStructure item_qs, pLxSession lxs)
+    {
+    int t;
+    int parenlevel;
+    int in_assign;
+    char* ptr;
+
+	/** Copy the entire item literally to the RawData for later compilation **/
+	item_qs->Presentation[0] = 0;
+	item_qs->Name[0] = 0;
+	parenlevel = 0;
+	in_assign = 1;
+	while(1)
+	    {
+	    t = mlxNextToken(lxs);
+	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+		break;
+	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+		break;
+	    if (t == MLX_TOK_OPENPAREN) 
+		parenlevel++;
+	    if (t == MLX_TOK_CLOSEPAREN)
+		parenlevel--;
+	    if (t == MLX_TOK_EQUALS && parenlevel == 0 && in_assign)
+		{
+		in_assign = 0;
+		continue;
+		}
+	    ptr = mlxStringVal(lxs,NULL);
+	    if (!ptr) break;
+	    if (t == MLX_TOK_STRING)
+		{
+		if (in_assign)
+		    xsConcatQPrintf(&item_qs->AssignRawData, "%STR&DQUOT", ptr);
+		else
+		    xsConcatQPrintf(&item_qs->RawData, "%STR&DQUOT", ptr);
+		}
+	    else
+		{
+		if (in_assign)
+		    xsConcatenate(&item_qs->AssignRawData,ptr,-1);
+		else
+		    xsConcatenate(&item_qs->RawData,ptr,-1);
+		}
+	    xsConcatenate(&item_qs->RawData," ",1);
+	    }
+
+	if (!item_qs->RawData.String[0] || !item_qs->AssignRawData.String[0])
+	    {
+	    mssError(1, "MQ", "UPDATE assignment must have form '{assign-expr} = {value-expr}'");
+	    mlxNotePosition(lxs);
+	    return -1;
+	    }
+
+    return t;
+    }
+
+
 /*** mq_internal_SyntaxParse - parse the syntax of the SQL used for this
  *** query.
  ***/
@@ -763,15 +936,14 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     pQueryStructure insert_cls=NULL, update_cls=NULL, delete_cls=NULL;
     /* pQueryStructure delete_cls=NULL, update_cls=NULL;*/
     pQueryStructure limit_cls = NULL;
+    pQueryStructure ondup_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
     int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr;
-    int n_tok;
     char* ptr;
-    int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
-				   "values","with","limit","for", NULL};
+				   "values","with","limit","for","on","duplicate", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -1176,8 +1348,18 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				}
 		    	    mlxCopyToken(lxs,insert_cls->Source,256);
 
-			    /** Ok, either a paren (for column list), VALUES, or SELECT is next. **/
 			    t = mlxNextToken(lxs);
+
+			    /** Check for a keyword, which provides an identifier for the insert path **/
+			    if (t == MLX_TOK_KEYWORD || t == MLX_TOK_STRING)
+				{
+				ptr = mlxStringVal(lxs,NULL);
+				if (ptr)
+				    strtcpy(insert_cls->Presentation, ptr, sizeof(insert_cls->Presentation));
+				t = mlxNextToken(lxs);
+				}
+
+			    /** Ok, either a paren (for column list), VALUES, or SELECT is next. **/
 			    if (t == MLX_TOK_RESERVEDWD)
 			        {
 				/** VALUES or SELECT **/
@@ -1274,12 +1456,119 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				break;
 				}
 			    }
+			else if (!strcmp("on",ptr))
+			    {
+			    /** Various sorts of ON clauses go here **/
+			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected DUPLICATE after ON");
+				mlxNoteError(lxs);
+				break;
+				}
+			    ptr = mlxStringVal(lxs,NULL);
+			    if (ptr && strcmp(ptr,"duplicate") != 0)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected DUPLICATE after ON");
+				mlxNoteError(lxs);
+				break;
+				}
+			    if (insert_cls == NULL)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","ON DUPLICATE...UPDATE is only valid with an INSERT statement");
+				mlxNoteError(lxs);
+				break;
+				}
+			    ondup_cls = mq_internal_AllocQS(MQ_T_ONDUPCLAUSE);
+			    xaAddItem(&qs->Children, (void*)ondup_cls);
+			    ondup_cls->Parent = qs;
+			    next_state = OnDupItem;
+			    }
 			else
 			    {
 			    next_state = ParseError;
 			    mssError(1,"MQ","Unknown reserved word or clause name <%s>", ptr);
 			    mlxNoteError(lxs);
 			    }
+			}
+		    break;
+
+		case OnDupItem:
+		    new_qs = mq_internal_AllocQS(MQ_T_ONDUPITEM);
+		    xaAddItem(&ondup_cls->Children, (void*)new_qs);
+		    new_qs->Parent = ondup_cls;
+
+		    t = mq_internal_ParseSelectItem(new_qs, lxs);
+
+		    /** Where to from here? **/
+		    if (t == MLX_TOK_COMMA)
+		        {
+			next_state = state;
+			break;
+			}
+		    else if (t == MLX_TOK_RESERVEDWD && (ptr = mlxStringVal(lxs, NULL)) && !strcmp(ptr,"update"))
+		        {
+			t = mlxNextToken(lxs);
+			if (t == MLX_TOK_RESERVEDWD && (ptr = mlxStringVal(lxs, NULL)) && !strcmp(ptr,"set"))
+			    {
+			    next_state = OnDupUpdateItem;
+			    break;
+			    }
+			else
+			    {
+			    next_state = ParseError;
+			    mssError(1,"MQ","Expected on-duplicate item or UPDATE SET clause after ON DUPLICATE");
+			    mlxNoteError(lxs);
+			    break;
+			    }
+			}
+		    else
+		        {
+			next_state = ParseError;
+			mssError(1,"MQ","Expected on-duplicate item or UPDATE SET clause after ON DUPLICATE");
+			mlxNoteError(lxs);
+			break;
+			}
+		    break;
+
+		case OnDupUpdateItem:
+		    new_qs = mq_internal_AllocQS(MQ_T_ONDUPUPDATEITEM);
+		    xaAddItem(&ondup_cls->Children, (void*)new_qs);
+		    new_qs->Parent = ondup_cls;
+
+		    t = mq_internal_ParseUpdateItem(new_qs, lxs);
+		    if (t < 0)
+			{
+			next_state = ParseError;
+			break;
+			}
+
+		    /** Where to from here? **/
+		    if (t == MLX_TOK_COMMA)
+		        {
+			next_state = state;
+			break;
+			}
+		    else if (t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON)
+		        {
+			mlxHoldToken(lxs);
+			next_state = LookForClause;
+			break;
+			}
+		    else if (t == MLX_TOK_EOF)
+		        {
+			mlxHoldToken(lxs);
+			next_state = ParseDone;
+			break;
+			}
+		    else
+		        {
+			next_state = ParseError;
+			mssError(1,"MQ","Expected update item or end-of-query after UPDATE SET");
+			mlxNoteError(lxs);
+			break;
 			}
 		    break;
 
@@ -1404,63 +1693,10 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		case SelectItem:
 		    new_qs = mq_internal_AllocQS(MQ_T_SELECTITEM);
-		    new_qs->Presentation[0] = 0;
-		    new_qs->Name[0] = 0;
 		    xaAddItem(&select_cls->Children, (void*)new_qs);
 		    new_qs->Parent = select_cls;
 
-		    /** Copy the entire item literally to the RawData for later compilation **/
-		    parenlevel = 0;
-		    n_tok = 0;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-			    break;
-			n_tok++;
-			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
-			    break;
-			if (t == MLX_TOK_OPENPAREN) 
-			    parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN)
-			    parenlevel--;
-			if (n_tok == 2 && new_qs->Presentation[0] != 0)
-			    {
-			    /** Second token, and first might have been a label.  See if it is an = **/
-			    if (t == MLX_TOK_EQUALS)
-				{
-				/** Label. **/
-				xsCopy(&new_qs->RawData,"",-1);
-				continue;
-				}
-			    else
-				/** Was not a label **/
-				new_qs->Presentation[0] = '\0';
-			    }
-			/*if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0 && parenlevel == 0)
-			    {
-			    strtcpy(new_qs->Presentation, new_qs->RawData.String, sizeof(new_qs->Presentation));
-			    if (strrchr(new_qs->Presentation,' '))
-			        *(strrchr(new_qs->Presentation,' ')) = '\0';
-			    xsCopy(&new_qs->RawData,"",-1);
-			    continue;
-			    }*/
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			else
-			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			xsConcatenate(&new_qs->RawData," ",1);
-
-			/** If first token, see if it might be a label **/
-			if (n_tok == 1 && (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD))
-			    strtcpy(new_qs->Presentation, ptr, sizeof(new_qs->Presentation));
-			}
-
-		    /** If just one string token, it is a data value, not a label **/
-		    if (n_tok == 1 && new_qs->Presentation[0] != 0)
-			new_qs->Presentation[0] = '\0';
+		    t = mq_internal_ParseSelectItem(new_qs, lxs);
 
 		    /** Where to from here? **/
 		    if (t == MLX_TOK_COMMA)
@@ -1710,54 +1946,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		case UpdateItem:
 		    new_qs = mq_internal_AllocQS(MQ_T_UPDATEITEM);
-		    new_qs->Presentation[0] = 0;
-		    new_qs->Name[0] = 0;
 		    xaAddItem(&update_cls->Children, (void*)new_qs);
 		    new_qs->Parent = update_cls;
 
-		    /** Copy the entire item literally to the RawData for later compilation **/
-		    parenlevel = 0;
-		    in_assign = 1;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-			    break;
-			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
-			    break;
-			if (t == MLX_TOK_OPENPAREN) 
-			    parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN)
-			    parenlevel--;
-			if (t == MLX_TOK_EQUALS && parenlevel == 0 && in_assign)
-			    {
-			    in_assign = 0;
-			    continue;
-			    }
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    if (in_assign)
-				xsConcatQPrintf(&new_qs->AssignRawData, "%STR&DQUOT", ptr);
-			    else
-				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    if (in_assign)
-				xsConcatenate(&new_qs->AssignRawData,ptr,-1);
-			    else
-				xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
-			xsConcatenate(&new_qs->RawData," ",1);
-			}
-
-		    if (!new_qs->RawData.String[0] || !new_qs->AssignRawData.String[0])
+		    t = mq_internal_ParseUpdateItem(new_qs, lxs);
+		    if (t < 0)
 			{
-			mssError(1, "MQ", "UPDATE assignment must have form '{assign-expr} = {value-expr}'");
 			next_state = ParseError;
-			mlxNotePosition(lxs);
 			break;
 			}
 
@@ -1808,7 +2003,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 	    }
 
 	/** Ok, postprocess the expression trees, etc. **/
-	if (mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls) < 0)
+	if (mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls, ondup_cls) < 0)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not postprocess multiquery");
@@ -2115,6 +2310,13 @@ mq_internal_NextStatement(pMultiQuery this)
 
 	this->QueryCnt++;
 
+	/** Build the one-object list for evaluating the Having clause, etc. **/
+	stmt->OneObjList = expCreateParamList();
+	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
+	stmt->OneObjList->Session = stmt->Query->SessionID;
+	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
+
 	/** Parse the query **/
 	stmt->QTree = mq_internal_SyntaxParse(this->LexerSession, stmt);
 	if (!stmt->QTree)
@@ -2174,13 +2376,6 @@ mq_internal_NextStatement(pMultiQuery this)
 		mq_internal_OptimizeExpr(&(sub_qs->Expr));
 		}
 	    }
-
-	/** Build the one-object list for evaluating the Having clause, etc. **/
-	stmt->OneObjList = expCreateParamList();
-	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
-	stmt->OneObjList->Session = stmt->Query->SessionID;
-	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
-	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Compile the having expression, if one. **/
 	stmt->HavingClause = NULL;
@@ -2495,10 +2690,25 @@ mq_internal_EvalLimitClause(pQueryStatement stmt, pPseudoObject p)
 int
 mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
     {
+    pPseudoObject our_p = p;
+    int rval;
 
-	if (!stmt->HavingClause) return 1;
-	expModifyParam(stmt->OneObjList, "this", (void*)p);
-	if (expEvalTree(stmt->HavingClause, stmt->OneObjList) < 0)
+	/** No having clause? **/
+	if (!stmt->HavingClause)
+	    return 1;
+
+	/** Caller does not have a pseudo-object context?  If not,
+	 ** just use the current values.
+	 **/
+	if (!our_p)
+	    our_p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
+
+	/** Evaluate it **/
+	expModifyParam(stmt->OneObjList, "this", (void*)our_p);
+	rval = expEvalTree(stmt->HavingClause, stmt->OneObjList);
+	if (p != our_p)
+	    mq_internal_FreePseudoObject(our_p);
+	if (rval < 0)
 	    {
 	    mssError(1,"MQ","Could not evaluate HAVING clause");
 	    return -1;
@@ -2788,6 +2998,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
     int id=-1,i,dt;
+    int any_dt;
 
     	/** Request for ls__rowid? **/
 	if (!strcmp(attrname,"ls__rowid") || !strcmp(attrname,"cx__rowid") ||
@@ -2808,6 +3019,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 
 	/** If select *, then loop through FROM objects **/
+	any_dt = 0;
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
 	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
@@ -2817,12 +3029,25 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
 		    if (dt > 0)
 			return dt;
+
+		    /** source doesn't know the attribute, but might accept
+		     ** a setattr on it?
+		     **/
+		    if (dt == DATA_T_UNAVAILABLE)
+			any_dt = 1;
 		    }
 		}
 	    }
-	    
+
+	/** Didn't find it? **/
 	if (id == -1) 
 	    {
+	    /** Return 'unavailable' if a source indicated that it might
+	     ** accept a new/non-null attribute.
+	     **/
+	    if (any_dt)
+		return DATA_T_UNAVAILABLE;
+
 	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
 	        return -1;
 	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
@@ -3080,7 +3305,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 		if (p->ObjList->Objects[i])
 		    {
 		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
-		    if (dt > 0)
+		    if (dt >= 0)
 			{
 			rval = objSetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
 			return rval;
@@ -3261,7 +3486,7 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
     pPseudoObject p = (pPseudoObject)inf_v;
     pObjPresentationHints ph;
     pObject obj;
-    int i, id;
+    int i, id, objid;
     pExpression e;
 
     	/** Request for ls__rowid? **/
@@ -3303,15 +3528,16 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    return NULL;
 	    }
 
-	/** Evaluate the expression to get the data type **/
+	/** Can we figure out what object this expression is referencing? **/
 	p->ObjList->Session = p->Stmt->Query->SessionID;
 	e = (pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id];
 	if (e->NodeType == EXPR_N_PROPERTY || e->NodeType == EXPR_N_OBJECT)
 	    {
-	    if (e->ObjID >= 0)
+	    objid = expObjID(e,p->ObjList);
+	    if (objid >= 0)
 		{
-		obj = p->ObjList->Objects[(int)e->ObjID];
-		if (obj && p->ObjList->GetTypeFn[(int)e->ObjID] == objGetAttrType)
+		obj = p->ObjList->Objects[objid];
+		if (obj && p->ObjList->GetTypeFn[objid] == objGetAttrType)
 		    {
 		    ph = objPresentationHints(obj, attrname);
 		    return ph;

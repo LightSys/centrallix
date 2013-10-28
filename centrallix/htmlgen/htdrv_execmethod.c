@@ -83,7 +83,7 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name, ptr, sizeof(name));
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ex_init({node:nodes[\"%STR&SYM\"], objname:'%STR&SYM', methname:'%STR&SYM', methparam:'%STR&JSSTR'});\n", 
+	htrAddScriptInit_va(s, "    ex_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), objname:'%STR&SYM', methname:'%STR&SYM', methparam:'%STR&JSSTR'});\n", 
 		name, objname, methodname, methodparam);
 
 	/** Check for objects within the exec method object. **/

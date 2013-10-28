@@ -20,6 +20,7 @@ function mn_additem(param)
     item.label = param.label;
     item.check = param.check;
     item.submenu = param.submenu;
+    item.submenu_ns = param.submenu_ns;
     item.icon = param.icon;
     item.enabled = param.enabled;
     item.onright = param.onright;
@@ -168,7 +169,7 @@ function mn_activate_item(item)
 	item.ifcProbe(ifEvent).Activate('Select', {Value:item.value, Label:item.label});
 	this.ifcProbe(ifEvent).Activate('SelectItem', {Value:item.value, Label:item.label});
 	//if (this.VChildren[item.submenu])
-	if (wgtrGetNode(this,item.submenu))
+	if (wgtrGetNode(item.submenu_ns,item.submenu))
 	    {
 	    if (this.horiz)
 		{
@@ -181,7 +182,7 @@ function mn_activate_item(item)
 		var y = getPageY(this) + item.y;
 		}
 	    //this.VChildren[item.submenu].Activate(x, y, this);
-	    wgtrGetNode(this,item.submenu).Activate(x, y, this);
+	    wgtrGetNode(item.submenu_ns,item.submenu).Activate(x, y, this);
 	    }
 	}
     else if (item.check != null)

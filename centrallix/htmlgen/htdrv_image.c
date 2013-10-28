@@ -56,7 +56,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char src[128];
+    char src[256];
     int x=-1,y=-1,w,h;
     int id, i;
     char *text;
@@ -100,13 +100,15 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** image source **/
-	ptr = "";
-	if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
+	/*if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
 	    nmSysFree(text);
 	    return -1;
-	    }
+	    }*/
+	ptr = "";
+	htrCheckAddExpression(s, tree, name, "source");
+	wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr));
 	strtcpy(src, ptr, sizeof(src));
 
 	/** Field name **/
@@ -124,8 +126,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Init image widget (?) **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%POS\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	htrAddScriptInit_va(s, "    im_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
+	htrAddScriptInit_va(s, "    im_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
 		name, fieldname, form);
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 

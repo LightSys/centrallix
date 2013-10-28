@@ -90,7 +90,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 
 	/** objectsource specified? **/
 	if (wgtrGetPropertyValue(oc_node, "source", DATA_T_STRING, POD(&ptr)) != 0)
-	    strcpy(osrc, "null");
+	    strcpy(osrc, "");
 	else
 	    strtcpy(osrc, ptr, sizeof(osrc));
 
@@ -124,8 +124,8 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "oc", "oc_mouseout");
    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    oc_init({layer:nodes[\"%STR&SYM\"], osrc:nodes[\"%STR&SYM\"], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
-		name, osrc, allow_select, show_select, name);
+	htrAddScriptInit_va(s, "    oc_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), osrc:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
+		name, *osrc, osrc, !*osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\">\n",id);

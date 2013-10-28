@@ -1219,7 +1219,7 @@ function pg_appwindowbuild(seen)
     seen[wgtrGetNamespace(this)] = this.pg_appwindows[wgtrGetNamespace(this)];
     for(var win in this.pg_appwindows)
 	{
-	if (this.pg_appwindows[win].wobj != 'undefined' && this.pg_appwindows[win].wobj.__WgtrNamespace != win)
+	if (this.pg_appwindows[win].wobj != 'undefined' && wgtrGetNamespace(this.pg_appwindows[win].wobj) != win)
 	    {
 	    // has been reloaded, ignore this instance
 	    delete pg_appwindows[win];
@@ -1401,7 +1401,7 @@ function pg_launch(aparam)
 	w_name = "new_window";
     else
 	w_name = aparam.Name;
-    w_name = window.__WgtrNamespace + '_' + w_name;
+    w_name = wgtrGetNamespace(window) + '_' + w_name;
 
     // build the URL with parameters
     var url = new String(aparam.Source);
@@ -1649,21 +1649,22 @@ function pg_explisten(exp, obj, prop)
 function pg_expaddpart(exp, obj, prop)
     {
     var ref;
+    var objname = obj.__WgtrName;
     if (obj.reference && (ref = obj.reference()))
 	obj = ref;
     for(var i=0; i<exp.ParamList.length; i++)
 	{
 	var item = exp.ParamList[i];
 	if (obj == item[2] && prop == item[1]) return;
-	if (obj.__WgtrName == item[0] && !item[2] && prop == item[1])
+	if (objname == item[0] && !item[2] && prop == item[1])
 	    {
 	    item[2] = obj;
 	    return;
 	    }
 	}
-    var _context = window[exp.Context];
-    var nodelist = wgtrNodeList(_context);
-    var item=[obj.__WgtrName, prop, obj];
+    //var _context = window[exp.Context];
+    //var nodelist = wgtrNodeList(_context);
+    var item=[objname, prop, obj];
     exp.ParamList.push(item);
     pg_explisten(exp, obj, prop);
     }
@@ -1676,8 +1677,9 @@ function pg_expression(o,p,e,l,c)
     expobj.Expression = e;
     expobj.ParamList = l;
     expobj.Context = c;
-    var _context = window[c];
-    var nodelist = wgtrNodeList(_context);
+    //var _context = window[c];
+    var _context = c;
+    //var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
     window.__cur_exp = expobj;
@@ -1688,11 +1690,12 @@ function pg_expression(o,p,e,l,c)
 	var item = l[i];
 	var ref;
 	if (item[0] == "*") continue; // cannot handle global listening yet
-	item[2] = nodelist[item[0]]; // get obj reference
+	//item[2] = nodelist[item[0]]; // get obj reference
+	item[2] = wgtrGetNodeUnchecked(_context, item[0]); // get obj reference
 	if (item[2])
 	    {
 	    if (item[2].reference && (ref = item[2].reference()))
-		item[2] = ref;
+	    	item[2] = ref;
 	    pg_explisten(expobj, item[2], item[1]);
 	    }
 	}
@@ -1700,8 +1703,9 @@ function pg_expression(o,p,e,l,c)
 
 function pg_expchange_cb(exp) //SETH: ??
     {
-    var node = wgtrGetNode(window[exp.Context], exp.Objname);
-    var _context = window[exp.Context];
+    //var _context = window[exp.Context];
+    var _context = exp.Context;
+    var node = wgtrGetNode(_context, exp.Objname);
     var _this = node;
     window.__cur_exp = exp;
     var v = eval(exp.Expression);

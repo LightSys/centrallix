@@ -1,1 +1,2 @@
+##NAME Report - forced text/plain tabular data
 print /tests/Datatypes_csv.rpt?document_format=text%2fplain

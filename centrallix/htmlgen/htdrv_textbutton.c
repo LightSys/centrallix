@@ -161,7 +161,6 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** DOM Linkages **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tb%POSpane\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Include the javascript code for the textbutton **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
@@ -234,7 +233,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem(s,   "</DIV>");
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    tb_init({layer:nodes['%STR&SYM'], span:document.getElementById(\"tb%POSspan\"), ena:%INT, " /*"layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"),"*/ " c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
+	    htrAddScriptInit_va(s, "    tb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), span:document.getElementById(\"tb%POSspan\"), ena:%INT, " /*"layer2:htr_subel(%STR&SYM, \"tb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"tb%POSpane3\"),"*/ " c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
 		    name, id, is_enabled, /*dptr, id, dptr, id,*/ fgcolor1, fgcolor2, disable_color, w, h, is_ts, name, text);
 	    }
 	else
