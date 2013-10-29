@@ -844,7 +844,7 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
 	    data->Row = mysd_internal_DupRow(data->Row, data->Result);
             for(i = 0; i<data->TData->nKeys; i++)
                 {
-                sprintf(filename,"%s%s|",filename,data->Row[i]);
+                sprintf(filename,"%s%s|",filename,data->Row[data->TData->KeyCols[i]]);
                 }
             /** kill the trailing pipe **/
             filename[strlen(filename)-1]=0x00;
