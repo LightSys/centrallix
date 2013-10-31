@@ -586,6 +586,15 @@ prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset)
     }
 
 
+/*** prt_internal_GetPixelDirect() - gets a specific (x,y) pixel from the image
+ ***/
+int
+prt_internal_GetPixelDirect(pPrtImage img, int x, int y)
+    {
+    return (img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF);
+    }
+
+
 /*** prt_internal_WriteImageToPNG() - outputs a PrtImage image structure to a
  *** given location as PNG image data with a given width and height in pixels.
  ***/
