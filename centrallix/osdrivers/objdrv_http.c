@@ -95,6 +95,7 @@ typedef struct
     char*	ContentType;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
+    int		ModDateAlwaysNow;
     }
     HttpData, *pHttpData;
 
@@ -954,6 +955,11 @@ http_internal_GetPageStream(pHttpData inf)
 		{
 		inf->ContentLength=atoi(hdr_val);
 		}
+	    if ((hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Cache-Control")) != NULL)
+		{
+		if (strstr(hdr_val, "max-age=0"))
+		    inf->ModDateAlwaysNow = 1;
+		}
 	    if ((hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Content-Type")) != NULL)
 		{
 		inf->ContentType = nmSysStrdup(hdr_val);
@@ -1021,6 +1027,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	memset(inf,0,sizeof(HttpData));
 	inf->Obj = obj;
 	inf->Mask = mask;
+	objCurrentDate(&inf->LastModified);
 	xaInit(&inf->RequestHeaders, 16);
 	xaInit(&inf->ResponseHeaders, 16);
 	http_internal_AddRequestHeader(inf, "X-Nonce", "", 0);
@@ -1376,7 +1383,12 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		return -1;
 		}
 	    if(inf->LastModified.Value)
+		{
+		if (inf->ModDateAlwaysNow)
+		    objCurrentDate(&inf->LastModified);
 		val->DateTime=&(inf->LastModified);
+		return 0;
+		}
 	    else
 		return 1; /* NULL */
 	    }
