@@ -21,6 +21,9 @@
 #include "wgtr.h"
 #include "iface.h"
 #include "cxss/cxss.h"
+#include <openssl/ssl.h>
+#include <openssl/rand.h>
+#include <openssl/err.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -253,6 +256,10 @@ cxInitialize(void* v)
     int log_all_errors;
     char* ptr;
     int n;
+    int fd;
+    time_t tm;
+    int pid;
+    char rbuf[16];
 
 	CxGlobals.Flags = 0;
 	xaInit(&CxGlobals.ShutdownHandlers,4);
@@ -327,6 +334,21 @@ cxInitialize(void* v)
 	nmRegister(sizeof(Thread),"Thread");
 	nmRegister(sizeof(WgtrNode), "WgtrNode");
 
+	/** Init the openssl library **/
+	SSL_library_init();
+	SSL_load_error_strings();
+	fd = open("/dev/urandom", O_RDONLY | O_NOCTTY);
+	if (fd >= 0)
+	    {
+	    read(fd, rbuf, 16);
+	    RAND_add(rbuf, 16, (double)16.0);
+	    close(fd);
+	    }
+	pid = getpid();
+	RAND_add(&pid, 4, (double)0.25);
+	tm = time(NULL);
+	RAND_add(&tm, 4, (double)0.125);
+
 	/** Init the multiquery system and drivers **/
 	mqInitialize();				/* MultiQuery system */
 	mqtInitialize();			/* tablegen query module */
@@ -334,6 +356,7 @@ cxInitialize(void* v)
 	mqjInitialize();			/* join query module */
 	mqisInitialize();			/* insert-select query mod */
 	mquInitialize();			/* update statement query mod */
+	mqusInitialize();			/* upsert statement query mod */
 	mqdInitialize();			/* delete statement query mod */
 	mqobInitialize();			/* orderby module */
 

@@ -236,6 +236,7 @@ XQYDRIVERS=multiq_tablegen.o \
 	   multiq_update.o \
 	   multiq_delete.o \
 	   multiq_orderby.o \
+	   multiq_upsert.o \
 	   multiquery.o
 QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
@@ -295,7 +296,8 @@ EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 XCXSSMODS=cxss_main.o \
 	  cxss_utility.o \
 	  cxss_entropy.o \
-	  cxss_authstack.o
+	  cxss_authstack.o \
+	  cxss_tlshelper.o
 CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
 
 # Javascript VM modules... for Centrallix side of things.
@@ -442,26 +444,47 @@ test_install: test_obj test_prt
 	$(INSTALL) -m 755 test_prt "$(bindir)"
 	$(INSTALL) -m 644 tests/cxpasswd-test "$(sysconfdir)/centrallix/cxpasswd-test"
 
-test: test_install $(TOTESTFILES)
+tests/centrallix.conf-test: tests/centrallix.conf-test.in
+	@SYSCONFDIR=$(sysconfdir); \
+	RUNSYSCONFDIR=$${SYSCONFDIR#$(builddir)}; \
+	LIBDIR=$(libdir); \
+	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
+	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
+
+
+test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
 	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
+		CXOS=$$(sed -n 's/^[ 	]*path *= *"\([^"]*\).*/\1/p' < "$(sysconfdir)/centrallix/rootnode"); \
 	    	TOBASE="$${TOFILE%.to}"; \
-		TONAME=$$(cat $$TOBASE.desc); \
+		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
 		TOSIMPLE="$${TOBASE#tests/test_}"; \
+		CBLUE=$$(/usr/bin/tput setaf 4); \
+		CRED=$$(/usr/bin/tput setaf 1); \
+		CGREEN=$$(/usr/bin/tput setaf 2); \
+		CBOLD=$$(/usr/bin/tput bold); \
+		CNORM=$$(/usr/bin/tput sgr0); \
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3; \
-		RET="$$?"; \
+		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
+		echo -n "$$CBLUE"; \
+	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | sed 's/^/    /'; \
+		RET="$${PIPESTATUS[0]}"; \
+		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
 		if [ "$$RET" -eq 142 ]; then \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "LOCKUP"; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
 		elif [ "$$RET" -gt 120 ]; then \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "CRASH"; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
 		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "Pass"; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
+		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
 		else \
-		    diff -U3 -N "$$TOBASE.cmp" "$$TOBASE.out"; \
-		    printf "%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "FAIL"; \
+		    echo -n "$$CRED"; \
+		    diff --label EXPECTED -U3 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
+		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
 		fi; \
 	    fi \
 	done 
@@ -484,7 +507,7 @@ clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
 jsengine: $(JSVM)
 	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
 
-test_obj: test_obj.o centrallix.o $(V3LSOBJS)
+test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)

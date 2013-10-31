@@ -67,7 +67,10 @@ nht_internal_FreeConn(pNhtConn conn)
     {
 
 	/** Close the connection **/
-	netCloseTCP(conn->ConnFD, 1000, 0);
+	if (conn->SSLpid)
+	    cxssFinishTLS(conn->SSLpid, conn->ConnFD, conn->ReportingFD);
+	else
+	    netCloseTCP(conn->ConnFD, 1000, 0);
 
 	/** Deallocate the structure **/
 	if (conn->Referrer) nmSysFree(conn->Referrer);
@@ -163,9 +166,8 @@ nht_internal_Log(pNhtConn conn)
  *** and processes the connection's request.
  ***/
 void
-nht_internal_ConnHandler(void* connfd_v)
+nht_internal_ConnHandler(void* conn_v)
     {
-    pFile connfd = (pFile)connfd_v;
     char sbuf[160];
     char* msg = "";
     char* ptr;
@@ -175,7 +177,7 @@ nht_internal_ConnHandler(void* connfd_v)
     pStruct find_inf,akey_inf;
     int tid = -1;
     handle_t w_timer = XHN_INVALID_HANDLE, i_timer = XHN_INVALID_HANDLE;
-    pNhtConn conn = NULL;
+    pNhtConn conn = (pNhtConn)conn_v;
     unsigned char t_lsb;
     int err;
     time_t t;
@@ -185,21 +187,11 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtAppGroup group;
     int context_started = 0;
 
-    	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
-
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
 
 	/** Ignore SIGPIPE events from end-user **/
 	thSetFlags(NULL, THR_F_IGNPIPE);
-
-	/** Create the connection structure **/
-	conn = nht_internal_AllocConn(connfd);
-	if (!conn)
-	    {
-	    netCloseTCP(connfd, 1000, 0);
-	    goto out;
-	    }
 
 	/** Restrict access to connections from localhost only? **/
 	if (NHT.RestrictToLocalhost && strcmp(conn->IPAddr, "127.0.0.1") != 0)
@@ -211,7 +203,10 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** Parse the HTTP Headers... **/
 	if (nht_internal_ParseHeaders(conn) < 0)
 	    {
-	    msg = "Error parsing headers";
+	    if (cxssStatTLS(conn->ReportingFD, sbuf, sizeof(sbuf)) >= 0)
+		msg = sbuf;
+	    else
+		msg = "Error parsing headers";
 	    goto error;
 	    }
 
@@ -597,6 +592,126 @@ nht_internal_ConnHandler(void* connfd_v)
     }
 
 
+/*** nht_internal_TLSHandler - manages incoming TLS-encrypted HTTP
+ *** connections.
+ ***/
+void
+nht_internal_TLSHandler(void* v)
+    {
+    pFile listen_socket;
+    pFile connection_socket;
+    pStructInf my_config;
+    char listen_port[32];
+    char* strval;
+    int intval;
+    char* ptr;
+    pNhtConn conn;
+
+	/** Set the thread's name **/
+	thSetName(NULL,"HTTPS Network Listener");
+
+	/** Get our configuration **/
+	strcpy(listen_port,"843");
+	my_config = stLookup(CxGlobals.ParsedConfig, "net_http");
+	if (my_config)
+	    {
+	    /** Got the config.  Now lookup what the TCP port is that we listen on **/
+	    strval=NULL;
+	    if (stAttrValue(stLookup(my_config, "ssl_listen_port"), &intval, &strval, 0) >= 0)
+		{
+		if (strval)
+		    strtcpy(listen_port, strval, sizeof(listen_port));
+		else
+		    snprintf(listen_port,32,"%d",intval);
+		}
+	    }
+
+	/** Set up OpenSSL **/
+	NHT.SSL_ctx = SSL_CTX_new(SSLv23_server_method());
+	if (!NHT.SSL_ctx)
+	    {
+	    mssError(1,"NHT","Could not initialize SSL library");
+	    thExit();
+	    }
+	SSL_CTX_set_options(NHT.SSL_ctx, SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_ALL);
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig,"ssl_cipherlist"),NULL,&ptr,0) < 0)
+	    ptr="DEFAULT";
+	SSL_CTX_set_cipher_list(NHT.SSL_ctx, ptr);
+	if (stAttrValue(stLookup(my_config, "ssl_cipherlist"),NULL,&ptr,0) == 0)
+	    SSL_CTX_set_cipher_list(NHT.SSL_ctx, ptr);
+
+	/** set the server certificate and key **/
+	if (stAttrValue(stLookup(my_config,"ssl_cert"), NULL, &strval, 0) != 0)
+	    strval = "/usr/local/etc/centrallix/snakeoil.crt";
+	if (SSL_CTX_use_certificate_file(NHT.SSL_ctx, strval, SSL_FILETYPE_PEM) != 1)
+	    {
+	    mssError(1,"HTTP","Could not load certificate %s.", strval);
+	    thExit();
+	    }
+	if (stAttrValue(stLookup(my_config,"ssl_key"), NULL, &strval, 0) != 0)
+	    strval = "/usr/local/etc/centrallix/snakeoil.key";
+	if (SSL_CTX_use_PrivateKey_file(NHT.SSL_ctx, strval, SSL_FILETYPE_PEM) != 1)
+	    {
+	    mssError(1,"HTTP","Could not load key %s.", strval);
+	    thExit();
+	    }
+	if (SSL_CTX_check_private_key(NHT.SSL_ctx) != 1)
+	    {
+	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
+	    }
+
+    	/** Open the server listener socket. **/
+	listen_socket = netListenTCP(listen_port, 32, 0);
+	if (!listen_socket) 
+	    {
+	    mssErrorErrno(1,"NHT","Could not open TLS network listener");
+	    thExit();
+	    }
+	
+	/** Loop, accepting requests **/
+	while((connection_socket = netAcceptTCP(listen_socket,0)))
+	    {
+	    if (!connection_socket)
+		{
+		thSleep(10);
+		continue;
+		}
+
+	    /** Set up the connection structure **/
+	    conn = nht_internal_AllocConn(connection_socket);
+	    if (!conn)
+		{
+		netCloseTCP(connection_socket, 1000, 0);
+		thSleep(1);
+		continue;
+		}
+
+	    /** Start TLS on the connection.  This replaces conn->ConnFD with
+	     ** a pipe to the TLS encryption/decryption process.
+	     **/
+	    conn->SSLpid = cxssStartTLS(NHT.SSL_ctx, &conn->ConnFD, &conn->ReportingFD, 1);
+	    if (conn->SSLpid <= 0)
+		{
+		nht_internal_FreeConn(conn);
+		mssError(1,"NHT","Could not start TLS on the connection!");
+		}
+
+	    /** Start the request handler thread **/
+	    if (!thCreate(nht_internal_ConnHandler, 0, conn))
+	        {
+		nht_internal_FreeConn(conn);
+		mssError(1,"NHT","Could not create thread to handle TLS connection!");
+		}
+	    }
+
+	/** Exit. **/
+	mssError(1,"NHT","Could not continue to accept TLS requests.");
+	netCloseTCP(listen_socket,0,0);
+
+    thExit();
+    }
+
+
 /*** nht_internal_Handler - manages incoming HTTP connections and sends
  *** the appropriate documents/etc to the requesting client.
  ***/
@@ -609,9 +724,7 @@ nht_internal_Handler(void* v)
     char listen_port[32];
     char* strval;
     int intval;
-    int i;
-
-    	/*printf("Handler called, stack ptr = %8.8X\n",&listen_socket);*/
+    pNhtConn conn;
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Network Listener");
@@ -626,83 +739,10 @@ nht_internal_Handler(void* v)
 	    if (stAttrValue(stLookup(my_config, "listen_port"), &intval, &strval, 0) >= 0)
 		{
 		if (strval)
-		    {
 		    strtcpy(listen_port, strval, sizeof(listen_port));
-		    }
 		else
-		    {
 		    snprintf(listen_port,32,"%d",intval);
-		    }
 		}
-
-	    /** Find out what server string we should use **/
-	    if (stAttrValue(stLookup(my_config, "server_string"), NULL, &strval, 0) >= 0)
-		{
-		strtcpy(NHT.ServerString, strval, sizeof(NHT.ServerString));
-		}
-	    else
-		{
-		snprintf(NHT.ServerString, 80, "Centrallix/%.16s", cx__version);
-		}
-
-	    /** Get the realm name **/
-	    if (stAttrValue(stLookup(my_config, "auth_realm"), NULL, &strval, 0) >= 0)
-		{
-		strtcpy(NHT.Realm, strval, sizeof(NHT.Realm));
-		}
-	    else
-		{
-		snprintf(NHT.Realm, 80, "Centrallix");
-		}
-
-	    /** Directory indexing? **/
-	    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
-		{
-		stAttrValue(stLookup(my_config,"dir_index"), NULL, &(NHT.DirIndex[i]), i);
-		}
-
-	    /** Should we enable gzip? **/
-#ifdef HAVE_LIBZ
-	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
-#endif
-	    stAttrValue(stLookup(my_config, "condense_js"), &(NHT.CondenseJS), NULL, 0);
-
-	    stAttrValue(stLookup(my_config, "accept_localhost_only"), &(NHT.RestrictToLocalhost), NULL, 0);
-
-	    /** X-Frame-Options anti-clickjacking header? **/
-	    if (stAttrValue(stLookup(my_config, "x_frame_options"), NULL, &strval, 0) >= 0)
-		{
-		if (!strcasecmp(strval, "none"))
-		    NHT.XFrameOptions = NHT_XFO_T_NONE;
-		else if (!strcasecmp(strval, "deny"))
-		    NHT.XFrameOptions = NHT_XFO_T_DENY;
-		else if (!strcasecmp(strval, "sameorigin")) /* default - see net_http.c */
-		    NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
-		}
-
-	    /** Get the timer settings **/
-	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
-	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
-
-	    /** Session limits **/
-	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
-
-	    /** Access log file **/
-	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
-		{
-		strtcpy(NHT.AccessLogFile, strval, sizeof(NHT.Realm));
-		NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_WRONLY | O_APPEND, 0600);
-		if (!NHT.AccessLogFD)
-		    {
-		    mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
-		    }
-		}
-
-	    if (stAttrValue(stLookup(my_config, "session_cookie"), NULL, &strval, 0) < 0)
-		{
-		strval = "CXID";
-		}
-	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
 	    }
 
     	/** Open the server listener socket. **/
@@ -713,8 +753,6 @@ nht_internal_Handler(void* v)
 	    thExit();
 	    }
 	
-    	/*printf("Handler return from netListenTCP, stack ptr = %8.8X\n",&listen_socket);*/
-
 	/** Loop, accepting requests **/
 	while((connection_socket = netAcceptTCP(listen_socket,0)))
 	    {
@@ -723,10 +761,21 @@ nht_internal_Handler(void* v)
 		thSleep(10);
 		continue;
 		}
-	    if (!thCreate(nht_internal_ConnHandler, 0, connection_socket))
+
+	    /** Set up the connection structure **/
+	    conn = nht_internal_AllocConn(connection_socket);
+	    if (!conn)
+		{
+		netCloseTCP(connection_socket, 1000, 0);
+		thSleep(1);
+		continue;
+		}
+
+	    /** Start the request handler thread **/
+	    if (!thCreate(nht_internal_ConnHandler, 0, conn))
 	        {
+		nht_internal_FreeConn(conn);
 		mssError(1,"NHT","Could not create thread to handle connection!");
-		netCloseTCP(connection_socket,0,0);
 		}
 	    }
 

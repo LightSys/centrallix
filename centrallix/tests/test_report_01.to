@@ -1,1 +1,2 @@
+##NAME Report with tabular CSV output
 print /tests/Datatypes_csv.rpt

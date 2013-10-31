@@ -901,6 +901,10 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"last_modification")) return DATA_T_DATETIME;
 
+	/** literal escape? **/
+	if (!strncmp(attrname, "__cx_literal_", 13))
+	    attrname += 13;
+
 	/** needed in case this isn't a GetFirstAttribute-style request **/
 	xml_internal_BuildAttributeHashTable(inf);
 
@@ -1077,6 +1081,29 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
+	/** If content-type, and it wasn't specified in the XML **/
+	if (!strcmp(attrname,"content_type"))
+	    {
+	    val->String = "text/plain";
+	    return 0;
+	    }
+
+	/** If outer type, and it wasn't specified in the XML **/
+	if (!strcmp(attrname,"outer_type"))
+	    {
+	    val->String = "text/xml-node";
+	    return 0;
+	    }
+
+	/** take last_modification from underlying object if it has one **/
+	if(!strcmp(attrname,"last_modification"))
+	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,val)==0)
+		return 0;
+
+	/** literal escape? **/
+	if (!strncmp(attrname, "__cx_literal_", 13))
+	    attrname += 13;
+
 	/** needed in case this isn't a GetFirstAttribute-style request **/
 	xml_internal_BuildAttributeHashTable(inf);
 
@@ -1140,25 +1167,6 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		}
 	    }
 
-	/** If content-type, and it wasn't specified in the XML **/
-	if (!strcmp(attrname,"content_type"))
-	    {
-	    val->String = "text/plain";
-	    return 0;
-	    }
-
-	/** If outer type, and it wasn't specified in the XML **/
-	if (!strcmp(attrname,"outer_type"))
-	    {
-	    val->String = "text/xml-node";
-	    return 0;
-	    }
-
-	/** take last_modification from underlying object if it has one **/
-	if(!strcmp(attrname,"last_modification"))
-	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,val)==0)
-		return 0;
-
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
@@ -1166,9 +1174,9 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	if(XML_DEBUG) mssError(1,"XML","Could not locate requested attribute: %s",attrname);
+	/*if(XML_DEBUG) mssError(1,"XML","Could not locate requested attribute: %s",attrname);*/
 
-    return -1;
+    return 1; /* null if not there presently */
     }
 
 
@@ -1401,6 +1409,7 @@ xmlInitialize()
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
 	xaAddItem(&(drv->RootContentTypes),"text/xml");
+	xaAddItem(&(drv->RootContentTypes),"application/xml");
 
 	/** Setup the function references. **/
 	drv->Open = xmlOpen;

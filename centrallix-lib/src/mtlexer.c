@@ -168,6 +168,9 @@ mlxCloseSession(pLxSession this)
     	/** Need to do an 'unread' on the buffer? **/
 	if (this->Flags & MLX_F_NODISCARD && this->InpCnt > 0)
 	    {
+	    /** Incomplete processing on a line that needs to be wrapped up? **/
+	    if ((this->Flags & MLX_F_PROCLINE) && !(this->Flags & MLX_F_EOL) && mlxPeekChar(this,0) == '\n')
+		mlxSkipChars(this,1);
 	    fdUnRead((pFile)(this->ReadArg), this->InpPtr, this->InpCnt, 0,0);
 	    }
 

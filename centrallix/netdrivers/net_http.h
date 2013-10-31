@@ -267,6 +267,8 @@ typedef struct
     int		Size;
     int		NotActivity;
     handle_t	LastHandle;
+    pFile	ReportingFD;
+    int		SSLpid;
     }
     NhtConn, *pNhtConn;
 
@@ -303,6 +305,7 @@ struct
     long long	S_ID_Count;
     long long	G_ID_Count;
     long long	A_ID_Count;
+    SSL_CTX*	SSL_ctx;
     }
     NHT;
 
@@ -332,6 +335,7 @@ int nht_internal_FreeApp(pNhtApp app);
 pNhtAppGroup nht_internal_AllocAppGroup(char* path, pNhtSessionData s);
 int nht_internal_FreeAppGroup(pNhtAppGroup group);
 
+void nht_internal_TLSHandler(void* v);
 void nht_internal_Handler(void* v);
 int nht_internal_ITimeout(void* sess_v);
 int nht_internal_WTimeout(void* sess_v);

@@ -200,6 +200,22 @@ function cxjs_plus(a, b)
 	return a + b;
     }
 
+function cxjs_minus(a, b)
+    {
+    if (a == null || b == null) return null;
+    if ((typeof a == 'string') || (typeof b == 'string'))
+	{
+	a = String(a);
+	b = String(b);
+	if (a.lastIndexOf(b) == a.length - b.length)
+	    return a.substr(a.length - b.length);
+	else
+	    return a;
+	}
+    else
+	return a - b;
+    }
+
 function cxjs_condition(c, vtrue, vfalse)
     {
     if (c == null) return null;

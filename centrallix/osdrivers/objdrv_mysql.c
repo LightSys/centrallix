@@ -844,7 +844,7 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
 	    data->Row = mysd_internal_DupRow(data->Row, data->Result);
             for(i = 0; i<data->TData->nKeys; i++)
                 {
-                sprintf(filename,"%s%s|",filename,data->Row[i]);
+                sprintf(filename,"%s%s|",filename,data->Row[data->TData->KeyCols[i]]);
                 }
             /** kill the trailing pipe **/
             filename[strlen(filename)-1]=0x00;
@@ -1248,26 +1248,42 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
                 }
             else 
                 {
-                values[j] = (char*)(uintptr_t)insbuf->Length;
-                if(!find_str)
+		if ((!find_oxt || !find_oxt->AttrValue) && !find_str)
 		    {
-		    find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
-		    /*if (!strcmp(inf->TData->ColTypes[j],"bit"))
+		    if (inf->TData->ColFlags[j] & MYSD_COL_F_NULL)
 			{
-			if (strtoi(find_str,NULL,10))
-			    find_str = "1";
-			else
-			    find_str = "\\0";
-			}*/
+			/** Mark the field as NULL with a unique value here **/
+			values[j] = (char*)-1;
+			}
+		    else
+			{
+			mssError(1,"MYSD","Required column '%s' set to NULL in object create", inf->TData->Cols[j]);
+			goto error;
+			}
 		    }
-                if(find_str)
-                    xsConcatenate(insbuf,find_str,-1);
-                else
-                    {
-                    mssError(1,"MYSD","Unable to convert data");
-		    goto error;
-                    }
-                }
+		else
+		    {
+		    values[j] = (char*)(uintptr_t)insbuf->Length;
+		    if(!find_str)
+			{
+			find_str = mysd_internal_CxDataToMySQL(find_oxt->AttrType,find_oxt->AttrValue);
+			/*if (!strcmp(inf->TData->ColTypes[j],"bit"))
+			    {
+			    if (strtoi(find_str,NULL,10))
+				find_str = "1";
+			    else
+				find_str = "\\0";
+			    }*/
+			}
+		    if(find_str)
+			xsConcatenate(insbuf,find_str,-1);
+		    else
+			{
+			mssError(1,"MYSD","Unable to convert data");
+			goto error;
+			}
+		    }
+		}
             }
 
 	/** Entirely leave NULLs out of the insert **/
