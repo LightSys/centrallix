@@ -516,13 +516,13 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_MINUS:
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, "(");
+		//if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		exp_internal_WriteText(eg, "cxjs_minus(");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
-		exp_internal_WriteText(eg, " - ");
+		exp_internal_WriteText(eg, ", ");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, ")");
+		//if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		exp_internal_WriteText(eg, ")");
 		break;
 
 	    case EXPR_N_COMPARE:
