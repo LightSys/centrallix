@@ -348,6 +348,7 @@ typedef struct _OF
 #define OBJ_F_DELETE		4	/* object should be deleted on final close */
 #define OBJ_F_NOCACHE		8	/* object should *not* be cached by the Directory Cache */
 #define	OBJ_F_METAONLY		16	/* user opened '?' object */
+#define OBJ_F_UNMANAGED		32	/* don't auto-close on session closure */
 
 
 /** structure used for sorting a query result set. **/
@@ -413,6 +414,7 @@ extern int obj_internal_DiscardDC(pXHashQueue hq, pXHQElement xe, int locked);
 /** directory entry caching data **/
 typedef struct _DC
     {
+    char		Hashname[4 + OBJSYS_MAX_PATH*2];	/* allow room for params */
     char		Pathname[OBJSYS_MAX_PATH];
     pObject		NodeObj;
     }

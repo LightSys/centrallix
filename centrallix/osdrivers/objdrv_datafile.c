@@ -2763,7 +2763,7 @@ void*
 datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pDatQuery qy = ((pDatQuery)(qy_v));
-    pDatData inf;
+    pDatData inf = NULL;
     char filename[80];
     unsigned char* ptr;
     int new_type;
@@ -2776,7 +2776,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Allocate the structure **/
 	inf = (pDatData)nmMalloc(sizeof(DatData));
-	if (!inf) return NULL;
+	if (!inf)
+	    goto done;
 	memset(inf,0,sizeof(DatData));
 	inf->TData = tdata;
 	inf->Node = qy->ObjInf->Node;
@@ -2809,11 +2810,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else 
 		    {
-        	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	    inf->Pathname.OpenCtlBuf = NULL;
-		    nmFree(inf,sizeof(DatData));
-		    /*mssError(1,"DAT","Table object has only two subobjects: 'rows' and 'columns'");*/
-		    return NULL;
+		    goto done;
 		    }
 	        break;
 
@@ -2821,10 +2818,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	        /** No rows at all? **/
 		if (qy->Row.StartPageID == 0xFFFFFFFF)
 		    {
-        	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	    inf->Pathname.OpenCtlBuf = NULL;
-		    nmFree(inf,sizeof(DatData));
-		    return NULL;
+		    goto done;
 		    }
 
 	        /** Scan for a row if need be. **/
@@ -2840,10 +2834,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    qy->Row.Pages[0] = dat_internal_ReadPage(qy->ObjInf, qy->ObjInf->Node, page);
 		    if (!qy->Row.Pages[0]) 
 		        {
-        	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	        inf->Pathname.OpenCtlBuf = NULL;
-			nmFree(inf,sizeof(DatData));
-			return NULL;
+			goto done;
 			}
 		    qy->Row.StartPageID = page;
 		    page = 0;
@@ -2918,11 +2909,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    if (page >= DAT_ROW_MAXPAGESPAN)
 			        {
 				mssError(1,"DAT","Row length exceeds max page span");
-        	        	if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	        	inf->Pathname.OpenCtlBuf = NULL;
-				nmFree(inf,sizeof(DatData));
 				for(i=0;i<page;i++) dat_internal_UnlockPage(qy->Row.Pages[i]);
-				return NULL;
+				goto done;
 				}
 			    new_offset = 0;
 			    qy->Row.Pages[page] = dat_internal_ReadPage(qy->ObjInf, qy->ObjInf->Node, qy->Row.StartPageID + page);
@@ -2939,11 +2927,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    /** Didn't find nothin' ? **/
 		    if (len == 0 || page < 0)
 		        {
-       	        	if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-       	        	inf->Pathname.OpenCtlBuf = NULL;
-			nmFree(inf,sizeof(DatData));
 			for(i=0;i<=page;i++) dat_internal_UnlockPage(qy->Row.Pages[i]);
-			return NULL;
+			goto done;
 			}
 
 		    /** Parse the row and release the pages. **/
@@ -2981,19 +2966,13 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-       	            if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-       	            inf->Pathname.OpenCtlBuf = NULL;
-		    nmFree(inf,sizeof(DatData));
-		    return NULL;
+		    goto done;
 		    }
 	        break;
 
 	    default:
-		if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-		inf->Pathname.OpenCtlBuf = NULL;
-		nmFree(inf,sizeof(DatData));
 		mssError(1,"DAT","Bark!  Internal object type not allowed (%d)", qy->ObjInf->Type);
-		return NULL;
+		goto done;
 	    }
 
 	/** Build the filename. **/
@@ -3011,7 +2990,20 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	dat_internal_DetermineType(obj,inf);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    done:
+	if (inf)
+	    {
+	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
+	    inf->Pathname.OpenCtlBuf = NULL;
+	    if (inf->SpecObj)
+		objClose(inf->SpecObj);
+	    if (inf->DataObj)
+		objClose(inf->DataObj);
+	    nmFree(inf,sizeof(DatData));
+	    }
+	return NULL;
     }
 
 

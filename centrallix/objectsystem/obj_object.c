@@ -342,6 +342,56 @@ obj_internal_FreeObj(pObject this)
     }
 
 
+/*** obj_internal_GetDCHash - assemble the hash key (a string) that we will use
+ *** for the directory cache.  The string has this form:
+ ***
+ *** "NNNNNNNN<pathname><paramstring>"
+ ***
+ *** where NNNNNNNN is the open mode (read only vs read/write vs write-only
+ ***     <pathname> is the object path
+ ***     <paramstring> is a serialized parameter string in URL-param format.
+ ***/
+int
+obj_internal_GetDCHash(pPathname pathinfo, int mode, char* hash, int hashmaxlen, int pathcnt)
+    {
+
+	snprintf(hash, hashmaxlen, "%8.8x%s", mode, obj_internal_PathPart(pathinfo, 0, pathcnt));
+
+    return 0;
+    }
+
+
+/*** obj_internal_AllocDC - allocate a new directory cache entry and set it up
+ *** based on the provided object.
+ ***/
+pDirectoryCache
+obj_internal_AllocDC(pObject obj, int cachemode, int pathcnt)
+    {
+    pDirectoryCache dc;
+
+	dc = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
+	dc->NodeObj = obj;
+	objLinkTo(obj);
+	strcpy(dc->Pathname, obj_internal_PathPart(obj->Pathname, 0, pathcnt));
+	obj_internal_GetDCHash(obj->Pathname, cachemode, dc->Hashname, sizeof(dc->Hashname), pathcnt);
+
+    return dc;
+    }
+
+
+/*** obj_internal_FreeDC - free a directory cache entry
+ ***/
+int
+obj_internal_FreeDC(pDirectoryCache dc)
+    {
+
+	objClose(dc->NodeObj);
+	nmFree(dc, sizeof(DirectoryCache));
+
+    return 0;
+    }
+
+
 /*** obj_internal_DiscardDC - this is the XHQ callback routine for the
  *** DirectoryCache when a cached item is being discarded via the LRU
  *** discard algorithm.  We need to clean up after the thing by closing
@@ -354,8 +404,7 @@ obj_internal_DiscardDC(pXHashQueue xhq, pXHQElement xe, int locked)
 
     	/** Close the object **/
 	dc = (pDirectoryCache)xhqGetData(xhq, xe, XHQ_UF_PRELOCKED);
-	objClose(dc->NodeObj);
-	nmFree(dc, sizeof(DirectoryCache));
+	obj_internal_FreeDC(dc);
 
     return 0;
     }
@@ -475,10 +524,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pObjDriver drv;
     pDirectoryCache dc = NULL;
     pXHQElement xe;
-    char prevname[256];
+    char prevname[OBJSYS_MAX_PATH];
     int used_openas;
     pObject cached_obj = NULL;
     pObjectInfo obj_info;
+    char testhash[4 + OBJSYS_MAX_PATH*2];
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -537,21 +587,24 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		}
 	    }
 
-	/** Alrighty then!  The pathname is parsed.  Now start doing opens. **/
-	/** First, we check the directory cache for a better starting point. **/
-	/** If nothing found there, start with opening the root node. **/
-	/** BUG! -- this doesn't take into account opening objects with open-as. **/
+	/** Alrighty then!  The pathname is parsed.  Now start doing opens.
+	 ** First, we check the directory cache for a better starting point.
+	 ** If nothing found there, start with opening the root node.
+	 ** BUG! -- this doesn't take into account opening objects with open-as.
+	 **/
 	this = NULL;
 	for(j=pathinfo->nElements-1;j>=2;j--)
 	    {
 	    /** Try a prefix of the pathname. **/
-	    xe = xhqLookup(&(s->DirectoryCache), obj_internal_PathPart(pathinfo, 0, j));
+	    obj_internal_GetDCHash(pathinfo, mode, testhash, sizeof(testhash), j);
+	    xe = xhqLookup(&(s->DirectoryCache), testhash);
 	    if (xe)
 	        {
 		/** Lookup was successful - get the data for it **/
 		dc = (pDirectoryCache)xhqGetData(&(s->DirectoryCache), xe, 0);
 		this = dc->NodeObj;
 
+#if 00 /* now taken care of in how we hash */
 		/** Make sure the access mode is what we need **/
 		if (((this->Mode & O_ACCMODE) == O_RDONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY)) ||
 			((this->Mode & O_ACCMODE) == O_WRONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_RDONLY)))
@@ -562,6 +615,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    dc = NULL;
 		    break;
 		    }
+#endif
 
 		/** Link to the intermediate object to lock it open. **/
 		objLinkTo(this);
@@ -768,19 +822,20 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** Only cache if not already cached. **/
 	    if (cached_obj != this->Prev)
 	        {
-		dc = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
-		dc->NodeObj = this->Prev;
-		objLinkTo(this->Prev);
-		strcpy(dc->Pathname, obj_internal_PathPart(this->Prev->Pathname, 0, this->SubPtr));
-		xe = xhqAdd(&(s->DirectoryCache), dc->Pathname, dc);
+		/** We use the caller 'mode' instead of this->Prev->Mode because
+		 ** that is how we will do the lookup when searching for the dc
+		 ** item later on.
+		 **/
+		dc = obj_internal_AllocDC(this->Prev, mode, this->SubPtr);
+		xe = xhqAdd(&(s->DirectoryCache), dc->Hashname, dc);
 		if (!xe)
 		    {
 		    /** Already cached -- oops!  Probably bug! **/
-		    objClose(this->Prev);
-		    nmFree(dc, sizeof(DirectoryCache));
+		    obj_internal_FreeDC(dc);
 		    }
 		else
 		    {
+		    /** Release our "hold" on the entry **/
 		    xhqUnlink(&(s->DirectoryCache), xe, 0);
 		    }
 		}
@@ -1326,6 +1381,27 @@ obj_internal_DumpDC(pObjSession session)
 	    printf("%s\n", dc->Pathname);
 	    }
 	    
+    return;
+    }
+
+void
+obj_internal_DumpSession(pObjSession session)
+    {
+    int i;
+    pObject obj;
+
+	printf("*** DirectoryCache:\n");
+	obj_internal_DumpDC(session);
+
+	printf("\n*** Open Objects:\n");
+	for(i=0;i<session->OpenObjects.nItems;i++)
+	    {
+	    obj = (pObject)session->OpenObjects.Items[i];
+	    printf("%d.  %s%s\n", i, obj_internal_PathPart(obj->Pathname,0,0), (obj->Flags & OBJ_F_UNMANAGED)?"  (unmanaged)":"");
+	    }
+
+	printf("\n");
+
     return;
     }
 

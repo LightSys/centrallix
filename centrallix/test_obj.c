@@ -1407,6 +1407,7 @@ start(void* v)
 	    if (!inbuf)
 	        {
 		printf("quit\n");
+		objCloseSession(s);
 		thExit();
 		}
 

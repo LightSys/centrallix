@@ -590,26 +590,36 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     }
 
 
-/*** qytClose - close an open file or directory.
- ***/
 int
-qytClose(void* inf_v, pObjTrxTree* oxt)
+qyt_internal_Close(pQytData inf)
     {
-    pQytData inf = QYT(inf_v);
     int i;
-
-    	/** Write the node first **/
-	snWriteNode(inf->Obj->Prev, inf->BaseNode);
 
 	/** Close the lowlevel-object **/
 	if (inf->LLObj) objClose(inf->LLObj);
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	for(i=0;i<inf->ObjList->nObjects-1;i++)
+	for(i=0;i<inf->ObjList->nObjects;i++)
 	    if (inf->ObjList->Objects[i])
 		objClose(inf->ObjList->Objects[i]);
 	nmFree(inf,sizeof(QytData));
+
+    return 0;
+    }
+
+
+/*** qytClose - close an open file or directory.
+ ***/
+int
+qytClose(void* inf_v, pObjTrxTree* oxt)
+    {
+    pQytData inf = QYT(inf_v);
+
+    	/** Write the node first **/
+	snWriteNode(inf->Obj->Prev, inf->BaseNode);
+
+	qyt_internal_Close(inf);
 
     return 0;
     }
@@ -642,7 +652,6 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
     char* node_path;
     pSnNode node;
     int rval = 0;
-    int i;
 
 	/** Determine node path **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -657,6 +666,7 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
 	/** Process path to determine actual path of object. **/
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, 0, 0);
 	if (inf->LLObj) objClose(inf->LLObj);
+	inf->LLObj = NULL;
 	obj_internal_PathPart(obj->Pathname, 0,0);
 
 	/** Call delete on it, using the actual path determined by process_path. **/
@@ -681,10 +691,7 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
 	/** Release, don't call close because that might write data to a deleted object **/
 	if (inf)
 	    {
-	    for(i=0;i<inf->ObjList->nObjects-1;i++)
-		if (inf->ObjList->Objects[i])
-		    objClose(inf->ObjList->Objects[i]);
-	    nmFree(inf,sizeof(QytData));
+	    qyt_internal_Close(inf);
 	    }
 
     return rval;
@@ -698,7 +705,6 @@ qytDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
     pQytData inf = QYT(inf_v);
     int rval = 0;
-    int i;
 
     	/** Write the node first **/
 	snWriteNode(inf->Obj->Prev, inf->BaseNode);
@@ -711,13 +717,11 @@ qytDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    rval = -1;
 	    mssError(1,"QYT","Could not delete object not having an underlying data source");
 	    }
+	inf->LLObj = NULL;
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	for(i=0;i<inf->ObjList->nObjects-1;i++)
-	    if (inf->ObjList->Objects[i])
-		objClose(inf->ObjList->Objects[i]);
-	nmFree(inf,sizeof(QytData));
+	qyt_internal_Close(inf);
 
     return rval;
     }
@@ -1169,7 +1173,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	/** Set up the param objects list for this fetched object. **/
 	inf->ObjList = expCreateParamList();
 	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
-	expAddParamToList(inf->ObjList, objname, obj, EXPR_O_CURRENT);
+	expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
 	expLinkParams(inf->ObjList, 0, -1);
 
     return (void*)inf;
