@@ -1199,11 +1199,6 @@ function form_action_submit(aparam)
 	node = wgtrFindContainer(this, "widget/page");
     if (!node) return false;
     var param = new Object;
-    for(var ap in aparam)
-	{
-	if (ap != 'Target' && ap != 'NewPage')
-	    param[ap] = aparam[ap];
-	}
     for(var i in this.elements)
 	{
 	var v = this.elements[i].getvalue();
@@ -1211,6 +1206,11 @@ function form_action_submit(aparam)
 	    {
 	    param[this.elements[i].fieldname] = v;
 	    }
+	}
+    for(var ap in aparam)
+	{
+	if (ap != 'Target' && ap != 'NewPage')
+	    param[ap] = aparam[ap];
 	}
     var nodetype = wgtrGetType(node);
     if (nodetype == "widget/component")

@@ -437,6 +437,8 @@ mqpAnalyze(pQueryStatement stmt)
 			    from_qs->Specificity += 3;
 			else if (where_item->Expr->NodeType == EXPR_N_COMPARE && where_item->Expr->CompareType == MLX_CMP_EQUALS)
 			    from_qs->Specificity += 2;
+			else if (where_item->Expr->NodeType == EXPR_N_ISNULL)
+			    from_qs->Specificity += 2;
 			else
 			    from_qs->Specificity += 1;
 

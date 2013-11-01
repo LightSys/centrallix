@@ -2730,7 +2730,7 @@ rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, do
 	if (rpt_internal_GetDouble(config, "marginbottom", &mb, 0) < 0) mb = db;
 	if (rpt_internal_GetDouble(config, "marginleft", &ml, 0) < 0) ml = dl;
 	if (rpt_internal_GetDouble(config, "marginright", &mr, 0) < 0) mr = dr;
-	if (mt != 0 || mb != 0 || ml != 0 || mr != 0) 
+	if (mt >= 0.0 || mb >= 0.0 || ml >= 0.0 || mr >= 0.0) 
 	    prtSetMargins(prt_obj, mt, mb, ml, mr);
 
     return 0;

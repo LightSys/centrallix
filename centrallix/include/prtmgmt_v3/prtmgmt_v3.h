@@ -459,6 +459,7 @@ int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, vo
 int prt_internal_DispatchEvents(pPrtSession s);
 int prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb);
 int prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset);
+int prt_internal_GetPixelDirect(pPrtImage img, int x, int y);
 double prtInnerWidth(pPrtObjStream obj);
 double prtInnerHeight(pPrtObjStream obj);
 
