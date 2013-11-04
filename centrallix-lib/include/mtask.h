@@ -315,7 +315,7 @@ int mtRemoveSignalHandler(int signum, void(*start_fn)());
 /** MTASK Threading functions. **/
 pThread thCreate(void (*start_fn)(), int priority, void* start_param);
 int thYield();
-int thExit();
+void thExit() __attribute__ ((noreturn));
 int thKill(pThread thr);
 int thWait(pMTObject obj, int obj_type, int event_type, int arg_count);
 int thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec);

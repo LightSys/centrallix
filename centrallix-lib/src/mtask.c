@@ -1379,7 +1379,7 @@ thYield()
 /*** THEXIT exits and destroys the current thread and then calls 
  *** the scheduler to invoke the next thread.
  ***/
-int
+void
 thExit()
     {
     register int i;
@@ -1432,11 +1432,11 @@ thExit()
 		exit(0);
 	    }
 
-	/** Call scheduler **/
+	/** Call scheduler - scheduler will never return. **/
 	MTASK.MTFlags &= ~MT_F_LOCKED;
 	mtSched();
 
-    return OK; /* though we never return - mtSched doesn't do a setjmp... */
+    abort(); /* this suppresses the 'noreturn function does return' warning */
     }
 
 
