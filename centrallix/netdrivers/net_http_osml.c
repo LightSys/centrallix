@@ -1062,7 +1062,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
 				{
 				reopen_having = stLookup_ne(req_inf,"ls__reopen_having")?1:0;
-				xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT", reopen_sql, !reopen_having, reopen_having, ptr);
+				xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT FOR UPDATE", reopen_sql, !reopen_having, reopen_having, ptr);
 				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL, 0);
 				if (qy)
 				    {
