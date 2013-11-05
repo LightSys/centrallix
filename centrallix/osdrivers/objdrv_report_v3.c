@@ -3417,9 +3417,12 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    }
 #endif
 
-	/** Set top-level formatting **/
+	/** Set top-level formatting and report defaults. **/
 	cxssPushContext();
 	context_pushed = 1;
+	cxssSetVariable("dfmt", obj_default_date_fmt, 0);
+	cxssSetVariable("mfmt", obj_default_money_fmt, 0);
+	cxssSetVariable("nfmt", obj_default_null_fmt, 0);
 	rpt_internal_CheckFormats(req);
 
 	/** Now do the 'normal' report stuff **/
