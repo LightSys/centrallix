@@ -1759,7 +1759,7 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
     char* tmpptr;
     int type = node->TableInf->ColTypes[colid];
     int quote_cnt;
-    char* savedfmt = NULL;
+    /*char* savedfmt = NULL;*/
 
     	/** Do we need to quote the thing?  If so, which quote is best? **/
 	if ((node->Flags & DAT_NODE_F_QUOTEALL) || (type == DATA_T_STRING && strchr(val->String, node->FieldSep)) ||
@@ -1794,17 +1794,20 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
 	    }
 
 	/** Need to set a date or money format? **/
+	cxssPushContext();
 	if (type == DATA_T_DATETIME && node->TableInf->ColFmt[colid])
 	    {
-	    savedfmt = mssGetParam("dfmt");
+	    /*savedfmt = mssGetParam("dfmt");
 	    if (!savedfmt) savedfmt = obj_default_date_fmt;
-	    mssSetParam("dfmt",node->TableInf->ColFmt[colid]);
+	    mssSetParam("dfmt",node->TableInf->ColFmt[colid]);*/
+	    cxssSetVariable("dfmt", node->TableInf->ColFmt[colid], 0);
 	    }
 	else if (type == DATA_T_MONEY && node->TableInf->ColFmt[colid])
 	    {
-	    savedfmt = mssGetParam("mfmt");
+	    /*savedfmt = mssGetParam("mfmt");
 	    if (!savedfmt) savedfmt = obj_default_money_fmt;
-	    mssSetParam("mfmt",node->TableInf->ColFmt[colid]);
+	    mssSetParam("mfmt",node->TableInf->ColFmt[colid]);*/
+	    cxssSetVariable("mfmt", node->TableInf->ColFmt[colid], 0);
 	    }
 
 	/** Get a string representation of the value. **/
@@ -1814,13 +1817,14 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
 	    ptr = objDataToStringTmp(type, *(void**)val, 0);
 
 	/** Need to put back a date or money format? **/
-	if (savedfmt)
+	cxssPopContext();
+	/*if (savedfmt)
 	    {
 	    if (type == DATA_T_DATETIME)
 	        mssSetParam("dfmt",savedfmt);
 	    else
 	        mssSetParam("mfmt",savedfmt);
-	    }
+	    }*/
 
 	/** Count the number of quote marks in it that will be escaped. **/
 	quote_cnt = 0;

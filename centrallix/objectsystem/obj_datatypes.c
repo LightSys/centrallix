@@ -16,6 +16,7 @@
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -210,8 +211,10 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
 	xsInit(&xs);
     
     	/** Get the current date format. **/
-	if(format) fmt=format; else fmt = mssGetParam("dfmt");
-	if (!fmt) fmt = obj_default_date_fmt;
+	if (format)
+	    fmt = obj_default_date_fmt;
+	else
+	    cxssGetVariable("dfmt", &fmt, obj_default_date_fmt);
 	myfmt = nmSysStrdup(fmt);
 
 	/** Lookup language internationalization in the format. **/
@@ -440,9 +443,10 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
     char comma = ',';
     
 	/** Get the format **/
-	if(format) fmt = format;
-	else fmt = mssGetParam("mfmt");
-	if (!fmt) fmt = obj_default_money_fmt;
+	if (format)
+	    fmt = format;
+	else
+	    cxssGetVariable("mfmt", &fmt, obj_default_money_fmt);
 	start_fmt = fmt;
 
 	/** Determine number of explicitly-specified whole part digits **/
@@ -1325,8 +1329,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 	switch(data_type)
 	    {
 	    case DATA_T_STRING:
-		fmt = mssGetParam("mfmt");
-		if (!fmt) fmt = obj_default_money_fmt;
+		cxssGetVariable("mfmt", &fmt, obj_default_money_fmt);
 		intl_format = strchr(fmt,'I')?1:0;
 
 	        ptr = (char*)data_ptr;
