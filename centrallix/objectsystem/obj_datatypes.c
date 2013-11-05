@@ -212,7 +212,7 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
     
     	/** Get the current date format. **/
 	if (format)
-	    fmt = obj_default_date_fmt;
+	    fmt = format;
 	else
 	    cxssGetVariable("dfmt", &fmt, obj_default_date_fmt);
 	myfmt = nmSysStrdup(fmt);
