@@ -40,6 +40,8 @@
 
 #define CXSS_ENTROPY_SIZE	1280
 
+#define CXSS_DEBUG_CONTEXTSTACK	1
+
 /*** CXSS data structures ***/
 typedef struct _EP
     {
@@ -60,11 +62,24 @@ typedef struct _EP
 /*** Auth/Endorsement stack data structure ***/
 typedef struct _AS
     {
-    XArray		Endorsements;
+    XArray		Endorsements;		/* array of pCxssEndorsement */
+    XArray		SessionVariables;	/* array of pCxssVariable */
     struct _AS*		Prev;
     int			CopyCnt;		/* COW semantics */
+#if CXSS_DEBUG_CONTEXTSTACK
+    void*		CallerReturnAddr;	/* Used for warning of mismatched pop/push */
+#endif
     }
-    CxssAuthStack, *pCxssAuthStack;
+    CxssCtxStack, *pCxssCtxStack;
+
+
+/*** Session Variable ***/
+typedef struct _CXSV
+    {
+    char		Name[32];
+    char*		Value;			/* allocated with nmSysMalloc/nmSysStrdup */
+    }
+    CxssVariable, *pCxssVariable;
 
 
 /*** Endorsement info ***/
@@ -94,11 +109,13 @@ int cxssGenerateKey(unsigned char* key, size_t n_bytes);
 int cxssShred(unsigned char* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 
-/*** Authentication/Endorsement stack functions ***/
+/*** Context/Authentication/Endorsement stack functions ***/
 int cxssPopContext();
 int cxssPushContext();
 int cxssAddEndorsement(char* endorsement, char* context);
 int cxssHasEndorsement(char* endorsement, char* context);
+int cxssSetVariable(char* name, char* value, int valuealloc);
+int cxssGetVariable(char* vblname, char** value, char* default_value);
 
 /*** Entropy functions - internal ***/
 int cxss_internal_InitEntropy(int pool_size);
