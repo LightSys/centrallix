@@ -83,24 +83,34 @@ cxss_internal_FreeCtxStack(pCxssCtxStack item)
 pCxssCtxStack
 cxss_internal_AllocCtxStack()
     {
-    pCxssCtxStack item;
+    pCxssCtxStack item = NULL;
 
 	/** Allocate memory for it **/
 	item = (pCxssCtxStack)nmMalloc(sizeof(CxssCtxStack));
 	if (!item)
-	    return NULL;
+	    goto error;
 	
 	/** Set up endorsements list **/
-	xaInit(&item->Endorsements, 16);
+	if (xaInit(&item->Endorsements, 16) < 0)
+	    goto error;
 
 	/** Set up the session variables list **/
-	xaInit(&item->SessionVariables, 16);
+	if (xaInit(&item->SessionVariables, 16) < 0)
+	    {
+	    xaDeInit(&item->Endorsements);
+	    goto error;
+	    }
 
 	/** Basic setup **/
 	item->CopyCnt = 0;
 	item->Prev = NULL;
 
-    return item;
+	return item;
+
+    error:
+	if (item)
+	    nmFree(item, sizeof(CxssCtxStack));
+	return NULL;
     }
 
 
@@ -119,17 +129,15 @@ cxss_internal_CopyContext(void* src_ctx_v, void** dst_ctx_v)
     {
     pCxssCtxStack src_ctx = (pCxssCtxStack)src_ctx_v;
     pCxssCtxStack* dst_ctx = (pCxssCtxStack*)dst_ctx_v;
-    pCxssCtxStack new_ctx;
+    pCxssCtxStack new_ctx = NULL;
     pCxssEndorsement e;
+    pCxssVariable vbl, oldvbl;
     int i;
 
 	/** Get a new authstack structure **/
 	new_ctx = cxss_internal_AllocCtxStack();
 	if (!new_ctx)
-	    {
-	    *dst_ctx = NULL;
-	    return -1;
-	    }
+	    goto error;
 
 	/** Copy over the current endorsements **/
 	if (src_ctx)
@@ -138,12 +146,29 @@ cxss_internal_CopyContext(void* src_ctx_v, void** dst_ctx_v)
 		{
 		e = (pCxssEndorsement)nmMalloc(sizeof(CxssEndorsement));
 		if (!e)
-		    {
-		    *dst_ctx = NULL;
-		    return -1;
-		    }
+		    goto error;
 		memcpy(e, src_ctx->Endorsements.Items[i], sizeof(CxssEndorsement));
 		xaAddItem(&new_ctx->Endorsements, (void*)e);
+		}
+	    }
+
+	/** Copy over the session variables **/
+	if (src_ctx)
+	    {
+	    for(i=0;i<src_ctx->SessionVariables.nItems;i++)
+		{
+		oldvbl = (pCxssVariable)src_ctx->SessionVariables.Items[i];
+		vbl = (pCxssVariable)nmMalloc(sizeof(CxssVariable));
+		if (!vbl)
+		    goto error;
+		memcpy(vbl, oldvbl, sizeof(CxssVariable));
+		if (oldvbl->Value)
+		    {
+		    vbl->Value = nmSysStrdup(oldvbl->Value);
+		    if (!vbl->Value)
+			goto error;
+		    }
+		xaAddItem(&new_ctx->SessionVariables, (void*)vbl);
 		}
 	    }
 
@@ -153,7 +178,15 @@ cxss_internal_CopyContext(void* src_ctx_v, void** dst_ctx_v)
 
 	*dst_ctx = new_ctx;
 
-    return 0;
+	return 0;
+
+    error:
+	/** Clean up and exit **/
+	if (new_ctx)
+	    cxss_internal_FreeCtxStack(new_ctx);
+	*dst_ctx = NULL;
+
+	return -1;
     }
 
 
