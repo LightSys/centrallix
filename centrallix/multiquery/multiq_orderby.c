@@ -401,6 +401,9 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
 
+	/** Close the previous item **/
+	expUnlinkParams(stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
+
 	if (context)
 	    {
 	    /** Did we get interrupted in the middle of the list?  Free 'em **/

@@ -661,6 +661,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 				md->SavedObjList[i] = NULL;
 				}
 			    }
+			md->nObjects = 0;
 			}
 		    }
 
@@ -715,7 +716,27 @@ mqtFinish(pQueryElement qe, pQueryStatement stmt)
     pQueryElement cld;
     int i;
     pMQTData md = (pMQTData)(qe->PrivateData);
+    pObject tmp_obj;
 
+	/** Restore a saved object list? **/
+	if (md->nObjects != 0 && qe->IterCnt > 0)
+	    {
+	    for(i=0;i<md->nObjects;i++)
+		{
+		tmp_obj = md->SavedObjList[i];
+		md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+		stmt->Query->ObjList->Objects[i] = tmp_obj;
+		if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
+		    {
+		    objClose(md->SavedObjList[i]);
+		    md->SavedObjList[i] = NULL;
+		    }
+		}
+	    expAllObjChanged(stmt->Query->ObjList);
+	    md->nObjects = 0;
+	    }
+
+#if 00
 	/** Unlink saved objects, if query got interrupted **/
 	for(i=0;i<md->nObjects;i++)
 	    {
@@ -724,7 +745,9 @@ mqtFinish(pQueryElement qe, pQueryStatement stmt)
 		objClose(md->SavedObjList[i]);
 		md->SavedObjList[i] = NULL;
 		}
+	    md->nObjects = 0;
 	    }
+#endif
 
     	/** Trickle down the Finish to the child objects **/
 	for(i=0;i<qe->Children.nItems;i++)
