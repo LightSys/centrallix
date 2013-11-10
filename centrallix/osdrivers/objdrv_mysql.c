@@ -1838,6 +1838,24 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			return -1;
 			}
 		    }
+		else if (!strcmp(tree->Name, "replace"))
+		    {
+		    xsConcatenate(where_clause, " replace(", -1);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
+		    xsConcatenate(where_clause, ",", 1);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
+		    xsConcatenate(where_clause, ",", 1);
+		    subtree = (pExpression)tree->Children.Items[2];
+
+		    /** MySQL does not accept NULL for the replacement, use "" instead **/
+		    if (subtree && (subtree->Flags & EXPR_F_NULL))
+			xsConcatenate(where_clause, "\"\") ", 4);
+		    else
+			{
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata, where_clause, conn);
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    }
                 else
                     {
 		    use_stock_fn_call = 1;

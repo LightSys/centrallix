@@ -363,6 +363,15 @@ function cxjs_reverse(s)
     return rs;
     }
 
+function cxjs_replace(str, srch, rep)
+    {
+    if (str == null || srch == null) return null;
+    if (rep == null) rep = "";
+    return (String(str)).replace(
+		new RegExp((String(srch)).replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"), 'g'),
+		rep);
+    }
+
 // Cross-browser support functions
 function htr_event(e)
     {

@@ -2178,6 +2178,24 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 		    return -1;
 		    }
+		else if (!strcmp(tree->Name, "replace"))
+		    {
+		    xsConcatenate(where_clause, " str_replace(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    subtree = (pExpression)tree->Children.Items[2];
+
+		    /** Sybase by default treats "" as " ", but str_replace() accepts NULL for "" **/
+		    if (subtree && subtree->NodeType == EXPR_N_STRING && !(subtree->Flags & EXPR_F_NULL) && !strcmp(subtree->String,""))
+			xsConcatenate(where_clause, "NULL) ", 6);
+		    else
+			{
+			sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,sess,tdata, n_tdata, where_clause);
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    }
 		else
 		    {
 	            xsConcatenate(where_clause, " ", 1);

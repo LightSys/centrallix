@@ -682,6 +682,89 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
     }
 
 
+int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* repstr;
+    long long newsize;
+    char* srcptr;
+    char* searchptr;
+    char* dstptr;
+    int searchlen, replen;
+    if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_STRING || !i1 || i1->DataType != DATA_T_STRING || !i2 || (!(i2->Flags & EXPR_F_NULL) && i2->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","replace() expects three string parameters (str,search,replace)");
+	return -1;
+	}
+    if (i2->Flags & EXPR_F_NULL)
+	repstr = "";
+    else
+	repstr = i2->String;
+
+    if (tree->Alloc && tree->String)
+	nmSysFree(tree->String);
+    tree->Alloc = 0;
+    if (i1->String[0] == '\0')
+	{
+	tree->String = i0->String;
+	return 0;
+	}
+
+    /** in determining new size, we assume the search string occurs throughout **/
+    newsize = strlen(i0->String);
+    replen = strlen(repstr);
+    searchlen = strlen(i1->String);
+    if (replen > searchlen)
+	newsize = (newsize * replen) / searchlen + 1;
+    if (newsize >= 0x7FFFFFFFLL)
+	{
+	mssError(1,"EXP","replace(): out of memory");
+	return -1;
+	}
+    if (newsize <= sizeof(tree->Types.StringBuf))
+	{
+	tree->String = tree->Types.StringBuf;
+	tree->Alloc = 0;
+	}
+    else
+	{
+	tree->String = nmSysMalloc(newsize);
+	tree->Alloc = 1;
+	}
+
+    /** Now do the string replace **/
+    srcptr = i0->String;
+    dstptr = tree->String;
+    while (*srcptr)
+	{
+	searchptr = strstr(srcptr, i1->String);
+	if (!searchptr)
+	    {
+	    /** copy remainder **/
+	    strcpy(dstptr, srcptr);
+	    break;
+	    }
+	if (searchptr > srcptr)
+	    {
+	    /** copy stuff in between matches **/
+	    memcpy(dstptr, srcptr, searchptr - srcptr);
+	    dstptr += (searchptr - srcptr);
+	    srcptr = searchptr;
+	    }
+	/** do the replace **/
+	strcpy(dstptr, repstr);
+	dstptr += replen;
+	srcptr += searchlen;
+	}
+    return 0;
+    }
+
+
 int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int len,i;
@@ -2459,6 +2542,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
 	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
+	xhAdd(&EXP.Functions, "replace", (char*)exp_fn_replace);
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
