@@ -313,8 +313,14 @@ nmMalloc(size)
 	    tmp = (void*)nmDebugMalloc(size);
 	    }
 
-	if (!tmp && err_fn) err_fn("Insufficient system memory for operation.");
-	else OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
+	if (!tmp)
+	    {
+	    if (err_fn) err_fn("Insufficient system memory for operation.");
+	    }
+	else
+	    {
+	    OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
+	    }
 
 #ifdef BUFFER_OVERFLOW_CHECKING
 	nmCheckAll();

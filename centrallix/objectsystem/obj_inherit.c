@@ -180,16 +180,15 @@ oihOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Call the low level driver **/
 	rval = this->Obj->ILowLevelDriver->OpenAttr(this->Obj,attrname,oxt);
-	if (!rval) return NULL;
+	if (!rval)
+	    return NULL;
 
 	/** Did the call succeed? **/
-	if (rval)
-	    {
-	    new_this = (pObjInhPtr)nmMalloc(sizeof(ObjInhPtr));
-	    if (!new_this) return NULL;
-	    new_this->LLParam = rval;
-	    new_this->Obj = this->Obj;
-	    }
+	new_this = (pObjInhPtr)nmMalloc(sizeof(ObjInhPtr));
+	if (!new_this)
+	    return NULL;
+	new_this->LLParam = rval;
+	new_this->Obj = this->Obj;
 
     return (void*)new_this;
     }

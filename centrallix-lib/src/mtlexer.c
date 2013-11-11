@@ -1262,7 +1262,7 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	/** Ok, if this is a string session, just reset the bufptr. **/
 	if (!this->ReadFn)
 	    {
-	    if (new_offset < 0 || new_offset > strlen(this->InpStartPtr)) return -1;
+	    if (new_offset > strlen(this->InpStartPtr)) return -1;
 
 	    /** Set up the session structure **/
 	    this->TokType = MLX_TOK_BEGIN;
@@ -1281,10 +1281,8 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    }
 	else
 	    {
-	    /** Ok, either fd or generic session.  Seek and you shall find :) **/
-	    if (new_offset < 0) return -1;
-
-	    /** Do an empty read to force the seek offset to what we need. 
+	    /** Ok, either fd or generic session.  Seek and you shall find :)
+	     ** Do an empty read to force the seek offset to what we need. 
 	     ** We use FD_U_SEEK here, but OBJ_U_SEEK is the same thing.
 	     **/
 	    if (this->ReadFn(this->ReadArg, nullbuf, 0, new_offset, FD_U_SEEK) < 0) return -1;

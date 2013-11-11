@@ -2814,16 +2814,26 @@ rpt_internal_GetBool(pStructInf config, char* attr, int def, int nval)
 	attr_inf = stLookup(config, attr);
 	if (!attr_inf) return def;
 	t = stGetAttrType(attr_inf, nval);
-	if (t == DATA_T_INTEGER)
+	switch(t)
 	    {
-	    if (stGetAttrValue(attr_inf, t, POD(&n), nval) != 0) return def;
-	    }
-	else if (t == DATA_T_STRING)
-	    {
-	    if (stGetAttrValue(attr_inf, t, POD(&ptr), nval) != 0) return def;
-	    if (!strcmp(ptr,"yes") || !strcmp(ptr,"true") || !strcmp(ptr,"on")) n = 1;
-	    else if (!strcmp(ptr,"no") || !strcmp(ptr,"false") || !strcmp(ptr,"off")) n = 0;
-	    else return def;
+	    case DATA_T_INTEGER:
+		if (stGetAttrValue(attr_inf, t, POD(&n), nval) != 0)
+		    n = def;
+		break;
+	    case DATA_T_STRING:
+		if (stGetAttrValue(attr_inf, t, POD(&ptr), nval) != 0)
+		    n = def;
+		if (!strcmp(ptr,"yes") || !strcmp(ptr,"true") || !strcmp(ptr,"on"))
+		    n = 1;
+		else if (!strcmp(ptr,"no") || !strcmp(ptr,"false") || !strcmp(ptr,"off"))
+		    n = 0;
+		else 
+		    n = def;
+		break;
+	    default:
+		mssError(1,"RPT","Warning: invalid data type for boolean '%s'; using default value.",attr);
+		n = def;
+		break;
 	    }
 
     return n;
