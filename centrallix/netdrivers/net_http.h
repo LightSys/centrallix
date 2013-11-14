@@ -71,6 +71,16 @@
 
  #define DEBUG_OSML	0
 
+/*** one HTTP header ***/
+typedef struct
+    {
+    char	Name[32];
+    char*	Value;
+    int		ValueAlloc:1;
+    }
+    HttpHeader, *pHttpHeader;
+
+
 /*** This structure is used for wait-for-conn-to-finish ***/
 typedef struct
     {
@@ -269,6 +279,8 @@ typedef struct
     handle_t	LastHandle;
     pFile	ReportingFD;
     int		SSLpid;
+    XArray	RequestHeaders;		/* of pHttpHeader */
+    XArray	ResponseHeaders;	/* of pHttpHeader */
     }
     NhtConn, *pNhtConn;
 
@@ -345,6 +357,9 @@ int nht_internal_ITimeoutApp(void* sess_v);
 int nht_internal_WTimeoutApp(void* sess_v);
 
 int nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);
-void nht_internal_ErrorExit(pNhtConn conn, int code, char* text);
+void nht_internal_ErrorExit(pNhtConn conn, int code, char* text) __attribute__ ((noreturn));
+int nht_internal_AddHeader(pXArray hdrlist, char* hdrname, char* hdrval, int hdralloc);
+char* nht_internal_GetHeader(pXArray hdrlist, char* hdrname);
+int nht_internal_FreeHeaders(pXArray hdrlist);
 
 #endif
