@@ -1,0 +1,225 @@
+$Version=2$
+Nested_test "system/report"
+    {
+    title = "Nested data test - CSV format";
+
+    document_format="text/plain";
+
+    resolution = 300;
+    pagewidth=85;
+    pageheight=1024;
+    marginleft=2.5;
+    marginright=2.5;
+    margintop=3;
+    marginbottom=3;
+
+    qy0 "report/query"
+	{
+	sql = "select * from /tests/TestLevel0.csv/rows t0";
+	qy0cnt "report/aggregate" { compute="count(1)"; }
+	qy0txt "report/aggregate" { compute="sum(:ColorGroup + ',') - ','"; }
+	}
+
+    qy1 "report/query"
+	{
+	sql = "select * from /tests/TestLevel1.csv/rows t1 where :t1:ColorGroup = :qy0:ColorGroup";
+	qy1cnt "report/aggregate" { compute="count(1)"; }
+	qy1txt "report/aggregate" { compute="sum(:Color + ',') - ','"; }
+	}
+
+    qy2 "report/query"
+	{
+	sql = "select * from /tests/TestLevel2.csv/rows t2";
+	qy2cnt "report/aggregate" { compute="count(1)"; }
+	qy2txt "report/aggregate" { compute="sum(:Sheen + ',') - ','"; }
+	}
+
+    // first query - simple nested iteration.
+    dt_table "report/table"
+	{
+	source = qy0,qy1,qy2;
+	mode = normal,normal,normal;
+	multimode = nested;
+	width=80;
+	height=0;
+	colsep=1;
+
+	dt_header "report/table-row"
+	    {
+	    bottomborder=1;
+	    header=yes;
+	    marginbottom=0;
+	    margintop=0;
+	    dt_hdr0 "report/table-cell" { value = runserver("Test"); width=18; }
+	    dt_hdr1 "report/table-cell" { value = runserver("Group"); width=18; }
+	    dt_hdr2 "report/table-cell" { value = runserver("Color"); width=18; }
+	    dt_hdr3 "report/table-cell" { value = runserver("Sheen"); width=18; }
+	    }
+
+	dt_row "report/table-row"
+	    {
+	    marginbottom=0;
+	    margintop=0;
+	    dt_data0 "report/table-cell" { value = runserver("0 Nested"); }
+	    dt_data1 "report/table-cell" { value = runserver(:qy0:ColorGroup); }
+	    dt_data2 "report/table-cell" { value = runserver(:qy1:Color); }
+	    dt_data3 "report/table-cell" { value = runserver(:qy2:Sheen); }
+	    }
+	}
+
+    // second run - multi nested iteration.
+    dt_table "report/table"
+	{
+	source = qy0,qy1,qy2;
+	mode = normal,normal,normal;
+	multimode = multinested;
+	width=80;
+	height=0;
+	colsep=1;
+
+	dt_header "report/table-row"
+	    {
+	    bottomborder=1;
+	    header=yes;
+	    marginbottom=0;
+	    margintop=0;
+	    dt_hdr0 "report/table-cell" { value = runserver("Test"); width=18; }
+	    dt_hdr1 "report/table-cell" { value = runserver("Group"); width=18; }
+	    dt_hdr2 "report/table-cell" { value = runserver("Color"); width=18; }
+	    dt_hdr3 "report/table-cell" { value = runserver("Sheen"); width=18; }
+	    }
+
+	dt_row "report/table-row"
+	    {
+	    marginbottom=0;
+	    margintop=0;
+	    dt_data0 "report/table-cell" { value = runserver("1 MultiNested"); }
+	    dt_data1 "report/table-cell" { value = runserver(:qy0:ColorGroup); }
+	    dt_data2 "report/table-cell" { value = runserver(:qy1:Color); }
+	    dt_data3 "report/table-cell" { value = runserver(:qy2:Sheen); }
+	    }
+	}
+
+    // third run - nested iteration with inner/outer.
+    outer_form "report/form"
+	{
+	source = qy0,qy1;
+	mode = outer,outer;
+
+	outer_hdr "report/data" { value="-------- Inner/Outer Iteration --------\n"; }
+
+	inner_form "report/form"
+	    {
+	    source = qy0,qy1;
+	    mode = inner,inner;
+	    reclimit = 3;
+
+	    dt_table "report/table"
+		{
+		source = qy2;
+		width=80;
+		height=0;
+		colsep=1;
+
+		dt_header "report/table-row"
+		    {
+		    bottomborder=1;
+		    header=yes;
+		    marginbottom=0;
+		    margintop=0;
+		    dt_hdr0 "report/table-cell" { value = runserver("Test"); width=18; }
+		    dt_hdr1 "report/table-cell" { value = runserver("Group"); width=18; }
+		    dt_hdr2 "report/table-cell" { value = runserver("Color"); width=18; }
+		    dt_hdr3 "report/table-cell" { value = runserver("Sheen"); width=18; }
+		    }
+
+		dt_row "report/table-row"
+		    {
+		    marginbottom=0;
+		    margintop=0;
+		    dt_data0 "report/table-cell" { value = runserver("2 Inner/Outer"); }
+		    dt_data1 "report/table-cell" { value = runserver(:qy0:ColorGroup); }
+		    dt_data2 "report/table-cell" { value = runserver(:qy1:Color); }
+		    dt_data3 "report/table-cell" { value = runserver(:qy2:Sheen); }
+		    }
+		}
+	    }
+	}
+
+    // fourth run - invert order inner/outer.
+    outer_form "report/form"
+	{
+	source = qy2;
+	mode = outer;
+
+	outer_hdr "report/data" { value="-------- Inner/Outer Iteration --------\n"; }
+
+	inner_form "report/form"
+	    {
+	    source = qy2;
+	    mode = inner;
+	    reclimit = 3;
+
+	    dt_table "report/table"
+		{
+		source = qy0,qy1;
+		width=80;
+		height=0;
+		colsep=1;
+
+		dt_header "report/table-row"
+		    {
+		    bottomborder=1;
+		    header=yes;
+		    marginbottom=0;
+		    margintop=0;
+		    dt_hdr0 "report/table-cell" { value = runserver("Test"); width=18; }
+		    dt_hdr1 "report/table-cell" { value = runserver("Group"); width=18; }
+		    dt_hdr2 "report/table-cell" { value = runserver("Color"); width=18; }
+		    dt_hdr3 "report/table-cell" { value = runserver("Sheen"); width=18; }
+		    }
+
+		dt_row "report/table-row"
+		    {
+		    marginbottom=0;
+		    margintop=0;
+		    dt_data0 "report/table-cell" { value = runserver("3 Inner/Outer"); }
+		    dt_data1 "report/table-cell" { value = runserver(:qy0:ColorGroup); }
+		    dt_data2 "report/table-cell" { value = runserver(:qy1:Color); }
+		    dt_data3 "report/table-cell" { value = runserver(:qy2:Sheen); }
+		    }
+		}
+	    }
+	}
+
+    // fifth run - test termination of outer form
+    outer_test_area "report/area"
+	{
+	width=80;
+	height=0;
+	fixedsize=no;
+	marginleft=0;
+	margintop=0;
+	marginright=0;
+	marginbottom=0;
+
+	outer_form "report/form"
+	    {
+	    source=qy2;
+	    mode=outer;
+
+	    outer_line_start "report/data" { value=">>> "; }
+
+	    inner_form "report/form"
+		{
+		source = qy2;
+		mode = inner;
+		reclimit = 1;
+
+		inner_data "report/data" { value=runserver(:qy2:Sheen); }
+		}
+
+	    outer_line_end "report/data" { value=" <<<\n"; }
+	    }
+	}
+    }

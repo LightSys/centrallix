@@ -41,6 +41,9 @@
 #define PRT_XY_CORRECTION_FACTOR	(72.0/120.0)
 #define PRT_FP_FUDGE			(0.000001)
 
+/*#define PRT_DEBUG(...)	printf(__VA_ARGS__)*/
+#define PRT_DEBUG(...)
+
 
 /*** Layout Manager Structure ***/
 typedef struct _PLM

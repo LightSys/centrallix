@@ -117,7 +117,12 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 		}
 
 	    /** Add the new object to the new parent container, and set the linkages **/
-	    new_container->LayoutMgr->AddObject(new_container, new_object);
+	    if (new_container->LayoutMgr->AddObject(new_container, new_object) < 0)
+		{
+		prt_internal_Add(new_container, new_object);
+		*new_this = new_object;
+		return -1;
+		}
 	    *new_this = new_object;
 
 	    /** Was page ejected?  If LinkPrev on our container is set, then the page
@@ -980,6 +985,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 			    if (split_obj->Content) nmSysFree(split_obj->Content);
 			    prt_internal_FreeObj(split_obj);
 			    }
+			mssError(1,"PRT","Could not fit new object into layout area");
 			return -1;
 			}
 
@@ -992,6 +998,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 			    if (split_obj->Content) nmSysFree(split_obj->Content);
 			    prt_internal_FreeObj(split_obj);
 			    }
+			mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
 			return -1;
 			}
 		    }

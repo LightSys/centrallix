@@ -1,0 +1,66 @@
+$Version=2$
+NestedTables "system/report"
+    {
+    title = "Test of Nested Tables and Page Breaks";
+
+    document_format="text/plain";
+
+    resolution = 300;
+    pagewidth=85;
+    pageheight=33;
+    marginleft=2.5;
+    marginright=2.5;
+    margintop=3;
+    marginbottom=3;
+
+    qy1 "report/query"
+	{
+	sql = "select * from /tests/TestLevel2.csv/rows";
+	}
+
+    qy0 "report/query"
+	{
+	sql = "select color1 = :c1:Color, color2 = :c2:Color from /tests/TestLevel1.csv/rows c1, /tests/TestLevel1.csv/rows c2 where :c1:Color != :c2:Color limit 20";
+	}
+
+    outer_table "report/table"
+	{
+	source = qy1;
+	width=80;
+	height=0;
+	colsep=1;
+	margintop=0;
+	marginbottom=0;
+
+	outer_header "report/table-row"
+	    {
+	    margintop=0;
+	    marginbottom=0;
+	    bottomborder=1;
+	    header=yes;
+	    o_hdr1 "report/table-cell" { value = runserver("Name"); width=29; align=center; }
+	    o_hdr2 "report/table-cell" { value = runserver("Description"); width=50; align=center; }
+	    }
+
+	outer_row "report/table-row"
+	    {
+	    margintop=0;
+	    marginbottom=0;
+	    o_data1 "report/table-cell" { value = runserver(:qy1:Sheen); }
+	    o_data2 "report/table-cell"
+		{
+		o_data2_area "report/area"
+		    {
+		    o_data2_info "report/data" { value = runserver(:qy1:Description); }
+
+		    inner_form "report/form"
+			{
+			source=qy0;
+
+			inner_data "report/data" { value=runserver("\nColor1: " + :qy0:color1 + ", Color2: " + :qy0:color2 + "."); }
+			}
+		    }
+		}
+	    }
+	}
+    }
