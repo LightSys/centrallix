@@ -963,10 +963,21 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	find_inf = stLookup_ne(url_inf,"cx__akey");
 	if (find_inf)
 	    {
+	    /** VerifyAKey returns success if the session token matches.  We
+	     ** need the group and app tokens to match too for full security
+	     ** authorization.
+	     **/
 	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
 		{
-		cxssAddEndorsement("system:from_application", "*");
-		akey_match = 1;
+		if (group && app) 
+		    {
+		    cxssAddEndorsement("system:from_application", "*");
+		    akey_match = 1;
+		    }
+		if (group)
+		    {
+		    cxssAddEndorsement("system:from_appgroup", "*");
+		    }
 		}
 	    }
 
