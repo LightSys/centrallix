@@ -103,6 +103,7 @@ typedef struct
     IntVec	IVvalue;
     void*	VecData;
     pParamObjects ObjList;
+    pParamObjects SavedObjList;
     pRptSession	RSess;
     int		Version;
     pSemaphore	StartSem;
@@ -1027,8 +1028,10 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int con
 	    goto error;
 
 	/** Set the style for the section **/
-	rpt_internal_SetStyle(inf, section, rs, area_handle);
-	rpt_internal_SetMargins(section, area_handle, 0, 0, 0, 0);
+	if (rpt_internal_SetStyle(inf, section, rs, area_handle) < 0)
+	    goto error;
+	if (rpt_internal_SetMargins(section, area_handle, 0, 0, 0, 0) < 0)
+	    goto error;
 
 	/** Now do sub-components. **/
 	if (rpt_internal_DoContainer(inf, section, rs, area_handle) < 0)
@@ -1102,6 +1105,7 @@ rpt_internal_NextRecord_Parallel(pRptActiveQueries this, pRptData inf, pStructIn
     }
 
 
+
 /*** rpt_internal_NextRecord - processes the next row, given a list of query
  *** connections, list of inner/outer flags, query count, and "stack pointer".
  *** Returns 0 if record valid, 1 if no more records, and -1 on error.
@@ -1134,25 +1138,63 @@ rpt_internal_NextRecord(pRptActiveQueries this, pRptData inf, pStructInf object,
 		    err = 1;
 		    break;
 		    }
-		if (this->OuterMode[stack_ptr]) this->Queries[stack_ptr]->InnerExecCnt = 0;
-	        if (this->InnerMode[stack_ptr]) this->Queries[stack_ptr]->InnerExecCnt++;
-		if (!this->InnerMode[stack_ptr]) this->Queries[stack_ptr]->QueryItem = NULL;
+		if (this->OuterMode[stack_ptr])
+		    this->Queries[stack_ptr]->InnerExecCnt = 0;
+	        if (this->InnerMode[stack_ptr])
+		    this->Queries[stack_ptr]->InnerExecCnt++;
+		if (!this->InnerMode[stack_ptr])
+		    this->Queries[stack_ptr]->QueryItem = NULL;
 		}
 
-	    /** Need to fetch a query item? **/
-	    /** GRB - note.  I put parens around first || in first clause, not sure about it **/
-	    if ((this->Queries[stack_ptr]->Query && (this->Queries[stack_ptr]->QueryItem == NULL || (new_item && !this->OuterMode[stack_ptr]))) ||
-	        (stack_ptr == this->Count-1 && !this->OuterMode[stack_ptr] && (!is_initial || !this->InnerMode[stack_ptr])))
+	    /** Need to fetch a query item?
+	     **
+	     ** Here's how this works.  This is an iterative implementation of
+	     ** an algorithm that could otherwise be recursive, and it has to
+	     ** take into account having multiple queries, two nesting options
+	     ** (nested or multinested), and three modes (inner, outer, and
+	     ** normal).  It's a bear.
+	     **
+	     ** new_item tracks if we're recursing back to retrieve a new
+	     ** parent query item after a child query has returned its last
+	     ** row.
+	     **
+	     ** is_initial is set to 1 if we're "bootstrapping" this process
+	     ** as a result of fetching the first row (otherwise this would
+	     ** never return any rows at all, because it would think it has
+	     ** finished the querying already).
+	     **
+	     ** stack_ptr == this->Count-1 means we're working with the leaf-
+	     ** level query (last one in the sources list).
+	     **
+	     ** OuterMode means we don't actually iterate any query results,
+	     ** but just make sure there is one available for future iteration.
+	     **
+	     ** InnerMode means we iterate query results in the context of an
+	     ** OuterMode form at a higher level.
+	     **/
+	    if ((this->Queries[stack_ptr]->Query &&
+			(this->Queries[stack_ptr]->QueryItem == NULL || (new_item && !this->OuterMode[stack_ptr]))) ||
+	        (stack_ptr == this->Count-1 &&
+			!this->OuterMode[stack_ptr] &&
+			(!is_initial || !this->InnerMode[stack_ptr])))
 	        {
+		/** Fetch an item from this source **/
 		/*printf("  NEXTREC: Fetching item from source '%s' NI=%d O=%d QI=%d\n", this->Names[stack_ptr], new_item, this->OuterMode[stack_ptr], this->Queries[stack_ptr]->QueryItem);*/
 		/*printf("  NEXTREC: Fetching item from source '%s' O=%d I=%d INIT=%d\n", this->Names[stack_ptr], this->OuterMode[stack_ptr], this->InnerMode[stack_ptr], is_initial);*/
 		new_item = 0;
-		if (this->Queries[stack_ptr]->QueryItem) objClose(this->Queries[stack_ptr]->QueryItem);
-		this->Queries[stack_ptr]->QueryItem = objQueryFetch(this->Queries[stack_ptr]->Query, 0400);
+		if (this->Queries[stack_ptr]->QueryItem)
+		    objClose(this->Queries[stack_ptr]->QueryItem);
+		this->Queries[stack_ptr]->QueryItem = objQueryFetch(this->Queries[stack_ptr]->Query, O_RDONLY);
 		id = expModifyParam(inf->ObjList, this->Queries[stack_ptr]->Name, (void*)(this->Queries[stack_ptr]));
 		inf->ObjList->CurrentID = id;
+
+		/** End of items from this particular query source? **/
 		if (this->Queries[stack_ptr]->QueryItem == NULL)
 		    {
+		    /** If the form/table is in "inner" mode, we do not close
+		     ** the query -- that will happen when the "outer" mode
+		     ** form loops around again.
+		     **/
 		    /*printf("  NEXTREC: No more items!\n");*/
 		    if (!this->InnerMode[stack_ptr])
 		        {
@@ -1160,19 +1202,42 @@ rpt_internal_NextRecord(pRptActiveQueries this, pRptData inf, pStructInf object,
 		        this->Queries[stack_ptr]->Query = NULL;
 			this->Queries[stack_ptr] = NULL;
 			}
-		    stack_ptr--;
+
+		    /** Recurse up and try to fetch the next item from the next
+		     ** query level up.
+		     **
+		     ** If stack_ptr < 0, that means we have no more rows,
+		     ** because we have recursed back up past the top level
+		     ** query.
+		     **/
 		    new_item = 1;
-		    if (stack_ptr < 0) return 1;
+		    stack_ptr--;
+		    if (stack_ptr < 0)
+			return 1;
 		    continue;
 		    }
+
+		/** Got one result from this particular query source. **/
 		this->Queries[stack_ptr]->RecordCnt++;
 		this->Flags[stack_ptr] |= RPT_A_F_NEEDUPDATE;
+
+		/** We exit here if we've filled out a query result object from
+		 ** each query, or if we're doing "multinested" nesting, in
+		 ** which case we return a "header" row for each query level.
+		 **/
 		stack_ptr++;
-		if (stack_ptr == this->Count || this->MultiMode == RPT_MM_MULTINESTED) return 0;
+		if (stack_ptr == this->Count || this->MultiMode == RPT_MM_MULTINESTED)
+		    return 0;
+
+		/** Go back around and try to fill out the next object in the
+		 ** sources list.
+		 **/
 		continue;
 		}
 
-	    /** New item not retrieved because of outer mode?  Return OK if so. **/
+	    /** New item not retrieved because of outer mode?  Return OK if so.
+	     ** Otherwise, we're at the end of our results.
+	     **/
 	    if ((new_item || stack_ptr == this->Count-1) && this->OuterMode[stack_ptr]) 
 		return 0;
 	    else if (new_item)
@@ -1181,7 +1246,8 @@ rpt_internal_NextRecord(pRptActiveQueries this, pRptData inf, pStructInf object,
 	    /** Ok, valid item still, or outer mode so we don't bother **/
 	    new_item = 0;
 	    stack_ptr++;
-	    if (stack_ptr == this->Count) return 0;
+	    if (stack_ptr == this->Count)
+		return 0;
 	    }
 
     return err?-1:0;
@@ -1253,6 +1319,12 @@ rpt_internal_Activate(pRptData inf, pStructInf object, pRptSession rs)
 	    ptr = NULL;
 	    stAttrValue(stLookup(object, "source"), NULL, &ptr, ac->Count);
 	    if (!ptr) break;
+	    if (ac->Count >= EXPR_MAX_PARAMS)
+		{
+		mssError(1,"RPT","Too many queries for object '%s'", object->Name);
+		err = 1;
+		break;
+		}
 	    ac->Names[ac->Count] = ptr;
 
 	    /** Get inner/outer mode information **/
@@ -1419,9 +1491,10 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	    }
 
 	/** Set the style for the table **/
-	rpt_internal_SetStyle(inf, tablerow, rs, tablerow_handle);
-	rpt_internal_SetMargins(tablerow, tablerow_handle,
-		colsep/2/prtGetUnitsRatio(rs->PSession), colsep/2/prtGetUnitsRatio(rs->PSession), 0, 0);
+	if (rpt_internal_SetStyle(inf, tablerow, rs, tablerow_handle) < 0)
+	    goto error;
+	if (rpt_internal_SetMargins(tablerow, tablerow_handle, colsep/2/prtGetUnitsRatio(rs->PSession), colsep/2/prtGetUnitsRatio(rs->PSession), 0, 0) < 0)
+	    goto error;
 
 	/** Output data formats **/
 	cxssPushContext();
@@ -1722,8 +1795,10 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	stAttrValue(stLookup(table,"reclimit"),&reclimit,NULL,0);
 
 	/** Set the style for the table **/
-	rpt_internal_SetStyle(inf, table, rs, table_handle);
-	rpt_internal_SetMargins(table, table_handle, 0, 0, 0, 0);
+	if (rpt_internal_SetStyle(inf, table, rs, table_handle) < 0)
+	    goto error;
+	if (rpt_internal_SetMargins(table, table_handle, 0, 0, 0, 0) < 0)
+	    goto error;
 
 	/** Suppress "no data returned" message on 0 rows? **/
 	no_data_msg = rpt_internal_GetBool(table, "nodatamsg", 1, 0);
@@ -1845,19 +1920,20 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			    if (summarize_for_inf)
 				{
 				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(summarize_for_inf->UserData));
-				if (!ud->LastValue)
+				if (ud->LastValue)
 				    {
-				    /** First record; not initialized. **/
-				    if (expEvalTree(ud->Exp, inf->ObjList) < 0)
-					{
-					mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
-					err = 1;
-					break;
-					}
-				    ud->LastValue = expAllocExpression();
-				    ud->LastValue->NodeType = expDataTypeToNodeType(ud->Exp->DataType);
-				    expCopyValue(ud->Exp, ud->LastValue, 1);
+				    expFreeExpression(ud->LastValue);
 				    }
+				/** First record; not initialized. **/
+				if (expEvalTree(ud->Exp, inf->ObjList) < 0)
+				    {
+				    mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
+				    err = 1;
+				    break;
+				    }
+				ud->LastValue = expAllocExpression();
+				ud->LastValue->NodeType = expDataTypeToNodeType(ud->Exp->DataType);
+				expCopyValue(ud->Exp, ud->LastValue, 1);
 				}
 			    }
 			}
@@ -2128,7 +2204,8 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	context_pushed = 1;
 	rpt_internal_CheckFormats(data);
 	rpt_internal_CheckGoto(rs,data,container_handle);
-	rpt_internal_SetStyle(inf, data, rs, container_handle);
+	if (rpt_internal_SetStyle(inf, data, rs, container_handle) < 0)
+	    goto error;
 
 	/** Need to enable auto-newline? **/
 	ptr=NULL;
@@ -2460,6 +2537,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
     int rval;
     int n;
     int context_pushed = 0;
+    int last_inner_cnt = -1;
 
 	/** Conditional check - do we print this form? **/
 	rval = rpt_internal_CheckCondition(inf,form);
@@ -2483,10 +2561,12 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	if (stAttrValue(stLookup(form,"page"),&n,NULL,0) >= 0) prtSetPageNumber(rs->PageHandle, n);
 
 	/** Check for a mode entry **/
-	if (stAttrValue(stLookup(form,"mode"),NULL,&ptr,0) >= 0)
+	n = 0;
+	while (stAttrValue(stLookup(form,"mode"),NULL,&ptr,n) >= 0)
 	    {
 	    if (!strcmp(ptr,"outer")) outer_mode = 1;
 	    if (!strcmp(ptr,"inner")) inner_mode = 1;
+	    n++;
 	    }
 
 	/** Relative-Y record limiter? (maximum vertical space we can use) **/
@@ -2521,7 +2601,8 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	context_pushed = 1;
 	rpt_internal_CheckFormats(form);
 	rpt_internal_CheckGoto(rs,form,container_handle);
-	rpt_internal_SetStyle(inf, form, rs, container_handle);
+	if (rpt_internal_SetStyle(inf, form, rs, container_handle) < 0)
+	    goto error;
 
 	/** Start the query. **/
 	if ((ac = rpt_internal_Activate(inf, form, rs)) == NULL)
@@ -2559,6 +2640,12 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		mssError(err?0:1,"RPT","No inner-mode form/table was run for outer-mode '%s'",form->Name);
 		err = 1;
 		}
+	    if (outer_mode && last_inner_cnt == qy->InnerExecCnt)
+		{
+		/** No inner iterations; exit out now. **/
+		break;
+		}
+	    last_inner_cnt = qy->InnerExecCnt;
 
 	    /** Emit a page break if requested **/
 	    if (ffsep) prtWriteFF(container_handle);
@@ -2703,36 +2790,49 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
     int attr = 0;
     int i;
     double lh;
+    int j;
 
 	/** Check for font, size, color **/
 	if (stAttrValue(stLookup(config,"font"), NULL, &ptr, 0) == 0)
 	    {
-	    prtSetFont(prt_obj, ptr);
+	    if (prtSetFont(prt_obj, ptr) < 0)
+		return -1;
 	    }
 	if (stAttrValue(stLookup(config,"fontsize"), &n, NULL, 0) == 0)
 	    {
-	    prtSetFontSize(prt_obj, n);
+	    if (prtSetFontSize(prt_obj, n) < 0)
+		return -1;
 	    }
 	if (stAttrValue(stLookup(config,"fontcolor"), NULL, &ptr, 0) == 0)
 	    {
 	    if (ptr[0] == '#')
 		{
 		n = strtoi(ptr+1, NULL, 16);
-		prtSetColor(prt_obj, n);
+		if (prtSetColor(prt_obj, n) < 0)
+		    return -1;
 		}
 	    }
 	if (rpt_internal_GetDouble(config, "lineheight", &lh, 0) == 0)
 	    {
-	    prtSetLineHeight(prt_obj, lh);
+	    if (prtSetLineHeight(prt_obj, lh) < 0)
+		return -1;
 	    }
 
 	/** Check justification **/
 	if (stAttrValue(stLookup(config,"align"), NULL, &ptr, 0) == 0)
 	    {
-	    if (!strcmp(ptr,"left")) prtSetJustification(prt_obj, PRT_JUST_T_LEFT);
-	    else if (!strcmp(ptr,"right")) prtSetJustification(prt_obj, PRT_JUST_T_RIGHT);
-	    else if (!strcmp(ptr,"center")) prtSetJustification(prt_obj, PRT_JUST_T_CENTER);
-	    else if (!strcmp(ptr,"full")) prtSetJustification(prt_obj, PRT_JUST_T_FULL);
+	    if (!strcmp(ptr,"left"))
+		j = PRT_JUST_T_LEFT;
+	    else if (!strcmp(ptr,"right"))
+		j = PRT_JUST_T_RIGHT;
+	    else if (!strcmp(ptr,"center"))
+		j = PRT_JUST_T_CENTER;
+	    else if (!strcmp(ptr,"full"))
+		j = PRT_JUST_T_FULL;
+	    else
+		return -1;
+	    if (prtSetJustification(prt_obj, j) < 0)
+		return -1;
 	    }
 
 	/** Check attrs (bold/italic/underline) **/
@@ -2745,7 +2845,8 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    else if (!strcmp(ptr,"underline")) attr |= PRT_OBJ_A_UNDERLINE;
 	    else if (!strcmp(ptr,"plain")) attr = 0;
 	    }
-	prtSetAttr(prt_obj, attr);
+	if (prtSetAttr(prt_obj, attr) < 0)
+	    return -1;
 
     return 0;
     }
@@ -2764,7 +2865,10 @@ rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, do
 	if (rpt_internal_GetDouble(config, "marginleft", &ml, 0) < 0) ml = dl;
 	if (rpt_internal_GetDouble(config, "marginright", &mr, 0) < 0) mr = dr;
 	if (mt >= 0.0 || mb >= 0.0 || ml >= 0.0 || mr >= 0.0) 
-	    prtSetMargins(prt_obj, mt, mb, ml, mr);
+	    {
+	    if (prtSetMargins(prt_obj, mt, mb, ml, mr) < 0)
+		return -1;
+	    }
 
     return 0;
     }
@@ -2963,7 +3067,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 int
 rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn this_qy, int container_handle)
     {
-    int area_handle;
+    int area_handle = -1;
     double x, y, w, h, bw;
     int flags;
     pPrtBorder bdr = NULL;
@@ -2998,27 +3102,32 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn th
 	else
 	    area_handle = prtAddObject(container_handle, PRT_OBJ_T_AREA, x, y, w, h, flags, NULL);
 	if (bdr) prtFreeBorder(bdr);
-	if (area_handle < 0) return -1;
+	if (area_handle < 0)
+	    goto error;
 
 	/** Set the style for the area **/
-	rpt_internal_SetStyle(inf, area, rs, area_handle);
-	rpt_internal_SetMargins(area, area_handle, 0, 0, 0, 0);
+	if (rpt_internal_SetStyle(inf, area, rs, area_handle) < 0)
+	    goto error;
+	if (rpt_internal_SetMargins(area, area_handle, 0, 0, 0, 0) < 0)
+	    goto error;
 
 	/** Do stuff that is contained in the area **/
 	if (stLookup(area, "value"))
 	    {
 	    if (rpt_internal_DoData(inf, area, rs, area_handle) < 0)
-		{
-		prtEndObject(area_handle);
-		return -1;
-		}
+		goto error;
 	    }
 	rval = rpt_internal_DoContainer(inf, area, rs, area_handle);
 
 	/** End the area **/
 	prtEndObject(area_handle);
 
-    return rval;
+	return rval;
+
+    error:
+	if (area_handle >= 0)
+	    prtEndObject(area_handle);
+	return -1;
     }
 
 

@@ -61,6 +61,8 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
     {
     pPrtObjStream next_page;
 
+	PRT_DEBUG("prt_pagelm_Break() %8.8x pageid=%d\n", this, this->ObjID);
+
 	/** Need to create the next page? **/
 	if (!this->Next)
 	    {
@@ -116,6 +118,7 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
 int
 prt_pagelm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
     {
+    PRT_DEBUG("prt_pagelm_ChildBreakReq() %8.8x pageid=%d\n", this, this->ObjID);
     return this->LayoutMgr->Break(this, new_this);
     }
 
@@ -133,6 +136,8 @@ prt_pagelm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream 
 int
 prt_pagelm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
+
+	PRT_DEBUG("prt_pagelm_ChildResizeReq() %8.8x pageid=%d Y+req_height=%.2lf, innerheight=%.2lf\n", this, this->ObjID, child->Y + req_height, prtInnerHeight(this));
 
 	/** Is the resize still within the bounds of the page?  Allow if so. **/
 	if (child->Y + req_height - PRT_FP_FUDGE <= prtInnerHeight(this)) return 0;
@@ -176,6 +181,7 @@ prt_pagelm_Resize(pPrtObjStream this, double new_width, double new_height)
 int
 prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
+    pPrtObjStream new_parent;
 
 	/** Need to adjust the height/width if unspecified? **/
 	if (new_child_obj->Width < 0)
@@ -194,6 +200,24 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		new_child_obj->Y = 0;
 	    else
 		new_child_obj->Y = this->ContentTail->Y + this->ContentTail->Height;
+	    }
+
+	/** Break required? **/
+	if (new_child_obj->Y + new_child_obj->Height - PRT_FP_FUDGE > prtInnerHeight(this))
+	    {
+	    /** Try a break operation. **/
+	    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
+		{
+		/** Break denied?  Fail if so. **/
+		mssError(1,"PRT","Could not fit new object into page, and automatic page break failed");
+		return -1;
+		}
+	    if (new_parent && this != new_parent)
+		{
+		this = new_parent;
+		new_child_obj->X = 0.0;
+		new_child_obj->Y = 0.0;
+		}
 	    }
 
 	/** Just add it... **/

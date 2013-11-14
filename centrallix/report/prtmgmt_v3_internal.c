@@ -868,7 +868,11 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
 	    {
 	    /** yes - add an empty string object. **/
 	    obj = prt_internal_CreateEmptyObj(container);
-	    container->LayoutMgr->AddObject(container, obj);
+	    if (container->LayoutMgr->AddObject(container, obj) < 0)
+		{
+		prt_internal_FreeTree(obj);
+		return NULL;
+		}
 	    }
 	else
 	    {
