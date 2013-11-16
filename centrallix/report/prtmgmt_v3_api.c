@@ -360,7 +360,11 @@ prtSetFont(int handle_id, char* fontname)
 
 	/** Set the font id, and recalc the height/baseline **/
 	newid = prtLookupFont(fontname);
-	if (newid < 0) return -1;
+	if (newid < 0)
+	    {
+	    mssError(1,"PRT","Invalid font name: %s", fontname);
+	    return -1;
+	    }
 	set_obj->TextStyle.FontID = newid; 
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
 	    {
