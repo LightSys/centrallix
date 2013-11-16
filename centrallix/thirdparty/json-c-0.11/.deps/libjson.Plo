@@ -1,0 +1,27 @@
+libjson.lo libjson.o: libjson.c json_object.h json_inttypes.h \
+  json_config.h /usr/include/inttypes.h /usr/include/features.h \
+  /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
+  /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+  /usr/include/stdint.h /usr/include/bits/wchar.h
+
+json_object.h:
+
+json_inttypes.h:
+
+json_config.h:
+
+/usr/include/inttypes.h:
+
+/usr/include/features.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/bits/wordsize.h:
+
+/usr/include/gnu/stubs.h:
+
+/usr/include/gnu/stubs-64.h:
+
+/usr/include/stdint.h:
+
+/usr/include/bits/wchar.h:
