@@ -119,6 +119,7 @@ XV3OBJDRIVERS= \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \
 	      objdrv_link.o \
+	      objdrv_json.o \
 	      @OBJDRIVERS@
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
@@ -341,10 +342,10 @@ VERSION=$(shell cat .version)
 
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
-CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/json-c-0.11-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
-LIBS=@LIBS@ @STATIC_LIBS@
-STATIC_LIBS=@STATIC_LIBS@
+LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/json-c-0.11-inst/lib/libjson-c.a
+STATIC_LIBS=@STATIC_LIBS@ thirdparty/json-c-0.11-inst/lib/libjson-c.a
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
@@ -397,6 +398,18 @@ manpages_install: manpages
 		mkdir -p $(mandir)/man$${SECTION}; \
 		$(INSTALL) -m 664 $${MANPAGE} $(mandir)/man$${SECTION}; \
 	done
+
+# JSON-C library
+thirdparty/json-c-0.11-inst/lib/libjson-c.a: thirdparty/json-c-0.11/Makefile
+	@echo ""
+	@echo "Compiling libjson-c..."
+	cd thirdparty/json-c-0.11; make install
+
+thirdparty/json-c-0.11/Makefile: thirdparty/json-c-0.11/Makefile.in
+	@echo ""
+	@echo "Configuring libjson-c..."
+	mkdir -p $$PWD/thirdparty/json-c-0.11-inst
+	cd thirdparty/json-c-0.11; ./configure --disable-shared --enable-static --prefix=$$PWD/../json-c-0.11-inst
 
 # You can call "make mods" directly to avoid getting the warning about
 # make modules_install.  However, we recommend avoiding that habit if
@@ -556,6 +569,7 @@ clean:
 	@rm -f etc/centrallix.init
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
+	@rm -rf thirdparty/*-inst
 
 distclean: clean
 	@rm -f config.status config.cache config.log
@@ -563,6 +577,7 @@ distclean: clean
 	@rm -f config.h
 	@rm -f Makefile stamp-h
 	@rm -f .depend
+	@rm -f thirdparty/*/Makefile
 
 distreallyclean: distclean
 	@rm -f configure
