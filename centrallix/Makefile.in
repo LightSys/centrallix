@@ -400,6 +400,8 @@ manpages_install: manpages
 	done
 
 # JSON-C library
+osdrivers/objdrv_json.o: thirdparty/json-c-0.11-inst/lib/libjson-c.a
+
 thirdparty/json-c-0.11-inst/lib/libjson-c.a: thirdparty/json-c-0.11/Makefile
 	@echo ""
 	@echo "Compiling libjson-c..."
