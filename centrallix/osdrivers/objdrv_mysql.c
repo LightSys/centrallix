@@ -497,7 +497,7 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 	err = mysql_errno(&conn->Handle);
 	if (err)
 	    {
-	    errtxt = mysql_error(&conn->Handle);
+	    errtxt = (char*)mysql_error(&conn->Handle);
 	    mssError(1,"MYSD","SQL command failed: %s", errtxt);
 	    if (result) mysql_free_result(result);
 	    result = MYSD_RUNQUERY_ERROR;
@@ -1775,6 +1775,33 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** MySQL equivalent is substring_index(current_user(),'@',1) **/
 		    xsConcatenate(where_clause, " substring_index(current_user(),'@',1) ", -1);
 		    }
+		else if (!strcmp(tree->Name,"datediff"))
+		    {
+		    /** MySQL uses timestampdiff() **/
+		    subtree = (pExpression)(tree->Children.Items[0]);
+		    if (subtree->DataType != DATA_T_STRING || subtree->Flags & EXPR_F_NULL)
+			{
+			mssError(1,"MYSD","Invalid date part for datediff()");
+			return -1;
+			}
+		    if (!strcmp(subtree->String,"day") || !strcmp(subtree->String,"month") ||
+			    !strcmp(subtree->String,"year") || !strcmp(subtree->String, "hour") ||
+			    !strcmp(subtree->String,"minute") || !strcmp(subtree->String, "second"))
+			{
+			xsConcatenate(where_clause, " timestampdiff(", -1);
+			xsConcatenate(where_clause, subtree->String, -1);
+			xsConcatenate(where_clause, ", ", -1);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			xsConcatenate(where_clause, ", ", -1);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata,  where_clause,conn);
+			xsConcatenate(where_clause, ") ", -1);
+			}
+		    else
+			{
+			mssError(1,"MYSD","Invalid date part to datediff()");
+			return -1;
+			}
+		    }
 		else if (!strcmp(tree->Name,"dateadd"))
 		    {
 		    /** MySQL uses date_add(date, interval increment datepart) instead of dateadd(datepart, increment, date) **/
@@ -2337,6 +2364,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     {
                     inf->Type = MYSD_T_TABLE;
                     new_obj_name = qy->Data->Node->Tablenames.Items[qy->ItemCnt];
+		    inf->TData = mysd_internal_GetTData(qy->Data->Node, new_obj_name);
                     }
                 else
                     {
@@ -2420,7 +2448,8 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
         obj_internal_CopyPath(&(inf->Pathname), obj->Pathname);
 	inf->Name = inf->Pathname.Elements[inf->Pathname.nElements - 1];
-        inf->TData = qy->Data->TData;
+        if (!inf->TData)
+	    inf->TData = qy->Data->TData;
         inf->Node = qy->Data->Node;
         inf->Node->SnNode->OpenCnt++;
         inf->Obj = obj;
