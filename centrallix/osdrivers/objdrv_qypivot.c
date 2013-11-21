@@ -609,7 +609,7 @@ qyp_internal_ProcessOpen(pQypData inf)
     char* keyptrs[QYP_MAX_KEYS];
     int n_objname_keys;
     char *ptr;
-    pExpression criteria;
+    pExpression criteria = NULL;
     int i;
     pObject source_obj = NULL;
     pObjQuery source_qy = NULL;

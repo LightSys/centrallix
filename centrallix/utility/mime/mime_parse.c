@@ -236,7 +236,7 @@ int
 libmime_SetMailer(pMimeHeader msg, char *buf)
     {
     strncpy(msg->Mailer, buf, 79);
-    msg->MIMEVersion[79] = 0;
+    msg->Mailer[79] = 0;
 
     if (MIME_DEBUG)
 	{

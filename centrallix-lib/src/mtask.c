@@ -867,11 +867,10 @@ mtSched()
 	FD_ZERO(&exceptfds);
 	max_fd = 1;
 	num_fds = 0;
-	i = cnt = 0;
 	highest_cntdn = 0x80000000;
 	n_runnable = 0;
 	n_timerblock = 0;
-	for(i=cnt=0;cnt<MTASK.nEvents;i++)
+	for(i=cnt=0; cnt<MTASK.nEvents; i++)
 	    {
 	    if (MTASK.EventWaitTable[i])
 	        {
@@ -927,8 +926,7 @@ mtSched()
 
 	/** Determine how to issue the select() by scanning the thread tbl **/
 	/** We also credit time used by last thread to any sleeping threads **/
-	i=cnt=0;
-	for(i=cnt=0;cnt<MTASK.nThreads;i++)
+	for(i=cnt=0; cnt<MTASK.nThreads; i++)
 	    {
 	    if (MTASK.ThreadTable[i])
 	        {
@@ -1063,8 +1061,7 @@ mtSched()
 	MTASK.TickCnt = t;
 
 	/** Did any file descriptors "complete"?  If so, pull the event(s) **/
-	i = cnt = 0;
-	for(i=cnt=0;cnt<MTASK.nEvents;i++)
+	for(i=cnt=0; cnt<MTASK.nEvents; i++)
 	    {
 	    if (MTASK.EventWaitTable[i])
 	        {
@@ -1379,7 +1376,7 @@ thYield()
 /*** THEXIT exits and destroys the current thread and then calls 
  *** the scheduler to invoke the next thread.
  ***/
-int
+void
 thExit()
     {
     register int i;
@@ -1432,11 +1429,11 @@ thExit()
 		exit(0);
 	    }
 
-	/** Call scheduler **/
+	/** Call scheduler - scheduler will never return. **/
 	MTASK.MTFlags &= ~MT_F_LOCKED;
 	mtSched();
 
-    return OK; /* though we never return - mtSched doesn't do a setjmp... */
+    abort(); /* this suppresses the 'noreturn function does return' warning */
     }
 
 
@@ -2263,7 +2260,7 @@ fdUnSetOptions(pFile filedesc, int options)
     }
 
 
-/*** FDPIPE creates to "pFile" descriptors which are an mtask-level (not
+/*** FDPIPE creates two "pFile" descriptors which are an mtask-level (not
  *** kernel level) "pipe".  That is, what is written to one can be read from
  *** the other.  The descriptors are symmetric - no special features are
  *** present on one but not on the other.  Return: 0 on success, -1 on fail.
@@ -2276,10 +2273,12 @@ fdPipe(pFile *filedesc1, pFile *filedesc2)
 	*filedesc1 = NULL;
 	*filedesc2 = NULL;
 	*filedesc1 = (pFile)nmMalloc(sizeof(File));
-	if (!*filedesc1) goto fdpipe_error;
+	if (!*filedesc1)
+	    goto fdpipe_error;
 	memset(*filedesc1, 0, sizeof(File));
 	*filedesc2 = (pFile)nmMalloc(sizeof(File));
-	if (!*filedesc2) goto fdpipe_error;
+	if (!*filedesc2)
+	    goto fdpipe_error;
 	memset(*filedesc2, 0, sizeof(File));
 
 	(*filedesc1)->EventCkFn = (*filedesc2)->EventCkFn = evPipe;
@@ -2310,10 +2309,16 @@ fdPipe(pFile *filedesc1, pFile *filedesc2)
 	return 0;
 
     fdpipe_error:
-	if ((*filedesc1)->PipeBuf) nmSysFree((*filedesc1)->PipeBuf);
-	if ((*filedesc2)->PipeBuf) nmSysFree((*filedesc2)->PipeBuf);
-	if ((*filedesc1)) nmFree((*filedesc1), sizeof(File));
-	if ((*filedesc2)) nmFree((*filedesc2), sizeof(File));
+	if (*filedesc1)
+	    {
+	    if ((*filedesc1)->PipeBuf) nmSysFree((*filedesc1)->PipeBuf);
+	    nmFree((*filedesc1), sizeof(File));
+	    }
+	if (*filedesc2)
+	    {
+	    if ((*filedesc2)->PipeBuf) nmSysFree((*filedesc2)->PipeBuf);
+	    nmFree((*filedesc2), sizeof(File));
+	    }
 	(*filedesc1) = NULL;
 	(*filedesc2) = NULL;
 

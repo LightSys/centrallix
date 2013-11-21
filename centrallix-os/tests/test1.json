@@ -1,0 +1,1 @@
+{ "a":"this is a string", "b":123, "c":123.45, "d":true, "e":false, "f":null, "g":{"wholepart":123, "fractionpart":4500}, "h":{"year":2013, "month":1, "day":1 }, "i":{"year":2013, "month":1, "day":1, "hour":12, "minute":10, "second":10 } }

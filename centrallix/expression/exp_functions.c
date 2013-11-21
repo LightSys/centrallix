@@ -682,6 +682,89 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
     }
 
 
+int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* repstr;
+    long long newsize;
+    char* srcptr;
+    char* searchptr;
+    char* dstptr;
+    int searchlen, replen;
+    if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_STRING || !i1 || i1->DataType != DATA_T_STRING || !i2 || (!(i2->Flags & EXPR_F_NULL) && i2->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","replace() expects three string parameters (str,search,replace)");
+	return -1;
+	}
+    if (i2->Flags & EXPR_F_NULL)
+	repstr = "";
+    else
+	repstr = i2->String;
+
+    if (tree->Alloc && tree->String)
+	nmSysFree(tree->String);
+    tree->Alloc = 0;
+    if (i1->String[0] == '\0')
+	{
+	tree->String = i0->String;
+	return 0;
+	}
+
+    /** in determining new size, we assume the search string occurs throughout **/
+    newsize = strlen(i0->String);
+    replen = strlen(repstr);
+    searchlen = strlen(i1->String);
+    if (replen > searchlen)
+	newsize = (newsize * replen) / searchlen + 1;
+    if (newsize >= 0x7FFFFFFFLL)
+	{
+	mssError(1,"EXP","replace(): out of memory");
+	return -1;
+	}
+    if (newsize <= sizeof(tree->Types.StringBuf))
+	{
+	tree->String = tree->Types.StringBuf;
+	tree->Alloc = 0;
+	}
+    else
+	{
+	tree->String = nmSysMalloc(newsize);
+	tree->Alloc = 1;
+	}
+
+    /** Now do the string replace **/
+    srcptr = i0->String;
+    dstptr = tree->String;
+    while (*srcptr)
+	{
+	searchptr = strstr(srcptr, i1->String);
+	if (!searchptr)
+	    {
+	    /** copy remainder **/
+	    strcpy(dstptr, srcptr);
+	    break;
+	    }
+	if (searchptr > srcptr)
+	    {
+	    /** copy stuff in between matches **/
+	    memcpy(dstptr, srcptr, searchptr - srcptr);
+	    dstptr += (searchptr - srcptr);
+	    srcptr = searchptr;
+	    }
+	/** do the replace **/
+	strcpy(dstptr, repstr);
+	dstptr += replen;
+	srcptr += searchlen;
+	}
+    return 0;
+    }
+
+
 int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int len,i;
@@ -1499,6 +1582,104 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	    tree->Types.Money.FractionPart = mt;
 	    break;
 	}
+    return 0;
+    }
+
+
+int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int yr, mo;
+    int sign = 1;
+    pExpression tmp;
+
+    /** checks **/
+    if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	{
+	mssError(1, "EXP", "datediff() first parameter must be non-null string or keyword date part");
+	return -1;
+	}
+    if (!i1 || i1->DataType != DATA_T_DATETIME || !i2 || i2->DataType != DATA_T_DATETIME)
+	{
+	mssError(1, "EXP", "datediff() second and third parameters must be datetime types");
+	return -1;
+	}
+    if ((i1 && (i1->Flags & EXPR_F_NULL)) || (i2 && (i2->Flags & EXPR_F_NULL)))
+	{
+	tree->DataType = DATA_T_INTEGER;
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    tree->DataType = DATA_T_INTEGER;
+
+    /** Swap operands if we're diffing backwards **/
+    if (i2->Types.Date.Value < i1->Types.Date.Value)
+	{
+	sign = -1;
+	tmp = i2;
+	i2 = i1;
+	i1 = tmp;
+	}
+
+    /** choose which date part.  Typecasts are to make sure we're working
+     ** with signed values.
+     **/
+    if (strcmp(i0->String, "year") == 0)
+	{
+	tree->Integer = i2->Types.Date.Part.Year - (int)i1->Types.Date.Part.Year;
+	}
+    else if (strcmp(i0->String, "month") == 0)
+	{
+	tree->Integer = i2->Types.Date.Part.Year - (int)i1->Types.Date.Part.Year;
+	tree->Integer = tree->Integer*12 + i2->Types.Date.Part.Month - (int)i1->Types.Date.Part.Month;
+	}
+    else
+	{
+	/** fun.  working with the day part of stuff gets tricky -- leap
+	 ** years and all that stuff.  Count the days up manually.
+	 **/
+	tree->Integer = - i1->Types.Date.Part.Day;
+	yr = i1->Types.Date.Part.Year;
+	mo = i1->Types.Date.Part.Month;
+	while (yr < i2->Types.Date.Part.Year || (yr == i2->Types.Date.Part.Year &&  mo < i2->Types.Date.Part.Month))
+	    {
+	    tree->Integer += obj_month_days[mo];
+	    if (IS_LEAP_YEAR(yr+1900) && mo == 1) /* Feb of a leap year */
+		tree->Integer += 1;
+	    mo++;
+	    if (mo == 12)
+		{
+		mo = 0;
+		yr++;
+		}
+	    }
+	tree->Integer += i2->Types.Date.Part.Day;
+
+	/** Hours, minutes, seconds? **/
+	if (strcmp(i0->String, "day") != 0)
+	    {
+	    /** has to be H, M, or S **/
+	    tree->Integer = tree->Integer*24 + i2->Types.Date.Part.Hour - (int)i1->Types.Date.Part.Hour;
+	    if (strcmp(i0->String, "hour") != 0)
+		{
+		/** has to be M or S **/
+		tree->Integer = tree->Integer*60 + i2->Types.Date.Part.Minute - (int)i1->Types.Date.Part.Minute;
+		if (strcmp(i0->String, "minute") != 0)
+		    {
+		    /** has to be S **/
+		    if (strcmp(i0->String, "second") != 0)
+			{
+			mssError(1,"EXP","Invalid date part '%s' for datediff()", i0->String);
+			return -1;
+			}
+		    tree->Integer = tree->Integer*60 + i2->Types.Date.Part.Second - (int)i1->Types.Date.Part.Second;
+		    }
+		}
+	    }
+	}
+
+    /** Invert sign? **/
+    tree->Integer *= sign;
+
     return 0;
     }
 
@@ -2459,12 +2640,14 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
 	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
+	xhAdd(&EXP.Functions, "replace", (char*)exp_fn_replace);
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
 	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
+	xhAdd(&EXP.Functions, "datediff", (char*)exp_fn_datediff);
 	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
 	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
 	xhAdd(&EXP.Functions, "sin", (char*)exp_fn_sin);

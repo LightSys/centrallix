@@ -1,0 +1,702 @@
+         Name                                 Description
+================================================================================
+Flat                       Non-reflective
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    White
+                           Black                    Grey
+                           Black                    Charcoal
+                           Black                    Green
+                           Black                    Yellow
+                           Black                    Red
+                           Black                    Blue
+                           Black                    Purple
+                           Black                    Orange
+                           Black                    Violet
+                           White                    Black
+                           White                    Grey
+                           White                    Charcoal
+                           White                    Green
+                           White                    Yellow
+                           White                    Red
+                           White                    Blue
+                           White                    Purple
+                           White                    Orange
+                           White                    Violet
+                           Grey                     Black
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Grey                     White
+                           Grey                     Charcoal
+                           Grey                     Green
+                           Grey                     Yellow
+                           Grey                     Red
+                           Grey                     Blue
+                           Grey                     Purple
+                           Grey                     Orange
+                           Grey                     Violet
+                           Charcoal                 Black
+                           Charcoal                 White
+                           Charcoal                 Grey
+                           Charcoal                 Green
+                           Charcoal                 Yellow
+                           Charcoal                 Red
+                           Charcoal                 Blue
+                           Charcoal                 Purple
+                           Charcoal                 Orange
+                           Charcoal                 Violet
+                           Green                    Black
+                           Green                    White
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Green                    Grey
+                           Green                    Charcoal
+                           Green                    Yellow
+                           Green                    Red
+                           Green                    Blue
+                           Green                    Purple
+                           Green                    Orange
+                           Green                    Violet
+                           Yellow                   Black
+                           Yellow                   White
+                           Yellow                   Grey
+                           Yellow                   Charcoal
+                           Yellow                   Green
+                           Yellow                   Red
+                           Yellow                   Blue
+                           Yellow                   Purple
+                           Yellow                   Orange
+                           Yellow                   Violet
+                           Red                      Black
+                           Red                      White
+                           Red                      Grey
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Red                      Charcoal
+                           Red                      Green
+                           Red                      Yellow
+                           Red                      Blue
+                           Red                      Purple
+                           Red                      Orange
+                           Red                      Violet
+                           Blue                     Black
+                           Blue                     White
+                           Blue                     Grey
+                           Blue                     Charcoal
+                           Blue                     Green
+                           Blue                     Yellow
+                           Blue                     Red
+                           Blue                     Purple
+                           Blue                     Orange
+                           Blue                     Violet
+                           Purple                   Black
+                           Purple                   White
+                           Purple                   Grey
+                           Purple                   Charcoal
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Purple                   Green
+                           Purple                   Yellow
+                           Purple                   Red
+                           Purple                   Blue
+                           Purple                   Orange
+                           Purple                   Violet
+                           Orange                   Black
+                           Orange                   White
+                           Orange                   Grey
+                           Orange                   Charcoal
+                           Orange                   Green
+                           Orange                   Yellow
+                           Orange                   Red
+                           Orange                   Blue
+                           Orange                   Purple
+                           Orange                   Violet
+                           Violet                   Black
+                           Violet                   White
+                           Violet                   Grey
+                           Violet                   Charcoal
+                           Violet                   Green
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Violet                   Yellow
+                           Violet                   Red
+                           Violet                   Blue
+                           Violet                   Purple
+                           Violet                   Orange
+
+Eggshell                   Slightly reflective
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    White
+                           Black                    Grey
+                           Black                    Charcoal
+                           Black                    Green
+                           Black                    Yellow
+                           Black                    Red
+                           Black                    Blue
+                           Black                    Purple
+                           Black                    Orange
+                           Black                    Violet
+                           White                    Black
+                           White                    Grey
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           White                    Charcoal
+                           White                    Green
+                           White                    Yellow
+                           White                    Red
+                           White                    Blue
+                           White                    Purple
+                           White                    Orange
+                           White                    Violet
+                           Grey                     Black
+                           Grey                     White
+                           Grey                     Charcoal
+                           Grey                     Green
+                           Grey                     Yellow
+                           Grey                     Red
+                           Grey                     Blue
+                           Grey                     Purple
+                           Grey                     Orange
+                           Grey                     Violet
+                           Charcoal                 Black
+                           Charcoal                 White
+                           Charcoal                 Grey
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Charcoal                 Green
+                           Charcoal                 Yellow
+                           Charcoal                 Red
+                           Charcoal                 Blue
+                           Charcoal                 Purple
+                           Charcoal                 Orange
+                           Charcoal                 Violet
+                           Green                    Black
+                           Green                    White
+                           Green                    Grey
+                           Green                    Charcoal
+                           Green                    Yellow
+                           Green                    Red
+                           Green                    Blue
+                           Green                    Purple
+                           Green                    Orange
+                           Green                    Violet
+                           Yellow                   Black
+                           Yellow                   White
+                           Yellow                   Grey
+                           Yellow                   Charcoal
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Yellow                   Green
+                           Yellow                   Red
+                           Yellow                   Blue
+                           Yellow                   Purple
+                           Yellow                   Orange
+                           Yellow                   Violet
+                           Red                      Black
+                           Red                      White
+                           Red                      Grey
+                           Red                      Charcoal
+                           Red                      Green
+                           Red                      Yellow
+                           Red                      Blue
+                           Red                      Purple
+                           Red                      Orange
+                           Red                      Violet
+                           Blue                     Black
+                           Blue                     White
+                           Blue                     Grey
+                           Blue                     Charcoal
+                           Blue                     Green
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Blue                     Yellow
+                           Blue                     Red
+                           Blue                     Purple
+                           Blue                     Orange
+                           Blue                     Violet
+                           Purple                   Black
+                           Purple                   White
+                           Purple                   Grey
+                           Purple                   Charcoal
+                           Purple                   Green
+                           Purple                   Yellow
+                           Purple                   Red
+                           Purple                   Blue
+                           Purple                   Orange
+                           Purple                   Violet
+                           Orange                   Black
+                           Orange                   White
+                           Orange                   Grey
+                           Orange                   Charcoal
+                           Orange                   Green
+                           Orange                   Yellow
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Orange                   Red
+                           Orange                   Blue
+                           Orange                   Purple
+                           Orange                   Violet
+                           Violet                   Black
+                           Violet                   White
+                           Violet                   Grey
+                           Violet                   Charcoal
+                           Violet                   Green
+                           Violet                   Yellow
+                           Violet                   Red
+                           Violet                   Blue
+                           Violet                   Purple
+                           Violet                   Orange
+
+Satin                      Somewhat reflective
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    White
+                           Black                    Grey
+                           Black                    Charcoal
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    Green
+                           Black                    Yellow
+                           Black                    Red
+                           Black                    Blue
+                           Black                    Purple
+                           Black                    Orange
+                           Black                    Violet
+                           White                    Black
+                           White                    Grey
+                           White                    Charcoal
+                           White                    Green
+                           White                    Yellow
+                           White                    Red
+                           White                    Blue
+                           White                    Purple
+                           White                    Orange
+                           White                    Violet
+                           Grey                     Black
+                           Grey                     White
+                           Grey                     Charcoal
+                           Grey                     Green
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Grey                     Yellow
+                           Grey                     Red
+                           Grey                     Blue
+                           Grey                     Purple
+                           Grey                     Orange
+                           Grey                     Violet
+                           Charcoal                 Black
+                           Charcoal                 White
+                           Charcoal                 Grey
+                           Charcoal                 Green
+                           Charcoal                 Yellow
+                           Charcoal                 Red
+                           Charcoal                 Blue
+                           Charcoal                 Purple
+                           Charcoal                 Orange
+                           Charcoal                 Violet
+                           Green                    Black
+                           Green                    White
+                           Green                    Grey
+                           Green                    Charcoal
+                           Green                    Yellow
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Green                    Red
+                           Green                    Blue
+                           Green                    Purple
+                           Green                    Orange
+                           Green                    Violet
+                           Yellow                   Black
+                           Yellow                   White
+                           Yellow                   Grey
+                           Yellow                   Charcoal
+                           Yellow                   Green
+                           Yellow                   Red
+                           Yellow                   Blue
+                           Yellow                   Purple
+                           Yellow                   Orange
+                           Yellow                   Violet
+                           Red                      Black
+                           Red                      White
+                           Red                      Grey
+                           Red                      Charcoal
+                           Red                      Green
+                           Red                      Yellow
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Red                      Blue
+                           Red                      Purple
+                           Red                      Orange
+                           Red                      Violet
+                           Blue                     Black
+                           Blue                     White
+                           Blue                     Grey
+                           Blue                     Charcoal
+                           Blue                     Green
+                           Blue                     Yellow
+                           Blue                     Red
+                           Blue                     Purple
+                           Blue                     Orange
+                           Blue                     Violet
+                           Purple                   Black
+                           Purple                   White
+                           Purple                   Grey
+                           Purple                   Charcoal
+                           Purple                   Green
+                           Purple                   Yellow
+                           Purple                   Red
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Purple                   Blue
+                           Purple                   Orange
+                           Purple                   Violet
+                           Orange                   Black
+                           Orange                   White
+                           Orange                   Grey
+                           Orange                   Charcoal
+                           Orange                   Green
+                           Orange                   Yellow
+                           Orange                   Red
+                           Orange                   Blue
+                           Orange                   Purple
+                           Orange                   Violet
+                           Violet                   Black
+                           Violet                   White
+                           Violet                   Grey
+                           Violet                   Charcoal
+                           Violet                   Green
+                           Violet                   Yellow
+                           Violet                   Red
+                           Violet                   Blue
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Violet                   Purple
+                           Violet                   Orange
+
+Semi-Gloss                 Reflective
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    White
+                           Black                    Grey
+                           Black                    Charcoal
+                           Black                    Green
+                           Black                    Yellow
+                           Black                    Red
+                           Black                    Blue
+                           Black                    Purple
+                           Black                    Orange
+                           Black                    Violet
+                           White                    Black
+                           White                    Grey
+                           White                    Charcoal
+                           White                    Green
+                           White                    Yellow
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           White                    Red
+                           White                    Blue
+                           White                    Purple
+                           White                    Orange
+                           White                    Violet
+                           Grey                     Black
+                           Grey                     White
+                           Grey                     Charcoal
+                           Grey                     Green
+                           Grey                     Yellow
+                           Grey                     Red
+                           Grey                     Blue
+                           Grey                     Purple
+                           Grey                     Orange
+                           Grey                     Violet
+                           Charcoal                 Black
+                           Charcoal                 White
+                           Charcoal                 Grey
+                           Charcoal                 Green
+                           Charcoal                 Yellow
+                           Charcoal                 Red
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Charcoal                 Blue
+                           Charcoal                 Purple
+                           Charcoal                 Orange
+                           Charcoal                 Violet
+                           Green                    Black
+                           Green                    White
+                           Green                    Grey
+                           Green                    Charcoal
+                           Green                    Yellow
+                           Green                    Red
+                           Green                    Blue
+                           Green                    Purple
+                           Green                    Orange
+                           Green                    Violet
+                           Yellow                   Black
+                           Yellow                   White
+                           Yellow                   Grey
+                           Yellow                   Charcoal
+                           Yellow                   Green
+                           Yellow                   Red
+                           Yellow                   Blue
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Yellow                   Purple
+                           Yellow                   Orange
+                           Yellow                   Violet
+                           Red                      Black
+                           Red                      White
+                           Red                      Grey
+                           Red                      Charcoal
+                           Red                      Green
+                           Red                      Yellow
+                           Red                      Blue
+                           Red                      Purple
+                           Red                      Orange
+                           Red                      Violet
+                           Blue                     Black
+                           Blue                     White
+                           Blue                     Grey
+                           Blue                     Charcoal
+                           Blue                     Green
+                           Blue                     Yellow
+                           Blue                     Red
+                           Blue                     Purple
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Blue                     Orange
+                           Blue                     Violet
+                           Purple                   Black
+                           Purple                   White
+                           Purple                   Grey
+                           Purple                   Charcoal
+                           Purple                   Green
+                           Purple                   Yellow
+                           Purple                   Red
+                           Purple                   Blue
+                           Purple                   Orange
+                           Purple                   Violet
+                           Orange                   Black
+                           Orange                   White
+                           Orange                   Grey
+                           Orange                   Charcoal
+                           Orange                   Green
+                           Orange                   Yellow
+                           Orange                   Red
+                           Orange                   Blue
+                           Orange                   Purple
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Orange                   Violet
+                           Violet                   Black
+                           Violet                   White
+                           Violet                   Grey
+                           Violet                   Charcoal
+                           Violet                   Green
+                           Violet                   Yellow
+                           Violet                   Red
+                           Violet                   Blue
+                           Violet                   Purple
+                           Violet                   Orange
+
+Gloss                      Very reflective
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    White
+                           Black                    Grey
+                           Black                    Charcoal
+                           Black                    Green
+                           Black                    Yellow
+                           Black                    Red
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Black                    Blue
+                           Black                    Purple
+                           Black                    Orange
+                           Black                    Violet
+                           White                    Black
+                           White                    Grey
+                           White                    Charcoal
+                           White                    Green
+                           White                    Yellow
+                           White                    Red
+                           White                    Blue
+                           White                    Purple
+                           White                    Orange
+                           White                    Violet
+                           Grey                     Black
+                           Grey                     White
+                           Grey                     Charcoal
+                           Grey                     Green
+                           Grey                     Yellow
+                           Grey                     Red
+                           Grey                     Blue
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Grey                     Purple
+                           Grey                     Orange
+                           Grey                     Violet
+                           Charcoal                 Black
+                           Charcoal                 White
+                           Charcoal                 Grey
+                           Charcoal                 Green
+                           Charcoal                 Yellow
+                           Charcoal                 Red
+                           Charcoal                 Blue
+                           Charcoal                 Purple
+                           Charcoal                 Orange
+                           Charcoal                 Violet
+                           Green                    Black
+                           Green                    White
+                           Green                    Grey
+                           Green                    Charcoal
+                           Green                    Yellow
+                           Green                    Red
+                           Green                    Blue
+                           Green                    Purple
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Green                    Orange
+                           Green                    Violet
+                           Yellow                   Black
+                           Yellow                   White
+                           Yellow                   Grey
+                           Yellow                   Charcoal
+                           Yellow                   Green
+                           Yellow                   Red
+                           Yellow                   Blue
+                           Yellow                   Purple
+                           Yellow                   Orange
+                           Yellow                   Violet
+                           Red                      Black
+                           Red                      White
+                           Red                      Grey
+                           Red                      Charcoal
+                           Red                      Green
+                           Red                      Yellow
+                           Red                      Blue
+                           Red                      Purple
+                           Red                      Orange
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Red                      Violet
+                           Blue                     Black
+                           Blue                     White
+                           Blue                     Grey
+                           Blue                     Charcoal
+                           Blue                     Green
+                           Blue                     Yellow
+                           Blue                     Red
+                           Blue                     Purple
+                           Blue                     Orange
+                           Blue                     Violet
+                           Purple                   Black
+                           Purple                   White
+                           Purple                   Grey
+                           Purple                   Charcoal
+                           Purple                   Green
+                           Purple                   Yellow
+                           Purple                   Red
+                           Purple                   Blue
+                           Purple                   Orange
+                           Purple                   Violet
+         Name                                 Description
+================================================================================
+
+                                    Color1                   Color2
+                           ==================================================
+                           Orange                   Black
+                           Orange                   White
+                           Orange                   Grey
+                           Orange                   Charcoal
+                           Orange                   Green
+                           Orange                   Yellow
+                           Orange                   Red
+                           Orange                   Blue
+                           Orange                   Purple
+                           Orange                   Violet
+                           Violet                   Black
+                           Violet                   White
+                           Violet                   Grey
+                           Violet                   Charcoal
+                           Violet                   Green
+                           Violet                   Yellow
+                           Violet                   Red
+                           Violet                   Blue
+                           Violet                   Purple
+                           Violet                   Orange
+

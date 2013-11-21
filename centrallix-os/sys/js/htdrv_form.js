@@ -286,7 +286,10 @@ function form_load_fields(data, no_clear, modify, onefield)
     for(var i in this.elements)
 	{
 	if (onefield && onefield != this.elements[i].fieldname) continue;
-	if (!this.elements[i]._form_type && (typeof name_to_id[this.elements[i].fieldname]) != 'undefined')
+
+	if (!this.elements[i]._form_type &&
+		    (typeof name_to_id[this.elements[i].fieldname]) != 'undefined' &&
+		    (typeof data[name_to_id[this.elements[i].fieldname]].type) != 'undefined')
 	    this.elements[i]._form_type = data[name_to_id[this.elements[i].fieldname]].type;
 
 	if (this.elements[i].fieldname == '__position')
@@ -429,6 +432,20 @@ function form_cb_object_modified(recnum, dataobj)
     {
     this.cb['ObjectModified'].run();
     this.ObjectAvailable(dataobj);
+    }
+
+// Set value - pass through to the appropriate field, and this also throws
+// the form into a new or modify or search mode, as appropriate.
+function form_action_setvalue(aparam)
+    {
+    if (!aparam.Field)
+	return;
+
+    // Switch the form into the appropriate data modification mode
+    this.FocusNotify(null);
+
+    // Load the field
+    this.LoadFields([{oid:aparam.Field, value:aparam.Value}], true, true, aparam.Field);
     }
 
 /** Moves form to "NoData" mode **/
@@ -1182,11 +1199,6 @@ function form_action_submit(aparam)
 	node = wgtrFindContainer(this, "widget/page");
     if (!node) return false;
     var param = new Object;
-    for(var ap in aparam)
-	{
-	if (ap != 'Target' && ap != 'NewPage')
-	    param[ap] = aparam[ap];
-	}
     for(var i in this.elements)
 	{
 	var v = this.elements[i].getvalue();
@@ -1194,6 +1206,11 @@ function form_action_submit(aparam)
 	    {
 	    param[this.elements[i].fieldname] = v;
 	    }
+	}
+    for(var ap in aparam)
+	{
+	if (ap != 'Target' && ap != 'NewPage')
+	    param[ap] = aparam[ap];
 	}
     var nodetype = wgtrGetType(node);
     if (nodetype == "widget/component")
@@ -1497,6 +1514,7 @@ function form_init(form,param)
     ia.Add("QueryToggle", form_action_querytoggle);
     ia.Add("Save", form_action_save);
     ia.Add("Submit", form_action_submit);
+    ia.Add("SetValue", form_action_setvalue);
 
     // Events
     var ie = form.ifcProbeAdd(ifEvent);

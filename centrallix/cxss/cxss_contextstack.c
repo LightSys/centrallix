@@ -34,60 +34,83 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	cxss (Centrallix Security Subsystem) AuthStack          */
+/* Module:	cxss (Centrallix Security Subsystem) CtxStack          */
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	April 2, 2013                                           */
 /*									*/
 /* Description:	CXSS provides the core security support for the		*/
 /*		Centrallix application platform.			*/
 /*									*/
-/*		The AuthStack module provides authentication and	*/
+/*		The Context Stack module provides authentication and	*/
 /*		authorization contexts for the system.			*/
 /************************************************************************/
 
 
-/*** cxss_internal_FreeAuthStack() - deinitalize and free memory used by
+/*** cxss_internal_FreeCtxStack() - deinitalize and free memory used by
  *** an auth stack item.
  ***/
 int
-cxss_internal_FreeAuthStack(pCxssAuthStack item)
+cxss_internal_FreeCtxStack(pCxssCtxStack item)
     {
     int i;
+    pCxssVariable vbl;
 
 	/** Release the list of endorsements **/
 	for(i=0;i<item->Endorsements.nItems;i++)
 	    nmFree(item->Endorsements.Items[i], sizeof(CxssEndorsement));
 	xaDeInit(&item->Endorsements);
 
+	/** Release list of session variables **/
+	for(i=0;i<item->SessionVariables.nItems;i++)
+	    {
+	    vbl = (pCxssVariable)item->SessionVariables.Items[i];
+	    if (vbl->Value) nmSysFree(vbl->Value);
+	    nmFree(vbl, sizeof(CxssVariable));
+	    }
+	xaDeInit(&item->SessionVariables);
+
 	/** Release memory for the stack item **/
-	nmFree(item, sizeof(CxssAuthStack));
+	nmFree(item, sizeof(CxssCtxStack));
 
     return 0;
     }
 
 
 
-/*** cxss_internal_AllocAuthStack() - create a new, initialized auth stack
+/*** cxss_internal_AllocCtxStack() - create a new, initialized auth stack
  *** item with an empty set of endorsements.
  ***/
-pCxssAuthStack
-cxss_internal_AllocAuthStack()
+pCxssCtxStack
+cxss_internal_AllocCtxStack()
     {
-    pCxssAuthStack item;
+    pCxssCtxStack item = NULL;
 
 	/** Allocate memory for it **/
-	item = (pCxssAuthStack)nmMalloc(sizeof(CxssAuthStack));
+	item = (pCxssCtxStack)nmMalloc(sizeof(CxssCtxStack));
 	if (!item)
-	    return NULL;
+	    goto error;
 	
 	/** Set up endorsements list **/
-	xaInit(&item->Endorsements, 16);
+	if (xaInit(&item->Endorsements, 16) < 0)
+	    goto error;
+
+	/** Set up the session variables list **/
+	if (xaInit(&item->SessionVariables, 16) < 0)
+	    {
+	    xaDeInit(&item->Endorsements);
+	    goto error;
+	    }
 
 	/** Basic setup **/
 	item->CopyCnt = 0;
 	item->Prev = NULL;
 
-    return item;
+	return item;
+
+    error:
+	if (item)
+	    nmFree(item, sizeof(CxssCtxStack));
+	return NULL;
     }
 
 
@@ -104,19 +127,17 @@ cxss_internal_AllocAuthStack()
 int
 cxss_internal_CopyContext(void* src_ctx_v, void** dst_ctx_v)
     {
-    pCxssAuthStack src_ctx = (pCxssAuthStack)src_ctx_v;
-    pCxssAuthStack* dst_ctx = (pCxssAuthStack*)dst_ctx_v;
-    pCxssAuthStack new_ctx;
+    pCxssCtxStack src_ctx = (pCxssCtxStack)src_ctx_v;
+    pCxssCtxStack* dst_ctx = (pCxssCtxStack*)dst_ctx_v;
+    pCxssCtxStack new_ctx = NULL;
     pCxssEndorsement e;
+    pCxssVariable vbl, oldvbl;
     int i;
 
 	/** Get a new authstack structure **/
-	new_ctx = cxss_internal_AllocAuthStack();
+	new_ctx = cxss_internal_AllocCtxStack();
 	if (!new_ctx)
-	    {
-	    *dst_ctx = NULL;
-	    return -1;
-	    }
+	    goto error;
 
 	/** Copy over the current endorsements **/
 	if (src_ctx)
@@ -124,17 +145,48 @@ cxss_internal_CopyContext(void* src_ctx_v, void** dst_ctx_v)
 	    for(i=0;i<src_ctx->Endorsements.nItems;i++)
 		{
 		e = (pCxssEndorsement)nmMalloc(sizeof(CxssEndorsement));
-		if (e)
-		    {
-		    memcpy(e, src_ctx->Endorsements.Items[i], sizeof(CxssEndorsement));
-		    xaAddItem(&new_ctx->Endorsements, (void*)e);
-		    }
+		if (!e)
+		    goto error;
+		memcpy(e, src_ctx->Endorsements.Items[i], sizeof(CxssEndorsement));
+		xaAddItem(&new_ctx->Endorsements, (void*)e);
 		}
 	    }
 
+	/** Copy over the session variables **/
+	if (src_ctx)
+	    {
+	    for(i=0;i<src_ctx->SessionVariables.nItems;i++)
+		{
+		oldvbl = (pCxssVariable)src_ctx->SessionVariables.Items[i];
+		vbl = (pCxssVariable)nmMalloc(sizeof(CxssVariable));
+		if (!vbl)
+		    goto error;
+		memcpy(vbl, oldvbl, sizeof(CxssVariable));
+		if (oldvbl->Value)
+		    {
+		    vbl->Value = nmSysStrdup(oldvbl->Value);
+		    if (!vbl->Value)
+			goto error;
+		    }
+		xaAddItem(&new_ctx->SessionVariables, (void*)vbl);
+		}
+	    }
+
+#if CXSS_DEBUG_CONTEXTSTACK
+	new_ctx->CallerReturnAddr = NULL;
+#endif
+
 	*dst_ctx = new_ctx;
 
-    return 0;
+	return 0;
+
+    error:
+	/** Clean up and exit **/
+	if (new_ctx)
+	    cxss_internal_FreeCtxStack(new_ctx);
+	*dst_ctx = NULL;
+
+	return -1;
     }
 
 
@@ -149,15 +201,15 @@ cxss_internal_CopyContext(void* src_ctx_v, void** dst_ctx_v)
 int
 cxss_internal_FreeContext(void* ctx_v)
     {
-    pCxssAuthStack ctx = (pCxssAuthStack)ctx_v;
-    pCxssAuthStack del;
+    pCxssCtxStack ctx = (pCxssCtxStack)ctx_v;
+    pCxssCtxStack del;
 
 	/** Loop through the stack and free each item **/
 	while (ctx)
 	    {
 	    del = ctx;
 	    ctx = ctx->Prev;
-	    cxss_internal_FreeAuthStack(del);
+	    cxss_internal_FreeCtxStack(del);
 	    }
 
     return 0;
@@ -216,15 +268,24 @@ cxss_internal_CompareContexts(char* ctx1, char* ctx2)
 int
 cxssPopContext()
     {
-    pCxssAuthStack sptr, del;
+    pCxssCtxStack sptr, del;
 
 	/** Get auth stack pointer **/
-	sptr = (pCxssAuthStack)thGetSecParam(NULL);
+	sptr = (pCxssCtxStack)thGetSecParam(NULL);
 	if (!sptr)
 	    {
 	    mssError(1,"CXSS","Attempt to cxssPopContext() beyond end of auth stack");
 	    return -1;
 	    }
+
+#if CXSS_DEBUG_CONTEXTSTACK
+	if (sptr->CallerReturnAddr)
+	    {
+	    if (sptr->CallerReturnAddr != __builtin_return_address(1))
+		printf("WARNING - unbalanced cxssPopContext / cxssPushContext\n");
+	    sptr->CallerReturnAddr = NULL;
+	    }
+#endif
 
 	/** No changes since corresponding push? **/
 	if (sptr->CopyCnt > 0)
@@ -237,7 +298,7 @@ cxssPopContext()
 	del = sptr;
 	sptr = sptr->Prev;
 	thSetSecParam(NULL, (void*)sptr, cxss_internal_CopyContext, cxss_internal_FreeContext);
-	cxss_internal_FreeAuthStack(del);
+	cxss_internal_FreeCtxStack(del);
 
     return 0;
     }
@@ -252,15 +313,15 @@ cxssPopContext()
 int
 cxssPushContext()
     {
-    pCxssAuthStack sptr;
+    pCxssCtxStack sptr;
 
 	/** Get auth stack pointer **/
-	sptr = (pCxssAuthStack)thGetSecParam(NULL);
+	sptr = (pCxssCtxStack)thGetSecParam(NULL);
 
 	/** Create first stack item? **/
 	if (!sptr)
 	    {
-	    sptr = cxss_internal_AllocAuthStack();
+	    sptr = cxss_internal_AllocCtxStack();
 	    thSetSecParam(NULL, (void*)sptr, cxss_internal_CopyContext, cxss_internal_FreeContext);
 	    }
 	else
@@ -269,7 +330,52 @@ cxssPushContext()
 	    sptr->CopyCnt++;
 	    }
 
+#if CXSS_DEBUG_CONTEXTSTACK
+	sptr->CallerReturnAddr = __builtin_return_address(1);
+#endif
+
     return 0;
+    }
+
+
+
+/*** cxss_internal_CheckCOW() - check to see if we need to copy-on-write
+ *** and so duplicate the current context stack item.
+ ***
+ *** Returns the top-of-context-stack after the COW check is done.
+ ***/
+pCxssCtxStack
+cxss_internal_CheckCOW()
+    {
+    pCxssCtxStack sptr, new;
+
+	/** Get auth stack pointer **/
+	sptr = (pCxssCtxStack)thGetSecParam(NULL);
+	if (!sptr)
+	    {
+	    mssError(1,"CXSS","Attempt to access context stack without a security context");
+	    return NULL;
+	    }
+
+	/** Need to duplicate stack head (copy-on-write)? **/
+	if (sptr->CopyCnt > 0)
+	    {
+	    if (cxss_internal_CopyContext((void*)sptr, (void**)&new) < 0)
+		{
+		mssError(1,"CXSS","Copy context failed");
+		return NULL;
+		}
+	    new->Prev = sptr;
+#if CXSS_DEBUG_CONTEXTSTACK
+	    new->CallerReturnAddr = sptr->CallerReturnAddr;
+	    sptr->CallerReturnAddr = NULL;
+#endif
+	    sptr->CopyCnt--;
+	    thSetSecParam(NULL, (void*)new, cxss_internal_CopyContext, cxss_internal_FreeContext);
+	    sptr = new;
+	    }
+
+    return sptr;
     }
 
 
@@ -280,44 +386,28 @@ cxssPushContext()
 int
 cxssAddEndorsement(char* endorsement, char* context)
     {
-    pCxssAuthStack sptr, new;
+    pCxssCtxStack sptr;
     pCxssEndorsement e;
-    int i;
 
 	/** Don't add it if we already have it **/
 	if (cxssHasEndorsement(endorsement, context) == 1)
 	    return 0;
 
 	/** Get auth stack pointer **/
-	sptr = (pCxssAuthStack)thGetSecParam(NULL);
+	sptr = cxss_internal_CheckCOW();
 	if (!sptr)
 	    {
-	    mssError(1,"CXSS","Attempt to add endorsement '%s' outside of an auth context", endorsement);
+	    mssError(0,"CXSS","Could not add endorsement '%s'", endorsement);
 	    return -1;
-	    }
-
-	/** Need to duplicate stack head (copy-on-write)? **/
-	if (sptr->CopyCnt > 0)
-	    {
-	    new = cxss_internal_AllocAuthStack();
-	    if (!new)
-		return -1;
-	    new->Prev = sptr;
-	    for(i=0;i<sptr->Endorsements.nItems;i++)
-		{
-		e = (pCxssEndorsement)nmMalloc(sizeof(CxssEndorsement));
-		if (!e)
-		    return -1;
-		memcpy(e, sptr->Endorsements.Items[i], sizeof(CxssEndorsement));
-		xaAddItem(&new->Endorsements, (void*)e);
-		}
-	    sptr->CopyCnt--;
-	    thSetSecParam(NULL, (void*)new, cxss_internal_CopyContext, cxss_internal_FreeContext);
-	    sptr = new;
 	    }
 
 	/** Add endorsement to the stack head **/
 	e = (pCxssEndorsement)nmMalloc(sizeof(CxssEndorsement));
+	if (!e)
+	    {
+	    mssError(1,"CXSS","Could not add endorsement '%s': out of memory", endorsement);
+	    return -1;
+	    }
 	strtcpy(e->Endorsement, endorsement, sizeof(e->Endorsement));
 	strtcpy(e->Context, context, sizeof(e->Context));
 	xaAddItem(&sptr->Endorsements, (void*)e);
@@ -334,12 +424,12 @@ cxssAddEndorsement(char* endorsement, char* context)
 int
 cxssHasEndorsement(char* endorsement, char* context)
     {
-    pCxssAuthStack sptr;
+    pCxssCtxStack sptr;
     pCxssEndorsement e;
     int i;
 
 	/** Get auth stack pointer **/
-	sptr = (pCxssAuthStack)thGetSecParam(NULL);
+	sptr = (pCxssCtxStack)thGetSecParam(NULL);
 	if (!sptr)
 	    {
 	    mssError(1,"CXSS","Attempt to verify endorsement '%s' outside of an auth context", endorsement);
@@ -353,6 +443,108 @@ cxssHasEndorsement(char* endorsement, char* context)
 	    if (!strcmp(endorsement, e->Endorsement) && cxss_internal_CompareContexts(context, e->Context) == 0)
 		return 1;
 	    }
+
+    return 0;
+    }
+
+
+
+/*** cxssSetVariable() - Set a session variable.
+ ***/
+int
+cxssSetVariable(char* name, char* value, int valuealloc)
+    {
+    pCxssCtxStack sptr;
+    pCxssVariable vbl;
+    int i, found;
+
+	/** Get auth stack pointer **/
+	sptr = cxss_internal_CheckCOW();
+	if (!sptr)
+	    {
+	    mssError(0,"CXSS","Could not set variable '%s'", name);
+	    return -1;
+	    }
+
+	/** Allocate value if need be **/
+	if (!valuealloc && value)
+	    {
+	    value = nmSysStrdup(value);
+	    if (!value)
+		{
+		mssError(1,"CXSS","Could not set variable '%s': out of memory", name);
+		return -1;
+		}
+	    }
+
+	/** Find variable, if already exists **/
+	for(found=i=0;i<sptr->SessionVariables.nItems;i++)
+	    {
+	    vbl = sptr->SessionVariables.Items[i];
+	    if (!strcmp(vbl->Name, name))
+		{
+		/** Found existing variable to modify **/
+		found = 1;
+		if (vbl->Value)
+		    nmSysFree(vbl->Value);
+		vbl->Value = value;
+		break;
+		}
+	    }
+
+	/** Did not find an existing variable - add a new one **/
+	if (!found)
+	    {
+	    vbl = (pCxssVariable)nmMalloc(sizeof(CxssVariable));
+	    if (!vbl)
+		{
+		mssError(1,"CXSS","Could not set variable '%s': out of memory", name);
+		return -1;
+		}
+	    strtcpy(vbl->Name, name, sizeof(vbl->Name));
+	    vbl->Value = value;
+	    xaAddItem(&sptr->SessionVariables, (void*)vbl);
+	    }
+
+    return 0;
+    }
+
+
+
+/*** cxssGetVariable() - get a session variable.  Returns -1  on an error 
+ *** condition, or 0 on success.  Always sets *value to either the
+ *** variable's value or to NULL, if the variable is unset and a default is
+ *** not given.
+ ***/
+int
+cxssGetVariable(char* vblname, char** value, char* default_value)
+    {
+    pCxssCtxStack sptr;
+    pCxssVariable vbl;
+    int i;
+
+	/** Get auth stack pointer **/
+	sptr = (pCxssCtxStack)thGetSecParam(NULL);
+	if (!sptr)
+	    {
+	    *value = default_value;
+	    mssError(1,"CXSS","Attempt to get variable '%s' outside of an auth context", vblname);
+	    return -1;
+	    }
+
+	/** Look for the variable **/
+	for(i=0;i<sptr->SessionVariables.nItems;i++)
+	    {
+	    vbl = (pCxssVariable)sptr->SessionVariables.Items[i];
+	    if (!strcmp(vbl->Name, vblname))
+		{
+		*value = (vbl->Value)?(vbl->Value):default_value;
+		return 0;
+		}
+	    }
+
+	/** Not found - go with the default **/
+	*value = default_value;
 
     return 0;
     }

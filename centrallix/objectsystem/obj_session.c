@@ -80,6 +80,9 @@ objOpenSession(char* current_dir)
 int 
 objCloseSession(pObjSession this)
     {
+    int i;
+    int closed;
+    pObject obj;
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
 
@@ -97,7 +100,29 @@ objCloseSession(pObjSession this)
 	/** Close any open objects **/
 	while(this->OpenObjects.nItems)
 	    {
-	    objClose((pObject)(this->OpenObjects.Items[0]));
+	    i = 0;
+	    closed = 0;
+	    while(i < this->OpenObjects.nItems)
+		{
+		obj = (pObject)this->OpenObjects.Items[i];
+		if (obj->Flags & OBJ_F_UNMANAGED)
+		    {
+		    i++;
+		    continue;
+		    }
+		objClose(obj);
+		closed++;
+		}
+	    if (!closed)
+		{
+		mssError(1,"OSML","Bark! %d unmanaged object(s) remained unclosed at session destroy", this->OpenObjects.nItems);
+		for(i=0;i<this->OpenObjects.nItems;i++)
+		    {
+		    obj = (pObject)this->OpenObjects.Items[i];
+		    printf("Unclosed: %s\n", obj_internal_PathPart(obj->Pathname, 0, 0));
+		    }
+		break;
+		}
 	    }
 
 	/** Remove from the session list **/
@@ -146,7 +171,8 @@ objGetWD(pObjSession this)
 int
 objUnmanageObject(pObjSession this, pObject obj)
     {
-    xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));
+    /*xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));*/
+    obj->Flags |= OBJ_F_UNMANAGED;
     return 0;
     }
 

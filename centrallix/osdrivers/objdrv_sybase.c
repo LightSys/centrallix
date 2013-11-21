@@ -1859,7 +1859,7 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 
 	    case DATA_T_STRING:
 		if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
-		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart") || !strcmp(tree->Parent->Name,"dateadd")) &&
+		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart") || !strcmp(tree->Parent->Name,"dateadd") || !strcmp(tree->Parent->Name,"datediff")) &&
 		    (void*)tree == (void*)(tree->Parent->Children.Items[0]))
 		    {
 		    if (!strcmp(tree->Parent->Name,"convert"))
@@ -1872,9 +1872,9 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 			}
 		    else
 			{
-			if (strpbrk(tree->String,"\"' \t\r\n"))
+			if (tree->String[strspn(tree->String,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")] != '\0')
 			    {
-			    mssError(1,"SYBD","Invalid datepart()/dateadd() parameters in Expression Tree");
+			    mssError(1,"SYBD","Invalid datepart()/dateadd()/convert()/datediff() parameters in Expression Tree");
 			    }
 			else
 			    {
@@ -2177,6 +2177,24 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		    /* just put silly thing as text instead of evaluated */
 		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
 		    return -1;
+		    }
+		else if (!strcmp(tree->Name, "replace"))
+		    {
+		    xsConcatenate(where_clause, " str_replace(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    subtree = (pExpression)tree->Children.Items[2];
+
+		    /** Sybase by default treats "" as " ", but str_replace() accepts NULL for "" **/
+		    if (subtree && subtree->NodeType == EXPR_N_STRING && !(subtree->Flags & EXPR_F_NULL) && !strcmp(subtree->String,""))
+			xsConcatenate(where_clause, "NULL) ", 6);
+		    else
+			{
+			sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,sess,tdata, n_tdata, where_clause);
+			xsConcatenate(where_clause, ") ", 2);
+			}
 		    }
 		else
 		    {

@@ -396,7 +396,13 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
     pMQOData context = (pMQOData)(qe->PrivateData);
     pMqobOrderable item;
     pParamObjects objlist;
+    pQueryElement cld;
     int i;
+
+	cld = (pQueryElement)(qe->Children.Items[0]);
+
+	/** Close the previous item **/
+	expUnlinkParams(stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 
 	if (context)
 	    {
@@ -420,6 +426,8 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
 	    nmFree(context, sizeof(MQOData));
 	    qe->PrivateData = NULL;
 	    }
+
+	cld->Driver->Finish(cld, stmt);
 
     return 0;
     }

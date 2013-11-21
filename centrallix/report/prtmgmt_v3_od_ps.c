@@ -92,7 +92,7 @@ void* prt_psod_OpenPDF(pPrtSession);
 static PrtPsodFormat PsFormats[] =
     {
 	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"cat | /usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress /dev/stdin - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
 	{ NULL,		NULL,			NULL,			0,	NULL }
     };
 
@@ -844,6 +844,9 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     int rows,cols,x,y,pix;
+    int direct_map = 0;
+    unsigned char* imgrow;
+    char* hexdigit = "0123456789abcdef";
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
@@ -859,16 +862,26 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	if (img->Hdr.Width <= cols/2) cols = img->Hdr.Width;
 	if (img->Hdr.Height <= rows/2) rows = img->Hdr.Height;
 
+	/** Use direct pixel mapping to speed things up? **/
+	if (cols == img->Hdr.Width && rows == img->Hdr.Height && img->Hdr.ColorMode == PRT_COLOR_T_FULL)
+	    direct_map = 1;
+
+	/** Allocate image data row **/
+	imgrow = (char*)nmSysMalloc(cols*6 + 1 + 1);
+	if (!imgrow)
+	    return -1;
+
 	/** save graphics context before beginning, 
 	 ** then emit the image header.
 	 **/
 	prt_psod_Output_va(context,	"gsave\n"
-					"/rasterdata %d string def\n"
+					"/getrasterdata %d string def\n"
 					"%.1f %.1f translate\n"
 					"%.1f %.1f scale\n"
 					"%d %d 8\n"
 					"[ %d %d %d %d %d %d ]\n"
-					"{ currentfile rasterdata readhexstring pop }\n"
+					"{ currentfile getrasterdata readhexstring pop }\n"
+					/*"{ currentfile rasterdata readhexstring pop }\n"*/
 					"false 3\n"
 					"%%%%BeginData: %d ASCII Bytes\n"
 					"colorimage\n"
@@ -880,7 +893,7 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 				height*12.0 + 0.000001,
 				cols, rows,
 				cols, 0, 0, -rows, 0, rows,
-				cols*rows*6+strlen("colorimage\n")+rows
+				((cols*6)+1)*rows+strlen("colorimage\n")
 				);
 
 	/** Output the data, in hexadecimal **/
@@ -888,15 +901,32 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    {
 	    for(x=0;x<cols;x++)
 		{
-		pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
-		prt_psod_Output_va(context, "%6.6X", pix);
+		/** We're doing the hex-number-to-ascii conversion manually because
+		 ** it is 4 times faster, and this loop is a bottleneck for reports
+		 ** with images, especially large images.
+		 **/
+		if (direct_map)
+		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
+		    /*pix = prt_internal_GetPixelDirect(img, x, y);*/
+		else
+		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
+		imgrow[x*6+0] = hexdigit[pix >> 20];
+		imgrow[x*6+1] = hexdigit[(pix >> 16) & 0xF];
+		imgrow[x*6+2] = hexdigit[(pix >> 12) & 0xF];
+		imgrow[x*6+3] = hexdigit[(pix >> 8) & 0xF];
+		imgrow[x*6+4] = hexdigit[(pix >> 4) & 0xF];
+		imgrow[x*6+5] = hexdigit[pix & 0xF];
 		}
-	    prt_psod_Output(context, "\n", 1);
+	    imgrow[cols*6] = '\n';
+	    imgrow[cols*6+1] = '\0';
+	    prt_psod_Output(context, imgrow, cols*6+1);
 	    }
 
 	/** Restore graphics context when done **/
 	prt_psod_Output_va(context,	"%%%%EndData\n"
 					"grestore\n");
+
+	nmSysFree(imgrow);
 
     return context->CurVPos + height;
     }

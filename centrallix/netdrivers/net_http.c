@@ -491,6 +491,101 @@ nht_internal_RegisterSessionInfo()
     }
 
 
+/*** nht_internal_AddRequestHeader - add a header to the HTTP request
+ ***/
+int
+nht_internal_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
+    {
+    pHttpHeader hdr;
+    int i;
+
+	/** Already present? **/
+	for(i=0;i<hdrlist->nItems;i++)
+	    {
+	    hdr = (pHttpHeader)hdrlist->Items[i];
+	    if (!strcasecmp(hdr->Name, hdrname))
+		{
+		if (hdr->ValueAlloc)
+		    nmSysFree(hdr->Value);
+
+		/** If null new header value - delete the existing one **/
+		if (!hdrvalue)
+		    {
+		    xaRemoveItem(hdrlist, i);
+		    nmFree(hdr, sizeof(HttpHeader));
+		    return 0;
+		    }
+
+		/** Replace existing header value **/
+		hdr->Value = hdrvalue;
+		hdr->ValueAlloc = hdralloc;
+		return 0;
+		}
+	    }
+
+	/** Don't add a NULL header **/
+	if (!hdrvalue) return 0;
+	
+	/** Allocate the header **/
+	hdr = (pHttpHeader)nmMalloc(sizeof(HttpHeader));
+	if (!hdr)
+	    return -1;
+
+	/** Set it up and add it **/
+	strtcpy(hdr->Name, hdrname, sizeof(hdr->Name));
+	hdr->Value = hdrvalue;
+	hdr->ValueAlloc = hdralloc;
+	xaAddItem(hdrlist, (void*)hdr);
+
+    return 0;
+    }
+
+
+/*** nht_internal_FreeHeaders - release HTTP headers from an xarray
+ ***/
+int
+nht_internal_FreeHeaders(pXArray xa)
+    {
+    pHttpHeader hdr;
+    int i;
+
+	/** Loop through, removing and freeing the headers **/
+	while (xa->nItems)
+	    {
+	    hdr = (pHttpHeader)xaGetItem(xa, xa->nItems - 1);
+	    if (hdr)
+		{
+		if (hdr->ValueAlloc)
+		    nmSysFree(hdr->Value);
+		nmFree(hdr, sizeof(HttpHeader));
+		}
+	    xaRemoveItem(xa, xa->nItems - 1);
+	    }
+
+    return 0;
+    }
+
+
+/*** nht_internal_GetHeader - find a header with the given name
+ ***/
+char*
+nht_internal_GetHeader(pXArray xa, char* name)
+    {
+    int i;
+    pHttpHeader hdr;
+
+	/** Loop through array **/
+	for(i=0;i<xa->nItems;i++)
+	    {
+	    hdr = (pHttpHeader)xa->Items[i];
+	    if (!strcasecmp(hdr->Name, name))
+		return hdr->Value;
+	    }
+
+    return NULL;
+    }
+
+
 /*** error exit handler -- does not return
  ***/
 void
@@ -963,10 +1058,21 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	find_inf = stLookup_ne(url_inf,"cx__akey");
 	if (find_inf)
 	    {
+	    /** VerifyAKey returns success if the session token matches.  We
+	     ** need the group and app tokens to match too for full security
+	     ** authorization.
+	     **/
 	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
 		{
-		cxssAddEndorsement("system:from_application", "*");
-		akey_match = 1;
+		if (group && app) 
+		    {
+		    cxssAddEndorsement("system:from_application", "*");
+		    akey_match = 1;
+		    }
+		if (group)
+		    {
+		    cxssAddEndorsement("system:from_appgroup", "*");
+		    }
 		}
 	    }
 

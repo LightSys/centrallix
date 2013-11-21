@@ -1344,6 +1344,7 @@ start(void* v)
 
 	/** Open a session **/
 	s = objOpenSession("/");
+	cxssPushContext();
 
 	/** -C cmd provided on command line? **/
 	if (TESTOBJ.Command[0])
@@ -1407,6 +1408,7 @@ start(void* v)
 	    if (!inbuf)
 	        {
 		printf("quit\n");
+		objCloseSession(s);
 		thExit();
 		}
 
@@ -1414,6 +1416,7 @@ start(void* v)
 	    if (rval == 1) break;
 	    }
 
+	cxssPopContext();
 	objCloseSession(s);
 
     thExit();

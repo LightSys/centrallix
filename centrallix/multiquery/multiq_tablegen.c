@@ -531,7 +531,11 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    tmp_obj = md->SavedObjList[i];
 		    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
 		    stmt->Query->ObjList->Objects[i] = tmp_obj;
-		    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) objClose(md->SavedObjList[i]);
+		    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
+			{
+			objClose(md->SavedObjList[i]);
+			md->SavedObjList[i] = NULL;
+			}
 		    }
 		expAllObjChanged(stmt->Query->ObjList);
 		md->nObjects = 0;
@@ -633,6 +637,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    /** Is this a group-end?  Return now if so. **/
 		    if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || qe->Children.nItems == 0 || !cld)
 			{
+			/** Restore saved objects **/
 			for(i=0;i<md->nObjects;i++)
 			    {
 			    tmp_obj = md->SavedObjList[i];
@@ -647,9 +652,16 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			}
 		    else
 			{
-			for(i=0;i<md->nObjects;i++) 
+			/** Not end of group, unlink our saved objects and go around again **/
+			for(i=0;i<md->nObjects;i++)
+			    {
 			    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) 
+				{
 				objClose(md->SavedObjList[i]);
+				md->SavedObjList[i] = NULL;
+				}
+			    }
+			md->nObjects = 0;
 			}
 		    }
 
@@ -679,7 +691,11 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			tmp_obj = md->SavedObjList[i];
 			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
 			stmt->Query->ObjList->Objects[i] = tmp_obj;
-			if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) objClose(md->SavedObjList[i]);
+			if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
+			    {
+			    objClose(md->SavedObjList[i]);
+			    md->SavedObjList[i] = NULL;
+			    }
 			}
 		    expAllObjChanged(stmt->Query->ObjList);
 		    md->nObjects = 0;
@@ -699,6 +715,39 @@ mqtFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement cld;
     int i;
+    pMQTData md = (pMQTData)(qe->PrivateData);
+    pObject tmp_obj;
+
+	/** Restore a saved object list? **/
+	if (md->nObjects != 0 && qe->IterCnt > 0)
+	    {
+	    for(i=0;i<md->nObjects;i++)
+		{
+		tmp_obj = md->SavedObjList[i];
+		md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+		stmt->Query->ObjList->Objects[i] = tmp_obj;
+		if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
+		    {
+		    objClose(md->SavedObjList[i]);
+		    md->SavedObjList[i] = NULL;
+		    }
+		}
+	    expAllObjChanged(stmt->Query->ObjList);
+	    md->nObjects = 0;
+	    }
+
+#if 00
+	/** Unlink saved objects, if query got interrupted **/
+	for(i=0;i<md->nObjects;i++)
+	    {
+	    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) 
+		{
+		objClose(md->SavedObjList[i]);
+		md->SavedObjList[i] = NULL;
+		}
+	    md->nObjects = 0;
+	    }
+#endif
 
     	/** Trickle down the Finish to the child objects **/
 	for(i=0;i<qe->Children.nItems;i++)

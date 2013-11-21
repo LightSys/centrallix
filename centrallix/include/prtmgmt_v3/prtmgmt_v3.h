@@ -41,6 +41,9 @@
 #define PRT_XY_CORRECTION_FACTOR	(72.0/120.0)
 #define PRT_FP_FUDGE			(0.000001)
 
+/*#define PRT_DEBUG(...)	printf(__VA_ARGS__)*/
+#define PRT_DEBUG(...)
+
 
 /*** Layout Manager Structure ***/
 typedef struct _PLM
@@ -459,6 +462,7 @@ int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, vo
 int prt_internal_DispatchEvents(pPrtSession s);
 int prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb);
 int prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset);
+int prt_internal_GetPixelDirect(pPrtImage img, int x, int y);
 double prtInnerWidth(pPrtObjStream obj);
 double prtInnerHeight(pPrtObjStream obj);
 

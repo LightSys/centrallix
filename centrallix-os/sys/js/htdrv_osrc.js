@@ -137,7 +137,7 @@ function osrc_query_text_handler(aparam)
     var sel_re = /^\s*(set\s+rowcount\s+[0-9]+\s+)?select\s+/i;
     var is_select = sel_re.test(this.sql);
 
-    if (this.use_having)
+    if (this.use_having || aparam.use_having)
 	var sep = ' HAVING ';
     else
 	var sep = ' WHERE ';

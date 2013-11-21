@@ -379,6 +379,7 @@ cxInitialize(void* v)
 	uxuInitialize();			/* UNIX users list driver */
 	audInitialize();			/* Audio file player driver */
 	lnkInitialize();			/* Symlink driver */
+	jsonInitialize();			/* JSON data driver */
 
 	/** Init the reporting content drivers **/
 #if 0

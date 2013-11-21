@@ -522,7 +522,6 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    if (src[2] == '=' && src[3] == '=')
 	        {
 		cursor += 1;
-		src += 4;
 		break;
 		}
 	    ptr = strchr(b64,src[2]);
@@ -539,7 +538,6 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    if (src[3] == '=')
 	        {
 		cursor += 2;
-		src += 4;
 		break;
 		}
 	    ptr = strchr(b64,src[3]);
@@ -552,7 +550,8 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    src += 4;
 	    cursor += 3;
 	    }
-	    *dst_offset = *dst_offset + cursor - *dst;
+
+	*dst_offset = *dst_offset + cursor - *dst;
 
     return cursor - *dst;
     }
@@ -1115,12 +1114,15 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 						}
 					    break;
 					    }
-					if (quote) maxdst -= 2;
-					if (maxdst < 0)
+					if (quote)
 					    {
-					    QPERR(QPF_ERR_T_BADFORMAT);
-					    rval = -EINVAL;
-					    goto error;
+					    if (maxdst < 2)
+						{
+						QPERR(QPF_ERR_T_BADFORMAT);
+						rval = -EINVAL;
+						goto error;
+						}
+					    maxdst -= 2;
 					    }
 					if (quote)
 					    {
