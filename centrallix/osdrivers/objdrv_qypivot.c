@@ -1817,7 +1817,7 @@ qypInitialize()
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"QYP - QueryPivot Translation Driver");
-	drv->Capabilities = OBJDRV_C_FULLQUERY;
+	drv->Capabilities = OBJDRV_C_TRANS | OBJDRV_C_FULLQUERY;
 	xaInit(&(drv->RootContentTypes),16);
 	xaAddItem(&(drv->RootContentTypes),"system/querypivot");
 
