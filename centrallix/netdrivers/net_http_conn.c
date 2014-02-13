@@ -203,7 +203,7 @@ nht_internal_ConnHandler(void* conn_v)
 	/** Parse the HTTP Headers... **/
 	if (nht_internal_ParseHeaders(conn) < 0)
 	    {
-	    if (cxssStatTLS(conn->ReportingFD, sbuf, sizeof(sbuf)) >= 0)
+	    if (conn->ReportingFD != NULL && cxssStatTLS(conn->ReportingFD, sbuf, sizeof(sbuf)) >= 0)
 		msg = sbuf;
 	    else
 		msg = "Error parsing headers";
