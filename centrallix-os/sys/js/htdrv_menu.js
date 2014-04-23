@@ -147,7 +147,12 @@ function mn_popup(aparam)
 function mn_activate(x,y,p)
     {
     if (!this.popup) return false;
+    if (x + getClipWidth(this) > getInnerWidth())
+	x = getInnerWidth() - getClipWidth(this);
+    if (y + getClipHeight(this) > getInnerHeight())
+	y = getInnerHeight() - getClipHeight(this);
     moveTo(this, x, y);
+    //pg_positionpopup(this, x, y, getClipHeight(p), getClipWidth(p));
     pg_stackpopup(this, p);
     this.nextActive = null;
     if (p.kind == "mn") p.nextActive = this;
