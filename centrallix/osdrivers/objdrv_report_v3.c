@@ -25,6 +25,7 @@
 #include "centrallix.h"
 #include "cxlib/util.h"
 #include "cxss/cxss.h"
+#include "obfuscate.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -71,6 +72,7 @@ typedef struct
     pObjSession		ObjSess;
     pStructInf		HeaderInf;
     pStructInf		FooterInf;
+    void*		Inf;	/* pRptData */
     }
     RptSession, *pRptSession;
 
@@ -87,9 +89,11 @@ typedef struct
 /*** Structure used by this driver internally. ***/
 typedef struct 
     {
-    char	Pathname[256];
-    char	DownloadAs[256];
+    char	Pathname[OBJSYS_MAX_PATH];
+    char	DownloadAs[OBJSYS_MAX_PATH];
     char	ContentType[64];
+    char	ObKey[64];
+    char	ObRulefile[OBJSYS_MAX_PATH];
     int		Flags;
     int		LinkCnt;
     pObject	Obj;
@@ -111,6 +115,7 @@ typedef struct
     XArray	UserDataSlots;
     int		NextUserDataSlot;
     int		NameIndex;
+    pObfSession	ObfuscationSess;
     }
     RptData, *pRptData;
 
@@ -129,7 +134,7 @@ typedef struct
     {
     pRptData	ObjInf;
     pObjQuery	Query;
-    char	NameBuf[256];
+    char	NameBuf[OBJSYS_MAX_PATH];
     char*	QyText;
     pObject	LLQueryObj;
     pObjQuery	LLQuery;
@@ -157,6 +162,7 @@ typedef struct
     int		InnerExecCnt;
     int		IsInnerOuter;
     char*	DataBuf;
+    pRptData	Inf;
     }
     QueryConn, *pQueryConn;
 
@@ -204,7 +210,7 @@ int rpt_internal_DoField(pRptData, pStructInf, pRptSession, pQueryConn);
 int rpt_internal_DoComment(pRptData, pStructInf, pRptSession);
 int rpt_internal_DoData(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoForm(pRptData, pStructInf, pRptSession, int container_handle);
-int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle);
+int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle, char* attrname, char* typename);
 int rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, double dl, double dr);
 
 
@@ -600,6 +606,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     pStructInf subitem;
     int rval;
     void* data_buf = NULL;
+    ObjData od;
 
     	/** Search for aggregates first. **/
 	n = 0;
@@ -618,26 +625,33 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 				attrname, datatype, exp->DataType);
 			return -1;
 			}
-		    if (!was_null) switch(exp->DataType)
-		        {
-			case DATA_T_INTEGER:	data_ptr->Integer = exp->Integer; break;
-			case DATA_T_DOUBLE:	data_ptr->Double = exp->Types.Double; break;
-			case DATA_T_STRING: 
-			    data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
-			    data_ptr->String = data_buf;
-			    strcpy(data_buf, exp->String);
-			    break;
-			case DATA_T_MONEY: 
-			    data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
-			    memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
-			    data_ptr->Money = (pMoneyType)(data_buf);
-			    break;
-			case DATA_T_DATETIME: 
-			    data_buf = (char*)nmSysMalloc(sizeof(DateTime));
-			    memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
-			    data_ptr->DateTime = (pDateTime)(data_buf);
-			    break;
-			default: return -1;
+		    if (!was_null)
+			{
+			switch(exp->DataType)
+			    {
+			    case DATA_T_INTEGER:
+				data_ptr->Integer = exp->Integer;
+				break;
+			    case DATA_T_DOUBLE:
+				data_ptr->Double = exp->Types.Double;
+				break;
+			    case DATA_T_STRING: 
+				data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
+				data_ptr->String = data_buf;
+				strcpy(data_buf, exp->String);
+				break;
+			    case DATA_T_MONEY: 
+				data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
+				memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
+				data_ptr->Money = (pMoneyType)(data_buf);
+				break;
+			    case DATA_T_DATETIME: 
+				data_buf = (char*)nmSysMalloc(sizeof(DateTime));
+				memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
+				data_ptr->DateTime = (pDateTime)(data_buf);
+				break;
+			    default: return -1;
+			    }
 			}
 		    if (qy->AggregateDoReset.Items[n])
 		        {
@@ -679,7 +693,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     	/** Return 1 if object is NULL. **/
 	if (obj == NULL) return 1;
 
-    rval = objGetAttrValue(obj, attrname, datatype, data_ptr);
+	rval = objGetAttrValue(obj, attrname, datatype, data_ptr);
     /*if (!strcmp(qy->Name, "summary2_qy"))
 	{
 	if (rval == 0)
@@ -687,6 +701,42 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 	else
 	    printf("%s: null\n", attrname);
 	}*/
+
+	/** Obfuscate data? **/
+	/*if (qy->Inf->ObfuscationSess && rval == 0)
+	    {
+	    switch(datatype)
+		{
+		case DATA_T_INTEGER:
+		    obfObfuscateDataSess(qy->Inf->ObfuscationSess, data_ptr, &od, DATA_T_INTEGER, attrname, NULL, qy->Name);
+		    data_ptr->Integer = od.Integer;
+		    break;
+		case DATA_T_DOUBLE:
+		    obfObfuscateDataSess(qy->Inf->ObfuscationSess, data_ptr, &od, DATA_T_DOUBLE, attrname, NULL, qy->Name);
+		    data_ptr->Double = od.Double;
+		    break;
+		case DATA_T_STRING:
+		    obfObfuscateDataSess(qy->Inf->ObfuscationSess, data_ptr, &od, DATA_T_STRING, attrname, NULL, qy->Name);
+		    if (qy->DataBuf) nmSysFree(qy->DataBuf);
+		    data_ptr->String = qy->DataBuf = nmSysStrdup(od.String);
+		    break;
+		case DATA_T_MONEY:
+		    obfObfuscateDataSess(qy->Inf->ObfuscationSess, data_ptr, &od, DATA_T_MONEY, attrname, NULL, qy->Name);
+		    if (qy->DataBuf) nmSysFree(qy->DataBuf);
+		    qy->DataBuf = nmSysMalloc(sizeof(MoneyType));
+		    data_ptr->Money = (pMoneyType)qy->DataBuf;
+		    memcpy(data_ptr->Money, od.Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME:
+		    obfObfuscateDataSess(qy->Inf->ObfuscationSess, data_ptr, &od, DATA_T_DATETIME, attrname, NULL, qy->Name);
+		    if (qy->DataBuf) nmSysFree(qy->DataBuf);
+		    qy->DataBuf = nmSysMalloc(sizeof(DateTime));
+		    data_ptr->DateTime = (pDateTime)qy->DataBuf;
+		    memcpy(data_ptr->DateTime, od.DateTime, sizeof(DateTime));
+		    break;
+		}
+	    }*/
+
     return rval;
     }
 
@@ -2086,9 +2136,11 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
  *** value.
  ***/
 int
-rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle)
+rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle, char* attrname, char* typename)
     {
     pXString str_data;
+    ObjData od1, od2;
+    pRptData inf = (pRptData)rs->Inf;
 
 	/** Check the evaluated result value and output it in the report. **/
 	str_data = (pXString)nmMalloc(sizeof(XString));
@@ -2096,22 +2148,31 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handl
 	xsCopy(str_data,"",-1);
 	if (!(exp->Flags & EXPR_F_NULL))
 	    {
+	    if (inf->ObfuscationSess)
+		{
+		expExpressionToPod(exp, exp->DataType, &od1);
+		obfObfuscateDataSess(inf->ObfuscationSess, &od1, &od2, exp->DataType, attrname, NULL, typename);
+		}
+	    else
+		{
+		expExpressionToPod(exp, exp->DataType, &od2);
+		}
 	    switch(exp->DataType)
 	        {
                 case DATA_T_INTEGER:
-                    objDataToString(str_data, exp->DataType, &(exp->Integer), 0);
+                    objDataToString(str_data, exp->DataType, &(od2.Integer), 0);
                     break;
                 case DATA_T_DOUBLE:
-                    objDataToString(str_data, exp->DataType, &(exp->Types.Double), 0);
+                    objDataToString(str_data, exp->DataType, &(od2.Double), 0);
                     break;
                 case DATA_T_STRING:
-                    objDataToString(str_data, exp->DataType, exp->String, 0);
+                    objDataToString(str_data, exp->DataType, od2.String, 0);
                     break;
                 case DATA_T_MONEY:
-                    objDataToString(str_data, exp->DataType, &(exp->Types.Money), 0);
+                    objDataToString(str_data, exp->DataType, od2.Money, 0);
                     break;
                 case DATA_T_DATETIME:
-                    objDataToString(str_data, exp->DataType, &(exp->Types.Date), 0);
+                    objDataToString(str_data, exp->DataType, od2.DateTime, 0);
                     break;
                 case DATA_T_INTVEC:
                     objDataToString(str_data, exp->DataType, &(exp->Types.IntVec), 0);
@@ -2242,7 +2303,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
 		/** Output the result **/
 		prtSetDataHints(container_handle, ud->Exp->DataType, 0);
-		rpt_internal_WriteExpResult(rs, ud->Exp, container_handle);
+		rpt_internal_WriteExpResult(rs, ud->Exp, container_handle, data->Name, NULL);
 		}
 	    else
 		{
@@ -3468,6 +3529,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	/** Ok, now look through the request for queries, comments, tables, forms **/
 	xhInit(&queries, 31, 0);
 	rs = (pRptSession)nmMalloc(sizeof(RptSession));
+	rs->Inf = (void*)inf;
 	rs->PSession = ps;
 	rs->FD = out_fd;
 	rs->Queries = &queries;
@@ -3556,6 +3618,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		    qc=(pQueryConn)nmMalloc(sizeof(QueryConn));
 		    if (!qc) break;
 		    qc->UserInf = subreq;
+		    qc->Inf = inf;
 		    ptr=NULL;
 		    /*if (stAttrValue(stLookup(subreq,"name"),NULL,&ptr,0) < 0) continue;*/
 		    qc->Name = subreq->Name;
@@ -3910,6 +3973,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pStructInf find_inf;
     char* ptr;
     char* endorsement_name;
+    int obfuscating = 0;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
 	/*if (obj->SubPtr != obj->Pathname->nElements)
@@ -4000,6 +4064,13 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		t = DATA_T_STRING;
 		if (inf->Version == 2)
 		    {
+		    if (!strcmp(paramdata->SubInf[i]->Name, "rpt__obkey"))
+			{
+			obfuscating = 1;
+			strtcpy(inf->ObKey, paramdata->SubInf[i]->StrVal, sizeof(inf->ObKey));
+			}
+		    else if (!strcmp(paramdata->SubInf[i]->Name, "rpt__obrulefile"))
+			strtcpy(inf->ObRulefile, paramdata->SubInf[i]->StrVal, sizeof(inf->ObRulefile));
 		    find_inf = stLookup(inf->Node->Data, paramdata->SubInf[i]->Name);
 		    if (find_inf && stStructType(find_inf) == ST_T_SUBGROUP && !strcmp(find_inf->UsrType, "report/parameter"))
 			{
@@ -4024,6 +4095,10 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		}
 	    }
 
+	/** Obfuscating data? (for test/demo purposes) **/
+	if (obfuscating)
+	    inf->ObfuscationSess = obfOpenSession(inf->Obj->Session, inf->ObRulefile, inf->ObKey);
+
 	/** Lookup forced content type param **/
 	if ((ct_param = rpt_internal_GetParam(inf, "document_format")) != NULL)
 	    {
@@ -4046,6 +4121,9 @@ int
 rptClose(void* inf_v, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
+
+	if (inf->ObfuscationSess)
+	    obfCloseSession(inf->ObfuscationSess);
 
     	/** Is the worker thread running?? **/
 	if (inf->MasterFD != NULL)

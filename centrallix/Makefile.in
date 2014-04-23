@@ -68,7 +68,8 @@ XSUPPORT=stparse.o \
 	 ptod.o	\
 	 param.o \
 	 iface.o \
-	 endorsement_utils.o
+	 endorsement_utils.o \
+	 obfuscate.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
