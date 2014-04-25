@@ -26,6 +26,7 @@
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
+#include "obfuscate.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -72,13 +73,16 @@ pObjSession s;
 
 struct
     {
-    char    UserName[32];
-    char    Password[32];
-    char    CmdFile[256];
-    pFile   Output;
-    char    OutputFilename[256];
-    char    Command[1024];
-    unsigned int WaitSecs;
+    char		UserName[32];
+    char		Password[32];
+    char		CmdFile[256];
+    pFile		Output;
+    char		OutputFilename[256];
+    char		Command[1024];
+    unsigned int	WaitSecs;
+    pObfSession		ObfuscationSession;
+    char		ObfRuleFile[256];
+    char		ObfKey[256];
     }
     TESTOBJ;
 
@@ -538,7 +542,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     pMoneyType m;
     MoneyType mval;
     pObjData pod;
-    ObjData od;
+    ObjData od, od2;
     int use_srctype;
     char mname[64];
     char mparam[256];
@@ -553,6 +557,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     int name_was_null;
     XString xs;
     int did_alloc;
+    int rval;
 
 	    /** Just a comment? **/
 	    if (cmd[0] == '#')
@@ -633,9 +638,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    for(i=0;i<n_attrs;i++)
 			{
 			attrtypes[i] = objGetAttrType(obj,attrnames[i]);
-			if (objGetAttrValue(obj, attrnames[i], attrtypes[i], &od) == 0)
+			if (attrtypes[i] >= 0 && objGetAttrValue(obj, attrnames[i], attrtypes[i], &od2) == 0)
 			    {
-			    if (attrtypes [i] == DATA_T_CODE)
+			    if (TESTOBJ.ObfuscationSession)
+				obfObfuscateDataSess(TESTOBJ.ObfuscationSession, &od2, &od, attrtypes[i], attrnames[i], NULL, NULL);
+			    else
+				memcpy(&od, &od2, sizeof(ObjData));
+			    if (attrtypes[i] == DATA_T_CODE)
 				ptr = NULL;
 			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE)
 				ptr = objDataToStringTmp(attrtypes[i], &od, 0);
@@ -722,6 +731,49 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    for(attrname=objGetFirstAttr(obj);attrname;attrname=objGetNextAttr(obj))
 		        {
 			type = objGetAttrType(obj,attrname);
+			if (type > 0)
+			    {
+			    rval = objGetAttrValue(obj, attrname, type, &od2);
+			    if (TESTOBJ.ObfuscationSession)
+				obfObfuscateDataSess(TESTOBJ.ObfuscationSession, &od2, &od, type, attrname, NULL, NULL);
+			    else
+				memcpy(&od, &od2, sizeof(ObjData));
+			    fdPrintf(TESTOBJ.Output, "Attribute [%s]: %8.8s  ", attrname, obj_type_names[type]);
+			    if (rval == 1)
+				{
+				fdPrintf(TESTOBJ.Output, "NULL");
+				}
+			    else
+				{
+				switch(type)
+				    {
+				    case DATA_T_INTEGER:
+				    case DATA_T_DOUBLE:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, &od, 0));
+					break;
+
+				    case DATA_T_STRING:
+				    case DATA_T_DATETIME:
+				    case DATA_T_MONEY:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.Generic, DATA_F_QUOTED));
+					break;
+
+				    case DATA_T_BINARY:
+					fdPrintf(TESTOBJ.Output,"%d bytes: ", od.Binary.Size);
+					for(i=0;i<od.Binary.Size;i++)
+					    {
+					    fdPrintf(TESTOBJ.Output,"%2.2x  ", od.Binary.Data[i]);
+					    }
+					break;
+
+				    default:
+					fdPrintf(TESTOBJ.Output, "<unsupported type>");
+					break;
+				    }
+				}
+			    fdPrintf(TESTOBJ.Output, "\n");
+			    }
+#if 00
 			switch(type)
 			    {
 			    case DATA_T_INTEGER:
@@ -768,6 +820,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  MONEY  %s\n", attrname, objDataToStringTmp(type, m, 0));
 				break;
 			    }
+#endif
 			}
 		    objClose(obj);
 		    }
@@ -1227,6 +1280,26 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
 		    }
 		}
+	    else if (!strcmp(cmdname,"obfuscate"))
+		{
+		if (!ptr) ptr = "";
+		if (TESTOBJ.ObfuscationSession)
+		    {
+		    obfCloseSession(TESTOBJ.ObfuscationSession);
+		    TESTOBJ.ObfuscationSession = NULL;
+		    }
+		strtcpy(TESTOBJ.ObfKey, ptr, sizeof(TESTOBJ.ObfKey));
+		ptr = strchr(TESTOBJ.ObfKey, ',');
+		if (ptr)
+		    {
+		    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
+		    *ptr = '\0';
+		    }
+		if (*TESTOBJ.ObfKey)
+		    {
+		    TESTOBJ.ObfuscationSession = obfOpenSession(s, TESTOBJ.ObfRuleFile, TESTOBJ.ObfKey);
+		    }
+		}
 	    else if (!strcmp(cmdname,"crash"))
 		{
 		raise(SIGSEGV);
@@ -1246,22 +1319,23 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
-		printf("  annot    - Add or change the annotation on an object.\n");
-		printf("  cd       - Change the current working \"directory\" in the objectsystem.\n");
-		printf("  copy     - Copy one object's content to another.\n");
-		printf("  create   - Create a new object.\n");
-		printf("  csv      - Run a SQL query and print the results in CSV format.\n");
-		printf("  delete   - Delete an object.\n");
-		printf("  exec     - Call a method on an object.\n");
-		printf("  hints    - Show the presentation hints of an attribute (or object)\n");
-		printf("  help     - Displays this help screen.\n");
-		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
-		printf("  mlquery  - Runs a SQL query, reading in multiple lines until a blank line.\n");
-		printf("  output   - Change where output goes.\n");
-		printf("  print    - Displays an object's content.\n");
-		printf("  query    - Runs a SQL query.\n");
-		printf("  quit     - Exits this application.\n");
-		printf("  show     - Displays an object's attributes and methods.\n");
+		printf("  annot     - Add or change the annotation on an object.\n");
+		printf("  cd        - Change the current working \"directory\" in the objectsystem.\n");
+		printf("  copy      - Copy one object's content to another.\n");
+		printf("  create    - Create a new object.\n");
+		printf("  csv       - Run a SQL query and print the results in CSV format.\n");
+		printf("  delete    - Delete an object.\n");
+		printf("  exec      - Call a method on an object.\n");
+		printf("  hints     - Show the presentation hints of an attribute (or object)\n");
+		printf("  help      - Displays this help screen.\n");
+		printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
+		printf("  mlquery   - Runs a SQL query, reading in multiple lines until a blank line.\n");
+		printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
+		printf("  output    - Change where output goes.\n");
+		printf("  print     - Displays an object's content.\n");
+		printf("  query     - Runs a SQL query.\n");
+		printf("  quit      - Exits this application.\n");
+		printf("  show      - Displays an object's attributes and methods.\n");
 		}
 	    else
 		{
@@ -1428,16 +1502,18 @@ show_usage()
     {
     printf("Usage:  test_obj [-c <config-file>] [-f <command-file>] [-C <command>]\n"
 	   "                 [-u <user>] [-p <password>] [-q] [-o <output file>] \n"
+	   "                 [-O obfkey[,obfrulefile] ]\n"
 	   "                 [-i <wait-seconds>] [-h]\n"
-	   "        -h         Show this message\n"
-	   "        -q         Initialize quietly\n"
-	   "        -c file    Specify configuration file\n"
-	   "        -C command Run a single command\n"
-	   "        -f file    Run commands from a file\n"
-	   "        -u user    Login as user\n"
-	   "        -p pass    Specify password\n"
-	   "        -o file    Send output to specified file\n"
-	   "        -i secs    Terminate test_obj after secs with SIGALRM\n"
+	   "        -h            Show this message\n"
+	   "        -q            Initialize quietly\n"
+	   "        -c file       Specify configuration file\n"
+	   "        -C command    Run a single command\n"
+	   "        -f file       Run commands from a file\n"
+	   "        -u user       Login as user\n"
+	   "        -p pass       Specify password\n"
+	   "        -o file       Send output to specified file\n"
+	   "        -i secs       Terminate test_obj after secs with SIGALRM\n"
+	   "	    -O key[,file] Obfuscate CSV and query output data with a given key and optional rule file\n"
 	   "\n");
     return;
     }
@@ -1447,6 +1523,7 @@ int
 main(int argc, char* argv[])
     {
     int ch;
+    char* ptr;
 
 	/** Default global values **/
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
@@ -1459,7 +1536,7 @@ main(int argc, char* argv[])
 	TESTOBJ.WaitSecs = 0;
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:")) > 0)
+	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:O:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -1485,6 +1562,15 @@ main(int argc, char* argv[])
 				break;
 
 		case 'o':	strtcpy(TESTOBJ.OutputFilename, optarg, sizeof(TESTOBJ.OutputFilename));
+				break;
+
+		case 'O':	strtcpy(TESTOBJ.ObfKey, optarg, sizeof(TESTOBJ.ObfKey));
+				ptr = strchr(TESTOBJ.ObfKey, ',');
+				if (ptr)
+				    {
+				    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
+				    *ptr = '\0';
+				    }
 				break;
 
 		case 'h':	show_usage();

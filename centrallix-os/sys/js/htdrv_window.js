@@ -103,6 +103,8 @@ function wn_init(param)
     l.ifcProbe(ifAction).Add("Open", wn_openwin);
     l.ifcProbe(ifAction).Add("Close", wn_closewin);
     l.ifcProbe(ifAction).Add("Popup", wn_popup);
+    l.ifcProbe(ifAction).Add("Shade", wn_action_shade);
+    l.ifcProbe(ifAction).Add("Unshade", wn_action_unshade);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -212,6 +214,18 @@ function wn_showcontainer()
     wn_bring_top(this);
     if (this.is_toplevel) return false; /* prevent bubble up if made toplevel */
     return true;
+    }
+
+function wn_action_shade()
+    {
+    if (!this.shaded)
+	wn_windowshade(this);
+    }
+
+function wn_action_unshade()
+    {
+    if (this.shaded)
+	wn_windowshade(this);
     }
 
 // Called when our reveal/obscure request has been acted upon.

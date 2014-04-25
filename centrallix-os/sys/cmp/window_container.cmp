@@ -13,10 +13,14 @@ window_container "widget/component-decl"
     Open "widget/component-decl-action" { }
     OpenModal "widget/component-decl-action" { }
     Close "widget/component-decl-action" { }
+    Shade "widget/component-decl-action" { }
+    Unshade "widget/component-decl-action" { }
 
     open_cn "widget/connector" { event="Open"; target=mainwin; action="Open"; Cascade=1; }
     openmodal_cn "widget/connector" { event="OpenModal"; target=mainwin; action="Open"; IsModal=1; }
     close_cn "widget/connector" { event="Close"; target=mainwin; action="Close"; }
+    shade_cn "widget/connector" { event="Shade"; target=mainwin; action="Shade"; }
+    unshade_cn "widget/connector" { event="Unshade"; target=mainwin; action="Unshade"; }
 
     visual = yes;
     width=1024;
