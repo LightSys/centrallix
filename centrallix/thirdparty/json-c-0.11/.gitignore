@@ -1,6 +1,5 @@
 *~
 *.swp
-/INSTALL
 .deps/
 .libs/
 /autom4te.cache
