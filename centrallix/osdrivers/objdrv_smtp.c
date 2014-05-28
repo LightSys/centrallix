@@ -55,206 +55,206 @@
 /*									*/
 /************************************************************************/
 
-/*** emlOpen - open an object.
+/*** smtpOpen - open an object.
  ***/
 void*
-emlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
 	return NULL;
     }
 
 
-/*** emlClose - close an open object.
+/*** smtpClose - close an open object.
  ***/
 int
-emlClose(void* inf_v, pObjTrxTree* oxt)
+smtpClose(void* inf_v, pObjTrxTree* oxt)
     {
     return 0;
     }
 
 
-/*** emlCreate - create a new object, without actually returning a
+/*** smtpCreate - create a new object, without actually returning a
  *** descriptor for it.  For most drivers, it is safe to just call
  *** the Open method with create/exclude set, and then close the
  *** object immediately.
  ***/
 int
-emlCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     return -1;
     }
 
 
-/*** emlDelete - delete an existing object.  For most drivers, it works to
+/*** smtpDelete - delete an existing object.  For most drivers, it works to
  *** call open() first to make sure the thing exists and get information
  *** on it, and then "handle the close a bit differently" :)
  ***/
 int
-emlDelete(pObject obj, pObjTrxTree* oxt)
+smtpDelete(pObject obj, pObjTrxTree* oxt)
     {
     /** Unimplemented **/
     return -1;
     }
 
 
-/*** emlRead - Read from the JSON element
+/*** smtpRead - Read from the JSON element
  ***/
 int
-emlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
+smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     error:
 	return -1;
     }
 
 
-/*** emlWrite - Write to the JSON element
+/*** smtpWrite - Write to the JSON element
  ***/
 int
-emlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
+smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     return -1;
     }
 
 
-/*** emlOpenQuery - open a directory query.  This driver is pretty 
+/*** smtpOpenQuery - open a directory query.  This driver is pretty 
  *** unintelligent about queries.  So, we leave the query matching logic
  *** to the ObjectSystem management layer in this case.
  ***/
 void*
-emlOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
+smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
         return NULL;
     }
 
 
-/*** emlQueryFetch - get the next directory entry as an open object.
+/*** smtpQueryFetch - get the next directory entry as an open object.
  ***/
 void*
-emlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
+smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
    return NULL;
     }
 
 
-/*** emlQueryClose - close the query.
+/*** smtpQueryClose - close the query.
  ***/
 int
-emlQueryClose(void* qy_v, pObjTrxTree* oxt)
+smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     return 0;
     }
 
 
-/*** emlGetAttrType - get the type (DATA_T_json) of an attribute by name.
+/*** smtpGetAttrType - get the type (DATA_T_json) of an attribute by name.
  ***/
 int
-emlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
+smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     return -1;
     }
 
 
-/*** emlGetAttrValue - get the value of an attribute by name.  The 'val'
+/*** smtpGetAttrValue - get the value of an attribute by name.  The 'val'
  *** pointer must point to an appropriate data type.
  ***/
 int
-emlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
+smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     return 1; /* null if not there presently */
     }
 
 
-/*** emlGetNextAttr - get the next attribute name for this object.
+/*** smtpGetNextAttr - get the next attribute name for this object.
  ***/
 char*
-emlGetNextAttr(void* inf_v, pObjTrxTree oxt)
+smtpGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
         return NULL;
     }
 
 
-/*** emlGetFirstAttr - get the first attribute name for this object.
+/*** smtpGetFirstAttr - get the first attribute name for this object.
  ***/
 char*
-emlGetFirstAttr(void* inf_v, pObjTrxTree oxt)
+smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
         return ptr;
     }
 
 
-/*** emlSetAttrValue - sets the value of an attribute.  'val' must
+/*** smtpSetAttrValue - sets the value of an attribute.  'val' must
  *** point to an appropriate data type.
  ***/
 int
-emlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
+smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }
 
 
-/*** emlAddAttr - add an attribute to an object.  This doesn't always work
+/*** smtpAddAttr - add an attribute to an object.  This doesn't always work
  *** for all object types, and certainly makes no sense for some (like unix
  *** files).
  ***/
 int
-emlAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     {
     return -1;
     }
 
 
-/*** emlOpenAttr - open an attribute as if it were an object with content.
+/*** smtpOpenAttr - open an attribute as if it were an object with content.
  *** Not all objects support this type of operation.
  ***/
 void*
-emlOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
+smtpOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     {
     return NULL;
     }
 
 
-/*** emlGetFirstMethod -- there are no methods yet, so this just always
+/*** smtpGetFirstMethod -- there are no methods yet, so this just always
  *** fails.
  ***/
 char*
-emlGetFirstMethod(void* inf_v, pObjTrxTree oxt)
+smtpGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     {
     return NULL;
     }
 
 
-/*** emlGetNextMethod -- same as above.  Always fails. 
+/*** smtpGetNextMethod -- same as above.  Always fails. 
  ***/
 char*
-emlGetNextMethod(void* inf_v, pObjTrxTree oxt)
+smtpGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
     return NULL;
     }
 
 
-/*** emlExecuteMethod - No methods to execute, so this fails.
+/*** smtpExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-emlExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
+smtpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }
 
 
-/*** emlInfo - Return the capabilities of the object
+/*** smtpInfo - Return the capabilities of the object
  ***/
 int
-emlInfo(void* inf_v, pObjectInfo info)
+smtpInfo(void* inf_v, pObjectInfo info)
     {
     return 0;
     }
 
 
-/*** emlInitialize - initialize this driver, which also causes it to 
+/*** smtpInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
 int
-emlInitialize()
+smtpInitialize()
     {
     pObjDriver drv;
 
@@ -272,28 +272,28 @@ emlInitialize()
 	xaAddItem(&(drv->RootContentTypes),"message/rfc822");
 
 	/** Setup the function references. **/
-	drv->Open = emlOpen;
-	drv->Close = emlClose;
-	drv->Create = emlCreate;
-	drv->Delete = emlDelete;
-	drv->OpenQuery = emlOpenQuery;
+	drv->Open = smtpOpen;
+	drv->Close = smtpClose;
+	drv->Create = smtpCreate;
+	drv->Delete = smtpDelete;
+	drv->OpenQuery = smtpOpenQuery;
 	drv->QueryDelete = NULL;
-	drv->QueryFetch = emlQueryFetch;
-	drv->QueryClose = emlQueryClose;
-	drv->Read = emlRead;
-	drv->Write = emlWrite;
-	drv->GetAttrType = emlGetAttrType;
-	drv->GetAttrValue = emlGetAttrValue;
-	drv->GetFirstAttr = emlGetFirstAttr;
-	drv->GetNextAttr = emlGetNextAttr;
-	drv->SetAttrValue = emlSetAttrValue;
-	drv->AddAttr = emlAddAttr;
-	drv->OpenAttr = emlOpenAttr;
-	drv->GetFirstMethod = emlGetFirstMethod;
-	drv->GetNextMethod = emlGetNextMethod;
-	drv->ExecuteMethod = emlExecuteMethod;
+	drv->QueryFetch = smtpQueryFetch;
+	drv->QueryClose = smtpQueryClose;
+	drv->Read = smtpRead;
+	drv->Write = smtpWrite;
+	drv->GetAttrType = smtpGetAttrType;
+	drv->GetAttrValue = smtpGetAttrValue;
+	drv->GetFirstAttr = smtpGetFirstAttr;
+	drv->GetNextAttr = smtpGetNextAttr;
+	drv->SetAttrValue = smtpSetAttrValue;
+	drv->AddAttr = smtpAddAttr;
+	drv->OpenAttr = smtpOpenAttr;
+	drv->GetFirstMethod = smtpGetFirstMethod;
+	drv->GetNextMethod = smtpGetNextMethod;
+	drv->ExecuteMethod = smtpExecuteMethod;
 	drv->PresentationHints = NULL;
-	drv->Info = emlInfo;
+	drv->Info = smtpInfo;
 
 	/** nmRegister(sizeof(JsonData),"JsonData");
 

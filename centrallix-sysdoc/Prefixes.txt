@@ -4,7 +4,6 @@ aud	OSDriver - Linux OSS /dev/dsp audio (plays WAV files on ExecMethod)
 bar	BarCode generator module (for prt mgmt)
 dat	OSDriver - Flat data file (CSV/etc)
 ev	MTASK internal - event handling
-eml	OSDriver - E-mail
 exp	Expression compiler/parser/evaluator
 fd	MTASK Module file I/O
 fxp	PrtDriver - Epson-FX (text/x-epson-fx) output
@@ -54,6 +53,7 @@ prt	Printing management (for RPTs, etc)
 qyt	OSDriver - QueryTree
 root	Pseudo-OSDriver - Rootnode driver
 rpt	OSDriver - report generator
+smtp	OSDriver - SMTP (Simple Mail Transfer Protocol)
 sn	StructureFile Node management
 st	StructureFile parser/generator/management
 stx	OSDriver - plain structure file
