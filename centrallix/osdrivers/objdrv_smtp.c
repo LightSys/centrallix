@@ -1,9 +1,7 @@
 /**#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -16,6 +14,8 @@
 #include "config.h"
 #endif
 **/
+#include <string.h>
+#include "obj.h"
 #include "centrallix.h"
 #include <sys/types.h>
 
@@ -54,6 +54,23 @@
 /*		  functionality.*/
 /*									*/
 /************************************************************************/
+
+/*** Structure used by this driver internally. ***/
+typedef struct
+    {
+    pObject	Obj;
+    int		Mask;
+    pSnNode	Node;
+    }
+    SmtpData, *pSmtpData;
+
+/*** Structure used by queries in this driver. ***/
+typedef struct
+    {
+    pSmtpData	Data;
+    int		ItemCnt;
+    }
+    SmtpQueryData, *pSmtpQueryData;
 
 /*** smtpOpen - open an object.
  ***/
