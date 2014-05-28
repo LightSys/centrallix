@@ -1,21 +1,22 @@
-/**#include <stdio.h>
+/**
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "stparse.h"
-#include "st_node.h"
 #include "cxlib/mtsession.h"
-#include "cxlib/util.h"
-/** module definintions *
-#ifdef HAVE_CONFIG_H
+#include "cxlib/util.h" **/
+/** module definintions **/
+/**#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 **/
+#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "obj.h"
+#include "st_node.h"
+#include "cxlib/xarray.h"
 #include "centrallix.h"
 #include <sys/types.h>
 
@@ -55,14 +56,34 @@
 /*									*/
 /************************************************************************/
 
+/** Define types of SMTP objects. **/
+#define SMTP_T_ROOT	0
+#define SMTP_T_EML	1
+
+/*** Structure to store attribute information. ***/
+typedef struct
+    {
+    char*	Name;
+    int		Type; /* DATA_T_xxx */
+    ObjData	Value;
+    }
+    SmtpAttribute, *pSmtpAttribute;
+
+#define SMTP_ATTR(x) ((pSmtpAttribute)(x))
+
 /*** Structure used by this driver internally. ***/
 typedef struct
     {
-    pObject	Obj;
-    int		Mask;
-    pSnNode	Node;
+    int			Type;
+    char*		Name;
+    pObject		Obj;
+    int			Mask;
+    pSnNode		Node;
+    pXHashTable		Attributes; /* Hash of attribute name to SmtpAttribute. */
     }
     SmtpData, *pSmtpData;
+
+#define SMTP(x) ((pSmtpData)(x))
 
 /*** Structure used by queries in this driver. ***/
 typedef struct
@@ -72,11 +93,141 @@ typedef struct
     }
     SmtpQueryData, *pSmtpQueryData;
 
+/*** smtp_internal_ClearAttributes - Clears all the elements of the attributes
+ *** hash table.
+ ***/
+int
+smtp_internal_ClearAttribute(char* inf_c, void* customParams)
+    {
+    pSmtpAttribute inf = SMTP_ATTR(inf_c);
+
+	nmFree(inf, sizeof(SmtpAttribute));
+	
+    return 0;
+    }
+
 /*** smtpOpen - open an object.
  ***/
 void*
 smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    pSmtpData inf = NULL;
+    pSnNode node = NULL;
+    pSmtpAttribute attr = NULL;
+    int i;
+    pStructInf currentAttr = NULL;
+
+	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
+	if (!inf)
+	    goto error;
+	memset(inf, 0, sizeof(SmtpData));
+	inf->Obj = obj;
+	inf->Mask = mask;
+
+	/** If CREAT and EXCL, we only create, failing if already exists. **/
+	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
+	    {
+	    node = snNewNode(obj->Prev, usrtype);
+	    if (!node)
+		{
+		mssError(0,"SMTP", "Could not create new node object");
+		goto error;
+		}
+	    }
+	
+	/** Otherwise, try to open it first. **/
+	if (!node)
+	    {
+	    node = snReadNode(obj->Prev);
+	    }
+
+	/** If no node, and user said CREAT ok, try that. **/
+	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
+	    {
+	    node = snNewNode(obj->Prev, usrtype);
+	    }
+	
+	/** If _still_ no node, quit out. **/
+	if (!node)
+	    {
+	    mssError(0,"SMTP","Could not open structure file");
+	    goto error;
+	    }
+	
+	/** Store the node object. **/
+	inf->Node = node;
+	inf->Node->OpenCnt++;
+
+	inf->Name = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-1, 0);
+	inf->Name = nmSysStrdup(inf->Name);
+
+	inf->Attributes = (pXHashTable)nmMalloc(sizeof(XHashTable));
+	if (!inf->Attributes)
+	    {
+	    mssError(1,"SMTP","Could not create attributes hash table.");
+	    goto error;
+	    }
+	memset(inf->Attributes, 0, sizeof(XHashTable));
+	xhInit(inf->Attributes, 16, 0);
+
+	/** Determine the type of the object. **/
+	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
+	    {
+	    inf->Type = SMTP_T_ROOT;
+
+	    for (i = 0; i < inf->Node->Data->nSubInf; i++)
+		{
+		currentAttr = inf->Node->Data->SubInf[i];
+
+		attr = nmMalloc(sizeof(SmtpAttribute));
+		if (!attr)
+		    {
+		    mssError(1,"SMTP","Could not create new attribute object.");
+		    goto error;
+		    }
+		attr->Name = currentAttr->Name;
+		attr->Type = currentAttr->Value->DataType;
+
+		if (currentAttr->Value->DataType == DATA_T_STRING)
+		    {
+		    if (stAttrValue(currentAttr, NULL, &attr->Value.String, 0) < 0)
+			{
+			attr->Value.String = NULL;
+			}
+		    }
+		if (currentAttr->Value->DataType == DATA_T_INTEGER)
+		    {
+		    if (stAttrValue(currentAttr, &attr->Value.Integer, NULL, 0) < 0)
+			{
+			attr->Value.Integer = 0;
+			}
+		    }
+		xhAdd(inf->Attributes, currentAttr->Name, (char*)attr);
+		}
+	    }
+	else if (!strcmp(inf->Name+strlen(inf->Name)-4,".eml"))
+	    {
+	    inf->Type = SMTP_T_EML;
+	    }
+	else
+	    {
+	    mssError(1,"SMTP","Could not open file");
+	    goto error;
+	    }
+
+	return inf;
+
+    error:
+	if (inf)
+	    {
+	    if (inf->Attributes)
+		{
+		xhClear(inf->Attributes, smtp_internal_ClearAttribute, NULL);
+		xhDeInit(inf->Attributes);
+		}
+	    nmFree(inf, sizeof(SmtpData));
+	    }
+
 	return NULL;
     }
 
@@ -86,6 +237,15 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 int
 smtpClose(void* inf_v, pObjTrxTree* oxt)
     {
+    pSmtpData inf = SMTP(inf_v);
+
+    if (inf->Attributes)
+	{
+	xhClear(inf->Attributes, smtp_internal_ClearAttribute, NULL);
+	xhDeInit(inf->Attributes);
+	}
+
+    nmFree(inf, sizeof(SmtpData));
     return 0;
     }
 
@@ -286,7 +446,8 @@ smtpInitialize()
 	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
-	xaAddItem(&(drv->RootContentTypes),"message/rfc822");
+	/** xaAddItem(&(drv->RootContentTypes),"message/rfc822"); **/
+	xaAddItem(&(drv->RootContentTypes),"network/smtp");
 
 	/** Setup the function references. **/
 	drv->Open = smtpOpen;
