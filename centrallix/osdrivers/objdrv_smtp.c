@@ -79,7 +79,9 @@ typedef struct
     pObject		Obj;
     int			Mask;
     pSnNode		Node;
+    pXArray		AttributeNames; /* XArray of char*. */
     pXHashTable		Attributes; /* Hash of attribute name to SmtpAttribute. */
+    int			CurAttr;
     }
     SmtpData, *pSmtpData;
 
@@ -161,6 +163,16 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Name = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-1, 0);
 	inf->Name = nmSysStrdup(inf->Name);
 
+
+	inf->AttributeNames = (pXArray)nmMalloc(sizeof(XArray));
+	if (!inf->AttributeNames)
+	    {
+	    mssError(1,"SMTP","Could not create attribute names array.");
+	    goto error;
+	    }
+	memset(inf->AttributeNames, 0, sizeof(XArray));
+	xaInit(inf->AttributeNames, 16);
+
 	inf->Attributes = (pXHashTable)nmMalloc(sizeof(XHashTable));
 	if (!inf->Attributes)
 	    {
@@ -169,6 +181,8 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 	memset(inf->Attributes, 0, sizeof(XHashTable));
 	xhInit(inf->Attributes, 16, 0);
+
+	inf->CurAttr = 0;
 
 	/** Determine the type of the object. **/
 	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
@@ -185,8 +199,11 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		    mssError(1,"SMTP","Could not create new attribute object.");
 		    goto error;
 		    }
+
 		attr->Name = currentAttr->Name;
 		attr->Type = currentAttr->Value->DataType;
+
+		xaAddItem(inf->AttributeNames, attr->Name);
 
 		if (currentAttr->Value->DataType == DATA_T_STRING)
 		    {
@@ -220,12 +237,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     error:
 	if (inf)
 	    {
-	    if (inf->Attributes)
-		{
-		xhClear(inf->Attributes, smtp_internal_ClearAttribute, NULL);
-		xhDeInit(inf->Attributes);
-		}
-	    nmFree(inf, sizeof(SmtpData));
+	    smtpClose(inf, NULL);
 	    }
 
 	return NULL;
@@ -238,6 +250,11 @@ int
 smtpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+
+    if (inf->AttributeNames)
+	{
+	xaDeInit(inf->AttributeNames);
+	}
 
     if (inf->Attributes)
 	{
@@ -401,7 +418,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be %s)", attrname, obj_type_names[attr->Type]);
 		return -1;
 		}
-	    val = &attr->Value;
+	    val->String = attr->Value.String;
 	    return 0;
 	    }
 
@@ -414,7 +431,14 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 char*
 smtpGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
-        return NULL;
+    pSmtpData inf = SMTP(inf_v);
+
+	if (inf->CurAttr < inf->AttributeNames->nItems)
+	    {
+	    return (char*)inf->AttributeNames->Items[inf->CurAttr++];
+	    }
+
+    return NULL;
     }
 
 
@@ -423,7 +447,11 @@ smtpGetNextAttr(void* inf_v, pObjTrxTree oxt)
 char*
 smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
-        return NULL;
+    pSmtpData inf = SMTP(inf_v);
+	
+	inf->CurAttr = 0;
+
+        return smtpGetNextAttr(inf_v, oxt);
     }
 
 
