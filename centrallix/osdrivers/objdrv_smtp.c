@@ -178,7 +178,7 @@ smtpGetNextAttr(void* inf_v, pObjTrxTree oxt)
 char*
 smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
-        return ptr;
+        return NULL;
     }
 
 
@@ -266,7 +266,7 @@ smtpInitialize()
 	/** Initialize globals **/
 
 	/** Setup the structure **/
-	strcpy(drv->Name,"E-mail - Electronic Mail OS Driver");
+	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
 	xaAddItem(&(drv->RootContentTypes),"message/rfc822");
@@ -295,7 +295,7 @@ smtpInitialize()
 	drv->PresentationHints = NULL;
 	drv->Info = smtpInfo;
 
-	/** nmRegister(sizeof(JsonData),"JsonData");
+	/** nmRegister(sizeof(JsonData),"JsonData"); **/
 
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
@@ -304,3 +304,8 @@ smtpInitialize()
     return 0;
     }
 
+MODULE_INIT(smtpInitialize);
+MODULE_PREFIX("smtp");
+MODULE_DESC("SMTP ObjectSystem Driver");
+MODULE_VERSION(0,0,1);
+MODULE_IFACE(CX_CURRENT_IFACE);
