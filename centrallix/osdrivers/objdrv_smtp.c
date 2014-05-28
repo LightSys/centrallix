@@ -328,6 +328,7 @@ int
 smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    pSmtpAttribute attr = NULL;
 
 	/** Default values all happen to be strings. **/
 	if (!strcmp(attrname, "name")) return DATA_T_STRING;
@@ -335,6 +336,13 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
 	if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
+	
+	/** Get the type of the stored attribute. **/
+	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	if (attr)
+	    {
+	    return attr->Type;
+	    }
 
     return -1;
     }
@@ -347,6 +355,7 @@ int
 smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    pSmtpAttribute attr = NULL;
 
 	if (!strcmp(attrname, "name"))
 	    {
@@ -380,6 +389,19 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		return -1;
 		}
 	    val->String = "network/smtp";
+	    return 0;
+	    }
+	
+	/** Get the type of the stored attribute. **/
+	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	if (attr)
+	    {
+	    if (datatype != attr->Type)
+		{
+		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be %s)", attrname, obj_type_names[attr->Type]);
+		return -1;
+		}
+	    val = &attr->Value;
 	    return 0;
 	    }
 
