@@ -327,6 +327,15 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
+    pSmtpData inf = SMTP(inf_v);
+
+	/** Default values all happen to be strings. **/
+	if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
+	if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
+	if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
+	if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
+
     return -1;
     }
 
@@ -337,6 +346,43 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
+    pSmtpData inf = SMTP(inf_v);
+
+	if (!strcmp(attrname, "name"))
+	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		    mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be a string)", attrname);
+		    return -1;
+		}
+	    val->String = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-1, 0);
+	    return 0;
+	    }
+
+	/** inner_type is an alias for content_type **/
+	if (!strcmp(attrname,"inner_type") || !strcmp(attrname, "content_type"))
+	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
+	    val->String = "message/rfc822";
+	    return 0;
+	    }
+
+	/** If outer type, and it wasn't specified in the JSON **/
+	if (!strcmp(attrname,"outer_type"))
+	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
+	    val->String = "network/smtp";
+	    return 0;
+	    }
+
     return 1; /* null if not there presently */
     }
 
