@@ -189,6 +189,7 @@ smtp_internal_OpenRoot(pSmtpData inf)
     int i;
 
 	inf->Type = SMTP_T_ROOT;
+	inf->Obj->SubCnt = 1;
 
 	for (i = 0; i < inf->Node->Data->nSubInf; i++)
 	    {
@@ -229,9 +230,10 @@ smtp_internal_OpenRoot(pSmtpData inf)
 /*** smtp_internal_OpenEml - Open an email file in the smtp structure.
  ***/
 pSmtpData
-smtp_internal_OpenEml()
+smtp_internal_OpenEml(pSmtpData inf)
     {
 	inf->Type = SMTP_T_EML;
+	inf->Obj->SubCnt = 2;
 
     return 0;
     }
@@ -255,16 +257,20 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 
 	/** Determine the type of the object. **/
-	if (!strcmp(systype->Name, "network/smtp"))
+	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
 	    {
 	    if (smtp_internal_OpenRoot(inf))
 		{
 		goto error;
 		}
 	    }
-	else if (!strcmp(systype->Name, "message/rfc822"))
+	else if (inf->Obj->SubPtr+1 == inf->Obj->Pathname->nElements &&
+		!strcmp(inf->Obj->Pathname->Pathbuf + strlen(inf->Obj->Pathname->Pathbuf) - 4, ".eml"))
 	    {
-	    inf->Type = SMTP_T_EML;
+	    if (smtp_internal_OpenEml(inf))
+		{
+		goto error;
+		}
 	    }
 	else
 	    {
@@ -391,10 +397,15 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		mssErrorErrno(1,"SMTP","Could not open spool directory for query");
 		goto error;
 		}
+
+	    return qy;
+	    }
+	else if (inf->Type == SMTP_T_EML)
+	    {
+	    mssError(1, "SMTP", "Unable to query on system/smtp-message type objects");
+	    goto error;
 	    }
 	
-	return qy;
-
     error:
 	if (qy)
 	    {
@@ -436,24 +447,29 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		mssError(1, "SMTP", "Query result pathname exceeds internal limits");
 		return NULL;
 		}
+	     obj->Mode = mode;
+
+	    inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
+	    if (!inf)
+		{
+		mssError(1, "SMTP", "Unable to create smtp data object");
+		return NULL;
+		}
+	    memset(inf, 0, sizeof(SmtpData));
+
+	    if (smtp_internal_OpenGeneral(inf, obj, "system/smtp-message") || smtp_internal_OpenEml(inf))
+		{
+		return NULL;
+		}
+
 	    }
-
-	obj->Mode = mode;
-
-	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
-	if (!inf)
+	else if (qy->Data->Type == SMTP_T_EML)
 	    {
-	    mssError(1, "SMTP", "Unable to create smtp data object");
-	    return NULL;
-	    }
-	memset(inf, 0, sizeof(SmtpData));
-
-	if (smtp_internal_OpenGeneral(inf, obj, NULL) && smtp_internal_OpenEml(inf))
-	    {
-	    return NULL;
+	    mssError(1, "SMTP", "Unable to query smtp-message data objects");
+	    return 0;
 	    }
 
-    return inf;
+	return inf;
     }
 
 
@@ -530,7 +546,16 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    val->String = "message/rfc822";
+
+	    if (inf->Type == SMTP_T_ROOT)
+		{
+		val->String = "system/void";
+		}
+	    else if (inf->Type == SMTP_T_EML)
+		{
+		val->String = "message/rfc822";
+		}
+
 	    return 0;
 	    }
 
@@ -542,7 +567,15 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    val->String = "network/smtp";
+	    if (inf->Type == SMTP_T_ROOT)
+		{
+		val->String = "system/smtp";
+		}
+	    else if (inf->Type == SMTP_T_EML)
+		{
+		val->String = "system/smtp-message";
+		}
+
 	    return 0;
 	    }
 	
@@ -690,8 +723,8 @@ smtpInitialize()
 	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
-	/** xaAddItem(&(drv->RootContentTypes),"message/rfc822"); **/
-	xaAddItem(&(drv->RootContentTypes),"network/smtp");
+	xaAddItem(&(drv->RootContentTypes),"system/smtp");
+	xaAddItem(&(drv->RootContentTypes),"system/smtp-message");
 
 	/** Setup the function references. **/
 	drv->Open = smtpOpen;
