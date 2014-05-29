@@ -103,7 +103,6 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	toktype = mlxNextToken(lex);
 	if (toktype == MLX_TOK_ERROR)
 	    {
-	    mlxCloseSession(lex);
 	    return -1;
 	    }
 	/* get the next line */

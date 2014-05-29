@@ -75,8 +75,8 @@ typedef struct
 /*** Structure used by this driver internally. ***/
 typedef struct
     {
-    int			Type;
     char*		Name;
+    int			Type;
     pObject		Obj;
     int			Mask;
     pSnNode		Node;
@@ -111,23 +111,12 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
     return 0;
     }
 
-/*** smtpOpen - open an object.
- ***/
-void*
-smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+int
+smtp_internal_OpenGeneral(pSmtpData inf, pObject obj, char* usrtype)
     {
-    pSmtpData inf = NULL;
     pSnNode node = NULL;
-    pSmtpAttribute attr = NULL;
-    int i;
-    pStructInf currentAttr = NULL;
 
-	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
-	if (!inf)
-	    goto error;
-	memset(inf, 0, sizeof(SmtpData));
 	inf->Obj = obj;
-	inf->Mask = mask;
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -136,7 +125,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    if (!node)
 		{
 		mssError(0,"SMTP", "Could not create new node object");
-		goto error;
+		return -1;
 		}
 	    }
 	
@@ -156,9 +145,9 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	if (!node)
 	    {
 	    mssError(0,"SMTP","Could not open structure file");
-	    goto error;
+	    return -1;
 	    }
-	
+
 	/** Store the node object. **/
 	inf->Node = node;
 	inf->Node->OpenCnt++;
@@ -166,12 +155,11 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Name = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-1, 0);
 	inf->Name = nmSysStrdup(inf->Name);
 
-
 	inf->AttributeNames = (pXArray)nmMalloc(sizeof(XArray));
 	if (!inf->AttributeNames)
 	    {
 	    mssError(1,"SMTP","Could not create attribute names array.");
-	    goto error;
+	    return -1;
 	    }
 	memset(inf->AttributeNames, 0, sizeof(XArray));
 	xaInit(inf->AttributeNames, 16);
@@ -180,52 +168,101 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	if (!inf->Attributes)
 	    {
 	    mssError(1,"SMTP","Could not create attributes hash table.");
-	    goto error;
+	    return -1;
 	    }
 	memset(inf->Attributes, 0, sizeof(XHashTable));
 	xhInit(inf->Attributes, 16, 0);
 
 	inf->CurAttr = 0;
 
-	/** Determine the type of the object. **/
-	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
+    return 0;
+    }
+
+/*** smtp_internal_OpenRoot - Open the root node of the smtp structure.
+ *** Returns 0 on success and -1 on failure.
+ ***/
+int
+smtp_internal_OpenRoot(pSmtpData inf)
+    {
+    pSmtpAttribute attr = NULL;
+    pStructInf currentAttr = NULL;
+    int i;
+
+	inf->Type = SMTP_T_ROOT;
+
+	for (i = 0; i < inf->Node->Data->nSubInf; i++)
 	    {
-	    inf->Type = SMTP_T_ROOT;
+	    currentAttr = inf->Node->Data->SubInf[i];
 
-	    for (i = 0; i < inf->Node->Data->nSubInf; i++)
+	    attr = nmMalloc(sizeof(SmtpAttribute));
+	    if (!attr)
 		{
-		currentAttr = inf->Node->Data->SubInf[i];
+		mssError(1,"SMTP","Could not create new attribute object.");
+		return -1;
+		}
 
-		attr = nmMalloc(sizeof(SmtpAttribute));
-		if (!attr)
+	    attr->Name = currentAttr->Name;
+	    attr->Type = currentAttr->Value->DataType;
+
+	    xaAddItem(inf->AttributeNames, attr->Name);
+
+	    if (currentAttr->Value->DataType == DATA_T_STRING)
+		{
+		if (stAttrValue(currentAttr, NULL, &attr->Value.String, 0) < 0)
 		    {
-		    mssError(1,"SMTP","Could not create new attribute object.");
-		    goto error;
+		    attr->Value.String = NULL;
 		    }
-
-		attr->Name = currentAttr->Name;
-		attr->Type = currentAttr->Value->DataType;
-
-		xaAddItem(inf->AttributeNames, attr->Name);
-
-		if (currentAttr->Value->DataType == DATA_T_STRING)
+		}
+	    if (currentAttr->Value->DataType == DATA_T_INTEGER)
+		{
+		if (stAttrValue(currentAttr, &attr->Value.Integer, NULL, 0) < 0)
 		    {
-		    if (stAttrValue(currentAttr, NULL, &attr->Value.String, 0) < 0)
-			{
-			attr->Value.String = NULL;
-			}
+		    attr->Value.Integer = 0;
 		    }
-		if (currentAttr->Value->DataType == DATA_T_INTEGER)
-		    {
-		    if (stAttrValue(currentAttr, &attr->Value.Integer, NULL, 0) < 0)
-			{
-			attr->Value.Integer = 0;
-			}
-		    }
-		xhAdd(inf->Attributes, currentAttr->Name, (char*)attr);
+		}
+	    xhAdd(inf->Attributes, currentAttr->Name, (char*)attr);
+	    }
+
+    return 0;
+    }
+
+/*** smtp_internal_OpenEml - Open an email file in the smtp structure.
+ ***/
+pSmtpData
+smtp_internal_OpenEml()
+    {
+	inf->Type = SMTP_T_EML;
+
+    return 0;
+    }
+
+/*** smtpOpen - open an object.
+ ***/
+void*
+smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+    {
+    pSmtpData inf = NULL;
+
+	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
+	if (!inf)
+	    goto error;
+	memset(inf, 0, sizeof(SmtpData));
+	inf->Mask = mask;
+
+	if(smtp_internal_OpenGeneral(inf, obj, usrtype))
+	    {
+	    goto error;
+	    }
+
+	/** Determine the type of the object. **/
+	if (!strcmp(systype->Name, "network/smtp"))
+	    {
+	    if (smtp_internal_OpenRoot(inf))
+		{
+		goto error;
 		}
 	    }
-	else if (!strcmp(inf->Name+strlen(inf->Name)-4,".eml"))
+	else if (!strcmp(systype->Name, "message/rfc822"))
 	    {
 	    inf->Type = SMTP_T_EML;
 	    }
@@ -322,6 +359,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
     pSmtpQueryData qy = NULL;
+    pSmtpAttribute attr = NULL;
     char* spoolPath = NULL;
 
 	/** Allocate the query object. **/
@@ -331,7 +369,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    mssError(1,"SMTP","Unable to allocate query object");
 	    goto error;
 	    }
-	memcpy(qy, 0, sizeof(SmtpQueryData));
+	memset(qy, 0, sizeof(SmtpQueryData));
 
 	qy->Data = inf;
 
@@ -339,17 +377,18 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	if (inf->Type == SMTP_T_ROOT)
 	    {
 	    /** Find and open the spool directory path. **/
-	    spoolPath = xhLookup(inf->Attributes, "spool_dir");
-	    if (!spoolPath)
+	    attr = (pSmtpAttribute)xhLookup(inf->Attributes, "spool_dir");
+	    if (!attr)
 		{
 		mssError(1,"SMTP","Unable to locate spool directory");
 		goto error;
 		}
+	    spoolPath = attr->Value.String;
 
 	    qy->Directory = opendir(spoolPath);
 	    if (!qy->Directory)
 		{
-		mssErrorErrno(1,"UXD","Could not open spool directory for query");
+		mssErrorErrno(1,"SMTP","Could not open spool directory for query");
 		goto error;
 		}
 	    }
@@ -372,7 +411,8 @@ void*
 smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pSmtpQueryData qy = SMTP_QY(qy_v);
-    dirent *mailEntry = NULL;
+    pSmtpData inf = NULL;
+    struct dirent *mailEntry = NULL;
 
 	if (qy->Data->Type == SMTP_T_ROOT)
 	    {
@@ -380,11 +420,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    while (1)
 		{
 		mailEntry = readdir(qy->Directory);
-		if (strcmp(mailEntry->d_name, ".") ||
-			strcmp(mailEntry->d_name, "..") ||
-			strcmp(mailEntry->d_name+1, "type") ||
-			strcmp(mailEntry->d_name+1, "content") ||
-			strcmp(mailEntry->d_name+1, "annotation"))
+		if (!mailEntry || !strcmp(mailEntry->d_name + strlen(mailEntry->d_name) - 4, ".eml"))
 		    {
 			break;
 		    }
@@ -395,14 +431,29 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		return NULL;
 		}
 
-	    if (obj_internal_AddToPath(obj->Pathname, mailEntry->d_name))
+	    if (obj_internal_AddToPath(obj->Pathname, mailEntry->d_name) < 0)
 		{
-		mssError(1, "SMTP", "Query result pathname exceeds internal limits.");
+		mssError(1, "SMTP", "Query result pathname exceeds internal limits");
 		return NULL;
 		}
 	    }
 
-    return NULL;
+	obj->Mode = mode;
+
+	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
+	if (!inf)
+	    {
+	    mssError(1, "SMTP", "Unable to create smtp data object");
+	    return NULL;
+	    }
+	memset(inf, 0, sizeof(SmtpData));
+
+	if (smtp_internal_OpenGeneral(inf, obj, NULL) && smtp_internal_OpenEml(inf))
+	    {
+	    return NULL;
+	    }
+
+    return inf;
     }
 
 
@@ -415,7 +466,7 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
 
 	if (qy->Directory)
 	    {
-	    if (!closedir(qy->Directory))
+	    if (closedir(qy->Directory))
 		{
 		mssError(1,"SMTP","Unable to close directory");
 		}
@@ -492,6 +543,17 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		return -1;
 		}
 	    val->String = "network/smtp";
+	    return 0;
+	    }
+	
+	if (!strcmp(attrname, "annotation"))
+	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1, "SMTP", "Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
+	    val->String = "";
 	    return 0;
 	    }
 	
