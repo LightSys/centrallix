@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include "obj.h"
 #include "st_node.h"
 #include "cxlib/xarray.h"
@@ -91,9 +92,11 @@ typedef struct
 typedef struct
     {
     pSmtpData	Data;
-    int		ItemCnt;
+    DIR*	Directory;
     }
     SmtpQueryData, *pSmtpQueryData;
+
+#define SMTP_QY(x) ((pSmtpQueryData)(x))
 
 /*** smtp_internal_ClearAttributes - Clears all the elements of the attributes
  *** hash table.
@@ -317,6 +320,48 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 void*
 smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
+    pSmtpData inf = SMTP(inf_v);
+    pSmtpQueryData qy = NULL;
+    char* spoolPath = NULL;
+
+	/** Allocate the query object. **/
+	qy = (pSmtpQueryData)nmMalloc(sizeof(SmtpQueryData));
+	if (!qy)
+	    {
+	    mssError(1,"SMTP","Unable to allocate query object");
+	    goto error;
+	    }
+	memcpy(qy, 0, sizeof(SmtpQueryData));
+
+	qy->Data = inf;
+
+	/** Construct the query for the root node. **/
+	if (inf->Type == SMTP_T_ROOT)
+	    {
+	    /** Find and open the spool directory path. **/
+	    spoolPath = xhLookup(inf->Attributes, "spool_dir");
+	    if (!spoolPath)
+		{
+		mssError(1,"SMTP","Unable to locate spool directory");
+		goto error;
+		}
+
+	    qy->Directory = opendir(spoolPath);
+	    if (!qy->Directory)
+		{
+		mssErrorErrno(1,"UXD","Could not open spool directory for query");
+		goto error;
+		}
+	    }
+	
+	return qy;
+
+    error:
+	if (qy)
+	    {
+	    smtpQueryClose(qy, NULL);
+	    }
+
         return NULL;
     }
 
@@ -326,7 +371,38 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 void*
 smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
-   return NULL;
+    pSmtpQueryData qy = SMTP_QY(qy_v);
+    dirent *mailEntry = NULL;
+
+	if (qy->Data->Type == SMTP_T_ROOT)
+	    {
+	    /** Infinite while loops are better than GOTOs... probably. **/
+	    while (1)
+		{
+		mailEntry = readdir(qy->Directory);
+		if (strcmp(mailEntry->d_name, ".") ||
+			strcmp(mailEntry->d_name, "..") ||
+			strcmp(mailEntry->d_name+1, "type") ||
+			strcmp(mailEntry->d_name+1, "content") ||
+			strcmp(mailEntry->d_name+1, "annotation"))
+		    {
+			break;
+		    }
+		}
+
+	    if (!mailEntry)
+		{
+		return NULL;
+		}
+
+	    if (obj_internal_AddToPath(obj->Pathname, mailEntry->d_name))
+		{
+		mssError(1, "SMTP", "Query result pathname exceeds internal limits.");
+		return NULL;
+		}
+	    }
+
+    return NULL;
     }
 
 
@@ -335,7 +411,17 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 int
 smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
-    return 0;
+    pSmtpQueryData qy = SMTP_QY(qy_v);
+
+	if (qy->Directory)
+	    {
+	    if (!closedir(qy->Directory))
+		{
+		mssError(1,"SMTP","Unable to close directory");
+		}
+	    }
+	nmFree(qy, sizeof(SmtpQueryData));
+   return 0;
     }
 
 
