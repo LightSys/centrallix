@@ -1270,6 +1270,9 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    this->BufPtr = this->Buffer;
 	    this->InpCnt = strlen(this->InpStartPtr);
 	    this->InpPtr = this->InpStartPtr + new_offset;
+	    this->Hold = 0;
+	    this->StreamErr = 0;
+	    this->EndOfFile = 0;
 	    this->Flags = this->Flags & MLX_F_PUBLIC;
 	    this->Flags |= MLX_F_NOFILE;
 
@@ -1294,6 +1297,9 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    this->InpCnt = 0;
 	    this->InpPtr = this->InpBuf;
 	    this->Flags = this->Flags & MLX_F_PUBLIC;
+	    this->Hold = 0;
+	    this->StreamErr = 0;
+	    this->EndOfFile = 0;
 	    this->Buffer[0] = 0;
 	    this->LineNumber = 1;
 	    this->BytesRead = new_offset;
