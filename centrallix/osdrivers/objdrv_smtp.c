@@ -259,6 +259,9 @@ smtp_internal_OpenEml(pSmtpData inf)
     {
     pSmtpAttribute spoolDir = NULL;
     pXString emailPath = NULL;
+    pXString emailStructurePath = NULL;
+    pFile emailStructureFile = NULL;
+    pStructInf emailStructure = NULL;
 
 	inf->Type = SMTP_T_EML;
 	inf->Obj->SubCnt = 2;
@@ -271,6 +274,15 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    }
 	memset(emailPath, 0, sizeof(XString));
 	xsInit(emailPath);
+
+	emailStructurePath = nmMalloc(sizeof(XString));
+	if (!emailStructurePath)
+	    {
+	    mssError(1, "SMTP", "Unable to allocate space for email structure path.");
+	    goto error;
+	    }
+	memset(emailStructurePath, 0, sizeof(XString));
+	xsInit(emailStructurePath);
 
 	/** Calculate the real path of the email file. **/
 	spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
@@ -300,12 +312,50 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    goto error;
 	    }
 
+	/** Get the path of the email structure file. **/
+	if (xsCopy(emailStructurePath, emailPath->String, emailPath->Length - 4) ||
+	    xsConcatenate(emailStructurePath, ".struct", -1))
+	    {
+	    mssError(1, "SMTP", "Could not construct email structure file path.");
+	    goto error;
+	    }
+
+	/** Open the email structure file. **/
+	emailStructureFile = fdOpen(emailStructurePath->String, 
+					inf->Obj->Mode, 
+					inf->Mask);
+	if (!emailStructureFile)
+	    {
+	    mssError(1, "SMTP", "Could not open email structure file (%s).", emailStructurePath->String);
+	    goto error;
+	    }
+	
+	/** Parse the structure file. **/
+	emailStructure = stParseMsg(emailStructureFile, 0);
+	if (!emailStructure)
+	    {
+	    mssError(0, "SMTP", "Could not parse the email structure file.");
+	    goto error;
+	    }
+
+	/** Get the structure's attribues **/
+	if (smtp_internal_GetStructAttributes(emailStructure, inf))
+	    {
+	    mssError(0, "SMTP", "Could not load email attributes.");
+	    goto error;
+	    }
+
     return 0;
 
     error:
 	if (emailPath)
 	    {
 	    nmFree(emailPath, sizeof(XString));
+	    }
+
+	if (emailStructurePath)
+	    {
+	    nmFree(emailStructurePath, sizeof(XString));
 	    }
 
 	return -1;
