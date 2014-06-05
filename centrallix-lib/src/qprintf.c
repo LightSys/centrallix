@@ -272,7 +272,6 @@ qpfInitialize()
 	memset(&QPF.jsonstr_matrix, 0, sizeof(QPF.jsonstr_matrix));
 	QPF.jsonstr_matrix.Matrix['"'] = "\\\"";
 	QPF.jsonstr_matrix.Matrix['\\'] = "\\\\";
-	QPF.jsonstr_matrix.Matrix['/'] = "\\/";
 	QPF.jsonstr_matrix.Matrix['\n'] = "\\n";
 	QPF.jsonstr_matrix.Matrix['\t'] = "\\t";
 	QPF.jsonstr_matrix.Matrix['\r'] = "\\r";

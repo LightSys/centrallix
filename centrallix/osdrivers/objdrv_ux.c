@@ -1073,8 +1073,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
 		return -1;
 		}
-	    if (inf->MTime.Value == 0)
-		{
+	    /*if (inf->MTime.Value == 0)
+		{*/
 		stat(inf->RealPathname, &(inf->Fileinfo));
 		t = localtime(&(inf->Fileinfo.st_mtime));
 		inf->MTime.Part.Second = t->tm_sec;
@@ -1083,7 +1083,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		inf->MTime.Part.Day = t->tm_mday - 1;
 		inf->MTime.Part.Month = t->tm_mon;
 		inf->MTime.Part.Year = t->tm_year;
-		}
+		/*}*/
 	    val->DateTime = &(inf->MTime);
 	    }
 	else if (!strcmp(attrname,"last_change"))
@@ -1093,8 +1093,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
 		return -1;
 		}
-	    if (inf->CTime.Value == 0)
-		{
+	    /*if (inf->CTime.Value == 0)
+		{*/
 		stat(inf->RealPathname, &(inf->Fileinfo));
 		t = localtime(&(inf->Fileinfo.st_ctime));
 		inf->CTime.Part.Second = t->tm_sec;
@@ -1103,7 +1103,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		inf->CTime.Part.Day = t->tm_mday - 1;
 		inf->CTime.Part.Month = t->tm_mon;
 		inf->CTime.Part.Year = t->tm_year;
-		}
+		/*}*/
 	    val->DateTime = &(inf->CTime);
 	    }
 	else if (!strcmp(attrname,"last_access"))
@@ -1113,8 +1113,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
 		return -1;
 		}
-	    if (inf->ATime.Value == 0)
-		{
+	    /*if (inf->ATime.Value == 0)
+		{*/
 		stat(inf->RealPathname, &(inf->Fileinfo));
 		t = localtime(&(inf->Fileinfo.st_atime));
 		inf->ATime.Part.Second = t->tm_sec;
@@ -1123,7 +1123,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		inf->ATime.Part.Day = t->tm_mday - 1;
 		inf->ATime.Part.Month = t->tm_mon;
 		inf->ATime.Part.Year = t->tm_year;
-		}
+		/*}*/
 	    val->DateTime = &(inf->ATime);
 	    }
 	else

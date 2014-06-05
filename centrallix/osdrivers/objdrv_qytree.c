@@ -369,7 +369,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    }
 			xsDeInit(&sql);
 			if (!test_obj)
-			    break;
+			    continue;
 
 			/** ok, found the object **/
 			expModifyParam(objlist,NULL,test_obj);
@@ -426,7 +426,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT))
                             {
                             test_obj = objOpen(s, inf->Pathname, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
-                            if (!test_obj) break;
+                            if (!test_obj)
+				continue;
 			    expModifyParam(objlist, NULL, test_obj);
 			    objUnmanageObject(test_obj->Session, test_obj);
 			    objlist->Flags[(signed char)(objlist->CurrentID)] |= EXPR_O_UPDATE;
@@ -445,7 +446,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 				    }
                                 }
                             }
-                        else if (!test_obj) break;
+                        else if (!test_obj)
+			    continue;
     
                         /** Validate the where clause expression if need be. **/
 			objlist->Session = s;

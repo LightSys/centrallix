@@ -55,6 +55,10 @@ ABOUT JSON...
     Data from the Centrallix OSML will be represented in JSON in a format
     described below in this document.
 
+    An additional recommended standard, called JSON-LD (for "JSON Linked Data")
+    is used to specify the links required by the REST architecture.  JSON-LD
+    properties can be identified by starting with an "@" character.
+
 
 OSML JSON DATA FORMAT...
 
@@ -131,6 +135,7 @@ OSML JSON DATA FORMAT...
 	Basic:
 
 	    {
+		"@id":"/people/001?cx__mode=rest&cx__res_format=attrs",
 		"first_name":"John",
 		"last_name":"Smith"
 	    }
@@ -138,6 +143,7 @@ OSML JSON DATA FORMAT...
 	Full:
 
 	    {
+		"@id":"/people/001?cx__mode=rest&cx__res_format=attrs&cx__res_attrs=full",
 		"first_name": { "v":"John", "t":"string", "h":"l=64" }
 		"last_name": { "v":"Smith", "t":"string", "h":"l=64" }
 	    }
@@ -149,24 +155,25 @@ OSML JSON DATA FORMAT...
 	listing the modules installed in Kardia:
 
 	{
-	    "base": { "cx__uri":"/apps/kardia/modules/base?cx__mode=rest" },
-	    "crm": { "cx__uri":"/apps/kardia/modules/crm?cx__mode=rest" },
-	    "disb": { "cx__uri":"/apps/kardia/modules/disb?cx__mode=rest" },
-	    "gl": { "cx__uri":"/apps/kardia/modules/gl?cx__mode=rest" },
-	    "payroll": { "cx__uri":"/apps/kardia/modules/payroll?cx__mode=rest" },
-	    "rcpt": { "cx__uri":"/apps/kardia/modules/rcpt?cx__mode=rest" }
+	    "@id":"/apps/kardia/modules?cx__mode=rest&cx__res_type=collection",
+	    "base": { "@id":"/apps/kardia/modules/base?cx__mode=rest" },
+	    "crm": { "@id":"/apps/kardia/modules/crm?cx__mode=rest" },
+	    "disb": { "@id":"/apps/kardia/modules/disb?cx__mode=rest" },
+	    "gl": { "@id":"/apps/kardia/modules/gl?cx__mode=rest" },
+	    "payroll": { "@id":"/apps/kardia/modules/payroll?cx__mode=rest" },
+	    "rcpt": { "@id":"/apps/kardia/modules/rcpt?cx__mode=rest" }
 	}
 
 	URI parameters will be able to be supplied (see below) to control
 	whether attributes are included in collection lists.
 
 	If additional attributes are included in the collection listing, then
-	they will be included at the same level as the cx__uri JSON property,
+	they will be included at the same level as the @id JSON-LD property,
 	such as in the following snippet:
 
 	    "base":
 		{
-		"cx__uri":"/apps/kardia/modules/base?cx__mode=rest",
+		"@id":"/apps/kardia/modules/base?cx__mode=rest",
 		"someattr": "attrvalue"
 		}
 
@@ -210,8 +217,10 @@ REST INTERFACE URI PARAMETERS...
 	    cx__res_format=both
 
 	The 'both' option allows for any content to be encoded into the
-	'objcontent' attribute, thus providing a complete list of attributes
-	as well as the content of the object.
+	'cx__objcontent' property, thus providing a complete list of attributes
+	as well as the content of the object.  Note that cx__objcontent is
+	included in the JSON data as a simple (basic) property; it does not use
+	the 'full' attribute format.
 
 	The 'auto' option causes the system to return content if the object
 	can have content, or to return an attributes document if the object
