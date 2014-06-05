@@ -290,4 +290,51 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
     return 0;
     }
 
+/*** xhGetNextElement - iterates through the hash elements one at
+ *** a time. Returns NULL when no more elements remain. To start
+ *** iteration, set currentElement to NULL.
+ ***/
+pXHashEntry
+xhGetNextElement(pXHashTable this, pXHashEntry currentElement)
+    {
+    int i = 0;
+    pXHashEntry rval = NULL;
 
+	/** For the first iteration, find the first element. **/
+	if (!currentElement)
+	    {
+	    for (i = 0; i < this->nRows; i++)
+		{
+		rval = (pXHashEntry)this->Rows.Items[i];
+		if (rval)
+		    {
+		    return rval;
+		    }
+		}
+
+	    /** No elements found. **/
+	    return NULL;
+	    }
+	
+	/** If there are more elements in the list, return the next one. **/
+	if (currentElement->Next)
+	    {
+	    return currentElement->Next;
+	    }
+	
+	/** Find the index of the current element. **/
+	i = xh_internal_ComputeHash(currentElement->Key, this->KeyLen, this->nRows);
+	
+	/** Find the next element in the table. **/
+	for (i++; i < this->nRows; i++)
+	    {
+	    rval = (pXHashEntry)this->Rows.Items[i];
+	    if (rval)
+		{
+		return rval;
+		}
+	    }
+	
+	/** No more elements. **/
+	return NULL;
+    }
