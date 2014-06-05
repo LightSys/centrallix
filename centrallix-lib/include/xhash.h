@@ -55,6 +55,7 @@ int xhAdd(pXHashTable this, char* key, char* data);
 int xhRemove(pXHashTable this, char* key);
 char* xhLookup(pXHashTable this, char* key);
 int xhClear(pXHashTable this, int (*free_fn)(), void* free_arg);
+pXHashEntry xhGetNextElement(pXHashTable this, pXHashEntry currentElement);
 
 #endif /* _XHASH_H */
 
