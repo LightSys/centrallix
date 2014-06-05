@@ -1236,6 +1236,17 @@ mlxGetCurOffset(pLxSession this)
 
 	ASSERTMAGIC(this,MGK_LXSESSION);
 
+	/** If we have an end of line held back for line numbering purposes,
+	 ** act like we've read it.
+	 **/
+	    if ((this->Flags & MLX_F_PROCLINE) &&
+		!(this->Flags & MLX_F_EOL)     &&
+		(this->Flags & MLX_F_LINEONLY) &&
+		mlxPeekChar(this,0) == '\n')
+	    {
+	    return this->BytesRead + 1;
+	    }
+
 	/** Some error conditions that don't allow us to properly determine
 	 ** the seek offset.
 	 **/

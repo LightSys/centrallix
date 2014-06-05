@@ -61,7 +61,7 @@ test(char** tname)
 	    /** Calculate the theoretical offset values for the token. **/
 	    if (xaCount(tokens) > 0)
 		{
-		/** Note: The + 1 at the end of this equation compensates for the spaces between words. **/
+		/** Note: The + 1 at the end of this equation compensates for the space between words. **/
 		token->Offset = ((pOffsetData)xaGetItem(tokens, xaCount(tokens)-1))->CurOffset + 1;
 		}
 	    else

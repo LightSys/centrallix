@@ -61,7 +61,7 @@ test(char** tname)
 	    /** Calculate the theoretical offset values for the token. **/
 	    if (xaCount(tokens) > 0)
 		{
-		token->Offset = ((pOffsetData)xaGetItem(tokens, xaCount(tokens)-1))->CurOffset + 1;
+		token->Offset = ((pOffsetData)xaGetItem(tokens, xaCount(tokens)-1))->CurOffset;
 		}
 	    else
 		{
@@ -155,7 +155,7 @@ test(char** tname)
 		/** Find the token that this jump falls inside. **/
 		k = 0;
 		token = (pOffsetData)xaGetItem(tokens, k++);
-		while (jumps[i] > token->CurOffset)
+		while (jumps[i] >= token->CurOffset)
 		    {
 		    token = (pOffsetData)xaGetItem(tokens, k++);
 		    }
