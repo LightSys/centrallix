@@ -83,6 +83,11 @@ typedef struct
     pXArray		AttributeNames; /* XArray of char*. */
     pXHashTable		Attributes; /* Hash of attribute name to SmtpAttribute. */
     int			CurAttr;
+
+    /** Root node specific attributes. **/
+
+    /** Email node specific attributes. **/
+    pFile		Content;
     }
     SmtpData, *pSmtpData;
 
@@ -111,6 +116,56 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
     return 0;
     }
 
+/*** smtp_internal_GetRootAttributes - Loads the attributes from the node into
+ *** the SMTP object.
+ *** Returns 0 on success and -1 on failure.
+ ***/
+int
+smtp_internal_GetRootAttributes(pSmtpData inf)
+    {
+    pSmtpAttribute attr = NULL;
+    pStructInf currentAttr = NULL;
+    int i;
+
+	for (i = 0; i < inf->Node->Data->nSubInf; i++)
+	    {
+	    currentAttr = inf->Node->Data->SubInf[i];
+
+	    attr = nmMalloc(sizeof(SmtpAttribute));
+	    if (!attr)
+		{
+		mssError(1,"SMTP","Could not create new attribute object.");
+		return -1;
+		}
+
+	    attr->Name = currentAttr->Name;
+	    attr->Type = currentAttr->Value->DataType;
+
+	    xaAddItem(inf->AttributeNames, attr->Name);
+
+	    if (currentAttr->Value->DataType == DATA_T_STRING)
+		{
+		if (stAttrValue(currentAttr, NULL, &attr->Value.String, 0) < 0)
+		    {
+		    attr->Value.String = NULL;
+		    }
+		}
+	    if (currentAttr->Value->DataType == DATA_T_INTEGER)
+		{
+		if (stAttrValue(currentAttr, &attr->Value.Integer, NULL, 0) < 0)
+		    {
+		    attr->Value.Integer = 0;
+		    }
+		}
+	    xhAdd(inf->Attributes, currentAttr->Name, (char*)attr);
+	    }
+
+    return 0;
+    }
+
+/*** smtp_internal_OpenGeneral - Loads attributes common to all SMTP objects.
+ *** Returns 0 on success and -1 on failure.
+ ***/
 int
 smtp_internal_OpenGeneral(pSmtpData inf, pObject obj, char* usrtype)
     {
@@ -175,6 +230,12 @@ smtp_internal_OpenGeneral(pSmtpData inf, pObject obj, char* usrtype)
 
 	inf->CurAttr = 0;
 
+	if (smtp_internal_GetRootAttributes(inf))
+	    {
+	    mssError(0, "SMTP", "Could not load root attributes.");
+	    return -1;
+	    }
+
     return 0;
     }
 
@@ -184,58 +245,70 @@ smtp_internal_OpenGeneral(pSmtpData inf, pObject obj, char* usrtype)
 int
 smtp_internal_OpenRoot(pSmtpData inf)
     {
-    pSmtpAttribute attr = NULL;
-    pStructInf currentAttr = NULL;
-    int i;
-
 	inf->Type = SMTP_T_ROOT;
 	inf->Obj->SubCnt = 1;
-
-	for (i = 0; i < inf->Node->Data->nSubInf; i++)
-	    {
-	    currentAttr = inf->Node->Data->SubInf[i];
-
-	    attr = nmMalloc(sizeof(SmtpAttribute));
-	    if (!attr)
-		{
-		mssError(1,"SMTP","Could not create new attribute object.");
-		return -1;
-		}
-
-	    attr->Name = currentAttr->Name;
-	    attr->Type = currentAttr->Value->DataType;
-
-	    xaAddItem(inf->AttributeNames, attr->Name);
-
-	    if (currentAttr->Value->DataType == DATA_T_STRING)
-		{
-		if (stAttrValue(currentAttr, NULL, &attr->Value.String, 0) < 0)
-		    {
-		    attr->Value.String = NULL;
-		    }
-		}
-	    if (currentAttr->Value->DataType == DATA_T_INTEGER)
-		{
-		if (stAttrValue(currentAttr, &attr->Value.Integer, NULL, 0) < 0)
-		    {
-		    attr->Value.Integer = 0;
-		    }
-		}
-	    xhAdd(inf->Attributes, currentAttr->Name, (char*)attr);
-	    }
 
     return 0;
     }
 
 /*** smtp_internal_OpenEml - Open an email file in the smtp structure.
+ *** Returns 0 on success and -1 on failure.
  ***/
-pSmtpData
+int
 smtp_internal_OpenEml(pSmtpData inf)
     {
+    pSmtpAttribute spoolDir = NULL;
+    pXString emailPath = NULL;
+
 	inf->Type = SMTP_T_EML;
 	inf->Obj->SubCnt = 2;
 
+	emailPath = (pXString)nmMalloc(sizeof(XString));
+	if (!emailPath)
+	    {
+	    mssError(1, "SMTP", "Unable to allocate space for email path.");
+	    goto error;
+	    }
+	memset(emailPath, 0, sizeof(XString));
+	xsInit(emailPath);
+
+	/** Calculate the real path of the email file. **/
+	spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	if (!spoolDir)
+	    {
+	    mssError(1, "SMTP", "Unable to get the spool directory path.");
+	    goto error;
+	    }
+
+	if (xsCopy(emailPath, spoolDir->Value.String, strlen(spoolDir->Value.String)))
+	    {
+	    mssError(1, "SMTP", "Unable to copy spool directory path into the email path.");
+	    goto error;
+	    }
+
+	if (xsConcatenate(emailPath, "/", 1) || xsConcatenate(emailPath, inf->Name, strlen(inf->Name)))
+	    {
+	    mssError(1, "SMTP", "Unable to append email name to email path.");
+	    goto error;
+	    }
+
+	/** Open the email file. **/
+	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode, inf->Mask);
+	if (!inf->Content)
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", emailPath->String);
+	    goto error;
+	    }
+
     return 0;
+
+    error:
+	if (emailPath)
+	    {
+	    nmFree(emailPath, sizeof(XString));
+	    }
+
+	return -1;
     }
 
 /*** smtpOpen - open an object.
@@ -251,7 +324,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	memset(inf, 0, sizeof(SmtpData));
 	inf->Mask = mask;
 
-	if(smtp_internal_OpenGeneral(inf, obj, usrtype))
+	if (smtp_internal_OpenGeneral(inf, obj, usrtype))
 	    {
 	    goto error;
 	    }
@@ -308,6 +381,15 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
 	xhDeInit(inf->Attributes);
 	}
 
+    if (inf->Content)
+	{
+	if (fdClose(inf->Content, 0))
+	    {
+	    mssError(0, "SMTP", "Unable to close email file.");
+	    return -1;
+	    }
+	}
+
     nmFree(inf, sizeof(SmtpData));
     return 0;
     }
@@ -342,8 +424,16 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 int
 smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    error:
-	return -1;
+    pSmtpData inf = SMTP(inf_v);
+    int rval = -1;
+
+	/** Read the contents of emails directly. **/
+	if (inf->Type == SMTP_T_EML)
+	    {
+	    rval = fdRead(inf->Content, buffer, maxcnt, offset, flags);
+	    }
+
+    return rval;
     }
 
 
@@ -484,7 +574,7 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
 	    {
 	    if (closedir(qy->Directory))
 		{
-		mssError(1,"SMTP","Unable to close directory");
+		mssErrorErrno(1,"SMTP","Unable to close directory");
 		}
 	    }
 	nmFree(qy, sizeof(SmtpQueryData));

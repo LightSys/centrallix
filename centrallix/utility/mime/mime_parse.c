@@ -127,7 +127,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 
 	    hdrnme = (char*)nmMalloc(64);
 	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
-	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String));
+	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String)+1);
 	    if (libmime_ParseHeaderElement(hdrbdy, hdrnme) == 0)
 		{
 		if      (!strcasecmp(hdrnme, "Content-Type")) err = libmime_SetContentType(msg, hdrbdy);

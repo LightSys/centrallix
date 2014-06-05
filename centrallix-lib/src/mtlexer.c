@@ -1242,10 +1242,10 @@ mlxGetCurOffset(pLxSession this)
 	    if ((this->Flags & MLX_F_PROCLINE) &&
 		!(this->Flags & MLX_F_EOL)     &&
 		(this->Flags & MLX_F_LINEONLY) &&
-		mlxPeekChar(this,0) == '\n')
-	    {
-	    return this->BytesRead + 1;
-	    }
+		(mlxPeekChar(this,0) == '\n'))
+		{
+		return this->BytesRead + 1;
+		}
 
 	/** Some error conditions that don't allow us to properly determine
 	 ** the seek offset.
