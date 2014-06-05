@@ -380,6 +380,7 @@ cxInitialize(void* v)
 	audInitialize();			/* Audio file player driver */
 	lnkInitialize();			/* Symlink driver */
 	jsonInitialize();			/* JSON data driver */
+	smtpInitialize();			/* SMTP email driver */
 
 	/** Init the reporting content drivers **/
 #if 0

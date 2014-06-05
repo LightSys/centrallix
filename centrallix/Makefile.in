@@ -121,6 +121,7 @@ XV3OBJDRIVERS= \
 	      objdrv_audio.o \
 	      objdrv_link.o \
 	      objdrv_json.o \
+	      objdrv_smtp.o \
 	      @OBJDRIVERS@
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
