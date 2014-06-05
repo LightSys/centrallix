@@ -103,12 +103,12 @@ OSML JSON DATA FORMAT...
 	The Full Format will be used to transfer metadata about each
 	attribute in addition to the attribute's name and value:
 
-	    { n:"age", e:null, v:32, t:"integer", h:"d=0" }
+	    { a:"age", e:null, v:32, t:"integer", h:"d=0" }
 
 	In the above representation, the property names are abbreviated for
 	space savings, and mean the following:
 
-	    n = name of attribute
+	    a = name of attribute
 	    e = error status, null (or not present) if no error.  If set, it
 		will either be the string "error" or a string containing an
 		error message.
@@ -118,7 +118,7 @@ OSML JSON DATA FORMAT...
 		decoded by cx_parse_hints in JavaScript.  If no hints are
 		available, the h property may be omitted entirely.
 
-	The 'n' property above will be omitted if the name has already been
+	The 'a' property above will be omitted if the name has already been
 	specified outside of the full format attribute, for instance if
 	a list of attributes is contained in a JSON Object.
 
@@ -149,16 +149,26 @@ OSML JSON DATA FORMAT...
 	listing the modules installed in Kardia:
 
 	{
-	    "base": {},
-	    "crm": {},
-	    "disb": {},
-	    "gl": {},
-	    "payroll": {},
-	    "rcpt": {}
+	    "base": { cx__uri:"/apps/kardia/modules/base?cx__mode=rest" },
+	    "crm": { cx__uri:"/apps/kardia/modules/crm?cx__mode=rest" },
+	    "disb": { cx__uri:"/apps/kardia/modules/disb?cx__mode=rest" },
+	    "gl": { cx__uri:"/apps/kardia/modules/gl?cx__mode=rest" },
+	    "payroll": { cx__uri:"/apps/kardia/modules/payroll?cx__mode=rest" },
+	    "rcpt": { cx__uri:"/apps/kardia/modules/rcpt?cx__mode=rest" }
 	}
 
 	URI parameters will be able to be supplied (see below) to control
 	whether attributes are included in collection lists.
+
+	If additional attributes are included in the collection listing, then
+	they will be included at the same level as the cx__uri JSON property,
+	such as in the following snippet:
+
+	    "base":
+		{
+		cx__uri:"/apps/kardia/modules/base?cx__mode=rest",
+		someattr: "attrvalue"
+		}
 
 
 REST INTERFACE URI PARAMETERS...
