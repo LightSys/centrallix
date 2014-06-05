@@ -1,0 +1,77 @@
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+//
+// You may use these files and this library under the terms of the
+// GNU Lesser General Public License, Version 2.1, contained in the
+// included file "COPYING" or http://www.gnu.org/licenses/lgpl.txt.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+//Created by: Brady Steed
+//Date: June, 2, 2014
+
+function fu_change(e)
+	{
+	if (e.kind == 'fu')
+		{
+		e.layer.value = e.mainlayer.value;
+		
+		if(e.mainlayer.files.length > 1)
+			{
+			cn_activate(e.layer, 'DataChange', {NewValue:e.mainlayer.files.length + " files selected", OldValue:e.layer.oldvalue});
+			}
+		else
+			{
+			cn_activate(e.layer, 'DataChange', {NewValue:e.mainlayer.value, OldValue:e.layer.oldvalue});
+			}
+		}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+	}
+	
+function fu_clearvalue()
+	{
+	this.oldvalue = this.input.value;
+	this.value = '';
+	this.pane.reset();
+	cn_activate(this, 'DataChange', {NewValue:"", OldValue:this.input.oldvalue});
+	}
+
+function fu_prompt()
+	{
+	this.oldvalue = this.input.value;
+	this.input.click();
+	}
+	
+function fu_init(param)
+	{
+	var layer = param.layer;
+	layer.input = param.input;
+	layer.pane = param.pane;
+	layer.oldvalue = '';
+	layer.value = '';
+	
+	htr_init_layer(layer, layer, "fu");
+	htr_init_layer(layer, layer.input, "fu");
+	ifc_init_widget(layer);
+
+	if (param.form)
+	layer.form = wgtrGetNode(layer, param.form);
+    else
+	layer.form = wgtrFindContainer(layer,"widget/form");
+    if (layer.form) layer.form.Register(layer);
+	
+	
+	//Events
+	var ie = layer.ifcProbeAdd(ifEvent);
+	ie.Add("DataChange");
+	ie.Add("Change")
+	
+	//Actions
+	var ia = layer.ifcProbeAdd(ifAction);
+	ia.Add("Clear", fu_clearvalue);
+	ia.Add("Prompt", fu_prompt);
+	}
+
+if (window.pg_scripts) pg_scripts['htdrv_fileupload.js'] = true;
