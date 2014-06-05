@@ -142,6 +142,24 @@ OSML JSON DATA FORMAT...
 		"last_name": { v:"Smith", t:"string", h:"l=64" }
 	    }
 
+    D.	Encoding a whole collection in JSON
+
+	A collection will be encoded as a list of objects, but will default
+	to not including any attributes at all.  Here is an example collection
+	listing the modules installed in Kardia:
+
+	{
+	    "base": {},
+	    "crm": {},
+	    "disb": {},
+	    "gl": {},
+	    "payroll": {},
+	    "rcpt": {}
+	}
+
+	URI parameters will be able to be supplied (see below) to control
+	whether attributes are included in collection lists.
+
 
 REST INTERFACE URI PARAMETERS...
 
@@ -189,6 +207,10 @@ REST INTERFACE URI PARAMETERS...
 	can have content, or to return an attributes document if the object
 	cannot have content.  If the object can have content but does not, an
 	empty response will be received (zero length).
+	
+	If retrieving a collection, then 'content' is disallowed and 'auto'
+	works like 'attrs'.  The 'both' option can be used when retrieving a
+	collection, however.
 
     D.	Selecting Basic vs Full attribute format
 
@@ -206,6 +228,8 @@ REST INTERFACE URI PARAMETERS...
 	then cx__attr_format can be used on a collection request to include
 	them.
 
+	If attributes are not being returned, then cx__res_attrs is ignored.
+
 
 AUTHENTICATION...
 
@@ -216,6 +240,16 @@ AUTHENTICATION...
     Most HTTP clients should allow setting the username and password for HTTP
     Basic auth without having to manually construct the header, but if the
     header must be manually constructed, see the HTTP RFC for details.
+
+
+RESPONSE MIME TYPES...
+
+    If a response contains content (for an element), then the content type of
+    the response will be the content type of the object's content, such as a
+    PNG image or an HTML file.
+
+    If a response contains attributes or a list of objects (collection), then
+    the response content type will be "application/json".
 
 
 EXAMPLE REQUESTS...
