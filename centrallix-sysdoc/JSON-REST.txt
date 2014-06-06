@@ -103,7 +103,7 @@ OSML JSON DATA FORMAT...
 	The Full Format will be used to transfer metadata about each
 	attribute in addition to the attribute's name and value:
 
-	    { a:"age", e:null, v:32, t:"integer", h:"d=0" }
+	    { "a":"age", "e":null, "v":32, "t":"integer", "h":"d=0" }
 
 	In the above representation, the property names are abbreviated for
 	space savings, and mean the following:
@@ -138,8 +138,8 @@ OSML JSON DATA FORMAT...
 	Full:
 
 	    {
-		"first_name": { v:"John", t:"string", h:"l=64" }
-		"last_name": { v:"Smith", t:"string", h:"l=64" }
+		"first_name": { "v":"John", "t":"string", "h":"l=64" }
+		"last_name": { "v":"Smith", "t":"string", "h":"l=64" }
 	    }
 
     D.	Encoding a whole collection in JSON
@@ -149,12 +149,12 @@ OSML JSON DATA FORMAT...
 	listing the modules installed in Kardia:
 
 	{
-	    "base": { cx__uri:"/apps/kardia/modules/base?cx__mode=rest" },
-	    "crm": { cx__uri:"/apps/kardia/modules/crm?cx__mode=rest" },
-	    "disb": { cx__uri:"/apps/kardia/modules/disb?cx__mode=rest" },
-	    "gl": { cx__uri:"/apps/kardia/modules/gl?cx__mode=rest" },
-	    "payroll": { cx__uri:"/apps/kardia/modules/payroll?cx__mode=rest" },
-	    "rcpt": { cx__uri:"/apps/kardia/modules/rcpt?cx__mode=rest" }
+	    "base": { "cx__uri":"/apps/kardia/modules/base?cx__mode=rest" },
+	    "crm": { "cx__uri":"/apps/kardia/modules/crm?cx__mode=rest" },
+	    "disb": { "cx__uri":"/apps/kardia/modules/disb?cx__mode=rest" },
+	    "gl": { "cx__uri":"/apps/kardia/modules/gl?cx__mode=rest" },
+	    "payroll": { "cx__uri":"/apps/kardia/modules/payroll?cx__mode=rest" },
+	    "rcpt": { "cx__uri":"/apps/kardia/modules/rcpt?cx__mode=rest" }
 	}
 
 	URI parameters will be able to be supplied (see below) to control
@@ -166,8 +166,8 @@ OSML JSON DATA FORMAT...
 
 	    "base":
 		{
-		cx__uri:"/apps/kardia/modules/base?cx__mode=rest",
-		someattr: "attrvalue"
+		"cx__uri":"/apps/kardia/modules/base?cx__mode=rest",
+		"someattr": "attrvalue"
 		}
 
 
