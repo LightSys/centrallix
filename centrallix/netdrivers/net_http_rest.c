@@ -204,11 +204,10 @@ nht_internal_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_forma
 	/** First thing we need to output is the URI of the element **/
 	path = objGetPathname(obj);
 	strtcpy(pathbuf, path, sizeof(pathbuf));
-	fdQPrintf(conn->ConnFD, "\"cx__uri\":\"%STR&JSONSTR?cx__mode=rest&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=%STR&JSONSTR%]\"",
+	fdQPrintf(conn->ConnFD, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=full%]\"",
 		pathbuf,
 		(res_format == ResFormatAttrs)?"attrs":"both",
-		(res_attrs != ResAttrsBasic),
-		(res_attrs == ResAttrsFull)?"full":"none"
+		(res_attrs == ResAttrsFull)
 		);
 
 	/** Write any attrs? **/
@@ -258,9 +257,21 @@ nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_fo
     char* objname;
     char* objtype;
     int is_first = 1;
+    char* path;
+    char pathbuf[OBJSYS_MAX_PATH];
 
 	/** We open our list with just a { **/
 	fdPrintf(conn->ConnFD, "{\r\n");
+
+	/** First thing we need to output is the URI of the collection **/
+	path = objGetPathname(obj);
+	strtcpy(pathbuf, path, sizeof(pathbuf));
+	fdQPrintf(conn->ConnFD, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_type=collection&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=%STR&JSONSTR%]\",\r\n",
+		pathbuf,
+		(res_format == ResFormatAttrs)?"attrs":"both",
+		(res_attrs != ResAttrsNone),
+		(res_attrs == ResAttrsFull)?"full":"basic"
+		);
 
 	/** Open the query and loop through subobjects **/
 	query = objOpenQuery(obj, "", NULL, NULL, NULL);
