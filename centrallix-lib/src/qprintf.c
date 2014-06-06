@@ -95,8 +95,9 @@
 #define QPF_SPEC_T_ESCQ		(38)
 #define QPF_SPEC_T_CSSVAL	(39)
 #define QPF_SPEC_T_CSSURL	(40)
-#define QPF_SPEC_T_ENDFILT	(40)
-#define QPF_SPEC_T_MAXSPEC	(40)
+#define QPF_SPEC_T_JSONSTR	(41)
+#define QPF_SPEC_T_ENDFILT	(41)
+#define QPF_SPEC_T_MAXSPEC	(41)
 
 /** Names for specifiers as used in format string - must match the above. **/
 const char*
@@ -143,6 +144,7 @@ qpf_spec_names[] =
     "ESCQ",	/* 38 */
     "CSSVAL",	/* 39 */
     "CSSURL",	/* 40 */
+    "JSONSTR",	/* 41 */
     NULL
     };
 
@@ -171,6 +173,7 @@ typedef struct
     QPConvTable	hex_matrix;
     QPConvTable	url_matrix;
     QPConvTable	jsstr_matrix;
+    QPConvTable	jsonstr_matrix;
     QPConvTable	cssval_matrix;
     QPConvTable	cssurl_matrix;
     QPConvTable	dsyb_matrix;
@@ -254,7 +257,36 @@ qpfInitialize()
 	QPF.jsstr_matrix.Matrix['\n'] = "\\n";
 	QPF.jsstr_matrix.Matrix['\t'] = "\\t";
 	QPF.jsstr_matrix.Matrix['\r'] = "\\r";
+	QPF.jsstr_matrix.Matrix['\b'] = "\\b";
+	QPF.jsstr_matrix.Matrix['\f'] = "\\f";
+	for(i=0;i<=31;i++)
+	    {
+	    if (!QPF.jsstr_matrix.Matrix[i])
+		{
+		QPF.jsstr_matrix.Matrix[i] = nmSysMalloc(7);
+		snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		}
+	    }
 	qpf_internal_SetupTable(&QPF.jsstr_matrix);
+
+	memset(&QPF.jsonstr_matrix, 0, sizeof(QPF.jsonstr_matrix));
+	QPF.jsonstr_matrix.Matrix['"'] = "\\\"";
+	QPF.jsonstr_matrix.Matrix['\\'] = "\\\\";
+	QPF.jsonstr_matrix.Matrix['/'] = "\\/";
+	QPF.jsonstr_matrix.Matrix['\n'] = "\\n";
+	QPF.jsonstr_matrix.Matrix['\t'] = "\\t";
+	QPF.jsonstr_matrix.Matrix['\r'] = "\\r";
+	QPF.jsonstr_matrix.Matrix['\b'] = "\\b";
+	QPF.jsonstr_matrix.Matrix['\f'] = "\\f";
+	for(i=0;i<=31;i++)
+	    {
+	    if (!QPF.jsonstr_matrix.Matrix[i])
+		{
+		QPF.jsonstr_matrix.Matrix[i] = nmSysMalloc(7);
+		snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		}
+	    }
+	qpf_internal_SetupTable(&QPF.jsonstr_matrix);
 
 	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
 	QPF.ws_matrix.Matrix['\n'] = "\\n";
@@ -1024,6 +1056,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				case QPF_SPEC_T_ESCQ:
 				case QPF_SPEC_T_ESCQWS:
 				case QPF_SPEC_T_JSSTR:
+				case QPF_SPEC_T_JSONSTR:
 				case QPF_SPEC_T_DSYB:
 				case QPF_SPEC_T_CSSVAL:
 				case QPF_SPEC_T_CSSURL:
@@ -1051,6 +1084,10 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 									quote = 0;
 									break;
 					    case QPF_SPEC_T_JSSTR:	table = &QPF.jsstr_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_JSONSTR:	table = &QPF.jsonstr_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
