@@ -197,6 +197,9 @@ nht_internal_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_forma
     char* attr;
     char xfer_buf[256];
     int rcnt;
+    char* sys_attrs[] = { "name", "annotation", "inner_type", "outer_type" };
+    char sent_sys_attrs[sizeof(sys_attrs)/sizeof(char*)];
+    int i;
 
 	/** We begin our object with just a { **/
 	fdPrintf(conn->ConnFD, "{\r\n");
@@ -213,16 +216,28 @@ nht_internal_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_forma
 	/** Write any attrs? **/
 	if (res_attrs != ResAttrsNone)
 	    {
-	    /** Next, we output some system (hidden) attributes **/
-	    nht_internal_RestWriteAttr(conn, obj, "name", res_attrs, 1);
-	    nht_internal_RestWriteAttr(conn, obj, "annotation", res_attrs, 1);
-	    nht_internal_RestWriteAttr(conn, obj, "inner_type", res_attrs, 1);
-	    nht_internal_RestWriteAttr(conn, obj, "outer_type", res_attrs, 1);
+	    /** Keep track of any sys attrs that were sent with the main ones **/
+	    memset(sent_sys_attrs, 0, sizeof(sent_sys_attrs));
 
-	    /** Now we loop through the main attributes that are iterable **/
+	    /** We loop through the main attributes that are iterable **/
 	    for(attr=objGetFirstAttr(obj); attr; attr=objGetNextAttr(obj))
 		{
+		for(i=0; i<sizeof(sent_sys_attrs); i++)
+		    {
+		    if (!strcmp(attr, sys_attrs[i]))
+			{
+			sent_sys_attrs[i] = 1;
+			break;
+			}
+		    }
 		nht_internal_RestWriteAttr(conn, obj, attr, res_attrs, 1);
+		}
+
+	    /** Next, we output some system (hidden) attributes **/
+	    for(i=0; i<sizeof(sent_sys_attrs); i++)
+		{
+		if (!sent_sys_attrs[i])
+		    nht_internal_RestWriteAttr(conn, obj, sys_attrs[i], res_attrs, 1);
 		}
 
 	    /** Content? **/
@@ -256,7 +271,6 @@ nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_fo
     pObject subobj;
     char* objname;
     char* objtype;
-    int is_first = 1;
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
 
@@ -266,7 +280,7 @@ nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_fo
 	/** First thing we need to output is the URI of the collection **/
 	path = objGetPathname(obj);
 	strtcpy(pathbuf, path, sizeof(pathbuf));
-	fdQPrintf(conn->ConnFD, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_type=collection&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=%STR&JSONSTR%]\",\r\n",
+	fdQPrintf(conn->ConnFD, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_type=collection&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=%STR&JSONSTR%]\"\r\n",
 		pathbuf,
 		(res_format == ResFormatAttrs)?"attrs":"both",
 		(res_attrs != ResAttrsNone),
@@ -281,14 +295,8 @@ nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_fo
 		{
 		if (objGetAttrValue(subobj, "name", DATA_T_STRING, POD(&objname)) == 0)
 		    {
-		    /** Add a comma between elements in the list **/
-		    if (!is_first)
-			fdPrintf(conn->ConnFD, ",");
-		    else
-			is_first = 0;
-
 		    /** Print the name of the object. **/
-		    fdQPrintf(conn->ConnFD, "\"%STR&JSONSTR\":", objname);
+		    fdQPrintf(conn->ConnFD, ",\"%STR&JSONSTR\":", objname);
 
 		    /** Print it as an Element.  The res_format and res_attrs
 		     ** settings are set to provide logical defaults for doing
