@@ -1740,15 +1740,19 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	tree->Flags &= ~EXPR_F_NEW;
 #endif
 
-	old_objmask = objlist->ModCoverageMask;
-	objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
-	
-	/** If node is NOT stale and NOT in modified cov mask, return now. **/
-	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+	/** We only check the objlist coverage and changed flags if we have an objlist **/
+	if (objlist)
 	    {
-	    /*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
-	    objlist->ModCoverageMask = old_objmask;
-	    return 0;
+	    old_objmask = objlist->ModCoverageMask;
+	    objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
+	
+	    /** If node is NOT stale and NOT in modified cov mask, return now. **/
+	    if (!(tree->Flags & (EXPR_F_NEW)) && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+		{
+		/*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
+		objlist->ModCoverageMask = old_objmask;
+		return 0;
+		}
 	    }
 
 	/** Call the appropriate evaluator fn based on type **/
@@ -1764,7 +1768,8 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	rval = fn(tree,objlist);
 	if (rval >= 0)
 	    tree->Flags &= ~EXPR_F_NEW;
-	objlist->ModCoverageMask = old_objmask;
+	if (objlist)
+	    objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
 
     return rval;
