@@ -812,8 +812,16 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    pSmtpData inf = SMTP(inf_v);
+    pSmtpData inf = NULL;
     pSmtpAttribute attr = NULL;
+	
+	/** If the attribute does not exist, return no type. **/
+	if (!inf_v)
+	    {
+	    return -1;
+	    }
+
+	inf = SMTP(inf_v);
 
 	/** Default values all happen to be strings. **/
 	if (!strcmp(attrname, "name")) return DATA_T_STRING;
@@ -839,8 +847,16 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
-    pSmtpData inf = SMTP(inf_v);
+    pSmtpData inf = NULL;
     pSmtpAttribute attr = NULL;
+
+	if (!inf_v)
+	    {
+	    mssError(1, "SMTP", "Attribute not found '%s'", attrname);
+	    return -1;
+	    }
+
+	inf = SMTP(inf_v);
 
 	if (!strcmp(attrname, "name"))
 	    {
@@ -957,7 +973,185 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 int
 smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
-    return -1;
+    pSmtpData inf = SMTP(inf_v);
+    pSmtpAttribute attr = NULL;
+
+    pSnNode rootNode = NULL;
+
+    pSmtpAttribute spoolDir = NULL;
+    pXString emlStructPath = NULL;
+    pFile emlStructFile = NULL;
+    pStructInf emlStruct = NULL;
+
+	/** Get the requested attribute. **/
+	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	if (!attr)
+	    {
+	    /** Add the attribute if it is not found. **/
+	    if (smtpAddAttr(inf, attrname, datatype, val, oxt))
+		{
+		mssError(0, "SMTP", "Unable to create the requested attribute object.");
+		goto error;
+		}
+
+	    /** Get the newly created attribute. **/
+	    attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	    if (!attr)
+		{
+		mssError(1, "SMTP", "Unable to open requested attribute object.");
+		goto error;
+		}
+	    }
+	
+	/** Check the requested datatype. **/
+	if (attr->Type != datatype)
+	    {
+	    if (datatype < OBJ_TYPE_NAMES_CNT && attr->Type < OBJ_TYPE_NAMES_CNT)
+		{
+		mssError(1 ,"SMTP", "Attempt to assign invalid data type to attribute. (Assigning %s to %s)", obj_type_names[datatype], obj_type_names[attr->Type]);
+		}
+	    else
+		{
+		mssError(1 ,"SMTP", "Attempt to assign invalid data type to attribute. (Assigning %d to %d)", datatype, attr->Type);
+		}
+	    goto error;
+	    }
+
+	/** Store the data according to its data type. **/
+	if (datatype == DATA_T_STRING)
+	    {
+	    attr->Value.String = val->String;
+	    }
+	else if (datatype == DATA_T_INTEGER)
+	    {
+	    attr->Value.Integer = val->Integer;
+	    }
+	else
+	    {
+	    /** This might result in broken behaviour... FIXME or at least TESTME. **/
+	    attr->Value = *val;
+	    }
+
+	/** Store the attribute into the correct file. **/
+	if (inf->Type == SMTP_T_ROOT)
+	    {
+	    /** Read the root node into the node structure. **/
+	    rootNode = snReadNode(inf->Obj->Prev);
+	    if (!rootNode)
+		{
+		mssError(1, "SMTP", "Unable to open root node for writing");
+		goto error;
+		}
+
+	    /** Set the attribute value in the root node. **/
+	    if (stSetAttrValue(stLookup(rootNode->Data, attrname), datatype, val, 0))
+		{
+		mssError(1, "SMTP", "Unable to write to the given attribute");
+		goto error;
+		}
+
+	    /** Mark root node DIRTY so that it will be written. **/
+	    rootNode->Status = SN_NS_DIRTY;
+
+	    /** Write the changes to the root node back to the OS tree. **/
+	    if (snWriteNode(inf->Obj->Prev, rootNode))
+		{
+		mssError(1, "SMTP", "Unable to write data to the root node");
+		goto error;
+		}
+	    }
+	else if (inf->Type == SMTP_T_EML)
+	    {
+	    /** Allocate the email structure path. **/
+	    emlStructPath = nmMalloc(sizeof(XString));
+	    if (!emlStructPath)
+		{
+		mssError(1, "SMTP", "Unable to allocate space for email structure path.");
+		goto error;
+		}
+	    memset(emlStructPath, 0, sizeof(XString));
+	    xsInit(emlStructPath);
+
+	    /** Calculate the real path of the email struct file. **/
+	    spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	    if (!spoolDir)
+		{
+		mssError(1, "SMTP", "Unable to get the spool directory path.");
+		goto error;
+		}
+
+	    if (xsCopy(emlStructPath, spoolDir->Value.String, strlen(spoolDir->Value.String)))
+		{
+		mssError(1, "SMTP", "Unable to copy spool directory path into the email path.");
+		goto error;
+		}
+
+	    if (xsConcatenate(emlStructPath, "/", 1) ||
+		xsConcatenate(emlStructPath, inf->Name, strlen(inf->Name) - 4) ||
+		xsConcatenate(emlStructPath, ".struct", -1))
+		{
+		mssError(1, "SMTP", "Unable to append email name to email path.");
+		goto error;
+		}
+
+	    /** Open the email structure file. **/
+	    emlStructFile = fdOpen(emlStructPath->String, 
+					    inf->Obj->Mode, 
+					    inf->Mask);
+	    if (!emlStructFile)
+		{
+		mssError(1, "SMTP", "Could not open email structure file (%s).", emlStructPath->String);
+		goto error;
+		}
+	    
+	    /** Parse the structure file. **/
+	    emlStruct = stParseMsg(emlStructFile, 0);
+	    if (!emlStruct)
+		{
+		mssError(0, "SMTP", "Could not parse the email structure file.");
+		goto error;
+		}
+
+	    /** Set the given attribute value. **/
+	    if (stSetAttrValue(stLookup(emlStruct, attrname), datatype, val, 0))
+		{
+		mssError(1, "SMTP", "Unable to write to the given attribute");
+		goto error;
+		}
+
+	    /** Write changes to the email struct file. **/
+	    if (stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT))
+		{
+		mssError(1, "SMTP", "Unable to write to the attribute to the email struct file.");
+		goto error;
+		}
+	    }
+
+	/** Free appropriate memory and close appropriate files. **/
+	if (emlStructPath)
+	    {
+	    nmFree(emlStructPath, sizeof(XString));
+	    }
+
+	if (emlStructFile)
+	    {
+	    fdClose(emlStructFile, 0);
+	    }
+
+    return 0;
+
+    error:
+	if (emlStructPath)
+	    {
+	    nmFree(emlStructPath, sizeof(XString));
+	    }
+
+	if (emlStructFile)
+	    {
+	    fdClose(emlStructFile, 0);
+	    }
+
+	return -1;
     }
 
 
@@ -968,7 +1162,184 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 int
 smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     {
-    return -1;
+    pSmtpData inf = SMTP(inf_v);
+    pSmtpAttribute attr = NULL;
+    pStructInf createdStruct = NULL;
+
+    pSnNode rootNode = NULL;
+
+    pSmtpAttribute spoolDir = NULL;
+    pXString emlStructPath = NULL;
+    pFile emlStructFile = NULL;
+    pStructInf emlStruct = NULL;
+
+	/** Initialize the new attribute. **/
+	attr = nmMalloc(sizeof(SmtpAttribute));
+	if (!attr)
+	    {
+	    mssError(1,"SMTP","Could not create new attribute object.");
+	    return -1;
+	    }
+
+	/** Set the meta-data fields of the new attribute. **/
+	attr->Name = attrname;
+	attr->Type = type;
+
+	/** Add the new attribute to the attribute name list. **/
+	xaAddItem(inf->AttributeNames, attr->Name);
+
+	/** Set the default value appropriately if it is a string. **/
+	if (attr->Type == DATA_T_STRING)
+	    {
+	    attr->Value.String = "";
+	    }
+
+	/** Set the default value appropriately if it is a integer. **/
+	if (attr->Type == DATA_T_INTEGER)
+	    {
+	    attr->Value.Integer = 0;
+	    }
+
+	/** Add the attribute to the attribute hash. **/
+	xhAdd(inf->Attributes, attr->Name, (char*)attr);
+
+	/** Create the attribute in the correct location according to object type. **/
+	if (inf->Type == SMTP_T_ROOT)
+	    {
+	    /** Open the root node. **/
+	    rootNode = snReadNode(inf->Obj->Prev);
+	    if (!rootNode)
+		{
+		mssError(1, "SMTP", "Unable to open root node.");
+		goto error;
+		}
+
+	    /** Add the attribute to the root node. **/
+	    createdStruct = stAddAttr(rootNode->Data, attr->Name);
+	    if (!createdStruct)
+		{
+		mssError(1, "SMTP", "Unable to add new attribute to the root node.");
+		goto error;
+		}
+
+	    /** Set the default attribute value. **/
+	    if (stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0))
+		{
+		mssError(1, "SMTP", "Unable to write to the given attribute");
+		goto error;
+		}
+
+	    /** Set the root node to DIRTY so it will be written to the file. **/
+	    rootNode->Status = SN_NS_DIRTY;
+
+	    /** Write the changes to the root node. **/
+	    if (snWriteNode(inf->Obj->Prev, rootNode))
+		{
+		mssError(1, "SMTP", "Unable to write root node.");
+		goto error;
+		}
+	    }
+	else if (inf->Type == SMTP_T_EML)
+	    {
+	    /** Allocate the email structure path. **/
+	    emlStructPath = nmMalloc(sizeof(XString));
+	    if (!emlStructPath)
+		{
+		mssError(1, "SMTP", "Unable to allocate space for email structure path.");
+		goto error;
+		}
+	    memset(emlStructPath, 0, sizeof(XString));
+	    xsInit(emlStructPath);
+
+	    /** Calculate the real path of the email struct file. **/
+	    spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	    if (!spoolDir)
+		{
+		mssError(1, "SMTP", "Unable to get the spool directory path.");
+		goto error;
+		}
+
+	    if (xsCopy(emlStructPath, spoolDir->Value.String, strlen(spoolDir->Value.String)))
+		{
+		mssError(1, "SMTP", "Unable to copy spool directory path into the email path.");
+		goto error;
+		}
+
+	    if (xsConcatenate(emlStructPath, "/", 1) ||
+		xsConcatenate(emlStructPath, inf->Name, strlen(inf->Name) - 4) ||
+		xsConcatenate(emlStructPath, ".struct", -1))
+		{
+		mssError(1, "SMTP", "Unable to append email name to email path.");
+		goto error;
+		}
+
+	    /** Open the email structure file. **/
+	    emlStructFile = fdOpen(emlStructPath->String, 
+					    inf->Obj->Mode, 
+					    inf->Mask);
+	    if (!emlStructFile)
+		{
+		mssError(1, "SMTP", "Could not open email structure file (%s).", emlStructPath->String);
+		goto error;
+		}
+	    
+	    /** Parse the structure file. **/
+	    emlStruct = stParseMsg(emlStructFile, 0);
+	    if (!emlStruct)
+		{
+		mssError(0, "SMTP", "Could not parse the email structure file.");
+		goto error;
+		}
+
+	    /** Add the attribute to the email struct. **/
+	    createdStruct = stAddAttr(emlStruct, attr->Name);
+	    if (!createdStruct)
+		{
+		mssError(1, "SMTP", "Could not add attribute to the email struct.");
+		goto error;
+		}
+	    
+	    /** Set the default attribute value. **/
+	    if (stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0))
+		{
+		mssError(1, "SMTP", "Unable to write to the given attribute");
+		goto error;
+		}
+
+	    /** Write changes to the email struct file. **/
+	    if (stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT))
+		{
+		mssError(1, "SMTP", "Unable to write to the attribute to the email struct file.");
+		goto error;
+		}
+	    }
+
+	/** Free appropriate memory and close appropriate files. **/
+	if (emlStructPath)
+	    {
+	    nmFree(emlStructPath, sizeof(XString));
+	    }
+
+	if (emlStructFile)
+	    {
+	    fdClose(emlStructFile, 0);
+	    }
+
+    return 0;
+
+    error:
+	/** Free appropriate memory and close appropriate files. **/
+	if (emlStructPath)
+	    {
+	    nmFree(emlStructPath, sizeof(XString));
+	    }
+
+	if (emlStructFile)
+	    {
+	    fdClose(emlStructFile, 0);
+	    }
+
+	return -1;
     }
 
 
