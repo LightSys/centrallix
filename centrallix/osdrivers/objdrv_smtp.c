@@ -103,6 +103,14 @@ typedef struct
 
 #define SMTP_QY(x) ((pSmtpQueryData)(x))
 
+/*** Global data structure for the SMTP module. ***/
+struct
+    {
+    XArray		DefaultRootAttributes;		/* XArray of pSmtpAttibute */
+    XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttibute */
+    }
+    SMTP_INF;
+
 /*** smtp_internal_ClearAttributes - Clears all the elements of the attributes
  *** hash table.
  ***/
@@ -116,20 +124,73 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
     return 0;
     }
 
-/*** smtp_internal_GetRootAttributes - Loads the attributes from the node into
+/*** smtp_internal_CreateAttribute - Creates an attribute with the given values.
+ ***/
+pSmtpAttribute
+smtp_internal_CreateAttribute(char* name, int type, int intVal, char* strVal, pObjData value)
+    {
+    pSmtpAttribute inf = NULL;
+
+	inf = (pSmtpAttribute)nmMalloc(sizeof(SmtpAttribute));
+
+	inf->Name = name;
+	inf->Type = type;
+
+	if (type == DATA_T_INTEGER)
+	    {
+	    inf->Value.Integer = intVal;
+	    }
+	else if (type == DATA_T_STRING && strVal)
+	    {
+	    inf->Value.String = strVal;
+	    }
+	else
+	    {
+	    inf->Value = *value;
+	    }
+    
+    return inf;
+    }
+
+/*** smtp_internal_InitGlobals - Initializes global information for the SMTP
+ *** driver.
+ ***/
+int
+smtp_internal_InitGlobals()
+    {
+	/** Initialize the global attributes. **/
+	xaInit(&SMTP_INF.DefaultRootAttributes, 8);
+	xaInit(&SMTP_INF.DefaultEmailAttributes, 8);
+
+	/** Add all the required attributes. Yay hardcoding! **/
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("send_method", DATA_T_STRING, 0, "sendmail", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("server", DATA_T_STRING, 0, "127.0.0.1", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("port", DATA_T_INTEGER, 23, NULL, NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("spool_dir", DATA_T_STRING, 0, "/var/spool/mail/_centrallix", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("log_dir", DATA_T_STRING, 0, "/var/log", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("log_date_attr", DATA_T_STRING, 0, "", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("log_msgid_attr", DATA_T_STRING, 0, "", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("log_info_attr", DATA_T_STRING, 0, "", NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("ratelimit_time", DATA_T_INTEGER, 1, NULL, NULL));
+	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("domlimit_time", DATA_T_INTEGER, 5, NULL, NULL));
+
+    return 0;
+    }
+
+/*** smtp_internal_GetStructAttributes - Loads the attributes from the node into
  *** the SMTP object.
  *** Returns 0 on success and -1 on failure.
  ***/
 int
-smtp_internal_GetRootAttributes(pSmtpData inf)
+smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
     {
     pSmtpAttribute attr = NULL;
     pStructInf currentAttr = NULL;
     int i;
 
-	for (i = 0; i < inf->Node->Data->nSubInf; i++)
+	for (i = 0; i < structInf->nSubInf; i++)
 	    {
-	    currentAttr = inf->Node->Data->SubInf[i];
+	    currentAttr = structInf->SubInf[i];
 
 	    attr = nmMalloc(sizeof(SmtpAttribute));
 	    if (!attr)
@@ -163,37 +224,92 @@ smtp_internal_GetRootAttributes(pSmtpData inf)
     return 0;
     }
 
+/*** smtp_internal_CreateRoot - Creates a root smtp node.
+ *** Returns the newly created root node or NULL (if creation failed).
+ ***/
+pSnNode
+smtp_internal_CreateRootNode(pObject obj, int mask)
+    {
+    pSnNode node = NULL;
+    pSmtpAttribute currentAttr = NULL;
+    pStructInf currentParam = NULL;
+    int i;
+
+	/** Create the node object **/
+	node = snNewNode(obj, "system/smtp");
+	if (!node)
+	    {
+	    mssError(0, "SMTP", "Could not create new node object");
+	    return NULL;
+	    }
+
+	/** If globals are not yet initialized, initialize them. **/
+	/** We don't always need globals, but when we do, they should be initialized. **/
+	smtp_internal_InitGlobals();
+
+	/** Iterate through all the default root attributes. **/
+	for (i = 0; i < SMTP_INF.DefaultRootAttributes.nItems; i ++)
+	    {
+	    currentAttr = SMTP_ATTR(SMTP_INF.DefaultRootAttributes.Items[i]);
+
+	    /** Add the attribute to the node. **/
+	    currentParam = stAddAttr(node->Data, currentAttr->Name);
+	    if (!currentParam)
+		{
+		mssError(0, "SMTP", "Could not add attribute value %s", currentAttr->Name);
+		return NULL;
+		}
+
+	    /** Set the attribute to it's default value. **/
+	    if (stSetAttrValue(currentParam, currentAttr->Type, &currentAttr->Value, 0))
+		{
+		mssError(0, "SMTP", "Could not set attribute value %s", currentAttr->Name);
+		return NULL;
+		}
+	    }
+
+	/** Write the root node structure file. **/
+	snWriteNode(obj, node);
+
+    return node;
+    }
+
 /*** smtp_internal_OpenGeneral - Loads attributes common to all SMTP objects.
  *** Returns 0 on success and -1 on failure.
  ***/
 int
-smtp_internal_OpenGeneral(pSmtpData inf, pObject obj, char* usrtype)
+smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
     {
     pSnNode node = NULL;
 
-	inf->Obj = obj;
+	
+	/** Try to open the root node first. **/
+	if (!node)
+	    {
+	    node = snReadNode(inf->Obj->Prev);
+	    }
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
-	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
+	if ((inf->Obj->Mode & O_CREAT) && (inf->Obj->Mode & O_EXCL) && (inf->Obj->SubPtr == inf->Obj->Pathname->nElements))
 	    {
-	    node = snNewNode(obj->Prev, usrtype);
+	    if (node)
+		{
+		mssError(0, "SMTP", "Node exists and CREAT and EXCL flags are set. Cannot create new node.");
+		return -1;
+		}
+
+	    node = smtp_internal_CreateRootNode(inf->Obj, inf->Mask);
 	    if (!node)
 		{
 		mssError(0,"SMTP", "Could not create new node object");
 		return -1;
 		}
 	    }
-	
-	/** Otherwise, try to open it first. **/
-	if (!node)
-	    {
-	    node = snReadNode(obj->Prev);
-	    }
 
 	/** If no node, and user said CREAT ok, try that. **/
-	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
+	if (!node && (inf->Obj->Mode & O_CREAT) && (inf->Obj->SubPtr == inf->Obj->Pathname->nElements))
 	    {
-	    node = snNewNode(obj->Prev, usrtype);
+	    node = smtp_internal_CreateRootNode(inf->Obj, inf->Mask);
 	    }
 	
 	/** If _still_ no node, quit out. **/
@@ -230,7 +346,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, pObject obj, char* usrtype)
 
 	inf->CurAttr = 0;
 
-	if (smtp_internal_GetRootAttributes(inf))
+	if (smtp_internal_GetStructAttributes(inf->Node->Data, inf))
 	    {
 	    mssError(0, "SMTP", "Could not load root attributes.");
 	    return -1;
@@ -246,7 +362,6 @@ int
 smtp_internal_OpenRoot(pSmtpData inf)
     {
 	inf->Type = SMTP_T_ROOT;
-	inf->Obj->SubCnt = 1;
 
     return 0;
     }
@@ -264,7 +379,6 @@ smtp_internal_OpenEml(pSmtpData inf)
     pStructInf emailStructure = NULL;
 
 	inf->Type = SMTP_T_EML;
-	inf->Obj->SubCnt = 2;
 
 	emailPath = (pXString)nmMalloc(sizeof(XString));
 	if (!emailPath)
@@ -373,15 +487,18 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    goto error;
 	memset(inf, 0, sizeof(SmtpData));
 	inf->Mask = mask;
-
-	if (smtp_internal_OpenGeneral(inf, obj, usrtype))
-	    {
-	    goto error;
-	    }
+	inf->Obj = obj;
 
 	/** Determine the type of the object. **/
 	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
 	    {
+	    inf->Obj->SubCnt = 1;
+
+	    if (smtp_internal_OpenGeneral(inf, usrtype))
+		{
+		goto error;
+		}
+		
 	    if (smtp_internal_OpenRoot(inf))
 		{
 		goto error;
@@ -390,6 +507,13 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	else if (inf->Obj->SubPtr+1 == inf->Obj->Pathname->nElements &&
 		!strcmp(inf->Obj->Pathname->Pathbuf + strlen(inf->Obj->Pathname->Pathbuf) - 4, ".eml"))
 	    {
+	    inf->Obj->SubCnt = 2;
+
+	    if (smtp_internal_OpenGeneral(inf, usrtype))
+		{
+		goto error;
+		}
+		
 	    if (smtp_internal_OpenEml(inf))
 		{
 		goto error;
@@ -420,27 +544,31 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
 
-    if (inf->AttributeNames)
-	{
-	xaDeInit(inf->AttributeNames);
-	}
-
-    if (inf->Attributes)
-	{
-	xhClear(inf->Attributes, smtp_internal_ClearAttribute, NULL);
-	xhDeInit(inf->Attributes);
-	}
-
-    if (inf->Content)
-	{
-	if (fdClose(inf->Content, 0))
+	if (inf->AttributeNames)
 	    {
-	    mssError(0, "SMTP", "Unable to close email file.");
-	    return -1;
+	    xaDeInit(inf->AttributeNames);
 	    }
-	}
 
-    nmFree(inf, sizeof(SmtpData));
+	if (inf->Attributes)
+	    {
+	    xhClear(inf->Attributes, smtp_internal_ClearAttribute, NULL);
+	    xhDeInit(inf->Attributes);
+	    }
+
+	if (inf->Content)
+	    {
+	    if (fdClose(inf->Content, 0))
+		{
+		mssError(0, "SMTP", "Unable to close email file.");
+		return -1;
+		}
+	    }
+
+	/** We're closing the object... let the world know. **/
+	inf->Node->OpenCnt--;
+
+	nmFree(inf, sizeof(SmtpData));
+
     return 0;
     }
 
@@ -453,7 +581,38 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
 int
 smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    return -1;
+    pSnNode node = NULL;
+
+	/** Determine the type of the object. **/
+	if (obj->SubPtr == obj->Pathname->nElements)
+	    {
+	    node = snReadNode(obj);
+	    if (node)
+		{
+		mssError(1, "SMTP", "Unable to create root node because it already exists.");
+		return -1;
+		}
+
+	    node = smtp_internal_CreateRootNode(obj, mask);
+	    if (!node)
+		{
+		mssError(1, "SMTP", "Unable to create root node.");
+		return -1;
+		}
+	    }
+	else if (obj->SubPtr+1 == obj->Pathname->nElements &&
+		!strcmp(obj->Pathname->Pathbuf + strlen(obj->Pathname->Pathbuf) - 4, ".eml"))
+	    {
+	    mssError(1, "SMTP", "Not currently handling email creation.");
+	    return -1;
+	    }
+	else
+	    {
+	    mssError(1,"SMTP","Could not create file");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -464,12 +623,27 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 int
 smtpDelete(pObject obj, pObjTrxTree* oxt)
     {
-    /** Unimplemented **/
+	/** Determine the type of the object. **/
+	if (obj->SubPtr == obj->Pathname->nElements)
+	    {
+	    objDeleteObj(obj->Prev);
+	    return 0;
+	    }
+	else if (obj->SubPtr+1 == obj->Pathname->nElements &&
+		!strcmp(obj->Pathname->Pathbuf + strlen(obj->Pathname->Pathbuf) - 4, ".eml"))
+	    {
+	    mssError(1, "SMTP", "Not currently handling email deletion");
+	    }
+	else
+	    {
+	    mssError(1,"SMTP","Could not delete indicated object");
+	    }
+
     return -1;
     }
 
 
-/*** smtpRead - Read from the JSON element
+/*** smtpRead - Read from the SMTP object
  ***/
 int
 smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -487,7 +661,7 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     }
 
 
-/*** smtpWrite - Write to the JSON element
+/*** smtpWrite - Write to the SMTP object
  ***/
 int
 smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -596,8 +770,9 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		return NULL;
 		}
 	    memset(inf, 0, sizeof(SmtpData));
+	    inf->Obj = obj;
 
-	    if (smtp_internal_OpenGeneral(inf, obj, "system/smtp-message") || smtp_internal_OpenEml(inf))
+	    if (smtp_internal_OpenGeneral(inf, "system/smtp-message") || smtp_internal_OpenEml(inf))
 		{
 		return NULL;
 		}
