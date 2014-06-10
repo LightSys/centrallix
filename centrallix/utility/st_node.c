@@ -175,7 +175,7 @@ snWriteNode(pObject obj, pSnNode node)
 	sprintf(openas_path,"%s?ls__type=application%%2foctet-stream",path);
 
 	/** Open and truncate the file **/
-	new_obj = objOpen(obj->Session, openas_path, O_WRONLY | O_TRUNC | O_CREAT, 0600, node->OpenType);
+	new_obj = objOpen(obj->Session, openas_path+1, O_WRONLY | O_TRUNC | O_CREAT, 0600, node->OpenType);
 	if (!new_obj)
 	    {
 	    mssErrorErrno(1,"SN","Could not (re)write the node object");
