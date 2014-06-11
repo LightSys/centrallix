@@ -1174,7 +1174,7 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
     int placeholder_len;
     int replace_len;
     pObject obj;
-    int i;
+    int i,j;
     int t;
     int found;
     ObjData od;
@@ -1300,11 +1300,9 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 	    /** Next, lookup the field/object. **/
 	    obj = NULL;
 	    t = DATA_T_UNAVAILABLE;
-	    if (n_obj_names >= 0)
+	    if (n_obj_names >= 0 && objname[0])
 		{
 		/** Using a remapping or scope-specification list, look up there. **/
-		if (!objname[0])
-		    strtcpy(objname, obj_name_list[0], sizeof(objname));
 		found=0;
 		for(i=0;i<n_obj_names;i++)
 		    {
@@ -1368,18 +1366,48 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 	    else
 		{
 		/** No object name, see if any obj has the requested attribute **/
-		for(i=0;i<objlist->nObjects;i++)
+		if (n_obj_names > 0)
 		    {
-		    if (objlist->Objects[i])
+		    /** Check the remapping list if there is one **/
+		    for(i=0;i<n_obj_names;i++)
 			{
-			typefn = objlist->GetTypeFn[i];
-			if (!typefn) typefn = objGetAttrType;
-			t = typefn(objlist->Objects[i], fieldname);
-			if (t > 0)
+			found = 0;
+			for(j=0;j<objlist->nObjects;j++)
 			    {
-			    obj = objlist->Objects[i];
-			    getfn = objlist->GetAttrFn[i];
+			    if (objlist->Objects[j] && objlist->Names[j] && !strcmp(objlist->Names[j], obj_remap_list[i]))
+				{
+				typefn = objlist->GetTypeFn[j];
+				if (!typefn) typefn = objGetAttrType;
+				t = typefn(objlist->Objects[j], fieldname);
+				if (t > 0)
+				    {
+				    obj = objlist->Objects[j];
+				    getfn = objlist->GetAttrFn[j];
+				    found=1;
+				    break;
+				    }
+				}
+			    }
+			if (found)
 			    break;
+			}
+		    }
+		else
+		    {
+		    /** If no remapping list, check the object list **/
+		    for(i=0;i<objlist->nObjects;i++)
+			{
+			if (objlist->Objects[i])
+			    {
+			    typefn = objlist->GetTypeFn[i];
+			    if (!typefn) typefn = objGetAttrType;
+			    t = typefn(objlist->Objects[i], fieldname);
+			    if (t > 0)
+				{
+				obj = objlist->Objects[i];
+				getfn = objlist->GetAttrFn[i];
+				break;
+				}
 			    }
 			}
 		    }
