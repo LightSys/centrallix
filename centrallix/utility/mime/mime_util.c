@@ -39,15 +39,61 @@
 #include "obj.h"
 #include "mime.h"
 
-/*  libmime_Cleanup
-**
-**  Deallocates all memory used for the mime message
-*/
-void
-libmime_Cleanup(pMimeHeader msg)
+/** libmime_CreateHeader
+ **
+ ** Allocates all memory used for the mime header
+ **/
+pMimeHeader
+libmime_CreateHeader()
     {
-    // FIXME FIXME
-    // Do cleanup stuff.. memory leaking now!
+    pMimeHeader msg;
+
+	msg = nmMalloc(sizeof(MimeHeader));
+	if (!msg) return NULL;
+	memset(msg, 0, sizeof(MimeHeader));
+
+	xaInit(&msg->Parts, 8);
+    
+    return msg;
+    }
+
+/** libmime_Cleanup_Header
+ **
+ ** Deallocates all memory used for the mime header
+ **/
+void
+libmime_CleanupHeader(pMimeHeader msg)
+    {
+    int i;
+    
+	for (i = 0; i < msg->Parts.nItems; i++)
+	    {
+	    libmime_CleanupHeader(msg->Parts.Items[i]);
+	    }
+	xaDeInit(&msg->Parts);
+    
+	if (msg->ToList)
+	    {
+	    xaDeInit(msg->ToList);
+	    nmFree(msg->ToList, sizeof(XArray));
+	    }
+    
+	if (msg->FromList)
+	    {
+	    xaDeInit(msg->FromList);
+	    nmFree(msg->FromList, sizeof(XArray));
+	    }
+
+	if (msg->CcList)
+	    {
+	    xaDeInit(msg->CcList);
+	    nmFree(msg->CcList, sizeof(XArray));
+	    }
+    
+	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
+
+	nmFree(msg, sizeof(MimeHeader));
+    
     return;
     }
 

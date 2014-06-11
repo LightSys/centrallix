@@ -115,7 +115,10 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     if (!inf) return NULL;
     msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
     memset(inf,0,sizeof(MimeInfo));
-    memset(msg,0,sizeof(MimeHeader));
+
+    msg = libmime_CreateHeader();
+    if (!msg) goto error;
+
     /** Set object parameters **/
     inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
     memset(inf->MimeDat,0,sizeof(MimeData));
@@ -129,18 +132,17 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->Mask = mask;
     inf->InternalSeek = 0;
     inf->InternalType = MIME_INTERNAL_MESSAGE;
-    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
+
+    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
     if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
 	{
-	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message header in mimeOpen().\n");
-	mlxCloseSession(lex);
-	return NULL;
+	mssError(0, "MIME", "There was an error parsing message header in mimeOpen().");
+	goto error;
 	}
     if (libmime_ParseMultipartBody(lex, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
 	{
-	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message entity in mimeOpen().\n");
-	mlxCloseSession(lex);
-	return NULL;
+	mssError(0, "MIME", "There was an error parsing message body in mimeOpen().");
+	goto error;
 	}
     if (MIME_DEBUG)
 	{
@@ -189,6 +191,15 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
     return (void*)inf;
+
+    error:
+	if (lex)
+	    {
+	    mlxCloseSession(lex);
+	    }
+
+	mimeClose(inf,NULL);
+	return NULL;
     }
 
 
@@ -201,15 +212,28 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     pMimeInfo inf = MIME(inf_v);
 
     /** free any memory used to return an attribute **/
-    if(inf->AttrValue)
+    if (inf->AttrValue)
 	{
 	nmSysFree(inf->AttrValue);
 	inf->AttrValue=NULL;
 	}
 
+    if (inf->MimeDat)
+	{
+	nmFree(inf->MimeDat, sizeof(MimeData));
+	}
+
     /** probably needs to be more done here, but I have _no_ clue what's going on :) -- JDR **/
-    libmime_Cleanup(inf->Header);
-    nmFree(inf,sizeof(MimeInfo));
+    /** Making this do stuff, but may still need more work. Justin Southworth and Hazen Johnson **/
+    if (inf->MessageRoot)
+	{
+	libmime_CleanupHeader(inf->MessageRoot);
+	}
+
+    if (inf)
+	{
+	nmFree(inf,sizeof(MimeInfo));
+	}
     return 0;
     }
 

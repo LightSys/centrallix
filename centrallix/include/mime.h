@@ -143,7 +143,8 @@ int libmime_ParseAddress(char *buf, pEmailAddr addr);
 int libmime_ParseAddressElements(char *buf, pEmailAddr addr);
 
 /** mime_util.c **/
-void libmime_Cleanup(pMimeHeader msg);
+pMimeHeader libmime_CreateHeader();
+void libmime_CleanupHeader(pMimeHeader msg);
 int libmime_StringLTrim(char *str);
 int libmime_StringRTrim(char *str);
 int libmime_StringTrim(char *str);

@@ -657,7 +657,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		{
 		if (l_pos != 0)
 		    {
-		    l_msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
+		    l_msg = libmime_CreateHeader();
+		    if (!l_msg) return -1;
+		    
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
 		    num++;
