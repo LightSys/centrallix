@@ -116,7 +116,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     if (!inf) goto error;
     memset(inf,0,sizeof(MimeInfo));
 
-    msg = libmime_CreateHeader();
+    msg = libmime_AllocateHeader();
     if (!msg) goto error;
 
     /** Set object parameters **/
@@ -241,7 +241,7 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     /** Making this do stuff, but may still need more work. Justin Southworth and Hazen Johnson **/
     if (inf->MessageRoot)
 	{
-	libmime_CleanupHeader(inf->MessageRoot);
+	libmime_DeallocateHeader(inf->MessageRoot);
 	}
 
     if (inf)

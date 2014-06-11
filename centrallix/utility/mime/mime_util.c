@@ -39,12 +39,12 @@
 #include "obj.h"
 #include "mime.h"
 
-/** libmime_CreateHeader
+/** libmime_AllocateHeader
  **
  ** Allocates all memory used for the mime header
  **/
 pMimeHeader
-libmime_CreateHeader()
+libmime_AllocateHeader()
     {
     pMimeHeader msg;
 
@@ -62,13 +62,13 @@ libmime_CreateHeader()
  ** Deallocates all memory used for the mime header
  **/
 void
-libmime_CleanupHeader(pMimeHeader msg)
+libmime_DeallocateHeader(pMimeHeader msg)
     {
     int i;
     
 	for (i = 0; i < msg->Parts.nItems; i++)
 	    {
-	    libmime_CleanupHeader(msg->Parts.Items[i]);
+	    libmime_DeallocateHeader(msg->Parts.Items[i]);
 	    }
 	xaDeInit(&msg->Parts);
     
