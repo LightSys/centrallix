@@ -45,13 +45,13 @@
 
 #define MIME_BUFSIZE          64
 
-#define MIME_TYPE_TEXT        1
-#define MIME_TYPE_MULTIPART   2
-#define MIME_TYPE_APPLICATION 3
-#define MIME_TYPE_MESSAGE     4
-#define MIME_TYPE_IMAGE       5
-#define MIME_TYPE_AUDIO       6
-#define MIME_TYPE_VIDEO       7
+#define MIME_TYPE_TEXT        0
+#define MIME_TYPE_MULTIPART   1
+#define MIME_TYPE_APPLICATION 2
+#define MIME_TYPE_MESSAGE     3
+#define MIME_TYPE_IMAGE       4
+#define MIME_TYPE_AUDIO       5
+#define MIME_TYPE_VIDEO       6
 
 #define MIME_ENC_7BIT         1
 #define MIME_ENC_8BIT         2

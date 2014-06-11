@@ -403,7 +403,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType], inf->Header->ContentSubType);
 	val->String = inf->AttrValue;
 	return 0;
 	}
@@ -411,7 +411,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType], inf->Header->ContentSubType);
 	val->String = inf->AttrValue;
 	return 0;
 	}
@@ -427,7 +427,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	}
     if (!strcmp(attrname, "transfer_encoding"))
 	{
-	val->String = EncodingStrings[inf->Header->TransferEncoding-1];
+	val->String = EncodingStrings[inf->Header->TransferEncoding];
 	return 0;
 	}
     if (!strcmp(attrname, "mime_version"))
@@ -597,6 +597,8 @@ mimeInitialize()
     xaAddItem(&(drv->RootContentTypes), "multipart/mixed");
     xaAddItem(&(drv->RootContentTypes), "multipart/alternative");
     xaAddItem(&(drv->RootContentTypes), "multipart/form-data");
+    xaAddItem(&(drv->RootContentTypes), "multipart/parallel");
+    xaAddItem(&(drv->RootContentTypes), "multipart/digest");
 
     if (objRegisterDriver(drv) < 0) return -1;
 

@@ -99,9 +99,9 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     flag = 1;
     while (flag)
 	{
-	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
 	toktype = mlxNextToken(lex);
-	if (toktype == MLX_TOK_ERROR)
+	if (toktype == MLX_TOK_ERROR || toktype == MLX_TOK_EOF)
 	    {
 	    return -1;
 	    }
@@ -170,9 +170,9 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	mlxSetOffset(lex, msg->MsgSeekStart);
 	while (flag)
 	    {
-	    mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	    mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
 	    toktype = mlxNextToken(lex);
-	    if (toktype == MLX_TOK_ERROR)
+	    if (toktype == MLX_TOK_ERROR || toktype == MLX_TOK_EOF)
 		{
 		flag = 0;
 		}
@@ -475,7 +475,8 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	{
 	if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
 	    {
-	    msg->ContentMainType = i+1;
+	    msg->ContentMainType = i;
+	    break;
 	    }
 	}
     
@@ -516,7 +517,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType-1]);
+	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType]);
 	printf("  SUBTYPE     : \"%s\"\n", msg->ContentSubType);
 	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
 	printf("  FILENAME    : \"%s\"\n", msg->Filename);
@@ -597,7 +598,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    memcpy(hdr, buf, (count-1>79?79:count-1));
 	    hdr[(count-1>79?79:count-1)] = 0;
-	    memcpy(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    memmove(buf, &buf[count+1], strlen(&buf[count+1])+1);
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
 	    return 0;
@@ -639,9 +640,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 
     while (flag)
 	{
-	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
 	toktype = mlxNextToken(lex);
-	if (toktype == MLX_TOK_ERROR || end <= count)
+	if (toktype == MLX_TOK_ERROR || end <= count || toktype == MLX_TOK_EOF)
 	    {
 	    flag = 0;
 	    }
