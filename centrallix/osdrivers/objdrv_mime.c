@@ -97,14 +97,15 @@ typedef struct
 void*
 mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    pLxSession lex;
+    pLxSession lex = NULL;
     pMimeInfo inf;
     pMimeHeader msg;
     pMimeHeader tmp;
     char *node_path;
     char *buffer;
     char *ptr;
-    int i, size, found_match;
+    int i, size, found_match = 0;
+    char nullbuf[1];
 
     if (MIME_DEBUG) fprintf(stderr, "\n");
     if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
@@ -163,6 +164,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	fprintf(stderr, "-----------------------------------------------------------------\n\n");
 	}
     mlxCloseSession(lex);
+    lex = NULL;
 
     /** assume we're only going to handle one level... **/
     /** no longer. */
@@ -172,10 +174,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
      ** go through all elements and see if we have another multipart element.
      ** If so, repeat the search.
      **/
-    found_match = 1;
     while (inf->Header->ContentMainType == MIME_TYPE_MULTIPART &&
-	   obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
-	   found_match)
+	   obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
 	{
 	/** assume we don't have a match **/
 	found_match = 0;
@@ -200,6 +200,61 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		break;
 		}
 	    }
+	/** Break if there is no matching subpart **/
+	if (!found_match) break;
+	}
+
+    /** Reset the file seek pointer. **/
+    if (objRead(obj->Prev, nullbuf, 0, 0, FD_U_SEEK) < 0)
+	{
+	mssErrorErrno(0, "MIME", "Improperly reset mime object file pointer.");
+	goto error;
+	}
+
+    /** If dealing with the base mime file, check to see if it has been initialized (aka 'created'). **/
+    if(objRead(obj->Prev, nullbuf, 1, 0, obj->Mode) > 0)
+	{
+	found_match = 1;
+	}
+
+    /** If CREAT, EXCL, and a match, error. **/
+    if ((inf->Obj->Mode & O_CREAT) &&
+	(inf->Obj->Mode & O_EXCL) &&
+	(found_match))
+	{
+	mssError(1, "MIME", "Mime object exists but create and exclusive flags are set. Cannot create mime object.");
+	goto error;
+	}
+
+
+    /** If not CREAT and match, error **/
+    if (!(inf->Obj->Mode & O_CREAT) &&
+	(!found_match))
+	{
+	mssError(1, "MIME", "Mime object not found but create flag not set.");
+	goto error;
+	}
+
+    /** CREAT and no match... create the file! **/
+    if ((inf->Obj->Mode & O_CREAT) &&
+	(!found_match))
+	{
+	if (mimeCreate(obj, mask, systype, usrtype, oxt))
+	    {
+	    mssError(0, "MIME", "Could not create new mime object.");
+	    goto error;
+	    }
+
+	/** Deallocate anything from this go-round before trying again. **/
+	mimeClose(inf, oxt);
+
+	/** Open the object we just created, super-ensuring we don't make it again. **/
+	inf = mimeOpen(obj, mask & ~O_CREAT, systype, usrtype, oxt);
+	if (!inf)
+	    {
+	    mssError(0, "MIME", "Failed to open newly created mime object.");
+	    goto error;
+	    }
 	}
 
     if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
@@ -212,7 +267,10 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    mlxCloseSession(lex);
 	    }
 
-	mimeClose(inf,NULL);
+	if (inf)
+	    {
+	    mimeClose(inf, NULL);
+	    }
 	return NULL;
     }
 
@@ -252,13 +310,41 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeCreate
-*/
+/***
+ ***  mimeCreate - Create a new mime object.
+ ***/
 int
 mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    XString initialContents;
+
+	xsInit(&initialContents);
+
+	/** Hardcode default values for new mime object. **/
+	xsConcatenate(&initialContents, "Mime-Version: 1.0\n", -1);
+	xsConcatenate(&initialContents, "Content-Type: text/plain\n\n", -1);
+
+	/** Creating a new mime file. **/
+	if (obj->SubPtr == obj->Pathname->nElements)
+	    {
+	    if (objWrite(obj->Prev, initialContents.String, initialContents.Length, 0, obj->Mode) < 0)
+		{
+		mssError(0, "MIME", "Could not write to new mime object.");
+		goto error;
+		}
+	    }
+	/** Adding a subobject to an existing mime file. **/
+	else
+	    {
+	    xsCopy(&initialContents, "Hi, Jonathan.", 13);
+	    }
+
+	xsDeInit(&initialContents);
     return 0;
+
+    error:
+	xsDeInit(&initialContents);
+	return -1;
     }
 
 
