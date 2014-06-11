@@ -67,6 +67,7 @@ typedef struct
     char	Pathname[256];
     char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
     pMimeHeader	Header;
+    pMimeHeader	MessageRoot;
     pMimeData	MimeDat;
     int		NextAttr;
     int		InternalSeek;
@@ -103,7 +104,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     char *node_path;
     char *buffer;
     char *ptr;
-    int i,size;
+    int i, size, found_match;
 
     if (MIME_DEBUG) fprintf(stderr, "\n");
     if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
@@ -112,8 +113,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** Allocate and initialize the MIME structure **/
     inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
-    if (!inf) return NULL;
-    msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
+    if (!inf) goto error;
     memset(inf,0,sizeof(MimeInfo));
 
     msg = libmime_CreateHeader();
@@ -121,12 +121,15 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** Set object parameters **/
     inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
+    if (!inf->MimeDat) goto error;
     memset(inf->MimeDat,0,sizeof(MimeData));
+
     inf->MimeDat->Parent = obj->Prev;
     inf->MimeDat->ReadFn = objRead;
     inf->MimeDat->WriteFn = objWrite;
     inf->MimeDat->Buffer[0] = 0;
     inf->MimeDat->EncBuffer[0] = 0;
+    inf->MessageRoot = msg;
     inf->Header = msg;
     inf->Obj = obj;
     inf->Mask = mask;
@@ -161,15 +164,24 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	}
     mlxCloseSession(lex);
 
-    /** assume we're only going to handle one level **/
+    /** assume we're only going to handle one level... **/
+    /** no longer. */
     obj->SubCnt=1;
-    if (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
-	{
-	int i;
 
-	/* at least one more element of path to worry about */
+    /** While we have a multipart message and there are more elements in the path,
+     ** go through all elements and see if we have another multipart element.
+     ** If so, repeat the search.
+     **/
+    found_match = 1;
+    while (inf->Header->ContentMainType == MIME_TYPE_MULTIPART &&
+	   obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
+	   found_match)
+	{
+	/** assume we don't have a match **/
+	found_match = 0;
+
+	/** at least one more element of path to worry about **/
 	ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
-	//fprintf(stderr, "path: %s\n", ptr);
 	for (i=0; i < xaCount(&(inf->Header->Parts)); i++)
 	    {
 	    pMimeHeader phdr;
@@ -183,6 +195,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		 **/
 		inf->Header = phdr;
 		inf->InternalType = MIME_INTERNAL_MESSAGE;
+		obj->SubCnt++;
+		found_match = 1;
 		break;
 		}
 	    }
@@ -333,7 +347,7 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 void*
 mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
-    pMimeInfo inf;
+    pMimeInfo inf = NULL;
     pMimeQuery qy;
 
     qy = (pMimeQuery)qy_v;
@@ -347,9 +361,14 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     obj->SubCnt = qy->Data->Obj->SubCnt;
 
     inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
-    if (!inf) return NULL;
+    if (!inf) goto error;
     memset(inf,0,sizeof(MimeInfo));
-    inf->MimeDat = qy->Data->MimeDat;
+    
+    inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
+    if (!inf->MimeDat) goto error;
+    memset(inf->MimeDat, 0, sizeof(MimeData));
+    
+    memcpy(inf->MimeDat, qy->Data->MimeDat, sizeof(MimeData));
     inf->Obj = obj;
     inf->Mask = mode;
     inf->Header = NULL;
@@ -360,6 +379,14 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     qy->ItemCnt++;
 
     return (void*)inf;
+    
+    error:
+	if (inf)
+	    {
+	    mimeClose(inf, NULL);
+	    }
+	
+	return NULL;
     }
 
 

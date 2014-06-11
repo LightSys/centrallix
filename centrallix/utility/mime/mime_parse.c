@@ -674,6 +674,11 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 			    sprintf(l_msg->Filename, "attachment%d", num);
 			    }
 			}
+
+		    if (l_msg->ContentMainType == MIME_TYPE_MULTIPART)
+			{
+			    libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
+			}
 		    }
 		s=strlen(xsbuf.String);
 		l_pos = count;
