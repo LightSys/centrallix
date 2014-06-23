@@ -59,6 +59,9 @@ typedef struct _TPOD
 pTObjData ptodAllocate();
 int ptodFree(pTObjData ptod);
 pTObjData ptodLink(pTObjData ptod);
+pTObjData ptodCreateInt(int data);
+pTObjData ptodCreateString(char* data, int flags);
+pTObjData ptodCreate(void* data, int datatype);
 int ptodCopy(pTObjData src, pTObjData dst);
 pTObjData ptodDuplicate(pTObjData ptod, int flags);
 int ptodTypeOf(pTObjData ptod);

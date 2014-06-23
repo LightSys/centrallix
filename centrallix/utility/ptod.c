@@ -4,6 +4,7 @@
 #include <string.h>
 #include "cxlib/datatypes.h"
 #include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
 #include "ptod.h"
 #include "obj.h"
 
@@ -115,6 +116,7 @@ ptodFree(pTObjData ptod)
     {
 
 	/** Link count to 0? **/
+	/** TODO: Is this leaking memory? (--ptod->LinkCnt) **/
 	if ((ptod->LinkCnt--) != 0) return 0;
 
 	/** Free data memory **/
@@ -141,6 +143,93 @@ ptodLink(pTObjData ptod)
 	ptod->LinkCnt++;
 
     return ptod;
+    }
+
+
+/*** ptodCreateInt() - create a ptod that contains an integer
+ ***/
+pTObjData
+ptodCreateInt(int data)
+    {
+    pTObjData datPtod;
+
+	datPtod = ptodAllocate();
+	datPtod->Data.Integer = data;
+	datPtod->DataType = DATA_T_INTEGER;
+
+    return datPtod;
+    }
+
+
+/*** ptodCreateString() - create a ptod object that contains a cstring
+ *** according to given flags
+ ***/
+pTObjData
+ptodCreateString(char* data, int flags)
+    {
+    pTObjData datPtod;
+
+	/** If attached, shove it onto the end of the ptod **/
+	if (flags & DATA_TF_ATTACHED)
+	    {
+	    /** Allocate the ptod (+1 for null char) **/
+	    datPtod = (pTObjData)nmSysMalloc(sizeof(TObjData) +
+					     strlen(data) * sizeof(char) + 1);
+	    if (!datPtod)
+		{
+		mssError(1, "PTOD", "Could not allocate string ptod object.");
+		return NULL;
+		}
+	    memset(0, datPtod, sizeof(TObjData) + strlen(data) * sizeof(char) + 1);
+
+	    /** Point it to the attached buffer **/
+	    datPtod->Data.String = (char*) datPtod + sizeof(TObjData);
+	    strtcpy(datPtod->Data.String, data, strlen(data) * sizeof(char));
+
+	    datPtod->DataType = DATA_T_STRING;
+	    datPtod->LinkCnt = 1;
+	    datPtod->AttachedLen = strlen(data);
+	    datPtod->Flags = flags;
+	    }
+
+	/** We are to manage the string **/
+	else if (!(flags & DATA_TF_UNMANAGED))
+	    {
+	    datPtod = ptodAllocate();
+
+	    datPtod->Data.String = nmSysStrdup(data);
+	    datPtod->DataType = DATA_T_STRING;
+	    datPtod->Flags = flags;
+	    }
+
+	/** Generic copying of the string **/
+	else
+	    {
+	    datPtod = ptodAllocate();
+
+	    datPtod->Data.String = data;
+	    datPtod->DataType = DATA_T_STRING;
+	    datPtod->Flags = flags;
+	    }
+
+    return datPtod;
+    }
+
+
+/*** ptodCreate() - create a ptod object given certain parameters.
+ ***/
+pTObjData
+ptodCreate(void* data, int datatype)
+    {
+    pTObjData datPtod;
+
+	datPtod = ptodAllocate();
+
+	datPtod->Data.Generic = data;
+	datPtod->DataType = datatype;
+	datPtod->Flags = DATA_TF_UNMANAGED;
+
+    return datPtod;
     }
 
 
