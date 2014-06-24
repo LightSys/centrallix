@@ -497,19 +497,29 @@ mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
+    pMimeInfo inf = MIME(inf_v);
+    pMimeAttr attr;
 
-    if (!strcmp(attrname, "name")) return DATA_T_STRING;
-    if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
-    if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
-    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
-    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
-    if (!strcmp(attrname, "subject")) return DATA_T_STRING;
-    if (!strcmp(attrname, "charset")) return DATA_T_STRING;
-    if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
-    if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
-    if (!strcmp(attrname, "content-disposition")) return DATA_T_STRING;
+	/** Check if the attribute exists. **/
+	attr = (pMimeAttr)xhLookup(&inf->Header->Attrs, attrname);
+	if (!attr)
+	    {
+	    if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "subject")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "charset")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
+	    if (!strcmp(attrname, "content-disposition")) return DATA_T_STRING;
 
-    return -1;
+	    return -1;
+	    }
+
+    /** Return the apropriate data type. **/
+    return attr->Ptod->DataType;
     }
 
 
@@ -559,7 +569,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	}
     if (!strcmp(attrname, "subject"))
 	{
-	val->String = inf->Header->Subject;
+	val->String = libmime_GetStringAttr(inf->Header, "Subject");
 	return 0;
 	}
     if (!strcmp(attrname, "charset"))
@@ -577,7 +587,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	val->String = inf->Header->MIMEVersion;
 	return 0;
 	}
-    if (!strcmp(attrname, "content-disposition"))
+    if (!strcmp(attrname, "ContentDisposition"))
 	{
 	val->String = libmime_GetStringAttr(inf->Header, "ContentDisposition");
 	return 0;
@@ -601,7 +611,7 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	case 2: return "charset";
 	case 3: return "transfer_encoding";
 	case 4: return "mime_version";
-	case 5: return "content-disposition";
+	case 5: return "ContentDisposition";
 	}
     return NULL;
     }

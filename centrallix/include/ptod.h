@@ -52,7 +52,7 @@ typedef struct _TPOD
 #define DATA_TF_UNASSURED	2	/* data is unassured (replication) */
 #define DATA_TF_UNMANAGED	4	/* pointed-to data not managed by ptod*/
 #define DATA_TF_ATTACHED	8	/* pointed-to data directly alloc'd */
-   
+
 #define PTOD(x)	((pTObjData)(x))
 
 /*** PTOD manipulation functions ***/

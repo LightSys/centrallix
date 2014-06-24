@@ -85,8 +85,6 @@ typedef struct
 typedef struct _MM
     {
     int		ContentLength;
-    char	Boundary[80];
-    char	Subject[80];
     char	Charset[32];
     char	MIMEVersion[16];
     char	Mailer[80];

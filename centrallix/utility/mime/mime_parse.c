@@ -76,12 +76,12 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 
     /** Initialize the message structure **/
     msg->ContentLength = 0;
-    libmime_CreateStringAttr(msg, "ContentDisposition", "", 0);
+    libmime_CreateStringAttr(msg, "ContentDisposition", "", 0); /* 0 is managed and unattached */
     libmime_CreateStringAttr(msg, "Filename", "", 0);
     libmime_CreateIntAttr(msg, "ContentMainType", MIME_TYPE_TEXT);
-    libmime_CreateStringAttr(msg, "ContentSubType", "", 0); /* 0 is managed and unattached */
-    msg->Boundary[0] = 0;
-    msg->Subject[0] = 0;
+    libmime_CreateStringAttr(msg, "ContentSubType", "", 0);
+    libmime_CreateStringAttr(msg, "Boundary", "", 0);
+    libmime_CreateStringAttr(msg, "Subject", "", 0);
     msg->Charset[0] = 0;
     msg->TransferEncoding = MIME_ENC_7BIT;
     msg->MIMEVersion[0] = 0;
@@ -130,6 +130,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String)+1);
 	    if (libmime_ParseHeaderElement(hdrbdy, hdrnme) == 0)
 		{
+		/** TODO flatten these functions (if possible). **/
 		if      (!strcasecmp(hdrnme, "Content-Type")) err = libmime_SetContentType(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Content-Disposition")) err = libmime_SetContentDisp(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Content-Transfer-Encoding")) err = libmime_SetTransferEncoding(msg, hdrbdy);
@@ -289,17 +290,21 @@ libmime_SetDate(pMimeHeader msg, char *buf)
 **
 **  Parses the "Subject" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetSubject(pMimeHeader msg, char *buf)
     {
-    /** Get the date **/
-    strncpy(msg->Subject, buf, 79);
-    msg->Subject[79] = 0;
+    /** Get the subject **/
+    /** NOTE: buf could concievably NOT be null-terminated!!
+     ** However, all current calls consist of a null-terminated buf.
+     **/
+    libmime_SetStringAttr(msg, "Subject", buf, -1);
 
     if (MIME_DEBUG)
 	{
-	printf("  SUBJECT     : \"%s\"\n", msg->Subject);
+	printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
 	}
 
     return 0;
@@ -488,8 +493,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	while (*ptr == ' ') ptr++;
 	if (!libmime_StringFirstCaseCmp(ptr, "boundary"))
 	    {
-	    strncpy(msg->Boundary, libmime_StringUnquote(cptr), 79);
-	    msg->Boundary[79] = 0;
+	    libmime_SetStringAttr(msg, "Boundary", libmime_StringUnquote(cptr), -1);
 	    }
 	else if (!libmime_StringFirstCaseCmp(ptr, "name") &&
 		 !strlen(libmime_GetStringAttr(msg, "Filename")))
@@ -498,15 +502,14 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	    tmpname[127] = 0;
 	    if (strchr(tmpname,'/'))
 		libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'/')+1, -1);
-	    else 
+	    else
 		libmime_SetStringAttr(msg, "Filename", tmpname, -1);
 	    if (strchr(libmime_GetStringAttr(msg, "Filename"), '\\'))
 		libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'\\')+1, -1);
 	    }
 	else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
 	    {
-	    strncpy(msg->Subject, libmime_StringUnquote(cptr), 79);
-	    msg->Subject[79] = 0;
+	    libmime_SetStringAttr(msg, "Subject", libmime_StringUnquote(cptr), -1);
 	    }
 	else if (!libmime_StringFirstCaseCmp(ptr, "charset"))
 	    {
@@ -519,9 +522,9 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	{
 	printf("  TYPE        : \"%s\"\n", TypeStrings[libmime_GetIntAttr(msg, "ContentMainType")]);
 	printf("  SUBTYPE     : \"%s\"\n", libmime_GetStringAttr(msg, "ContentSubType"));
-	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
+	printf("  BOUNDARY    : \"%s\"\n", libmime_GetStringAttr(msg, "Boundary"));
 	printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
-	printf("  SUBJECT     : \"%s\"\n", msg->Subject);
+	printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
 	printf("  CHARSET     : \"%s\"\n", msg->Charset);
 	}
 
@@ -633,8 +636,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    snprintf(bound, 79, "--%s", msg->Boundary);
-    snprintf(bound_end, 81, "--%s--", msg->Boundary);
+    snprintf(bound, 79, "--%s", libmime_GetStringAttr(msg, "Boundary"));
+    snprintf(bound_end, 81, "--%s--", libmime_GetStringAttr(msg, "Boundary"));
     bound[79] = 0;
     bound_end[81] = 0;
 
