@@ -78,7 +78,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     msg->ContentLength = 0;
     msg->ContentDisposition[0] = 0;
     msg->Filename[0] = 0;
-    msg->ContentMainType = MIME_TYPE_TEXT;
+    libmime_CreateIntAttr(msg, "ContentMainType", MIME_TYPE_TEXT);
     msg->ContentSubType[0] = 0;
     msg->Boundary[0] = 0;
     msg->Subject[0] = 0;
@@ -475,7 +475,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	{
 	if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
 	    {
-	    msg->ContentMainType = i;
+	    libmime_SetIntAttr(msg, "ContentMainType", i);
 	    break;
 	    }
 	}
@@ -517,7 +517,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType]);
+	printf("  TYPE        : \"%s\"\n", TypeStrings[libmime_GetIntAttr(msg, "ContentMainType")]);
 	printf("  SUBTYPE     : \"%s\"\n", msg->ContentSubType);
 	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
 	printf("  FILENAME    : \"%s\"\n", msg->Filename);
@@ -665,7 +665,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    num++;
 		    if (!strlen(l_msg->Filename))
 			{
-			if (libmime_ContentExtension(ext, l_msg->ContentMainType, l_msg->ContentSubType))
+			if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "ContentMainType"), l_msg->ContentSubType))
 			    {
 			    sprintf(l_msg->Filename, "attachment%d.%s", num, ext);
 			    }
@@ -675,7 +675,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 			    }
 			}
 
-		    if (l_msg->ContentMainType == MIME_TYPE_MULTIPART)
+		    if (libmime_GetIntAttr(l_msg, "ContentMainType") == MIME_TYPE_MULTIPART)
 			{
 			    libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
 			}

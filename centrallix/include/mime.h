@@ -73,6 +73,14 @@ typedef struct
     }
     EmailAddr, *pEmailAddr;
 
+/** Structure to store arbitrary Mime attributes **/
+typedef struct
+    {
+    char*	Name;
+    pTObjData	Ptod;
+    }
+    MimeAttr, *pMimeAttr;
+
 /** information structure for MIME msg **/
 typedef struct _MM
     {
@@ -95,6 +103,7 @@ typedef struct _MM
     pXArray	CcList;
     pEmailAddr	Sender;
     XArray	Parts;
+    XHashTable	Attrs;
     }
     MimeHeader, *pMimeHeader;
 
@@ -153,6 +162,18 @@ int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
+
+int libmime_CreateIntAttr(pMimeHeader this, char* name, int data);
+int libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags);
+int libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype);
+
+int libmime_GetIntAttr(pMimeHeader this, char* name);
+char* libmime_GetStringAttr(pMimeHeader this, char* name);
+void* libmime_GetAttr(pMimeHeader this, char* name);
+
+int libmime_SetIntAttr(pMimeHeader this, char* name, int data);
+int libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags);
+int libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();

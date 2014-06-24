@@ -53,6 +53,7 @@ libmime_AllocateHeader()
 	memset(msg, 0, sizeof(MimeHeader));
 
 	xaInit(&msg->Parts, 8);
+	xhInit(&msg->Attrs, 16, 0);
     
     return msg;
     }
@@ -91,6 +92,8 @@ libmime_DeallocateHeader(pMimeHeader msg)
 	    }
     
 	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
+
+	xhDeInit(&msg->Attrs);
 
 	nmFree(msg, sizeof(MimeHeader));
     
@@ -342,4 +345,211 @@ libmime_StringToLower(char *str)
 	ptr++;
 	}
     return 1;
+    }
+
+/*** libmime_CreateIntAttr - Creates and stores an integer attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_CreateIntAttr(pMimeHeader this, char* name, int data)
+    {
+    pMimeAttr attr;
+
+	/** Allocate the Mime attribute. **/
+	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	if (!attr)
+	    {
+	    return -1;
+	    }
+	memset(attr, 0, sizeof(MimeAttr));
+
+	/** Populate the Mime attribute. **/
+	attr->Name = name;
+	attr->Ptod = ptodCreateInt(data);
+
+	/** Add the Mime attribute to the attributes array. **/
+	xhAdd(&this->Attrs, name, (char*)attr);
+
+    return 0;
+    }
+
+/*** libmime_CreateStringAttr - Creates and stores a string attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags)
+    {
+    pMimeAttr attr;
+
+	/** Allocate the Mime attribute. **/
+	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	if (!attr)
+	    {
+	    return -1;
+	    }
+	memset(attr, 0, sizeof(MimeAttr));
+
+	/** Populate the Mime attribute. **/
+	attr->Name = name;
+	attr->Ptod = ptodCreateString(data, flags);
+
+	/** Add the Mime attribute to the attributes array. **/
+	xhAdd(&this->Attrs, name, (char*)attr);
+
+    return 0;
+    }
+
+/*** libmime_CreateAttr - Creates and stores a generic attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype)
+    {
+    pMimeAttr attr;
+
+	/** Allocate the Mime attribute. **/
+	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	if (!attr)
+	    {
+	    return -1;
+	    }
+	memset(attr, 0, sizeof(MimeAttr));
+
+	/** Populate the Mime attribute. **/
+	attr->Name = name;
+	attr->Ptod = ptodCreate(data, datatype);
+
+	/** Add the Mime attribute to the attributes array. **/
+	xhAdd(&this->Attrs, name, (char*)attr);
+
+    return 0;
+    }
+
+/*** libmime_GetIntAttr - Gets an integer attribute from the
+ *** given Mime header.
+ ***/
+int
+libmime_GetIntAttr(pMimeHeader this, char* name)
+    {
+    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Integer;
+    }
+
+/*** libmime_GetStringAttr - Gets a string attribute from the
+ *** given Mime header.
+ ***/
+char*
+libmime_GetStringAttr(pMimeHeader this, char* name)
+    {
+    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.String;
+    }
+
+/*** libmime_GetAttr - Gets a generic attribute from the
+ *** given Mime header.
+ ***/
+void*
+libmime_GetAttr(pMimeHeader this, char* name)
+    {
+    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Generic;
+    }
+
+/*** libmime_SetIntAttr - Sets an integer attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_SetIntAttr(pMimeHeader this, char* name, int data)
+    {
+    pMimeAttr attr;
+    pMimeAttr oldAttr;
+
+	/** Allocate the Mime attribute. **/
+	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	if (!attr)
+	    {
+	    return -1;
+	    }
+	memset(attr, 0, sizeof(MimeAttr));
+
+	/** Populate the Mime attribute. **/
+	attr->Name = name;
+	attr->Ptod = ptodCreateInt(data);
+
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** Replace the current attribute with the new one. **/
+	xhReplace(&this->Attrs, name, (char*)attr);
+
+	/** Deallocate the old attribute. **/
+	ptodFree(oldAttr->Ptod);
+	nmFree(oldAttr, sizeof(MimeAttr));
+
+    return 0;
+    }
+
+/*** libmime_SetStringAttr - Sets a string attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags)
+    {
+    pMimeAttr attr;
+    pMimeAttr oldAttr;
+
+	/** Allocate the Mime attribute. **/
+	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	if (!attr)
+	    {
+	    return -1;
+	    }
+	memset(attr, 0, sizeof(MimeAttr));
+
+	/** Populate the Mime attribute. **/
+	attr->Name = name;
+	attr->Ptod = ptodCreateString(data, flags);
+
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** Replace the current attribute with the new one. **/
+	xhReplace(&this->Attrs, name, (char*)attr);
+
+	/** Deallocate the old attribute. **/
+	ptodFree(oldAttr->Ptod);
+	nmFree(oldAttr, sizeof(MimeAttr));
+
+    return 0;
+    }
+
+/*** libmime_SetAttr - Sets a generic attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
+    {
+    pMimeAttr attr;
+    pMimeAttr oldAttr;
+
+	/** Allocate the Mime attribute. **/
+	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	if (!attr)
+	    {
+	    return -1;
+	    }
+	memset(attr, 0, sizeof(MimeAttr));
+
+	/** Populate the Mime attribute. **/
+	attr->Name = name;
+	attr->Ptod = ptodCreate(data, datatype);
+
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** Replace the current attribute with the new one. **/
+	xhReplace(&this->Attrs, name, (char*)attr);
+
+	/** Deallocate the old attribute. **/
+	ptodFree(oldAttr->Ptod);
+	nmFree(oldAttr, sizeof(MimeAttr));
+
+    return 0;
     }

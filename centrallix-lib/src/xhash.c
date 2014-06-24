@@ -227,6 +227,21 @@ xhRemove(pXHashTable this, char* key)
     return -1;
     }
 
+/*** xhReplace - finds and replaces an entry in the hash table.
+ *** TODO This may be rather inefficient. Should probably make this more
+ *** than a wrapper function. (i.e. function specific code needed)
+ ***/
+int
+xhReplace(pXHashTable this, char* key, char* data)
+    {
+    if (xhRemove(this, key))
+	{
+	return -1;
+	}
+
+    return xhAdd(this, key, data);
+    }
+
 
 /*** xhLookup - find an entry in the hash table by looking up via its
  *** key.
