@@ -187,7 +187,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    pMimeHeader phdr;
 
 	    phdr = xaGetItem(&(inf->Header->Parts), i);
-	    if (!strcmp(phdr->Filename, ptr))
+	    if (!strcmp(libmime_GetStringAttr(phdr, "Filename"), ptr))
 		{
 		/** FIXME FIXME FIXME FIXME
 		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
@@ -382,7 +382,7 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	{
 	if (!offset && !inf->InternalSeek)
 	    inf->InternalSeek = 0;
-	else if (offset)
+	else if (offset || (flags & FD_U_SEEK))
 	    inf->InternalSeek = offset;
 	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
 	inf->InternalSeek += size;
@@ -533,14 +533,14 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	}
     if (!strcmp(attrname, "name"))
 	{
-	val->String = inf->Header->Filename;
+	val->String = libmime_GetStringAttr(inf->Header, "Filename");
 	return 0;
 	}
     if (!strcmp(attrname, "outer_type"))
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], inf->Header->ContentSubType);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
 	val->String = inf->AttrValue;
 	return 0;
 	}
@@ -548,7 +548,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], inf->Header->ContentSubType);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
 	val->String = inf->AttrValue;
 	return 0;
 	}

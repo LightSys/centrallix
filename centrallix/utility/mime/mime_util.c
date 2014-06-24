@@ -461,6 +461,15 @@ libmime_SetIntAttr(pMimeHeader this, char* name, int data)
     pMimeAttr attr;
     pMimeAttr oldAttr;
 
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute does not yet exist, create it. **/
+	if (!oldAttr)
+	    {
+	    return libmime_CreateIntAttr(this, name, data);
+	    }
+
 	/** Allocate the Mime attribute. **/
 	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
 	if (!attr)
@@ -495,6 +504,18 @@ libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags)
     pMimeAttr attr;
     pMimeAttr oldAttr;
 
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute does not yet exist, create it. **/
+	if (!oldAttr)
+	    {
+	    /** NOTE: We assume that the user wants no flags if none are specified. **/
+	    if (flags < 0) flags = 0;
+
+	    return libmime_CreateStringAttr(this, name, data, flags);
+	    }
+
 	/** Allocate the Mime attribute. **/
 	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
 	if (!attr)
@@ -505,10 +526,13 @@ libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags)
 
 	/** Populate the Mime attribute. **/
 	attr->Name = name;
-	attr->Ptod = ptodCreateString(data, flags);
+	attr->Ptod = ptodCreateString(data, oldAttr->Ptod->Flags);
 
-	/** Get the old attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	/** If the flags should not change (aka, flags < 0) **/
+	if (flags < 0)
+	    {
+	    attr->Ptod->Flags = oldAttr->Ptod->Flags;
+	    }
 
 	/** Replace the current attribute with the new one. **/
 	xhReplace(&this->Attrs, name, (char*)attr);
@@ -529,6 +553,15 @@ libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
     pMimeAttr attr;
     pMimeAttr oldAttr;
 
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute does not yet exist, create it. **/
+	if (!oldAttr)
+	    {
+	    return libmime_CreateAttr(this, name, data, datatype);
+	    }
+
 	/** Allocate the Mime attribute. **/
 	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
 	if (!attr)
@@ -540,9 +573,6 @@ libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
 	/** Populate the Mime attribute. **/
 	attr->Name = name;
 	attr->Ptod = ptodCreate(data, datatype);
-
-	/** Get the old attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
 
 	/** Replace the current attribute with the new one. **/
 	xhReplace(&this->Attrs, name, (char*)attr);
