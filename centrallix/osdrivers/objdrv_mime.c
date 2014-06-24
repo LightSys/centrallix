@@ -166,6 +166,10 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     mlxCloseSession(lex);
     lex = NULL;
 
+    /** Find and set the filename of the root node **/
+    node_path = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements-1, 1);
+    libmime_SetStringAttr(msg, "Filename", node_path, 0);
+
     /** assume we're only going to handle one level... **/
     /** no longer. */
     obj->SubCnt=1;
@@ -503,6 +507,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     if (!strcmp(attrname, "charset")) return DATA_T_STRING;
     if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
     if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
+    if (!strcmp(attrname, "content-disposition")) return DATA_T_STRING;
 
     return -1;
     }
@@ -572,6 +577,11 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	val->String = inf->Header->MIMEVersion;
 	return 0;
 	}
+    if (!strcmp(attrname, "content-disposition"))
+	{
+	val->String = libmime_GetStringAttr(inf->Header, "ContentDisposition");
+	return 0;
+	}
 
     return -1;
     }
@@ -591,6 +601,7 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	case 2: return "charset";
 	case 3: return "transfer_encoding";
 	case 4: return "mime_version";
+	case 5: return "content-disposition";
 	}
     return NULL;
     }

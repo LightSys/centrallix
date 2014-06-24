@@ -54,7 +54,7 @@ libmime_AllocateHeader()
 
 	xaInit(&msg->Parts, 8);
 	xhInit(&msg->Attrs, 16, 0);
-    
+
     return msg;
     }
 
@@ -66,19 +66,19 @@ void
 libmime_DeallocateHeader(pMimeHeader msg)
     {
     int i;
-    
+
 	for (i = 0; i < msg->Parts.nItems; i++)
 	    {
 	    libmime_DeallocateHeader(msg->Parts.Items[i]);
 	    }
 	xaDeInit(&msg->Parts);
-    
+
 	if (msg->ToList)
 	    {
 	    xaDeInit(msg->ToList);
 	    nmFree(msg->ToList, sizeof(XArray));
 	    }
-    
+
 	if (msg->FromList)
 	    {
 	    xaDeInit(msg->FromList);
@@ -90,13 +90,13 @@ libmime_DeallocateHeader(pMimeHeader msg)
 	    xaDeInit(msg->CcList);
 	    nmFree(msg->CcList, sizeof(XArray));
 	    }
-    
+
 	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
 
 	xhDeInit(&msg->Attrs);
 
 	nmFree(msg, sizeof(MimeHeader));
-    
+
     return;
     }
 

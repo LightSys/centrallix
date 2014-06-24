@@ -76,7 +76,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 
     /** Initialize the message structure **/
     msg->ContentLength = 0;
-    msg->ContentDisposition[0] = 0;
+    libmime_CreateStringAttr(msg, "ContentDisposition", "", 0);
     libmime_CreateStringAttr(msg, "Filename", "", 0);
     libmime_CreateIntAttr(msg, "ContentMainType", MIME_TYPE_TEXT);
     libmime_CreateStringAttr(msg, "ContentSubType", "", 0); /* 0 is managed and unattached */
@@ -421,8 +421,7 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
     /** get the display main type **/
     if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
 
-    strncpy(msg->ContentDisposition, ptr, 79);
-    msg->ContentDisposition[79] = 0;
+    libmime_SetStringAttr(msg, "ContentDisposition", ptr, -1);
 
     /** Check for the "filename=" content-disp token **/
     while ((ptr = strtok_r(buf, "= ", &buf)))
@@ -437,7 +436,7 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("  CONTENT DISP: \"%s\"\n", msg->ContentDisposition);
+	printf("  CONTENT DISP: \"%s\"\n", libmime_GetStringAttr(msg, "ContentDisposition"));
 	printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
 	}
 
@@ -481,7 +480,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	    break;
 	    }
 	}
-    
+
     /** Look at any possible parameters **/
     while ((ptr = strtok_r(buf, "= ", &buf)))
 	{
@@ -660,7 +659,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    {
 		    l_msg = libmime_AllocateHeader();
 		    if (!l_msg) return -1;
-		    
+
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
 		    num++;

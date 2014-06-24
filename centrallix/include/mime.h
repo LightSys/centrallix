@@ -85,7 +85,6 @@ typedef struct
 typedef struct _MM
     {
     int		ContentLength;
-    char	ContentDisposition[80];
     char	Boundary[80];
     char	Subject[80];
     char	Charset[32];
