@@ -363,14 +363,19 @@ libmime_SetCc(pMimeHeader msg, char *buf)
 int
 libmime_SetTo(pMimeHeader msg, char *buf)
     {
-    msg->ToList = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(msg->ToList, sizeof(EmailAddr));
-    libmime_ParseAddressList(buf, msg->ToList);
-    if (MIME_DEBUG)
-	{
-	printf("  TO          : ");
-	libmime_PrintAddressList(msg->ToList, 0);
-	}
+    XArray tos;
+
+	xaInit(&tos, 4);
+
+	libmime_ParseAddressList(buf, &tos);
+
+	libmime_AppendStringArrayAttr(msg, "ToList", &tos);
+
+	if (MIME_DEBUG)
+	    {
+	    printf("  TO          : ");
+	    libmime_PrintAddressList(libmime_GetStringArrayAttr(msg, "ToList"), 0);
+	    }
     return 0;
     }
 

@@ -403,6 +403,28 @@ libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags)
  *** given Mime header.
  ***/
 int
+libmime_CreateStringArrayAttr(pMimeHeader this, char* name)
+    {
+    pStringVec attrVec;
+
+	/** Allocate the attribute vector. **/
+	attrVec = (pStringVec)nmMalloc(sizeof(StringVec));
+	if (!attrVec)
+	    {
+	    return -1;
+	    }
+	memset(attrVec, 0, sizeof(StringVec));
+
+	/** Create the attribute with the allocated StringVec. **/
+	libmime_CreateAttr(this, name, attrVec, DATA_T_STRINGVEC);
+
+    return 0;
+    }
+
+/*** libmime_CreateAttr - Creates and stores a generic attribute in the
+ *** given Mime header.
+ ***/
+int
 libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype)
     {
     pMimeAttr attr;
@@ -441,6 +463,15 @@ char*
 libmime_GetStringAttr(pMimeHeader this, char* name)
     {
     return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.String;
+    }
+
+/*** libmime_GetStringArrayAttr - Gets a string array attribute from the
+ *** given Mime header.
+ ***/
+pStringVec
+libmime_GetStringArrayAttr(pMimeHeader this, char* name)
+    {
+    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.StringVec;
     }
 
 /*** libmime_GetAttr - Gets a generic attribute from the
@@ -583,3 +614,113 @@ libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
 
     return 0;
     }
+
+/*** libmime_AddStringArrayAttr - Adds a string to the string array attribute
+ *** in the given Mime header.
+ ***/
+int
+libmime_AddStringArrayAttr(pMimeHeader this, char* name, char* data)
+    {
+    pMimeAttr oldAttr;
+    pStringVec stringVec;
+    char** tempVec;
+    int i;
+
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute does not yet exist, create it. **/
+	if (!oldAttr)
+	    {
+	    libmime_CreateStringArrayAttr(this, name);
+	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    }
+
+	/** Get the string vector from the attribute. **/
+	stringVec = oldAttr->Ptod->Data.StringVec;
+
+	/** Allocate a new string array. **/
+	tempVec = (char**)nmMalloc(sizeof(char)*(stringVec->nStrings+1));
+	if (!tempVec)
+	    {
+	    return -1;
+	    }
+	memset(tempVec, 0, sizeof(char)*(stringVec->nStrings+1));
+
+	/** Copy the previous contents to the new vector. **/
+	for (i = 0; i < stringVec->nStrings; i++)
+	    {
+	    tempVec[i] = stringVec->Strings[i];
+	    }
+
+	/** Append the new data to the string vector. **/
+	tempVec[i] = nmSysStrdup(data);
+	if (!tempVec[i])
+	    {
+	    return -1;
+	    }
+
+	/** Replace the old vector. **/
+	nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
+	stringVec->Strings = tempVec;
+	stringVec->nStrings++;
+
+    return 0;
+    }
+
+/*** libmime_AppendStringArrayAttr - Appends an XArray of strings to the string
+ *** array attribute in the given Mime header.
+ ***/
+int
+libmime_AppendStringArrayAttr(pMimeHeader this, char* name, pXArray dataList)
+    {
+    pMimeAttr oldAttr;
+    pStringVec stringVec;
+    char** tempVec;
+    int i, j;
+
+	/** Get the old attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute does not yet exist, create it. **/
+	if (!oldAttr)
+	    {
+	    libmime_CreateStringArrayAttr(this, name);
+	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    }
+
+	/** Get the string vector from the attribute. **/
+	stringVec = oldAttr->Ptod->Data.StringVec;
+
+	/** Allocate a new string vector. **/
+	tempVec = (char**)nmMalloc(sizeof(char)*stringVec->nStrings + dataList->nItems);
+	if (!tempVec)
+	    {
+	    return -1;
+	    }
+	memset(tempVec, 0, sizeof(char)*stringVec->nStrings + dataList->nItems);
+
+	/** Copy the old string vector to the new one. **/
+	for(i = 0; i < stringVec->nStrings; i++)
+	    {
+	    tempVec[i] = stringVec->Strings[i];
+	    }
+
+	/** Append the contents of the XArray data list. **/
+	for(j = 0; j < dataList->nItems; j++)
+	    {
+	    tempVec[i+j] = nmSysStrdup((char*)xaGetItem(dataList, j));
+	    if (!tempVec[i+j])
+		{
+		return -1;
+		}
+	    }
+
+	/** Replace the old string vector with the new one. **/
+	nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
+	stringVec->Strings = tempVec;
+	stringVec->nStrings += dataList->nItems;
+
+    return 0;
+    }
+
