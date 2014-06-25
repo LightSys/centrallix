@@ -530,70 +530,63 @@ int
 mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pMimeInfo inf = MIME(inf_v);
+    pMimeAttr attr;
     char tmp[32];
 
-    if (inf->AttrValue)
-	{
-	nmSysFree(inf->AttrValue);
-	inf->AttrValue = NULL;
-	}
-    if (!strcmp(attrname, "inner_type"))
-	{
-	return mimeGetAttrValue(inf_v, "content_type", DATA_T_STRING, val, oxt);
-	}
-    if (!strcmp(attrname, "annotation"))
-	{
-	val->String = "";
-	return 0;
-	}
-    if (!strcmp(attrname, "name"))
-	{
-	val->String = libmime_GetStringAttr(inf->Header, "Filename");
-	return 0;
-	}
-    if (!strcmp(attrname, "outer_type"))
-	{
-	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
-	val->String = inf->AttrValue;
-	return 0;
-	}
-    if (!strcmp(attrname, "content_type"))
-	{
-	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
-	val->String = inf->AttrValue;
-	return 0;
-	}
-    if (!strcmp(attrname, "subject"))
-	{
-	val->String = libmime_GetStringAttr(inf->Header, "Subject");
-	return 0;
-	}
-    if (!strcmp(attrname, "charset"))
-	{
-	val->String = inf->Header->Charset;
-	return 0;
-	}
-    if (!strcmp(attrname, "transfer_encoding"))
-	{
-	val->String = EncodingStrings[inf->Header->TransferEncoding];
-	return 0;
-	}
-    if (!strcmp(attrname, "mime_version"))
-	{
-	val->String = libmime_GetStringAttr(inf->Header, "MIMEVersion");
-	return 0;
-	}
-    if (!strcmp(attrname, "ContentDisposition"))
-	{
-	val->String = libmime_GetStringAttr(inf->Header, "ContentDisposition");
-	return 0;
-	}
+	/** Deallocate the previous result if necessary. **/
+	if (inf->AttrValue)
+	    {
+	    nmSysFree(inf->AttrValue);
+	    inf->AttrValue = NULL;
+	    }
 
-    return -1;
+	/** Find the attribute from the attribute list. **/
+	attr = (pMimeAttr)xhLookup(&inf->Header->Attrs, attrname);
+	if (!attr)
+	    {
+	    if (!strcmp(attrname, "inner_type"))
+		{
+		return mimeGetAttrValue(inf_v, "content_type", DATA_T_STRING, val, oxt);
+		}
+	    if (!strcmp(attrname, "annotation"))
+		{
+		val->String = "";
+		return 0;
+		}
+	    if (!strcmp(attrname, "name"))
+		{
+		val->String = libmime_GetStringAttr(inf->Header, "Filename");
+		return 0;
+		}
+	    if (!strcmp(attrname, "outer_type"))
+		{
+		/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
+		inf->AttrValue = (char*)nmSysMalloc(128);
+		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
+		val->String = inf->AttrValue;
+		return 0;
+		}
+	    if (!strcmp(attrname, "content_type"))
+		{
+		/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
+		inf->AttrValue = (char*)nmSysMalloc(128);
+		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
+		val->String = inf->AttrValue;
+		return 0;
+		}
+	    if (!strcmp(attrname, "transfer_encoding"))
+		{
+		val->String = EncodingStrings[libmime_GetIntAttr(inf->Header, "TransferEncoding")];
+		return 0;
+		}
+
+	    return -1;
+	    }
+
+	/** Return the data stored in the attribute. **/
+	val->Generic = attr->Ptod->Data.Generic;
+
+    return 0;
     }
 
 
@@ -606,12 +599,12 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     pMimeInfo inf = MIME(inf_v);
     switch (inf->NextAttr++)
 	{
-	case 0: return "content_type";
-	case 1: return "subject";
-	case 2: return "charset";
-	case 3: return "transfer_encoding";
-	case 4: return "mime_version";
-	case 5: return "ContentDisposition";
+	case 0: return "Subject";
+	case 1: return "Charset";
+	case 2: return "transfer_encoding";
+	case 3: return "MIMEVersion";
+	case 4: return "ContentDisposition";
+	case 5: return "ContentLength";
 	}
     return NULL;
     }
