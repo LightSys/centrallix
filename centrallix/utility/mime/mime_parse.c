@@ -83,7 +83,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     libmime_CreateStringAttr(msg, "Boundary", "", 0);
     libmime_CreateStringAttr(msg, "Subject", "", 0);
     libmime_CreateStringAttr(msg, "Charset", "", 0);
-    msg->TransferEncoding = MIME_ENC_7BIT;
+    libmime_CreateIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
     libmime_CreateStringAttr(msg, "MIMEVersion", "", 0);
     libmime_CreateStringAttr(msg, "Mailer", "", 0);
     msg->MsgSeekStart = 0;
@@ -241,12 +241,12 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
 int
 libmime_SetMailer(pMimeHeader msg, char *buf)
     {
-    libmime_SetStringAttr(msg, "Mailer", buf, -1);
+	libmime_SetStringAttr(msg, "Mailer", buf, -1);
 
-    if (MIME_DEBUG)
-	{
-	printf("  X-MAILER    : \"%s\"\n", libmime_GetStringAttr(msg, "Mailer"));
-	}
+	if (MIME_DEBUG)
+	    {
+	    printf("  X-MAILER    : \"%s\"\n", libmime_GetStringAttr(msg, "Mailer"));
+	    }
     return 0;
     }
 
@@ -260,12 +260,12 @@ libmime_SetMailer(pMimeHeader msg, char *buf)
 int
 libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
     {
-    libmime_SetStringAttr(msg, "MIMEVersion", buf, -1);
+	libmime_SetStringAttr(msg, "MIMEVersion", buf, -1);
 
-    if (MIME_DEBUG)
-	{
-	printf("  MIME-VERSION: \"%s\"\n", libmime_GetStringAttr(msg, "MIMEVersion"));
-	}
+	if (MIME_DEBUG)
+	    {
+	    printf("  MIME-VERSION: \"%s\"\n", libmime_GetStringAttr(msg, "MIMEVersion"));
+	    }
     return 0;
     }
 
@@ -298,17 +298,15 @@ libmime_SetDate(pMimeHeader msg, char *buf)
 int
 libmime_SetSubject(pMimeHeader msg, char *buf)
     {
-    /** Get the subject **/
-    /** NOTE: buf could concievably NOT be null-terminated!!
-     ** However, all current calls consist of a null-terminated buf.
-     **/
-    libmime_SetStringAttr(msg, "Subject", buf, -1);
+	/** note: buf could concievably not be null-terminated!!
+	 ** however, all current calls consist of a null-terminated buf.
+	 **/
+	libmime_setstringattr(msg, "subject", buf, -1);
 
-    if (MIME_DEBUG)
-	{
-	printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
-	}
-
+	if (mime_debug)
+	    {
+	    printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
+	    }
     return 0;
     }
 
@@ -322,14 +320,14 @@ libmime_SetSubject(pMimeHeader msg, char *buf)
 int
 libmime_SetFrom(pMimeHeader msg, char *buf)
     {
-    msg->FromList = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(msg->FromList, sizeof(EmailAddr));
-    libmime_ParseAddressList(buf, msg->FromList);
-    if (MIME_DEBUG)
-	{
-	printf("  FROM        : ");
-	libmime_PrintAddressList(msg->FromList, 0);
-	}
+	msg->FromList = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(msg->FromList, sizeof(EmailAddr));
+	libmime_ParseAddressList(buf, msg->FromList);
+	if (MIME_DEBUG)
+	    {
+	    printf("  FROM        : ");
+	    libmime_PrintAddressList(msg->FromList, 0);
+	    }
 
     return 0;
     }
@@ -344,14 +342,14 @@ libmime_SetFrom(pMimeHeader msg, char *buf)
 int
 libmime_SetCc(pMimeHeader msg, char *buf)
     {
-    msg->CcList = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(msg->CcList, sizeof(EmailAddr));
-    libmime_ParseAddressList(buf, msg->CcList);
-    if (MIME_DEBUG)
-	{
-	printf("  CC          : ");
-	libmime_PrintAddressList(msg->CcList, 0);
-	}
+	msg->CcList = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(msg->CcList, sizeof(EmailAddr));
+	libmime_ParseAddressList(buf, msg->CcList);
+	if (MIME_DEBUG)
+	    {
+	    printf("  CC          : ");
+	    libmime_PrintAddressList(msg->CcList, 0);
+	    }
     return 0;
     }
 
@@ -384,12 +382,12 @@ libmime_SetTo(pMimeHeader msg, char *buf)
 int
 libmime_SetContentLength(pMimeHeader msg, char *buf)
     {
-    libmime_SetIntAttr(msg, "ContentLength", (int)strtol(buf, NULL, 10));
+	libmime_SetIntAttr(msg, "ContentLength", (int)strtol(buf, NULL, 10));
 
-    if (MIME_DEBUG)
-	{
-	printf("  CONTENT-LEN : %d\n", libmime_GetIntAttr(msg, "ContentLength"));
-	}
+	if (MIME_DEBUG)
+	    {
+	    printf("  CONTENT-LEN : %d\n", libmime_GetIntAttr(msg, "ContentLength"));
+	    }
     return 0;
     }
 
@@ -401,23 +399,23 @@ libmime_SetContentLength(pMimeHeader msg, char *buf)
 int
 libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
-    if (!strlen(buf) || !strcasecmp(buf, "7bit"))
-	msg->TransferEncoding = MIME_ENC_7BIT;
-    else if (!strcasecmp(buf, "8bit"))
-	msg->TransferEncoding = MIME_ENC_8BIT;
-    else if (!strcasecmp(buf, "base64"))
-	msg->TransferEncoding = MIME_ENC_BASE64;
-    else if (!strcasecmp(buf, "quoted-printable"))
-	msg->TransferEncoding = MIME_ENC_QP;
-    else if (!strcasecmp(buf, "binary"))
-	msg->TransferEncoding = MIME_ENC_BINARY;
-    else
-	msg->TransferEncoding = MIME_ENC_7BIT;
+	if (!strlen(buf) || !strcasecmp(buf, "7bit"))
+	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
+	else if (!strcasecmp(buf, "8bit"))
+	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_8BIT);
+	else if (!strcasecmp(buf, "base64"))
+	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_BASE64);
+	else if (!strcasecmp(buf, "quoted-printable"))
+	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_QP);
+	else if (!strcasecmp(buf, "binary"))
+	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_BINARY);
+	else
+	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
 
-    if (MIME_DEBUG)
-	{
-	printf("  TRANS-ENC   : %d\n", msg->TransferEncoding);
-	}
+	if (MIME_DEBUG)
+	    {
+	    printf("  TRANS-ENC   : %d\n", libmime_GetIntAttr(msg, "TransferEncoding"));
+	    }
     return 0;
     }
 
@@ -431,27 +429,27 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
     {
     char *ptr, *cptr;
 
-    /** get the display main type **/
-    if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
+	/** get the display main type **/
+	if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
 
-    libmime_SetStringAttr(msg, "ContentDisposition", ptr, -1);
+	libmime_SetStringAttr(msg, "ContentDisposition", ptr, -1);
 
-    /** Check for the "filename=" content-disp token **/
-    while ((ptr = strtok_r(buf, "= ", &buf)))
-	{
-	if (!(cptr = strtok_r(buf, ";", &buf))) break;
-	while (*ptr == ' ') ptr++;
-	if (!libmime_StringFirstCaseCmp(ptr, "filename"))
+	/** Check for the "filename=" content-disp token **/
+	while ((ptr = strtok_r(buf, "= ", &buf)))
 	    {
-	    libmime_SetStringAttr(msg, "Filename", libmime_StringUnquote(cptr), -1);
+	    if (!(cptr = strtok_r(buf, ";", &buf))) break;
+	    while (*ptr == ' ') ptr++;
+	    if (!libmime_StringFirstCaseCmp(ptr, "filename"))
+		{
+		libmime_SetStringAttr(msg, "Filename", libmime_StringUnquote(cptr), -1);
+		}
 	    }
-	}
 
-    if (MIME_DEBUG)
-	{
-	printf("  CONTENT DISP: \"%s\"\n", libmime_GetStringAttr(msg, "ContentDisposition"));
-	printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
-	}
+	if (MIME_DEBUG)
+	    {
+	    printf("  CONTENT DISP: \"%s\"\n", libmime_GetStringAttr(msg, "ContentDisposition"));
+	    printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
+	    }
 
     return 0;
     }
@@ -469,71 +467,71 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
     int i;
     ptrdiff_t len;
 
-    /** Get the disp main type and subtype **/
-    if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
-    if ((cptr=strchr(ptr,'/')))
-	{
-	len = cptr - ptr;
-	if (len>31) len=31;
-	strncpy(maintype, ptr, len);
-	maintype[len] = 0;
-	libmime_StringToLower(cptr+1);
-	libmime_SetStringAttr(msg, "ContentSubType", cptr+1, -1);
-	}
-    else
-	{
-	strncpy(maintype, ptr, 31);
-	maintype[31] = 0;
-	}
-    for (i=0; i<7; i++)
-	{
-	if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
+	/** Get the disp main type and subtype **/
+	if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
+	if ((cptr=strchr(ptr,'/')))
 	    {
-	    libmime_SetIntAttr(msg, "ContentMainType", i);
-	    break;
+	    len = cptr - ptr;
+	    if (len>31) len=31;
+	    strncpy(maintype, ptr, len);
+	    maintype[len] = 0;
+	    libmime_StringToLower(cptr+1);
+	    libmime_SetStringAttr(msg, "ContentSubType", cptr+1, -1);
 	    }
-	}
+	else
+	    {
+	    strncpy(maintype, ptr, 31);
+	    maintype[31] = 0;
+	    }
+	for (i=0; i<7; i++)
+	    {
+	    if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
+		{
+		libmime_SetIntAttr(msg, "ContentMainType", i);
+		break;
+		}
+	    }
 
-    /** Look at any possible parameters **/
-    while ((ptr = strtok_r(buf, "= ", &buf)))
-	{
-	if (!(cptr=strtok_r(buf, ";", &buf))) break;
-	while (*ptr == ' ') ptr++;
-	if (!libmime_StringFirstCaseCmp(ptr, "boundary"))
+	/** Look at any possible parameters **/
+	while ((ptr = strtok_r(buf, "= ", &buf)))
 	    {
-	    libmime_SetStringAttr(msg, "Boundary", libmime_StringUnquote(cptr), -1);
+	    if (!(cptr=strtok_r(buf, ";", &buf))) break;
+	    while (*ptr == ' ') ptr++;
+	    if (!libmime_StringFirstCaseCmp(ptr, "boundary"))
+		{
+		libmime_SetStringAttr(msg, "Boundary", libmime_StringUnquote(cptr), -1);
+		}
+	    else if (!libmime_StringFirstCaseCmp(ptr, "name") &&
+		     !strlen(libmime_GetStringAttr(msg, "Filename")))
+		{
+		strncpy(tmpname, libmime_StringUnquote(cptr), 127);
+		tmpname[127] = 0;
+		if (strchr(tmpname,'/'))
+		    libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'/')+1, -1);
+		else
+		    libmime_SetStringAttr(msg, "Filename", tmpname, -1);
+		if (strchr(libmime_GetStringAttr(msg, "Filename"), '\\'))
+		    libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'\\')+1, -1);
+		}
+	    else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
+		{
+		libmime_SetStringAttr(msg, "Subject", libmime_StringUnquote(cptr), -1);
+		}
+	    else if (!libmime_StringFirstCaseCmp(ptr, "charset"))
+		{
+		libmime_SetStringAttr(msg, "Charset", libmime_StringUnquote(cptr), -1);
+		}
 	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "name") &&
-		 !strlen(libmime_GetStringAttr(msg, "Filename")))
-	    {
-	    strncpy(tmpname, libmime_StringUnquote(cptr), 127);
-	    tmpname[127] = 0;
-	    if (strchr(tmpname,'/'))
-		libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'/')+1, -1);
-	    else
-		libmime_SetStringAttr(msg, "Filename", tmpname, -1);
-	    if (strchr(libmime_GetStringAttr(msg, "Filename"), '\\'))
-		libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'\\')+1, -1);
-	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
-	    {
-	    libmime_SetStringAttr(msg, "Subject", libmime_StringUnquote(cptr), -1);
-	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "charset"))
-	    {
-	    libmime_SetStringAttr(msg, "Charset", libmime_StringUnquote(cptr), -1);
-	    }
-	}
 
-    if (MIME_DEBUG)
-	{
-	printf("  TYPE        : \"%s\"\n", TypeStrings[libmime_GetIntAttr(msg, "ContentMainType")]);
-	printf("  SUBTYPE     : \"%s\"\n", libmime_GetStringAttr(msg, "ContentSubType"));
-	printf("  BOUNDARY    : \"%s\"\n", libmime_GetStringAttr(msg, "Boundary"));
-	printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
-	printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
-	printf("  CHARSET     : \"%s\"\n", libmime_GetStringAttr(msg, "Charset"));
-	}
+	if (MIME_DEBUG)
+	    {
+	    printf("  TYPE        : \"%s\"\n", TypeStrings[libmime_GetIntAttr(msg, "ContentMainType")]);
+	    printf("  SUBTYPE     : \"%s\"\n", libmime_GetStringAttr(msg, "ContentSubType"));
+	    printf("  BOUNDARY    : \"%s\"\n", libmime_GetStringAttr(msg, "Boundary"));
+	    printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
+	    printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
+	    printf("  CHARSET     : \"%s\"\n", libmime_GetStringAttr(msg, "Charset"));
+	    }
 
     return 0;
     }
@@ -725,7 +723,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
     int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
     char *ptr, *bptr, *tptr;
 
-    switch (msg->TransferEncoding)
+    switch (libmime_GetIntAttr(msg, "TransferEncoding"))
 	{
 	/** 7BIT AND 8BIT ENCODING **/
 	/** BINARY ENCODING **/

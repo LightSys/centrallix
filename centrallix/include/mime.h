@@ -53,6 +53,7 @@
 #define MIME_TYPE_AUDIO       5
 #define MIME_TYPE_VIDEO       6
 
+/** TODO Start at 0? **/
 #define MIME_ENC_7BIT         1
 #define MIME_ENC_8BIT         2
 #define MIME_ENC_BASE64       3
@@ -84,7 +85,6 @@ typedef struct
 /** information structure for MIME msg **/
 typedef struct _MM
     {
-    int		TransferEncoding;
     DateTime	Date;
     long	MsgSeekStart;
     long	MsgSeekEnd;
