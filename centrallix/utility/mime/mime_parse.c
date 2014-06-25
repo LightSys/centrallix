@@ -231,13 +231,13 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
     return 0;
     }
 
-/*  libmime_SetMailer
-**
-**  Parses the "X-Mailer" header element and fills in the MimeHeader data structure
-**  with the data accordingly.
-**
-**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
-*/
+/***  libmime_SetMailer
+ ***
+ ***  Parses the "X-Mailer" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.
+ ***
+ ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
+ ***/
 int
 libmime_SetMailer(pMimeHeader msg, char *buf)
     {
@@ -250,13 +250,13 @@ libmime_SetMailer(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetMIMEVersion
-**
-**  Parses the "MIME-Version" header element and fills in the MimeHeader data structure
-**  with the data accordingly.
-**
-**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
-*/
+/***  libmime_SetMIMEVersion
+ ***
+ ***  Parses the "MIME-Version" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.
+ ***
+ ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
+ ***/
 int
 libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
     {
@@ -288,17 +288,17 @@ libmime_SetDate(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetSubject
-**
-**  Parses the "Subject" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-**
-**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
-*/
+/***  libmime_SetSubject
+ ***
+ ***  Parses the "Subject" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***
+ ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
+ ***/
 int
 libmime_SetSubject(pMimeHeader msg, char *buf)
     {
-	/** NOTE: buf could conceivably NOT be null-terminated!!
+	/** NOTE: buf could concievably NOT be null-terminated!!
 	 ** however, all current calls consist of a null-terminated buf.
 	 **/
 	libmime_SetStringAttr(msg, "Subject", buf, -1);
@@ -310,13 +310,13 @@ libmime_SetSubject(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetFrom
-**
-**  Parses the "From" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-**
-**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
-*/
+/***  libmime_SetFrom
+ ***
+ ***  Parses the "From" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***
+ ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
+ ***/
 int
 libmime_SetFrom(pMimeHeader msg, char *buf)
     {
@@ -343,13 +343,13 @@ libmime_SetFrom(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetCc
-**
-**  Parses the "Cc" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-**
-**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
-*/
+/***  libmime_SetCc
+ ***
+ ***  Parses the "Cc" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***
+ ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
+ ***/
 int
 libmime_SetCc(pMimeHeader msg, char *buf)
     {
@@ -376,13 +376,13 @@ libmime_SetCc(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetTo
-**
-**  Parses the "To" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-**
-**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
-*/
+/***  libmime_SetBcc
+ ***
+ ***  Parses the "Bcc" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***
+ ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
+ ***/
 int
 libmime_SetBcc(pMimeHeader msg, char *buf)
     {
@@ -409,6 +409,11 @@ libmime_SetBcc(pMimeHeader msg, char *buf)
     return 0;
     }
 
+/***  libmime_SetTo
+ ***
+ ***  Parses the "To" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetTo(pMimeHeader msg, char *buf)
     {
@@ -435,11 +440,11 @@ libmime_SetTo(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetContentLength
-**
-**  Parses the "Content-Length" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetContentLength
+ ***
+ ***  Parses the "Content-Length" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetContentLength(pMimeHeader msg, char *buf)
     {
@@ -452,11 +457,11 @@ libmime_SetContentLength(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetTransferEncoding
-**
-**  Parses the "Content-Transfer-Encoding" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetTransferEncoding
+ ***
+ ***  Parses the "Content-Transfer-Encoding" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
@@ -480,11 +485,11 @@ libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetContentDisp
-**
-**  Parses the "Content-Disposition" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetContentDisp
+ ***
+ ***  Parses the "Content-Disposition" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetContentDisp(pMimeHeader msg, char *buf)
     {

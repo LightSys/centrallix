@@ -29,12 +29,7 @@
 /*		MIME object system driver (objdrv_mime.c)		*/
 /************************************************************************/
 
-//#include <stdio.h>
 #include <string.h>
-//#include <unistd.h>
-//#include <fcntl.h>
-//#include <stdlib.h>
-//#include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "obj.h"
 #include "mime.h"
