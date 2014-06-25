@@ -65,6 +65,7 @@ XSUPPORT=stparse.o \
 	 mime/mime_address.o \
 	 mime/mime_encode.o \
 	 mime/mime_util.o \
+	 mime/mime_attributes.o \
 	 ptod.o	\
 	 param.o \
 	 iface.o \
