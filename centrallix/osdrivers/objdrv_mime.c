@@ -60,7 +60,7 @@
 /*** GLOBALS ***/
 
 /*** Structure used by this driver internally. ***/
-typedef struct 
+typedef struct
     {
     pObject	Obj;
     int		Mask;
@@ -453,11 +453,11 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
     if (!inf) goto error;
     memset(inf,0,sizeof(MimeInfo));
-    
+
     inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
     if (!inf->MimeDat) goto error;
     memset(inf->MimeDat, 0, sizeof(MimeData));
-    
+
     memcpy(inf->MimeDat, qy->Data->MimeDat, sizeof(MimeData));
     inf->Obj = obj;
     inf->Mask = mode;
@@ -469,13 +469,13 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     qy->ItemCnt++;
 
     return (void*)inf;
-    
+
     error:
 	if (inf)
 	    {
 	    mimeClose(inf, NULL);
 	    }
-	
+
 	return NULL;
     }
 

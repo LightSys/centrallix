@@ -157,11 +157,13 @@ int libmime_CreateIntAttr(pMimeHeader this, char* name, int data);
 int libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags);
 int libmime_CreateStringArrayAttr(pMimeHeader this, char* name);
 int libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype);
+int libmime_CreateArrayAttr(pMimeHeader this, char* name);
 
 int libmime_GetIntAttr(pMimeHeader this, char* name);
 char* libmime_GetStringAttr(pMimeHeader this, char* name);
 pStringVec libmime_getStringArrayAttr(pMimeHeader this, char* name);
 void* libmime_GetAttr(pMimeHeader this, char* name);
+pXArray libmime_GetArrayAttr(pMimeHeader this, char* name);
 
 int libmime_SetIntAttr(pMimeHeader this, char* name, int data);
 int libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags);
@@ -169,6 +171,8 @@ int libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype);
 
 int libmime_AppendStringArrayAttr(pMimeHeader this, char* name, pXArray dataList);
 int libmime_AddStringArrayAttr(pMimeHeader this, char* name, char* data);
+int libmime_AppendArrayAttr(pMimeHeader this, char* name, pXArray dataList);
+int libmime_AddArrayAttr(pMimeHeader this, char* name, void* data);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();

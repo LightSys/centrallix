@@ -399,8 +399,8 @@ libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags)
     return 0;
     }
 
-/*** libmime_CreateAttr - Creates and stores a generic attribute in the
- *** given Mime header.
+/*** libmime_CreateStringArrayAttr - Creates and stores a string array attribute
+ *** in the given Mime header.
  ***/
 int
 libmime_CreateStringArrayAttr(pMimeHeader this, char* name)
@@ -447,6 +447,29 @@ libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype)
     return 0;
     }
 
+/*** libmime_CreateArrayAttr - Creates a generic array attribute in the
+ *** given Mime header.
+ ***/
+int
+libmime_CreateArrayAttr(pMimeHeader this, char* name)
+    {
+    pXArray array;
+
+	/** Allocate the generic array. **/
+	array = (pXArray)nmMalloc(sizeof(XArray));
+	if (!array)
+	    {
+	    return -1;
+	    }
+	memset(array, 0, sizeof(XArray));
+	xaInit(array, 4);
+
+	/** Create an attribute containing the generic array. **/
+	libmime_CreateAttr(this, name, array, DATA_T_ARRAY);
+
+    return 0;
+    }
+
 /*** libmime_GetIntAttr - Gets an integer attribute from the
  *** given Mime header.
  ***/
@@ -481,6 +504,14 @@ void*
 libmime_GetAttr(pMimeHeader this, char* name)
     {
     return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Generic;
+    }
+
+/*** libmime_GetArrayAttr - Gets a generic array attribute from the given
+ *** Mime header.
+ ***/
+pXArray libmime_GetArrayAttr(pMimeHeader this, char*name)
+    {
+    return (pXArray)((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Generic;
     }
 
 /*** libmime_SetIntAttr - Sets an integer attribute in the
@@ -720,6 +751,66 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* name, pXArray dataList)
 	nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
 	stringVec->Strings = tempVec;
 	stringVec->nStrings += dataList->nItems;
+
+    return 0;
+    }
+
+/*** libmime_AddArrayAttr - Adds a generic element to a generic array
+ *** attribute in the given Mime header.
+ ***/
+int
+libmime_AddArrayAttr(pMimeHeader this, char* name, void* data)
+    {
+    pMimeAttr oldAttr = NULL;
+    pXArray array;
+
+	/** Get the attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute wasn't found, create it. **/
+	if (!oldAttr)
+	    {
+	    libmime_CreateArrayAttr(this, name);
+	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    }
+
+	/** Get the array from the attribute. **/
+	array = (pXArray)oldAttr->Ptod->Data.Generic;
+
+	/** Add the item to the XArray. **/
+	xaAddItem(array, data);
+
+    return 0;
+    }
+
+/*** libmime_AppendArrayAttr - Adds an XArray of generic elements to a generic
+ *** array attribute in the given Mime header.
+ ***/
+int
+libmime_AppendArrayAttr(pMimeHeader this, char* name, pXArray dataList)
+    {
+    pMimeAttr oldAttr = NULL;
+    pXArray array;
+    int i;
+
+	/** Get the attribute. **/
+	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+
+	/** If the attribute wasn't found, create it. **/
+	if (!oldAttr)
+	    {
+	    libmime_CreateArrayAttr(this, name);
+	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    }
+
+	/** Get the array from the attribute. **/
+	array = (pXArray)oldAttr->Ptod->Data.Generic;
+
+	/** Add the items from the data list to the XArray. **/
+	for (i = 0; i < xaCount(dataList); i++)
+	    {
+	    xaAddItem(array, xaGetItem(dataList, i));
+	    }
 
     return 0;
     }
