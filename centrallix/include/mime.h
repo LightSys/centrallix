@@ -86,7 +86,6 @@ typedef struct _MM
     {
     int		ContentLength;
     char	Charset[32];
-    char	MIMEVersion[16];
     char	Mailer[80];
     int		TransferEncoding;
     DateTime	Date;

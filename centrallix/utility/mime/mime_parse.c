@@ -84,7 +84,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     libmime_CreateStringAttr(msg, "Subject", "", 0);
     msg->Charset[0] = 0;
     msg->TransferEncoding = MIME_ENC_7BIT;
-    msg->MIMEVersion[0] = 0;
+    libmime_CreateStringAttr(msg, "MIMEVersion", "", 0);
     msg->Mailer[0] = 0;
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
@@ -199,7 +199,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 **
 **  Header elements can span multiple lines.  We know that this occurs when there
 **  is any white space at the beginning of the line.  This function will check if
-**  there are any more lines that belong to the current header element.  If so, 
+**  there are any more lines that belong to the current header element.  If so,
 **  they will be read into xsbuf replacing all white spaces with just normal spaces.
 */
 
@@ -235,6 +235,8 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
 **
 **  Parses the "X-Mailer" header element and fills in the MimeHeader data structure
 **  with the data accordingly.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetMailer(pMimeHeader msg, char *buf)
@@ -253,16 +255,17 @@ libmime_SetMailer(pMimeHeader msg, char *buf)
 **
 **  Parses the "MIME-Version" header element and fills in the MimeHeader data structure
 **  with the data accordingly.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
     {
-    strncpy(msg->MIMEVersion, buf, 15);
-    msg->MIMEVersion[15] = 0;
+    libmime_SetStringAttr(msg, "MIMEVersion", buf, -1);
 
     if (MIME_DEBUG)
 	{
-	printf("  MIME-VERSION: \"%s\"\n", msg->MIMEVersion);
+	printf("  MIME-VERSION: \"%s\"\n", libmime_GetStringAttr(msg, "MIMEVersion"));
 	}
     return 0;
     }
@@ -314,6 +317,8 @@ libmime_SetSubject(pMimeHeader msg, char *buf)
 **
 **  Parses the "From" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetFrom(pMimeHeader msg, char *buf)
@@ -334,6 +339,8 @@ libmime_SetFrom(pMimeHeader msg, char *buf)
 **
 **  Parses the "Cc" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetCc(pMimeHeader msg, char *buf)
@@ -353,6 +360,8 @@ libmime_SetCc(pMimeHeader msg, char *buf)
 **
 **  Parses the "To" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetTo(pMimeHeader msg, char *buf)
@@ -372,6 +381,8 @@ libmime_SetTo(pMimeHeader msg, char *buf)
 **
 **  Parses the "Content-Length" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
+**
+**  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
 libmime_SetContentLength(pMimeHeader msg, char *buf)
