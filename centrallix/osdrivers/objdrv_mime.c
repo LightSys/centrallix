@@ -509,10 +509,10 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "subject")) return DATA_T_STRING;
+	    //if (!strcmp(attrname, "subject")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "charset")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
+	    //if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
 	    //if (!strcmp(attrname, "ContentDisposition")) return DATA_T_STRING;
 
 	    return -1;
