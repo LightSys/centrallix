@@ -73,24 +73,6 @@ libmime_DeallocateHeader(pMimeHeader msg)
 	    }
 	xaDeInit(&msg->Parts);
 
-	if (msg->ToList)
-	    {
-	    xaDeInit(msg->ToList);
-	    nmFree(msg->ToList, sizeof(XArray));
-	    }
-
-	if (msg->FromList)
-	    {
-	    xaDeInit(msg->FromList);
-	    nmFree(msg->FromList, sizeof(XArray));
-	    }
-
-	if (msg->CcList)
-	    {
-	    xaDeInit(msg->CcList);
-	    nmFree(msg->CcList, sizeof(XArray));
-	    }
-
 	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
 
 	xhDeInit(&msg->Attrs);

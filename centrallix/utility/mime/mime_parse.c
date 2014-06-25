@@ -298,12 +298,12 @@ libmime_SetDate(pMimeHeader msg, char *buf)
 int
 libmime_SetSubject(pMimeHeader msg, char *buf)
     {
-	/** note: buf could concievably not be null-terminated!!
+	/** NOTE: buf could conceivably NOT be null-terminated!!
 	 ** however, all current calls consist of a null-terminated buf.
 	 **/
-	libmime_setstringattr(msg, "subject", buf, -1);
+	libmime_SetStringAttr(msg, "Subject", buf, -1);
 
-	if (mime_debug)
+	if (MIME_DEBUG)
 	    {
 	    printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
 	    }
@@ -320,13 +320,24 @@ libmime_SetSubject(pMimeHeader msg, char *buf)
 int
 libmime_SetFrom(pMimeHeader msg, char *buf)
     {
-	msg->FromList = (pXArray)nmMalloc(sizeof(XArray));
-	xaInit(msg->FromList, sizeof(EmailAddr));
-	libmime_ParseAddressList(buf, msg->FromList);
+    XArray froms;
+    int i;
+
+	xaInit(&froms, 4);
+
+	libmime_ParseAddressList(buf, &froms);
+
+	libmime_AppendArrayAttr(msg, "FromList", &froms);
+
+	for (i = 0; i < froms.nItems; i++)
+	    {
+	    libmime_AddStringArrayAttr(msg, "FromList-Strings",
+		    ((EmailAddr*)xaGetItem(&froms, i))->AddressLine);
+	    }
 	if (MIME_DEBUG)
 	    {
 	    printf("  FROM        : ");
-	    libmime_PrintAddressList(msg->FromList, 0);
+	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "FromList"), 0);
 	    }
 
     return 0;
@@ -342,13 +353,25 @@ libmime_SetFrom(pMimeHeader msg, char *buf)
 int
 libmime_SetCc(pMimeHeader msg, char *buf)
     {
-	msg->CcList = (pXArray)nmMalloc(sizeof(XArray));
-	xaInit(msg->CcList, sizeof(EmailAddr));
-	libmime_ParseAddressList(buf, msg->CcList);
+    XArray ccs;
+    int i;
+
+	xaInit(&ccs, 8);
+
+	libmime_ParseAddressList(buf, &ccs);
+
+	libmime_AppendArrayAttr(msg, "CcList", &ccs);
+
+	for (i = 0; i < ccs.nItems; i++)
+	    {
+	    libmime_AddStringArrayAttr(msg, "CcList-Strings",
+		    ((EmailAddr*)xaGetItem(&ccs, i))->AddressLine);
+	    }
+
 	if (MIME_DEBUG)
 	    {
 	    printf("  CC          : ");
-	    libmime_PrintAddressList(msg->CcList, 0);
+	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "CcList"), 0);
 	    }
     return 0;
     }
@@ -361,20 +384,53 @@ libmime_SetCc(pMimeHeader msg, char *buf)
 **  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
 */
 int
+libmime_SetBcc(pMimeHeader msg, char *buf)
+    {
+    XArray bccs;
+    int i;
+
+	xaInit(&bccs, 4);
+
+	libmime_ParseAddressList(buf, &bccs);
+
+	libmime_AppendArrayAttr(msg, "BccList", &bccs);
+
+	for (i = 0; i < bccs.nItems; i++)
+	    {
+	    libmime_AddStringArrayAttr(msg, "BccList-Strings",
+		    ((EmailAddr*)xaGetItem(&bccs, i))->AddressLine);
+	    }
+	if (MIME_DEBUG)
+	    {
+	    printf("  FROM        : ");
+	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "BccList"), 0);
+	    }
+
+    return 0;
+    }
+
+int
 libmime_SetTo(pMimeHeader msg, char *buf)
     {
     XArray tos;
+    int i;
 
 	xaInit(&tos, 4);
 
 	libmime_ParseAddressList(buf, &tos);
 
-	libmime_AppendStringArrayAttr(msg, "ToList", &tos);
+	libmime_AppendArrayAttr(msg, "ToList", &tos);
+
+	for (i = 0; i < tos.nItems; i++)
+	    {
+	    libmime_AddStringArrayAttr(msg, "ToList-Strings",
+		    ((EmailAddr*)xaGetItem(&tos, i))->AddressLine);
+	    }
 
 	if (MIME_DEBUG)
 	    {
 	    printf("  TO          : ");
-	    libmime_PrintAddressList(libmime_GetStringArrayAttr(msg, "ToList"), 0);
+	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "ToList"), 0);
 	    }
     return 0;
     }

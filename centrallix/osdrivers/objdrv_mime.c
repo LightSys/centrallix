@@ -605,6 +605,9 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	case 3: return "MIMEVersion";
 	case 4: return "ContentDisposition";
 	case 5: return "ContentLength";
+	case 6: return "ToList-Strings";
+	case 7: return "FromList-Strings";
+	case 8: return "CcList-Strings";
 	}
     return NULL;
     }

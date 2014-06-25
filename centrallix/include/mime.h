@@ -32,7 +32,7 @@
 /************************************************************************/
 
 #define MIME_DEBUG            0
-#define MIME_DEBUG_ADDR       0
+#define MIME_DEBUG_ADDR       0 /* TODO: This is NEVER used. Delete. */
 
 #define MIME_ST_NORM          0
 #define MIME_ST_QUOTE         1
@@ -88,9 +88,6 @@ typedef struct _MM
     DateTime	Date;
     long	MsgSeekStart;
     long	MsgSeekEnd;
-    pXArray	ToList;
-    pXArray	FromList;
-    pXArray	CcList;
     pEmailAddr	Sender;
     XArray	Parts;
     XHashTable	Attrs;
