@@ -53,12 +53,11 @@
 #define MIME_TYPE_AUDIO       5
 #define MIME_TYPE_VIDEO       6
 
-/** TODO Start at 0? **/
-#define MIME_ENC_7BIT         1
-#define MIME_ENC_8BIT         2
-#define MIME_ENC_BASE64       3
-#define MIME_ENC_QP           4
-#define MIME_ENC_BINARY       5
+#define MIME_ENC_7BIT         0
+#define MIME_ENC_8BIT         1
+#define MIME_ENC_BASE64       2
+#define MIME_ENC_QP           3
+#define MIME_ENC_BINARY       4
 
 #define MIME_BUF_SIZE         768   // These must be in a 3/4 ratio (or higher) of
 #define MIME_ENCBUF_SIZE      1024  // each other because of how b64 encoding works
@@ -150,6 +149,7 @@ char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
 
+/** mime_attributes.c **/
 int libmime_CreateIntAttr(pMimeHeader this, char* name, int data);
 int libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags);
 int libmime_CreateStringArrayAttr(pMimeHeader this, char* name);
