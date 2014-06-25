@@ -31,9 +31,6 @@
 /* Description:	Provides declarations for the MIME parser		*/
 /************************************************************************/
 
-#define MIME_DEBUG            0
-#define MIME_DEBUG_ADDR       0 /* TODO: This is NEVER used. Delete. */
-
 #define MIME_ST_NORM          0
 #define MIME_ST_QUOTE         1
 #define MIME_ST_COMMENT       2

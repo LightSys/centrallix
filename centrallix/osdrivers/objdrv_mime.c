@@ -107,11 +107,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     int i, size, found_match = 0;
     char nullbuf[1];
 
-    if (MIME_DEBUG) fprintf(stderr, "\n");
-    if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
-    if (MIME_DEBUG) fprintf(stderr, "objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
-	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
-
     /** Allocate and initialize the MIME structure **/
     inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
     if (!inf) goto error;
@@ -147,21 +142,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	{
 	mssError(0, "MIME", "There was an error parsing message body in mimeOpen().");
 	goto error;
-	}
-    if (MIME_DEBUG)
-	{
-	fprintf(stderr, "\n-----------------------------------------------------------------\n");
-	for (i=0; i < xaCount(&msg->Parts); i++)
-	    {
-	    tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
-	    fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
-	    buffer = (char*)nmMalloc(1024);
-	    size = libmime_PartRead(inf->MimeDat, tmp, buffer, 1023, 0, FD_U_SEEK);
-	    buffer[size] = 0;
-	    printf("--%d--%s--\n", size,buffer);
-	    nmFree(buffer, 1024);
-	    }
-	fprintf(stderr, "-----------------------------------------------------------------\n\n");
 	}
     mlxCloseSession(lex);
     lex = NULL;
@@ -261,8 +241,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 	}
 
-    if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
-	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
     return (void*)inf;
 
     error:

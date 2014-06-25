@@ -95,7 +95,6 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	}
 
     mlxSetOffset(lex, start);
-    if (MIME_DEBUG) fprintf(stderr, "\nStarting Header Parsing... (s:%ld)\n", start);
     flag = 1;
     while (flag)
 	{
@@ -111,7 +110,6 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	len = strlen(xsbuf.String);
 	xsRTrim(&xsbuf);
-	//if (MIME_DEBUG) fprintf(stderr, "MIME: Got Token (%s)\n", xsbuf.String);
 	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
 	/* otherwise parse the header elements */
 	if (!strlen(xsbuf.String))
@@ -143,14 +141,11 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		else if (!strcasecmp(hdrnme, "MIME-Version")) err = libmime_SetMIMEVersion(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "X-Mailer")) err = libmime_SetMailer(msg, hdrbdy);
 
-		if (err < 0)
-		    {
-		    if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
-		    }
+		if (err < 0) mssError(1, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
 		}
 	    else
 		{
-		if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING: %s\n", xsbuf.String);
+		mssError(1, "MIME", "ERROR PARSING: %s\n", xsbuf.String);
 		}
 	    }
 	xsDeInit(&xsbuf);
@@ -241,12 +236,11 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
 int
 libmime_SetMailer(pMimeHeader msg, char *buf)
     {
+	/** NOTE: buf could concievably NOT be null-terminated!!
+	 ** however, all current calls consist of a null-terminated buf.
+	 **/
 	libmime_SetStringAttr(msg, "Mailer", buf, -1);
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  X-MAILER    : \"%s\"\n", libmime_GetStringAttr(msg, "Mailer"));
-	    }
     return 0;
     }
 
@@ -262,10 +256,6 @@ libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
     {
 	libmime_SetStringAttr(msg, "MIMEVersion", buf, -1);
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  MIME-VERSION: \"%s\"\n", libmime_GetStringAttr(msg, "MIMEVersion"));
-	    }
     return 0;
     }
 
@@ -298,15 +288,8 @@ libmime_SetDate(pMimeHeader msg, char *buf)
 int
 libmime_SetSubject(pMimeHeader msg, char *buf)
     {
-	/** NOTE: buf could concievably NOT be null-terminated!!
-	 ** however, all current calls consist of a null-terminated buf.
-	 **/
 	libmime_SetStringAttr(msg, "Subject", buf, -1);
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
-	    }
     return 0;
     }
 
@@ -333,11 +316,6 @@ libmime_SetFrom(pMimeHeader msg, char *buf)
 	    {
 	    libmime_AddStringArrayAttr(msg, "FromList-Strings",
 		    ((EmailAddr*)xaGetItem(&froms, i))->AddressLine);
-	    }
-	if (MIME_DEBUG)
-	    {
-	    printf("  FROM        : ");
-	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "FromList"), 0);
 	    }
 
     return 0;
@@ -368,11 +346,6 @@ libmime_SetCc(pMimeHeader msg, char *buf)
 		    ((EmailAddr*)xaGetItem(&ccs, i))->AddressLine);
 	    }
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  CC          : ");
-	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "CcList"), 0);
-	    }
     return 0;
     }
 
@@ -399,11 +372,6 @@ libmime_SetBcc(pMimeHeader msg, char *buf)
 	    {
 	    libmime_AddStringArrayAttr(msg, "BccList-Strings",
 		    ((EmailAddr*)xaGetItem(&bccs, i))->AddressLine);
-	    }
-	if (MIME_DEBUG)
-	    {
-	    printf("  FROM        : ");
-	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "BccList"), 0);
 	    }
 
     return 0;
@@ -432,11 +400,6 @@ libmime_SetTo(pMimeHeader msg, char *buf)
 		    ((EmailAddr*)xaGetItem(&tos, i))->AddressLine);
 	    }
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  TO          : ");
-	    libmime_PrintAddressList(libmime_GetArrayAttr(msg, "ToList"), 0);
-	    }
     return 0;
     }
 
@@ -450,10 +413,6 @@ libmime_SetContentLength(pMimeHeader msg, char *buf)
     {
 	libmime_SetIntAttr(msg, "ContentLength", (int)strtol(buf, NULL, 10));
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  CONTENT-LEN : %d\n", libmime_GetIntAttr(msg, "ContentLength"));
-	    }
     return 0;
     }
 
@@ -478,10 +437,6 @@ libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
 	else
 	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  TRANS-ENC   : %d\n", libmime_GetIntAttr(msg, "TransferEncoding"));
-	    }
     return 0;
     }
 
@@ -509,12 +464,6 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
 		{
 		libmime_SetStringAttr(msg, "Filename", libmime_StringUnquote(cptr), -1);
 		}
-	    }
-
-	if (MIME_DEBUG)
-	    {
-	    printf("  CONTENT DISP: \"%s\"\n", libmime_GetStringAttr(msg, "ContentDisposition"));
-	    printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
 	    }
 
     return 0;
@@ -589,16 +538,6 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 		}
 	    }
 
-	if (MIME_DEBUG)
-	    {
-	    printf("  TYPE        : \"%s\"\n", TypeStrings[libmime_GetIntAttr(msg, "ContentMainType")]);
-	    printf("  SUBTYPE     : \"%s\"\n", libmime_GetStringAttr(msg, "ContentSubType"));
-	    printf("  BOUNDARY    : \"%s\"\n", libmime_GetStringAttr(msg, "Boundary"));
-	    printf("  FILENAME    : \"%s\"\n", libmime_GetStringAttr(msg, "Filename"));
-	    printf("  SUBJECT     : \"%s\"\n", libmime_GetStringAttr(msg, "Subject"));
-	    printf("  CHARSET     : \"%s\"\n", libmime_GetStringAttr(msg, "Charset"));
-	    }
-
     return 0;
     }
 
@@ -610,7 +549,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 **                         string should represent the whole header, including any
 **                         folded header elements below itself.  This string will
 **                         be modified to contain the main part of the header.
-**         (char*) hdr     This string will be overwritten with a string that 
+**         (char*) hdr     This string will be overwritten with a string that
 **                         is the name of the header element (To, From, Sender...)
 **     Returns:
 **         This function returns 0 on success, and -1 on failure.  It modifies
