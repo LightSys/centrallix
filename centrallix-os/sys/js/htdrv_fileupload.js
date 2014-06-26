@@ -44,15 +44,25 @@ function fu_prompt()
 	this.input.click();
 	}
 	
+function fu_submit()
+	{
+	if(this.value != '')
+		this.pane.submit();
+	}
+	
 function fu_init(param)
 	{
 	var layer = param.layer;
 	layer.input = param.input;
 	layer.pane = param.pane;
+	layer.iframe = param.iframe;
+	layer.target = param.target;
 	layer.oldvalue = '';
 	layer.value = '';
 	
 	htr_init_layer(layer, layer, "fu");
+	htr_init_layer(layer, layer.iframe, "fu");
+	htr_init_layer(layer, layer.pane, "fu");
 	htr_init_layer(layer, layer.input, "fu");
 	ifc_init_widget(layer);
 
@@ -62,16 +72,16 @@ function fu_init(param)
 	layer.form = wgtrFindContainer(layer,"widget/form");
     if (layer.form) layer.form.Register(layer);
 	
-	
 	//Events
 	var ie = layer.ifcProbeAdd(ifEvent);
 	ie.Add("DataChange");
-	ie.Add("Change")
+	ie.Add("Change");
 	
 	//Actions
 	var ia = layer.ifcProbeAdd(ifAction);
 	ia.Add("Clear", fu_clearvalue);
 	ia.Add("Prompt", fu_prompt);
+	ia.Add("Submit", fu_submit);
 	}
 
 if (window.pg_scripts) pg_scripts['htdrv_fileupload.js'] = true;

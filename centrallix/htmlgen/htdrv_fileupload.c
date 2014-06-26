@@ -58,14 +58,17 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	char name[64];
     int id, i;
 	int multiselect;
+	char target[64];
 	char fieldname[HT_FIELDNAME_SIZE];
 	char form[64];
 
 	/** Get an id for this. **/
 	id = (HTFU.idcnt++);
 	
-	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+		strtcpy(name,ptr,sizeof(name));
+		
+	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) == 0)
 		strtcpy(name,ptr,sizeof(name));
 	
 	multiselect = htrGetBoolean(tree, "multiselect", 0); //default = 0;
@@ -89,15 +92,12 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_fileupload.js", 0);
 	
-	htrAddScriptInit_va(s, "    fu_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), pane:document.getElementById(\"fu%POSform\"),  input:document.getElementById(\"fu%POSinput\"), form:\"%STR&JSSTR\", field:\"%STR&JSSTR\"});\n", name, id, id, form, fieldname);
+	htrAddScriptInit_va(s, "    fu_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), pane:document.getElementById(\"fu%POSform\"), input:document.getElementById(\"fu%POSinput\"), target:\"%STR&JSSTR\", form:\"%STR&JSSTR\", field:\"%STR&JSSTR\"});\n", name, id, id, target, form, fieldname);
 	
 	/** style header items **/
-	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"#fu%POSbase, #fu%POSform, #fu%POSinput { POSITION:absolute; HEIGHT:0px; VISIBILITY:hidden; }\n", id, id, id);
-	else if (s->Capabilities.Dom0NS)
-		htrAddStylesheetItem_va(s,"#fu%POSbase, #fu%POSform, #fu%POSinput { POSITION:absolute; HEIGHT:0; VISIBILITY:hidden; }\n", id, id, id);
+	htrAddStylesheetItem_va(s,"#fu%POSbase { POSITION:absolute; VISIBILITY:hidden; }\n", id);
 
-		htrAddBodyItem_va(s,"<DIV ID=\"fu%POSbase\"><FORM ID=\"fu%POSform\"><INPUT ID=\"fu%POSinput\" TYPE=\"file\" %STR/></FORM></DIV>", id, id, id, multiselect?"MULTIPLE":"");
+	htrAddBodyItem_va(s,"<DIV ID=\"fu%POSbase\"><FORM ID=\"fu%POSform\" METHOD=\"post\" ENCTYPE=\"multipart/form-data\" TARGET=\"fu%POSiframe\"><iframe ID=\"fu%POSiframe\" NAME=\"fu%POSiframe\"></iframe><INPUT ID=\"fu%POSinput\" TYPE=\"file\" NAME=\"fu%POSinput\" %STR/></FORM></DIV>", id, id, id, id, id, id, id, multiselect?"MULTIPLE":"");
 	
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -126,6 +126,7 @@ htfuInitialize()
 	/** Add actions **/
 	htrAddAction(drv,"Reset");
 	htrAddAction(drv,"Prompt");
+	htrAddAction(drv,"Submit");
 	
 	/** Add event **/
 	htrAddEvent(drv,"DataChange");

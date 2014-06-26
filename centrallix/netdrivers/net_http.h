@@ -198,6 +198,18 @@ typedef struct
     }
     NhtAppGroup, *pNhtAppGroup;
 
+/*** Post payload.  One of these is created for each file uploaded through Post(using
+ *** the file upload widget).
+ ***/
+typedef struct
+    {
+    char    filename[128];
+    char    extension[16];
+    char    mime_type[64];
+    char    unique_path[512];
+    pFile   file;
+    }
+    NhtPostPayload, *pNhtPostPayload;
 
 /*** One-page app data.  Each time the user launches an .app, a new app
  *** structure is created with a new key.
