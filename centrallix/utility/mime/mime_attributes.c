@@ -221,7 +221,7 @@ libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param)
  ***
  *** returns pointer on success, NULL on failure
  ***/
-*pTObjData
+pTObjData*
 libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
     {
     void *ptr = NULL;
@@ -245,7 +245,7 @@ libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
 		return NULL;
 		}
 
-	    return ((pMimeParam)ptr)->Ptod;
+	    return &((pMimeParam)ptr)->Ptod;
 	    }
 
     /** No param, so give the default **/
@@ -368,7 +368,7 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
     pTObjData *pPtod = NULL;
 
 	    /** Get the old ptod. **/
-	    pPtod = libmime_GetPtodFromHeader(this, attr, param);
+	    pPtod = libmime_GetPtodPointer(this, attr, param);
 	    /** If our pointer to our other pointer is NULL or our pointer is NULL: bad. **/
 	    if (!pPtod || !*pPtod) return -1;
 
@@ -378,8 +378,8 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
 	    /** Free the old ptod. **/
 	    ptodFree(*pPtod);
 
-	    /** Make the new attribute or param. **/
-	    *pPtod = libmime_CreateStringAttr(this, attr, param, data, flags);
+	    /** Make the new ptod. **/
+	    *pPtod = ptodCreateString(data, flags);
 
     return 0;
     }
@@ -388,38 +388,20 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
  *** given Mime header.
  ***/
 int
-libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
+libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype)
     {
-    pMimeAttr attr;
-    pMimeAttr oldAttr;
+    pTObjData *pPtod = NULL;
 
-	/** Get the old attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	/** Get the old ptod. **/
+	pPtod = libmime_GetPtodPointer(this, attr, param);
+	/** If our pointer to our other pointer is NULL or our pointer is NULL: bad. **/
+	if (!pPtod || !*pPtod) return -1;
 
-	/** If the attribute does not yet exist, create it. **/
-	if (!oldAttr)
-	    {
-	    return libmime_CreateAttr(this, name, data, datatype);
-	    }
+	/** Free the old ptod. **/
+	ptodFree(*pPtod);
 
-	/** Allocate the Mime attribute. **/
-	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
-	if (!attr)
-	    {
-	    return -1;
-	    }
-	memset(attr, 0, sizeof(MimeAttr));
-
-	/** Populate the Mime attribute. **/
-	attr->Name = name;
-	attr->Ptod = ptodCreate(data, datatype);
-
-	/** Replace the current attribute with the new one. **/
-	xhReplace(&this->Attrs, name, (char*)attr);
-
-	/** Deallocate the old attribute. **/
-	ptodFree(oldAttr->Ptod);
-	nmFree(oldAttr, sizeof(MimeAttr));
+	/** Make the new ptod. **/
+	*pPtod = ptodCreate(data, datatype);
 
     return 0;
     }
@@ -539,7 +521,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 int
 libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
     {
-    pMimeAttr oldAttr = NULL;
+    pTObjData ptod = NULL;
     pXArray array;
 
 	/** Get the old attribute/parameter ptod. **/
@@ -553,7 +535,7 @@ libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
 	    }
 
 	/** Get the array from the attribute. **/
-	array = (pXArray)oldAttr->Ptod->Data.Generic;
+	array = (pXArray)ptod->Data.Generic;
 
 	/** Add the item to the XArray. **/
 	xaAddItem(array, data);

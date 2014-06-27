@@ -174,6 +174,7 @@ int libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param);
 
 pTObjData libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);
 pTObjData libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param);
+pTObjData* libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param);
 
 int libmime_GetIntAttr(pMimeHeader this, char* attr, char* param);
 char* libmime_GetStringAttr(pMimeHeader this, char* attr, char* param);
@@ -183,12 +184,12 @@ pXArray libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param);
 
 int libmime_SetIntAttr(pMimeHeader this, char* attr, char* param, int data);
 int libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);
-int libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype);
+int libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
 
 int libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
 int libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param,  char* data);
 int libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
-int libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param void* data);
+int libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data);
 
 int libmime_ClearAttr(char* attr_c, void* arg);
 int libmime_ClearParam(char* param_c, void* arg);
