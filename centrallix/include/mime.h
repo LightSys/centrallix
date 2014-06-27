@@ -166,7 +166,7 @@ int libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseParameterListAttr(pMimeAttr attr, char* data);
 
-int libmime_CreateIntAttr(pMimeHeader this, char* name, int data);
+int libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data);
 int libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);
 int libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param);
 int libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
@@ -181,8 +181,8 @@ pStringVec libmime_getStringArrayAttr(pMimeHeader this, char* attr, char* param)
 void* libmime_GetAttr(pMimeHeader this, char* attr, char* param);
 pXArray libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param);
 
-int libmime_SetIntAttr(pMimeHeader this, char* name, int data);
-int libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags);
+int libmime_SetIntAttr(pMimeHeader this, char* attr, char* param, int data);
+int libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);
 int libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype);
 
 int libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
