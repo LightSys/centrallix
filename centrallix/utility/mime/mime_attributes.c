@@ -158,6 +158,66 @@ libmime_CreateArrayAttr(pMimeHeader this, char* name)
     return 0;
     }
 
+pTObjData
+libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
+    {
+    pMimeAttr attr;
+    pMimeParam param;
+
+	/** If the parameter argument is empty, we are creating an attribute. **/
+	if(!paramName || !strlen(paramName))
+	    {
+	    /** Allocate the new attribute. **/
+	    attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
+	    if (!attr)
+		{
+		mssError(1, "MIME", "Could not allocate a new attribute");
+		return NULL;
+		}
+	    memset(attr, 0, sizeof(MimeAttr));
+
+	    /** Set the name of the attribute. **/
+	    attr->Name = attrName;
+
+	    /** Add the Mime attribute to the attributes array. **/
+	    xhAdd(&this->Attrs, attrName, (char*)attr);
+
+	    /** Return the pointer to the relevant ptod. **/
+	    return attr->Ptod;
+	    }
+	/** Otherwise we are creating a parameter. **/
+	else
+	    {
+	    /** Find the appropriate attribute. **/
+	    attr = (pMimeAttr)xhLookup(&this->Attrs, attrName);
+	    if (!attr)
+		{
+		mssError(1, "MIME", "Could not find the given attribute (%s)", attrName);
+		return NULL;
+		}
+
+	    /** Allocate the new parameter. **/
+	    param = (pMimeParam)nmMalloc(sizeof(MimeParam));
+	    if (!param)
+		{
+		mssError(1, "MIME", "Could not allocate a new parameter");
+		return NULL;
+		}
+	    memeset(param, 0, sizeof(MimeParam));
+
+	    /** Set the name of the parameter. **/
+	    param->Name = paramName;
+
+	    /** Add the Mime parameter to the parameter hash. **/
+	    xhAdd(&attr->Params, paramName, (char*)param);
+
+	    /** Return the pointer to the relevant ptod.**/
+	    return param->Ptod;
+	    }
+
+    return NULL;
+    }
+
 /*** libmime_GetPtodFromHeader - Gets a PTOD from a header based on the passed
  *** in attribute and param. If param is NULL (or ""), we assume we want the
  *** value of the attr, otherwise search for the param in the XHashTable.
