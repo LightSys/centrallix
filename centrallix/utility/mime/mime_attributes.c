@@ -67,7 +67,7 @@ libmime_CreateIntAttr(pMimeHeader this, char* name, int data)
 int
 libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags)
     {
-    pTObjData ptod;
+    pTObjData ptod = NULL;
 
 	/** Create the parameter/attribute and get the ptod. **/
 	ptod = libmime_CreateAttrParam(this, attr, param);
@@ -88,7 +88,7 @@ libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, 
 int
 libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
     {
-    pStringVec attrVec;
+    pStringVec attrVec = NULL;
 
 	/** Allocate the attribute vector. **/
 	attrVec = (pStringVec)nmMalloc(sizeof(StringVec));
@@ -110,7 +110,7 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
 int
 libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype)
     {
-    pTObjData ptod;
+    pTObjData ptod = NULL;
 
 	/** Create the attribute/parameter and get the ptod. **/
 	ptod = libmime_CreateAttrParam(this, attr, param);
@@ -131,7 +131,7 @@ libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int da
 int
 libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
     {
-    pXArray array;
+    pXArray array = NULL;
 
 	/** Allocate the generic array. **/
 	array = (pXArray)nmMalloc(sizeof(XArray));
@@ -154,8 +154,8 @@ libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
 pTObjData
 libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
     {
-    pMimeAttr attr;
-    pMimeParam param;
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
 
 	/** If the parameter argument is empty, we are creating an attribute. **/
 	if(!paramName || !strlen(paramName))
@@ -472,25 +472,25 @@ libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
  *** in the given Mime header.
  ***/
 int
-libmime_AddStringArrayAttr(pMimeHeader this, char* name, char* data)
+libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data)
     {
-    pMimeAttr oldAttr = NULL;
+    pTObjData ptod = NULL;
     pStringVec stringVec;
     char** tempVec = NULL;
     int i;
 
-	/** Get the old attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	/** Get the old attribute/parameter ptod. **/
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute does not yet exist, create it. **/
-	if (!oldAttr)
+	/** If the attribute/parametr wasn't found, create it. **/
+	if (!ptod)
 	    {
-	    libmime_CreateStringArrayAttr(this, name);
-	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    libmime_CreateStringArrayAttr(this, attr, param);
+	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    }
 
 	/** Get the string vector from the attribute. **/
-	stringVec = oldAttr->Ptod->Data.StringVec;
+	stringVec = ptod->Data.StringVec;
 
 	/** Allocate a new string array. **/
 	tempVec = (char**)nmMalloc(sizeof(char)*(stringVec->nStrings+1));
@@ -525,25 +525,25 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* name, char* data)
  *** array attribute in the given Mime header.
  ***/
 int
-libmime_AppendStringArrayAttr(pMimeHeader this, char* name, pXArray dataList)
+libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList)
     {
-    pMimeAttr oldAttr;
+    pTObjData ptod = NULL;
     pStringVec stringVec;
     char** tempVec;
     int i, j;
 
-	/** Get the old attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	/** Get the old attribute/parameter ptod. **/
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute does not yet exist, create it. **/
-	if (!oldAttr)
+	/** If the attribute/parametr wasn't found, create it. **/
+	if (!ptod)
 	    {
-	    libmime_CreateStringArrayAttr(this, name);
-	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    libmime_CreateStringArrayAttr(this, attr, param);
+	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    }
 
 	/** Get the string vector from the attribute. **/
-	stringVec = oldAttr->Ptod->Data.StringVec;
+	stringVec = ptod->Data.StringVec;
 
 	/** Allocate a new string vector. **/
 	tempVec = (char**)nmMalloc(sizeof(char)*stringVec->nStrings + dataList->nItems);
@@ -581,19 +581,19 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* name, pXArray dataList)
  *** attribute in the given Mime header.
  ***/
 int
-libmime_AddArrayAttr(pMimeHeader this, char* name, void* data)
+libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
     {
     pMimeAttr oldAttr = NULL;
     pXArray array;
 
-	/** Get the attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	/** Get the old attribute/parameter ptod. **/
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute wasn't found, create it. **/
-	if (!oldAttr)
+	/** If the attribute/parametr wasn't found, create it. **/
+	if (!ptod)
 	    {
-	    libmime_CreateArrayAttr(this, name);
-	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    libmime_CreateStringArrayAttr(this, attr, param);
+	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    }
 
 	/** Get the array from the attribute. **/
@@ -609,20 +609,21 @@ libmime_AddArrayAttr(pMimeHeader this, char* name, void* data)
  *** array attribute in the given Mime header.
  ***/
 int
-libmime_AppendArrayAttr(pMimeHeader this, char* name, pXArray dataList)
+libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList)
     {
+    pTObjData ptod = NULL;
     pMimeAttr oldAttr = NULL;
     pXArray array;
     int i;
 
-	/** Get the attribute. **/
-	oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	/** Get the old attribute/parameter ptod. **/
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute wasn't found, create it. **/
-	if (!oldAttr)
+	/** If the attribute/parametr wasn't found, create it. **/
+	if (!ptod)
 	    {
-	    libmime_CreateArrayAttr(this, name);
-	    oldAttr = (pMimeAttr)xhLookup(&this->Attrs, name);
+	    libmime_CreateStringArrayAttr(this, attr, param);
+	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    }
 
 	/** Get the array from the attribute. **/
