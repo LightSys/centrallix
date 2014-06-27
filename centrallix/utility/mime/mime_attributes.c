@@ -65,24 +65,20 @@ libmime_CreateIntAttr(pMimeHeader this, char* name, int data)
  *** given Mime header.
  ***/
 int
-libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags)
+libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags)
     {
+    pTObjData ptod;
     pMimeAttr attr;
 
-	/** Allocate the Mime attribute. **/
-	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
-	if (!attr)
+	/** Create the parameter/attribute and get the ptod. **/
+	ptod = libmime_CreateAttrParam(this, attr, param);
+	if (!ptod)
 	    {
 	    return -1;
 	    }
-	memset(attr, 0, sizeof(MimeAttr));
 
-	/** Populate the Mime attribute. **/
-	attr->Name = name;
-	attr->Ptod = ptodCreateString(data, flags);
-
-	/** Add the Mime attribute to the attributes array. **/
-	xhAdd(&this->Attrs, name, (char*)attr);
+	/** Populate the ptod. **/
+	ptod = ptodCreateString(data, flags);
 
     return 0;
     }
