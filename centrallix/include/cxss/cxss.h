@@ -116,6 +116,7 @@ int cxssAddEndorsement(char* endorsement, char* context);
 int cxssHasEndorsement(char* endorsement, char* context);
 int cxssSetVariable(char* name, char* value, int valuealloc);
 int cxssGetVariable(char* vblname, char** value, char* default_value);
+int cxssGetEndorsementList(pXArray endorsements, pXArray contexts);
 
 /*** Entropy functions - internal ***/
 int cxss_internal_InitEntropy(int pool_size);

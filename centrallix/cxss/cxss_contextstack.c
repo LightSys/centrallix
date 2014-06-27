@@ -448,6 +448,34 @@ cxssHasEndorsement(char* endorsement, char* context)
     }
 
 
+/*** cxssGetEndorsementList() - return a list of the currently allowed
+ *** endorsements and contexts.  The caller is responsible for freeing the
+ *** memory used (each string is allocated using nmSysMalloc() or similar)
+ ***/
+int
+cxssGetEndorsementList(pXArray endorsements, pXArray contexts)
+    {
+    int i;
+    pCxssCtxStack sptr;
+    pCxssEndorsement e;
+
+	/** Get auth stack pointer **/
+	sptr = (pCxssCtxStack)thGetSecParam(NULL);
+	if (!sptr)
+	    return 0;
+
+	/** Copy the list over **/
+	for(i=0;i<sptr->Endorsements.nItems;i++)
+	    {
+	    e = (pCxssEndorsement)sptr->Endorsements.Items[i];
+	    xaAddItem(endorsements, nmSysStrdup(e->Endorsement));
+	    if (contexts)
+		xaAddItem(contexts, nmSysStrdup(e->Context));
+	    }
+
+    return sptr->Endorsements.nItems;
+    }
+
 
 /*** cxssSetVariable() - Set a session variable.
  ***/
