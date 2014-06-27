@@ -41,7 +41,6 @@ int
 libmime_CreateIntAttr(pMimeHeader this, char* name, int data)
     {
     pMimeAttr attr;
-    /** testing merge stuffs **/
 
 	/** Allocate the Mime attribute. **/
 	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
