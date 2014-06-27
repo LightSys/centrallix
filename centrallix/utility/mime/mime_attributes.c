@@ -220,6 +220,18 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 pTObjData
 libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param)
     {
+    return *libmime_GetPtodPointer(this, attr, param);
+    }
+
+/*** libmime_GetPtodPointer - Gets the pointer to the PTOD from an attribute/parameter
+ *** based on the passed in attribute and param. If param is NULL (or ""), we assume
+ *** we want the value of the attr, otherwise search for the param in the XHashTable.
+ ***
+ *** returns pointer on success, NULL on failure
+ ***/
+*pTObjData
+libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
+    {
     void *ptr = NULL;
 
 	/** Get the attribute value **/
@@ -245,9 +257,8 @@ libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param)
 	    }
 
     /** No param, so give the default **/
-    return ((pMimeAttr)ptr)->Ptod;
+    return &((pMimeAttr)ptr)->Ptod;
     }
-
 
 /*** libmime_GetIntAttr - Gets an integer attribute from the
  *** given Mime header.
