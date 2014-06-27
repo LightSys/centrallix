@@ -167,9 +167,9 @@ int libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseParameterListAttr(pMimeAttr attr, char* data);
 
 int libmime_CreateIntAttr(pMimeHeader this, char* name, int data);
-int libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags);
-int libmime_CreateStringArrayAttr(pMimeHeader this, char* name);
-int libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype);
+int libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);
+int libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param);
+int libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
 int libmime_CreateArrayAttr(pMimeHeader this, char* name);
 
 pTObjData libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);

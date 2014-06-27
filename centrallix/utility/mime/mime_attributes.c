@@ -68,7 +68,6 @@ int
 libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags)
     {
     pTObjData ptod;
-    pMimeAttr attr;
 
 	/** Create the parameter/attribute and get the ptod. **/
 	ptod = libmime_CreateAttrParam(this, attr, param);
@@ -87,7 +86,7 @@ libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, 
  *** in the given Mime header.
  ***/
 int
-libmime_CreateStringArrayAttr(pMimeHeader this, char* name)
+libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
     {
     pStringVec attrVec;
 
@@ -100,7 +99,7 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* name)
 	memset(attrVec, 0, sizeof(StringVec));
 
 	/** Create the attribute with the allocated StringVec. **/
-	libmime_CreateAttr(this, name, attrVec, DATA_T_STRINGVEC);
+	libmime_CreateAttr(this, attr, param, attrVec, DATA_T_STRINGVEC);
 
     return 0;
     }
@@ -109,24 +108,19 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* name)
  *** given Mime header.
  ***/
 int
-libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype)
+libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype)
     {
-    pMimeAttr attr;
+    pTObjData ptod;
 
-	/** Allocate the Mime attribute. **/
-	attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
-	if (!attr)
+	/** Create the attribute/parameter and get the ptod. **/
+	ptod = libmime_CreateAttrParam(this, attr, param);
+	if (!ptod)
 	    {
 	    return -1;
 	    }
-	memset(attr, 0, sizeof(MimeAttr));
 
-	/** Populate the Mime attribute. **/
-	attr->Name = name;
-	attr->Ptod = ptodCreate(data, datatype);
-
-	/** Add the Mime attribute to the attributes array. **/
-	xhAdd(&this->Attrs, name, (char*)attr);
+	/** Populate the ptod. **/
+	ptod = ptodCreate(data, datatype);
 
     return 0;
     }
@@ -135,7 +129,7 @@ libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype)
  *** given Mime header.
  ***/
 int
-libmime_CreateArrayAttr(pMimeHeader this, char* name)
+libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
     {
     pXArray array;
 
@@ -149,11 +143,14 @@ libmime_CreateArrayAttr(pMimeHeader this, char* name)
 	xaInit(array, 4);
 
 	/** Create an attribute containing the generic array. **/
-	libmime_CreateAttr(this, name, array, DATA_T_ARRAY);
+	libmime_CreateAttr(this, attr, param, array, DATA_T_ARRAY);
 
     return 0;
     }
 
+/*** libmime_CreateAttrParam - Creates an attribute or parameter according to the
+ *** given names and returns the ptod from the appropriate structure.
+ ***/
 pTObjData
 libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
     {
