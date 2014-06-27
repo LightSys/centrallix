@@ -35,6 +35,246 @@
 #include "obj.h"
 #include "mime.h"
 
+/*** libmime_ParseAttr - Parses an attribute and stores it in the Mime header as
+ *** an attribute.
+ ***/
+int
+libmime_ParseAttr(pMimeHeader this, char* name, char* data)
+    {
+    pXString token = NULL;
+    pLxSession lex = NULL;
+    int tokenType = MLX_TOK_BEGIN;
+    char* paramName = NULL;
+
+	/** Open a lexer session on the data string. **/
+	lex = mlxStringSession(data, 0);
+	if (!lex)
+	    {
+	    mssError(0, "MIME", "Failed to open a lexer session on the attribute data");
+	    return -1;
+	    }
+
+	/** Initialize the token string. **/
+	xsInit(token);
+
+	/** Get the next token from the data string. **/
+	tokenType = mlxNextToken(lex);
+
+	/** Append all data up to the next semicolon. **/
+	while (tokenType != MLX_TOK_ERROR && tokenType != MLX_TOK_SEMICOLON)
+	    {
+	    xsConcatenate(token, mlxStringVal(lex, NULL));
+	    tokenType = mlxNextToken(lex);
+	    }
+
+	/** Call the appropriate parse function for the attribute. **/
+
+	/** Handle special attributes. **/
+	if (!strcasecmp(name, "Content-Type"))
+	    {
+	    return libmime_SetContentType(this, data);
+	    }
+	else if (!strcasecmp(name, "Content-Transfer-Encoding"))
+	    {
+	    return libmime_SetTransferEncoding(this, data);
+	    }
+	/** Check for integer attributes. **/
+	else if (!strcasecmp(name, "Content-Length"))
+	    {
+	    libmime_CreateIntAttr(this, name, NULL, strtol(xsString(token), NULL, 10));
+	    }
+	/** Check for email address attributes. **/
+	else if (!strcasecmp(name, "Reply-To") ||
+		!strcasecmp(name, "Sender"))
+	    {
+	    libmime_ParseEmailAttr(this, name, xsString(token));
+	    }
+	/** Check for email list attributes. **/
+	else if (!strcasecmp(name, "To") ||
+	    !strcasecmp(name, "From") ||
+	    !strcasecmp(name, "Cc") ||
+	    !strcasecmp(name, "Bcc"))
+	    {
+	    libmime_ParseEmailListAttr(this, name, xsString(token));
+	    }
+	/** Check for string list attributes. **/
+	else if (!strcasecmp(name, "Keywords"))
+	    {
+	    libmime_ParseCsvAttr(this, name, xsString(token));
+	    }
+	/** Everything else defaults to string. **/
+	else
+	    {
+	    libmime_CreateStringAttr(this, name, NULL, xsString(token), 0);
+	    }
+
+	/** Clear the string. **/
+	xsDeInit(token);
+	xsInit(token);
+
+	/** Process all parameters until the end of the line. **/
+	while (tokenType != MLX_TOK_ERROR)
+	    {
+	    tokenType = mlxNextToken(lex);
+
+	    /** If encountering an equals sign, we have completed the parameter **/
+	    /** name, so store it. **/
+	    if (tokenType = MLX_TOK_EQUALS)
+		{
+		paramName = nmSysStrdup(xsString(token));
+
+		xsDeInit(token);
+		xsInit(token);
+		}
+	    /** If at the end of the line, or at a semicolon, we have completed **/
+	    /** a parameter. Process it. **/
+	    else if (tokenType == MLX_TOK_SEMICOLON || tokenType == MLX_TOK_ERROR)
+		{
+		libmime_CreateStringAttr(this, name, paramName, xsString(token), 0);
+		//libmime_ParseParameterAttr(this, name, paramName, nmSysStrdup(xsString(token)));
+
+		xsDeInit(token);
+		xsInit(token);
+		}
+	    else
+		{
+		xsConcatenate(token, mlxStringVal(lex, NULL));
+		}
+	    }
+
+	/** Close the lexer session on the data string. **/
+	if(mlxCloseSession(lex))
+	    {
+	    mssError(0, "MIME", "Failed to close the lexer session on the attribute data");
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+/*** libmime_ParseEmailAttr - Parses an email address attribute and adds it to
+ *** the Mime header.
+ ***/
+int
+libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
+    {
+    pEmailAddr emailAddr = NULL;
+    XString parameterName;
+
+	/** Allocate the email address. **/
+	emailAddr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
+	if (!emailAddr)
+	    {
+	    mssError(1, "MIME", "Failed to allocate the email address structure");
+	    return -1;
+	    }
+
+	/** Parse the email address. **/
+	if (!libmime_ParseAddress(data, emailAddr))
+	    {
+	    mssError(1, "MIME", "Failed to parse the email address");
+	    return -1;
+	    }
+
+	/** Create the email attribute. **/
+	libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0);
+
+	/** Construct the parameter name for the struct. **/
+	xsInit(parameterName);
+	xsConcatenate(parameterName, name);
+	xsConcatenate(parameterName, "-Struct");
+
+	/** Store the struct as a parameter. **/
+	libmime_CreateAttr(this, name, NULL, emailAddr, 0);
+	xsDeInit(parameterName);
+
+    return 0;
+    }
+
+/*** libmime_ParseEmailListAttr - Parses an email list attribute and adds it to
+ *** the Mime header.
+ ***/
+int
+libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
+    {
+    XArray emailList;
+    XString structListParameterName;
+    int i;
+
+	/** Parse the email list into an XArray of email structs. **/
+	libmime_ParseAddressList(data, &emailList);
+
+	/** Construct and store the string list of email address lines as an attribute. **/
+	for (i = 0; i < list.nItems; i++)
+	    {
+	    libmime_AddStringArrayAttr(this, name, NULL, ((pEmailAddr)xaGetItem(&emailList, i))->AddressLine);
+	    }
+
+	/** Construct the name of the struct list. **/
+	xsInit(structListParameterName);
+	xsConcatenate(structListParameterName, name);
+	xsConcatenate(structListParameterName, "-Struct");
+
+	/** Store the email structure list in a parameter. **/
+	libmime_AppendArrayAttr(this, name, nmSysStrdup(xsString(structListParameterName)), &emailList);
+
+	/** Deinitialize the XString used for the parameter name construction. **/
+	xsDeInit(structListParameterName);
+
+    return 0;
+    }
+
+/*** libmime_ParseCsvAttr - Parses a csv list and stores it in an attribute in
+ *** the given Mime header.
+ ***/
+int
+libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
+    {
+    pXString token = NULL;
+    pLxSession lex = NULL;
+    int tokenType = MLX_TOK_BEGIN;
+
+	/** Open a lexer session for parsing the keyword list. **/
+	lex = mlxStringSession(xsString(token), 0);
+
+	/** Clear the string for holding each value in the comma separated list. **/
+	xsInit(token);
+
+	/** Get the next token in the list (assumed not to be a comma). **/
+	tokenType = mlxNextToken(lex);
+
+	/** Add all items in the list up until the end of the string. **/
+	while (tokenType != MLX_TOK_ERROR)
+	    {
+	    /** Get the next token. **/
+	    tokenType = mlxNextToken(lex);
+
+	    /** If the token is a comma. **/
+	    if (tokenType == MLX_TOK_COMMA)
+		{
+		/** Add the item to the list. **/
+		libmime_AddStringArrayAttr(this, name, NULL, xsString(token));
+
+		/** Clear the item string. **/
+		xsDeInit(token);
+		xsInit(token);
+		}
+	    /** Concatenate the next item string. **/
+	    else
+		{
+		xsConcatenate(token, mlxStringVal(lex, NULL));
+		}
+	    }
+
+	/** Deinitialize the item string. **/
+	xsDeInit(token);
+
+	/** Close the lexer session for parsing the keyword list. **/
+	mlxCloseSession(lex);
+
+    return 0;
+    }
+
 /*** libmime_CreateIntAttr - Creates and stores an integer attribute in the
  *** given Mime header.
  ***/
