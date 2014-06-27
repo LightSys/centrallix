@@ -315,6 +315,7 @@ libmime_GetAttr(pMimeHeader this, char* attr, char* param)
 	if (!ptod)
 	    {
 	    mssError(0, "MIME", "Cound not find generic value. Result is not valid.");
+	    return NULL;
 	    }
 
     return ptod->Data.Generic;
@@ -323,7 +324,8 @@ libmime_GetAttr(pMimeHeader this, char* attr, char* param)
 /*** libmime_GetArrayAttr - Gets a generic array attribute from the given
  *** Mime header.
  ***/
-pXArray libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param)
+pXArray
+libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param)
     {
     pTObjData ptod = NULL;
 
@@ -331,6 +333,7 @@ pXArray libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param)
 	if (!ptod)
 	    {
 	    mssError(0, "MIME", "Cound not find array value. Result is not valid.");
+	    return NULL;
 	    }
 
     return (pXArray)ptod->Data.Generic;
