@@ -1,6 +1,5 @@
 *~
 *.swp
-/INSTALL
 .deps/
 .libs/
 /autom4te.cache
@@ -17,7 +16,6 @@
 /libtool
 /ltmain.sh
 /Makefile
-/missing
 /stamp-h1
 /stamp-h2
 /tests/Makefile

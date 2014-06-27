@@ -1029,6 +1029,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* slashptr;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
+    int rval;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1088,7 +1089,9 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
 
 	/** Check GET mode. **/
-	find_inf = stLookup_ne(url_inf,"ls__mode");
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf)
+	    find_inf = stLookup_ne(url_inf,"ls__mode"); /* compatibility */
 
 	/** Ok, open the object here, if not using OSML mode. **/
 	if (!find_inf || strcmp(find_inf->StrVal,"osml") != 0)
@@ -1139,7 +1142,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    /** Do we need to set params as a part of the open? **/
-	    if (akey_match)
+	    if (akey_match && (!find_inf || strcmp(find_inf->StrVal, "rest") != 0))
 		nht_internal_CkParams(url_inf, target_obj);
 	    }
 	else
@@ -1482,6 +1485,12 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    }
 		nmFree(bufptr, 4096);
 	        }
+	    }
+
+	/** REST mode? **/
+	else if (!strcmp(find_inf->StrVal,"rest"))
+	    {
+	    rval = nht_internal_RestGet(conn, url_inf, target_obj);
 	    }
 
 	/** GET DIRECTORY LISTING mode. **/
