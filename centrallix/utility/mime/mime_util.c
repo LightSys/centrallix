@@ -75,6 +75,8 @@ libmime_DeallocateHeader(pMimeHeader msg)
 
 	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
 
+	/** Clear the attributes. **/
+	xhClear(&msg->Attrs, &libmime_ClearAttr, NULL);
 	xhDeInit(&msg->Attrs);
 
 	nmFree(msg, sizeof(MimeHeader));

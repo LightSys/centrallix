@@ -135,6 +135,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		else if (!strcasecmp(hdrnme, "Content-Length")) err = libmime_SetContentLength(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "To")) err = libmime_SetTo(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Cc")) err = libmime_SetCc(msg, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Bcc")) err = libmime_SetTo(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "From")) err = libmime_SetFrom(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Subject")) err = libmime_SetSubject(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Date")) err = libmime_SetDate(msg, hdrbdy);
@@ -151,7 +152,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	xsDeInit(&xsbuf);
 	}
 
-    if (!strlen(libmime_GetStringAttr(msg, "ContentSubType")))
+    if (!strlen(libmime_GetStringAttr(msg, "ContentSubType", NULL)))
 	{
 	libmime_SetStringAttr(msg, "ContentSubType", "plain", -1);
 	}
@@ -517,7 +518,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 		libmime_SetStringAttr(msg, "Boundary", libmime_StringUnquote(cptr), -1);
 		}
 	    else if (!libmime_StringFirstCaseCmp(ptr, "name") &&
-		     !strlen(libmime_GetStringAttr(msg, "Filename")))
+		     !strlen(libmime_GetStringAttr(msg, "Filename", NULL)))
 		{
 		strncpy(tmpname, libmime_StringUnquote(cptr), 127);
 		tmpname[127] = 0;
@@ -525,7 +526,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 		    libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'/')+1, -1);
 		else
 		    libmime_SetStringAttr(msg, "Filename", tmpname, -1);
-		if (strchr(libmime_GetStringAttr(msg, "Filename"), '\\'))
+		if (strchr(libmime_GetStringAttr(msg, "Filename", NULL), '\\'))
 		    libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'\\')+1, -1);
 		}
 	    else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
@@ -646,8 +647,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    snprintf(bound, 79, "--%s", libmime_GetStringAttr(msg, "Boundary"));
-    snprintf(bound_end, 81, "--%s--", libmime_GetStringAttr(msg, "Boundary"));
+    snprintf(bound, 79, "--%s", libmime_GetStringAttr(msg, "Boundary", NULL));
+    snprintf(bound_end, 81, "--%s--", libmime_GetStringAttr(msg, "Boundary", NULL));
     bound[79] = 0;
     bound_end[81] = 0;
 
@@ -676,9 +677,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
 		    num++;
-		    if (!strlen(libmime_GetStringAttr(l_msg, "Filename")))
+		    if (!strlen(libmime_GetStringAttr(l_msg, "Filename", NULL)))
 			{
-			if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "ContentMainType"), libmime_GetStringAttr(l_msg, "ContentSubType")))
+			if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "ContentMainType", NULL), libmime_GetStringAttr(l_msg, "ContentSubType", NULL)))
 			    {
 			    sprintf(buf, "attachment%d.%s", num, ext);
 			    libmime_SetStringAttr(l_msg, "Filename", buf, -1);
@@ -690,7 +691,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 			    }
 			}
 
-		    if (libmime_GetIntAttr(l_msg, "ContentMainType") == MIME_TYPE_MULTIPART)
+		    if (libmime_GetIntAttr(l_msg, "ContentMainType", NULL) == MIME_TYPE_MULTIPART)
 			{
 			    libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
 			}
@@ -728,7 +729,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
     int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
     char *ptr, *bptr, *tptr;
 
-    switch (libmime_GetIntAttr(msg, "TransferEncoding"))
+    switch (libmime_GetIntAttr(msg, "TransferEncoding", NULL))
 	{
 	/** 7BIT AND 8BIT ENCODING **/
 	/** BINARY ENCODING **/

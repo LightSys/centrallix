@@ -158,7 +158,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
      ** go through all elements and see if we have another multipart element.
      ** If so, repeat the search.
      **/
-    while (libmime_GetIntAttr(inf->Header, "ContentMainType") == MIME_TYPE_MULTIPART &&
+    while (libmime_GetIntAttr(inf->Header, "ContentMainType", NULL) == MIME_TYPE_MULTIPART &&
 	   obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
 	{
 	/** assume we don't have a match **/
@@ -171,7 +171,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    pMimeHeader phdr;
 
 	    phdr = xaGetItem(&(inf->Header->Parts), i);
-	    if (!strcmp(libmime_GetStringAttr(phdr, "Filename"), ptr))
+	    if (!strcmp(libmime_GetStringAttr(phdr, "Filename", NULL), ptr))
 		{
 		/** FIXME FIXME FIXME FIXME
 		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
@@ -356,7 +356,7 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	return -1;
 	}
 
-    if (libmime_GetIntAttr(inf->Header, "ContentMainType") == MIME_TYPE_MULTIPART)
+    if (libmime_GetIntAttr(inf->Header, "ContentMainType", NULL) == MIME_TYPE_MULTIPART)
 	{
 	return -1;
 	}
@@ -533,14 +533,14 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if (!strcmp(attrname, "name"))
 		{
-		val->String = libmime_GetStringAttr(inf->Header, "Filename");
+		val->String = libmime_GetStringAttr(inf->Header, "Filename", NULL);
 		return 0;
 		}
 	    if (!strcmp(attrname, "outer_type"))
 		{
 		/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 		inf->AttrValue = (char*)nmSysMalloc(128);
-		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
+		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType", NULL)], libmime_GetStringAttr(inf->Header, "ContentSubType", NULL));
 		val->String = inf->AttrValue;
 		return 0;
 		}
@@ -548,13 +548,13 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		{
 		/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 		inf->AttrValue = (char*)nmSysMalloc(128);
-		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType")], libmime_GetStringAttr(inf->Header, "ContentSubType"));
+		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType", NULL)], libmime_GetStringAttr(inf->Header, "ContentSubType", NULL));
 		val->String = inf->AttrValue;
 		return 0;
 		}
 	    if (!strcmp(attrname, "transfer_encoding"))
 		{
-		val->String = EncodingStrings[libmime_GetIntAttr(inf->Header, "TransferEncoding")];
+		val->String = EncodingStrings[libmime_GetIntAttr(inf->Header, "TransferEncoding", NULL)];
 		return 0;
 		}
 
@@ -669,11 +669,11 @@ int
 mimeInfo(void* inf_v, pObjectInfo info)
     {
     pMimeInfo inf = MIME(inf_v);
-	
+
 	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK );
-	if (libmime_GetIntAttr(inf->Header, "ContentMainType") == MIME_TYPE_MULTIPART)
+	if (libmime_GetIntAttr(inf->Header, "ContentMainType", NULL) == MIME_TYPE_MULTIPART)
 	    {
-	    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN | 
+	    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
 		OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );
 	    info->nSubobjects = xaCount(&(inf->Header->Parts));
 	    }
@@ -682,7 +682,7 @@ mimeInfo(void* inf_v, pObjectInfo info)
 	    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_HAVE_CONTENT |
 		OBJ_INFO_F_HAS_CONTENT );
 	    }
-	    
+
 	return 0;
     }
 

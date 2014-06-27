@@ -30,6 +30,7 @@
 /************************************************************************/
 
 #include <string.h>
+#include <errno.h>
 #include "cxlib/mtsession.h"
 #include "obj.h"
 #include "mime.h"
@@ -157,48 +158,129 @@ libmime_CreateArrayAttr(pMimeHeader this, char* name)
     return 0;
     }
 
+/*** libmime_GetPtodFromHeader - Gets a PTOD from a header based on the passed
+ *** in attribute and param. If param is NULL (or ""), we assume we want the
+ *** value of the attr, otherwise search for the param in the XHashTable.
+ ***
+ *** returns pointer on success, NULL on failure.
+ ***/
+pTObjData
+libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param)
+    {
+    void *ptr = NULL;
+
+	/** Get the attribute value **/
+	ptr = (pMimeAttr)xhLookup(&this->Attrs, attr);
+	if (!ptr)
+	    {
+	    mssError(1, "MIME", "Could not find attribute in header.");
+	    return NULL;
+	    }
+
+	/** If param, search the XHashTable, otherwise return default. **/
+	if (param && !strcmp(param, ""))
+	    {
+	    /** Get the param value **/
+	    ptr = (pMimeParam)xhLookup(&((pMimeAttr)ptr)->Params, param);
+	    if (!ptr)
+		{
+		mssError(1, "MIME", "Could not find parameter in attribute.");
+		return NULL;
+		}
+
+	    return ((pMimeParam)ptr)->Ptod;
+	    }
+
+    /** No param, so give the default **/
+    return ((pMimeAttr)ptr)->Ptod;
+    }
+
+
 /*** libmime_GetIntAttr - Gets an integer attribute from the
  *** given Mime header.
  ***/
 int
-libmime_GetIntAttr(pMimeHeader this, char* name)
+libmime_GetIntAttr(pMimeHeader this, char* attr, char* param)
     {
-    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Integer;
+    pTObjData ptod = NULL;
+
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Could not find integer value. Result is not valid.");
+	    return -1;
+	    }
+
+    return ptod->Data.Integer;
     }
 
 /*** libmime_GetStringAttr - Gets a string attribute from the
  *** given Mime header.
  ***/
 char*
-libmime_GetStringAttr(pMimeHeader this, char* name)
+libmime_GetStringAttr(pMimeHeader this, char* attr, char* param)
     {
-    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.String;
+    pTObjData ptod = NULL;
+
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Could not find string value. Result is not valid.");
+	    return NULL;
+	    }
+
+    return ptod->Data.String;
     }
 
 /*** libmime_GetStringArrayAttr - Gets a string array attribute from the
  *** given Mime header.
  ***/
 pStringVec
-libmime_GetStringArrayAttr(pMimeHeader this, char* name)
+libmime_GetStringArrayAttr(pMimeHeader this, char* attr, char* param)
     {
-    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.StringVec;
+    pTObjData ptod = NULL;
+
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Could not find string array value. Result is not valid.");
+	    return NULL;
+	    }
+
+    return ptod->Data.StringVec;
     }
 
 /*** libmime_GetAttr - Gets a generic attribute from the
  *** given Mime header.
  ***/
 void*
-libmime_GetAttr(pMimeHeader this, char* name)
+libmime_GetAttr(pMimeHeader this, char* attr, char* param)
     {
-    return ((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Generic;
+    pTObjData ptod = NULL;
+
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Cound not find generic value. Result is not valid.");
+	    }
+
+    return ptod->Data.Generic;
     }
 
 /*** libmime_GetArrayAttr - Gets a generic array attribute from the given
  *** Mime header.
  ***/
-pXArray libmime_GetArrayAttr(pMimeHeader this, char*name)
+pXArray libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param)
     {
-    return (pXArray)((pMimeAttr)xhLookup(&this->Attrs, name))->Ptod->Data.Generic;
+    pTObjData ptod = NULL;
+
+	ptod = libmime_GetPtodFromHeader(this, attr, param);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Cound not find array value. Result is not valid.");
+	    }
+
+    return (pXArray)ptod->Data.Generic;
     }
 
 /*** libmime_SetIntAttr - Sets an integer attribute in the
@@ -339,9 +421,9 @@ libmime_SetAttr(pMimeHeader this, char* name, void* data, int datatype)
 int
 libmime_AddStringArrayAttr(pMimeHeader this, char* name, char* data)
     {
-    pMimeAttr oldAttr;
+    pMimeAttr oldAttr = NULL;
     pStringVec stringVec;
-    char** tempVec;
+    char** tempVec = NULL;
     int i;
 
 	/** Get the old attribute. **/
@@ -501,4 +583,113 @@ libmime_AppendArrayAttr(pMimeHeader this, char* name, pXArray dataList)
 
     return 0;
     }
+
+/*** libmime_ClearAttr - Deallocates an attribute and all its contents.
+ *** Designed as a callback for the xhClear function.
+ ***/
+int
+libmime_ClearAttr(char* attr_c, void* arg)
+    {
+    pMimeAttr attr = (pMimeAttr)attr_c;
+
+	/** Take care of any special deallocation needs. **/
+	libmime_ClearSpecials(attr->Ptod);
+
+	/** Clear the parameters. **/
+	if (attr->Params.nRows)
+	    {
+	    xhClear(&attr->Params, libmime_ClearParam, NULL);
+	    xhDeInit(&attr->Params);
+	    }
+
+	/** Free the data memory of the attribute. **/
+	ptodFree(attr->Ptod);
+
+	/** Free the attribute memory. **/
+	nmFree(attr, sizeof(MimeAttr));
+
+    return 0;
+    }
+
+/*** libmime_ClearParam - Deallocates a parameter and all its contents.
+ *** Designed as a callback for the xhClear function.
+ ***/
+int
+libmime_ClearParam(char* param_c, void* arg)
+    {
+    pMimeParam param = (pMimeParam)param_c;
+
+	/** Take care of any special deallocation needs. **/
+	libmime_ClearSpecials(param->Ptod);
+
+	/** Free the data memory of the parameter. **/
+	ptodFree(param->Ptod);
+
+	/** Free the parameter memory. **/
+	nmFree(param, sizeof(MimeAttr));
+
+    return 0;
+    }
+
+/*** libmime_ClearSpecials - Deallocate any special cases in the given
+ *** attribute/parameter ptod.
+ *** NOTE: This function assumes a few things about how attributes are
+ *** allocated:
+ ***     - StingVec attributes contain arrays of nmSysStrdup/nmSysMalloc
+ ***       strings which should be freed.
+ ***     - Array type attributes contain an XArray of pEmailAttr stucts
+ ***       which should be freed.
+ ***/
+int
+libmime_ClearSpecials(pTObjData ptod)
+    {
+    pStringVec stringVec = NULL;
+    pXArray array = NULL;
+    pEmailAddr addr = NULL;
+    int i;
+
+	/** If the data in the ptod is unmanaged, we have to take care of it. **/
+	if (ptod->Flags & DATA_TF_UNMANAGED)
+	    {
+	    /** TODO: Update ptod code to handle StringVec correctly when freeing.
+	     ** (Once we decide what correctly is) **/
+	    if (ptod->DataType == DATA_T_STRINGVEC)
+		{
+		/** Get the StringVec from the ptod. **/
+		stringVec = (pStringVec)ptod->Data.StringVec;
+
+		/** Deallocate each string in the StringVec. **/
+		for (i = 0; i < stringVec->nStrings; i++)
+		    {
+		    nmSysFree(stringVec->Strings[i]);
+		    }
+
+		/** Deallocate the StringVec string array. **/
+		nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
+		}
+	    /** Handle our custom XArray type attribute. Yeah hijacked type names! **/
+	    else if (ptod->DataType == DATA_T_ARRAY)
+		{
+		/** Get the XArray from the ptod. **/
+		array = (pXArray)ptod->Data.Generic;
+
+		/** Deallocate each email in the list. **/
+		for (i = 0; i < array->nItems; i++)
+		    {
+		    addr = xaGetItem(array, i);
+		    if (addr)
+			{
+			nmFree(addr, sizeof(EmailAddr));
+			addr = NULL;
+			}
+		    }
+
+		/** Deinit the XArray. **/
+		xaDeInit(array);
+		}
+	    }
+
+    return 0;
+    }
+
 

@@ -70,11 +70,23 @@ typedef struct
     }
     EmailAddr, *pEmailAddr;
 
-/** Structure to store arbitrary Mime attributes **/
+/** Structure to store arbitrary Mime parameters **/
 typedef struct
     {
     char*	Name;
     pTObjData	Ptod;
+    }
+    MimeParam, *pMimeParam;
+
+/** Structure to store arbitrary Mime attributes
+ ** Stores default param inside itself and points
+ ** to an xarray of any extra params.
+ **/
+typedef struct
+    {
+    char*	Name;
+    pTObjData	Ptod;
+    XHashTable	Params;
     }
     MimeAttr, *pMimeAttr;
 
@@ -147,17 +159,27 @@ int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
 
 /** mime_attributes.c **/
+int libmime_ParseAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseIntAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseStringAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseParameterListAttr(pMimeAttr attr, char* data);
+
 int libmime_CreateIntAttr(pMimeHeader this, char* name, int data);
 int libmime_CreateStringAttr(pMimeHeader this, char* name, char* data, int flags);
 int libmime_CreateStringArrayAttr(pMimeHeader this, char* name);
 int libmime_CreateAttr(pMimeHeader this, char* name, void* data, int datatype);
 int libmime_CreateArrayAttr(pMimeHeader this, char* name);
 
-int libmime_GetIntAttr(pMimeHeader this, char* name);
-char* libmime_GetStringAttr(pMimeHeader this, char* name);
-pStringVec libmime_getStringArrayAttr(pMimeHeader this, char* name);
-void* libmime_GetAttr(pMimeHeader this, char* name);
-pXArray libmime_GetArrayAttr(pMimeHeader this, char* name);
+pTObjData libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);
+pTObjData libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param);
+
+int libmime_GetIntAttr(pMimeHeader this, char* attr, char* param);
+char* libmime_GetStringAttr(pMimeHeader this, char* attr, char* param);
+pStringVec libmime_getStringArrayAttr(pMimeHeader this, char* name, char* param);
+void* libmime_GetAttr(pMimeHeader this, char* name, char* param);
+pXArray libmime_GetArrayAttr(pMimeHeader this, char* name, char* param);
 
 int libmime_SetIntAttr(pMimeHeader this, char* name, int data);
 int libmime_SetStringAttr(pMimeHeader this, char* name, char* data, int flags);
@@ -167,6 +189,10 @@ int libmime_AppendStringArrayAttr(pMimeHeader this, char* name, pXArray dataList
 int libmime_AddStringArrayAttr(pMimeHeader this, char* name, char* data);
 int libmime_AppendArrayAttr(pMimeHeader this, char* name, pXArray dataList);
 int libmime_AddArrayAttr(pMimeHeader this, char* name, void* data);
+
+int libmime_ClearAttr(char* attr_c, void* arg);
+int libmime_ClearParam(char* param_c, void* arg);
+int libmime_ClearSpecials(pTObjData ptod);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();
