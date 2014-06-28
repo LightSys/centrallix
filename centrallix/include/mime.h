@@ -164,6 +164,7 @@ int libmime_ParseIntAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseStringAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseParameterListAttr(pMimeAttr attr, char* data);
 
 int libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data);

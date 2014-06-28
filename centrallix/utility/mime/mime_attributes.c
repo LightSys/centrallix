@@ -63,7 +63,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	/** Append all data up to the next semicolon. **/
 	while (tokenType != MLX_TOK_ERROR && tokenType != MLX_TOK_SEMICOLON)
 	    {
-	    xsConcatenate(token, mlxStringVal(lex, NULL));
+	    xsConcatenate(token, mlxStringVal(lex, NULL), -1);
 	    tokenType = mlxNextToken(lex);
 	    }
 
@@ -119,7 +119,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 
 	    /** If encountering an equals sign, we have completed the parameter **/
 	    /** name, so store it. **/
-	    if (tokenType = MLX_TOK_EQUALS)
+	    if (tokenType == MLX_TOK_EQUALS)
 		{
 		paramName = nmSysStrdup(xsString(token));
 
@@ -138,7 +138,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 		}
 	    else
 		{
-		xsConcatenate(token, mlxStringVal(lex, NULL));
+		xsConcatenate(token, mlxStringVal(lex, NULL), -1);
 		}
 	    }
 
@@ -180,13 +180,13 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0);
 
 	/** Construct the parameter name for the struct. **/
-	xsInit(parameterName);
-	xsConcatenate(parameterName, name);
-	xsConcatenate(parameterName, "-Struct");
+	xsInit(&parameterName);
+	xsConcatenate(&parameterName, name, -1);
+	xsConcatenate(&parameterName, "-Struct", -1);
 
 	/** Store the struct as a parameter. **/
-	libmime_CreateAttr(this, name, NULL, emailAddr, 0);
-	xsDeInit(parameterName);
+	libmime_CreateAttr(this, name, nmSysStrdup(xsString(&parameterName)), emailAddr, 0);
+	xsDeInit(&parameterName);
 
     return 0;
     }
@@ -205,21 +205,21 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 	libmime_ParseAddressList(data, &emailList);
 
 	/** Construct and store the string list of email address lines as an attribute. **/
-	for (i = 0; i < list.nItems; i++)
+	for (i = 0; i < emailList.nItems; i++)
 	    {
 	    libmime_AddStringArrayAttr(this, name, NULL, ((pEmailAddr)xaGetItem(&emailList, i))->AddressLine);
 	    }
 
 	/** Construct the name of the struct list. **/
-	xsInit(structListParameterName);
-	xsConcatenate(structListParameterName, name);
-	xsConcatenate(structListParameterName, "-Struct");
+	xsInit(&structListParameterName);
+	xsConcatenate(&structListParameterName, name, -1);
+	xsConcatenate(&structListParameterName, "-Struct", -1);
 
 	/** Store the email structure list in a parameter. **/
-	libmime_AppendArrayAttr(this, name, nmSysStrdup(xsString(structListParameterName)), &emailList);
+	libmime_AppendArrayAttr(this, name, nmSysStrdup(xsString(&structListParameterName)), &emailList);
 
 	/** Deinitialize the XString used for the parameter name construction. **/
-	xsDeInit(structListParameterName);
+	xsDeInit(&structListParameterName);
 
     return 0;
     }
@@ -262,7 +262,7 @@ libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
 	    /** Concatenate the next item string. **/
 	    else
 		{
-		xsConcatenate(token, mlxStringVal(lex, NULL));
+		xsConcatenate(token, mlxStringVal(lex, NULL), -1);
 		}
 	    }
 
