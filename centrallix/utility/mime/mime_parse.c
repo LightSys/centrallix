@@ -75,17 +75,9 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     char *hdrnme, *hdrbdy;
 
     /** Initialize the message structure **/
-    libmime_CreateIntAttr(msg, "ContentLength", 0);
-    libmime_CreateStringAttr(msg, "ContentDisposition", "", 0); /* 0 is managed and unattached */
-    libmime_CreateStringAttr(msg, "Filename", "", 0);
     libmime_CreateIntAttr(msg, "ContentMainType", MIME_TYPE_TEXT);
-    libmime_CreateStringAttr(msg, "ContentSubType", "", 0);
-    libmime_CreateStringAttr(msg, "Boundary", "", 0);
-    libmime_CreateStringAttr(msg, "Subject", "", 0);
-    libmime_CreateStringAttr(msg, "Charset", "", 0);
-    libmime_CreateIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
-    libmime_CreateStringAttr(msg, "MIMEVersion", "", 0);
-    libmime_CreateStringAttr(msg, "Mailer", "", 0);
+    libmime_SetStringAttr(msg, "ContentSubType", "plain", -1);
+    libmime_CreateIntAttr(msg, "Transfer-Encoding", MIME_ENC_7BIT);
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
 
@@ -128,21 +120,11 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String)+1);
 	    if (libmime_ParseHeaderElement(hdrbdy, hdrnme) == 0)
 		{
-		/** TODO flatten these functions (if possible). **/
-		if      (!strcasecmp(hdrnme, "Content-Type")) err = libmime_SetContentType(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Content-Disposition")) err = libmime_SetContentDisp(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Content-Transfer-Encoding")) err = libmime_SetTransferEncoding(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Content-Length")) err = libmime_SetContentLength(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "To")) err = libmime_SetTo(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Cc")) err = libmime_SetCc(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Bcc")) err = libmime_SetTo(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "From")) err = libmime_SetFrom(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Subject")) err = libmime_SetSubject(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Date")) err = libmime_SetDate(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "MIME-Version")) err = libmime_SetMIMEVersion(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "X-Mailer")) err = libmime_SetMailer(msg, hdrbdy);
-
-		if (err < 0) mssError(1, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
+		/** Parse the attribute and store it in the Mime header. **/
+		if (libmime_ParseAttr(msg, hdrnme, hdrbdy))
+		    {
+		    mssError(0, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
+		    }
 		}
 	    else
 		{
@@ -150,11 +132,6 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		}
 	    }
 	xsDeInit(&xsbuf);
-	}
-
-    if (!strlen(libmime_GetStringAttr(msg, "ContentSubType", NULL)))
-	{
-	libmime_SetStringAttr(msg, "ContentSubType", "plain", -1);
 	}
 
     /** Set the start and end offsets for the message **/
@@ -227,39 +204,6 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
     return 0;
     }
 
-/***  libmime_SetMailer
- ***
- ***  Parses the "X-Mailer" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.
- ***
- ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
- ***/
-int
-libmime_SetMailer(pMimeHeader msg, char *buf)
-    {
-	/** NOTE: buf could concievably NOT be null-terminated!!
-	 ** however, all current calls consist of a null-terminated buf.
-	 **/
-	libmime_SetStringAttr(msg, "Mailer", buf, -1);
-
-    return 0;
-    }
-
-/***  libmime_SetMIMEVersion
- ***
- ***  Parses the "MIME-Version" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.
- ***
- ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
- ***/
-int
-libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
-    {
-	libmime_SetStringAttr(msg, "MIMEVersion", buf, -1);
-
-    return 0;
-    }
-
 /*  libmime_SetDate
 **
 **  Parses the "Date" header element and fills in the MimeHeader data structure
@@ -279,144 +223,6 @@ libmime_SetDate(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/***  libmime_SetSubject
- ***
- ***  Parses the "Subject" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***
- ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
- ***/
-int
-libmime_SetSubject(pMimeHeader msg, char *buf)
-    {
-	libmime_SetStringAttr(msg, "Subject", buf, -1);
-
-    return 0;
-    }
-
-/***  libmime_SetFrom
- ***
- ***  Parses the "From" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***
- ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
- ***/
-int
-libmime_SetFrom(pMimeHeader msg, char *buf)
-    {
-    XArray froms;
-    int i;
-
-	xaInit(&froms, 4);
-
-	libmime_ParseAddressList(buf, &froms);
-
-	libmime_AppendArrayAttr(msg, "FromList", &froms);
-
-	for (i = 0; i < froms.nItems; i++)
-	    {
-	    libmime_AddStringArrayAttr(msg, "FromList-Strings",
-		    ((EmailAddr*)xaGetItem(&froms, i))->AddressLine);
-	    }
-
-    return 0;
-    }
-
-/***  libmime_SetCc
- ***
- ***  Parses the "Cc" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***
- ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
- ***/
-int
-libmime_SetCc(pMimeHeader msg, char *buf)
-    {
-    XArray ccs;
-    int i;
-
-	xaInit(&ccs, 8);
-
-	libmime_ParseAddressList(buf, &ccs);
-
-	libmime_AppendArrayAttr(msg, "CcList", &ccs);
-
-	for (i = 0; i < ccs.nItems; i++)
-	    {
-	    libmime_AddStringArrayAttr(msg, "CcList-Strings",
-		    ((EmailAddr*)xaGetItem(&ccs, i))->AddressLine);
-	    }
-
-    return 0;
-    }
-
-/***  libmime_SetBcc
- ***
- ***  Parses the "Bcc" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***
- ***  DO NOT USE WITH NON-NULL-TERMINATED buf!! (Or make it so it can handle it. :P )
- ***/
-int
-libmime_SetBcc(pMimeHeader msg, char *buf)
-    {
-    XArray bccs;
-    int i;
-
-	xaInit(&bccs, 4);
-
-	libmime_ParseAddressList(buf, &bccs);
-
-	libmime_AppendArrayAttr(msg, "BccList", &bccs);
-
-	for (i = 0; i < bccs.nItems; i++)
-	    {
-	    libmime_AddStringArrayAttr(msg, "BccList-Strings",
-		    ((EmailAddr*)xaGetItem(&bccs, i))->AddressLine);
-	    }
-
-    return 0;
-    }
-
-/***  libmime_SetTo
- ***
- ***  Parses the "To" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***/
-int
-libmime_SetTo(pMimeHeader msg, char *buf)
-    {
-    XArray tos;
-    int i;
-
-	xaInit(&tos, 4);
-
-	libmime_ParseAddressList(buf, &tos);
-
-	libmime_AppendArrayAttr(msg, "ToList", &tos);
-
-	for (i = 0; i < tos.nItems; i++)
-	    {
-	    libmime_AddStringArrayAttr(msg, "ToList-Strings",
-		    ((EmailAddr*)xaGetItem(&tos, i))->AddressLine);
-	    }
-
-    return 0;
-    }
-
-/***  libmime_SetContentLength
- ***
- ***  Parses the "Content-Length" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***/
-int
-libmime_SetContentLength(pMimeHeader msg, char *buf)
-    {
-	libmime_SetIntAttr(msg, "ContentLength", (int)strtol(buf, NULL, 10));
-
-    return 0;
-    }
-
 /***  libmime_SetTransferEncoding
  ***
  ***  Parses the "Content-Transfer-Encoding" header element and fills in the MimeHeader data structure
@@ -426,46 +232,17 @@ int
 libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
 	if (!strlen(buf) || !strcasecmp(buf, "7bit"))
-	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", MIME_ENC_7BIT);
 	else if (!strcasecmp(buf, "8bit"))
-	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_8BIT);
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", MIME_ENC_8BIT);
 	else if (!strcasecmp(buf, "base64"))
-	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_BASE64);
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", MIME_ENC_BASE64);
 	else if (!strcasecmp(buf, "quoted-printable"))
-	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_QP);
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", MIME_ENC_QP);
 	else if (!strcasecmp(buf, "binary"))
-	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_BINARY);
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", MIME_ENC_BINARY);
 	else
-	    libmime_SetIntAttr(msg, "TransferEncoding", MIME_ENC_7BIT);
-
-    return 0;
-    }
-
-/***  libmime_SetContentDisp
- ***
- ***  Parses the "Content-Disposition" header element and fills in the MimeHeader data structure
- ***  with the data accordingly.  If certain elements are not there, defaults are used.
- ***/
-int
-libmime_SetContentDisp(pMimeHeader msg, char *buf)
-    {
-    char *ptr, *cptr;
-
-	/** get the display main type **/
-	if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
-
-	libmime_SetStringAttr(msg, "ContentDisposition", ptr, -1);
-
-	/** Check for the "filename=" content-disp token **/
-	while ((ptr = strtok_r(buf, "= ", &buf)))
-	    {
-	    if (!(cptr = strtok_r(buf, ";", &buf))) break;
-	    while (*ptr == ' ') ptr++;
-	    if (!libmime_StringFirstCaseCmp(ptr, "filename"))
-		{
-		libmime_SetStringAttr(msg, "Filename", libmime_StringUnquote(cptr), -1);
-		}
-	    }
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", MIME_ENC_7BIT);
 
     return 0;
     }
@@ -508,36 +285,47 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 		}
 	    }
 
-	/** Look at any possible parameters **/
-	while ((ptr = strtok_r(buf, "= ", &buf)))
+    return 0;
+    }
+
+/*** libmime_SetFilename - Sets the Name attribute based on other relevant
+ *** attributes. If no name is indicated by other attributes, the given default
+ *** name is used.
+ ***/
+int
+libmime_SetFilename(pMimeHeader msg, char *defaultName)
+    {
+    char *fileName = NULL;
+
+	/** Get the name from the Content-Distribution attribute. **/
+	fileName = libmime_GetStringAttr(msg, "Content-Disposition", "Filename");
+	if (!fileName) fileName = libmime_GetStringAttr(msg, "Content-Disposition", "Name");
+
+	/** If found, store the name in the Name attribute. **/
+	if (fileName)
 	    {
-	    if (!(cptr=strtok_r(buf, ";", &buf))) break;
-	    while (*ptr == ' ') ptr++;
-	    if (!libmime_StringFirstCaseCmp(ptr, "boundary"))
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
 		{
-		libmime_SetStringAttr(msg, "Boundary", libmime_StringUnquote(cptr), -1);
-		}
-	    else if (!libmime_StringFirstCaseCmp(ptr, "name") &&
-		     !strlen(libmime_GetStringAttr(msg, "Filename", NULL)))
-		{
-		strncpy(tmpname, libmime_StringUnquote(cptr), 127);
-		tmpname[127] = 0;
-		if (strchr(tmpname,'/'))
-		    libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'/')+1, -1);
-		else
-		    libmime_SetStringAttr(msg, "Filename", tmpname, -1);
-		if (strchr(libmime_GetStringAttr(msg, "Filename", NULL), '\\'))
-		    libmime_SetStringAttr(msg, "Filename", strrchr(tmpname,'\\')+1, -1);
-		}
-	    else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
-		{
-		libmime_SetStringAttr(msg, "Subject", libmime_StringUnquote(cptr), -1);
-		}
-	    else if (!libmime_StringFirstCaseCmp(ptr, "charset"))
-		{
-		libmime_SetStringAttr(msg, "Charset", libmime_StringUnquote(cptr), -1);
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
 		}
 	    }
+
+	/** Get the name from the Content-Type attribute. **/
+	fileName = libmime_GetStringAttr(msg, "Content-Type", "Name");
+
+	/** If found, store the name in the Name attribute. **/
+	if (fileName)
+	    {
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    }
+
+	/** If neither is found, use the default name. **/
+	libmime_SetStringAttr(msg, "Name", NULL, defaultName, -1);
 
     return 0;
     }
@@ -677,23 +465,23 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
 		    num++;
-		    if (!strlen(libmime_GetStringAttr(l_msg, "Filename", NULL)))
+
+		    /** Check for an extension for the file in order to calculate the default filename. **/
+		    if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "ContentMainType", NULL), libmime_GetStringAttr(l_msg, "ContentSubType", NULL)))
 			{
-			if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "ContentMainType", NULL), libmime_GetStringAttr(l_msg, "ContentSubType", NULL)))
-			    {
-			    sprintf(buf, "attachment%d.%s", num, ext);
-			    libmime_SetStringAttr(l_msg, "Filename", buf, -1);
-			    }
-			else
-			    {
-			    sprintf(buf, "attachment%d", num);
-			    libmime_SetStringAttr(l_msg, "Filename", buf, -1);
-			    }
+			sprintf(buf, "attachment%d.%s", num, ext);
 			}
+		    else
+			{
+			sprintf(buf, "attachment%d", num);
+			}
+
+		    /** Set the Name attribute. **/
+		    libmime_SetFilename(l_msg, buf);
 
 		    if (libmime_GetIntAttr(l_msg, "ContentMainType", NULL) == MIME_TYPE_MULTIPART)
 			{
-			    libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
+			libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
 			}
 		    }
 		s=strlen(xsbuf.String);
@@ -729,7 +517,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
     int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
     char *ptr, *bptr, *tptr;
 
-    switch (libmime_GetIntAttr(msg, "TransferEncoding", NULL))
+    switch (libmime_GetIntAttr(msg, "Transfer-Encoding", NULL))
 	{
 	/** 7BIT AND 8BIT ENCODING **/
 	/** BINARY ENCODING **/

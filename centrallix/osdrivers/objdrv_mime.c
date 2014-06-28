@@ -148,7 +148,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** Find and set the filename of the root node **/
     node_path = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements-1, 1);
-    libmime_SetStringAttr(msg, "Filename", node_path, 0);
+    libmime_SetFilename(msg, node_path);
 
     /** assume we're only going to handle one level... **/
     /** no longer. */
@@ -171,7 +171,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    pMimeHeader phdr;
 
 	    phdr = xaGetItem(&(inf->Header->Parts), i);
-	    if (!strcmp(libmime_GetStringAttr(phdr, "Filename", NULL), ptr))
+	    if (!strcmp(libmime_GetStringAttr(phdr, "Name", NULL), ptr))
 		{
 		/** FIXME FIXME FIXME FIXME
 		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
@@ -533,18 +533,10 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if (!strcmp(attrname, "name"))
 		{
-		val->String = libmime_GetStringAttr(inf->Header, "Filename", NULL);
+		val->String = libmime_GetStringAttr(inf->Header, "Name", NULL);
 		return 0;
 		}
-	    if (!strcmp(attrname, "outer_type"))
-		{
-		/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-		inf->AttrValue = (char*)nmSysMalloc(128);
-		snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[libmime_GetIntAttr(inf->Header, "ContentMainType", NULL)], libmime_GetStringAttr(inf->Header, "ContentSubType", NULL));
-		val->String = inf->AttrValue;
-		return 0;
-		}
-	    if (!strcmp(attrname, "content_type"))
+	    if (!strcmp(attrname, "outer_type") || !strcmp(attrname, "content_type"))
 		{
 		/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 		inf->AttrValue = (char*)nmSysMalloc(128);
@@ -554,7 +546,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if (!strcmp(attrname, "transfer_encoding"))
 		{
-		val->String = EncodingStrings[libmime_GetIntAttr(inf->Header, "TransferEncoding", NULL)];
+		val->String = EncodingStrings[libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL)];
 		return 0;
 		}
 
