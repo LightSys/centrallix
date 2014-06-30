@@ -41,31 +41,22 @@
 int
 libmime_ParseAttr(pMimeHeader this, char* name, char* data)
     {
-    pXString token = NULL;
     pLxSession lex = NULL;
     int tokenType = MLX_TOK_BEGIN;
     char* paramName = NULL;
-
-	/** Open a lexer session on the data string. **/
-	lex = mlxStringSession(data, 0);
-	if (!lex)
-	    {
-	    mssError(0, "MIME", "Failed to open a lexer session on the attribute data");
-	    return -1;
-	    }
+    char* token = NULL;
+    char* currentOffset = data;
 
 	/** Initialize the token string. **/
 	xsInit(token);
 
-	/** Get the next token from the data string. **/
-	tokenType = mlxNextToken(lex);
-
 	/** Append all data up to the next semicolon. **/
-	while (tokenType != MLX_TOK_ERROR && tokenType != MLX_TOK_SEMICOLON)
+	token  = strtok(currentOffset, ";");
+	if (!token)
 	    {
-	    xsConcatenate(token, mlxStringVal(lex, NULL), -1);
-	    tokenType = mlxNextToken(lex);
+	    token = currentOffset;
 	    }
+	libmime_StringTrim(token);
 
 	/** Call the appropriate parse function for the attribute. **/
 
@@ -81,13 +72,13 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	/** Check for integer attributes. **/
 	else if (!strcasecmp(name, "Content-Length"))
 	    {
-	    libmime_CreateIntAttr(this, name, NULL, strtol(xsString(token), NULL, 10));
+	    libmime_CreateIntAttr(this, name, NULL, strtol(token, NULL, 10));
 	    }
 	/** Check for email address attributes. **/
 	else if (!strcasecmp(name, "Reply-To") ||
 		!strcasecmp(name, "Sender"))
 	    {
-	    libmime_ParseEmailAttr(this, name, xsString(token));
+	    libmime_ParseEmailAttr(this, name, token);
 	    }
 	/** Check for email list attributes. **/
 	else if (!strcasecmp(name, "To") ||
@@ -95,58 +86,45 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    !strcasecmp(name, "Cc") ||
 	    !strcasecmp(name, "Bcc"))
 	    {
-	    libmime_ParseEmailListAttr(this, name, xsString(token));
+	    libmime_ParseEmailListAttr(this, name, token);
 	    }
 	/** Check for string list attributes. **/
 	else if (!strcasecmp(name, "Keywords"))
 	    {
-	    libmime_ParseCsvAttr(this, name, xsString(token));
+	    libmime_ParseCsvAttr(this, name, token);
 	    }
 	/** Everything else defaults to string. **/
 	else
 	    {
-	    libmime_CreateStringAttr(this, name, NULL, xsString(token), 0);
+	    libmime_CreateStringAttr(this, name, NULL, token, 0);
 	    }
 
-	/** Clear the string. **/
-	xsDeInit(token);
-	xsInit(token);
+	/** Attempt to find the first parameter. **/
+	token = strtok(currentOffset, "=");
 
 	/** Process all parameters until the end of the line. **/
-	while (tokenType != MLX_TOK_ERROR)
+	while (token)
 	    {
-	    tokenType = mlxNextToken(lex);
+	    /** Store the parameter name. **/
+	    paramName = token;
+	    libmime_StringTrim(paramName);
 
-	    /** If encountering an equals sign, we have completed the parameter **/
-	    /** name, so store it. **/
-	    if (tokenType == MLX_TOK_EQUALS)
+	    /** Get the value of the parameter. **/
+	    token = strtok(currentOffset, ";");
+
+	    /** If this is the last parameter and there is no closing semi-colon...  **/
+	    if (!token)
 		{
-		paramName = nmSysStrdup(xsString(token));
-
-		xsDeInit(token);
-		xsInit(token);
+		/** Just use the final token. **/
+		token = currentOffset;
 		}
-	    /** If at the end of the line, or at a semicolon, we have completed **/
-	    /** a parameter. Process it. **/
-	    else if (tokenType == MLX_TOK_SEMICOLON || tokenType == MLX_TOK_ERROR)
-		{
-		libmime_CreateStringAttr(this, name, paramName, xsString(token), 0);
-		//libmime_ParseParameterAttr(this, name, paramName, nmSysStrdup(xsString(token)));
+	    libmime_StringTrim(token);
 
-		xsDeInit(token);
-		xsInit(token);
-		}
-	    else
-		{
-		xsConcatenate(token, mlxStringVal(lex, NULL), -1);
-		}
-	    }
+	    /** Store the parameter. **/
+	    libmime_CreateStringAttr(this, name, paramName, token, 0);
 
-	/** Close the lexer session on the data string. **/
-	if(mlxCloseSession(lex))
-	    {
-	    mssError(0, "MIME", "Failed to close the lexer session on the attribute data");
-	    return -1;
+	    /** Attempt to get the next parameter. **/
+	    token = strtok(currentOffset, "=");
 	    }
 
     return 0;
@@ -230,47 +208,37 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 int
 libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
     {
-    pXString token = NULL;
-    pLxSession lex = NULL;
     int tokenType = MLX_TOK_BEGIN;
+    char* token = NULL;
+    char* currentOffset = data;
 
-	/** Open a lexer session for parsing the keyword list. **/
-	lex = mlxStringSession(xsString(token), 0);
+	/** Get the first item in the list. **/
+	token = strtok(currentOffset, ",");
 
-	/** Clear the string for holding each value in the comma separated list. **/
-	xsInit(token);
-
-	/** Get the next token in the list (assumed not to be a comma). **/
-	tokenType = mlxNextToken(lex);
-
-	/** Add all items in the list up until the end of the string. **/
-	while (tokenType != MLX_TOK_ERROR)
+	/** If there are no commas, the entire string is a single item. **/
+	if (!token)
 	    {
-	    /** Get the next token. **/
-	    tokenType = mlxNextToken(lex);
-
-	    /** If the token is a comma. **/
-	    if (tokenType == MLX_TOK_COMMA)
-		{
-		/** Add the item to the list. **/
-		libmime_AddStringArrayAttr(this, name, NULL, xsString(token));
-
-		/** Clear the item string. **/
-		xsDeInit(token);
-		xsInit(token);
-		}
-	    /** Concatenate the next item string. **/
-	    else
-		{
-		xsConcatenate(token, mlxStringVal(lex, NULL), -1);
-		}
+	    token = currentOffset;
 	    }
 
-	/** Deinitialize the item string. **/
-	xsDeInit(token);
+	/** Add all items in the list up until the end of the string. **/
+	while (token)
+	    {
+	    /** Trim the token. **/
+	    libmime_StringTrim(token);
 
-	/** Close the lexer session for parsing the keyword list. **/
-	mlxCloseSession(lex);
+	    /** Add the item to the list. **/
+	    libmime_AddStringArrayAttr(this, name, NULL, token);
+
+	    /** Attempt to get the next item in the list. **/
+	    token = strtok(currentOffset, ",");
+	    }
+
+	/** Trim the final token. **/
+	libmime_StringTrim(currentOffset);
+
+	/** Add the final token to the attribute list. **/
+	libmime_AddStringArrayAttr(this, name, NULL, currentOffset);
 
     return 0;
     }
