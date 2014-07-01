@@ -476,7 +476,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    num++;
 
 		    /** Check for an extension for the file in order to calculate the default filename. **/
-		    if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "ContentType", "ContentMainType"), libmime_GetStringAttr(l_msg, "ContentSubType", NULL)))
+		    if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType"), libmime_GetStringAttr(l_msg, "Content-Type", "ContentSubType")))
 			{
 			sprintf(buf, "attachment%d.%s", num, ext);
 			}
@@ -488,7 +488,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    /** Set the Name attribute. **/
 		    libmime_SetFilename(l_msg, buf);
 
-		    if (libmime_GetIntAttr(l_msg, "ContentType", "ContentMainType") == MIME_TYPE_MULTIPART)
+		    if (libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType") == MIME_TYPE_MULTIPART)
 			{
 			libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
 			}
