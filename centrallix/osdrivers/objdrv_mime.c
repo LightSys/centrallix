@@ -572,11 +572,11 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	case 0: return "Subject";
 	case 1: return "Charset";
 	case 2: return "transfer_encoding";
-	case 3: return "MIMEVersion";
+	case 3: return "MIME-Version";
 	case 4: return "ContentDisposition";
 	case 5: return "ContentLength";
 	case 6: return "ToList-Strings";
-	case 7: return "FromList-Strings";
+	case 7: return "From";
 	case 8: return "CcList-Strings";
 	}
     return NULL;
@@ -592,7 +592,6 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     pMimeInfo inf = MIME(inf_v);
     inf->NextAttr=0;
     return mimeGetNextAttr(inf,oxt);
-    return NULL;
     }
 
 

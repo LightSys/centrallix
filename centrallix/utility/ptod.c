@@ -50,10 +50,15 @@
 pTObjData
 ptodAllocate()
     {
-    pTObjData ptod;
+    pTObjData ptod = NULL;
 
 	/** Allocate the memory **/
 	ptod = (pTObjData)nmMalloc(sizeof(TObjData));
+	if (!ptod)
+	    {
+	    mssError(1, "PTOD", "Could not allocate the ptod.");
+	    return NULL;
+	    }
 
 	/** Init data type, etc. **/
 	ptod->Data.Generic = NULL;
@@ -180,7 +185,7 @@ ptodCreateString(char* data, int flags)
 		mssError(1, "PTOD", "Could not allocate string ptod object.");
 		return NULL;
 		}
-	    memset(0, datPtod, sizeof(TObjData) + strlen(data) * sizeof(char) + 1);
+	    memset(datPtod, 0, sizeof(TObjData) + strlen(data) * sizeof(char) + 1);
 
 	    /** Point it to the attached buffer **/
 	    datPtod->Data.String = (char*) datPtod + sizeof(TObjData);

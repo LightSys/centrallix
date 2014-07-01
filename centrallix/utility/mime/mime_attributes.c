@@ -30,8 +30,6 @@
 /************************************************************************/
 
 #include <string.h>
-#include <errno.h>
-#include "cxlib/mtsession.h"
 #include "obj.h"
 #include "mime.h"
 
@@ -298,6 +296,7 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
 	attrVec = (pStringVec)nmMalloc(sizeof(StringVec));
 	if (!attrVec)
 	    {
+	    mssError(0, "MIME", "Could not create string array attribute.");
 	    return -1;
 	    }
 	memset(attrVec, 0, sizeof(StringVec));
@@ -342,6 +341,7 @@ libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
 	array = (pXArray)nmMalloc(sizeof(XArray));
 	if (!array)
 	    {
+	    mssError(0, "MIME", "Could not create array attribute.");
 	    return -1;
 	    }
 	memset(array, 0, sizeof(XArray));
@@ -378,7 +378,11 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    attr->Name = attrName;
 
 	    /** Add the Mime attribute to the attributes array. **/
-	    xhAdd(&this->Attrs, attrName, (char*)attr);
+	    if (libmime_xhAdd(&this->Attrs, attrName, (char*)attr) == -1)
+		{
+		mssError(1, "MIME", "Attribute or parameter already exists.");
+		return NULL;
+		}
 
 	    /** Return the pointer to the relevant ptod. **/
 	    return &attr->Ptod;
@@ -500,7 +504,7 @@ libmime_GetStringAttr(pMimeHeader this, char* attr, char* param)
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 	if (!ptod)
 	    {
-	    mssError(0, "MIME", "Could not find string value. Result is not valid.");
+	    mssError(0, "MIME", "Could not find string value.");
 	    return NULL;
 	    }
 
@@ -518,7 +522,7 @@ libmime_GetStringArrayAttr(pMimeHeader this, char* attr, char* param)
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 	if (!ptod)
 	    {
-	    mssError(0, "MIME", "Could not find string array value. Result is not valid.");
+	    mssError(0, "MIME", "Could not find string array value.");
 	    return NULL;
 	    }
 
@@ -569,9 +573,21 @@ libmime_SetIntAttr(pMimeHeader this, char* attr, char* param, int data)
     {
     pTObjData ptod;
 
+	/** Get the old ptod. **/
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod) return -1;
 
+	/** If our pointer to our other pointer is NULL or our pointer is NULL: create the attr/param. **/
+	if (!ptod)
+	    {
+	    if (libmime_CreateIntAttr(this, attr, param, data))
+		{
+		mssError(0, "MIME", "Unable to create integer attribute");
+		return -1;
+		}
+	    return 0;
+	    }
+
+	/** Change the data. **/
 	ptod->Data.Integer = data;
 
     return 0;
@@ -586,19 +602,33 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
     {
     pTObjData *pPtod = NULL;
 
-	    /** Get the old ptod. **/
-	    pPtod = libmime_GetPtodPointer(this, attr, param);
-	    /** If our pointer to our other pointer is NULL or our pointer is NULL: bad. **/
-	    if (!pPtod || !*pPtod) return -1;
+	/** Use the new flags if we are passed specific values. **/
+	if (flags < 0)
+	    {
+	    /** Use flags from old ptod if we have it, otherwise assume 0 **/
+	    if (pPtod) flags = (*pPtod)->Flags;
+	    else flags = 0;
+	    }
 
-	    /** Use the new flags if we are passed specific values. **/
-	    if (flags < 0) flags = (*pPtod)->Flags;
+	/** Get the old ptod. **/
+	pPtod = libmime_GetPtodPointer(this, attr, param);
 
-	    /** Free the old ptod. **/
-	    ptodFree(*pPtod);
+	/** If our pointer to our other pointer is NULL or our pointer is NULL: create the attr/param. **/
+	if (!pPtod || !*pPtod)
+	    {
+	    if (libmime_CreateStringAttr(this, attr, param, data, flags))
+		{
+		mssError(0, "MIME", "Unable to create string attribute");
+		return -1;
+		}
+	    return 0;
+	    }
 
-	    /** Make the new ptod. **/
-	    *pPtod = ptodCreateString(data, flags);
+	/** Free the old ptod. **/
+	ptodFree(*pPtod);
+
+	/** Make the new ptod. **/
+	*pPtod = ptodCreateString(data, flags);
 
     return 0;
     }
@@ -613,8 +643,17 @@ libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datat
 
 	/** Get the old ptod. **/
 	pPtod = libmime_GetPtodPointer(this, attr, param);
-	/** If our pointer to our other pointer is NULL or our pointer is NULL: bad. **/
-	if (!pPtod || !*pPtod) return -1;
+
+	/** If our pointer to our other pointer is NULL or our pointer is NULL: create the attr/param. **/
+	if (!pPtod || !*pPtod)
+	    {
+	    if (libmime_CreateAttr(this, attr, param, data, datatype))
+		{
+		mssError(0, "MIME", "Unable to create attribute");
+		return -1;
+		}
+	    return 0;
+	    }
 
 	/** Free the old ptod. **/
 	ptodFree(*pPtod);
@@ -639,11 +678,16 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	/** Get the old attribute/parameter ptod. **/
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute/parametr wasn't found, create it. **/
+	/** If the attribute/parameter wasn't found, create it. **/
 	if (!ptod)
 	    {
 	    libmime_CreateStringArrayAttr(this, attr, param);
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
+	    if (!ptod)
+		{
+		mssError(0, "MIME", "Failed to create the string array attribute");
+		return 0;
+		}
 	    }
 
 	/** Get the string vector from the attribute. **/
@@ -697,6 +741,11 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	    {
 	    libmime_CreateStringArrayAttr(this, attr, param);
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
+	    if (!ptod)
+		{
+		mssError(0, "MIME", "Failed to create the string array attribute");
+		return 0;
+		}
 	    }
 
 	/** Get the string vector from the attribute. **/
@@ -751,6 +800,11 @@ libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
 	    {
 	    libmime_CreateStringArrayAttr(this, attr, param);
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
+	    if (!ptod)
+		{
+		mssError(0, "MIME", "Failed to create the array attribute");
+		return 0;
+		}
 	    }
 
 	/** Get the array from the attribute. **/
@@ -769,7 +823,6 @@ int
 libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList)
     {
     pTObjData ptod = NULL;
-    pMimeAttr oldAttr = NULL;
     pXArray array;
     int i;
 
@@ -779,12 +832,17 @@ libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataL
 	/** If the attribute/parametr wasn't found, create it. **/
 	if (!ptod)
 	    {
-	    libmime_CreateStringArrayAttr(this, attr, param);
+	    libmime_CreateArrayAttr(this, attr, param);
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
+	    if (!ptod)
+		{
+		mssError(0, "MIME", "Failed to create the array attribute");
+		return 0;
+		}
 	    }
 
 	/** Get the array from the attribute. **/
-	array = (pXArray)oldAttr->Ptod->Data.Generic;
+	array = (pXArray)ptod->Data.Generic;
 
 	/** Add the items from the data list to the XArray. **/
 	for (i = 0; i < xaCount(dataList); i++)
