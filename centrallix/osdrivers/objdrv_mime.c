@@ -69,7 +69,7 @@ typedef struct
     pMimeHeader	Header;
     pMimeHeader	MessageRoot;
     pMimeData	MimeDat;
-    int		NextAttr;
+    pXHashEntry	CurrAttr;
     int		InternalSeek;
     int		InternalType;
     }
@@ -480,10 +480,28 @@ int
 mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    pMimeAttr attr;
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
+    char *local_attrname = NULL;
+    char *attrName = NULL, *paramName = NULL;
 
-	/** Check if the attribute exists. **/
-	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrname);
+	/** Create a local copy of the attrname parameter so we can modify it. **/
+	local_attrname = nmSysStrdup(attrname);
+
+	/** Split the given attribute name into attribute and parameter. **/
+	libmime_GetAttrParamNames(local_attrname, &attrName, &paramName);
+
+	/** Handle special attributes in the attribute list. **/
+	if (!strcmp(attrName, "Transfer-Encoding")) return DATA_T_STRING;
+
+	/** The attribute wasn't readable. **/
+	if (!attrName)
+	    {
+	    goto error;
+	    }
+
+	/** Get the indicated attribute. **/
+	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrName);
 	if (!attr)
 	    {
 	    if (!strcmp(attrname, "name")) return DATA_T_STRING;
@@ -491,17 +509,36 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
-	    //if (!strcmp(attrname, "subject")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "charset")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
-	    //if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
-	    //if (!strcmp(attrname, "ContentDisposition")) return DATA_T_STRING;
 
-	    return -1;
+	    goto error;
 	    }
 
+	/** If no parameter was specified, return data about the attribute. **/
+	if (!paramName)
+	    {
+	    return attr->Ptod->DataType;
+	    }
+
+	/** Get the indicated parameter. **/
+	param = (pMimeParam)libmime_xhLookup(&attr->Params, paramName);
+	if (!param)
+	    {
+	    goto error;
+	    }
+
+	/** Free the local copy of attrname. **/
+	nmSysFree(local_attrname);
+
     /** Return the apropriate data type. **/
-    return attr->Ptod->DataType;
+    return param->Ptod->DataType;
+
+    error:
+	if (local_attrname)
+	    {
+	    nmSysFree(local_attrname);
+	    }
+
+	return -1;
     }
 
 
@@ -515,9 +552,15 @@ int
 mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    pMimeAttr attr;
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
     int int_attr = 0;
     char tmp[32];
+    char *local_attrname = NULL;
+    char *attrName = NULL, *paramName = NULL;
+
+	/** Create a local copy of the attrname parameter so we can modify it. **/
+	local_attrname = nmSysStrdup(attrname);
 
 	/** Deallocate the previous result if necessary. **/
 	if (inf->AttrValue)
@@ -526,39 +569,77 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    inf->AttrValue = NULL;
 	    }
 
-	/** Find the attribute from the attribute list. **/
-	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrname);
+	/** Handle special attributes. **/
+	if (!strcmp(attrname, "Transfer-Encoding"))
+	    {
+	    libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL, &int_attr);
+	    val->String = EncodingStrings[int_attr];
+	    return 0;
+	    }
+
+	/** Split the given attribute name into attribute and parameter. **/
+	libmime_GetAttrParamNames(local_attrname, &attrName, &paramName);
+
+	/** The attribute wasn't readable. **/
+	if (!attrName)
+	    {
+	    goto error;
+	    }
+
+	/** Get the indicated attribute. **/
+	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrName);
 	if (!attr)
 	    {
-	    if (!strcmp(attrname, "annotation"))
+	    if (!strcmp(attrName, "annotation"))
 		{
 		val->String = "";
 		return 0;
 		}
-	    if (!strcmp(attrname, "name"))
+	    if (!strcmp(attrName, "name"))
 		{
 		return libmime_GetStringAttr(inf->Header, "Name", NULL, &val->String);
 		}
-	    if (!strcmp(attrname, "outer_type")   ||
-		!strcmp(attrname, "content_type") ||
-		!strcmp(attrname, "inner_type"))
+	    if (!strcmp(attrName, "outer_type")   ||
+		!strcmp(attrName, "content_type") ||
+		!strcmp(attrName, "inner_type"))
 		{
 		return libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
 		}
-	    if (!strcmp(attrname, "transfer_encoding"))
-		{
-		libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL, &int_attr);
-		val->String = EncodingStrings[int_attr];
-		return 0;
-		}
 
-	    return -1;
+	    goto error;
 	    }
 
-	/** Return the data stored in the attribute. **/
-	val->Generic = attr->Ptod->Data.Generic;
+	/** If no parameter was specified, return the attribute. **/
+	if (!paramName)
+	    {
+	    /** Return the data stored in the attribute. **/
+	    val->Generic = attr->Ptod->Data.Generic;
+	    return 0;
+	    }
+
+	/** Get the indicated parameter. **/
+	param = (pMimeParam)libmime_xhLookup(&attr->Params, paramName);
+	if (!param)
+	    {
+	    goto error;
+	    }
+
+
+	/** Return the data stored in the parameter. **/
+	val->Generic = param->Ptod->Data.Generic;
+
+	/** Free the local copy of attrname. **/
+	nmSysFree(local_attrname);
 
     return 0;
+
+    error:
+	if (local_attrname)
+	    {
+	    nmSysFree(local_attrname);
+	    }
+
+	return -1;
     }
 
 
@@ -569,19 +650,27 @@ char*
 mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    switch (inf->NextAttr++)
-	{
-	case 0: return "Subject";
-	case 1: return "Charset";
-	case 2: return "transfer_encoding";
-	case 3: return "MIME-Version";
-	case 4: return "ContentDisposition";
-	case 5: return "ContentLength";
-	case 6: return "ToList-Strings";
-	case 7: return "From";
-	case 8: return "CcList-Strings";
-	}
-    return NULL;
+    pMimeAttr attr;
+
+	/** Get the next element from the attributes hash. **/
+	inf->CurrAttr = xhGetNextElement(&inf->Header->Attrs, inf->CurrAttr);
+
+	/** If there are no more attributes, return NULL. **/
+	if (!inf->CurrAttr)
+	    {
+	    return NULL;
+	    }
+
+	/** Get the attribute from the current hash element. **/
+	attr = (pMimeAttr)inf->CurrAttr->Data;
+
+	/** Handle special attributes. **/
+	if (!strcasecmp(attr->Name, "Content-Type"))
+	    {
+	    return mimeGetNextAttr(inf_v, oxt);
+	    }
+
+    return attr->Name;
     }
 
 
@@ -592,8 +681,12 @@ char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    inf->NextAttr=0;
-    return mimeGetNextAttr(inf,oxt);
+    pMimeAttr attr;
+
+	/** Set up to get the first element in the attribute list. **/
+	inf->CurrAttr = NULL;
+
+    return mimeGetNextAttr(inf_v, oxt);
     }
 
 

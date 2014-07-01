@@ -174,6 +174,7 @@ int libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param);
 pTObjData* libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);
 pTObjData libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param);
 pTObjData* libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param);
+int libmime_GetAttrParamNames(char* raw, char** attr, char** param);
 
 int libmime_GetIntAttr(pMimeHeader this, char* attr, char* param, int* ret);
 int libmime_GetStringAttr(pMimeHeader this, char* attr, char* param, char** ret);

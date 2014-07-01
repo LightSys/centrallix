@@ -149,14 +149,8 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	/** Create the email attribute. **/
 	libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0);
 
-	/** Construct the parameter name for the struct. **/
-	xsInit(&parameterName);
-	xsConcatenate(&parameterName, name, -1);
-	xsConcatenate(&parameterName, "-Struct", -1);
-
 	/** Store the struct as a parameter. **/
-	libmime_CreateAttr(this, name, nmSysStrdup(xsString(&parameterName)), emailAddr, 0);
-	xsDeInit(&parameterName);
+	libmime_CreateAttr(this, name, "Struct", emailAddr, 0);
 
     return 0;
     }
@@ -183,16 +177,8 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 	    libmime_AddStringArrayAttr(this, name, NULL, ((pEmailAddr)xaGetItem(&emailList, i))->AddressLine);
 	    }
 
-	/** Construct the name of the struct list. **/
-	xsInit(&structListParameterName);
-	xsConcatenate(&structListParameterName, name, -1);
-	xsConcatenate(&structListParameterName, "-Struct", -1);
-
 	/** Store the email structure list in a parameter. **/
-	libmime_AppendArrayAttr(this, name, nmSysStrdup(xsString(&structListParameterName)), &emailList);
-
-	/** Deinitialize the XString used for the parameter name construction. **/
-	xsDeInit(&structListParameterName);
+	libmime_AppendArrayAttr(this, name, "Struct", &emailList);
 
 	/** Deinitialize the email list. **/
 	xaDeInit(&emailList);
@@ -472,6 +458,32 @@ libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
 
     /** No param, so give the default **/
     return &((pMimeAttr)ptr)->Ptod;
+    }
+
+/*** libmime_GetAttrParamNames - Parses the attribute and parameter
+ *** names from a given raw string from an OS query.
+ ***/
+int
+libmime_GetAttrParamNames(char* raw, char** attr, char** param)
+    {
+	/** Separate the raw string on a separating dash. **/
+	*attr = raw;
+	*param = strchr(raw, '.');
+
+	/** If there is no separator, the entire string is the attribute name. **/
+	if (!*param)
+	    {
+	    *attr = raw;
+	    *param = NULL;
+
+	    return 0;
+	    }
+
+	/** Null terminate the attribute and point param to the character after it. **/
+	**param = '\0';
+	(*param)++;
+
+    return 0;
     }
 
 /*** libmime_GetIntAttr - Gets an integer attribute from the
