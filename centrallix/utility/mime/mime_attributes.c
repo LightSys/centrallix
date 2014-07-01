@@ -41,17 +41,12 @@
 int
 libmime_ParseAttr(pMimeHeader this, char* name, char* data)
     {
-    pLxSession lex = NULL;
-    int tokenType = MLX_TOK_BEGIN;
     char* paramName = NULL;
     char* token = NULL;
-    char* currentOffset = data;
-
-	/** Initialize the token string. **/
-	xsInit(token);
+    char* currentOffset = NULL;
 
 	/** Append all data up to the next semicolon. **/
-	token  = strtok(currentOffset, ";");
+	token  = strtok_r(data, ";", &currentOffset);
 	if (!token)
 	    {
 	    token = currentOffset;
@@ -63,7 +58,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	/** Handle special attributes. **/
 	if (!strcasecmp(name, "Content-Type"))
 	    {
-	    return libmime_SetContentType(this, data);
+	    libmime_SetContentType(this, data);
 	    }
 	else if (!strcasecmp(name, "Content-Transfer-Encoding"))
 	    {
@@ -100,7 +95,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    }
 
 	/** Attempt to find the first parameter. **/
-	token = strtok(currentOffset, "=");
+	token = strtok_r(NULL, "=", &currentOffset);
 
 	/** Process all parameters until the end of the line. **/
 	while (token)
@@ -110,7 +105,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    libmime_StringTrim(paramName);
 
 	    /** Get the value of the parameter. **/
-	    token = strtok(currentOffset, ";");
+	    token = strtok_r(NULL, ";", &currentOffset);
 
 	    /** If this is the last parameter and there is no closing semi-colon...  **/
 	    if (!token)
@@ -124,7 +119,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    libmime_CreateStringAttr(this, name, paramName, token, 0);
 
 	    /** Attempt to get the next parameter. **/
-	    token = strtok(currentOffset, "=");
+	    token = strtok_r(NULL, "=", &currentOffset);
 	    }
 
     return 0;
@@ -213,12 +208,11 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 int
 libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
     {
-    int tokenType = MLX_TOK_BEGIN;
     char* token = NULL;
-    char* currentOffset = data;
+    char* currentOffset = NULL;
 
 	/** Get the first item in the list. **/
-	token = strtok(currentOffset, ",");
+	token = strtok_r(data, ",", &currentOffset);
 
 	/** If there are no commas, the entire string is a single item. **/
 	if (!token)
@@ -236,7 +230,7 @@ libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
 	    libmime_AddStringArrayAttr(this, name, NULL, token);
 
 	    /** Attempt to get the next item in the list. **/
-	    token = strtok(currentOffset, ",");
+	    token = strtok_r(NULL, ",", &currentOffset);
 	    }
 
 	/** Trim the final token. **/
