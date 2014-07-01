@@ -52,7 +52,6 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	libmime_StringTrim(token);
 
 	/** Call the appropriate parse function for the attribute. **/
-
 	/** Handle special attributes. **/
 	if (!strcasecmp(name, "Content-Type"))
 	    {

@@ -59,14 +59,14 @@ char* EncodingStrings[] =
     "binary"
     };
 
-/*  libmime_ParseHeader
-**
-**  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
-**  at the "end" byte.  This creates the MimeHeader data structure and recursively
-**  calls itself to fill it in.  Note that no data is actually stored.  This is just
-**  the shell of the message and contains seek points denoting where to start
-**  and end reading.
-*/
+/***  libmime_ParseHeader
+ ***
+ ***  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
+ ***  at the "end" byte.  This creates the MimeHeader data structure and recursively
+ ***  calls itself to fill it in.  Note that no data is actually stored.  This is just
+ ***  the shell of the message and contains seek points denoting where to start
+ ***  and end reading.
+ ***/
 int
 libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     {
@@ -97,14 +97,14 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    {
 	    return -1;
 	    }
-	/* get the next line */
+	/** get the next line **/
 	alloc = 0;
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	len = strlen(xsbuf.String);
 	xsRTrim(&xsbuf);
-	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
-	/* otherwise parse the header elements */
+	/** check if this is the end of the headers, if so, exit the loop (flag=0), **/
+	/** otherwise parse the header elements **/
 	if (!strlen(xsbuf.String))
 	    {
 	    flag = 0;
@@ -169,13 +169,13 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     }
 
 
-/*  libmime_LoadExtendedHeader
-**
-**  Header elements can span multiple lines.  We know that this occurs when there
-**  is any white space at the beginning of the line.  This function will check if
-**  there are any more lines that belong to the current header element.  If so,
-**  they will be read into xsbuf replacing all white spaces with just normal spaces.
-*/
+/***  libmime_LoadExtendedHeader
+ ***
+ ***  Header elements can span multiple lines.  We know that this occurs when there
+ ***  is any white space at the beginning of the line.  This function will check if
+ ***  there are any more lines that belong to the current header element.  If so,
+ ***  they will be read into xsbuf replacing all white spaces with just normal spaces.
+ ***/
 
 int
 libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
@@ -205,11 +205,11 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
     return 0;
     }
 
-/*  libmime_SetDate
-**
-**  Parses the "Date" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetDate
+ ***
+ ***  Parses the "Date" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetDate(pMimeHeader msg, char *buf)
     {
@@ -248,11 +248,11 @@ libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetContentType
-**
-**  Parses the "Content-Type" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetContentType
+ ***
+ ***  Parses the "Content-Type" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetContentType(pMimeHeader msg, char *buf)
     {
@@ -338,34 +338,34 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
     return 0;
     }
 
-/*
-**  int
-**  libmime_ParseHeaderElement(char* buf, char* hdr);
-**     Parameters:
-**         (char*) buf     A string of characters with no CRLF's in it.  This
-**                         string should represent the whole header, including any
-**                         folded header elements below itself.  This string will
-**                         be modified to contain the main part of the header.
-**         (char*) hdr     This string will be overwritten with a string that
-**                         is the name of the header element (To, From, Sender...)
-**     Returns:
-**         This function returns 0 on success, and -1 on failure.  It modifies
-**         the "buf" parameter and sends its work back in this way.  This
-**         function will return a string of characters that is properly
-**         formatted according to RFC822.  The header tag will be stripped away
-**         from the beginning ("X-Header"), all extra whitespace will be
-**         removed, and all comments will be removed as well.  This will be a
-**         clean header line.
-**
-**     State Definitions:
-**         0 == We have only seen non-space, non-tab, and non-colon characters
-**              up to this point.  As soon as one of those characters is seen,
-**              the state will change.
-**         1 == We have seen a whitespace character, thus only a colon or more
-**              whitespace should be visible.  If not, return an error.
-**         2 == We have seen the colon!  The next character is the beginning of
-**              the header content.  Trim and return that string.
-*/
+/***
+ ***  int
+ ***  libmime_ParseHeaderElement(char* buf, char* hdr);
+ ***     Parameters:
+ ***         (char*) buf     A string of characters with no CRLF's in it.  This
+ ***                         string should represent the whole header, including any
+ ***                         folded header elements below itself.  This string will
+ ***                         be modified to contain the main part of the header.
+ ***         (char*) hdr     This string will be overwritten with a string that
+ ***                         is the name of the header element (To, From, Sender...)
+ ***     Returns:
+ ***         This function returns 0 on success, and -1 on failure.  It modifies
+ ***         the "buf" parameter and sends its work back in this way.  This
+ ***         function will return a string of characters that is properly
+ ***         formatted according to RFC822.  The header tag will be stripped away
+ ***         from the beginning ("X-Header"), all extra whitespace will be
+ ***         removed, and all comments will be removed as well.  This will be a
+ ***         clean header line.
+ ***
+ ***     State Definitions:
+ ***         0 == We have only seen non-space, non-tab, and non-colon characters
+ ***              up to this point.  As soon as one of those characters is seen,
+ ***              the state will change.
+ ***         1 == We have seen a whitespace character, thus only a colon or more
+ ***              whitespace should be visible.  If not, return an error.
+ ***         2 == We have seen the colon!  The next character is the beginning of
+ ***              the header content.  Trim and return that string.
+ ***/
 
 int
 libmime_ParseHeaderElement(char *buf, char* hdr)
@@ -418,15 +418,15 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
     return -1;
     }
 
-/*
-**  int
-**  libmime_ParseMultipartBody
-**
-**  Parses the body of a multipart message.  This fills in the Parts section of the
-**  pMimeHeader data structure.  It will start parsing at the "start" location, and
-**  will keep parsing until all the boundaries have been found or until the byte "end"
-**  has been reached.
-*/
+/***
+ ***  int
+ ***  libmime_ParseMultipartBody
+ ***
+ ***  Parses the body of a multipart message.  This fills in the Parts section of the
+ ***  pMimeHeader data structure.  It will start parsing at the "start" location, and
+ ***  will keep parsing until all the boundaries have been found or until the byte "end"
+ ***  has been reached.
+ ***/
 int
 libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     {
@@ -515,20 +515,19 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     return 0;
     }
 
-/*
-**  int
-**  libmime_PartRead
-**
-**  Using nearly the same interface as objRead (except for the first
-**  parameter), this function will read an arbitrary number of bytes from a
-**  MIME part, doing all the decoding of that part behind the scenes (as
-**  specified by the Content-Transfer-Encoding header element).
-*/
+/***
+ ***  libmime_PartRead
+ ***
+ ***  Using nearly the same interface as objRead (except for the first
+ ***  parameter), this function will read an arbitrary number of bytes from a
+ ***  MIME part, doing all the decoding of that part behind the scenes (as
+ ***  specified by the Content-Transfer-Encoding header element).
+ ***/
 int
 libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags)
     {
     int size=0, bytes_left, len, rem=0, end;
-    int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
+    int tlen, tsize, tremoved, trem_total, toffset, tleft;  /* these are used for getting a purified b64 chunk */
     char *ptr, *bptr, *tptr;
     int transfer_encoding;
 
@@ -540,8 +539,8 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 	/** QUOTED-PRINTABLE ENCODING **/
 	case MIME_ENC_7BIT:
 	case MIME_ENC_8BIT:
-	case MIME_ENC_BINARY:  /**  Split this off to its own if needed at some point  **/
-	case MIME_ENC_QP:  /**  Not currently supported, just print the text  **/
+	case MIME_ENC_BINARY:  /*  Split this off to its own if needed at some point  */
+	case MIME_ENC_QP:  /*  Not currently supported, just print the text  */
 	    if (msg->MsgSeekStart+offset > msg->MsgSeekEnd)
 		return 0;
 	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
@@ -563,32 +562,32 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		/**  Figure out what chunk we're inside  **/
 		mdat->InternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_BUF_SIZE;
 		mdat->ExternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_ENCBUF_SIZE+rem;
-		/*
-		**  If the InternalSeek is not inside the chunk that is already buffered
-		**  then we need to rebuffer.  We also need to rebuffer if there is nothing
-		**  currently buffered.
-		*/
+		/**
+		 **  If the InternalSeek is not inside the chunk that is already buffered
+		 **  then we need to rebuffer.  We also need to rebuffer if there is nothing
+		 **  currently buffered.
+		 **/
 		if (!mdat->InternalChunkSize || (mdat->InternalSeek <= mdat->InternalChunkSeek || mdat->InternalSeek > (mdat->InternalChunkSeek + mdat->InternalChunkSize)))
 		    {
-		    /*
-		    **  Figure out the ExternalChunkSize (number of b64 characters to get).
-		    **  This checks if we're trying to read past the end or not.  Note that
-		    **  this number includes characters that are not in the b64 alphabet.
-		    **  The next code chunk goes through and purifies the stream, refilling
-		    **  the buffer as necessary.  This is just the initial chunk.
-		    */
+		    /**
+		     **  Figure out the ExternalChunkSize (number of b64 characters to get).
+		     **  This checks if we're trying to read past the end or not.  Note that
+		     **  this number includes characters that are not in the b64 alphabet.
+		     **  The next code chunk goes through and purifies the stream, refilling
+		     **  the buffer as necessary.  This is just the initial chunk.
+		     **/
 		    mdat->ExternalChunkSize = MIME_ENCBUF_SIZE;
 		    if (msg->MsgSeekEnd < (msg->MsgSeekStart + mdat->ExternalChunkSeek + MIME_ENCBUF_SIZE))
 			mdat->ExternalChunkSize = msg->MsgSeekEnd - msg->MsgSeekStart - mdat->ExternalChunkSeek;
 
-		    /*
-		    **  Now we need to fetch a chunk of base64 encoded data.  The only
-		    **  problems is that we need to ignore anything that is not in the
-		    **  base64 alphabet.  Here, I'm looping through and filling up the
-		    **  buffer with base64 encoded data until the buffer is full or
-		    **  until I've reached the end of the stream, ignoring all characters
-		    **  that are not part of the base64 alphabet.
-		    */
+		    /**
+		     **  Now we need to fetch a chunk of base64 encoded data.  The only
+		     **  problems is that we need to ignore anything that is not in the
+		     **  base64 alphabet.  Here, I'm looping through and filling up the
+		     **  buffer with base64 encoded data until the buffer is full or
+		     **  until I've reached the end of the stream, ignoring all characters
+		     **  that are not part of the base64 alphabet.
+		     **/
 		    tptr = mdat->EncBuffer;
 		    tlen = tsize = toffset = tremoved = trem_total = 0;
 		    tleft = mdat->ExternalChunkSize;
@@ -605,22 +604,21 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 			    }
 			tsize = mdat->ReadFn(mdat->Parent, tptr, tleft, toffset, FD_U_SEEK);
 			tlen += tsize;
-			tremoved = libmime_B64Purify(mdat->EncBuffer); // tremoved is the number of chars removed this iteration
-			trem_total += tremoved; // trem_total is the total number of chars removed for this chunk
+			tremoved = libmime_B64Purify(mdat->EncBuffer); /* tremoved is the number of chars removed this iteration */
+			trem_total += tremoved; /* trem_total is the total number of chars removed for this chunk */
 			tptr += (tsize - tremoved);
 			tleft -= (tsize - tremoved);
 			}
 		    mdat->EncBuffer[tlen-trem_total] = 0;
 		    tsize = libmime_DecodeBase64(mdat->Buffer, mdat->EncBuffer, tlen-trem_total);
-		    rem += trem_total; // rem is the total characters removed (non b64 chars)
+		    rem += trem_total; /* rem is the total characters removed (non b64 chars) */
 		    }
 
-		/*
-		**  Now lets figure out the number of characters that we want out of
-		**  this chunk.  It could be a few characters on the left side of the
-		**  buffer, on the right side of the buffer, or the whole buffer.  We
-		**  gotta check.
-		*/
+		/**  Now lets figure out the number of characters that we want out of
+		 **  this chunk.  It could be a few characters on the left side of the
+		 **  buffer, on the right side of the buffer, or the whole buffer.  We
+		 **  gotta check.
+		 **/
 		bptr = mdat->Buffer + (mdat->InternalSeek - mdat->InternalChunkSeek);
 		len = MIME_BUF_SIZE - (bptr - mdat->Buffer);
 		if (len > bytes_left) len = bytes_left;

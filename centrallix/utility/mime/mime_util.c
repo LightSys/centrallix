@@ -40,10 +40,10 @@
 #include "obj.h"
 #include "mime.h"
 
-/** libmime_AllocateHeader
- **
- ** Allocates all memory used for the mime header
- **/
+/*** libmime_AllocateHeader
+ ***
+ *** Allocates all memory used for the mime header
+ ***/
 pMimeHeader
 libmime_AllocateHeader()
     {
@@ -59,10 +59,10 @@ libmime_AllocateHeader()
     return msg;
     }
 
-/** libmime_Cleanup_Header
- **
- ** Deallocates all memory used for the mime header
- **/
+/*** libmime_Cleanup_Header
+ ***
+ *** Deallocates all memory used for the mime header
+ ***/
 void
 libmime_DeallocateHeader(pMimeHeader msg)
     {
@@ -85,10 +85,10 @@ libmime_DeallocateHeader(pMimeHeader msg)
     return;
     }
 
-/*  libmime_StringLTrim
-**
-**  Trims whitespace off the left side of a string.
-*/
+/***  libmime_StringLTrim
+ ***
+ ***  Trims whitespace off the left side of a string.
+ ***/
 int
 libmime_StringLTrim(char *str)
     {
@@ -105,10 +105,10 @@ libmime_StringLTrim(char *str)
     return 0;
     }
 
-/*  libmime_StringRTrim
-**
-**  Trims whitespace off the right side of a string.
-*/
+/***  libmime_StringRTrim
+ ***
+ ***  Trims whitespace off the right side of a string.
+ ***/
 int
 libmime_StringRTrim(char *str)
     {
@@ -124,10 +124,10 @@ libmime_StringRTrim(char *str)
     return 0;
     }
 
-/*  libmime_StringTrim
-**
-**  Trims whitespace off both sides of a string.
-*/
+/***  libmime_StringTrim
+ ***
+ ***  Trims whitespace off both sides of a string.
+ ***/
 int
 libmime_StringTrim(char *str)
     {
@@ -137,11 +137,11 @@ libmime_StringTrim(char *str)
     return 0;
     }
 
-/*  libmime_StringFirstCaseCmp
-**
-**  Checks if the first part of the given string matches the second string.
-**  This function is case insensitive.
-*/
+/***  libmime_StringFirstCaseCmp
+ ***
+ ***  Checks if the first part of the given string matches the second string.
+ ***  This function is case insensitive.
+ ***/
 int
 libmime_StringFirstCaseCmp(char *s1, char *s2)
     {
@@ -163,9 +163,9 @@ libmime_StringFirstCaseCmp(char *s1, char *s2)
     return 0;
     }
 
-/*
-**  libmime_PrintAddrList
-*/
+/***
+ ***  libmime_PrintAddrList
+ ***/
 int
 libmime_PrintAddressList(pXArray xary, int level)
     {
@@ -196,10 +196,10 @@ libmime_PrintAddressList(pXArray xary, int level)
     return 0;
     }
 
-/*  libmime_StringUnquote
-**
-**  Internal function used to unquote strings if they are quoted.
-*/
+/***  libmime_StringUnquote
+ ***
+ ***  Internal function used to unquote strings if they are quoted.
+ ***/
 char*
 libmime_StringUnquote(char *str)
     {
@@ -223,11 +223,11 @@ libmime_StringUnquote(char *str)
     return str;
     }
 
-/*  libmime_B64Purify
-**
-**  Removes all characters from a Base64 string that are not part
-**  of the Base64 alphabet.
-*/
+/***  libmime_B64Purify
+ ***
+ ***  Removes all characters from a Base64 string that are not part
+ ***  of the Base64 alphabet.
+ ***/
 int
 libmime_B64Purify(char *string)
     {
@@ -253,11 +253,11 @@ libmime_B64Purify(char *string)
     return rem;
     }
 
-/*  libmime_ContentExtension
-**
-**  Modifies the first parameter to contain the three leter extension
-**  that is associated with the given content type and subtype.
-*/
+/***  libmime_ContentExtension
+ ***
+ ***  Modifies the first parameter to contain the three leter extension
+ ***  that is associated with the given content type and subtype.
+ ***/
 int
 libmime_ContentExtension(char *str, int type, char *subtype)
     {
@@ -312,31 +312,22 @@ libmime_ContentExtension(char *str, int type, char *subtype)
     return 1;
     }
 
-/*
-**  libmime_StringToLower
-**
-**  Converts a string to lower case
-*/
+/***
+ ***  libmime_StringToLower
+ ***
+ ***  Converts a string to lower case
+ ***/
 int
 libmime_StringToLower(char *str)
     {
     char *ptr = str;
-    int i;
 
     while (*ptr)
 	{
-	// fprintf(stderr, "\n\n");
-	// fprintf(stderr, "CH: %c\n", *ptr);
-	// fprintf(stderr, "LC: %c\n", tolower(*ptr));
-
 	*ptr = tolower(*ptr);
 	ptr++;
 	}
 
-//    for (i = 0; i < strlen(str); i++)
-//	{
-//	ptr[i] = tolower(ptr[i]);
-//	}
     return 0;
     }
 
@@ -356,8 +347,6 @@ libmime_xhLookup(pXHashTable this, char* key)
 	libmime_StringToLower(buf);
 
 	rval = xhLookup(this, buf);
-
-	// nmSysFree(buf);
 
     return rval;
     }
@@ -379,8 +368,6 @@ libmime_xhAdd(pXHashTable this, char* key, char* data)
 
 	rval = xhAdd(this, buf, data);
 
-	// nmSysFree(buf);
-
     return rval;
     }
 
@@ -391,6 +378,7 @@ libmime_xhDeInit(pXHashTable this)
     {
     pXHashEntry entry = NULL;
 
+	/** While we have elements, do the deallocation stuff. **/
 	entry = xhGetNextElement(this, NULL);
 	while (entry)
 	    {

@@ -91,9 +91,9 @@ typedef struct
 ** API FUNCTIONS                                                        **
 ** **********************************************************************/
 
-/*
-**  mimeOpen
-*/
+/***
+ ***  mimeOpen
+ ***/
 void*
 mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
@@ -151,8 +151,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     node_path = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements-1, 1);
     libmime_SetFilename(msg, node_path);
 
-    /** assume we're only going to handle one level... **/
-    /** no longer. */
+    /** assume we're only going to handle one level...		  **/
+    /** no longer. It now works for multipart messages. HKJ & JRS **/
     obj->SubCnt=1;
 
     /** While we have a multipart message and there are more elements in the path,
@@ -257,9 +257,9 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     }
 
 
-/*
-**  mimeClose
-*/
+/***
+ ***  mimeClose
+ ***/
 int
 mimeClose(void* inf_v, pObjTrxTree* oxt)
     {
@@ -330,9 +330,9 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     }
 
 
-/*
-**  mimeDelete
-*/
+/***
+ ***  mimeDelete
+ ***/
 int
 mimeDelete(pObject obj, pObjTrxTree* oxt)
     {
@@ -340,9 +340,9 @@ mimeDelete(pObject obj, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeRead
-*/
+/***
+ ***  mimeRead
+ ***/
 int
 mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
@@ -374,9 +374,9 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     }
 
 
-/*
-**  mimeWrite
-*/
+/***
+ ***  mimeWrite
+ ***/
 int
 mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
@@ -384,9 +384,9 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     }
 
 
-/*
-**  mimeOpenQuery
-*/
+/***
+ ***  mimeOpenQuery
+ ***/
 void*
 mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
@@ -410,9 +410,9 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeQueryFetch
-*/
+/***
+ ***  mimeQueryFetch
+ ***/
 void*
 mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
@@ -459,9 +459,9 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeQueryClose
-*/
+/***
+ ***  mimeQueryClose
+ ***/
 int
 mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
@@ -470,9 +470,12 @@ mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeGetAttrType
-*/
+/***
+ ***  mimeGetAttrType
+ ***
+ ***  NOTE: If you want to query a parameter of an attribute,
+ ***  use the syntax: <attr_name>.<param_name>
+ ***/
 int
 mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
@@ -502,9 +505,12 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeGetAttrValue
-*/
+/***
+ ***  mimeGetAttrValue
+ ***
+ ***  NOTE: If you want to query a parameter of an attribute,
+ ***  use the syntax: <attr_name>.<param_name>
+ ***/
 int
 mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
@@ -556,9 +562,9 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     }
 
 
-/*
-**  mimeGetNextAttr
-*/
+/***
+ ***  mimeGetNextAttr
+ ***/
 char*
 mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
@@ -579,9 +585,9 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeGetFirstAttr
-*/
+/***
+ ***  mimeGetFirstAttr
+ ***/
 char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
@@ -591,9 +597,9 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeSetAttrValue
-*/
+/***
+ ***  mimeSetAttrValue
+ ***/
 int
 mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
@@ -601,9 +607,9 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     }
 
 
-/*
-**  mimeAddAttr
-*/
+/***
+ ***  mimeAddAttr
+ ***/
 int
 mimeAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
@@ -611,9 +617,9 @@ mimeAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt
     }
 
 
-/*
-**  mimeOpenAttr
-*/
+/***
+ ***  mimeOpenAttr
+ ***/
 void*
 mimeOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     {
@@ -621,9 +627,9 @@ mimeOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeGetFirstMethod
-*/
+/***
+ ***  mimeGetFirstMethod
+ ***/
 char*
 mimeGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     {
@@ -631,9 +637,9 @@ mimeGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeGetNextMethod
-*/
+/***
+ ***  mimeGetNextMethod
+ ***/
 char*
 mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
@@ -641,16 +647,17 @@ mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeExecuteMethod
-*/
+/***
+ ***  mimeExecuteMethod
+ ***/
 int
 mimeExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }
 
-/*** mimeInfo - Return the capabilities of the object
+/***
+ *** mimeInfo - Return the capabilities of the object
  ***/
 int
 mimeInfo(void* inf_v, pObjectInfo info)
@@ -675,9 +682,9 @@ mimeInfo(void* inf_v, pObjectInfo info)
     }
 
 
-/*
-**  mimeInitialize
-*/
+/***
+ ***  mimeInitialize
+ ***/
 int
 mimeInitialize()
     {

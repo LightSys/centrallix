@@ -330,7 +330,7 @@ xhGetNextElement(pXHashTable this, pXHashEntry currentElement)
 	    /** No elements found. **/
 	    return NULL;
 	    }
-	
+
 	/** If there are more elements in the list, return the next one. **/
 	if (currentElement->Next)
 	    {
@@ -349,7 +349,7 @@ xhGetNextElement(pXHashTable this, pXHashEntry currentElement)
 		return rval;
 		}
 	    }
-	
+
 	/** No more elements. **/
 	return NULL;
     }
