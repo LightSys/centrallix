@@ -342,7 +342,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    return -1;
 	    }
 	memset(inf->Attributes, 0, sizeof(XHashTable));
-	xhInit(inf->Attributes, 16, 0);
+	xhInit(inf->Attributes, 17, 0);
 
 	inf->CurAttr = 0;
 

@@ -53,7 +53,7 @@ libmime_AllocateHeader()
 	memset(msg, 0, sizeof(MimeHeader));
 
 	xaInit(&msg->Parts, 8);
-	xhInit(&msg->Attrs, 16, 0);
+	xhInit(&msg->Attrs, 17, 0);
 
     return msg;
     }
@@ -77,7 +77,7 @@ libmime_DeallocateHeader(pMimeHeader msg)
 
 	/** Clear the attributes. **/
 	xhClear(&msg->Attrs, &libmime_ClearAttr, NULL);
-	xhDeInit(&msg->Attrs);
+	libmime_xhDeInit(&msg->Attrs);
 
 	nmFree(msg, sizeof(MimeHeader));
 
@@ -319,16 +319,87 @@ libmime_ContentExtension(char *str, int type, char *subtype)
 int
 libmime_StringToLower(char *str)
     {
-    char *ptr;
+    char *ptr = str;
+    int i;
 
-    ptr = str;
-    while (*ptr != 0)
+    while (*ptr)
 	{
-	//fprintf(stderr, "CH: %c\n", *ptr);
+	// fprintf(stderr, "\n\n");
+	// fprintf(stderr, "CH: %c\n", *ptr);
+	// fprintf(stderr, "LC: %c\n", tolower(*ptr));
+
 	*ptr = tolower(*ptr);
 	ptr++;
 	}
-    return 1;
+
+//    for (i = 0; i < strlen(str); i++)
+//	{
+//	ptr[i] = tolower(ptr[i]);
+//	}
+    return 0;
     }
+
+/*** libmime_xhLookup - Wraps the xhLookup function in order to preserve
+ *** consistency since MIME is case insensitive.
+ ***
+ *** NOTE: Any other string sanitization for hash keys may be performed here.
+ ***/
+void*
+libmime_xhLookup(pXHashTable this, char* key)
+    {
+    void* rval;
+    char* buf;
+
+	buf = nmSysStrdup(key);
+
+	libmime_StringToLower(buf);
+
+	rval = xhLookup(this, buf);
+
+	// nmSysFree(buf);
+
+    return rval;
+    }
+
+/*** libmime_xhAdd - Wraps the xhAdd function in order to preserve
+ *** consistency since MIME is case insensitive.
+ ***
+ *** NOTE: Any other string sanitization for hash keys may be performed here.
+ ***/
+int
+libmime_xhAdd(pXHashTable this, char* key, char* data)
+    {
+    int rval;
+    char* buf;
+
+	buf = nmSysStrdup(key);
+
+	libmime_StringToLower(buf);
+
+	rval = xhAdd(this, buf, data);
+
+	// nmSysFree(buf);
+
+    return rval;
+    }
+
+/*** libmime_xhDeInit - Deallocate anything necessary to save memory.
+ ***/
+int
+libmime_xhDeInit(pXHashTable this)
+    {
+    pXHashEntry entry = NULL;
+
+	entry = xhGetNextElement(this, NULL);
+	while (entry)
+	    {
+	    nmSysFree(entry->Key);
+	    entry = xhGetNextElement(this, entry);
+	    }
+
+	xhDeInit(this);
+    return 0;
+    }
+
 
 

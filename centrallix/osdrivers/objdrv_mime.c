@@ -479,7 +479,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pMimeAttr attr;
 
 	/** Check if the attribute exists. **/
-	attr = (pMimeAttr)xhLookup(&inf->Header->Attrs, attrname);
+	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrname);
 	if (!attr)
 	    {
 	    if (!strcmp(attrname, "name")) return DATA_T_STRING;
@@ -519,7 +519,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Find the attribute from the attribute list. **/
-	attr = (pMimeAttr)xhLookup(&inf->Header->Attrs, attrname);
+	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrname);
 	if (!attr)
 	    {
 	    if (!strcmp(attrname, "inner_type"))

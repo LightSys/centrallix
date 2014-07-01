@@ -179,6 +179,9 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
     XString structListParameterName;
     int i;
 
+	/** Initialize the email list. **/
+	xaInit(&emailList, 4);
+
 	/** Parse the email list into an XArray of email structs. **/
 	libmime_ParseAddressList(data, &emailList);
 
@@ -199,6 +202,8 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 	/** Deinitialize the XString used for the parameter name construction. **/
 	xsDeInit(&structListParameterName);
 
+	/** Deinitialize the email list. **/
+	xaDeInit(&emailList);
     return 0;
     }
 
@@ -388,7 +393,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	else
 	    {
 	    /** Find the appropriate attribute. **/
-	    attr = (pMimeAttr)xhLookup(&this->Attrs, attrName);
+	    attr = (pMimeAttr)libmime_xhLookup(&this->Attrs, attrName);
 	    if (!attr)
 		{
 		mssError(1, "MIME", "Could not find the given attribute (%s)", attrName);
@@ -402,13 +407,19 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 		mssError(1, "MIME", "Could not allocate a new parameter");
 		return NULL;
 		}
-	    memeset(param, 0, sizeof(MimeParam));
+	    memset(param, 0, sizeof(MimeParam));
 
 	    /** Set the name of the parameter. **/
 	    param->Name = paramName;
 
+	    /** If necessary, initialize the parameter table. **/
+	    if (!attr->Params.nRows)
+		{
+		xhInit(&attr->Params, 7, 0);
+		}
+
 	    /** Add the Mime parameter to the parameter hash. **/
-	    xhAdd(&attr->Params, paramName, (char*)param);
+	    libmime_xhAdd(&attr->Params, paramName, (char*)param);
 
 	    /** Return the pointer to the relevant ptod.**/
 	    return &param->Ptod;
@@ -448,25 +459,18 @@ libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
     void *ptr = NULL;
 
 	/** Get the attribute value **/
-	ptr = (pMimeAttr)xhLookup(&this->Attrs, attr);
-	if (!ptr)
-	    {
-	    mssError(1, "MIME", "Could not find attribute in header.");
-	    return NULL;
-	    }
+	ptr = (pMimeAttr)libmime_xhLookup(&this->Attrs, attr);
+	if (!ptr) return NULL;
 
 	/** If param, search the XHashTable, otherwise return default. **/
-	if (param && !strcmp(param, ""))
+	if (param && strlen(param))
 	    {
-	    /** Get the param value **/
-	    ptr = (pMimeParam)xhLookup(&((pMimeAttr)ptr)->Params, param);
-	    if (!ptr)
-		{
-		mssError(1, "MIME", "Could not find parameter in attribute.");
-		return NULL;
-		}
+		if (!((pMimeAttr)ptr)->Params.nRows) return NULL;
+		/** Get the param value **/
+		ptr = (pMimeParam)libmime_xhLookup(&((pMimeAttr)ptr)->Params, param);
+		if (!ptr) return NULL;
 
-	    return &((pMimeParam)ptr)->Ptod;
+		return &((pMimeParam)ptr)->Ptod;
 	    }
 
     /** No param, so give the default **/
@@ -812,7 +816,7 @@ libmime_ClearAttr(char* attr_c, void* arg)
 	if (attr->Params.nRows)
 	    {
 	    xhClear(&attr->Params, libmime_ClearParam, NULL);
-	    xhDeInit(&attr->Params);
+	    libmime_xhDeInit(&attr->Params);
 	    }
 
 	/** Free the data memory of the attribute. **/
