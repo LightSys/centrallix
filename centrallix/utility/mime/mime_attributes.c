@@ -476,93 +476,84 @@ libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
     }
 
 /*** libmime_GetIntAttr - Gets an integer attribute from the
- *** given Mime header.
+ *** given Mime header and stores it into ret.
+ *** returns 0 on success, -1 on failure
  ***/
 int
-libmime_GetIntAttr(pMimeHeader this, char* attr, char* param)
+libmime_GetIntAttr(pMimeHeader this, char* attr, char* param, int* ret)
     {
     pTObjData ptod = NULL;
 
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod)
-	    {
-	    mssError(0, "MIME", "Could not find integer value. Result is not valid.");
-	    return -1;
-	    }
+	if (!ptod) return -1;
+	*ret = ptod->Data.Integer;
 
-    return ptod->Data.Integer;
+    return 0;
     }
 
 /*** libmime_GetStringAttr - Gets a string attribute from the
  *** given Mime header.
+ *** returns 0 on success, -1 on failure
  ***/
-char*
-libmime_GetStringAttr(pMimeHeader this, char* attr, char* param)
+int
+libmime_GetStringAttr(pMimeHeader this, char* attr, char* param, char** ret)
     {
     pTObjData ptod = NULL;
 
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod)
-	    {
-	    mssError(0, "MIME", "Could not find string value.");
-	    return NULL;
-	    }
+	if (!ptod) return -1;
 
-    return ptod->Data.String;
+	*ret = ptod->Data.String;
+
+    return 0;
     }
 
 /*** libmime_GetStringArrayAttr - Gets a string array attribute from the
  *** given Mime header.
  ***/
-pStringVec
-libmime_GetStringArrayAttr(pMimeHeader this, char* attr, char* param)
+int
+libmime_GetStringArrayAttr(pMimeHeader this, char* attr, char* param, pStringVec* ret)
     {
     pTObjData ptod = NULL;
 
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod)
-	    {
-	    mssError(0, "MIME", "Could not find string array value.");
-	    return NULL;
-	    }
+	if (!ptod) return -1;
 
-    return ptod->Data.StringVec;
+    *ret = ptod->Data.StringVec;
+
+    return 0;
     }
 
 /*** libmime_GetAttr - Gets a generic attribute from the
  *** given Mime header.
  ***/
-void*
-libmime_GetAttr(pMimeHeader this, char* attr, char* param)
+int
+libmime_GetAttr(pMimeHeader this, char* attr, char* param, void** ret)
     {
     pTObjData ptod = NULL;
 
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod)
-	    {
-	    mssError(0, "MIME", "Cound not find generic value. Result is not valid.");
-	    return NULL;
-	    }
+	if (!ptod) return -1;
 
-    return ptod->Data.Generic;
+	*ret = ptod->Data.Generic;
+
+    return 0;
     }
 
 /*** libmime_GetArrayAttr - Gets a generic array attribute from the given
  *** Mime header.
  ***/
-pXArray
-libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param)
+int
+libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param, pXArray* ret)
     {
     pTObjData ptod = NULL;
 
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod)
-	    {
-	    mssError(0, "MIME", "Cound not find array value. Result is not valid.");
-	    return NULL;
-	    }
+	if (!ptod) return NULL;
 
-    return (pXArray)ptod->Data.Generic;
+	*ret = (pXArray)ptod->Data.Generic;
+
+    return 0;
     }
 
 /*** libmime_SetIntAttr - Sets an integer attribute in the

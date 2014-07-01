@@ -257,7 +257,7 @@ int
 libmime_SetContentType(pMimeHeader msg, char *buf)
     {
     char *ptr, *cptr;
-    char maintype[32], tmpname[128];
+    char maintype[32];
     int i;
     ptrdiff_t len;
 
@@ -307,8 +307,10 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
     char *fileName = NULL;
 
 	/** Get the name from the Content-Distribution attribute. **/
-	fileName = libmime_GetStringAttr(msg, "Content-Disposition", "Filename");
-	if (!fileName) fileName = libmime_GetStringAttr(msg, "Content-Disposition", "Name");
+	if (!libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName))
+	    {
+	    libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName);
+	    }
 
 	/** If found, store the name in the Name attribute. **/
 	if (fileName)
@@ -320,11 +322,8 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
 		}
 	    }
 
-	/** Get the name from the Content-Type attribute. **/
-	fileName = libmime_GetStringAttr(msg, "Content-Type", "Name");
-
-	/** If found, store the name in the Name attribute. **/
-	if (fileName)
+	/** Get the name from the Content-Type attribute. If found, store the name in the Name attribute. **/
+	if (!libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName))
 	    {
 	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
 		{
@@ -436,6 +435,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     int flag=1, alloc, toktype, p_count=0, count=0, s=0, num=0;
     int l_pos=0;
     char bound[80], bound_end[82], ext[5], buf[80];
+    char* sub_type;
+    int main_type;
 
     if (!lex)
 	{
@@ -444,8 +445,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    snprintf(bound, 79, "--%s", libmime_GetStringAttr(msg, "Content-Type", "Boundary"));
-    snprintf(bound_end, 81, "--%s--", libmime_GetStringAttr(msg, "Content-Type", "Boundary"));
+    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type); /* Reusing variable :P */
+    snprintf(bound, 79, "--%s", sub_type);
+    snprintf(bound_end, 81, "--%s--", sub_type);
     bound[79] = 0;
     bound_end[81] = 0;
 
@@ -476,7 +478,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    num++;
 
 		    /** Check for an extension for the file in order to calculate the default filename. **/
-		    if (libmime_ContentExtension(ext, libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType"), libmime_GetStringAttr(l_msg, "Content-Type", "ContentSubType")))
+		    if (!libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType", &main_type)  &&
+			    !libmime_GetStringAttr(l_msg, "Content-Type", "ContentSubType", &sub_type) &&
+			    libmime_ContentExtension(ext, main_type, sub_type))
 			{
 			sprintf(buf, "attachment%d.%s", num, ext);
 			}
@@ -488,7 +492,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    /** Set the Name attribute. **/
 		    libmime_SetFilename(l_msg, buf);
 
-		    if (libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType") == MIME_TYPE_MULTIPART)
+		    if (!libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType", &main_type) &&
+			    main_type == MIME_TYPE_MULTIPART)
 			{
 			libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
 			}
@@ -525,8 +530,10 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
     int size=0, bytes_left, len, rem=0, end;
     int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
     char *ptr, *bptr, *tptr;
+    int transfer_encoding;
 
-    switch (libmime_GetIntAttr(msg, "Transfer-Encoding", NULL))
+    libmime_GetIntAttr(msg, "Transfer-Encoding", NULL, &transfer_encoding);
+    switch (transfer_encoding)
 	{
 	/** 7BIT AND 8BIT ENCODING **/
 	/** BINARY ENCODING **/
