@@ -314,6 +314,7 @@ xhGetNextElement(pXHashTable this, pXHashEntry currentElement)
     {
     int i = 0;
     pXHashEntry rval = NULL;
+    int key_len;
 
 	/** For the first iteration, find the first element. **/
 	if (!currentElement)
@@ -336,10 +337,14 @@ xhGetNextElement(pXHashTable this, pXHashEntry currentElement)
 	    {
 	    return currentElement->Next;
 	    }
-	
+
+	/** Get a valid key length **/
+	if (this->KeyLen) key_len = this->KeyLen;
+	else key_len = strlen(currentElement->Key);
+
 	/** Find the index of the current element. **/
-	i = xh_internal_ComputeHash(currentElement->Key, this->KeyLen, this->nRows);
-	
+	i = xh_internal_ComputeHash(currentElement->Key, key_len, this->nRows);
+
 	/** Find the next element in the table. **/
 	for (i++; i < this->nRows; i++)
 	    {
