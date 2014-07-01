@@ -249,14 +249,18 @@ libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
 int
 libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data)
     {
-    pTObjData ptod = NULL;
+    pTObjData* pPtod = NULL;
 
 	/** Create the parameter/attribute and get the ptod. **/
-	ptod = libmime_CreateAttrParam(this, attr, param);
-	if (!ptod) return -1;
+	pPtod = libmime_CreateAttrParam(this, attr, param);
+	if (!pPtod)
+	    {
+	    mssError(0, "MIME", "Could not create integer attribute.");
+	    return -1;
+	    }
 
 	/** Populate the ptod. **/
-	ptod = ptodCreateInt(data);
+	*pPtod = ptodCreateInt(data);
 
     return 0;
     }
@@ -267,17 +271,18 @@ libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data)
 int
 libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags)
     {
-    pTObjData ptod = NULL;
+    pTObjData* pPtod = NULL;
 
 	/** Create the parameter/attribute and get the ptod. **/
-	ptod = libmime_CreateAttrParam(this, attr, param);
-	if (!ptod)
+	pPtod = libmime_CreateAttrParam(this, attr, param);
+	if (!pPtod)
 	    {
+	    mssError(0, "MIME", "Could not create string attribute.");
 	    return -1;
 	    }
 
 	/** Populate the ptod. **/
-	ptod = ptodCreateString(data, flags);
+	*pPtod = ptodCreateString(data, flags);
 
     return 0;
     }
@@ -310,17 +315,18 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
 int
 libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype)
     {
-    pTObjData ptod = NULL;
+    pTObjData* pPtod = NULL;
 
 	/** Create the attribute/parameter and get the ptod. **/
-	ptod = libmime_CreateAttrParam(this, attr, param);
-	if (!ptod)
+	pPtod = libmime_CreateAttrParam(this, attr, param);
+	if (!pPtod)
 	    {
+	    mssError(0, "MIME", "Could not create generic attribute.");
 	    return -1;
 	    }
 
 	/** Populate the ptod. **/
-	ptod = ptodCreate(data, datatype);
+	*pPtod = ptodCreate(data, datatype);
 
     return 0;
     }
@@ -351,7 +357,7 @@ libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
 /*** libmime_CreateAttrParam - Creates an attribute or parameter according to the
  *** given names and returns the ptod from the appropriate structure.
  ***/
-pTObjData
+pTObjData*
 libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
     {
     pMimeAttr attr = NULL;
@@ -376,7 +382,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    xhAdd(&this->Attrs, attrName, (char*)attr);
 
 	    /** Return the pointer to the relevant ptod. **/
-	    return attr->Ptod;
+	    return &attr->Ptod;
 	    }
 	/** Otherwise we are creating a parameter. **/
 	else
@@ -405,7 +411,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    xhAdd(&attr->Params, paramName, (char*)param);
 
 	    /** Return the pointer to the relevant ptod.**/
-	    return param->Ptod;
+	    return &param->Ptod;
 	    }
 
     return NULL;
@@ -420,7 +426,14 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 pTObjData
 libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param)
     {
-    return *libmime_GetPtodPointer(this, attr, param);
+    pTObjData* pPtod = NULL;
+
+    pPtod = libmime_GetPtodPointer(this, attr, param);
+    if (!pPtod)
+	{
+	return NULL;
+	}
+    return *pPtod;
     }
 
 /*** libmime_GetPtodPointer - Gets the pointer to the PTOD from an attribute/parameter

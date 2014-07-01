@@ -152,6 +152,9 @@ int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
+void* libmime_xhLookup(pXHashTable this, char* key);
+int libmime_xhAdd(pXHashTable this, char* key, char* data);
+int libmime_xhDeInit(pXHashTable this);
 
 /** mime_attributes.c **/
 int libmime_ParseAttr(pMimeHeader this, char* name, char* data);
@@ -168,7 +171,7 @@ int libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param);
 int libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
 int libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param);
 
-pTObjData libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);
+pTObjData* libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);
 pTObjData libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param);
 pTObjData* libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param);
 
