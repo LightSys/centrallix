@@ -73,6 +73,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     int flag, toktype, alloc, len;
     XString xsbuf;
     char *hdrnme, *hdrbdy;
+    long attrSeekStart = start, attrSeekEnd;
 
     /** Initialize the message structure **/
     libmime_CreateStringAttr(msg, "Content-Type", NULL, "text/plain", 0);
@@ -111,7 +112,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    }
 	else
 	    {
-	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf) < 0)
+	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf, &attrSeekEnd) < 0)
 		{
 		return -1;
 		}
@@ -119,10 +120,10 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    hdrnme = (char*)nmMalloc(64);
 	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
 	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String)+1);
-	    if (libmime_ParseHeaderElement(hdrbdy, hdrnme) == 0)
+	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, &attrSeekStart))
 		{
 		/** Parse the attribute and store it in the Mime header. **/
-		if (libmime_ParseAttr(msg, hdrnme, hdrbdy))
+		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd))
 		    {
 		    mssError(0, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
 		    }
@@ -131,6 +132,9 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		{
 		mssError(1, "MIME", "ERROR PARSING: %s\n", xsbuf.String);
 		}
+
+	    /** Get the offset at the beginning of the next attribute. **/
+	    attrSeekStart = attrSeekEnd; /* Add 1 to compensate for the newline. */
 	    }
 	xsDeInit(&xsbuf);
 	}
@@ -178,7 +182,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
  ***/
 
 int
-libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
+libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, int* attrSeekEnd)
     {
     int toktype, i;
     unsigned long offset;
@@ -194,11 +198,14 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
 	    }
 	ptr = mlxStringVal(lex, NULL);
 	if (!strchr(" \t", ptr[0])) break;
-	libmime_StringTrim(ptr);
 	xsConcatPrintf(xsbuf, " %s", ptr);
 	}
     /** Be kind, rewind! (resetting the offset because we don't use the last string it fetched) **/
     mlxSetOffset(lex, offset);
+
+    /** Store the offset at the end of the attribute string. **/
+    *attrSeekEnd = offset;
+
     /** Set all tabs, NL's, CR's to spaces **/
     for(i=0;i<strlen(xsbuf->String);i++) if (strchr("\t\r\n",xsbuf->String[i])) xsbuf->String[i]=' ';
 
@@ -342,12 +349,14 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
  ***  int
  ***  libmime_ParseHeaderElement(char* buf, char* hdr);
  ***     Parameters:
- ***         (char*) buf     A string of characters with no CRLF's in it.  This
- ***                         string should represent the whole header, including any
- ***                         folded header elements below itself.  This string will
- ***                         be modified to contain the main part of the header.
- ***         (char*) hdr     This string will be overwritten with a string that
- ***                         is the name of the header element (To, From, Sender...)
+ ***         (char*) buf            A string of characters with no CRLF's in it.  This
+ ***                                string should represent the whole header, including any
+ ***                                folded header elements below itself.  This string will
+ ***                                be modified to contain the main part of the header.
+ ***         (char*) hdr            This string will be overwritten with a string that
+ ***                                is the name of the header element (To, From, Sender...)
+ ***         (int*)  attrSeekStart  Pointer to an integer indicating the seek offset
+ ***                                to the beginning of the attribute value.
  ***     Returns:
  ***         This function returns 0 on success, and -1 on failure.  It modifies
  ***         the "buf" parameter and sends its work back in this way.  This
@@ -368,12 +377,11 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
  ***/
 
 int
-libmime_ParseHeaderElement(char *buf, char* hdr)
+libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart)
     {
     int count=0, state=0;
     char *ptr;
     char ch;
-
     while (count < strlen(buf))
 	{
 	ch = buf[count];
@@ -382,7 +390,6 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    if (ch == ':')
 		{
-		ptr = buf+count+1;
 		state = 2;
 		}
 	    else if (ch==' ' || ch=='\t')
@@ -395,7 +402,6 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    if (ch == ':')
 		{
-		ptr = buf+count+1;
 		state = 2;
 		}
 	    else if (ch!=' ' && ch!='\t')
@@ -408,9 +414,13 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    memcpy(hdr, buf, (count-1>79?79:count-1));
 	    hdr[(count-1>79?79:count-1)] = 0;
+	    ptr = buf; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    memmove(buf, &buf[count+1], strlen(&buf[count+1])+1);
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
+
+	    /** Add the offset of the name to the start offset. **/
+	    *attrSeekStart += count + buf - ptr + 1;
 	    return 0;
 	    }
 	count++;

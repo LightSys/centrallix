@@ -37,8 +37,9 @@
  *** an attribute.
  ***/
 int
-libmime_ParseAttr(pMimeHeader this, char* name, char* data)
+libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd)
     {
+    int seekEnd, seekStart;
     char* paramName = NULL;
     char* token = NULL;
     char* currentOffset = NULL;
@@ -50,6 +51,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    token = currentOffset;
 	    }
 	libmime_StringTrim(token);
+
+	/** Calculate the seek offset for the attribute value. **/
+	seekStart = attrSeekStart + token - data;
+	seekEnd = seekStart + strlen(token);
 
 	/** Call the appropriate parse function for the attribute. **/
 	/** Handle special attributes. **/
@@ -68,15 +73,15 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    }
 	/** Check for email address attributes. **/
 	else if (!strcasecmp(name, "Reply-To") ||
-		!strcasecmp(name, "Sender"))
+		 !strcasecmp(name, "Sender"))
 	    {
 	    libmime_ParseEmailAttr(this, name, token);
 	    }
 	/** Check for email list attributes. **/
-	else if (!strcasecmp(name, "To") ||
-	    !strcasecmp(name, "From") ||
-	    !strcasecmp(name, "Cc") ||
-	    !strcasecmp(name, "Bcc"))
+	else if (!strcasecmp(name, "To")   ||
+		 !strcasecmp(name, "From") ||
+		 !strcasecmp(name, "Cc")   ||
+		 !strcasecmp(name, "Bcc"))
 	    {
 	    libmime_ParseEmailListAttr(this, name, token);
 	    }
@@ -91,6 +96,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    libmime_CreateStringAttr(this, name, NULL, token, 0);
 	    }
 
+	/** Set the offset values in the attribute structure. **/
+	libmime_GetMimeAttr(this, name)->ValueSeekStart = seekStart;
+	libmime_GetMimeAttr(this, name)->ValueSeekEnd = seekEnd;
+
 	/** Attempt to find the first parameter. **/
 	token = strtok_r(NULL, "=", &currentOffset);
 
@@ -99,7 +108,6 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 	    {
 	    /** Store the parameter name. **/
 	    paramName = token;
-	    libmime_StringTrim(paramName);
 
 	    /** Get the value of the parameter. **/
 	    token = strtok_r(NULL, ";", &currentOffset);
@@ -112,8 +120,21 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data)
 		}
 	    libmime_StringTrim(token);
 
+	    /** Add the offset from the beginning of the parameter name to the beginning of the value. **/
+	    seekStart = seekEnd + (token - paramName) + 1; /* NOTE: +1 skips the semicolon. */
+
+	    /** Add the token length to the start offset to find the end offset of the parameter. **/
+	    seekEnd = seekStart + strlen(token);
+
+	    /** Trim the parameter name. **/
+	    libmime_StringTrim(paramName);
+
 	    /** Store the parameter. **/
 	    libmime_CreateStringAttr(this, name, paramName, token, 0);
+
+	    /** Set the offset values in the parameter structure. **/
+	    libmime_GetMimeParam(this, name, paramName)->ValueSeekStart = seekStart;
+	    libmime_GetMimeParam(this, name, paramName)->ValueSeekEnd = seekEnd;
 
 	    /** Attempt to get the next parameter. **/
 	    token = strtok_r(NULL, "=", &currentOffset);
@@ -484,6 +505,24 @@ libmime_GetAttrParamNames(char* raw, char** attr, char** param)
 	(*param)++;
 
     return 0;
+    }
+
+/*** libmime_GetMimeAttr - Gets the given Mime attribute structure from the given
+ *** Mime header.
+ ***/
+pMimeAttr
+libmime_GetMimeAttr(pMimeHeader this, char* attr)
+    {
+    return (pMimeAttr)libmime_xhLookup(&this->Attrs, attr);
+    }
+
+/*** libmime_GetMimeParam - Gets the given Mime parameter structure from the given
+ *** Mime header.
+ ***/
+pMimeParam
+libmime_GetMimeParam(pMimeHeader this, char* attr, char* param)
+    {
+    return (pMimeParam)libmime_xhLookup(&libmime_GetMimeAttr(this, attr)->Params, param);
     }
 
 /*** libmime_GetIntAttr - Gets an integer attribute from the
