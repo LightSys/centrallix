@@ -510,7 +510,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
 	    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
 
-	    goto error;
+	    return DATA_T_STRING;
 	    }
 
 	/** If no parameter was specified, return data about the attribute. **/
@@ -696,7 +696,104 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 int
 mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
-    return -1;
+    pMimeInfo inf = MIME(inf_v);
+    char *attrName = NULL;
+    char *paramName = NULL;
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
+
+    pFile tempFile = NULL;
+    char buf[MIME_BUFSIZE];
+    int readOffset = 0;
+    int inc;
+    XString filename;
+
+	libmime_GetAttrParamNames(attrname, &attrName, &paramName); /* Currently always returns 0. */
+
+	/** Initialize the string. **/
+	xsInit(&filename);
+
+	/** Do we have the attribute? **/
+	attr = libmime_GetMimeAttr(inf->Header, attrName);
+	if (!attr)
+	    {
+	    /** No attribute, how about the param? **/
+	    param = libmime_GetMimeParam(inf->Header, attrName, paramName);
+	    if (!param)
+		{
+		/** Neither the attr nor param exists, error out. **/
+		mssError(1, "MIME", "Could not find the attribute or parameter to set.");
+		goto error;
+		}
+	    else /* Param exists, now change it. */
+		{
+		// TODO!!!
+		}
+	    }
+	else /* Attr exists, now change it. */
+	    {
+	    /** Set the filename xstring. **/
+	    xsConcatenate(&filename, "/tmp/", -1);
+	    xsConcatenate(&filename, attr->Name, -1);
+	    xsConcatenate(&filename, ".msg", -1);
+
+	    /** Force a create of the temp file. **/
+	    tempFile = fdOpen(filename.String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+
+	    if (!tempFile)
+		{
+		mssError(1, "MIME", "Could not create the temp file.");
+		goto error;
+		}
+
+	    /** Read the current file into buf up to where we want to change it. **/
+	    objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
+	    memset(buf, 0, MIME_BUFSIZE);
+	    for (inc = MIME_BUFSIZE < (attr->ValueSeekStart - readOffset) ? MIME_BUFSIZE : (attr->ValueSeekStart - readOffset);
+		    inc > 0;
+		    inc = MIME_BUFSIZE < (attr->ValueSeekStart - readOffset) ? MIME_BUFSIZE : (attr->ValueSeekStart - readOffset))
+		{
+		readOffset += objRead(inf->Obj->Prev, buf, inc, 0, 0);
+		/** Write the pre-change part. **/
+		if (fdWrite(tempFile, buf, strlen(buf), 0, 0) < 0)
+		    {
+		    mssError(1, "MIME", "Could not write to the temp file.");
+		    goto error;
+		    }
+		/** Hijack the inc to form the maxcnt **/
+		memset(buf, 0, MIME_BUFSIZE);
+		}
+
+	    /** Seek to the correct location. Maybe don't have to do this? **/
+
+	    /** Write the new value **/
+	    libmime_WriteAttrParam(tempFile, inf->Header, attrName, NULL, datatype, val);
+
+	    objRead(inf->Obj->Prev, NULL, 0, attr->ValueSeekEnd, FD_U_SEEK);
+
+	    /** Write the post-change part. **/
+	    memset(buf, 0, MIME_BUFSIZE);
+	    while (objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+		{
+		/** Write the pre-change part. **/
+		if (fdWrite(tempFile, buf, strlen(buf), 0, 0) < 0)
+		    {
+		    mssError(1, "MIME", "Could not write to the temp file.");
+		    goto error;
+		    }
+		memset(buf, 0, MIME_BUFSIZE);
+		}
+	    }
+
+    /** We're on the happy path! **/
+    return 0;
+
+    error:
+	/** Deallocate the xstring **/
+	xsDeInit(&filename);
+
+	return -1;
+
     }
 
 

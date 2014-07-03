@@ -37,9 +37,10 @@
  *** an attribute.
  ***/
 int
-libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd)
+libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd, int nameOffset)
     {
     int seekEnd, seekStart;
+    char* beginPtr = NULL;
     char* paramName = NULL;
     char* token = NULL;
     char* currentOffset = NULL;
@@ -53,8 +54,8 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	libmime_StringTrim(token);
 
 	/** Calculate the seek offset for the attribute value. **/
-	seekStart = attrSeekStart + token - data;
-	seekEnd = seekStart + strlen(token);
+	seekStart = attrSeekStart;
+	seekEnd = seekStart + strlen(token) + (token - data) + nameOffset;
 
 	/** Call the appropriate parse function for the attribute. **/
 	/** Handle special attributes. **/
@@ -120,14 +121,15 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 		}
 	    libmime_StringTrim(token);
 
-	    /** Add the offset from the beginning of the parameter name to the beginning of the value. **/
-	    seekStart = seekEnd + (token - paramName) + 1; /* NOTE: +1 skips the semicolon. */
-
-	    /** Add the token length to the start offset to find the end offset of the parameter. **/
-	    seekEnd = seekStart + strlen(token);
-
 	    /** Trim the parameter name. **/
+	    beginPtr = paramName;
 	    libmime_StringTrim(paramName);
+
+	    /** Add the offset from the beginning of the untrimmed parameter name to the beginning of the actual parameter name. **/
+	    seekStart = seekEnd + (paramName - beginPtr) + 1; /* NOTE: +1 skips the semicolon. */
+
+	    /** Add the length of the value and the parameter name to the start offset to find the end offset of the parameter. **/
+	    seekEnd = seekStart + strlen(token) + (token - paramName);
 
 	    /** Store the parameter. **/
 	    libmime_CreateStringAttr(this, name, paramName, token, 0);
@@ -150,7 +152,6 @@ int
 libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
     {
     pEmailAddr emailAddr = NULL;
-    XString parameterName;
 
 	/** Allocate the email address. **/
 	emailAddr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
@@ -183,7 +184,6 @@ int
 libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
     {
     XArray emailList;
-    XString structListParameterName;
     int i;
 
 	/** Initialize the email list. **/
@@ -522,7 +522,15 @@ libmime_GetMimeAttr(pMimeHeader this, char* attr)
 pMimeParam
 libmime_GetMimeParam(pMimeHeader this, char* attr, char* param)
     {
-    return (pMimeParam)libmime_xhLookup(&libmime_GetMimeAttr(this, attr)->Params, param);
+    pMimeAttr attrStruct;
+
+	attrStruct = libmime_GetMimeAttr(this, attr);
+	if (!attrStruct)
+	    {
+	    return NULL;
+	    }
+
+    return (pMimeParam)libmime_xhLookup(&attrStruct->Params, param);
     }
 
 /*** libmime_GetIntAttr - Gets an integer attribute from the
@@ -599,7 +607,7 @@ libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param, pXArray* ret)
     pTObjData ptod = NULL;
 
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
-	if (!ptod) return NULL;
+	if (!ptod) return -1;
 
 	*ret = (pXArray)ptod->Data.Generic;
 
@@ -1002,4 +1010,99 @@ libmime_ClearSpecials(pTObjData ptod)
     return 0;
     }
 
+/*** libmime_WriteAttrParam - Adds/sets an attribute/parameter to the given file descriptor.
+ ***
+ *** NOTE: Assumes that the file descriptor points to the location to which
+ *** the attribute/parameter should be written. When the function returns the file
+ *** descriptor should point to the offset after the attribute/parameter value.
+ ***/
+int
+libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramName, int type, pObjData val)
+    {
+    XString output;
+    XString data;
+    pTObjData ptod;
+    int i;
+
+	/** Initialize the strings. **/
+	xsInit(&data);
+	xsInit(&output);
+
+	/** Convert the value into a string. **/
+	if (type != DATA_T_INTEGER)
+	    {
+	    objDataToString(&data, type, val->Generic, 0);
+	    }
+	else
+	    {
+	    objDataToString(&data, type, &val->Integer, 0);
+	    }
+
+	/** Construct the output string. **/
+	if (!paramName)
+	    {
+	    xsConcatPrintf(&output, "%s: %s", attrName, data.String);
+	    }
+	else
+	    {
+	    xsConcatPrintf(&output, " %s=%s;", paramName, data.String);
+	    }
+
+	/** Add the new attribute to the header. **/
+	if (fdWrite(fd, output.String, strlen(output.String), 0, 0) < 0)
+	    {
+	    goto error;
+	    }
+
+	/** Add the attribute to the attribute array according to its datatype. **/
+	switch (type)
+	    {
+	    case DATA_T_INTEGER:
+		libmime_SetIntAttr(msg, attrName, paramName, val->Integer);
+		break;
+	    case DATA_T_STRING:
+		libmime_SetStringAttr(msg, attrName, paramName, val->String, 0);
+		break;
+	    case DATA_T_STRINGVEC:
+		/** Get the ptod and clear the string array. **/
+		ptod = libmime_GetPtodFromHeader(msg, attrName, paramName);
+		if (!libmime_ClearSpecials(ptod))
+		    {
+		    goto error;
+		    }
+
+		/** Add the strings given to the string array. **/
+		for (i = 0; i < val->StringVec->nStrings; i++)
+		    {
+		    libmime_AddStringArrayAttr(msg, attrName, paramName, val->StringVec->Strings[i]);
+		    }
+		break;
+	    case DATA_T_ARRAY:
+		/** Get the ptod and clear the array. **/
+		ptod = libmime_GetPtodFromHeader(msg, attrName, paramName);
+		if (!libmime_ClearSpecials(ptod))
+		    {
+		    goto error;
+		    }
+
+		/** Add the values to the array. **/
+		libmime_AppendArrayAttr(msg, attrName, paramName, (pXArray)val->Generic);
+		break;
+	    default:
+		libmime_SetAttr(msg, attrName, paramName, val->Generic, type);
+		break;
+	    }
+
+	/** Deinitialze the strings. **/
+	xsDeInit(&output);
+	xsDeInit(&data);
+
+    return 0;
+
+    error:
+	xsDeInit(&output);
+	xsDeInit(&data);
+
+	return -1;
+    }
 

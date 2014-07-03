@@ -73,7 +73,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     int flag, toktype, alloc, len;
     XString xsbuf;
     char *hdrnme, *hdrbdy;
-    long attrSeekStart = start, attrSeekEnd;
+    long attrSeekStart = start, attrSeekEnd, nameOffset;
 
     /** Initialize the message structure **/
     libmime_CreateStringAttr(msg, "Content-Type", NULL, "text/plain", 0);
@@ -120,10 +120,10 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    hdrnme = (char*)nmMalloc(64);
 	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
 	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String)+1);
-	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, &attrSeekStart))
+	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, &attrSeekStart, &nameOffset))
 		{
 		/** Parse the attribute and store it in the Mime header. **/
-		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd))
+		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd, nameOffset))
 		    {
 		    mssError(0, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
 		    }
@@ -377,7 +377,7 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
  ***/
 
 int
-libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart)
+libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOffset)
     {
     int count=0, state=0;
     char *ptr;
@@ -414,13 +414,16 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart)
 	    {
 	    memcpy(hdr, buf, (count-1>79?79:count-1));
 	    hdr[(count-1>79?79:count-1)] = 0;
-	    ptr = buf; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    memmove(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
+	
+	    /** Store the count of characters between the beginning of the name and the value. **/
+	    *nameOffset = count + 1;
 
 	    /** Add the offset of the name to the start offset. **/
-	    *attrSeekStart += count + buf - ptr + 1;
+	    *attrSeekStart += hdr - ptr;
 	    return 0;
 	    }
 	count++;
