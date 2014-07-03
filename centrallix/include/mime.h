@@ -128,7 +128,7 @@ extern char* EncodingStrings[];
 
 /** mime_parse.c **/
 int libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end);
-int libmime_ParseHeaderElement(char *buf, char *element, int* attrSeekEnd);
+int libmime_ParseHeaderElement(char *buf, char *element, int* attrSeekEnd, int* nameOffset);
 int libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end);
 int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, int* attrSeekStart);
 int libmime_SetDate(pMimeHeader msg, char *buf);
@@ -161,7 +161,7 @@ int libmime_xhAdd(pXHashTable this, char* key, char* data);
 int libmime_xhDeInit(pXHashTable this);
 
 /** mime_attributes.c **/
-int libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd);
+int libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd, int nameOffset);
 int libmime_ParseIntAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseStringAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data);
@@ -200,6 +200,8 @@ int libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data);
 int libmime_ClearAttr(char* attr_c, void* arg);
 int libmime_ClearParam(char* param_c, void* arg);
 int libmime_ClearSpecials(pTObjData ptod);
+
+int libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramName, int type, pObjData val);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();
