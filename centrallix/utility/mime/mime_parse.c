@@ -423,6 +423,9 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	    /** Store the count of characters between the beginning of the name and the value. **/
 	    *nameOffset = count + 1;
 
+	    /** Store the count of characters between the beginning of the name and the value. **/
+	    *nameOffset = count + 1;
+
 	    /** Add the offset of the name to the start offset. **/
 	    *attrSeekStart += hdr - ptr;
 	    return 0;
