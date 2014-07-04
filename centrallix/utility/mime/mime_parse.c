@@ -418,7 +418,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
-	
+
 	    /** Store the count of characters between the beginning of the name and the value. **/
 	    *nameOffset = count + 1;
 
