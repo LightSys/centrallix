@@ -134,7 +134,8 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		}
 
 	    /** Get the offset at the beginning of the next attribute. **/
-	    attrSeekStart = attrSeekEnd; /* Add 1 to compensate for the newline. */
+	    attrSeekStart = attrSeekEnd;
+	    msg->HdrSeekEnd = attrSeekEnd;
 	    }
 	xsDeInit(&xsbuf);
 	}

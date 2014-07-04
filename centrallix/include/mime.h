@@ -98,6 +98,7 @@ typedef struct
 typedef struct _MM
     {
     DateTime	Date;
+    long	HdrSeekEnd;
     long	MsgSeekStart;
     long	MsgSeekEnd;
     pEmailAddr	Sender;

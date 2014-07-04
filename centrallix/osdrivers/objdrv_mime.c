@@ -803,7 +803,115 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 int
 mimeAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
-    return -1;
+    pMimeInfo inf = MIME(inf_v);
+
+    XString filename;
+    pFile fd;
+
+    char* attrName = NULL;
+    char* paramName = NULL;
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
+
+    long offset = 0;
+    long targetBufSize = 0;
+    long targetOffset = 0;
+    char* buf[MIME_BUFSIZE];
+
+	/** Initialize the filename string. **/
+	xsInit(&filename);
+
+	/** Parse out the attribute and parameter names. **/
+	libmime_GetAttrParamNames(attrname, &attrName, &paramName); /* Currently always returns 0. */
+
+	/** If this is an attribute. **/
+	if (!paramName || !strlen(paramName))
+	    {
+	    /** Construct the filename. **/
+	    xsConcatPrintf(&filename, "/tmp/%s.msg", attrName);
+
+	    /** Get the attribute. **/
+	    attr = libmime_GetMimeAttr(inf->Header, attrName);
+	    }
+	/** Otherwise, this is a parameter. **/
+	else
+	    {
+	    /** Construct the filename. **/
+	    xsConcatPrintf(&filename, "/tmp/%s.msg", paramName);
+
+	    /** Get the parameter. **/
+	    param = libmime_GetMimeParam(inf->Header, attrName, paramName);
+	    }
+
+	/** Find the offset at the end of the header. **/
+	targetOffset = inf->Header->HdrSeekEnd;
+
+	/** Open the temporary file. **/
+	fd = fdOpen(filename->String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+
+	/** Deinitialize the filename string. **/
+	xsDeInit(&filename);
+
+	/** Check that the temporary file was opened. **/
+	if (!fd)
+	    {
+	    mssError(1, "MIME", "Could not create the temp file.");
+	    goto error;
+	    }
+
+	/** Copy up to the end of header offset into the temporary file. **/
+	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
+	memset(buf, 0, sizeof(char) * MIME_BUFSIZE);
+	for (targetBufSize = (targetOffset - offset < MIME_BUFSIZE ? targetBufSize - offset: MIME_BUFSIZE);
+		targetBufSize > 0;
+		targetBufSize = (targetBufSize - offset < MIME_BUFSIZE ? targetBufSize - offset: MIME_BUFSIZE))
+	    {
+	    /** Read the contents of the file. **/
+	    offset = objRead(inf->Obj->Prev, buf, targetBufSize, 0, 0);
+
+	    /** Write the pre-change part. **/
+	    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		{
+		mssError(1, "MIME", "Could not write to the temp file.");
+		goto error;
+		}
+
+	    /** Reset the temp buffer to 0. **/
+	    memset(buf, 0, MIME_BUFSIZE);
+	    }
+
+	/** Add the attribute to the file. **/
+	libmime_WriteAttrParam(fd, inf->Header, attrName, paramName, datatype, val);
+
+	/** Copy up to the end of the file. **/
+	objRead(inf->Obj->Prev, NULL, 0, inf->Header->HdrSeekEnd, FD_U_SEEK);
+	memset(buf, 0, sizeof(char) * MIME_BUFSIZE);
+	while (objRead(inf->Obj->Prev, buf,, MIME_BUFSIZE, 0, 0) > 0)
+	    {
+	    /** Write the post-change part. **/
+	    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		{
+		mssError(1, "MIME", "Could not write to the temp file.");
+		goto error;
+		}
+
+	    /** Reset the temp buffer to 0. **/
+	    memset(buf, 0, MIME_BUFSIZE);
+	    }
+
+	/** Close the temporary file. **/
+	fdClose(fd);
+
+    return 0;
+
+    error:
+	/** Close the temporary file. **/
+	if (fd)
+	    {
+	    fdClose(fd);
+	    }
+
+	return -1;
     }
 
 
