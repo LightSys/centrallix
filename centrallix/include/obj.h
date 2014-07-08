@@ -63,6 +63,7 @@
 
 #define OBJ_U_SEEK	FD_U_SEEK
 #define OBJ_U_PACKET	FD_U_PACKET
+#define OBJ_U_TRUNCATE	FD_U_TRUNCATE
 
 /** Pathname analysis structure **/
 typedef struct

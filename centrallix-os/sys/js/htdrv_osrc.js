@@ -1325,7 +1325,7 @@ function osrc_open_session(cb)
     {
     //Open Session
     //alert('open');
-    if(this.sid)
+    if(this.sid || cb == osrc_open_query)
 	{
 	this.__osrc_cb = cb;
 	this.__osrc_cb();
@@ -1339,21 +1339,24 @@ function osrc_open_session(cb)
 function osrc_open_query()
     {
     //Open Query
-    if(!this.sid)
+    /*if(!this.sid)
 	{
 	var lnks = pg_links(this);
 	if (!lnks || !lnks[0] || !lnks[0].target)
 	    return false;
 	this.sid=pg_links(this)[0].target;
-	}
-    if(this.qid)
+	}*/
+    if(this.qid && this.sid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query);
 	this.qid=null;
 	return 0;
 	}
     this.query_ended = false;
-    this.DoRequest('multiquery', '/', {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid);
+    var reqobj = {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()};
+    if (!this.sid)
+	reqobj.ls__newsess = 'yes';
+    this.DoRequest('multiquery', '/', reqobj, osrc_get_qid);
     this.querysize = this.replicasize;
     }
 
@@ -1361,10 +1364,18 @@ function osrc_get_qid()
     {
     //return;
     var lnk = pg_links(this);
-    if (lnk[0])
-	this.qid=lnk[0].target;
+    this.data_start = 1;
+    if (!this.sid && lnk && lnk[0] && lnk[0].target)
+	{
+	this.sid = lnk[0].target;
+	this.data_start = 2;
+	}
+
+    if (lnk && lnk[this.data_start-1])
+	this.qid=lnk[this.data_start-1].target;
     else
 	this.qid = null;
+
     //confirm(this.baseobj + " ==> " + this.qid);
     if (!this.qid)
 	{
@@ -1607,13 +1618,13 @@ function osrc_fetch_next()
     var lnk=pg_links(this);
     var lc=lnk.length;
     //confirm(this.baseobj + " ==> " + lc + " links");
-    if(lc < 2)
+    if(lc <= this.data_start)
 	{ // query over
 	this.EndQuery();
 	return 0;
 	}
     var colnum=0;
-    var i = 1;
+    var i = this.data_start;
     var rowcnt = 0;
     while (i < lc)
 	{
@@ -1634,6 +1645,7 @@ function osrc_fetch_next()
 	    this.replica[this.OSMLRecord][j] = row[j];
 	    }
 	}
+    this.data_start = 1; // reset it
     pg_debug("   Fetch returned " + rowcnt + " rows, querysize was " + this.querysize + ".\n");
 
     // make sure we bring this.LastRecord back down to the top of our replica...
@@ -3420,6 +3432,7 @@ function osrc_init(param)
     loader.destroy_widget = osrc_destroy;
     //loader.DestroyBH = osrc_destroy_bh;
 
+    loader.data_start = 1;
     loader.pending = false;
     loader.masters_pending = [];
     loader.any_pending = false;

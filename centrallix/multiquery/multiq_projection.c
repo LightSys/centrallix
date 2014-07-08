@@ -622,7 +622,8 @@ mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criter
 	row->LastMatch = rc->LastMatch++;
 	row->nMatches = 0;
 	row->Obj = obj;
-	xsCopy(&rc->CriteriaBuf, "", 0);
+	xsCopy(&rc->CriteriaBuf, mi->CurrentSource, -1);
+	xsConcatenate(&rc->CriteriaBuf, " :: ", 4);
 	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
 	row->Criteria = nmSysStrdup(rc->CriteriaBuf.String);
 	xaAddItem(&rc->Cache, row);
@@ -637,12 +638,13 @@ mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criter
  *** found in the cache, and the cache id otherwise.
  ***/
 int
-mqp_internal_CheckCache(pQueryStatement stmt, pMqpRowCache rc, pExpression criteria)
+mqp_internal_CheckCache(pQueryStatement stmt, pMqpRowCache rc, char* source, pExpression criteria)
     {
     int i;
     pMqpOneRow row;
 
-	xsCopy(&rc->CriteriaBuf, "", 0);
+	xsCopy(&rc->CriteriaBuf, source, -1);
+	xsConcatenate(&rc->CriteriaBuf, " :: ", 4);
 	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
 	for(i=0;i<rc->Cache.nItems;i++)
 	    {
@@ -701,6 +703,22 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
 	    strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
 
+	    /** Check for cached single row result set **/
+	    if (mi->RowCache)
+		{
+		rc = mi->RowCache;
+		rc->CurCached = mqp_internal_CheckCache(stmt, rc, mi->CurrentSource, qe->Constraint);
+		if (rc->CurCached >= 0)
+		    {
+		    /** We're going from the cache this time **/
+		    /*objClose(qe->LLSource);*/
+		    qe->LLSource = NULL;
+		    qe->LLQuery = NULL;
+		    mi->Flags |= MQP_MI_F_USINGCACHE;
+		    break;
+		    }
+		}
+
 	    /** Open the data source in the objectsystem **/
 	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
 	    if (!qe->LLSource) 
@@ -718,21 +736,6 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		}
 	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
 	    break;
-	    }
-
-	/** Check for cached single row result set **/
-	if (mi->RowCache)
-	    {
-	    rc = mi->RowCache;
-	    rc->CurCached = mqp_internal_CheckCache(stmt, rc, qe->Constraint);
-	    if (rc->CurCached >= 0)
-		{
-		/** We're going from the cache this time **/
-		objClose(qe->LLSource);
-		qe->LLSource = NULL;
-		qe->LLQuery = NULL;
-		mi->Flags |= MQP_MI_F_USINGCACHE;
-		}
 	    }
 
     	/** Open the query with the objectsystem. **/

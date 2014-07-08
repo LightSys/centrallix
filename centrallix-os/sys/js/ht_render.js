@@ -53,6 +53,39 @@ function cx_count_divs(kind)
     }
 
 // Functions used for cxsql-to-js support
+function cxjs_has_endorsement(e,ctx)
+    {
+    // pre-checks
+    if (ctx == '*' || ctx === null)
+	ctx = ':::';
+    if (e === null)
+	return 0;
+
+    // go through the list
+    for(var i=0; i<pg_endorsements.length; i++)
+	{
+	var item = pg_endorsements[i];
+	if (item.e == e)
+	    {
+	    // Special case * context
+	    if (item.ctx == '*')
+		return 1;
+
+	    // Check each piece
+	    var arr1 = (ctx + ':::').split(':',4);
+	    var arr2 = (item.ctx + ':::').split(':',4);
+	    for(i=0;i<4;i++)
+		{
+		if (arr1[i] != arr2[i] && arr2[i] != '')
+		    return 0;
+		}
+	    return 1;
+	    }
+	}
+
+    return 0;
+    }
+
 function cxjs_min(v)
     {
     var lowest = undefined;

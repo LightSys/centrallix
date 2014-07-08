@@ -549,7 +549,6 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     char* mptr;
     int t,i;
     pObjectInfo info;
-    Binary bn;
     pFile try_file;
     char* attrnames[640];
     int attrtypes[640];
@@ -1316,6 +1315,32 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    sleep(intval);
 		    }
 		}
+	    else if (!strcmp(cmdname,"trunc"))
+		{
+		if (!ptr)
+		    {
+		    mssError(1,"CX","Usage: trunc <filename> <offset>");
+		    }
+		else
+		    {
+		    obj = objOpen(s, ptr, O_RDWR, 0600, "system/object");
+		    if (obj)
+			{
+			if (mlxNextToken(ls) != MLX_TOK_INTEGER)
+			    {
+			    mssError(1,"CX","Usage: trunc <filename> <offset>");
+			    }
+			else
+			    {
+			    if (objWrite(obj, sbuf, 0, mlxIntVal(ls), OBJ_U_SEEK | OBJ_U_TRUNCATE) < 0)
+				{
+				mssError(0,"CX","Could not write/truncate object");
+				}
+			    }
+			objClose(obj);
+			}
+		    }
+		}
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
@@ -1336,6 +1361,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		printf("  query     - Runs a SQL query.\n");
 		printf("  quit      - Exits this application.\n");
 		printf("  show      - Displays an object's attributes and methods.\n");
+		printf("  trunc     - Truncates an object's content to a given point.\n");
 		}
 	    else
 		{

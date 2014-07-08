@@ -430,6 +430,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     pObject obj = NULL;
     pObjQuery qy = NULL;
     char* sid = NULL;
+    int auto_session = 0;
     char sbuf[256];
     char sbuf2[256];
     char hexbuf[3];
@@ -480,27 +481,59 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 	else 
 	    {
 	    /** Get the session data **/
+	    ptr = NULL;
+	    stAttrValue_ne(stLookup_ne(req_inf,"ls__newsess"),&ptr);
+	    if (ptr && !strcasecmp(ptr,"yes"))
+		auto_session = 1;
 	    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
-	    if (!sid) 
+	    if (!sid)
 		{
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		mssError(1,"NHT","Session ID required for OSML request '%s'",request);
-		return -1;
-		}
-	    if (!strcmp(sid,"XDEFAULT"))
-		{
-		session_handle = XHN_INVALID_HANDLE;
-		objsess = sess->ObjSess;
+		if (!auto_session) 
+		    {
+		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			     "Pragma: no-cache\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    mssError(1,"NHT","Session ID required for OSML request '%s'",request);
+		    return -1;
+		    }
+		else
+		    {
+		    objsess = objOpenSession(req_inf->StrVal);
+		    if (!objsess) 
+			{
+			session_handle = XHN_INVALID_HANDLE;
+			snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				     "Pragma: no-cache\r\n"
+				     "\r\n"
+				     "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
+				session_handle);
+			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			mssError(1,"NHT","Failed to open new OSML session");
+			return -1;
+			}
+		    else
+			{
+			session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
+			}
+		    }
 		}
 	    else
 		{
-		session_handle = xhnStringToHandle(sid+1,NULL,16);
-		objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+		auto_session = 0;
+		if (!strcmp(sid,"XDEFAULT"))
+		    {
+		    session_handle = XHN_INVALID_HANDLE;
+		    objsess = sess->ObjSess;
+		    }
+		else
+		    {
+		    session_handle = xhnStringToHandle(sid+1,NULL,16);
+		    objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+		    }
 		}
+
 	    if (!objsess || !ISMAGIC(objsess, MGK_OBJSESSION))
 		{
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
@@ -690,6 +723,10 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		nht_query = NULL;
 		if (!strcmp(request,"multiquery"))
 		    {
+		    if (auto_session)
+			{
+			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n", session_handle);
+			}
 		    qy = NULL;
 
 		    /** check for query parameters **/

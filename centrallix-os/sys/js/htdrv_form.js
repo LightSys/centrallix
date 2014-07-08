@@ -384,7 +384,7 @@ function form_cb_object_available(data)
 		this.ifcProbe(ifValue).Changing(data[j].oid, data[j].value, true);
 		}
 	    this.data=data;
-	    if (this.didsearch && (data.__osrc_is_last || data.id == this.recid))
+	    if (data.__osrc_is_last || (this.didsearch && data.id == this.recid))
 		this.lastrecid = data.id;
 	    this.recid = data.id;
 
