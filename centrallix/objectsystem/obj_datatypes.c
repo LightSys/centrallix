@@ -706,9 +706,11 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	    case DATA_T_DATETIME:
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
-	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
+	        if (flags & DATA_F_DATECONV) strcat(sbuf, " convert(datetime,");
+	        if (flags & (DATA_F_QUOTED | DATA_F_DATECONV)) strcat(sbuf, " '");
 		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
-	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
+	        if (flags & (DATA_F_QUOTED | DATA_F_DATECONV)) strcat(sbuf, "' ");
+	        if (flags & DATA_F_DATECONV) strcat(sbuf, ") ");
 		xsConcatenate(dest, sbuf, -1);
 		break;
 
