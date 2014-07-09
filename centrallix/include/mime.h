@@ -40,7 +40,7 @@
 #define MIME_ST_ADR_MAILBOX   1
 #define MIME_ST_ADR_DISPLAY   2
 
-#define MIME_BUFSIZE          64
+#define MIME_BUFSIZE          63 /* TODO: Change to 64 and refactor accordingly. */
 
 #define MIME_TYPE_TEXT        0
 #define MIME_TYPE_MULTIPART   1
@@ -160,6 +160,9 @@ int libmime_ContentExtension(char *str, int type, char *subtype);
 void* libmime_xhLookup(pXHashTable this, char* key);
 int libmime_xhAdd(pXHashTable this, char* key, char* data);
 int libmime_xhDeInit(pXHashTable this);
+int libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek);
+int libmime_internal_MakeARandomFilename(char* name, int len);
+
 
 /** mime_attributes.c **/
 int libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd, int nameOffset);
@@ -202,7 +205,7 @@ int libmime_ClearAttr(char* attr_c, void* arg);
 int libmime_ClearParam(char* param_c, void* arg);
 int libmime_ClearSpecials(pTObjData ptod);
 
-int libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramName, int type, pObjData val);
+int libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramName, int datatype, pObjData val);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();

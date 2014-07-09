@@ -73,7 +73,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     int flag, toktype, alloc, len;
     XString xsbuf;
     char *hdrnme, *hdrbdy;
-    long attrSeekStart = start, attrSeekEnd, nameOffset;
+    long attrSeekStart = start, attrSeekEnd = start, nameOffset;
 
     /** Initialize the message structure **/
     libmime_CreateStringAttr(msg, "Content-Type", NULL, "text/plain", 0);
@@ -89,6 +89,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	}
 
     mlxSetOffset(lex, start);
+
     flag = 1;
     while (flag)
 	{
@@ -135,9 +136,10 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 
 	    /** Get the offset at the beginning of the next attribute. **/
 	    attrSeekStart = attrSeekEnd;
-	    msg->HdrSeekEnd = attrSeekEnd;
 	    }
 	xsDeInit(&xsbuf);
+
+	msg->HdrSeekEnd = attrSeekEnd;
 	}
 
     /** Set the start and end offsets for the message **/
@@ -452,7 +454,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     int flag=1, alloc, toktype, p_count=0, count=0, s=0, num=0;
     int l_pos=0;
     char bound[80], bound_end[82], ext[5], buf[80];
-    char* sub_type;
+    char* sub_type = NULL;
     int main_type;
 
     if (!lex)

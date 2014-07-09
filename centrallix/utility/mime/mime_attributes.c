@@ -525,10 +525,11 @@ libmime_GetMimeParam(pMimeHeader this, char* attr, char* param)
     pMimeAttr attrStruct;
 
 	attrStruct = libmime_GetMimeAttr(this, attr);
-	if (!attrStruct)
-	    {
-	    return NULL;
-	    }
+
+	/** Makes sure the struct exists, and that
+	 ** we don't look for a param in an uninitialized hash.
+	 **/
+	if (!attrStruct || !attrStruct->Params.nRows) return NULL;
 
     return (pMimeParam)libmime_xhLookup(&attrStruct->Params, param);
     }
@@ -1045,7 +1046,7 @@ libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramNam
 	    }
 	else
 	    {
-	    xsConcatPrintf(&output, " %s=%s;", paramName, data.String);
+	    xsConcatPrintf(&output, " %s=%s", paramName, data.String);
 	    }
 
 	/** Add the new attribute to the header. **/

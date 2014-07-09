@@ -390,5 +390,79 @@ libmime_xhDeInit(pXHashTable this)
     return 0;
     }
 
+/*** libmime_SaveTemporaryFile - Write the temp file.
+ ***/
+int
+libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
+    {
+    pPathname path = NULL;
+    char buf[MIME_BUFSIZE+1];
+    pObjSession session = NULL;
+    XString amendedPath;
 
+	/** Allocate our local path. **/
+	path = (pPathname)nmMalloc(sizeof(Pathname));
+	if (!path)
+	    {
+	    mssError(1, "MIME", "Could not allocate the pathname.");
+	    goto error;
+	    }
+	memset(path, 0, sizeof(Pathname));
 
+	/** Copy the object's path into our local path. **/
+	obj_internal_CopyPath(path, obj->Pathname);
+
+	/** Get the session. **/
+	session = obj->Session;
+
+	/** Get the path. **/
+	path = obj_internal_PathPart(path, 0, obj->SubPtr);
+	if (!path)
+	    {
+	    mssError(1, "MIME", "Could not copy pathname.");
+	    goto error;
+	    }
+
+	xsInit(&amendedPath);
+	xsConcatPrintf(&amendedPath, "%s?ls__type=application%%2foctetstream", path->Pathbuf);
+
+	/** Copy the file. **/
+	memset(buf, 0, MIME_BUFSIZE + 1);
+	fdRead(fd, NULL, 0, truncSeek, FD_U_SEEK) > 0;
+	objWrite(obj->Prev, 0, 0, truncSeek, OBJ_U_SEEK | OBJ_U_TRUNCATE);
+	while (fdRead(fd, buf, MIME_BUFSIZE, 0, 0) > 0)
+	    {
+	    objWrite(obj->Prev, buf, strlen(buf), 0, OBJ_U_TRUNCATE);
+	    memset(buf, 0, MIME_BUFSIZE + 1);
+	    }
+
+	/** Deallocate the pathname. **/
+	nmFree(path, sizeof(Pathname));
+	xsDeInit(&amendedPath);
+
+    return 0;
+
+    error:
+	if (path) nmFree(path, sizeof(Pathname));
+	xsDeInit(&amendedPath);
+
+	return -1;
+    }
+
+/***
+ *** libmime_internal_MakeARandomFilename - Append on random chars to name.
+ ***/
+int
+libmime_internal_MakeARandomFilename(char* name, int len)
+    {
+    int i;
+    int nameLen = strlen(name);
+
+	for (i = nameLen; i < nameLen + len; i++)
+	    {
+	    name[i] = 'a' + (random() % 26);
+	    }
+	name[i] = '\0';
+
+    return 0;
+    }
