@@ -484,6 +484,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pMimeParam param = NULL;
     char *local_attrname = NULL;
     char *attrName = NULL, *paramName = NULL;
+    int ret;
 
 	/** Create a local copy of the attrname parameter so we can modify it. **/
 	local_attrname = nmSysStrdup(attrname);
@@ -504,33 +505,34 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrName);
 	if (!attr)
 	    {
-	    if (!strcmp(attrname, "name")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
-	    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
-
-	    return DATA_T_STRING;
+	    ret = DATA_T_STRING;
 	    }
-
-	/** If no parameter was specified, return data about the attribute. **/
-	if (!paramName)
+	else
 	    {
-	    return attr->Ptod->DataType;
+	    /** If no parameter was specified, return data about the attribute. **/
+	    if (!paramName)
+		{
+		ret = attr->Ptod->DataType;
+		}
+	    else
+		{
+		/** Get the indicated parameter. **/
+		param = libmime_GetMimeParam(inf->Header, attrName, paramName);
+		if (!param)
+		    {
+		    ret = DATA_T_STRING;
+		    }
+		else
+		    {
+		    ret = param->Ptod->DataType;
+		    }
+		}
 	    }
-
-	/** Get the indicated parameter. **/
-	param = (pMimeParam)libmime_xhLookup(&attr->Params, paramName);
-	if (!param)
-	    {
-	    goto error;
-	    }
-
 	/** Free the local copy of attrname. **/
 	nmSysFree(local_attrname);
 
     /** Return the apropriate data type. **/
-    return param->Ptod->DataType;
+    return ret;
 
     error:
 	if (local_attrname)
@@ -665,7 +667,8 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	attr = (pMimeAttr)inf->CurrAttr->Data;
 
 	/** Handle special attributes. **/
-	if (!strcasecmp(attr->Name, "Content-Type"))
+	if (!strcasecmp(attr->Name, "Content-Type") ||
+		!strcasecmp(attr->Name, "Name"))
 	    {
 	    return mimeGetNextAttr(inf_v, oxt);
 	    }
