@@ -398,7 +398,6 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
     pPathname path = NULL;
     char buf[MIME_BUFSIZE+1];
     pObjSession session = NULL;
-    XString amendedPath;
 
 	/** Allocate our local path. **/
 	path = (pPathname)nmMalloc(sizeof(Pathname));
@@ -423,9 +422,6 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
 	    goto error;
 	    }
 
-	xsInit(&amendedPath);
-	xsConcatPrintf(&amendedPath, "%s?ls__type=application%%2foctetstream", path->Pathbuf);
-
 	/** Copy the file. **/
 	memset(buf, 0, MIME_BUFSIZE + 1);
 	fdRead(fd, NULL, 0, truncSeek, FD_U_SEEK) > 0;
@@ -438,13 +434,11 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
 
 	/** Deallocate the pathname. **/
 	nmFree(path, sizeof(Pathname));
-	xsDeInit(&amendedPath);
 
     return 0;
 
     error:
 	if (path) nmFree(path, sizeof(Pathname));
-	xsDeInit(&amendedPath);
 
 	return -1;
     }

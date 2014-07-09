@@ -380,7 +380,191 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 int
 mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
+    pMimeInfo inf = MIME(inf_v);
+
+    char* messageName = NULL;
+    XString messageFileName;
+    pFile messageFile = NULL;
+
+    char* rootName = NULL;
+    XString rootFileName;
+    pFile rootFile = NULL;
+
+    char* fileHash = NULL;
+    char buf [MIME_BUFSIZE+1];
+    long readSize, currentOffset, targetOffset;
+    int internalSeek;
+
+	/** Cache the internal seek. **/
+	internalSeek = inf->InternalSeek;
+
+	/** Generate a unique hash for the temporary message file. **/
+	fileHash = (char*)nmSysMalloc(sizeof(char) * 9);
+	if (!fileHash) return -1;
+	memset(fileHash, 0, sizeof(char) * 9);
+	libmime_internal_MakeARandomFilename(fileHash, 8);
+
+	/** Get the name of the message. **/
+	libmime_GetStringAttr(inf->Header, "Name", NULL, &messageName);
+
+	/** Build the name of the temporary message file. **/
+	xsInit(&messageFileName);
+	xsConcatPrintf(&messageFileName, "/tmp/%s%s", messageName, fileHash);
+
+	/** Create the temporary message file. **/
+	messageFile = fdOpen(messageFileName.String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+	if (!messageFile)
+	    {
+	    mssError(1, "MIME", "Could not create temporary file.");
+	    return -1;
+	    }
+
+	/** Seek to the beginning of the message contents. **/
+	objRead(inf->Obj, NULL, 0, 0, FD_U_SEEK);
+	currentOffset = inf->Header->MsgSeekStart;
+	targetOffset = inf->Header->MsgSeekEnd;
+
+	/** Copy the message contents into the temporary file. **/
+	for (readSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE);
+		readSize > 0;
+		readSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
+	    {
+	    memset(buf, 0, MIME_BUFSIZE + 1);
+	    currentOffset += objRead(inf->Obj, buf, MIME_BUFSIZE, 0, 0);
+
+	    if (fdWrite(messageFile, buf, strlen(buf), 0, 0) < 0)
+		{
+		mssError(1, "MIME", "Unable to copy message contents to temporary file.");
+		return -1;
+		}
+	    }
+
+	/** Set the internal seek to the indicated offset if seeking. **/
+	if (flags & OBJ_U_SEEK)
+	    {
+	    inf->InternalSeek = offset;
+	    }
+	/** Otherwise, seek to the previous file location. **/
+	else
+	    {
+	    inf->InternalSeek = internalSeek; /* Be kind. Rewind! */
+	    fdWrite(messageFile, NULL, 0, inf->InternalSeek, FD_U_SEEK);
+	    }
+
+	/** Write to the temporary file as indicated by the function arguments. **/
+	inf->InternalSeek += fdWrite(messageFile, buffer, cnt, offset, flags);
+
+	/** Get the name of the entire Mime file. **/
+	libmime_GetStringAttr(inf->MessageRoot, "Name", NULL, &rootName);
+
+	/** Generate a new file hash for the new temporary file. **/
+	memset(fileHash, 0, 9);
+	libmime_internal_MakeARandomFilename(fileHash, 8);
+
+	/** Build the name of the temporary file to store the entire Mime file. **/
+	xsInit(&rootFileName);
+	xsConcatPrintf(&rootFileName, "/tmp/%s%s", rootName, fileHash);
+
+	/** Open a temporary file to compile the entire Mime file. **/
+	rootFile = fdOpen(rootFileName.String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+
+	/** Seek to the beginning of the Mime file. **/
+	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
+
+	/** Set the offset variables to read to the beginning of the message. **/
+	currentOffset = 0;
+	targetOffset = inf->Header->MsgSeekStart;
+
+	/** Copy the pre-message contents of the Mime file into the temporary file. **/
+	for (readSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE);
+		readSize > 0;
+		readSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
+	    {
+	    memset(buf, 0, MIME_BUFSIZE);
+	    currentOffset += objRead(inf->Obj->Prev, buf, readSize, 0, 0);
+
+	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
+		{
+		mssError(1, "MIME", "Unable to copy pre-message contents to temporary file.");
+		return -1;
+		}
+	    }
+
+	/** Seek to the beginning of the temporary message file. **/
+	fdWrite(messageFile, NULL, 0, 0, FD_U_SEEK);
+
+	/** Copy the contents of the temporary message file into the compiling file. **/
+	memset(buf, 0, MIME_BUFSIZE);
+	readSize = fdRead(messageFile, buf, MIME_BUFSIZE, 0, 0);
+	currentOffset += readSize;
+	while (readSize > 0)
+	    {
+	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
+		{
+		mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
+		return -1;
+		}
+
+	    memset(buf, 0, MIME_BUFSIZE);
+
+	    readSize = fdRead(messageFile, buf, MIME_BUFSIZE, 0, 0);
+	    currentOffset += readSize;
+	    }
+
+	/** Add a newline to the end of the message. **/
+	//currentOffset += fdWrite(rootFile, "\n", 1, 0, 0);
+
+	/** Seek to the end of the message in the Mime file. **/
+	objRead(inf->Obj->Prev, NULL, 0, inf->Header->MsgSeekEnd, FD_U_SEEK);
+
+	/** Copy the post-message contents of the Mime file into the temporary file. **/
+	memset(buf, 0, MIME_BUFSIZE);
+	while (objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+	    {
+	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
+		{
+		mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
+		return -1;
+		}
+	    memset(buf, 0, MIME_BUFSIZE);
+	    }
+
+	/** Recalculate the offset at the end of the message. **/
+	inf->Header->MsgSeekEnd = currentOffset;
+
+	/** Write the changes back to the Object System. **/
+	libmime_SaveTemporaryFile(rootFile, inf->Obj, inf->Header->MsgSeekStart);
+
+	/** Close the files. **/
+	fdClose(rootFile, 0);
+	fdClose(messageFile, 0);
+
+	/** Delete the temporary files. **/
+	if (remove(rootFileName.String))
+	    {
+	    mssError(1, "MIME", "Unable to delete the temporary compiling file.");
+	    }
+
+	if (remove(messageFileName.String))
+	    {
+	    mssError(1, "MIME", "Unable to delete the temporary message file.");
+	    }
+
+	/** Deinitialize some stuffz. **/
+	xsDeInit(&rootFileName);
+	nmSysFree(fileHash);
+
     return 0;
+
+    error:
+	if (fileHash) nmSysFree(fileHash);
+	if (messageFile) fdClose(messageFile, 0);
+	if (rootFile) fdClose(rootFile, 0);
+
+	xsDeInit(&messageFileName);
+	xsDeInit(&rootFileName);
+
+	return -1;
     }
 
 
