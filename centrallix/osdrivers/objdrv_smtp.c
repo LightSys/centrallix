@@ -120,7 +120,7 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
     pSmtpAttribute inf = SMTP_ATTR(inf_c);
 
 	nmFree(inf, sizeof(SmtpAttribute));
-	
+
     return 0;
     }
 
@@ -148,7 +148,7 @@ smtp_internal_CreateAttribute(char* name, int type, int intVal, char* strVal, pO
 	    {
 	    inf->Value = *value;
 	    }
-    
+
     return inf;
     }
 
@@ -282,7 +282,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
     {
     pSnNode node = NULL;
 
-	
+
 	/** Try to open the root node first. **/
 	if (!node)
 	    {
@@ -311,7 +311,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    {
 	    node = smtp_internal_CreateRootNode(inf->Obj, inf->Mask);
 	    }
-	
+
 	/** If _still_ no node, quit out. **/
 	if (!node)
 	    {
@@ -443,7 +443,7 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    mssError(1, "SMTP", "Could not open email structure file (%s).", emailStructurePath->String);
 	    goto error;
 	    }
-	
+
 	/** Parse the structure file. **/
 	emailStructure = stParseMsg(emailStructureFile, 0);
 	if (!emailStructure)
@@ -498,7 +498,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		{
 		goto error;
 		}
-		
+
 	    if (smtp_internal_OpenRoot(inf))
 		{
 		goto error;
@@ -513,7 +513,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		{
 		goto error;
 		}
-		
+
 	    if (smtp_internal_OpenEml(inf))
 		{
 		goto error;
@@ -719,7 +719,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    mssError(1, "SMTP", "Unable to query on system/smtp-message type objects");
 	    goto error;
 	    }
-	
+
     error:
 	if (qy)
 	    {
@@ -814,7 +814,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pSmtpData inf = NULL;
     pSmtpAttribute attr = NULL;
-	
+
 	/** If the attribute does not exist, return no type. **/
 	if (!inf_v)
 	    {
@@ -829,7 +829,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
 	if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
-	
+
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	if (attr)
@@ -909,7 +909,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	    return 0;
 	    }
-	
+
 	if (!strcmp(attrname, "annotation"))
 	    {
 	    if (datatype != DATA_T_STRING)
@@ -920,7 +920,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    val->String = "";
 	    return 0;
 	    }
-	
+
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	if (attr)
@@ -960,7 +960,7 @@ char*
 smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
-	
+
 	inf->CurAttr = 0;
 
         return smtpGetNextAttr(inf_v, oxt);
@@ -1002,7 +1002,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		goto error;
 		}
 	    }
-	
+
 	/** Check the requested datatype. **/
 	if (attr->Type != datatype)
 	    {
@@ -1103,7 +1103,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		mssError(1, "SMTP", "Could not open email structure file (%s).", emlStructPath->String);
 		goto error;
 		}
-	    
+
 	    /** Parse the structure file. **/
 	    emlStruct = stParseMsg(emlStructFile, 0);
 	    if (!emlStruct)
@@ -1282,7 +1282,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		mssError(1, "SMTP", "Could not open email structure file (%s).", emlStructPath->String);
 		goto error;
 		}
-	    
+
 	    /** Parse the structure file. **/
 	    emlStruct = stParseMsg(emlStructFile, 0);
 	    if (!emlStruct)
@@ -1298,7 +1298,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		mssError(1, "SMTP", "Could not add attribute to the email struct.");
 		goto error;
 		}
-	    
+
 	    /** Set the default attribute value. **/
 	    if (stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0))
 		{
