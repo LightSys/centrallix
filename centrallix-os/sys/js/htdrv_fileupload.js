@@ -47,7 +47,40 @@ function fu_prompt()
 function fu_submit()
 	{
 	if(this.value != '')
-		this.pane.submit();
+        {
+            var wgt = this;
+            var form = new FormData();
+            for(var i = 0; i < this.input.files.length; i++)
+                form.append('file', this.input.files[i]);
+            
+            $.ajax({
+            type: "POST",
+            url: wgt.url,
+            data: form,
+            cache: false,
+            dataType: 'json',
+            processData: false,
+            contentType: false,
+            success: function(json)
+                {
+                alert('success');
+                wgt.oldvalue = wgt.input.value;
+                wgt.value = '';
+                wgt.pane.reset();
+                
+                var data = {};
+                for(var i = 0; i < json.length; i++)
+                    {
+                    data['OrigName' + (i+1)] = json[i]['fn'];
+                    data['NewName' + (i+1)] = json[i]['up'];
+                    }
+                
+                cn_activate(wgt, 'DataChange', {NewValue:"", OldValue:wgt.input.oldvalue});
+                cn_activate(wgt, 'Success', data);
+                },
+            error: function(){alert('error')}
+            });
+        }
 	}
 	
 function fu_init(param)
@@ -66,6 +99,9 @@ function fu_init(param)
 	htr_init_layer(layer, layer.input, "fu");
 	ifc_init_widget(layer);
 
+    
+    layer.url = "?cx__akey="+akey + "&target="+htutil_escape(layer.target);
+    
 	if (param.form)
 	layer.form = wgtrGetNode(layer, param.form);
     else
@@ -75,6 +111,7 @@ function fu_init(param)
 	//Events
 	var ie = layer.ifcProbeAdd(ifEvent);
 	ie.Add("DataChange");
+	ie.Add("Complete");
 	ie.Add("Change");
 	
 	//Actions

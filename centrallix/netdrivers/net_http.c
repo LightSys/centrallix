@@ -5,6 +5,7 @@
 #include "ctype.h"
 #include "stdlib.h"
 #include "errno.h"
+#include "unistd.h"
 
 /************************************************************************/
 /* Centrallix Application Server System                 */
@@ -976,33 +977,49 @@ nht_internal_Hex16ToInt(char* hex)
  *** The request includes one or more files.  This function needs to be
  *** called once for each file recieved and -not- per request.  Payload
  *** contains relevant info about the given file and a pointer to the file on disk.
- *** Returns -1 for failure, 1 for end of stream, and 0 to signal more files in the stream.
+ *** Returns the payload struct.
  ***/
-int
-nht_internal_ParsePostPayload(pNhtPostPayload payload, pNhtConn conn)
+pNhtPostPayload
+nht_internal_ParsePostPayload(pNhtConn conn)
     {
     char hex_chars[] = "0123456789abcdef";
     char token[512];
-    char name[33];
+    char name[16];
     char *ptr;
     int length;
     int fd;
     int i;
     int extStart;
+    pNhtPostPayload payload = (pNhtPostPayload) malloc(sizeof *payload);
     
     //Remove the boundary line and test to see if the stream is empty
-    length = nht_internal_NextLine(token, conn, 512);
-    if(length <= 0) return 1; //Signals end of stream
+    length = nht_internal_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+        {
+        payload->status = 1;
+        return payload; //Signals end of stream
+        }
     if(strncmp(token, "--", 2) != 0 || strncmp(token + 2, conn->RequestBoundary, strlen(conn->RequestBoundary)) != 0) //Verifying data is formatted the way I hope it is :p
-        return -1;
+        {
+        payload->status = -1;
+        return payload; //Error
+        }
         
-    length = nht_internal_NextLine(token, conn, 512);
-    if(length <= 0) return -1; //Error
-    
+    length = nht_internal_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+        {
+        payload->status = -1;
+        return payload; //Error
+        }
+        
     //find the filename property and copy it to payload
     ptr = strstr(token, "filename");
     ptr = strchr(ptr, '\"');
-    if(ptr == NULL) return -1;
+    if(ptr == NULL)
+        {
+        payload->status = -1;
+        return payload; //Error
+        }
     ptr++;
     
     extStart = 0;
@@ -1015,19 +1032,21 @@ nht_internal_ParsePostPayload(pNhtPostPayload payload, pNhtConn conn)
     
     //Copy the extension to payload
     ptr = payload->filename + extStart;
-    for(i=0; ptr[i] != '\0' && i < 16; i++)
+    for(i=0; ptr[i] != '\0' && i < sizeof payload->extension; i++)
         {
         payload->extension[i] = ptr[i];
         }
     payload->extension[i] = '\0';
     
-    //find the "ContentType" which seems to be the MIME type.  This may possibly be useful.
-    length = nht_internal_NextLine(token, conn, 512);
-    if(length <= 0) return -1; //Error
-    
+    //find the "ContentType" which seems to be the MIME type.  This may possibly be sorta useful sometime in the future.  Maybe...
+    length = nht_internal_NextLine(token, conn, sizeof token);
     ptr = strstr(token, "Content-Type:");
     ptr = strchr(ptr, ' ');
-    if(ptr==NULL) return -1;
+    if(length <= 0 || ptr ==NULL)
+        {
+        payload->status = -1;
+        return payload; //Error
+        }
     ptr++;
     
     for(i=0; ptr[i] != '\r' && ptr[i] != '\n' && ptr[i] != '\0'; i++)
@@ -1039,36 +1058,91 @@ nht_internal_ParsePostPayload(pNhtPostPayload payload, pNhtConn conn)
     //Generate a random name for the file.
     while(1)
         {
-        for(i=0; i<31; i++)
+        for(i=0; i< (sizeof name) - 1; i++)
             {
-            name[i] = hex_chars[rand() % 16];
+            name[i] = hex_chars[rand() % (sizeof hex_chars)];
             }
         name[i] = '\0';
         
         //Append the extention to the unique name and store it in payload
-        snprintf(payload->unique_path, sizeof(payload->unique_path), "/tmp/%s%s", name, payload->extension);
-        
+        snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
+        snprintf(payload->path, sizeof (payload->path), "/var/tmp/");
+        snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s%s", payload->path, payload->newname);
         //Try to create the file.  It will fail if the file already exists.
         /*** Actually creating the file prevents race conditions that can occur if we only
          *** checked for the file here. i.e. the file could otherwise be created between
          *** the time we check and the time we actually open the file.
          ***/
-        fd = open(payload->unique_path, O_CREAT | O_RDWR | O_EXCL);
+        fd = open(payload->full_new_path, O_CREAT | O_RDWR | O_EXCL);
         if (fd>=0)
             {
             fchmod(fd, 0660);
             close(fd);
-            //printf("Created new file named %s.\n", payload->unique_path);
+            //printf("Created new file named %s.\n", payload->full_new_path);
             break;
             }
         else
             {
-            //printf("File %s already exists.  Creating new name.\n", payload->unique_path);
+            //printf("File %s already exists.  Creating new name.\n", payload->full_new_path);
             }
         }
-    
+        
     //Read in the data and store into a file.
     nht_internal_StoreFile(payload, conn);
+    
+    payload->status = 0;
+    return payload;
+    }
+
+/*** nht_internal_StoreFile - stores file contents from incoming
+ *** connection into to a file.  
+ ***/
+int
+nht_internal_StoreFile(pNhtPostPayload payload, pNhtConn conn)
+    {
+    pFile file;
+    char buffer[2048];
+    char *ptr, *half;
+    int length, start;
+    int offset = 1024;
+    
+    file = fdOpen(payload->full_new_path, O_RDWR | O_CREAT | O_TRUNC, 0660);
+    if(!file)
+        {
+        mssErrorErrno(1,"CX","Unable to open output file '%s'",payload->full_new_path);
+        }
+    start = 4;
+    length = fdRead(conn->ConnFD, buffer, sizeof buffer, 0, 0);
+    half = buffer + offset;
+    while(1)
+        {
+        ptr = memstr(buffer, conn->RequestBoundary, sizeof buffer);
+        if(!ptr)
+            {
+            if(length < sizeof buffer)
+                {
+                length += fdRead(conn->ConnFD, buffer + length, sizeof buffer - length, 0, 0);
+                }
+            else
+                {
+                fdWrite(file, buffer+start, offset-start, 0, 0);
+                memcpy(buffer, half, offset);
+                memset(half, 0, offset);
+                length = offset + fdRead(conn->ConnFD, half, offset, 0, 0);
+                start = 0;
+                }
+            }
+        else
+            {
+            fdWrite(file, buffer+start, (ptr - buffer - 4) - start, 0, 0); //The 4 chars between boundary and EOF should be "\r\n--"
+            fdUnRead(conn->ConnFD, ptr - 4, length - (ptr - buffer - 4), 0, 0); //Unread remainder of data.
+            start = 0;
+            break;
+            }
+            
+        }
+    fdClose(file, 0);
+    printf("\n");
     return 0;
     }
     
@@ -1087,7 +1161,7 @@ nht_internal_NextLine(char * token, pNhtConn conn, int size)
     
     start = -1;
     end = -1;
-    length = fdRead(conn->ConnFD, buffer, 2047, 0, FD_U_NOBLOCK);
+    length = fdRead(conn->ConnFD, buffer, (sizeof buffer) - 1, 0, FD_U_NOBLOCK);
     
     for(i = 0; i < length; i++)
         {
@@ -1106,7 +1180,7 @@ nht_internal_NextLine(char * token, pNhtConn conn, int size)
         }
     if(start >= 0 && end < 0)
         {
-        if(length < 2047) //Max size wasn't read; means end of stream.
+        if(length < (sizeof buffer) - 1) //Max size wasn't read; means end of stream.
             {
             end = length;
             }
@@ -1122,67 +1196,7 @@ nht_internal_NextLine(char * token, pNhtConn conn, int size)
     strncpy(token, buffer + start , size); //Copy relevant data into token.
     token[size] = '\0';
     fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread extra data.
-    return end-start;
-    }
-
-/*** nht_internal_StoreFile - stores file contents from incoming
- *** connection into to a file.  
- ***/
-int
-nht_internal_StoreFile(pNhtPostPayload payload, pNhtConn conn)
-    {
-    pFile file;
-    char buffer[2048];
-    char *ptr;
-    int length;
-    int start,end;
-    int i;
-    
-    start = -1;
-    length = fdRead(conn->ConnFD, buffer, 2047, 0, 0);
-    
-    for(i = 0; i < length; i++)
-        {
-        if(start == -1 && !(buffer[i] == '\r' || buffer[i] == '\n'))
-            {
-            start = i;
-            break;
-            }
-        }
-    if(start==-1) return -1;
-        
-    ptr = strstr(buffer, conn->RequestBoundary);
-    if(ptr > buffer + length || ptr < buffer) end = length;
-    else end = ptr - buffer - 4;
-    buffer[end] = '\0';
-    file = fdOpen(payload->unique_path, O_RDWR | O_CREAT | O_TRUNC, 0660);
-    if(!file)
-        {
-        mssErrorErrno(1,"CX","Unable to open output file '%s'",payload->unique_path);
-        }
-    fdWrite(file, buffer+start, end-start, 0, 0);
-    
-    //Write to the buffer until boundary (signifies end of file).
-    length = fdRead(conn->ConnFD, buffer, 2047, 0, FD_U_NOBLOCK);
-    while(length > 0)
-        {
-        ptr = strstr(buffer, conn->RequestBoundary);
-        if(ptr > buffer + length || ptr < buffer) end = length; //if buffer doesn't contain boundary
-        else
-            {
-            end = ptr - buffer - 4; //Set end to before boundary
-            fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread remainder of data.
-            length = -1;
-            }
-        buffer[end] = '\0';
-        
-        fdWrite(file, buffer, end, 0, 0);
-        if(length == -1) break; //if end of current file.
-        length = fdRead(conn->ConnFD, buffer, 2047, 0, FD_U_NOBLOCK);
-        }
-    fdClose(file, 0);
-    payload->file = file;
-    return 0;
+    return size;
     }
     
 /*** nht_internal_POST - handle the HTTP POST method.
@@ -1192,59 +1206,109 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
-    NhtPostPayload payload;
-    int index;
+    pFile file;
+    pObject obj;
+    pNhtPostPayload payload;
     struct tm* thetime;
     time_t tval;
     char tbuf[32];
+    char json[2048];
+    char buffer[2048];
+    int json_length = 0;
+    int length;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
-    
-    
     /** app key must be specified for all POST operations. **/
     find_inf = stLookup_ne(url_inf,"cx__akey");
-    //This won't work until I add the cx_akey as a parameter through the file upload widget.
-    /*if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+    
+    if (!(find_inf && nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0))
         {
+        tval = time(NULL);
+        thetime = gmtime(&tval);
+        strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
         fdPrintf(conn->ConnFD,"HTTP/1.0 403 FORBIDDEN\r\n"
              "Date: %s GMT\r\n"
              "Server: %s\r\n",
              tbuf, NHT.ServerString);
         
         return -1;
-        }//*/
+        }
+        
+    find_inf = NULL;
+    find_inf = stLookup_ne(url_inf,"target");
+    if(!find_inf)
+        {
+        tval = time(NULL);
+        thetime = gmtime(&tval);
+        strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+        fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
+             "Date: %s GMT\r\n"
+             "Server: %s\r\n",
+             tbuf, NHT.ServerString);
+        
+        return -1;
+        }
+    
+    json[0] = '\0';
+    //Keep parsing files until stream is empty.
+    while(1)
+        {
+        payload = nht_internal_ParsePostPayload(conn);
+        
+        if(payload->status == 0)
+            {
+            json_length += snprintf(json+json_length, (sizeof json) - 1 - json_length, "{\"fn\":\"%s\",\"up\":\"%s\"},", payload->filename, payload->full_new_path);
+            
+            //Copy file into object system
+            file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
+            snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
+            obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
+            while(1)
+                {
+                length = fdRead(file, buffer, sizeof buffer, 0, 0);
+                objWrite(obj, buffer, length, 0, 0);
+                if(length < sizeof buffer) break;
+                }
+            objClose(obj);
+            fdClose(file, 0);
+            unlink(payload->full_new_path);
+            }
+        else
+            {
+            if(json_length < (sizeof json) - 1) json[json_length-1] = '\0'; //Null terminate + get rid of last ','
+            break;
+            }
+        }
     
     if (nsess->IsNewCookie)
         {
         tval = time(NULL);
         thetime = gmtime(&tval);
-        strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+        strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
         fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
              "Date: %s GMT\r\n"
              "Server: %s\r\n"
-             "Set-Cookie: %s; path=/\r\n", 
-             tbuf, NHT.ServerString, nsess->Cookie);
+             "Set-Cookie: %s; path=/\r\n"
+             "Content-Type: application/json\r\n"
+             "\r\n"
+             "[%s]", 
+             tbuf, NHT.ServerString, nsess->Cookie, json);
+        nsess->IsNewCookie = 0;
         }
     else
         {
         tval = time(NULL);
         thetime = gmtime(&tval);
-        strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+        strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
         fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
              "Date: %s GMT\r\n"
-             "Server: %s\r\n",
-             tbuf, NHT.ServerString);
+             "Server: %s\r\n"
+             "Content-Type: application/json\r\n"
+             "\r\n"
+             "[%s]",
+             tbuf, NHT.ServerString, json);
         }
-        
-    while(1)
-        {
-        index = nht_internal_ParsePostPayload(&payload, conn);
-        
-        printf("index:%d\n", index);
-        if(index == -2 || index == -1)
-            break;
-        }
-        
+
     return 0;
     }
 

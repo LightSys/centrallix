@@ -62,10 +62,10 @@ CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PRO
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g -O0
 TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
 
-XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o
+XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
 
-XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo smmalloc.lo qprintf.lo strtcpy.lo util.lo
+XDYNAMICFILES=mtask.lo mtlexer.lo memstr.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo smmalloc.lo qprintf.lo strtcpy.lo util.lo
 DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 
 INCLUDEFILES:=$(wildcard include/*.h)

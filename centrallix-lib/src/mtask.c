@@ -2438,6 +2438,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     int rval = -1;
     int code;
     int eno;
+    int length;
 
 	//printf("reading %i from %08x(%08x--%08x) to %08x with %08x\n",maxlen,(int)filedesc,(int)filedesc->FD,(int)filedesc->Flags,(int)buffer,flags);
     	/** If closing, cant read **/
@@ -2450,12 +2451,19 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 	/** Check the unread-buffer first. **/
 	if (filedesc->UnReadLen > 0)
 	    {
-	    if (maxlen > filedesc->UnReadLen) maxlen = filedesc->UnReadLen;
-	    memcpy(buffer, filedesc->UnReadPtr, maxlen);
-	    filedesc->UnReadLen -= maxlen;
-	    filedesc->UnReadPtr += maxlen;
-	    return maxlen;
-	    }
+	    if (maxlen > filedesc->UnReadLen) length = filedesc->UnReadLen;
+        else length = maxlen;
+	    memcpy(buffer, filedesc->UnReadPtr, length);
+	    filedesc->UnReadLen -= length;
+	    filedesc->UnReadPtr += length;
+        
+        if(maxlen > length)
+            {
+            maxlen = fdRead(filedesc, buffer + length, maxlen - length, 0, FD_U_NOBLOCK);
+            return length + maxlen;
+            }
+        return length;
+        }
 
     	/** If filedesc not listed as blocked, try reading now. **/
     	if (!(filedesc->Flags & FD_F_RDBLK) && !(filedesc->Flags & FD_UF_BLOCKINGIO))
