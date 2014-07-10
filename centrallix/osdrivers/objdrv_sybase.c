@@ -81,7 +81,7 @@ const unsigned short int* __ctype_b;
 
 /*** Module Controls ***/
 #define SYBD_USE_CURSORS	1	/* use cursors for all multirow SELECTs */
-#define SYBD_CURSOR_ROWCOUNT	20	/* # of rows to fetch at a time */
+#define SYBD_CURSOR_ROWCOUNT	50	/* # of rows to fetch at a time */
 #define SYBD_SHOW_SQL		0	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
@@ -390,6 +390,21 @@ sybd_internal_Close(CS_COMMAND* cmd)
     }
 
 
+/*** sybd_internal_GetError() - gets the error message that the server
+ *** or client library returned for a given connection.
+ ***/
+int
+sybd_internal_GetError(CS_CONNECTION* s, int* errcode, char* errtxt, int maxlen)
+    {
+    CS_RETCODE rval;
+    CS_SERVERMSG smsg;
+    CS_CLIENTMSG cmsg;
+    
+
+    return 0;
+    }
+
+
 /*** sybd_internal_GetConn - obtains a database connection within a 
  *** given database node.
  ***/
@@ -496,6 +511,11 @@ sybd_internal_GetConn(pSybdNode db_node)
 	gethostname(sbuf,63);
 	sbuf[63]=0;
 	ct_con_props(conn->SessionID, CS_SET, CS_HOSTNAME, sbuf, CS_NULLTERM, NULL);
+#if 00 /* locking */
+	ct_diag(conn->SessionID, CS_INIT, CS_UNUSED, CS_UNUSED, NULL);
+	i = 24;
+	ct_diag(conn->SessionID, CS_MSGLIMIT, CS_ALLMSG_TYPE, CS_UNUSED, &i);
+#endif
 	if (ct_connect(conn->SessionID, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
 	    {
 	    /** attempt to connect with default password, and then set password **/
@@ -525,6 +545,22 @@ sybd_internal_GetConn(pSybdNode db_node)
 		sybd_internal_Close(cmd);
 		}
 	    }
+
+#if 00 /* locking */
+	/** Set lock wait to 1 second so we can retry on our side and avoid deadlocks **/
+	cmd = sybd_internal_Exec(conn->SessionID, "set lock wait 1");
+	while((rval=ct_results(cmd, (CS_INT*)&i)))
+	    {
+	    if (rval == CS_FAIL)
+		{
+		mssError(1,"SYBD","Warning: could not set lock wait timer; deadlock protection will be disabled", db_node->Database);
+		break;
+		}
+	    if (rval == CS_END_RESULTS || i == CS_CMD_DONE)
+		break;
+	    }
+	sybd_internal_Close(cmd);
+#endif
 
 	/** Do a USE DATABASE only if database was specified in the node. **/
 	if (db_node->Database[0])
@@ -2331,6 +2367,7 @@ sybd_internal_LookupRow(CS_CONNECTION* sess, pSybdData inf)
     char sbuf[256];
     CS_COMMAND* cmd;
     int ncols, i, n, restype;
+    CS_USHORT msgid;
 
 	/** Find a WHERE clause that will retrieve this row, given the row name **/
 	ptr = sybd_internal_FilenameToKey(inf->Node,sess,inf->TablePtr,inf->RowColPtr);
@@ -2338,29 +2375,49 @@ sybd_internal_LookupRow(CS_CONNECTION* sess, pSybdData inf)
 	    return -1;
 
 	/** Run the SQL query **/
-	snprintf(sbuf,sizeof(sbuf),"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
-	if ((cmd=sybd_internal_Exec(sess, sbuf)) == NULL)
+#if 00 /* locking */
+	while(1)
 	    {
-	    mssError(0,"SYBD","Could not retrieve row object [%s] from database table [%s]",
-		    inf->RowColPtr, inf->TablePtr);
-	    return -1;
-	    }
-	cnt = 0;
-	while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
-	    {
-	    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
-	    for(i=0; i < ncols && i < inf->TData->nCols; i++)
-		inf->ColNum[i] = (unsigned char)i;
-	    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
+#endif
+	    snprintf(sbuf,sizeof(sbuf),"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
+	    if ((cmd=sybd_internal_Exec(sess, sbuf)) == NULL)
 		{
-		cnt++;
-
-		/** Good, found the row, let's load it **/
-		if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
-		    return -1;
+		mssError(0,"SYBD","Could not retrieve row object [%s] from database table [%s]",
+			inf->RowColPtr, inf->TablePtr);
+		return -1;
 		}
+	    cnt = 0;
+
+	    /** Fetch result info **/
+	    while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED)
+		{
+		if (restype == CS_ROW_RESULT)
+		    {
+		    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
+		    for(i=0; i < ncols && i < inf->TData->nCols; i++)
+			inf->ColNum[i] = (unsigned char)i;
+		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
+			{
+			cnt++;
+
+			/** Good, found the row, let's load it **/
+			if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
+			    return -1;
+			}
+		    }
+#if 00 /* locking */
+		else if (restype == CS_MSG_RESULT)
+		    {
+		    msgid = 0;
+		    ct_res_info(cmd, CS_MSGTYPE, (CS_VOID*)&msgid, CS_UNUSED, NULL);
+		    if (msgid == 12205)
+		    }
+#endif
+		}
+	    sybd_internal_Close(cmd);
+#if 00 /* locking */
 	    }
-	sybd_internal_Close(cmd);
+#endif
 
     return cnt;
     }

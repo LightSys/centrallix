@@ -1359,6 +1359,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* slashptr;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
+    int rval;
 
     acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1384,123 +1385,125 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 //END INTERNAL handler ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    /** app key specified? **/ //the app key feature is to prevent CSRFing attacks
-    find_inf = stLookup_ne(url_inf,"cx__akey");
-    if (find_inf)
-        {
-        /** VerifyAKey returns success if the session token matches.  We
-         ** need the group and app tokens to match too for full security
-         ** authorization.
-         **/
-        if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
-        {
-        if (group && app) 
-            {
-            cxssAddEndorsement("system:from_application", "*");
-            akey_match = 1;
-            }
-        if (group)
-            {
-            cxssAddEndorsement("system:from_appgroup", "*");
-            }
-        }
-        }
+	/** app key specified? **/ //the app key feature is to prevent CSRFing attacks
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (find_inf)
+	    {
+	    /** VerifyAKey returns success if the session token matches.  We
+	     ** need the group and app tokens to match too for full security
+	     ** authorization.
+	     **/
+	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+		{
+		if (group && app) 
+		    {
+		    cxssAddEndorsement("system:from_application", "*");
+		    akey_match = 1;
+		    }
+		if (group)
+		    {
+		    cxssAddEndorsement("system:from_appgroup", "*");
+		    }
+		}
+	    }
 
-    /** Indicate activity... **/
-    if (!conn->NotActivity)
-        {
-        if (group) objCurrentDate(&(group->LastActivity));
-        if (app) objCurrentDate(&(app->LastActivity));
-        /*if (group) nht_internal_ResetWatchdog(group->InactivityTimer);
-        if (app) nht_internal_ResetWatchdog(app->InactivityTimer);*/
-        }
-    if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
-    if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
+	/** Indicate activity... **/
+	if (!conn->NotActivity)
+	    {
+	    if (group) objCurrentDate(&(group->LastActivity));
+	    if (app) objCurrentDate(&(app->LastActivity));
+	    /*if (group) nht_internal_ResetWatchdog(group->InactivityTimer);
+	    if (app) nht_internal_ResetWatchdog(app->InactivityTimer);*/
+	    }
+	if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
+	if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
 
-    /** Check GET mode. **/
-    find_inf = stLookup_ne(url_inf,"ls__mode");
+	/** Check GET mode. **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf)
+	    find_inf = stLookup_ne(url_inf,"ls__mode"); /* compatibility */
 
-    /** Ok, open the object here, if not using OSML mode. **/
-    if (!find_inf || strcmp(find_inf->StrVal,"osml") != 0)
-        {
-        target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
-        if (!target_obj)
-        {
-        nht_internal_GenerateError(nsess);
-        fdPrintf(conn->ConnFD,"HTTP/1.0 404 Not Found\r\n"
-                 "Server: %s\r\n"
-                 "Content-Type: text/html\r\n"
-                 "\r\n"
-                 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-        mssPrintError(conn->ConnFD);
-        netCloseTCP(conn->ConnFD,1000,0);
-        nht_internal_UnlinkSess(nsess);
-        thExit();
-        }
+	/** Ok, open the object here, if not using OSML mode. **/
+	if (!find_inf || strcmp(find_inf->StrVal,"osml") != 0)
+	    {
+	    target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
+	    if (!target_obj)
+		{
+		nht_internal_GenerateError(nsess);
+		fdPrintf(conn->ConnFD,"HTTP/1.0 404 Not Found\r\n"
+			     "Server: %s\r\n"
+			     "Content-Type: text/html\r\n"
+			     "\r\n"
+			     "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
+		mssPrintError(conn->ConnFD);
+		netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_UnlinkSess(nsess);
+		thExit();
+		}
 
-        /** Directory indexing? **/
-        objGetAttrValue(target_obj, "inner_type", DATA_T_STRING, POD(&ptr));
-        if (!strcmp(ptr,"system/void") && NHT.DirIndex[0] && (!find_inf || !strcmp(find_inf->StrVal,"content")))
-        {
-        /** Check the object type. **/
-        objGetAttrValue(target_obj, "outer_type", DATA_T_STRING,POD(&ptr));
+	    /** Directory indexing? **/
+	    objGetAttrValue(target_obj, "inner_type", DATA_T_STRING, POD(&ptr));
+	    if (!strcmp(ptr,"system/void") && NHT.DirIndex[0] && (!find_inf || !strcmp(find_inf->StrVal,"content")))
+		{
+		/** Check the object type. **/
+		objGetAttrValue(target_obj, "outer_type", DATA_T_STRING,POD(&ptr));
 
-        /** no dirindex on .app files! **/
-        if (strcmp(ptr,"widget/page") && strcmp(ptr,"widget/frameset") &&
-            strcmp(ptr,"widget/component-decl"))
-            {
-            tmp_obj = NULL;
-            for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
-            {
-            if (NHT.DirIndex[i])
-                {
-                snprintf(path,sizeof(path),"%s/%s",url_inf->StrVal,NHT.DirIndex[i]);
-                tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
-                if (tmp_obj) break;
-                }
-            }
-            if (tmp_obj)
-            {
-            objClose(target_obj);
-            target_obj = tmp_obj;
-            tmp_obj = NULL;
-            }
-            }
-        }
+		/** no dirindex on .app files! **/
+		if (strcmp(ptr,"widget/page") && strcmp(ptr,"widget/frameset") &&
+			strcmp(ptr,"widget/component-decl"))
+		    {
+		    tmp_obj = NULL;
+		    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
+			{
+			if (NHT.DirIndex[i])
+			    {
+			    snprintf(path,sizeof(path),"%s/%s",url_inf->StrVal,NHT.DirIndex[i]);
+			    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
+			    if (tmp_obj) break;
+			    }
+			}
+		    if (tmp_obj)
+			{
+			objClose(target_obj);
+			target_obj = tmp_obj;
+			tmp_obj = NULL;
+			}
+		    }
+		}
 
-        /** Do we need to set params as a part of the open? **/
-        if (akey_match)
-        nht_internal_CkParams(url_inf, target_obj);
-        }
-    else
-        {
-        target_obj = NULL;
-        }
+	    /** Do we need to set params as a part of the open? **/
+	    if (akey_match && (!find_inf || strcmp(find_inf->StrVal, "rest") != 0))
+		nht_internal_CkParams(url_inf, target_obj);
+	    }
+	else
+	    {
+	    target_obj = NULL;
+	    }
 
-    /** WAIT TRIGGER mode. **/
-    if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
-        {
-        find_inf = stLookup_ne(url_inf,"ls__waitid");
-        if (find_inf)
-            {
-        tid = strtoi(find_inf->StrVal,NULL,0);
-        nht_internal_WaitTrigger(nsess,tid);
-        }
-        }
+	/** WAIT TRIGGER mode. **/
+	if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
+	    {
+	    find_inf = stLookup_ne(url_inf,"ls__waitid");
+	    if (find_inf)
+	        {
+		tid = strtoi(find_inf->StrVal,NULL,0);
+		nht_internal_WaitTrigger(nsess,tid);
+		}
+	    }
 
-    /** Check object's modification time **/
-    if (target_obj && objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
-        {
-        memcpy(&dtval, dt, sizeof(DateTime));
-        dt = &dtval;
-        }
-    else
-        {
-        dt = NULL;
-        }
+	/** Check object's modification time **/
+	if (target_obj && objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
+	    {
+	    memcpy(&dtval, dt, sizeof(DateTime));
+	    dt = &dtval;
+	    }
+	else
+	    {
+	    dt = NULL;
+	    }
 
-    /** Should we bother comparing if-modified-since? **/
-    /** FIXME - GRB this is not working yet **/
+	/** Should we bother comparing if-modified-since? **/
+	/** FIXME - GRB this is not working yet **/
 #if 0
     if (dt && *if_modified_since)
         {
@@ -1789,156 +1792,163 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
             gzip=1; /* enable gzip for this request */
             }
 #endif
-        if(gzip==1)
-            {
-            fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
-            }
-        fdPrintf(conn->ConnFD,"Content-Type: %s\r\n\r\n", ptr);
-        if(gzip==1)
-            {
-            fdSetOptions(conn->ConnFD, FD_UF_GZIP);
-            }
-        if (convert_text) fdWrite(conn->ConnFD,"<HTML><PRE>",11,0,FD_U_PACKET);
-        bufptr = (char*)nmMalloc(4096);
-            while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
-                {
-            fdWrite(conn->ConnFD,bufptr,cnt,0,FD_U_PACKET);
-            }
-        if (convert_text) fdWrite(conn->ConnFD,"</HTML></PRE>",13,0,FD_U_PACKET);
-        if (cnt < 0) 
-            {
-            mssError(0,"NHT","Incomplete read of object's content");
-            nht_internal_GenerateError(nsess);
-            }
-        nmFree(bufptr, 4096);
-            }
-        }
 
-    /** GET DIRECTORY LISTING mode. **/
-    else if (!strcmp(find_inf->StrVal,"list"))
-        {
-        if (stAttrValue_ne(stLookup_ne(url_inf,"ls__info"),&ptr) >= 0 && !strcmp(ptr,"1"))
-        send_info = 1;
-        if (stAttrValue_ne(stLookup_ne(url_inf,"ls__orderdesc"),&ptr) >= 0 && !strcmp(ptr,"1"))
-        order_desc = 1;
-        if (order_desc)
-        query = objOpenQuery(target_obj,"",":name desc",NULL,NULL);
-        else
-        query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
-        if (query)
-            {
-        fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-        fdQPrintf(conn->ConnFD,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
-        dptr = url_inf->StrVal;
-        while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
-        while((sub_obj = objQueryFetch(query,O_RDONLY)))
-            {
-            if (send_info)
-            {
-            objinfo = objInfo(sub_obj);
-            }
-            objGetAttrValue(sub_obj, "name", DATA_T_STRING,POD(&ptr));
-            objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
-            if (send_info && objinfo)
-            {
-            fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
-                (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
-            }
-            else if (send_info && !objinfo)
-            {
-            fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
-                (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
-            }
-            else
-            {
-            fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
-                (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
-            }
-            objClose(sub_obj);
-            }
-        objQueryClose(query);
-        }
-        else
-            {
-        nht_internal_GenerateError(nsess);
-        }
-        }
+		if(gzip==1)
+		    {
+		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
+		    }
+		fdPrintf(conn->ConnFD,"Content-Type: %s\r\n\r\n", ptr);
+		if(gzip==1)
+		    {
+		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
+		    }
+		if (convert_text) fdWrite(conn->ConnFD,"<HTML><PRE>",11,0,FD_U_PACKET);
+		bufptr = (char*)nmMalloc(4096);
+	        while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
+	            {
+		    fdWrite(conn->ConnFD,bufptr,cnt,0,FD_U_PACKET);
+		    }
+		if (convert_text) fdWrite(conn->ConnFD,"</HTML></PRE>",13,0,FD_U_PACKET);
+		if (cnt < 0) 
+		    {
+		    mssError(0,"NHT","Incomplete read of object's content");
+		    nht_internal_GenerateError(nsess);
+		    }
+		nmFree(bufptr, 4096);
+	        }
+	    }
 
-    /** SQL QUERY mode **/
-    else if (!strcmp(find_inf->StrVal,"query") && akey_match)
-        {
-        /** Change directory to appropriate query root **/
-        fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-        strtcpy(path, objGetWD(nsess->ObjSess), sizeof(path));
-        objSetWD(nsess->ObjSess, target_obj);
+	/** REST mode? **/
+	else if (!strcmp(find_inf->StrVal,"rest"))
+	    {
+	    rval = nht_internal_RestGet(conn, url_inf, target_obj);
+	    }
 
-        /** row limit? **/
-        rowlimit = 0;
-        if (stAttrValue_ne(stLookup_ne(url_inf,"ls__rowcount"),&ptr) >= 0)
-        rowlimit = strtoi(ptr, NULL, 10);
+	/** GET DIRECTORY LISTING mode. **/
+	else if (!strcmp(find_inf->StrVal,"list"))
+	    {
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__info"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		send_info = 1;
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__orderdesc"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		order_desc = 1;
+	    if (order_desc)
+		query = objOpenQuery(target_obj,"",":name desc",NULL,NULL);
+	    else
+		query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
+	    if (query)
+	        {
+		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+		fdQPrintf(conn->ConnFD,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
+		dptr = url_inf->StrVal;
+		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
+		while((sub_obj = objQueryFetch(query,O_RDONLY)))
+		    {
+		    if (send_info)
+			{
+			objinfo = objInfo(sub_obj);
+			}
+		    objGetAttrValue(sub_obj, "name", DATA_T_STRING,POD(&ptr));
+		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
+		    if (send_info && objinfo)
+			{
+			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
+			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
+			}
+		    else if (send_info && !objinfo)
+			{
+			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
+			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
+			}
+		    else
+			{
+			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
+			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
+			}
+		    objClose(sub_obj);
+		    }
+		objQueryClose(query);
+		}
+	    else
+	        {
+		nht_internal_GenerateError(nsess);
+		}
+	    }
 
-        /** Get the SQL **/
-        if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
-            {
-        query = objMultiQuery(nsess->ObjSess, ptr, NULL, 0);
-        if (query)
-            {
-            rowid = 0;
-            while((sub_obj = objQueryFetch(query,O_RDONLY)))
-                {
-            nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
-            objClose(sub_obj);
-            rowid++;
-            if (rowid == rowlimit) break;
-            }
-            objQueryClose(query);
-            }
-        }
+	/** SQL QUERY mode **/
+	else if (!strcmp(find_inf->StrVal,"query") && akey_match)
+	    {
+	    /** Change directory to appropriate query root **/
+	    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+	    strtcpy(path, objGetWD(nsess->ObjSess), sizeof(path));
+	    objSetWD(nsess->ObjSess, target_obj);
 
-        /** Switch the current directory back to what it used to be. **/
-        tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY, 0600, "text/html");
-        objSetWD(nsess->ObjSess, tmp_obj);
-        objClose(tmp_obj);
-        }
+	    /** row limit? **/
+	    rowlimit = 0;
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__rowcount"),&ptr) >= 0)
+		rowlimit = strtoi(ptr, NULL, 10);
 
-    /** GET METHOD LIST mode. **/
-    else if (!strcmp(find_inf->StrVal,"methods"))
-        {
-        }
+	    /** Get the SQL **/
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
+	        {
+		query = objMultiQuery(nsess->ObjSess, ptr, NULL, 0);
+		if (query)
+		    {
+		    rowid = 0;
+		    while((sub_obj = objQueryFetch(query,O_RDONLY)))
+		        {
+			nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
+			objClose(sub_obj);
+			rowid++;
+			if (rowid == rowlimit) break;
+			}
+		    objQueryClose(query);
+		    }
+		}
 
-    /** GET ATTRIBUTE-VALUE LIST mode. **/
-    else if (!strcmp(find_inf->StrVal,"attr"))
-        {
-        }
+	    /** Switch the current directory back to what it used to be. **/
+	    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY, 0600, "text/html");
+	    objSetWD(nsess->ObjSess, tmp_obj);
+	    objClose(tmp_obj);
+	    }
 
-    /** Direct OSML Access mode... **/
-    else if (!strcmp(find_inf->StrVal,"osml") && akey_match)
-        {
-        find_inf = stLookup_ne(url_inf,"ls__req");
-        nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
-        }
+	/** GET METHOD LIST mode. **/
+	else if (!strcmp(find_inf->StrVal,"methods"))
+	    {
+	    }
 
-    /** Exec method mode **/
-    else if (!strcmp(find_inf->StrVal,"execmethod") && akey_match)
-        {
-        find_inf = stLookup_ne(url_inf,"ls__methodname");
-        find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
-        fdPrintf(conn->ConnFD, "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
-        if (!find_inf || !find_inf2)
-            {
-        mssError(1,"NHT","Invalid call to execmethod - requires name and param");
-        nht_internal_GenerateError(nsess);
-        }
-        else
-            {
-            ptr = find_inf2->StrVal;
-            objExecuteMethod(target_obj, find_inf->StrVal, POD(&ptr));
-        fdWrite(conn->ConnFD,"OK",2,0,0);
-        }
-        }
+	/** GET ATTRIBUTE-VALUE LIST mode. **/
+	else if (!strcmp(find_inf->StrVal,"attr"))
+	    {
+	    }
 
-    /** Close the objectsystem entry. **/
-    if (target_obj) objClose(target_obj);
+	/** Direct OSML Access mode... **/
+	else if (!strcmp(find_inf->StrVal,"osml") && akey_match)
+	    {
+	    find_inf = stLookup_ne(url_inf,"ls__req");
+	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
+	    }
+
+	/** Exec method mode **/
+	else if (!strcmp(find_inf->StrVal,"execmethod") && akey_match)
+	    {
+	    find_inf = stLookup_ne(url_inf,"ls__methodname");
+	    find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
+	    fdPrintf(conn->ConnFD, "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
+	    if (!find_inf || !find_inf2)
+	        {
+		mssError(1,"NHT","Invalid call to execmethod - requires name and param");
+		nht_internal_GenerateError(nsess);
+		}
+	    else
+	        {
+	    	ptr = find_inf2->StrVal;
+	    	objExecuteMethod(target_obj, find_inf->StrVal, POD(&ptr));
+		fdWrite(conn->ConnFD,"OK",2,0,0);
+		}
+	    }
+
+	/** Close the objectsystem entry. **/
+	if (target_obj) objClose(target_obj);
 
     return 0;
     }

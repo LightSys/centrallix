@@ -2614,7 +2614,7 @@ fd_internal_WritePkt(pFile filedesc, const char* buffer, int length, int offset,
     	/** Repeatedly try until we get it all **/
 	while(cnt < length)
 	    {
-	    wcnt = fdWrite(filedesc, buffer + cnt, length - cnt, offset, flags);
+	    wcnt = fdWrite(filedesc, buffer + cnt, length - cnt, offset, (cnt == 0)?(flags):(flags & ~FD_U_TRUNCATE));
 	    if (wcnt <= 0) return -1;
 	    cnt += wcnt;
 	    if (flags & FD_U_SEEK) offset += wcnt;
@@ -2724,6 +2724,8 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	    else
 		{
 #endif
+		if (flags & FD_U_TRUNCATE)
+		    ftruncate(filedesc->FD, lseek(filedesc->FD, 0, SEEK_CUR));
 		rval = write(filedesc->FD,buffer,length);
 #ifdef HAVE_LIBZ
 		}
@@ -2789,6 +2791,8 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 		else
 		    {
 #endif
+		    if (flags & FD_U_TRUNCATE)
+			ftruncate(filedesc->FD, lseek(filedesc->FD, 0, SEEK_CUR));
 		    rval = write(filedesc->FD,buffer,length);
 #ifdef HAVE_LIBZ
 		    }

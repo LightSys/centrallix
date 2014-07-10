@@ -193,6 +193,7 @@ typedef struct _FD
 #define FD_U_IMMEDIATE	4		/* for fdClose, error all pending */
 #define FD_XU_NODST	8		/* fdClose, INTERNAL USE ONLY! */
 #define FD_U_PACKET	16		/* r/w: do _only_whole_packet_ */
+#define FD_U_TRUNCATE	32		/* on write, truncate file to offset */
 
 #define NET_U_NOBLOCK	1		/* User: net call can't block. */
 #define NET_U_KEEPALIVE	32		/* User: keep net connection alive */

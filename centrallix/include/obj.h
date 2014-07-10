@@ -63,6 +63,7 @@
 
 #define OBJ_U_SEEK	FD_U_SEEK
 #define OBJ_U_PACKET	FD_U_PACKET
+#define OBJ_U_TRUNCATE	FD_U_TRUNCATE
 
 /** Pathname analysis structure **/
 typedef struct
@@ -98,6 +99,7 @@ extern char* obj_default_null_fmt;
 #define DATA_F_NORMALIZE	4
 #define DATA_F_SYBQUOTE		8	/* use '' to quote a ', etc */
 #define DATA_F_CONVSPECIAL	16	/* convert literal CR LF and TAB to \r \n and \t */
+#define DATA_F_DATECONV		32	/* wrap date/time values using convert() */
 
 
 /** Presentation Hints structure ---

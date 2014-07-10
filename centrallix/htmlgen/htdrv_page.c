@@ -71,6 +71,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     time_t t;
     struct tm* timeptr;
     char timestr[80];
+    XArray endorsements;
+    XArray contexts;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -235,6 +237,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_appglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_scripts", "[]", 0);
+	htrAddScriptGlobal(s, "pg_endorsements", "[]", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -293,6 +296,20 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
 		    name, path);
 	    }
+
+	/** Endorsements **/
+	xaInit(&endorsements,16);
+	xaInit(&contexts,16);
+	cxssGetEndorsementList(&endorsements, &contexts);
+	for(i=0;i<endorsements.nItems;i++)
+	    {
+	    htrAddScriptInit_va(s, "    pg_endorsements.push({e:'%STR&JSSTR', ctx:'%STR&JSSTR'});\n",
+		    (char*)endorsements.Items[i], (char*)contexts.Items[i]);
+	    nmSysFree((char*)endorsements.Items[i]);
+	    nmSysFree((char*)contexts.Items[i]);
+	    }
+	xaDeInit(&endorsements);
+	xaDeInit(&contexts);
 
 	/** Shutdown **/
 	htrAddScriptCleanup_va(s, "    pg_cleanup();\n");

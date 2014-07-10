@@ -377,4 +377,7 @@ int nht_internal_AddHeader(pXArray hdrlist, char* hdrname, char* hdrval, int hdr
 char* nht_internal_GetHeader(pXArray hdrlist, char* hdrname);
 int nht_internal_FreeHeaders(pXArray hdrlist);
 
+/*** REST implementation ***/
+int nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
+
 #endif

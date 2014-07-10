@@ -36,3 +36,4 @@ centrallix-lib/include/cxlib
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
 centrallix/tests/*.to.tmp
+centrallix/thirdparty/json-c-0.11-inst
