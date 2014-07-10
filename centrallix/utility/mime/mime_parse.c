@@ -88,7 +88,9 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	return -1;
 	}
 
+    /** Seek to the beginning of the message and store the offset. **/
     mlxSetOffset(lex, start);
+    msg->HdrSeekStart = start;
 
     flag = 1;
     while (flag)

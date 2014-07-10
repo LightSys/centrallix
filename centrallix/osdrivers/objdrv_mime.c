@@ -159,9 +159,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
      ** go through all elements and see if we have another multipart element.
      ** If so, repeat the search.
      **/
-    while (!libmime_GetIntAttr(inf->Header, "Content-Type", "ContentMainType", &i) &&
-	    i == MIME_TYPE_MULTIPART &&
-	    obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
+    while (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
 	{
 	/** assume we don't have a match **/
 	foundMatch = 0;
@@ -232,6 +230,12 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
 	/** Deallocate anything from this go-round before trying again. **/
 	mimeClose(inf, oxt);
+
+	/** Make sure that we do not get stuck in a recursive loop. **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(0, "MIME", "Open/Create call has entered an infinite recursive loop.");
+	    }
 
 	/** Open the object we just created, super-ensuring we don't make it again. **/
 	obj->Mode &= ~O_CREAT;
@@ -312,7 +316,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 
     pFile fd = NULL;
     char buf [MIME_BUFSIZE + 1];
-    long targetOffset, currentOffset, targetBufSize;
+    long targetOffset, currentOffset, targetBufSize, insertionSize;
 
 	xsInit(&initialContents);
 	xsInit(&fileName);
@@ -370,9 +374,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	     **/
 	    foundMatch = 1;
 	    obj->SubCnt=1;
-	    while (!libmime_GetIntAttr(msg, "Content-Type", "ContentMainType", &i) &&
-		    i == MIME_TYPE_MULTIPART &&
-		    obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
+	    while (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
 		    foundMatch)
 		{
 		/** assume we don't have a match **/
@@ -386,7 +388,6 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		    if (!libmime_GetStringAttr(phdr, "Name", NULL, &nodeName) && !strcmp(nodeName, pathString))
 			{
 			msg = phdr;
-			//inf->InternalType = MIME_INTERNAL_MESSAGE;
 			obj->SubCnt++;
 			foundMatch = 1;
 			break;
@@ -414,8 +415,14 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		goto error;
 		}
 
-	    /** Check that the message has subobjects. **/
-	    if (!msg->Parts.nItems)
+	    /** Check if the parent object is a multipart. **/
+	    if (!libmime_GetIntAttr(msg, "Content-Type", "ContentMainType", &i) &&
+		    i != MIME_TYPE_MULTIPART)
+		{
+		targetOffset = msg->HdrSeekStart;
+		}
+	    /** Check if the message has subobjects. **/
+	    else if (!msg->Parts.nItems)
 		{
 		/** If not, seek to the end of the parent object. **/
 		targetOffset = msg->MsgSeekEnd;
@@ -431,7 +438,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    currentOffset = 0;
 	    objRead(obj->Prev, NULL, 0, 0, FD_U_SEEK);
 
-	    /** Copy up to the ending offset of the last subobject. **/
+	    /** Copy up to the target offset before inserting the new objects. **/
 	    for (targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE);
 		    targetBufSize > 0;
 		    targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
@@ -450,24 +457,88 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &boundary);
 	    if (!boundary)
 		{
-		mssError(0, "MIME", "Could not get the boundary.");
-		goto error;
+		/** Generate a new boundary string. **/
+		boundary = nmSysMalloc(sizeof(char) * 14);
+		if (!boundary)
+		    {
+		    mssError(1, "MIME", "Failed to allocate boundary string for a new multipart object.");
+		    goto error;
+		    }
+		memset(boundary, 0, sizeof(char) * 14);
+		strtcpy(boundary, "-----");
+		libmime_internal_MakeARandomFilename(boundary, 8);
 		}
 
 	    /** Add the boundary to the beginning of the initial contents. **/
-	    memset(buf, 0, MIME_BUFSIZE + 1);
 	    pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString. */
 	    xsPrintf(&initialContents, "--%s\n%s", boundary, pathString);
 	    nmSysFree(pathString);
 
-	    /** If writing the first subobject, also add a terminating boundary. **/
-	    if (!msg->Parts.nItems)
+	    /** If adding a subobject to a non-multipart, make a new one. **/
+	    if (!libmime_GetIntAttr(msg, "Content-Type", "ContentMainType", &i) &&
+		    i != MIME_TYPE_MULTIPART)
 		{
-		xsConcatPrintf(&initialContents, "--%s--\n", boundary);
-		}
+		pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString again. */
+		xsCopy(&initialContents, "MIME-Version: 1.0\n", -1);
+		xsConcatPrintf(&initialContents, "Content-Type: multipart/mixed; boundary=%s\n\n%s", boundary, pathString);
+		xsConcatPrintf(&initialContents, "--%s\n", boundary);
+		nmSysFree(pathString);
 
-	    /** Write the new subobject to the temporary file. **/
-	    currentOffset += fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+		/** Write the new multipart subobject. **/
+		insertionSize = fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+
+		/** Initialize the offsets for reading message of the Mime file. **/
+		currentOffset = msg->HdrSeekStart;
+		targetOffset = msg->MsgSeekEnd;
+
+		/** Copy up to the target offset to copy the message. **/
+		for (targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE);
+			targetBufSize > 0;
+			targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
+		    {
+		    memset(buf, 0, MIME_BUFSIZE + 1);
+		    currentOffset += objRead(obj->Prev, buf, targetBufSize, 0, 0);
+
+		    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+			{
+			mssError(1, "MIME", "Unable to copy Mime file contents to temporary file.");
+			goto error;
+			}
+		    }
+
+		/** Indicate the target offset to copy back into the OSML. **/
+		targetOffset = msg->HdrSeekStart;
+
+		/** Store the new offsets for the message. **/
+		msg->HdrSeekStart += insertionSize;
+		msg->HdrSeekEnd += insertionSize;
+		msg->MsgSeekStart += insertionSize;
+		/*msg->MsgSeekEnd += insertionSize;*/
+
+		/** Calculate the final offset. **/
+		currentOffset += insertionSize;
+
+		/** Write the final boundary for the new multipart subobject. **/
+		xsPrintf(&initialContents, "--%s--\n", boundary);
+		insertionSize += fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+
+		/** Warn the user that the creation path is invalid. **/
+		mssError(0, "MIME", "WARNING: Adding a subobject to a non-multipart will reorient the directory structure. The creation path is now invalid.");
+		}
+	    else
+		{
+		/** If writing the first subobject, also add a terminating boundary. **/
+		if (!msg->Parts.nItems)
+		    {
+		    xsConcatPrintf(&initialContents, "--%s--\n", boundary);
+		    }
+
+		/** Write the new subobject to the temporary file. **/
+		currentOffset += fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+
+		/** Indicate the target offset to copy back into the OSML. **/
+		targetOffset = phdr->MsgSeekEnd;
+		}
 
 	    /** Copy the rest of the file. **/
 	    memset(buf, 0, MIME_BUFSIZE);
@@ -482,7 +553,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		}
 
 	    /** Write the changes back to the Object System. **/
-	    libmime_SaveTemporaryFile(fd, obj, phdr->MsgSeekEnd);
+	    libmime_SaveTemporaryFile(fd, obj, targetOffset);
 
 	    /** Recalculate the terminating offset of the parent object. **/
 	    msg->MsgSeekEnd = currentOffset;
@@ -523,7 +594,16 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 int
 mimeDelete(pObject obj, pObjTrxTree* oxt)
     {
-    return 0;
+	/** Parse the Mime file to generate the Mime object tree. **/
+	/** Create a temp file. **/
+	/** Copy up to the beginning of the message. **/
+	/** Copy after the end of the message. **/
+	/** Save the temporary file into the OSML. **/
+
+	/** Or we can just not support it... **/
+	mssError(1, "MIME", "The Mime Driver does not currently support deletion.");
+
+    return -1;
     }
 
 
