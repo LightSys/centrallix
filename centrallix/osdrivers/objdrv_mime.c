@@ -102,10 +102,10 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeHeader msg;
     pMimeHeader phdr;
     char *node_path;
-    char *node_name;
+    char *nodeName;
     char *buffer;
     char *ptr;
-    int i, size, found_match = 0;
+    int i, size, foundMatch = 0;
     char nullbuf[1];
 
     /** Allocate and initialize the MIME structure **/
@@ -164,14 +164,14 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
 	{
 	/** assume we don't have a match **/
-	found_match = 0;
+	foundMatch = 0;
 
 	/** at least one more element of path to worry about **/
 	ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
 	for (i=0; i < xaCount(&(inf->Header->Parts)); i++)
 	    {
 	    phdr = xaGetItem(&(inf->Header->Parts), i);
-	    if (!libmime_GetStringAttr(phdr, "Name", NULL, &node_name) && !strcmp(node_name, ptr))
+	    if (!libmime_GetStringAttr(phdr, "Name", NULL, &nodeName) && !strcmp(nodeName, ptr))
 		{
 		/** FIXME FIXME FIXME FIXME
 		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
@@ -180,12 +180,12 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		inf->Header = phdr;
 		inf->InternalType = MIME_INTERNAL_MESSAGE;
 		obj->SubCnt++;
-		found_match = 1;
+		foundMatch = 1;
 		break;
 		}
 	    }
 	/** Break if there is no matching subpart **/
-	if (!found_match) break;
+	if (!foundMatch) break;
 	}
 
     /** Reset the file seek pointer. **/
@@ -196,15 +196,16 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	}
 
     /** If dealing with the base mime file, check to see if it has been initialized (aka 'created'). **/
-    if(objRead(obj->Prev, nullbuf, 1, 0, obj->Mode) > 0)
+    if(objRead(obj->Prev, nullbuf, 1, 0, obj->Mode) > 0 &&
+	    obj->Pathname->nElements == obj->SubPtr)
 	{
-	found_match = 1;
+	foundMatch = 1;
 	}
 
     /** If CREAT, EXCL, and a match, error. **/
     if ((inf->Obj->Mode & O_CREAT) &&
 	(inf->Obj->Mode & O_EXCL) &&
-	(found_match))
+	(foundMatch))
 	{
 	mssError(1, "MIME", "Mime object exists but create and exclusive flags are set. Cannot create mime object.");
 	goto error;
@@ -213,7 +214,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** If not CREAT and match, error **/
     if (!(inf->Obj->Mode & O_CREAT) &&
-	(!found_match))
+	(!foundMatch))
 	{
 	mssError(1, "MIME", "Mime object not found but create flag not set.");
 	goto error;
@@ -221,7 +222,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** CREAT and no match... create the file! **/
     if ((inf->Obj->Mode & O_CREAT) &&
-	(!found_match))
+	(!foundMatch))
 	{
 	if (mimeCreate(obj, mask, systype, usrtype, oxt))
 	    {
@@ -233,6 +234,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	mimeClose(inf, oxt);
 
 	/** Open the object we just created, super-ensuring we don't make it again. **/
+	obj->Mode &= ~O_CREAT;
 	inf = mimeOpen(obj, mask & ~O_CREAT, systype, usrtype, oxt);
 	if (!inf)
 	    {
@@ -510,9 +512,6 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    readSize = fdRead(messageFile, buf, MIME_BUFSIZE, 0, 0);
 	    currentOffset += readSize;
 	    }
-
-	/** Add a newline to the end of the message. **/
-	//currentOffset += fdWrite(rootFile, "\n", 1, 0, 0);
 
 	/** Seek to the end of the message in the Mime file. **/
 	objRead(inf->Obj->Prev, NULL, 0, inf->Header->MsgSeekEnd, FD_U_SEEK);
