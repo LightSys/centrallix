@@ -369,6 +369,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	     ** If so, repeat the search.
 	     **/
 	    foundMatch = 1;
+	    obj->SubCnt=1;
 	    while (!libmime_GetIntAttr(msg, "Content-Type", "ContentMainType", &i) &&
 		    i == MIME_TYPE_MULTIPART &&
 		    obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
@@ -413,13 +414,20 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		goto error;
 		}
 
-	    /** Find the last Mime subobject of the parent object. **/
-	    phdr = xaGetItem(&msg->Parts, msg->Parts.nItems-1);
-
-	    // TODO: work with no child objects.
+	    /** Check that the message has subobjects. **/
+	    if (!msg->Parts.nItems)
+		{
+		/** If not, seek to the end of the parent object. **/
+		targetOffset = msg->MsgSeekEnd;
+		}
+	    else
+		{
+		/** Otherwise, seek to the end of the last Mime subobject. **/
+		phdr = xaGetItem(&msg->Parts, msg->Parts.nItems-1);
+		targetOffset = phdr->MsgSeekEnd;
+		}
 
 	    /** Initialize the offsets for reading the initial portion of the Mime file. **/
-	    targetOffset = phdr->MsgSeekEnd;
 	    currentOffset = 0;
 	    objRead(obj->Prev, NULL, 0, 0, FD_U_SEEK);
 
@@ -438,6 +446,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		    }
 		}
 
+	    /** Get the boundary string for the parent object. **/
 	    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &boundary);
 	    if (!boundary)
 		{
@@ -450,6 +459,12 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString. */
 	    xsPrintf(&initialContents, "--%s\n%s", boundary, pathString);
 	    nmSysFree(pathString);
+
+	    /** If writing the first subobject, also add a terminating boundary. **/
+	    if (!msg->Parts.nItems)
+		{
+		xsConcatPrintf(&initialContents, "--%s--\n", boundary);
+		}
 
 	    /** Write the new subobject to the temporary file. **/
 	    currentOffset += fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
