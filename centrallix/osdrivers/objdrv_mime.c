@@ -301,12 +301,28 @@ int
 mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     XString initialContents;
+    XString fileName;
+    pLxSession lex = NULL;
+    pMimeHeader msg = NULL;
+    pMimeHeader phdr = NULL;
+    pMimeHeader msgRoot = NULL;
+    char fileHash[9];
+    int i, foundMatch = 0;
+    char *nodeName, *pathString, *boundary = NULL;
+
+    pFile fd = NULL;
+    char buf [MIME_BUFSIZE + 1];
+    long targetOffset, currentOffset, targetBufSize;
 
 	xsInit(&initialContents);
+	xsInit(&fileName);
+
+	/** Store the name of the Mime object. **/
+	nodeName = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements - 1, 1);
 
 	/** Hardcode default values for new mime object. **/
 	xsConcatenate(&initialContents, "Mime-Version: 1.0\n", -1);
-	xsConcatenate(&initialContents, "Content-Type: text/plain\n\n", -1);
+	xsConcatPrintf(&initialContents, "Content-Type: text/plain; name=%s\n\n", nodeName);
 
 	/** Creating a new mime file. **/
 	if (obj->SubPtr == obj->Pathname->nElements)
@@ -320,14 +336,168 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	/** Adding a subobject to an existing mime file. **/
 	else
 	    {
-	    xsCopy(&initialContents, "Hi, Jonathan.", 13);
+	    /** Allocate the Mime header. **/
+	    msg = libmime_AllocateHeader();
+	    if (!msg)
+		{
+		mssError(1, "MIME", "Could not allocate new message header.");
+		return -1;
+		}
+
+	    /** Parse the current Mime file into the Mime object tree. **/
+	    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
+	    if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
+		{
+		mssError(0, "MIME", "There was an error parsing message header in mimeOpen().");
+		goto error;
+		}
+	    if (libmime_ParseMultipartBody(lex, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
+		{
+		mssError(0, "MIME", "There was an error parsing message body in mimeOpen().");
+		goto error;
+		}
+	    mlxCloseSession(lex);
+	    lex = NULL;
+
+	    /** Remember the root of the Mime object tree. **/
+	    msgRoot = msg;
+
+	    /** Find the parent object to the new Mime subobject. **/
+
+	    /** While we have a multipart message and there are more elements in the path,
+	     ** go through all elements and see if we have another multipart element.
+	     ** If so, repeat the search.
+	     **/
+	    foundMatch = 1;
+	    while (!libmime_GetIntAttr(msg, "Content-Type", "ContentMainType", &i) &&
+		    i == MIME_TYPE_MULTIPART &&
+		    obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
+		    foundMatch)
+		{
+		/** assume we don't have a match **/
+		foundMatch = 0;
+
+		/** at least one more element of path to worry about **/
+		pathString = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
+		for (i=0; i < xaCount(&(msg->Parts)); i++)
+		    {
+		    phdr = xaGetItem(&(msg->Parts), i);
+		    if (!libmime_GetStringAttr(phdr, "Name", NULL, &nodeName) && !strcmp(nodeName, pathString))
+			{
+			msg = phdr;
+			//inf->InternalType = MIME_INTERNAL_MESSAGE;
+			obj->SubCnt++;
+			foundMatch = 1;
+			break;
+			}
+		    }
+		}
+
+	    /** Make certain that we have found the parent to the last element in the path. **/
+	    if (obj->Pathname->nElements != obj->SubPtr + obj->SubCnt)
+		{
+		mssError(1, "MIME", "Unable to find the Mime parent of the object being created.");
+		goto error;
+		}
+
+	    /** Build the temporary filename. **/
+	    memset(fileHash, 0, 9);
+	    libmime_internal_MakeARandomFilename(fileHash, 8);
+	    xsConcatPrintf(&fileName, "/tmp/%s%s", nodeName, fileHash);
+
+	    /** Create the temporary file. **/
+	    fd = fdOpen(fileName.String, O_CREAT | O_EXCL | O_RDWR, 0x755);
+	    if (!fd)
+		{
+		mssError(1, "MIME", "Could not create temporary file.");
+		goto error;
+		}
+
+	    /** Find the last Mime subobject of the parent object. **/
+	    phdr = xaGetItem(&msg->Parts, msg->Parts.nItems-1);
+
+	    // TODO: work with no child objects.
+
+	    /** Initialize the offsets for reading the initial portion of the Mime file. **/
+	    targetOffset = phdr->MsgSeekEnd;
+	    currentOffset = 0;
+	    objRead(obj->Prev, NULL, 0, 0, FD_U_SEEK);
+
+	    /** Copy up to the ending offset of the last subobject. **/
+	    for (targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE);
+		    targetBufSize > 0;
+		    targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
+		{
+		memset(buf, 0, MIME_BUFSIZE + 1);
+		currentOffset += objRead(obj->Prev, buf, targetBufSize, 0, 0);
+
+		if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		    {
+		    mssError(1, "MIME", "Unable to copy Mime file contents to temporary file.");
+		    goto error;
+		    }
+		}
+
+	    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &boundary);
+	    if (!boundary)
+		{
+		mssError(0, "MIME", "Could not get the boundary.");
+		goto error;
+		}
+
+	    /** Add the boundary to the beginning of the initial contents. **/
+	    memset(buf, 0, MIME_BUFSIZE + 1);
+	    pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString. */
+	    xsPrintf(&initialContents, "--%s\n%s", boundary, pathString);
+	    nmSysFree(pathString);
+
+	    /** Write the new subobject to the temporary file. **/
+	    currentOffset += fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+
+	    /** Copy the rest of the file. **/
+	    memset(buf, 0, MIME_BUFSIZE);
+	    while (objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+		{
+		if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		    {
+		    mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
+		    goto error;
+		    }
+		memset(buf, 0, MIME_BUFSIZE);
+		}
+
+	    /** Write the changes back to the Object System. **/
+	    libmime_SaveTemporaryFile(fd, obj, phdr->MsgSeekEnd);
+
+	    /** Recalculate the terminating offset of the parent object. **/
+	    msg->MsgSeekEnd = currentOffset;
+
+	    /** Deallocate the Mime object tree. **/
+	    libmime_DeallocateHeader(msgRoot);
+
+	    /** Close the temp file. **/
+	    fdClose(fd, 0);
+
+	    /** Delete the temp file. **/
+	    if (remove(fileName.String))
+		{
+		mssError(1, "MIME", "Failed to delete temporary file.");
+		goto error;
+		}
 	    }
 
 	xsDeInit(&initialContents);
+	xsDeInit(&fileName);
     return 0;
 
     error:
 	xsDeInit(&initialContents);
+	xsDeInit(&fileName);
+
+	if (lex) mlxCloseSession(lex);
+	if (msgRoot) libmime_DeallocateHeader(msgRoot);
+	if (fd) fdClose(fd, 0);
+
 	return -1;
     }
 
