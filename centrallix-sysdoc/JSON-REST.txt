@@ -28,13 +28,28 @@ ABOUT REST...
 	means that the concept of "opening" and "closing" resources or queries
 	is nonexistent in REST.
 
-    D.	Methods Used.  REST makes use of GET, POST, PUT, and DELETE.  These
-	methods map into the standard object access categories below:
+    D.	Methods Used.  REST makes use of GET, POST, PUT, PATCH, and DELETE.  
+	These methods map into the standard object access categories below:
 
-	    1.	GET = Read information
-	    2.	PUT = Replace (i.e., update) information
-	    3.	POST = Create information
-	    4.	DELETE = Delete information
+	    1.	GET = Read information from an element or a collection
+
+	    2.	PUT = Replace (i.e., update) or create information if the 
+		exact URL of the element is known in advance (i.e., the name
+		or ID of the element is known rather than depending on the
+		server and database backend to create the name).  When
+		updating an element, the entire element is overwritten.
+
+	    3.	POST = Create information, by POSTing to a collection URL to
+		create a new entity.  POST is used to create when the ID or
+		name of the new entity is not known by the client in advance
+		(where the server needs to automatically generate the name,
+		such as in autonumber or autoincrement situations).
+
+	    4.	DELETE = Delete information, by DELETING the element URL.
+
+	    5.	PATCH = Update part of an element, by providing only the
+		information about the new element that is different from the
+		old element.
 
     REST does not require the use of a particular data format for requests or
     responses.  Data can be in JSON, XML, or any other format of the API
