@@ -1557,6 +1557,7 @@ main(int argc, char* argv[])
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
 	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
 	TESTOBJ.WaitSecs = 0;
