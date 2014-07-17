@@ -1136,7 +1136,6 @@ char*
 dat_internal_KeyToFilename(pDatTableInf tdata, pDatData inf)
     {
     static char fbuf[80];
-    char* keyptrs[8];
     int i,col=0;
     char* ptr;
 
@@ -1153,7 +1152,6 @@ dat_internal_KeyToFilename(pDatTableInf tdata, pDatData inf)
 	    {
 	    if (i>0) *(ptr++)='|';
 	    col = 0;
-	    keyptrs[i] = NULL;
 	    switch(tdata->ColTypes[tdata->KeyCols[i]])
 	        {
 		case DATA_T_INTEGER: /** INT **/
@@ -1375,7 +1373,6 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
     char* ptr;
     int i,n;
     pStructInf col_inf;
-    int use_mode;
     int new_node = 0;
     pDatTableInf tdata = NULL;
 
@@ -1504,8 +1501,8 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    strcpy(dn->EndDataPath, "?ls__type=application%2foctet-stream");
 
 	    /** Attempt to open the datafile **/
-	    if (is_toplevel) use_mode = mode; else use_mode = O_RDWR;
-	    /* dn->DataFD = fdOpen(dn->DataPath,use_mode,create_mask);
+	    /*if (is_toplevel) use_mode = mode; else use_mode = O_RDWR;
+	    dn->DataFD = fdOpen(dn->DataPath,use_mode,create_mask);
 	    if (!dn->DataFD)
 	        {
 		mssErrorErrno(1,"DAT","Could not open datafile '%s'",dn->DataPath);
