@@ -1410,7 +1410,7 @@ Optional Packages:
   --with-centrallix-os=FILE
                           Full path of centrallix OS directory (default is
                           /var/centrallix/os)
-  --with-zlib=PATH        library path for zlib library (default is $libdir)
+  --with-zlib=PATH        library path for zlib library (default is $LINKDIR)
   --with-zlib-inc=PATH    include path for zlib headers (default is
                           /usr/include)
   --with-sybase-inc=PATH  include path for Sybase headers (default is
@@ -1420,8 +1420,8 @@ Optional Packages:
   --with-mysql-inc=PATH   include path for MySQL headers (default is
                           /usr/include/mysql)
   --with-mysql-lib=PATH   library path for MySQL libraries (default is
-                          $libdir/mysql)
-  --with-libxml=PATH      library path for xml library (default is $libdir)
+                          $LINKDIR/mysql)
+  --with-libxml=PATH      library path for xml library (default is $LINKDIR)
   --with-libxml-inc=PATH  include path for libxml headers (default is
                           /usr/include)
   --with-libxml-inc=PATH  include path for libxml headers (default is
@@ -3016,6 +3016,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
+LINKDIR=/usr/lib/$(/usr/bin/gcc -print-multi-os-directory)
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ${MAKE-make} sets \$(MAKE)" >&5
 $as_echo_n "checking whether ${MAKE-make} sets \$(MAKE)... " >&6; }
 set x ${MAKE-make}
@@ -5156,7 +5157,7 @@ $as_echo "yes" >&6; }
 if test "${with_zlib+set}" = set; then :
   withval=$with_zlib; zlib_libdir="$withval"
 else
-  zlib_libdir="$libdir"
+  zlib_libdir="$LINKDIR"
 fi
 
 
@@ -5717,7 +5718,7 @@ fi
 
 
 	default_mysql_incdir="/usr/include/mysql"
-	default_mysql_libdir="$libdir/mysql"
+	default_mysql_libdir="$LINKDIR/mysql"
 
 
 # Check whether --with-mysql-inc was given.
@@ -5927,7 +5928,7 @@ test -n "$xmlconfig" || xmlconfig="no"
 if test "${with_libxml+set}" = set; then :
   withval=$with_libxml; libxml_libdir="$withval"
 else
-  libxml_libdir="$libdir"
+  libxml_libdir="$LINKDIR"
 fi
 
 
@@ -6018,7 +6019,7 @@ fi
 if test "${with_libxml+set}" = set; then :
   withval=$with_libxml; libxml_libdir="$withval"
 else
-  libxml_libdir="$libdir"
+  libxml_libdir="$LINKDIR"
 
 fi
 

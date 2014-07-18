@@ -335,7 +335,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MYSQL,
 	)
 
 	default_mysql_incdir="/usr/include/mysql"
-	default_mysql_libdir="$libdir/mysql"
+	default_mysql_libdir="$LINKDIR/mysql"
 	
 	AC_ARG_WITH(mysql-inc,
 	    AC_HELP_STRING([--with-mysql-inc=PATH],
@@ -347,7 +347,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MYSQL,
  
 	AC_ARG_WITH(mysql-lib,
 	    AC_HELP_STRING([--with-mysql-lib=PATH],
-		[library path for MySQL libraries (default is $libdir/mysql)]
+		[library path for MySQL libraries (default is $LINKDIR/mysql)]
 	    ),
 	    mysql_libdir="$withval",
 	    mysql_libdir="$default_mysql_libdir"
@@ -419,10 +419,10 @@ AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
 
 	    AC_ARG_WITH(zlib,
 		AC_HELP_STRING([--with-zlib=PATH],
-		    [library path for zlib library (default is $libdir)]
+		    [library path for zlib library (default is $LINKDIR)]
 		),
 		zlib_libdir="$withval",
-		zlib_libdir="$libdir",
+		zlib_libdir="$LINKDIR",
 	    )
 
 	    AC_ARG_WITH(zlib-inc,
@@ -752,10 +752,10 @@ dnl 	    AC_MSG_RESULT(yes)
 dnl 	    dnl check for alternate locations for includes
 dnl 	    AC_ARG_WITH(ucd-snmp,
 dnl 		AC_HELP_STRING([--with-ucd-snmp=PATH],
-dnl 		    [library path for ucd-snmp library (default is $libdir)]
+dnl 		    [library path for ucd-snmp library (default is $LINKDIR)]
 dnl 		),
 dnl 		snmp_libdir="$withval",
-dnl 		snmp_libdir="$libdir",
+dnl 		snmp_libdir="$LINKDIR",
 dnl 	    )
 dnl 
 dnl 	    dnl check for alternate locations for libs
@@ -904,10 +904,10 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 
 		    AC_ARG_WITH(libxml,
 			AC_HELP_STRING([--with-libxml=PATH],
-			    [library path for xml library (default is $libdir)]
+			    [library path for xml library (default is $LINKDIR)]
 			),
 			libxml_libdir="$withval",
-			libxml_libdir="$libdir",
+			libxml_libdir="$LINKDIR",
 		    )
 
 		    libxml_lib="`xml2-config --libs 2>/dev/null`"
@@ -946,10 +946,10 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 		else
 		    AC_ARG_WITH(libxml,
 			AC_HELP_STRING([--with-libxml=PATH],
-			    [library path for xml library (default is $libdir)]
+			    [library path for xml library (default is $LINKDIR)]
 			),
 			libxml_libdir="$withval",
-			libxml_libdir="$libdir"
+			libxml_libdir="$LINKDIR"
 		    )
 
 		    libxml_lib="`xml-config --libs 2>/dev/null`"
