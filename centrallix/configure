@@ -1410,7 +1410,7 @@ Optional Packages:
   --with-centrallix-os=FILE
                           Full path of centrallix OS directory (default is
                           /var/centrallix/os)
-  --with-zlib=PATH        library path for zlib library (default is /usr/lib)
+  --with-zlib=PATH        library path for zlib library (default is $libdir)
   --with-zlib-inc=PATH    include path for zlib headers (default is
                           /usr/include)
   --with-sybase-inc=PATH  include path for Sybase headers (default is
@@ -1420,8 +1420,8 @@ Optional Packages:
   --with-mysql-inc=PATH   include path for MySQL headers (default is
                           /usr/include/mysql)
   --with-mysql-lib=PATH   library path for MySQL libraries (default is
-                          /usr/lib/mysql)
-  --with-libxml=PATH      library path for xml library (default is /usr/lib)
+                          $libdir/mysql)
+  --with-libxml=PATH      library path for xml library (default is $libdir)
   --with-libxml-inc=PATH  include path for libxml headers (default is
                           /usr/include)
   --with-libxml-inc=PATH  include path for libxml headers (default is
@@ -5156,7 +5156,7 @@ $as_echo "yes" >&6; }
 if test "${with_zlib+set}" = set; then :
   withval=$with_zlib; zlib_libdir="$withval"
 else
-  zlib_libdir="/usr/lib"
+  zlib_libdir="$libdir"
 fi
 
 
@@ -5717,7 +5717,7 @@ fi
 
 
 	default_mysql_incdir="/usr/include/mysql"
-	default_mysql_libdir="/usr/lib/mysql"
+	default_mysql_libdir="$libdir/mysql"
 
 
 # Check whether --with-mysql-inc was given.
@@ -5927,7 +5927,7 @@ test -n "$xmlconfig" || xmlconfig="no"
 if test "${with_libxml+set}" = set; then :
   withval=$with_libxml; libxml_libdir="$withval"
 else
-  libxml_libdir="/usr/lib"
+  libxml_libdir="$libdir"
 fi
 
 
@@ -6018,7 +6018,7 @@ fi
 if test "${with_libxml+set}" = set; then :
   withval=$with_libxml; libxml_libdir="$withval"
 else
-  libxml_libdir="/usr/lib"
+  libxml_libdir="$libdir"
 
 fi
 
