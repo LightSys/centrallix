@@ -868,16 +868,60 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 int
 smtpDelete(pObject obj, pObjTrxTree* oxt)
     {
+    pSmtpData inf = NULL;
+    XString filePath;
+    pSmtpAttribute spoolDir = NULL;
+    char *emailName = NULL;
+
+	xsInit(&filePath);
+
+	obj->Mode = O_RDWR;
+	inf = (pSmtpData)smtpOpen(obj, 0, NULL, "", oxt);
+	if (!inf) return -1;
+
 	/** Determine the type of the object. **/
 	if (obj->SubPtr == obj->Pathname->nElements)
 	    {
-	    objDeleteObj(obj->Prev);
-	    return 0;
+	    mssError(1, "SMTP", "Not handling deleting root nodes.");
+	    goto error;
 	    }
 	else if (obj->SubPtr+1 == obj->Pathname->nElements &&
 		smtp_internal_IsEmail(obj->Pathname->Pathbuf))
 	    {
-	    mssError(1, "SMTP", "Not currently handling email deletion");
+	    /** Construct path to the email file. **/
+	    spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	    if (!spoolDir)
+		{
+		mssError(1, "SMTP", "Unable to get the spool directory.");
+		goto error;
+		}
+
+	    emailName = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements - 1, 1);
+	    if (!emailName)
+		{
+		mssError(1, "SMTP", "Could not parse email name.");
+		goto error;
+		}
+
+	    xsConcatPrintf(&filePath, "%s/%s", spoolDir->Value.String, emailName);
+
+	    /** Delete the email file. **/
+	    if (remove(filePath.String))
+		{
+		mssErrorErrno(1, "SMTP", "Could not delete the email file.");
+		goto error;
+		}
+
+	    /** Construct path to the email struct. **/
+	    xsCopy(&filePath, filePath.String, filePath.Length - 4);
+	    xsConcatenate(&filePath, ".struct", -1);
+
+	    /** Delete the email struct. **/
+	    if (remove(filePath.String))
+		{
+		mssErrorErrno(1, "SMTP", "Could not delete the email struct file.");
+		goto error;
+		}
 	    }
 	else
 	    {
