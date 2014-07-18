@@ -106,8 +106,8 @@ typedef struct
 /*** Global data structure for the SMTP module. ***/
 struct
     {
-    XArray		DefaultRootAttributes;		/* XArray of pSmtpAttibute */
-    XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttibute */
+    XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
+    XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
     }
     SMTP_INF;
 
@@ -177,6 +177,14 @@ smtp_internal_InitGlobals()
     return 0;
     }
 
+/*** smtp_internal_IsEmail - Returns 1 if the filename is an email.
+ ***/
+int
+smtp_internal_IsEmail(char* filename)
+    {
+    return !strcmp(filename + strlen(filename) - 4, ".msg") || !strcmp(filename + strlen(filename) - 4, ".eml");
+    }
+
 /*** smtp_internal_GetStructAttributes - Loads the attributes from the node into
  *** the SMTP object.
  *** Returns 0 on success and -1 on failure.
@@ -243,10 +251,6 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	    return NULL;
 	    }
 
-	/** If globals are not yet initialized, initialize them. **/
-	/** We don't always need globals, but when we do, they should be initialized. **/
-	smtp_internal_InitGlobals();
-
 	/** Iterate through all the default root attributes. **/
 	for (i = 0; i < SMTP_INF.DefaultRootAttributes.nItems; i ++)
 	    {
@@ -281,7 +285,6 @@ int
 smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
     {
     pSnNode node = NULL;
-
 
 	/** Try to open the root node first. **/
 	if (!node)
@@ -366,6 +369,7 @@ smtp_internal_OpenRoot(pSmtpData inf)
     return 0;
     }
 
+
 /*** smtp_internal_OpenEml - Open an email file in the smtp structure.
  *** Returns 0 on success and -1 on failure.
  ***/
@@ -435,8 +439,8 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    }
 
 	/** Open the email structure file. **/
-	emailStructureFile = fdOpen(emailStructurePath->String, 
-					inf->Obj->Mode, 
+	emailStructureFile = fdOpen(emailStructurePath->String,
+					inf->Obj->Mode,
 					inf->Mask);
 	if (!emailStructureFile)
 	    {
@@ -484,7 +488,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
 	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
 	if (!inf)
-	    goto error;
+	    return -1;
 	memset(inf, 0, sizeof(SmtpData));
 	inf->Mask = mask;
 	inf->Obj = obj;
@@ -504,8 +508,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		goto error;
 		}
 	    }
-	else if (inf->Obj->SubPtr+1 == inf->Obj->Pathname->nElements &&
-		!strcmp(inf->Obj->Pathname->Pathbuf + strlen(inf->Obj->Pathname->Pathbuf) - 4, ".eml"))
+	else if (smtp_internal_IsEmail(internalPath))
 	    {
 	    inf->Obj->SubCnt = 2;
 
@@ -524,6 +527,9 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    mssError(1,"SMTP","Could not open file");
 	    goto error;
 	    }
+
+	/** Correct the the pathname. **/
+	obj_internal_PathPart(obj->Pathname, 0, 0);
 
 	return inf;
 
@@ -544,7 +550,8 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
 
-	if (inf->AttributeNames)
+	/** Check if the object is the root node. **/
+	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
 	    {
 	    xaDeInit(inf->AttributeNames);
 	    }
@@ -565,7 +572,10 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
 	    }
 
 	/** We're closing the object... let the world know. **/
-	inf->Node->OpenCnt--;
+	if (inf->Node)
+	    {
+	    inf->Node->OpenCnt--;
+	    }
 
 	nmFree(inf, sizeof(SmtpData));
 
@@ -590,29 +600,38 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    if (node)
 		{
 		mssError(1, "SMTP", "Unable to create root node because it already exists.");
-		return -1;
+		goto error;
 		}
 
 	    node = smtp_internal_CreateRootNode(obj, mask);
 	    if (!node)
 		{
 		mssError(1, "SMTP", "Unable to create root node.");
-		return -1;
+		goto error;
 		}
 	    }
 	else if (obj->SubPtr+1 == obj->Pathname->nElements &&
-		!strcmp(obj->Pathname->Pathbuf + strlen(obj->Pathname->Pathbuf) - 4, ".eml"))
+		smtp_internal_IsEmail(obj->Pathname->Pathbuf))
 	    {
-	    mssError(1, "SMTP", "Not currently handling email creation.");
-	    return -1;
+	    /** Untested, but theoretically working... right? **/
+	    smtpOpen(obj, mask, systype, usrtype, oxt);
+	    smtpClose(obj, oxt);
+	    return 0;
 	    }
 	else
 	    {
 	    mssError(1,"SMTP","Could not create file");
-	    return -1;
+	    goto error;
 	    }
 
     return 0;
+
+    error:
+
+	xsDeInit(&path);
+
+    return -1;
+
     }
 
 
@@ -630,14 +649,23 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    return 0;
 	    }
 	else if (obj->SubPtr+1 == obj->Pathname->nElements &&
-		!strcmp(obj->Pathname->Pathbuf + strlen(obj->Pathname->Pathbuf) - 4, ".eml"))
+		smtp_internal_IsEmail(obj->Pathname->Pathbuf))
 	    {
 	    mssError(1, "SMTP", "Not currently handling email deletion");
 	    }
 	else
 	    {
-	    mssError(1,"SMTP","Could not delete indicated object");
+	    mssError(1,"SMTP","Could not delete indicated object.");
+	    goto error;
 	    }
+
+	xsDeInit(&filePath);
+
+    return 0;
+
+    error:
+
+	xsDeInit(&filePath);
 
     return -1;
     }
@@ -666,11 +694,20 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 int
 smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    return -1;
+    pSmtpData inf = SMTP(inf_v);
+    int rval = -1;
+
+	/** Write the contents of emails directly. **/
+	if (inf->Type == SMTP_T_EML)
+	    {
+	    rval = fdWrite(inf->Content, buffer, cnt, offset, flags);
+	    }
+
+    return rval;
     }
 
 
-/*** smtpOpenQuery - open a directory query.  This driver is pretty 
+/*** smtpOpenQuery - open a directory query.  This driver is pretty
  *** unintelligent about queries.  So, we leave the query matching logic
  *** to the ObjectSystem management layer in this case.
  ***/
@@ -745,7 +782,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    while (1)
 		{
 		mailEntry = readdir(qy->Directory);
-		if (!mailEntry || !strcmp(mailEntry->d_name + strlen(mailEntry->d_name) - 4, ".eml"))
+		if (!mailEntry || smtp_internal_IsEmail(mailEntry->d_name))
 		    {
 			break;
 		    }
@@ -1095,8 +1132,8 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 
 	    /** Open the email structure file. **/
-	    emlStructFile = fdOpen(emlStructPath->String, 
-					    inf->Obj->Mode, 
+	    emlStructFile = fdOpen(emlStructPath->String,
+					    inf->Obj->Mode,
 					    inf->Mask);
 	    if (!emlStructFile)
 		{
@@ -1274,8 +1311,8 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		}
 
 	    /** Open the email structure file. **/
-	    emlStructFile = fdOpen(emlStructPath->String, 
-					    inf->Obj->Mode, 
+	    emlStructFile = fdOpen(emlStructPath->String,
+					    inf->Obj->Mode,
 					    inf->Mask);
 	    if (!emlStructFile)
 		{
@@ -1363,7 +1400,7 @@ smtpGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** smtpGetNextMethod -- same as above.  Always fails. 
+/*** smtpGetNextMethod -- same as above.  Always fails.
  ***/
 char*
 smtpGetNextMethod(void* inf_v, pObjTrxTree oxt)
@@ -1390,7 +1427,7 @@ smtpInfo(void* inf_v, pObjectInfo info)
     }
 
 
-/*** smtpInitialize - initialize this driver, which also causes it to 
+/*** smtpInitialize - initialize this driver, which also causes it to
  *** register itself with the objectsystem.
  ***/
 int
@@ -1403,7 +1440,11 @@ smtpInitialize()
 	if (!drv) return -1;
 	memset(drv, 0, sizeof(ObjDriver));
 
-	/** Initialize globals **/
+	/** If globals are not yet initialized, initialize them.			**/
+	/** We don't always need globals, but when we do, they should be initialized.	**/
+	/** jk. They are the globals we deserve, but not the ones we need right now.	**/
+	/** jk. We need Batman. And globals.						**/
+	smtp_internal_InitGlobals();
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
@@ -1440,7 +1481,6 @@ smtpInitialize()
 
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
-
 
     return 0;
     }

@@ -762,8 +762,9 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    inf->InternalSeek = offset;
 	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
 	inf->InternalSeek += size;
-	return size;
 	}
+
+    return size;
     }
 
 
@@ -793,7 +794,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 
 	/** Generate a unique hash for the temporary message file. **/
 	fileHash = (char*)nmSysMalloc(sizeof(char) * 9);
-	if (!fileHash) return -1;
+	if (!fileHash) goto error;
 	memset(fileHash, 0, sizeof(char) * 9);
 	libmime_internal_MakeARandomFilename(fileHash, 8);
 
@@ -809,7 +810,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	if (!messageFile)
 	    {
 	    mssError(1, "MIME", "Could not create temporary file.");
-	    return -1;
+	    goto error;
 	    }
 
 	/** Seek to the beginning of the message contents. **/
@@ -828,7 +829,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    if (fdWrite(messageFile, buf, strlen(buf), 0, 0) < 0)
 		{
 		mssError(1, "MIME", "Unable to copy message contents to temporary file.");
-		return -1;
+		goto error;
 		}
 	    }
 
@@ -879,7 +880,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
 		{
 		mssError(1, "MIME", "Unable to copy pre-message contents to temporary file.");
-		return -1;
+		goto error;
 		}
 	    }
 
@@ -895,7 +896,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
 		{
 		mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
-		return -1;
+		goto error;
 		}
 
 	    memset(buf, 0, MIME_BUFSIZE);
@@ -914,7 +915,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
 		{
 		mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
-		return -1;
+		goto error;
 		}
 	    memset(buf, 0, MIME_BUFSIZE);
 	    }
