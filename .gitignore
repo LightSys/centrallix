@@ -47,3 +47,4 @@ centrallix/thirdparty/json-c-0.12/aclocal.m4
 centrallix/compile
 centrallix/depcomp
 centrallix/missing
+centrallix/test-driver
