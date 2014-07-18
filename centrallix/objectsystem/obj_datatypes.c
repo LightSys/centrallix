@@ -2137,6 +2137,188 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
     }
 
 
+/*** objDateDiff - Finds the difference of the given dates in the desired units.
+ *** (e.g. difference between two dates in days)
+ ***
+ *** Returns an integer value that is the difference between the two dates in the
+ *** desired units.
+ ***/
+int
+objDateDiff(pDateTime dt1, pDateTime dt2, char* diff_type)
+    {
+    int yr, mo;
+    int sign = 1;
+    int ret;
+    pDateTime tmp;
+
+	/** Swap operands if we're diffing backwards **/
+	if (dt2->Value < dt1->Value)
+	    {
+	    sign = -1;
+	    tmp = dt2;
+	    dt2 = dt1;
+	    dt1 = tmp;
+	    }
+
+	/** choose which date part.  Typecasts are to make sure we're working
+	 ** with signed values.
+	 **/
+	if (strcmp(diff_type, "year") == 0)
+	    {
+	    ret = dt2->Part.Year - (int)dt1->Part.Year;
+	    }
+	else if (strcmp(diff_type, "month") == 0)
+	    {
+	    ret = dt2->Part.Year - (int)dt1->Part.Year;
+	    ret = ret*12 + dt2->Part.Month - (int)dt1->Part.Month;
+	    }
+	else
+	    {
+	    /** fun.  working with the day part of stuff gets tricky -- leap
+	     ** years and all that stuff.  Count the days up manually.
+	     **/
+	    ret = - dt1->Part.Day;
+	    yr = dt1->Part.Year;
+	    mo = dt1->Part.Month;
+	    while (yr < dt2->Part.Year || (yr == dt2->Part.Year &&  mo < dt2->Part.Month))
+		{
+		ret += obj_month_days[mo];
+		if (IS_LEAP_YEAR(yr+1900) && mo == 1) /* Feb of a leap year */
+		    ret += 1;
+		mo++;
+		if (mo == 12)
+		    {
+		    mo = 0;
+		    yr++;
+		    }
+		}
+	    ret += dt2->Part.Day;
+
+	    /** Hours, minutes, seconds? **/
+	    if (strcmp(diff_type, "day") != 0)
+		{
+		/** has to be H, M, or S **/
+		ret = ret*24 + dt2->Part.Hour - (int)dt1->Part.Hour;
+		if (strcmp(diff_type, "hour") != 0)
+		    {
+		    /** has to be M or S **/
+		    ret = ret*60 + dt2->Part.Minute - (int)dt1->Part.Minute;
+		    if (strcmp(diff_type, "minute") != 0)
+			{
+			/** has to be S **/
+			if (strcmp(diff_type, "second") != 0)
+			    {
+			    mssError(1,"EXP","Invalid date part '%s' for datediff()", diff_type);
+			    return -1;
+			    }
+			ret = ret*60 + dt2->Part.Second - (int)dt1->Part.Second;
+			}
+		    }
+		}
+	    }
+
+	/** Invert sign? **/
+	ret *= sign;
+
+    return ret;
+    }
+
+
+/*** obj_internal_DateModAdd - Adds two values with a given modulus and returns the
+ *** number of times overflow occured.
+ ***
+ *** Returns the sum.
+ ***/
+int
+obj_internal_DateModAdd(int v1, int v2, int mod, int* overflow)
+    {
+    int rv;
+    rv = (v1 + v2)%mod;
+    *overflow = (v1 + v2)/mod;
+    if (rv < 0)
+	{
+	*overflow -= 1;
+	rv += mod;
+	}
+    return rv;
+    }
+
+
+/*** objDateAdd - Adds a value in the given units to the given date. NOTE: This
+ *** function alters the given date.
+ ***
+ *** Returns 0 on success. (This function shouldn't fail if given valid arguments.)
+ ***/
+int
+objDateAdd(pDateTime dt, int add_val, char* add_type)
+    {
+    int diff_sec = 0, diff_min = 0, diff_hr = 0, diff_day = 0, diff_mo = 0, diff_yr = 0;
+    int carry;
+
+	/** ok, we're good.  set up for returning the value **/
+	diff_sec = diff_min = diff_hr = diff_day = diff_mo = diff_yr = 0;
+	if (!strcmp(add_type, "second"))
+	    diff_sec = add_val;
+	else if (!strcmp(add_type, "minute"))
+	    diff_min = add_val;
+	else if (!strcmp(add_type, "hour"))
+	    diff_hr = add_val;
+	else if (!strcmp(add_type, "day"))
+	    diff_day = add_val;
+	else if (!strcmp(add_type, "month"))
+	    diff_mo = add_val;
+	else if (!strcmp(add_type, "year"))
+	    diff_yr = add_val;
+	else
+	    {
+	    mssError(1, "EXP", "dateadd() first parameter must be a valid date part (second/minute/hour/day/month/year)");
+	    return -1;
+	    }
+
+	/** Do the add **/
+	dt->Part.Second = obj_internal_DateModAdd(dt->Part.Second, diff_sec, 60, &carry);
+	diff_min += carry;
+	dt->Part.Minute = obj_internal_DateModAdd(dt->Part.Minute, diff_min, 60, &carry);
+	diff_hr += carry;
+	dt->Part.Hour = obj_internal_DateModAdd(dt->Part.Hour, diff_hr, 24, &carry);
+	diff_day += carry;
+
+	/** Now add months and years **/
+	dt->Part.Month = obj_internal_DateModAdd(dt->Part.Month, diff_mo, 12, &carry);
+	diff_yr += carry;
+	dt->Part.Year += diff_yr;
+
+	/** Adding days is more complicated **/
+	while (diff_day > 0)
+	    {
+	    dt->Part.Day++;
+	    if (dt->Part.Day >= (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)))
+		{
+		dt->Part.Day = 0;
+		dt->Part.Month = obj_internal_DateModAdd(dt->Part.Month, 1, 12, &carry);
+		dt->Part.Year += carry;
+		}
+	    diff_day--;
+	    }
+	while (diff_day < 0)
+	    {
+	    if (dt->Part.Day == 0)
+		{
+		dt->Part.Day = (obj_month_days[obj_internal_DateModAdd(dt->Part.Month, -1, 12, &carry)] + ((dt->Part.Month==2 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)) - 1;
+		dt->Part.Month = obj_internal_DateModAdd(dt->Part.Month, -1, 12, &carry);
+		dt->Part.Year += carry;
+		}
+	    else
+		{
+		dt->Part.Day--;
+		}
+	    diff_day++;
+	    }
+
+    return 0;
+    }
+
+
 /*** Build a 'binary image' of a list of fields that is suitable for comparison
  *** in grouping and ordering.  Places that image in 'buf' and returns the
  *** length in 'buf' that was used for the image.  Returns -1 on error.

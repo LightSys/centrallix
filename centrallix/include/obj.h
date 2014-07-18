@@ -663,6 +663,9 @@ int objDataFromStringAlloc(pObjData pod, int type, char* str);
 char* objFormatMoneyTmp(pMoneyType m, char* format);
 char* objFormatDateTmp(pDateTime dt, char* format);
 int objCurrentDate(pDateTime dt);
+int objDateDiff(pDateTime dt1, pDateTime dt2, char* diff_type);
+int obj_internal_DateModAdd(int v1, int v2, int mod, int* overflow);
+int objDateAdd(pDateTime dt, int add_val, char* add_type);
 int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
 int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
 

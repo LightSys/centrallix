@@ -1638,92 +1638,9 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	return 0;
 	}
     tree->DataType = DATA_T_INTEGER;
-
-    /** Swap operands if we're diffing backwards **/
-    if (i2->Types.Date.Value < i1->Types.Date.Value)
-	{
-	sign = -1;
-	tmp = i2;
-	i2 = i1;
-	i1 = tmp;
-	}
-
-    /** choose which date part.  Typecasts are to make sure we're working
-     ** with signed values.
-     **/
-    if (strcmp(i0->String, "year") == 0)
-	{
-	tree->Integer = i2->Types.Date.Part.Year - (int)i1->Types.Date.Part.Year;
-	}
-    else if (strcmp(i0->String, "month") == 0)
-	{
-	tree->Integer = i2->Types.Date.Part.Year - (int)i1->Types.Date.Part.Year;
-	tree->Integer = tree->Integer*12 + i2->Types.Date.Part.Month - (int)i1->Types.Date.Part.Month;
-	}
-    else
-	{
-	/** fun.  working with the day part of stuff gets tricky -- leap
-	 ** years and all that stuff.  Count the days up manually.
-	 **/
-	tree->Integer = - i1->Types.Date.Part.Day;
-	yr = i1->Types.Date.Part.Year;
-	mo = i1->Types.Date.Part.Month;
-	while (yr < i2->Types.Date.Part.Year || (yr == i2->Types.Date.Part.Year &&  mo < i2->Types.Date.Part.Month))
-	    {
-	    tree->Integer += obj_month_days[mo];
-	    if (IS_LEAP_YEAR(yr+1900) && mo == 1) /* Feb of a leap year */
-		tree->Integer += 1;
-	    mo++;
-	    if (mo == 12)
-		{
-		mo = 0;
-		yr++;
-		}
-	    }
-	tree->Integer += i2->Types.Date.Part.Day;
-
-	/** Hours, minutes, seconds? **/
-	if (strcmp(i0->String, "day") != 0)
-	    {
-	    /** has to be H, M, or S **/
-	    tree->Integer = tree->Integer*24 + i2->Types.Date.Part.Hour - (int)i1->Types.Date.Part.Hour;
-	    if (strcmp(i0->String, "hour") != 0)
-		{
-		/** has to be M or S **/
-		tree->Integer = tree->Integer*60 + i2->Types.Date.Part.Minute - (int)i1->Types.Date.Part.Minute;
-		if (strcmp(i0->String, "minute") != 0)
-		    {
-		    /** has to be S **/
-		    if (strcmp(i0->String, "second") != 0)
-			{
-			mssError(1,"EXP","Invalid date part '%s' for datediff()", i0->String);
-			return -1;
-			}
-		    tree->Integer = tree->Integer*60 + i2->Types.Date.Part.Second - (int)i1->Types.Date.Part.Second;
-		    }
-		}
-	    }
-	}
-
-    /** Invert sign? **/
-    tree->Integer *= sign;
+    tree->Integer = objDateDiff(&i1->Types.Date, &i2->Types.Date, i0->String);
 
     return 0;
-    }
-
-
-int
-exp_fn_dateadd_mod_add(int v1, int v2, int mod, int* overflow)
-    {
-    int rv;
-    rv = (v1 + v2)%mod;
-    *overflow = (v1 + v2)/mod;
-    if (rv < 0)
-	{
-	*overflow -= 1;
-	rv += mod;
-	}
-    return rv;
     }
 
 
@@ -1758,66 +1675,7 @@ int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     /** ok, we're good.  set up for returning the value **/
     tree->DataType = DATA_T_DATETIME;
     memcpy(&tree->Types.Date, &i2->Types.Date, sizeof(DateTime));
-    diff_sec = diff_min = diff_hr = diff_day = diff_mo = diff_yr = 0;
-    if (!strcmp(i0->String, "second"))
-	diff_sec = i1->Integer;
-    else if (!strcmp(i0->String, "minute"))
-	diff_min = i1->Integer;
-    else if (!strcmp(i0->String, "hour"))
-	diff_hr = i1->Integer;
-    else if (!strcmp(i0->String, "day"))
-	diff_day = i1->Integer;
-    else if (!strcmp(i0->String, "month"))
-	diff_mo = i1->Integer;
-    else if (!strcmp(i0->String, "year"))
-	diff_yr = i1->Integer;
-    else
-	{
-	mssError(1, "EXP", "dateadd() first parameter must be a valid date part (second/minute/hour/day/month/year)");
-	return -1;
-	}
-
-    /** Do the add **/
-    tree->Types.Date.Part.Second = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Second, diff_sec, 60, &carry);
-    diff_min += carry;
-    tree->Types.Date.Part.Minute = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Minute, diff_min, 60, &carry);
-    diff_hr += carry;
-    tree->Types.Date.Part.Hour = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Hour, diff_hr, 24, &carry);
-    diff_day += carry;
-
-    /** Now add months and years **/
-    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, diff_mo, 12, &carry);
-    diff_yr += carry;
-    tree->Types.Date.Part.Year += diff_yr;
-
-    /** Adding days is more complicated **/
-    while (diff_day > 0)
-	{
-	tree->Types.Date.Part.Day++;
-	if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
-	    {
-	    tree->Types.Date.Part.Day = 0;
-	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, 1, 12, &carry);
-	    tree->Types.Date.Part.Year += carry;
-	    }
-	diff_day--;
-	}
-    while (diff_day < 0)
-	{
-	if (tree->Types.Date.Part.Day == 0)
-	    {
-	    tree->Types.Date.Part.Day = (obj_month_days[exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry)] + ((tree->Types.Date.Part.Month==2 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
-	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry);
-	    tree->Types.Date.Part.Year += carry;
-	    }
-	else
-	    {
-	    tree->Types.Date.Part.Day--;
-	    }
-	diff_day++;
-	}
-
-    return 0;
+    return objDateAdd(&tree->Types.Date, i1->Integer, i0->String);
     }
 
 
