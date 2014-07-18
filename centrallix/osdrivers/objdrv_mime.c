@@ -101,6 +101,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeInfo inf;
     pMimeHeader msg;
     pMimeHeader phdr;
+    pContentType apparentType = NULL;
     char *node_path;
     char *nodeName;
     char *buffer;
@@ -222,10 +223,27 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     if ((inf->Obj->Mode & O_CREAT) &&
 	(!foundMatch))
 	{
-	if (mimeCreate(obj, mask, systype, usrtype, oxt))
+	obj_internal_PathPart(obj->Pathname, 0, 0);
+
+	/** If creating a new object with no specified type, infer the type. **/
+	if (strcmp(obj->Prev->Driver->Name, "MIME - MIME Parsing Driver"))
 	    {
-	    mssError(0, "MIME", "Could not create new mime object.");
-	    goto error;
+	    apparentType = obj_internal_TypeFromName(obj->Pathname->Pathbuf);
+	    if ((apparentType && mimeCreate(obj, mask, systype, apparentType->Name, oxt))
+		    || (!apparentType && mimeCreate(obj, mask, systype, usrtype, oxt)))
+		{
+		mssError(0, "MIME", "Could not create new mime object.");
+		goto error;
+		}
+	    }
+	/** Otherwise, simply pass the type along. **/
+	else
+	    {
+	    if (mimeCreate(obj, mask, systype, usrtype, oxt))
+		{
+		mssError(0, "MIME", "Could not create new mime object.");
+		goto error;
+		}
 	    }
 
 	/** Deallocate anything from this go-round before trying again. **/
@@ -310,6 +328,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     pMimeHeader msg = NULL;
     pMimeHeader phdr = NULL;
     pMimeHeader msgRoot = NULL;
+    pMimeInfo inf = NULL;
     char fileHash[9];
     int i, foundMatch = 0;
     char *nodeName, *pathString, *boundary = NULL;
@@ -326,7 +345,16 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 
 	/** Hardcode default values for new mime object. **/
 	xsConcatenate(&initialContents, "Mime-Version: 1.0\n", -1);
-	xsConcatPrintf(&initialContents, "Content-Type: text/plain; name=%s\n\n", nodeName);
+
+	/** Use the passed in type, as long as it isn't the default (system/object). **/
+	if (!strcmp(usrtype, "system/object"))
+	    {
+	    xsConcatPrintf(&initialContents, "Content-Type: text/plain; name=%s\n\n", nodeName);
+	    }
+	else
+	    {
+	    xsConcatPrintf(&initialContents, "Content-Type: %s; name=%s\n\n", usrtype, nodeName);
+	    }
 
 	/** Creating a new mime file. **/
 	if (obj->SubPtr == obj->Pathname->nElements)
@@ -407,6 +435,42 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    libmime_internal_MakeARandomFilename(fileHash, 8);
 	    xsConcatPrintf(&fileName, "/tmp/%s%s", nodeName, fileHash);
 
+	    /** Get the boundary string for the parent object. **/
+	    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &boundary);
+	    if (!boundary)
+		{
+		/** Generate a new boundary string. **/
+		boundary = nmSysMalloc(sizeof(char) * 14);
+		if (!boundary)
+		    {
+		    mssError(1, "MIME", "Failed to allocate boundary string for a new multipart object.");
+		    goto error;
+		    }
+		memset(boundary, 0, sizeof(char) * 14);
+		strtcpy(boundary, "-----");
+		libmime_internal_MakeARandomFilename(boundary, 8);
+
+		/** Store the boundary as a parameter if the multipart already exists. **/
+		if (!libmime_GetMimeParam(msg, "Content-Type", "Boundary") &&
+			!libmime_GetIntAttr(msg, "Content-Type", "ContentMainType", &i) &&
+			i == MIME_TYPE_MULTIPART)
+		    {
+		    inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
+		    if (!inf)
+			{
+			mssError(1, "MIME", "Failed to allocate a Mime info structure to store the new boundary string.");
+			goto error;
+			}
+		    memset(inf, 0, sizeof(MimeInfo));
+		    inf->Header = msg;
+		    inf->Obj = obj;
+
+		    mimeSetAttrValue(inf, "Content-Type.Boundary", DATA_T_STRING, POD(&boundary), NULL);
+
+		    nmFree(inf, sizeof(MimeInfo));
+		    }
+		}
+
 	    /** Create the temporary file. **/
 	    fd = fdOpen(fileName.String, O_CREAT | O_EXCL | O_RDWR, 0x755);
 	    if (!fd)
@@ -453,22 +517,6 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		    }
 		}
 
-	    /** Get the boundary string for the parent object. **/
-	    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &boundary);
-	    if (!boundary)
-		{
-		/** Generate a new boundary string. **/
-		boundary = nmSysMalloc(sizeof(char) * 14);
-		if (!boundary)
-		    {
-		    mssError(1, "MIME", "Failed to allocate boundary string for a new multipart object.");
-		    goto error;
-		    }
-		memset(boundary, 0, sizeof(char) * 14);
-		strtcpy(boundary, "-----");
-		libmime_internal_MakeARandomFilename(boundary, 8);
-		}
-
 	    /** Add the boundary to the beginning of the initial contents. **/
 	    pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString. */
 	    xsPrintf(&initialContents, "--%s\n%s", boundary, pathString);
@@ -480,7 +528,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		{
 		pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString again. */
 		xsCopy(&initialContents, "MIME-Version: 1.0\n", -1);
-		xsConcatPrintf(&initialContents, "Content-Type: multipart/mixed; boundary=%s\n\n%s", boundary, pathString);
+		xsConcatPrintf(&initialContents, "Content-Type: multipart/mixed; boundary=%s; name=%s\n\n%s", boundary, nodeName, pathString);
 		xsConcatPrintf(&initialContents, "--%s\n", boundary);
 		nmSysFree(pathString);
 
@@ -1341,8 +1389,14 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	/** Otherwise, this is a parameter. **/
 	else
 	    {
+	    filehash = (char*)nmSysMalloc(8);
+	    memset(filehash, 0, 8);
+	    libmime_internal_MakeARandomFilename(filehash, 7);
+
 	    /** Construct the filename. **/
-	    xsConcatPrintf(&filename, "/tmp/%s.msg", paramName);
+	    xsConcatPrintf(&filename, "/tmp/%s%s.msg", paramName, filehash);
+
+	    nmSysFree(filehash);
 
 	    /** Get the attribute. **/
 	    attr = libmime_GetMimeAttr(inf->Header, attrName);
@@ -1399,6 +1453,11 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 		    mssError(1, "MIME", "Could not write to the temp file.");
 		    goto error;
 		    }
+
+		/** Update the message offsets. **/
+		inf->Header->HdrSeekEnd += 1;
+		inf->Header->MsgSeekStart += 1;
+		inf->Header->MsgSeekEnd += 1;
 		}
 
 	    /** Reset the temp buffer to 0. **/

@@ -1023,6 +1023,7 @@ libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramNam
     XString output;
     XString data;
     pTObjData ptod;
+    int bytesWritten;
     int i;
 
 	/** Initialize the strings. **/
@@ -1049,11 +1050,18 @@ libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramNam
 	    xsConcatPrintf(&output, " %s=%s", paramName, data.String);
 	    }
 
+	bytesWritten = fdWrite(fd, output.String, strlen(output.String), 0, 0);
+
 	/** Add the new attribute to the header. **/
-	if (fdWrite(fd, output.String, strlen(output.String), 0, 0) < 0)
+	if (bytesWritten < 0)
 	    {
 	    goto error;
 	    }
+
+	/** Correct the message offsets for the new attribute. **/
+	msg->HdrSeekEnd += bytesWritten;
+	msg->MsgSeekStart += bytesWritten;
+	msg->MsgSeekEnd += bytesWritten;
 
 	/** Add the attribute to the attribute array according to its datatype. **/
 	switch (type)
