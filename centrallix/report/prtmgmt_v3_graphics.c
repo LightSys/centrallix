@@ -363,7 +363,7 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 		NULL, NULL, NULL);
 	if (bit_depth > 1 && bit_depth < 8 && color_type == PNG_COLOR_TYPE_GRAY)
 	    {
-	    png_set_gray_1_2_4_to_8(libpng_png_ptr);
+	    png_set_expand_gray_1_2_4_to_8(libpng_png_ptr);
 	    bit_depth=8;
 	    }
 	png_set_strip_16(libpng_png_ptr);

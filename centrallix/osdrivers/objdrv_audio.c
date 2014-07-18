@@ -91,7 +91,6 @@ void*
 audOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pAudData inf;
-    char* node_path;
     pSnNode node = NULL;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
@@ -99,9 +98,6 @@ audOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    return NULL;
 	    }
-
-	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** try to open it **/
 	node = snReadNode(obj->Prev);
@@ -172,7 +168,6 @@ audCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 audDelete(pObject obj, pObjTrxTree* oxt)
     {
-    char* node_path;
     pSnNode node;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
@@ -182,7 +177,6 @@ audDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	node = snReadNode(obj->Prev);
 	if (!node) 
 	    {
@@ -369,7 +363,6 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pAudData inf = AUD(inf_v);
     pStructInf find_inf;
     int type;
-    int n;
 
 	/** right now, all audio device attrs are strings **/
 	if (datatype != DATA_T_STRING)
@@ -423,7 +416,6 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	if (!find_inf)
 	    {
 	    find_inf = stAddAttr(inf->AttrOverride, attrname);
-	    n = 0;
 	    }
 
 	/** Set the value. **/

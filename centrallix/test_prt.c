@@ -1057,6 +1057,7 @@ main(int argc, char* argv[])
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.Flags = 0;
 	TESTPRT.OutputFile[0] = 0;
 	TESTPRT.CmdFile[0] = 0;
     
