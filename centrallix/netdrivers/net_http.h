@@ -25,6 +25,7 @@
 #include "cxlib/mtlexer.h"
 #include "cxlib/exception.h"
 #include "cxlib/memstr.h"
+#include "cxlib/xstring.h"
 #include "obj.h"
 #include "stparse_ne.h"
 #include "stparse.h"
@@ -206,10 +207,10 @@ typedef struct
     {
     char    filename[128];
     char    newname[512];
-    char    path[128];
-    char    full_new_path[640]; //path + newname
+    char    path[512];
+    char    full_new_path[1024]; //path + newname
     char    extension[16];
-    char    mime_type[64];
+    char    mime_type[128];
     int     status;
     }
     NhtPostPayload, *pNhtPostPayload;
