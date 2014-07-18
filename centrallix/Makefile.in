@@ -431,6 +431,8 @@ thirdparty/$(JSONC)/Makefile.in: thirdparty/$(JSONC)/Makefile.am
 	@echo ""
 	cd thirdparty/$(JSONC); cp -a dist/* .; cp -a tests/dist/* tests/; if type autoreconf >/dev/null 2>/dev/null; then autoreconf -v --install; fi
 
+#	if [ ! -f ltmain.sh ]; then cp -a dist/ltmain.sh ltmain.sh; fi
+
 thirdparty/$(JSONC)/Makefile: thirdparty/$(JSONC)/Makefile.in
 	@echo ""
 	@echo "======================== Configuring libjson-c... ========================"
