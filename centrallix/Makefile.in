@@ -1,13 +1,22 @@
 ####  Centrallix Makefile
 ####
-####  LightSys Technology Services, Inc
-####  Copyright (C) 1998-2011.  All rights reserved.
+####  Copyright (C) 1998-2014 by LightSys Technology Services, Inc.
+####
+####  FREE SOFTWARE, NO WARRANTY: This program is Free Software, licensed
+####  under version 2 of the GNU General Public License, or any later
+####  version of the GNU GPL published by the Free Software Foundation, at
+####  your option.  This program is provided AS-IS and with ABSOLUTELY NO
+####  WARRANTY.  See the file 'COPYING' provided with this software for
+####  more information about the rights granted to you under this license.
 ####
 ####  If you're in this file looking for how to add a new objectsystem
 ####  driver to the build, add its .o file to the XOBJECTSYSTEM variable's
 ####  file list, below.  Don't forget to call the driver's initialization
 ####  function from lsmain.c and test_obj.c at appropriate places!!  And,
 ####  don't forget to add the content-type information to types.cfg.
+####
+####  Please do not modify 'Makefile'.  Only make changes to 'Makefile.in'
+####  and then re-run the configure script.
 ####
 
 @SET_MAKE@
@@ -342,12 +351,15 @@ PREVBUILD=$(shell expr $(BUILD) - 1)
 YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
 
+# JSON-C library location
+JSONC=$(shell cd thirdparty; ls -d json-c-* | grep -v inst | tail -n 1)
+
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
-CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/json-c-0.11-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
-LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/json-c-0.11-inst/lib/libjson-c.a
-STATIC_LIBS=@STATIC_LIBS@ thirdparty/json-c-0.11-inst/lib/libjson-c.a
+LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
@@ -402,18 +414,31 @@ manpages_install: manpages
 	done
 
 # JSON-C library
-osdrivers/objdrv_json.o: thirdparty/json-c-0.11-inst/lib/libjson-c.a
+osdrivers/objdrv_json.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
 
-thirdparty/json-c-0.11-inst/lib/libjson-c.a: thirdparty/json-c-0.11/Makefile
+thirdparty/$(JSONC)-inst/lib/libjson-c.a: thirdparty/$(JSONC)/Makefile
 	@echo ""
-	@echo "Compiling libjson-c..."
-	cd thirdparty/json-c-0.11; make install
+	@echo "========================= Compiling libjson-c... ========================="
+	@echo ""
+	cd thirdparty/$(JSONC); make install
+	@echo ""
+	@echo "========================== libjson-c COMPLETED  =========================="
+	@echo ""
 
-thirdparty/json-c-0.11/Makefile: thirdparty/json-c-0.11/Makefile.in
+thirdparty/$(JSONC)/Makefile.in: thirdparty/$(JSONC)/Makefile.am
 	@echo ""
-	@echo "Configuring libjson-c..."
-	mkdir -p $$PWD/thirdparty/json-c-0.11-inst
-	cd thirdparty/json-c-0.11; ./configure --disable-shared --enable-static --prefix=$$PWD/../json-c-0.11-inst
+	@echo "========================= Autoconf libjson-c...  ========================="
+	@echo ""
+	cd thirdparty/$(JSONC); if type autoreconf >/dev/null 2>/dev/null; then autoreconf -v --install; else cp -a dist/* .; cp -a tests/dist/* tests/; fi
+
+thirdparty/$(JSONC)/Makefile: thirdparty/$(JSONC)/Makefile.in
+	@echo ""
+	@echo "======================== Configuring libjson-c... ========================"
+	@echo ""
+	mkdir -p $$PWD/thirdparty/$(JSONC)-inst
+	cd thirdparty/$(JSONC); ./configure --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst CFLAGS=-Wno-unused-but-set-variable
+
+#cd thirdparty/$(JSONC); if type autoreconf >/dev/null 2>/dev/null; then ./autogen.sh --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst CFLAGS=-Wno-unused-but-set-variable; else cp -a dist/* .; cp -a tests/dist/* tests/; ./configure --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst CFLAGS=-Wno-unused-but-set-variable; fi
 
 # You can call "make mods" directly to avoid getting the warning about
 # make modules_install.  However, we recommend avoiding that habit if
