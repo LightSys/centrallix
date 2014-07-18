@@ -637,12 +637,90 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 
 
 /***
- ***  mimeDelete
+ ***  mimeDelete - TODO: Actually implement this if you're feeling bored or something.
  ***/
 int
 mimeDelete(pObject obj, pObjTrxTree* oxt)
     {
-	/** Parse the Mime file to generate the Mime object tree. **/
+    XString fileName;
+    pLxSession lex = NULL;
+    pMimeHeader msg = NULL;
+    pMimeHeader phdr = NULL;
+    pMimeHeader msgParent = NULL;
+    pMimeHeader msgRoot = NULL;
+    char fileHash[9];
+    int i, foundMatch = 0;
+    char *nodeName, *pathString, *boundary = NULL;
+
+	xsInit(&fileName);
+
+	/** Store the name of the Mime object. **/
+	nodeName = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements - 1, 1);
+
+	/** TODO: Parse the Mime file to generate the Mime object tree. **/
+
+	/** Allocate the Mime header. **/
+	msg = libmime_AllocateHeader();
+	if (!msg)
+	    {
+	    mssError(1, "MIME", "Could not allocate new message header.");
+	    return -1;
+	    }
+
+	/** Parse the current Mime file into the Mime object tree. **/
+	lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
+	if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
+	    {
+	    mssError(0, "MIME", "There was an error parsing message header in mimeOpen().");
+	    return -1;
+	    }
+	if (libmime_ParseMultipartBody(lex, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
+	    {
+	    mssError(0, "MIME", "There was an error parsing message body in mimeOpen().");
+	    return -1;
+	    }
+	mlxCloseSession(lex);
+	lex = NULL;
+
+	/** Remember the root of the Mime object tree. **/
+	msgRoot = msg;
+
+	/** Find the object to delete. **/
+
+	/** While there are more elements in the path,
+	 ** go through all elements and see if we have found the object.
+	 ** If so, repeat the search.
+	 **/
+	foundMatch = 1;
+	obj->SubCnt=1;
+	while (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt &&
+		foundMatch)
+	    {
+	    /** assume we don't have a match **/
+	    foundMatch = 0;
+
+	    /** at least one more element of path to worry about **/
+	    pathString = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
+	    for (i=0; i < xaCount(&(msg->Parts)); i++)
+		{
+		phdr = xaGetItem(&(msg->Parts), i);
+		if (!libmime_GetStringAttr(phdr, "Name", NULL, &nodeName) && !strcmp(nodeName, pathString))
+		    {
+		    msgParent = msg;
+		    msg = phdr;
+		    obj->SubCnt++;
+		    foundMatch = 1;
+		    break;
+		    }
+		}
+	    }
+
+	/** If the object was not found or did not have a parent object (i.e. the root object). **/
+	if (!foundMatch || !msgParent)
+	    {
+	    return -1;
+	    }
+
 	/** Create a temp file. **/
 	/** Copy up to the beginning of the message. **/
 	/** Copy after the end of the message. **/
