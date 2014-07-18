@@ -44,3 +44,6 @@ centrallix/thirdparty/json-c-0.12/tests/Makefile.in
 centrallix/thirdparty/json-c-0.12/config.h.in
 centrallix/thirdparty/json-c-0.12/aclocal.m4
 *~
+centrallix/compile
+centrallix/depcomp
+centrallix/missing
