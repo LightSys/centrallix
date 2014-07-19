@@ -119,18 +119,10 @@ struct
 int
 smtp_internal_SpawnSendmail(char* emailPath)
     {
-    int pid, fd, debug = 0;
+    int pid, fd;
     char *argv[] = {"/usr/sbin/sendmail", "-t", "-N", "delay, failure, success", "-v", "-bm", NULL};
     //char *argv[] = {"/usr/sbin/sendmail", "-t", NULL};
     char *envp[] = {NULL};
-//    {
-//        "HOME=/",
-//        "PATH=/bin:/usr/bin",
-//        "TZ=UTC0",
-//        "USER=beelzebub",
-//        "LOGNAME=tarzan",
-//        NULL
-//    };
 
 	/** Fork. **/
 	pid = fork();
@@ -138,7 +130,6 @@ smtp_internal_SpawnSendmail(char* emailPath)
 	    {
 		mssErrorErrno(1, "SMTP", "Unable to fork.");
 		exit(EXIT_FAILURE);
-		//return -1;
 	    }
 	if (!pid)
 	    {
@@ -146,11 +137,6 @@ smtp_internal_SpawnSendmail(char* emailPath)
 	    thLock();
 
 	    fd = open(emailPath, O_RDONLY);
-//	    debug = open("/tmp/debug.txt", O_RDWR | O_CREAT, 0755);
-//	    if (!debug)
-//		{
-//		mssError(1, "SMTP", "Could not open debug file.");
-//		}
 
 	    /** Hopefully this makes our file stdin so we don't have to cat it into sendmail. **/
 	    dup2(fd, 0);
@@ -160,9 +146,8 @@ smtp_internal_SpawnSendmail(char* emailPath)
 	    execve("/usr/sbin/sendmail", argv, envp);
 
 	    /** if execve() is successfull, this is never reached **/
-//	    warn("execve() failed.");
 	    mssErrorErrno(1, "SMTP", "execve() failed: %s", strerror(errno));
-	    _exit(1);
+	    _exit(EXIT_FAILURE);
 	    }
 
     /** We're a parent. Die happily? **/
