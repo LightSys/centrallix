@@ -427,9 +427,6 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
-	
-	    /** Store the count of characters between the beginning of the name and the value. **/
-	    *nameOffset = count + 1;
 
 	    /** Store the count of characters between the beginning of the name and the value. **/
 	    *nameOffset = count + 1;
@@ -440,6 +437,22 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	    }
 	count++;
 	}
+
+	if (state == 2)
+	    {
+	    memcpy(hdr, buf, (count-1>79?79:count-1));
+	    hdr[(count-1>79?79:count-1)] = 0;
+	    memmove(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
+	    libmime_StringTrim(hdr);
+	    libmime_StringTrim(buf);
+
+	    /** Store the count of characters between the beginning of the name and the value. **/
+	    *nameOffset = count + 1;
+
+	    /** Add the offset of the name to the start offset. **/
+	    *attrSeekStart += hdr - ptr;
+	    }
     return -1;
     }
 
