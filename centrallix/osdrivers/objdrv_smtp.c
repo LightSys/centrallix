@@ -117,12 +117,34 @@ struct
 /*** smtp_internal_SpawnSendmail
  ***/
 int
-smtp_internal_SpawnSendmail(char* emailPath)
+smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttribute envTo)
     {
     int pid, fd;
-    char *argv[] = {"/usr/sbin/sendmail", "-t", "-N", "delay, failure, success", "-v", "-bm", NULL};
-    //char *argv[] = {"/usr/sbin/sendmail", "-t", NULL};
+    XArray argv;
     char *envp[] = {NULL};
+
+	xaInit(&argv, 11);
+
+	    xaAddItem(&argv, "/usr/sbin/sendmail");
+	    xaAddItem(&argv, "-t");
+	    xaAddItem(&argv, "-N");
+	    xaAddItem(&argv, "delay, failure, success");
+	    xaAddItem(&argv, "-v");
+	    xaAddItem(&argv, "-bm");
+	    xaAddItem(&argv, "-i");
+
+	    if (envFrom && strcmp(envFrom->Value.String, ""))
+		{
+		xaAddItem(&argv, "-f");
+		xaAddItem(&argv, envFrom->Value.String);
+		}
+
+	    if (envTo && strcmp(envTo->Value.String, ""))
+		{
+		xaAddItem(&argv, envTo->Value.String);
+		}
+
+	    xaAddItem(&argv, NULL);
 
 	/** Fork. **/
 	pid = fork();
@@ -140,17 +162,18 @@ smtp_internal_SpawnSendmail(char* emailPath)
 
 	    /** Hopefully this makes our file stdin so we don't have to cat it into sendmail. **/
 	    dup2(fd, 0);
-//	    dup2(1, debug);
 
 	    /** Execve. **/
-	    execve("/usr/sbin/sendmail", argv, envp);
+	    execve("/usr/sbin/sendmail", (char**)(argv.Items), envp);
 
 	    /** if execve() is successfull, this is never reached **/
 	    mssErrorErrno(1, "SMTP", "execve() failed: %s", strerror(errno));
 	    _exit(EXIT_FAILURE);
 	    }
 
-    /** We're a parent. Die happily? **/
+	/** We're a parent. Deinit stuff and die happily. **/
+	xaDeInit(&argv);
+
     return 0;
     }
 
@@ -1386,6 +1409,8 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     pSnNode rootNode = NULL;
 
     pSmtpAttribute spoolDir = NULL;
+    pSmtpAttribute envFrom = NULL;
+    pSmtpAttribute envTo = NULL;
     pXString emlStructPath = NULL;
     pXString emlPath = NULL;
     pFile emlStructFileRead = NULL;
@@ -1597,8 +1622,12 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    goto error;
 		    }
 
+		/** Get the log directory. **/
+		envFrom = SMTP_ATTR(xhLookup(inf->Attributes, "env_from"));
+		envTo = SMTP_ATTR(xhLookup(inf->Attributes, "env_to"));
+
 		/** Send it using sendmail. **/
-		if (smtp_internal_SpawnSendmail(emlPath->String))
+		if (smtp_internal_SpawnSendmail(emlPath->String, envFrom, envTo))
 		    {
 		    mssError(0, "SMTP", "Could not send the mail.");
 		    goto error;
