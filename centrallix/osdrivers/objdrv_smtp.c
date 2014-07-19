@@ -233,11 +233,11 @@ smtp_internal_InitGlobals()
 	if (objCurrentDate(&currentDate))
 	    {
 	    mssError(1, "SMTP", "Unable to obtain the current date.");
-	    goto error;
+	    return -1;
 	    }
 
 	/** Initialize the "random" email id to a sufficently unique value. **/
-	SMTP_INF.EmailId = currentDate->Value % 10000;
+	SMTP_INF.EmailId = currentDate.Value % 10000;
 
     return 0;
     }
@@ -353,17 +353,19 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
     pSmtpAttribute currentAttr = NULL;
     DateTime currentDate;
     pDateTime attrDate = NULL;
+    XString emailStructPath;
     XString autoName;
     pFile checkFile = NULL;
     pFile emailStructFile = NULL;
     char* message_id = NULL;
     int i;
 
-	xsInit(*autoName);
+	xsInit(&autoName);
+	xsInit(&emailStructPath);
 
 	/** Resolve autonaming. **/
 	if (inf->Obj->Mode & OBJ_O_AUTONAME &&
-		!strcmp(emailPath->String[emailPath->Length-1], "*"))
+		!strcmp(emailPath->String + emailPath->Length - 1, "*"))
 	    {
 	    /** Remove the ending '*' character. **/
 	    xsCopy(emailPath, emailPath->String, emailPath->Length - 1);
@@ -374,7 +376,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 		inf->Name = nmSysStrdup(autoName.String);
 
 		/** Build the full email path. **/
-		xsPrintf(&autoName, "%s/%s", emailPath->String, autoName.String);
+		xsPrintf(&autoName, "%s%s", emailPath->String, inf->Name);
 
 		/** Make sure we don't spend too much time generating a filename. **/
 		if (thExcessiveRecursion())
@@ -403,8 +405,8 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    }
 
 	/** Construct the email struct file path. **/
-	xsCopy(emailPath, emailPath->String, emailPath->Length - 4);
-	xsConcatenate(emailPath, ".struct", -1);
+	xsCopy(&emailStructPath, emailPath->String, emailPath->Length - 4);
+	xsConcatenate(&emailStructPath, ".struct", -1);
 
 	/** Create the email node. **/
 	emailStruct = stCreateStruct(inf->Name, "message/rfc822");
@@ -537,8 +539,8 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    goto error;
 	    }
 
-	/** Create the stuct file. **/
-	emailStructFile = fdOpen(emailPath->String, O_CREAT | O_RDWR | O_EXCL, 0755);
+	/** Create the struct file. **/
+	emailStructFile = fdOpen(emailStructPath.String, O_CREAT | O_RDWR | O_EXCL, 0755);
 	if (!emailStructFile)
 	    {
 	    mssError(1, "SMTP", "Unable to create the email struct file.");
@@ -552,11 +554,8 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    goto error;
 	    }
 
-	/** Be kind! Rewind! (This may be overused...) **/
-	xsCopy(emailPath, emailPath->String, emailPath->Length - 7);
-	xsConcatenate(emailPath, ".msg", -1);
-
 	xsDeInit(&autoName);
+	xsDeInit(&emailStructPath);
 
 	/** Close the struct file. **/
 	fdClose(emailStructFile, 0);
@@ -565,6 +564,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 
     error:
 	xsDeInit(&autoName);
+	xsDeInit(&emailStructPath);
 
 	if (inf->Content) fdClose(inf->Content, 0);
 	if (emailStructFile) fdClose(emailStructFile, 0);
@@ -733,7 +733,7 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    }
 
 	/** Open the email file. **/
-	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode & ~(O_TRUNC), inf->Mask);
+	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL), inf->Mask);
 	if (!inf->Content)
 	    {
 	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", emailPath->String);
@@ -750,7 +750,7 @@ smtp_internal_OpenEml(pSmtpData inf)
 
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(emailStructurePath->String,
-					inf->Obj->Mode & ~(O_TRUNC),
+					inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL),
 					inf->Mask);
 	if (!emailStructureFile)
 	    {
@@ -822,7 +822,9 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		goto error;
 		}
 	    }
-	else if (smtp_internal_IsEmail(internalPath))
+	else if (smtp_internal_IsEmail(internalPath) ||
+		(inf->Obj->Mode & OBJ_O_AUTONAME &&
+		!strcmp(internalPath + strlen(internalPath) - 1, "*")))
 	    {
 	    inf->Obj->SubCnt = 2;
 
