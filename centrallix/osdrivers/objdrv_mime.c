@@ -1417,6 +1417,14 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Write the new value. (paramName will be NULL if we're writing an attribute) **/
 	libmime_WriteAttrParam(fd, inf->Header, attrName, paramName, datatype, val);
 
+	/** Subtract red, add blueberries **/
+	/** Or, subtract the offset skipped from the beginning offset to the
+	 ** post-attribute offset.
+	 **/
+	inf->Header->HdrSeekEnd -= targetEndOffset - targetStartOffset;
+	inf->Header->MsgSeekStart -= targetEndOffset - targetStartOffset;
+	inf->Header->MsgSeekEnd -= targetEndOffset - targetStartOffset;
+
 	/** Do all the generic post stuff. **/
 	objRead(inf->Obj->Prev, NULL, 0, targetEndOffset, FD_U_SEEK);
 	memset(buf, 0, MIME_BUFSIZE+1);

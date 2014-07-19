@@ -318,6 +318,28 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
     {
     char *fileName = NULL;
 
+	/** Get the name from the message-id **/
+	if (!libmime_GetStringAttr(msg, "Message-ID", NULL, &fileName))
+	    {
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, 0))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    return 0;
+	    }
+
+	/** Get the name from the content-id **/
+	if (!libmime_GetStringAttr(msg, "Content-ID", NULL, &fileName))
+	    {
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, 0))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    return 0;
+	    }
+
 	/** Get the name from the Content-Distribution attribute. **/
 	if (!libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName))
 	    {
@@ -438,6 +460,9 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	count++;
 	}
 
+	/** Handle empty attributes without error. (Not sure if this is
+	 ** standard)
+	 **/
 	if (state == 2)
 	    {
 	    memcpy(hdr, buf, (count-1>79?79:count-1));
@@ -452,6 +477,8 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 
 	    /** Add the offset of the name to the start offset. **/
 	    *attrSeekStart += hdr - ptr;
+
+	    return 0;
 	    }
     return -1;
     }

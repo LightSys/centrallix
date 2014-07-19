@@ -299,9 +299,9 @@ smtp_internal_InitGlobals()
 
 
 	/** Add all the default headers for an email file. **/
-	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("User-Agent", DATA_T_STRING, 0, "Centrallix/0.9.1", NULL));
-	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("Subject", DATA_T_STRING, 0, "", NULL));
-	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("MIME-Version", DATA_T_STRING, 0, "1.0", NULL));
+	xaAddItem(&SMTP_INF.DefaultEmailHeaders, smtp_internal_CreateAttribute("User-Agent", DATA_T_STRING, 0, "Centrallix/0.9.1", NULL));
+	xaAddItem(&SMTP_INF.DefaultEmailHeaders, smtp_internal_CreateAttribute("Subject", DATA_T_STRING, 0, "", NULL));
+	xaAddItem(&SMTP_INF.DefaultEmailHeaders, smtp_internal_CreateAttribute("MIME-Version", DATA_T_STRING, 0, "1.0", NULL));
 
 	/** Get the current date. **/
 	if (objCurrentDate(&currentDate))
@@ -467,7 +467,8 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 
 		/** Continue generating new filenames until no file is found. **/
 		checkFile = fdOpen(autoName.String, 0, 0);
-		} while (checkFile);
+		}
+	    while (checkFile);
 
 	    /** Copy the generated email path. **/
 	    xsCopy(emailPath, autoName.String, autoName.Length);
@@ -567,7 +568,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    goto error;
 	    }
 
-	/** Allocate a new date datastructure. **/
+	/** Allocate a new date data structure. **/
 	attrDate = (pDateTime)nmMalloc(sizeof(DateTime));
 	if (!attrDate)
 	    {
@@ -580,7 +581,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	memcpy(attrDate, &currentDate, sizeof(DateTime));
 	objDateAdd(attrDate, 72, "hour");
 
-	/** Create the message_id attribute. **/
+	/** Create the expire_date attribute. **/
 	createdStruct = stAddAttr(emailStruct, "expire_date");
 	if (!createdStruct)
 	    {
@@ -636,6 +637,17 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 
 	/** Fill the email file with some basic attributes. **/
 
+	/** Fill in the non-static default headers. **/
+	// TODO: Add current date to the header... once we implement date support in the MIME driver
+	xsPrintf(&headerString, "Message-ID: %s\n", message_id);
+
+	/** Add the dynamic attributes to the file. **/
+	if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0) < 0)
+	    {
+		mssError(1, "SMTP", "Failed to write default header to new message (%s).",
+			headerString.String);
+	    }
+
 	/** Iterate through all the default email headers. **/
 	for (i = 0; i < SMTP_INF.DefaultEmailHeaders.nItems; i ++)
 	    {
@@ -645,7 +657,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    xsPrintf(&headerString, "%s: %s\n", currentHeader->Name, currentHeader->Value.String);
 
 	    /** Add the attribute to the file. **/
-	    if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0))
+	    if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0) < 0)
 		{
 		mssError(1, "SMTP", "Failed to write default header to new message (%s: %s).",
 			currentHeader->Name, currentHeader->Value.String);
@@ -653,15 +665,11 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 		}
 	    }
 
-	/** Fill in the non-static default headers. **/
-	// TODO: Add current date to the header... once we implement date support in the MIME driver
-	xsPrintf(&headerString, "Message-ID: %s\n\n", message_id);
-
-	/** Add the dynamic attributes to the file. **/
-	if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0))
+	/** Add an empty line for header separation to the file. **/
+	if (fdWrite(inf->Content, "\n", 1, 0, 0) < 0)
 	    {
-		mssError(1, "SMTP", "Failed to write default header to new message (%s).",
-			headerString.String);
+	    mssError(1, "SMTP", "Failed to write default header separator to new message.");
+	    goto error;
 	    }
 
 	xsDeInit(&autoName);
@@ -918,7 +926,10 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
 	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
 	if (!inf)
+	    {
+	    mssError(1, "SMTP", "Could not allocate SmtpData object.");
 	    return -1;
+	    }
 	memset(inf, 0, sizeof(SmtpData));
 	inf->Mask = mask;
 	inf->Obj = obj;
@@ -1245,6 +1256,9 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    mssError(1, "SMTP", "Unable to query on system/smtp-message type objects");
 	    goto error;
 	    }
+
+    mssError(1, "SMTP", "Invalid smtp object type.");
+    return NULL;
 
     error:
 	if (qy)
