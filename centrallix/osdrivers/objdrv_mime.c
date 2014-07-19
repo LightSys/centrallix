@@ -515,7 +515,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		}
 
 	    /** Create the temporary file. **/
-	    fd = fdOpen(fileName.String, O_CREAT | O_EXCL | O_RDWR, 0755);
+	    fd = fdOpen(fileName.String, O_CREAT | O_RDWR, 0755);
 	    if (!fd)
 		{
 		mssError(1, "MIME", "Could not create temporary file.");
@@ -849,7 +849,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	xsConcatPrintf(&messageFileName, "/tmp/%s%s", messageName, fileHash);
 
 	/** Create the temporary message file. **/
-	messageFile = fdOpen(messageFileName.String, O_RDWR | O_CREAT | O_EXCL, 0755);
+	messageFile = fdOpen(messageFileName.String, O_RDWR | O_CREAT, 0755);
 	if (!messageFile)
 	    {
 	    mssError(1, "MIME", "Could not create temporary file.");
@@ -903,7 +903,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	xsConcatPrintf(&rootFileName, "/tmp/%s%s", rootName, fileHash);
 
 	/** Open a temporary file to compile the entire Mime file. **/
-	rootFile = fdOpen(rootFileName.String, O_RDWR | O_CREAT | O_EXCL, 0755);
+	rootFile = fdOpen(rootFileName.String, O_RDWR | O_CREAT, 0755);
 
 	/** Seek to the beginning of the Mime file. **/
 	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
@@ -1387,7 +1387,7 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Force a create of the temp file. **/
-	fd = fdOpen(filename, O_RDWR | O_CREAT | O_EXCL, 0755);
+	fd = fdOpen(filename, O_RDWR | O_CREAT, 0755);
 
 	if (!fd)
 	    {
@@ -1437,6 +1437,9 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Close the temp file. **/
 	fdClose(fd, 0);
 
+	/** Be kind! Rewind! (Yes... again) **/
+	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
+
 	/** Delete the temp file. **/
 	if (remove(filename))
 	    {
@@ -1472,7 +1475,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 
     char* filehash;
     XString filename;
-    pFile fd;
+    pFile fd = NULL;
 
     char* tempAttrName = NULL;
     char* attrName = NULL;
@@ -1541,7 +1544,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	    }
 
 	/** Open the temporary file. **/
-	fd = fdOpen(filename.String, O_RDWR | O_CREAT | O_EXCL, 0755);
+	fd = fdOpen(filename.String, O_RDWR | O_CREAT, 0755);
 
 	/** Check that the temporary file was opened. **/
 	if (!fd)
@@ -1620,6 +1623,9 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 
 	/** Close the temporary file. **/
 	fdClose(fd, 0);
+
+	/** NOTICE: We are being kind by rewinding. **/
+	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
 
 	/** Delete the temp file. **/
 	if (remove(filename.String))

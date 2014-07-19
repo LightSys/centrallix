@@ -885,6 +885,10 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    goto error;
 	    }
 
+	/** Close the open files. **/
+	if (fd) fdClose(fd, 0);
+	if (emailStructureFile) fdClose(emailStructureFile, 0);
+
     return 0;
 
     error:
@@ -897,6 +901,9 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    {
 	    nmFree(emailStructurePath, sizeof(XString));
 	    }
+
+	if (fd) fdClose(fd, 0);
+	if (emailStructureFile) fdClose(emailStructureFile, 0);
 
 	return -1;
     }
