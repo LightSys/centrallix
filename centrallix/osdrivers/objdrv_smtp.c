@@ -108,6 +108,7 @@ struct
     {
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
+    int			EmailId;
     }
     SMTP_INF;
 
@@ -158,6 +159,8 @@ smtp_internal_CreateAttribute(char* name, int type, int intVal, char* strVal, pO
 int
 smtp_internal_InitGlobals()
     {
+    DateTime currentDate;
+
 	/** Initialize the global attributes. **/
 	xaInit(&SMTP_INF.DefaultRootAttributes, 8);
 	xaInit(&SMTP_INF.DefaultEmailAttributes, 8);
@@ -183,6 +186,16 @@ smtp_internal_InitGlobals()
 	/** xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("try_count", DATA_T_INTEGER, 5, 0, NULL)); **/
 	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("last_try_status", DATA_T_STRING, 0, "None", NULL));
 	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("last_try_msg", DATA_T_STRING, 0, "", NULL));
+
+	/** Get the current date. **/
+	if (objCurrentDate(&currentDate))
+	    {
+	    mssError(1, "SMTP", "Unable to obtain the current date.");
+	    goto error;
+	    }
+
+	/** Initialize the "random" email id to a sufficently unique value. **/
+	SMTP_INF.EmailId = currentDate->Value % 10000;
 
     return 0;
     }
@@ -298,9 +311,43 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
     pSmtpAttribute currentAttr = NULL;
     DateTime currentDate;
     pDateTime attrDate = NULL;
+    XString autoName;
+    pFile checkFile = NULL;
     pFile emailStructFile = NULL;
     char* message_id = NULL;
     int i;
+
+	xsInit(*autoName);
+
+	/** Resolve autonaming. **/
+	if (inf->Obj->Mode & OBJ_O_AUTONAME &&
+		!strcmp(emailPath->String[emailPath->Length-1], "*"))
+	    {
+	    /** Remove the ending '*' character. **/
+	    xsCopy(emailPath, emailPath->String, emailPath->Length - 1);
+	    do
+		{
+		/** Generate a random email name. **/
+		xsPrintf(&autoName, "message%d.eml", SMTP_INF.EmailId++);
+		inf->Name = nmSysStrdup(autoName.String);
+
+		/** Build the full email path. **/
+		xsPrintf(&autoName, "%s/%s", emailPath->String, autoName.String);
+
+		/** Make sure we don't spend too much time generating a filename. **/
+		if (thExcessiveRecursion())
+		    {
+		    mssError(1, "SMTP", "Unable to auto-generate a unique filename. May have exceeded allowable range of filenames.");
+		    goto error;
+		    }
+
+		/** Continue generating new filenames until no file is found. **/
+		checkFile = fdOpen(autoName.String, 0, 0);
+		} while (checkFile);
+
+	    /** Copy the generated email path. **/
+	    xsCopy(emailPath, autoName.String, autoName.Length);
+	    }
 
 	/** Initialize the file descriptor for the content. **/
 	inf->Content = NULL;
@@ -467,12 +514,15 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	xsCopy(emailPath, emailPath->String, emailPath->Length - 7);
 	xsConcatenate(emailPath, ".msg", -1);
 
+	xsDeInit(&autoName);
+
 	/** Close the struct file. **/
 	fdClose(emailStructFile, 0);
 
     return 0;
 
     error:
+	xsDeInit(&autoName);
 
 	if (inf->Content) fdClose(inf->Content, 0);
 	if (emailStructFile) fdClose(emailStructFile, 0);
@@ -631,8 +681,9 @@ smtp_internal_OpenEml(pSmtpData inf)
 	fd = fdOpen(emailPath->String, 0, 0);
 	if (!fd)
 	    {
-	    /** Create the file if it doesn't exist. **/
-	    if (smtp_internal_CreateEmail(inf, emailPath))
+	    /** Create the file if it doesn't exist and the create flag is set. **/
+	    if (inf->Obj->Mode & OBJ_O_CREAT &&
+		    smtp_internal_CreateEmail(inf, emailPath))
 		{
 		mssError(0, "SMTP", "Failed to create a new email.");
 		goto error;
@@ -790,6 +841,11 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
 		mssError(0, "SMTP", "Unable to close email file.");
 		return -1;
 		}
+	    }
+
+	if (inf->Name)
+	    {
+	    nmSysFree(inf->Name);
 	    }
 
 	/** We're closing the object... let the world know. **/
