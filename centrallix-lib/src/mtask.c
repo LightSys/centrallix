@@ -735,6 +735,7 @@ int mtProcessSignals()
 		processed++;
 		}
 	    }
+	nmFree(sig, sizeof(int));
 	}
     return processed;
     }

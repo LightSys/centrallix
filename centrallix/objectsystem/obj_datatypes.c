@@ -133,9 +133,9 @@ int
 obj_internal_ParseDateLang(char *dest_array[], int dest_array_len, char* srcptr, char* searchstart, char* searchend)
     {
     char* ptr;
-    char* endptr;
+    /*char* endptr;*/
     char* enditemptr;
-    int n_items;
+    /*int n_items;*/
 
 	/** No format string? **/
 	if (!srcptr)
@@ -148,9 +148,9 @@ obj_internal_ParseDateLang(char *dest_array[], int dest_array_len, char* srcptr,
 	if (!ptr || !strstr(ptr+strlen(searchstart),searchend)) return -1;
 
 	/** Ok, got it.  Now start parsing 'em **/
-	n_items = 0;
+	/*n_items = 0;*/
 	ptr = ptr + strlen(searchstart);
-	endptr = strstr(ptr,searchend);
+	/*endptr = strstr(ptr,searchend);*/
 	while(1)
 	    {
 	    /** Find the end of the current item. **/
@@ -436,7 +436,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
     int orig_print_whole;
     char tmp[20];
     XString xs;
-    int intl_format = 0;
+    /*int intl_format = 0;*/
     int zero_type = 0; /* 0=normal, 1='-0-', 2='0', 3='' */
     char* zero_strings[] = {NULL, "-0-", "0", ""};
     char decimal = '.';
@@ -460,7 +460,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 		}
 	    else if (*ptr == 'I')
 		{
-		intl_format = 1;
+		/*intl_format = 1;*/
 		decimal = ',';
 		comma = '.';
 		}

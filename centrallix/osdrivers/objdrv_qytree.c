@@ -537,12 +537,8 @@ void*
 qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pQytData inf;
-    char* node_path;
     pSnNode node = NULL;
     char buf[1];
-
-	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -651,12 +647,10 @@ int
 qytDelete(pObject obj, pObjTrxTree* oxt)
     {
     pQytData inf = NULL;
-    char* node_path;
     pSnNode node;
     int rval = 0;
 
 	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	node = snReadNode(obj->Prev);
 	if (!node) 
 	    {
