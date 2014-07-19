@@ -1,0 +1,10 @@
+##NAME Date diff test
+query select datediff("year", convert(datetime, '1/1/1970'), convert(datetime, '1/1/1980'))
+query select datediff("year", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
+query select datediff("month", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
+query select datediff("day", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
+query select datediff("hour", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
+query select datediff("minute", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
+query select datediff("second", convert(datetime, '1/1/1970'), convert(datetime, '1/1/1980'))
+query select datediff('minute', convert(datetime, '1/1/1970 12:15:35'), convert(datetime, '1/1/1970 14:18:34'))
+query select datediff('minute', convert(datetime, '1/1/1970 14:18:34'), convert(datetime, '1/1/1970 12:15:35'))
