@@ -21,6 +21,8 @@
 #include "centrallix.h"
 #include <sys/types.h>
 
+#include <errno.h>
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -111,6 +113,61 @@ struct
     int			EmailId;
     }
     SMTP_INF;
+
+/*** smtp_internal_SpawnSendmail
+ ***/
+int
+smtp_internal_SpawnSendmail(char* emailPath)
+    {
+    int pid, fd, debug = 0;
+    char *argv[] = {"/usr/sbin/sendmail", "-t", "-N", "delay, failure, success", "-v", "-bm", NULL};
+    //char *argv[] = {"/usr/sbin/sendmail", "-t", NULL};
+    char *envp[] = {NULL};
+//    {
+//        "HOME=/",
+//        "PATH=/bin:/usr/bin",
+//        "TZ=UTC0",
+//        "USER=beelzebub",
+//        "LOGNAME=tarzan",
+//        NULL
+//    };
+
+	/** Fork. **/
+	pid = fork();
+	if (pid < 0)
+	    {
+		mssErrorErrno(1, "SMTP", "Unable to fork.");
+		exit(EXIT_FAILURE);
+		//return -1;
+	    }
+	if (!pid)
+	    {
+	    /** we're in the child process -- disable MTask context switches to be safe **/
+	    thLock();
+
+	    fd = open(emailPath, O_RDONLY);
+//	    debug = open("/tmp/debug.txt", O_RDWR | O_CREAT, 0755);
+//	    if (!debug)
+//		{
+//		mssError(1, "SMTP", "Could not open debug file.");
+//		}
+
+	    /** Hopefully this makes our file stdin so we don't have to cat it into sendmail. **/
+	    dup2(fd, 0);
+//	    dup2(1, debug);
+
+	    /** Execve. **/
+	    execve("/usr/sbin/sendmail", argv, envp);
+
+	    /** if execve() is successfull, this is never reached **/
+//	    warn("execve() failed.");
+	    mssErrorErrno(1, "SMTP", "execve() failed: %s", strerror(errno));
+	    _exit(1);
+	    }
+
+    /** We're a parent. Die happily? **/
+    return 0;
+    }
 
 /*** smtp_internal_ClearAttributes - Clears all the elements of the attributes
  *** hash table.
@@ -353,7 +410,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	inf->Content = NULL;
 
 	/** Create the email file. **/
-	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode, inf->Mask);
+	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode & ~(O_TRUNC), inf->Mask);
 	if (!inf->Content)
 	    {
 	    mssError(0, "SMTP", "Failed to create a new email file.");
@@ -691,7 +748,7 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    }
 
 	/** Open the email file. **/
-	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode, inf->Mask);
+	inf->Content = fdOpen(emailPath->String, inf->Obj->Mode & ~(O_TRUNC), inf->Mask);
 	if (!inf->Content)
 	    {
 	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", emailPath->String);
@@ -708,7 +765,7 @@ smtp_internal_OpenEml(pSmtpData inf)
 
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(emailStructurePath->String,
-					inf->Obj->Mode,
+					inf->Obj->Mode & ~(O_TRUNC),
 					inf->Mask);
 	if (!emailStructureFile)
 	    {
@@ -870,8 +927,8 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     {
     pSnNode node = NULL;
     XString path;
-    char* pathString = NULL;
-    pSmtpData inf = NULL;
+    //char* pathString = NULL;
+    //pSmtpData inf = NULL;
 
 	xsInit(&path);
 
@@ -1343,7 +1400,10 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
     pSmtpAttribute spoolDir = NULL;
     pXString emlStructPath = NULL;
-    pFile emlStructFile = NULL;
+    pXString emlPath = NULL;
+    pFile emlStructFileRead = NULL;
+    pFile emlStructFileWrite = NULL;
+    pFile emlCheckFile = NULL;
     pStructInf emlStruct = NULL;
 
 	/** Get the requested attribute. **/
@@ -1458,17 +1518,17 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 
 	    /** Open the email structure file. **/
-	    emlStructFile = fdOpen(emlStructPath->String,
-					    inf->Obj->Mode,
+	    emlStructFileRead = fdOpen(emlStructPath->String,
+					    inf->Obj->Mode & ~(O_TRUNC),
 					    inf->Mask);
-	    if (!emlStructFile)
+	    if (!emlStructFileRead)
 		{
 		mssError(1, "SMTP", "Could not open email structure file (%s).", emlStructPath->String);
 		goto error;
 		}
 
 	    /** Parse the structure file. **/
-	    emlStruct = stParseMsg(emlStructFile, 0);
+	    emlStruct = stParseMsg(emlStructFileRead, 0);
 	    if (!emlStruct)
 		{
 		mssError(0, "SMTP", "Could not parse the email structure file.");
@@ -1482,23 +1542,98 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		goto error;
 		}
 
+	    /** Done reading. **/
+	    if (emlStructFileRead)
+		{
+		fdClose(emlStructFileRead, 0);
+		}
+
+	    /** Open a fd with trunc to get rid of the old stuff. **/
+	    emlStructFileWrite = fdOpen(emlStructPath->String,
+					    inf->Obj->Mode | (O_TRUNC),
+					    inf->Mask);
+
 	    /** Write changes to the email struct file. **/
-	    if (stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT))
+	    if (stGenerateMsg(emlStructFileWrite, emlStruct, O_WRONLY | O_TRUNC | O_CREAT))
 		{
 		mssError(1, "SMTP", "Unable to write to the attribute to the email struct file.");
 		goto error;
 		}
+
+	    /** If the email is ready to send, send it. **/
+	    if (!strcmp(attrname, "is_ready") &&
+		    val->Integer == 1)
+		{
+		/** Allocate the email path. **/
+		emlPath = nmMalloc(sizeof(XString));
+		if (!emlPath)
+		    {
+		    mssError(1, "SMTP", "Unable to allocate space for email path.");
+		    goto error;
+		    }
+		memset(emlPath, 0, sizeof(XString));
+		xsInit(emlPath);
+
+		/** Construct the email path using .msg. **/
+		if (xsCopy(emlPath, emlStructPath->String, emlStructPath->Length - 7) ||
+			xsConcatenate(emlPath, ".msg", -1))
+		    {
+		    mssError(1, "SMTP", "Unable to construct the email path");
+		    goto error;
+		    }
+
+		/** Test that the email exists as a .msg. **/
+		emlCheckFile = fdOpen(emlPath->String, 0, 0);
+		if (!emlCheckFile)
+		    {
+		    /** Construct the email path using .eml. **/
+		    if (xsCopy(emlPath, emlStructPath->String, emlStructPath->Length - 7) ||
+			    xsConcatenate(emlPath, ".eml", -1))
+			{
+			mssError(1, "SMTP", "Unable to construct the email path");
+			goto error;
+			}
+
+		    /** Test that the email exists as a .eml. **/
+		    emlCheckFile = fdOpen(emlPath->String, 0, 0);
+		    if (!emlCheckFile)
+			{
+			mssError(1, "SMTP", "Could not find email file.");
+			goto error;
+			}
+		    }
+
+		/** Close the check file. **/
+		if (fdClose(emlCheckFile, 0))
+		    {
+		    mssError(1, "SMTP", "Failed to close the email check file.");
+		    goto error;
+		    }
+
+		/** Send it using sendmail. **/
+		if (smtp_internal_SpawnSendmail(emlPath->String))
+		    {
+		    mssError(0, "SMTP", "Could not send the mail.");
+		    goto error;
+		    }
+		}
 	    }
 
 	/** Free appropriate memory and close appropriate files. **/
+	if (emlPath)
+	    {
+	    xsDeInit(emlPath);
+	    nmFree(emlPath, sizeof(XString));
+	    }
+
 	if (emlStructPath)
 	    {
 	    nmFree(emlStructPath, sizeof(XString));
 	    }
 
-	if (emlStructFile)
+	if (emlStructFileWrite)
 	    {
-	    fdClose(emlStructFile, 0);
+	    fdClose(emlStructFileWrite, 0);
 	    }
 
     return 0;
@@ -1509,9 +1644,14 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    nmFree(emlStructPath, sizeof(XString));
 	    }
 
-	if (emlStructFile)
+	if (emlStructFileRead)
 	    {
-	    fdClose(emlStructFile, 0);
+	    fdClose(emlStructFileRead, 0);
+	    }
+
+	if (emlStructFileWrite)
+	    {
+	    fdClose(emlStructFileWrite, 0);
 	    }
 
 	return -1;
@@ -1638,7 +1778,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 
 	    /** Open the email structure file. **/
 	    emlStructFile = fdOpen(emlStructPath->String,
-					    inf->Obj->Mode,
+					    inf->Obj->Mode & ~(O_TRUNC),
 					    inf->Mask);
 	    if (!emlStructFile)
 		{
