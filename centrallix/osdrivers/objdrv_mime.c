@@ -263,11 +263,26 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    mssError(0, "MIME", "Failed to open newly created mime object.");
 	    goto error;
 	    }
+
+	/** Reset the path. **/
+	obj_internal_PathPart(obj->Pathname, 0, 0);
+
+	/** Reset the path for any autoname that occured.
+	 ** This is to preserve standard behaviour outside the Mime driver
+	 ** where the name is still expected to be '*'
+	 **/
+	if (obj->Mode & OBJ_O_AUTONAME &&
+		obj_internal_RenamePath(obj->Pathname, obj->Pathname->nElements-1, "*"))
+	    {
+	    mssError(0, "MIME", "Failed to reset to generic path.");
+	    goto error;
+	    }
 	}
 
     return (void*)inf;
 
     error:
+
 	if (lex)
 	    {
 	    mlxCloseSession(lex);
@@ -331,7 +346,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     pMimeInfo inf = NULL;
     char fileHash[9];
     int i, foundMatch = 0;
-    char *nodeName, *pathString, *boundary = NULL;
+    char *nodeName, *pathString, *boundary = NULL, *parentName = NULL;
 
     pFile fd = NULL;
     char buf [MIME_BUFSIZE + 1];
@@ -343,17 +358,40 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	/** Store the name of the Mime object. **/
 	nodeName = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements - 1, 1);
 
+	/** Handle automatic naming. **/
+	if (obj->Mode & OBJ_O_AUTONAME &&
+		!strcmp(nodeName, "*"))
+	    {
+	    nodeName = (char*)nmSysMalloc(12);
+	    strtcpy(nodeName, "message_", 9);
+	    libmime_internal_MakeARandomFilename(nodeName, 3);
+
+	    /** Alter the pathname for the next open. **/
+	    if (obj_internal_RenamePath(obj->Pathname, obj->Pathname->nElements - 1, nodeName))
+		{
+		mssError(0, "MIME", "Failed to rename generic element in the path.");
+		goto error;
+		}
+	    }
+
 	/** Hardcode default values for new mime object. **/
 	xsConcatenate(&initialContents, "Mime-Version: 1.0\n", -1);
 
 	/** Use the passed in type, as long as it isn't the default (system/object). **/
-	if (!strcmp(usrtype, "system/object"))
+	if (!strcmp(usrtype, "system/object") ||
+		!strcmp(usrtype, "message/rfc822"))
 	    {
 	    xsConcatPrintf(&initialContents, "Content-Type: text/plain; name=%s\n\n", nodeName);
 	    }
 	else
 	    {
 	    xsConcatPrintf(&initialContents, "Content-Type: %s; name=%s\n\n", usrtype, nodeName);
+	    }
+
+	/** Deallocate the nodeName if it was dynamically allocated. **/
+	if (obj->Mode & OBJ_O_AUTONAME)
+	    {
+	    nmSysFree(nodeName);
 	    }
 
 	/** Creating a new mime file. **/
@@ -395,6 +433,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    msgRoot = msg;
 
 	    /** Find the parent object to the new Mime subobject. **/
+	    libmime_GetStringAttr(msg, "Name", NULL, &parentName);
 
 	    /** While we have a multipart message and there are more elements in the path,
 	     ** go through all elements and see if we have another multipart element.
@@ -418,6 +457,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 			msg = phdr;
 			obj->SubCnt++;
 			foundMatch = 1;
+			parentName = nodeName;
 			break;
 			}
 		    }
@@ -433,7 +473,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    /** Build the temporary filename. **/
 	    memset(fileHash, 0, 9);
 	    libmime_internal_MakeARandomFilename(fileHash, 8);
-	    xsConcatPrintf(&fileName, "/tmp/%s%s", nodeName, fileHash);
+	    xsConcatPrintf(&fileName, "/tmp/%s%s", parentName, fileHash);
 
 	    /** Get the boundary string for the parent object. **/
 	    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &boundary);
@@ -472,7 +512,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		}
 
 	    /** Create the temporary file. **/
-	    fd = fdOpen(fileName.String, O_CREAT | O_EXCL | O_RDWR, 0x755);
+	    fd = fdOpen(fileName.String, O_CREAT | O_EXCL | O_RDWR, 0755);
 	    if (!fd)
 		{
 		mssError(1, "MIME", "Could not create temporary file.");
@@ -528,7 +568,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		{
 		pathString = (char*)nmSysStrdup(initialContents.String); /* Hijack pathString again. */
 		xsCopy(&initialContents, "MIME-Version: 1.0\n", -1);
-		xsConcatPrintf(&initialContents, "Content-Type: multipart/mixed; boundary=%s; name=%s\n\n%s", boundary, nodeName, pathString);
+		xsConcatPrintf(&initialContents, "Content-Type: multipart/mixed; boundary=%s; name=%s\n\n%s", boundary, parentName, pathString);
 		xsConcatPrintf(&initialContents, "--%s\n", boundary);
 		nmSysFree(pathString);
 
@@ -806,7 +846,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	xsConcatPrintf(&messageFileName, "/tmp/%s%s", messageName, fileHash);
 
 	/** Create the temporary message file. **/
-	messageFile = fdOpen(messageFileName.String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+	messageFile = fdOpen(messageFileName.String, O_RDWR | O_CREAT | O_EXCL, 0755);
 	if (!messageFile)
 	    {
 	    mssError(1, "MIME", "Could not create temporary file.");
@@ -860,7 +900,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	xsConcatPrintf(&rootFileName, "/tmp/%s%s", rootName, fileHash);
 
 	/** Open a temporary file to compile the entire Mime file. **/
-	rootFile = fdOpen(rootFileName.String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+	rootFile = fdOpen(rootFileName.String, O_RDWR | O_CREAT | O_EXCL, 0755);
 
 	/** Seek to the beginning of the Mime file. **/
 	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
@@ -1344,7 +1384,7 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Force a create of the temp file. **/
-	fd = fdOpen(filename, O_RDWR | O_CREAT | O_EXCL, 0x755);
+	fd = fdOpen(filename, O_RDWR | O_CREAT | O_EXCL, 0755);
 
 	if (!fd)
 	    {
@@ -1498,7 +1538,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	    }
 
 	/** Open the temporary file. **/
-	fd = fdOpen(filename.String, O_RDWR | O_CREAT | O_EXCL, 0x755);
+	fd = fdOpen(filename.String, O_RDWR | O_CREAT | O_EXCL, 0755);
 
 	/** Check that the temporary file was opened. **/
 	if (!fd)
@@ -1550,6 +1590,11 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	if (!paramName || !strlen(paramName))
 	    {
 	    fdWrite(fd, "\n", sizeof(char) * 1, 0, 0);
+
+	    /** Update the message offsets. **/
+	    inf->Header->HdrSeekEnd += 1;
+	    inf->Header->MsgSeekStart += 1;
+	    inf->Header->MsgSeekEnd += 1;
 	    }
 
 	/** Copy up to the end of the file. **/
