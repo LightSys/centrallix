@@ -119,7 +119,7 @@ struct
 int
 smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttribute envTo)
     {
-    int pid, fd;
+    int pid, fd, maxfiles;
     XArray argv;
     char *envp[] = {NULL};
 
@@ -150,26 +150,69 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	pid = fork();
 	if (pid < 0)
 	    {
-		mssErrorErrno(1, "SMTP", "Unable to fork.");
-		exit(EXIT_FAILURE);
+	    mssErrorErrno(1, "SMTP", "Unable to fork.");
+	    exit(EXIT_FAILURE);
 	    }
 	if (!pid)
 	    {
 	    /** we're in the child process -- disable MTask context switches to be safe **/
 	    thLock();
 
+	    /** close all open fds (except for 0-2 -- std{in,out,err}) **/
+	    maxfiles = sysconf(_SC_OPEN_MAX);
+	    if (maxfiles <= 0)
+		{
+		mssError(1, "SMTP", "Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.");
+		maxfiles = 2048;
+		}
+
+	    for(fd=3;fd<maxfiles;fd++) close(fd);
+
+	    /** Open the email. **/
 	    fd = open(emailPath, O_RDONLY);
 
 	    /** Hopefully this makes our file stdin so we don't have to cat it into sendmail. **/
 	    dup2(fd, 0);
 
-	    /** Execve. **/
-	    execve("/usr/sbin/sendmail", (char**)(argv.Items), envp);
+	    /** NOTE: We're currently double forking to get rid of zombie processes. **/
+	    /** TODO: Change this to look at the return value of sendmail and act accordingly. **/
+	    pid = fork();
+	    if (pid < 0)
+		{
+		mssErrorErrno(1, "SMTP", "Unable to fork.");
+		exit(EXIT_FAILURE);
+		}
+	    if (!pid)
+		{
+		/** we're in the child process -- disable MTask context switches to be safe **/
+		thLock();
 
-	    /** if execve() is successfull, this is never reached **/
-	    mssErrorErrno(1, "SMTP", "execve() failed: %s", strerror(errno));
-	    _exit(EXIT_FAILURE);
+		/** close all open fds (except for 0-2 -- std{in,out,err}) **/
+		maxfiles = sysconf(_SC_OPEN_MAX);
+		if (maxfiles <= 0)
+		    {
+		    mssError(1, "SMTP", "Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.");
+		    maxfiles = 2048;
+		    }
+
+		for(fd=3;fd<maxfiles;fd++) close(fd);
+
+		/** Execve. **/
+		execve("/usr/sbin/sendmail", (char**)(argv.Items), envp);
+
+		/** if execve() is successfull, this is never reached **/
+		mssErrorErrno(1, "SMTP", "execve() failed: %s", strerror(errno));
+		_exit(EXIT_FAILURE);
+		}
+	    else
+		{
+		/** We're the parent. Exit so centrallix can move on. **/
+		_exit(1);
+		}
 	    }
+
+	/** Kill the zombie!! TODO: Act on child's return status? **/
+	wait(NULL);
 
 	/** We're a parent. Deinit stuff and die happily. **/
 	xaDeInit(&argv);
