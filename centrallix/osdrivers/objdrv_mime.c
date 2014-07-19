@@ -206,10 +206,13 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	(inf->Obj->Mode & O_EXCL) &&
 	(foundMatch))
 	{
-	mssError(1, "MIME", "Mime object exists but create and exclusive flags are set. Cannot create mime object.");
-	goto error;
+	/** Exclusive create is satisfied with a pre-filled root node. **/
+	if (obj->Pathname->nElements != obj->SubPtr)
+	    {
+	    mssError(1, "MIME", "Mime object exists but create and exclusive flags are set. Cannot create mime object.");
+	    goto error;
+	    }
 	}
-
 
     /** If not CREAT and match, error **/
     if (!(inf->Obj->Mode & O_CREAT) &&

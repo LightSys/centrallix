@@ -110,6 +110,7 @@ struct
     {
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
+    XArray		DefaultEmailHeaders;		/* XArray of pSmtpAttribute */
     int			EmailId;
     }
     SMTP_INF;
@@ -229,6 +230,7 @@ smtp_internal_InitGlobals()
 	/** Initialize the global attributes. **/
 	xaInit(&SMTP_INF.DefaultRootAttributes, 8);
 	xaInit(&SMTP_INF.DefaultEmailAttributes, 8);
+	xaInit(&SMTP_INF.DefaultEmailHeaders, 8);
 
 	/** Add all the required attributes. Yay hardcoding! **/
 	xaAddItem(&SMTP_INF.DefaultRootAttributes, smtp_internal_CreateAttribute("send_method", DATA_T_STRING, 0, "sendmail", NULL));
@@ -251,6 +253,12 @@ smtp_internal_InitGlobals()
 	/** xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("try_count", DATA_T_INTEGER, 5, 0, NULL)); **/
 	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("last_try_status", DATA_T_STRING, 0, "None", NULL));
 	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("last_try_msg", DATA_T_STRING, 0, "", NULL));
+
+
+	/** Add all the default headers for an email file. **/
+	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("User-Agent", DATA_T_STRING, 0, "Centrallix/0.9.1", NULL));
+	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("Subject", DATA_T_STRING, 0, "", NULL));
+	xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("MIME-Version", DATA_T_STRING, 0, "1.0", NULL));
 
 	/** Get the current date. **/
 	if (objCurrentDate(&currentDate))
@@ -371,20 +379,26 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 int
 smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
     {
+    XString autoName;
+
+    pSmtpAttribute currentHeader = NULL;
+    XString headerString;
+
     pStructInf emailStruct = NULL;
     pStructInf createdStruct = NULL;
     pSmtpAttribute currentAttr = NULL;
-    DateTime currentDate;
     pDateTime attrDate = NULL;
-    XString emailStructPath;
-    XString autoName;
+    DateTime currentDate;
+
     pFile checkFile = NULL;
     pFile emailStructFile = NULL;
     char* message_id = NULL;
+    XString emailStructPath;
     int i;
 
 	xsInit(&autoName);
 	xsInit(&emailStructPath);
+	xsInit(&headerString);
 
 	/** Resolve autonaming. **/
 	if (inf->Obj->Mode & OBJ_O_AUTONAME &&
@@ -577,8 +591,39 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    goto error;
 	    }
 
+	/** Fill the email file with some basic attributes. **/
+
+	/** Iterate through all the default email headers. **/
+	for (i = 0; i < SMTP_INF.DefaultEmailHeaders.nItems; i ++)
+	    {
+	    currentHeader = SMTP_ATTR(SMTP_INF.DefaultEmailHeaders.Items[i]);
+
+	    /** Build the header string for the file. **/
+	    xsPrintf(&headerString, "%s: %s\n", currentHeader->Name, currentHeader->Value.String);
+
+	    /** Add the attribute to the file. **/
+	    if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0))
+		{
+		mssError(1, "SMTP", "Failed to write default header to new message (%s: %s).",
+			currentHeader->Name, currentHeader->Value.String);
+		goto error;
+		}
+	    }
+
+	/** Fill in the non-static default headers. **/
+	// TODO: Add current date to the header... once we implement date support in the MIME driver
+	xsPrintf(&headerString, "Message-ID: %s\n\n", message_id);
+
+	/** Add the dynamic attributes to the file. **/
+	if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0))
+	    {
+		mssError(1, "SMTP", "Failed to write default header to new message (%s).",
+			headerString.String);
+	    }
+
 	xsDeInit(&autoName);
 	xsDeInit(&emailStructPath);
+	xsDeInit(&headerString);
 
 	/** Close the struct file. **/
 	fdClose(emailStructFile, 0);
@@ -588,6 +633,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
     error:
 	xsDeInit(&autoName);
 	xsDeInit(&emailStructPath);
+	xsDeInit(&headerString);
 
 	if (inf->Content) fdClose(inf->Content, 0);
 	if (emailStructFile) fdClose(emailStructFile, 0);
