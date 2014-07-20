@@ -192,10 +192,13 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 	/** Parse the email list into an XArray of email structs. **/
 	libmime_ParseAddressList(data, &emailList);
 
-	/** Construct and store the string list of email address lines as an attribute. **/
+	/** Store the email list as a raw string. **/
+	libmime_SetStringAttr(this, name, NULL, data, 0);
+
+	/** Construct and store the string list of email address lines as a parameter. **/
 	for (i = 0; i < emailList.nItems; i++)
 	    {
-	    libmime_AddStringArrayAttr(this, name, NULL, ((pEmailAddr)xaGetItem(&emailList, i))->AddressLine);
+	    libmime_AddStringArrayAttr(this, name, "List", ((pEmailAddr)xaGetItem(&emailList, i))->AddressLine);
 	    }
 
 	/** Store the email structure list in a parameter. **/

@@ -149,7 +149,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     lex = NULL;
 
     /** Find and set the filename of the root node **/
-    node_path = obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements-1, 1);
+    node_path = obj_internal_PathPart(obj->Pathname, obj->SubPtr - 1, 1);
     libmime_SetFilename(msg, node_path);
 
     /** assume we're only going to handle one level...		  **/
@@ -432,6 +432,10 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    mlxCloseSession(lex);
 	    lex = NULL;
 
+	    /** Find and set the filename of the root node **/
+	    parentName = obj_internal_PathPart(obj->Pathname, obj->SubPtr - 1, 1);
+	    libmime_SetFilename(msg, parentName);
+
 	    /** Remember the root of the Mime object tree. **/
 	    msgRoot = msg;
 
@@ -648,6 +652,9 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 
 	    /** Recalculate the terminating offset of the parent object. **/
 	    msg->MsgSeekEnd = currentOffset;
+
+	    /** Count the new object in SubCnt. **/
+	    obj->SubCnt++;
 
 	    /** Deallocate the Mime object tree. **/
 	    libmime_DeallocateHeader(msgRoot);

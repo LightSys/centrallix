@@ -2043,7 +2043,6 @@ smtpInitialize()
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
 	xaAddItem(&(drv->RootContentTypes),"system/smtp");
-	xaAddItem(&(drv->RootContentTypes),"system/smtp-message");
 
 	/** Setup the function references. **/
 	drv->Open = smtpOpen;
