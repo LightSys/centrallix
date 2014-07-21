@@ -247,6 +247,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	htrAddScriptInclude(s, "/sys/js/jquery/jquery-1.11.1.js", 0);
 
 	/** Write named global **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;

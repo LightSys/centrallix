@@ -1,5 +1,6 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
+#include "cxlib/memstr.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -966,6 +967,318 @@ nht_internal_Hex16ToInt(char* hex)
     }
 
 
+/*** nht_internal_ParsePostPayload - parses the payload of a post request.
+ *** The request includes one or more files.  This function needs to be
+ *** called once for each file recieved and -not- per request.  Payload
+ *** contains relevant info about the given file and a pointer to the file on disk.
+ *** Returns the payload struct.
+ ***/
+pNhtPostPayload
+nht_internal_ParsePostPayload(pNhtConn conn)
+    {
+    char hex_chars[] = "0123456789abcdef";
+    char token[512];
+    char name[16];
+    char *ptr, *half;
+    int length, start;
+    int fd, i, extStart;
+    pFile file;
+    char buffer[2048];
+    int offset = 1024;
+    int rcnt;
+    pNhtPostPayload payload = (pNhtPostPayload) nmMalloc(sizeof *payload);
+
+    memset(payload, 0, sizeof(*payload));
+    
+    /* Remove the boundary line and test to see if the stream is empty */
+    length = nht_internal_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+	{
+	payload->status = 1;
+	return payload; /* Signals end of stream */
+	}
+    if(strncmp(token, "--", 2) != 0 || strncmp(token + 2, conn->RequestBoundary, strlen(conn->RequestBoundary)) != 0) //Verifying data is formatted the way I hope it is :p
+	{
+	payload->status = -1;
+	mssError(1,"NHT","Malformed file upload POST request received - MIME boundary not detected");
+	return payload; //Error
+	}
+	
+    length = nht_internal_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+	{
+	payload->status = -1;
+	mssError(0,"NHT","Malformed file upload POST request received - no content following boundary");
+	return payload; //Error
+	}
+	
+    /* find the filename property and copy it to payload */
+    ptr = strstr(token, "filename");
+    ptr = strchr(ptr, '\"');
+    if(ptr == NULL)
+	{
+	payload->status = -1;
+	return payload; //Error
+	}
+    ptr++;
+    
+    extStart = -1;
+    for(i=0; ptr[i] != '\"' && ptr[i] != '\0'; i++)
+	{
+	if (i >= sizeof(payload->filename) - 1)
+	    {
+	    mssError(1,"NHT","Invalid filename in file upload POST request");
+	    payload->status = -1;
+	    return payload; //Error
+	    }
+	if(ptr[i] == '.') extStart = i; //Also find the file extension
+	payload->filename[i] = ptr[i];
+	}
+    payload->filename[i] = '\0';
+    
+    /* Copy the extension to payload */
+    if (extStart >= 0)
+	{
+	ptr = payload->filename + extStart;
+	for(i=0; ptr[i] != '\0'; i++)
+	    {
+	    if (i >= sizeof(payload->extension) - 1)
+		{
+		mssError(1,"NHT","Invalid filename in file upload POST request");
+		payload->status = -1;
+		return payload; //Error
+		}
+	    payload->extension[i] = ptr[i];
+	    }
+	payload->extension[i] = '\0';
+	}
+    
+    /* find the "ContentType" which seems to be the MIME type.  This may possibly be sorta useful sometime in the future.  Maybe... */
+    length = nht_internal_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+	{
+	payload->status = -1;
+	mssError(0,"NHT","Malformed file upload POST request received - no content-type line");
+	return payload; //Error
+	}
+    ptr = strstr(token, "Content-Type:");
+    if(!ptr)
+	{
+	payload->status = -1;
+	mssError(1,"NHT","Malformed file upload POST request received - no content-type");
+	return payload; //Error
+	}
+    ptr = strchr(ptr, ' ');
+    if(!ptr)
+	{
+	payload->status = -1;
+	mssError(1,"NHT","Malformed file upload POST request received - bad content-type");
+	return payload; //Error
+	}
+    ptr++;
+    
+    for(i=0; ptr[i] != '\r' && ptr[i] != '\n' && ptr[i] != '\0'; i++)
+	{
+	if (i >= sizeof(payload->mime_type) - 1)
+	    {
+	    mssError(1,"NHT","Invalid MIME type in file upload POST request");
+	    payload->status = -1;
+	    return payload; //Error
+	    }
+	payload->mime_type[i] = ptr[i];
+	}
+    payload->mime_type[i] = '\0';
+    
+    /* Generate a random name for the file. */
+    while(1)
+	{
+	cxssGenerateKey(name, sizeof(name) - 1);
+	for(i=0; i< (sizeof name) - 1; i++)
+	    {
+	    name[i] = hex_chars[name[i] & 0x0f];
+	    }
+	name[i] = '\0';
+	
+	/* Append the extention to the unique name and store it in payload */
+	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
+	    {
+	    mssError(1,"NHT","Invalid filename in file upload POST request - could not generate temp file name");
+	    payload->status = -1;
+	    return payload; //Error
+	    }
+	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
+	snprintf(payload->path, sizeof (payload->path), "/var/tmp/");
+	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s%s", payload->path, payload->newname);
+	/* Try to create the file.  It will fail if the file already exists. */
+	/** Actually creating the file prevents race conditions that can occur
+	 ** if we only checked for the file here. i.e. the file could otherwise
+	 ** be created between the time we check and the time we actually open
+	 ** the file.
+	 **/
+	fd = open(payload->full_new_path, O_CREAT | O_RDWR | O_EXCL, 0660);
+	if (fd>=0)
+	    {
+	    close(fd);
+	    //printf("Created new file named %s.\n", payload->full_new_path);
+	    break;
+	    }
+	else
+	    {
+	    //printf("File %s already exists.  Creating new name.\n", payload->full_new_path);
+	    }
+	}
+	
+    /* Read in the data and store into a file. */
+    file = fdOpen(payload->full_new_path, O_RDWR | O_CREAT | O_TRUNC, 0660);
+    if(!file)
+	{
+	mssErrorErrno(1,"CX","Unable to open output file '%s'",payload->full_new_path);
+	payload->status = -1;
+	return payload; //Error
+	}
+    start = 4;
+    length = fdRead(conn->ConnFD, buffer, sizeof buffer, 0, 0);
+    half = buffer + offset;
+    while(length > 0)
+	{
+	ptr = memstr(buffer, conn->RequestBoundary, length);
+	if(!ptr)
+	    {
+	    if(length < sizeof buffer)
+		{
+		rcnt = fdRead(conn->ConnFD, buffer + length, sizeof buffer - length, 0, 0);
+		if (rcnt < 0)
+		    {
+		    mssErrorErrno(1,"NHT","Interrupted upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		else if (rcnt == 0)
+		    {
+		    mssError(1,"NHT","Short upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		length += rcnt;
+		}
+	    else
+		{
+		if (fdWrite(file, buffer+start, offset-start, 0, 0) < 0)
+		    {
+		    mssErrorErrno(1,"NHT","Error writing to uploaded file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		memmove(buffer, half, offset);
+		memset(half, 0, offset);
+		rcnt = fdRead(conn->ConnFD, half, offset, 0, 0);
+		if (rcnt < 0)
+		    {
+		    mssErrorErrno(1,"NHT","Interrupted upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		else if (rcnt == 0)
+		    {
+		    mssError(1,"NHT","Short upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		length = offset + rcnt;
+		start = 0;
+		}
+	    }
+	else
+	    {
+	    //The 4 chars between boundary and EOF should be "\r\n--"
+	    if (fdWrite(file, buffer+start, (ptr - buffer - 4) - start, 0, 0) < 0)
+		{
+		mssErrorErrno(1,"NHT","Error writing to uploaded file '%s'",payload->full_new_path);
+		payload->status = -1;
+		return payload; //Error
+		}
+	    fdUnRead(conn->ConnFD, ptr - 4, length - (ptr - buffer - 4), 0, 0); //Unread remainder of data.
+	    start = 0;
+	    break;
+	    }
+	}
+    fdClose(file, 0);
+    //printf("\n");
+    
+    payload->status = 0;
+    return payload;
+    }
+   
+
+/*** nht_internal_NextLine - fills token with the next line of data.
+ *** Ignores leading newlines.  Returns the length of data in the buffer.
+ *** Size is the size of token.  If the buffer is too small, returns -1
+ *** and leaves token empty.  Token is always null terminated.
+ ***/
+int
+nht_internal_NextLine(char * token, pNhtConn conn, int size)
+    {
+    char buffer[2048];
+    int length;
+    int start, end;
+    int i;
+    
+    start = -1;
+    end = -1;
+    length = fdRead(conn->ConnFD, buffer, (sizeof buffer) - 1, 0, 0);
+    if (length < 0)
+	{
+	mssErrorErrno(1,"NHT","Interrupted network connection during upload");
+	return -1;
+	}
+    
+    for(i = 0; i < length; i++)
+	{
+	if(start == -1 && !(buffer[i] == '\r' || buffer[i] == '\n')) start = i;
+	if(start != -1 &&  (buffer[i] == '\r' || buffer[i] == '\n'))
+	    {
+	    end = i;
+	    break;
+	    }
+	}
+	
+    if(start < 0) 
+	{
+	token[0] = '\0';
+	return -1; /* No relevant data in the buffer. */
+	}
+    if(start >= 0 && end < 0)
+	{
+	if(length < (sizeof buffer) - 1)
+	    {
+	    /* Max size wasn't read; means end of stream. */
+	    /** GRB: FIXME: network connections can read partial buffers
+	     ** without indicating end of stream.  End of stream is indicated
+	     ** by a zero read.  We should read further into the buffer at
+	     ** least once if we hit this here.
+	     **/
+	    end = length;
+	    }
+	else
+	    {
+	    /* No newline was read; unread buffer. */
+	    fdUnRead(conn->ConnFD, buffer, length, 0, 0);
+	    token[0] = '\0';
+	    return -1;
+	    }
+	}
+   
+    /** end-start+1 --> means the length of the token plus the length of
+     ** the terminating \0 character.
+     **/
+    if(size > (end - start + 1)) size = (end-start + 1);
+    memcpy(token, buffer + start , size-1); /* Copy relevant data into token. */
+    token[size-1] = '\0';
+    fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread extra data.
+    return size-1;
+    }
+
+
 /*** nht_internal_POST - handle the HTTP POST method.
  ***/
 int
@@ -973,11 +1286,128 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
+    pFile file;
+    pObject obj;
+    pNhtPostPayload payload;
+    struct tm* thetime;
+    time_t tval;
+    char tbuf[32];
+    XString json;
+    char buffer[2048];
+    int length, wcnt, bytes_written;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+    /** app key must be specified for all POST operations. **/
+    find_inf = stLookup_ne(url_inf,"cx__akey");
+    int n_uploaded_files = 0;
+    
+    if (!(find_inf && nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0))
+	{
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	fdPrintf(conn->ConnFD,"HTTP/1.0 403 FORBIDDEN\r\n"
+	     "Date: %s GMT\r\n"
+	     "Server: %s\r\n",
+	     tbuf, NHT.ServerString);
+	
+	return -1;
+	}
+	
+    find_inf = NULL;
+    find_inf = stLookup_ne(url_inf,"target");
+    if(!find_inf)
+	{
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
+	     "Date: %s GMT\r\n"
+	     "Server: %s\r\n",
+	     tbuf, NHT.ServerString);
+	
+	return -1;
+	}
+    
+    xsInit(&json);
+    /* Keep parsing files until stream is empty. */
+    while(1)
+	{
+	payload = nht_internal_ParsePostPayload(conn);
+	
+	if(payload->status == 0)
+	    {
+	    xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
+	    /* Copy file into object system */
+	    file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
+	    snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
+	    obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
+	    while(1)
+		{
+		length = fdRead(file, buffer, sizeof buffer, 0, 0);
+		if (length <= 0)
+		    break;
+		bytes_written = 0;
+		while (bytes_written < length)
+		    {
+		    wcnt = objWrite(obj, buffer+bytes_written, length-bytes_written, 0, 0);
+		    if (wcnt <= 0)
+			break;
+		    bytes_written += wcnt;
+		    }
+		}
+	    objClose(obj);
+	    fdClose(file, 0);
+	    unlink(payload->full_new_path);
+	    n_uploaded_files++;
+	    }
+	else
+	    {
+	    break;
+	    }
+	}
+    xsRTrim(&json);
 
-	/** app key must be specified for all POST operations. **/
-	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (!find_inf || strcmp(find_inf->StrVal, nsess->SKey) != 0)
-	    return -1;
+    if (n_uploaded_files == 0)
+	{
+	fdPrintf(conn->ConnFD,"HTTP/1.0 400 Bad Request\r\n"
+	     "Server: %s\r\n"
+	     "Content-Type: text/html\r\n"
+	     "\r\n"
+	     "<H1>400 Bad Request</H1>\r\n",
+	     NHT.ServerString);
+	return -1;
+	}
+
+    //printf(xsString(&json));
+    if (nsess->IsNewCookie)
+	{
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
+	     "Date: %s GMT\r\n"
+	     "Server: %s\r\n"
+	     "Set-Cookie: %s; path=/\r\n"
+	     "Content-Type: application/json\r\n"
+	     "\r\n"
+	     "[%s]", 
+	      tbuf, NHT.ServerString, nsess->Cookie, json.String+1);
+	nsess->IsNewCookie = 0;
+	}
+    else
+	{
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
+	     "Date: %s GMT\r\n"
+	     "Server: %s\r\n"
+	     "Content-Type: application/json\r\n"
+	     "\r\n"
+	     "[%s]",
+	     tbuf, NHT.ServerString, json.String+1);
+	}
 
     return 0;
     }

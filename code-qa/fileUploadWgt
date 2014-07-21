@@ -1,0 +1,11 @@
+Branch:	fileUploadWgt
+Commit:	c05eeedc8e6237b149ba2f7769930e59bbfbdba3
+
+* Clarified fdRead() modifications by using addl_read local variable.
+* Fix fdRead() bug where recursive call to fdRead() could return -1 on error
+  or on a blocking condition, causing the returned length value to be off by
+  one.
+* Fixed a few buffer overflows and robustness considerations (e.g. return
+  values from fdRead/fdWrite) in nht_internal_ParsePostPayload.
+* TBD: change nht_internal_ParsePostPayload to not depend on the specific order
+  of the POST request headers.

@@ -497,7 +497,7 @@ cxHtInit()
 	htrInitialize();			/* HTML generator */
 	htruleInitialize();			/* rule module */
 	htpageInitialize();			/* DHTML page generator */
-	htspaneInitialize();			/* scrollable pane module */
+	htspaneInitialize();		/* scrollable pane module */
 	httreeInitialize();			/* treeview module */
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
@@ -528,6 +528,7 @@ cxHtInit()
 	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
 	htmapInitialize();			/* object canvas widget */
+	htfuInitialize();			/* file upload widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */

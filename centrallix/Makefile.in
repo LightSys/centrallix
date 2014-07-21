@@ -151,6 +151,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_form.o \
 	wgtdrv_formstatus.o \
 	wgtdrv_frameset.o \
+	wgtdrv_fileupload.o \
 	wgtdrv_hints.o \
 	wgtdrv_html.o \
 	wgtdrv_imagebutton.o \
@@ -212,6 +213,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_execmethod.o \
 	   htdrv_form.o \
 	   htdrv_formstatus.o \
+	   htdrv_fileupload.o \
 	   htdrv_alerter.o \
 	   htdrv_osrc.o \
 	   htdrv_spinner.o \
