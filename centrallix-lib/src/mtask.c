@@ -2440,6 +2440,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     int code;
     int eno;
     int length;
+    int addl_read;
 
 	//printf("reading %i from %08x(%08x--%08x) to %08x with %08x\n",maxlen,(int)filedesc,(int)filedesc->FD,(int)filedesc->Flags,(int)buffer,flags);
     	/** If closing, cant read **/
@@ -2452,19 +2453,29 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 	/** Check the unread-buffer first. **/
 	if (filedesc->UnReadLen > 0)
 	    {
-	    if (maxlen > filedesc->UnReadLen) length = filedesc->UnReadLen;
-        else length = maxlen;
+	    if (maxlen > filedesc->UnReadLen)
+		length = filedesc->UnReadLen;
+	    else
+		length = maxlen;
 	    memcpy(buffer, filedesc->UnReadPtr, length);
 	    filedesc->UnReadLen -= length;
 	    filedesc->UnReadPtr += length;
         
-        if(maxlen > length)
-            {
-            maxlen = fdRead(filedesc, buffer + length, maxlen - length, 0, FD_U_NOBLOCK);
-            return length + maxlen;
-            }
-        return length;
-        }
+	    if(maxlen > length)
+		{
+		addl_read = fdRead(filedesc, buffer + length, maxlen - length, 0, FD_U_NOBLOCK);
+
+		/** fdRead() could return an error condition; since we had valid
+		 ** bytes to read out of the UnReadBuf, hide the error this time
+		 ** around, and the caller will see it on a subsequent fdRead()
+		 ** call.
+		 **/
+		if (addl_read < 0)
+		    addl_read = 0;
+		length += addl_read;
+		}
+	    return length;
+	    }
 
     	/** If filedesc not listed as blocked, try reading now. **/
     	if (!(filedesc->Flags & FD_F_RDBLK) && !(filedesc->Flags & FD_UF_BLOCKINGIO))
