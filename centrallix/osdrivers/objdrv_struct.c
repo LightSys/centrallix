@@ -94,7 +94,6 @@ void*
 stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pStxData inf;
-    char* node_path;
     char* endptr;
     pSnNode node = NULL;
     pStruct open_inf;
@@ -108,9 +107,6 @@ stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(StxData));
 	inf->Obj = obj;
 	inf->Mask = mask;
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** Check node access.  IF newly created node object, handle differently. **/
 	if ((obj->Prev->Flags & OBJ_F_CREATED) && (obj->Mode & O_CREAT))

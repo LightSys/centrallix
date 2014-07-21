@@ -190,7 +190,6 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
     MoneyType m;
-    void* dptr;
     int i;
     int is_negative = 0;
     long long mv;
@@ -218,15 +217,11 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 	    return 0;
 	    }
 
-	/** Get a data ptr to the 2nd data type value **/
-	switch(i1->DataType)
+	/** Check data type **/
+	if (i1->DataType != DATA_T_INTEGER && i1->DataType != DATA_T_DOUBLE && i1->DataType != DATA_T_MONEY)
 	    {
-	    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
-	    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
-	    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
-	    default:
-	        mssError(1,"EXP","Only integer,double,money types allowed for '/'");
-		return -1;
+	    mssError(1,"EXP","Only integer,double,money types allowed for '/'");
+	    return -1;
 	    }
 
 	/** Check for divide by zero **/

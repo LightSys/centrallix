@@ -137,7 +137,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
     int childpid;
     char user[32];
     char filename[128];
-    int rank,jobid;
+    int jobid;
     int cnt;
     pLprQueueEntry e;
 
@@ -197,7 +197,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 	        {
 		/** Get rank, owner, jobid, filename **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
-		rank = strtoi(mlxStringVal(lxs,0),NULL,10);
+		/*rank = strtoi(mlxStringVal(lxs,0),NULL,10);*/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
 		mlxCopyToken(lxs,user,32);
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
@@ -360,14 +360,10 @@ void*
 uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pUxpData inf;
-    char* node_path;
     pSnNode node = NULL;
     char sbuf[256];
     int is_new = 0;
     pLprPrintQueue pq = NULL;
-
-        /** Determine node path and attempt to open node. **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
         /** If CREAT and EXCL, we only create, failing if already exists. **/
         if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))

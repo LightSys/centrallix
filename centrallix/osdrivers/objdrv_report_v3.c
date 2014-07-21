@@ -606,7 +606,6 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     pStructInf subitem;
     int rval;
     void* data_buf = NULL;
-    ObjData od;
 
     	/** Search for aggregates first. **/
 	n = 0;
@@ -1691,7 +1690,6 @@ int
 rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int container_handle)
     {
     int i,j;
-    pQueryConn qy = NULL;
     int n;
     double dbl;
     int err = 0;
@@ -1948,7 +1946,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	reccnt = 0;
 	if (!err) do  
 	    {
-	    if (ac) for(i=0;i<ac->Count;i++) if (ac->Queries[i]) qy = ac->Queries[i];
+	    /*if (ac) for(i=0;i<ac->Count;i++) if (ac->Queries[i]) qy = ac->Queries[i];*/
 	    if (reclimit != -1 && reccnt >= reclimit) break;
 	    if (ac && rpt_internal_UseRecord(ac) < 0)
 	        {
@@ -2590,7 +2588,6 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
     /*int relylimit = -1;*/
     int reclimit = -1;
     int outer_mode = 0;
-    int inner_mode = 0;
     pRptActiveQueries ac;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
@@ -2626,7 +2623,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	while (stAttrValue(stLookup(form,"mode"),NULL,&ptr,n) >= 0)
 	    {
 	    if (!strcmp(ptr,"outer")) outer_mode = 1;
-	    if (!strcmp(ptr,"inner")) inner_mode = 1;
+	    /*if (!strcmp(ptr,"inner")) inner_mode = 1;*/
 	    n++;
 	    }
 
@@ -3453,20 +3450,11 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     int err = 0;
     pXString title_str = NULL;
     pXString subst_str;
-    int no_title_bar = 0;
     pExpression exp;
     int resolution;
     char* res_str;
     double pagewidth, pageheight;
     int do_reset;
-    int context_pushed = 0;
-
-    	/** Report has no titlebar header? **/
-	stAttrValue(rpt_internal_GetParam(inf,"titlebar"),NULL,&ptr,0);
-	if (ptr && !strcasecmp(ptr,"no"))
-	    {
-	    no_title_bar = 1;
-	    }
 
 	/** Report has a title? **/
         stAttrValue(rpt_internal_GetParam(inf,"title"),NULL,&title,0);
@@ -3600,7 +3588,6 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 	/** Set top-level formatting and report defaults. **/
 	cxssPushContext();
-	context_pushed = 1;
 	cxssSetVariable("dfmt", obj_default_date_fmt, 0);
 	cxssSetVariable("mfmt", obj_default_money_fmt, 0);
 	cxssSetVariable("nfmt", obj_default_null_fmt, 0);
@@ -3763,7 +3750,6 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 	/** Undo formatting changes **/
 	cxssPopContext();
-	context_pushed = 0;
 
 	/** Undo the preprocessing - release the expression trees **/
 	rpt_internal_UnPreProcess(inf, req, rs);
@@ -3964,7 +3950,6 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     {
     pRptData inf;
     int rval;
-    char* node_path;
     pSnNode node = NULL;
     int i, t, n;
     pStruct paramdata;
@@ -3980,9 +3965,6 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    return NULL;
 	    }*/
-
-	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** try to open it **/
 	node = snReadNode(obj->Prev);
@@ -4185,7 +4167,6 @@ rptCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 rptDelete(pObject obj, pObjTrxTree* oxt)
     {
-    char* node_path;
     pSnNode node;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
@@ -4195,7 +4176,6 @@ rptDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	node = snReadNode(obj->Prev);
 	if (!node) 
 	    {
@@ -4680,7 +4660,6 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pRptData inf = RPT(inf_v);
     pStructInf find_inf;
     int type;
-    int n;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4752,7 +4731,6 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	if (!find_inf)
 	    {
 	    find_inf = stAddAttr(inf->AttrOverride, attrname);
-	    n = 0;
 	    }
 
 	/** Set the value. **/

@@ -515,7 +515,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     {
     pObject this,first_obj;
     pPathname pathinfo;
-    int element_id;
     int i,j,v;
     pStruct inf;
     char* name;
@@ -632,7 +631,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	/** Nothing found?  Open root node and start there. **/
 	if (!this)
 	    {
-	    element_id = 0;
 	    this = obj_internal_AllocObj();
 	    this->Data = OSYS.RootDriver->Open(this, 0, NULL, NULL, NULL);
 	    this->Pathname = pathinfo;
@@ -1426,9 +1424,9 @@ objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char
     {
     pFile source_fd;
     pObject dest_obj;
-    char buf[256];
+    /*char buf[256];
     int rcnt;
-    int wcnt;
+    int wcnt;*/
     char* sourcename;
     int sourcelen;
 
