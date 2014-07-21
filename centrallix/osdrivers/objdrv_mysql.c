@@ -2065,7 +2065,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
         /** this leaks memory MUST FIX **/
         if(!(inf->Node = mysd_internal_OpenNode(node_path, obj->Mode, obj, inf->Type == MYSD_T_DATABASE, inf->Mask)))
             {
-            mssError(1,"MYSD","Couldn't open node.");
+            mssError(0,"MYSD","Couldn't open node.");
             nmFree(inf,sizeof(MysdData));
             return NULL;
             }
