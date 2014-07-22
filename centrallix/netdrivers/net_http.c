@@ -1297,11 +1297,13 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
     int length, wcnt, bytes_written;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
-    /** app key must be specified for all POST operations. **/
-    find_inf = stLookup_ne(url_inf,"cx__akey");
     int n_uploaded_files = 0;
-    
-    if (!(find_inf && nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0))
+   
+    /** Validate akey and make sure app and group id's match as well.  AKey
+     ** must be supplied with all POST requests.
+     **/
+    find_inf = stLookup_ne(url_inf,"cx__akey");
+    if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
 	{
 	tval = time(NULL);
 	thetime = gmtime(&tval);
