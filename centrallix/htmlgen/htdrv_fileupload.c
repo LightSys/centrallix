@@ -54,7 +54,6 @@ int
 htfuRender(pHtSession s, pWgtrNode tree, int z)
 	{
 	char* ptr;
-    char* dptr;
 	char name[64];
     int id, i;
 	int multiselect;
@@ -101,7 +100,8 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
-	
+
+	return 0;
 	}//end htfuRender
 	
 	
