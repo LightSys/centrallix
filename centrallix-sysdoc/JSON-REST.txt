@@ -49,7 +49,12 @@ ABOUT REST...
 
 	    5.	PATCH = Update part of an element, by providing only the
 		information about the new element that is different from the
-		old element.
+		old element.  A PATCH request contains a request body in JSON
+		format, where the JSON object contains one attribute for each
+		attribute that needs to be updated, in basic attribute format
+		(see below for basic vs. full attribute format).  PATCH will
+		respond with the modified object, just like a GET request had
+		been placed.  PATCH does not work on collections.
 
     REST does not require the use of a particular data format for requests or
     responses.  Data can be in JSON, XML, or any other format of the API
@@ -380,4 +385,9 @@ EXAMPLE REQUESTS...
 	Method: GET
 	URI: http://server/apps/kardia/modules/crm/kardia_modinfo.struct?cx__mode=rest&cx__res_format=attrs
 
+    C.	Update a value on the server:
 
+	Method: PATCH
+	URI: http://server/apps/kardia/api/thingy/objectname?cx__mode=rest&cx__res_format=attrs
+	Content-Type: application/json
+	Request Body: {"attrname":"newattributestringvalue","attrname2":1000}
