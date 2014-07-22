@@ -18,6 +18,7 @@
 #include "centrallix.h"
 #include <sys/types.h>
 #include "json.h"
+#include "json_util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -208,234 +209,13 @@ json_internal_ReadDoc(pObject obj)
     }
 
 
-/*** json_internal_IsDateTimeObject() - determine if a json_type_object node is
- *** actually a DATA_T_DATETIME object.
- ***
- *** Example (only year/month/day fields are required):
- *** { "year":2013, "month":11, "day":15, "hour":23, "minute":46, "second":30, "tzoffset":-420 }
- ***
- *** Returns 0 on false, 1 on true.
- ***/
-int
-json_internal_IsDateTimeObject(struct json_object* jobj)
-    {
-    struct json_object_iter iter;
-    int has_year = 0;
-    int has_month = 0;
-    int has_day = 0;
-    int has_hour = 0;
-    int has_minute = 0;
-    int has_second = 0;
-    int has_tz = 0;
-    int has_other = 0;
-
-	/** Must be an 'object' **/
-	if (!json_object_is_type(jobj, json_type_object))
-	    return 0;
-
-	/** Search the object's properties **/
-	json_object_object_foreachC(jobj, iter)
-	    {
-	    if (json_object_is_type(iter.val, json_type_int))
-		{
-		if (!strcmp(iter.key, "year")) has_year = 1;
-		else if (!strcmp(iter.key, "month")) has_month = 1;
-		else if (!strcmp(iter.key, "day")) has_day = 1;
-		else if (!strcmp(iter.key, "hour")) has_hour = 1;
-		else if (!strcmp(iter.key, "minute")) has_minute = 1;
-		else if (!strcmp(iter.key, "second")) has_second = 1;
-		else if (!strcmp(iter.key, "tzoffset")) has_tz = 1;
-		else has_other = 1;
-		}
-	    else    
-		has_other = 1;
-	    }
-
-	/** What we require **/
-	if (has_year && has_month && has_day && !has_other)
-	    return 1;
-
-    return 0;
-    }
-
-
-/*** json_internal_GetDateTimeObject() - get a DateTime value.
- ***
- *** Example (only year/month/day fields are required):
- *** { "year":2013, "month":11, "day":15, "hour":23, "minute":46, "second":30, "tzoffset":-420 }
- ***/
-int
-json_internal_GetDateTimeObject(struct json_object* jobj, pDateTime dt)
-    {
-    struct json_object_iter iter;
-    int has_year = 0;
-    int has_month = 0;
-    int has_day = 0;
-    int has_hour = 0;
-    int has_minute = 0;
-    int has_second = 0;
-    int has_tz = 0;
-    int has_other = 0;
-
-	/** Must be an 'object' **/
-	if (!json_object_is_type(jobj, json_type_object))
-	    return 0;
-
-	/** Search the object's properties **/
-	memset(dt, 0, sizeof(DateTime));
-	json_object_object_foreachC(jobj, iter)
-	    {
-	    if (json_object_is_type(iter.val, json_type_int))
-		{
-		if (!strcmp(iter.key, "year"))
-		    {
-		    has_year = 1;
-		    dt->Part.Year = json_object_get_int(iter.val) - 1900;
-		    }
-		else if (!strcmp(iter.key, "month"))
-		    {
-		    has_month = 1;
-		    dt->Part.Month = json_object_get_int(iter.val) - 1;
-		    }
-		else if (!strcmp(iter.key, "day"))
-		    {
-		    has_day = 1;
-		    dt->Part.Day = json_object_get_int(iter.val) - 1;
-		    }
-		else if (!strcmp(iter.key, "hour"))
-		    {
-		    has_hour = 1;
-		    dt->Part.Hour = json_object_get_int(iter.val);
-		    }
-		else if (!strcmp(iter.key, "minute"))
-		    {
-		    has_minute = 1;
-		    dt->Part.Minute = json_object_get_int(iter.val);
-		    }
-		else if (!strcmp(iter.key, "second"))
-		    {
-		    has_second = 1;
-		    dt->Part.Second = json_object_get_int(iter.val);
-		    }
-		else if (!strcmp(iter.key, "tzoffset"))
-		    {
-		    has_tz = 1;
-		    }
-		else
-		    {
-		    has_other = 1;
-		    }
-		}
-	    else    
-		has_other = 1;
-	    }
-
-	/** What we require **/
-	if (has_year && has_month && has_day && !has_other)
-	    return 0;
-
-    return -1;
-    }
-
-
-/*** json_internal_IsMoneyObject() - determine if a json_type_object node is
- *** actually a DATA_T_MONEY object.
- ***
- *** Example:
- *** { "wholepart":123, "fractionpart":45 }
- ***
- *** Returns 0 on false, 1 on true.
- ***/
-int
-json_internal_IsMoneyObject(struct json_object* jobj)
-    {
-    struct json_object_iter iter;
-    int has_whole = 0;
-    int has_fraction = 0;
-    int has_other = 0;
-
-	/** Must be an 'object' **/
-	if (!json_object_is_type(jobj, json_type_object))
-	    return 0;
-
-	/** Search the object's properties **/
-	json_object_object_foreachC(jobj, iter)
-	    {
-	    if (json_object_is_type(iter.val, json_type_int))
-		{
-		if (!strcmp(iter.key, "wholepart")) has_whole = 1;
-		else if (!strcmp(iter.key, "fractionpart")) has_fraction = 1;
-		else has_other = 1;
-		}
-	    else    
-		has_other = 1;
-	    }
-
-	/** What we require **/
-	if (has_whole && has_fraction && !has_other)
-	    return 1;
-
-    return 0;
-    }
-
-
-/*** json_internal_GetMoneyObject() - get MoneyType data.
- ***
- *** Example:
- *** { "wholepart":123, "fractionpart":45 }
- ***/
-int
-json_internal_GetMoneyObject(struct json_object* jobj, pMoneyType m)
-    {
-    struct json_object_iter iter;
-    int has_whole = 0;
-    int has_fraction = 0;
-    int has_other = 0;
-
-	/** Must be an 'object' **/
-	if (!json_object_is_type(jobj, json_type_object))
-	    return 0;
-
-	/** Search the object's properties **/
-	memset(m, 0, sizeof(MoneyType));
-	json_object_object_foreachC(jobj, iter)
-	    {
-	    if (json_object_is_type(iter.val, json_type_int))
-		{
-		if (!strcmp(iter.key, "wholepart"))
-		    {
-		    has_whole = 1;
-		    m->WholePart = json_object_get_int(iter.val);
-		    }
-		else if (!strcmp(iter.key, "fractionpart"))
-		    {
-		    has_fraction = 1;
-		    m->FractionPart = json_object_get_int(iter.val);
-		    }
-		else
-		    {
-		    has_other = 1;
-		    }
-		}
-	    else    
-		has_other = 1;
-	    }
-
-	/** What we require **/
-	if (has_whole && has_fraction && !has_other)
-	    return 0;
-
-    return -1;
-    }
-
-
 /*** json_internal_IsSubobjectNode() - returns 1 if the json node should be
  *** handled as a Centrallix sub-object; 0 otherwise.
  ***/
 int
 json_internal_IsSubobjectNode(struct json_object* jobj)
     {
-    return json_object_is_type(jobj, json_type_array) || (json_object_is_type(jobj, json_type_object) && !json_internal_IsDateTimeObject(jobj) && !json_internal_IsMoneyObject(jobj));
+    return json_object_is_type(jobj, json_type_array) || (json_object_is_type(jobj, json_type_object) && !jutilIsDateTimeObject(jobj) && !jutilIsMoneyObject(jobj));
     }
 
 
@@ -814,9 +594,9 @@ jsonGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    return DATA_T_STRING;
 	else if (json_object_is_type(jval, json_type_double))
 	    return DATA_T_DOUBLE;
-	else if (json_internal_IsDateTimeObject(jval))
+	else if (jutilIsDateTimeObject(jval))
 	    return DATA_T_DATETIME;
-	else if (json_internal_IsMoneyObject(jval))
+	else if (jutilIsMoneyObject(jval))
 	    return DATA_T_MONEY;
 	else if (json_object_is_type(jval, json_type_null))
 	    return DATA_T_STRING; /* or, should this be DATA_T_UNAVAILABLE? */
@@ -900,16 +680,16 @@ jsonGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		val->String = (char*)json_object_get_string(jval);
 	    else if (json_object_is_type(jval, json_type_double) && datatype == DATA_T_DOUBLE)
 		val->Double = json_object_get_double(jval);
-	    else if (json_internal_IsDateTimeObject(jval) && datatype == DATA_T_DATETIME)
+	    else if (jutilIsDateTimeObject(jval) && datatype == DATA_T_DATETIME)
 		{
 		val->DateTime = &inf->Date;
-		if (json_internal_GetDateTimeObject(jval, &inf->Date) < 0)
+		if (jutilGetDateTimeObject(jval, &inf->Date) < 0)
 		    return -1;
 		}
-	    else if (json_internal_IsMoneyObject(jval) && datatype == DATA_T_MONEY)
+	    else if (jutilIsMoneyObject(jval) && datatype == DATA_T_MONEY)
 		{
 		val->Money = &inf->Money;
-		if (json_internal_GetMoneyObject(jval, &inf->Money) < 0)
+		if (jutilGetMoneyObject(jval, &inf->Money) < 0)
 		    return -1;
 		}
 	    else

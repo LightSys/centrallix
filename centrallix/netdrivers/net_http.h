@@ -38,6 +38,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
+#include "json.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -72,6 +73,9 @@
 
 
  #define DEBUG_OSML	0
+
+/*** payload limitation ***/
+#define	NHT_PAYLOAD_MAX		(1024*1024*4)	/* 4 megabytes */
 
 /*** one HTTP header ***/
 typedef struct
@@ -380,5 +384,6 @@ int nht_internal_FreeHeaders(pXArray hdrlist);
 
 /*** REST implementation ***/
 int nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
+int nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
 
 #endif

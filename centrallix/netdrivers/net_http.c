@@ -1,6 +1,7 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
 #include "cxlib/memstr.h"
+#include "json.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -548,7 +549,6 @@ int
 nht_internal_FreeHeaders(pXArray xa)
     {
     pHttpHeader hdr;
-    int i;
 
 	/** Loop through, removing and freeing the headers **/
 	while (xa->nItems)
@@ -1441,6 +1441,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     struct tm* thetime;
     time_t tval;
     char tbuf[32];
+    char tbuf2[32];
     int send_info = 0;
     pObjectInfo objinfo;
     char* gptr;
@@ -1462,6 +1463,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
     int rval;
+    char* kname;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1925,6 +1927,57 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    rval = nht_internal_RestGet(conn, url_inf, target_obj);
 	    }
 
+	/** Retrieve a new session/group/app key? **/
+	else if (!strcmp(find_inf->StrVal, "appinit"))
+	    {
+	    find_inf = stLookup_ne(url_inf, "cx__groupname");
+	    if (!find_inf || find_inf->StrVal[0] == '/')
+		kname = "API Client";
+	    else
+		kname = find_inf->StrVal;
+
+	    /** Try to join an existing app group, if specified **/
+	    if (!group)
+		group = nht_internal_AllocAppGroup(kname, nsess);
+	    if (group)
+		{
+		find_inf = stLookup_ne(url_inf, "cx__appname");
+		if (!find_inf || find_inf->StrVal[0] == '/')
+		    kname = "API Client";
+		else
+		    kname = find_inf->StrVal;
+
+		/** Set up a new active app **/
+		app = nht_internal_AllocApp(kname, group);
+		if (app)
+		    {
+		    /** We want to give the api client information about our
+		     ** watchdog timeout (so the client can know how often to
+		     ** ping us), as well as information about our current time
+		     ** and timezone (for proper date/time data display
+		     ** synchronization).
+		     **/
+		    tval = time(NULL);
+		    thetime = localtime(&tval);
+		    tbuf[0] = '\0';
+		    tbuf2[0] = '\0';
+		    if (thetime)
+			{
+			if (strftime(tbuf, sizeof(tbuf), "%Y %m %d %T %Z", thetime) <= 0)
+			    tbuf[0] = '\0';
+			if (strftime(tbuf2, sizeof(tbuf2), "%Y %m %d %T", thetime) <= 0)
+			    tbuf2[0] = '\0';
+			}
+		    fdQPrintf(conn->ConnFD,
+			    "Content-Type: application/json\r\n"
+			    "\r\n"
+			    "{\"akey\":\"%STR&JSONSTR-%STR&JSONSTR-%STR&JSONSTR\", \"watchdogtimer\":%INT, \"servertime\":\"%STR&JSONSTR\", \"servertime_notz\":\"%STR&JSONSTR\"}\r\n",
+			    nsess->SKey, group->GKey, app->AKey, NHT.WatchdogTime, tbuf, tbuf2
+			    );
+		    }
+		}
+	    }
+
 	/** GET DIRECTORY LISTING mode. **/
 	else if (!strcmp(find_inf->StrVal,"list"))
 	    {
@@ -2052,6 +2105,133 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	if (target_obj) objClose(target_obj);
 
     return 0;
+    }
+
+
+/*** nht_internal_PATCH - implements the HTTP PATCH method, which is used for
+ *** modifying existing data without replacing the entire resource (which is
+ *** what PUT would do).
+ ***/
+int
+nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
+    {
+    pStruct find_inf;
+    struct json_tokener* jtok = NULL;
+    enum json_tokener_error jerr;
+    char rbuf[256];
+    int rcnt, rval, total_rcnt;
+    struct json_object*	j_obj = NULL;
+    char* msg;
+    pObject target_obj = NULL;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+
+	/** Check akey **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
+	    {
+	    mssError(1,"NHT","PATCH request requires akey for validation");
+	    msg = "401 Unauthorized";
+	    goto error;
+	    }
+
+	/** Open the target object **/
+	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
+	if (!target_obj)
+	    {
+	    mssError(0,"NHT","Could not open requested object for PATCH request");
+	    msg = "404 Not Found";
+	    goto error;
+	    }
+
+	/** Initialize the JSON tokenizer **/
+	jtok = json_tokener_new();
+	if (!jtok)
+	    {
+	    mssError(1,"NHT","Could not initialize JSON parser");
+	    msg = "500 Internal Server Error";
+	    goto error;
+	    }
+
+	/** Content supplied on URL line, or do we need to read it? **/
+	if (content)
+	    {
+	    /** Supplied on command line **/
+	    j_obj = json_tokener_parse_ex(jtok, content, strlen(content));
+	    jerr = json_tokener_get_error(jtok);
+	    }
+	else
+	    {
+	    /** Read it in via the network connection **/
+	    total_rcnt = 0;
+	    do  {
+		rcnt = fdRead(conn->ConnFD, rbuf, sizeof(rbuf), 0, 0);
+		if (rcnt <= 0)
+		    {
+		    mssError(1,"NHT","Could not read JSON object from HTTP connection");
+		    msg = "400 Bad Request";
+		    goto error;
+		    }
+		total_rcnt += rcnt;
+		if (total_rcnt > NHT_PAYLOAD_MAX)
+		    {
+		    mssError(1,"NHT","JSON object too large");
+		    msg = "400 Bad Request";
+		    goto error;
+		    }
+		j_obj = json_tokener_parse_ex(jtok, rbuf, rcnt);
+		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
+	    }
+
+	/** Success? **/
+	if (!j_obj || jerr != json_tokener_success)
+	    {
+	    mssError(1,"NHT","Invalid JSON object in PATCH request");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+	json_tokener_free(jtok);
+	jtok = NULL;
+
+	/** Determine mode **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf || strcmp(find_inf->StrVal, "rest") != 0)
+	    {
+	    mssError(1,"NHT","PATCH: only REST mode supported");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+
+	/** Call out to REST functionality **/
+	rval = nht_internal_RestPatch(conn, url_inf, target_obj, j_obj);
+	if (rval < 0)
+	    {
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+
+	/** Cleanup and return **/
+	json_object_put(j_obj);
+	objClose(target_obj);
+	return 0;
+
+    error:
+	fdPrintf(conn->ConnFD,
+		"HTTP/1.0 %s\r\n"
+		"Server: %s\r\n"
+		"Content-Type: text/html\r\n"
+		"\r\n"
+		"<H1>%s</H1>\r\n",
+		msg, NHT.ServerString, msg);
+
+	if (jtok)
+	    json_tokener_free(jtok);
+	if (j_obj)
+	    json_object_put(j_obj);
+	if (target_obj)
+	    objClose(target_obj);
+
+	return -1;
     }
 
 

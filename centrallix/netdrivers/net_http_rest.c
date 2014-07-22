@@ -443,3 +443,136 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
     return rval;
     }
 
+
+
+/*** nht_internal_RestPatchOneAttr() - set one attribute given its JSON
+ *** new value representation
+ ***/
+int
+nht_internal_RestPatchOneAttr(pObject obj, char* attrname, struct json_object* j_attr_obj)
+    {
+    int n;
+    char* str;
+    double d;
+    int rval = -1;
+    int t;
+    struct json_object *j_part;
+    DateTime dt;
+    MoneyType m;
+    ObjData od;
+
+	/** Type of json element? **/
+	if (json_object_is_type(j_attr_obj, json_type_int))
+	    {
+	    n = json_object_get_int(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_INTEGER, POD(&n));
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_string))
+	    {
+	    str = (char*)json_object_get_string(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_STRING, POD(&str));
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_double))
+	    {
+	    d = json_object_get_double(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_DOUBLE, POD(&d));
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_null))
+	    {
+	    t = objGetAttrType(obj, attrname);
+	    if (t <= 0)
+		return 0;
+	    rval = objSetAttrValue(obj, attrname, t, NULL);
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_object))
+	    {
+	    /** Ok, we have an object.  Determine whether it is money or datetime **/
+	    if (json_object_object_get_ex(j_attr_obj, "wholepart", &j_part))
+		{
+		/** Money type **/
+		if (jutilGetMoneyObject(j_attr_obj, &m) < 0)
+		    return -1;
+		od.Money = &m;
+		rval = objSetAttrValue(obj, attrname, DATA_T_MONEY, &od);
+		}
+	    else
+		{
+		/** Date/Time Type **/
+		if (jutilGetDateTimeObject(j_attr_obj, &dt) < 0)
+		    return -1;
+		od.DateTime = &dt;
+		rval = objSetAttrValue(obj, attrname, DATA_T_DATETIME, &od);
+		}
+	    }
+
+    return rval;
+    }
+
+
+
+/*** nht_internal_RestPatch() - perform a RESTful PATCH operation, then
+ *** return the modified document.
+ ***/
+int
+nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object* j_obj)
+    {
+    char* ptr;
+    char* attrname;
+    nhtResType_t res_type = ResTypeElement;
+    struct json_object_iter iter;
+    struct json_object* j_attr_obj;
+    struct tm* thetime;
+    time_t tval;
+    char tbuf[32];
+
+	/** Resource Type -- element or collection? **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx__res_type"), &ptr) == 0)
+	    {
+	    if (!strcmp(ptr, "collection"))
+		res_type = ResTypeCollection;
+	    else if (!strcmp(ptr, "element"))
+		res_type = ResTypeElement;
+	    }
+
+	/** Only elements are allowed **/
+	if (res_type != ResTypeElement)
+	    {
+	    mssError(1,"NHT","Cannot PATCH a REST collection");
+	    return -1;
+	    }
+
+	/** Must be an object containing attributes to be set **/
+	if (!json_object_is_type(j_obj, json_type_object))
+	    {
+	    mssError(1,"NHT","JSON data for PATCH must be a JSON object");
+	    return -1;
+	    }
+
+	/** Loop through attributes to be set **/
+	json_object_object_foreachC(j_obj, iter)
+	    {
+	    j_attr_obj = iter.val;
+	    attrname = iter.key;
+	    if (nht_internal_RestPatchOneAttr(obj, attrname, j_attr_obj) < 0)
+		return -1;
+	    }
+
+	/** Ok, issue the HTTP header for this one. **/
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+	fdSetOptions(conn->ConnFD, FD_UF_WRBUF);
+	fdQPrintf(conn->ConnFD,
+		"HTTP/1.0 200 OK\r\n"
+		"Date: %STR GMT\r\n"
+		"Server: %STR\r\n"
+		"%[Set-Cookie: %STR; path=/\r\n%]", 
+		 tbuf, NHT.ServerString, conn->NhtSession->IsNewCookie, conn->NhtSession->Cookie);
+	conn->NhtSession->IsNewCookie = 0;
+
+	/** Call out to the GET functionality to return the modified document **/
+	nht_internal_RestGet(conn, url_inf, obj);
+
+    return 0;
+    }
+
