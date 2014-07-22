@@ -1092,7 +1092,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     /* Generate a random name for the file. */
     while(1)
 	{
-	cxssGenerateKey(name, sizeof(name) - 1);
+	cxssGenerateKey((unsigned char*)name, sizeof(name) - 1);
 	for(i=0; i< (sizeof name) - 1; i++)
 	    {
 	    name[i] = hex_chars[name[i] & 0x0f];
