@@ -418,6 +418,7 @@ manpages_install: manpages
 
 # JSON-C library
 osdrivers/objdrv_json.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
+utility/json_util.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
 
 thirdparty/$(JSONC)-inst/lib/libjson-c.a: thirdparty/$(JSONC)/Makefile
 	@echo ""
