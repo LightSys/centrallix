@@ -1299,117 +1299,117 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
     pNhtAppGroup group = NULL;
     int n_uploaded_files = 0;
    
-    /** Validate akey and make sure app and group id's match as well.  AKey
-     ** must be supplied with all POST requests.
-     **/
-    find_inf = stLookup_ne(url_inf,"cx__akey");
-    if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
-	{
-	tval = time(NULL);
-	thetime = gmtime(&tval);
-	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	fdPrintf(conn->ConnFD,"HTTP/1.0 403 FORBIDDEN\r\n"
-	     "Date: %s GMT\r\n"
-	     "Server: %s\r\n",
-	     tbuf, NHT.ServerString);
-	
-	return -1;
-	}
-	
-    find_inf = NULL;
-    find_inf = stLookup_ne(url_inf,"target");
-    if(!find_inf)
-	{
-	tval = time(NULL);
-	thetime = gmtime(&tval);
-	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
-	     "Date: %s GMT\r\n"
-	     "Server: %s\r\n",
-	     tbuf, NHT.ServerString);
-	
-	return -1;
-	}
-    
-    xsInit(&json);
-    /* Keep parsing files until stream is empty. */
-    while(1)
-	{
-	payload = nht_internal_ParsePostPayload(conn);
-	
-	if(payload->status == 0)
+	/** Validate akey and make sure app and group id's match as well.  AKey
+	 ** must be supplied with all POST requests.
+	 **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
 	    {
-	    xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
-	    /* Copy file into object system */
-	    file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
-	    snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
-	    obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
-	    while(1)
+	    tval = time(NULL);
+	    thetime = gmtime(&tval);
+	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	    fdPrintf(conn->ConnFD,"HTTP/1.0 403 FORBIDDEN\r\n"
+		 "Date: %s GMT\r\n"
+		 "Server: %s\r\n",
+		 tbuf, NHT.ServerString);
+	    
+	    return -1;
+	    }
+	    
+	find_inf = NULL;
+	find_inf = stLookup_ne(url_inf,"target");
+	if(!find_inf)
+	    {
+	    tval = time(NULL);
+	    thetime = gmtime(&tval);
+	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	    fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
+		 "Date: %s GMT\r\n"
+		 "Server: %s\r\n",
+		 tbuf, NHT.ServerString);
+	    
+	    return -1;
+	    }
+	
+	xsInit(&json);
+	/* Keep parsing files until stream is empty. */
+	while(1)
+	    {
+	    payload = nht_internal_ParsePostPayload(conn);
+	    
+	    if(payload->status == 0)
 		{
-		length = fdRead(file, buffer, sizeof buffer, 0, 0);
-		if (length <= 0)
-		    break;
-		bytes_written = 0;
-		while (bytes_written < length)
+		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
+		/* Copy file into object system */
+		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
+		snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
+		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
+		while(1)
 		    {
-		    wcnt = objWrite(obj, buffer+bytes_written, length-bytes_written, 0, 0);
-		    if (wcnt <= 0)
+		    length = fdRead(file, buffer, sizeof buffer, 0, 0);
+		    if (length <= 0)
 			break;
-		    bytes_written += wcnt;
+		    bytes_written = 0;
+		    while (bytes_written < length)
+			{
+			wcnt = objWrite(obj, buffer+bytes_written, length-bytes_written, 0, 0);
+			if (wcnt <= 0)
+			    break;
+			bytes_written += wcnt;
+			}
 		    }
+		objClose(obj);
+		fdClose(file, 0);
+		unlink(payload->full_new_path);
+		n_uploaded_files++;
 		}
-	    objClose(obj);
-	    fdClose(file, 0);
-	    unlink(payload->full_new_path);
-	    n_uploaded_files++;
+	    else
+		{
+		break;
+		}
+	    }
+	xsRTrim(&json);
+
+	if (n_uploaded_files == 0)
+	    {
+	    fdPrintf(conn->ConnFD,"HTTP/1.0 400 Bad Request\r\n"
+		 "Server: %s\r\n"
+		 "Content-Type: text/html\r\n"
+		 "\r\n"
+		 "<H1>400 Bad Request</H1>\r\n",
+		 NHT.ServerString);
+	    return -1;
+	    }
+
+	//printf(xsString(&json));
+	if (nsess->IsNewCookie)
+	    {
+	    tval = time(NULL);
+	    thetime = gmtime(&tval);
+	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	    fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
+		 "Date: %s GMT\r\n"
+		 "Server: %s\r\n"
+		 "Set-Cookie: %s; path=/\r\n"
+		 "Content-Type: application/json\r\n"
+		 "\r\n"
+		 "[%s]", 
+		  tbuf, NHT.ServerString, nsess->Cookie, json.String+1);
+	    nsess->IsNewCookie = 0;
 	    }
 	else
 	    {
-	    break;
+	    tval = time(NULL);
+	    thetime = gmtime(&tval);
+	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	    fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
+		 "Date: %s GMT\r\n"
+		 "Server: %s\r\n"
+		 "Content-Type: application/json\r\n"
+		 "\r\n"
+		 "[%s]",
+		 tbuf, NHT.ServerString, json.String+1);
 	    }
-	}
-    xsRTrim(&json);
-
-    if (n_uploaded_files == 0)
-	{
-	fdPrintf(conn->ConnFD,"HTTP/1.0 400 Bad Request\r\n"
-	     "Server: %s\r\n"
-	     "Content-Type: text/html\r\n"
-	     "\r\n"
-	     "<H1>400 Bad Request</H1>\r\n",
-	     NHT.ServerString);
-	return -1;
-	}
-
-    //printf(xsString(&json));
-    if (nsess->IsNewCookie)
-	{
-	tval = time(NULL);
-	thetime = gmtime(&tval);
-	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
-	     "Date: %s GMT\r\n"
-	     "Server: %s\r\n"
-	     "Set-Cookie: %s; path=/\r\n"
-	     "Content-Type: application/json\r\n"
-	     "\r\n"
-	     "[%s]", 
-	      tbuf, NHT.ServerString, nsess->Cookie, json.String+1);
-	nsess->IsNewCookie = 0;
-	}
-    else
-	{
-	tval = time(NULL);
-	thetime = gmtime(&tval);
-	strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
-	     "Date: %s GMT\r\n"
-	     "Server: %s\r\n"
-	     "Content-Type: application/json\r\n"
-	     "\r\n"
-	     "[%s]",
-	     tbuf, NHT.ServerString, json.String+1);
-	}
 
     return 0;
     }
