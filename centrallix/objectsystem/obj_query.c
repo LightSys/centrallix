@@ -805,3 +805,35 @@ objGetQueryCoverageMask(pObjQuery this)
 	return -1;
     }
 
+
+/*** objGetQueryIdentityPath() - get the pathname to the "identity" object
+ *** underlying a given query.  If the query is a normal query (from the
+ *** objOpenQuery() call), this returns the path to the object that was
+ *** passed to objOpenQuery().  Otherwise, for a multiquery, this returns
+ *** the path to the "identity" query source (or to the only source, if the
+ *** query only has one source).
+ ***/
+int
+objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
+    {
+    char* ptr;
+
+	/** Driver can handle this?  (i.e., MultiQuery module) **/
+	if (this->Drv->GetQueryIdentityPath)
+	    return this->Drv->GetQueryIdentityPath(this->Data, pathbuf, maxlen);
+
+	/** Get the pathname **/
+	if (!this->Obj)
+	    return -1;
+	ptr = obj_internal_PathPart(this->Obj->Pathname, 0, 0);
+	if (!ptr)
+	    return -1;
+	if (strlen(ptr) >= maxlen-1)
+	    return -1;
+
+	/** Copy it **/
+	strtcpy(pathbuf, ptr, maxlen);
+
+    return 0;
+    }
+

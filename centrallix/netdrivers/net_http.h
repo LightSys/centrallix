@@ -385,5 +385,6 @@ int nht_internal_FreeHeaders(pXArray hdrlist);
 /*** REST implementation ***/
 int nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
 int nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
+int nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content);
 
 #endif

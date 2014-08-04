@@ -535,6 +535,25 @@ nht_internal_ConnHandler(void* conn_v)
 	            nht_internal_PUT(conn,url_inf,conn->Size,ptr);
 		    }
 		}
+	    else if (!strcasecmp(find_inf->StrVal,"post"))
+	        {
+		find_inf = stLookup_ne(url_inf,"cx__content");
+		if (!find_inf || !(find_inf->StrVal))
+		    {
+	            fdPrintf(conn->ConnFD,
+			"HTTP/1.0 400 Method Error\r\n"
+	    		"Server: %s\r\n"
+			"Content-Type: text/html\r\n"
+			"\r\n"
+			"<H1>400 Method Error - include cx__content for POST</H1>\r\n",NHT.ServerString);
+		    }
+		else
+		    {
+		    ptr = find_inf->StrVal;
+		    conn->Size = strlen(ptr);
+	            nht_internal_POST(conn, url_inf, conn->Size, ptr);
+		    }
+		}
 	    else if (!strcasecmp(find_inf->StrVal,"patch"))
 	        {
 		find_inf = stLookup_ne(url_inf,"cx__content");
@@ -568,7 +587,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        }
 	    else if (!strcmp(conn->Method,"post"))
 		{
-		nht_internal_POST(conn, url_inf, conn->Size);
+		nht_internal_POST(conn, url_inf, conn->Size, NULL);
 		}
 	    else if (!strcmp(conn->Method,"patch"))
 		{

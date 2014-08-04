@@ -255,6 +255,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     XHashTable struct_table;
     XString sql;
     pObjQuery test_qy;
+    char createpath[OBJSYS_MAX_PATH+1];
 
     	/** Setup the pathname into its subparts **/
 	for(i=1;i<path->nElements;i++) path->Elements[i][-1] = 0;
@@ -363,8 +364,22 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			test_qy = objMultiQuery(s, sql.String, objlist, 0);
 			if (test_qy)
 			    {
+			    /** sizeof(createpath)-2 to leave room for two chars **/
+			    if (objGetQueryIdentityPath(test_qy, createpath, sizeof(createpath) - 2) < 0)
+				createpath[0] = '\0';
+
 			    /** query open succeeded, try to fetch a result **/
 			    test_obj = objQueryFetch(test_qy, O_RDONLY);
+
+			    /** are we creating a new object? **/
+			    if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT) && createpath[0])
+				{
+				/** We left room for these two chars in the
+				 ** above call to objGetQueryIdentityPath().
+				 **/
+				strcat(createpath, "/*");
+				test_obj = objOpen(s, createpath, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
+				}
 			    objQueryClose(test_qy);
 			    }
 			xsDeInit(&sql);

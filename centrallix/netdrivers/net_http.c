@@ -1282,7 +1282,7 @@ nht_internal_NextLine(char * token, pNhtConn conn, int size)
 /*** nht_internal_POST - handle the HTTP POST method.
  ***/
 int
-nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
+nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
@@ -1315,7 +1315,15 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
 	    
 	    return -1;
 	    }
-	    
+
+	/** REST-type request vs. standard file upload POST? **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (find_inf && !strcmp(find_inf->StrVal, "rest"))
+	    {
+	    return nht_internal_RestPost(conn, url_inf, size, content);
+	    }
+	   
+	/** Standard file upload POST request **/
 	find_inf = NULL;
 	find_inf = stLookup_ne(url_inf,"target");
 	if(!find_inf)
@@ -1332,7 +1340,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
 	    }
 	
 	xsInit(&json);
-	/* Keep parsing files until stream is empty. */
+	/** Keep parsing files until stream is empty. **/
 	while(1)
 	    {
 	    payload = nht_internal_ParsePostPayload(conn);
@@ -1340,7 +1348,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
 	    if(payload->status == 0)
 		{
 		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
-		/* Copy file into object system */
+		/** Copy file into object system **/
 		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
 		snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
