@@ -391,3 +391,15 @@ EXAMPLE REQUESTS...
 	URI: http://server/apps/kardia/api/thingy/objectname?cx__mode=rest&cx__res_format=attrs
 	Content-Type: application/json
 	Request Body: {"attrname":"newattributestringvalue","attrname2":1000}
+
+    D.	Create a new object (when the name of the new object is not yet known):
+
+	Method: POST
+	URI: http://server/apps/kardia/api/thingy?cx__mode=rest&cx__res_format=attrs&cx__res_attrs=basic&cx__res_type=collection
+	Content-Type: application/json
+	Request Body: {"attr1":"value1", "attr2":1000, "attr3":"value3"}
+
+	Response: 201 Created
+	Location: http://server/apps/kardia/api/thingy/newobjectname?cx__mode=rest&cx__res_format=attrs&cx__res_attrs=basic
+	Content-Type: application/json
+	Response Body: {"attr1":"value1", "attr2":1000, "attr3":"value3"}
