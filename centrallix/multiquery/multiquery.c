@@ -3252,6 +3252,12 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
 	    mssError(1,"MQ","Could not read - the query must have one valid FROM source labled as the query IDENTITY source");
 	    return -1;
 	    }
+	if (!p->ObjList->Objects[objid])
+	    {
+	    /** Underlying object isn't currently valid **/
+	    mssError(1,"MQ","Could not read - underlying data source not available");
+	    return -1;
+	    }
 
     return objRead((pObject)(p->ObjList->Objects[objid]), buffer, maxcnt, offset, flags);
     }
@@ -3270,6 +3276,12 @@ mqWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* 
 	if (objid < 0)
 	    {
 	    mssError(1,"MQ","Could not write - the query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+	if (!p->ObjList->Objects[objid])
+	    {
+	    /** Object isn't currently valid - return empty. **/
+	    mssError(1,"MQ","Could not write - underlying data source not available");
 	    return -1;
 	    }
 
