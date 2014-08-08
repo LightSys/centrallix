@@ -911,6 +911,8 @@ mysd_internal_RefreshRow(pMysdData data)
 	/** Get the object name (primary key) and then retrieve the row again **/
 	ptr = obj_internal_PathPart(data->Obj->Pathname, data->Obj->SubPtr+2, 1);
 	rval = mysd_internal_GetRowByKey(ptr, data);
+	if (data->Result) mysql_free_result(data->Result);
+	data->Result = NULL;
 
     return rval;
     }
@@ -2423,7 +2425,8 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     inf->Type = MYSD_T_ROW;
                     inf->Row = qy->Data->Row;
 		    qy->Data->Row = NULL;
-                    inf->Result = qy->Data->Result;
+                    /*inf->Result = qy->Data->Result;*/
+		    inf->Result = NULL;
                     new_obj_name = name_buf;
                     }
                 else
