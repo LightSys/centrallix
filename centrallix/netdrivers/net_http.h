@@ -24,6 +24,8 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/exception.h"
+#include "cxlib/memstr.h"
+#include "cxlib/xstring.h"
 #include "obj.h"
 #include "stparse_ne.h"
 #include "stparse.h"
@@ -36,6 +38,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
+#include "json.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -70,6 +73,9 @@
 
 
  #define DEBUG_OSML	0
+
+/*** payload limitation ***/
+#define	NHT_PAYLOAD_MAX		(1024*1024*4)	/* 4 megabytes */
 
 /*** one HTTP header ***/
 typedef struct
@@ -198,6 +204,20 @@ typedef struct
     }
     NhtAppGroup, *pNhtAppGroup;
 
+/*** Post payload.  One of these is created for each file uploaded through Post(using
+ *** the file upload widget).
+ ***/
+typedef struct
+    {
+    char    filename[128];
+    char    newname[512];
+    char    path[512];
+    char    full_new_path[1024]; //path + newname
+    char    extension[16];
+    char    mime_type[128];
+    int     status;
+    }
+    NhtPostPayload, *pNhtPostPayload;
 
 /*** One-page app data.  Each time the user launches an .app, a new app
  *** structure is created with a new key.
@@ -364,5 +384,7 @@ int nht_internal_FreeHeaders(pXArray hdrlist);
 
 /*** REST implementation ***/
 int nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
+int nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
+int nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content);
 
 #endif

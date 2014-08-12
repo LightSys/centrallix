@@ -36,3 +36,16 @@ centrallix-lib/include/cxlib
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
 centrallix/tests/*.to.tmp
+centrallix/thirdparty/compare-*
+centrallix/thirdparty/*-inst
+centrallix/thirdparty/json-c-0.12/configure
+centrallix/thirdparty/json-c-0.12/Makefile.in
+centrallix/thirdparty/json-c-0.12/tests/Makefile.in
+centrallix/thirdparty/json-c-0.12/config.h.in
+centrallix/thirdparty/json-c-0.12/aclocal.m4
+*~
+centrallix/compile
+centrallix/depcomp
+centrallix/missing
+centrallix/ltmain.sh
+centrallix/test-driver

@@ -443,3 +443,365 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
     return rval;
     }
 
+
+
+/*** nht_internal_RestSetOneAttr() - set one attribute given its JSON
+ *** new value representation
+ ***/
+int
+nht_internal_RestSetOneAttr(pObject obj, char* attrname, struct json_object* j_attr_obj)
+    {
+    int n;
+    char* str;
+    double d;
+    int rval = -1;
+    int t;
+    struct json_object *j_part;
+    DateTime dt;
+    MoneyType m;
+    ObjData od;
+
+	/** Type of json element? **/
+	if (json_object_is_type(j_attr_obj, json_type_int))
+	    {
+	    n = json_object_get_int(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_INTEGER, POD(&n));
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_string))
+	    {
+	    str = (char*)json_object_get_string(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_STRING, POD(&str));
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_double))
+	    {
+	    d = json_object_get_double(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_DOUBLE, POD(&d));
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_null))
+	    {
+	    t = objGetAttrType(obj, attrname);
+	    if (t <= 0)
+		return 0;
+	    rval = objSetAttrValue(obj, attrname, t, NULL);
+	    }
+	else if (json_object_is_type(j_attr_obj, json_type_object))
+	    {
+	    /** Ok, we have an object.  Determine whether it is money or datetime **/
+	    if (json_object_object_get_ex(j_attr_obj, "wholepart", &j_part))
+		{
+		/** Money type **/
+		if (jutilGetMoneyObject(j_attr_obj, &m) < 0)
+		    return -1;
+		od.Money = &m;
+		rval = objSetAttrValue(obj, attrname, DATA_T_MONEY, &od);
+		}
+	    else
+		{
+		/** Date/Time Type **/
+		if (jutilGetDateTimeObject(j_attr_obj, &dt) < 0)
+		    return -1;
+		od.DateTime = &dt;
+		rval = objSetAttrValue(obj, attrname, DATA_T_DATETIME, &od);
+		}
+	    }
+
+    return rval;
+    }
+
+
+
+/*** nht_internal_RestPatch() - perform a RESTful PATCH operation, then
+ *** return the modified document.
+ ***/
+int
+nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object* j_obj)
+    {
+    char* ptr;
+    char* attrname;
+    nhtResType_t res_type = ResTypeElement;
+    struct json_object_iter iter;
+    struct json_object* j_attr_obj;
+    struct tm* thetime;
+    time_t tval;
+    char tbuf[32];
+
+	/** Resource Type -- element or collection? **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx__res_type"), &ptr) == 0)
+	    {
+	    if (!strcmp(ptr, "collection"))
+		res_type = ResTypeCollection;
+	    else if (!strcmp(ptr, "element"))
+		res_type = ResTypeElement;
+	    }
+
+	/** Only elements are allowed **/
+	if (res_type != ResTypeElement)
+	    {
+	    mssError(1,"NHT","Cannot PATCH a REST collection");
+	    return -1;
+	    }
+
+	/** Must be an object containing attributes to be set **/
+	if (!json_object_is_type(j_obj, json_type_object))
+	    {
+	    mssError(1,"NHT","JSON data for PATCH must be a JSON object");
+	    return -1;
+	    }
+
+	/** Loop through attributes to be set **/
+	json_object_object_foreachC(j_obj, iter)
+	    {
+	    j_attr_obj = iter.val;
+	    attrname = iter.key;
+	    if (nht_internal_RestSetOneAttr(obj, attrname, j_attr_obj) < 0)
+		return -1;
+	    }
+
+	/** Ok, issue the HTTP header for this one. **/
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+	fdSetOptions(conn->ConnFD, FD_UF_WRBUF);
+	fdQPrintf(conn->ConnFD,
+		"HTTP/1.0 200 OK\r\n"
+		"Date: %STR GMT\r\n"
+		"Server: %STR\r\n"
+		"%[Set-Cookie: %STR; path=/\r\n%]", 
+		 tbuf, NHT.ServerString, conn->NhtSession->IsNewCookie, conn->NhtSession->Cookie);
+	conn->NhtSession->IsNewCookie = 0;
+
+	/** Call out to the GET functionality to return the modified document **/
+	nht_internal_RestGet(conn, url_inf, obj);
+
+    return 0;
+    }
+
+
+
+/*** nht_internal_RestPost() - perform a RESTful POST operation, then
+ *** return the newly created document.  A POST will perform an autoname
+ *** create operation, and the new name of the created object will be a part
+ *** of the @id property of the returned document.
+ ***/
+int
+nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
+    {
+    char* ptr;
+    pObject target_obj;
+    struct json_tokener* jtok = NULL;
+    enum json_tokener_error jerr;
+    char rbuf[256];
+    int rcnt, total_rcnt;
+    struct json_object*	j_obj = NULL;
+    char new_obj_path[OBJSYS_MAX_PATH+1];
+    char new_obj_name[OBJSYS_MAX_PATH+1];
+    struct tm* thetime;
+    time_t tval;
+    char tbuf[32];
+    char* msg;
+    nhtResType_t res_type = ResTypeElement;
+    nhtResFormat_t res_format;
+    nhtResAttrs_t res_attrs;
+    struct json_object_iter iter;
+    struct json_object* j_attr_obj;
+    char* attrname;
+
+	/** Open the target object **/
+	if (strlen(url_inf->StrVal) + 2 + 1 >= OBJSYS_MAX_PATH)
+	    {
+	    mssError(0,"NHT","REST POST pathname too long");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+	snprintf(new_obj_path, sizeof(new_obj_path), "%s/*", url_inf->StrVal);
+	target_obj = objOpen(conn->NhtSession->ObjSess, new_obj_path, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME | OBJ_O_EXCL | OBJ_O_TRUNC, 0600, "application/octet-stream");
+	if (!target_obj)
+	    {
+	    mssError(0,"NHT","Could not open requested object for POST request");
+	    msg = "404 Not Found";
+	    goto error;
+	    }
+
+	/** Initialize the JSON tokenizer **/
+	jtok = json_tokener_new();
+	if (!jtok)
+	    {
+	    mssError(1,"NHT","Could not initialize JSON parser");
+	    msg = "500 Internal Server Error";
+	    goto error;
+	    }
+
+	/** Supplied as a URL parameter? **/
+	if (content)
+	    {
+	    j_obj = json_tokener_parse_ex(jtok, content, strlen(content));
+	    jerr = json_tokener_get_error(jtok);
+	    }
+	else
+	    {
+	    /** Read the document from the connection **/
+	    total_rcnt = 0;
+	    do  {
+		rcnt = fdRead(conn->ConnFD, rbuf, sizeof(rbuf), 0, 0);
+		if (rcnt <= 0)
+		    {
+		    mssError(1,"NHT","Could not read JSON object from HTTP connection");
+		    msg = "400 Bad Request";
+		    goto error;
+		    }
+		total_rcnt += rcnt;
+		if (total_rcnt > NHT_PAYLOAD_MAX)
+		    {
+		    mssError(1,"NHT","JSON object too large");
+		    msg = "400 Bad Request";
+		    goto error;
+		    }
+		j_obj = json_tokener_parse_ex(jtok, rbuf, rcnt);
+		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
+	    }
+
+	/** Success? **/
+	if (!j_obj || jerr != json_tokener_success)
+	    {
+	    mssError(1,"NHT","Invalid JSON object in POST request");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+	json_tokener_free(jtok);
+	jtok = NULL;
+
+	/** Resource Type -- element or collection? **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx__res_type"), &ptr) == 0)
+	    {
+	    if (!strcmp(ptr, "collection"))
+		res_type = ResTypeCollection;
+	    else if (!strcmp(ptr, "element"))
+		res_type = ResTypeElement;
+	    }
+
+	/** Only elements are allowed **/
+	if (res_type != ResTypeCollection)
+	    {
+	    mssError(1,"NHT","REST POST must be to a collection");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+
+	/** Must be an object containing attributes to be set **/
+	if (!json_object_is_type(j_obj, json_type_object))
+	    {
+	    mssError(1,"NHT","JSON data for POST must be a JSON object");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+
+	/** Loop through attributes to be set **/
+	json_object_object_foreachC(j_obj, iter)
+	    {
+	    j_attr_obj = iter.val;
+	    attrname = iter.key;
+	    if (nht_internal_RestSetOneAttr(target_obj, attrname, j_attr_obj) < 0)
+		return -1;
+	    }
+	objCommit(conn->NhtSession->ObjSess);
+
+	/** Get the new name **/
+	if (objGetAttrValue(target_obj, "name", DATA_T_STRING, POD(&ptr)) != 0 || strchr(ptr, '?') || !strcmp(ptr,"*"))
+	    {
+	    mssError(0,"NHT","Could not autoname new object for POST request");
+	    msg = "500 Internal Server Error";
+	    goto error;
+	    }
+	if (strlen(new_obj_path) + strlen(ptr) + 2 >= sizeof(new_obj_name))
+	    {
+	    mssError(1,"NHT","Path too long for new object for POST request");
+	    msg = "500 Internal Server Error";
+	    goto error;
+	    }
+	if (strlen(new_obj_path) >= 2)
+	    {
+	    /** trim the trailing slash and star **/
+	    new_obj_path[strlen(new_obj_path)-2] = '\0';
+	    }
+	snprintf(new_obj_name, sizeof(new_obj_name), "%s/%s", new_obj_path, ptr);
+
+	/** Do the reopen **/
+	objClose(target_obj);
+	target_obj = objOpen(conn->NhtSession->ObjSess, new_obj_name, OBJ_O_RDONLY, 0600, "application/octet-stream");
+	if (!target_obj)
+	    {
+	    mssError(0,"NHT","Could not confirm newly created object");
+	    msg = "500 Internal Server Error";
+	    goto error;
+	    }
+
+	/** Ok, issue the HTTP header for this one. **/
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+	fdSetOptions(conn->ConnFD, FD_UF_WRBUF);
+	fdQPrintf(conn->ConnFD,
+		"HTTP/1.0 201 Created\r\n"
+		"Date: %STR GMT\r\n"
+		"Server: %STR\r\n"
+		"Location: %STR&PATH/%STR&FILE?cx__mode=rest&cx__res_type=element&cx__res_format=attrs&cx__res_attrs=basic\r\n"
+		"%[Set-Cookie: %STR; path=/\r\n%]"
+		"Pragma: no-cache\r\n"
+		"Content-Type: application/json\r\n",
+		 tbuf, 
+		 NHT.ServerString,
+		 url_inf->StrVal, new_obj_name,
+		 conn->NhtSession->IsNewCookie, conn->NhtSession->Cookie);
+	conn->NhtSession->IsNewCookie = 0;
+
+	/** Resource Format -- attributes or content? **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx__res_format"), &ptr) == 0)
+	    {
+	    if (!strcmp(ptr, "attrs"))
+		res_format = ResFormatAttrs;
+	    else if (!strcmp(ptr, "auto"))
+		res_format = ResFormatAuto;
+	    else if (!strcmp(ptr, "both"))
+		res_format = ResFormatBoth;
+	    else /* "content" */
+		res_format = ResFormatContent;
+	    }
+
+	/** Attribute format -- basic or full? **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx__res_attrs"), &ptr) == 0)
+	    {
+	    if (!strcmp(ptr, "full"))
+		res_attrs = ResAttrsFull;
+	    else if (!strcmp(ptr, "none"))
+		res_attrs = ResAttrsNone;
+	    else /* "basic" */
+		res_attrs = ResAttrsBasic;
+	    }
+
+	/** Call out to the GET functionality to return the created document **/
+	nht_internal_RestGetElement(conn, target_obj, res_format, res_attrs, "system/void");
+
+	/** Cleanup and return **/
+	json_object_put(j_obj);
+	objClose(target_obj);
+	return 0;
+
+    error:
+	fdPrintf(conn->ConnFD,
+		"HTTP/1.0 %s\r\n"
+		"Server: %s\r\n"
+		"Content-Type: text/html\r\n"
+		"\r\n"
+		"<H1>%s</H1>\r\n",
+		msg, NHT.ServerString, msg);
+
+	if (jtok)
+	    json_tokener_free(jtok);
+	if (j_obj)
+	    json_object_put(j_obj);
+	if (target_obj)
+	    objClose(target_obj);
+
+	return -1;
+    }
+

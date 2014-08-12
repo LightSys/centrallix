@@ -483,7 +483,7 @@ nht_internal_ConnHandler(void* conn_v)
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
 	    akey_inf = stLookup_ne(url_inf,"cx__akey");
-	    if (!akey_inf || strcmp(akey_inf->StrVal, conn->NhtSession->SKey))
+	    if (!akey_inf || strncmp(akey_inf->StrVal, conn->NhtSession->SKey, strlen(conn->NhtSession->SKey)))
 		{
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
@@ -535,6 +535,44 @@ nht_internal_ConnHandler(void* conn_v)
 	            nht_internal_PUT(conn,url_inf,conn->Size,ptr);
 		    }
 		}
+	    else if (!strcasecmp(find_inf->StrVal,"post"))
+	        {
+		find_inf = stLookup_ne(url_inf,"cx__content");
+		if (!find_inf || !(find_inf->StrVal))
+		    {
+	            fdPrintf(conn->ConnFD,
+			"HTTP/1.0 400 Method Error\r\n"
+	    		"Server: %s\r\n"
+			"Content-Type: text/html\r\n"
+			"\r\n"
+			"<H1>400 Method Error - include cx__content for POST</H1>\r\n",NHT.ServerString);
+		    }
+		else
+		    {
+		    ptr = find_inf->StrVal;
+		    conn->Size = strlen(ptr);
+	            nht_internal_POST(conn, url_inf, conn->Size, ptr);
+		    }
+		}
+	    else if (!strcasecmp(find_inf->StrVal,"patch"))
+	        {
+		find_inf = stLookup_ne(url_inf,"cx__content");
+		if (!find_inf || !(find_inf->StrVal))
+		    {
+	            fdPrintf(conn->ConnFD,
+			"HTTP/1.0 400 Method Error\r\n"
+	    		"Server: %s\r\n"
+			"Content-Type: text/html\r\n"
+			"\r\n"
+			"<H1>400 Method Error - include cx__content for PATCH</H1>\r\n",NHT.ServerString);
+		    }
+		else
+		    {
+		    ptr = find_inf->StrVal;
+		    conn->Size = strlen(ptr);
+	            nht_internal_PATCH(conn, url_inf, ptr);
+		    }
+		}
 	    }
 	else
 	    {
@@ -549,7 +587,11 @@ nht_internal_ConnHandler(void* conn_v)
 	        }
 	    else if (!strcmp(conn->Method,"post"))
 		{
-		nht_internal_POST(conn, url_inf, conn->Size);
+		nht_internal_POST(conn, url_inf, conn->Size, NULL);
+		}
+	    else if (!strcmp(conn->Method,"patch"))
+		{
+		nht_internal_PATCH(conn, url_inf, NULL);
 		}
 	    else if (!strcmp(conn->Method,"copy"))
 	        {

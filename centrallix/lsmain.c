@@ -17,6 +17,8 @@
 #include "cxlib/xhash.h"
 #include "stparse.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/strtcpy.h"
+#include <errno.h>
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG "/usr/local/etc/centrallix.conf"
 #endif
@@ -146,9 +148,10 @@ usage(char* name)
 	fprintf(stderr,
 		"Usage: %s [-Vdqh] [-c configfile]\n\n"
 		"\t-V          print version number,\n"
-		"\t-d          daemonize (fork into the background),\n"
+		"\t-d          become a service (fork into the background),\n"
 		"\t-q          initialize quietly,\n"
 		"\t-c <file>   use <file> for configuration,\n"
+		"\t-p <file>   use <file> for the PID file.\n"
 		"\t-h          this message.\n\n"
 		"E-mail bug reports to: %s\n\n",
 		name, PACKAGE_BUGREPORT);
@@ -163,6 +166,7 @@ main(int argc, char* argv[])
     char* name;
     unsigned int seed;
     int fd;
+    char pidbuf[16];
 
 	nmInitialize();				/* memory manager */
 
@@ -194,6 +198,7 @@ main(int argc, char* argv[])
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
 	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
 
 	/** Check for config file options on the command line **/
 #ifdef HAVE_BASENAME
@@ -201,7 +206,7 @@ main(int argc, char* argv[])
 #else
 	name = argv[0];
 #endif
-	while ((ch=getopt(argc,argv,"Vhdc:q")) > 0)
+	while ((ch=getopt(argc,argv,"Vhdc:qp:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -213,12 +218,11 @@ main(int argc, char* argv[])
 					PACKAGE_STRING, YEARS);
 				exit(0);
 
-		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
-				CxGlobals.ConfigFileName[255] = '\0';
+		case 'c':	strtcpy(CxGlobals.ConfigFileName, optarg, sizeof(CxGlobals.ConfigFileName));
 				break;
 
 		case 'd':	CxGlobals.QuietInit = 1;
-				go_background();
+				CxGlobals.Flags |= CX_F_SERVICE;
 				break;
 
 		case 'q':	CxGlobals.QuietInit = 1;
@@ -226,11 +230,44 @@ main(int argc, char* argv[])
 
 		case 'h':	usage(name);
 				exit(0);
+		
+		case 'p':	strtcpy(CxGlobals.PidFile, optarg, sizeof(CxGlobals.PidFile));
+				break;
 
 		case '?':
 		default:	usage(name);
 				exit(1);
 		}
+	    }
+
+	/** Become a background service? **/
+	if (CxGlobals.Flags & CX_F_SERVICE)
+	    {
+	    go_background();
+	    if (CxGlobals.PidFile[0])
+		{
+		/** Open the pid file **/
+		fd = open(CxGlobals.PidFile, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		if (fd < 0)
+		    {
+		    fprintf(stderr, "Could not open pid file '%s': %s\n", CxGlobals.PidFile, strerror(errno));
+		    return 1;
+		    }
+
+		/** Write our pid to the file **/
+		snprintf(pidbuf, sizeof(pidbuf), "%d\n", getpid());
+		if (write(fd, pidbuf, strlen(pidbuf)) < 0)
+		    {
+		    fprintf(stderr, "Unable to write to pid file '%s': %s\n", CxGlobals.PidFile, strerror(errno));
+		    return 1;
+		    }
+		close(fd);
+		}
+	    }
+	else
+	    {
+	    /** Zero it out if we didn't write to the file **/
+	    CxGlobals.PidFile[0] = '\0';
 	    }
 
 	/** Init the multithreading module to start the first thread **/

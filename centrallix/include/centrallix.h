@@ -45,6 +45,7 @@ extern char* cx__years;
 typedef struct _CXG
     {
     char	ConfigFileName[256];
+    char	PidFile[256];
     char**	ArgV;
     pStructInf	ParsedConfig;
     int		QuietInit;
@@ -58,8 +59,8 @@ extern CxGlobals_t CxGlobals;
 
 #define CX_F_SHUTTINGDOWN	1	/* shutting down */
 #define CX_F_ENABLEREMOTEPW	2	/* enable sending auth to remote services */
-
 #define CX_F_DEBUG		4	/* for testing only */
+#define CX_F_SERVICE		8	/* become a background service */
 
 
 /*** Loadable modules use this to define init/finish functions.

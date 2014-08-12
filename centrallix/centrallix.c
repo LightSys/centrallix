@@ -244,6 +244,48 @@ int cxAddShutdownHandler(ShutdownHandlerFunc handler)
     return xaAddItem(&CxGlobals.ShutdownHandlers,handler);
     }
 
+
+void
+cxRemovePidFile()
+    {
+    char pidbuf[16];
+    int pidbuf_id;
+    int fd;
+    int cnt;
+	
+
+	if (CxGlobals.PidFile[0] && (CxGlobals.Flags & CX_F_SERVICE))
+	    {
+	    /** Double-check to see if we own it.  Another centrallix
+	     ** process might have overwritten it.  Leave the file alone
+	     ** in that case.
+	     **
+	     ** There is technically a race condition here -- but the
+	     ** consequences are minor and we're doing a courtesy. :)
+	     **/
+	    fd = open(CxGlobals.PidFile, O_RDONLY, 0600);
+	    if (fd >= 0)
+		{
+		cnt = read(fd, pidbuf, sizeof(pidbuf));
+		if (cnt > 1 && cnt < sizeof(pidbuf))
+		    {
+		    pidbuf[cnt] = '\0';
+		    pidbuf_id = strtol(pidbuf, NULL, 10);
+
+		    /** Unlink it if the pids match **/
+		    if (pidbuf_id == getpid())
+			unlink(CxGlobals.PidFile);
+		    }
+		close(fd);
+		}
+	    
+	    CxGlobals.PidFile[0] = '\0';
+	    }
+
+    return;
+    }
+
+
 int
 cxInitialize(void* v)
     {
@@ -261,11 +303,15 @@ cxInitialize(void* v)
     int pid;
     char rbuf[16];
 
-	CxGlobals.Flags = 0;
 	xaInit(&CxGlobals.ShutdownHandlers,4);
 
 	/** set up the interrupt handler so we can shutdown properly **/
 	mtAddSignalHandler(SIGINT,cxShutdownThread);
+	mtAddSignalHandler(SIGTERM,cxShutdownThread);
+
+	/** Add a shutdown handler to delete the pid file **/
+	if (CxGlobals.PidFile[0])
+	    cxAddShutdownHandler(cxRemovePidFile);
 
 	/** Startup message **/
 	if (!CxGlobals.QuietInit)
@@ -452,7 +498,7 @@ cxHtInit()
 	htrInitialize();			/* HTML generator */
 	htruleInitialize();			/* rule module */
 	htpageInitialize();			/* DHTML page generator */
-	htspaneInitialize();			/* scrollable pane module */
+	htspaneInitialize();		/* scrollable pane module */
 	httreeInitialize();			/* treeview module */
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
@@ -483,6 +529,7 @@ cxHtInit()
 	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
 	htmapInitialize();			/* object canvas widget */
+	htfuInitialize();			/* file upload widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */

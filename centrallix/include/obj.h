@@ -99,6 +99,7 @@ extern char* obj_default_null_fmt;
 #define DATA_F_NORMALIZE	4
 #define DATA_F_SYBQUOTE		8	/* use '' to quote a ', etc */
 #define DATA_F_CONVSPECIAL	16	/* convert literal CR LF and TAB to \r \n and \t */
+#define DATA_F_DATECONV		32	/* wrap date/time values using convert() */
 
 
 /** Presentation Hints structure ---
@@ -186,6 +187,7 @@ typedef struct _OSD
     int		(*Info)();
     int		(*Commit)();
     int		(*GetQueryCoverageMask)();
+    int		(*GetQueryIdentityPath)();
     }
     ObjDriver, *pObjDriver;
 
@@ -587,6 +589,7 @@ pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
 int objQueryClose(pObjQuery this);
 int objGetQueryCoverageMask(pObjQuery this);
+int objGetQueryIdentityPath(pObjQuery this, char* buf, int maxlen);
 
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);

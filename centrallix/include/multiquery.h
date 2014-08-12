@@ -38,6 +38,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "stparse.h"
 
 
 /*** Structure for a query driver.  A query driver basically manages a type
@@ -129,6 +130,7 @@ typedef struct _QS
 #define MQ_SF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_SF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_SF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
+#define MQ_SF_ASSIGNMENT	512		/* SELECT :obj:attr = ... */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -155,6 +157,17 @@ typedef struct _QS
 #define MQ_T_ONDUPCLAUSE	22
 #define MQ_T_ONDUPITEM		23
 #define MQ_T_ONDUPUPDATEITEM	24
+#define MQ_T_DECLARECLAUSE	25
+
+
+/*** Structure for a declared object ***/
+typedef struct _QDO
+    {
+    char		Name[32];		/* Name of the object */
+    pStructInf		Data;			/* Object data */
+    }
+    QueryDeclaredObject, *pQueryDeclaredObject;
+
 
 typedef struct _QST QueryStatement, *pQueryStatement;
 typedef struct _MQ MultiQuery, *pMultiQuery;
@@ -181,6 +194,8 @@ struct _QST /* QueryStatement */
 #define MQ_TF_NOMOREREC		2
 #define MQ_TF_ASTERISK		4		/* "select *" */
 #define MQ_TF_FINISHED		8		/* Finish() called on this statement */
+#define MQ_TF_ALLASSIGN		16		/* All select items are assignments */
+#define MQ_TF_ONEASSIGN		32		/* At least one select item assigns */
 
 /*** Structure for managing the multiquery. ***/
 struct _MQ /* MultiQuery */
@@ -199,6 +214,7 @@ struct _MQ /* MultiQuery */
     pLxSession		LexerSession;		/* tokenized query string */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
+    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
