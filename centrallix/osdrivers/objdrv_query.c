@@ -195,6 +195,74 @@ qy_internal_Close(pQyData inf)
     }
 
 
+/*** qy_internal_GetParamType() - get the data type of a parameter
+ ***/
+int
+qy_internal_GetParamType(void* inf_v, char* attrname)
+    {
+    pQyData inf = QY(inf_v);
+    pParam param;
+    int i;
+
+	/** Find the param **/
+	for(i=0;i<inf->nParameters;i++)
+	    {
+	    param = inf->Parameters[i];
+	    if (!strcmp(attrname, param->Name))
+		{
+		if (!param->Value)
+		    return -1;
+		return param->Value->DataType;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** qy_internal_GetParamValue() - get the value of a parameter
+ ***/
+int
+qy_internal_GetParamValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    pQyData inf = QY(inf_v);
+    pParam param;
+    int i;
+
+	/** Find the param **/
+	for(i=0;i<inf->nParameters;i++)
+	    {
+	    param = inf->Parameters[i];
+	    if (!strcmp(attrname, param->Name))
+		{
+		if (!param->Value)
+		    return 1;
+		if (datatype != param->Value->DataType)
+		    {
+		    mssError(1,"QY","Type mismatch accessing parameter '%s'", param->Name);
+		    return -1;
+		    }
+		if (param->Value->Flags & DATA_TF_NULL)
+		    return 1;
+		objCopyData(&(param->Value->Data), val, datatype);
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** qy_internal_SetParamValue() - set the value of a parameter - not
+ *** supported.
+ ***/
+int
+qy_internal_SetParamValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    return -1;
+    }
+
+
 /*** qyOpen - open an object.
  ***/
 void*
@@ -232,7 +300,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Object List **/
 	inf->ObjList = expCreateParamList();
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
-	expAddParamToList(inf->ObjList,"parameters",NULL,0);
+	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
+	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
 
 	/** Determine the node path **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
