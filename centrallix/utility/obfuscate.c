@@ -631,7 +631,6 @@ obf_internal_ObfuscateIntegerMultiples(unsigned char* hash, unsigned char* hash_
     {
     int output_value = input_value;
     int whichfactors;
-    int did_divide;
 
 	whichfactors = obf_internal_GetBits(hash, bitcnt, 3);
 	if (whichfactors == 0x07) whichfactors = 0;
@@ -646,24 +645,18 @@ obf_internal_ObfuscateIntegerMultiples(unsigned char* hash, unsigned char* hash_
 	else
 	    {
 	    /* decrease */
-	    did_divide = 0;
 	    if ((whichfactors & 1) && output_value%2 == 0)
 		{
 		output_value /= 2;
-		did_divide = 1;
 		}
 	    if ((whichfactors & 2) && output_value%3 == 0)
 		{
 		output_value /= 3;
-		did_divide = 1;
 		}
 	    if ((whichfactors & 4) && output_value%5 == 0)
 		{
 		output_value /= 5;
-		did_divide = 1;
 		}
-	    /*if (!did_divide && whichfactors)
-		output_value = obf_internal_ObfuscateInteger(hash, bitcnt, input_value);*/
 	    }
 
     return output_value;
@@ -907,7 +900,6 @@ obf_internal_ObfuscateString(char* src, pXString dst, unsigned char* hash, unsig
     char* segment;
     int segmentlen;
     int ival, n, limit, bits;
-    int found_match;
     double prob;
     double found_prob;
     double accumprob;
@@ -956,7 +948,6 @@ obf_internal_ObfuscateString(char* src, pXString dst, unsigned char* hash, unsig
 		/** Look through the list of categories **/
 		while(searchcat)
 		    {
-		    found_match = 0;
 		    search = searchcat->CatStart;
 
 		    /** Look through the list of words in the category **/

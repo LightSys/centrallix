@@ -8,6 +8,7 @@ AC_PREFIX_DEFAULT(/usr/local)
 dnl Checks for programs.
 AC_PROG_CC
 CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
+LINKDIR=/usr/lib/$(/usr/bin/gcc -print-multi-os-directory)
 AC_PROG_MAKE_SET
 AC_PROG_AWK
 AC_PATH_PROG([GZIP], [gzip], [])

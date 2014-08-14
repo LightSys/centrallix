@@ -269,7 +269,6 @@ void*
 qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pQyData inf;
-    char* node_path;
     pSnNode node = NULL;
     pStructInf param_inf;
     char* sql;
@@ -302,9 +301,6 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
 	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
 	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))

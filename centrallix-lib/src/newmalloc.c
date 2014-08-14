@@ -560,9 +560,9 @@ void
 nmSysFree(void* ptr)
     {
 #ifdef NM_USE_SYSMALLOC
+#ifdef SIZED_BLK_COUNTING
     int size;
     size = *(int*)(((char*)ptr)-sizeof(int));
-#ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
 #endif
     nmDebugFree(((char*)ptr)-sizeof(int));
@@ -576,10 +576,14 @@ void*
 nmSysRealloc(void* ptr, int newsize)
     {
 #ifdef NM_USE_SYSMALLOC
+#ifdef SIZED_BLK_COUNTING
     int size;
+#endif
     char* newptr;
     if (!ptr) return nmSysMalloc(newsize);
+#ifdef SIZED_BLK_COUNTING
     size = *(int*)(((char*)ptr)-sizeof(int));
+#endif
     newptr = (char*)nmDebugRealloc((((char*)ptr)-sizeof(int)), newsize+sizeof(int));
     if (!newptr) return NULL;
 #ifdef SIZED_BLK_COUNTING

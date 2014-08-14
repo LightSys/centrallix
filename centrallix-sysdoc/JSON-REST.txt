@@ -28,13 +28,33 @@ ABOUT REST...
 	means that the concept of "opening" and "closing" resources or queries
 	is nonexistent in REST.
 
-    D.	Methods Used.  REST makes use of GET, POST, PUT, and DELETE.  These
-	methods map into the standard object access categories below:
+    D.	Methods Used.  REST makes use of GET, POST, PUT, PATCH, and DELETE.  
+	These methods map into the standard object access categories below:
 
-	    1.	GET = Read information
-	    2.	PUT = Replace (i.e., update) information
-	    3.	POST = Create information
-	    4.	DELETE = Delete information
+	    1.	GET = Read information from an element or a collection
+
+	    2.	PUT = Replace (i.e., update) or create information if the 
+		exact URL of the element is known in advance (i.e., the name
+		or ID of the element is known rather than depending on the
+		server and database backend to create the name).  When
+		updating an element, the entire element is overwritten.
+
+	    3.	POST = Create information, by POSTing to a collection URL to
+		create a new entity.  POST is used to create when the ID or
+		name of the new entity is not known by the client in advance
+		(where the server needs to automatically generate the name,
+		such as in autonumber or autoincrement situations).
+
+	    4.	DELETE = Delete information, by DELETING the element URL.
+
+	    5.	PATCH = Update part of an element, by providing only the
+		information about the new element that is different from the
+		old element.  A PATCH request contains a request body in JSON
+		format, where the JSON object contains one attribute for each
+		attribute that needs to be updated, in basic attribute format
+		(see below for basic vs. full attribute format).  PATCH will
+		respond with the modified object, just like a GET request had
+		been placed.  PATCH does not work on collections.
 
     REST does not require the use of a particular data format for requests or
     responses.  Data can be in JSON, XML, or any other format of the API
@@ -261,6 +281,88 @@ AUTHENTICATION...
     header must be manually constructed, see the HTTP RFC for details.
 
 
+SESSION COOKIES...
+
+    The Centrallix server will issue a session cookie via the Set-Cookie: HTTP
+    header.  This cookie, whenever present, should be retrieved by the web
+    services client and sent with all successive requests.  It is possible for
+    the server to send a replacement cookie, so whenever Set-Cookie: is
+    present, the web services client must save that cookie and send it on all
+    subsequent requests (until a new cookie is sent by the server or until the
+    web services end-user, if any, is finished with the current data viewing
+    session).  Consult your web client's documentation for how to save and
+    send these cookies; your web client may do this automatically.
+
+
+ENHANCED ACCESS TOKEN...
+
+    Simple authentication can be used for reading data, but not for creating,
+    updating, or deleting data.  For those operations (including POST, PUT,
+    PATCH, and DELETE), an additional token must be first retrieved from the
+    server.
+
+    This token can be retrieved by placing a GET request to the below URL:
+
+	http://servername:port/?cx__mode=appinit&cx__groupname=GRP&cx__appname=APP
+
+    You should replace GRP and APP with strings of your choice which will
+    become the name of your application group and application, respectively,
+    for the active session.  cx__groupname and cx__appname may be omitted
+    entirely, but at least cx__appname should ideally be set to a short but
+    descriptive string regarding what kind of client is connecting to the
+    server.
+
+    The response from the server will be a JSON document containing the
+    following attributes:
+
+	akey		- The enhanced access token
+
+	watchdogtimer	- An integer value expressing how long (in seconds) the
+			  session and token will remain valid in the absence of
+			  any network requests
+
+	servertime	- The current time on the server, including the
+			  server's timezone.
+
+	servertime_notz	- The current time on the server without the timezone
+			  included.
+
+    The token MUST be supplied on any requests that involve modification of
+    data, via the cx__akey URL parameter.
+
+    The client MUST NOT disclose the token to any server except the server from
+    which the key originated.  The token serves an important security purpose
+    of guarding against "Cross Site Request Forgery" attacks.
+
+    The server's time and timezone can be used by the client to determine the
+    timezone offset between the client and server as well as the amount of
+    clock skew between the client and the server.  These times are supplied in
+    a format compatible with Javascript's Date() function.
+
+
+KEEPING SESSIONS AND TOKENS ALIVE...
+
+    The session cookie and enhanced access token (or akey) will expire after
+    a short (server configured) time of unuse.  After that expiry time, a new
+    session will be created on a subsequent HTTP request, and the old token
+    will no longer be valid.
+
+    To prevent the session and token from expiring, the client should send
+    "ping" or "heartbeat" messages to the server at an interval of half the
+    session watchdog timer interval (retrieved when obtaining the akey token).
+    The ping message should be as follows:
+
+	http://servername:port/INTERNAL/ping?cx__akey=akeygoeshere
+
+    For example, if the value of "watchdogtimer" retrieved from the server is
+    180 (a typical default), then the client should ping the server every 90
+    seconds to ensure the session is kept alive.
+
+    The server will reply with an HTML document containing the server's current
+    time if the session and token are still valid.  The time is supplied in a
+    format compatible with Javascript's Date() funtion.
+
+
 RESPONSE MIME TYPES...
 
     If a response contains content (for an element), then the content type of
@@ -283,4 +385,21 @@ EXAMPLE REQUESTS...
 	Method: GET
 	URI: http://server/apps/kardia/modules/crm/kardia_modinfo.struct?cx__mode=rest&cx__res_format=attrs
 
+    C.	Update a value on the server:
 
+	Method: PATCH
+	URI: http://server/apps/kardia/api/thingy/objectname?cx__mode=rest&cx__res_format=attrs
+	Content-Type: application/json
+	Request Body: {"attrname":"newattributestringvalue","attrname2":1000}
+
+    D.	Create a new object (when the name of the new object is not yet known):
+
+	Method: POST
+	URI: http://server/apps/kardia/api/thingy?cx__mode=rest&cx__res_format=attrs&cx__res_attrs=basic&cx__res_type=collection
+	Content-Type: application/json
+	Request Body: {"attr1":"value1", "attr2":1000, "attr3":"value3"}
+
+	Response: 201 Created
+	Location: http://server/apps/kardia/api/thingy/newobjectname?cx__mode=rest&cx__res_format=attrs&cx__res_attrs=basic
+	Content-Type: application/json
+	Response Body: {"attr1":"value1", "attr2":1000, "attr3":"value3"}

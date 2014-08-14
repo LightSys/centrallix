@@ -3252,6 +3252,12 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
 	    mssError(1,"MQ","Could not read - the query must have one valid FROM source labled as the query IDENTITY source");
 	    return -1;
 	    }
+	if (!p->ObjList->Objects[objid])
+	    {
+	    /** Underlying object isn't currently valid **/
+	    mssError(1,"MQ","Could not read - underlying data source not available");
+	    return -1;
+	    }
 
     return objRead((pObject)(p->ObjList->Objects[objid]), buffer, maxcnt, offset, flags);
     }
@@ -3270,6 +3276,12 @@ mqWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* 
 	if (objid < 0)
 	    {
 	    mssError(1,"MQ","Could not write - the query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+	if (!p->ObjList->Objects[objid])
+	    {
+	    /** Object isn't currently valid - return empty. **/
+	    mssError(1,"MQ","Could not write - underlying data source not available");
 	    return -1;
 	    }
 
@@ -3836,6 +3848,48 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
     }
 
 
+/*** mqGetQueryIdentityPath() - return the pathname to the identity source
+ *** in the currently active statement.
+ ***/
+int
+mqGetQueryIdentityPath(void* qy_v, char* pathbuf, int maxlen)
+    {
+    pMultiQuery qy = (pMultiQuery)qy_v;
+    pQueryStructure from_qs, identity_qs;
+    int n_sources;
+
+	/** No current statement? **/
+	if (!qy->CurStmt)
+	    {
+	    mssError(1,"MQ","Cannot determine identity path: no statement active");
+	    return -1;
+	    }
+
+	/** Search for the IDENTITY source **/
+	identity_qs = from_qs = NULL;
+	n_sources = 0;
+	while((from_qs = mq_internal_FindItem(qy->CurStmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+	    {
+	    n_sources++;
+	    identity_qs = from_qs;
+	    if (from_qs->Flags & MQ_SF_IDENTITY)
+		break;
+	    }
+
+	/** Not found? **/
+	if (!identity_qs || (n_sources != 1 && !(identity_qs->Flags & MQ_SF_IDENTITY)))
+	    {
+	    mssError(1,"MQ","Cannot determine identity path: no identity FROM source");
+	    return -1;
+	    }
+
+	/** Copy it **/
+	strtcpy(pathbuf, identity_qs->Source, maxlen);
+
+    return 0;
+    }
+
+
 /*** mqInitialize - initialize the multiquery module and link in with the
  *** objectsystem management layer, registering as the multiquery module.
  ***/
@@ -3880,6 +3934,7 @@ mqInitialize()
 	drv->ExecuteMethod = mqExecuteMethod;
 	drv->PresentationHints = mqPresentationHints;
 	drv->Commit = mqCommit;
+	drv->GetQueryIdentityPath = mqGetQueryIdentityPath;
 
 	nmRegister(sizeof(QueryElement),"QueryElement");
 	nmRegister(sizeof(QueryStructure),"QueryStructure");

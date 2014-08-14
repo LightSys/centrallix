@@ -862,7 +862,7 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
  ***/
 
 int
-mysd_internal_GetRowByKey(char* key, pMysdData data, char* tablename)
+mysd_internal_GetRowByKey(char* key, pMysdData data)
     {
     MYSQL_RES * result = NULL;
     MYSQL_ROW row = NULL;
@@ -896,6 +896,27 @@ mysd_internal_GetRowByKey(char* key, pMysdData data, char* tablename)
 
         return ret;
     }
+
+
+/*** mysd_internal_RefreshRow - reload a row of data from the DB, for
+ *** example after an update is performed, to make sure we have the data
+ *** in the object.
+ ***/
+int
+mysd_internal_RefreshRow(pMysdData data)
+    {
+    char* ptr;
+    int rval;
+
+	/** Get the object name (primary key) and then retrieve the row again **/
+	ptr = obj_internal_PathPart(data->Obj->Pathname, data->Obj->SubPtr+2, 1);
+	rval = mysd_internal_GetRowByKey(ptr, data);
+	if (data->Result) mysql_free_result(data->Result);
+	data->Result = NULL;
+
+    return rval;
+    }
+
 
 /*** mysd_internal_BuildAutoname - figures out how to fill in the required 
  *** information for an autoname-based row insertion, and populates the
@@ -1112,6 +1133,8 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
         result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval?newval:"NULL",use_quotes, data->TData->Keys,NULL,data->TData->nKeys,',',filename);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
+
+	mysd_internal_RefreshRow(data);
         return 0;
     }
     
@@ -1301,6 +1324,8 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
 
 	/** Do the insert **/
         result = mysd_internal_RunQuery_conn(conn, inf->Node,"INSERT INTO `?` (`?a`) VALUES(?a)",inf->TData->Name,cols,NULL,i,',',values,use_quotes,i,',');
+	/*if (result != MYSD_RUNQUERY_ERROR)
+	    mysd_internal_RefreshRow(inf);*/
         
         /** clean up **/
     error:
@@ -2065,7 +2090,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
         /** this leaks memory MUST FIX **/
         if(!(inf->Node = mysd_internal_OpenNode(node_path, obj->Mode, obj, inf->Type == MYSD_T_DATABASE, inf->Mask)))
             {
-            mssError(1,"MYSD","Couldn't open node.");
+            mssError(0,"MYSD","Couldn't open node.");
             nmFree(inf,sizeof(MysdData));
             return NULL;
             }
@@ -2100,7 +2125,7 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
             if (!(inf->Obj->Mode & OBJ_O_AUTONAME))
                 {
                 ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+2, 1);
-                if ((rval = mysd_internal_GetRowByKey(ptr,inf,tablename)) < 0)
+                if ((rval = mysd_internal_GetRowByKey(ptr,inf)) < 0)
                     {
                     mssError(1,"MYSD","Unable to fetch row by key.");
                     if(inf->Result) mysql_free_result(inf->Result);
@@ -2400,7 +2425,8 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     inf->Type = MYSD_T_ROW;
                     inf->Row = qy->Data->Row;
 		    qy->Data->Row = NULL;
-                    inf->Result = qy->Data->Result;
+                    /*inf->Result = qy->Data->Result;*/
+		    inf->Result = NULL;
                     new_obj_name = name_buf;
                     }
                 else

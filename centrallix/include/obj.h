@@ -187,6 +187,7 @@ typedef struct _OSD
     int		(*Info)();
     int		(*Commit)();
     int		(*GetQueryCoverageMask)();
+    int		(*GetQueryIdentityPath)();
     }
     ObjDriver, *pObjDriver;
 
@@ -588,6 +589,7 @@ pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
 int objQueryClose(pObjQuery this);
 int objGetQueryCoverageMask(pObjQuery this);
+int objGetQueryIdentityPath(pObjQuery this, char* buf, int maxlen);
 
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);
