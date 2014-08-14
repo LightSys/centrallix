@@ -82,7 +82,12 @@ paramCreateFromInf(pStructInf inf)
 
 	/** Get name **/
 	if (stGetAttrValue(stLookup(inf, "name"), DATA_T_STRING, POD(&str), 0) != 0)
+	    str = inf->Name;
+	if (!str || !*str)
+	    {
+	    mssError(1, "PARAM", "Parameter does not have a valid name.");
 	    goto error;
+	    }
 	strtcpy(param->Name, str, sizeof(param->Name));
 
 	/** Get the data type **/
