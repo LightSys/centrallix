@@ -108,7 +108,7 @@ src/mtask.lo: src/mtask.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(LIBCXNAME):	$(DYNAMICFILES)
-	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,$(LIBCXSONAME) $(DYNAMICFILES) -o $(LIBCXNAME) ${LIBS}
+	$(CC) $(CFLAGS) -shared -fPIC -Wl,-undefined,dynamic_lookup,-o,$(LIBCXSONAME) $(DYNAMICFILES) -o $(LIBCXNAME) ${LIBS}
 
 $(LIBCXSONAME):	$(LIBCXNAME)
 	ln -sf $(LIBCXNAME) $(LIBCXSONAME)
@@ -122,7 +122,7 @@ libCentrallix.a:	$(STATICFILES)
 	${RANLIB} libCentrallix.a
 
 $(LIBSTNAME):		src/stparse.lo
-	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,$(LIBSTSONAME) src/stparse.lo -o $(LIBSTNAME) ${LIBS}
+	$(CC) $(CFLAGS) -shared -fPIC -Wl,-undefined,dynamic_lookup,-o,$(LIBSTSONAME) src/stparse.lo -o $(LIBSTNAME) ${LIBS}
 
 $(LIBSTSONAME):		$(LIBSTNAME)
 	ln -sf $(LIBSTNAME) $(LIBSTSONAME)

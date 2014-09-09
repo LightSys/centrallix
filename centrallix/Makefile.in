@@ -442,9 +442,9 @@ thirdparty/$(JSONC)/Makefile: thirdparty/$(JSONC)/Makefile.in
 	@echo "======================== Configuring libjson-c... ========================"
 	@echo ""
 	mkdir -p $$PWD/thirdparty/$(JSONC)-inst
-	cd thirdparty/$(JSONC); ./configure --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst CFLAGS=-Wno-unused-but-set-variable
+	cd thirdparty/$(JSONC); ./configure --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst
 
-#cd thirdparty/$(JSONC); if type autoreconf >/dev/null 2>/dev/null; then ./autogen.sh --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst CFLAGS=-Wno-unused-but-set-variable; else cp -a dist/* .; cp -a tests/dist/* tests/; ./configure --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst CFLAGS=-Wno-unused-but-set-variable; fi
+#cd thirdparty/$(JSONC); if type autoreconf >/dev/null 2>/dev/null; then ./autogen.sh --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst; else cp -a dist/* .; cp -a tests/dist/* tests/; ./configure --disable-shared --enable-static --prefix=$$PWD/../$(JSONC)-inst; fi
 
 # You can call "make mods" directly to avoid getting the warning about
 # make modules_install.  However, we recommend avoiding that habit if
@@ -547,7 +547,7 @@ clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
 	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) -o clog $(LIBS)
 
 .c.so:	$<
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) -shared -undefined dynamic_lookup -fPIC $< -o $@
 
 %.gz:	%
 	$(GZIP) -9 < $< > $@
@@ -639,25 +639,25 @@ backup:
 # will probably also want to add checks to configure.ac and aclocal.m4 for
 # this new module.
 osdrivers/objdrv_mysql.so: osdrivers/objdrv_mysql.c
-	$(CC) $(CFLAGS) @MYSQL_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @MYSQL_LIBS@ -o $@
+	$(CC) $(CFLAGS) @MYSQL_CFLAGS@ -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< @MYSQL_LIBS@ -o $@
 
 osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
-	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@
+	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< @SYBASE_LIBS@ -o $@
 
 osdrivers/objdrv_xml.so: osdrivers/objdrv_xml.c
-	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @XML_LIBS@ -o $@
+	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< @XML_LIBS@ -o $@
 
 osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
-	$(CC) $(CFLAGS) @GZIP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @GZIP_LIBS@ -o $@
+	$(CC) $(CFLAGS) @GZIP_CFLAGS@ -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< @GZIP_LIBS@ -o $@
 
 osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
-	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< -o $@
 
 #osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
-#	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
+#	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< @SNMP_LIBS@ -o $@
 
 %.so: %.c
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -undefined dynamic_lookup -fPIC $< -o $@
 	
 # Dependencies made by "make depend"
 include .depend
