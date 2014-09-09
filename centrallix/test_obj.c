@@ -355,7 +355,7 @@ int handle_tab(int unused_1, int unused_2)
     printf("%c",0x07);
 
     /** get the current line into an XString **/
-    xsCopy(xstrInput,rl_copy_text (0,256),-1);
+    xsCopy(xstrInput,rl_line_buffer,-1);
     
     /** get a new line if we're going to print a list **/
     if(secondtab) printf("\n");
