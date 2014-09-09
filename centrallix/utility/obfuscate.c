@@ -1215,13 +1215,13 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 		break;
 
 	    case DATA_T_DOUBLE:
-		scale = floor(log10(srcval->Double));
-		iv = (srcval->Double * exp10(8 - scale));
+		scale = floor(log(srcval->Double) / log(10));
+		iv = (srcval->Double * pow(10, 8 - scale));
 		if (strchr(param,'i'))
 		    dv = obf_internal_ObfuscateIntegerMultiples(hash, hash_novalue, &bitcnt, iv);
 		else
 		    dv = obf_internal_ObfuscateInteger(hash, hash_novalue, &bitcnt, iv);
-		dstval->Double = dv * exp10(scale - 8);
+		dstval->Double = dv * pow(10, scale - 8);
 		break;
 
 	    case DATA_T_DATETIME:
