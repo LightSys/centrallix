@@ -31,6 +31,6 @@
 /* Description:	Merge Sort algorithm with Selection Sort leaves 	*/
 /************************************************************************/
 
-int mergesort(void** arr, int cnt, int (*compare_fn)());
+int msMergeSort(void** arr, int cnt, int (*compare_fn)());
 
 #endif /** _MERGESORT_H **/

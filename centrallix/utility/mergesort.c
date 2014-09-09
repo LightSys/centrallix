@@ -99,7 +99,7 @@ mergesort_r(void** arr1, void** arr2, int cnt, int okleaf, int (*compare_fn)())
     }
 
 
-/*** mergesort() - Perform a mergesort sort on the provided array, which is an
+/*** msMergeSort() - Perform a mergesort sort on the provided array, which is an
  *** array of void*, given a comparison function.  Sorting at the leaf nodes
  *** (once the array size gets down to 16-32 items) is done via a selection
  *** sort.  The mergesort is double-buffering internally.
@@ -109,7 +109,7 @@ mergesort_r(void** arr1, void** arr2, int cnt, int okleaf, int (*compare_fn)())
  *** than, equal to, or greater than item2, respectively.  See qsort(3).
  ***/
 int
-mergesort(void** arr, int cnt, int (*compare_fn)())
+msMergeSort(void** arr, int cnt, int (*compare_fn)())
     {
     void** arr2;
     int rval;

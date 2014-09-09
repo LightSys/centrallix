@@ -507,7 +507,7 @@ prt_internal_YMergeSort(pPrtObjStream page)
 	prt_internal_YMergeCopy_r(page, arr1+1);
 
 	/** Now do the mergesort. **/
-	mergesort((void**)arr1, cnt, prt_internal_YCompare);
+	msMergeSort((void**)arr1, cnt, prt_internal_YCompare);
 	/*prt_internal_YMergeSort_r(arr1, arr2, cnt, 1);*/
 
 	/** Set up the links **/

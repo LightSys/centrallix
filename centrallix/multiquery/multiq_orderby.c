@@ -282,7 +282,7 @@ mqobStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     }
 
 
-/*** Comparison function for mergesort() to use ***/
+/*** Comparison function for msMergeSort() to use ***/
 int
 mqob_internal_CompareItems(void* item_a, void* item_b)
     {
@@ -359,7 +359,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	    if (rval < 0) goto error;
 
 	    /** Sort the results **/
-	    mergesort(context->Objects.Items, context->Objects.nItems, mqob_internal_CompareItems);
+	    msMergeSort(context->Objects.Items, context->Objects.nItems, mqob_internal_CompareItems);
 	    }
 	else
 	    {
