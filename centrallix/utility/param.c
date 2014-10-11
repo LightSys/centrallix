@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "obj.h"
 #include "hints.h"
 #include "expression.h"
@@ -74,6 +76,7 @@ paramCreateFromInf(pStructInf inf)
 	/** Allocate **/
 	param = (pParam)nmMalloc(sizeof(Param));
 	if (!param) goto error;
+	memset(param, 0, sizeof(Param));
 
 	/** Allocate the typed obj data **/
 	param->Value = ptodAllocate();
