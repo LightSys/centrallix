@@ -1729,6 +1729,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    client_w=0;
 		    objGetAttrValue(target_obj, "width", DATA_T_INTEGER, POD(&client_w));
 		    objGetAttrValue(target_obj, "height", DATA_T_INTEGER, POD(&client_h));
+
+		    /** These are some default values **/
+		    wgtr_params.CharWidth = 7;
+		    wgtr_params.CharHeight = 16;
+		    wgtr_params.ParagraphHeight = 16;
 		    }
 		else
 		    {
