@@ -2825,5 +2825,28 @@ function pg_keypress(e)
     }
 
 
+// Automatic resize utilities
+function pg_check_resize(l)
+    {
+    if (wgtrGetServerProperty(l, "r_height") == -1)
+	{
+	if (wgtrGetServerProperty(l, "height") != $(l).height())
+	    {
+	    if (wgtrGetParent(l).childresize)
+		{
+		var geom = wgtrGetParent(l).childresize(l, wgtrGetServerProperty(l, "width"), wgtrGetServerProperty(l, "height"), $(l).width(), $(l).height());
+		if (geom)
+		    {
+		    wgtrSetServerProperty(l, "height", geom.height);
+		    //$(l).height(geom.height);
+		    }
+		return geom;
+		}
+	    }
+	}
+    return null;
+    }
+
+
 // Load indication
 if (window.pg_scripts) pg_scripts['htdrv_page.js'] = true;

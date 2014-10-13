@@ -78,6 +78,8 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int allow_break = 0;
     int overflow_ellipsis = 0;
     pExpression code;
+    int n;
+    int auto_height=0;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -105,6 +107,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTLBL","Label widget must have a 'height' property");
 	    return -1;
 	    }
+
+	/** auto height? **/
+	if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&n)) == 0 && n == -1)
+	    auto_height = 1;
 
 	if (wgtrGetPropertyType(tree,"value") == DATA_T_CODE)
 	    {
@@ -191,8 +197,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
-		id,x,y,h,w,z, 
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
+		id,x,y,
+		!auto_height, h,
+		w,z, 
 		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign,
 		!allow_break, overflow_ellipsis, is_italic);
 	if (is_link)
@@ -201,7 +209,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
 	if (strcmp(valign,"top") != 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS table { padding:0px; margin:0px; border-spacing:0px; height:%POSpx; width:%POSpx; }\n", id, h, w);
+	    htrAddStylesheetItem_va(s,"\t#lbl%POS table { padding:0px; margin:0px; border-spacing:0px; %[height:%POSpx; %]%[height:100%%; %]width:%POSpx; }\n", id, !auto_height, h, auto_height, w);
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS table td { vertical-align:%STR&CSSVAL; text-align:%STR&CSSVAL; }\n", id, valign, align);
 	    }
 
