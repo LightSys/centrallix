@@ -104,6 +104,7 @@ function lb_update()
 	pg_serialized_write(this, txt, null);
     else
 	htr_write_content(this, txt);
+    this.CheckSize();
     }
 
 function lb_cb_reveal(e)
@@ -121,6 +122,12 @@ function lb_cb_reveal(e)
 	    break;
 	}
     return true;
+    }
+
+function lbl_check_size()
+    {
+    // Auto height adjust?
+    pg_check_resize(this);
     }
 
 
@@ -161,6 +168,7 @@ function lbl_init(l, wparam)
     l.disable = lb_disable;
 
     l.Update = lb_update;
+    l.CheckSize = lbl_check_size;
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -206,6 +214,8 @@ function lbl_init(l, wparam)
 	    l.form.Reveal(l,{ eventName:'Reveal' });
 	    }
 	}
+
+    l.CheckSize();
 
     return l;
     }

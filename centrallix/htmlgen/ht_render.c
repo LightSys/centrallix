@@ -1298,6 +1298,44 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     }
 
 
+/*** htr_internal_WriteWgtrProperty - write one widget property in javascript
+ *** as a part of the widget tree
+ ***/
+int
+htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
+    {
+    int t;
+    ObjData od;
+    int rval;
+
+	t = wgtrGetPropertyType(tree, propname);
+	if (t > 0)
+	    {
+	    rval = wgtrGetPropertyValue(tree, propname, t, &od);
+	    if (rval == 1)
+		{
+		/** null **/
+		htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname);
+		}
+	    else if (rval == 0)
+		{
+		switch(t)
+		    {
+		    case DATA_T_INTEGER:
+			htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer);
+			break;
+
+		    case DATA_T_STRING:
+			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
+			break;
+		    }
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** htr_internal_BuildClientWgtr - generate the DHTML to represent the widget
  *** tree.
  ***/
@@ -1313,6 +1351,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     int rendercnt;
     char* scope = NULL;
     char* scopename = NULL;
+    char* propname;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1333,16 +1372,39 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR%[, namespace:'%STR&SYM'%]", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR, ctl:%STR%[, namespace:'%STR&SYM'%]", 
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
 		ctrinit, ctrinit,
 		scope, scope,
 		scopename, scopename,
-		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
+		tree->Type, 
+		(tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
+		(tree->Flags & WGTR_F_CONTROL)?"true":"false",
 		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
 		tree->Namespace);
+
+	/** Parameters **/
+	htrAddScriptWgtr_va(s, ", param:{");
+	if (!(tree->Flags & WGTR_F_NONVISUAL))
+	    {
+	    htr_internal_WriteWgtrProperty(s, tree, "x");
+	    htr_internal_WriteWgtrProperty(s, tree, "y");
+	    htr_internal_WriteWgtrProperty(s, tree, "width");
+	    htr_internal_WriteWgtrProperty(s, tree, "height");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_x");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_y");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_width");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_height");
+	    }
+	propname = wgtrFirstPropertyName(tree);
+	while(propname)
+	    {
+	    htr_internal_WriteWgtrProperty(s, tree, propname);
+	    propname = wgtrNextPropertyName(tree);
+	    }
+	htrAddScriptWgtr_va(s, "}");
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
 	for(rendercnt=i=0;i<childcnt;i++)

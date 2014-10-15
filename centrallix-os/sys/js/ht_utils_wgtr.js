@@ -74,7 +74,7 @@ function wgtrSetupTree_r(tree, ns, parent)
 	}
 
     // Initialize the widget and its sub-widgets.
-    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.scope, tree.sn, ns);
+    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.ctl, tree.scope, tree.sn, tree.param, ns);
     if (tree.sub)
 	for(var i=0; i<tree.sub.length; i++)
 	    wgtrSetupTree_r(tree.sub[i], ns, tree);
@@ -123,7 +123,7 @@ function wgtrSetupRepeats_r(node, rptnodelist)
 	for(var nodename in rptnodelist)
 	    {
 	    var rptnode = new wgtrRepeatNode(nodename, rptnodelist[nodename]);
-	    wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", node, false, null, null, node.__WgtrNamespace);
+	    wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", node, false, false, null, null, null, node.__WgtrNamespace);
 	    }
 	}
 
@@ -222,19 +222,23 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 			    type,	    // the widget type 
 			    parent,	    // the parent node of this object
 			    is_visual,	    // is the node a visual node?
+			    is_control,	    // a control node?
 			    scope,	    // scope of widget -- local vs application vs session
 			    scopename,	    // name of widget to use in extended scope
+			    params,	    // an object containing named parameters
 			    ns		    // namespace object (type wgtrNamespace)
 			)
     {
 	if (!obj) alert('no object for wgtr node: ' + name);
 	obj.__WgtrType = type;
 	obj.__WgtrVisual = is_visual;
+	obj.__WgtrControl = is_control;
 	obj.__WgtrChildren = [];
 	obj.__WgtrName = name;
 	obj.__WgtrContainer = cobj;
 	obj.__WgtrScope = scope?scope:"local";
 	obj.__WgtrNamespace = ns;
+	obj.__WgtrParams = params;
 
 	if (scope)
 	    {
@@ -289,6 +293,18 @@ function wgtrUndefinedObject() { }
 function wgtrIsUndefined(prop)
     {
     return (typeof prop == 'object' && prop && prop.constructor == wgtrUndefinedObject);
+    }
+
+
+// wgtrGetServerProperty() - return a server-supplied property value
+function wgtrGetServerProperty(node, prop_name)
+    {
+    return node.__WgtrParams[prop_name];
+    }
+
+function wgtrSetServerProperty(node, prop_name, value)
+    {
+    node.__WgtrParams[prop_name] = value;
     }
 
 
@@ -352,6 +368,12 @@ function wgtrProbeProperty(node, prop_name)
 	    {
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
 	    prop = new wgtrUndefinedObject();
+	    }
+
+	// check widget params provided by the server
+	if (wgtrIsUndefined(prop) && (typeof node.__WgtrParams[prop_name]) != 'undefined')
+	    {
+	    prop = wgtrGetServerProperty(node, prop_name);
 	    }
 
 	// some canonical properties
@@ -648,6 +670,18 @@ function wgtrIsNode(tree)
     }
 
 
+function wgtrIsVisual(tree)
+    {
+    return tree && tree.__WgtrVisual;
+    }
+
+
+function wgtrIsControl(tree)
+    {
+    return tree && tree.__WgtrControl;
+    }
+
+
 function wgtrIsRoot(tree)
     {
     return tree == tree.__WgtrRoot;
@@ -703,7 +737,7 @@ function wgtrReplaceNode(oldnode, newnode, newcont)
 	var children = oldnode.__WgtrChildren;
 
 	if (!newcont) newcont = newnode;
-	wgtrAddToTree(newnode, newcont, oldnode.__WgtrName, oldnode.__WgtrType, oldnode.__WgtrParent, oldnode.__WgtrVisual, null, null, oldnode.__WgtrNamespace);
+	wgtrAddToTree(newnode, newcont, oldnode.__WgtrName, oldnode.__WgtrType, oldnode.__WgtrParent, oldnode.__WgtrVisual, oldnode.__WgtrControl, null, null, oldnode.__WgtrParams, oldnode.__WgtrNamespace);
 
 	for(var i=0; i<children.length; i++)
 	    {

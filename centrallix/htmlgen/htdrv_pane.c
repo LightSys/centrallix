@@ -65,6 +65,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char* c2;
     int box_offset;
     int border_radius;
+    int shadow_offset;
+    char shadow_color[128];
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
@@ -101,6 +103,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 1;
 	else
 	    box_offset = 0;
+
+	/** Drop shadow **/
+	shadow_offset=0;
+	wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset));
+	if (shadow_offset > 0)
+	    {
+	    if (wgtrGetPropertyValue(tree, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
+		strtcpy(shadow_color, ptr, sizeof(shadow_color));
+	    else
+		strcpy(shadow_color, "black");
+	    }
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -180,6 +193,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
 		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
+		}
+	    if (shadow_offset > 0)
+		{
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_offset+1, shadow_color);
 		}
 	    }
 	else

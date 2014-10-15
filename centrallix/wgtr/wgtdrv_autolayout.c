@@ -147,15 +147,15 @@ wgtalVerify(pWgtrVerifySession s)
 		justify_mode = "none";
 
 	    /** Auto-set width and height of this container? **/
-	    if (al->r_width < 0 && al->r_height >= 0)
+	    if (al->width < 0 && al->height >= 0)
 		{
-		al->r_width = al->width = al->pre_width = wgtrGetMaxWidth(al, al->r_height);
+		al->width = al->pre_width = wgtrGetMaxWidth(al, al->height);
 		}
-	    else if (al->r_width >= 0 && al->r_height < 0)
+	    else if (al->width >= 0 && al->height < 0)
 		{
-		al->r_height = al->height = al->pre_height = wgtrGetMaxHeight(al, al->r_width);
+		al->height = al->pre_height = wgtrGetMaxHeight(al, al->width);
 		}
-	    else if (al->r_width < 0 && al->r_height < 0)
+	    else if (al->width < 0 && al->height < 0)
 		{
 		possible_width = wgtrGetMaxWidth(al, 2);
 		possible_height = wgtrGetMaxHeight(al, 2);
@@ -165,28 +165,28 @@ wgtalVerify(pWgtrVerifySession s)
 		a2 = possible_height * tw;
 		if (a1 > a2)
 		    {
-		    al->r_width = al->width = al->pre_width = possible_width;
-		    al->r_height = al->height = al->pre_height = th;
+		    al->width = al->pre_width = possible_width;
+		    al->height = al->pre_height = th;
 		    }
 		else
 		    {
-		    al->r_width = al->width = al->pre_width = tw;
-		    al->r_height = al->height = al->pre_height = possible_height;
+		    al->width = al->pre_width = tw;
+		    al->height = al->pre_height = possible_height;
 		    }
 		}
 
 	    /** Width of columns? **/
 	    if (al_type == 1 && wgtrGetPropertyValue(al, "column_width", DATA_T_INTEGER, POD(&column_width)) == 0)
 		{
-		if (column_width > al->r_width)
-		    column_width = al->r_width;
+		if (column_width > al->width)
+		    column_width = al->width;
 		}
 
 	    /** Height of rows? **/
 	    if (al_type == 0 && wgtrGetPropertyValue(al, "row_height", DATA_T_INTEGER, POD(&row_height)) == 0)
 		{
-		if (row_height > al->r_height)
-		    row_height = al->r_height;
+		if (row_height > al->height)
+		    row_height = al->height;
 		}
 
 	    /** Grab the widgets and put them in a list **/
@@ -229,13 +229,13 @@ wgtalVerify(pWgtrVerifySession s)
 		child = sortarray[i];
 		if (al_type == 0)	/* hbox */
 		    {
-		    if (child->r_width < 0 && cellsize >= 0)
+		    if (child->width < 0 && cellsize >= 0)
 			possible_width = cellsize;
 		    else
-			possible_width = child->r_width;
-		    if (xo + possible_width > al->r_width)
+			possible_width = child->width;
+		    if (xo + possible_width > al->width)
 			{
-			if (xo > 0 && row_height > 0 && row_offset + row_height*2 + spacing <= al->r_height)
+			if (xo > 0 && row_height > 0 && row_offset + row_height*2 + spacing <= al->height)
 			    {
 			    row_offset += (row_height + spacing);
 			    xo = 0;
@@ -246,33 +246,33 @@ wgtalVerify(pWgtrVerifySession s)
 			else
 			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
 			}
-		    child->x = child->r_x = child->pre_x = xo;
-		    child->r_width = child->pre_width = child->width = possible_width;
-		    if (child->r_y < 0)
-			child->r_y = child->pre_y = child->y = row_offset;
+		    child->x = child->pre_x = xo;
+		    child->width = child->pre_width = child->width = possible_width;
+		    if (child->y < 0)
+			child->pre_y = child->y = row_offset;
 		    else
-			child->r_y = child->pre_y = child->y = child->r_y + row_offset;
-		    if (child->r_height < 0 && al->r_height >= 0)
-			child->r_height = child->pre_height = child->height = al->r_height;
-		    if (row_height > 0 && child->r_height > row_height)
-			child->r_height = child->pre_height = child->height = row_height;
-		    if (child->r_height > maxheight)
-			maxheight = child->r_height;
+			child->pre_y = child->y = child->y + row_offset;
+		    if (child->height < 0 && al->height >= 0)
+			child->pre_height = child->height = al->height;
+		    if (row_height > 0 && child->height > row_height)
+			child->pre_height = child->height = row_height;
+		    if (child->height > maxheight)
+			maxheight = child->height;
 		    wgtrReverify(s, child);
-		    if (child->r_width >= 0)
-			xo += child->r_width;
+		    if (child->width >= 0)
+			xo += child->width;
 		    xo += spacing;
 		    if (maxwidth < xo) maxwidth = xo;
 		    }
 		else if (al_type == 1)	/* vbox */
 		    {
-		    if (child->r_height < 0 && cellsize >= 0)
+		    if (child->height < 0 && cellsize >= 0)
 			possible_height = cellsize;
 		    else
-			possible_height = child->r_height;
-		    if (yo + possible_height > al->r_height)
+			possible_height = child->height;
+		    if (yo + possible_height > al->height)
 			{
-			if (yo > 0 && column_width > 0 && column_offset + column_width*2 + spacing <= al->r_width)
+			if (yo > 0 && column_width > 0 && column_offset + column_width*2 + spacing <= al->width)
 			    {
 			    column_offset += (column_width + spacing); 
 			    yo = 0;
@@ -283,21 +283,21 @@ wgtalVerify(pWgtrVerifySession s)
 			else
 			    mssError(1, "WGTRAL", "Warning: overflow of end of vbox '%s'",al->Name);
 			}
-		    child->y = child->r_y = child->pre_y = yo;
-		    child->r_height = child->pre_height = child->height = possible_height;
-		    if (child->r_x < 0)
-			child->r_x = child->pre_x = child->x = column_offset;
+		    child->y = child->pre_y = yo;
+		    child->pre_height = child->height = possible_height;
+		    if (child->x < 0)
+			child->pre_x = child->x = column_offset;
 		    else
-			child->r_x = child->pre_x = child->x = child->r_x + column_offset;
-		    if (child->r_width < 0 && al->r_width >= 0)
-			child->r_width = child->pre_width = child->width = al->r_width;
-		    if (column_width > 0 && child->r_width > column_width)
-			child->r_width = child->pre_width = child->width = column_width;
-		    if (child->r_width > maxwidth)
-			maxwidth = child->r_width;
+			child->pre_x = child->x = child->x + column_offset;
+		    if (child->width < 0 && al->width >= 0)
+			child->pre_width = child->width = al->width;
+		    if (column_width > 0 && child->width > column_width)
+			child->pre_width = child->width = column_width;
+		    if (child->width > maxwidth)
+			maxwidth = child->width;
 		    wgtrReverify(s, child);
-		    if (child->r_height >= 0)
-			yo += child->r_height;
+		    if (child->height >= 0)
+			yo += child->height;
 		    yo += spacing;
 		    if (maxheight < yo) maxheight = yo;
 		    }
@@ -307,17 +307,17 @@ wgtalVerify(pWgtrVerifySession s)
 	    /** Set container size if needed **/
 	    if (al_type == 0)		/* hbox */
 		{
-		if (al->r_width < 0 && maxwidth >= 0)
-		    al->r_width = al->pre_width = al->width = maxwidth - spacing;
-		if (al->r_height < 0 && maxheight >= 0)
-		    al->r_height = al->pre_height = al->height = maxheight + row_offset;
+		if (al->width < 0 && maxwidth >= 0)
+		    al->pre_width = al->width = maxwidth - spacing;
+		if (al->height < 0 && maxheight >= 0)
+		    al->pre_height = al->height = maxheight + row_offset;
 		}
 	    else if (al_type == 1)	/* vbox */
 		{
-		if (al->r_height < 0 && maxheight >= 0)
-		    al->r_height = al->pre_height = al->height = maxheight - spacing;
-		if (al->r_width < 0 && maxwidth >= 0)
-		    al->r_width = al->pre_width = al->width = maxwidth + column_offset;
+		if (al->height < 0 && maxheight >= 0)
+		    al->pre_height = al->height = maxheight - spacing;
+		if (al->width < 0 && maxwidth >= 0)
+		    al->pre_width = al->width = maxwidth + column_offset;
 		}
 
 	    /** Full justification of some or all rows/columns? **/
@@ -332,27 +332,27 @@ wgtalVerify(pWgtrVerifySession s)
 			{
 			child = sortarray[i];
 			after++;
-			if (al_type == 0 && ((j == 0 && row_height <= 0) || (row_height > 0 && spacing >= 0 && (int)(child->r_y / (row_height + spacing)) == j)))
+			if (al_type == 0 && ((j == 0 && row_height <= 0) || (row_height > 0 && spacing >= 0 && (int)(child->y / (row_height + spacing)) == j)))
 			    {
 			    /** widget in an hbox **/
 			    if (child->fl_width > 0)
 				{
 				total_flex += child->fl_width;
-				total_product += (child->fl_width * child->r_width);
+				total_product += (child->fl_width * child->width);
 				}
-			    total_size += child->r_width;
+			    total_size += child->width;
 			    n++;
 			    after=0;
 			    }
-			else if (al_type == 1 && ((j == 0 && column_width <= 0) || (column_width > 0 && spacing >= 0 && (int)(child->r_x / (column_width + spacing)) == j)))
+			else if (al_type == 1 && ((j == 0 && column_width <= 0) || (column_width > 0 && spacing >= 0 && (int)(child->x / (column_width + spacing)) == j)))
 			    {
 			    /** widget in a vbox **/
 			    if (child->fl_height > 0)
 				{
 				total_flex += child->fl_height;
-				total_product += (child->fl_height * child->r_height);
+				total_product += (child->fl_height * child->height);
 				}
-			    total_size += child->r_height;
+			    total_size += child->height;
 			    n++;
 			    after=0;
 			    }
@@ -369,9 +369,9 @@ wgtalVerify(pWgtrVerifySession s)
 			{
 			/** Determine how much total scaling is needed **/
 			if (al_type == 0)
-			    adj = al->r_width - total_size - (n-1)*spacing;
+			    adj = al->width - total_size - (n-1)*spacing;
 			else
-			    adj = al->r_height - total_size - (n-1)*spacing;
+			    adj = al->height - total_size - (n-1)*spacing;
 			adj_remain = adj;
 			n_remain = n;
 
@@ -379,35 +379,31 @@ wgtalVerify(pWgtrVerifySession s)
 			for(i=0;i<wgt_cnt;i++)
 			    {
 			    child = sortarray[i];
-			    if (al_type == 0 && ((j == 0 && row_height <= 0) || (row_height > 0 && spacing >= 0 && (int)(child->r_y / (row_height + spacing)) == j)))
+			    if (al_type == 0 && ((j == 0 && row_height <= 0) || (row_height > 0 && spacing >= 0 && (int)(child->y / (row_height + spacing)) == j)))
 				{
 				/** hbox **/
 				if (n_remain == 1)
 				    this_adj = adj_remain;
 				else
-				    this_adj = adj * (child->fl_width * child->r_width) / total_product;
+				    this_adj = adj * (child->fl_width * child->width) / total_product;
 
 				/** We don't set the ->pre_* properties, in order for APOS to do its magic. **/
-				child->r_x += (adj - adj_remain);
 				child->x += (adj - adj_remain);
-				child->r_width += this_adj;
 				child->width += this_adj;
 				wgtrReverify(s, child);
 				adj_remain -= this_adj;
 				n_remain --;
 				}
-			    else if (al_type == 1 && ((j == 0 && column_width <= 0) || (column_width > 0 && spacing >= 0 && (int)(child->r_x / (column_width + spacing)) == j)))
+			    else if (al_type == 1 && ((j == 0 && column_width <= 0) || (column_width > 0 && spacing >= 0 && (int)(child->x / (column_width + spacing)) == j)))
 				{
 				/** vbox **/
 				if (n_remain == 1)
 				    this_adj = adj_remain;
 				else
-				    this_adj = adj * (child->fl_height * child->r_height) / total_product;
+				    this_adj = adj * (child->fl_height * child->height) / total_product;
 
 				/** We don't set the ->pre_* properties, in order for APOS to do its magic. **/
-				child->r_y += (adj - adj_remain);
 				child->y += (adj - adj_remain);
-				child->r_height += this_adj;
 				child->height += this_adj;
 				wgtrReverify(s, child);
 				adj_remain -= this_adj;
@@ -425,30 +421,28 @@ wgtalVerify(pWgtrVerifySession s)
 		if (al_type == 0)	/* hbox */
 		    {
 		    if (!strcmp(align, "center"))
-			adj = (al->r_width - (maxwidth - spacing)) / 2;
+			adj = (al->width - (maxwidth - spacing)) / 2;
 		    else
-			adj = (al->r_width - (maxwidth - spacing));
-		    if (maxwidth - spacing < al->r_width)
+			adj = (al->width - (maxwidth - spacing));
+		    if (maxwidth - spacing < al->width)
 			for(i=0;i<wgt_cnt;i++)
 			    {
 			    child = sortarray[i];
 			    child->x += adj;
-			    child->r_x += adj;
 			    child->pre_x += adj;
 			    }
 		    }
 		else			/* vbox */
 		    {
 		    if (!strcmp(align, "center"))
-			adj = (al->r_height - (maxheight - spacing)) / 2;
+			adj = (al->height - (maxheight - spacing)) / 2;
 		    else
-			adj = (al->r_height - (maxheight - spacing));
-		    if (maxheight - spacing < al->r_height)
+			adj = (al->height - (maxheight - spacing));
+		    if (maxheight - spacing < al->height)
 			for(i=0;i<wgt_cnt;i++)
 			    {
 			    child = sortarray[i];
 			    child->y += adj;
-			    child->r_y += adj;
 			    child->pre_y += adj;
 			    }
 		    }
