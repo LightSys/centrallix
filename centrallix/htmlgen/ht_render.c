@@ -1307,6 +1307,8 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
     int t;
     ObjData od;
     int rval;
+    pExpression code;
+    XString exptxt;
 
 	t = wgtrGetPropertyType(tree, propname);
 	if (t > 0)
@@ -1327,6 +1329,14 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 
 		    case DATA_T_STRING:
 			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
+			break;
+
+		    case DATA_T_CODE:
+			wgtrGetPropertyValue(tree,propname,DATA_T_CODE,POD(&code));
+			xsInit(&exptxt);
+			expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
+			htrAddScriptWgtr_va(s, "%STR&SYM:{exp:function(_this,_context){return ( %STR );}}, ", propname, exptxt.String);
+			xsDeInit(&exptxt);
 			break;
 		    }
 		}

@@ -297,9 +297,20 @@ function wgtrIsUndefined(prop)
 
 
 // wgtrGetServerProperty() - return a server-supplied property value
-function wgtrGetServerProperty(node, prop_name)
+function wgtrGetServerProperty(node, prop_name, def)
     {
-    return node.__WgtrParams[prop_name];
+    var val = node.__WgtrParams[prop_name];
+    if (typeof val == 'undefined')
+	return def;
+    else if (typeof val == 'object' && val.exp)
+	{
+	var _context = window[node.__WgtrNamespace.NamespaceID];
+	var _this = node;
+	window.__cur_exp = null;
+	return val.exp(_this, _context);
+	}
+    else
+	return val;
     }
 
 function wgtrSetServerProperty(node, prop_name, value)
@@ -895,6 +906,37 @@ function wgtrFind(v)
 	{
 	if ((typeof pg_namespaces[n].WidgetList[v]) != 'undefined')
 	    return pg_namespaces[n].WidgetList[v];
+	}
+    return null;
+    }
+
+// Finds a directly-attached child node.
+//
+function wgtrGetChild(node, childname)
+    {
+    for(var i=0; i<node.__WgtrChildren.length; i++)
+	{
+	if (node.__WgtrChildren[i].__WgtrName == childname)
+	    return node.__WgtrChildren[i];
+	}
+    }
+
+// Finds a child/descendent in this namespace or in any sub-namespaces
+// of the parent's namespace.
+//
+function wgtrFindDescendent(node, childname, childns)
+    {
+    for(var i=0; i<node.__WgtrChildren.length; i++)
+	{
+	var child = node.__WgtrChildren[i];
+	if (child.__WgtrName == childname && child.__WgtrNamespace.NamespaceID == childns)
+	    return child;
+	if (!wgtrIsVisual(child) && (child.__WgtrNamespace.NamespaceID == node.__WgtrNamespace.NamespaceID || (child.__WgtrNamespace.ParentNamespace && child.__WgtrNamespace.ParentNamespace.NamespaceID == node.__WgtrNamespace.NamespaceID)))
+	    {
+	    var check = wgtrFindDescendent(child, childname, childns);
+	    if (check)
+		return check;
+	    }
 	}
     return null;
     }
