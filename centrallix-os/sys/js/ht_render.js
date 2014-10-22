@@ -512,6 +512,80 @@ function htr_event(e)
     return cx__event;
     }
 
+// stylize -- set style properties on the given element,
+// for font face, font size, color, bold, italic, shadow,
+// underlining, etc.
+//
+function htr_stylize_element(element, widget, prefix, defaults)
+    {
+    // prefixing?
+    if (prefix)
+	prefix += "_";
+    else
+	prefix = "";
+
+    // text color
+    var color = wgtrGetServerProperty(widget, prefix + "textcolor");
+    if (!color && defaults)
+	color = defaults.textcolor;
+
+    // style
+    var style = wgtrGetServerProperty(widget, prefix + "style");
+    if (!style && defaults)
+	style = defaults.style;
+
+    // font size
+    var font_size = wgtrGetServerProperty(widget, prefix + "font_size");
+    if (!font_size && defaults)
+	font_size = defaults.font_size;
+
+    // font
+    var font = wgtrGetServerProperty(widget, prefix + "font");
+    if (!font && defaults)
+	font = defaults.font;
+
+    // background color
+    var bgcolor = wgtrGetServerProperty(widget, prefix + "bgcolor");
+    if (!bgcolor && defaults)
+	bgcolor = defaults.bgcolor;
+
+    // padding
+    var padding = wgtrGetServerProperty(widget, prefix + "padding");
+    if (!padding && defaults)
+	padding = defaults.padding;
+
+    // radius
+    var radius = wgtrGetServerProperty(widget, prefix + "border_radius");
+    if (!radius && defaults)
+	radius = defaults.border_radius;
+
+    // alignment
+    var align = wgtrGetServerProperty(widget, prefix + "align");
+    if (!align && defaults)
+	align = defaults.align;
+
+    // wrapping
+    var wrap = wgtrGetServerProperty(widget, prefix + "wrap");
+    if (!wrap && defaults)
+	wrap = defaults.wrap;
+
+    // Set the css values
+    $(element).css
+	({
+	'color': color,
+	'font-size': font_size + 'px',
+	'font-style': (style=='italic')?'italic':'normal',
+	'font-weight': (style=='bold')?'bold':'normal',
+	'text-decoration': (style=='underline')?'underline':'none',
+	'font-family': font,
+	'background-color': bgcolor,
+	'padding': padding + 'px',
+	'border-radius': radius + 'px',
+	'text-align': align?align:'initial',
+	'white-space': (wrap=='no')?'normal':'nowrap',
+	});
+    }
+
 function htr_alert(obj,maxlevels)
     {
     alert(htr_obj_to_text(obj,0,maxlevels));

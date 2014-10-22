@@ -226,7 +226,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
     pWgtrNode sub_tree_child;
     pXString xs;
     int bx = 0;
-    int shadow_offset;
+    int shadow_offset, shadow_radius;
     char shadow_color[128];
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.CSS2)
@@ -249,8 +249,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 
 	/** Drop shadow **/
 	shadow_offset=0;
-	wgtrGetPropertyValue(menu, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset));
-	if (shadow_offset > 0)
+	if (wgtrGetPropertyValue(menu, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset)) == 0 && shadow_offset > 0)
+	    shadow_radius = shadow_offset+1;
+	else
+	    shadow_radius = 0;
+	wgtrGetPropertyValue(menu, "shadow_radius", DATA_T_INTEGER, POD(&shadow_radius));
+	if (shadow_radius > 0)
 	    {
 	    if (wgtrGetPropertyValue(menu, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
 		strtcpy(shadow_color, ptr, sizeof(shadow_color));
@@ -282,9 +286,9 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 
 	/** Write the main style header item. **/
 	htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
-	if (shadow_offset > 0)
+	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_offset+1, shadow_color);
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
 	    }
 	htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
 	if (s->Capabilities.CSS2)

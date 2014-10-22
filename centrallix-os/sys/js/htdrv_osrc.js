@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2008 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2014 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -759,6 +759,8 @@ function osrc_action_delete_cb()
 		this.replica[i].id = i;
 		}
 	    delete this.replica[this.LastRecord];
+	    if (this.FinalRecord == this.LastRecord)
+		this.FinalRecord--;
 	    this.LastRecord--;
 	    if (this.OSMLRecord > 0) this.OSMLRecord--;
 
@@ -815,8 +817,10 @@ function osrc_action_create_object(aparam) //up,formobj)
 	{
 	this.replica = [];
 	this.LastRecord=0;
+	this.FinalRecord=null;
 	this.FirstRecord=1;
 	this.CurrentRecord=1;
+	this.OSMLRecord=0;
 	this.OpenSession(this.CreateCB2);
 	return 0;
 	}
@@ -855,6 +859,8 @@ function osrc_action_create_cb()
     var links = pg_links(this);
     if(links && links[0] && links[0].target != 'ERR')
 	{
+	if (this.FinalRecord == this.LastRecord)
+	    this.FinalRecord++;
 	this.LastRecord++;
 	this.CurrentRecord = this.LastRecord;
 	var recnum=this.CurrentRecord;
@@ -1511,6 +1517,7 @@ function osrc_clear_replica()
     if(this.replica) delete this.replica;
     this.replica = [];
     this.LastRecord=0;
+    this.FinalRecord=null;
     this.FirstRecord=1;
     }
 
@@ -1529,7 +1536,7 @@ function osrc_parse_one_row(lnk, i)
     return row;
     }
 
-function osrc_do_fetch(rowcnt)
+function osrc_do_fetch(rowcnt, at_end)
     {
     this.querysize = rowcnt?rowcnt:1;
     var reqparam = {ls__qid:this.qid, ls__objmode:'0', ls__notify:this.request_updates};
@@ -1537,6 +1544,8 @@ function osrc_do_fetch(rowcnt)
 	reqparam.ls__rowcount = rowcnt;
     if (this.startat)
 	reqparam.ls__startat = this.startat;
+    if (at_end)
+	reqparam.ls__tail = 1;
     if (this.query_delay_schedid)
 	{
 	pg_delsched(this.query_delay_schedid);
@@ -1565,7 +1574,10 @@ function osrc_end_query()
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
+	{
 	this.replica[this.LastRecord].__osrc_is_last = true;
+	this.FinalRecord = this.LastRecord;
+	}
     this.query_ended = true;
     this.FoundRecord();
     if(qid)
@@ -1633,6 +1645,14 @@ function osrc_fetch_next()
 	    this.qid = null;
 	    break;
 	    }
+	if (lnk[i].target == 'SKIPPED')
+	    {
+	    this.OSMLRecord += parseInt(lnk[i].text);
+	    //this.FirstRecord = this.OSMLRecord + 1;
+	    i++;
+	    this.querysize++; // indicate that we hit end of result set
+	    continue;
+	    }
 	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
 	this.replica[this.OSMLRecord] =
 		this.NewReplicaObj(this.OSMLRecord, lnk[i].target);
@@ -1673,7 +1693,7 @@ function osrc_fetch_next()
 	    }
 
 	// We're going farther down this...
-	this.DoFetch(this.readahead);
+	this.DoFetch(this.readahead, false);
 	}
     else
 	{
@@ -1681,7 +1701,7 @@ function osrc_fetch_next()
 	if((this.LastRecord-this.FirstRecord+1)<this.replicasize && rowcnt >= this.querysize)
 	    {
 	    // make sure we have a full replica if possible
-	    this.DoFetch(this.replicasize - (this.LastRecord - this.FirstRecord + 1));
+	    this.DoFetch(this.replicasize - (this.LastRecord - this.FirstRecord + 1), false);
 	    }
 	else
 	    {
@@ -1871,7 +1891,6 @@ function osrc_change_current_record()
 	// Issue a Changing ifValue operation if the old and new are different.
 	if (oldval != newval)
 	    {
-	    //if ((pg_username == 'gbeeley' || pg_username == 'dbeeley') && attrname == 'p_given_name' && this.__WgtrName == 'donor_osrc')
 	    //	pg_explog.push('Changing: ' + oldval + ' to ' + newval);
 	    this.ifcProbe(ifValue).Changing(attrname, newval, true, oldval, true);
 	    }
@@ -1916,6 +1935,11 @@ function osrc_give_all_current_record(why)
 	    this.ifcProbe(ifValue).Changing(col.oid, col.value, true);
 	}*/
     this.ChangeCurrentRecord();
+    if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord] && this.replica[this.LastRecord].__osrc_is_last)
+	{
+	this.replica[this.CurrentRecord].__osrc_last_record = this.LastRecord;
+	this.FinalRecord = this.LastRecord;
+	}
     for(var i in this.child)
 	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':'change');
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
@@ -2039,22 +2063,29 @@ function osrc_move_to_record_cb(recnum)
 		if(this.CurrentRecord == Number.MAX_VALUE)
 		    {
 		    /* rowcount defaults to a really high number if not set */
-		    this.DoFetch(100);
+		    this.DoFetch(this.replicasize, true);
 		    }
 		else if (recnum == 1)
 		    {
 		    // fill replica if empty
-		    this.DoFetch(this.replicasize);
+		    this.DoFetch(this.replicasize, false);
 		    }
 		else
 		    {
-		    this.DoFetch(this.readahead);
+		    this.DoFetch(this.readahead, false);
 		    }
 		}
 	    else if (!this.query_ended)
 		{
-		this.startat = this.LastRecord + 1;
-		this.osrc_open_query_startat();
+		if (this.CurrentRecord == Number.MAX_VALUE)
+		    {
+		    this.osrc_open_query_tail();
+		    }
+		else
+		    {
+		    this.startat = this.LastRecord + 1;
+		    this.osrc_open_query_startat();
+		    }
 		}
 	    else
 		{
@@ -2067,6 +2098,16 @@ function osrc_move_to_record_cb(recnum)
 	    return 0;
 	    }
 	}
+    }
+
+function osrc_open_query_tail()
+    {
+    if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
+	this.querysize = this.FirstRecord - this.startat;
+    else
+	this.querysize = this.replicasize;
+    this.query_ended = false;
+    this.DoRequest('multiquery', '/', {ls__tail:1, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
 function osrc_open_query_startat()
@@ -2092,7 +2133,7 @@ function osrc_get_qid_startat()
 	//this.Dispatch();
 	return;
 	}
-    this.OSMLRecord=this.startat-1;
+    this.OSMLRecord=(this.startat)?(this.startat-1):0;
     //this.FirstRecord=this.startat;
     /*if(this.startat-this.TargetRecord+1<this.replicasize)
 	{
@@ -2108,11 +2149,11 @@ function osrc_get_qid_startat()
 	{
 	if(this.FirstRecord - this.startat < this.replicasize)
 	    {
-	    this.DoFetch(this.FirstRecord - this.startat);
+	    this.DoFetch(this.FirstRecord - this.startat, false);
 	    }
 	else
 	    {
-	    this.DoFetch(this.replicasize);
+	    this.DoFetch(this.replicasize, false);
 	    }
 	}
     this.startat=null;
@@ -2165,10 +2206,35 @@ function osrc_scroll_to(startrec, endrec)
     this.SyncID = osrc_syncid++;
     if(this.TargetRecord[1] <= this.LastRecord && this.TargetRecord[0] >= this.FirstRecord)
 	{
-	this.TellAllReplicaMoved();
-	this.SetPending(false);
-	//this.pending=false;
-	//this.Dispatch();
+	// check for a 'hole' in the replica
+	var hole = false;
+	for(var i=startrec; i<=endrec; i++)
+	    {
+	    if (!this.replica[i])
+		{
+		hole = i;
+		break;
+		}
+	    }
+	if (hole)
+	    {
+	    // need to fill in a hole
+	    if (this.qid && hole == this.OSMLRecord+1)
+		{
+		this.DoFetch(this.scrollahead, false);
+		}
+	    else
+		{
+		this.startat = hole;
+		this.osrc_open_query_startat();
+		}
+	    }
+	else
+	    {
+	    // data is contiguous here -- return successfully
+	    this.TellAllReplicaMoved();
+	    this.SetPending(false);
+	    }
 	return 1;
 	}
     else
@@ -2202,12 +2268,12 @@ function osrc_scroll_to(startrec, endrec)
 		if(this.TargetRecord[1] == Number.MAX_VALUE)
 		    {
 		    /* rowcount defaults to a really high number if not set */
-		    this.DoFetch(100);
+		    this.DoFetch(100, false);
 		    }
 		else
 		    {
 		    /* need to increase replica size to accomodate? */
-		    this.DoFetch(this.scrollahead);
+		    this.DoFetch(this.scrollahead, false);
 		    }
 		}
 	    else if (!this.query_ended)
@@ -2781,6 +2847,18 @@ function osrc_get_pending()
     return (this.pending || this.masters_pending.length > 0)?1:0;
     }
 
+
+// ifValue expression data defaults to the currently selected record.
+// This allows for temporarily setting it to a different record.
+//
+function osrc_set_eval_record(recnum)
+    {
+    if (recnum >= this.FirstRecord && recnum <= this.LastRecord)
+	this.EvalRecord = recnum;
+    else if (recnum == null)
+	this.EvalRecord = null;
+    }
+
 function osrc_get_value(n)
     {
     var v = null;
@@ -2790,11 +2868,12 @@ function osrc_get_value(n)
 	return this.is_client_discardable?1:0;
     if (n == 'cx__current_id')
 	return this.CurrentRecord;
-    if (this.CurrentRecord && this.replica && this.replica[this.CurrentRecord])
+    var eval_rec = this.EvalRecord?this.EvalRecord:this.CurrentRecord;
+    if (eval_rec && this.replica && this.replica[eval_rec])
 	{
-	for(var i in this.replica[this.CurrentRecord])
+	for(var i in this.replica[eval_rec])
 	    {
-	    var col = this.replica[this.CurrentRecord][i];
+	    var col = this.replica[eval_rec][i];
 	    if (col.oid == n)
 		{
 		if (col.value == null)
@@ -2811,7 +2890,7 @@ function osrc_get_value(n)
     // Update prevcurrent - in some cases we let a null value sneak out
     // during a query pending, in that case we need to make sure we issue
     // a Changing() call once we have a real value.
-    if (this.prevcurrent)
+    if (this.prevcurrent && eval_rec == this.CurrentRecord)
 	{
 	for(var j in this.prevcurrent)
 	    {
@@ -3455,6 +3534,7 @@ function osrc_init(param)
     loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
     loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
     loader.osrc_open_query_startat = osrc_open_query_startat;
+    loader.osrc_open_query_tail = osrc_open_query_tail;
     loader.osrc_action_modify_cb_2 = osrc_action_modify_cb_2;
     loader.ImportModifiedData = osrc_import_modified_data;
     loader.ParseOneAttr = osrc_parse_one_attr;
@@ -3540,6 +3620,8 @@ function osrc_init(param)
     var iv = loader.ifcProbeAdd(ifValue);
     iv.SetNonexistentCallback(osrc_get_value);
     iv.Add("cx__pending", osrc_get_pending, null);
+
+    loader.SetEvalRecord = osrc_set_eval_record;
 
     loader.ParamNotify = osrc_param_notify;
     loader.CreateCB2 = osrc_action_create_cb2;

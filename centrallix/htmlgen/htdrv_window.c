@@ -77,7 +77,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int is_toplevel = 0;
     int is_modal = 0;
     char icon[128];
-    int shadow_offset;
+    int shadow_offset,shadow_radius;
     char shadow_color[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -111,8 +111,12 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Drop shadow **/
 	shadow_offset=0;
-	wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset));
-	if (shadow_offset > 0)
+	if (wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset)) == 0 && shadow_offset > 0)
+	    shadow_radius = shadow_offset+1;
+	else
+	    shadow_radius = 0;
+	wgtrGetPropertyValue(tree, "shadow_radius", DATA_T_INTEGER, POD(&shadow_radius));
+	if (shadow_radius > 0)
 	    {
 	    if (wgtrGetPropertyValue(tree, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
 		strtcpy(shadow_color, ptr, sizeof(shadow_color));
@@ -232,9 +236,9 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; Z-INDEX:%POS;}\n",
 		    id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, z+100);
 	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { border-style: solid; border-width: 1px; border-color: white gray gray white; }\n", id);
-	    if (shadow_offset > 0)
+	    if (shadow_radius > 0)
 		{
-		htrAddStylesheetItem_va(s,"\t#wn%POSbase { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_offset+1, shadow_color);
+		htrAddStylesheetItem_va(s,"\t#wn%POSbase { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
 		}
 
 	    /** draw titlebar div **/

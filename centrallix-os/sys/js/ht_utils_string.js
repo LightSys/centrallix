@@ -104,6 +104,27 @@ function htutil_escape(s)
     return new_s.replace(re, "%2f").replace(re2, "%2b");
     }
 
+function htutil_escape_cssval(s)
+    {
+    var escchars = "!$%&()*+,.:=?@[]^`|~;{}<>/\\\"'";
+    if (s == null)
+	return '';
+    s = String(s);
+    if (s.match(/expression/i))
+	return '';
+    if (s.match(/javascript/i))
+	return '';
+    var new_s = '';
+    for(var i=0;i<s.length;i++) 
+        {
+	var c = s.charAt(i);
+	if (escchars.indexOf(c) >= 0)
+	    new_s += '\\';
+	new_s += c;
+	}
+    return new_s;
+    }
+
 function htutil_obscure(s)
     {
     if (!obscure_data) return s;
@@ -147,6 +168,92 @@ function htutil_obscure(s)
 	}
 
     return new_s;
+    }
+
+
+// stylize -- wrap a string with a <span> that contains formatting
+// for font face, font size, color, bold, italic, shadow,
+// underlining, etc.
+//
+function htutil_getstyle(widget, prefix, defaults)
+    {
+    // prefixing?
+    if (prefix)
+	prefix += "_";
+    else
+	prefix = "";
+
+    // text color
+    var color = wgtrGetServerProperty(widget, prefix + "textcolor");
+    if (!color && defaults)
+	color = defaults.textcolor;
+
+    // style
+    var style = wgtrGetServerProperty(widget, prefix + "style");
+    if (!style && defaults)
+	style = defaults.style;
+
+    // font size
+    var font_size = wgtrGetServerProperty(widget, prefix + "font_size");
+    if (!font_size && defaults)
+	font_size = defaults.font_size;
+
+    // font
+    var font = wgtrGetServerProperty(widget, prefix + "font");
+    if (!font && defaults)
+	font = defaults.font;
+
+    // background color
+    var bgcolor = wgtrGetServerProperty(widget, prefix + "bgcolor");
+    if (!bgcolor && defaults)
+	bgcolor = defaults.bgcolor;
+
+    // padding
+    var padding = wgtrGetServerProperty(widget, prefix + "padding");
+    if (!padding && defaults)
+	padding = defaults.padding;
+
+    // radius
+    var radius = wgtrGetServerProperty(widget, prefix + "border_radius");
+    if (!radius && defaults)
+	radius = defaults.border_radius;
+
+    // alignment
+    var align = wgtrGetServerProperty(widget, prefix + "align");
+    if (!align && defaults)
+	align = defaults.align;
+
+    // wrapping
+    var wrap = wgtrGetServerProperty(widget, prefix + "wrap");
+    if (!wrap && defaults)
+	wrap = defaults.wrap;
+
+    // Assemble the text.
+    var str = '';
+    if (color)
+	str += 'color:' + htutil_escape_cssval(color) + '; ';
+    if (font_size)
+	str += 'font-size:' + htutil_escape_cssval(font_size) + 'px; ';
+    if (style == 'italic')
+	str += 'font-style:italic; ';
+    if (style == 'bold')
+	str += 'font-weight:bold; ';
+    if (style == 'underline')
+	str += 'text-decoration:underline; ';
+    if (font)
+	str += 'font-family:"' + htutil_escape_cssval(font) + '"; ';
+    if (bgcolor)
+	str += 'background-color:' + htutil_escape_cssval(bgcolor) + '; ';
+    if (padding)
+	str += 'padding:' + htutil_escape_cssval(padding) + 'px; ';
+    if (radius)
+	str += 'border-radius:' + htutil_escape_cssval(radius) + 'px; ';
+    if (wrap == 'no')
+	str += 'white-space:no-wrap; ';
+    if (align)
+	str += 'text-align:' + htutil_escape_cssval(align) + '; ';
+    //span = '<span style="' + htutil_encode(span,true) + '">' + str + '</span>';
+    return str;
     }
 
 

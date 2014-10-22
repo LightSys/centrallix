@@ -65,7 +65,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char* c2;
     int box_offset;
     int border_radius;
-    int shadow_offset;
+    int shadow_offset, shadow_radius;
     char shadow_color[128];
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -106,8 +106,12 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Drop shadow **/
 	shadow_offset=0;
-	wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset));
-	if (shadow_offset > 0)
+	if (wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset)) == 0 && shadow_offset > 0)
+	    shadow_radius = shadow_offset+1;
+	else
+	    shadow_radius = 0;
+	wgtrGetPropertyValue(tree, "shadow_radius", DATA_T_INTEGER, POD(&shadow_radius));
+	if (shadow_radius > 0)
 	    {
 	    if (wgtrGetPropertyValue(tree, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
 		strtcpy(shadow_color, ptr, sizeof(shadow_color));
@@ -131,39 +135,15 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (style == 1) /* raised */
 	    {
-	    if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
-		{
-		c1 = "white_1x1.png";
-		c2 = "dkgrey_1x1.png";
-		}
-	    else if(s->Capabilities.CSS1)
-		{
-		c1 = "white";
-		c2 = "gray";
-		}
-	    else
-		{
-		mssError(0,"HTPN","Cannot render");
-		}
+	    c1 = "white";
+	    c2 = "gray";
 	    }
 	else if (style == 0) /* lowered */
 	    {
-	    if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
-		{
-		c1 = "dkgrey_1x1.png";
-		c2 = "white_1x1.png";
-		}
-	    else if(s->Capabilities.CSS1)
-		{
-		c1 = "gray";
-		c2 = "white";
-		}
-	    else
-		{
-		mssError(0,"HTPN","Cannot render");
-		}
+	    c1 = "gray";
+	    c2 = "white";
 	    }
-	else if (style == 3) /* framed */
+	else if (style == 3) /* bordered */
 	    {
 	    if (wgtrGetPropertyValue(tree,"border_color",DATA_T_STRING,POD(&ptr)) != 0)
 		strcpy(bdr, "black");
@@ -172,49 +152,29 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
+	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,1,1,w-2,h-2,z+1);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
-	else if(s->Capabilities.CSS1)
+	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    if (style == 2) /* flat */
-		{
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
-		}
-	    else if (style == 0 || style == 1) /* lowered or raised */
-		{
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
-		}
-	    else if (style == 3) /* bordered */
-		{
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
-		}
-	    if (shadow_offset > 0)
-		{
-		htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_offset+1, shadow_color);
-		}
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
-	else
+	else if (style == 3) /* bordered */
 	    {
-	    mssError(0,"HTPN","Cannot render");
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
+	    }
+	if (shadow_radius > 0)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
 	    }
 
 	/** DOM linkages **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddWgtrObjLinkage_va(s, tree, 
-		    "htr_subel(_parentctr, \"pn%POSbase\")",id);
-	    htrAddWgtrCtrLinkage_va(s, tree, 
-		    "htr_subel(_obj, \"pn%POSmain\")",id);
-	    }
-	else
-	    htrAddWgtrObjLinkage_va(s, tree, 
-		    "htr_subel(_parentctr, \"pn%POSmain\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, 
+		"htr_subel(_parentctr, \"pn%POSmain\")",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
@@ -227,63 +187,18 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "pn", "pn_mouseout");
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "pn", "pn_mousemove");
 
-	if(s->Capabilities.Dom0NS || (s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
-	    {
-	    /** Script initialization call. **/
-	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), layer:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'), \"pn%POSmain\")});\n", 
-			name, name, id);
-	    else
-		htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer:wgtrGetNodeRef(ns,\"%STR&SYM\")});\n",
-			name, name);
+	/** Script initialization call. **/
+	htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer:wgtrGetNodeRef(ns,\"%STR&SYM\")});\n",
+		name, name);
 
-	    /** HTML body <DIV> element for the base layer. **/
-	    if (s->Capabilities.Dom0NS)
-		{
-		htrAddBodyItem_va(s,"<DIV ID=\"pn%POSbase\">\n",id);
-		htrAddBodyItem_va(s,"    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR height=%POS>\n",w,main_bg,h);
-		if (style == 2) /* flat */
-		    {
-		    htrAddBodyItem(s,   "        <TR><TD><img src=/sys/images/trans_1.gif></TD></TR>\n    </TABLE>\n\n");
-		    }
-		else /* lowered or raised */
-		    {
-		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
-		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
-		    htrAddBodyItem(s,   "            <TD><img src=/sys/images/trans_1.gif></TD>\n");
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
-		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-		    }
-		htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
+	/** HTML body <DIV> element for the base layer. **/
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
 
-		/** Check for objects within the pane. **/
-		htrRenderSubwidgets(s, tree, z+2);
+	/** Check for objects within the pane. **/
+	htrRenderSubwidgets(s, tree, z+2);
 
-		/** End the containing layer. **/
-		htrAddBodyItem(s, "</td></tr></table></DIV>\n");
-
-		htrAddBodyItem(s, "</DIV>\n");
-		}
-	    else
-		{
-		htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-
-		/** Check for objects within the pane. **/
-		htrRenderSubwidgets(s, tree, z+2);
-
-		/** End the containing layer. **/
-		htrAddBodyItem(s, "</DIV>\n");
-		}
-
-	    }
-	else
-	    {
-	    mssError(0,"HTPN","Cannot render");
-	    }
+	/** End the containing layer. **/
+	htrAddBodyItem(s, "</DIV>\n");
 
     return 0;
     }
