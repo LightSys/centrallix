@@ -2671,7 +2671,7 @@ mysdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
             {
             for(i=0;i<inf->TData->nCols;i++) if (!strcmp(inf->TData->Cols[i],attrname))
                 {
-                if(!inf->Row[i])
+                if(!inf->Row || !inf->Row[i])
                     {
                     return 1;
                     }
