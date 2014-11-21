@@ -98,13 +98,15 @@ function wn_init(param)
     wn_bring_top(l);
 
     // Actions
-    l.ifcProbeAdd(ifAction).Add("SetVisibility", wn_setvisibility);
-    l.ifcProbe(ifAction).Add("ToggleVisibility", wn_togglevisibility);
-    l.ifcProbe(ifAction).Add("Open", wn_openwin);
-    l.ifcProbe(ifAction).Add("Close", wn_closewin);
-    l.ifcProbe(ifAction).Add("Popup", wn_popup);
-    l.ifcProbe(ifAction).Add("Shade", wn_action_shade);
-    l.ifcProbe(ifAction).Add("Unshade", wn_action_unshade);
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetVisibility", wn_setvisibility);
+    ia.Add("ToggleVisibility", wn_togglevisibility);
+    ia.Add("Open", wn_openwin);
+    ia.Add("Close", wn_closewin);
+    ia.Add("Popup", wn_popup);
+    ia.Add("Shade", wn_action_shade);
+    ia.Add("Unshade", wn_action_unshade);
+    ia.Add("Point", wn_action_point);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -139,6 +141,13 @@ function wn_init(param)
     if (l.is_modal && l.is_visible) pg_setmodal(l);
 
     return l;
+    }
+
+function wn_action_point(aparam)
+    {
+    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
+    this.point1 = divs.p1;
+    this.point2 = divs.p2;
     }
 
 // Popup - pops up a window in the way that a menu might pop up.
@@ -284,6 +293,86 @@ function wn_setvisibility_bh(v)
 	this.is_visible = 1;
 	if (this.is_modal) pg_setmodal(this);
 	this.ifcProbe(ifEvent).Activate("Open", {});
+
+	// Point logic
+	if (this.point_at)
+	    {
+	    // Geometry of widget we're pointing at...
+	    var geom = wgtrGetGeom(this.point_at);
+
+	    // Compute based on which side of the window the point will be on
+	    switch(this.point_side)
+		{
+		case 'top':
+		    // Allowable point positions
+		    var pt_y = -15;
+		    var min_pt_x = 20;
+		    var max_pt_x = $(this).outerWidth() - 20;
+		    if (min_pt_x > max_pt_x) return;
+
+		    // Allowable window positions
+		    var win_y = geom.y + geom.height + 15;
+		    var min_win_x = Math.max(geom.x - max_pt_x, 0);
+		    var max_win_x = Math.min(geom.x + geom.width - min_pt_x, pg_width - $(this).outerWidth());;
+		    if (min_win_x > max_win_x) return;
+
+		    // Go with midpoint of min/max win x
+		    win_x = (min_win_x + max_win_x)/2;
+
+		    // Compute point x from there
+		    pt_x = geom.x + geom.width/2 - win_x;
+		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
+		    break;
+
+		case 'left':
+		    // Allowable point positions
+		    var pt_x = -15;
+		    var min_pt_y = 20;
+		    var max_pt_y = $(this).outerHeight() - 20;
+		    if (min_pt_y > max_pt_y) return;
+
+		    // Allowable window positions
+		    var win_x = geom.x + geom.width + 15;
+		    var min_win_y = Math.max(geom.y - max_pt_y, 0);
+		    var max_win_y = Math.min(geom.y + geom.height - min_pt_y, pg_height - $(this).outerHeight());;
+		    if (min_win_y > max_win_y) return;
+
+		    // Go with midpoint of min/max win y
+		    win_y = (min_win_y + max_win_y)/2;
+
+		    // Compute point y from there
+		    pt_y = geom.y + geom.height/2 - win_y;
+		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
+		    break;
+
+		case 'right':
+		    // Allowable point positions
+		    var pt_x = $(this).outerWidth() + 15;
+		    var min_pt_y = 20;
+		    var max_pt_y = $(this).outerHeight() - 20;
+		    if (min_pt_y > max_pt_y) return;
+
+		    // Allowable window positions
+		    var win_x = geom.x - $(this).outerWidth() - 15;
+		    var min_win_y = Math.max(geom.y - max_pt_y, 0);
+		    var max_win_y = Math.min(geom.y + geom.height - min_pt_y, pg_height - $(this).outerHeight());;
+		    if (min_win_y > max_win_y) return;
+
+		    // Go with midpoint of min/max win y
+		    win_y = (min_win_y + max_win_y)/2;
+
+		    // Compute point y from there
+		    pt_y = geom.y + geom.height/2 - win_y;
+		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
+		    break;
+		}
+
+	    // Do the move and point
+	    moveTo(this, win_x, win_y);
+	    var divs = htutil_point(this, pt_x, pt_y, null, null, null, this.point1, this.point2);
+	    this.point1 = divs.p1;
+	    this.point2 = divs.p2;
+	    }
 	}
     }
 
@@ -417,6 +506,8 @@ function wn_close(l)
     if (l.closetype == 0 || !cx__capabilities.Dom0NS)
 	{
 	htr_setvisibility(l,'hidden');
+	if (l.point1) htr_setvisibility(l.point1,'hidden');
+	if (l.point2) htr_setvisibility(l.point2,'hidden');
 	l.is_visible = 0;
 	}
     else
@@ -499,6 +590,10 @@ function wn_closewin(aparam)
 
 function wn_openwin(aparam)
     {
+    this.point_at = aparam.PointAt;
+    if (this.point_at && typeof this.point_at != 'object' || !wgtrIsNode(this.point_at))
+	this.point_at = wgtrGetNode(this, this.point_at);
+    this.point_side = aparam.PointSide;
     aparam.IsVisible = 1;
     return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
     }
