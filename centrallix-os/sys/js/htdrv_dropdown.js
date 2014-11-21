@@ -55,6 +55,7 @@ function dd_setvalue(v)
 
     // allow setting the value when dropdown doesn't contain it, cuz it might later.
     this.value = v;
+    this.label = null;
     htr_setvisibility(this.VisLayer, 'hidden');
     return true;
     }
@@ -516,14 +517,16 @@ function dd_select_item(l,i,from)
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
     //pg_debug('new id = ' + l.VisLayer.id + '\n');
-    var lbl = null;
     if (i != null)
 	{
 	l.value = l.Values[l.VisLayer.index].value;
-	lbl = l.Values[l.VisLayer.index].label;
+	l.label = l.Values[l.VisLayer.index].label;
 	}
     else
+	{
 	l.value = null;
+	l.label = null;
+	}
     if(l.Mode == 3)
 	{
 	//change record
@@ -531,7 +534,7 @@ function dd_select_item(l,i,from)
 	//l.osrc.MoveToRecord(i);
 	}
     if (from != 'init')
-	cn_activate(l, "DataChange", {Value:l.value, Label:lbl, FromOSRC:(from == 'osrc')});
+	cn_activate(l, "DataChange", {Value:l.value, Label:l.label, FromOSRC:(from == 'osrc')});
     }
 
 function dd_datachange(l)
@@ -1201,6 +1204,7 @@ function dd_init(param)
     l.query_multiselect = param.qms;
     l.invalid_select_default = param.ivs;
     l.value = null;
+    l.label = null;
     htr_init_layer(l,l,'dd');
     htutil_tag_images(l,'dd',l,l);
     var imgs = pg_images(l);
