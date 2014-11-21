@@ -1152,6 +1152,10 @@ function pg_keyhandler(k,m,e)
 
 function pg_keyhandler_internal(k,m,e)
     {
+    // can't capture ctrl-V, ctrl-C, ctrl-X as keypresses.
+    if (e.ctrlKey && (k == 118 || k == 99 || k == 120))
+	return true;
+
     //htr_alert_obj(e,1);
     // layer.keyhandler is a callback routine that is optional 
     // on any layer requesting focus with pg_addarea().
@@ -1323,14 +1327,30 @@ function pg_init(l,a,gs,ct) //SETH: ??
 
     pg_addsched('window.ifcProbe(ifEvent).Activate("Load", {})', window, 100);
 
+    // This input receives paste events on behalf of the entire app
+    window.paste_input = document.createElement('input');
+    $(window.paste_input).css
+	({
+	'left': '0px',
+	'top': '-30px',
+	'position': 'absolute',
+	'width': '100px',
+	'height': '20px',
+	});
+    document.body.appendChild(window.paste_input);
+    //window.paste_input.focus();
+
     return window;
     }
 
 function pg_cleanup()
     {
     // remove this window from the app window lists
-    window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
-    window.AppWindowPropagate();
+    if (window.pg_appwindows && window.pg_appwindows[wgtrGetNamespace(window)])
+	{
+	window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
+	window.AppWindowPropagate();
+	}
 
     // Deinit the tree.
     wgtrDeinitTree(window);
@@ -2056,11 +2076,11 @@ function pg_serialized_load(l, newsrc, cb, silent)
 // actually made.
 function pg_serialized_load_doone()
     {
-    if (pg_loadqueue_busy) return;
+    if (pg_loadqueue_busy >= pg_max_requests) return;
     if (pg_loadqueue.length == 0) 
 	{
-	pg_loadqueue_busy = false;
-	if (pg_waitlyr) 
+	//pg_loadqueue_busy = 0;
+	if (pg_waitlyr && !pg_loadqueue_busy) 
 	    {
 	    if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
 	    pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
@@ -2068,7 +2088,7 @@ function pg_serialized_load_doone()
 	    }
 	return;
 	}
-    pg_loadqueue_busy = true;
+    pg_loadqueue_busy++;
     var one_item = pg_loadqueue.shift(); // remove first item
     if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' loads ' + one_item.src + '\n');
     one_item.lyr.__pg_onload = one_item.cb;
@@ -2092,14 +2112,14 @@ function pg_serialized_load_doone()
 	    else
 		{
 		pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
-		pg_loadqueue_busy = false;
+		pg_loadqueue_busy--;
 		}
 	    pg_loadqueue_check();
 	    break;
 
 	case 'func':
 	    one_item.cb.apply(one_item.lyr, one_item.params);
-	    pg_loadqueue_busy = false;
+	    pg_loadqueue_busy--;
 	    pg_loadqueue_check();
 	    break;
 	}
@@ -2108,7 +2128,9 @@ function pg_serialized_load_doone()
 // pg_serialized_load_cb() - called when a load finishes
 function pg_serialized_load_cb()
     {
-    pg_loadqueue_busy = false;
+    pg_loadqueue_busy--;
+    if (pg_loadqueue_busy < 0)
+	pg_loadqueue_busy = 0;
 
     if (this.__pg_onload) 
 	this.__pg_onload();
@@ -2552,7 +2574,10 @@ function pg_dotip_complete()
 // Is the DIV or LAYER "l" restricted due to a modal dialog?
 function pg_checkmodal(l)
     {
-    return pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
+    var restricted = pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
+    if (restricted && l.kind == 'dt_pn' && ((l.ml && wgtrIsNode(l.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.ml)) || (l.parentElement && l.parentElement.ml && wgtrIsNode(l.parentElement.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.parentElement.ml))))
+	restricted = false;
+    return restricted;
     }
 
 
@@ -2666,6 +2691,7 @@ function pg_mousedown(e)
 		}
 	    }
 	}
+    //window.paste_input.focus();
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2678,6 +2704,7 @@ function pg_contextmenu(e)
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 	}
+    //window.paste_input.focus();
     }
 
 function pg_mouseup_ns4(e)
@@ -2695,6 +2722,7 @@ function pg_mouseup(e)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
         }*/
+    //window.paste_input.focus();
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2746,6 +2774,8 @@ function pg_keydown(e)
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
         pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+	if (e.ctrlKey && k == 17)
+	    window.paste_input.focus();
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else

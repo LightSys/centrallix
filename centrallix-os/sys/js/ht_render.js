@@ -419,6 +419,7 @@ function htr_event(e)
 	cx__event.which = e.button+1;
 	cx__event.modifiers = e.modifiers;
 	cx__event.shiftKey = e.shiftKey;
+	cx__event.ctrlKey = e.ctrlKey;
 	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
 	    {
 	    cx__event.key = e.which;
@@ -439,6 +440,27 @@ function htr_event(e)
 		}
 	    }
 
+	// paste event
+	if (e.type == 'paste')
+	    {
+	    // Make sure the W3C clipboard paste interface is supported
+	    if (e.clipboardData && e.clipboardData.types && e.clipboardData.getData)
+		{
+		for(var i=0; i<e.clipboardData.types.length; i++)
+		    {
+		    if (e.clipboardData.types[i] == 'text/plain')
+			{
+			// Snag the text
+			cx__event.pastedText = e.clipboardData.getData('text/plain');
+			break;
+			}
+		    }
+		}
+
+	    // prevent the paste into window.paste_input
+	    e.preventDefault();
+	    }
+
 	// move up from text nodes and spans to containers
 	var t = e.target;
 	while(t.nodeType == Node.TEXT_NODE || t.nodeName == 'SPAN' || 
@@ -449,30 +471,6 @@ function htr_event(e)
 
 	cx__event.pageX = e.clientX + window.pageXOffset;
 	cx__event.pageY = e.clientY + window.pageYOffset;
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	cx__event.NSEvent = e;
-	cx__event.type = e.type;
-	cx__event.target = e.target;
-	cx__event.pageX = e.pageX;
-	cx__event.pageY = e.pageY;
-	cx__event.which = e.which;
-	cx__event.modifiers = e.modifiers;
-	cx__event.key = e.which;
-	cx__event.keyName = null;
-
-	cx__event.x = e.x;
-	cx__event.y = e.y;
-	cx__event.width = e.width;
-	cx__event.height = e.height;
-	cx__event.layerX = e.layerX;
-	cx__event.layerY = e.layerY;
-	cx__event.which = e.which;
-	cx__event.modifiers = e.modifiers;
-	cx__event.data = e.data;
-	cx__event.screenX = e.screenX;
-	cx__event.screenY = e.screenY;
 	}
     else if(cx__capabilities.Dom0IE)
 	{
