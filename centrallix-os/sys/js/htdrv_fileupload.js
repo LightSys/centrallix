@@ -63,7 +63,6 @@ function fu_submit()
             contentType: false,
             success: function(json)
                 {
-                alert('success');
                 wgt.oldvalue = wgt.input.value;
                 wgt.value = '';
                 wgt.pane.reset();
@@ -76,9 +75,12 @@ function fu_submit()
                     }
                 
                 cn_activate(wgt, 'DataChange', {NewValue:"", OldValue:wgt.input.oldvalue});
-                cn_activate(wgt, 'Success', data);
+                cn_activate(wgt, 'UploadComplete', data);
                 },
-            error: function(){alert('error')}
+            error: function()
+		{
+                cn_activate(wgt, 'UploadError', {});
+		}
             });
         }
 	}
@@ -111,7 +113,8 @@ function fu_init(param)
 	//Events
 	var ie = layer.ifcProbeAdd(ifEvent);
 	ie.Add("DataChange");
-	ie.Add("Complete");
+	ie.Add("UploadComplete");
+	ie.Add("UploadError");
 	ie.Add("Change");
 	
 	//Actions
