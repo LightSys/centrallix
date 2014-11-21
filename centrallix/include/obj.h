@@ -580,6 +580,8 @@ pObject objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
 int objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len);
+pContentType objTypeFromName(char* name);
+int objIsA(char* type1, char* type2);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
@@ -626,7 +628,6 @@ int objParamsLookupInt(pXArray params, char* name);
 char* objParamsLookupString(pXArray params, char* name);
 int objParamsSet(pXArray params, char* name, char* stringval, int intval);
 int objParamsFree(pXArray params);
-int obj_internal_IsA(char* type1, char* type2);
 int obj_internal_FreePath(pPathname this);
 int obj_internal_FreePathStruct(pPathname this);
 pPathname obj_internal_NormalizePath(char* cwd, char* name);
