@@ -174,6 +174,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "tx","tx_mousedown");
 	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "tx", "tx_mouseover");
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
+	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
 	    
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",

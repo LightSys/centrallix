@@ -337,6 +337,24 @@ function eb_update(txt, cursor)
 	pg_set_style(ibeam_current,'visibility', 'inherit');
     }
 
+function eb_paste(e)
+    {
+    if (eb_current && e.pastedText)
+	{
+	var pasted = new String(e.pastedText);
+	for(var i=0; i<pasted.length; i++)
+	    {
+	    var k = pasted.charCodeAt(i);
+
+	    // Convert control codes into spaces.
+	    if (k < 32  || k == 127)
+		k = 32;
+
+	    // turn it into a keypress.
+	    eb_keyhandler(eb_current, {}, k);
+	    }
+	}
+    }
 
 function eb_keyhandler(l,e,k)
     {
@@ -371,7 +389,7 @@ function eb_keyhandler(l,e,k)
 	if (l.form) l.form.EscNotify(this);
 	cn_activate(l,'EscapePressed', {});
 	}
-    if (k >= 32 && k < 127)
+    if (k >= 32 && k < 127 && !e.ctrlKey)
 	{
 	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + String.fromCharCode(k) + vistxt.substr(l.cursorCol,vistxt.length), l._form_type);
 	if (newtxt != txt)
@@ -448,7 +466,6 @@ function eb_keyhandler(l,e,k)
 	}
     else
 	{
-	//if (k != 27 && pg_username == 'gbeeley') htr_alert(e, 1);
 	return true;
 	}
     if (newtxt != txt || cursoradj != 0)
@@ -596,6 +613,26 @@ function eb_mousemove(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function eb_cb_reveal(e)
+    {
+    switch (e.eventName) 
+	{
+	case 'Reveal':
+	    this.form.Reveal(this,e);
+	    break;
+	case 'Obscure':
+	    this.form.Reveal(this,e);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.form) this.form.Reveal(this,e);
+	    else pg_reveal_check_ok(e);
+	    break;
+	}
+
+    return true;
+    }
+
 /**
 * l - base layer
 * c1 - content layer 1
@@ -730,6 +767,16 @@ function eb_init(param)
     l.oldvalue = null;
     l.value = null;
     l.DoDataChange = eb_do_data_change;
+
+    if (l.form)
+	{
+	l.Reveal = eb_cb_reveal;
+	if (pg_reveal_register_listener(l)) 
+	    {
+	    // already visible
+	    l.form.Reveal(l,{ eventName:'Reveal' });
+	    }
+	}
 
     // Callbacks for internal management of 'content' value
     l.set_content = eb_set_content;

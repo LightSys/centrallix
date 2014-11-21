@@ -406,6 +406,38 @@ function tx_wordWrapDown(l,index,txt,c)
     return tx_wordWrapDown(l,index+1,add+l.rows[index+1].content,1);
     }
 
+function tx_paste(e)
+    {
+    if (tx_current && e.pastedText)
+	{
+	var pasted = new String(e.pastedText);
+	var prev_was_cr = false;
+	for(var i=0; i<pasted.length; i++)
+	    {
+	    var k = pasted.charCodeAt(i);
+
+	    // Convert control codes into spaces.
+	    if ((k < 32  || k == 127) && k != 13 && k != 10)
+		k = 32;
+
+	    // Suppress multiple line ending characters in sequence
+	    if (k == 10 && prev_was_cr)
+		{
+		prev_was_cr = false;
+		continue;
+		}
+	    prev_was_cr = false;
+	    if (k == 13)
+		prev_was_cr = true;
+	    if (k == 10)
+		k = 13;
+
+	    // turn it into a keypress.
+	    tx_keyhandler(tx_current, {}, k);
+	    }
+	}
+    }
+
 /** Textarea keyboard handler **/
 function tx_keyhandler(l,e,k)
     {
@@ -455,6 +487,42 @@ function tx_keyhandler(l,e,k)
 	{
 	if (tx_current.form) tx_current.form.EscNotify(tx_current);
 	return true;
+	}
+    else if (k == 0 && e.keyName == 'up')
+	{
+	if (l.cursorRow > 0)
+	    {
+	    var chg = Math.min(l.cursorCol, l.rows[l.cursorRow].content.length) + Math.max(0, l.rows[l.cursorRow-1].content.length - l.cursorCol) + (l.rows[l.cursorRow].newLine?1:0);
+	    tx_getCursorPos(l, -chg, 0);
+	    }
+	}
+    else if (k == 0 && e.keyName == 'down')
+	{
+	if (l.cursorRow < l.rows.length-1)
+	    {
+	    var chg = Math.min(l.cursorCol, l.rows[l.cursorRow+1].content.length) + Math.max(0, l.rows[l.cursorRow].content.length - l.cursorCol) + (l.rows[l.cursorRow+1].newLine?1:0);
+	    tx_getCursorPos(l, chg, 0);
+	    }
+	}
+    else if (k == 0 && e.keyName == 'left')
+	{
+	if (l.cursorRow > 0 || l.cursorCol > 0)
+	    tx_getCursorPos(l, -1, 0);
+	}
+    else if (k == 0 && e.keyName == 'right')
+	{
+	if (l.cursorRow < l.rows.length-1 || l.cursorCol < l.rows[l.rows.length-1].content.length)
+	    tx_getCursorPos(l, 1, 0);
+	}
+    else if (k == 0 && e.keyName == 'home')
+	{
+	if (l.cursorCol > 0)
+	    tx_getCursorPos(l, -l.cursorCol, 0);
+	}
+    else if (k == 0 && e.keyName == 'end')
+	{
+	if (l.cursorCol < l.rows[l.cursorRow].content.length)
+	    tx_getCursorPos(l, l.rows[l.cursorRow].content.length - l.cursorCol, 0);
 	}
     else if (k == 8)
         {
