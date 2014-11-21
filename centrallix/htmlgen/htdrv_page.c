@@ -73,6 +73,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     char timestr[80];
     XArray endorsements;
     XArray contexts;
+    int max_requests = 1;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -94,6 +95,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** These are always set for a page widget **/
 	wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w));
 	wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h));
+
+	/** Max active server requests at one time **/
+	wgtrGetPropertyValue(tree,"max_requests",DATA_T_INTEGER,POD(&max_requests));
 
 	/** Page icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
@@ -212,7 +216,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue", "[]", 0);
-	htrAddScriptGlobal(s, "pg_loadqueue_busy", "true", 0);
+	htrAddScriptGlobal(s, "pg_loadqueue_busy", "999999", 0);
 	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
 	htrAddScriptGlobal(s, "pg_isloaded", "false", 0);
 	htrAddScriptGlobal(s, "pg_username", "null", 0);
@@ -238,6 +242,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_scripts", "[]", 0);
 	htrAddScriptGlobal(s, "pg_endorsements", "[]", 0);
+	htrAddScriptGlobal(s, "pg_max_requests", "1", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -280,6 +285,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
 	htrAddScriptInit_va(s, "    pg_height = %INT;\n", h);
+	htrAddScriptInit_va(s, "    pg_max_requests = %INT;\n", max_requests);
 	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
 	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
 	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
