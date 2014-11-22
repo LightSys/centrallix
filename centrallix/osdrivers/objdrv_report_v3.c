@@ -91,6 +91,7 @@ typedef struct
     {
     char	Pathname[OBJSYS_MAX_PATH];
     char	DownloadAs[OBJSYS_MAX_PATH];
+    char	DocumentFormat[64];
     char	ContentType[64];
     char	ObKey[64];
     char	ObRulefile[OBJSYS_MAX_PATH];
@@ -123,6 +124,7 @@ typedef struct
 #define RPT_F_ISOPEN		2
 #define RPT_F_ERROR		4
 #define RPT_F_ALREADY_FF	8
+#define RPT_F_FORCELEAF		16
 
 #define RPT(x) ((pRptData)(x))
 
@@ -3789,16 +3791,16 @@ rpt_internal_Generator(void* v)
 	thSetName(NULL,"Report Generator");
 
 	/** Open a print session **/
-	ps = prtOpenSession(inf->ContentType, fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
+	ps = prtOpenSession(inf->DocumentFormat, fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
 	if (!ps) 
 	    {
 	    ps = prtOpenSession("text/html", fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
-	    if (ps) strcpy(inf->ContentType, "text/html");
+	    if (ps) strcpy(inf->DocumentFormat, "text/html");
 	    }
 	if (!ps)
 	    {
 	    inf->Flags |= RPT_F_ERROR;
-	    mssError(1,"RPT","Could not locate an appropriate content generator for type '%s'", inf->ContentType);
+	    mssError(1,"RPT","Could not locate an appropriate content generator for type '%s'", inf->DocumentFormat);
 	    fdWrite(inf->SlaveFD, "<PRE>\r\n",7,0,0);
 	    mssPrintError(inf->SlaveFD);
 	    fdWrite(inf->SlaveFD, "</PRE>\r\n",8,0,0);
@@ -3808,6 +3810,10 @@ rpt_internal_Generator(void* v)
 
 	/** Set image store location **/
 	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, (void* (*)())objWrite, (void* (*)())objClose);
+
+	/** Some output specific options **/
+	if (rpt_internal_GetBool(inf->Node->Data, "text_pagebreak", 1, 0) == 0)
+	    prtSetSessionParam(ps, "text_pagebreak", "no");
 
 	/** Indicate that we've started up here... **/
 	syPostSem(inf->StartSem, 1, 0);
@@ -3993,15 +3999,14 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->LinkCnt = 1;
 	inf->AttrOverride = stCreateStruct(NULL,NULL);
 	if (usrtype)
-	    memccpy(inf->ContentType, usrtype, 0, 63);
+	    strtcpy(inf->DocumentFormat, usrtype, sizeof(inf->DocumentFormat));
 	else
-	    strcpy(inf->ContentType, "text/plain");
-	inf->ContentType[63] = 0;
+	    strcpy(inf->DocumentFormat, "text/plain");
 	xaInit(&(inf->UserDataSlots), 16);
 	inf->NextUserDataSlot = 1;
 
 	/** Content type must be application/octet-stream or more specific. **/
-	rval = obj_internal_IsA(inf->ContentType, "application/octet-stream");
+	rval = objIsA(inf->DocumentFormat, "application/octet-stream");
 	if (rval == OBJSYS_NOT_ISA)
 	    {
 	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
@@ -4011,7 +4016,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    }
 	if (rval < 0)
 	    {
-	    strcpy(inf->ContentType,"application/octet-stream");
+	    strcpy(inf->DocumentFormat,"application/octet-stream");
 	    }
 
 	/** Set object params. **/
@@ -4087,10 +4092,23 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    ptr = NULL;
 	    stGetAttrValue(ct_param, DATA_T_STRING, POD(&ptr), 0);
 	    if (ptr)
-		{
-		memccpy(inf->ContentType, ptr, 0, 63);
-		inf->ContentType[63] = '\0';
-		}
+		strtcpy(inf->DocumentFormat, ptr, sizeof(inf->DocumentFormat));
+	    }
+	strtcpy(inf->ContentType, inf->DocumentFormat, sizeof(inf->ContentType));
+
+	/** Alternate content type? **/
+	if ((ct_param = rpt_internal_GetParam(inf, "content_type")) != NULL)
+	    {
+	    ptr = NULL;
+	    stGetAttrValue(ct_param, DATA_T_STRING, POD(&ptr), 0);
+	    if (ptr)
+		strtcpy(inf->ContentType, ptr, sizeof(inf->ContentType));
+	    }
+
+	/** Hint to OSML to not automatically cascade the open operation **/
+	if (rpt_internal_GetBool(inf->Node->Data, "force_leaf", 1, 0) == 1)
+	    {
+	    inf->Flags |= RPT_F_FORCELEAF;
 	    }
 
     return (void*)inf;
@@ -4806,6 +4824,10 @@ rptInfo(void* inf_v, pObjectInfo info)
 	info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | 
 	    OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT | 
 	    OBJ_INFO_F_HAS_CONTENT );
+
+	if (inf->Flags & RPT_F_FORCELEAF)
+	    info->Flags |= OBJ_INFO_F_FORCED_LEAF;
+
 	return 0;
     }
 
