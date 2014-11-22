@@ -173,7 +173,7 @@ function form_cb_esc_notify(control)
     {
     /** Do a discard **/
     if (control == pg_curkbdlayer && pg_removekbdfocus({nodatachange:true}))
-	this.ifcProbe(ifAction).Invoke("Discard", {});
+	this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:1});
     }
 
 function form_default_action()
@@ -189,7 +189,7 @@ function form_default_action()
 	if (this.is_savable)
 	    return this.ifcProbe(ifAction).Invoke("Save", {});
 	else
-	    return this.ifcProbe(ifAction).Invoke("Discard", {});
+	    return this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:1});
 	}
     }
 
@@ -516,6 +516,10 @@ function form_action_delete_success()
 /** in Query, clear, remain in query mode **/
 function form_action_discard(aparam)
     {
+    if (!aparam.FromOSRC)
+	aparam.FromOSRC = 0;
+    if (!aparam.FromKeyboard)
+	aparam.FromKeyboard = 0;
     switch(this.mode)
 	{
 	case "Modify":
@@ -523,7 +527,7 @@ function form_action_discard(aparam)
 	    //if (this.osrc) this.osrc.MoveToRecord(this.recid);
 	    this.ChangeMode("View");
 	    this.LoadFields(this.data);
-	    this.SendEvent('Discard');
+	    this.SendEvent('Discard', aparam);
 	    break;
 	case "Query":
 	case "New":
@@ -532,7 +536,7 @@ function form_action_discard(aparam)
 		this.LoadFields(this.data);
 	    else if (!this.data && this.ChangeMode("NoData"))
 		this.LoadFields(null);
-	    this.SendEvent('Discard');
+	    this.SendEvent('Discard', aparam);
 	    // failed to change mode? re-init the query or new status if so.
 	    if (this.mode == "Query" || this.mode == "New")
 		this.ChangeMode(this.mode);
@@ -940,12 +944,17 @@ function form_change_mode(newmode)
     return true;
     }
 
-function form_send_event(event)
+function form_send_event(event, eparam)
     {
     //confirm(eval('this.Event'+event));
     if (!this.ifcProbe(ifEvent).Exists(event)) return 1;
     //if(!eval('this.Event'+event)) return 1;
     var evobj = new Object();
+    if (eparam)
+	{
+	for(var ep in eparam)
+	    evobj[ep] = eparam[ep];
+	}
     evobj.Caller = this;
     evobj.Status = this.mode;
     evobj.PrevStatus = this.oldmode;
@@ -1346,13 +1355,13 @@ function form_cb_reveal(element,event)
 		    this._orsevent = event;
 		    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\", {});");
 		    this.cb['_3bConfirmSave'].add(this,savefunc);
-		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {});pg_reveal_check_ok(this._orsevent);'));
+		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});pg_reveal_check_ok(this._orsevent);'));
 		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
 		    this.show3bconfirm();
 		    }
 		else
 		    {
-		    this.ifcProbe(ifAction).Invoke("Discard", {});
+		    this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});
 		    pg_reveal_check_ok(event);
 		    }
 		}
