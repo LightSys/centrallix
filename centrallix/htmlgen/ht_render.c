@@ -1155,6 +1155,52 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
     }
 
 
+/*** htrGetExpParams - retrieve the list of values used in an expression
+ *** and put them in a javascript array.
+ ***/
+int
+htrGetExpParams(pExpression exp, pXString xs)
+    {
+    int i, first;
+    XArray objs, props;
+    char* obj;
+    char* prop;
+
+	/** setup **/
+	xaInit(&objs, 16);
+	xaInit(&props, 16);
+
+	/** Find the properties accessed by the expression **/
+	expGetPropList(exp, &objs, &props);
+
+	/** Build the list **/
+	xsCopy(xs,"[",-1);
+	first=1;
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    obj = (char*)(objs.Items[i]);
+	    prop = (char*)(props.Items[i]);
+	    if (obj && prop)
+		{
+		xsConcatQPrintf(xs,"%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}", !first, obj, prop);
+		first = 0;
+		}
+	    }
+	xsConcatenate(xs,"]",1);
+
+	/** cleanup **/
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    if (objs.Items[i]) nmSysFree(objs.Items[i]);
+	    if (props.Items[i]) nmSysFree(props.Items[i]);
+	    }
+	xaDeInit(&objs);
+	xaDeInit(&props);
+
+    return 0;
+    }
+
+
 /*** htrAddExpression - adds an expression to control a given property of
  *** an object.  When any object reference in the expression changes, the
  *** expression will be re-run to modify the object's property.  The
@@ -1309,6 +1355,7 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
     int rval;
     pExpression code;
     XString exptxt;
+    XString proptxt;
 
 	t = wgtrGetPropertyType(tree, propname);
 	if (t > 0)
@@ -1334,8 +1381,11 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		    case DATA_T_CODE:
 			wgtrGetPropertyValue(tree,propname,DATA_T_CODE,POD(&code));
 			xsInit(&exptxt);
+			xsInit(&proptxt);
+			htrGetExpParams(code, &proptxt);
 			expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-			htrAddScriptWgtr_va(s, "%STR&SYM:{exp:function(_this,_context){return ( %STR );}}, ", propname, exptxt.String);
+			htrAddScriptWgtr_va(s, "%STR&SYM:{val:null, exp:function(_this,_context){return ( %STR );}, props:%STR, revexp:null}, ", propname, exptxt.String, proptxt.String);
+			xsDeInit(&proptxt);
 			xsDeInit(&exptxt);
 			break;
 		    }
