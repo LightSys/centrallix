@@ -109,11 +109,26 @@ function lb_update()
 
 function lb_cb_reveal(e)
     {
+    if (this.form)
+	var parents = [this.form];
+    else
+	var parents = this.precedents;
+
     switch (e.eventName) 
 	{
 	case 'Reveal':
+	    for(var i=0; i<parents.length; i++)
+		parents[i].Reveal(this,e);
+	    break;
 	case 'Obscure':
-	    if (this.form) this.form.Reveal(this,e);
+	    for(var i=0; i<parents.length; i++)
+		{
+		if (wgtrGetType(parents[i]) == 'widget/form')
+		    parents[i].Reveal(this,e);
+		else
+		    parents[i].Obscure(this);
+		}
+	    //if (this.form) this.form.Reveal(this,e);
 	    break;
 	case 'RevealCheck':
 	case 'ObscureCheck':
@@ -121,6 +136,7 @@ function lb_cb_reveal(e)
 	    else pg_reveal_check_ok(e);
 	    break;
 	}
+
     return true;
     }
 
@@ -212,6 +228,24 @@ function lbl_init(l, wparam)
 	    {
 	    // already visible
 	    l.form.Reveal(l,{ eventName:'Reveal' });
+	    }
+	}
+    else if (wgtrIsExpressionServerProperty(l, "value"))
+	{
+	var precedents = wgtrGetServerPropertyPrecedents(l, "value");
+	l.precedents = [];
+	l.Reveal = lb_cb_reveal;
+	var is_vis = pg_reveal_register_listener(l);
+
+	for(var i=0; i<precedents.length; i++)
+	    {
+	    var precedent = wgtrGetNodeUnchecked(l, precedents[i].obj);
+	    if (precedent && (wgtrGetType(precedent) == 'widget/osrc' || wgtrGetType(precedent) == 'widget/form'))
+		{
+		l.precedents.push(precedent);
+		if (is_vis)
+		    precedent.Reveal(l, {eventName:'Reveal'} );
+		}
 	    }
 	}
 
