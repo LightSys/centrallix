@@ -172,7 +172,8 @@ prt_textod_OutputPage(pPrtTextodInf context)
 	    }
 
 	/** form feed **/
-	prt_textod_Output(context, "\14", 1);
+	if (!strcmp(prtGetSessionParam(context->Session, "text_pagebreak", "yes"), "yes"))
+	    prt_textod_Output(context, "\14", 1);
 
 	/** Clear the page **/
 	context->MaxLine = -1;
