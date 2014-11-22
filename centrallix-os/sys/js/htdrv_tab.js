@@ -41,7 +41,7 @@ function tc_makecurrent()
 		htr_setzindex(t.tab, htr_getzindex(this.tabctl) - 1);
 		t.tab.marker_image.src = '/sys/images/tab_lft3.gif';
 		moveBy(t.tab, this.tabctl.xo, this.tabctl.yo);
-		setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
+		//setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
 		if (this.tabctl.inactive_bgColor) htr_setbgcolor(t.tab, this.tabctl.inactive_bgColor);
 		if (this.tabctl.inactive_bgnd) htr_setbgimage(t.tab, this.tabctl.inactive_bgnd);
 		}
@@ -56,7 +56,7 @@ function tc_makecurrent()
 	htr_setzindex(this.tab, htr_getzindex(this.tabctl) + 1);
 	this.tab.marker_image.src = '/sys/images/tab_lft2.gif';
 	moveBy(this.tab, -this.tabctl.xo, -this.tabctl.yo);
-	setClipItem(this.tab, this.tabctl.cl, getClipItem(this.tab, this.tabctl.cl) - this.tabctl.ci);
+	//setClipItem(this.tab, this.tabctl.cl, getClipItem(this.tab, this.tabctl.cl) - this.tabctl.ci);
 	}
     this.setTabUnwatched();
     this.tabctl.ifcProbe(ifEvent).Activate("TabChanged", {Selected:this.tabctl.selected, SelectedIndex:this.tabctl.selected_index});
@@ -71,7 +71,7 @@ function tc_makenotcurrent(t)
 	htr_setzindex(t.tab,htr_getzindex(t.tabctl) - 1);
 	t.tab.marker_image.src = '/sys/images/tab_lft3.gif';
 	moveBy(t.tab, t.tabctl.xo, t.tabctl.yo);
-	setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
+	//setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
 	if (t.tabctl.inactive_bgColor) htr_setbgcolor(t.tab, t.tabctl.inactive_bgColor);
 	if (t.tabctl.inactive_bgnd) htr_setbgimage(t.tab, t.tabctl.inactive_bgnd);
 	}
@@ -97,16 +97,16 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    if (this.tabs.length > 0)
 		{
 		//alert(htr_getphyswidth(this.tabs[this.tabs.length-1]));
-		newx = getPageX(this.tabs[this.tabs.length-1].tab) + htr_getphyswidth(this.tabs[this.tabs.length-1].tab) + 1;
+		newx = getPageX(this.tabs[this.tabs.length-1].tab) + $(this.tabs[this.tabs.length-1].tab).outerWidth() + 1;
 		if (htr_getvisibility(this.tabs[this.tabs.length-1]) == 'inherit') newx += l.xo;
 		}
 	    else
 		newx = getPageX(this);
 	    }
 	else if (l.tloc == 2) // left
-	    newx = getPageX(this)- htr_getviswidth(l_tab) + 1;
+	    newx = getPageX(this)- htr_getviswidth(l_tab) + 0;
 	else if (l.tloc == 3) // right
-	    newx = getPageX(this) + htr_getviswidth(this) - 1;
+	    newx = getPageX(this) + htr_getviswidth(this) + 1;
 
 	if (l.tloc == 2 || l.tloc == 3) // left or right
 	    {
@@ -119,7 +119,7 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 		newy = getPageY(this);
 	    }
 	else if (l.tloc == 1) // bottom
-	    newy = getPageY(this)+ htr_getvisheight(this) - 1;
+	    newy = getPageY(this)+ htr_getvisheight(this) + 1;
 	else // top
 	    newy = getPageY(this) - 24;
 	}
@@ -135,7 +135,7 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    {
 	    newx += l.xo;
 	    newy += l.yo;
-	    setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
+	    //setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
 	    if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
 	    else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
 	    if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
@@ -180,8 +180,8 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	}
     l_tab.tabpage = l_page;
     l_tab.tabctl = this;
-    setClipWidth(l_page, getClipWidth(this)-2);
-    setClipHeight(l_page, getClipHeight(this)-2);
+    //setClipWidth(l_page, getClipWidth(this)-2);
+    //setClipHeight(l_page, getClipHeight(this)-2);
 
     // Indicate that we generate reveal/obscure notifications
     l_page.Reveal = tc_cb_reveal;
@@ -249,7 +249,7 @@ function tc_clear_tabs(tabs)
 	{
 	if(tabs[i].type=='generated')
 	    {
-	    setClipWidth(tabs[i],0);
+	    //setClipWidth(tabs[i],0);
 	    if(!tabs[i].tabctl.tc_layer_cache) tabs[i].tabctl.tc_layer_cache = new Array();
 	    tabs[i].tabctl.tc_layer_cache.push(tabs[i]);
 	    tabs.splice(i,1);
@@ -319,13 +319,14 @@ function tc_updated(p1)
 	    newpage = htr_new_layer(null,pageparent);
 	    newtab.marker_image = tabs[i].marker_image;
 	    newtab.marker_image.src = '/sys/images/tab_lft3.gif';
-	    htr_write_content(newtab,content);
+	    $(newtab).find('span').text('&nbsp;' + htutil_encode(vals[j]) + '&nbsp;');
+	    //htr_write_content(newtab,content);
 	    htr_setvisibility(newtab,'inherit');
 	    htr_setvisibility(newpage,'inherit');
 	    htr_setzindex(newtab,14);
 	    this.addTab(newtab,newpage,this,vals[j],'generated','');
-	    setClipWidth(newtab,htr_getphyswidth(newtab));
-	    setClipHeight(newtab,26);
+	    //setClipWidth(newtab,htr_getphyswidth(newtab));
+	    //setClipHeight(newtab,26);
 	    
 	    newpage.osrcdata = vals[j];
 	    newpage.recordnumber = j;
@@ -470,14 +471,14 @@ function tc_visible_changed(prop,o,n)
     
     if(this.tabctl.tloc == 2) //left
 	{
-	var currx = getRelativeX(t)-getClipWidth(t.tabs[0].tab)+4, curry = getRelativeY(t); //initial values
+	var currx = getRelativeX(t)-$(t.tabs[0].tab).width()+4, curry = getRelativeY(t); //initial values
 	for(var i = 0; i< this.tabctl.tabs.length; i++)
 	    {
 	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
 		moveTo(this.tabctl.tabs[i].tab,currx,curry);
-		curry+=getClipHeight(this.tabctl.tabs[i].tab)+1;
+		curry+=$(this.tabctl.tabs[i].tab).height()+1;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    curry+=yo; currx+=xo;
@@ -494,7 +495,7 @@ function tc_visible_changed(prop,o,n)
 		{
 		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
 		moveToAbsolute(this.tabctl.tabs[i].tab,currx,curry);
-		currx+=getClipWidth(this.tabctl.tabs[i].tab)+2;
+		currx+=$(this.tabctl.tabs[i].tab).width()+2;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    currx+=xo; curry+=yo;
@@ -504,14 +505,14 @@ function tc_visible_changed(prop,o,n)
 	}
     else if(this.tabctl.tloc == 3) //right
 	{
-	var currx = getRelativeX(t)+getClipWidth(t)-3, curry = getRelativeY(t); //currently height is fixed at 26
+	var currx = getRelativeX(t)+$(t).width()-3, curry = getRelativeY(t); //currently height is fixed at 26
 	for(var i = 0; i< this.tabctl.tabs.length; i++)
 	    {
 	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
 		moveTo(this.tabctl.tabs[i].tab,currx,curry);
-		curry+=getClipHeight(this.tabctl.tabs[i].tab)+1;
+		curry+=$(this.tabctl.tabs[i].tab).height()+1;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    curry+=yo; currx+=xo;
@@ -521,14 +522,14 @@ function tc_visible_changed(prop,o,n)
 	}
     else //bottom
 	{    
-	var currx = getRelativeX(t), curry = getRelativeY(t)+getClipHeight(t)-3; //currently height is fixed at 26
+	var currx = getRelativeX(t), curry = getRelativeY(t)+$(t).height()-3; //currently height is fixed at 26
 	for(var i = 0; i< this.tabctl.tabs.length; i++)
 	    {
 	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
 		moveTo(this.tabctl.tabs[i].tab,currx,curry);
-		currx+=getClipWidth(this.tabctl.tabs[i].tab)+2;
+		currx+=$(this.tabctl.tabs[i].tab).width()+2;
 		if(this.tabctl.selected_index-1 == i)
 		    {
 		    currx+=xo; curry+=yo;
