@@ -234,6 +234,8 @@ typedef struct
     /*handle_t	InactivityTimer;*/
     pObjSession	AppObjSess;
     pNhtAppGroup    Group;
+    XArray	Endorsements;
+    XArray	Contexts;
     }
     NhtApp, *pNhtApp;
 
@@ -338,6 +340,9 @@ struct
     long long	G_ID_Count;
     long long	A_ID_Count;
     SSL_CTX*	SSL_ctx;
+    char	UploadTmpDir[256];	/* default is /var/tmp */
+    XArray	AllowedUploadDirs;	/* where uploads can eventually go */
+    XArray	AllowedUploadExts;	/* allowed extensions */
     }
     NHT;
 

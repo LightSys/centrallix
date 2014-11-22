@@ -583,6 +583,8 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
 	app->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeoutApp, (void*)app);
 	/*app->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutApp, (void*)app);*/
 	xaAddItem(&group->Apps, (void*)app);
+	xaInit(&app->Endorsements, 16);
+	xaInit(&app->Contexts, 16);
 
     return app;
     }
@@ -593,9 +595,19 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
 int
 nht_internal_FreeApp(pNhtApp app)
     {
+    int i;
 
 	/** Disconnect from the app group **/
 	xaRemoveItem(&(app->Group->Apps), xaFindItem(&(app->Group->Apps), (void*)app));
+
+	/** Free the endorsement/context info **/
+	for(i=0;i<app->Endorsements.nItems;i++)
+	    {
+	    nmSysFree(app->Endorsements.Items[i]);
+	    nmSysFree(app->Contexts.Items[i]);
+	    }
+	xaDeInit(&app->Endorsements);
+	xaDeInit(&app->Contexts);
 
 	/** Clean up... **/
 	nht_internal_RemoveWatchdog(app->WatchdogTimer);
