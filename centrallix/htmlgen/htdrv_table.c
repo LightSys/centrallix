@@ -128,6 +128,7 @@ typedef struct
     int gridinemptyrows;
     int allow_selection;
     int show_selection;
+    int initial_selection;
     int reverse_order;
     int overlap_scrollbar;	/* scrollbar overlaps with table */
     int hide_scrollbar;		/* don't show scrollbar at all */
@@ -146,6 +147,8 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     char *nptr;
     int h;
     int first_offset = (t->has_header)?(t->min_rowheight):0;
+    pWgtrNode children[32];
+    int detailcnt;
     httbl_col* col;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
@@ -159,17 +162,6 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+1);
 	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+2);
 
-	/** HTML body <DIV> element for the layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\"></DIV>\n",t->id);
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSscroll\">\n",t->id);
-	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
-	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
-	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-first_offset-t->cellvspacing);
-	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
-	htrAddBodyItem(s,"</TABLE>\n");
-	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"></DIV>\n",t->id);
-
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_current","null",0);
 	htrAddScriptGlobal(s,"tbldx_current","null",0);
@@ -181,7 +173,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->min_rowheight, t->max_rowheight,
@@ -189,7 +181,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
 		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
 		t->colsep,t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
-		t->allow_selection, t->show_selection,
+		t->allow_selection, t->show_selection, t->initial_selection,
 		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
 		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
 		t->data_mode, t->has_header,
@@ -217,28 +209,51 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddScriptInit(s,"null]});\n");
 
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\">\n",t->id);
+
+	detailcnt = wgtrGetMatchingChildList(tree, "widget/table-row-detail", children, sizeof(children)/sizeof(pWgtrNode));
+	//for (i=0;i<xaCount(&(tree->Children));i++)
+	for (i=0;i<detailcnt;i++)
 	    {
-	    sub_tree = xaGetItem(&(tree->Children), i);
+	    sub_tree = children[i];
+	    //sub_tree = xaGetItem(&(tree->Children), i);
+	    //
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
 	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&nptr));
+
 	    if (strcmp(ptr, "widget/table-row-detail") == 0)
 		{
-		if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = t->min_rowheight;
+		htrCheckNSTransition(s, tree, sub_tree);
+
+		if (wgtrGetPropertyValue(sub_tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = t->min_rowheight;
 		htrAddStylesheetItem_va(s,"\t#tbld%POSsub%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
-			t->id, ++subcnt, t->w-18, h, z+2);
-		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\"></DIV>\n", t->id, subcnt);
+			t->id, ++subcnt, t->w-(t->demand_scrollbar?0:18), h, z+2);
+		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\">\n", t->id, subcnt);
 		htrRenderSubwidgets(s, sub_tree, z+3);
 		htrAddBodyItem(s,"</DIV>\n");
 		htrAddWgtrObjLinkage_va(s, sub_tree, "htr_subel(_parentctr, \"tbld%POSsub%POS\")", t->id, subcnt);
-		htrCheckAddExpression(s, sub_tree, nptr, "visible");
-		}
-	    else if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
-		{
-		htrRenderWidget(s, sub_tree, z+3);
-		}
-	    }
+		htrCheckAddExpression(s, sub_tree, nptr, "display_for");
 
+		htrCheckNSTransitionReturn(s, tree, sub_tree);
+		}
+	    //else if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
+		//{
+		//htrRenderWidget(s, sub_tree, z+3);
+		//}
+	    }
+	htrRenderSubwidgets(s, tree, z+3);
+
+	htrAddBodyItem(s,"</DIV>\n");
+
+	/** HTML body <DIV> element for the scrollbar layer. **/
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSscroll\">\n",t->id);
+	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
+	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
+	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-first_offset-t->cellvspacing);
+	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
+	htrAddBodyItem(s,"</TABLE>\n");
+	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"></DIV>\n",t->id);
 	htrAddBodyItem(s,"</DIV>\n");
 
 	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
@@ -320,6 +335,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->gridinemptyrows = htrGetBoolean(tree, "gridinemptyrows", 1);
 	t->allow_selection = htrGetBoolean(tree, "allow_selection", 1);
 	t->show_selection = htrGetBoolean(tree, "show_selection", 1);
+	t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
 	t->reverse_order = htrGetBoolean(tree, "reverse_order", 0);
 
 	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);

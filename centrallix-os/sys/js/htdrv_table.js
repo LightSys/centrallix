@@ -57,7 +57,7 @@ function tbld_format_cell(cell, color)
     if (cell.capdata)
 	{
 	// Caption (added to any of the above types)
-	captxt = '<span>' + htutil_encode(cell.capdata, colinfo.wrap != 'no') + '</span>';
+	captxt = '<span>' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
 	capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	}
 
@@ -177,14 +177,14 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	    {
 	    if (!this.rows[i])
 		{
-		this.rows[i] = this.InstantiateRow(this.scrolldiv);
+		this.rows[i] = this.InstantiateRow(this.scrolldiv,0,0);
 		this.rows[i].rownum = i;
 		new_rows.push(this.rows[i]);
 		}
 	    var row = this.rows[i];
 	    this.osrc.SetEvalRecord(i);
 	    this.SetupRowData(i);
-	    this.FormatRow(i, i == this.osrc.CurrentRecord && !this.is_new, this.is_new && i == this.target_range.end);
+	    this.FormatRow(i, this.initselect && i == this.osrc.CurrentRecord && !this.is_new, this.is_new && i == this.target_range.end);
 	    this.osrc.SetEvalRecord(null);
 	    }
 	else if (i > 0)
@@ -388,6 +388,14 @@ function tbld_update_height(row)
 	var maxheight = this.min_rowheight - this.cellvspacing*2;
 	}
 
+    // widget/table-row-detail positioning
+    for(var i=0; i<row.detail.length; i++)
+	{
+	var dw = row.detail[i];
+	$(dw).css({"top": maxheight + "px"});
+	maxheight += $(dw).height();
+	}
+
     // No change?
     if (tbld_css_height(row) == maxheight + this.innerpadding*2)
 	return false;
@@ -422,7 +430,23 @@ function tbld_format_row(id, selected, do_new)
 	    this.rows[id].deselect();
 	    break;
 	}
-    this.UpdateHeight(this.rows[id]);
+    if (this.UpdateHeight(this.rows[id]))
+	{
+	var upd_rows = [];
+	for(var j=id+1; j<=this.rows.last; j++)
+	    {
+	    if (this.rows[j] && this.rows[j].positioned)
+		{
+		this.rows[j].positioned = false;
+		upd_rows.push(this.rows[j]);
+		}
+	    }
+	if (upd_rows.length)
+	    {
+	    this.PositionRows(upd_rows);
+	    this.CheckBottom();
+	    }
+	}
     this.rows[id].disp_mode = new_disp_mode;
     this.rows[id].needs_redraw = false;
     }
@@ -525,7 +549,12 @@ function tbld_update_thumb(anim)
 
     // Set scrollbar visibility
     if (this.demand_scrollbar)
-	htr_setvisibility(this.scrollbar, (this.thumb_height == this.thumb_avail)?"hidden":"inherit");
+	{
+	$(this.scrollbar).stop(false, true);
+	$(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear", null);
+	}
+	//$(this.scrollbar).css({"opacity": (this.thumb_height == this.thumb_avail)?0.0:1.0});
+	//htr_setvisibility(this.scrollbar, (this.thumb_height == this.thumb_avail)?"hidden":"inherit");
     }
 
 
@@ -557,7 +586,7 @@ function tbld_object_modified(current, dataobj)
     this.RedrawAll(null, true);
     }
 
-function tbld_clear_rows()
+function tbld_clear_rows(fromobj, why)
     {
     for(var i=this.rows.first; i<=this.rows.last; i++)
 	{
@@ -572,6 +601,8 @@ function tbld_clear_rows()
     this.scroll_minrec = null;
     this.target_range = {start:1, end:this.max_display*2};
     this.UpdateThumb(false);
+    //if (why != 'refresh')
+	this.initselect = this.initselect_orig;
     }
 
 function tbld_select()
@@ -589,8 +620,58 @@ function tbld_select()
 	}
     if(tbld_current==this)
 	{
-	this.oldbgColor=null;
 	this.mouseover();
+	}
+    for(var i=0; i<this.table.detail_widgets.length; i++)
+	{
+	var dw = this.table.detail_widgets[i];
+	if (wgtrGetServerProperty(dw, 'display_for', 1))
+	    {
+	    var found=false;
+	    for(var j=0; j<this.detail.length; j++)
+		{
+		if (this.detail[j] == dw)
+		    {
+		    found=true;
+		    break;
+		    }
+		}
+
+	    if (!found)
+		{
+		// already a part of another row?
+		if ($(dw).css("visibility") == 'inherit')
+		    pg_reveal_event(dw, dw, 'Obscure');
+
+		// Add to this row and show it.
+		this.detail.push(dw);
+		this.appendChild(dw);
+		$(dw).css
+		    ({
+		    "visibility": "inherit",
+		    "left": "0px",
+		    "top": "0px",
+		    });
+		pg_reveal_event(dw, dw, 'Reveal');
+		}
+	    }
+	else
+	    {
+	    for(var j=0; j<this.detail.length; j++)
+		{
+		if (this.detail[j] == dw)
+		    {
+		    this.detail.splice(j, 1);
+		    pg_reveal_event(dw, dw, 'Obscure');
+		    $(dw).css
+			({
+			"visibility": "hidden",
+			});
+		    this.table.appendChild(dw);
+		    break;
+		    }
+		}
+	    }
 	}
     }
 
@@ -607,6 +688,20 @@ function tbld_deselect()
 	this.removeChild(this.ctr);
 	this.ctr = null;
 	}
+    for(var i=0; i<this.detail.length; i++)
+	{
+	var dw = this.detail[i];
+	if (dw.parentElement == this)
+	    {
+	    pg_reveal_event(dw, dw, 'Obscure');
+	    $(dw).css
+		({
+		"visibility": "hidden",
+		});
+	    this.table.appendChild(dw);
+	    }
+	}
+    this.detail = [];
     }
 
 function tbld_newselect()
@@ -852,6 +947,14 @@ function tbld_unsetclick(l,n)
     }
 
 
+// Callback used for obscure and reveal checks from row detail widgets
+function tbld_cb_dw_reveal(event)
+    {
+    // we don't do obscure/reveal checks yet, so we just return true here.
+    return true;
+    }
+
+
 // Called when the table's layer is revealed/shown to the user
 function tbld_cb_reveal(event)
     {
@@ -898,6 +1001,20 @@ function tbld_remove_row(rowobj)
     delete this.rows[slot];
     this.rowdivcache.push(rowobj);
     rowobj.positioned = false;
+    for(var i=0; i<rowobj.detail.length; i++)
+	{
+	var dw = rowobj.detail[i];
+	if (dw.parentElement == rowobj)
+	    {
+	    pg_reveal_event(dw, dw, 'Obscure');
+	    $(dw).css
+		({
+		"visibility": "hidden",
+		});
+	    this.appendChild(dw);
+	    }
+	}
+    rowobj.detail = [];
 
     // Update first/last info
     if (this.rows.first == slot)
@@ -1073,6 +1190,7 @@ function tbld_instantiate_row(parentDiv, x, y)
     row.mouseover=tbld_domouseover;
     row.mouseout=tbld_domouseout;
     row.needs_redraw = false;
+    row.detail = [];
 
     // Build the cells for the row
     row.cols=new Array(this.colcount);
@@ -1110,12 +1228,15 @@ function tbld_init(param)
     var scroll = param.scroll;
     ifc_init_widget(t);
     t.param_width = param.width;
+    t.param_height = param.height;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
+    t.initselect = param.initial_selection;
+    t.initselect_orig = param.initial_selection;
     t.datamode = param.dm;
     t.has_header = param.hdr;
     t.demand_scrollbar = param.demand_sb;
@@ -1275,7 +1396,7 @@ function tbld_init(param)
     setClipWidth(t, param.width);
     setClipHeight(t, param.height);
     t.subkind='table';
-    t.bdr_width = 3;
+    t.bdr_width = (t.colsep > 0)?3:0;
     t.target_y = null;
 
     // Set up header row.
@@ -1283,8 +1404,7 @@ function tbld_init(param)
 	t.max_rowheight = param.height;
     if (t.has_header)
 	{
-	t.rows[0] = t.hdrrow = t.InstantiateRow(t);
-	moveTo(t.hdrrow, 0, 0);
+	t.rows[0] = t.hdrrow = t.InstantiateRow(t,0,0);
 	t.UpdateHeight(t.hdrrow);
 	t.hdrrow.rownum = 0;
 	}
@@ -1366,8 +1486,12 @@ function tbld_init(param)
 	"left": "0px",
 	});
 
-    // Scrollbar styling - just testing...
+    // Scrollbar styling
     //$(t.scrollbar).find('td:has(img),div').css({'background-color':'rgba(128,128,128,0.2)'});
+    if (t.demand_scrollbar)
+	$(t.scrollbar).css({"opacity": 0.0, "visibility": "inherit"});
+    if (window.tbld_mcurrent == undefined)
+	window.tbld_mcurrent = null;
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
@@ -1379,6 +1503,17 @@ function tbld_init(param)
     t.Reveal = tbld_cb_reveal;
     pg_reveal_register_listener(t);
 
+    // Locate any row detail subwidgets
+    t.detail_widgets = wgtrFindMatchingDescendents(t, 'widget/table-row-detail');
+    for(var i=0; i<t.detail_widgets.length; i++)
+	{
+	var dw = t.detail_widgets[i];
+	dw.table = t;
+	dw.Reveal = tbld_cb_dw_reveal;
+	pg_reveal_register_triggerer(dw);
+	dw.display_for = 1;
+	}
+
     return t;
     }
 
@@ -1388,6 +1523,23 @@ function tbld_mouseover(e)
     var ly = e.layer;
     if(ly.kind && ly.kind=='tabledynamic')
         {
+	if (ly.table && !ly.table.has_mouse)
+	    {
+	    var t = ly.table;
+	    t.has_mouse = true;
+	    if (tbld_mcurrent && tbld_mcurrent != t)
+		{
+		tbld_mcurrent.has_mouse = false;
+		$(tbld_mcurrent.scrollbar).stop(false, true);
+		$(tbld_mcurrent.scrollbar).animate({"opacity": (tbld_mcurrent.thumb_height == tbld_mcurrent.thumb_avail)?0.0:(tbld_mcurrent.has_mouse?1.0:0.33)}, 150, "linear", null);
+		}
+	    tbld_mcurrent = t;
+	    if (t.demand_scrollbar)
+		{
+		$(t.scrollbar).stop(false, true);
+		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		}
+	    }
         if(ly.subkind=='cellborder')
             {
             ly=ly.cell.row;
@@ -1518,13 +1670,55 @@ function tbld_mousedown(e)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
 		    {
+		    ly.table.initselect = true;
 		    if(ly.rownum)
 			{
 			ly.table.osrc.MoveToRecord(ly.rownum);
 			}
 		    }
-		if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
+		else if (!ly.table.initselect)
 		    {
+		    ly.table.initselect = true;
+		    ly.table.RedrawAll(null, true);
+		    }
+		}
+	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
+		{
+		var event = new Object();
+		if (orig_ly.subkind == 'cell')
+		    {
+		    event.Column = ly.table.cols[orig_ly.colnum].fieldname;
+		    event.ColumnValue = orig_ly.data;
+		    }
+		event.Caller = ly.table;
+		event.recnum = ly.rownum;
+		event.data = new Object();
+		var rec=ly.table.osrc.replica[ly.rownum];
+		if(rec)
+		    {
+		    for(var i in rec)
+			{
+			event.data[rec[i].oid]=rec[i].value;
+			if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum')
+			    event[rec[i].oid] = rec[i].value;
+			}
+		    }
+		ly.table.dta=event.data;
+		cn_activate(ly.table,'Click', event);
+		}
+	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
+		{
+		if (!ly.table.clicked || !ly.table.clicked[ly.rownum])
+		    {
+		    if (!ly.table.clicked) ly.table.clicked = new Array();
+		    if (!ly.table.tid) ly.table.tid = new Array();
+		    ly.table.clicked[ly.rownum] = 1;
+		    ly.table.tid[ly.rownum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.rownum);
+		    }
+		else
+		    {
+		    ly.table.clicked[ly.rownum] = 0;
+		    clearTimeout(ly.table.tid[ly.rownum]);
 		    var event = new Object();
 		    if (orig_ly.subkind == 'cell')
 			{
@@ -1545,45 +1739,7 @@ function tbld_mousedown(e)
 			    }
 			}
 		    ly.table.dta=event.data;
-		    cn_activate(ly.table,'Click', event);
-		    delete event;
-		    }
-		if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
-		    {
-		    if (!ly.table.clicked || !ly.table.clicked[ly.rownum])
-			{
-			if (!ly.table.clicked) ly.table.clicked = new Array();
-			if (!ly.table.tid) ly.table.tid = new Array();
-			ly.table.clicked[ly.rownum] = 1;
-			ly.table.tid[ly.rownum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.rownum);
-			}
-		    else
-			{
-			ly.table.clicked[ly.rownum] = 0;
-			clearTimeout(ly.table.tid[ly.rownum]);
-			var event = new Object();
-			if (orig_ly.subkind == 'cell')
-			    {
-			    event.Column = ly.table.cols[orig_ly.colnum].fieldname;
-			    event.ColumnValue = orig_ly.data;
-			    }
-			event.Caller = ly.table;
-			event.recnum = ly.rownum;
-			event.data = new Object();
-			var rec=ly.table.osrc.replica[ly.rownum];
-			if(rec)
-			    {
-			    for(var i in rec)
-				{
-				event.data[rec[i].oid]=rec[i].value;
-				if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum')
-				    event[rec[i].oid] = rec[i].value;
-				}
-			    }
-			ly.table.dta=event.data;
-			cn_activate(ly.table,'DblClick', event);
-			delete event;
-			}
+		    cn_activate(ly.table,'DblClick', event);
 		    }
 		}
 	    }
@@ -1618,6 +1774,21 @@ function tbld_mousedown(e)
 
 function tbld_mousemove(e)
     {
+    if (tbld_mcurrent)
+	{
+	var t_offs = $(tbld_mcurrent).offset();
+	if (e.pageX < t_offs.left || e.pageX > t_offs.left + tbld_mcurrent.param_width || e.pageY < t_offs.top || e.pageY > t_offs.top + tbld_mcurrent.param_height)
+	    {
+	    var t = tbld_mcurrent;
+	    tbld_mcurrent = null;
+	    t.has_mouse = false;
+	    if (t.demand_scrollbar)
+		{
+		$(t.scrollbar).stop(false, true);
+		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		}
+	    }
+	}
     if (tbldb_current != null)
         {
         var l=tbldb_current.cell;
