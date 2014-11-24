@@ -591,7 +591,7 @@ function wn_closewin(aparam)
 function wn_openwin(aparam)
     {
     this.point_at = aparam.PointAt;
-    if (this.point_at && typeof this.point_at != 'object' || !wgtrIsNode(this.point_at))
+    if (this.point_at && (typeof this.point_at != 'object' || !wgtrIsNode(this.point_at)))
 	this.point_at = wgtrGetNode(this, this.point_at);
     this.point_side = aparam.PointSide;
     aparam.IsVisible = 1;
