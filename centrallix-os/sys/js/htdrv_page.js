@@ -2088,8 +2088,23 @@ function pg_serialized_load_doone()
 	    }
 	return;
 	}
-    pg_loadqueue_busy++;
-    var one_item = pg_loadqueue.shift(); // remove first item
+
+    // Find an item from the load queue
+    //var one_item = pg_loadqueue.shift(); 
+    var one_item = null;
+    for(var i=0; i<pg_loadqueue.length; i++)
+	{
+	var item = pg_loadqueue[i];
+	if (!item.lyr.__load_busy)
+	    {
+	    one_item = pg_loadqueue.splice(i,1)[0];
+	    one_item.lyr.__load_busy = true;
+	    pg_loadqueue_busy++;
+	    break;
+	    }
+	}
+    if (!one_item) return; // none found
+
     if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' loads ' + one_item.src + '\n');
     one_item.lyr.__pg_onload = one_item.cb;
     switch(one_item.type)
@@ -2112,6 +2127,7 @@ function pg_serialized_load_doone()
 	    else
 		{
 		pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
+		one_item.lyr.__load_busy = false;
 		pg_loadqueue_busy--;
 		}
 	    pg_loadqueue_check();
@@ -2119,6 +2135,7 @@ function pg_serialized_load_doone()
 
 	case 'func':
 	    one_item.cb.apply(one_item.lyr, one_item.params);
+	    one_item.lyr.__load_busy = false;
 	    pg_loadqueue_busy--;
 	    pg_loadqueue_check();
 	    break;
@@ -2128,6 +2145,7 @@ function pg_serialized_load_doone()
 // pg_serialized_load_cb() - called when a load finishes
 function pg_serialized_load_cb()
     {
+    this.__load_busy = false;
     pg_loadqueue_busy--;
     if (pg_loadqueue_busy < 0)
 	pg_loadqueue_busy = 0;
