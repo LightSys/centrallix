@@ -298,7 +298,11 @@ function wn_setvisibility_bh(v)
 	if (this.point_at)
 	    {
 	    // Geometry of widget we're pointing at...
-	    var geom = wgtrGetGeom(this.point_at);
+	    if (this.point_at.GetSelectedGeom)
+		var geom = this.point_at.GetSelectedGeom();
+	    else
+		var geom = wgtrGetGeom(this.point_at);
+	    var using_offset = (this.point_offset != undefined && this.point_offset != null);
 
 	    // Compute based on which side of the window the point will be on
 	    switch(this.point_side)
@@ -312,15 +316,15 @@ function wn_setvisibility_bh(v)
 
 		    // Allowable window positions
 		    var win_y = geom.y + geom.height + 15;
-		    var min_win_x = Math.max(geom.x - max_pt_x, 0);
-		    var max_win_x = Math.min(geom.x + geom.width - min_pt_x, pg_width - $(this).outerWidth());;
+		    var min_win_x = Math.max(geom.x + (using_offset?this.point_offset:0) - max_pt_x, 0);
+		    var max_win_x = Math.min(geom.x + (using_offset?this.point_offset:geom.width) - min_pt_x, pg_width - $(this).outerWidth());;
 		    if (min_win_x > max_win_x) return;
 
 		    // Go with midpoint of min/max win x
 		    win_x = (min_win_x + max_win_x)/2;
 
 		    // Compute point x from there
-		    pt_x = geom.x + geom.width/2 - win_x;
+		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
 		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
 		    break;
 
@@ -333,15 +337,15 @@ function wn_setvisibility_bh(v)
 
 		    // Allowable window positions
 		    var win_x = geom.x + geom.width + 15;
-		    var min_win_y = Math.max(geom.y - max_pt_y, 0);
-		    var max_win_y = Math.min(geom.y + geom.height - min_pt_y, pg_height - $(this).outerHeight());;
+		    var min_win_y = Math.max(geom.y + (using_offset?this.point_offset:0) - max_pt_y, 0);
+		    var max_win_y = Math.min(geom.y + (using_offset?this.point_offset:geom.height) - min_pt_y, pg_height - $(this).outerHeight());;
 		    if (min_win_y > max_win_y) return;
 
 		    // Go with midpoint of min/max win y
 		    win_y = (min_win_y + max_win_y)/2;
 
 		    // Compute point y from there
-		    pt_y = geom.y + geom.height/2 - win_y;
+		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
 		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
 		    break;
 
@@ -354,15 +358,15 @@ function wn_setvisibility_bh(v)
 
 		    // Allowable window positions
 		    var win_x = geom.x - $(this).outerWidth() - 15;
-		    var min_win_y = Math.max(geom.y - max_pt_y, 0);
-		    var max_win_y = Math.min(geom.y + geom.height - min_pt_y, pg_height - $(this).outerHeight());;
+		    var min_win_y = Math.max(geom.y + (using_offset?this.point_offset:0) - max_pt_y, 0);
+		    var max_win_y = Math.min(geom.y + (using_offset?this.point_offset:geom.height) - min_pt_y, pg_height - $(this).outerHeight());;
 		    if (min_win_y > max_win_y) return;
 
 		    // Go with midpoint of min/max win y
 		    win_y = (min_win_y + max_win_y)/2;
 
 		    // Compute point y from there
-		    pt_y = geom.y + geom.height/2 - win_y;
+		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
 		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
 		    break;
 		}
@@ -593,6 +597,7 @@ function wn_openwin(aparam)
     this.point_at = aparam.PointAt;
     if (this.point_at && (typeof this.point_at != 'object' || !wgtrIsNode(this.point_at)))
 	this.point_at = wgtrGetNode(this, this.point_at);
+    this.point_offset = aparam.PointOffset;
     this.point_side = aparam.PointSide;
     aparam.IsVisible = 1;
     return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
@@ -650,6 +655,10 @@ function wn_adjust_z(l,zi)
 	{
 	cur_z += zi;
 	htr_setzindex(l,cur_z);
+	if (l.point1)
+	    htr_setzindex(l.point1,cur_z+1);
+	if (l.point2)
+	    htr_setzindex(l.point2,cur_z+2);
 	}
     if (cur_z > wn_top_z) wn_top_z = cur_z;
     return true;
