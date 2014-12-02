@@ -614,6 +614,11 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	/** Get the name of the query subobject. **/
 	ptr = NULL;
 	objGetAttrValue(inf->MultiQueryObject, "name", DATA_T_STRING, POD(&ptr));
+	if (!ptr)
+	    {
+	    qy_internal_Close(inf);
+	    return NULL;
+	    }
 	if (obj_internal_AddToPath(obj->Pathname, ptr) < 0)
 	    {
 	    mssError(1,"QUERY","Query result pathname exceeds internal limits");
