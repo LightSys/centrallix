@@ -58,6 +58,8 @@ function tbld_format_cell(cell, color)
 	{
 	// Caption (added to any of the above types)
 	captxt = '<span>' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	if (colinfo.wrap != 'no')
+	    captxt = htutil_nlbr(captxt);
 	capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	}
 
@@ -98,10 +100,13 @@ function tbld_format_cell(cell, color)
 		t.UpdateHeight(row);
 		if (pre_h != $(row).height() && row.positioned)
 		    {
-		    for(var i=row.rownum+1; i<=t.rows.lastvis; i++)
+		    for(var i=row.rownum+1; i<=t.rows.lastvis+1; i++)
 			{
-			t.rows[i].positioned = false;
-			upd_rows.push(t.rows[i]);
+			if (t.rows[i])
+			    {
+			    t.rows[i].positioned = false;
+			    upd_rows.push(t.rows[i]);
+			    }
 			}
 		    t.PositionRows(upd_rows);
 		    }
@@ -346,6 +351,16 @@ function tbld_setup_row_data(rowslot)
 	row.needs_redraw = true;
 
     return changed;
+    }
+
+
+function tbld_get_selected_geom()
+    {
+    if (this.cr && this.rows[this.cr])
+	var obj = this.rows[this.cr];
+    else
+	var obj = this;
+    return {x:$(obj).offset().left,y:$(obj).offset().top,width:$(obj).width(),height:$(obj).height()};
     }
 
 
@@ -608,10 +623,11 @@ function tbld_clear_rows(fromobj, why)
 function tbld_select()
     {
     var txt;
-    htr_setbackground(this, this.table.row_bgndhigh);
+    tbld_setbackground(this, this.table, 'rowhighlight');
+    //htr_setbackground(this, wgtrGetServerProperty(this.table, 'rowhighlight_bgcolor', this.table.row_bgndhigh));
     for(var i in this.cols)
 	{
-	this.table.FormatCell(this.cols[i], this.table.textcolorhighlight);
+	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolorhighlight', this.table.textcolorhighlight));
 	}
     if (this.ctr)
 	{
@@ -678,10 +694,11 @@ function tbld_select()
 function tbld_deselect()
     {
     var txt;
-    htr_setbackground(this, (this.rownum%2?this.table.row_bgnd1:this.table.row_bgnd2));
+    tbld_setbackground(this, this.table, this.rownum%2?'row1':'row2');
+    //htr_setbackground(this, wgtrGetServerProperty(this.table, (this.rownum%2?'row1_bgcolor':'row2_bgcolor'), this.rownum%2?this.table.row_bgnd1:this.table.row_bgnd2));
     for(var i in this.cols)
 	{
-	this.table.FormatCell(this.cols[i], this.table.textcolor);
+	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolor', this.table.textcolor));
 	}
     if (this.ctr)
 	{
@@ -707,7 +724,8 @@ function tbld_deselect()
 function tbld_newselect()
     {
     var txt;
-    htr_setbackground(this, this.table.row_bgndnew);
+    tbld_setbackground(this, this.table, 'newrow');
+    //htr_setbackground(this, wgtrGetServerProperty(this.table, 'newrow_bgcolor', this.table.row_bgndnew));
     if (!this.ctr)
 	{
 	this.ctr = document.createElement("center");
@@ -716,8 +734,27 @@ function tbld_newselect()
 	}
     for(var i in this.cols)
 	{
-	this.table.FormatCell(this.cols[i], this.table.textcolornew);
+	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolornew', this.table.textcolornew));
 	}
+    }
+
+function tbld_setbackground(obj, widget, prefix)
+    {
+    // prefix
+    prefix = prefix?(prefix + '_'):'';
+
+    // try image
+    var img = wgtrGetServerProperty(widget, prefix + 'background');
+    if (img)
+	return htr_setbgimage(obj, img);
+
+    // color
+    var color = wgtrGetServerProperty(widget, prefix + 'bgcolor');
+    if (color)
+	return htr_setbgcolor(obj, color);
+
+    // no background
+    return htr_setbackground(this, null);
     }
 
 function tbld_domouseover()
@@ -1392,7 +1429,7 @@ function tbld_init(param)
 
     t.maxwindowsize = t.windowsize;
     t.maxtotalwindowsize = t.totalwindowsize;
-    t.rows = {};
+    t.rows = {first:null, last:null, firstvis:null, lastvis:null, lastosrc:null};
     setClipWidth(t, param.width);
     setClipHeight(t, param.height);
     t.subkind='table';
@@ -1502,6 +1539,9 @@ function tbld_init(param)
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
     pg_reveal_register_listener(t);
+
+    // Get geometry of currently selected row
+    t.GetSelectedGeom = tbld_get_selected_geom;
 
     // Locate any row detail subwidgets
     t.detail_widgets = wgtrFindMatchingDescendents(t, 'widget/table-row-detail');
