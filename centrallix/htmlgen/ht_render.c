@@ -1318,7 +1318,7 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     pObject include_file;
     char buf[256];
     int rcnt;
-    pObjData pod;
+    ObjData pod;
 
 	/** Insert file directly? **/
 	c_param = stLookup_ne(s->Params, "ls__collapse_includes");
@@ -1343,9 +1343,9 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	if (include_file)
 	    {
-	    if (objGetAttrValue(include_file, "last_modification", DATA_T_DATETIME, pod) == 0)
+	    if (objGetAttrValue(include_file, "last_modification", DATA_T_DATETIME, &pod) == 0)
 		{
-		snprintf(buf, sizeof(buf), "%lld", pod->DateTime->Value);
+		snprintf(buf, sizeof(buf), "%lld", pod.DateTime->Value);
 		}
 	    objClose(include_file);
 	    }
