@@ -298,6 +298,18 @@ nht_internal_ConnHandler(void* conn_v)
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    goto out;
 	    }
+
+	/** If there is a date code, strip the code off **/
+	ptr = strstr(url_inf->StrVal, "/CXDC:");
+	if (ptr)
+	    {
+	    if (strspn(ptr+6, "0123456789") == strlen(ptr+6))
+		{
+		*ptr = '\0';
+		}
+	    }
+
+	/** Fixup the path by re-adding the needed path parameters **/
 	nht_internal_ConstructPathname(url_inf);
 
 	/** Watchdog ping? **/

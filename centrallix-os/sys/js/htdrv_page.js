@@ -41,6 +41,7 @@ function pg_scriptavailable(s)
     {
     if (!s.src) return true;
     var s_name = s.src;
+    s_name = s_name.replace(/\/CXDC:[0-9]*$/, "");
     var pos = s_name.lastIndexOf("/");
     var file = s_name.substr(pos+1);
     return pg_scripts[file]?true:false;
