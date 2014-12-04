@@ -233,9 +233,9 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	if (strcmp(valign,"top") != 0)
-	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<table><tr><td>%STR&HTENLBR</td></tr></table>", text);
+	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<table><tr><td><span>%STR&HTENLBR</span></td></tr></table>", text);
 	else
-	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "%STR&HTENLBR", text);
+	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<span>%STR&HTENLBR</span>", text);
 
 	/** Check for more sub-widgets **/
 	htrRenderSubwidgets(s, tree, z+1);

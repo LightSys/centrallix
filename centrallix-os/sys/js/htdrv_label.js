@@ -100,10 +100,11 @@ function lb_update()
     var v = htutil_nlbr(htutil_encode(htutil_obscure(this.content), true));
     //var txt = this.stylestr + (v?v:"") + "</font></td></tr></table>";
     var txt = v?v:"";
-    if (cx__capabilities.Dom0NS) // only serialize this for NS4
+    $(this).find("span").text(txt).attr("style", htutil_getstyle(this, null, {}));
+    /*if (cx__capabilities.Dom0NS) // only serialize this for NS4
 	pg_serialized_write(this, txt, null);
     else
-	htr_write_content(this, txt);
+	htr_write_content(this, txt);*/
     this.CheckSize();
     }
 
@@ -248,6 +249,8 @@ function lbl_init(l, wparam)
 		}
 	    }
 	}
+
+    $(l).find("span").attr("style", htutil_getstyle(l, null, {}));
 
     l.CheckSize();
 
