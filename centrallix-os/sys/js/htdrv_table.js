@@ -176,6 +176,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	}
 
     // (re)draw the loaded records
+    var selected_position_changed = false;
     for(var i=this.target_range.start; i<=this.target_range.end; i++)
 	{
 	if (i >= min && i <= max)
@@ -189,7 +190,17 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	    var row = this.rows[i];
 	    this.osrc.SetEvalRecord(i);
 	    this.SetupRowData(i);
-	    this.FormatRow(i, this.initselect && i == this.osrc.CurrentRecord && !this.is_new, this.is_new && i == this.target_range.end);
+	    if (this.cr == i)
+		{
+		if (this.initselect && this.crname && this.crname != row.name && !selected_position_changed)
+		    this.initselect = this.initselect_orig;
+		this.crname = null;
+		}
+		//selected_position_changed = true;
+	    //if (this.crname == row.name && this.cr != i)
+	//	selected_position_changed = i;
+	    var is_selected = this.initselect && i == this.osrc.CurrentRecord && !this.is_new;
+	    this.FormatRow(i, is_selected, this.is_new && i == this.target_range.end);
 	    this.osrc.SetEvalRecord(null);
 	    }
 	else if (i > 0)
@@ -219,6 +230,12 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // out from under us.
     if (this.datamode != 1)
 	this.osrc.SetViewRange(this, this.rows.first, this.rows.last);
+
+    // If selection changed, re-select the selected row by name
+    //if (selected_position_changed)
+//	{
+//	this.osrc.MoveToRecord(selected_position_changed);
+//	}
 
     // Need to scroll?
     if (this.target_y != null)
@@ -333,6 +350,7 @@ function tbld_setup_row_data(rowslot)
 		changed = true;
 	    row.cols[j].data = txt;
 	    }
+	row.name = this.FindOsrcValue(rowslot, 'name');
 
 	// caption value
 	for(var j in row.cols)
@@ -604,6 +622,10 @@ function tbld_object_modified(current, dataobj)
 
 function tbld_clear_rows(fromobj, why)
     {
+    if (why == 'refresh')
+	this.crname = (this.cr && this.rows[this.cr])?this.rows[this.cr].name:null;
+    else
+	this.crname = null;
     for(var i=this.rows.first; i<=this.rows.last; i++)
 	{
 	this.RemoveRow(this.rows[i]);
@@ -617,7 +639,7 @@ function tbld_clear_rows(fromobj, why)
     this.scroll_minrec = null;
     this.target_range = {start:1, end:this.max_display*2};
     this.UpdateThumb(false);
-    //if (why != 'refresh')
+    if (why != 'refresh')
 	this.initselect = this.initselect_orig;
     }
 
@@ -1743,6 +1765,7 @@ function tbld_mousedown(e)
 		    ly.table.initselect = true;
 		    if(ly.rownum)
 			{
+			ly.crname = null;
 			ly.table.osrc.MoveToRecord(ly.rownum);
 			}
 		    }

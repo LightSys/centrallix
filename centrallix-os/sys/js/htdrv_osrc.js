@@ -80,6 +80,22 @@ function osrc_action_refresh(aparam)
     var tr = this.CurrentRecord;
     if (!tr || tr < 1) tr = 1;
     this.doing_refresh = true;
+
+    // Keep track of current object by name
+    if (this.replica[this.CurrentRecord])
+	{
+	for(var j=0; j<this.replica[this.CurrentRecord].length;j++)
+	    {
+	    if (this.replica[this.CurrentRecord][j].oid == 'name')
+		{
+		this.refresh_objname = this.replica[this.CurrentRecord][j].value;
+		break;
+		}
+	    }
+	}
+    else
+	this.refresh_objname = null;
+
     if (this.querytext)
 	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr});
     else
@@ -1673,6 +1689,8 @@ function osrc_fetch_next()
 	for(var j=0; j<row.length; j++)
 	    {
 	    this.replica[this.OSMLRecord][j] = row[j];
+	    if (this.doing_refresh && this.refresh_objname && row[j].oid == 'name' && this.refresh_objname == row[j].value)
+		this.CurrentRecord = this.OSMLRecord;
 	    }
 	}
     this.data_start = 1; // reset it
