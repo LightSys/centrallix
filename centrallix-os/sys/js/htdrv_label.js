@@ -100,7 +100,7 @@ function lb_update()
     var v = htutil_nlbr(htutil_encode(htutil_obscure(this.content), true));
     //var txt = this.stylestr + (v?v:"") + "</font></td></tr></table>";
     var txt = v?v:"";
-    $(this).find("span").text(txt).attr("style", htutil_getstyle(this, null, {}));
+    $(this).find("span").html(txt).attr("style", htutil_getstyle(this, null, {}));
     /*if (cx__capabilities.Dom0NS) // only serialize this for NS4
 	pg_serialized_write(this, txt, null);
     else
