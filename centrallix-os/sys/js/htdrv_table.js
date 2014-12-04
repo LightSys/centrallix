@@ -554,6 +554,7 @@ function tbld_update_thumb(anim)
     // Move the scroll thumb
     if (anim)
 	{
+	$(this.scrollbar.b).stop(false, false);
 	$(this.scrollbar.b).animate({"top": (18+Math.round(this.thumb_pos))+"px", "height": (Math.round(this.thumb_height)-2)+"px"}, 250, "swing", null);
 	}
     else
@@ -788,6 +789,10 @@ function tbld_scroll(y)
     {
     this.target_y = null;
 
+    // Not enough data to scroll?
+    if (this.thumb_height == this.thumb_avail)
+	return;
+
     // Clamp the scroll range
     if (this.rows.first == 1 && (0-y) < getRelativeY(this.rows[this.rows.first]))
 	y = 0 - getRelativeY(this.rows[this.rows.first]);
@@ -798,6 +803,7 @@ function tbld_scroll(y)
     if (getRelativeY(this.rows[this.rows.first]) <= (0-y) && getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2 - this.vis_height >= (0-y))
 	{
 	this.scroll_y = y;
+	$(this.scrolldiv).stop(false, false);
 	$(this.scrolldiv).animate({"top": y+"px"}, 250, "swing", null);
 	this.target_range = {start:this.rows.first, end:this.rows.last};
 	this.RescanRowVisibility();
@@ -1629,6 +1635,30 @@ function tbld_mouseout(e)
 		pg_canceltip(ly.tipid);
 		ly.tipid = null;
 		}
+	    }
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_wheel(e)
+    {
+    /*var ly = e.layer;
+    if (ly.kind && ly.kind == 'tabledynamic' && ly.table)
+	ly = ly.table;
+    if (ly && wgtrIsNode(ly) && wgtrGetType(ly) != 'widget/table')
+	ly = wgtrGlobalFindContainer(ly, 'widget/table');
+    if (ly && wgtrIsNode(ly) && wgtrGetType(ly) != 'widget/table')*/
+	ly = tbld_mcurrent;
+    if (ly && wgtrIsNode(ly) && wgtrGetType(ly) == 'widget/table')
+	{
+	if (e.pageX >= $(ly).offset().left &&
+	    e.pageX < $(ly).offset().left + ly.param_width &&
+	    e.pageY >= $(ly).offset().top &&
+	    e.pageY < $(ly).offset().top + ly.param_height)
+	    {
+	    var amt_to_move = e.Dom2Event.deltaY * 16;
+	    ly.Scroll(ly.scroll_y - amt_to_move);
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;

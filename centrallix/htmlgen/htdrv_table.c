@@ -261,6 +261,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddEventHandlerFunction(s,"document","MOUSEDOWN","tbld","tbld_mousedown");
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tbld","tbld_mousemove");
 	htrAddEventHandlerFunction(s, "document","MOUSEUP","tbld","tbld_mouseup");
+	htrAddEventHandlerFunction(s, "document","WHEEL","tbld","tbld_wheel");
 	if (s->Capabilities.Dom1HTML)
 	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "tbld", "tbld_contextmenu");
 
