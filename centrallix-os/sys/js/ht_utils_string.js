@@ -185,8 +185,17 @@ function htutil_getstyle(widget, prefix, defaults)
 
     // text color
     var color = wgtrGetServerProperty(widget, prefix + "textcolor");
-    if (!color && defaults)
-	color = defaults.textcolor;
+    if (!color)
+	{
+	color = wgtrGetServerProperty(widget, prefix + "fgcolor");
+	if (!color && defaults)
+	    color = defaults.textcolor;
+	}
+
+    // visibility
+    var visib = wgtrGetServerProperty(widget, prefix + "visible");
+    if (!visib && defaults)
+	visib = defaults.visible;
 
     // style
     var style = wgtrGetServerProperty(widget, prefix + "style");
@@ -218,6 +227,11 @@ function htutil_getstyle(widget, prefix, defaults)
     if (!radius && defaults)
 	radius = defaults.border_radius;
 
+    // border color
+    var bcolor = wgtrGetServerProperty(widget, prefix + "border_color");
+    if (!bcolor && defaults)
+	bcolor = defaults.border_color;
+
     // alignment
     var align = wgtrGetServerProperty(widget, prefix + "align");
     if (!align && defaults)
@@ -248,8 +262,12 @@ function htutil_getstyle(widget, prefix, defaults)
 	str += 'padding:' + htutil_escape_cssval(padding) + 'px; ';
     if (radius)
 	str += 'border-radius:' + htutil_escape_cssval(radius) + 'px; ';
+    if (bcolor)
+	str += 'border: 1px solid ' + htutil_escape_cssval(bcolor) + '; ';
     if (wrap == 'no')
 	str += 'white-space:no-wrap; ';
+    if (visib == 'no')
+	str += 'visibility:hidden; ';
     if (align)
 	str += 'text-align:' + htutil_escape_cssval(align) + '; ';
     //span = '<span style="' + htutil_encode(span,true) + '">' + str + '</span>';
