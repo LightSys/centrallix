@@ -1598,7 +1598,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
     pStrValue tmp;
     char* ptr;
     pStrValue sv;
-    char sbuf[HT_SBUF_SIZE];
+    char sbuf[HT_SBUF_SIZE*2];
     char ename[40];
     pHtDomEvent e;
     char* agent = NULL;
