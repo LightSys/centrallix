@@ -109,6 +109,7 @@ function tbld_format_cell(cell, color)
 			    }
 			}
 		    t.PositionRows(upd_rows);
+		    t.DisplayRows(upd_rows);
 		    }
 		});
 	    }
@@ -211,8 +212,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 
     // Position and display the new rows
     this.PositionRows(new_rows);
-    for(var i=0; i<new_rows.length; i++)
-	this.DisplayRow(new_rows[i], new_rows[i].rownum);
+    this.DisplayRows(new_rows);
 
     // Remove unneeded rows
     if (this.rows.first != null)
@@ -465,19 +465,22 @@ function tbld_format_row(id, selected, do_new)
 	}
     if (this.UpdateHeight(this.rows[id]))
 	{
+	// Height changed; move the rows below us.
 	var upd_rows = [];
-	for(var j=id+1; j<=this.rows.last; j++)
+	for(var j=id; j<=this.rows.last; j++)
 	    {
 	    if (this.rows[j] && this.rows[j].positioned)
 		{
-		this.rows[j].positioned = false;
+		if (j>id)
+		    this.rows[j].positioned = false;
 		upd_rows.push(this.rows[j]);
 		}
 	    }
 	if (upd_rows.length)
 	    {
 	    this.PositionRows(upd_rows);
-	    this.CheckBottom();
+	    this.DisplayRows(upd_rows);
+	    //this.CheckBottom();
 	    }
 	}
     this.rows[id].disp_mode = new_disp_mode;
@@ -1115,6 +1118,13 @@ function tbld_remove_row(rowobj)
     }
 
 
+function tbld_display_rows(new_rows)
+    {
+    for(var i=0; i<new_rows.length; i++)
+	this.DisplayRow(new_rows[i], new_rows[i].rownum);
+    }
+
+
 function tbld_position_rows(newrows)
     {
     if (!newrows.length)
@@ -1183,7 +1193,7 @@ function tbld_display_row(rowobj, rowslot)
 	    this.scroll_minheight = getRelativeY(rowobj);
 	if (rowslot < this.scroll_minrec || this.scroll_minrec == null)
 	    this.scroll_minrec = rowslot;
-	if (getRelativeY(rowobj) + $(rowobj).height() + this.cellvspacing*2 > this.scroll_maxheight)
+	if (rowslot == this.rows.lastosrc || (getRelativeY(rowobj) + $(rowobj).height() + this.cellvspacing*2 > this.scroll_maxheight))
 	    this.scroll_maxheight = getRelativeY(rowobj) + $(rowobj).height() + this.cellvspacing*2;
 	if (rowslot > this.scroll_maxrec)
 	    this.scroll_maxrec = rowslot;
@@ -1373,6 +1383,7 @@ function tbld_init(param)
     t.RedrawAll = tbld_redraw_all;
     t.InstantiateRow = tbld_instantiate_row;
     t.DisplayRow = tbld_display_row;
+    t.DisplayRows = tbld_display_rows;
     t.RemoveRow = tbld_remove_row;
     t.PositionRows = tbld_position_rows;
     t.IsRowVisible = tbld_is_row_visible;
