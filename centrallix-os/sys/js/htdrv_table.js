@@ -463,7 +463,7 @@ function tbld_format_row(id, selected, do_new)
 	    this.rows[id].deselect();
 	    break;
 	}
-    if (this.UpdateHeight(this.rows[id]))
+    if (this.UpdateHeight(this.rows[id]) && this.rows[id].positioned)
 	{
 	// Height changed; move the rows below us.
 	var upd_rows = [];
@@ -558,7 +558,10 @@ function tbld_update_thumb(anim)
 	if (this.thumb_sh < (this.scroll_maxrec - this.scroll_minrec + 1)*this.min_rowheight)
 	    {
 	    this.thumb_sh = (this.scroll_maxrec - this.scroll_minrec + 1)*this.min_rowheight;
-	    this.thumb_sy = this.min_rowheight*(this.rows.lastvis - this.max_display);
+	    if (this.rows.firstvis == 1)
+		this.thumb_sy = 0;
+	    else
+		this.thumb_sy = this.min_rowheight*(this.rows.lastvis - this.max_display);
 	    }
 	}
     else
@@ -1161,6 +1164,11 @@ function tbld_position_rows(newrows)
 	var firstrow = newrows.shift();
 	setRelativeY(firstrow, 0);
 	firstrow.positioned = true;
+	if (firstrow.rownum == 1)
+	    {
+	    this.scroll_minheight = 0;
+	    this.scroll_minrec = 1;
+	    }
 	this.PositionRows(newrows);
 	newrows.splice(0,0,firstrow);
 	}

@@ -2131,9 +2131,9 @@ function osrc_move_to_record_cb(recnum)
 
 function osrc_open_query_tail()
     {
-    if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
+    /*if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
 	this.querysize = this.FirstRecord - this.startat;
-    else
+    else*/
 	this.querysize = this.replicasize;
     this.query_ended = false;
     this.DoRequest('multiquery', '/', {ls__tail:1, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
