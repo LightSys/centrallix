@@ -1,7 +1,8 @@
 " Vim syntax file
 " Language:     Centrallix
 " Creator 	Sjirk Jan
-" Last Change:  2011 August 11
+" Updated   Tumbler Terrall
+" Last Change:  12/11/2014 04:34 PM
 
 
 " Variable Keywords
@@ -29,7 +30,7 @@ syn keyword cxKeywords widget_class width windowsize x y
 
 " Function Keywords
 syn keyword cxFunction runserver runclient runstatic abs ascii avg charindex char_length condition
-syn keyword cxFunction convert count dateadd datepart escape eval first getdate isnull last lower
+syn keyword cxFunction convert count dateadd datediff datepart escape eval first getdate isnull last lower
 syn keyword cxFunction ltrim lztrim max min quote ralign replicate right round rtrim substring sum
 syn keyword cxFunction upper user_name wordify
 
@@ -37,8 +38,8 @@ syn keyword cxFunction upper user_name wordify
 syn match cxNumber '\d\+\.\d*'
 
 " Strings
-syn region cxString start='"' end='"'
-syn region cxString start='\'' end='\''
+syn region cxString start=/"/ skip=/\\"/ end=/"/
+syn region cxString start=/'/ skip=/\\'/ end=/'/
 
 " Comments
 syn match cxComment "//.*$"
