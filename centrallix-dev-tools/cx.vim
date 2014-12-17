@@ -2,7 +2,7 @@
 " Language:     Centrallix
 " Creator 	Sjirk Jan
 " Updated   Tumbler Terrall
-" Last Change:  12/11/2014 04:34 PM
+" Last Change:  12/17/2014 11:01 AM
 
 
 " Variable Keywords
@@ -22,7 +22,7 @@ syn keyword cxKeywords newrow_bgcolor object objname objectsource object_name oc
 syn keyword cxKeywords partner_key path pointimage point_fgcolor popup popup_order popup_source popup_text prologue query query_multiselect range readahead
 syn keyword cxKeywords readonly receive_updates repeat replicasize revealed_only rowhighlight_background rowhighlight_bgcolor rowheight row1_background row1_bgcolor
 syn keyword cxKeywords row2_background row2_bgcolor ruletype scrollahead search_by_range seconds selected selected_index send_updates shadowed shadowx shadowy
-syn keyword cxKeywords show_branches show_diagnostics show_root show_root_branch show_selection size source spacing sql style s_motd_id tab_location
+syn keyword cxKeywords show_branches show_diagnostics show_root show_root_branch show_selection size source spacing style s_motd_id tab_location
 syn keyword cxKeywords tab_revealed_only tab_width target target_key_1 target_key_2 target_key_3 target_key_4 target_key_5 text textcolor textcolorhighlight
 syn keyword cxKeywords textcolornew title titlebar titlecolor tooltip toplevel tristate type use_having_clause use_3d_lines valign value visible widget_template
 syn keyword cxKeywords widget_class width windowsize x y
@@ -43,6 +43,11 @@ syn region cxString start=/'/ skip=/\\'/ end=/'/
 
 " Comments
 syn match cxComment "//.*$"
+
+" SQL
+syn include @SQL <sfile>:p:h/sqlanywhere.vim
+syn region cxSQL matchgroup=cxKeywords start=/sql\s*=.\{-}"/ skip=/\\"/ end=/"/ contains=@SQL
+syn region cxSQL matchgroup=cxKeywords start=/sql\s*=.\{-}'/ skip=/\\'/ end=/'/ contains=@SQL
 
 let b:current_syntax = "cmp"
 
