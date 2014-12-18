@@ -2,7 +2,7 @@
 " Language:     Centrallix
 " Creator 	Sjirk Jan
 " Updated   Tumbler Terrall
-" Last Change:  12/17/2014 11:01 AM
+" Last Change:  12/18/2014 03:15 PM
 
 
 " Variable Keywords
@@ -46,8 +46,7 @@ syn match cxComment "//.*$"
 
 " SQL
 syn include @SQL <sfile>:p:h/sqlanywhere.vim
-syn region cxSQL matchgroup=cxKeywords start=/sql\s*=.\{-}"/ skip=/\\"/ end=/"/ contains=@SQL
-syn region cxSQL matchgroup=cxKeywords start=/sql\s*=.\{-}'/ skip=/\\'/ end=/'/ contains=@SQL
+syn region cxSQL matchgroup=cxKeywords start=/sql\s*=.\{-}\z(["']\)/ skip=/\\\z1/ end=/\z1/ contains=@SQL
 
 let b:current_syntax = "cmp"
 
