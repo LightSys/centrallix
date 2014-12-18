@@ -1935,14 +1935,17 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    }
 
 		/** copy security endorsement data to app info structure **/
-		for(i=0;i<app->Endorsements.nItems;i++)
+		if (app)
 		    {
-		    nmSysFree(app->Endorsements.Items[i]);
-		    nmSysFree(app->Contexts.Items[i]);
+		    for(i=0;i<app->Endorsements.nItems;i++)
+			{
+			nmSysFree(app->Endorsements.Items[i]);
+			nmSysFree(app->Contexts.Items[i]);
+			}
+		    xaClear(&app->Endorsements);
+		    xaClear(&app->Contexts);
+		    cxssGetEndorsementList(&app->Endorsements, &app->Contexts);
 		    }
-		xaClear(&app->Endorsements);
-		xaClear(&app->Contexts);
-		cxssGetEndorsementList(&app->Endorsements, &app->Contexts);
 
 		if (tptr) nmSysFree(tptr);
 		if (lptr) nmSysFree(lptr);
