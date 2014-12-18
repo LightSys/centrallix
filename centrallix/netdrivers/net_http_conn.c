@@ -412,6 +412,19 @@ nht_internal_ConnHandler(void* conn_v)
 	/** No cookie or no session for the given cookie? **/
 	if (!conn->NhtSession)
 	    {
+	    /** No session, and the connection is a 'non-activity' request? **/
+	    if (conn->NotActivity)
+		{
+		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
+			     "Server: %s\r\n"
+			     "Pragma: no-cache\r\n"
+			     "Content-Type: text/html\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
+		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		goto out;
+		}
+
 	    /** Attempt authentication **/
 	    if (mssAuthenticate(usrname, passwd) < 0)
 	        {
