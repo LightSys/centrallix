@@ -718,7 +718,7 @@ function dd_create_pane(l)
 	moveTo(p.TmbLayer, l.popup_width-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
-	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
+	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t draggable="false">');
 	//pg_serialized_write(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>', null);
 	imgs = pg_images(p.TmbLayer);
 	imgs[0].mainlayer = l;
@@ -834,6 +834,13 @@ function dd_add_items(l,ary)
     }
 
 // Event scripts
+function dd_mouseout(e)
+    {
+    var ti=dd_target_img;
+    if (ti && ti.name == 't' && dd_current)
+        return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    }
+
 function dd_mousemove(e)
     {
     var ti=dd_target_img;

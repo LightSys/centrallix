@@ -162,6 +162,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddEventHandlerFunction(s, "document","MOUSEOVER", "dd", "dd_mouseover");
     htrAddEventHandlerFunction(s, "document","MOUSEUP", "dd", "dd_mouseup");
     htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "dd", "dd_mousedown");
+    htrAddEventHandlerFunction(s, "document","MOUSEOUT", "dd", "dd_mouseout");
     if (s->Capabilities.Dom1HTML)
        htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu");
 
