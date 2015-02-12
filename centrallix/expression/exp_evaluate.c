@@ -733,7 +733,9 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		    }
 		tree->String = (char*)nmSysMalloc(i + strlen(ptr) + 1);
 		tree->Alloc = 1;
-		sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);
+		strtcpy(tree->String, i0->String, i+1);
+		strcat(tree->String, ptr);
+		/*sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);*/
 		break;
 
 	    case DATA_T_DOUBLE:
