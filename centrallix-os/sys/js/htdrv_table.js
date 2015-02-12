@@ -176,6 +176,19 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	var max = this.osrc.LastRecord + this.is_new;
 	}
 
+    // "no data" message?
+    var ndm = $(this).children('#ndm');
+    if (max >= min)
+	{
+	ndm.hide();
+	}
+    else
+	{
+	ndm.show();
+	ndm.text(wgtrGetServerProperty(this,"nodata_message"));
+	ndm.css({"top":((this.param_height - ndm.height())/2) + "px"});
+	}
+
     // (re)draw the loaded records
     var selected_position_changed = false;
     for(var i=this.target_range.start; i<=this.target_range.end; i++)
@@ -1408,6 +1421,7 @@ function tbld_init(param)
     t.SchedScroll = tbld_sched_scroll;
     t.CheckBottom = tbld_check_bottom;
     t.ApplyRowGeom = tbld_apply_row_geom;
+    t.InitBH = tbld_init_bh;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -1577,6 +1591,12 @@ function tbld_init(param)
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
 
+    // No data message
+    var ndm = document.createElement("div");
+    $(ndm).css({"position":"absolute", "width":"100%", "text-align":"center", "left":"0px"});
+    $(ndm).attr({"id":"ndm"});
+    $(t).append(ndm);
+
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
     ie.Add("Click");
@@ -1601,9 +1621,18 @@ function tbld_init(param)
 	dw.display_for = 1;
 	}
 
+    t.InitBH();
+
     return t;
     }
 
+function tbld_init_bh()
+    {
+    var ndm = $(this).children('#ndm');
+    ndm.show();
+    ndm.text(wgtrGetServerProperty(this,"nodata_message"));
+    ndm.css({"top":((this.param_height - ndm.height())/2) + "px"});
+    }
 
 function tbld_mouseover(e)
     {
