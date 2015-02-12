@@ -75,6 +75,14 @@ function osrc_action_query_param(aparam)
     }
 
 
+function osrc_refresh_timer()
+    {
+    this.refresh_schedid = null;
+    this.req_ind_act = false;
+    this.ifcProbe(ifAction).Invoke('Refresh', {});
+    }
+
+
 function osrc_action_refresh(aparam)
     {
     var tr = this.CurrentRecord;
@@ -1612,6 +1620,17 @@ function osrc_end_query()
     this.Dispatch();
     this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
     this.doing_refresh = false;
+
+    // Handle auto-refresh timer
+    if (this.refresh_schedid)
+	{
+	pg_delsched(this.refresh_schedid);
+	this.refresh_schedid = null;
+	}
+    if (this.refresh_interval)
+	{
+	this.refresh_schedid = pg_addsched_fn(this, 'RefreshTimer', [], this.refresh_interval);
+	}
     return 0;
     }
 
@@ -3359,14 +3378,16 @@ function osrc_do_request(cmd, url, params, cb, target)
     params.ls__mode = 'osml';
     params.ls__req = cmd;
     if (this.sid) params.ls__sid = this.sid;
-    if (!this.ind_act && cmd != 'create' && cmd != 'setattrs') params.cx__noact = '1';
+    if (((!this.ind_act || !this.req_ind_act) && cmd != 'create' && cmd != 'setattrs') || cmd == 'close')
+	params.cx__noact = '1';
     for(var p in params)
 	{
 	url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
 	first = false;
 	}
     this.request_start_ts = pg_timestamp();
-    pg_serialized_load(target, url, cb, !this.ind_act);
+    pg_serialized_load(target, url, cb, !this.ind_act || !this.req_ind_act);
+    this.req_ind_act = true;
     //this.onload = cb;
     //target.src = url;
     }
@@ -3525,7 +3546,9 @@ function osrc_init(param)
     loader.replicasize=param.replicasize;
     loader.initreplicasize = param.replicasize;
     loader.ind_act = param.ind_act;
+    loader.req_ind_act = true;
     loader.qy_reveal_only = param.qy_reveal_only;
+    loader.refresh_interval = param.refresh;
     loader.sql=param.sql;
     loader.filter=param.filter;
     loader.baseobj=param.baseobj;
@@ -3657,6 +3680,7 @@ function osrc_init(param)
 
     loader.SetEvalRecord = osrc_set_eval_record;
 
+    loader.RefreshTimer = osrc_refresh_timer;
     loader.ParamNotify = osrc_param_notify;
     loader.CreateCB2 = osrc_action_create_cb2;
     loader.DoubleSyncCB = osrc_action_double_sync_cb;
