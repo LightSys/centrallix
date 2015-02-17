@@ -108,6 +108,7 @@ typedef struct _MPI
     int		    SourceIndex;
     pExpression	    AddlExp;
     int		    Flags;
+    pQueryStatement Statement;
     }
     MqpInf, *pMqpInf;
 
@@ -523,6 +524,7 @@ mqpAnalyze(pQueryStatement stmt)
 		}
 	    xaInit(&mi->SourceList, 16);
 	    mi->SourceIndex = 0;
+	    mi->Statement = stmt;
 
 	    /** Mode to open new objects with **/
 	    if (stmt->Flags & MQ_TF_ALLOWUPDATE)
@@ -671,6 +673,18 @@ int
 mqp_internal_CloseSource(pQueryElement qe)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
+    pObject obj;
+
+	/** Return from any subtrees **/
+	while (ms && ms->nStacked > 0)
+	    {
+	    obj = mqp_internal_Return(qe, mi->Statement, NULL);
+	    if (obj)
+		objClose(obj);
+	    else
+		break;
+	    }
 
     	/** Close the source object and the query. **/
 	if (qe->LLQuery) objQueryClose(qe->LLQuery);

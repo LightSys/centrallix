@@ -1141,7 +1141,16 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		else
 		    {
 		    objGetAttrValue(llobj, "name", DATA_T_STRING,POD(&objname));
-		    objUnmanageObject(llobj->Session, llobj);
+		    if (!objname)
+			{
+			/** Object is somehow invalid -- force a go-around to next fetch **/
+			objClose(llobj);
+			llobj = NULL;
+			}
+		    else
+			{
+			objUnmanageObject(llobj->Session, llobj);
+			}
 		    }
 	        }
 	    }
