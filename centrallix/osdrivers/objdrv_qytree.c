@@ -537,9 +537,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	/** Ok, close up the structure table. **/
 	xhClear(&struct_table, NULL, NULL);
 	xhDeInit(&struct_table);
-	for(i=0;i<objlist->nObjects-1;i++)
-	    if (objlist->Objects[i])
-		objClose(objlist->Objects[i]);
+	if (objlist)
+	    {
+	    for(i=0;i<objlist->nObjects-1;i++)
+		if (objlist->Objects[i])
+		    objClose(objlist->Objects[i]);
+	    expFreeParamList(objlist);
+	    }
 	nmFree(inf,sizeof(QytData));
 
 	return NULL;
@@ -613,9 +617,13 @@ qyt_internal_Close(pQytData inf)
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	for(i=0;i<inf->ObjList->nObjects;i++)
-	    if (inf->ObjList->Objects[i])
-		objClose(inf->ObjList->Objects[i]);
+	if (inf->ObjList)
+	    {
+	    for(i=0;i<inf->ObjList->nObjects;i++)
+		if (inf->ObjList->Objects[i])
+		    objClose(inf->ObjList->Objects[i]);
+	    expFreeParamList(inf->ObjList);
+	    }
 	nmFree(inf,sizeof(QytData));
 
     return 0;
@@ -1191,6 +1199,8 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj_internal_PathPart(obj->Pathname,0,0);
 
 	/** Set up the param objects list for this fetched object. **/
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
 	inf->ObjList = expCreateParamList();
 	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
 	expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
