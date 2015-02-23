@@ -272,7 +272,12 @@ nht_internal_ConnHandler(void* conn_v)
 		    printf("\n");*/
 		    goto out;
 		    }
-		thSetParam(NULL,"mss",conn->NhtSession->Session);
+		if (conn->NhtSession->Session)
+		    {
+		    thSetParam(NULL,"mss",conn->NhtSession->Session);
+		    thSetParamFunctions(NULL,mssLinkSession,mssUnlinkSession);
+		    mssLinkSession(conn->NhtSession->Session);
+		    }
 		/*thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);*/
 		thSetSecContext(NULL, &(conn->NhtSession->SecurityContext));
 		w_timer = conn->NhtSession->WatchdogTimer;

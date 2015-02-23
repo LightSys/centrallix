@@ -206,6 +206,29 @@ mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_
     }
 
 
+/*** mssLinkSess -- keep track of how many threads are using this
+ *** session structure.
+ ***/
+int
+mssLinkSession(pMtSession s)
+    {
+    s->LinkCnt++;
+    return 0;
+    }
+
+
+/*** mssUnlinkSess -- on final unlink, we end the session.
+ ***/
+int
+mssUnlinkSession(pMtSession s)
+    {
+    s->LinkCnt--;
+    if (s->LinkCnt <= 0)
+	mssEndSession(s);
+    return 0;
+    }
+
+
 /*** mssAuthenticate - start a new session, overwriting previous
  *** (inherited) session information.
  ***/
@@ -231,6 +254,7 @@ mssAuthenticate(char* username, char* password)
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
 	if (!s) return -1;
+	s->LinkCnt = 1;
 	strncpy(s->UserName, username, 31);
 	s->UserName[31]=0;
 	strncpy(s->Password, password, 31);
@@ -360,6 +384,7 @@ mssAuthenticate(char* username, char* password)
 	if (n_grps < 0 || n_grps > sizeof(grps) / sizeof(gid_t))
 	    n_grps = 0;
 	thSetParam(NULL,"mss",(void*)s);
+	thSetParamFunctions(NULL, mssLinkSession, mssUnlinkSession);
 	thSetSupplementalGroups(NULL, n_grps, grps);
 	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
@@ -378,14 +403,16 @@ mssAuthenticate(char* username, char* password)
 /*** mssEndSession - end a session and free the session information.
  ***/
 int 
-mssEndSession()
+mssEndSession(pMtSession s)
     {
-    pMtSession s;
     int i;
 
 	/** Get session info. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (!s)
+	    {
+	    s = (pMtSession)thGetParam(NULL,"mss");
+	    if (!s) return -1;
+	    }
 
 	/** Free the session info and error list **/
 	thSetParam(NULL,"mss",NULL);

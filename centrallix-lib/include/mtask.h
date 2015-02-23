@@ -76,6 +76,8 @@ typedef struct _MSEC
     pThrExt	ThrParam[16];			/* Structure extension */
 #else
     void*	ThrParam;
+    int		(*ThrParamLink)(void* thr_param);
+    int		(*ThrParamUnLink)(void* thr_param);
 #endif
     void*	SecParam;			/* Security data handled by application */
     int		(*SecParamCopyConstructor)(void* src, void** dst);
@@ -332,6 +334,7 @@ int thLock();
 int thUnlock();
 int thSleep(int msec);
 int thSetParam(pThread thr, const char* name, void* param);
+int thSetParamFunctions(pThread thr, int (*link_fn)(), int (*unlink_fn)());
 void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
 int thClearFlags(pThread thr, int flags);

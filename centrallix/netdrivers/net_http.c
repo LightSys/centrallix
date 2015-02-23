@@ -1621,8 +1621,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			     "\r\n"
 			     "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 		mssPrintError(conn->ConnFD);
-		netCloseTCP(conn->ConnFD,1000,0);
-		nht_internal_UnlinkSess(nsess);
+		/*netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_UnlinkSess(nsess);*/
+		nht_internal_FreeConn(conn);
+		if (url_inf) stFreeInf_ne(url_inf);
 		thExit();
 		}
 
@@ -2376,8 +2378,10 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn->ConnFD);
-	    netCloseTCP(conn->ConnFD,1000,0);
-	    nht_internal_UnlinkSess(nsess);
+	    /*netCloseTCP(conn->ConnFD,1000,0);
+	    nht_internal_UnlinkSess(nsess);*/
+	    nht_internal_FreeConn(conn);
+	    if (url_inf) stFreeInf_ne(url_inf);
 	    thExit();
 	    }
 

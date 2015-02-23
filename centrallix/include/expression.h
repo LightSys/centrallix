@@ -58,6 +58,7 @@ extern EXP_Globals EXP;
 /** expression tree control structure **/
 typedef struct _EC
     {
+    int			LinkCnt;
     int			Remapped:1;
     int			PSeqID;
     int			ObjSeqID[EXPR_MAX_PARAMS];
@@ -255,6 +256,8 @@ int expCopyValue(pExpression src, pExpression dst, int make_independent);
 int expAddNode(pExpression parent, pExpression child);
 int expDataTypeToNodeType(int data_type);
 int exp_internal_SetupControl(pExpression exp);
+pExpControl exp_internal_LinkControl(pExpControl ctl);
+int exp_internal_UnlinkControl(pExpControl ctl);
 
 
 /*** Evaluator functions ***/

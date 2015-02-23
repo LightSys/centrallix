@@ -886,6 +886,8 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    qy->ItemSrc = NULL;
 	    qy->ItemWhere = NULL;
 	    qy->ItemSql = NULL;
+	    if (qy->ItemSqlExpr)
+		expFreeExpression(qy->ItemSqlExpr);
 	    qy->ItemSqlExpr = NULL;
 	    if (stStructType(find_inf) == ST_T_SUBGROUP)
 	        {
@@ -1080,6 +1082,7 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->Query = query;
 	qy->ObjInf = inf;
 	qy->Constraint = NULL;
+	qy->ItemSqlExpr = NULL;
 	xhInit(&qy->StructTable,17,0);
 
 	/** Get the next subinf ready for retrieval. **/
@@ -1220,6 +1223,9 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
     	/** Close any pending low-level query **/
 	if (qy->LLQuery) objQueryClose(qy->LLQuery);
 	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
+
+	if (qy->ItemSqlExpr)
+	    expFreeExpression(qy->ItemSqlExpr);
 
 	/** Free the structure **/
 	if (qy->Constraint) expFreeExpression(qy->Constraint);

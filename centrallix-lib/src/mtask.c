@@ -570,6 +570,8 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.CurrentThread->SecContext.UserID = geteuid();
 	MTASK.CurrentThread->SecContext.GroupID = getegid();
 	MTASK.CurrentThread->SecContext.ThrParam = NULL;
+	MTASK.CurrentThread->SecContext.ThrParamLink = NULL;
+	MTASK.CurrentThread->SecContext.ThrParamUnLink = NULL;
 	MTASK.CurrentThread->SecContext.nGroups = 0;
 	memset(MTASK.CurrentThread->SecContext.GroupList, 0, sizeof(MTASK.CurrentThread->SecContext.GroupList));
 	MTASK.CurrentThread->SecContext.nGroups = getgroups(sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t), MTASK.CurrentThread->SecContext.GroupList);
@@ -687,7 +689,7 @@ r_mtRun_Spacer()
     /*MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);
     printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);*/
     MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
-    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
+    printf("New stack %d at %p - %p\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
 #endif
     if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
@@ -1313,9 +1315,19 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	      this allows the signal handler, which will sometimes get called while
 	      the scheduler is in a select() call to spawn a new thread **/
 	if(MTASK.CurrentThread)
+	    {
 	    thr->SecContext.ThrParam = MTASK.CurrentThread->SecContext.ThrParam;
+	    thr->SecContext.ThrParamLink = MTASK.CurrentThread->SecContext.ThrParamLink;
+	    thr->SecContext.ThrParamUnLink = MTASK.CurrentThread->SecContext.ThrParamUnLink;
+	    if (thr->SecContext.ThrParam && thr->SecContext.ThrParamLink)
+		thr->SecContext.ThrParamLink(thr->SecContext.ThrParam);
+	    }
 	else
+	    {
 	    thr->SecContext.ThrParam = NULL;
+	    thr->SecContext.ThrParamLink = NULL;
+	    thr->SecContext.ThrParamUnLink = NULL;
+	    }
 
 	/** Copy the security parameter.  This is an application-managed
 	 ** context that we propagate from one thread to another as new
@@ -1381,6 +1393,7 @@ void
 thExit()
     {
     register int i;
+    void* old_param;
 
 	dbg_write(0,"E",1);
 
@@ -1412,6 +1425,10 @@ thExit()
 	/** Security settings? **/
 	if (MTASK.CurrentThread->SecContext.SecParam && MTASK.CurrentThread->SecContext.SecParamDestructor)
 	    MTASK.CurrentThread->SecContext.SecParamDestructor(MTASK.CurrentThread->SecContext.SecParam);
+	old_param = MTASK.CurrentThread->SecContext.ThrParam;
+	MTASK.CurrentThread->SecContext.ThrParam = NULL;
+	if (old_param && MTASK.CurrentThread->SecContext.ThrParamUnLink)
+	    MTASK.CurrentThread->SecContext.ThrParamUnLink(old_param);
 
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
@@ -1446,6 +1463,7 @@ int
 thKill(pThread thr)
     {
     register int i;
+    void* old_param;
 
     	/** Param check **/
 	if (!thr) thr = MTASK.CurrentThread;
@@ -1485,6 +1503,10 @@ thKill(pThread thr)
 	/** Security settings? **/
 	if (thr->SecContext.SecParam && thr->SecContext.SecParamDestructor)
 	    thr->SecContext.SecParamDestructor(thr->SecContext.SecParam);
+	old_param = thr->SecContext.ThrParam;
+	thr->SecContext.ThrParam = NULL;
+	if (old_param && thr->SecContext.ThrParamUnLink)
+	    thr->SecContext.ThrParamUnLink(old_param);
 
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
@@ -2065,6 +2087,7 @@ thGetSecContext(pThread thr, pMTSecContext context)
 int
 thSetParam(pThread thr, const char* name, void* param)
     {
+    void* old_param;
 #if 0
     int i;
 #endif
@@ -2084,8 +2107,26 @@ thSetParam(pThread thr, const char* name, void* param)
 	    }
 	thr->ThrParam[i]->Param = param;
 #else
+	old_param = thr->SecContext.ThrParam;
 	thr->SecContext.ThrParam = param;
+	if (thr->SecContext.ThrParamUnLink && old_param)
+	    thr->SecContext.ThrParamUnLink(old_param);
 #endif
+
+    return 0;
+    }
+
+
+/*** THSETPARAMFUNCTIONS provides the link and unlink callback functions that
+ *** mtask will use when threads are created and destroyed.
+ ***/
+int
+thSetParamFunctions(pThread thr, int (*link_fn)(), int (*unlink_fn)())
+    {
+
+    	if (!thr) thr=MTASK.CurrentThread;
+	thr->SecContext.ThrParamLink = link_fn;
+	thr->SecContext.ThrParamUnLink = unlink_fn;
 
     return 0;
     }

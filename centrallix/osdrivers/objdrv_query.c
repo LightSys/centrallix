@@ -174,22 +174,29 @@ qy_internal_StartQuery(pQyData inf, char* name, pExpression criteria)
 int
 qy_internal_Close(pQyData inf)
     {
+    int i;
 
-	if (inf && inf->MultiQueryObject)
-	    objClose(inf->MultiQueryObject);
-	if (inf && inf->SQL)
-	    nmSysFree(inf->SQL);
-	if (inf && inf->Node)
-	    inf->Node->OpenCnt--;
-	if (inf->ObjList)
-	    expFreeParamList(inf->ObjList);
-	if (inf->Name)
-	    {
-	    nmSysFree(inf->Name);
-	    inf->Name = NULL;
-	    }
 	if (inf)
+	    {
+	    if (inf->MultiQueryObject)
+		objClose(inf->MultiQueryObject);
+	    for(i=0;i<inf->nParameters;i++)
+		paramFree(inf->Parameters[i]);
+	    if (inf->SQL)
+		nmSysFree(inf->SQL);
+	    if (inf->Node)
+		inf->Node->OpenCnt--;
+	    if (inf->ObjList)
+		expFreeParamList(inf->ObjList);
+	    if (inf->Name)
+		{
+		nmSysFree(inf->Name);
+		inf->Name = NULL;
+		}
+	    if (inf->NameExpression)
+		nmSysFree(inf->NameExpression);
 	    nmFree(inf, sizeof(QyData));
+	    }
 
     return 0;
     }
@@ -444,9 +451,6 @@ qyClose(void* inf_v, pObjTrxTree* oxt)
 	/** If it is dirty, it will write.  Otherwise simply move on **/
 	snWriteNode(inf->Obj->Prev, inf->Node);
 
-	/** Release the malloc'd information **/
-        /** free the override and parsed st structure **/
-	
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
 	qy_internal_Close(inf);

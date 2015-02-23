@@ -116,7 +116,7 @@ expFreeExpression(pExpression this)
 	    }
 
 	/** Check to free control block **/
-	if (!this->Parent && this->Control) nmFree(this->Control,sizeof(ExpControl));
+	exp_internal_UnlinkControl(this->Control);
 
 	/** Free this itself. **/
 	xaDeInit(&(this->Children));
@@ -742,11 +742,46 @@ expReplaceString(pExpression tree, char* oldstr, char* newstr)
 int
 exp_internal_SetupControl(pExpression exp)
     {
+    pExpControl old_control;
 
+	old_control = exp->Control;
 	exp->Control = (pExpControl)nmMalloc(sizeof(ExpControl));
 	if (!exp->Control) return -ENOMEM;
 	memset(exp->Control, 0, sizeof(ExpControl));
+	exp->Control->LinkCnt = 1;
 
+	if (old_control)
+	    exp_internal_UnlinkControl(old_control);
+
+    return 0;
+    }
+
+
+/*** exp_internal_LinkControl() - link to a expression eval control
+ *** structure.
+ ***/
+pExpControl
+exp_internal_LinkControl(pExpControl ctl)
+    {
+    if (ctl)
+	ctl->LinkCnt++;
+    return ctl;
+    }
+
+
+/*** exp_internal_UnlinkContrl() - unlink from an exp eval ctl struct
+ ***/
+int
+exp_internal_UnlinkControl(pExpControl ctl)
+    {
+    if (ctl)
+	{
+	ctl->LinkCnt--;
+	if (ctl->LinkCnt <= 0)
+	    {
+	    nmFree(ctl,sizeof(ExpControl));
+	    }
+	}
     return 0;
     }
 

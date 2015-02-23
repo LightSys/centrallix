@@ -1656,7 +1656,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
-	    objlist->CurControl = tree->Control;
+	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 
 		{
@@ -1703,6 +1703,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 		memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
 		objlist->MainFlags &= ~EXPR_MO_RECALC;
 		}
+	    exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = NULL;
 	    }
 
