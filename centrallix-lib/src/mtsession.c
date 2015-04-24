@@ -406,17 +406,24 @@ int
 mssEndSession(pMtSession s)
     {
     int i;
+    pMtSession cur_s;
 
 	/** Get session info. **/
+	cur_s = thGetParam(NULL, "mss");
 	if (!s)
 	    {
-	    s = (pMtSession)thGetParam(NULL,"mss");
+	    s = cur_s;
 	    if (!s) return -1;
 	    }
 
+	/** Unlink from thread if this is the current thread's session **/
+	if (s == cur_s)
+	    {
+	    thSetParam(NULL,"mss",NULL);
+	    thSetUserID(NULL,0);
+	    }
+
 	/** Free the session info and error list **/
-	thSetParam(NULL,"mss",NULL);
-	thSetUserID(NULL,0);
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
 	xhClear(&s->Params, NULL, NULL);
 	xhDeInit(&s->Params);
