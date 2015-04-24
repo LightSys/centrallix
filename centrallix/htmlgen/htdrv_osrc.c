@@ -238,7 +238,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       filter = nmSysStrdup("");
 
    /** create our instance variable **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"osrc%POSloader\")",id);
+   htrAddWgtrObjLinkage_va(s, tree, "osrc%POSloader",id);
    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
    htrAddScriptGlobal(s, "osrc_syncid", "0", 0);

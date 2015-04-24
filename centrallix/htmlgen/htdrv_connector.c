@@ -135,9 +135,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	        {
 		case DATA_T_CODE:
 		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
-		    xsConcatQPrintf(&xs,"%STR&SYM:{type:'exp', value:'", ptr);
-		    expGenerateText(code, NULL, xsWrite, &xs, '\'', "javascript", EXPR_F_RUNCLIENT);
-		    xsConcatenate(&xs,"'}",2);
+		    xsConcatQPrintf(&xs,"%STR&SYM:{type:'exp', value:function(_context,_this,ep) { with(ep) { return ", ptr);
+		    expGenerateText(code, NULL, xsWrite, &xs, '\0', "javascript", EXPR_F_RUNCLIENT);
+		    xsConcatenate(&xs,"; } } }",7);
 		    break;
 		case DATA_T_INTEGER:
 	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_INTEGER,POD(&vint));

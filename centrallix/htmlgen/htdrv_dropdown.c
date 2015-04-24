@@ -151,7 +151,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddScriptGlobal(s, "dd_click_y","0",0);
     htrAddScriptGlobal(s, "dd_incr","0",0);
     htrAddScriptGlobal(s, "dd_cur_mainlayer","null",0);
-    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dd%POSbtn\")", id);
+    htrAddWgtrObjLinkage_va(s, tree, "dd%POSbtn", id);
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
     htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);

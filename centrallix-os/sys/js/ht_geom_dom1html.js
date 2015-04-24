@@ -342,7 +342,8 @@ function ClipObject_GetPart(n)
 	{
 	var clip = this.obj.style.clip;
 	if(!clip)
-	    clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
+	    //clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
+	    clip = getComputedStyle(this.obj,null).clip;
 	a = this.arr = ClipRegexp.exec(clip);
 	}
     if (!a)

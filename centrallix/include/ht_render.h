@@ -280,6 +280,10 @@ typedef struct
 #define __attribute__(a) /* hide function attributes from non-GCC compilers */
 #endif
 
+/** Flags for div formatting/styling **/
+#define HTR_DIV_F_VISIBLE	1	/* set if div is visible */
+#define HTR_DIV_F_OVERFLOW	2	/* set if overflow is visible */
+
 /** Rendering engine functions **/
 int htrAddHeaderItem(pHtSession s, char* html_text);
 /*int htrAddHeaderItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
@@ -304,6 +308,7 @@ int htrAddScriptInclude(pHtSession s, char* filename, int flags);
 int htrAddStylesheetItem(pHtSession s, char* html_text);
 /*int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
 int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... );
+int htrFormatDiv(pHtSession s, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix);
 
 int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
 int htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property);

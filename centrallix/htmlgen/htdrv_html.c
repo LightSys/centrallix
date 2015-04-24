@@ -122,7 +122,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
             /** Write named global **/
-	    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"ht%POSpane\")",id);
+	    htrAddWgtrObjLinkage_va(s, tree, "ht%POSpane",id);
 
             htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
     

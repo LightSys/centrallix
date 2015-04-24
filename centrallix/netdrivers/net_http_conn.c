@@ -171,6 +171,7 @@ nht_internal_ConnHandler(void* conn_v)
     char sbuf[160];
     char* msg = "";
     char* ptr;
+    char* nextptr;
     char* usrname;
     char* passwd = NULL;
     pStruct url_inf = NULL;
@@ -308,9 +309,10 @@ nht_internal_ConnHandler(void* conn_v)
 	ptr = strstr(url_inf->StrVal, "/CXDC:");
 	if (ptr)
 	    {
-	    if (strspn(ptr+6, "0123456789") == strlen(ptr+6))
+	    nextptr = strchr(ptr+6, '/');
+	    if (nextptr && strspn(ptr+6, "0123456789") == (nextptr - (ptr+6)))
 		{
-		*ptr = '\0';
+		memmove(ptr, nextptr, strlen(nextptr)+1);
 		}
 	    }
 

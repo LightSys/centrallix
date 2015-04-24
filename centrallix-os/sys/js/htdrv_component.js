@@ -529,13 +529,14 @@ function cmp_add_param(name, value)
 
 function cmp_add_action(cmp, actionname)
     {
-    var re = /^[A-Za-z_][A-Za-z0-9_]*$/;
-    if (!re.test(actionname)) return false;
+    //var re = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    //if (!re.test(actionname)) return false;
     for(var i=0;i<this.components.length;i++)
 	if (this.components[i].cmp == cmp)
 	    this.components[i].actions.push(actionname);
     if (!this.ifcProbe(ifAction).Exists(actionname))
-	this.ifcProbe(ifAction).Add(actionname, new Function("aparam", "return this.cmp_action(\"" + actionname + "\", aparam);"));
+	//this.ifcProbe(ifAction).Add(actionname, new Function("aparam", "return this.cmp_action(\"" + actionname + "\", aparam);"));
+	this.ifcProbe(ifAction).Add(actionname, function (aparam) { return this.cmp_action(actionname, aparam); } );
     }
 
 

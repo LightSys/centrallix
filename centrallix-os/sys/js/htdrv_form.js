@@ -823,6 +823,15 @@ function form_change_mode(newmode)
 
     if (newmode == this.mode && newmode != 'Query' && newmode != 'New' && newmode != 'Modify') return true;
 
+    // Interlock check -- autodiscard interlock is the only method supported right now.
+    if (newmode == 'New' || newmode == 'Modify')
+	{
+	for(var i=0; i<this.interlock_forms.length; i++)
+	    {
+	    this.interlock_forms[i].ifcProbe(ifAction).Invoke('Discard', {});
+	    }
+	}
+
     // Exiting 'New' mode?
     if (this.mode == 'New')
 	{
@@ -1154,6 +1163,10 @@ function form_action_save()
 	}
 
     this.Pending=true;
+    for(var e in this.elements)
+	{
+	if (this.elements[e].cx_hints) cx_hints_endnew(this.elements[e]);
+	}
     this.DisableAll();
 
     pg_serialized_func(2, this, form_action_save_2, []);
@@ -1374,10 +1387,40 @@ function form_cb_reveal(element,event)
     return 0;
     }
 
+function form_add_interlock(node)
+    {
+    if ($.inArray(node, this.interlock_forms) >= 0)
+	return;
+    this.interlock_forms.push(node);
+    }
+
 function form_init_bh()
     {
     if (this.nextformwithin)
 	this.nextform = wgtrFindInSubtree(this.nextformwithin, this, "widget/form");
+    if (this.interlock)
+	{
+	for(var i=0; i<this.interlock.length; i++)
+	    {
+	    if (this.interlock[i])
+		{
+		var node = wgtrGetNode(this, this.interlock[i]);
+		if (node)
+		    {
+		    this.AddInterlock(node);
+		    node.AddInterlock(this);
+		    }
+		}
+	    }
+	for(var i=0; i<this.interlock_forms.length; i++)
+	    {
+	    for(var j=0; j<this.interlock_forms.length; j++)
+		{
+		if (i != j)
+		    this.interlock_forms[i].AddInterlock(this.interlock_forms[j]);
+		}
+	    }
+	}
     }
 
 /** Form initializer
@@ -1396,6 +1439,8 @@ function form_init(form,param)
     //var form = new Object();
     ifc_init_widget(form);
     form.readonly=param.ro;
+    form.interlock=param.il.split(',');
+    form.interlock_forms=[];
     form.elements = [];
     form.statuswidgets = [];
     form.last_hints = [];
@@ -1504,6 +1549,7 @@ function form_init(form,param)
     //form.InitQuery = form_init_query;
     form.ActionSaveSuccessCB = form_action_save_success;
     form.ActionDeleteSuccessCB = form_action_delete_success;
+    form.AddInterlock = form_add_interlock;
 
     // Actions
     var ia = form.ifcProbeAdd(ifAction);

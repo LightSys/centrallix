@@ -106,7 +106,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 		z);
 
 	/** Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"al%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "al%POSbase",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0);

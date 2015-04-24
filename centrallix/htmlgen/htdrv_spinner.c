@@ -122,7 +122,7 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1+9,w,z);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"spnr%POSmain\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "spnr%POSmain",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "spnr_ibeam", "null", 0);

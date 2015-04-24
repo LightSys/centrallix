@@ -235,7 +235,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"\t#tc%POSbase { background-position: 0px -24px; %STR }\n", id, main_bg);
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tc%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "tc%POSbase",id);
 
 	/** Script include **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0);
@@ -440,7 +440,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Add named global for the tabpage **/
 	    subnptr = nmSysStrdup(ptr);
-	    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%POSpane%POS\")", id, i+1);
+	    htrAddWgtrObjLinkage_va(s, tabpage_obj, "tc%POSpane%POS", id, i+1);
 	    htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
 
 	    /** Add DIV section for the tabpage. **/

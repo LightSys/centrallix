@@ -158,7 +158,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tx%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);

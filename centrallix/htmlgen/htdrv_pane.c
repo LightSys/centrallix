@@ -173,8 +173,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** DOM linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, 
-		"htr_subel(_parentctr, \"pn%POSmain\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "pn%POSmain",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);

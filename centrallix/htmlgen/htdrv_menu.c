@@ -315,7 +315,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptGlobal(s, "mn_pop_x", "0", 0);
 	htrAddScriptGlobal(s, "mn_pop_y", "0", 0);
 	htrAddScriptGlobal(s, "mn_mouseangle", "0", 0);
-	htrAddWgtrObjLinkage_va(s, menu, "htr_subel(mn_parent(_parentobj), \"mn%POSmain\")",id);
+	htrAddWgtrObjLinkage_va(s, menu, "mn%POSmain",id);
 	htrAddWgtrCtrLinkage_va(s, menu, "htr_subel(_obj, \"mn%POScontent\")",id);
 
 	/** Scripts **/

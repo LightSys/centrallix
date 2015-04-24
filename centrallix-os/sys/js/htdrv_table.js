@@ -137,8 +137,12 @@ function tbld_redraw_all(dataobj, force_datafetch)
     if (this.was_new && !this.is_new && this.rows.last)
 	{
 	var recnum = this.rows.last;
-	this.scroll_maxheight -= ($(this.rows[recnum]).height() + this.cellvspacing*2);
-	this.scroll_maxrec--;
+	if (this.rows[recnum].disp_mode == 'newselect')
+	    {
+	    this.scroll_maxheight -= ($(this.rows[recnum]).height() + this.cellvspacing*2);
+	    this.scroll_maxrec--;
+	    this.RemoveRow(this.rows[recnum]);
+	    }
 	}
 
     // Note the current record.
@@ -186,7 +190,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	{
 	ndm.show();
 	ndm.text(wgtrGetServerProperty(this,"nodata_message"));
-	ndm.css({"top":((this.param_height - ndm.height())/2) + "px"});
+	ndm.css({"top":((this.param_height - ndm.height())/2) + "px", "color":wgtrGetServerProperty(this,"nodata_message_textcolor") });
 	}
 
     // (re)draw the loaded records
@@ -203,7 +207,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 		}
 	    var row = this.rows[i];
 	    this.osrc.SetEvalRecord(i);
-	    this.SetupRowData(i);
+	    this.SetupRowData(i, this.is_new && i == this.target_range.end);
 	    if (this.cr == i)
 		{
 		if (this.initselect && this.crname && this.crname != row.name && !selected_position_changed)
@@ -226,6 +230,8 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // Position and display the new rows
     this.PositionRows(new_rows);
     this.DisplayRows(new_rows);
+    if (this.rows.first != null && this.rows.last != null)
+	this.RescanRowVisibility();
 
     // Remove unneeded rows
     if (this.rows.first != null)
@@ -253,7 +259,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // Need to scroll?
     if (this.target_y != null)
 	{
-	this.Scroll(this.target_y);
+	this.Scroll(this.target_y, target_anim);
 	return;
 	}
 
@@ -268,6 +274,13 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	}
 
     // Double check current record visibility
+    if (this.old_scroll_y && this.cr >= this.rows.first && this.cr <= this.rows.last)
+	{
+	var new_y = this.old_scroll_y;
+	this.old_scroll_y = 0;
+	this.Scroll(new_y, false);
+	return;
+	}
     if (this.cr < this.rows.firstvis || this.cr > this.rows.lastvis)
 	{
 	this.BringIntoView(this.cr);
@@ -295,7 +308,7 @@ function tbld_check_bottom()
 	    {
 	    if (y_space > -sy)
 		y_space = -sy;
-	    this.Scroll(sy + y_space);
+	    this.Scroll(sy + y_space, true);
 	    return true;
 	    }
 	}
@@ -324,10 +337,21 @@ function tbld_find_osrc_value(rowslot, attrname)
     }
 
 
-function tbld_setup_row_data(rowslot)
+function tbld_setup_row_data(rowslot, is_new)
     {
     var row = this.rows[rowslot];
     var changed = false;
+
+    if (is_new)
+	{
+	for(var j in row.cols)
+	    {
+	    row.cols[j].data = '';
+	    row.cols[j].capdata = '';
+	    }
+	row.needs_redraw = true;
+	return true;
+	}
 
     if (this.datamode == 1)
 	{
@@ -518,14 +542,14 @@ function tbld_bring_into_view(rownum)
     // If row is in current set, just scroll backward.
     if (rownum >= this.rows.first && rownum < this.rows.firstvis)
 	{
-	this.Scroll(0 - getRelativeY(this.rows[rownum]));
+	this.Scroll(0 - getRelativeY(this.rows[rownum]), true);
 	return;
 	}
 
     // Likewise, if row is in current set, scroll forward.
     if (rownum <= this.rows.last && rownum > this.rows.lastvis)
 	{
-	this.Scroll(this.vis_height - (getRelativeY(this.rows[rownum]) + $(this.rows[rownum]).height() + this.cellvspacing*2));
+	this.Scroll(this.vis_height - (getRelativeY(this.rows[rownum]) + $(this.rows[rownum]).height() + this.cellvspacing*2), true);
 	return;
 	}
 
@@ -534,11 +558,11 @@ function tbld_bring_into_view(rownum)
 	{
 	this.bring_into_view = rownum;
 	//this.target_range = {start:rownum, end:this.rows.lastvis+1};
-	this.target_range = {start:rownum, end:rownum + this.max_display*2};
+	this.target_range = {start:rownum, end:rownum + this.rowcache_size};
 	if (this.rows.lastosrc && this.target_range.end > this.rows.lastosrc)
 	    this.target_range.end = this.rows.lastosrc;
-	if (this.target_range.start > 1 && this.target_range.end - this.target_range.start < this.max_display*2)
-	    this.target_range.start = this.target_range.end - this.max_display*2;
+	if (this.target_range.start > 1 && this.target_range.end - this.target_range.start < this.rowcache_size)
+	    this.target_range.start = this.target_range.end - this.rowcache_size;
 	if (this.target_range.start < 1)
 	    this.target_range.start = 1;
 	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
@@ -547,7 +571,7 @@ function tbld_bring_into_view(rownum)
 	{
 	this.bring_into_view = rownum;
 	//this.target_range = {start:this.rows.firstvis-1, end:rownum};
-	this.target_range = {start:rownum - this.max_display*2, end:rownum};
+	this.target_range = {start:rownum - this.rowcache_size, end:rownum};
 	if (this.target_range.start < 1)
 	    this.target_range.start = 1;
 	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
@@ -642,9 +666,15 @@ function tbld_object_modified(current, dataobj)
 function tbld_clear_rows(fromobj, why)
     {
     if (why == 'refresh')
+	{
 	this.crname = (this.cr && this.rows[this.cr])?this.rows[this.cr].name:null;
+	this.old_scroll_y = this.scroll_y;
+	}
     else
+	{
 	this.crname = null;
+	this.old_scroll_y = 0;
+	}
     for(var i=this.rows.first; i<=this.rows.last; i++)
 	{
 	this.RemoveRow(this.rows[i]);
@@ -656,7 +686,7 @@ function tbld_clear_rows(fromobj, why)
     this.scroll_maxrec = null;
     this.scroll_minheight = null;
     this.scroll_minrec = null;
-    this.target_range = {start:1, end:this.max_display*2};
+    this.target_range = {start:1, end:this.rowcache_size};
     this.UpdateThumb(false);
     if (why != 'refresh')
 	this.initselect = this.initselect_orig;
@@ -665,7 +695,9 @@ function tbld_clear_rows(fromobj, why)
 function tbld_select()
     {
     var txt;
-    tbld_setbackground(this, this.table, 'rowhighlight');
+    //this.style = htutil_getstyle(this.table, "rowhighlight", {});
+    htr_stylize_element(this, this.table, ["rowhighlight","row"], {border_color:'transparent'});
+    //tbld_setbackground(this, this.table, 'rowhighlight');
     //htr_setbackground(this, wgtrGetServerProperty(this.table, 'rowhighlight_bgcolor', this.table.row_bgndhigh));
     for(var i in this.cols)
 	{
@@ -736,7 +768,8 @@ function tbld_select()
 function tbld_deselect()
     {
     var txt;
-    tbld_setbackground(this, this.table, this.rownum%2?'row1':'row2');
+    //tbld_setbackground(this, this.table, this.rownum%2?'row1':'row2');
+    htr_stylize_element(this, this.table, [(this.rownum%2?'row1':'row2'),"row"], {border_color:'transparent'});
     //htr_setbackground(this, wgtrGetServerProperty(this.table, (this.rownum%2?'row1_bgcolor':'row2_bgcolor'), this.rownum%2?this.table.row_bgnd1:this.table.row_bgnd2));
     for(var i in this.cols)
 	{
@@ -766,7 +799,8 @@ function tbld_deselect()
 function tbld_newselect()
     {
     var txt;
-    tbld_setbackground(this, this.table, 'newrow');
+    //tbld_setbackground(this, this.table, 'newrow');
+    htr_stylize_element(this, this.table, ['newrow',"row"], {border_color:'transparent'});
     //htr_setbackground(this, wgtrGetServerProperty(this.table, 'newrow_bgcolor', this.table.row_bgndnew));
     if (!this.ctr)
 	{
@@ -826,7 +860,7 @@ function tbld_sched_scroll(y)
 
 
 // Scroll the table to the given y offset
-function tbld_scroll(y)
+function tbld_scroll(y, animate)
     {
     this.target_y = null;
 
@@ -845,24 +879,28 @@ function tbld_scroll(y)
 	{
 	this.scroll_y = y;
 	$(this.scrolldiv).stop(false, false);
-	$(this.scrolldiv).animate({"top": y+"px"}, 250, "swing", null);
+	if (animate)
+	    $(this.scrolldiv).animate({"top": y+"px"}, 250, "swing", null);
+	else
+	    $(this.scrolldiv).css({"top": y+"px"});
 	this.target_range = {start:this.rows.first, end:this.rows.last};
 	this.RescanRowVisibility();
-	this.UpdateThumb(true);
+	this.UpdateThumb(animate);
 	}
     else
 	{
 	// Need new data.  Set our target Y position and request more data.
 	this.target_y = y;
+	this.target_anim = animate;
 	if (y == 0)
 	    {
 	    // Reset to the beginning
-	    this.target_range = {start:1, end:this.max_display*2};
+	    this.target_range = {start:1, end:this.rowcache_size};
 	    }
 	else if ((0-y) < getRelativeY(this.rows[this.rows.first]))
 	    {
 	    // Previous data
-	    this.target_range.start = this.rows.first - this.max_display*2;
+	    this.target_range.start = this.rows.first - this.rowcache_size;
 	    if (this.target_range.start < 1)
 		this.target_range.start = 1;
 	    this.target_range.end = this.rows.lastvis+1;
@@ -871,7 +909,7 @@ function tbld_scroll(y)
 	    {
 	    // Next data
 	    this.target_range.start = this.rows.firstvis-1;
-	    this.target_range.end = this.rows.firstvis + this.max_display*3;
+	    this.target_range.end = this.rows.firstvis + this.rowcache_size + this.max_display;
 	    }
 	else
 	    {
@@ -904,14 +942,14 @@ function tbld_bar_click(e)
 	// Down a page
 	var target_row = t.rows[t.rows.lastvis];
 	var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
-	t.Scroll(target_y);
+	t.Scroll(target_y, true);
 	}
     else if (e.pageY < $(sb.b).offset().top)
 	{
 	// Up a page
 	var target_row = t.rows[t.rows.firstvis];
 	var target_y = t.vis_height - getRelativeY(target_row);
-	t.Scroll(target_y);
+	t.Scroll(target_y, true);
 	}
     }
 
@@ -1067,11 +1105,14 @@ function tbld_rescan_row_visibility()
     for(var i=this.rows.first; i<=this.rows.last; i++)
 	{
 	var rowobj = this.rows[i];
-	rowobj.vis = this.IsRowVisible(i);
-	if (rowobj.vis == 'full' && this.rows.firstvis == null)
-	    this.rows.firstvis = i;
-	if (rowobj.vis == 'full')
-	    this.rows.lastvis = i;
+	if (rowobj)
+	    {
+	    rowobj.vis = this.IsRowVisible(i);
+	    if (rowobj.vis == 'full' && this.rows.firstvis == null)
+		this.rows.firstvis = i;
+	    if (rowobj.vis == 'full')
+		this.rows.lastvis = i;
+	    }
 	}
     }
 
@@ -1244,6 +1285,11 @@ function tbld_instantiate_row(parentDiv, x, y)
 	var row = this.rowdivcache.pop();
 	moveTo(row, x, y);
 	this.ApplyRowGeom(row, 0);
+	for(var j in row.cols)
+	    {
+	    row.cols[j].data = '';
+	    row.cols[j].capdata = '';
+	    }
 	return row;
 	}
 
@@ -1336,6 +1382,7 @@ function tbld_init(param)
     t.datamode = param.dm;
     t.has_header = param.hdr;
     t.demand_scrollbar = param.demand_sb;
+    t.rowcache_size = param.rcsize?param.rcsize:0;
     t.cr = 0;
     t.is_new = 0;
     t.rowdivcache = [];
@@ -1559,7 +1606,9 @@ function tbld_init(param)
     t.scroll_minheight = null;
     t.scroll_minrec = null;
     t.max_display = Math.ceil(t.vis_height / t.min_rowheight);
-    t.target_range = {start:1, end:t.max_display*2};
+    if (t.rowcache_size < t.max_display*2)
+	t.rowcache_size = t.max_display*2;
+    t.target_range = {start:1, end:t.rowcache_size};
 
     // Create scroll div
     t.scrollctr = htr_new_layer(t.param_width, t);
@@ -1631,7 +1680,7 @@ function tbld_init_bh()
     var ndm = $(this).children('#ndm');
     ndm.show();
     ndm.text(wgtrGetServerProperty(this,"nodata_message"));
-    ndm.css({"top":((this.param_height - ndm.height())/2) + "px"});
+    ndm.css({"top":((this.param_height - ndm.height())/2) + "px", "color":wgtrGetServerProperty(this,"nodata_message_textcolor") });
     }
 
 function tbld_mouseover(e)
@@ -1727,7 +1776,7 @@ function tbld_wheel(e)
 	    e.pageY < $(ly).offset().top + ly.param_height)
 	    {
 	    var amt_to_move = e.Dom2Event.deltaY * 16;
-	    ly.Scroll(ly.scroll_y - amt_to_move);
+	    ly.Scroll(ly.scroll_y - amt_to_move, true);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 	}
@@ -1811,7 +1860,7 @@ function tbld_mousedown(e)
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
 		    {
 		    ly.table.initselect = true;
-		    if(ly.rownum)
+		    if(ly.rownum && ly.disp_mode != 'newselect')
 			{
 			ly.crname = null;
 			ly.table.osrc.MoveToRecord(ly.rownum);
@@ -1820,6 +1869,11 @@ function tbld_mousedown(e)
 		else if (!ly.table.initselect)
 		    {
 		    ly.table.initselect = true;
+		    ly.table.RedrawAll(null, true);
+		    }
+		else if (ly.table.initselect != ly.table.initselect_orig)
+		    {
+		    ly.table.initselect = ly.table.initselect_orig;
 		    ly.table.RedrawAll(null, true);
 		    }
 		}

@@ -75,7 +75,8 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
     char border_color[64];
     char image_position[16]; /* top, left, right, bottom */
     char image[OBJSYS_MAX_PATH];
-    int image_width=0, image_height=0;
+    char h_align[16];
+    int image_width=0, image_height=0, image_margin=0;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -122,6 +123,12 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strtcpy(border_style, ptr, sizeof(border_style));
 
+	/** Alignment **/
+	if (wgtrGetPropertyValue(tree,"align",DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"left") || !strcmp(ptr,"right") || !strcmp(ptr,"center")))
+	    strtcpy(h_align, ptr, sizeof(h_align));
+	else
+	    strcpy(h_align, "center");
+
 	/** Image location **/
 	if (wgtrGetPropertyValue(tree,"image_position",DATA_T_STRING,POD(&ptr)) != 0 || (strcmp(ptr,"top") && strcmp(ptr,"right") && strcmp(ptr,"bottom") && strcmp(ptr, "left")))
 	    strcpy(image_position, "top");
@@ -139,6 +146,8 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    image_width = 0;
 	if (wgtrGetPropertyValue(tree,"image_height",DATA_T_INTEGER, POD(&image_height)) != 0)
 	    image_height = 0;
+	if (wgtrGetPropertyValue(tree,"image_margin",DATA_T_INTEGER, POD(&image_margin)) != 0)
+	    image_margin = 0;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -190,7 +199,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "tb_current", "null", 0);
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tb%POSpane\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "tb%POSpane",id);
 
 	/** Include the javascript code for the textbutton **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
@@ -200,21 +209,23 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 		id,
 		x, y, h>=0, h-1-2*box_offset, w-1-2*box_offset, z
 		);
-	htrAddStylesheetItem_va(s, "\t#tb%POSpane .cell { height:100%%; width:100%%; vertical-align:middle; display:table-cell; padding:1px; font-weight:bold; cursor:default; text-align:center; border-width:1px; border-style:%STR&CSSVAL; border-color:%STR&CSSVAL; border-radius:%INTpx; color:%STR&CSSVAL; %[text-shadow:1px 1px %STR&CSSVAL; %]%STR }\n",
+	htrAddStylesheetItem_va(s, "\t#tb%POSpane .cell { height:100%%; width:100%%; vertical-align:middle; display:table-cell; padding:1px; font-weight:bold; cursor:default; text-align:%STR; border-width:1px; border-style:%STR&CSSVAL; border-color:%STR&CSSVAL; border-radius:%INTpx; color:%STR&CSSVAL; %[text-shadow:1px 1px %STR&CSSVAL; %]%STR }\n",
 		/* clipping no longer needed:  0, w-1-2*box_offset+2*clip_offset, h-1-2*box_offset+2*clip_offset, 0, */
 		id,
+		h_align,
 		border_style, border_color, border_radius,
 		is_enabled?fgcolor1:disable_color, is_enabled, fgcolor2,
 		bgstyle
 		);
 
 	/** CSS for image on the button **/
-	if (image[0] && (image_width || image_height))
+	if (image[0] && (image_width || image_height || image_margin))
 	    {
-	    htrAddStylesheetItem_va(s, "\t#tb%POSpane img { %[height:%POSpx; %]%[width:%POSpx; %] }\n",
+	    htrAddStylesheetItem_va(s, "\t#tb%POSpane img { %[height:%POSpx; %]%[width:%POSpx; %]%[margin:%POSpx;%] }\n",
 		    id,
 		    image_height, image_height,
-		    image_width, image_width);
+		    image_width, image_width,
+		    image_margin, image_margin);
 	    }
 
 #if 00

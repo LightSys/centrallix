@@ -232,6 +232,23 @@ function htutil_getstyle(widget, prefix, defaults)
     if (!bcolor && defaults)
 	bcolor = defaults.border_color;
 
+    // shadow information
+    var scolor = wgtrGetServerProperty(widget, prefix + "shadow_color");
+    if (!scolor && defaults)
+	scolor = defaults.shadow_color;
+    var sradius = wgtrGetServerProperty(widget, prefix + "shadow_radius");
+    if (!sradius && defaults)
+	sradius = defaults.shadow_radius;
+    var soffset = wgtrGetServerProperty(widget, prefix + "shadow_offset");
+    if (!soffset && defaults)
+	soffset = defaults.shadow_offset;
+    var sangle = wgtrGetServerProperty(widget, prefix + "shadow_angle");
+    if (!sangle && defaults)
+	sangle = defaults.shadow_angle;
+    var sloc = wgtrGetServerProperty(widget, prefix + "shadow_location");
+    if (!sloc && defaults)
+	sloc = defaults.shadow_location;
+
     // alignment
     var align = wgtrGetServerProperty(widget, prefix + "align");
     if (!align && defaults)
@@ -270,6 +287,14 @@ function htutil_getstyle(widget, prefix, defaults)
 	str += 'visibility:hidden; ';
     if (align)
 	str += 'text-align:' + htutil_escape_cssval(align) + '; ';
+    if (scolor && sradius)
+	{
+	str += 'box-shadow:' + ((sloc=='inside')?'inset ':'') + 
+	    htutil_escape_cssval(Math.round(Math.sin(sangle*Math.PI/180)*soffset*10)/10) + 'px ' +
+	    htutil_escape_cssval(Math.round(Math.cos(sangle*Math.PI/180)*(-soffset)*10)/10) + 'px ' +
+	    htutil_escape_cssval(sradius) + 'px ' + 
+	    htutil_escape_cssval(scolor) + '; ';
+	}
     //span = '<span style="' + htutil_encode(span,true) + '">' + str + '</span>';
     return str;
     }

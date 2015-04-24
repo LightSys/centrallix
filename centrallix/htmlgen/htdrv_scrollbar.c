@@ -180,7 +180,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "sb_cur_mainlayer","null",0);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sb%POSpane\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "sb%POSpane",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollbar.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);

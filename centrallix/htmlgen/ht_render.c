@@ -1237,7 +1237,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    }
 	xsConcatenate(&xs,"]",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&JSSTR',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
+	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM',function (_context, _this) { return %STR; },%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1317,6 +1317,8 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     pStruct c_param;
     pObject include_file;
     char buf[256];
+    char path[256];
+    char* slash;
     int rcnt;
     ObjData pod;
 
@@ -1349,7 +1351,13 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 		}
 	    objClose(include_file);
 	    }
-	fdQPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%STR%[/CXDC:%STR%]\"></SCRIPT>\n", filename, buf[0], buf);
+	strtcpy(path, filename, sizeof(path));
+	slash = strrchr(path, '/');
+	if (slash)
+	    {
+	    *slash = '\0';
+	    fdQPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></SCRIPT>\n", path, buf[0], buf, slash+1);
+	    }
 
     return 0;
     }
@@ -1916,6 +1924,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	/** Write the initialization lines **/
 	fdPrintf(output,"\nfunction startup_%s()\n    {\n", s->Namespace->DName);
+	//fdPrintf(output,"    console.profile();\n");
 	htr_internal_writeCxCapabilities(s,output); //TODO: (by Seth) this really only needs to happen during first-load.
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
@@ -2503,4 +2512,14 @@ htrLeaveNamespace(pHtSession s)
 
     return 0;
     }
+
+
+/*** htrFormatDiv() - add a CSS line to format a DIV based on some basic
+ *** style information.
+ ***/
+int
+htrFormatDiv(pHtSession s, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix)
+    {
+    }
+
 

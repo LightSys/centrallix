@@ -71,17 +71,12 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int box_offset;
-    int dbl_buffer = 0;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
 	    {
 	    mssError(1,"HTEB","Netscape, IE, or Dom2Events support required");
 	    return -1;
 	    }
-
-	/** Use double buffering? **/
-	if (s->Capabilities.Dom0NS)
-	    dbl_buffer = 1;
 
     	/** Get an id for this. **/
 	id = (HTEB.idcnt++);
@@ -172,11 +167,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
-	if (dbl_buffer)
-	    htrAddStylesheetItem_va(s,"\t#eb%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"eb%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
@@ -196,46 +189,24 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","PASTE", "eb", "eb_paste");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),\"eb%POScon1\"), %[c2:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),\"eb%POScon2\"),%] form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
-	    name,  name,id,  dbl_buffer,name,id, 
+	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),\"eb%POScon1\"), form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
+	    name,  name,id,
 	    form, fieldname, is_readonly, main_bg,
 	    tooltip, descfg, descr);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
 
-	/** Use CSS border or table for drawing? **/
-	if (s->Capabilities.CSS2)
-	    {
-	    if (is_raised)
-		htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
-	    else
-		htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
-	    if (h >= 0)
-		htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
-	    }
+	/** Use CSS border for drawing **/
+	if (is_raised)
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
 	else
-	    {
-	    htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w,main_bg);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem(s,    "            <TD>");
-	    }
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
+	if (h >= 0)
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
 	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
-	if (!s->Capabilities.CSS2)
-	    {
-	    htrAddBodyItem(s,    "</TD>\n");
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-	    }
 
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\">&nbsp;</DIV>\n",id);
-	if (dbl_buffer)
-	    htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon2\">&nbsp;</DIV>\n",id);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

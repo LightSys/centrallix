@@ -86,7 +86,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
        form[0] = '\0';
    else
        strtcpy(form,ptr,sizeof(form));
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"fs%POSmain\")", id);
+   htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id);
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#fs%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);

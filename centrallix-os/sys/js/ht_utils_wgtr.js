@@ -52,8 +52,11 @@ function wgtrSetupTree_r(tree, ns, parent)
     // Setup the DOM object representing this widget.
     if (!tree.obj)
 	tree.obj = {};
+    else if (tree.obj == 'window')
+	tree.obj = window;
     else
-	with (tree) tree.obj = eval(tree.obj);
+	tree.obj = document.getElementById(tree.obj);
+	//with (tree) tree.obj = eval(tree.obj);
 
     // Setup the DOM object that will contain sub-widgets of this widget (this
     // could be an inner DIV, for instance).

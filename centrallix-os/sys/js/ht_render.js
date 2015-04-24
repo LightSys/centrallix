@@ -166,6 +166,11 @@ function cxjs_user_name()
 function cxjs_getdate()
     {
     var dt = new Date();
+
+    // Adjust it to the server's time.
+    dt.setMilliseconds(dt.getMilliseconds() - pg_clockoffset);
+
+    // Create the string
     var dtmin = (dt.getMinutes()<10)?('0' + dt.getMinutes()):dt.getMinutes();
     var dtsec = (dt.getSeconds()<10)?('0' + dt.getSeconds()):dt.getSeconds();
     var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + dtmin + ':' + dtsec;
@@ -510,13 +515,57 @@ function htr_event(e)
     return cx__event;
     }
 
+// retrieve one stylizing datum
+function htr_style_item(widget, prefix, defaults, item)
+    {
+    var value = undefined;
+
+    if (Array.isArray(prefix))
+	{
+	for(var i in prefix)
+	    {
+	    value=(value != undefined)?value:wgtrGetServerProperty(widget, (prefix[i]?(prefix[i]+'_'):'')+item);
+	    }
+	}
+    else
+	{
+	value=wgtrGetServerProperty(widget, (prefix?(prefix+'_'):'')+item);
+	}
+    if (value == undefined)
+	value = defaults[item];
+    return value;
+    }
+
+// retrieve stylizing data
+function htr_style_data(widget, prefix, defaults)
+    {
+    var styleobj = {};
+    var items=['textcolor','style','font_size','font','bgcolor','padding','border_color','border_radius','border_style','align','wrap','shadow_color','shadow_radius','shadow_offset','shadow_location','shadow_angle'];
+
+    for(var item in items)
+	{
+	var itemname = items[item];
+	styleobj[itemname] = htr_style_item(widget, prefix, defaults, itemname);
+	}
+
+    if (!styleobj.shadow_radius) styleobj.shadow_radius = 0;
+    if (!styleobj.shadow_offset) styleobj.shadow_offset = 0;
+    if (!styleobj.shadow_angle) styleobj.shadow_angle = 0;
+    if (!styleobj.padding) styleobj.padding = 0;
+    if (!styleobj.border_radius) styleobj.border_radius = 0;
+
+    return styleobj;
+    }
+
 // stylize -- set style properties on the given element,
 // for font face, font size, color, bold, italic, shadow,
 // underlining, etc.
 //
 function htr_stylize_element(element, widget, prefix, defaults)
     {
-    // prefixing?
+    var styleobj = htr_style_data(widget, prefix, defaults);
+
+/*    // prefixing?
     if (prefix)
 	prefix += "_";
     else
@@ -549,13 +598,22 @@ function htr_stylize_element(element, widget, prefix, defaults)
 
     // padding
     var padding = wgtrGetServerProperty(widget, prefix + "padding");
-    if (!padding && defaults)
+    if (!padding && defaults && defaults.padding)
 	padding = defaults.padding;
+    else if (!padding)
+	padding = 0;
 
     // radius
     var radius = wgtrGetServerProperty(widget, prefix + "border_radius");
-    if (!radius && defaults)
+    if (!radius && defaults && defaults.border_radius)
 	radius = defaults.border_radius;
+    else
+	radius = 0;
+
+    // border color
+    var bcolor = wgtrGetServerProperty(widget, prefix + "border_color");
+    if (!bcolor && defaults)
+	bcolor = defaults.border_color;
 
     // alignment
     var align = wgtrGetServerProperty(widget, prefix + "align");
@@ -567,21 +625,52 @@ function htr_stylize_element(element, widget, prefix, defaults)
     if (!wrap && defaults)
 	wrap = defaults.wrap;
 
+    // shadow information
+    var scolor = wgtrGetServerProperty(widget, prefix + "shadow_color");
+    if (!scolor && defaults)
+	scolor = defaults.shadow_color;
+    var sradius = wgtrGetServerProperty(widget, prefix + "shadow_radius");
+    if (!sradius && defaults)
+	sradius = defaults.shadow_radius;
+    var soffset = wgtrGetServerProperty(widget, prefix + "shadow_offset");
+    if (!soffset && defaults && defaults.shadow_offset)
+	soffset = defaults.shadow_offset;
+    else if (!soffset)
+	soffset = 0;
+    var sangle = wgtrGetServerProperty(widget, prefix + "shadow_angle");
+    if (!sangle && defaults && defaults.shadow_angle)
+	sangle = defaults.shadow_angle;
+    else if (!sangle)
+	sangle = 0;
+    var sloc = wgtrGetServerProperty(widget, prefix + "shadow_location");
+    if (!sloc && defaults)
+	sloc = defaults.shadow_location; */
+
     // Set the css values
+    var obj ={
+	'color': styleobj.textcolor,
+	'font-size': styleobj.font_size + 'px',
+	'font-style': (styleobj.style=='italic')?'italic':'normal',
+	'font-weight': (styleobj.style=='bold')?'bold':'normal',
+	'text-decoration': (styleobj.style=='underline')?'underline':'none',
+	'font-family': styleobj.font,
+	'background-color': styleobj.bgcolor,
+	'padding': styleobj.padding + 'px',
+	'border-radius': styleobj.border_radius + 'px',
+	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):'none',
+	'text-align': styleobj.align?styleobj.align:'initial',
+	'white-space': (styleobj.wrap=='no')?'nowrap':'normal',
+	'box-shadow': (!styleobj.shadow_color || !styleobj.shadow_radius)?'none':
+	    ((styleobj.shadow_location=='inside')?'inset ':'') + 
+	    (Math.round(Math.sin(styleobj.shadow_angle*Math.PI/180)*styleobj.shadow_offset*10)/10) + 'px ' +
+	    (Math.round(Math.cos(styleobj.shadow_angle*Math.PI/180)*(-styleobj.shadow_offset)*10)/10) + 'px ' +
+	    styleobj.shadow_radius + 'px ' + 
+	    styleobj.shadow_color,
+	};
     $(element).css
-	({
-	'color': color,
-	'font-size': font_size + 'px',
-	'font-style': (style=='italic')?'italic':'normal',
-	'font-weight': (style=='bold')?'bold':'normal',
-	'text-decoration': (style=='underline')?'underline':'none',
-	'font-family': font,
-	'background-color': bgcolor,
-	'padding': padding + 'px',
-	'border-radius': radius + 'px',
-	'text-align': align?align:'initial',
-	'white-space': (wrap=='no')?'normal':'nowrap',
-	});
+	(
+	obj
+	);
     }
 
 function htr_alert(obj,maxlevels)
@@ -640,9 +729,13 @@ function htr_cwatch(obj, attr, fobj, func)
         {
         obj.onpropertychange = htr_watchchanged;
 	} 
-    else
+    else if (obj.watch)
 	{
     	obj.watch(attr,htr_watchchanged);
+	}
+    else if (Object.observe)
+	{
+	Object.observe(obj, htr_observechanges);
 	}
     var watchitem = {};
     watchitem.attr = attr;
@@ -650,6 +743,15 @@ function htr_cwatch(obj, attr, fobj, func)
     watchitem.obj = obj;
     watchitem.fobj = fobj;
     obj.htr_watchlist.push(watchitem);
+    }
+
+function htr_observechanges(changes)
+    {
+    for(var changeid in changes)
+	{
+	var change = changes[changeid];
+	htr_watchchanged(change.name, change.oldValue, change.object[change.name]);
+	}
     }
 
 //uses (or mimicks) firefox's .watch method.
@@ -1128,7 +1230,8 @@ function htr_addeventhandler(t,h)
     {
     if (!pg_handlers[t])
 	pg_handlers[t] = [];
-    pg_handlers[t][h] = eval(h);
+    //pg_handlers[t][h] = eval(h);
+    pg_handlers[t][h] = window[h];
     }
 
 

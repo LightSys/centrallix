@@ -62,7 +62,8 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     char osrc[64];
     char link_next[64];
     char link_next_within[64];
-    int id, i;
+    char interlock_with[256];
+    int id, i, t;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter, allowdelete, confirmdelete;
     int confirmdiscard;
     int allowobscure = 0;
@@ -71,6 +72,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     int readonly;
     int tro;
     int enter_mode;
+    pStringVec sv;
 
 	/** form widget should work on any browser **/
     
@@ -179,6 +181,26 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	/** Should we allow obscures for this form? **/
 	allowobscure = htrGetBoolean(tree, "allow_obscure", 0);
 
+	/** Interlocked forms (only one in interlock group allowed to edit/create **/
+	interlock_with[0] = '\0';
+	if ((t = wgtrGetPropertyType(tree,"interlock_with")) == DATA_T_STRING)
+	    {
+	    if (wgtrGetPropertyValue(tree,"interlock_with",DATA_T_STRING, POD(&ptr)) == 0)
+		strtcpy(interlock_with, ptr, sizeof(interlock_with));
+	    }
+	else if (t == DATA_T_STRINGVEC)
+	    {
+	    if (wgtrGetPropertyValue(tree,"interlock_with",DATA_T_STRINGVEC, POD(&sv)) == 0)
+		{
+		for(i=0;i<sv->nStrings;i++)
+		    {
+		    if(i)
+			strtcat(interlock_with, ",", sizeof(interlock_with));
+		    strtcat(interlock_with, sv->Strings[i], sizeof(interlock_with));
+		    }
+		}
+	    }
+
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
@@ -194,7 +216,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%]});\n",
+	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%], il:'%STR&JSSTR'});\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard,
 		multienter,name,
 		strcmp(_3bconfirmwindow,"null") != 0, _3bconfirmwindow, strcmp(_3bconfirmwindow,"null") == 0,
@@ -202,7 +224,8 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 		*osrc != '\0', osrc, *osrc == '\0',
 		tro, enter_mode,
 		*link_next != '\0', link_next, *link_next == '\0',
-		*link_next_within != '\0', link_next_within, *link_next_within == '\0'
+		*link_next_within != '\0', link_next_within, *link_next_within == '\0',
+		interlock_with
 		);
 	htrAddScriptInit_va(s,"    wgtrGetNodeRef(ns,\"%STR&SYM\").ChangeMode('NoData');\n",name);
 

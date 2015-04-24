@@ -211,7 +211,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
 	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dt%POSbtn\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "dt%POSbtn",id);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);

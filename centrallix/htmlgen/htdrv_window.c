@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <math.h>
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -63,8 +64,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int tbw,tbh,bx,by,bw,bh;
     int id, i;
     int visible = 1;
-    char bgnd[128] = "";	    /* these bgnd's must all be same length */
-    char hdr_bgnd[128] = "";
     char bgnd_style[128] = "";
     char hdr_bgnd_style[128] = "";
     char txtcolor[64] = "";
@@ -77,7 +76,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int is_toplevel = 0;
     int is_modal = 0;
     char icon[128];
-    int shadow_offset,shadow_radius;
+    int shadow_offset,shadow_radius,shadow_angle;
     char shadow_color[128];
     int border_radius;
     char border_color[128];
@@ -143,6 +142,8 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		strcpy(shadow_color, "black");
 	    }
+	if (wgtrGetPropertyValue(tree, "shadow_angle", DATA_T_INTEGER, POD(&shadow_angle)) != 0)
+	    shadow_angle = 135;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -156,13 +157,10 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Check background color **/
 	htrGetBackground(tree, NULL, 1, bgnd_style, sizeof(bgnd_style));
-	htrGetBackground(tree, NULL, 0, bgnd, sizeof(bgnd));
 
 	/** Check header background color/image **/
 	if (htrGetBackground(tree, "hdr", 1, hdr_bgnd_style, sizeof(hdr_bgnd_style)) < 0)
 	    strcpy(hdr_bgnd_style, bgnd_style);
-	if (htrGetBackground(tree, "hdr", 0, hdr_bgnd, sizeof(hdr_bgnd)) < 0)
-	    strcpy(hdr_bgnd, bgnd);
 
 	/** Check title text color. **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -257,7 +255,8 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		id, border_style, border_width, border_color, border_radius);
 	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
+	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL; }\n", id,
+			    sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color);
 	    }
 
 	/** draw titlebar div **/
@@ -296,7 +295,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "wn_clicked","0",0);
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"wn%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "wn%POSbase",id);
 	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"wn%POSmain\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);

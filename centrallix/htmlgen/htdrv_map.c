@@ -107,7 +107,7 @@ htmapRender(pHtSession s, pWgtrNode map_node, int z)
 	/** Add css item for the layer **/
 	htrAddStylesheetItem_va(s,"\t#map%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n",id,x,y,w,h,z,main_bg);
 
-	htrAddWgtrObjLinkage_va(s, map_node, "htr_subel(_parentctr,\"map%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, map_node, "map%POSbase",id);
 
 	/** Include our necessary supporting js files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_map.js", 0);

@@ -600,6 +600,8 @@ function wn_openwin(aparam)
     this.point_offset = aparam.PointOffset;
     this.point_side = aparam.PointSide;
     aparam.IsVisible = 1;
+    if (aparam.X !== undefined && aparam.Y !== undefined)
+	moveToAbsolute(this, aparam.X, aparam.Y);
     return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
     }
 

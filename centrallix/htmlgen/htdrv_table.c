@@ -134,6 +134,7 @@ typedef struct
     int hide_scrollbar;		/* don't show scrollbar at all */
     int demand_scrollbar;	/* only show scrollbar when needed */
     int has_header;		/* table has header/title row? */
+    int rowcache_size;		/* number of rows the table caches for display */
     } httbl_struct;
 
 int
@@ -171,9 +172,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
+	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSpane",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->min_rowheight, t->max_rowheight,
@@ -185,7 +186,8 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
 		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
 		t->data_mode, t->has_header,
-		t->newrow_bgnd, t->newrow_textcolor);
+		t->newrow_bgnd, t->newrow_textcolor,
+		t->rowcache_size);
 	
 	for(colid=0;colid<t->ncols;colid++)
 	    {
@@ -231,7 +233,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\">\n", t->id, subcnt);
 		htrRenderSubwidgets(s, sub_tree, z+3);
 		htrAddBodyItem(s,"</DIV>\n");
-		htrAddWgtrObjLinkage_va(s, sub_tree, "htr_subel(_parentctr, \"tbld%POSsub%POS\")", t->id, subcnt);
+		htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, subcnt);
 		htrCheckAddExpression(s, sub_tree, nptr, "display_for");
 
 		htrCheckNSTransitionReturn(s, tree, sub_tree);
@@ -331,6 +333,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"cellvspacing",DATA_T_INTEGER,POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
 
 	if (wgtrGetPropertyValue(tree,"colsep",DATA_T_INTEGER,POD(&(t->colsep))) != 0) t->colsep = 1;
+
+	if (wgtrGetPropertyValue(tree,"rowcache_size",DATA_T_INTEGER,POD(&(t->rowcache_size))) != 0) t->rowcache_size = 0;
 
 	t->dragcols = htrGetBoolean(tree, "dragcols", 1);
 	t->gridinemptyrows = htrGetBoolean(tree, "gridinemptyrows", 1);

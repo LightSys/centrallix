@@ -79,7 +79,10 @@ function osrc_refresh_timer()
     {
     this.refresh_schedid = null;
     this.req_ind_act = false;
-    this.ifcProbe(ifAction).Invoke('Refresh', {});
+    if (this.revealed_children > 0)
+	this.ifcProbe(ifAction).Invoke('Refresh', {});
+    else
+	this.refresh_schedid = pg_addsched_fn(this, 'RefreshTimer', [], this.refresh_interval);
     }
 
 
@@ -938,6 +941,7 @@ function osrc_action_create_cb()
 	//alert(this.replica[this.CurrentRecord].oid);
 	this.SyncID = osrc_syncid++;
 	if (this.formobj) this.formobj.OperationComplete(true, this);
+	pg_serialized_load(this, 'about:blank', null, true);
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
@@ -1168,6 +1172,7 @@ function osrc_import_modified_data(data)
 function osrc_action_modify_cb_2(diff)
     {
     this.SyncID = osrc_syncid++;
+    pg_serialized_load(this, 'about:blank', null, true);
     if (this.formobj)
 	this.formobj.OperationComplete(true, this);
     for(var i in this.child)
@@ -1775,7 +1780,10 @@ function osrc_oldoid_cleanup()
 	    alert('session is invalid');
 	}
     else
+	{
+	pg_serialized_load(this, 'about:blank', null, true);
 	this.Dispatch();
+	}
     }
  
 function osrc_oldoid_cleanup_cb()
@@ -1785,6 +1793,7 @@ function osrc_oldoid_cleanup_cb()
     delete this.oldoids;
     this.oldoids = [];
     this.SetPending(false);
+    pg_serialized_load(this, 'about:blank', null, true);
     /*this.Dispatch();*/
     }
  

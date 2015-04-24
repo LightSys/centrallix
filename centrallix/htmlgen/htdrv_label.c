@@ -213,7 +213,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS table td { vertical-align:%STR&CSSVAL; text-align:%STR&CSSVAL; }\n", id, valign, align);
 	    }
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
 	stylestr[0] = '\0';
 	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
