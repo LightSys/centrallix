@@ -332,15 +332,15 @@ function cx_hints_endnew(e)
     return;
     }
 
-// cx_hints_endnew() - just prior to a save operation
-function cx_hints_endnew(e)
+// cx_hints_completenew() - just prior to a save operation
+function cx_hints_completenew(e)
     {
 
 	// Set default again, if unchanged since startnew.  This allows
 	// create/modify dates to function more as expected.
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr)
 	    {
-	    if (cx_hints_datavalue(e) == e.cx_hints.__startnewvalue)
+	    if (cx_hints_datavalue(e) === e.cx_hints.__startnewvalue)
 		{
 		cx_hints_setdefault(e);
 		}

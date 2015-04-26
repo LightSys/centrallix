@@ -1165,7 +1165,7 @@ function form_action_save()
     this.Pending=true;
     for(var e in this.elements)
 	{
-	if (this.elements[e].cx_hints) cx_hints_endnew(this.elements[e]);
+	if (this.elements[e].cx_hints) cx_hints_completenew(this.elements[e]);
 	}
     this.DisableAll();
 
