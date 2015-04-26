@@ -978,7 +978,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     {
     char hex_chars[] = "0123456789abcdef";
     char token[512];
-    char name[16];
+    char name[48];
     char *ptr, *half;
     int length, start;
     int fd, i, extStart;
@@ -1127,12 +1127,23 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     /* Generate a random name for the file. */
     while(1)
 	{
-	cxssGenerateKey((unsigned char*)name, sizeof(name) - 1);
-	for(i=0; i< (sizeof name) - 1; i++)
+	strtcpy(name, payload->filename, 33);
+	if (strrchr(name, '.'))
+	    *(strrchr(name, '.')) = '\0';
+	for(i=0;i<strlen(name);i++)
 	    {
-	    name[i] = hex_chars[name[i] & 0x0f];
+	    if ((name[i] >= '0' && name[i] <= '9') || (name[i] >= 'a' && name[i] <= 'z') || (name[i] >= 'A' && name[i] <= 'Z') || name[i] == '_' || name[i] == '+' || name[i] == '-')
+		continue;
+	    name[i] = '_';
 	    }
-	name[i] = '\0';
+	strtcat(name, "-", 34);
+	ptr = strchr(name, '\0');
+	cxssGenerateKey((unsigned char*)ptr, 12);
+	for(i=0; i<12; i++)
+	    {
+	    ptr[i] = hex_chars[ptr[i] & 0x0f];
+	    }
+	ptr[i] = '\0';
 	
 	/** Append the extension to the unique name and store it in payload **/
 	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
@@ -1143,7 +1154,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	    }
 	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
 	snprintf(payload->path, sizeof (payload->path), NHT.UploadTmpDir);
-	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s%s", payload->path, payload->newname);
+	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s/%s", payload->path, payload->newname);
 
 	/** Validate that the new file name matches the mime type **/
 	ct = objTypeFromName(payload->full_new_path);
@@ -1423,7 +1434,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
 		/** Copy file into object system **/
 		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
-		snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
+		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		while(1)
 		    {
