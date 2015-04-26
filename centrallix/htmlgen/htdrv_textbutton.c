@@ -203,6 +203,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Include the javascript code for the textbutton **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Initial CSS styles **/
 	htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; display:table; }\n",
