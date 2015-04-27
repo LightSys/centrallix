@@ -949,6 +949,7 @@ function form_change_mode(newmode)
 	}
 
     this.SendEvent('StatusChange');
+    this.SendEvent('ModeChange', {OldMode:this.oldmode, NewMode:this.mode});
     this.SendEvent(this.mode);
     return true;
     }
@@ -1574,6 +1575,7 @@ function form_init(form,param)
     // Events
     var ie = form.ifcProbeAdd(ifEvent);
     ie.Add("StatusChange");
+    ie.Add("ModeChange");
     ie.Add("DataChange");
     ie.Add("DataLoaded");
     ie.Add("DataSaved");
