@@ -259,7 +259,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // Need to scroll?
     if (this.target_y != null)
 	{
-	this.Scroll(this.target_y, target_anim);
+	this.Scroll(this.target_y, this.target_anim);
 	return;
 	}
 
