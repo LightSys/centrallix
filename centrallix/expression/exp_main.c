@@ -735,6 +735,65 @@ expReplaceString(pExpression tree, char* oldstr, char* newstr)
     }
 
 
+
+/*** expCompareExpressions - see if two expressions are equivalent, and
+ *** if so, return 1.  Otherwise return 0 if they are different.
+ ***/
+int
+expCompareExpressions(pExpression exp1, pExpression exp2)
+    {
+    int i;
+    pExpression subexp1, subexp2;
+
+	/** Compare current node first **/
+	if (exp1->NodeType != exp2->NodeType)
+	    return 0;
+	if (exp1->NodeType == EXPR_N_STRING || exp1->NodeType == EXPR_N_INTEGER || exp1->NodeType == EXPR_N_DOUBLE || exp1->NodeType == EXPR_N_MONEY || exp1->NodeType == EXPR_N_DATETIME)
+	    {
+	    if (exp1->DataType != exp2->DataType)
+		return 0;
+	    if ((exp1->Flags & EXPR_F_NULL) != (exp2->Flags & EXPR_F_NULL))
+		return 0;
+	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_STRING && exp1->String && exp2->String && strcmp(exp1->String, exp2->String) != 0)
+		return 0;
+	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_INTEGER && exp1->Integer != exp2->Integer)
+		return 0;
+	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DOUBLE && exp1->Types.Double != exp2->Types.Double)
+		return 0;
+	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && memcmp(&(exp1->Types.Money), &(exp2->Types.Money), sizeof(MoneyType)) != 0)
+		return 0;
+	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && memcmp(&(exp1->Types.Date), &(exp2->Types.Date), sizeof(DateTime)) != 0)
+		return 0;
+	    }
+	if (exp1->NodeType == EXPR_N_FUNCTION || exp1->NodeType == EXPR_N_SUBQUERY)
+	    {
+	    if (strcmp(exp1->Name, exp2->Name) != 0)
+		return 0;
+	    }
+	if (exp1->NodeType == EXPR_N_OBJECT || exp1->NodeType == EXPR_N_PROPERTY)
+	    {
+	    if (exp1->ObjID != exp2->ObjID)
+		return 0;
+	    if (exp1->ObjID >= 0 && exp1->Name && exp2->Name && strcmp(exp1->Name, exp2->Name) != 0)
+		return 0;
+	    }
+	
+	/** Compare children **/
+	if (exp1->Children.nItems != exp2->Children.nItems)
+	    return 0;
+	for(i=0;i<exp1->Children.nItems;i++)
+	    {
+	    subexp1 = (pExpression)(exp1->Children.Items[i]);
+	    subexp2 = (pExpression)(exp2->Children.Items[i]);
+	    if (!expCompareExpressions(subexp1, subexp2))
+		return 0;
+	    }
+
+    return 1;
+    }
+
+
+
 /*** exp_internal_SetupControl() - setup the expression evaluation
  *** control structure that is normally present on the head node of
  *** an expression tree.
