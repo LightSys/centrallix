@@ -1331,6 +1331,12 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	obj = objlist->Objects[id];
 	setfn = objlist->SetAttrFn[id];
 
+	if (!obj)
+	    {
+	    mssError(1,"EXP","Reverse eval property: no such object");
+	    return -1;
+	    }
+
 	/** Set it as modified -- so it gets a new serial # **/
 	expModifyParamByID(objlist, id, obj);
 
