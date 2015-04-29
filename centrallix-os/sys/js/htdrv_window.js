@@ -602,6 +602,8 @@ function wn_openwin(aparam)
     aparam.IsVisible = 1;
     if (aparam.X !== undefined && aparam.Y !== undefined)
 	moveToAbsolute(this, aparam.X, aparam.Y);
+    else if (aparam.Center && aparam.Center != 'no')
+	moveToAbsolute(this, (pg_width - $(this).width())/2, (pg_height - $(this).height())/2);
     return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
     }
 
