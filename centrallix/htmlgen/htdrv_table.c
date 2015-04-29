@@ -340,7 +340,10 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->gridinemptyrows = htrGetBoolean(tree, "gridinemptyrows", 1);
 	t->allow_selection = htrGetBoolean(tree, "allow_selection", 1);
 	t->show_selection = htrGetBoolean(tree, "show_selection", 1);
-	t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
+	if (wgtrGetPropertyType(tree, "initial_selection") == DATA_T_STRING && wgtrGetPropertyValue(tree,"initial_selection",DATA_T_STRING,POD(&ptr)) == 0 && !strcasecmp(ptr,"noexpand"))
+	    t->initial_selection = 2;
+	else
+	    t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
 	t->reverse_order = htrGetBoolean(tree, "reverse_order", 0);
 
 	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);

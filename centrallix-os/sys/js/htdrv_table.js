@@ -51,13 +51,13 @@ function tbld_format_cell(cell, color)
     else
 	{
 	// Text
-	txt = '<span>' + str + '</span>';
+	txt = '<span onclick="function() {}">' + str + '</span>';
 	}
     style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
     if (cell.capdata)
 	{
 	// Caption (added to any of the above types)
-	captxt = '<span>' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
 	if (colinfo.wrap != 'no')
 	    captxt = htutil_nlbr(captxt);
 	capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
@@ -67,12 +67,16 @@ function tbld_format_cell(cell, color)
     if (txt != cell.content || captxt != cell.capcontent || style != cell.cxstyle || capstyle != cell.cxcapstyle)
 	{
 	var p = document.createElement('p');
-	p.style = style;
+	//p.style = style;
+	$(p).attr("style", style);
+	$(p).css({'margin':'0px'});
 	$(p).append(txt);
 	if (captxt)
 	    {
 	    var c_p = document.createElement('p');
-	    c_p.style = capstyle;
+	    //c_p.style = capstyle;
+	    $(c_p).attr("style", capstyle);
+	    $(c_p).css({'margin':'0px'});
 	    $(c_p).append(captxt);
 	    }
 	$(cell).empty();
@@ -232,6 +236,9 @@ function tbld_redraw_all(dataobj, force_datafetch)
     this.DisplayRows(new_rows);
     if (this.rows.first != null && this.rows.last != null)
 	this.RescanRowVisibility();
+
+    if (this.rows.first === null)
+	return;
 
     // Remove unneeded rows
     if (this.rows.first != null)
@@ -715,7 +722,7 @@ function tbld_select()
     for(var i=0; i<this.table.detail_widgets.length; i++)
 	{
 	var dw = this.table.detail_widgets[i];
-	if (wgtrGetServerProperty(dw, 'display_for', 1))
+	if (wgtrGetServerProperty(dw, 'display_for', 1) && this.table.initselect !== 2 /* 2 = noexpand */ )
 	    {
 	    var found=false;
 	    for(var j=0; j<this.detail.length; j++)
@@ -865,17 +872,21 @@ function tbld_scroll(y, animate)
     this.target_y = null;
 
     // Not enough data to scroll?
-    if (this.thumb_height == this.thumb_avail)
+    if (this.thumb_height == this.thumb_avail && y != 0 - getRelativeY(this.rows[this.rows.first]))
 	return;
 
+    // Current start and end of scrollable content
+    var scroll_start = getRelativeY(this.rows[this.rows.first]);
+    var scroll_end = getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2;
+
     // Clamp the scroll range
-    if (this.rows.first == 1 && (0-y) < getRelativeY(this.rows[this.rows.first]))
-	y = 0 - getRelativeY(this.rows[this.rows.first]);
-    if (this.rows.lastosrc == this.rows.last && (0-y) > (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2 - this.vis_height))
-	y = 0 - (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2 - this.vis_height);
+    if (this.rows.lastosrc == this.rows.last && (0-y) > scroll_end - this.vis_height)
+	y = 0 - (scroll_end - this.vis_height);
+    if (this.rows.first == 1 && (0-y) < scroll_start)
+	y = 0 - scroll_start;
 
     // No new data needed?
-    if (getRelativeY(this.rows[this.rows.first]) <= (0-y) && getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2 - this.vis_height >= (0-y))
+    if (scroll_start <= (0-y) && (scroll_end - this.vis_height >= (0-y) || this.rows.lastosrc == this.rows.last))
 	{
 	this.scroll_y = y;
 	$(this.scrolldiv).stop(false, false);
@@ -897,7 +908,7 @@ function tbld_scroll(y, animate)
 	    // Reset to the beginning
 	    this.target_range = {start:1, end:this.rowcache_size};
 	    }
-	else if ((0-y) < getRelativeY(this.rows[this.rows.first]))
+	else if ((0-y) < scroll_start)
 	    {
 	    // Previous data
 	    this.target_range.start = this.rows.first - this.rowcache_size;
@@ -1859,19 +1870,19 @@ function tbld_mousedown(e)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
 		    {
-		    ly.table.initselect = true;
+		    ly.table.initselect = 1;
 		    if(ly.rownum && ly.disp_mode != 'newselect')
 			{
 			ly.crname = null;
 			ly.table.osrc.MoveToRecord(ly.rownum);
 			}
 		    }
-		else if (!ly.table.initselect)
+		else if (ly.table.initselect !== 1)
 		    {
-		    ly.table.initselect = true;
+		    ly.table.initselect = 1;
 		    ly.table.RedrawAll(null, true);
 		    }
-		else if (ly.table.initselect != ly.table.initselect_orig)
+		else if (ly.table.initselect !== ly.table.initselect_orig)
 		    {
 		    ly.table.initselect = ly.table.initselect_orig;
 		    ly.table.RedrawAll(null, true);
