@@ -25,6 +25,8 @@ function lbl_mousedown(e)
     {
     if (e.kind == 'lbl')
 	{
+	if (!lb_current)
+	    lb_current = e.layer;
 	cn_activate(e.layer, 'MouseDown');
 	}
     if (e.layer.tipid) { pg_canceltip(e.layer.tipid); e.layer.tipid = null; }
@@ -251,6 +253,9 @@ function lbl_init(l, wparam)
 	}
 
     $(l).find("span").attr("style", htutil_getstyle(l, null, {}));
+    $(l).find("span").on("click", function() {});
+    $(l).find("span").on("mousedown", function() {});
+    $(l).find("span").on("mouseup", function() {});
 
     l.CheckSize();
 

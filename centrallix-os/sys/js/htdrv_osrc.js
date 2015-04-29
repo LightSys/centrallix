@@ -1460,7 +1460,7 @@ function osrc_get_qid()
 
 function osrc_parse_one_attr(lnk)
     {
-    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host.substr(1)), hints:lnk.search};
     this.type_list[col.oid] = col.type;
     switch(lnk.text.charAt(0))
 	{

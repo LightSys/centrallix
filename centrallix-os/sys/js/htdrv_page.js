@@ -67,18 +67,30 @@ function pg_get_style(element,attr)
 	    return element.clip[attr.substr(5)];
 	    }	
 	var comp_style = window.getComputedStyle(element,null);
-	var cssValue = comp_style.getPropertyCSSValue(attr);
-	if (!cssValue) alert(element.id + '.' + attr);
-	if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
+	if (comp_style.getPropertyCSSValue)
 	    {
-	    alert(attr + ': ' + cssValue.cssValueType);
-	    return null;
+	    var cssValue = comp_style.getPropertyCSSValue(attr);
+	    if (!cssValue) alert(element.id + '.' + attr);
+	    if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
+		{
+		alert(attr + ': ' + cssValue.cssValueType);
+		return null;
+		}
+	    if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
+		return cssValue.getStringValue();
+	    if (cssValue.primitiveType == CSSPrimitiveValue.CSS_NUMBER)
+		return cssValue.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
+	    return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
 	    }
-	if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
-	    return cssValue.getStringValue();
-	if (cssValue.primitiveType == CSSPrimitiveValue.CSS_NUMBER)
-	    return cssValue.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
-	return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
+	else
+	    {
+	    var val = comp_style[attr];
+	    var num = parseFloat(val);
+	    if (isNaN(num))
+		return val;
+	    else
+		return num;
+	    }
 	}
     else if(cx__capabilities.Dom0NS)
 	{

@@ -64,8 +64,6 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     int id, i;
     int is_readonly = 0;
     int is_raised = 0;
-    char* c1;
-    char* c2;
     char* tooltip;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
@@ -126,16 +124,6 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Style of editbox - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
-	if (is_raised)
-	    {
-	    c1 = "white_1x1.png";
-	    c2 = "dkgrey_1x1.png";
-	    }
-	else
-	    {
-	    c1 = "dkgrey_1x1.png";
-	    c2 = "white_1x1.png";
-	    }
 
 	/** enable/disable expression for editbox **/
 	/*htrCheckAddExpression(s, tree, name, "enabled");*/
@@ -161,11 +149,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Ok, write the style header items. **/
-	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	else if (s->Capabilities.Dom0NS)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
-
+	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
@@ -203,10 +187,10 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
 	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
-	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset);
 
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\">&nbsp;</DIV>\n",id);
+	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

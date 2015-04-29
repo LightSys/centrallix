@@ -97,6 +97,9 @@ function tb_init(param)
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetText", tb_action_settext);
+
+    // Mobile Safari workaround
+    $(l).find("span").on("click", function() {});
     }
 
 function tb_action_settext(aparam)

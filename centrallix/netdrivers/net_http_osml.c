@@ -209,7 +209,7 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 	    conn->LastHandle = tgt;
 	    xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://", tgt);
 	    }
-	xsConcatQPrintf(&xs, "%STR&HEX/?%STR#%STR'>%STR:", 
+	xsConcatQPrintf(&xs, "X%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
 
 	xsQPrintf(&xs,"%STR%STR&URL",xs.String,dptr);
