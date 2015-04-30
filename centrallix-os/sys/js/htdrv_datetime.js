@@ -630,7 +630,7 @@ function dt_keyhandler(l,e,k) {
 		}
 	}
 
-	return false;
+	return true;
 }
 
 //offset is used because so that this will work with a date that starts somewhere in the middle of a regular expression

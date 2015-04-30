@@ -1058,7 +1058,7 @@ function osrc_action_modify(aparam) //up,formobj)
 	}
 
     // initiated by a connector?  use current record and convert the data
-    if (aparam && !aparam.data || !aparam.data.oid)
+    if (aparam && (!aparam.data || !aparam.data.oid))
 	{
 	this.formobj = null;
 	this.modifieddata = [];

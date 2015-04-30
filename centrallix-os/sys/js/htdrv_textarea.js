@@ -530,7 +530,7 @@ function tx_keyhandler(l,e,k)
         var beginP = l.rows[l.cursorRow].newLine;
         if (l.cursorCol == 0)
             {
-            if (l.cursorRow == 0) return false;
+            if (l.cursorRow == 0) return true;
             var txtpre = l.rows[l.cursorRow-1].content;
             if (l.rows[l.cursorRow].newLine)
                 {
@@ -575,7 +575,7 @@ function tx_keyhandler(l,e,k)
         var beginP = l.rows[l.cursorRow].newLine;
         if (l.cursorCol == txt.length)
             {
-            if (l.cursorRow == l.rows.length-1) return false;
+            if (l.cursorRow == l.rows.length-1) return true;
             if (l.rows[l.cursorRow+1].newLine)
                 {
                 l.rows[l.cursorRow+1].newLine = 0;
@@ -627,7 +627,7 @@ function tx_keyhandler(l,e,k)
     tx_move_cursor(l, getPageX(l.rows[l.cursorRow].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[l.cursorRow].contentLayer));
     htr_setvisibility(ibeam_current, 'inherit');
     cn_activate(l, 'DataChange');
-    return false;
+    return true;
     }
 
 

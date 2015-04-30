@@ -30,12 +30,10 @@ function eb_getvalue()
 
 function eb_actionsetvalue(aparam)
     {
-    //htr_alert(aparam,1);
     var oldval = this.content;
     if ((typeof aparam.Value) != 'undefined')
 	{
 	this.internal_setvalue(aparam.Value);
-	//cn_activate(this,"DataChange", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0});
 	this.DoDataChange(0, 0);
 	if (this.form) this.form.DataNotify(this, true);
 	this.changed=true;
@@ -72,28 +70,12 @@ function eb_setvalue(v,f)
     {
     this.internal_setvalue(v);
     this.DoDataChange(1, 0);
-    //cn_activate(this,"DataChange", {Value:v, FromKeyboard:0, FromOSRC:1});
     }
 
 function eb_clearvalue()
     {
     this.was_null = true;
-    // fake it by just making the content invisible - much faster :)
-    if (this != eb_current && !this.empty_desc)
-	{
-	this.set_content(null);
-	this.viscontent = null;
-	this.charOffset = 0;
-	this.cursorCol = 0;
-	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
-	eb_set_l_img(this, false);
-	eb_set_r_img(this, false);
-	}
-    else
-	{
-	this.Update(null, 0);
-	}
-    //cn_activate(this,"DataChange", {Value:null, FromKeyboard:0, FromOSRC:1});
+    this.Update(null, 0);
     this.DoDataChange(1, 0);
     }
 
@@ -121,18 +103,12 @@ function eb_enable()
     {
     if (this.bg) htr_setbgcolor(this, this.bg);
     if (this.bgi) htr_setbgimage(this, this.bgi);
-    //if (cx__capabilities.Dom0IE)
-    //    pg_set_style(this,'bgColor',this.bg);
-    //else
-    //	eval('this.document.'+this.xbg);
     this.enabled='full';
     }
 
 function eb_disable()
     {
     if (this.bg) htr_setbgcolor(this, '#e0e0e0');
-    //this.document.background='';
-    //pg_set_style(this.document, 'bgColor','#e0e0e0');
     this.enabled='disabled';
     if (eb_current == this)
 	{
@@ -145,32 +121,15 @@ function eb_readonly()
     {
     if (this.bg) htr_setbgcolor(this, this.bg);
     if (this.bgi) htr_setbgimage(this, this.bgi);
-    //eval('this.document.'+this.bg);
     this.enabled='readonly';
     }
 
-function eb_settext_cb()
+function eb_setdesc(txt)
     {
-    if (this.mainlayer.dbl_buffer)
-	{
-	htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
-	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
-	//setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
-	//setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
-	//setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
-    
-	var tmp = this.mainlayer.ContentLayer;
-	this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
-	this.mainlayer.HiddenLayer = tmp;
-	}
-    else
-	{
-	htr_setvisibility(this.mainlayer.ContentLayer, 'inherit');
-	}
-
-    this.mainlayer.is_busy = false;
-    if (this.mainlayer.content != this.mainlayer.viscontent)
-	eb_settext(this.mainlayer, this.mainlayer.content);
+    if (!this.DescLayer)
+	this.DescLayer = htr_new_layer($(this).width(), this);
+    $(this.DescLayer).text(txt);
+    $(this.DescLayer).css({"left":this.ContentLayer.scrollWidth + "px", "visibility":"inherit"});
     }
 
 function eb_settext(l,txt)
@@ -178,19 +137,22 @@ function eb_settext(l,txt)
     var vistxt = txt;
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
-    var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
-    var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));
+    l.ContentLayer.value = vistxt;
+
+    /*var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
+    var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));*/
     var descr = '';
     if ((new String(l.content)).valueOf() == (new String(l.description_value)).valueOf() && l.saved_description)
 	{
-	if (l != eb_current || l.content)
+	if (/*l != eb_current ||*/ !l.has_focus || l.content)
 	    descr = l.saved_description;
 	}
     if (descr != l.description)
 	l.description = descr;
-    if (l != eb_current && (l.content == '' || l.content == null) && l.empty_desc)
+    if (/*l != eb_current*/ !l.has_focus && (l.content == '' || l.content == null) && l.empty_desc)
 	descr = l.empty_desc;
-    if (descr)
+    l.set_desc(descr);
+    /*if (descr)
 	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '">' + ((l.content == '' || l.content == null)?'':' ') + '(' + htutil_encode(htutil_obscure(descr)) + ')</span>';
     enctxt += '</pre>';
     if (!l.is_busy)
@@ -206,18 +168,7 @@ function eb_settext(l,txt)
 	    htr_write_content(wl, enctxt);
 	    l.eb_settext_cb();
 	    }
-	}
-    }
-
-
-// Grab the ibeam and own it
-function eb_grab_ibeam()
-    {
-    htr_setvisibility(ibeam_current, 'hidden');
-    if (cx__capabilities.Dom1HTML)
-	eb_current.appendChild(ibeam_current);
-    moveAbove(ibeam_current,eb_current);
-    htr_setzindex(ibeam_current, htr_getzindex(eb_current) + 2);
+	}*/
     }
 
 
@@ -252,7 +203,7 @@ function eb_length(c)
 
 function eb_add_history(txt)
     {
-    if (txt == null) txt = this.content;
+    if (txt == null || txt == undefined) txt = this.content;
     this.hist_offset = -1;
     if (txt != null && txt != '')
 	{
@@ -279,7 +230,47 @@ function eb_add_history(txt)
 // Update the text, cursor, and left/right edge arrows
 function eb_update(txt, cursor)
     {
-    var newx;
+    // New text value
+    if (txt != this.content)
+	eb_settext(this,txt);
+
+    /*if (cursor !== null)
+	{
+	// New selection point
+	var sel = document.getSelection();
+	this.range.setStart(this.ContentLayer.firstChild, cursor);
+	this.range.collapse(true);
+	sel.removeAllRanges();
+	sel.addRange(this.range);
+	}*/
+
+    pg_addsched_fn(this, function()
+	{
+	eb_set_l_img(this, this.ContentLayer.scrollLeft > 0);
+	eb_set_r_img(this, this.ContentLayer.scrollLeft < ((this.ContentLayer.scrollLeftMax === undefined)?(this.ContentLayer.scrollWidth - this.ContentLayer.clientWidth - 1):this.ContentLayer.scrollLeftMax));
+	} , [], 10);
+
+    // Make sure ibeam cursor is within visual area.   ******|**[******          ]
+    /*var wpos = $(this).offset();
+    var cpos = $(this.ContentLayer).offset();
+    var sel_rect = this.range.getClientRects()[0];
+    if (!sel_rect)
+	return;
+    var cursor_x = sel_rect.left;
+    var new_left = cpos.left;
+    while (cursor_x + (new_left - cpos.left) < wpos.left)
+	new_left += Math.ceil($(this).width()/3);
+    while (cursor_x + (new_left - cpos.left) > $(this).width() + new_left)
+	new_left -= Math.ceil($(this).width()/3);
+    if (new_left > wpos.left)
+	new_left = wpos.left
+    $(this.ContentLayer).offset({left:new_left, top:cpos.top});*/
+
+    // Set left/right arrows indicating more content available
+    //eb_set_l_img(this, new_left < wpos.left);
+    //eb_set_r_img(this, new_left + $(this.ContentLayer).width() > $(this).width() + wpos.left);
+
+    /*var newx;
     var newclipl, newclipr;
     var wl = this.dbl_buffer?this.HiddenLayer:this.ContentLayer;
     var diff = cursor - this.cursorCol;
@@ -304,10 +295,6 @@ function eb_update(txt, cursor)
 	{
 	this.charOffset = this.cursorCol - parseInt(this.charWidth*2/3);
 	}
-    /*if (this.charOffset > 0 && txt.length < this.charWidth)
-	{
-	this.charOffset = 0;
-	}*/
     if (eb_current == this)
 	pg_set_style(ibeam_current, 'visibility', 'hidden');
     newx = 5 - this.charOffset*text_metric.charWidth;
@@ -334,12 +321,13 @@ function eb_update(txt, cursor)
     eb_set_l_img(this, this.charOffset > 0);
     eb_set_r_img(this, this.charOffset + this.charWidth < eb_length(txt));
     if (eb_current == this)
-	pg_set_style(ibeam_current,'visibility', 'inherit');
+	pg_set_style(ibeam_current,'visibility', 'inherit');*/
     }
+
 
 function eb_paste(e)
     {
-    if (eb_current && e.pastedText)
+/*    if (eb_current && e.pastedText)
 	{
 	var pasted = new String(e.pastedText);
 	for(var i=0; i<pasted.length; i++)
@@ -353,12 +341,175 @@ function eb_paste(e)
 	    // turn it into a keypress.
 	    eb_keyhandler(eb_current, {}, k);
 	    }
-	}
+	}*/
     }
+
+
+function eb_receiving_input(e)
+    {
+    var eb=this.mainlayer;
+    var sel = document.getSelection();
+    var range = sel.getRangeAt(0);
+    var rstart = range.startOffset;
+    var rend = range.endOffset;
+    //var curtxt = $(this).text();
+    //var curtxt = htutil_encode($(this).html(), true).replace(/&lt;br&gt;/g,"\n").replace(/\n$/,"")
+    //var orig_curtxt=$(this).html().replace(/<br[^>]*>/g,"\n").replace(/<[^>]*>/g,"");
+    var orig_curtxt = this.value;
+    var changed = false;
+    var curtxt = orig_curtxt.replace(/\n$/,"");
+
+    if (curtxt != orig_curtxt)
+	changed = true;
+    if (rend > curtxt.length)
+	{
+	changed = true;
+	rend = curtxt.length;
+	}
+    if (rstart > curtxt.length)
+	{
+	changed = true;
+	rstart = curtxt.length;
+	}
+    for(var i=0; i<curtxt.length; i++)
+	{
+	if (curtxt.charCodeAt(i) < 32 || curtxt.charCodeAt(i) == 127)
+	    {
+	    curtxt = curtxt.substr(0,i) + ' ' + curtxt.substr(i+1);
+	    changed = true;
+	    }
+	}
+    if (changed)
+	{
+	this.value = curtxt;
+	range.setStart(range.startContainer, rstart);
+	range.setEnd(range.startContainer, rend);
+	}
+
+    var oldtxt = eb.content;
+    var newcurtxt = cx_hints_checkmodify(eb, oldtxt, curtxt, eb._form_type);
+    if (newcurtxt != curtxt)
+	pg_addsched_fn(eb, function()
+	    {
+	    eb.Update(curtxt = newcurtxt, null);
+	    }, {}, 10);
+    else
+	eb.set_content(curtxt);
+    if (eb.form) eb.form.DataNotify(eb);
+    eb.changed=true;
+    cn_activate(eb,"DataModify", {Value:curtxt, FromKeyboard:1, FromOSRC:0, OldValue:oldtxt});
+    eb.Update(curtxt, null);
+
+    return;
+    }
+
+
+function eb_keydown(e)
+    {
+    var eb = this.mainlayer;
+
+    // check before keypress...
+    if (isCancel(eb.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode)})))
+	{
+	e.preventDefault();
+	return;
+	}
+
+    if (e.keyCode == (KeyboardEvent.DOM_VK_RETURN || 13) || e.keyCode == (KeyboardEvent.DOM_VK_ENTER || 14))
+	{
+	if (eb.form)
+	    eb.form.RetNotify(eb);
+	eb.addHistory();
+	cn_activate(eb, 'ReturnPressed', {});
+	eb.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && !e.shiftKey)
+	{
+	if (eb.form) eb.form.TabNotify(eb);
+	cn_activate(eb, 'TabPressed', {Shift:0});
+	eb.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && e.shiftKey)
+	{
+	if (eb.form) eb.form.ShiftTabNotify(eb);
+	cn_activate(eb, 'TabPressed', {Shift:1});
+	eb.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_ESCAPE || 27))
+	{
+	if (eb.form) eb.form.EscNotify(eb);
+	cn_activate(eb, 'EscapePressed', {});
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_DOWN || 40))
+	{
+	if (eb.hist_offset == -1)
+	    {
+	    eb.addHistory();
+	    var newtxt = "";
+	    }
+	else if (l.hist_offset == 0)
+	    {
+	    eb.hist_offset--;
+	    var newtxt = "";
+	    }
+	else
+	    {
+	    eb.hist_offset--;
+	    var newtxt = eb.value_history[eb.hist_offset];
+	    }
+	eb.Update(newtxt, null);
+	pg_addsched_fn(eb, function()
+	    {
+	    this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
+	    }, [], 10);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_UP || 38))
+	{
+	if (eb.hist_offset < eb.value_history.length - 1)
+	    {
+	    if (eb.hist_offset == -1)
+		{
+		if (eb.addHistory())
+		    eb.hist_offset = 0;
+		}
+	    eb.hist_offset++;
+	    var newtxt = eb.value_history[eb.hist_offset];
+	    if (newtxt != undefined)
+		eb.Update(newtxt, null);
+	    else
+		eb.hist_offset--;
+	    pg_addsched_fn(eb, function()
+		{
+		this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
+		}, [], 10);
+	    }
+	}
+    else
+	{
+	eb.Update(eb.content, null);
+	return;
+	}
+
+    e.preventDefault();
+    return;
+    }
+
+
+function eb_keyup(e)
+    {
+    return;
+    }
+
+
+function eb_keypress(e)
+    {
+    return;
+    }
+
 
 function eb_keyhandler(l,e,k)
     {
-    if (e.keyName == 'escape') window.ebesccnt=window.ebesccnt?(window.ebesccnt+1):1;
+/*    if (e.keyName == 'escape') window.ebesccnt=window.ebesccnt?(window.ebesccnt+1):1;
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
     var txt = l.content;
@@ -483,9 +634,12 @@ function eb_keyhandler(l,e,k)
     if (k == 13 || k == 9 || k == 10)
 	l.DoDataChange(0, 1);
 	//cn_activate(l, "DataChange", {Value:newtxt, FromOSRC:0, FromKeyboard:1});
+    cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});*/
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
+    if (e.keyName == 'f3') return true;
     return false;
     }
+
 
 function eb_do_data_change(from_osrc, from_kbd)
     {
@@ -514,9 +668,20 @@ function eb_action_set_focus(aparam)
     pg_setkbdfocus(this, null, x, y);
     }
 
+
 function eb_select(x,y,l,c,n,a,k)
     {
-    if(l.enabled != 'full') return 0;
+    this.ContentLayer.focus();
+    if (k)
+	pg_addsched_fn(this, function()
+	    {
+	    this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
+	    }, [], 10);
+    this.has_focus = true;
+    if(this.form)
+	if (!this.form.FocusNotify(this)) return 0;
+    cn_activate(this,"GetFocus", {});
+    /*if(l.enabled != 'full') return 0;
     if(l.form)
 	{
 	if (!l.form.FocusNotify(l)) return 0;
@@ -532,13 +697,25 @@ function eb_select(x,y,l,c,n,a,k)
     eb_grab_ibeam();
     eb_current.Update(eb_current.content, eb_current.cursorCol);
     htr_setvisibility(ibeam_current, 'inherit');
-    cn_activate(l,"GetFocus", {});
+    cn_activate(l,"GetFocus", {});*/
     return 1;
     }
 
 function eb_deselect(p)
     {
-    htr_setvisibility(ibeam_current, 'hidden');
+    this.ContentLayer.blur();
+    this.has_focus = false;
+    cn_activate(this,"LoseFocus", {});
+    if (this.changed)
+	{
+	if (!p || !p.nodatachange)
+	    {
+	    this.DoDataChange(0, 1);
+	    this.changed=false;
+	    }
+	}
+    this.addHistory();
+    /*htr_setvisibility(ibeam_current, 'hidden');
     if (eb_current)
 	{
 	cn_activate(eb_current,"LoseFocus", {});
@@ -559,7 +736,7 @@ function eb_deselect(p)
 	eb.Update(eb.content, eb.cursorCol);
 	htr_setvisibility(ibeam_current, 'hidden');
 	eb.addHistory();
-	}
+	}*/
     return true;
     }
 
@@ -645,27 +822,9 @@ function eb_init(param)
     var l = param.layer;
     var c1 = param.c1;
 
-    if (param.c2)
-	{
-	var c2 = param.c2; 
-	l.dbl_buffer = true;
-	}
-    else
-	{
-	l.dbl_buffer = false;
-	}
-
     if (!param.mainBackground)
 	{
 	l.bg = '#c0c0c0';
-	/*if (cx__capabilities.Dom0NS)
-	    {
-	    l.bg = "bgcolor='#c0c0c0'";
-	    }
-	else if (cx__capabilities.Dom0IE)
-	    {
-	    l.bg = "backgroundColor='#c0c0c0'";
-	    }*/
 	}
     else
 	{
@@ -678,12 +837,12 @@ function eb_init(param)
 
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
-    if (l.dbl_buffer) 
-	htr_init_layer(c2,l,'eb');
     ifc_init_widget(l);
     l.fieldname = param.fieldname;
     l.tooltip = param.tooltip;
-    ibeam_init();
+    //ibeam_init();
+
+    l.range = document.createRange();
 
     // Left/Right arrow images
     var imgs = pg_images(l);
@@ -694,21 +853,15 @@ function eb_init(param)
 	}
     l.l_img_on = false;
     l.r_img_on = false;
+    l.has_focus = false;
 
     // Set up params for displaying the content.
     l.ContentLayer = c1;
-    if (l.dbl_buffer)
-	{
-	l.HiddenLayer = c2;
-	l.HiddenLayer._eb_x = -1;
-	l.HiddenLayer._eb_clipr = -1;
-	l.HiddenLayer._eb_clipl = -1;
-	}
     l.ContentLayer._eb_x = -1;
     l.ContentLayer._eb_clipr = -1;
     l.ContentLayer._eb_clipl = -1;
     l.is_busy = false;
-    l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
+    //l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
     l.cursorCol = 0;
     l.charOffset = 0;
     l.viscontent = '';
@@ -738,7 +891,7 @@ function eb_init(param)
     l.enablenew = eb_enable;  // We have added enablenew and enablemodify.  See docs
     l.disable = eb_disable;
     l.readonly = eb_readonly;
-    l.eb_settext_cb = eb_settext_cb;
+    //l.eb_settext_cb = eb_settext_cb;
     l.enable = eb_enable;
     if (param.isReadOnly)
 	{
@@ -755,9 +908,7 @@ function eb_init(param)
 	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', param.isReadOnly?0:3);
     else
 	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
-    setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
-    if (l.dbl_buffer)
-	setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
+    //setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else
@@ -778,8 +929,17 @@ function eb_init(param)
 	    }
 	}
 
+    // Callback when user is trying to change the content.
+    $(l.ContentLayer).on("input", eb_receiving_input);
+    $(l.ContentLayer).on("keydown", eb_keydown);
+    $(l.ContentLayer).on("keyup", eb_keyup);
+    $(l.ContentLayer).on("keypress", eb_keypress);
+    //$(l.ContentLayer).attr("contentEditable", "true");
+    $(l.ContentLayer).css({"outline":"none", "border":"1px transparent"});
+
     // Callbacks for internal management of 'content' value
     l.set_content = eb_set_content;
+    l.set_desc = eb_setdesc;
     l.content_changed = eb_content_changed;
 
     // Hot properties

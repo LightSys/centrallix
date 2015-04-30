@@ -150,7 +150,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; border:none; }\n",id,5,0,w-10,z+1);
 
 	/** Write named global **/
 	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
@@ -173,8 +173,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","PASTE", "eb", "eb_paste");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),\"eb%POScon1\"), form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
-	    name,  name,id,
+	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:document.getElementById(\"eb%POScon1\"), form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
+	    name,  id,
 	    form, fieldname, is_readonly, main_bg,
 	    tooltip, descfg, descr);
 
@@ -187,10 +187,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
 	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset);
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset-2);
 
-	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
+	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
+	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<img name=\"l\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" /><input id=\"eb%POScon1\" /><img name=\"r\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" />\n",id);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

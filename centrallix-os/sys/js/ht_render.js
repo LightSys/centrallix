@@ -472,6 +472,25 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
+function htr_code_to_keyname(k)
+    {
+    switch(k)
+	{
+	case (KeyboardEvent.DOM_VK_HOME || 36):		return 'home';
+	case (KeyboardEvent.DOM_VK_END || 35):		return 'end';
+	case (KeyboardEvent.DOM_VK_LEFT || 37):		return 'left';
+	case (KeyboardEvent.DOM_VK_RIGHT || 39):	return 'right';
+	case (KeyboardEvent.DOM_VK_UP || 38):		return 'up';
+	case (KeyboardEvent.DOM_VK_DOWN || 40):		return 'down';
+	case (KeyboardEvent.DOM_VK_TAB || 9):		return 'tab';
+	case (KeyboardEvent.DOM_VK_ENTER || 14):	return 'enter';
+	case (KeyboardEvent.DOM_VK_RETURN || 13):	return 'enter';
+	case (KeyboardEvent.DOM_VK_ESCAPE || 27):	return 'escape';
+	case (KeyboardEvent.DOM_VK_F3 || 114):		return 'f3';
+	}
+    return null;
+    }
+
 // Cross-browser support functions
 function htr_event(e)
     {
@@ -525,7 +544,7 @@ function htr_event(e)
 		}
 
 	    // prevent the paste into window.paste_input
-	    e.preventDefault();
+	    //e.preventDefault();
 	    }
 
 	// move up from text nodes and spans to containers
@@ -890,7 +909,7 @@ function htr_parselinks(lnks)
 		colcnt = 0;
 		tgt = lnk.target;
 		}
-	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host.substr(1)), hints:lnk.search};
 	    switch(lnk.text.charAt(0))
 		{
 		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;

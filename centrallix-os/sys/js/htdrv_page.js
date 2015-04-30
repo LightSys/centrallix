@@ -1140,6 +1140,7 @@ function pg_keytimeout()
 
 function pg_keyuphandler(k,m,e)
     {
+    return true;
     }
 
 function pg_keypresshandler(k,m,e)
@@ -1170,18 +1171,20 @@ function pg_keyhandler(k,m,e)
 function pg_keyhandler_internal(k,m,e)
     {
     // can't capture ctrl-V, ctrl-C, ctrl-X as keypresses.
-    if (e.ctrlKey && (k == 118 || k == 99 || k == 120))
-	return true;
+    //if (e.ctrlKey && (k == 118 || k == 99 || k == 120))
+    //	return true;
 
     //htr_alert_obj(e,1);
     // layer.keyhandler is a callback routine that is optional 
     // on any layer requesting focus with pg_addarea().
     // It is set up in the corresponding widget drivers.
     if (pg_curkbdlayer != null && 
-	pg_curkbdlayer.keyhandler != null && 
-	pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) 
+	pg_curkbdlayer.keyhandler != null)
 	{
-    	return false;       
+	if (pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true)
+	    return false;       
+	else
+	    return true;
 	}
       
     for(var i=0;i<pg_keylist.length;i++)
@@ -1189,7 +1192,7 @@ function pg_keyhandler_internal(k,m,e)
 	if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)
 	    {
 	    pg_keylist[i].aparam.KeyCode = k;
-	    pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam);
+	    if (pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam)) return true;
 	    return false;
 	    }
 	}
@@ -2833,10 +2836,10 @@ function pg_keydown(e)
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
         pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
         //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
-	if (e.ctrlKey && k == 17)
-	    window.paste_input.focus();
+	//if (e.ctrlKey && k == 17)
+	//    window.paste_input.focus();
         if (pg_keyhandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	}
@@ -2874,7 +2877,7 @@ function pg_keyup(e)
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
         pg_keytimeoutid = null;
         if (pg_keyuphandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	}
@@ -2899,14 +2902,14 @@ function pg_keypress(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	var k = e.Dom2Event.which;
-	if ((k == 8 || k == 13) && k == pg_lastkey) 
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	//if ((k == 8 || k == 13) && k == pg_lastkey) 
+	//    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         if (k == pg_lastkey) pg_lastkey = -1;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	pg_keytimeoutid = null;
         //if (pg_keypresshandler(k, e.Dom2Event.modifiers, e.Dom2Event))
         if (pg_keypresshandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	}

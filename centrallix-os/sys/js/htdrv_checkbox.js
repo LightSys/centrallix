@@ -108,6 +108,7 @@ function checkbox_keyhandler(l,e,k)
 	{
 	if (this.form) this.form.EscNotify(this);
 	}
+    return true;
     }
 
 

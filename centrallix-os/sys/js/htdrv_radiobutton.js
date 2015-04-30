@@ -339,7 +339,7 @@ function rb_keyhandler(l, e, k)
 		}
 	    }
 	}
-    return false;
+    return true;
     }
 
 function rb_changemode(){
