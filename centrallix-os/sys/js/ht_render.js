@@ -890,7 +890,7 @@ function htr_parselinks(lnks)
 		colcnt = 0;
 		tgt = lnk.target;
 		}
-	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host.substr(1)), hints:lnk.search};
 	    switch(lnk.text.charAt(0))
 		{
 		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
