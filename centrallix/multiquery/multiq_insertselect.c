@@ -153,6 +153,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
 	    if (!new_obj)
 		goto error;
+	    objUnmanageObject(stmt->Query->SessionID, new_obj);
 	   
 	    /** Set all of the SELECTed attributes **/
 	    attrid = 0;
@@ -208,19 +209,23 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
 
 	    /** Link the new object as the __inserted object in the object list.**/
-	    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
-	    if (reopen_obj)
+	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
 		{
-		objClose(new_obj);
-		new_obj = reopen_obj;
-		}
-	    old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
-	    if (old_newobj_id >= 0)
-		{
-		old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
-		if (old_newobj)
-		    objClose(old_newobj);
-		expAddParamToList(stmt->Query->ObjList, "__inserted", objLinkTo(new_obj), EXPR_O_REPLACE);
+		reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+		if (reopen_obj)
+		    {
+		    objUnmanageObject(stmt->Query->SessionID, reopen_obj);
+		    objClose(new_obj);
+		    new_obj = reopen_obj;
+		    }
+		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
+		if (old_newobj_id >= 0)
+		    {
+		    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+		    if (old_newobj)
+			objClose(old_newobj);
+		    expModifyParam(stmt->Query->ObjList, "__inserted", objLinkTo(new_obj));
+		    }
 		}
 
 	    /** Close up and go on to next object to be inserted. **/

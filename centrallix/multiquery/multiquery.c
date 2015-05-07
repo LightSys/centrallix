@@ -2683,15 +2683,16 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    expCopyList(objlist, this->ObjList, -1);
 	    /*expLinkParams(this->ObjList, 0, -1);*/
 	    this->nProvidedObjects = this->ObjList->nObjects;
-	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 	    }
 	this->ObjList->Session = this->SessionID;
 
 	/** Add the __inserted object **/
-	if (expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
+	if (expLookupParam(this->ObjList, "__inserted") < 0 && expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
 	    this->nProvidedObjects++;
 	else
 	    this->Flags |= MQ_F_NOINSERTED;
+
+	this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 
 	/** Parse one SQL statement **/
 	if (mq_internal_NextStatement(this) != 1)
