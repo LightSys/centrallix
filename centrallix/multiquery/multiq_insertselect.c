@@ -111,7 +111,12 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int exp_rval;
     int sel_rval = 0;
     char pathname[OBJSYS_MAX_PATH];
+    char new_pathname[OBJSYS_MAX_PATH];
+    char* new_objname;
     pObject new_obj = NULL;
+    pObject reopen_obj;
+    pObject old_newobj;
+    int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
     char* attrname;
@@ -121,7 +126,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int hc_rval;
 
 	/** Prepare for the inserts **/
-	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 >= sizeof(pathname))
+	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
 	    {
 	    mssError(1, "MQIS", "Pathname too long for INSERT destination");
 	    goto error;
@@ -185,6 +190,40 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		if (objSetAttrValue(new_obj, attrname, t, &od) < 0)
 		    goto error;
 		}
+
+	    /** Commit and get new object name **/
+	    objCommit(stmt->Query->SessionID);
+	    new_objname = NULL;
+	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
+	    if (!new_objname)
+		{
+		mssError(0, "MQIS", "Could not INSERT new object");
+		goto error;
+		}
+	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+		{
+		mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+		goto error;
+		}
+	    snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+
+	    /** Link the new object as the __inserted object in the object list.**/
+	    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+	    if (reopen_obj)
+		{
+		objClose(new_obj);
+		new_obj = reopen_obj;
+		}
+	    old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
+	    if (old_newobj_id >= 0)
+		{
+		old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+		if (old_newobj)
+		    objClose(old_newobj);
+		expAddParamToList(stmt->Query->ObjList, "__inserted", objLinkTo(new_obj), EXPR_O_REPLACE);
+		}
+
+	    /** Close up and go on to next object to be inserted. **/
 	    objClose(new_obj);
 	    new_obj = NULL;
 	    }

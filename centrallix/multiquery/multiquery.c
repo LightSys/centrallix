@@ -2687,6 +2687,12 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    }
 	this->ObjList->Session = this->SessionID;
 
+	/** Add the __inserted object **/
+	if (expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
+	    this->nProvidedObjects++;
+	else
+	    this->Flags |= MQ_F_NOINSERTED;
+
 	/** Parse one SQL statement **/
 	if (mq_internal_NextStatement(this) != 1)
 	    goto error;
@@ -3194,7 +3200,7 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     {
-    int i;
+    int i, id;
     pQueryDeclaredObject qdo;
 
     	/** Check the link cnt **/
@@ -3203,6 +3209,16 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	/** Release resources used by the one SQL statement **/
 	if (qy->CurStmt)
 	    mq_internal_CloseStatement(qy->CurStmt);
+
+	/** Close an __inserted object **/
+	if (qy->ObjList && !(qy->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(qy->ObjList, "__inserted")) >= 0)
+	    {
+	    if (qy->ObjList->Objects[id])
+		{
+		objClose(qy->ObjList->Objects[id]);
+		qy->ObjList->Objects[id] = NULL;
+		}
+	    }
 
 	/** Release the object list for the main query **/
 	if (qy->ObjList)
