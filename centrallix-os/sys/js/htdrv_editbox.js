@@ -743,7 +743,7 @@ function eb_deselect(p)
 
 function eb_mselect(x,y,l,c,n,a)
     {
-    if (this.charOffset > 0 || this.charOffset + this.charWidth < eb_length(this.content))
+    if (this.ContentLayer.scrollWidth > this.ContentLayer.clientWidth)
 	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, getPageX(this) + x, getPageY(this) + y);
     else if (this.tooltip)
 	this.tipid = pg_tooltip(this.tooltip, getPageX(this) + x, getPageY(this) + y);
