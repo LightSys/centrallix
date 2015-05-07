@@ -738,7 +738,10 @@ function tbld_select()
 		{
 		// already a part of another row?
 		if ($(dw).css("visibility") == 'inherit')
+		    {
 		    pg_reveal_event(dw, dw, 'Obscure');
+		    dw.ifcProbe(ifEvent).Activate('Close', {});
+		    }
 
 		// Add to this row and show it.
 		this.detail.push(dw);
@@ -750,6 +753,7 @@ function tbld_select()
 		    "top": "0px",
 		    });
 		pg_reveal_event(dw, dw, 'Reveal');
+		dw.ifcProbe(ifEvent).Activate('Open', {});
 		}
 	    }
 	else
@@ -765,6 +769,7 @@ function tbld_select()
 			"visibility": "hidden",
 			});
 		    this.table.appendChild(dw);
+		    dw.ifcProbe(ifEvent).Activate('Close', {});
 		    break;
 		    }
 		}
@@ -798,6 +803,7 @@ function tbld_deselect()
 		"visibility": "hidden",
 		});
 	    this.table.appendChild(dw);
+	    dw.ifcProbe(ifEvent).Activate('Close', {});
 	    }
 	}
     this.detail = [];
@@ -1148,6 +1154,7 @@ function tbld_remove_row(rowobj)
 		"visibility": "hidden",
 		});
 	    this.appendChild(dw);
+	    dw.ifcProbe(ifEvent).Activate('Close', {});
 	    }
 	}
     rowobj.detail = [];
@@ -1679,6 +1686,10 @@ function tbld_init(param)
 	dw.Reveal = tbld_cb_dw_reveal;
 	pg_reveal_register_triggerer(dw);
 	dw.display_for = 1;
+	ifc_init_widget(dw);
+	var ie = dw.ifcProbeAdd(ifEvent);
+	ie.Add("Open");
+	ie.Add("Close");
 	}
 
     t.InitBH();
