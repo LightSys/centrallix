@@ -266,6 +266,11 @@ function cxjs_substring(s,p,l)
     else
 	return s.substr(p-1,l);
     }
+function cxjs_right(s,l)
+    {
+    if (s == null || l == null) return null;
+    return s.substr(s.length-l);
+    }
 function cxjs_eval(x)
     {
     var _this = null;
