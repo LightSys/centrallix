@@ -502,10 +502,11 @@ function eb_deselect(p)
 
 function eb_mselect(x,y,l,c,n,a)
     {
+    var offs = $(this).offset();
     if (this.ContentLayer.scrollWidth > this.ContentLayer.clientWidth)
-	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, getPageX(this) + x, getPageY(this) + y);
+	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, offs.left + x, offs.top + y);
     else if (this.tooltip)
-	this.tipid = pg_tooltip(this.tooltip, getPageX(this) + x, getPageY(this) + y);
+	this.tipid = pg_tooltip(this.tooltip, offs.left + x, offs.top + y);
     return 1;
     }
 
@@ -612,9 +613,6 @@ function eb_init(param)
 
     // Set up params for displaying the content.
     l.ContentLayer = c1;
-    l.ContentLayer._eb_x = -1;
-    l.ContentLayer._eb_clipr = -1;
-    l.ContentLayer._eb_clipl = -1;
     l.viscontent = '';
     l.content = '';
     l.value = '';
@@ -656,9 +654,9 @@ function eb_init(param)
 	}
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', param.isReadOnly?0:3);
+	pg_addarea(l, -1,-1,$(l).width()+3,$(l).height()+3, 'ebox', 'ebox', param.isReadOnly?0:3);
     else
-	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
+	pg_addarea(l, -1,-1,$(l).width()+1,$(l).height()+1, 'ebox', 'ebox', param.isReadOnly?0:3);
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else
