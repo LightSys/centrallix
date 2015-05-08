@@ -45,10 +45,7 @@ function eb_actionsetvaldesc(aparam)
     {
     if ((typeof aparam.Description) != 'undefined')
 	{
-	//var olddesc = this.saved_description;
-	//var oldvdv = this.description_value;
 	this.descriptions[this.content] = aparam.Description;
-	//if (olddesc != aparam.Description || oldvdv != this.content)
 	if (this.description != aparam.Description)
 	    this.Update(this.content);
 	}
@@ -163,26 +160,6 @@ function eb_settext(l,txt)
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
     l.ContentLayer.value = vistxt;
-
-    /*var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
-    var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));*/
-    /*if (descr)
-	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '">' + ((l.content == '' || l.content == null)?'':' ') + '(' + htutil_encode(htutil_obscure(descr)) + ')</span>';
-    enctxt += '</pre>';
-    if (!l.is_busy)
-	{
-	l.is_busy = true;
-	l.viscontent = txt;
-	if (cx__capabilities.Dom0NS) // only serialize EB's for NS4
-	    {
-	    pg_serialized_write(wl, enctxt, eb_settext_cb);
-	    }
-	else
-	    {
-	    htr_write_content(wl, enctxt);
-	    l.eb_settext_cb();
-	    }
-	}*/
     }
 
 
@@ -264,99 +241,11 @@ function eb_update(txt)
 	eb_set_l_img(this, this.ContentLayer.scrollLeft > 0);
 	eb_set_r_img(this, this.ContentLayer.scrollLeft < ((this.ContentLayer.scrollLeftMax === undefined)?(this.ContentLayer.scrollWidth - this.ContentLayer.clientWidth - 1):this.ContentLayer.scrollLeftMax));
 	} , [], 10);
-
-    // Make sure ibeam cursor is within visual area.   ******|**[******          ]
-    /*var wpos = $(this).offset();
-    var cpos = $(this.ContentLayer).offset();
-    var sel_rect = this.range.getClientRects()[0];
-    if (!sel_rect)
-	return;
-    var cursor_x = sel_rect.left;
-    var new_left = cpos.left;
-    while (cursor_x + (new_left - cpos.left) < wpos.left)
-	new_left += Math.ceil($(this).width()/3);
-    while (cursor_x + (new_left - cpos.left) > $(this).width() + new_left)
-	new_left -= Math.ceil($(this).width()/3);
-    if (new_left > wpos.left)
-	new_left = wpos.left
-    $(this.ContentLayer).offset({left:new_left, top:cpos.top});*/
-
-    // Set left/right arrows indicating more content available
-    //eb_set_l_img(this, new_left < wpos.left);
-    //eb_set_r_img(this, new_left + $(this.ContentLayer).width() > $(this).width() + wpos.left);
-
-    /*var newx;
-    var newclipl, newclipr;
-    var wl = this.dbl_buffer?this.HiddenLayer:this.ContentLayer;
-    var diff = cursor - this.cursorCol;
-    if (txt != null)
-	txt = new String(txt);
-    var ldiff = eb_length(txt) - eb_length(this.content);
-    this.cursorCol = cursor;
-    if (this.cursorCol < 0) this.cursorCol = 0;
-    if (this.cursorCol > this.charWidth + this.charOffset)
-	{
-	this.charOffset = this.cursorCol - this.charWidth;
-	}
-    if (this.cursorCol < this.charOffset)
-	{
-	this.charOffset = this.cursorCol;
-	}
-    if (this.charOffset > 0 && this.cursorCol - this.charOffset < this.charWidth*2/3 && diff < 0)
-	{
-	this.charOffset--;
-	}
-    if (this.charOffset < eb_length(txt) - this.charWidth && this.cursorCol - this.charOffset > this.charWidth*2/3 && ldiff < 0)
-	{
-	this.charOffset = this.cursorCol - parseInt(this.charWidth*2/3);
-	}
-    if (eb_current == this)
-	pg_set_style(ibeam_current, 'visibility', 'hidden');
-    newx = 5 - this.charOffset*text_metric.charWidth;
-    newclipl = this.charOffset*text_metric.charWidth;
-    newclipr = newclipl + this.charWidth*text_metric.charWidth;
-    if (wl._eb_x != newx)
-	{
-	setRelativeX(wl, newx);
-	wl._eb_x = newx;
-	}
-    if (wl._eb_clipl != newclipl)
-	{
-	setClipLeft(wl, newclipl);
-	wl._eb_clipl = newclipl;
-	}
-    if (wl._eb_clipr != newclipr)
-	{
-	setClipRight(wl, newclipr);
-	wl._eb_clipr = newclipr;
-	}
-    if (eb_current == this)
-	moveToAbsolute(ibeam_current, getPageX(wl) + this.cursorCol*text_metric.charWidth, getPageY(wl));
-    eb_settext(this, txt);
-    eb_set_l_img(this, this.charOffset > 0);
-    eb_set_r_img(this, this.charOffset + this.charWidth < eb_length(txt));
-    if (eb_current == this)
-	pg_set_style(ibeam_current,'visibility', 'inherit');*/
     }
 
 
 function eb_paste(e)
     {
-/*    if (eb_current && e.pastedText)
-	{
-	var pasted = new String(e.pastedText);
-	for(var i=0; i<pasted.length; i++)
-	    {
-	    var k = pasted.charCodeAt(i);
-
-	    // Convert control codes into spaces.
-	    if (k < 32  || k == 127)
-		k = 32;
-
-	    // turn it into a keypress.
-	    eb_keyhandler(eb_current, {}, k);
-	    }
-	}*/
     }
 
 
@@ -367,9 +256,6 @@ function eb_receiving_input(e)
     var range = sel.getRangeAt(0);
     var rstart = range.startOffset;
     var rend = range.endOffset;
-    //var curtxt = $(this).text();
-    //var curtxt = htutil_encode($(this).html(), true).replace(/&lt;br&gt;/g,"\n").replace(/\n$/,"")
-    //var orig_curtxt=$(this).html().replace(/<br[^>]*>/g,"\n").replace(/<[^>]*>/g,"");
     var orig_curtxt = this.value;
     var changed = false;
     var curtxt = orig_curtxt.replace(/\n$/,"");
@@ -403,11 +289,15 @@ function eb_receiving_input(e)
 
     var oldtxt = eb.content;
     var newcurtxt = cx_hints_checkmodify(eb, oldtxt, curtxt, eb._form_type);
+    if (eb.was_null && newcurtxt == '')
+	newcurtxt = null;
     if (newcurtxt != curtxt)
+	{
 	pg_addsched_fn(eb, function()
 	    {
-	    eb.Update(curtxt = newcurtxt);
-	    }, {}, 10);
+	    this.Update(curtxt = newcurtxt);
+	    }, [], 10);
+	}
     else
 	eb.set_content(curtxt);
     if (eb.form) eb.form.DataNotify(eb);
@@ -533,132 +423,6 @@ function eb_keypress(e)
 function eb_keyhandler(l,e,k)
     {
     if(l.enabled!='full') return 1;
-/*    if (e.keyName == 'escape') window.ebesccnt=window.ebesccnt?(window.ebesccnt+1):1;
-    if(!eb_current) return;
-    if(eb_current.enabled!='full') return 1;
-    var txt = l.content;
-    var vistxt = (txt == null)?'':txt;
-    var newtxt = txt;
-    var cursoradj = 0;
-    if (isCancel(l.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:k, Name:e.keyName})))
-	return false;
-    if (k == 9 && !e.shiftKey)
-	{
-	if(l.form) l.form.TabNotify(this);
-	cn_activate(l,'TabPressed', {Shift:0});
-	}
-    if (k == 9 && e.shiftKey)
-	{
-	if(l.form) l.form.ShiftTabNotify(this);
-	cn_activate(l,'TabPressed', {Shift:1});
-	}
-    if (k == 10 || k == 13)
-	{
-	if (l.form)
-	    l.form.RetNotify(this);
-	l.addHistory();
-	cn_activate(l,'ReturnPressed', {});
-	}
-    if (k == 27)
-	{
-	if (l.form) l.form.EscNotify(this);
-	cn_activate(l,'EscapePressed', {});
-	}
-    if (k >= 32 && k < 127 && !e.ctrlKey)
-	{
-	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + String.fromCharCode(k) + vistxt.substr(l.cursorCol,vistxt.length), l._form_type);
-	if (newtxt != txt)
-	    {
-	    cursoradj = 1;
-	    }
-	}
-    else if (k == 8 && l.cursorCol > 0)
-	{
-	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol-1) + vistxt.substr(l.cursorCol,eb_length(txt)));
-	if (newtxt != txt)
-	    {
-	    cursoradj = -1;
-	    }
-	}
-    else if (k == 21 && eb_length(txt) > 0)
-	{
-	newtxt = "";
-	cursoradj = -l.cursorCol;
-	}
-    else if (k == 127 && l.cursorCol < eb_length(txt))
-	{
-	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + vistxt.substr(l.cursorCol+1,eb_length(txt)));
-	}
-    else if (k == 0 && e.keyName == 'home')
-	{
-	cursoradj = -l.cursorCol;
-	}
-    else if (k == 0 && e.keyName == 'end')
-	{
-	cursoradj = eb_length(txt) - l.cursorCol;
-	}
-    else if (k == 0 && e.keyName == 'left' && l.cursorCol > 0)
-	{
-	cursoradj = -1;
-	}
-    else if (k == 0 && e.keyName == 'right' && l.cursorCol < eb_length(txt))
-	{
-	cursoradj = 1;
-	}
-    else if (k == 0 && e.keyName == 'up' && l.hist_offset < l.value_history.length - 1)
-	{
-	if (l.hist_offset == -1)
-	    {
-	    if (l.addHistory())
-		l.hist_offset = 0;
-	    }
-	l.hist_offset++;
-	newtxt = l.value_history[l.hist_offset];
-	if (l.cursorCol > eb_length(newtxt) || l.cursorCol == eb_length(txt))
-	    cursoradj = eb_length(newtxt) - l.cursorCol;
-	}
-    else if (k == 0 && e.keyName == 'down')
-	{
-	if (l.hist_offset == -1)
-	    {
-	    l.addHistory();
-	    newtxt = "";
-	    cursoradj = -l.cursorCol;
-	    }
-	else if (l.hist_offset == 0)
-	    {
-	    l.hist_offset--;
-	    newtxt = "";
-	    cursoradj = -l.cursorCol;
-	    }
-	else
-	    {
-	    l.hist_offset--;
-	    newtxt = l.value_history[l.hist_offset];
-	    if (l.cursorCol > eb_length(newtxt) || l.cursorCol == eb_length(txt))
-		cursoradj = eb_length(newtxt) - l.cursorCol;
-	    }
-	}
-    else
-	{
-	return true;
-	}
-    if (newtxt != txt || cursoradj != 0)
-	{
-	if (l.was_null && newtxt == '') newtxt = null;
-	l.Update(newtxt, l.cursorCol + cursoradj);
-	}
-    if (newtxt != txt)
-	{
-	//if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) 
-	if (l.form) l.form.DataNotify(l);
-	l.changed=true;
-	cn_activate(l,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:txt});
-	}
-    if (k == 13 || k == 9 || k == 10)
-	l.DoDataChange(0, 1);
-	//cn_activate(l, "DataChange", {Value:newtxt, FromOSRC:0, FromKeyboard:1});
-    cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});*/
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
     if (e.keyName == 'f3') return true;
     return false;
@@ -671,12 +435,10 @@ function eb_do_data_change(from_osrc, from_kbd)
     if (nv != this.content)
 	{
 	this.internal_setvalue(nv);
-	//if (from_kbd && this.form) this.form.DataNotify(this);
 	}
     if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.value, Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
 	{
 	this.internal_setvalue(this.value);
-	//if (from_kbd && this.form) this.form.DataNotify(this);
 	return false;
 	}
     this.oldvalue = this.value;
@@ -715,23 +477,6 @@ function eb_select(x,y,l,c,n,a,k)
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
     cn_activate(this,"GetFocus", {});
-    /*if(l.enabled != 'full') return 0;
-    if(l.form)
-	{
-	if (!l.form.FocusNotify(l)) return 0;
-	}
-    if (k)
-	l.cursorCol = eb_length(l.content);
-    else
-	l.cursorCol = Math.round((x + getPageX(l) - getPageX(l.ContentLayer))/text_metric.charWidth);
-    if (l.cursorCol > eb_length(l.content)) l.cursorCol = eb_length(l.content);
-    if (eb_current) eb_current.cursorlayer = null;     
-    eb_current = l;    
-    eb_current.cursorlayer = ibeam_current;    
-    eb_grab_ibeam();
-    eb_current.Update(eb_current.content, eb_current.cursorCol);
-    htr_setvisibility(ibeam_current, 'inherit');
-    cn_activate(l,"GetFocus", {});*/
     return 1;
     }
 
@@ -751,28 +496,6 @@ function eb_deselect(p)
     this.Update(this.content);
     cn_activate(this,"LoseFocus", {});
     this.addHistory();
-    /*htr_setvisibility(ibeam_current, 'hidden');
-    if (eb_current)
-	{
-	cn_activate(eb_current,"LoseFocus", {});
-	eb_current.cursorlayer = null;
-	if (eb_current.changed)
-	    {
-	    if (!p || !p.nodatachange)
-		{
-		eb_current.DoDataChange(0, 1);
-		//cn_activate(eb_current,"DataChange", {Value:eb_current.content, FromOSRC:0, FromKeyboard:1});
-		eb_current.changed=false;
-		}
-	    }
-	eb_current.charOffset=0;
-	eb_current.cursorCol=0;
-	var eb = eb_current;
-	eb_current = null;
-	eb.Update(eb.content, eb.cursorCol);
-	htr_setvisibility(ibeam_current, 'hidden');
-	eb.addHistory();
-	}*/
     return true;
     }
 
@@ -849,7 +572,6 @@ function eb_cb_reveal(e)
 /**
 * l - base layer
 * c1 - content layer 1
-* c2 - content layer 2 - hidden
 * is_readonly - if the editbox is read only
 * main_bg - background color
 **/
@@ -876,9 +598,6 @@ function eb_init(param)
     ifc_init_widget(l);
     l.fieldname = param.fieldname;
     l.tooltip = param.tooltip;
-    //ibeam_init();
-
-    l.range = document.createRange();
 
     // Left/Right arrow images
     var imgs = pg_images(l);
@@ -896,10 +615,6 @@ function eb_init(param)
     l.ContentLayer._eb_x = -1;
     l.ContentLayer._eb_clipr = -1;
     l.ContentLayer._eb_clipl = -1;
-    l.is_busy = false;
-    //l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
-    l.cursorCol = 0;
-    l.charOffset = 0;
     l.viscontent = '';
     l.content = '';
     l.value = '';
@@ -926,7 +641,6 @@ function eb_init(param)
     l.enablenew = eb_enable;  // We have added enablenew and enablemodify.  See docs
     l.disable = eb_disable;
     l.readonly = eb_readonly;
-    //l.eb_settext_cb = eb_settext_cb;
     l.enable = eb_enable;
     if (param.isReadOnly)
 	{
@@ -945,7 +659,6 @@ function eb_init(param)
 	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', param.isReadOnly?0:3);
     else
 	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
-    //setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else
@@ -971,7 +684,6 @@ function eb_init(param)
     $(l.ContentLayer).on("keydown", eb_keydown);
     $(l.ContentLayer).on("keyup", eb_keyup);
     $(l.ContentLayer).on("keypress", eb_keypress);
-    //$(l.ContentLayer).attr("contentEditable", "true");
     $(l.ContentLayer).css({"outline":"none", "border":"1px transparent", "background-color":"transparent"});
 
     // Callbacks for internal management of 'content' value
