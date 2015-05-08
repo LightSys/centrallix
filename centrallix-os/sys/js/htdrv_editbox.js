@@ -45,12 +45,12 @@ function eb_actionsetvaldesc(aparam)
     {
     if ((typeof aparam.Description) != 'undefined')
 	{
-	var olddesc = this.saved_description;
-	var oldvdv = this.description_value;
-	this.saved_description = aparam.Description;
-	this.description_value = this.content;
-	if (olddesc != this.saved_description || oldvdv != this.description_value)
-	    this.Update(this.content, this.cursorCol);
+	//var olddesc = this.saved_description;
+	//var oldvdv = this.description_value;
+	this.descriptions[this.content] = aparam.Description;
+	//if (olddesc != aparam.Description || oldvdv != this.content)
+	if (this.description != aparam.Description)
+	    this.Update(this.content);
 	}
     }
 
@@ -62,7 +62,7 @@ function eb_internal_setvalue(v)
     var c = 0;
     if (eb_current == this)
 	c = eb_length(v);
-    this.Update(v, c);
+    this.Update(v);
     this.addHistory(v);
     }
 
@@ -75,13 +75,13 @@ function eb_setvalue(v,f)
 function eb_clearvalue()
     {
     this.was_null = true;
-    this.Update(null, 0);
+    this.Update(null);
     this.DoDataChange(1, 0);
     }
 
 function eb_content_changed(p,o,n)
     {
-    this.Update('' + n, 0);
+    this.Update('' + n);
     return '' + n;
     }
 
@@ -104,12 +104,14 @@ function eb_enable()
     if (this.bg) htr_setbgcolor(this, this.bg);
     if (this.bgi) htr_setbgimage(this, this.bgi);
     this.enabled='full';
+    $(this.ContentLayer).prop('disabled', false);
     }
 
 function eb_disable()
     {
     if (this.bg) htr_setbgcolor(this, '#e0e0e0');
     this.enabled='disabled';
+    $(this.ContentLayer).prop('disabled', true);
     if (eb_current == this)
 	{
 	eb_deselect();
@@ -122,14 +124,37 @@ function eb_readonly()
     if (this.bg) htr_setbgcolor(this, this.bg);
     if (this.bgi) htr_setbgimage(this, this.bgi);
     this.enabled='readonly';
+    $(this.ContentLayer).prop('disabled', true);
+    }
+
+function eb_inputwidth()
+    {
+    if (!this.ContentLayer.value)
+	return 0;
+    var span = document.createElement('span');
+    $(span).text(this.ContentLayer.value);
+    $(span).css($(this.ContentLayer).css(["font-family","font-size","text-decoration","font-weight"]));
+    $(span).css({'white-space':'pre'});
+    this.appendChild(span);
+    var w = span.getBoundingClientRect().width;
+    this.removeChild(span);
+    return w;
     }
 
 function eb_setdesc(txt)
     {
     if (!this.DescLayer)
 	this.DescLayer = htr_new_layer($(this).width(), this);
-    $(this.DescLayer).text(txt);
-    $(this.DescLayer).css({"left":this.ContentLayer.scrollWidth + "px", "visibility":"inherit"});
+    $(this.DescLayer).text(txt?('(' + txt + ')'):'');
+    $(this.DescLayer).css
+	({
+	"z-index":"-1",
+	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
+	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
+	"left":(this.input_width() + (this.content?4:0) + 5) + "px",
+	"visibility":"inherit",
+	"white-space":"nowrap",
+	});
     }
 
 function eb_settext(l,txt)
@@ -141,17 +166,6 @@ function eb_settext(l,txt)
 
     /*var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
     var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));*/
-    var descr = '';
-    if ((new String(l.content)).valueOf() == (new String(l.description_value)).valueOf() && l.saved_description)
-	{
-	if (/*l != eb_current ||*/ !l.has_focus || l.content)
-	    descr = l.saved_description;
-	}
-    if (descr != l.description)
-	l.description = descr;
-    if (/*l != eb_current*/ !l.has_focus && (l.content == '' || l.content == null) && l.empty_desc)
-	descr = l.empty_desc;
-    l.set_desc(descr);
     /*if (descr)
 	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '">' + ((l.content == '' || l.content == null)?'':' ') + '(' + htutil_encode(htutil_obscure(descr)) + ')</span>';
     enctxt += '</pre>';
@@ -228,22 +242,23 @@ function eb_add_history(txt)
 
 
 // Update the text, cursor, and left/right edge arrows
-function eb_update(txt, cursor)
+function eb_update(txt)
     {
     // New text value
     if (txt != this.content)
 	eb_settext(this,txt);
 
-    /*if (cursor !== null)
-	{
-	// New selection point
-	var sel = document.getSelection();
-	this.range.setStart(this.ContentLayer.firstChild, cursor);
-	this.range.collapse(true);
-	sel.removeAllRanges();
-	sel.addRange(this.range);
-	}*/
+    // Value description field
+    var descr = '';
+    if (this.descriptions[this.content] && (!this.has_focus || this.content))
+	descr = this.descriptions[this.content];
+    if (descr != this.description)
+	this.description = descr;
+    if (!this.has_focus && (this.content == '' || this.content == null) && this.empty_desc)
+	descr = this.empty_desc;
+    this.set_desc(descr);
 
+    // Left and right 'more text here' arrows
     pg_addsched_fn(this, function()
 	{
 	eb_set_l_img(this, this.ContentLayer.scrollLeft > 0);
@@ -391,14 +406,14 @@ function eb_receiving_input(e)
     if (newcurtxt != curtxt)
 	pg_addsched_fn(eb, function()
 	    {
-	    eb.Update(curtxt = newcurtxt, null);
+	    eb.Update(curtxt = newcurtxt);
 	    }, {}, 10);
     else
 	eb.set_content(curtxt);
     if (eb.form) eb.form.DataNotify(eb);
     eb.changed=true;
     cn_activate(eb,"DataModify", {Value:curtxt, FromKeyboard:1, FromOSRC:0, OldValue:oldtxt});
-    eb.Update(curtxt, null);
+    eb.Update(curtxt);
 
     return;
     }
@@ -457,7 +472,10 @@ function eb_keydown(e)
 	    eb.hist_offset--;
 	    var newtxt = eb.value_history[eb.hist_offset];
 	    }
-	eb.Update(newtxt, null);
+	if (eb.form) eb.form.DataNotify(eb);
+	eb.changed=true;
+	cn_activate(eb,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:eb.content});
+	eb.Update(newtxt);
 	pg_addsched_fn(eb, function()
 	    {
 	    this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
@@ -475,7 +493,12 @@ function eb_keydown(e)
 	    eb.hist_offset++;
 	    var newtxt = eb.value_history[eb.hist_offset];
 	    if (newtxt != undefined)
-		eb.Update(newtxt, null);
+		{
+		if (eb.form) eb.form.DataNotify(eb);
+		eb.changed=true;
+		cn_activate(eb,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:eb.content});
+		eb.Update(newtxt);
+		}
 	    else
 		eb.hist_offset--;
 	    pg_addsched_fn(eb, function()
@@ -486,7 +509,7 @@ function eb_keydown(e)
 	}
     else
 	{
-	eb.Update(eb.content, null);
+	eb.Update(eb.content);
 	return;
 	}
 
@@ -509,6 +532,7 @@ function eb_keypress(e)
 
 function eb_keyhandler(l,e,k)
     {
+    if(l.enabled!='full') return 1;
 /*    if (e.keyName == 'escape') window.ebesccnt=window.ebesccnt?(window.ebesccnt+1):1;
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
@@ -669,14 +693,24 @@ function eb_action_set_focus(aparam)
     }
 
 
+function eb_browserfocus(e)
+    {
+    this.mainlayer.has_focus = true;
+    }
+
 function eb_select(x,y,l,c,n,a,k)
     {
+    if(this.enabled != 'full') return 0;
     this.ContentLayer.focus();
+    var got_focus = $(this.ContentLayer).is(':focus');
+    if (!got_focus)
+	pg_addsched_fn(this.ContentLayer, function() { this.focus() }, {}, 200);;
     if (k)
 	pg_addsched_fn(this, function()
 	    {
 	    this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
-	    }, [], 10);
+	    this.Update(this.content);
+	    }, [], got_focus?10:201);
     this.has_focus = true;
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
@@ -705,7 +739,6 @@ function eb_deselect(p)
     {
     this.ContentLayer.blur();
     this.has_focus = false;
-    cn_activate(this,"LoseFocus", {});
     if (this.changed)
 	{
 	if (!p || !p.nodatachange)
@@ -714,6 +747,9 @@ function eb_deselect(p)
 	    this.changed=false;
 	    }
 	}
+    this.ContentLayer.setSelectionRange(0,0);
+    this.Update(this.content);
+    cn_activate(this,"LoseFocus", {});
     this.addHistory();
     /*htr_setvisibility(ibeam_current, 'hidden');
     if (eb_current)
@@ -868,8 +904,7 @@ function eb_init(param)
     l.content = '';
     l.value = '';
     l.description = '';
-    l.saved_description = '';
-    l.description_value = '';
+    l.descriptions = {};
     l.Update = eb_update;
     l.addHistory = eb_add_history;
     l.was_null = false;
@@ -897,11 +932,13 @@ function eb_init(param)
 	{
 	l.enablemodify = eb_disable;
 	l.enabled = 'disable';
+	$(l.ContentLayer).prop('disabled', true);
 	}
     else
 	{
 	l.enablemodify = eb_enable;
 	l.enabled = 'full';
+	$(l.ContentLayer).prop('disabled', false);
 	}
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
@@ -935,12 +972,13 @@ function eb_init(param)
     $(l.ContentLayer).on("keyup", eb_keyup);
     $(l.ContentLayer).on("keypress", eb_keypress);
     //$(l.ContentLayer).attr("contentEditable", "true");
-    $(l.ContentLayer).css({"outline":"none", "border":"1px transparent"});
+    $(l.ContentLayer).css({"outline":"none", "border":"1px transparent", "background-color":"transparent"});
 
     // Callbacks for internal management of 'content' value
     l.set_content = eb_set_content;
     l.set_desc = eb_setdesc;
     l.content_changed = eb_content_changed;
+    l.input_width = eb_inputwidth;
 
     // Hot properties
     htr_watch(l,'content','content_changed');
@@ -977,7 +1015,7 @@ function eb_init(param)
     ia.Add("Disable", eb_disable);
     ia.Add("SetFocus", eb_action_set_focus);
 
-    if (l.empty_desc) l.Update('', 0);
+    if (l.empty_desc) l.Update('');
 
     return l;
     }
