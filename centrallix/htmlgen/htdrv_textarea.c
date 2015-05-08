@@ -63,8 +63,6 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     int is_readonly = 0;
     int is_raised = 0;
     int mode = 0; /* 0=text, 1=html, 2=wiki */
-    char* c1;
-    char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
@@ -113,7 +111,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Background color/image? **/
-	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
+	htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -121,17 +119,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Style of Textarea - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
-	if (is_raised)
-	    {
-	    c1 = "white_1x1.png";
-	    c2 = "dkgrey_1x1.png";
-	    }
-	else
-	    {
-	    c1 = "dkgrey_1x1.png";
-	    c2 = "white_1x1.png";
-	    }
 
+	/** Form linkage **/
 	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(form,ptr,sizeof(form));
 	else
@@ -152,10 +141,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Write Style header items. **/
-	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	else if (s->Capabilities.Dom0NS)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
@@ -184,28 +170,12 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s, "<DIV ID=\"tx%POSbase\">\n",id);
 
 	/** Use CSS border or table for drawing? **/
-	if (s->Capabilities.CSS2)
-	    {
-	    if (is_raised)
-		htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
-	    else
-		htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
-	    if (h >= 0)
-		htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
-	    }
+	if (is_raised)
+	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
 	else
-	    {
-	    htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w,main_bg);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem(s,    "            <TD>&nbsp;</TD>\n");
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-	    }
+	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
+	if (h >= 0)
+	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
