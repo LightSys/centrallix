@@ -57,7 +57,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char main_bg[128];
+    char elementid[16];
+    //char main_bg[128];
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
@@ -111,7 +112,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Background color/image? **/
-	htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
+	//htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -127,13 +128,9 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
-	    {
-	    strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
-	    }
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else 
-	    { 
 	    fieldname[0]='\0';
-	    } 
 
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
@@ -141,7 +138,12 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Write Style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
+	snprintf(elementid, sizeof(elementid), "#tx%dbase", id);
+	htrFormatElement(s, tree, elementid, 0, 
+		x, y, w-2*box_offset, h-2*box_offset, z, "",
+		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
+		"overflow:hidden; position:absolute;");
+	//htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
@@ -163,26 +165,26 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",
-	    name, fieldname, form, is_readonly, mode, main_bg);
+	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
+	    name, fieldname, form, is_readonly, mode);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"tx%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none;\">\n",id);
 
 	/** Use CSS border or table for drawing? **/
-	if (is_raised)
+	/*if (is_raised)
 	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
 	else
 	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
 	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
+	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);*/
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	htrAddBodyItem(s, "</textarea></div>\n");
 
     return 0;
     }

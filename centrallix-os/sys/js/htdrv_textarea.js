@@ -12,52 +12,21 @@
 /** Get value function **/
 function tx_getvalue()
     {
-    var txt = '';
-    for (var i=0;i<this.rows.length;i++)
-        {
-        if (this.rows[i].newLine) txt += '\n'+this.rows[i].content;
-        else txt += this.rows[i].content;
-        }
-    return txt;
+    return this.value;
     }
 
 /** Set value function **/
 function tx_setvalue(txt)
     {
-    this.clearvalue();
     txt = htutil_obscure(txt);
-    var reg = /(.*)(\n*)/;
-    while(txt)
-        {
-        reg.exec(txt);
-        var para = RegExp.$1;
-        var newL = RegExp.$2;
-        txt = txt.substr(para.length+newL.length);
-        tx_wordWrapDown(this,this.rows.length-1,para,0);
-        if (newL)
-            {
-            for(var i=0;i<newL.length;i++)
-                {
-                tx_insertRow(this,this.rows.length,'');
-                this.rows[this.rows.length-1].newLine = 1;
-                }
-            }
-        }
-	//while (txt)
-    for(var i in this.rows)
-        {
-        htr_setvisibility(this.rows[i].hiddenLayer, 'hidden');
-        htr_setvisibility(this.rows[i].contentLayer, 'inherit');
-        this.rows[i].changed = 0;
-        }
-    this.prev_x = getClipWidth(this);
-    this.prev_y = getClipHeight(this);
+    this.content = txt;
+    this.value = txt;
+    this.txa.value = txt;
     }
 
 function tx_action_set_value(ap)
     {
     var txt = ap.Value?ap.Value:"";
-    if (this.form) this.form.DataNotify(this, true);
     this.setvalue(txt);
     if (this.form) this.form.DataNotify(this, true);
     cn_activate(this, 'DataChange');
@@ -100,603 +69,169 @@ function tx_action_set_focus(aparam)
 /** Clear function **/
 function tx_clearvalue()
     {
-    if (this.getvalue() == '') return;
-    tx_updateRow(this,0,'');
-    for(var i=0;i<this.rows.length;i++)
-        {
-        htr_setvisibility(this.rows[i].contentLayer, 'hidden');
-        htr_setvisibility(this.rows[i].hiddenLayer, 'hidden');
-        }
-    if (this.rows.length > 0) this.rows.splice(1,this.rows.length-1);
-    if (tx_current == this)
-        {
-        this.cursorRow = 0;
-        this.cursorCol = 0;
-        tx_move_cursor(this, getPageX(this.rows[this.cursorRow].contentLayer) + tx_xpos(this,this.cursorRow,this.cursorCol), getPageY(this.rows[this.cursorRow].contentLayer));
-	htr_setvisibility(ibeam_current, 'inherit');
-        }
+    this.setvalue(null);
     }
 
 /** Enable control function **/
 function tx_enable()
     {
-    htr_setbackground(this, this.bg);
-    //eval('this.document.'+this.bg);
     this.enabled='full';
+    $(this.txa).prop('disabled',false);
     }
 
 /** Disable control function **/
 function tx_disable()
     {
-    htr_setbackground(this, "bgcolor='#e0e0e0'");
-    //this.document.background='';
-    //this.document.bgColor='#e0e0e0';
     this.enabled='disabled';
+    $(this.txa).prop('disabled',true);
     }
 
 /** Readonly-mode function **/
 function tx_readonly()
     {
-    htr_setbackground(this, this.bg);
-    //eval('this.document.'+this.bg);
     this.enabled='readonly';
-    }
-
-/** Changes the actual cursor position (cursorRow & cursorCol) **/
-function tx_getCursorPos(l,chng,opt)
-    {
-    l.cursorPos += chng;
-    pos = l.cursorPos;
-    var i = 0;
-    while (i < l.rows.length && pos-l.rows[i].content.length > 0)
-        {
-        pos -= l.rows[i].content.length;
-        i++;
-        if (l.rows[i].newLine) pos--;
-        }
-    l.cursorRow = i;
-    l.cursorCol = pos;
-    if (l.rows[i+1] && !l.rows[i+1].newLine && pos == l.rows[i].content.length && opt)
-        {
-        l.cursorRow++;
-        l.cursorCol = 0;
-        }
-    }
-
-/** Sets the positioning of the cursor within the text (cursorPos) **/
-function tx_setCursorPos(l,row,col)
-    {
-    var pos=0;
-    for(var i=0;i<row;i++)
-        {
-        pos += l.rows[i].content.length;
-        if (l.rows[i].newLine) pos++;
-        }
-    if (l.rows[i].newLine) pos++;
-    pos += col;
-    return pos;
-    }
-
-/** Inserts an editable row to the textarea **/
-function tx_insertRow(l, index, txt)
-    {
-    if (index > l.rows.length) index = l.rows.length;
-    r = new Object();
-    r.contentLayer = htr_new_layer(getClipWidth(l)-2, l);
-    r.hiddenLayer = htr_new_layer(getClipWidth(l)-2, l);
-    r.charWidths = new Array();
-    r.contentLayer.row = r;
-    r.hiddenLayer.row = r;
-    r.textarea = l;
-    htr_init_layer(r.hiddenLayer, l, 'tx');
-    htr_init_layer(r.contentLayer, l, 'tx');
-    htr_setvisibility(r.hiddenLayer, 'hidden');
-    htr_setvisibility(r.contentLayer, 'hidden');
-    r.content = null;
-    tx_write(r.contentLayer, txt);
-    r.changed = 1;
-    l.rows.splice(index,0,r);
-    for(var i=index;i<l.rows.length;i++)
-        {
-        if (l.rows[i] != null)
-            {
-            moveTo(l.rows[i].contentLayer, 2, i*text_metric.charHeight+1);
-            moveTo(l.rows[i].hiddenLayer, 2, i*text_metric.charHeight+1);
-            }
-        }
-    }
-
-
-/** get the x pos of a given (row,col) in the text **/
-function tx_xpos(l, row, col)
-    {
-    if (l.mode == 0) // text
-	return col*text_metric.charWidth;
-    var xpos = 0;
-    for (var i =0; i<l.rows[row].content.length && i < col; i++)
-	xpos += l.rows[row].charWidths[i];
-    return xpos;
-    }
-
-/** get the y pos of a given (row,col) in the text */
-function tx_ypos(l, row, col)
-    {
-    if (l.mode == 0) // text
-	return row*text_metric.charHeight;
-    var ypos = 0;
-    for (var i =0; i<l.rows.length && i < row; i++)
-	ypos += l.rows[i].charHeight;
-    return ypos;
-    }
-
-/** change a row's content, html style **/
-/** nonoptimized! **/
-function tx_html_write(l, c)
-    {
-    l.row.charWidths = new Array();
-    if (cx__capabilities.Dom0NS) 
-	{
-	l.document.write('');
-	l.document.close();
-	}
-    else
-	l.innerHTML = '<pre style="padding:0px; margin:0px;">';
-    var totalwidth = 0;
-    for(var i = 0; i < c.length; i++)
-	{
-	if (cx__capabilities.Dom0NS)
-	    {
-	    l.document.write(htutil_encode(c.substr(0,i+1)));
-	    l.document.close();
-	    }
-	else
-	    l.innerHTML += htutil_encode(c.charAt(i));
-	l.row.charWidths[i] = getClipWidth(l) - totalwidth;
-	totalwidth += l.row.charWidths[i];
-	}
-    if (cx__capabilities.Dom0NS) 
-	{
-	/*l.document.write('');
-	l.document.close();*/
-	}
-    else
-	l.innerHTML += '</pre>';
-    var str = '';
-    for(var i = 0; i<l.row.charWidths.length; i++)
-	{
-	str += ' ' + l.row.charWidths[i] + ',';
-	}
-    l.row.charHeight = getClipHeight(l);
-    l.row.content = c;
-    //confirm(str);
-    }
-
-/** Changes a row's (layer) content **/
-function tx_write(l, c)
-    {
-    if (l.row.content == c) return;
-    if (l.row.textarea.mode != 0) return tx_html_write(l, c);
-    if (cx__capabilities.Dom0NS)
-        {
-        l.document.write('<PRE>' + htutil_encode(c) + '</PRE> ');
-        l.document.close();
-        }
-    else if (cx__capabilities.Dom1HTML)
-        {        
-        l.innerHTML = '<PRE style="padding:0px; margin:0px;">' + htutil_encode(c) + '</PRE> ';
-        }
-    for(var i = 0; i < c.length; i++) l.row.charWidths[i] = text_metric.charWidth;
-    l.row.charHeight = text_metric.charHeight;
-    l.row.content = c;
-    }
-
-/** Deletes an editable row from the textarea **/
-function tx_deleteRow(l, index)
-    {
-    htr_setvisibility(l.rows[index].contentLayer, 'hidden');
-    htr_setvisibility(l.rows[index].hiddenLayer, 'hidden');
-    l.rows.splice(index,1);
-    for(var i=index;i<l.rows.length;i++)
-        {
-        if (l.rows[i] != null)
-            {
-            moveTo(l.rows[i].contentLayer, 1, i*text_metric.charHeight);
-            moveTo(l.rows[i].hiddenLayer, 1, i*text_metric.charHeight);
-            }
-        }
-    }
-
-/** Updates an existing row's contents **/
-function tx_updateRow(l, index, txt)
-    {
-    if (index > l.rows.length) index = l.rows.length-1;
-    r = l.rows[index];
-    if (r.content == txt) return;
-    tx_write(r.hiddenLayer, txt);
-    tmp = r.contentLayer;
-    r.contentLayer = r.hiddenLayer;
-    r.hiddenLayer = tmp;
-    r.changed = 1;
-    }
-
-/** Wraps words from beginning of row to the end of the above row (recursive) **/
-function tx_wordWrapUp(l,index,txt,c)
-    {
-    if (!l.rows[index+1] || l.rows[index+1].newLine)
-        {
-        if (!txt && !l.rows[index].newLine && index>0) tx_deleteRow(l,index);
-        return c;
-        }
-    var open = l.rowCharLimit - txt.length;
-    if (open == 0) return c;
-    var avail = l.rows[index+1].content.substr(0,open);
-    if (l.rows[index+1].content[open] == ' ' || !l.rows[index+1].content[open])
-        {
-        var add = avail;
-        var sub = l.rows[index+1].content.substr(open);
-        }
-    else if (txt.length == l.rowCharLimit-1)
-    	{
-	for(var i=0;i<txt.length;i++) if(txt[i] == ' ') break;
-	if(i==txt.length)
-	    {
-	    var add = avail.substr(0,open);
-	    var sub = l.rows[index+1].content.substr(open);
-	    }
-	else
-	    {
-	    for (var i=open; avail[i]!=' ' && i>=0; i--) {}
-	    if (i < 0) return c;
-	    var add = avail.substr(0,i+1);
-	    var sub = l.rows[index+1].content.substr(i+1);
-	    }
-	}
-    else
-        {
-        for (var i=open; avail[i]!=' ' && i>=0; i--) {}
-        if (i < 0) return c;
-        var add = avail.substr(0,i+1);
-        var sub = l.rows[index+1].content.substr(i+1);
-        }
-    tx_updateRow(l,index,txt+add);
-    tx_updateRow(l,index+1,sub);
-    return tx_wordWrapUp(l,index+1,sub,1);
-    }
-
-/** Wraps words from the end of row to the beginning of below row (recursive) **/
-function tx_wordWrapDown(l,index,txt,c)
-    {
-    if (!txt) return c;
-    if (txt.length <= l.rowCharLimit) 
-        {
-        tx_updateRow(l,index,txt);
-        return c;
-        }
-    if (txt[l.rowCharLimit] == ' ')
-        {
-        var sub = txt.substr(0,l.rowCharLimit);
-        var add = txt.substr(l.rowCharLimit);
-        }
-    else
-        {
-	if(txt.length > l.rowCharLimit)
-	    {
-	    for(var i=0;i<txt.length;i++) if(txt[i] == ' ') break;
-	    if(i > l.rowCharLimit)
-	    	{
-		var sub = txt.substr(0,l.rowCharLimit);
-		var add = txt.substr(l.rowCharLimit);
-		}
-	    else
-	    	{
-		for (var i=l.rowCharLimit-1; txt[i]!=' ' && i>=0; i--){}
-		var sub = txt.substr(0,i+1);
-		var add = txt.substr(i+1);
-		}
-	    }
-	else
-	    {
-	    for (var i=l.rowCharLimit-1; txt[i]!=' ' && i>=0; i--){}
-	    var sub = txt.substr(0,i+1);
-	    var add = txt.substr(i+1);
-	    }
-        }
-    tx_updateRow(l,index,sub);
-    if (!l.rows[index+1] || l.rows[index+1].newLine) tx_insertRow(l,index+1,'');
-    return tx_wordWrapDown(l,index+1,add+l.rows[index+1].content,1);
+    $(this.txa).prop('disabled',true);
     }
 
 function tx_paste(e)
     {
-    if (tx_current && e.pastedText)
+    }
+
+function tx_receiving_input(e)
+    {
+    var tx=this.mainlayer;
+    var sel = document.getSelection();
+    var range = sel.getRangeAt(0);
+    var rstart = range.startOffset;
+    var rend = range.endOffset;
+    var curtxt = this.value;
+    var changed = false;
+
+    var oldtxt = tx.content;
+    var newcurtxt = cx_hints_checkmodify(tx, oldtxt, curtxt, tx._form_type);
+    if (newcurtxt != curtxt)
 	{
-	var pasted = new String(e.pastedText);
-	var prev_was_cr = false;
-	for(var i=0; i<pasted.length; i++)
+	pg_addsched_fn(tx, function()
 	    {
-	    var k = pasted.charCodeAt(i);
-
-	    // Convert control codes into spaces.
-	    if ((k < 32  || k == 127) && k != 13 && k != 10)
-		k = 32;
-
-	    // Suppress multiple line ending characters in sequence
-	    if (k == 10 && prev_was_cr)
-		{
-		prev_was_cr = false;
-		continue;
-		}
-	    prev_was_cr = false;
-	    if (k == 13)
-		prev_was_cr = true;
-	    if (k == 10)
-		k = 13;
-
-	    // turn it into a keypress.
-	    tx_keyhandler(tx_current, {}, k);
-	    }
+	    this.value = newcurtxt;
+	    this.mainlayer.content = newcurtxt;
+	    }, [], 10);
 	}
+    else
+	{
+	tx.content = curtxt;
+	}
+    tx.changed=true;
+    cn_activate(tx,"DataModify", {Value:curtxt, FromKeyboard:1, FromOSRC:0, OldValue:oldtxt});
+    if (tx.form) tx.form.DataNotify(tx);
+
+    return;
+    }
+
+function tx_keydown(e)
+    {
+    var tx = this.mainlayer;
+
+    // check before keypress...
+    if (isCancel(tx.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode)})))
+	{
+	e.preventDefault();
+	return;
+	}
+
+    if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && !e.shiftKey)
+	{
+	if (tx.form) tx.form.TabNotify(tx);
+	cn_activate(tx, 'TabPressed', {Shift:0});
+	tx.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && e.shiftKey)
+	{
+	if (tx.form) tx.form.ShiftTabNotify(tx);
+	cn_activate(tx, 'TabPressed', {Shift:1});
+	tx.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_ESCAPE || 27))
+	{
+	if (tx.form) tx.form.EscNotify(tx);
+	cn_activate(tx, 'EscapePressed', {});
+	}
+    else
+	{
+	return;
+	}
+
+    e.preventDefault();
+    return;
+    }
+
+function tx_keyup(e)
+    {
+    }
+
+function tx_keypress(e)
+    {
     }
 
 /** Textarea keyboard handler **/
 function tx_keyhandler(l,e,k)
     {
-    if (!tx_current) return true;
-    if (tx_current.enabled!='full') return 1;
-    if (k != 27 && k != 9 && tx_current.form) 
-	tx_current.form.DataNotify(tx_current);
-    if (k >= 32 && k < 127)
-        {
-        txt = l.rows[l.cursorRow].content;
-        if (l.rows[l.cursorRow+1] && l.cursorCol == l.rows[l.cursorRow].content.length && l.rows[l.cursorRow+1].content[0] != ' ' && k!=32 && !l.rows[l.cursorRow+1].newLine)
-            {
-            tx_wordWrapDown(l,l.cursorRow+1,String.fromCharCode(k)+l.rows[l.cursorRow+1].content,0);
-            tx_getCursorPos(l,1,0);
-            }
-        else
-            {
-            txt = l.rows[l.cursorRow].content;
-            newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);
-            tx_wordWrapDown(l,l.cursorRow,newtxt,0);
-            if (l.cursorRow > 0) tx_wordWrapUp(l,l.cursorRow-1,l.rows[l.cursorRow-1].content,0);
-            tx_getCursorPos(l,1,0);
-            }
-        }
-    else if (k == 13)
-        {
-        txt = l.rows[l.cursorRow].content;
-        oldrow = txt.substr(0,l.cursorCol);
-        newrow = txt.substr(l.cursorCol,txt.length);
-        tx_updateRow(l,l.cursorRow,oldrow);
-        tx_insertRow(l,l.cursorRow+1,newrow);
-        l.rows[l.cursorRow+1].newLine = 1;
-        tx_wordWrapUp(l,l.cursorRow+1,newrow,0);
-        tx_getCursorPos(l,1,0);
-        }
-    else if (k == 9 && !e.shiftKey)
-	{
-	if (tx_current.form) tx_current.form.TabNotify(tx_current);
-	return true;
-	}
-    else if (k == 9 && e.shiftKey)
-	{
-	if (tx_current.form) tx_current.form.ShiftTabNotify(tx_current);
-	return true;
-	}
-    else if (k == 27)
-	{
-	if (tx_current.form) tx_current.form.EscNotify(tx_current);
-	return true;
-	}
-    else if (k == 0 && e.keyName == 'up')
-	{
-	if (l.cursorRow > 0)
-	    {
-	    var chg = Math.min(l.cursorCol, l.rows[l.cursorRow].content.length) + Math.max(0, l.rows[l.cursorRow-1].content.length - l.cursorCol) + (l.rows[l.cursorRow].newLine?1:0);
-	    tx_getCursorPos(l, -chg, 0);
-	    }
-	}
-    else if (k == 0 && e.keyName == 'down')
-	{
-	if (l.cursorRow < l.rows.length-1)
-	    {
-	    var chg = Math.min(l.cursorCol, l.rows[l.cursorRow+1].content.length) + Math.max(0, l.rows[l.cursorRow].content.length - l.cursorCol) + (l.rows[l.cursorRow+1].newLine?1:0);
-	    tx_getCursorPos(l, chg, 0);
-	    }
-	}
-    else if (k == 0 && e.keyName == 'left')
-	{
-	if (l.cursorRow > 0 || l.cursorCol > 0)
-	    tx_getCursorPos(l, -1, 0);
-	}
-    else if (k == 0 && e.keyName == 'right')
-	{
-	if (l.cursorRow < l.rows.length-1 || l.cursorCol < l.rows[l.rows.length-1].content.length)
-	    tx_getCursorPos(l, 1, 0);
-	}
-    else if (k == 0 && e.keyName == 'home')
-	{
-	if (l.cursorCol > 0)
-	    tx_getCursorPos(l, -l.cursorCol, 0);
-	}
-    else if (k == 0 && e.keyName == 'end')
-	{
-	if (l.cursorCol < l.rows[l.cursorRow].content.length)
-	    tx_getCursorPos(l, l.rows[l.cursorRow].content.length - l.cursorCol, 0);
-	}
-    else if (k == 8)
-        {
-        txt = l.rows[l.cursorRow].content;
-        var beginP = l.rows[l.cursorRow].newLine;
-        if (l.cursorCol == 0)
-            {
-            if (l.cursorRow == 0) return true;
-            var txtpre = l.rows[l.cursorRow-1].content;
-            if (l.rows[l.cursorRow].newLine)
-                {
-                l.rows[l.cursorRow].newLine = 0;
-                tx_deleteRow(l,l.cursorRow);
-                tx_wordWrapDown(l,l.cursorRow-1,txtpre+txt,0);
-                tx_getCursorPos(l,-1,0);
-                }
-            else
-                {
-                tx_deleteRow(l,l.cursorRow);
-                tx_wordWrapDown(l,l.cursorRow-1,txtpre.substr(0,txtpre.length-1) + txt,0);
-                tx_getCursorPos(l,-1,0);
-                }
-            }
-        else if (l.cursorCol == 1 && l.cursorRow > 0 && l.rows[l.cursorRow].content[0] == ' ' && !beginP)
-            {
-            tx_deleteRow(l,l.cursorRow);
-            tx_wordWrapDown(l,l.cursorRow-1,l.rows[l.cursorRow-1].content + txt.substr(1));
-            tx_getCursorPos(l,-1,0);
-            }
-        else if (l.cursorCol == l.rows[l.cursorRow].content.length && l.rows[l.cursorRow+1] && l.rows[l.cursorRow+1].content[0] != ' ' && !l.rows[l.cursorRow+1].newLine)
-            {
-            var nextRow = l.rows[l.cursorRow+1].content;
-            tx_deleteRow(l,l.cursorRow+1);
-            tx_wordWrapDown(l,l.cursorRow,txt.substr(0,txt.length-1) + nextRow,0);
-            tx_getCursorPos(l,-1,0);
-            }
-        else
-            {
-            newtxt = txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol);
-            tx_updateRow(l,l.cursorRow,newtxt);
-            if (l.cursorRow > 0 && !beginP) var f = tx_wordWrapUp(l,l.cursorRow-1,l.rows[l.cursorRow-1].content,0);
-            if (!f) tx_wordWrapUp(l,l.cursorRow,l.rows[l.cursorRow].content,0);
-            if (l.rows[l.cursorRow] && l.rows[l.cursorRow].content[0] == ' ') tx_getCursorPos(l,-1,0);
-            else tx_getCursorPos(l,-1,1);
-            }
-        }
-    else if (k == 127)
-        {
-        txt = l.rows[l.cursorRow].content;
-        var beginP = l.rows[l.cursorRow].newLine;
-        if (l.cursorCol == txt.length)
-            {
-            if (l.cursorRow == l.rows.length-1) return true;
-            if (l.rows[l.cursorRow+1].newLine)
-                {
-                l.rows[l.cursorRow+1].newLine = 0;
-                var newtxt = txt+l.rows[l.cursorRow+1].content;
-                tx_deleteRow(l,l.cursorRow+1);
-                tx_wordWrapDown(l,l.cursorRow,newtxt);
-                tx_getCursorPos(l,0,0);
-                }
-            else
-                {
-                tx_updateRow(l,l.cursorRow+1,l.rows[l.cursorRow+1].content.substr(1,l.rows[l.cursorRow+1].content.length-1));
-                if (!tx_wordWrapUp(l,l.cursorRow,l.rows[l.cursorRow].content,0))
-                    if (l.rows[l.cursorRow+1]) tx_wordWrapUp(l,l.cursorRow+1,l.rows[l.cursorRow+1].content,0);
-                tx_getCursorPos(l,0,1);
-                }
-            }
-        else if (l.cursorCol == txt.length-1 && txt.length>1 && txt[txt.length-1] == ' ' && txt[txt.length-2] != ' ' && l.rows[l.cursorRow+1] && l.rows[l.cursorRow+1].content[0] != ' ' && !l.rows[l.cursorRow+1].newLine)
-            {
-            var nextRow = l.rows[l.cursorRow+1].content;
-            tx_deleteRow(l,l.cursorRow+1);
-            tx_wordWrapDown(l,l.cursorRow,txt.substr(0,txt.length-1) + nextRow,0);
-            tx_getCursorPos(l,-1,0);
-            }
-        else if (l.cursorCol == 0 && l.cursorRow > 0 && l.rows[l.cursorRow].content[0] == ' ' && !beginP) 
-            {
-            tx_deleteRow(l,l.cursorRow);
-            tx_wordWrapDown(l,l.cursorRow-1,l.rows[l.cursorRow-1].content + txt.substr(1));
-            tx_getCursorPos(l,0,0);
-            }
-        else
-            {
-            newtxt = txt.substr(0,l.cursorCol) + txt.substr(l.cursorCol+1,txt.length);
-            tx_updateRow(l,l.cursorRow,newtxt);
-            if (l.cursorRow > 0) { var f = tx_wordWrapUp(l,l.cursorRow-1,l.rows[l.cursorRow-1].content,0); }
-            if (!f) tx_wordWrapUp(l,l.cursorRow,l.rows[l.cursorRow].content,0);
-            tx_getCursorPos(l,0,1);
-            }
-        }
-    else return true;
-    for(var i=0;i<l.rows.length;i++)
-        {
-        if (l.rows[i].changed == 1)
-            {
-            htr_setvisibility(l.rows[i].hiddenLayer, 'hidden');
-            htr_setvisibility(l.rows[i].contentLayer, 'inherit');
-            l.rows[i].changed = 0;
-            }
-        }
-    tx_move_cursor(l, getPageX(l.rows[l.cursorRow].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[l.cursorRow].contentLayer));
-    htr_setvisibility(ibeam_current, 'inherit');
-    cn_activate(l, 'DataChange');
-    return true;
+    if (l.enabled!='full') return 1;
+    cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
+    if (e.keyName == 'f3') return true;
+    return false;
     }
-
-
-function tx_move_cursor(l,x,y)
-    {
-    moveToAbsolute(ibeam_current, x, y);
-    l.prev_x = x - getPageX(l);
-    l.prev_y = y+1 - getPageY(l);
-    }
-
 
 /** Set focus to a new textarea **/
 function tx_select(x,y,l,c,n,a,k)
     {
-    if (k)
-	{
-	x = l.prev_x;
-	y = l.prev_y;
-	}
-    if (l.enabled != 'full') return 0;
-    if (l.form) l.form.FocusNotify(l);
-    var cheight = 0;
-    l.cursorRow = 0;
-    for (var i = 0; i<l.rows.length;i++)
-	{
-	if (y >= cheight) l.cursorRow = i;
-	cheight += l.rows[i].charHeight;
-	}
-    var cwidth = 0;
-    l.cursorCol = 0;
-    for (var i = 0; i<l.rows[l.cursorRow].content.length; i++)
-	{
-	if (x >= cwidth) l.cursorCol = i;
-	cwidth += l.rows[l.cursorRow].charWidths[i];
-	}
-    if (x >= cwidth) l.cursorCol = i;
-    /*l.cursorRow = Math.floor(y/text_metric.charHeight);
-    l.cursorCol = Math.round(x/text_metric.charWidth);*/
-    if (l.cursorRow >= l.rows.length)
-        {
-	l.cursorRow = l.rows.length - 1;
-	l.cursorCol = l.rows[l.cursorRow].content.length;
-        }
-    else if (l.cursorCol > l.rows[l.cursorRow].content.length) l.cursorCol = l.rows[l.cursorRow].content.length;
-    l.cursorPos = tx_setCursorPos(l,l.cursorRow,l.cursorCol);
-    l.cursorlayer = ibeam_current;
-    tx_current = l;
-    pg_set_style(ibeam_current,'visibility', 'hidden');
-    if (cx__capabilities.Dom1HTML)
-	l.appendChild(ibeam_current);
-    moveAbove(ibeam_current,l);
-    tx_move_cursor(l,getPageX(l.rows[0].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[0].contentLayer) + tx_ypos(l,l.cursorRow,l.cursorCol));
-    htr_setzindex(ibeam_current, htr_getzindex(l)+2);
-    pg_set_style(ibeam_current,'visibility','inherit');
-    cn_activate(l, 'GetFocus');
+    if (this.enabled != 'full') return 0;
+    this.txa.focus();
+    var got_focus = $(this.txa).is(':focus');
+    if (!got_focus)
+	pg_addsched_fn(this.txa, function() { this.focus() }, {}, 200);
+    this.has_focus = true;
+    if(this.form)
+	if (!this.form.FocusNotify(this)) return 0;
+    cn_activate(this, 'GetFocus');
     return 1;
     }
 
 /** Take focus away from textarea **/
-function tx_deselect()
+function tx_deselect(p)
     {
-    htr_setvisibility(ibeam_current, 'hidden');
-    if (tx_current)
+    this.txa.blur();
+    this.has_focus = false;
+    if (this.changed)
 	{
-	tx_current.cursorlayer = null;
-	cn_activate(tx_current, 'LoseFocus');
-	tx_current = null;
+	if (!p || !p.nodatachange)
+	    {
+	    this.DoDataChange(0, 1);
+	    this.changed=false;
+	    }
 	}
+    cn_activate(this,"LoseFocus", {});
     return true;
+    }
+
+function tx_do_data_change(from_osrc, from_kbd)
+    {
+    var nv = cx_hints_checkmodify(this, this.value, this.content, null, true);
+    if (nv != this.content)
+	{
+	this.value = nv;
+	this.content = nv;
+	this.txa.value = nv;
+	}
+    if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.value, Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
+	{
+	this.content = this.value;
+	this.txa.value = this.value;
+	return false;
+	}
+    this.oldvalue = this.value;
+    this.value = nv;
+    cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
     }
 
 /** Textarea initializer **/
@@ -704,36 +239,18 @@ function tx_init(param)
     {
     var l = param.layer;
     ifc_init_widget(l);
-    if (!param.mainBackground)
-	{
-	if (cx__capabilities.Dom0NS)
-	    {
-	    l.bg = "bgcolor='#c0c0c0'";
-	    }
-	else if (cx__capabilities.Dom0IE)
-	    {
-	    l.bg = "backgroundColor='#c0c0c0'";
-	    }
-	}
-    else
-	{
-	//l.bg = "bgcolor='#c0c0c0'";
-	l.bg = param.mainBackground;
-	}
-    htutil_tag_images(l.document,'tx',l,l);
+    l.txa = $(l).find('textarea').get(0);
+    l.txa.value = '';
     htr_init_layer(l,l,'tx');
+    htr_init_layer(l.txa, l, 'tx');
     l.fieldname = param.fieldname;
-    ibeam_init();
-    l.rowCharLimit = Math.floor((getClipWidth(l)-2)/text_metric.charWidth);
-    l.cursorPos = 0;
-    l.rows = new Array();
-    tx_insertRow(l,0,'');
     l.keyhandler = tx_keyhandler;
     l.getfocushandler = tx_select;
     l.losefocushandler = tx_deselect;
     l.getvalue = tx_getvalue;
     l.setvalue = tx_setvalue;
     l.clearvalue = tx_clearvalue;
+    l.DoDataChange = tx_do_data_change;
     l.setoptions = null;
     l.enablenew = tx_enable;
     l.disable = tx_disable;
@@ -742,30 +259,38 @@ function tx_init(param)
         {
         l.enablemodify = tx_disable;
         l.enabled = 'disable';
+	$(l.txa).prop('disabled',true);
         }
     else
         {
         l.enablemodify = tx_enable;
         l.enabled = 'full';
+	$(l.txa).prop('disabled',false);
         }
     l.mode = param.mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', param.isReadonly?0:3);
+	pg_addarea(l, -1, -1, $(l).width()+3, $(l).height()+3, 'tbox', 'tbox', param.isReadonly?0:3);
     else
-	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'tbox', 'tbox', param.isReadonly?0:3);
+	pg_addarea(l, -1, -1, $(l).width()+1, $(l).height()+1, 'tbox', 'tbox', param.isReadonly?0:3);
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else
 	l.form = wgtrFindContainer(l,"widget/form");
     if (l.form) l.form.Register(l);
     l.changed = false;
-
-    l.prev_x = getClipWidth(l);
-    l.prev_y = getClipHeight(l);
+    l.value = null;
+    l.content = null;
+    l.changed = false;
+    $(l.txa).on("input", tx_receiving_input);
+    $(l.txa).on("keydown", tx_keydown);
+    $(l.txa).on("keyup", tx_keyup);
+    $(l.txa).on("keypress", tx_keypress);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("BeforeKeyPress");
+    ie.Add("KeyPress");
     ie.Add("MouseDown");
     ie.Add("MouseUp");
     ie.Add("MouseOver");
@@ -774,6 +299,9 @@ function tx_init(param)
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
     ie.Add("DataChange");
+    ie.Add("DataModify");
+    ie.Add("TabPressed");
+    ie.Add("EscapePressed");
 
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("InsertText", tx_action_insert_text);
