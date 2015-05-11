@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include <stdarg.h>
+#include <math.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -2514,12 +2515,165 @@ htrLeaveNamespace(pHtSession s)
     }
 
 
-/*** htrFormatDiv() - add a CSS line to format a DIV based on some basic
+/*** htrFormatElement() - add a CSS line to format a DIV based on some basic
  *** style information.
+ ***
+ *** Styled properties: textcolor, style, font_size, font, bgcolor, padding,
+ ***     border_color, border_radius, border_style, align, wrap, shadow_color,
+ ***     shadow_radius, shadow_offset, shadow_location, shadow_angle
  ***/
 int
-htrFormatDiv(pHtSession s, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix)
+htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix, char* defaults[], char* addl)
     {
+    char textcolor[32] = "";
+    char style[32] = "";
+    char font[32] = "";
+    double font_size = 0;
+    char bgcolor[32] = "";
+    char background[128] = "";
+    double padding = 0;
+    char border_color[32] = "";
+    double border_radius = 0;
+    char border_style[32] = "";
+    char align[32] = "";
+    int wrap = 0;
+    char shadow_color[32] = "";
+    double shadow_radius = 0;
+    double shadow_offset = 0;
+    char shadow_location[32] = "";
+    double shadow_angle = 135;
+    char propname[64];
+    char* propptr;
+    char* strval;
+    int i;
+
+	/** Copy in defaults **/
+	if (defaults)
+	    {
+	    for(i=0;defaults[i] && defaults[i+1];i+=2)
+		{
+		if (!strcmp(defaults[i], "textcolor"))
+		    strtcpy(textcolor, defaults[i+1], sizeof(textcolor));
+		else if (!strcmp(defaults[i], "style"))
+		    strtcpy(style, defaults[i+1], sizeof(style));
+		else if (!strcmp(defaults[i], "font"))
+		    strtcpy(font, defaults[i+1], sizeof(font));
+		else if (!strcmp(defaults[i], "font_size"))
+		    font_size = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "bgcolor"))
+		    strtcpy(bgcolor, defaults[i+1], sizeof(bgcolor));
+		else if (!strcmp(defaults[i], "background"))
+		    strtcpy(background, defaults[i+1], sizeof(background));
+		else if (!strcmp(defaults[i], "padding"))
+		    padding = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "border_color"))
+		    strtcpy(border_color, defaults[i+1], sizeof(border_color));
+		else if (!strcmp(defaults[i], "border_radius"))
+		    border_radius = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "border_style"))
+		    strtcpy(border_style, defaults[i+1], sizeof(border_style));
+		else if (!strcmp(defaults[i], "align"))
+		    strtcpy(align, defaults[i+1], sizeof(align));
+		else if (!strcmp(defaults[i], "wrap") && !strcasecmp(defaults[i+1], "yes"))
+		    wrap = 1;
+		else if (!strcmp(defaults[i], "shadow_color"))
+		    strtcpy(shadow_color, defaults[i+1], sizeof(shadow_color));
+		else if (!strcmp(defaults[i], "shadow_radius"))
+		    shadow_radius = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "shadow_offset"))
+		    shadow_offset = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "shadow_location"))
+		    strtcpy(shadow_location, defaults[i+1], sizeof(shadow_location));
+		else if (!strcmp(defaults[i], "shadow_angle"))
+		    shadow_angle = strtod(defaults[i+1], NULL);
+		}
+	    }
+
+	/** Set up property name prefixes **/
+	strtcpy(propname, style_prefix?style_prefix:"", sizeof(propname));
+	strtcat(propname, style_prefix?"_":"", sizeof(propname));
+	if (strlen(propname) >= 48)
+	    {
+	    mssError(1,"HTR","htrFormatDiv() - style prefix too long");
+	    return -1;
+	    }
+	propptr = propname + strlen(propname);
+
+	/** Get text styling information **/
+	strcpy(propptr, "textcolor");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(textcolor, strval, sizeof(textcolor));
+	strcpy(propptr, "fgcolor"); /* for legacy support -- deprecated */
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(textcolor, strval, sizeof(textcolor));
+	strcpy(propptr, "style");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(style, strval, sizeof(style));
+	strcpy(propptr, "font");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(font, strval, sizeof(font));
+	strcpy(propptr, "font_size");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    font_size = strtod(strval, NULL);
+	strcpy(propptr, "bgcolor");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(bgcolor, strval, sizeof(bgcolor));
+	strcpy(propptr, "background");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(background, strval, sizeof(background));
+	strcpy(propptr, "padding");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    padding = strtod(strval, NULL);
+	strcpy(propptr, "border_color");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(border_color, strval, sizeof(border_color));
+	strcpy(propptr, "border_radius");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    border_radius = strtod(strval, NULL);
+	strcpy(propptr, "border_style");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(border_style, strval, sizeof(border_style));
+	strcpy(propptr, "align");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(align, strval, sizeof(align));
+	strcpy(propptr, "wrap");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    {
+	    if (!strcasecmp(strval, "yes")) wrap = 1;
+	    }
+	strcpy(propptr, "shadow_color");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(shadow_color, strval, sizeof(shadow_color));
+	strcpy(propptr, "shadow_radius");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_radius = strtod(strval, NULL);
+	strcpy(propptr, "shadow_offset");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_offset = strtod(strval, NULL);
+	strcpy(propptr, "shadow_location");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(shadow_location, strval, sizeof(shadow_location));
+	strcpy(propptr, "shadow_angle");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_angle = strtod(strval, NULL);
+
+	/** Generate the style CSS **/
+	htrAddStylesheetItem_va(s, "\t%STR { left:%POSpx; top:%POSpx; %[width:%POSpx; %]%[height:%POSpx; %]%[z-index:%POS; %]%[color:%STR&CSSVAL; %]%[font-weight:bold; %]%[text-decoration:underline; %]%[font-style:italic; %]%[font:%STR&CSSVAL; %]%[font-size:%DBLpx; %]%[background-color:%STR&CSSVAL; %]%[background-image:url('%STR&CSSURL'); %]%[padding:%DBLpx; %]%[border:1px %STR&CSSVAL %STR&CSSVAL; %]%[border-radius:%DBLpx; %]%[text-align:%STR&CSSVAL; %]%[white-space:nowrap; %]%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]%[%STR %]}\n",
+		id,
+		x, y, w > 0, w, h > 0, h, z > 0, z,
+		*textcolor, textcolor,
+		!strcmp(style, "bold"), !strcmp(style, "underline"), !strcmp(style, "italic"),
+		*font, font, font_size > 0, font_size,
+		*bgcolor, bgcolor, *background, background,
+		padding > 0, padding,
+		*border_color, (*border_style)?border_style:"solid", border_color, border_radius > 0, border_radius,
+		*align, align,
+		!wrap,
+		(*shadow_color && shadow_radius > 0), sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
+		addl && *addl, addl
+		);
+
+    return 0;
     }
 
 
