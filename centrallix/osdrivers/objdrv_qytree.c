@@ -90,6 +90,7 @@ typedef struct
     char*	ItemText;
     char*	ItemSrc;
     char*	ItemWhere;
+    char*	ItemOrder;
     char*	ItemSql;
     pExpression	ItemSqlExpr;
     XHashTable	StructTable;
@@ -885,6 +886,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    qy->ItemText = NULL;
 	    qy->ItemSrc = NULL;
 	    qy->ItemWhere = NULL;
+	    qy->ItemOrder = NULL;
 	    qy->ItemSql = NULL;
 	    if (qy->ItemSqlExpr)
 		expFreeExpression(qy->ItemSqlExpr);
@@ -904,6 +906,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    {
 		    qy->ItemSrc = val;
 		    stAttrValue(stLookup(find_inf,"where"),NULL,&(qy->ItemWhere),0);
+		    stAttrValue(stLookup(find_inf,"order"),NULL,&(qy->ItemOrder),0);
 		    return qy->NextSubInfID - 1;
 		    }
 		t = stGetAttrType(stLookup(find_inf,"sql"), 0);
@@ -1034,7 +1037,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (qy->LLQueryObj) 
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
-	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, NULL, expr, NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL);
 	    if (!qyinf)
 		{
 		objClose(qy->LLQueryObj);
