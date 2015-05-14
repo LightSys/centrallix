@@ -748,7 +748,7 @@ function form_select_element(current, save_if_last, reverse)
     for(var i = 1; i <= this.elements.length; i++)
 	{
 	ctrlnum = (origctrl + this.elements.length + incr*i) % this.elements.length;
-	if (!reverse && ctrlnum == 0 && this.nextform && current)
+	if (!reverse && ctrlnum == 0 && this.nextform && current && this.nextform.is_enabled)
 	    {
 	    if (pg_removekbdfocus())
 		{
