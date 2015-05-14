@@ -1254,6 +1254,10 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname, "inner_type") ||
 	    !strcmp(attrname,"outer_type")) return DATA_T_STRING;
 
+	/** Last modification is a datetime **/
+	if (!strcmp(attrname,"last_modification"))
+	    return DATA_T_DATETIME;
+
 	/** If there is a low-level object, lookup within it **/
 	if (inf->LLObj) return objGetAttrType(inf->LLObj, attrname);
 
@@ -1363,6 +1367,8 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		val->String = "system/object";
 		return 0;
 		}
+	    if (rval < 0 && !strcmp(attrname,"last_modification"))
+		return 1;
 	    return rval;
 	    }
 
