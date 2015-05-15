@@ -847,7 +847,8 @@ qyp_internal_Update(pQypData inf)
 			}
 
 		    /** Commit the changes **/
-		    if (objCommit(source_obj->Session) < 0)
+		    //if (objCommit(source_obj->Session) < 0)
+		    if (objCommitObject(source_obj) < 0)
 			goto error;
 
 		    /** Get the underlying object name **/

@@ -1129,7 +1129,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    }
 
 		/** Commit the change. **/
-		rval = objCommit(objsess);
+		//rval = objCommit(objsess);
+		rval = objCommitObject(obj);
 		if (rval < 0)
 		    {
 		    snprintf(sbuf,256,"Content-Type: text/html\r\n"

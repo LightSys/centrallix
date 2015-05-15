@@ -3762,13 +3762,18 @@ int
 mqCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    /*int i;*/
+    int i;
 
     	/** Check to see whether we're on current object. **/
 	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Commit each underlying object **/
-	objCommit(p->Stmt->Query->SessionID);
+	//objCommit(p->Stmt->Query->SessionID);
+	for(i=p->Stmt->Query->nProvidedObjects; i<p->ObjList->nObjects; i++)
+	    {
+	    if (p->ObjList->Objects[i])
+		objCommitObject(p->ObjList->Objects[i]);
+	    }
 
     return 0;
     }

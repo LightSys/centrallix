@@ -2848,7 +2848,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                 {
                 if (!strcmp(inf->TData->Cols[i],attrname))
                     {
-                    if (*oxt) /** Check it this is part of a larger transaction **/
+                    if (*oxt) /** Check if this is part of a larger transaction **/
                         {
                         if (type < 0) return -1;
                         if (datatype != type)
