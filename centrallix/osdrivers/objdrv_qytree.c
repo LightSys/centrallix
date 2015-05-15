@@ -90,6 +90,7 @@ typedef struct
     char*	ItemText;
     char*	ItemSrc;
     char*	ItemWhere;
+    char*	ItemOrder;
     char*	ItemSql;
     pExpression	ItemSqlExpr;
     XHashTable	StructTable;
@@ -885,6 +886,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    qy->ItemText = NULL;
 	    qy->ItemSrc = NULL;
 	    qy->ItemWhere = NULL;
+	    qy->ItemOrder = NULL;
 	    qy->ItemSql = NULL;
 	    if (qy->ItemSqlExpr)
 		expFreeExpression(qy->ItemSqlExpr);
@@ -904,6 +906,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    {
 		    qy->ItemSrc = val;
 		    stAttrValue(stLookup(find_inf,"where"),NULL,&(qy->ItemWhere),0);
+		    stAttrValue(stLookup(find_inf,"order"),NULL,&(qy->ItemOrder),0);
 		    return qy->NextSubInfID - 1;
 		    }
 		t = stGetAttrType(stLookup(find_inf,"sql"), 0);
@@ -1034,7 +1037,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (qy->LLQueryObj) 
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
-	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, NULL, expr, NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL);
 	    if (!qyinf)
 		{
 		objClose(qy->LLQueryObj);
@@ -1251,6 +1254,10 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname, "inner_type") ||
 	    !strcmp(attrname,"outer_type")) return DATA_T_STRING;
 
+	/** Last modification is a datetime **/
+	if (!strcmp(attrname,"last_modification"))
+	    return DATA_T_DATETIME;
+
 	/** If there is a low-level object, lookup within it **/
 	if (inf->LLObj) return objGetAttrType(inf->LLObj, attrname);
 
@@ -1360,6 +1367,8 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		val->String = "system/object";
 		return 0;
 		}
+	    if (rval < 0 && !strcmp(attrname,"last_modification"))
+		return 1;
 	    return rval;
 	    }
 

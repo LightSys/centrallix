@@ -193,7 +193,8 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		}
 
 	    /** Commit and get new object name **/
-	    objCommit(stmt->Query->SessionID);
+	    //objCommit(stmt->Query->SessionID);
+	    objCommitObject(new_obj);
 	    new_objname = NULL;
 	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
 	    if (!new_objname)

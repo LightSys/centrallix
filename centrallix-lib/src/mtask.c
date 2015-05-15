@@ -5,6 +5,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -84,6 +85,7 @@ typedef struct _MTS
     pEventReq	EventWaitTable[MAX_EVENTS];
     pThread	ThreadTable[MAX_THREADS];
     int 	nThreads;
+    int		MaxThreads;
     int		nEvents;
     int		MTFlags;
     pThread	CurrentThread;
@@ -529,12 +531,28 @@ pThread
 mtInitialize(int flags, void (*start_fn)())
     {
     register int i;
+    struct rlimit stacklimit;
+    int room_for_threads;
 
 	memset(&MTASK, 0, sizeof(MTASK));
 
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
-	for(i=0;i<MAX_THREADS;i++) MTASK.ThreadTable[i] = NULL;
+	MTASK.MaxThreads = MAX_THREADS;
+	if (getrlimit(RLIMIT_STACK, &stacklimit) == 0 && stacklimit.rlim_cur > 0)
+	    {
+	    room_for_threads = stacklimit.rlim_cur / (MAX_STACK + MT_TASKSEP) - 1;
+	    if (room_for_threads < MTASK.MaxThreads)
+		{
+		printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
+			MTASK.MaxThreads,
+			room_for_threads,
+			(long long)stacklimit.rlim_cur
+			);
+		MTASK.MaxThreads = room_for_threads;
+		}
+	    }
+	for(i=0;i<MTASK.MaxThreads;i++) MTASK.ThreadTable[i] = NULL;
 
 	/** Initialize the system-event-wait table **/
 	MTASK.nEvents = 0;
@@ -1282,9 +1300,9 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
     pThread thr;
     int i;
 
-    	if (MTASK.nThreads >= MAX_THREADS)
+    	if (MTASK.nThreads >= MTASK.MaxThreads)
 	    {
-	    printf("mtask: Thread Table Limit (%d) exceeded!\n",MAX_THREADS);
+	    printf("mtask: Thread Table Limit (%d) exceeded!\n", MTASK.MaxThreads);
 	    return NULL;
 	    }
 
@@ -1349,7 +1367,7 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	    }
 
 	/** Add to the thread table. **/
-	for(i=0;i<MAX_THREADS;i++)
+	for(i=0;i<MTASK.MaxThreads;i++)
 	    {
 	    if (!MTASK.ThreadTable[i])
 	        {
@@ -1398,7 +1416,7 @@ thExit()
 	dbg_write(0,"E",1);
 
     	/** Remove thread from thread table **/
-	for(i=0;i<MAX_THREADS;i++) 
+	for(i=0;i<MTASK.MaxThreads;i++) 
 	    {
 	    if (MTASK.ThreadTable[i] == MTASK.CurrentThread)
 	        {
@@ -1493,7 +1511,7 @@ thKill(pThread thr)
 	    }
 
 	/** Remove from thread table. **/
-	for(i=0;i<MAX_THREADS;i++) if (MTASK.ThreadTable[i] == thr)
+	for(i=0;i<MTASK.MaxThreads;i++) if (MTASK.ThreadTable[i] == thr)
 	    {
 	    MTASK.ThreadTable[i] = NULL;
 	    MTASK.nThreads--;

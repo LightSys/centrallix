@@ -65,6 +65,8 @@
 #define OBJ_U_PACKET	FD_U_PACKET
 #define OBJ_U_TRUNCATE	FD_U_TRUNCATE
 
+#define MGK_OXT		(0x12340ddf)
+
 /** Pathname analysis structure **/
 typedef struct
     {
@@ -205,6 +207,7 @@ typedef struct _OSD
 /** objxact transaction tree **/
 typedef struct _OT
     {
+    int			Magic;
     int			Status;		/* OXT_S_xxx */
     int			OpType;		/* OXT_OP_xxx */
     struct _OT*		Parent;		/* Parent tree node */
@@ -594,6 +597,7 @@ char* objGetDateFmt(pObjSession this);
 int objUnmanageObject(pObjSession this, pObject obj);
 int objUnmanageQuery(pObjSession this, pObjQuery qy);
 int objCommit(pObjSession this);
+int objCommitObject(pObject this);
 pObjTrxTree objSuspendTransaction(pObjSession this);
 int objResumeTransaction(pObjSession this, pObjTrxTree trx);
 

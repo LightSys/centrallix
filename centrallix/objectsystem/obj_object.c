@@ -1497,3 +1497,21 @@ objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char
 	return -1;
     }
 
+
+/*** objCommitObject - commit changes made during a transaction.  Only partly
+ *** implemented at present, and only if supported by the underlying
+ *** driver.
+ ***/
+int
+objCommitObject(pObject this)
+    {
+    int rval = 0;
+    pObjTrxTree trx = NULL;
+
+	if (this && this->Driver->Commit)
+	    rval = this->Driver->Commit(this->Data, &trx);
+
+    return rval;
+    }
+
+

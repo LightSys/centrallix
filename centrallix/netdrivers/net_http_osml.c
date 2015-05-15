@@ -1050,6 +1050,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					n = objDataToInteger(DATA_T_STRING, strval, NULL);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,NULL);
 				    break;
 
 				case DATA_T_DOUBLE:
@@ -1058,6 +1060,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					dbl = objDataToDouble(DATA_T_STRING, strval);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,NULL);
 				    break;
 
 				case DATA_T_STRING:
@@ -1071,6 +1075,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					pdt = &dt;
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,NULL);
 				    break;
 
 				case DATA_T_MONEY:
@@ -1080,6 +1086,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					objDataToMoney(DATA_T_STRING, strval, &m);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,NULL);
 				    break;
 
 				case DATA_T_UNAVAILABLE: 
@@ -1121,7 +1129,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    }
 
 		/** Commit the change. **/
-		rval = objCommit(objsess);
+		//rval = objCommit(objsess);
+		rval = objCommitObject(obj);
 		if (rval < 0)
 		    {
 		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
