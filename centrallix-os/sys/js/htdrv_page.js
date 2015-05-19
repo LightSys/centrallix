@@ -2086,7 +2086,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 	if (!pg_waitlyr)
 	    {
 	    pg_waitlyr = htr_new_layer(96);
-	    htr_write_content(pg_waitlyr, "<table width='100' bgcolor='black' cellspacing='0' cellpadding='2' border='0'><tr><td><table width='96' bgcolor='#ffff80' cellspacing='0' cellpadding='3' border='0'><tr><td align='center'>Please Wait...</td></tr></table></td></tr></table>");
+	    htr_write_content(pg_waitlyr, "<img src=\"/sys/images/wait_spinner.gif\"</img>");
 	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
 	    htr_setzindex(pg_waitlyr, 99999);
 	    }
