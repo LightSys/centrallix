@@ -2086,7 +2086,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 	if (!pg_waitlyr)
 	    {
 	    pg_waitlyr = htr_new_layer(96);
-	    htr_write_content(pg_waitlyr, "<img src=\"/sys/images/wait_spinner.gif\"</img>");
+	    htr_write_content(pg_waitlyr, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
 	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
 	    htr_setzindex(pg_waitlyr, 99999);
 	    }
