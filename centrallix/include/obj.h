@@ -429,6 +429,32 @@ typedef struct _DC
 #define DC_F_ISDIR	1
 
 
+/*** Lock information structure ***/
+typedef struct _LK
+    {
+    char	Path[OBJSYS_MAX_PATH];	/* Path to object or subtree to be locked */
+    int		Flags;			/* Locking flags OBJ_LOCK_F_xxx */
+    XArray	Holders;		/* A list of holders with access through this lock */
+    pSemaphore	WriteLock;
+    }
+    ObjLock, *pObjLock;
+
+#define OBJ_LOCK_F_WRITE	1	/* Lock is a write (exclusive) lock (otherwise, it is a reader/shared lock) */
+#define OBJ_LOCK_F_SUBTREE	2	/* Lock applies to entire object subtree (otherwise, just to given tree or object) */
+#define OBJ_LOCK_F_OBJECT	4	/* Lock applies to object itself (otherwise, to object's direct subobjects) */
+
+
+/*** Lock holder information ***/
+typedef struct _LKH
+    {
+    char	Path[OBJSYS_MAX_PATH];	/* Path that holder requested */
+    int		Flags;			/* Flags that holder requested */
+    pObjLock	Lock;			/* the lock in question */
+    pObjSession	Session;		/* the holder's OSML session */
+    }
+    ObjLockHolder, *pObjLockHolder;
+
+
 /*** ObjectSystem Globals ***/
 typedef struct
     {
@@ -453,6 +479,7 @@ typedef struct
     XHashTable	NotifiesByPath;		/* objects with RequestNotify() */
     long long	PathID;			/* pseudo-paths for multiquery */
     char	TrxLogPath[OBJSYS_MAX_PATH]; /* path to osml trx log */
+    XArray	Locks;			/* Object and subtree locks */
     }
     OSYS_t;
 

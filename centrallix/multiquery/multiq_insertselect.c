@@ -218,6 +218,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    objUnmanageObject(stmt->Query->SessionID, reopen_obj);
 		    objClose(new_obj);
 		    new_obj = reopen_obj;
+		    ASSERTMAGIC(new_obj, MGK_OBJECT);
 		    }
 		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
 		if (old_newobj_id >= 0)
