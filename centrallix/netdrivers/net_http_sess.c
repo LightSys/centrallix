@@ -117,6 +117,7 @@ nht_internal_AllocSession(char* usrname)
 	nsess->User = usr;
 	xaAddItem(&usr->Sessions, (void*)nsess);
 	nsess->Session = thGetParam(NULL,"mss");
+	mssLinkSession(nsess->Session);
 	nsess->IsNewCookie = 1;
 	nsess->ObjSess = objOpenSession("/");
 	nsess->Errors = syCreateSem(0,0);
@@ -130,7 +131,7 @@ nht_internal_AllocSession(char* usrname)
 	xaInit(&nsess->OsmlQueryList,64);
 	xaInit(&nsess->AppGroups,16);
 	xhnInitContext(&(nsess->Hctx));
-	nsess->CachedApps = (pXHashTable)nmSysMalloc(sizeof(XHashTable));
+	nsess->CachedApps = (pXHashTable)nmMalloc(sizeof(XHashTable));
 	xhInit(nsess->CachedApps, 127, 4);
 	nsess->S_ID = NHT.S_ID_Count++;
 	snprintf(nsess->S_ID_Text, sizeof(nsess->S_ID_Text), "%lld", nsess->S_ID);
@@ -238,12 +239,17 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		nmFree(nht_query, sizeof(NhtQuery));
 		}
 
+	    if (sess->Session)
+		mssUnlinkSession(sess->Session);
+
 	    /** Dealloc the xarrays and such **/
 	    xaDeInit(&(sess->Triggers));
 	    xaDeInit(&(sess->ErrorList));
 	    xaDeInit(&(sess->ControlMsgsList));
 	    xaDeInit(&(sess->OsmlQueryList));
 	    xaDeInit(&(sess->AppGroups));
+	    xhDeInit(sess->CachedApps);
+	    nmFree(sess->CachedApps, sizeof(XHashTable));
 	    xhnDeInitContext(&(sess->Hctx));
 	    nmFree(sess, sizeof(NhtSessionData));
 	    }
@@ -583,6 +589,8 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
 	app->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeoutApp, (void*)app);
 	/*app->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutApp, (void*)app);*/
 	xaAddItem(&group->Apps, (void*)app);
+	xaInit(&app->Endorsements, 16);
+	xaInit(&app->Contexts, 16);
 
     return app;
     }
@@ -593,9 +601,19 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
 int
 nht_internal_FreeApp(pNhtApp app)
     {
+    int i;
 
 	/** Disconnect from the app group **/
 	xaRemoveItem(&(app->Group->Apps), xaFindItem(&(app->Group->Apps), (void*)app));
+
+	/** Free the endorsement/context info **/
+	for(i=0;i<app->Endorsements.nItems;i++)
+	    {
+	    nmSysFree(app->Endorsements.Items[i]);
+	    nmSysFree(app->Contexts.Items[i]);
+	    }
+	xaDeInit(&app->Endorsements);
+	xaDeInit(&app->Contexts);
 
 	/** Clean up... **/
 	nht_internal_RemoveWatchdog(app->WatchdogTimer);

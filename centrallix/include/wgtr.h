@@ -122,6 +122,7 @@ typedef struct _WN
     void*	DMPrivate;			/** private data for use by deployment method **/
     char*	ThisTemplatePath;
     char*	TemplatePaths[WGTR_MAX_TEMPLATE];
+    pWgtrClientInfo ClientInfo;			/* a link to the client-info data */
     }
     WgtrNode, *pWgtrNode;
 
@@ -164,8 +165,8 @@ typedef struct
 #define WGTR_TM_POSTORDER	3
 
 /** wgtr creation and destruction **/
-pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, char* templates[], int flags);  /** parse osml object **/
-pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, char* templates[], int flags);	/** parses an open OSML object into a widget tree **/
+pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, pWgtrClientInfo client_info, int flags);  /** parse osml object **/
+pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, pWgtrClientInfo client_info, int flags);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,

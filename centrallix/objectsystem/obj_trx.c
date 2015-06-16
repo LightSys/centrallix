@@ -79,6 +79,7 @@ obj_internal_AllocTree()
     this->AllocObj = 0;
     this->AttrValue = NULL;
     xaInit(&(this->Children),16);
+    SETMAGIC(this, MGK_OXT);
     return this;
     }
 
@@ -92,11 +93,15 @@ obj_internal_FindTree(pObjTrxTree oxt, char* path)
     pObjTrxTree search,tmp,find;
     int i;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** Start at tree root **/
 	if (strncmp(path,oxt->PathPtr,strlen(oxt->PathPtr))) return NULL;
 	search = oxt;
 	while(search)
 	    {
+	    ASSERTMAGIC(search, MGK_OXT);
+
 	    /** Found the node? **/
 	    if (!strcmp(path,search->PathPtr)) break;
 
@@ -105,6 +110,7 @@ obj_internal_FindTree(pObjTrxTree oxt, char* path)
 	    for(i=0;i<search->Children.nItems;i++)
 	        {
 		tmp = (pObjTrxTree)(search->Children.Items[i]);
+		ASSERTMAGIC(tmp, MGK_OXT);
 		if (!strncmp(path,tmp->PathPtr,strlen(tmp->PathPtr)))
 		    {
 		    find = tmp;
@@ -126,9 +132,12 @@ obj_internal_FreeTree(pObjTrxTree oxt)
     int i;
     pObjTrxTree tmp;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** If it has a parent, remove from that child list. **/
 	if (oxt->Parent) 
 	    {
+	    ASSERTMAGIC(oxt->Parent, MGK_OXT);
 	    xaRemoveItem(&(oxt->Parent->Children),xaFindItem(&(oxt->Parent->Children),oxt));
 	    oxt->Parent = NULL;
 	    }
@@ -153,6 +162,7 @@ obj_internal_FreeTree(pObjTrxTree oxt)
 	    nmFree(oxt->Object,sizeof(Object));*/
 	    obj_internal_FreeObj(oxt->Object);
 	    }
+	ASSERTMAGIC(oxt, MGK_OXT);
 	nmFree(oxt,sizeof(ObjTrxTree));
     
     return 0;
@@ -165,6 +175,8 @@ obj_internal_FreeTree(pObjTrxTree oxt)
 int
 obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt)
     {
+    ASSERTMAGIC(parent_oxt, MGK_OXT);
+    ASSERTMAGIC(child_oxt, MGK_OXT);
     child_oxt->Parent = parent_oxt;
     xaAddItem(&(parent_oxt->Children), (void*)child_oxt);
     return 0;
@@ -179,6 +191,8 @@ obj_internal_SetTreeAttr(pObjTrxTree oxt, int type, pObjData val)
     {
     void* valcpy;
     int len;
+
+	ASSERTMAGIC(oxt, MGK_OXT);
 
     	/** Set type **/
 	oxt->AttrType = type;
@@ -225,6 +239,8 @@ oxt_internal_FindAttrOxt(pObjTrxTree oxt, char* attrname)
     pObjTrxTree search_oxt;
     int i;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** Search the transaction tree for the oxt structure **/
 	for(i=0;i<oxt->Children.nItems;i++)
 	    {
@@ -254,6 +270,8 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	if (*oxt)
 	    {
+	    ASSERTMAGIC(*oxt, MGK_OXT);
+
 	    prefix_cnt = obj_internal_PathPrefixCnt(obj->Pathname, 
 	        ((pObject)((*oxt)->Object))->Pathname);
 	    if (prefix_cnt == 0)
@@ -307,6 +325,8 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
 	    pass_oxt = oxt;
 	    }
 
+	ASSERTMAGIC(*pass_oxt, MGK_OXT);
+
     return pass_oxt;
     }
 
@@ -318,10 +338,14 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
 void*
 oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    pObjTrxTree object_oxt = NULL;
     pObjTrxPtr inf;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt = NULL;
     int was_null=0;
+
+	oxt = &object_oxt;
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Allocate the inf and the tree. **/
 	inf = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
@@ -330,6 +354,8 @@ oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	pass_oxt = oxt_internal_FindOxt(obj,oxt,&new_oxt);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+	if (new_oxt) ASSERTMAGIC(new_oxt, MGK_OXT);
 	if (new_oxt == NULL) was_null = 1;
 	if (new_oxt) new_oxt->OpType = OXT_OP_NONE;
 
@@ -384,9 +410,13 @@ oxtClose(void* this_v, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     int rval;
     
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Call the driver to make the close operation. **/
     	pass_oxt = &(this->Trx);
 	rval = this->Obj->TLowLevelDriver->Close(this->LLParam, pass_oxt);
+
+	if (*pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
 
 	/** Completed or error? **/
 	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -420,8 +450,11 @@ oxtDeleteObj(void* this_v, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     int rval;
 
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Call the driver to make the delete operation. **/
     	pass_oxt = &(this->Trx);
+	if (*pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
 	if (this->Obj->TLowLevelDriver->DeleteObj == NULL)
 	    {
 	    mssError(1,"OXT","oxtDeleteObj: [%s] objects do not support deletion",this->Obj->TLowLevelDriver->Name);
@@ -460,9 +493,12 @@ oxtCommit(void* this_v, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     int rval;
 
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Call the driver to make the close operation. **/
 	if (!this->Obj->TLowLevelDriver->Commit) return 0;
     	pass_oxt = &(this->Trx);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
 	rval = this->Obj->TLowLevelDriver->Commit(this->LLParam, pass_oxt);
 
 	/** Completed or error? **/
@@ -490,13 +526,19 @@ oxtCommit(void* this_v, pObjTrxTree* oxt)
 int
 oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    pObjTrxTree object_oxt = NULL;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     int was_null = 0;
     int rval;
 
+	oxt = &object_oxt;
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	pass_oxt = oxt_internal_FindOxt(obj,oxt,&new_oxt);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
+	if (new_oxt) ASSERTMAGIC(new_oxt, MGK_OXT);
 	if (new_oxt == NULL) was_null = 1;
 	if (new_oxt) new_oxt->OpType = OXT_OP_CREATE;
 
@@ -545,13 +587,19 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 oxtDelete(pObject obj, pObjTrxTree* oxt)
     {
+    pObjTrxTree object_oxt = NULL;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     int was_null = 0;
     int rval;
 
+	oxt = &object_oxt;
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	pass_oxt = oxt_internal_FindOxt(obj,oxt,&new_oxt);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
+	if (new_oxt) ASSERTMAGIC(new_oxt, MGK_OXT);
 	if (new_oxt == NULL) was_null = 1;
 	if (new_oxt) new_oxt->OpType = OXT_OP_DELETE;
 
@@ -604,6 +652,8 @@ oxtSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTr
     pObjTrxTree new_oxt = NULL;
     pObjTrxTree* pass_oxt;
     int rval;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Are we in a transaction? **/
 	if (this->Trx)
@@ -660,6 +710,8 @@ oxtOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     void* rval;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
 	/** GRB This interface is a kludge.  We'll probably be removing this
 	 ** in the future.  for now, just error out.
@@ -723,6 +775,7 @@ int
 oxtGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetAttrValue(this->LLParam, attrname, datatype, val, oxt);
     }
 
@@ -734,6 +787,8 @@ oxtOpenQuery(void* this_v, char* query, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
     pObjTrxQuery qy;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Allocate the query **/
 	qy = (pObjTrxQuery)nmMalloc(sizeof(ObjTrxQuery));
@@ -759,6 +814,7 @@ int
 oxtQueryDelete(void* qy_v, pObjTrxTree* oxt)
     {
     pObjTrxQuery qy = (pObjTrxQuery)(qy_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return qy->Obj->TLowLevelDriver->QueryDelete(qy->LLParam, oxt);
     }
 
@@ -772,6 +828,8 @@ oxtQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pObjTrxQuery qy = (pObjTrxQuery)qy_v;
     pObjTrxTree new_oxt = NULL;
     pObjTrxTree* pass_oxt = &new_oxt;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Allocate the subobject **/
 	subobj = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
@@ -807,6 +865,8 @@ oxtQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pObjTrxQuery qy = (pObjTrxQuery)qy_v;
 
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Free the object and call the lowlevel. **/
 	qy->Obj->TLowLevelDriver->QueryClose(qy->LLParam,oxt);
 	nmFree(qy,sizeof(ObjTrxQuery));
@@ -822,6 +882,7 @@ int
 oxtWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->Write(this->LLParam,buffer,cnt,offset,flags,(this->Trx)?&(this->Trx):oxt);
     }
 
@@ -833,6 +894,7 @@ int
 oxtRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->Read(this->LLParam,buffer,maxcnt,offset,flags,oxt);
     }
 
@@ -843,6 +905,7 @@ int
 oxtGetAttrType(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetAttrType(this->LLParam,attrname,oxt);
     }
 
@@ -854,6 +917,7 @@ int
 oxtAddAttr(void* this_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->AddAttr(this->LLParam, oxt);
     }
 
@@ -864,6 +928,7 @@ char*
 oxtGetFirstAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetFirstAttr(this->LLParam,oxt);
     }
 
@@ -874,6 +939,7 @@ char*
 oxtGetNextAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetNextAttr(this->LLParam,oxt);
     }
 
@@ -884,6 +950,7 @@ char*
 oxtGetFirstMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetFirstMethod(this->LLParam,oxt);
     }
 
@@ -894,6 +961,7 @@ char*
 oxtGetNextMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetNextMethod(this->LLParam,oxt);
     }
 
@@ -904,6 +972,7 @@ int
 oxtExecuteMethod(void* this_v, char* methodname, void* param, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->ExecuteMethod(this->LLParam,methodname,param,oxt);
     }
 
@@ -914,6 +983,7 @@ pObjPresentationHints
 oxtPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     if (!(this->Obj->TLowLevelDriver->PresentationHints)) return NULL;
     return this->Obj->TLowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
     }

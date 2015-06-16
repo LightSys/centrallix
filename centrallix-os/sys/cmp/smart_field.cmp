@@ -25,6 +25,7 @@ smart_field "widget/component-decl"
     default_time "widget/parameter" { type=string; default=""; }
     initialdate "widget/parameter" { type=string; default=""; }
     invalid_select_default "widget/parameter" { type=string; default="no"; }
+    numdisplay "widget/parameter" { type=integer; default=3; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
     preview_field "widget/parameter" { type=string; default=null; }
@@ -135,6 +136,7 @@ smart_field "widget/component-decl"
 	mode=dynamic_server; 
 	hilight="#d0d0d0";
 	popup_width=runserver(:this:popup_width);
+	numdisplay=runserver(:this:numdisplay);
         ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
 	}
     ctl "widget/textarea"

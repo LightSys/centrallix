@@ -64,6 +64,7 @@ expCreateParamList()
 	objlist->MainFlags = 0;
 	objlist->PSeqID = (EXP.PSeqID++);
 	objlist->Session = NULL;
+	objlist->CurControl = NULL;
 
     return objlist;
     }
@@ -101,6 +102,9 @@ expFreeParamList(pParamObjects this)
 	    nmSysFree(this->Names[i]);
 	    this->Names[i] = NULL;
 	    }
+
+	if (this->CurControl)
+	    exp_internal_UnlinkControl(this->CurControl);
 
 	/** Free the structure. **/
 	nmFree(this, sizeof(ParamObjects));
@@ -179,7 +183,7 @@ expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
 
 	/** Might need to deallocate strings in dst **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
-	    if (dst->Names[i] != NULL && dst->Flags[i] & EXPR_O_ALLOCNAME)
+	    if (dst->Names[i] != NULL && (dst->Flags[i] & EXPR_O_ALLOCNAME))
 		nmSysFree(dst->Names[i]);
 
 	/** For most things, just a straight memcpy will do **/
@@ -264,13 +268,13 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		/** Setup the entry for this parameter. **/
 		this->SeqIDs[i] = EXP.ModSeqID++;
 		this->Objects[i] = obj;
-		this->Flags[i] = flags | EXPR_O_CHANGED;
 		this->GetTypeFn[i] = objGetAttrType;
 		this->GetAttrFn[i] = objGetAttrValue;
 		this->SetAttrFn[i] = objSetAttrValue;
 		if (i != exist) this->nObjects++;
 		if (this->Names[i] && (this->Flags[i] & EXPR_O_ALLOCNAME))
 		    nmSysFree(this->Names[i]);
+		this->Flags[i] = flags | EXPR_O_CHANGED;
 		if (flags & EXPR_O_ALLOCNAME)
 		    {
 		    this->Names[i] = nmSysStrdup(name);

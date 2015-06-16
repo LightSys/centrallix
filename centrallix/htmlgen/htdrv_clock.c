@@ -166,7 +166,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"\t#cl%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
 
 	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"cl%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase",id);
 
 	/** Other global variables **/
 	htrAddScriptGlobal(s, "cl_move", "false", 0);

@@ -457,9 +457,13 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	if (lxs) mlxCloseSession(lxs);
 	if (this && order_by && !orderbyexp) for(i=0;this->SortBy[i];i++) expFreeExpression(this->SortBy[i]);
 	if (linked_obj) objClose(linked_obj); /* unlink */
-	if (this && this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
-	if (this && this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
-	if (this) nmFree(this,sizeof(ObjQuery));
+	if (this)
+	    {
+	    xaRemoveItem(&(linked_obj->Session->OpenQueries), xaFindItem(&(linked_obj->Session->OpenQueries), (void*)this));
+	    if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
+	    if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
+	    nmFree(this,sizeof(ObjQuery));
+	    }
 
     return NULL;
     }

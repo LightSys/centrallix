@@ -76,6 +76,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this->ImageOpenFn = NULL;
 	this->ImageWriteFn = NULL;
 	this->ImageCloseFn = NULL;
+	xaInit(&this->SessionParams, 16);
 	strtcpy(this->OutputType, output_type, sizeof(this->OutputType));
 
 	/** Search for a formatter module that will do this content type **/
@@ -138,6 +139,8 @@ int
 prtCloseSession(pPrtSession s)
     {
     pPrtObjStream obj;
+    int i;
+    char* p;
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
 
@@ -156,6 +159,14 @@ prtCloseSession(pPrtSession s)
 
 	/** Release the memory used by the pages **/
 	if (s->StreamHead) prt_internal_FreeTree(s->StreamHead);
+
+	/** Free up params **/
+	for(i=0;i<s->SessionParams.nItems;i++)
+	    {
+	    p = (char*)s->SessionParams.Items[i];
+	    nmSysFree(p);
+	    }
+	xaDeInit(&s->SessionParams);
 
 	/** Free the session structure and exit. **/
 	nmFree(s,sizeof(PrtSession));
@@ -292,3 +303,39 @@ prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void
     return 0;
     }
 
+
+/*** prtSetSessionParam() - set a parameter that will be used by the print
+ *** formatting subsystem as a part of the overall session.  This may be used
+ *** to control specific behavior of the output driver, for instance.
+ ***/
+int
+prtSetSessionParam(pPrtSession s, char* paramname, char* value)
+    {
+    char* str;
+
+	str = nmSysMalloc(strlen(paramname) + 1 + strlen(value) + 1);
+	sprintf(str, "%s:%s", paramname, value);
+	xaAddItem(&s->SessionParams, str);
+
+    return 0;
+    }
+
+
+/*** prtGetSessionParam() - get a session parameter.  If the parameter is not
+ *** set, then return the provided default value.
+ ***/
+char*
+prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue)
+    {
+    char* p;
+    int i;
+
+	for(i=0;i<s->SessionParams.nItems;i++)
+	    {
+	    p = (char*)s->SessionParams.Items[i];
+	    if (!strncmp(p, paramname, strlen(paramname)) && p[strlen(paramname)] == ':')
+		return strchr(p, ':')+1;
+	    }
+
+    return defaultvalue;
+    }

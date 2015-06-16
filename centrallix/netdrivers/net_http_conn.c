@@ -171,6 +171,7 @@ nht_internal_ConnHandler(void* conn_v)
     char sbuf[160];
     char* msg = "";
     char* ptr;
+    char* nextptr;
     char* usrname;
     char* passwd = NULL;
     pStruct url_inf = NULL;
@@ -272,7 +273,12 @@ nht_internal_ConnHandler(void* conn_v)
 		    printf("\n");*/
 		    goto out;
 		    }
-		thSetParam(NULL,"mss",conn->NhtSession->Session);
+		if (conn->NhtSession->Session)
+		    {
+		    thSetParam(NULL,"mss",conn->NhtSession->Session);
+		    thSetParamFunctions(NULL,mssLinkSession,mssUnlinkSession);
+		    mssLinkSession(conn->NhtSession->Session);
+		    }
 		/*thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);*/
 		thSetSecContext(NULL, &(conn->NhtSession->SecurityContext));
 		w_timer = conn->NhtSession->WatchdogTimer;
@@ -298,6 +304,19 @@ nht_internal_ConnHandler(void* conn_v)
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    goto out;
 	    }
+
+	/** If there is a date code, strip the code off **/
+	ptr = strstr(url_inf->StrVal, "/CXDC:");
+	if (ptr)
+	    {
+	    nextptr = strchr(ptr+6, '/');
+	    if (nextptr && strspn(ptr+6, "0123456789") == (nextptr - (ptr+6)))
+		{
+		memmove(ptr, nextptr, strlen(nextptr)+1);
+		}
+	    }
+
+	/** Fixup the path by re-adding the needed path parameters **/
 	nht_internal_ConstructPathname(url_inf);
 
 	/** Watchdog ping? **/
@@ -400,6 +419,19 @@ nht_internal_ConnHandler(void* conn_v)
 	/** No cookie or no session for the given cookie? **/
 	if (!conn->NhtSession)
 	    {
+	    /** No session, and the connection is a 'non-activity' request? **/
+	    if (conn->NotActivity)
+		{
+		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
+			     "Server: %s\r\n"
+			     "Pragma: no-cache\r\n"
+			     "Content-Type: text/html\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
+		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		goto out;
+		}
+
 	    /** Attempt authentication **/
 	    if (mssAuthenticate(usrname, passwd) < 0)
 	        {

@@ -173,7 +173,7 @@ function form_cb_esc_notify(control)
     {
     /** Do a discard **/
     if (control == pg_curkbdlayer && pg_removekbdfocus({nodatachange:true}))
-	this.ifcProbe(ifAction).Invoke("Discard", {});
+	this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:1});
     }
 
 function form_default_action()
@@ -189,7 +189,7 @@ function form_default_action()
 	if (this.is_savable)
 	    return this.ifcProbe(ifAction).Invoke("Save", {});
 	else
-	    return this.ifcProbe(ifAction).Invoke("Discard", {});
+	    return this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:1});
 	}
     }
 
@@ -516,6 +516,10 @@ function form_action_delete_success()
 /** in Query, clear, remain in query mode **/
 function form_action_discard(aparam)
     {
+    if (!aparam.FromOSRC)
+	aparam.FromOSRC = 0;
+    if (!aparam.FromKeyboard)
+	aparam.FromKeyboard = 0;
     switch(this.mode)
 	{
 	case "Modify":
@@ -523,7 +527,7 @@ function form_action_discard(aparam)
 	    //if (this.osrc) this.osrc.MoveToRecord(this.recid);
 	    this.ChangeMode("View");
 	    this.LoadFields(this.data);
-	    this.SendEvent('Discard');
+	    this.SendEvent('Discard', aparam);
 	    break;
 	case "Query":
 	case "New":
@@ -532,7 +536,7 @@ function form_action_discard(aparam)
 		this.LoadFields(this.data);
 	    else if (!this.data && this.ChangeMode("NoData"))
 		this.LoadFields(null);
-	    this.SendEvent('Discard');
+	    this.SendEvent('Discard', aparam);
 	    // failed to change mode? re-init the query or new status if so.
 	    if (this.mode == "Query" || this.mode == "New")
 		this.ChangeMode(this.mode);
@@ -744,7 +748,7 @@ function form_select_element(current, save_if_last, reverse)
     for(var i = 1; i <= this.elements.length; i++)
 	{
 	ctrlnum = (origctrl + this.elements.length + incr*i) % this.elements.length;
-	if (!reverse && ctrlnum == 0 && this.nextform && current)
+	if (!reverse && ctrlnum == 0 && this.nextform && current && this.nextform.is_enabled)
 	    {
 	    if (pg_removekbdfocus())
 		{
@@ -818,6 +822,15 @@ function form_change_mode(newmode)
 	return false;
 
     if (newmode == this.mode && newmode != 'Query' && newmode != 'New' && newmode != 'Modify') return true;
+
+    // Interlock check -- autodiscard interlock is the only method supported right now.
+    if (newmode == 'New' || newmode == 'Modify')
+	{
+	for(var i=0; i<this.interlock_forms.length; i++)
+	    {
+	    this.interlock_forms[i].ifcProbe(ifAction).Invoke('Discard', {});
+	    }
+	}
 
     // Exiting 'New' mode?
     if (this.mode == 'New')
@@ -936,16 +949,22 @@ function form_change_mode(newmode)
 	}
 
     this.SendEvent('StatusChange');
+    this.SendEvent('ModeChange', {OldMode:this.oldmode, NewMode:this.mode});
     this.SendEvent(this.mode);
     return true;
     }
 
-function form_send_event(event)
+function form_send_event(event, eparam)
     {
     //confirm(eval('this.Event'+event));
     if (!this.ifcProbe(ifEvent).Exists(event)) return 1;
     //if(!eval('this.Event'+event)) return 1;
     var evobj = new Object();
+    if (eparam)
+	{
+	for(var ep in eparam)
+	    evobj[ep] = eparam[ep];
+	}
     evobj.Caller = this;
     evobj.Status = this.mode;
     evobj.PrevStatus = this.oldmode;
@@ -953,6 +972,28 @@ function form_send_event(event)
     evobj.is_savable = this.is_savable;
     cn_activate(this, event, evobj);
     delete evobj;
+    }
+
+// Disables the entire form.
+function form_action_disable(ap)
+    {
+    if (!ap || !ap.Enabled || ap.Enabled == 'no')
+	this.DisableAll();
+    else if (this.mode == 'View' || this.mode == 'NoData' || this.mode == 'Modify')
+	this.EnableModifyAll();
+    else if (this.mode == 'New' || this.mode == 'Query')
+	this.EnableNewAll();
+    }
+
+// Re-enables the entire form.
+function form_action_enable(ap)
+    {
+    if (ap && (ap.Enabled === 0 || ap.Enabled == 'no'))
+	this.DisableAll();
+    else if (this.mode == 'View' || this.mode == 'NoData' || this.mode == 'Modify')
+	this.EnableModifyAll();
+    else if (this.mode == 'New' || this.mode == 'Query')
+	this.EnableNewAll();
     }
 
 /** Clears all children, also resets IsChanged/IsUnsaved flag to false **/
@@ -974,6 +1015,7 @@ function form_clear_all(internal_only)
 /** Disables all children **/
 function form_disable_all()
     {
+    this.is_enabled = false;
     for(var i in this.elements)
 	{
 	if (this.elements[i] == pg_curkbdlayer) pg_removekbdfocus();
@@ -984,6 +1026,7 @@ function form_disable_all()
 /** Enables all children (for modify) **/
 function form_enable_modify_all()
     {
+    this.is_enabled = true;
     for(var i in this.elements)
 	{
 	if(this.elements[i].enablemodify)
@@ -996,6 +1039,7 @@ function form_enable_modify_all()
 /** Enables all children (for modify) **/
 function form_enable_new_all()
     {
+    this.is_enabled = true;
     for(var i in this.elements)
 	{
 	if(this.elements[i].enablenew)
@@ -1145,6 +1189,10 @@ function form_action_save()
 	}
 
     this.Pending=true;
+    for(var e in this.elements)
+	{
+	if (this.elements[e].cx_hints) cx_hints_completenew(this.elements[e]);
+	}
     this.DisableAll();
 
     pg_serialized_func(2, this, form_action_save_2, []);
@@ -1346,13 +1394,13 @@ function form_cb_reveal(element,event)
 		    this._orsevent = event;
 		    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\", {});");
 		    this.cb['_3bConfirmSave'].add(this,savefunc);
-		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {});pg_reveal_check_ok(this._orsevent);'));
+		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});pg_reveal_check_ok(this._orsevent);'));
 		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
 		    this.show3bconfirm();
 		    }
 		else
 		    {
-		    this.ifcProbe(ifAction).Invoke("Discard", {});
+		    this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});
 		    pg_reveal_check_ok(event);
 		    }
 		}
@@ -1365,10 +1413,40 @@ function form_cb_reveal(element,event)
     return 0;
     }
 
+function form_add_interlock(node)
+    {
+    if ($.inArray(node, this.interlock_forms) >= 0)
+	return;
+    this.interlock_forms.push(node);
+    }
+
 function form_init_bh()
     {
     if (this.nextformwithin)
 	this.nextform = wgtrFindInSubtree(this.nextformwithin, this, "widget/form");
+    if (this.interlock)
+	{
+	for(var i=0; i<this.interlock.length; i++)
+	    {
+	    if (this.interlock[i])
+		{
+		var node = wgtrGetNode(this, this.interlock[i]);
+		if (node)
+		    {
+		    this.AddInterlock(node);
+		    node.AddInterlock(this);
+		    }
+		}
+	    }
+	for(var i=0; i<this.interlock_forms.length; i++)
+	    {
+	    for(var j=0; j<this.interlock_forms.length; j++)
+		{
+		if (i != j)
+		    this.interlock_forms[i].AddInterlock(this.interlock_forms[j]);
+		}
+	    }
+	}
     }
 
 /** Form initializer
@@ -1387,6 +1465,8 @@ function form_init(form,param)
     //var form = new Object();
     ifc_init_widget(form);
     form.readonly=param.ro;
+    form.interlock=param.il.split(',');
+    form.interlock_forms=[];
     form.elements = [];
     form.statuswidgets = [];
     form.last_hints = [];
@@ -1451,6 +1531,7 @@ function form_init(form,param)
     form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
+    form.is_enabled = true;
     form.recid = 1;
     form.lastrecid = null;
     form.data = null;
@@ -1495,6 +1576,7 @@ function form_init(form,param)
     //form.InitQuery = form_init_query;
     form.ActionSaveSuccessCB = form_action_save_success;
     form.ActionDeleteSuccessCB = form_action_delete_success;
+    form.AddInterlock = form_add_interlock;
 
     // Actions
     var ia = form.ifcProbeAdd(ifAction);
@@ -1515,10 +1597,13 @@ function form_init(form,param)
     ia.Add("Save", form_action_save);
     ia.Add("Submit", form_action_submit);
     ia.Add("SetValue", form_action_setvalue);
+    ia.Add("Disable", form_action_disable);
+    ia.Add("Enable", form_action_enable);
 
     // Events
     var ie = form.ifcProbeAdd(ifEvent);
     ie.Add("StatusChange");
+    ie.Add("ModeChange");
     ie.Add("DataChange");
     ie.Add("DataLoaded");
     ie.Add("DataSaved");
@@ -1548,6 +1633,7 @@ function form_init(form,param)
     iv.Add("is_queryable","is_queryable");
     iv.Add("is_queryexecutable","is_queryexecutable");
     iv.Add("is_multienter","is_multienter");
+    iv.Add("is_enabled","is_enabled");
     iv.Add("confirm_delete","confirm_delete");
     iv.Add("recid","recid");
     iv.Add("lastrecid","lastrecid");

@@ -153,7 +153,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptGlobal(s, "radiobutton", "null", 0);
 
    /** DOM linkages **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"rb%POSparent\")",id);
+   htrAddWgtrObjLinkage_va(s, tree, "rb%POSparent",id);
    htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj,\"rb%POSborder\"),\"rb%POScover\")",id,id);
 
     /** Loop through each radiobutton and flag it NOOBJECT **/
@@ -232,7 +232,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 		label[0] = '\0';
 	    is_selected = htrGetBoolean(sub_tree, "selected", 0);
 	    if (is_selected < 0) is_selected = 0;
-	    htrAddWgtrObjLinkage_va(s,sub_tree,"htr_subel(_parentctr,\"rb%POSoption%POS\")",id,i);
+	    htrAddWgtrObjLinkage_va(s,sub_tree,"rb%POSoption%POS",id,i);
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
             htrAddScriptInit_va(s,
 		    "    var rbitem = wgtrGetNodeRef('%STR&SYM', '%STR&SYM');\n"

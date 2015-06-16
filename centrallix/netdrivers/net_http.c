@@ -978,7 +978,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     {
     char hex_chars[] = "0123456789abcdef";
     char token[512];
-    char name[16];
+    char name[48];
     char *ptr, *half;
     int length, start;
     int fd, i, extStart;
@@ -986,7 +986,11 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     char buffer[2048];
     int offset = 1024;
     int rcnt;
+    int allowed;
+    int rval;
     pNhtPostPayload payload = (pNhtPostPayload) nmMalloc(sizeof *payload);
+    pContentType ct;
+    char* apparent_type;
 
     memset(payload, 0, sizeof(*payload));
     
@@ -1051,6 +1055,23 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	    payload->extension[i] = ptr[i];
 	    }
 	payload->extension[i] = '\0';
+
+	/** Validate that this extension is allowed **/
+	allowed = 0;
+	for(i=0; i<NHT.AllowedUploadExts.nItems; i++)
+	    {
+	    if (!strcasecmp(payload->extension+1, NHT.AllowedUploadExts.Items[i]))
+		{
+		allowed = 1;
+		break;
+		}
+	    }
+	if (!allowed)
+	    {
+	    mssError(1,"NHT","Uploaded file extension not allowed on this server");
+	    payload->status = -1;
+	    return payload;
+	    }
 	}
     
     /* find the "ContentType" which seems to be the MIME type.  This may possibly be sorta useful sometime in the future.  Maybe... */
@@ -1088,18 +1109,43 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	payload->mime_type[i] = ptr[i];
 	}
     payload->mime_type[i] = '\0';
-    
+
+    /** Verify the mime type is valid -- check is that the type is or is
+     ** a subtype of application/octet-stream (this basically makes sure we know
+     ** about the file type).
+     **/
+    rval = objIsA(payload->mime_type, "application/octet-stream");
+    if (rval == OBJSYS_NOT_ISA)
+	{
+	mssError(1,"NHT","Disallowed file MIME type for upload POST request");
+	payload->status = -1;
+	return payload;
+	}
+    if (rval < 0)
+	strcpy(payload->mime_type,"application/octet-stream");
+
     /* Generate a random name for the file. */
     while(1)
 	{
-	cxssGenerateKey((unsigned char*)name, sizeof(name) - 1);
-	for(i=0; i< (sizeof name) - 1; i++)
+	strtcpy(name, payload->filename, 33);
+	if (strrchr(name, '.'))
+	    *(strrchr(name, '.')) = '\0';
+	for(i=0;i<strlen(name);i++)
 	    {
-	    name[i] = hex_chars[name[i] & 0x0f];
+	    if ((name[i] >= '0' && name[i] <= '9') || (name[i] >= 'a' && name[i] <= 'z') || (name[i] >= 'A' && name[i] <= 'Z') || name[i] == '_' || name[i] == '+' || name[i] == '-')
+		continue;
+	    name[i] = '_';
 	    }
-	name[i] = '\0';
+	strtcat(name, "-", 34);
+	ptr = strchr(name, '\0');
+	cxssGenerateKey((unsigned char*)ptr, 12);
+	for(i=0; i<12; i++)
+	    {
+	    ptr[i] = hex_chars[ptr[i] & 0x0f];
+	    }
+	ptr[i] = '\0';
 	
-	/* Append the extention to the unique name and store it in payload */
+	/** Append the extension to the unique name and store it in payload **/
 	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
 	    {
 	    mssError(1,"NHT","Invalid filename in file upload POST request - could not generate temp file name");
@@ -1107,8 +1153,22 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	    return payload; //Error
 	    }
 	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
-	snprintf(payload->path, sizeof (payload->path), "/var/tmp/");
-	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s%s", payload->path, payload->newname);
+	snprintf(payload->path, sizeof (payload->path), NHT.UploadTmpDir);
+	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s/%s", payload->path, payload->newname);
+
+	/** Validate that the new file name matches the mime type **/
+	ct = objTypeFromName(payload->full_new_path);
+	if (ct)
+	    apparent_type = ct->Name;
+	else
+	    apparent_type = "application/octet-stream";
+	if (objIsA(apparent_type, payload->mime_type) == OBJSYS_NOT_ISA)
+	    {
+	    mssError(1,"NHT","Unknown or mismatched file type and file extension for POST upload request");
+	    payload->status = -1;
+	    return payload;
+	    }
+
 	/* Try to create the file.  It will fail if the file already exists. */
 	/** Actually creating the file prevents race conditions that can occur
 	 ** if we only checked for the file here. i.e. the file could otherwise
@@ -1298,6 +1358,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
     int n_uploaded_files = 0;
+    int allowed, i;
    
 	/** Validate akey and make sure app and group id's match as well.  AKey
 	 ** must be supplied with all POST requests.
@@ -1338,6 +1399,29 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    
 	    return -1;
 	    }
+
+	/** Validate the target location **/
+	allowed = 0;
+	for(i=0; i<NHT.AllowedUploadDirs.nItems; i++)
+	    {
+	    if (!strcmp(NHT.AllowedUploadDirs.Items[i], find_inf->StrVal))
+		{
+		allowed = 1;
+		break;
+		}
+	    }
+	if (!allowed)
+	    {
+	    tval = time(NULL);
+	    thetime = gmtime(&tval);
+	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
+	    fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
+		 "Date: %s GMT\r\n"
+		 "Server: %s\r\n",
+		 tbuf, NHT.ServerString);
+	    
+	    return -1;
+	    }
 	
 	xsInit(&json);
 	/** Keep parsing files until stream is empty. **/
@@ -1350,7 +1434,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
 		/** Copy file into object system **/
 		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
-		snprintf(buffer, sizeof buffer, "%s%s", find_inf->StrVal, payload->newname);
+		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		while(1)
 		    {
@@ -1548,8 +1632,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			     "\r\n"
 			     "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 		mssPrintError(conn->ConnFD);
-		netCloseTCP(conn->ConnFD,1000,0);
-		nht_internal_UnlinkSess(nsess);
+		/*netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_UnlinkSess(nsess);*/
+		nht_internal_FreeConn(conn);
+		if (url_inf) stFreeInf_ne(url_inf);
 		thExit();
 		}
 
@@ -1729,6 +1815,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    client_w=0;
 		    objGetAttrValue(target_obj, "width", DATA_T_INTEGER, POD(&client_w));
 		    objGetAttrValue(target_obj, "height", DATA_T_INTEGER, POD(&client_h));
+
+		    /** These are some default values **/
+		    wgtr_params.CharWidth = 7;
+		    wgtr_params.CharHeight = 16;
+		    wgtr_params.ParagraphHeight = 16;
 		    }
 		else
 		    {
@@ -1855,9 +1946,24 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    if (lptr) nmSysFree(lptr);
 		    return -1;
 		    }
+
+		/** copy security endorsement data to app info structure **/
+		if (app)
+		    {
+		    for(i=0;i<app->Endorsements.nItems;i++)
+			{
+			nmSysFree(app->Endorsements.Items[i]);
+			nmSysFree(app->Contexts.Items[i]);
+			}
+		    xaClear(&app->Endorsements);
+		    xaClear(&app->Contexts);
+		    cxssGetEndorsementList(&app->Endorsements, &app->Contexts);
+		    }
+
 		if (tptr) nmSysFree(tptr);
 		if (lptr) nmSysFree(lptr);
 	        }
+
 	    /** a client app requested an interface definition **/ 
 	    else if (!strcmp(ptr, "iface/definition"))
 		{
@@ -1895,7 +2001,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 #ifdef HAVE_LIBZ
 		if(	NHT.EnableGzip && /* global enable flag */
-			obj_internal_IsA(ptr,"text/plain")>0 /* a subtype of text/plain */
+			objIsA(ptr,"text/plain")>0 /* a subtype of text/plain */
 			&& acceptencoding && strstr(acceptencoding,"gzip") /* browser wants it gzipped */
 			&& (!strcmp(ptr,"text/html") || (browser && regexec(NHT.reNet47,browser,(size_t)0,NULL,0) != 0 ) )
 			/* only gzip text/html for Netscape 4.7, which doesn't like it if we gzip .js files */
@@ -2086,6 +2192,12 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	/** Direct OSML Access mode... **/
 	else if (!strcmp(find_inf->StrVal,"osml") && akey_match)
 	    {
+	    /** Load in security endorsements **/
+	    for(i=0;i<app->Endorsements.nItems;i++)
+		{
+		cxssAddEndorsement(app->Endorsements.Items[i], app->Contexts.Items[i]);
+		}
+
 	    find_inf = stLookup_ne(url_inf,"ls__req");
 	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
 	    }
@@ -2277,8 +2389,10 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn->ConnFD);
-	    netCloseTCP(conn->ConnFD,1000,0);
-	    nht_internal_UnlinkSess(nsess);
+	    /*netCloseTCP(conn->ConnFD,1000,0);
+	    nht_internal_UnlinkSess(nsess);*/
+	    nht_internal_FreeConn(conn);
+	    if (url_inf) stFreeInf_ne(url_inf);
 	    thExit();
 	    }
 
@@ -2723,6 +2837,9 @@ nhtInitialize()
 	NHT.AccCnt = 0;
 	NHT.RestrictToLocalhost = 0;
 	NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
+	strcpy(NHT.UploadTmpDir, "/var/tmp");
+	xaInit(&NHT.AllowedUploadDirs, 16);
+	xaInit(&NHT.AllowedUploadExts, 16);
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
@@ -2817,6 +2934,18 @@ nhtInitialize()
 		    mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
 		    }
 		}
+
+	    /** Upload temporary directory **/
+	    if (stAttrValue(stLookup(my_config, "upload_tmpdir"), NULL, &strval, 0) >= 0)
+		strtcpy(NHT.UploadTmpDir, strval, sizeof(NHT.UploadTmpDir));
+
+	    /** Allowed file upload directories **/
+	    for(i=0; stAttrValue(stLookup(my_config, "upload_dirs"), NULL, &strval, i) >= 0; i++)
+		xaAddItem(&NHT.AllowedUploadDirs, nmSysStrdup(strval));
+
+	    /** Allowed file upload extensions **/
+	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
+		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
 	    }
 
 	/** Start the watchdog timer thread **/

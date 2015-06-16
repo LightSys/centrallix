@@ -83,7 +83,7 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	    fieldname[0]='\0';
 	
 	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "document.getElementById(\"fu%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "fu%POSbase",id);
 	
 	htrAddEventHandlerFunction(s, "document","CHANGE", "fu", "fu_change");
 	

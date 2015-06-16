@@ -57,14 +57,13 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char main_bg[128];
+    char elementid[16];
+    //char main_bg[128];
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
     int is_raised = 0;
     int mode = 0; /* 0=text, 1=html, 2=wiki */
-    char* c1;
-    char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
@@ -113,7 +112,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Background color/image? **/
-	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
+	//htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -121,30 +120,17 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Style of Textarea - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
-	if (is_raised)
-	    {
-	    c1 = "white_1x1.png";
-	    c2 = "dkgrey_1x1.png";
-	    }
-	else
-	    {
-	    c1 = "dkgrey_1x1.png";
-	    c2 = "white_1x1.png";
-	    }
 
+	/** Form linkage **/
 	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(form,ptr,sizeof(form));
 	else
 	    form[0]='\0';
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
-	    {
-	    strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
-	    }
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else 
-	    { 
 	    fieldname[0]='\0';
-	    } 
 
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
@@ -152,13 +138,15 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Write Style header items. **/
-	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	else if (s->Capabilities.Dom0NS)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	snprintf(elementid, sizeof(elementid), "#tx%dbase", id);
+	htrFormatElement(s, tree, elementid, 0, 
+		x, y, w-2*box_offset, h-2*box_offset, z, "",
+		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
+		"overflow:hidden; position:absolute;");
+	//htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tx%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
@@ -174,44 +162,29 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "tx","tx_mousedown");
 	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "tx", "tx_mouseover");
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
+	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",
-	    name, fieldname, form, is_readonly, mode, main_bg);
+	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
+	    name, fieldname, form, is_readonly, mode);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"tx%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none;\">\n",id);
 
 	/** Use CSS border or table for drawing? **/
-	if (s->Capabilities.CSS2)
-	    {
-	    if (is_raised)
-		htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
-	    else
-		htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
-	    if (h >= 0)
-		htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
-	    }
+	/*if (is_raised)
+	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
 	else
-	    {
-	    htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w,main_bg);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem(s,    "            <TD>&nbsp;</TD>\n");
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-	    }
+	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
+	if (h >= 0)
+	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);*/
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	htrAddBodyItem(s, "</textarea></div>\n");
 
     return 0;
     }

@@ -135,6 +135,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    enum htosrc_autoquery_types aq;
    int receive_updates;
    int send_updates;
+   int refresh_interval;
    int count, i;
    int ind_activity;
    int use_having;
@@ -164,11 +165,16 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    /** do queries on this osrc indicate end-user activity? **/
    ind_activity = htrGetBoolean(tree, "indicates_activity", 1);
 
+   /** refresh interval (disabled, setting=0, by default) **/
+   if (wgtrGetPropertyValue(tree, "refresh_interval", DATA_T_INTEGER, POD(&refresh_interval)) != 0)
+      refresh_interval = 0;
+
    /** use HAVING clause for query filtering instead of WHERE? **/
    use_having = htrGetBoolean(tree, "use_having_clause", 0);
 
    /** Delay query until osrc is visible? **/
-   qy_reveal_only = htrGetBoolean(tree, "delay_query_until_reveal", 0);
+   /*qy_reveal_only = htrGetBoolean(tree, "delay_query_until_reveal", 0);*/
+   qy_reveal_only = htrGetBoolean(tree, "revealed_only", 0);
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
    if(replicasize==1 && readahead==0) readahead=1;
@@ -232,7 +238,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       filter = nmSysStrdup("");
 
    /** create our instance variable **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"osrc%POSloader\")",id);
+   htrAddWgtrObjLinkage_va(s, tree, "osrc%POSloader",id);
    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
    htrAddScriptGlobal(s, "osrc_syncid", "0", 0);
@@ -242,10 +248,10 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:wgtrGetNodeRef(ns,\"%STR&SYM\"), readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT, send_updates:%INT, key_objname:\"%STR&JSSTR\"});\n",
+   htrAddScriptInit_va(s,"    osrc_init({loader:wgtrGetNodeRef(ns,\"%STR&SYM\"), readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT, send_updates:%INT, key_objname:\"%STR&JSSTR\", refresh:%INT});\n",
 	 name,readahead,scrollahead,replicasize,sql,filter,
 	 baseobj?baseobj:"",name,aq,receive_updates, ind_activity,
-	 use_having, qy_reveal_only, send_updates, key_objname);
+	 use_having, qy_reveal_only, send_updates, key_objname, refresh_interval);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);

@@ -108,6 +108,7 @@ typedef struct _MPI
     int		    SourceIndex;
     pExpression	    AddlExp;
     int		    Flags;
+    pQueryStatement Statement;
     }
     MqpInf, *pMqpInf;
 
@@ -366,6 +367,7 @@ mqpAnalyze(pQueryStatement stmt)
     int src_idx,i,j;
     pExpression new_exp;
     pMqpInf mi;
+    int found;
 
     	/** Search for FROM clauses for this driver... **/
 	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
@@ -484,13 +486,36 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(orderby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr && item->Expr->AggLevel == 0)
 		        {
+			new_exp = exp_internal_CopyTree(item->Expr);
+			expRemapID(new_exp, src_idx, 0);
+
+			/** Check to see if it is already in the list **/
+			found = 0;
+			for(j=0;qe->OrderBy[j];j++)
+			    {
+			    if (expCompareExpressions(new_exp, qe->OrderBy[j]))
+				{
+				found = 1;
+				break;
+				}
+			    }
+			if (found)
+			    {
+			    expFreeExpression(new_exp);
+			    continue;
+			    }
+
+			/** Add it **/
 			j=0;
 			while(qe->OrderBy[j]) j++;
-			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
+			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy)))
+			    {
+			    expFreeExpression(new_exp);
+			    break;
+			    }
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = exp_internal_CopyTree(item->Expr);
+			qe->OrderBy[j] = new_exp;
 			qe->OrderBy[j+1] = NULL;
-			expRemapID(qe->OrderBy[j], src_idx, 0);
 			}
 		    }
 		}
@@ -523,6 +548,7 @@ mqpAnalyze(pQueryStatement stmt)
 		}
 	    xaInit(&mi->SourceList, 16);
 	    mi->SourceIndex = 0;
+	    mi->Statement = stmt;
 
 	    /** Mode to open new objects with **/
 	    if (stmt->Flags & MQ_TF_ALLOWUPDATE)
@@ -671,6 +697,18 @@ int
 mqp_internal_CloseSource(pQueryElement qe)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
+    pObject obj;
+
+	/** Return from any subtrees **/
+	while (ms && ms->nStacked > 0)
+	    {
+	    obj = mqp_internal_Return(qe, mi->Statement, NULL);
+	    if (obj)
+		objClose(obj);
+	    else
+		break;
+	    }
 
     	/** Close the source object and the query. **/
 	if (qe->LLQuery) objQueryClose(qe->LLQuery);

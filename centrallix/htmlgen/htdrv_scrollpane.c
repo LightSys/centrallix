@@ -133,7 +133,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "sp_cur_mainlayer","null",0);
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sp%POSpane\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "sp%POSpane",id);
 	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%POSarea\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);

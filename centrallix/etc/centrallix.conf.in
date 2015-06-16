@@ -30,8 +30,8 @@ centrallix "system/config"
 	listen_port = 800;
 	ssl_listen_port = 843;
 	ssl_key = "##SYSCONFDIR##/centrallix/snakeoil.key";
-	ssl_crt = "##SYSCONFDIR##/centrallix/snakeoil.crt";
-	ssl_cipherlist = "HIGH:MEDIUM:!ADH";
+	ssl_cert = "##SYSCONFDIR##/centrallix/snakeoil.crt";
+	ssl_cipherlist = "HIGH:MEDIUM:!ADH:!AECDH:!SSLv2:!RC4";
 
 	// Set this to 0 to allow connections from anywhere.  Note:  this
 	// is a development release and it is recommended to restrict access

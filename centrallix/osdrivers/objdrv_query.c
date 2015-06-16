@@ -174,24 +174,99 @@ qy_internal_StartQuery(pQyData inf, char* name, pExpression criteria)
 int
 qy_internal_Close(pQyData inf)
     {
+    int i;
 
-	if (inf && inf->MultiQueryObject)
-	    objClose(inf->MultiQueryObject);
-	if (inf && inf->SQL)
-	    nmSysFree(inf->SQL);
-	if (inf && inf->Node)
-	    inf->Node->OpenCnt--;
-	if (inf->ObjList)
-	    expFreeParamList(inf->ObjList);
-	if (inf->Name)
-	    {
-	    nmSysFree(inf->Name);
-	    inf->Name = NULL;
-	    }
 	if (inf)
+	    {
+	    if (inf->MultiQueryObject)
+		objClose(inf->MultiQueryObject);
+	    for(i=0;i<inf->nParameters;i++)
+		paramFree(inf->Parameters[i]);
+	    if (inf->SQL)
+		nmSysFree(inf->SQL);
+	    if (inf->Node)
+		inf->Node->OpenCnt--;
+	    if (inf->ObjList)
+		expFreeParamList(inf->ObjList);
+	    if (inf->Name)
+		{
+		nmSysFree(inf->Name);
+		inf->Name = NULL;
+		}
+	    if (inf->NameExpression)
+		nmSysFree(inf->NameExpression);
 	    nmFree(inf, sizeof(QyData));
+	    }
 
     return 0;
+    }
+
+
+/*** qy_internal_GetParamType() - get the data type of a parameter
+ ***/
+int
+qy_internal_GetParamType(void* inf_v, char* attrname)
+    {
+    pQyData inf = QY(inf_v);
+    pParam param;
+    int i;
+
+	/** Find the param **/
+	for(i=0;i<inf->nParameters;i++)
+	    {
+	    param = inf->Parameters[i];
+	    if (!strcmp(attrname, param->Name))
+		{
+		if (!param->Value)
+		    return -1;
+		return param->Value->DataType;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** qy_internal_GetParamValue() - get the value of a parameter
+ ***/
+int
+qy_internal_GetParamValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    pQyData inf = QY(inf_v);
+    pParam param;
+    int i;
+
+	/** Find the param **/
+	for(i=0;i<inf->nParameters;i++)
+	    {
+	    param = inf->Parameters[i];
+	    if (!strcmp(attrname, param->Name))
+		{
+		if (!param->Value)
+		    return 1;
+		if (datatype != param->Value->DataType)
+		    {
+		    mssError(1,"QY","Type mismatch accessing parameter '%s'", param->Name);
+		    return -1;
+		    }
+		if (param->Value->Flags & DATA_TF_NULL)
+		    return 1;
+		objCopyData(&(param->Value->Data), val, datatype);
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** qy_internal_SetParamValue() - set the value of a parameter - not
+ *** supported.
+ ***/
+int
+qy_internal_SetParamValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    return -1;
     }
 
 
@@ -231,7 +306,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Object List **/
 	inf->ObjList = expCreateParamList();
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
-	expAddParamToList(inf->ObjList,"parameters",NULL,0);
+	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
+	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -375,9 +451,6 @@ qyClose(void* inf_v, pObjTrxTree* oxt)
 	/** If it is dirty, it will write.  Otherwise simply move on **/
 	snWriteNode(inf->Obj->Prev, inf->Node);
 
-	/** Release the malloc'd information **/
-        /** free the override and parsed st structure **/
-	
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
 	qy_internal_Close(inf);
@@ -545,6 +618,11 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	/** Get the name of the query subobject. **/
 	ptr = NULL;
 	objGetAttrValue(inf->MultiQueryObject, "name", DATA_T_STRING, POD(&ptr));
+	if (!ptr)
+	    {
+	    qy_internal_Close(inf);
+	    return NULL;
+	    }
 	if (obj_internal_AddToPath(obj->Pathname, ptr) < 0)
 	    {
 	    mssError(1,"QUERY","Query result pathname exceeds internal limits");

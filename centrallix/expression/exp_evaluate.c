@@ -733,7 +733,9 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		    }
 		tree->String = (char*)nmSysMalloc(i + strlen(ptr) + 1);
 		tree->Alloc = 1;
-		sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);
+		strtcpy(tree->String, i0->String, i+1);
+		strcat(tree->String, ptr);
+		/*sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);*/
 		break;
 
 	    case DATA_T_DOUBLE:
@@ -1329,6 +1331,12 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	obj = objlist->Objects[id];
 	setfn = objlist->SetAttrFn[id];
 
+	if (!obj)
+	    {
+	    mssError(1,"EXP","Reverse eval property: no such object");
+	    return -1;
+	    }
+
 	/** Set it as modified -- so it gets a new serial # **/
 	expModifyParamByID(objlist, id, obj);
 
@@ -1654,7 +1662,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
-	    objlist->CurControl = tree->Control;
+	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 
 		{
@@ -1701,6 +1709,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 		memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
 		objlist->MainFlags &= ~EXPR_MO_RECALC;
 		}
+	    exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = NULL;
 	    }
 

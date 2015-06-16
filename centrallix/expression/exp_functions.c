@@ -1044,6 +1044,15 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     char* escchars;
     int esccnt,len;
     tree->DataType = DATA_T_STRING;
+    if (i0 && (i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i1 || (i1->Flags & EXPR_F_NULL))
+	escchars = "";
+    else
+	escchars = i1->String;
     if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
         {
 	mssError(1,"EXP","escape() requires two or three string parameters");
@@ -1059,15 +1068,6 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	mssError(1,"EXP","WARNING!! String contains invalid character asc=%d", (int)(*ptr));
 	return -1;
 	}
-    if ((i0->Flags & EXPR_F_NULL))
-	{
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
-	}
-    if (i1->Flags & EXPR_F_NULL)
-	escchars = "";
-    else
-	escchars = i1->String;
     if (tree->Alloc && tree->String) nmSysFree(tree->String);
     tree->Alloc = 0;
     ptr = strpbrk(i0->String, escchars);

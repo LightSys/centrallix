@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2015 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -20,6 +20,68 @@ var EVENT_CONTINUE = 0;
 var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
+
+
+/*
+ * object.watch polyfill
+ *
+ * 2012-04-03
+ *
+ * By Eli Grey, http://eligrey.com
+ * Public Domain.
+ * NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+ */
+
+// object.watch
+if (!Object.prototype.watch) {
+	Object.defineProperty(Object.prototype, "watch", {
+		  enumerable: false
+		, configurable: true
+		, writable: false
+		, value: function (prop, handler) {
+			var
+			  oldval = this[prop]
+			, newval = oldval
+			, getter = function () {
+				return newval;
+			}
+			, setter = function (val) {
+				oldval = newval;
+				return newval = handler.call(this, prop, oldval, val);
+			}
+			;
+			
+			if (delete this[prop]) { // can't watch constants
+				Object.defineProperty(this, prop, {
+					  get: getter
+					, set: setter
+					, enumerable: true
+					, configurable: true
+				});
+			}
+		}
+	});
+}
+
+// object.unwatch
+if (!Object.prototype.unwatch) {
+	Object.defineProperty(Object.prototype, "unwatch", {
+		  enumerable: false
+		, configurable: true
+		, writable: false
+		, value: function (prop) {
+			var val = this[prop];
+			delete this[prop]; // remove accessors
+			this[prop] = val;
+		}
+	});
+}
+
+/*
+ * END - object.watch polyfill and public domain
+ *
+ * Resume - LightSys Centrallix copyright.
+ */
 
 function Money(n)
     {
@@ -166,6 +228,11 @@ function cxjs_user_name()
 function cxjs_getdate()
     {
     var dt = new Date();
+
+    // Adjust it to the server's time.
+    dt.setMilliseconds(dt.getMilliseconds() - pg_clockoffset);
+
+    // Create the string
     var dtmin = (dt.getMinutes()<10)?('0' + dt.getMinutes()):dt.getMinutes();
     var dtsec = (dt.getSeconds()<10)?('0' + dt.getSeconds()):dt.getSeconds();
     var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + dtmin + ':' + dtsec;
@@ -198,6 +265,11 @@ function cxjs_substring(s,p,l)
 	return s.substr(p-1);
     else
 	return s.substr(p-1,l);
+    }
+function cxjs_right(s,l)
+    {
+    if (s == null || l == null) return null;
+    return s.substr(s.length-l);
     }
 function cxjs_eval(x)
     {
@@ -405,6 +477,25 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
+function htr_code_to_keyname(k)
+    {
+    switch(k)
+	{
+	case (KeyboardEvent.DOM_VK_HOME || 36):		return 'home';
+	case (KeyboardEvent.DOM_VK_END || 35):		return 'end';
+	case (KeyboardEvent.DOM_VK_LEFT || 37):		return 'left';
+	case (KeyboardEvent.DOM_VK_RIGHT || 39):	return 'right';
+	case (KeyboardEvent.DOM_VK_UP || 38):		return 'up';
+	case (KeyboardEvent.DOM_VK_DOWN || 40):		return 'down';
+	case (KeyboardEvent.DOM_VK_TAB || 9):		return 'tab';
+	case (KeyboardEvent.DOM_VK_ENTER || 14):	return 'enter';
+	case (KeyboardEvent.DOM_VK_RETURN || 13):	return 'enter';
+	case (KeyboardEvent.DOM_VK_ESCAPE || 27):	return 'escape';
+	case (KeyboardEvent.DOM_VK_F3 || 114):		return 'f3';
+	}
+    return null;
+    }
+
 // Cross-browser support functions
 function htr_event(e)
     {
@@ -419,6 +510,7 @@ function htr_event(e)
 	cx__event.which = e.button+1;
 	cx__event.modifiers = e.modifiers;
 	cx__event.shiftKey = e.shiftKey;
+	cx__event.ctrlKey = e.ctrlKey;
 	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
 	    {
 	    cx__event.key = e.which;
@@ -439,6 +531,27 @@ function htr_event(e)
 		}
 	    }
 
+	// paste event
+	if (e.type == 'paste')
+	    {
+	    // Make sure the W3C clipboard paste interface is supported
+	    if (e.clipboardData && e.clipboardData.types && e.clipboardData.getData)
+		{
+		for(var i=0; i<e.clipboardData.types.length; i++)
+		    {
+		    if (e.clipboardData.types[i] == 'text/plain')
+			{
+			// Snag the text
+			cx__event.pastedText = e.clipboardData.getData('text/plain');
+			break;
+			}
+		    }
+		}
+
+	    // prevent the paste into window.paste_input
+	    //e.preventDefault();
+	    }
+
 	// move up from text nodes and spans to containers
 	var t = e.target;
 	while(t.nodeType == Node.TEXT_NODE || t.nodeName == 'SPAN' || 
@@ -449,30 +562,6 @@ function htr_event(e)
 
 	cx__event.pageX = e.clientX + window.pageXOffset;
 	cx__event.pageY = e.clientY + window.pageYOffset;
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	cx__event.NSEvent = e;
-	cx__event.type = e.type;
-	cx__event.target = e.target;
-	cx__event.pageX = e.pageX;
-	cx__event.pageY = e.pageY;
-	cx__event.which = e.which;
-	cx__event.modifiers = e.modifiers;
-	cx__event.key = e.which;
-	cx__event.keyName = null;
-
-	cx__event.x = e.x;
-	cx__event.y = e.y;
-	cx__event.width = e.width;
-	cx__event.height = e.height;
-	cx__event.layerX = e.layerX;
-	cx__event.layerY = e.layerY;
-	cx__event.which = e.which;
-	cx__event.modifiers = e.modifiers;
-	cx__event.data = e.data;
-	cx__event.screenX = e.screenX;
-	cx__event.screenY = e.screenY;
 	}
     else if(cx__capabilities.Dom0IE)
 	{
@@ -510,6 +599,164 @@ function htr_event(e)
     if (cx__event.mainlayer) 
 	cx__event.mainkind = cx__event.mainlayer.kind;
     return cx__event;
+    }
+
+// retrieve one stylizing datum
+function htr_style_item(widget, prefix, defaults, item)
+    {
+    var value = undefined;
+
+    if (Array.isArray(prefix))
+	{
+	for(var i in prefix)
+	    {
+	    value=(value != undefined)?value:wgtrGetServerProperty(widget, (prefix[i]?(prefix[i]+'_'):'')+item);
+	    }
+	}
+    else
+	{
+	value=wgtrGetServerProperty(widget, (prefix?(prefix+'_'):'')+item);
+	}
+    if (value == undefined)
+	value = defaults[item];
+    return value;
+    }
+
+// retrieve stylizing data
+function htr_style_data(widget, prefix, defaults)
+    {
+    var styleobj = {};
+    var items=['textcolor','style','font_size','font','bgcolor','padding','border_color','border_radius','border_style','align','wrap','shadow_color','shadow_radius','shadow_offset','shadow_location','shadow_angle'];
+
+    for(var item in items)
+	{
+	var itemname = items[item];
+	styleobj[itemname] = htr_style_item(widget, prefix, defaults, itemname);
+	}
+
+    if (!styleobj.shadow_radius) styleobj.shadow_radius = 0;
+    if (!styleobj.shadow_offset) styleobj.shadow_offset = 0;
+    if (!styleobj.shadow_angle) styleobj.shadow_angle = 0;
+    if (!styleobj.padding) styleobj.padding = 0;
+    if (!styleobj.border_radius) styleobj.border_radius = 0;
+
+    return styleobj;
+    }
+
+// stylize -- set style properties on the given element,
+// for font face, font size, color, bold, italic, shadow,
+// underlining, etc.
+//
+function htr_stylize_element(element, widget, prefix, defaults)
+    {
+    var styleobj = htr_style_data(widget, prefix, defaults);
+
+/*    // prefixing?
+    if (prefix)
+	prefix += "_";
+    else
+	prefix = "";
+
+    // text color
+    var color = wgtrGetServerProperty(widget, prefix + "textcolor");
+    if (!color && defaults)
+	color = defaults.textcolor;
+
+    // style
+    var style = wgtrGetServerProperty(widget, prefix + "style");
+    if (!style && defaults)
+	style = defaults.style;
+
+    // font size
+    var font_size = wgtrGetServerProperty(widget, prefix + "font_size");
+    if (!font_size && defaults)
+	font_size = defaults.font_size;
+
+    // font
+    var font = wgtrGetServerProperty(widget, prefix + "font");
+    if (!font && defaults)
+	font = defaults.font;
+
+    // background color
+    var bgcolor = wgtrGetServerProperty(widget, prefix + "bgcolor");
+    if (!bgcolor && defaults)
+	bgcolor = defaults.bgcolor;
+
+    // padding
+    var padding = wgtrGetServerProperty(widget, prefix + "padding");
+    if (!padding && defaults && defaults.padding)
+	padding = defaults.padding;
+    else if (!padding)
+	padding = 0;
+
+    // radius
+    var radius = wgtrGetServerProperty(widget, prefix + "border_radius");
+    if (!radius && defaults && defaults.border_radius)
+	radius = defaults.border_radius;
+    else
+	radius = 0;
+
+    // border color
+    var bcolor = wgtrGetServerProperty(widget, prefix + "border_color");
+    if (!bcolor && defaults)
+	bcolor = defaults.border_color;
+
+    // alignment
+    var align = wgtrGetServerProperty(widget, prefix + "align");
+    if (!align && defaults)
+	align = defaults.align;
+
+    // wrapping
+    var wrap = wgtrGetServerProperty(widget, prefix + "wrap");
+    if (!wrap && defaults)
+	wrap = defaults.wrap;
+
+    // shadow information
+    var scolor = wgtrGetServerProperty(widget, prefix + "shadow_color");
+    if (!scolor && defaults)
+	scolor = defaults.shadow_color;
+    var sradius = wgtrGetServerProperty(widget, prefix + "shadow_radius");
+    if (!sradius && defaults)
+	sradius = defaults.shadow_radius;
+    var soffset = wgtrGetServerProperty(widget, prefix + "shadow_offset");
+    if (!soffset && defaults && defaults.shadow_offset)
+	soffset = defaults.shadow_offset;
+    else if (!soffset)
+	soffset = 0;
+    var sangle = wgtrGetServerProperty(widget, prefix + "shadow_angle");
+    if (!sangle && defaults && defaults.shadow_angle)
+	sangle = defaults.shadow_angle;
+    else if (!sangle)
+	sangle = 0;
+    var sloc = wgtrGetServerProperty(widget, prefix + "shadow_location");
+    if (!sloc && defaults)
+	sloc = defaults.shadow_location; */
+
+    // Set the css values
+    var obj ={
+	'color': styleobj.textcolor,
+	'font-size': styleobj.font_size + 'px',
+	'font-style': (styleobj.style=='italic')?'italic':'normal',
+	'font-weight': (styleobj.style=='bold')?'bold':'normal',
+	'text-decoration': (styleobj.style=='underline')?'underline':'none',
+	'font-family': styleobj.font,
+	'background-color': styleobj.bgcolor,
+	'padding': styleobj.padding + 'px',
+	'border-radius': styleobj.border_radius + 'px',
+	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):'none',
+	'text-align': styleobj.align?styleobj.align:'initial',
+	'white-space': (styleobj.wrap=='no')?'nowrap':'normal',
+	'box-shadow': (!styleobj.shadow_color || !styleobj.shadow_radius)?'none':
+	    ((styleobj.shadow_location=='inside')?'inset ':'') + 
+	    (Math.round(Math.sin(styleobj.shadow_angle*Math.PI/180)*styleobj.shadow_offset*10)/10) + 'px ' +
+	    (Math.round(Math.cos(styleobj.shadow_angle*Math.PI/180)*(-styleobj.shadow_offset)*10)/10) + 'px ' +
+	    styleobj.shadow_radius + 'px ' + 
+	    styleobj.shadow_color,
+	};
+    $(element).css
+	(
+	obj
+	);
     }
 
 function htr_alert(obj,maxlevels)
@@ -568,9 +815,13 @@ function htr_cwatch(obj, attr, fobj, func)
         {
         obj.onpropertychange = htr_watchchanged;
 	} 
-    else
+    else if (obj.watch)
 	{
     	obj.watch(attr,htr_watchchanged);
+	}
+    else if (Object.observe)
+	{
+	Object.observe(obj, htr_observechanges);
 	}
     var watchitem = {};
     watchitem.attr = attr;
@@ -578,6 +829,15 @@ function htr_cwatch(obj, attr, fobj, func)
     watchitem.obj = obj;
     watchitem.fobj = fobj;
     obj.htr_watchlist.push(watchitem);
+    }
+
+function htr_observechanges(changes)
+    {
+    for(var changeid in changes)
+	{
+	var change = changes[changeid];
+	htr_watchchanged(change.name, change.oldValue, change.object[change.name]);
+	}
     }
 
 //uses (or mimicks) firefox's .watch method.
@@ -654,7 +914,7 @@ function htr_parselinks(lnks)
 		colcnt = 0;
 		tgt = lnk.target;
 		}
-	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host), hints:lnk.search};
+	    var col = {type:lnk.hash.substr(1), oid:htutil_unpack(lnk.host.substr(1)), hints:lnk.search};
 	    switch(lnk.text.charAt(0))
 		{
 		case 'V': col.value = htutil_rtrim(unescape(lnk.text.substr(2))); break;
@@ -842,7 +1102,13 @@ function htr_getvisibility(l)
     else if (cx__capabilities.Dom1HTML)
         {
 	if (!l.style.visibility)
-	    v =  getComputedStyle(l,null).getPropertyCSSValue('visibility').cssText;
+	    {
+	    var style = getComputedStyle(l,null);
+	    if (style.getPropertyCSSValue)
+		v = style.getPropertyCSSValue('visibility').cssText;
+	    else
+		v = style['visibility'];
+	    }
 	else
 	    v = l.style.visibility;
 	}
@@ -1056,7 +1322,8 @@ function htr_addeventhandler(t,h)
     {
     if (!pg_handlers[t])
 	pg_handlers[t] = [];
-    pg_handlers[t][h] = eval(h);
+    //pg_handlers[t][h] = eval(h);
+    pg_handlers[t][h] = window[h];
     }
 
 

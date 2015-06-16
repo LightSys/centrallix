@@ -88,7 +88,7 @@ function im_action_load_image(aparam)
 
     this.source = newurl;
     //pg_set(this.img, "src", newurl);
-    pg_serialized_load(this.img, newurl);
+    pg_serialized_load(this.img, newurl, null, true);
     }
 
 function im_init(l)

@@ -1,6 +1,6 @@
 //
 // Widget Tree module
-// (c) 2004-2013 LightSys Technology Services, Inc.
+// (c) 2004-2014 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -52,8 +52,11 @@ function wgtrSetupTree_r(tree, ns, parent)
     // Setup the DOM object representing this widget.
     if (!tree.obj)
 	tree.obj = {};
+    else if (tree.obj == 'window')
+	tree.obj = window;
     else
-	with (tree) tree.obj = eval(tree.obj);
+	tree.obj = document.getElementById(tree.obj);
+	//with (tree) tree.obj = eval(tree.obj);
 
     // Setup the DOM object that will contain sub-widgets of this widget (this
     // could be an inner DIV, for instance).
@@ -74,11 +77,51 @@ function wgtrSetupTree_r(tree, ns, parent)
 	}
 
     // Initialize the widget and its sub-widgets.
-    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.scope, tree.sn, ns);
+    wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis, tree.ctl, tree.scope, tree.sn, tree.param, ns);
     if (tree.sub)
 	for(var i=0; i<tree.sub.length; i++)
 	    wgtrSetupTree_r(tree.sub[i], ns, tree);
     return tree.obj;
+    }
+
+
+// wgtrReEvaluate - on the change of an expression's constituent properties,
+// re-evaluate the expression as a whole.
+function wgtrReEvaluate()
+    {
+    }
+
+// wgtrWatchParams - look for server parameters supplied as expressions, and
+// set up the automatic re-evaluation infrastructure for those expressions.
+function wgtrWatchParams(node, paramlist, callback)
+    {
+    var _context = node.__WgtrNamespace;
+    var _this = node;
+    window.__cur_exp = null;
+
+    // Set up all expression-based params requested.
+    for(var i=0; i<paramlist.length; i++)
+	{
+	var paramname = paramlist[i];
+
+	for(var p in node.__WgtrParams)
+	    {
+	    var param = node.__WgtrParams[p];
+
+	    // A matching expression-based parameter?
+	    if (p == paramname && param && typeof param == 'object' && param.exp)
+		{
+		// Call function to obtain initial value
+		//param.val = param.exp(_this, _context);
+
+		// Watch properties that comprise this exp
+		for(var i=0; i<param.props.length; i++)
+		    {
+		    var prop = param.props[i];
+		    }
+		}
+	    }
+	}
     }
 
 
@@ -123,7 +166,7 @@ function wgtrSetupRepeats_r(node, rptnodelist)
 	for(var nodename in rptnodelist)
 	    {
 	    var rptnode = new wgtrRepeatNode(nodename, rptnodelist[nodename]);
-	    wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", node, false, null, null, node.__WgtrNamespace);
+	    wgtrAddToTree(rptnode, null, nodename, "widget/repeat-composite", node, false, false, null, null, null, node.__WgtrNamespace);
 	    }
 	}
 
@@ -222,19 +265,23 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 			    type,	    // the widget type 
 			    parent,	    // the parent node of this object
 			    is_visual,	    // is the node a visual node?
+			    is_control,	    // a control node?
 			    scope,	    // scope of widget -- local vs application vs session
 			    scopename,	    // name of widget to use in extended scope
+			    params,	    // an object containing named parameters
 			    ns		    // namespace object (type wgtrNamespace)
 			)
     {
 	if (!obj) alert('no object for wgtr node: ' + name);
 	obj.__WgtrType = type;
 	obj.__WgtrVisual = is_visual;
+	obj.__WgtrControl = is_control;
 	obj.__WgtrChildren = [];
 	obj.__WgtrName = name;
 	obj.__WgtrContainer = cobj;
 	obj.__WgtrScope = scope?scope:"local";
 	obj.__WgtrNamespace = ns;
+	obj.__WgtrParams = params;
 
 	if (scope)
 	    {
@@ -284,11 +331,69 @@ function wgtrRemoveNamespace(ns)
     }
 
 
+// Get geometry of a widget (if it is visible)
+/*
+function wgtrGetGeom(node)
+    {
+    if (!wgtrIsVisual(node)) return null;
+    var domel = node.__WgtrContainer;
+    if (domel == node)
+	var geom = {left:0, top:0;
+    else
+	var geom = {left:wgtrGetServerProperty(node,'x'), top:wgtrGetServerProperty(node,'y') };
+    var offsets = $(domel).offset();
+    geom.left += offsets.left;
+    geom.top += offsets.top;
+    geom.width = wgtrGetServerProperty(node,'width');
+    geom.height = wgtrGetServerProperty(node,'height');
+    return geom;
+    }
+*/
+
+
 function wgtrUndefinedObject() { }
 
 function wgtrIsUndefined(prop)
     {
     return (typeof prop == 'object' && prop && prop.constructor == wgtrUndefinedObject);
+    }
+
+
+// wgtrGetServerProperty() - return a server-supplied property value
+function wgtrGetServerProperty(node, prop_name, def)
+    {
+    var val = node.__WgtrParams[prop_name];
+    if (typeof val == 'undefined')
+	return def;
+    else if (typeof val == 'object' && val.exp)
+	{
+	//var _context = window[node.__WgtrNamespace.NamespaceID];
+	var _context = node.__WgtrNamespace;
+	var _this = node;
+	window.__cur_exp = null;
+	return val.exp(_this, _context);
+	}
+    else
+	return val;
+    }
+
+function wgtrIsExpressionServerProperty(node, prop_name)
+    {
+    var val = node.__WgtrParams[prop_name];
+    return (val && (typeof val == 'object') && val.exp);
+    }
+
+function wgtrGetServerPropertyPrecedents(node, prop_name)
+    {
+    var val = node.__WgtrParams[prop_name];
+    if (!val || (typeof val != 'object') || !val.exp)
+	return [];
+    return val.props;
+    }
+
+function wgtrSetServerProperty(node, prop_name, value)
+    {
+    node.__WgtrParams[prop_name] = value;
     }
 
 
@@ -299,7 +404,7 @@ function wgtrGetProperty(node, prop_name)
     var prop = wgtrProbeProperty(node, prop_name);
     if (wgtrIsUndefined(prop))
 	{
-	alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
+	//alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
 	return null;
 	}
     return prop;
@@ -335,7 +440,7 @@ function wgtrProbeProperty(node, prop_name)
 	    }
 
 	// If widget has a get-value function, use it
-	if (node.ifcProbe(ifValue))
+	if (node.ifcProbe && node.ifcProbe(ifValue))
 	    {
 	    if (node.ifcProbe(ifValue).Exists(prop_name))
 		{
@@ -352,6 +457,12 @@ function wgtrProbeProperty(node, prop_name)
 	    {
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
 	    prop = new wgtrUndefinedObject();
+	    }
+
+	// check widget params provided by the server
+	if (wgtrIsUndefined(prop) && (typeof node.__WgtrParams[prop_name]) != 'undefined')
+	    {
+	    prop = wgtrGetServerProperty(node, prop_name);
 	    }
 
 	// some canonical properties
@@ -504,6 +615,10 @@ function wgtrGetNodeUnchecked(tree, node_name, type)
 	    {
 	    ns = pg_namespaces[tree];
 	    }
+	else if (tree.NamespaceID)
+	    {
+	    ns = tree;
+	    }
 	else
 	    {
 	    // make sure the parameters are legitimate
@@ -648,6 +763,18 @@ function wgtrIsNode(tree)
     }
 
 
+function wgtrIsVisual(tree)
+    {
+    return tree && tree.__WgtrVisual;
+    }
+
+
+function wgtrIsControl(tree)
+    {
+    return tree && tree.__WgtrControl;
+    }
+
+
 function wgtrIsRoot(tree)
     {
     return tree == tree.__WgtrRoot;
@@ -703,7 +830,7 @@ function wgtrReplaceNode(oldnode, newnode, newcont)
 	var children = oldnode.__WgtrChildren;
 
 	if (!newcont) newcont = newnode;
-	wgtrAddToTree(newnode, newcont, oldnode.__WgtrName, oldnode.__WgtrType, oldnode.__WgtrParent, oldnode.__WgtrVisual, null, null, oldnode.__WgtrNamespace);
+	wgtrAddToTree(newnode, newcont, oldnode.__WgtrName, oldnode.__WgtrType, oldnode.__WgtrParent, oldnode.__WgtrVisual, oldnode.__WgtrControl, null, null, oldnode.__WgtrParams, oldnode.__WgtrNamespace);
 
 	for(var i=0; i<children.length; i++)
 	    {
@@ -865,6 +992,61 @@ function wgtrFind(v)
     return null;
     }
 
+// Finds a directly-attached child node.
+//
+function wgtrGetChild(node, childname)
+    {
+    for(var i=0; i<node.__WgtrChildren.length; i++)
+	{
+	if (node.__WgtrChildren[i].__WgtrName == childname)
+	    return node.__WgtrChildren[i];
+	}
+    }
+
+
+// Finds all children, in this namespace or sub-namespaces, that are
+// of a given type, even if they are nested several more levels inside
+// other non-visual widgets (a visual widget between parent and child
+// will render the child invisible to this function).
+function wgtrFindMatchingDescendents(node, childtype)
+    {
+    var arr = [];
+    for(var i=0; i<node.__WgtrChildren.length; i++)
+	{
+	var child = node.__WgtrChildren[i];
+	if (child.__WgtrType == childtype)
+	    arr.push(child);
+	else if (!wgtrIsVisual(child) && (child.__WgtrNamespace.NamespaceID == node.__WgtrNamespace.NamespaceID || (child.__WgtrNamespace.ParentNamespace && child.__WgtrNamespace.ParentNamespace.NamespaceID == node.__WgtrNamespace.NamespaceID)))
+	    {
+	    var check = wgtrFindMatchingDescendents(child, childtype);
+	    if (check)
+		arr = arr.concat(check);
+	    }
+	}
+    return arr;
+    }
+
+
+// Finds a child/descendent in this namespace or in any sub-namespaces
+// of the parent's namespace.
+//
+function wgtrFindDescendent(node, childname, childns)
+    {
+    for(var i=0; i<node.__WgtrChildren.length; i++)
+	{
+	var child = node.__WgtrChildren[i];
+	if (child.__WgtrName == childname && child.__WgtrNamespace.NamespaceID == childns)
+	    return child;
+	if (!wgtrIsVisual(child) && (child.__WgtrNamespace.NamespaceID == node.__WgtrNamespace.NamespaceID || (child.__WgtrNamespace.ParentNamespace && child.__WgtrNamespace.ParentNamespace.NamespaceID == node.__WgtrNamespace.NamespaceID)))
+	    {
+	    var check = wgtrFindDescendent(child, childname, childns);
+	    if (check)
+		return check;
+	    }
+	}
+    return null;
+    }
+
 function wgtrGetChildren(node)
     {
 	// make sure this is actually a tree
@@ -922,7 +1104,8 @@ function wgtrGetGeom(node)
 	}
     else
 	{
-	return {x:getPageX(node),y:getPageY(node),width:getClipWidth(node),height:getClipHeight(node)};
+	//return {x:getPageX(node),y:getPageY(node),width:getClipWidth(node),height:getClipHeight(node)};
+	return {x:$(node).offset().left,y:$(node).offset().top,width:getClipWidth(node),height:getClipHeight(node)};
 	}
     }
 

@@ -49,7 +49,7 @@
 
 
 
-/*** obj_internal_IsA - determines the possible relationship between two
+/*** objIsA - determines the possible relationship between two
  *** datatypes, from types.cfg, and returns a value indicating the 
  *** relationship between the two:
  ***
@@ -61,7 +61,7 @@
  ***    return OBJSYS_NOT_ISA (0x80000000) if the types are not related.
  ***/
 int
-obj_internal_IsA(char* type1, char* type2)
+objIsA(char* type1, char* type2)
     {
     int i,l = OBJSYS_NOT_ISA;
     pContentType t1, t2;
@@ -455,7 +455,7 @@ obj_internal_TypeFromSfHeader(pObject obj)
 	    return NULL;
 
 	/** Is the type a subtype of system/structure? **/
-	rval = obj_internal_IsA(type->Name, "system/structure");
+	rval = objIsA(type->Name, "system/structure");
 	if (rval == OBJSYS_NOT_ISA || rval < 0)
 	    return NULL;
 
@@ -463,11 +463,11 @@ obj_internal_TypeFromSfHeader(pObject obj)
     }
 
 
-/*** obj_internal_TypeFromName - determine the apparent content type of
+/*** objTypeFromName - determine the apparent content type of
  *** an object given its name.
  ***/
 pContentType
-obj_internal_TypeFromName(char* name)
+objTypeFromName(char* name)
     {
     pContentType apparent_type = NULL, ck_type;
     char* dot_ptr;
@@ -672,11 +672,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
 		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
-		obj_info = objInfo(this);
+		/*obj_info = objInfo(this);
 		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
-		    {
-		    apparent_type = obj_internal_TypeFromName(name);
-		    }
+		    {*/
+		    apparent_type = objTypeFromName(name);
+		    /*}*/
 		}
 
 	    strcpy(prevname, name);
@@ -694,7 +694,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		}
 
 	    /** Ok, got reported type and apparent type.  See which is more specific. **/
-	    v = obj_internal_IsA(type, apparent_type->Name);
+	    v = objIsA(type, apparent_type->Name);
 	    if (v < 0 || v == OBJSYS_NOT_ISA) ck_type = apparent_type;
 	    else ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
 
@@ -720,7 +720,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	        {
 		if (stAttrValue_ne(stLookup_ne(inf,"ls__type"),&type) >= 0 && type)
 		    {
-		    if (obj_internal_IsA(type, ck_type->Name) != OBJSYS_NOT_ISA)
+		    if (objIsA(type, ck_type->Name) != OBJSYS_NOT_ISA)
 		        {
 			ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
 			used_openas = 1;
@@ -728,33 +728,44 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    }
 		}
 
-	    /** Find out what driver handles this type.   Since type was determined from
-	     ** name, inner_type of Prev object, and/or ls__type open-as param, ignore
-	     ** drivers for now that key off of the outer type. 
+	    /** Force leaf: here we prevent the automatic driver cascade under the
+	     ** following conditions:
+	     **
+	     **   - objInfo reports OBJ_INFO_F_FORCED_LEAF
+	     **   - the entire path has been consumed (subptr + subcnt >= elements)
+	     **   - ls__type "open as" processing was not used
 	     **/
 	    orig_ck_type = ck_type;
-	    do  {
-	        drv = (pObjDriver)xhLookup(&OSYS.DriverTypes, (void*)ck_type->Name);
-		if (!drv || (drv->Capabilities & OBJDRV_C_OUTERTYPE) || (!used_openas && (drv->Capabilities & OBJDRV_C_NOAUTO)))
-		    {
-		    if (ck_type->IsA.nItems > 0)
-		        {
-			ck_type = (pContentType)(ck_type->IsA.Items[0]);
-			}
-		    else
-		        {
-			/** If the entire path has been used, this is a successful return. **/
-			if (this->SubPtr + this->SubCnt > this->Pathname->nElements) break;
+	    obj_info = objInfo(this);
+	    if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF) || used_openas || this->SubPtr + this->SubCnt < this->Pathname->nElements)
+		{
+		/** Find out what driver handles this type.   Since type was determined from
+		 ** name, inner_type of Prev object, and/or ls__type open-as param, ignore
+		 ** drivers for now that key off of the outer type. 
+		 **/
+		do  {
+		    drv = (pObjDriver)xhLookup(&OSYS.DriverTypes, (void*)ck_type->Name);
+		    if (!drv || (drv->Capabilities & OBJDRV_C_OUTERTYPE) || (!used_openas && (drv->Capabilities & OBJDRV_C_NOAUTO)))
+			{
+			if (ck_type->IsA.nItems > 0)
+			    {
+			    ck_type = (pContentType)(ck_type->IsA.Items[0]);
+			    }
+			else
+			    {
+			    /** If the entire path has been used, this is a successful return. **/
+			    if (this->SubPtr + this->SubCnt > this->Pathname->nElements) break;
 
-			/** Otherwise, error out **/
-			obj_internal_PathPart(this->Pathname,0,0);
-		        mssError(1,"OSML","Object '%s' access failed - no driver found",this->Pathname->Pathbuf+1);
-		        obj_internal_FreeObj(this);
-			return NULL;
+			    /** Otherwise, error out **/
+			    obj_internal_PathPart(this->Pathname,0,0);
+			    mssError(1,"OSML","Object '%s' access failed - no driver found",this->Pathname->Pathbuf+1);
+			    obj_internal_FreeObj(this);
+			    return NULL;
+			    }
 			}
 		    }
-	        }
-		while (!drv);
+		    while (!drv);
+		}
 
 	    /** If entire path has been used but no driver, successful exit. **/
 	    if (!drv && this->SubPtr + this->SubCnt >= this->Pathname->nElements) 
@@ -809,7 +820,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    }
 
 	/** Set object type **/
-	if (name && !this->Type) this->Type = obj_internal_TypeFromName(name);
+	if (name && !this->Type) this->Type = objTypeFromName(name);
 
 	/** Cache the upper-level node for this object? **/
 	if (this->Prev && this->Prev->Driver != OSYS.RootDriver && 
@@ -1485,4 +1496,22 @@ objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char
 	    fdClose(source_fd, 0);
 	return -1;
     }
+
+
+/*** objCommitObject - commit changes made during a transaction.  Only partly
+ *** implemented at present, and only if supported by the underlying
+ *** driver.
+ ***/
+int
+objCommitObject(pObject this)
+    {
+    int rval = 0;
+    pObjTrxTree trx = NULL;
+
+	if (this && this->Driver->Commit)
+	    rval = this->Driver->Commit(this->Data, &trx);
+
+    return rval;
+    }
+
 

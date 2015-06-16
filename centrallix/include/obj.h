@@ -65,6 +65,8 @@
 #define OBJ_U_PACKET	FD_U_PACKET
 #define OBJ_U_TRUNCATE	FD_U_TRUNCATE
 
+#define MGK_OXT		(0x12340ddf)
+
 /** Pathname analysis structure **/
 typedef struct
     {
@@ -205,6 +207,7 @@ typedef struct _OSD
 /** objxact transaction tree **/
 typedef struct _OT
     {
+    int			Magic;
     int			Status;		/* OXT_S_xxx */
     int			OpType;		/* OXT_OP_xxx */
     struct _OT*		Parent;		/* Parent tree node */
@@ -426,6 +429,32 @@ typedef struct _DC
 #define DC_F_ISDIR	1
 
 
+/*** Lock information structure ***/
+typedef struct _LK
+    {
+    char	Path[OBJSYS_MAX_PATH];	/* Path to object or subtree to be locked */
+    int		Flags;			/* Locking flags OBJ_LOCK_F_xxx */
+    XArray	Holders;		/* A list of holders with access through this lock */
+    pSemaphore	WriteLock;
+    }
+    ObjLock, *pObjLock;
+
+#define OBJ_LOCK_F_WRITE	1	/* Lock is a write (exclusive) lock (otherwise, it is a reader/shared lock) */
+#define OBJ_LOCK_F_SUBTREE	2	/* Lock applies to entire object subtree (otherwise, just to given tree or object) */
+#define OBJ_LOCK_F_OBJECT	4	/* Lock applies to object itself (otherwise, to object's direct subobjects) */
+
+
+/*** Lock holder information ***/
+typedef struct _LKH
+    {
+    char	Path[OBJSYS_MAX_PATH];	/* Path that holder requested */
+    int		Flags;			/* Flags that holder requested */
+    pObjLock	Lock;			/* the lock in question */
+    pObjSession	Session;		/* the holder's OSML session */
+    }
+    ObjLockHolder, *pObjLockHolder;
+
+
 /*** ObjectSystem Globals ***/
 typedef struct
     {
@@ -450,6 +479,7 @@ typedef struct
     XHashTable	NotifiesByPath;		/* objects with RequestNotify() */
     long long	PathID;			/* pseudo-paths for multiquery */
     char	TrxLogPath[OBJSYS_MAX_PATH]; /* path to osml trx log */
+    XArray	Locks;			/* Object and subtree locks */
     }
     OSYS_t;
 
@@ -567,6 +597,7 @@ char* objGetDateFmt(pObjSession this);
 int objUnmanageObject(pObjSession this, pObject obj);
 int objUnmanageQuery(pObjSession this, pObjQuery qy);
 int objCommit(pObjSession this);
+int objCommitObject(pObject this);
 pObjTrxTree objSuspendTransaction(pObjSession this);
 int objResumeTransaction(pObjSession this, pObjTrxTree trx);
 
@@ -580,6 +611,8 @@ pObject objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
 int objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len);
+pContentType objTypeFromName(char* name);
+int objIsA(char* type1, char* type2);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
@@ -626,7 +659,6 @@ int objParamsLookupInt(pXArray params, char* name);
 char* objParamsLookupString(pXArray params, char* name);
 int objParamsSet(pXArray params, char* name, char* stringval, int intval);
 int objParamsFree(pXArray params);
-int obj_internal_IsA(char* type1, char* type2);
 int obj_internal_FreePath(pPathname this);
 int obj_internal_FreePathStruct(pPathname this);
 pPathname obj_internal_NormalizePath(char* cwd, char* name);

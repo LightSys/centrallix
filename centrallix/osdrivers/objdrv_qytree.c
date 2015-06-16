@@ -90,6 +90,7 @@ typedef struct
     char*	ItemText;
     char*	ItemSrc;
     char*	ItemWhere;
+    char*	ItemOrder;
     char*	ItemSql;
     pExpression	ItemSqlExpr;
     XHashTable	StructTable;
@@ -537,9 +538,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	/** Ok, close up the structure table. **/
 	xhClear(&struct_table, NULL, NULL);
 	xhDeInit(&struct_table);
-	for(i=0;i<objlist->nObjects-1;i++)
-	    if (objlist->Objects[i])
-		objClose(objlist->Objects[i]);
+	if (objlist)
+	    {
+	    for(i=0;i<objlist->nObjects-1;i++)
+		if (objlist->Objects[i])
+		    objClose(objlist->Objects[i]);
+	    expFreeParamList(objlist);
+	    }
 	nmFree(inf,sizeof(QytData));
 
 	return NULL;
@@ -613,9 +618,13 @@ qyt_internal_Close(pQytData inf)
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	for(i=0;i<inf->ObjList->nObjects;i++)
-	    if (inf->ObjList->Objects[i])
-		objClose(inf->ObjList->Objects[i]);
+	if (inf->ObjList)
+	    {
+	    for(i=0;i<inf->ObjList->nObjects;i++)
+		if (inf->ObjList->Objects[i])
+		    objClose(inf->ObjList->Objects[i]);
+	    expFreeParamList(inf->ObjList);
+	    }
 	nmFree(inf,sizeof(QytData));
 
     return 0;
@@ -877,7 +886,10 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    qy->ItemText = NULL;
 	    qy->ItemSrc = NULL;
 	    qy->ItemWhere = NULL;
+	    qy->ItemOrder = NULL;
 	    qy->ItemSql = NULL;
+	    if (qy->ItemSqlExpr)
+		expFreeExpression(qy->ItemSqlExpr);
 	    qy->ItemSqlExpr = NULL;
 	    if (stStructType(find_inf) == ST_T_SUBGROUP)
 	        {
@@ -894,6 +906,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    {
 		    qy->ItemSrc = val;
 		    stAttrValue(stLookup(find_inf,"where"),NULL,&(qy->ItemWhere),0);
+		    stAttrValue(stLookup(find_inf,"order"),NULL,&(qy->ItemOrder),0);
 		    return qy->NextSubInfID - 1;
 		    }
 		t = stGetAttrType(stLookup(find_inf,"sql"), 0);
@@ -1024,7 +1037,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (qy->LLQueryObj) 
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
-	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, NULL, expr, NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL);
 	    if (!qyinf)
 		{
 		objClose(qy->LLQueryObj);
@@ -1072,6 +1085,7 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->Query = query;
 	qy->ObjInf = inf;
 	qy->Constraint = NULL;
+	qy->ItemSqlExpr = NULL;
 	xhInit(&qy->StructTable,17,0);
 
 	/** Get the next subinf ready for retrieval. **/
@@ -1141,7 +1155,16 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		else
 		    {
 		    objGetAttrValue(llobj, "name", DATA_T_STRING,POD(&objname));
-		    objUnmanageObject(llobj->Session, llobj);
+		    if (!objname)
+			{
+			/** Object is somehow invalid -- force a go-around to next fetch **/
+			objClose(llobj);
+			llobj = NULL;
+			}
+		    else
+			{
+			objUnmanageObject(llobj->Session, llobj);
+			}
 		    }
 	        }
 	    }
@@ -1182,6 +1205,8 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj_internal_PathPart(obj->Pathname,0,0);
 
 	/** Set up the param objects list for this fetched object. **/
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
 	inf->ObjList = expCreateParamList();
 	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
 	expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
@@ -1201,6 +1226,9 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
     	/** Close any pending low-level query **/
 	if (qy->LLQuery) objQueryClose(qy->LLQuery);
 	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
+
+	if (qy->ItemSqlExpr)
+	    expFreeExpression(qy->ItemSqlExpr);
 
 	/** Free the structure **/
 	if (qy->Constraint) expFreeExpression(qy->Constraint);
@@ -1225,6 +1253,10 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** If 'content-type', it's also a string. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname, "inner_type") ||
 	    !strcmp(attrname,"outer_type")) return DATA_T_STRING;
+
+	/** Last modification is a datetime **/
+	if (!strcmp(attrname,"last_modification"))
+	    return DATA_T_DATETIME;
 
 	/** If there is a low-level object, lookup within it **/
 	if (inf->LLObj) return objGetAttrType(inf->LLObj, attrname);
@@ -1335,6 +1367,8 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		val->String = "system/object";
 		return 0;
 		}
+	    if (rval < 0 && !strcmp(attrname,"last_modification"))
+		return 1;
 	    return rval;
 	    }
 

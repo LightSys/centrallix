@@ -16,14 +16,23 @@ function fu_change(e)
 	{
 	if (e.kind == 'fu')
 		{
-		e.layer.value = e.mainlayer.value;
 		
 		if(e.mainlayer.files.length > 1)
 			{
+			/*var val = '';
+			for(var i=0; i<e.mainlayer.files.length; i++)
+			    {
+			    if (i) val += ',';
+			    val += e.mainlayer.files[i];
+			    }*/
+			e.layer.value = e.mainlayer.files.length + " files selected";
+			e.layer.status = e.mainlayer.files.length + " files selected";
 			cn_activate(e.layer, 'DataChange', {NewValue:e.mainlayer.files.length + " files selected", OldValue:e.layer.oldvalue});
 			}
 		else
 			{
+			e.layer.value = e.mainlayer.value;
+			e.layer.status = e.mainlayer.value + ' selected';
 			cn_activate(e.layer, 'DataChange', {NewValue:e.mainlayer.value, OldValue:e.layer.oldvalue});
 			}
 		}
@@ -34,6 +43,7 @@ function fu_clearvalue()
 	{
 	this.oldvalue = this.input.value;
 	this.value = '';
+	this.status = 'no files selected';
 	this.pane.reset();
 	cn_activate(this, 'DataChange', {NewValue:"", OldValue:this.input.oldvalue});
 	}
@@ -53,6 +63,7 @@ function fu_submit()
             for(var i = 0; i < this.input.files.length; i++)
                 form.append('file', this.input.files[i]);
             
+	    this.status = 'upload in progress...';
             $.ajax({
             type: "POST",
             url: wgt.url,
@@ -63,9 +74,9 @@ function fu_submit()
             contentType: false,
             success: function(json)
                 {
-                alert('success');
                 wgt.oldvalue = wgt.input.value;
                 wgt.value = '';
+		wgt.status = 'upload complete';
                 wgt.pane.reset();
                 
                 var data = {};
@@ -76,9 +87,13 @@ function fu_submit()
                     }
                 
                 cn_activate(wgt, 'DataChange', {NewValue:"", OldValue:wgt.input.oldvalue});
-                cn_activate(wgt, 'Success', data);
+                cn_activate(wgt, 'UploadComplete', data);
                 },
-            error: function(){alert('error')}
+            error: function()
+		{
+		wgt.status = 'upload failed';
+                cn_activate(wgt, 'UploadError', {});
+		}
             });
         }
 	}
@@ -92,6 +107,7 @@ function fu_init(param)
 	layer.target = param.target;
 	layer.oldvalue = '';
 	layer.value = '';
+	layer.status = 'no files selected';
 	
 	htr_init_layer(layer, layer, "fu");
 	htr_init_layer(layer, layer.iframe, "fu");
@@ -111,7 +127,8 @@ function fu_init(param)
 	//Events
 	var ie = layer.ifcProbeAdd(ifEvent);
 	ie.Add("DataChange");
-	ie.Add("Complete");
+	ie.Add("UploadComplete");
+	ie.Add("UploadError");
 	ie.Add("Change");
 	
 	//Actions

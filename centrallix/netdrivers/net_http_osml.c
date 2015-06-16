@@ -209,7 +209,7 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 	    conn->LastHandle = tgt;
 	    xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://", tgt);
 	    }
-	xsConcatQPrintf(&xs, "%STR&HEX/?%STR#%STR'>%STR:", 
+	xsConcatQPrintf(&xs, "X%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
 
 	xsQPrintf(&xs,"%STR%STR&URL",xs.String,dptr);
@@ -455,6 +455,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     int reopen_success;
     pNhtQuery nht_query;
     char* strval;
+    XArray tail_buffer;
+    int n_skipped;
     
     handle_t session_handle;
     handle_t query_handle;
@@ -798,27 +800,79 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n", 0);
 			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 			}
+
+		    /** Skip over objects at the beginning? **/
 		    while(start > 0 && (obj = objQueryFetch(qy,mode)))
 			{
 			objClose(obj);
 			start--;
 			}
-		    while(n > 0 && (obj = objQueryFetch(qy,mode)))
+
+		    /** Skip-to-tail mode?  If so, we need to go through the results,
+		     ** storing N results in a FIFO, so that when we hit the end, we
+		     ** have the last N results for the query.
+		     **/
+		    if (stAttrValue_ne(stLookup_ne(req_inf, "ls__tail"), &ptr) == 0 && strtol(ptr,NULL,0))
 			{
-			if (!autoclose)
-			    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
-			else
-			    obj_handle = n;
-			if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
-			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
-			    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
-			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
-			n--;
-			if (autoclose) objClose(obj);
+			xaInit(&tail_buffer, n);
+			n_skipped = 0;
+
+			/** Get the object listing **/
+			while((obj = objQueryFetch(qy, mode)) != NULL)
+			    {
+			    xaAddItem(&tail_buffer, obj);
+			    if (tail_buffer.nItems > n)
+				{
+				objClose((pObject)tail_buffer.Items[0]);
+				xaRemoveItem(&tail_buffer, 0);
+				n_skipped++;
+				}
+			    }
+
+			/** Send the data to the client **/
+			fdPrintf(conn->ConnFD, "<A HREF=\"/\" TARGET=\"SKIPPED\">%d</A>\r\n", n_skipped);
+			for(i=0; i<tail_buffer.nItems; i++)
+			    {
+			    obj = (pObject)tail_buffer.Items[i];
+			    if (!autoclose)
+				obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			    else
+				obj_handle = n;
+			    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
+			    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+				objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+			    nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+			    n--;
+			    if (autoclose) objClose(obj);
+			    }
+			xaDeInit(&tail_buffer);
+
+			/** We set n to 1 to indicate to the below code that we
+			 ** reached the end of the actual result set.
+			 **/
+			n = 1;
 			}
+		    else
+			{
+			/** Here's the main fetch loop **/
+			while(n > 0 && (obj = objQueryFetch(qy,mode)))
+			    {
+			    if (!autoclose)
+				obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			    else
+				obj_handle = n;
+			    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
+			    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+				objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+			    nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+			    n--;
+			    if (autoclose) objClose(obj);
+			    }
+			}
+
+		    /** if end of result set was reached before rowlimit ran out **/
 		    if (autoclose_shortres && n > 0)
 			{
-			/** if end of result set was reached before rowlimit ran out **/
 			xhnFreeHandle(&(sess->Hctx), query_handle);
 			for(i=0;i<sess->OsmlQueryList.nItems;i++)
 			    {
@@ -996,6 +1050,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					n = objDataToInteger(DATA_T_STRING, strval, NULL);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,NULL);
 				    break;
 
 				case DATA_T_DOUBLE:
@@ -1004,6 +1060,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					dbl = objDataToDouble(DATA_T_STRING, strval);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,NULL);
 				    break;
 
 				case DATA_T_STRING:
@@ -1017,6 +1075,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					pdt = &dt;
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,NULL);
 				    break;
 
 				case DATA_T_MONEY:
@@ -1026,6 +1086,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					objDataToMoney(DATA_T_STRING, strval, &m);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,NULL);
 				    break;
 
 				case DATA_T_UNAVAILABLE: 
@@ -1067,7 +1129,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    }
 
 		/** Commit the change. **/
-		rval = objCommit(objsess);
+		//rval = objCommit(objsess);
+		rval = objCommitObject(obj);
 		if (rval < 0)
 		    {
 		    snprintf(sbuf,256,"Content-Type: text/html\r\n"

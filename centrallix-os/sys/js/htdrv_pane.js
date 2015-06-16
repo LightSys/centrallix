@@ -72,6 +72,13 @@ function pn_action_resize(aparam)
     resizeTo(this, w, h);
     }
 
+function pn_action_point(aparam)
+    {
+    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
+    this.point1 = divs.p1;
+    this.point2 = divs.p2;
+    }
+
 function pn_init(param)
     {
     var l = param.layer;
@@ -103,6 +110,7 @@ function pn_init(param)
     var ia = ml.ifcProbeAdd(ifAction);
     ia.Add("SetBackground", pn_setbackground);
     ia.Add("Resize", pn_action_resize);
+    ia.Add("Point", pn_action_point);
 
     var iv = ml.ifcProbeAdd(ifValue);
     iv.Add("enabled", pn_getval, pn_setval);

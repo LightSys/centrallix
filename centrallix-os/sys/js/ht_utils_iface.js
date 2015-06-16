@@ -495,20 +495,21 @@ function ifAction()
 		    {
 		    var _context = this.to;
 		    var _this = ep;
+		    ap[pn] = p.value(_context,_this,ep);
 		    //if (pn == 'Source') htr_alert(this, 1);
-		    if (cx__capabilities.JS15)
-			{
-			ep._context = this.to;
+		    /*if (cx__capabilities.JS15)
+			{*/
+			/*ep._context = this.to;
 			ep._this = ep;
 			//ap[pn] = eval(p.value, ep);
-			with (ep) ap[pn] = eval(p.value);
-			}
+			with (ep) ap[pn] = eval(p.value);*/
+			/*}
 		    else
 			{
 			if (typeof ep.eval != 'function')
 			    ep.eval = eval;
 			ap[pn] = ep.eval(p.value);
-			}
+			}*/
 		    }
 		// special case - don't do actions if event condition is false
 		if (pn == 'event_condition')

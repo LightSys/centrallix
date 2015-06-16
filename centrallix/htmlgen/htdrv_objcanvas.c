@@ -110,7 +110,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	else
 	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 
-	htrAddWgtrObjLinkage_va(s, oc_node, "htr_subel(_parentctr,\"oc%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase",id);
 
 	/** Include our necessary supporting js files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_objcanvas.js", 0);

@@ -392,7 +392,7 @@ nmFree(ptr,size)
 		ASSERTMAGIC(OVERLAY(tmp),MGK_FREEMEM);
 		if (OVERLAY(tmp) == OVERLAY(ptr))
 		    {
-		    printf("Duplicate nmFree()!!!  Size = %d, Address = %8.8x\n",size,(unsigned int)ptr);
+		    printf("Duplicate nmFree()!!!  Size = %d, Address = %p\n",size,ptr);
 		    if (err_fn) err_fn("Internal error - duplicate nmFree() occurred.");
 		    return;
 		    }

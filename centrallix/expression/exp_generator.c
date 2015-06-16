@@ -750,7 +750,7 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 	eg->EscChar = quote_char;
 	eg->Domain = domain;
 	if (objlist && !objlist->CurControl && exp->Control)
-	    objlist->CurControl = exp->Control;
+	    objlist->CurControl = exp_internal_LinkControl(exp->Control);
 
 	/** Call the internal recursive version of this function **/
 	if (!strcasecmp(language,"cxsql"))

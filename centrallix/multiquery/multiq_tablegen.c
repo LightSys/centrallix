@@ -470,6 +470,32 @@ mqt_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     }
 
 
+/*** mqt_internal_SwapObjList() - exchange the active query objects in the objlist
+ *** with those in the saved list, optionally closing the objects that are placed
+ *** into the saved list.
+ ***/
+int
+mqt_internal_SwapObjList(pMQTData md, pQueryStatement stmt, int do_close)
+    {
+    pObject tmp_obj;
+    int i;
+
+	for(i=stmt->Query->nProvidedObjects;i<md->nObjects;i++)
+	    {
+	    tmp_obj = md->SavedObjList[i];
+	    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
+	    stmt->Query->ObjList->Objects[i] = tmp_obj;
+	    if (do_close && md->SavedObjList[i])
+		{
+		objClose(md->SavedObjList[i]);
+		md->SavedObjList[i] = NULL;
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** mqtNextItem - retrieves the first/next item in the result set for the
  *** tablular query.  This driver only runs its own loop once through, but
  *** within that one iteration may be multiple row result sets handled by
@@ -526,17 +552,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	    /** Restore a saved object list? **/
 	    if (md->nObjects != 0 && qe->IterCnt > 1)
 	        {
-		for(i=0;i<md->nObjects;i++)
-		    {
-		    tmp_obj = md->SavedObjList[i];
-		    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-		    stmt->Query->ObjList->Objects[i] = tmp_obj;
-		    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
-			{
-			objClose(md->SavedObjList[i]);
-			md->SavedObjList[i] = NULL;
-			}
-		    }
+		mqt_internal_SwapObjList(md, stmt, 1 /* close */);
 		expAllObjChanged(stmt->Query->ObjList);
 		md->nObjects = 0;
 		}
@@ -593,10 +609,10 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    mqt_internal_UpdateAggregates(qe, 1, stmt->Query->ObjList);
 
 		    /** Link to all objects in the current object list **/
-		    memcpy(md->SavedObjList, stmt->Query->ObjList->Objects, stmt->Query->ObjList->nObjects*sizeof(pObject));
+		    memcpy(md->SavedObjList + stmt->Query->nProvidedObjects, stmt->Query->ObjList->Objects + stmt->Query->nProvidedObjects, (stmt->Query->ObjList->nObjects - stmt->Query->nProvidedObjects)*sizeof(pObject));
 		    md->nObjects = stmt->Query->ObjList->nObjects;
-		    for(i=0;i<md->nObjects;i++) 
-			if (md->SavedObjList[i] && i>=stmt->Query->nProvidedObjects) 
+		    for(i=stmt->Query->nProvidedObjects;i<md->nObjects;i++) 
+			if (md->SavedObjList[i]) 
 			    objLinkTo(md->SavedObjList[i]);
 
 		    /** Next, retrieve until end or until end of group **/
@@ -622,12 +638,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    /** Last one? **/
 		    if (rval == 0) 
 			{
-			for(i=0;i<md->nObjects;i++)
-			    {
-			    tmp_obj = md->SavedObjList[i];
-			    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-			    stmt->Query->ObjList->Objects[i] = tmp_obj;
-			    }
+			mqt_internal_SwapObjList(md, stmt, 0 /* no close */);
 			expAllObjChanged(stmt->Query->ObjList);
 			md->IsLastRow = 1;
 			fetch_rval = 1;
@@ -638,12 +649,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || qe->Children.nItems == 0 || !cld)
 			{
 			/** Restore saved objects **/
-			for(i=0;i<md->nObjects;i++)
-			    {
-			    tmp_obj = md->SavedObjList[i];
-			    md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-			    stmt->Query->ObjList->Objects[i] = tmp_obj;
-			    }
+			mqt_internal_SwapObjList(md, stmt, 0 /* no close */);
 			expAllObjChanged(stmt->Query->ObjList);
 			md->GroupByPtr = bptr;
 			if (qe->Children.nItems == 0 || !cld) md->IsLastRow = 1;
@@ -653,9 +659,9 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    else
 			{
 			/** Not end of group, unlink our saved objects and go around again **/
-			for(i=0;i<md->nObjects;i++)
+			for(i=stmt->Query->nProvidedObjects;i<md->nObjects;i++)
 			    {
-			    if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects) 
+			    if (md->SavedObjList[i]) 
 				{
 				objClose(md->SavedObjList[i]);
 				md->SavedObjList[i] = NULL;
@@ -686,17 +692,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		/** Force recalc **/
 		if (md->nObjects != 0)
 		    {
-		    for(i=0;i<md->nObjects;i++)
-			{
-			tmp_obj = md->SavedObjList[i];
-			md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-			stmt->Query->ObjList->Objects[i] = tmp_obj;
-			if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
-			    {
-			    objClose(md->SavedObjList[i]);
-			    md->SavedObjList[i] = NULL;
-			    }
-			}
+		    mqt_internal_SwapObjList(md, stmt, 1 /* close */);
 		    expAllObjChanged(stmt->Query->ObjList);
 		    md->nObjects = 0;
 		    }
@@ -721,17 +717,7 @@ mqtFinish(pQueryElement qe, pQueryStatement stmt)
 	/** Restore a saved object list? **/
 	if (md->nObjects != 0 && qe->IterCnt > 0)
 	    {
-	    for(i=0;i<md->nObjects;i++)
-		{
-		tmp_obj = md->SavedObjList[i];
-		md->SavedObjList[i] = stmt->Query->ObjList->Objects[i];
-		stmt->Query->ObjList->Objects[i] = tmp_obj;
-		if (md->SavedObjList[i] && i >= stmt->Query->nProvidedObjects)
-		    {
-		    objClose(md->SavedObjList[i]);
-		    md->SavedObjList[i] = NULL;
-		    }
-		}
+	    mqt_internal_SwapObjList(md, stmt, 1 /* close */);
 	    expAllObjChanged(stmt->Query->ObjList);
 	    md->nObjects = 0;
 	    }

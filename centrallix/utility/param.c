@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "obj.h"
 #include "hints.h"
 #include "expression.h"
@@ -74,6 +76,7 @@ paramCreateFromInf(pStructInf inf)
 	/** Allocate **/
 	param = (pParam)nmMalloc(sizeof(Param));
 	if (!param) goto error;
+	memset(param, 0, sizeof(Param));
 
 	/** Allocate the typed obj data **/
 	param->Value = ptodAllocate();
@@ -82,7 +85,12 @@ paramCreateFromInf(pStructInf inf)
 
 	/** Get name **/
 	if (stGetAttrValue(stLookup(inf, "name"), DATA_T_STRING, POD(&str), 0) != 0)
+	    str = inf->Name;
+	if (!str || !*str)
+	    {
+	    mssError(1, "PARAM", "Parameter does not have a valid name.");
 	    goto error;
+	    }
 	strtcpy(param->Name, str, sizeof(param->Name));
 
 	/** Get the data type **/

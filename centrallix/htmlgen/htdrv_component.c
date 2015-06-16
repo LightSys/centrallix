@@ -187,7 +187,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     pStruct old_params = NULL;
     int i;
     char* path;
-    char* templates[WGTR_MAX_TEMPLATE];
     int is_toplevel;
     int old_is_dynamic = 0;
     char* scriptslist;
@@ -310,14 +309,21 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		    name, w,h,x,y);
 
 	    /** Are there any templates we should use **/
-	    memset(templates, 0, sizeof(templates));
+	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
+	    memset(wgtr_params.Templates, 0, sizeof(wgtr_params.Templates));
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    templates[i] = path;
+		    wgtr_params.Templates[i] = path;
 
 	    /** Start a new security authstack context **/
 	    cxssPushContext();
 	    new_sec_context = 1;
+
+	    /** Set up client params **/
+	    wgtr_params.MaxHeight = h;
+	    wgtr_params.MinHeight = h;
+	    wgtr_params.MaxWidth = w;
+	    wgtr_params.MinWidth = w;
 
 	    /** Open and parse the component **/
 	    cmp_obj = objOpen(s->ObjSession, cmp_path, O_RDONLY, 0600, "system/structure");
@@ -326,19 +332,12 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates, 0);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, &wgtr_params, 0);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto out;
 		}
-
-	    /** Set up client params **/
-	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
-	    wgtr_params.MaxHeight = h;
-	    wgtr_params.MinHeight = h;
-	    wgtr_params.MaxWidth = w;
-	    wgtr_params.MinWidth = w;
 
 	    /** Set base dir **/
 	    wgtr_params.BaseDir = nmSysStrdup(objGetPathname(cmp_obj));

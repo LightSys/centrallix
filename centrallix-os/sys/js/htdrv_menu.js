@@ -425,14 +425,16 @@ function mn_init(param)
 	{
 	if (imgs[i].name.substr(0,nmstr.length) == nmstr)
 	    {
-	    var x = getRelativeX(imgs[i]);
+	    var x = $(imgs[i]).position().left;
+	    var y = $(imgs[i]).position().top;
+	    /*var x = getRelativeX(imgs[i]);
 	    if (isNaN(x))
 		for(x=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
 		    x += search.offsetLeft;
 	    var y = getRelativeY(imgs[i]);
 	    if (isNaN(y))
 		for(y=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
-		    y += search.offsetTop;
+		    y += search.offsetTop;*/
 	    menu.coords.push(new Object());
 	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].x = x;
 	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].y = y;

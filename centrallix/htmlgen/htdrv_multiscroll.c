@@ -120,8 +120,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** DOM linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, 
-		"htr_subel(_parentctr, \"ms%POSmain\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "ms%POSmain",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_multiscroll.js", 0);
@@ -155,8 +154,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	for(i=0;i<cnt;i++)
 	    {
 	    child = childlist[i];
-	    htrAddWgtrObjLinkage_va(s, child, 
-		    "htr_subel(_parentctr, \"ms%POSpart%POS\")",id,i);
+	    htrAddWgtrObjLinkage_va(s, child, "ms%POSpart%POS",id,i);
 	    htrAddBodyItem_va(s,"<DIV ID=\"ms%POSpart%POS\">\n",id,i);
 	    always_visible = htrGetBoolean(child, "always_visible", 0);
 	    if (wgtrGetPropertyValue(child,"height",DATA_T_INTEGER,POD(&ch)) != 0 || ch < 0) ch = 0;
