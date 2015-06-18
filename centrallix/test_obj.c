@@ -194,6 +194,7 @@ testobj_show_attr(pObject obj, char* attrname)
     pIntVec iv;
     Binary bn;
     pObjPresentationHints hints;
+    int rval;
 
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
@@ -211,8 +212,8 @@ testobj_show_attr(pObject obj, char* attrname)
 		break;
 
 	    case DATA_T_STRING:
-		if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
-		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
+		if ((rval = objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval))) != 0)
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %s",attrname, (rval==1)?"NULL":"Error");
 		else
 		    fdPrintf(TESTOBJ.Output,"  %20.20s: \"%s\"",attrname, stringval);
 		break;

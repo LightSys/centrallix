@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "obj.h"
 #include "mime.h"
 
@@ -64,115 +65,138 @@
 int
 libmime_ParseAddressList(char *buf, pXArray xary)
     {
-    int count=0, state=MIME_ST_NORM, prev_state=MIME_ST_NORM, flag=0, cnest=0, tmp;
-    char *s_ptr, *e_ptr, *t_str;
+    int count=0, state=MIME_ST_NORM, prev_state=MIME_ST_NORM, new_state, done=0, cnest=0;
+    char *s_ptr, *e_ptr;
+    char *t_str = NULL;
     char ch;
-    pEmailAddr p_addr;
+    char tmp_ch;
+    pEmailAddr p_addr = NULL;
 
-    libmime_StringTrim(buf);
-    s_ptr = buf;
-    while (flag == 0)
-	{
-	ch = buf[count];
-	switch (state)
+	libmime_StringTrim(buf);
+	s_ptr = buf;
+	while (!done)
 	    {
-	    /** If no special states are set, then check for comma delimiters and such **/
-	    case MIME_ST_NORM:
-		if (ch == '"')
-		    {
-		    prev_state = state;
-		    state = MIME_ST_QUOTE;
-		    }
-		else if (ch == '(')
-		    {
-		    cnest++;
-		    prev_state = state;
-		    state = MIME_ST_COMMENT;
-		    }
-		else if (ch == ':' && buf[count-1] != '\\')
-		    {
-		    prev_state = state;
-		    state = MIME_ST_GROUP;
-		    }
-		else if (ch == ',' || count == strlen(buf))
-		    {
-		    e_ptr = &buf[count];
-		    t_str = (char*)nmMalloc(e_ptr - s_ptr + 1);
-		    strncpy(t_str, s_ptr, e_ptr-s_ptr);
-		    t_str[e_ptr-s_ptr] = 0;
-		    /**  If we have a valid email address, parse it and add it to the list **/
-		    if (strlen(t_str))
+	    ch = buf[count];
+	    new_state = state;
+	    switch (state)
+		{
+		/** If no special states are set, then check for comma delimiters and such **/
+		case MIME_ST_NORM:
+		    if (ch == '"')
 			{
-			p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
-			if (!libmime_ParseAddress(t_str, p_addr))
-			    xaAddItem(xary, p_addr);
-			else
-			    nmFree(p_addr, sizeof(EmailAddr));
+			new_state = MIME_ST_QUOTE;
 			}
-		    nmFree(t_str, e_ptr - s_ptr + 1);
-		    s_ptr = e_ptr+1;
-		    }
-		break;
-	    case MIME_ST_GROUP:
-		if (ch == '"')
-		    {
-		    prev_state = state;
-		    state = MIME_ST_QUOTE;
-		    }
-		else if (ch == '(')
-		    {
-		    cnest++;
-		    prev_state = state;
-		    state = MIME_ST_COMMENT;
-		    }
-		else if (ch == ';' || count == strlen(buf))
-		    {
-		    e_ptr = &buf[count];
-		    t_str = (char*)nmMalloc(e_ptr - s_ptr + 1);
-		    strncpy(t_str, s_ptr, e_ptr-s_ptr);
-		    t_str[e_ptr-s_ptr] = 0;
-		    /**  If we have a valid group, parse it and add it to the list **/
-		    if (strlen(t_str))
+		    else if (ch == '(')
 			{
-			p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
-			if (!libmime_HdrParseGroup(t_str, p_addr))
-			    xaAddItem(xary, p_addr);
-			else
-			    nmFree(p_addr, sizeof(EmailAddr));
+			cnest++;
+			new_state = MIME_ST_COMMENT;
 			}
-		    nmFree(t_str, e_ptr - s_ptr + 1);
-		    s_ptr = e_ptr+1;
-		    prev_state = state;
-		    state = MIME_ST_NORM;
-		    }
-	    /** If we are in a quote, ignore everything until the end quote is found **/
-	    case MIME_ST_QUOTE:
-		if (ch == '"' && buf[count-1] != '\\')
-		    {
-		    tmp = prev_state;
-		    prev_state = state;
-		    state = tmp;
-		    }
-		break;
-	    /** If we are in a comment, ignore everything until the end of the comment is found **/
-	    case MIME_ST_COMMENT:
-		if (ch == ')' && buf[count-1] != '\\')
-		    {
-		    cnest--;
-		    if (!cnest)
+		    else if (ch == ':' && buf[count-1] != '\\')
 			{
-			tmp = prev_state;
-			prev_state = state;
-			state = tmp;
+			new_state = MIME_ST_GROUP;
 			}
-		    }
-		break;
+		    else if (ch == ',' || count == strlen(buf))
+			{
+			e_ptr = buf+count;
+			tmp_ch = *e_ptr;
+			*e_ptr = '\0';
+			t_str = (char*)nmSysStrdup(s_ptr);
+			*e_ptr = tmp_ch;
+			if (!t_str)
+			    goto error;
+
+			/** If we have a valid email address, parse it and add it to the list **/
+			if (*t_str)
+			    {
+			    p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
+			    if (!p_addr)
+				goto error;
+
+			    /** If this fails, we ignore the failure and continue **/
+			    if (libmime_ParseAddress(t_str, p_addr) < 0)
+				nmFree(p_addr, sizeof(EmailAddr));
+			    else
+				xaAddItem(xary, p_addr);
+			    }
+			nmSysFree(t_str);
+			t_str = NULL;
+			s_ptr = e_ptr+1;
+			}
+		    break;
+
+		case MIME_ST_GROUP:
+		    if (ch == '"')
+			{
+			new_state = MIME_ST_QUOTE;
+			}
+		    else if (ch == '(')
+			{
+			cnest++;
+			new_state = MIME_ST_COMMENT;
+			}
+		    else if (ch == ';' || count == strlen(buf))
+			{
+			e_ptr = buf+count;
+			tmp_ch = *e_ptr;
+			*e_ptr = '\0';
+			t_str = (char*)nmSysStrdup(s_ptr);
+			*e_ptr = tmp_ch;
+			if (!t_str)
+			    goto error;
+
+			/** If we have a valid group, parse it and add it to the list **/
+			if (*t_str)
+			    {
+			    p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
+			    if (!p_addr)
+				goto error;
+
+			    /** If this fails, we ignore the failure and continue **/
+			    if (libmime_HdrParseGroup(t_str, p_addr) < 0)
+				nmFree(p_addr, sizeof(EmailAddr));
+			    else
+				xaAddItem(xary, p_addr);
+			    }
+			nmSysFree(t_str);
+			t_str = NULL;
+			s_ptr = e_ptr+1;
+			new_state = MIME_ST_NORM;
+			}
+		    break;
+
+		/** If we are in a quote, ignore everything until the end quote is found **/
+		case MIME_ST_QUOTE:
+		    if (ch == '"' && buf[count-1] != '\\')
+			{
+			new_state = prev_state;
+			}
+		    break;
+
+		/** If we are in a comment, ignore everything until the end of the comment is found **/
+		case MIME_ST_COMMENT:
+		    if (ch == ')' && buf[count-1] != '\\')
+			{
+			cnest--;
+			if (!cnest)
+			    {
+			    new_state = prev_state;
+			    }
+			}
+		    break;
+		}
+	    prev_state = state;
+	    state = new_state;
+	    if (count > strlen(buf))
+		done = 1;
+	    count++;
 	    }
-	if (count > strlen(buf))
-	    flag = 1;
-	count++;
-	}
-    return 0;
+
+	return 0;
+
+    error:
+	if (t_str)
+	    nmSysFree(t_str);
+	return -1;
     }
 
 /*
@@ -197,76 +221,96 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 int
 libmime_HdrParseGroup(char *buf, pEmailAddr addr)
     {
-    int count=0, flag=0, ncount=0, len, err;
-    char *s_ptr, *e_ptr, *t_str;
+    int count=0, done=0, ncount=0;
+    char *s_ptr, *e_ptr;
+    char *t_str = NULL;
     char ch;
-    pXArray p_xary;
+    pXArray p_xary = NULL;
 
-    libmime_StringTrim(buf);
-    p_xary = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(p_xary, sizeof(EmailAddr));
+	libmime_StringTrim(buf);
+	p_xary = (pXArray)nmMalloc(sizeof(XArray));
+	if (!p_xary)
+	    goto error;
+	xaInit(p_xary, 8);
 
-    addr->Host[0] = 0;
-    addr->Mailbox[0] = 0;
-    addr->Display[0] = 0;
-    addr->Group = p_xary;
-    strncpy(addr->AddressLine, buf, 255);
-    addr->AddressLine[255] = 0;
+	addr->Host[0] = 0;
+	addr->Mailbox[0] = 0;
+	addr->Display[0] = 0;
+	addr->Group = p_xary;
+	strtcpy(addr->AddressLine, buf, sizeof(addr->AddressLine));
 
-    /**  Parse out the displayable name of this group  
-     **  A group should be in the following format or similar, according to
-     **  RFC2822, section 3.4 (Address Specification):
-     **    "Group Name": addr1@myhost.com, addr2@myhost.com;
-     **/
-    s_ptr = buf;
-    e_ptr = strchr(buf, ':');
-    if (e_ptr - s_ptr > 0)
-	{
-	len = (e_ptr-s_ptr<127?e_ptr-s_ptr:127);
-	strncpy(addr->Display, s_ptr, len);
-	addr->Display[len] = 0;
-	libmime_StringTrim(addr->Display);
-	}
-    else
-	{
-	return 0;
-	}
-    if (addr->Display[0] == '"')
-	{
-	t_str = (char*)nmMalloc(strlen(addr->Display)+1);
-	count = 1;
-	ncount = 0;
-	while (flag == 0 && count < strlen(addr->Display))
+	/**  Parse out the displayable name of this group  
+	 **  A group should be in the following format or similar, according to
+	 **  RFC2822, section 3.4 (Address Specification):
+	 **    "Group Name": addr1@myhost.com, addr2@myhost.com;
+	 **/
+	s_ptr = buf;
+	e_ptr = strchr(buf, ':');
+	if (e_ptr - s_ptr > 0)
 	    {
-	    ch = addr->Display[count];
-	    if (ch == '\\' && count+1<strlen(addr->Display))
+	    *e_ptr = '\0';
+	    strtcpy(addr->Display, s_ptr, sizeof(addr->Display));
+	    *e_ptr = ':';
+	    libmime_StringTrim(addr->Display);
+	    }
+	else
+	    {
+	    return 0;
+	    }
+	if (addr->Display[0] == '"')
+	    {
+	    t_str = (char*)nmSysMalloc(strlen(addr->Display)+1);
+	    if (!t_str)
+		goto error;
+	    count = 1;
+	    ncount = 0;
+	    while (!done && count < strlen(addr->Display))
 		{
-		t_str[ncount++] = addr->Display[count+1];
+		ch = addr->Display[count];
+		if (ch == '\\' && count+1<strlen(addr->Display))
+		    {
+		    t_str[ncount++] = addr->Display[count+1];
+		    count++;
+		    }
+		else if (ch == '"')
+		    {
+		    done = 1;
+		    }
+		else
+		    {
+		    t_str[ncount++] = addr->Display[count];
+		    }
 		count++;
 		}
-	    else if (ch == '"')
-		{
-		flag = 1;
-		}
-	    else
-		{
-		t_str[ncount++] = addr->Display[count];
-		}
-	    count++;
+	    t_str[ncount++] = '\0';
+	    strtcpy(addr->Display, t_str, sizeof(addr->Display));
+	    nmSysFree(t_str);
+	    t_str = NULL;
 	    }
-	strncpy(addr->Display, t_str, 127);
-	addr->Display[127] = 0;
-	nmFree(t_str, strlen(addr->Display)+1);
-	}
 
-    /**  Parse out the individual addresses  **/
-    t_str = (char*)nmMalloc(strlen(e_ptr+1)+1);
-    strncpy(t_str, e_ptr+1, strlen(e_ptr+1));
-    t_str[strlen(e_ptr+1)+1] = 0;
-    err = libmime_ParseAddressList(t_str, addr->Group);
-    nmFree(t_str, strlen(e_ptr+1)+1);
-    return err;
+	/**  Parse out the individual addresses  **/
+	t_str = (char*)nmSysStrdup(e_ptr+1);
+	if (!t_str)
+	    goto error;
+	if (libmime_ParseAddressList(t_str, addr->Group) < 0)
+	    goto error;
+	nmSysFree(t_str);
+	t_str = NULL;
+
+	return 0;
+
+    error:
+	if (p_xary)
+	    {
+	    addr->Group = NULL;
+	    xaDeInit(p_xary);
+	    nmFree(p_xary, sizeof(XArray));
+	    }
+	if (t_str)
+	    nmSysFree(t_str);
+	return -1;
     }
+
 
 /*
 **  int
@@ -288,16 +332,15 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
 int
 libmime_ParseAddress(char *buf, pEmailAddr addr)
     {
-    int len=0;
     char *s_ptr, *e_ptr, *t_str;
+    int rval;
 
     libmime_StringTrim(buf);
     addr->Host[0] = 0;
     addr->Mailbox[0] = 0;
     addr->Display[0] = 0;
     addr->Group = NULL;
-    strncpy(addr->AddressLine, buf, 255);
-    addr->AddressLine[255] = 0;
+    strtcpy(addr->AddressLine, buf, sizeof(addr->AddressLine));
 
     /*
     **  First, get the email address itself which can be displayed in two forms,
@@ -318,11 +361,11 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	    {
 	    return -1;
 	    }
-	t_str = (char*)nmMalloc((e_ptr - s_ptr)+1);
-	strncpy(t_str, s_ptr, e_ptr-s_ptr);
-	t_str[e_ptr-s_ptr] = 0;
-	libmime_ParseAddressElements(t_str, addr); /* set Host and Mailbox */
-	nmFree(t_str, (e_ptr-s_ptr)+1);
+	*e_ptr = '\0';
+	rval = libmime_ParseAddressElements(s_ptr, addr);
+	*e_ptr = '>';
+	if (rval < 0)
+	    return -1;
 
 	/** Now, lets go through and see if we can find a displayable name **/
 	if ((s_ptr = strchr(buf, '"')))
@@ -330,9 +373,9 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	    s_ptr++;
 	    if ((e_ptr = strchr(s_ptr, '"')))
 		{
-		len = (e_ptr-s_ptr<127?e_ptr-s_ptr:127);
-		memcpy(addr->Display, s_ptr, len);
-		addr->Display[len] = 0;
+		*e_ptr = '\0';
+		strtcpy(addr->Display, s_ptr, sizeof(addr->Display));
+		*e_ptr = '"';
 		}
 	    else
 		{
@@ -344,9 +387,9 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	    s_ptr++;
 	    if ((e_ptr = strchr(s_ptr, ')')))
 		{
-		len = (e_ptr-s_ptr<127?e_ptr-s_ptr:127);
-		memcpy(addr->Display, s_ptr, len);
-		addr->Display[len] = 0;
+		*e_ptr = '\0';
+		strtcpy(addr->Display, s_ptr, sizeof(addr->Display));
+		*e_ptr = ')';
 		}
 	    else
 		{
@@ -355,18 +398,25 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	    }
 	else
 	    {
-	    t_str = (char*)nmMalloc(strlen(buf)+1);
+	    /** Display text is whatever is outside the <> **/
+	    t_str = (char*)nmSysMalloc(strlen(buf)+1);
+	    if (!t_str)
+		return -1;
 	    s_ptr = strchr(buf, '<');
 	    e_ptr = strchr(s_ptr, '>');
-	    if (s_ptr == buf && e_ptr == buf+strlen(buf)) return 0;
-	    if (s_ptr > buf)
+
+	    /** entire string is <user@host> **/
+	    if (s_ptr == buf && e_ptr[1] == '\0') return 0;
+
+	    /** Copy whatever is outside the < > **/
+	    if (s_ptr > buf && s_ptr[-1] == ' ')
 		s_ptr--;
-	    if (e_ptr < buf+strlen(buf))
+	    if (e_ptr[1] == ' ')
 		e_ptr++;
 	    memcpy(t_str, buf, s_ptr-buf);
-	    strcpy(t_str+(s_ptr-buf), e_ptr);
-	    strncpy(addr->Display, t_str, strlen(t_str));
-	    nmFree(t_str, strlen(buf)+1);
+	    strcpy(t_str+(s_ptr-buf), e_ptr+1);
+	    strtcpy(addr->Display, t_str, sizeof(addr->Display));
+	    nmSysFree(t_str);
 	    }
 	}
 
@@ -377,7 +427,7 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 **  int
 **  libmime_ParseAddressElements(char *buf, EmailAddr *addr)
 **     Parameters:
-**         (char*) buf    A string that reperess a single mailbox@host address.
+**         (char*) buf    A string that contains a single mailbox@host address.
 **         (EmailAddr*) addr
 **                        An email address data structure that will be filled in
 **                        by this function.  This function will set the Host and
@@ -390,22 +440,19 @@ int
 libmime_ParseAddressElements(char *buf, pEmailAddr addr)
     {
     char *ptr;
-    int len;
 
     libmime_StringTrim(buf);
     if (!(ptr = strchr(buf, '@')))
 	{
-	strncpy(addr->Mailbox, buf, 127);
-	addr->Mailbox[127] = 0;
+	strtcpy(addr->Mailbox, buf, sizeof(addr->Mailbox));
+	addr->Host[0] = '\0';
 	}
     else
 	{
-	len = (ptr-buf<127?ptr-buf:127);
-	memcpy(addr->Mailbox, buf, len);
-	addr->Mailbox[len] = 0;
-	ptr++;
-	strncpy(addr->Host, ptr, 127);
-	addr->Host[127] = 0;
+	*ptr = '\0';
+	strtcpy(addr->Mailbox, buf, sizeof(addr->Mailbox));
+	strtcpy(addr->Host, ptr+1, sizeof(addr->Host));
+	*ptr = '@';
 	}
     return 0;
     }

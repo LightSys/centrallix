@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -55,13 +55,17 @@ libmime_DecodeQP()
 int
 libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst)
     {
-    static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    static unsigned char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     /** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
     while(*src)
 	{
 	/** First 6 bits of source[0] --> first byte dst. **/
-	if (maxdst < 5) return -1;
+	if (maxdst < 5)
+	    {
+	    mssError(1,"MIME","Could not encode MIME data field - internal resources exceeded");
+	    return -1;
+	    }
 	dst[0] = b64[src[0]>>2];
 
 	/** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
@@ -104,24 +108,24 @@ int
 libmime_DecodeBase64(char* dst, char* src, int maxdst)
     {
     static char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    char* ptr, *orig;
-    int ix, size;
+    char* ptr;
+    char* origdst;
+    int ix;
 
     /** Step through src 4 bytes at a time. **/
-    size = 0;
-    orig = src;
-    while(*src)
+    origdst = dst;
+    while(src[0] && src[1] && src[2] && src[3])
 	{
 	/** First 6 bits. **/
 	if (maxdst < 4) 
 	    {
-	    mssError(1,"NHT","Could not decode HTTP data field - internal resources exceeded");
+	    mssError(1,"MIME","Could not decode MIME data field - internal resources exceeded");
 	    return -1;
 	    }
 	ptr = strchr(b64,src[0]);
 	if (!ptr) 
 	    {
-	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    mssError(1,"MIME","Illegal character in MIME encoded data field");
 	    return -1;
 	    }
 	ix = ptr-b64;
@@ -131,7 +135,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	ptr = strchr(b64,src[1]);
 	if (!ptr)
 	    {
-	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    mssError(1,"MIME","Illegal character in MIME encoded data field");
 	    return -1;
 	    }
 	ix = ptr-b64;
@@ -144,13 +148,12 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    maxdst -= 1;
 	    dst += 1;
 	    src += 4;
-	    size += 1;
 	    break;
 	    }
 	ptr = strchr(b64,src[2]);
 	if (!ptr)
 	    {
-	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    mssError(1,"MIME","Illegal character in MIME encoded data field");
 	    return -1;
 	    }
 	ix = ptr-b64;
@@ -163,13 +166,12 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    maxdst -= 2;
 	    dst += 2;
 	    src += 4;
-	    size += 2;
 	    break;
 	    }
 	ptr = strchr(b64,src[3]);
 	if (!ptr)
 	    {
-	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    mssError(1,"MIME","Illegal character in MIME encoded data field");
 	    return -1;
 	    }
 	ix = ptr-b64;
@@ -177,9 +179,9 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	maxdst -= 3;
 	src += 4;
 	dst += 3;
-	size += 3;
 	}
 
-    src = orig;
-    return size;
+    dst[0] = '\0';
+
+    return (dst - origdst);
     }

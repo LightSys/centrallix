@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -44,6 +44,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
     char* paramName = NULL;
     char* token = NULL;
     char* currentOffset = NULL;
+    char* val_ptr;
 
 	/** Append all data up to the next semicolon. **/
 	token  = strtok_r(data, ";", &currentOffset);
@@ -102,24 +103,21 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	libmime_GetMimeAttr(this, name)->ValueSeekEnd = seekEnd;
 
 	/** Attempt to find the first parameter. **/
-	token = strtok_r(NULL, "=", &currentOffset);
 
 	/** Process all parameters until the end of the line. **/
-	while (token)
+	while ((token = strtok_r(NULL, ";", &currentOffset)) != NULL)
 	    {
+	    /** Does this parameter have a value? **/
+	    val_ptr = strchr(token, '=');
+	    if (val_ptr)
+		{
+		*val_ptr = '\0';
+		val_ptr++;
+		libmime_StringTrim(val_ptr);
+		}
+
 	    /** Store the parameter name. **/
 	    paramName = token;
-
-	    /** Get the value of the parameter. **/
-	    token = strtok_r(NULL, ";", &currentOffset);
-
-	    /** If this is the last parameter and there is no closing semi-colon...  **/
-	    if (!token)
-		{
-		/** Just use the final token. **/
-		token = currentOffset;
-		}
-	    libmime_StringTrim(token);
 
 	    /** Trim the parameter name. **/
 	    beginPtr = paramName;
@@ -129,17 +127,15 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	    seekStart = seekEnd + (paramName - beginPtr) + 1; /* NOTE: +1 skips the semicolon. */
 
 	    /** Add the length of the value and the parameter name to the start offset to find the end offset of the parameter. **/
-	    seekEnd = seekStart + strlen(token) + (token - paramName);
+	    seekEnd = seekStart + strlen(val_ptr) + (val_ptr - paramName);
 
 	    /** Store the parameter. **/
-	    libmime_CreateStringAttr(this, name, paramName, token, 0);
-
-	    /** Set the offset values in the parameter structure. **/
-	    libmime_GetMimeParam(this, name, paramName)->ValueSeekStart = seekStart;
-	    libmime_GetMimeParam(this, name, paramName)->ValueSeekEnd = seekEnd;
-
-	    /** Attempt to get the next parameter. **/
-	    token = strtok_r(NULL, "=", &currentOffset);
+	    if (libmime_CreateStringAttr(this, name, paramName, val_ptr, 0) == 0)
+		{
+		/** Set the offset values in the parameter structure. **/
+		libmime_GetMimeParam(this, name, paramName)->ValueSeekStart = seekStart;
+		libmime_GetMimeParam(this, name, paramName)->ValueSeekEnd = seekEnd;
+		}
 	    }
 
     return 0;
@@ -169,10 +165,12 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	    }
 
 	/** Create the email attribute. **/
-	libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0);
+	if (libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0) < 0)
+	    return -1;
 
 	/** Store the struct as a parameter. **/
-	libmime_CreateAttr(this, name, "Struct", emailAddr, 0);
+	if (libmime_CreateAttr(this, name, "Struct", emailAddr, 0) < 0)
+	    return -1;
 
     return 0;
     }
@@ -206,6 +204,7 @@ libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data)
 
 	/** Deinitialize the email list. **/
 	xaDeInit(&emailList);
+
     return 0;
     }
 
@@ -747,12 +746,12 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	stringVec = ptod->Data.StringVec;
 
 	/** Allocate a new string array. **/
-	tempVec = (char**)nmMalloc(sizeof(char)*(stringVec->nStrings+1));
+	tempVec = (char**)nmMalloc(sizeof(char*)*(stringVec->nStrings+1));
 	if (!tempVec)
 	    {
 	    return -1;
 	    }
-	memset(tempVec, 0, sizeof(char)*(stringVec->nStrings+1));
+	memset(tempVec, 0, sizeof(char*)*(stringVec->nStrings+1));
 
 	/** Copy the previous contents to the new vector. **/
 	for (i = 0; i < stringVec->nStrings; i++)
@@ -768,7 +767,7 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	    }
 
 	/** Replace the old vector. **/
-	nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
+	nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
 	stringVec->Strings = tempVec;
 	stringVec->nStrings++;
 
@@ -805,12 +804,12 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	stringVec = ptod->Data.StringVec;
 
 	/** Allocate a new string vector. **/
-	tempVec = (char**)nmMalloc(sizeof(char)*stringVec->nStrings + dataList->nItems);
+	tempVec = (char**)nmMalloc(sizeof(char*)*(stringVec->nStrings + dataList->nItems));
 	if (!tempVec)
 	    {
 	    return -1;
 	    }
-	memset(tempVec, 0, sizeof(char)*stringVec->nStrings + dataList->nItems);
+	memset(tempVec, 0, sizeof(char*)*(stringVec->nStrings + dataList->nItems));
 
 	/** Copy the old string vector to the new one. **/
 	for(i = 0; i < stringVec->nStrings; i++)
@@ -829,7 +828,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	    }
 
 	/** Replace the old string vector with the new one. **/
-	nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
+	nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
 	stringVec->Strings = tempVec;
 	stringVec->nStrings += dataList->nItems;
 
@@ -948,7 +947,7 @@ libmime_ClearParam(char* param_c, void* arg)
 	ptodFree(param->Ptod);
 
 	/** Free the parameter memory. **/
-	nmFree(param, sizeof(MimeAttr));
+	nmFree(param, sizeof(MimeParam));
 
     return 0;
     }
@@ -987,7 +986,7 @@ libmime_ClearSpecials(pTObjData ptod)
 		    }
 
 		/** Deallocate the StringVec string array. **/
-		nmFree(stringVec->Strings, sizeof(char)*stringVec->nStrings);
+		nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
 		}
 	    /** Handle our custom XArray type attribute. Yeah hijacked type names! **/
 	    else if (ptod->DataType == DATA_T_ARRAY)
@@ -1053,10 +1052,10 @@ libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramNam
 	    xsConcatPrintf(&output, " %s=%s", paramName, data.String);
 	    }
 
-	bytesWritten = fdWrite(fd, output.String, strlen(output.String), 0, 0);
+	bytesWritten = fdWrite(fd, output.String, strlen(output.String), 0, FD_U_PACKET);
 
 	/** Add the new attribute to the header. **/
-	if (bytesWritten < 0)
+	if (bytesWritten <= 0)
 	    {
 	    goto error;
 	    }

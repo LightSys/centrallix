@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2015 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -190,7 +190,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     /** Reset the file seek pointer. **/
     if (objRead(obj->Prev, nullbuf, 0, 0, FD_U_SEEK) < 0)
 	{
-	mssErrorErrno(0, "MIME", "Improperly reset mime object file pointer.");
+	mssError(0, "MIME", "Improperly reset mime object file pointer.");
 	goto error;
 	}
 
@@ -231,7 +231,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** If creating a new object with no specified type, infer the type. **/
 	if (strcmp(obj->Prev->Driver->Name, "MIME - MIME Parsing Driver"))
 	    {
-	    apparentType = obj_internal_TypeFromName(obj->Pathname->Pathbuf);
+	    apparentType = objTypeFromName(obj->Pathname->Pathbuf);
 	    if ((apparentType && mimeCreate(obj, mask, systype, apparentType->Name, oxt))
 		    || (!apparentType && mimeCreate(obj, mask, systype, usrtype, oxt)))
 		{
@@ -354,6 +354,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     pFile fd = NULL;
     char buf [MIME_BUFSIZE + 1];
     long targetOffset, currentOffset, targetBufSize, insertionSize;
+    int rcnt;
 
 	xsInit(&initialContents);
 	xsInit(&fileName);
@@ -554,12 +555,17 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		    targetBufSize > 0;
 		    targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
 		{
-		memset(buf, 0, MIME_BUFSIZE + 1);
-		currentOffset += objRead(obj->Prev, buf, targetBufSize, 0, 0);
-
-		if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		rcnt = objRead(obj->Prev, buf, targetBufSize, 0, 0);
+		if (rcnt < 0)
 		    {
-		    mssError(1, "MIME", "Unable to copy Mime file contents to temporary file.");
+		    mssError(0, "MIME", "Unable to read from original contents");
+		    goto error;
+		    }
+		currentOffset += rcnt;
+
+		if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
+		    {
+		    mssError(0, "MIME", "Unable to copy Mime file contents to temporary file.");
 		    goto error;
 		    }
 		}
@@ -580,7 +586,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 		nmSysFree(pathString);
 
 		/** Write the new multipart subobject. **/
-		insertionSize = fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+		insertionSize = fdWrite(fd, initialContents.String, initialContents.Length, 0, FD_U_PACKET);
 
 		/** Initialize the offsets for reading message of the Mime file. **/
 		currentOffset = msg->HdrSeekStart;
@@ -591,12 +597,17 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 			targetBufSize > 0;
 			targetBufSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
 		    {
-		    memset(buf, 0, MIME_BUFSIZE + 1);
-		    currentOffset += objRead(obj->Prev, buf, targetBufSize, 0, 0);
-
-		    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		    rcnt = objRead(obj->Prev, buf, targetBufSize, 0, 0);
+		    if (rcnt < 0)
 			{
-			mssError(1, "MIME", "Unable to copy Mime file contents to temporary file.");
+			mssError(0, "MIME", "Unable to read from original object content");
+			goto error;
+			}
+		    currentOffset += rcnt;
+
+		    if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
+			{
+			mssError(0, "MIME", "Unable to copy Mime file contents to temporary file.");
 			goto error;
 			}
 		    }
@@ -615,7 +626,7 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 
 		/** Write the final boundary for the new multipart subobject. **/
 		xsPrintf(&initialContents, "--%s--\n", boundary);
-		insertionSize += fdWrite(fd, initialContents.String, initialContents.Length, 0, 0);
+		insertionSize += fdWrite(fd, initialContents.String, initialContents.Length, 0, FD_U_PACKET);
 
 		/** Warn the user that the creation path is invalid. **/
 		mssError(0, "MIME", "WARNING: Adding a subobject to a non-multipart will reorient the directory structure. The creation path is now invalid.");
@@ -637,11 +648,11 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 
 	    /** Copy the rest of the file. **/
 	    memset(buf, 0, MIME_BUFSIZE);
-	    while (objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+	    while ((rcnt = objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0)) > 0)
 		{
-		if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+		if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
 		    {
-		    mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
+		    mssError(0, "MIME", "Unable to copy modified contents to temporary file.");
 		    goto error;
 		    }
 		memset(buf, 0, MIME_BUFSIZE);
@@ -811,6 +822,8 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	else if (offset || (flags & FD_U_SEEK))
 	    inf->InternalSeek = offset;
 	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
+	if (size < 0)
+	    return size;
 	inf->InternalSeek += size;
 	}
 
@@ -838,6 +851,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     char buf [MIME_BUFSIZE+1];
     long readSize, currentOffset, targetOffset;
     int internalSeek;
+    int rcnt;
 
 	/** Cache the internal seek. **/
 	internalSeek = inf->InternalSeek;
@@ -873,10 +887,15 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		readSize > 0;
 		readSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
 	    {
-	    memset(buf, 0, MIME_BUFSIZE + 1);
-	    currentOffset += objRead(inf->Obj, buf, MIME_BUFSIZE, 0, 0);
+	    rcnt = objRead(inf->Obj, buf, MIME_BUFSIZE, 0, 0);
+	    if (rcnt < 0)
+		{
+		mssError(0, "MIME", "Unable to read contents from original object");
+		goto error;
+		}
+	    currentOffset += rcnt;
 
-	    if (fdWrite(messageFile, buf, strlen(buf), 0, 0) < 0)
+	    if (fdWrite(messageFile, buf, rcnt, 0, FD_U_PACKET) < 0)
 		{
 		mssError(1, "MIME", "Unable to copy message contents to temporary file.");
 		goto error;
@@ -924,12 +943,17 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		readSize > 0;
 		readSize = (targetOffset - currentOffset < MIME_BUFSIZE ? targetOffset - currentOffset : MIME_BUFSIZE))
 	    {
-	    memset(buf, 0, MIME_BUFSIZE);
-	    currentOffset += objRead(inf->Obj->Prev, buf, readSize, 0, 0);
-
-	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
+	    rcnt = objRead(inf->Obj->Prev, buf, readSize, 0, 0);
+	    if (rcnt < 0)
 		{
-		mssError(1, "MIME", "Unable to copy pre-message contents to temporary file.");
+		mssError(0, "MIME", "Unable to read from original object");
+		goto error;
+		}
+	    currentOffset += rcnt;
+
+	    if (fdWrite(rootFile, buf, rcnt, 0, 0) < 0)
+		{
+		mssError(0, "MIME", "Unable to copy pre-message contents to temporary file.");
 		goto error;
 		}
 	    }
@@ -940,34 +964,29 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	/** Copy the contents of the temporary message file into the compiling file. **/
 	memset(buf, 0, MIME_BUFSIZE);
 	readSize = fdRead(messageFile, buf, MIME_BUFSIZE, 0, 0);
-	currentOffset += readSize;
 	while (readSize > 0)
 	    {
-	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
+	    currentOffset += readSize;
+	    if (fdWrite(rootFile, buf, readSize, 0, FD_U_PACKET) < 0)
 		{
-		mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
+		mssError(0, "MIME", "Unable to copy modified contents to temporary file.");
 		goto error;
 		}
 
-	    memset(buf, 0, MIME_BUFSIZE);
-
 	    readSize = fdRead(messageFile, buf, MIME_BUFSIZE, 0, 0);
-	    currentOffset += readSize;
 	    }
 
 	/** Seek to the end of the message in the Mime file. **/
 	objRead(inf->Obj->Prev, NULL, 0, inf->Header->MsgSeekEnd, FD_U_SEEK);
 
 	/** Copy the post-message contents of the Mime file into the temporary file. **/
-	memset(buf, 0, MIME_BUFSIZE);
-	while (objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+	while ((rcnt = objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0)) > 0)
 	    {
-	    if (fdWrite(rootFile, buf, strlen(buf), 0, 0) < 0)
+	    if (fdWrite(rootFile, buf, rcnt, 0, FD_U_PACKET) < 0)
 		{
-		mssError(1, "MIME", "Unable to copy modified contents to temporary file.");
+		mssError(0, "MIME", "Unable to copy modified contents to temporary file.");
 		goto error;
 		}
-	    memset(buf, 0, MIME_BUFSIZE);
 	    }
 
 	/** Recalculate the offset at the end of the message. **/
@@ -1257,7 +1276,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Free the local copy of attrname. **/
 	nmSysFree(local_attrname);
 
-    return 0;
+	return 0;
 
     error:
 	if (local_attrname)
@@ -1335,13 +1354,16 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int readOffset = 0;
     int inc, targetStartOffset, targetEndOffset;
     char* filename;
+    int filename_len;
+    int rcnt;
 
 	tempAttrName = nmSysStrdup(attrname);
 
 	libmime_GetAttrParamNames(tempAttrName, &attrName, &paramName); /* Currently always returns 0. */
 
 	/** Malloc the string. **/
-	filename = (char*)nmSysMalloc((strlen(attrname) + 22)); /* "/tmp/<attrname><16randomchars>\0" */
+	filename_len = strlen(attrname) + 22;
+	filename = (char*)nmSysMalloc(filename_len); /* "/tmp/<attrname><16randomchars>\0" */
 
 	/** Do we have the attribute? **/
 	attr = libmime_GetMimeAttr(inf->Header, attrName);
@@ -1361,8 +1383,8 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Do general setup. **/
 	/** Set the filename string. **/
-	strtcpy(filename, "/tmp/", 5);
-	strtcpy(filename, attrname, strlen(attrname));
+	strtcpy(filename, "/tmp/", filename_len);
+	strtcat(filename, attrname, filename_len);
 	libmime_internal_MakeARandomFilename(filename, 16);
 
 	if (paramName) /* Trying to set or add a parameter. */
@@ -1404,21 +1426,24 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Read the current file into buf up to where we want to change it. **/
 	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
-	memset(buf, 0, MIME_BUFSIZE+1);
-
 	for (inc = MIME_BUFSIZE < targetStartOffset - readOffset ? MIME_BUFSIZE : targetStartOffset - readOffset;
 		inc > 0;
 		inc = MIME_BUFSIZE < targetStartOffset - readOffset ? MIME_BUFSIZE : targetStartOffset - readOffset)
 	    {
-	    readOffset += objRead(inf->Obj->Prev, buf, inc, 0, 0);
-	    /** Write the pre-change part. **/
-	    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+	    rcnt = objRead(inf->Obj->Prev, buf, inc, 0, 0);
+	    if (rcnt < 0)
 		{
-		mssError(1, "MIME", "Could not write to the temp file.");
+		mssError(0, "MIME", "Could not read from original message");
 		goto error;
 		}
-	    /** Hijack the inc to form the maxcnt **/
-	    memset(buf, 0, MIME_BUFSIZE+1);
+	    readOffset += rcnt;
+
+	    /** Write the pre-change part. **/
+	    if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
+		{
+		mssError(0, "MIME", "Could not write to the temp file.");
+		goto error;
+		}
 	    }
 
 	/** Write the new value. (paramName will be NULL if we're writing an attribute) **/
@@ -1434,16 +1459,14 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Do all the generic post stuff. **/
 	objRead(inf->Obj->Prev, NULL, 0, targetEndOffset, FD_U_SEEK);
-	memset(buf, 0, MIME_BUFSIZE+1);
-	while (objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+	while ((rcnt = objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0)) > 0)
 	    {
 	    /** Write the post-change part. **/
-	    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+	    if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
 		{
 		mssError(1, "MIME", "Could not write to the temp file.");
 		goto error;
 		}
-	    memset(buf, 0, MIME_BUFSIZE+1);
 	    }
 
 	/** Save the file. **/
@@ -1466,8 +1489,8 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	nmSysFree(filename);
 
-    /** We're on the happy path! **/
-    return 0;
+	/** We're on the happy path! **/
+	return 0;
 
     error:
 	/** Deallocate the xstring **/
@@ -1488,7 +1511,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
     {
     pMimeInfo inf = MIME(inf_v);
 
-    char* filehash;
+    char filehash[8];
     XString filename;
     pFile fd = NULL;
 
@@ -1502,6 +1525,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
     long targetBufSize = 0;
     long targetOffset = 0;
     char buf[MIME_BUFSIZE+1];
+    int rcnt;
 
 	tempAttrName = nmSysStrdup(attrname);
 
@@ -1514,14 +1538,11 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	/** If this is an attribute. **/
 	if (!paramName || !strlen(paramName))
 	    {
-	    filehash = (char*)nmSysMalloc(8);
 	    memset(filehash, 0, 8);
 	    libmime_internal_MakeARandomFilename(filehash, 7);
 
 	    /** Construct the filename. **/
 	    xsConcatPrintf(&filename, "/tmp/%s%s.msg", attrName, filehash);
-
-	    nmSysFree(filehash);
 
 	    /** Find the offset at the end of the header. **/
 	    targetOffset = inf->Header->HdrSeekEnd;
@@ -1529,14 +1550,11 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	/** Otherwise, this is a parameter. **/
 	else
 	    {
-	    filehash = (char*)nmSysMalloc(8);
 	    memset(filehash, 0, 8);
 	    libmime_internal_MakeARandomFilename(filehash, 7);
 
 	    /** Construct the filename. **/
 	    xsConcatPrintf(&filename, "/tmp/%s%s.msg", paramName, filehash);
-
-	    nmSysFree(filehash);
 
 	    /** Get the attribute. **/
 	    attr = libmime_GetMimeAttr(inf->Header, attrName);
@@ -1570,16 +1588,21 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 
 	/** Copy up to the end of header offset into the temporary file. **/
 	objRead(inf->Obj->Prev, NULL, 0, 0, FD_U_SEEK);
-	memset(buf, 0, sizeof(char) * MIME_BUFSIZE+1);
 	for (targetBufSize = (targetOffset - offset < MIME_BUFSIZE ? targetOffset - offset : MIME_BUFSIZE);
 		targetBufSize > 0;
 		targetBufSize = (targetOffset - offset < MIME_BUFSIZE ? targetOffset - offset : MIME_BUFSIZE))
 	    {
 	    /** Read the contents of the file. **/
-	    offset += objRead(inf->Obj->Prev, buf, targetBufSize, 0, 0);
+	    rcnt = objRead(inf->Obj->Prev, buf, targetBufSize, 0, 0);
+	    if (rcnt < 0)
+		{
+		mssError(0, "MIME", "Could not read from original message");
+		goto error;
+		}
+	    offset += rcnt;
 
 	    /** Write the pre-change part. **/
-	    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+	    if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
 		{
 		mssError(1, "MIME", "Could not write to the temp file.");
 		goto error;
@@ -1588,7 +1611,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	    /** Add a semicolon to the end of the attribute if we are adding a parameter. **/
 	    if (paramName && strlen(paramName) && targetOffset - offset <= 0)
 		{
-		if (fdWrite(fd, ";", 1, 0, 0) < 0)
+		if (fdWrite(fd, ";", 1, 0, FD_U_PACKET) < 0)
 		    {
 		    mssError(1, "MIME", "Could not write to the temp file.");
 		    goto error;
@@ -1599,9 +1622,6 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 		inf->Header->MsgSeekStart += 1;
 		inf->Header->MsgSeekEnd += 1;
 		}
-
-	    /** Reset the temp buffer to 0. **/
-	    memset(buf, 0, MIME_BUFSIZE+1);
 	    }
 
 	/** Add the attribute to the file. **/
@@ -1610,7 +1630,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	/** Add the separation line between the header and the body. **/
 	if (!paramName || !strlen(paramName))
 	    {
-	    fdWrite(fd, "\n", sizeof(char) * 1, 0, 0);
+	    fdWrite(fd, "\n", sizeof(char) * 1, 0, FD_U_PACKET);
 
 	    /** Update the message offsets. **/
 	    inf->Header->HdrSeekEnd += 1;
@@ -1619,18 +1639,14 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	    }
 
 	/** Copy up to the end of the file. **/
-	memset(buf, 0, sizeof(char) * MIME_BUFSIZE+1);
-	while (objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0) > 0)
+	while ((rcnt = objRead(inf->Obj->Prev, buf, MIME_BUFSIZE, 0, 0)) > 0)
 	    {
 	    /** Write the post-change part. **/
-	    if (fdWrite(fd, buf, strlen(buf), 0, 0) < 0)
+	    if (fdWrite(fd, buf, rcnt, 0, FD_U_PACKET) < 0)
 		{
 		mssError(1, "MIME", "Could not write to the temp file.");
 		goto error;
 		}
-
-	    /** Reset the temp buffer to 0. **/
-	    memset(buf, 0, MIME_BUFSIZE+1);
 	    }
 
 	/** Save the file. **/
@@ -1650,6 +1666,7 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 
 	/** Deinitialize the filename string. **/
 	xsDeInit(&filename);
+	nmSysFree(tempAttrName);
 
     return 0;
 
@@ -1662,6 +1679,8 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 
 	/** Deinitialize the filename string. **/
 	xsDeInit(&filename);
+	if (tempAttrName)
+	    nmSysFree(tempAttrName);
 
 	return -1;
     }

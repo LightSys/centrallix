@@ -42,6 +42,8 @@
 
 #define MIME_BUFSIZE          63 /* TODO: Change to 64 and refactor accordingly. */
 
+#define MIME_HDRNAME_SIZE     64
+
 #define MIME_TYPE_TEXT        0
 #define MIME_TYPE_MULTIPART   1
 #define MIME_TYPE_APPLICATION 2
@@ -56,8 +58,8 @@
 #define MIME_ENC_QP           3
 #define MIME_ENC_BINARY       4
 
-#define MIME_BUF_SIZE         768   // These must be in a 3/4 ratio (or higher) of
-#define MIME_ENCBUF_SIZE      1024  // each other because of how b64 encoding works
+#define MIME_BUF_SIZE         (768+3)   // These must be in a 3/4 ratio (or higher) of
+#define MIME_ENCBUF_SIZE      (1024+1)  // each other because of how b64 encoding works
 
 /** Structure used to represent an email address **/
 typedef struct
@@ -114,13 +116,15 @@ typedef struct
     void*	Parent;
     int		(*ReadFn)();
     int		(*WriteFn)();
-    long	ExternalChunkSeek;
-    int		ExternalChunkSize;
-    long	InternalSeek;
-    long	InternalChunkSeek;
-    int		InternalChunkSize;
-    char	Buffer[MIME_BUF_SIZE];
-    char	EncBuffer[MIME_ENCBUF_SIZE+1];
+    long	EncodedSeek;
+    long	EncodedSeekBeforePurify;
+    long	EncodedChunkSeek;
+    int		EncodedChunkSize;
+    char	EncodedBuffer[MIME_ENCBUF_SIZE];
+    long	DecodedSeek;
+    long	DecodedChunkSeek;
+    int		DecodedChunkSize;
+    char	DecodedBuffer[MIME_BUF_SIZE];
     }
     MimeData, *pMimeData;
 
@@ -130,9 +134,9 @@ extern char* EncodingStrings[];
 
 /** mime_parse.c **/
 int libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end);
-int libmime_ParseHeaderElement(char *buf, char *element, int* attrSeekEnd, int* nameOffset);
+int libmime_ParseHeaderElement(char *buf, char *element, int maxsize, long* attrSeekEnd, long* nameOffset);
 int libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end);
-int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, int* attrSeekStart);
+int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long* attrSeekStart);
 int libmime_SetDate(pMimeHeader msg, char *buf);
 int libmime_SetTransferEncoding(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);

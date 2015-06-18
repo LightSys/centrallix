@@ -126,26 +126,26 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 
 	xaInit(&argv, 11);
 
-	    xaAddItem(&argv, "/usr/sbin/sendmail");
-	    xaAddItem(&argv, "-t");
-	    xaAddItem(&argv, "-N");
-	    xaAddItem(&argv, "delay, failure, success");
-	    xaAddItem(&argv, "-v");
-	    xaAddItem(&argv, "-bm");
-	    xaAddItem(&argv, "-i");
+	xaAddItem(&argv, "/usr/sbin/sendmail");
+	xaAddItem(&argv, "-t");
+	xaAddItem(&argv, "-N");
+	xaAddItem(&argv, "delay, failure, success");
+	xaAddItem(&argv, "-v");
+	xaAddItem(&argv, "-bm");
+	xaAddItem(&argv, "-i");
 
-	    if (envFrom && strcmp(envFrom->Value.String, ""))
-		{
-		xaAddItem(&argv, "-f");
-		xaAddItem(&argv, envFrom->Value.String);
-		}
+	if (envFrom && strcmp(envFrom->Value.String, ""))
+	    {
+	    xaAddItem(&argv, "-f");
+	    xaAddItem(&argv, envFrom->Value.String);
+	    }
 
-	    if (envTo && strcmp(envTo->Value.String, ""))
-		{
-		xaAddItem(&argv, envTo->Value.String);
-		}
+	if (envTo && strcmp(envTo->Value.String, ""))
+	    {
+	    xaAddItem(&argv, envTo->Value.String);
+	    }
 
-	    xaAddItem(&argv, NULL);
+	xaAddItem(&argv, NULL);
 
 	/** Fork. **/
 	pid = fork();
@@ -311,7 +311,7 @@ smtp_internal_InitGlobals()
 	    }
 
 	/** Initialize the "random" email id to a sufficently unique value. **/
-	SMTP_INF.EmailId = currentDate.Value % 10000;
+	cxssGenerateKey(&SMTP_INF.EmailId, 4);
 
     return 0;
     }
@@ -321,7 +321,8 @@ smtp_internal_InitGlobals()
 int
 smtp_internal_IsEmail(char* filename)
     {
-    return !strcmp(filename + strlen(filename) - 4, ".msg") || !strcmp(filename + strlen(filename) - 4, ".eml");
+    int l = strlen(filename);
+    return l >= 4 && (!strcmp(filename + l - 4, ".msg") || !strcmp(filename + l - 4, ".eml"));
     }
 
 /*** smtp_internal_GetStructAttributes - Loads the attributes from the node into
@@ -425,7 +426,6 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
     XString autoName;
 
     pSmtpAttribute currentHeader = NULL;
-    XString headerString;
 
     pStructInf emailStruct = NULL;
     pStructInf createdStruct = NULL;
@@ -441,7 +441,6 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 
 	xsInit(&autoName);
 	xsInit(&emailStructPath);
-	xsInit(&headerString);
 
 	/** Resolve autonaming. **/
 	if (inf->Obj->Mode & OBJ_O_AUTONAME &&
@@ -639,13 +638,11 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 
 	/** Fill in the non-static default headers. **/
 	// TODO: Add current date to the header... once we implement date support in the MIME driver
-	xsPrintf(&headerString, "Message-ID: %s\n", message_id);
 
 	/** Add the dynamic attributes to the file. **/
-	if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0) < 0)
+	if (fdPrintf(inf->Content, "Message-ID: %s\n", message_id) < 0)
 	    {
-		mssError(1, "SMTP", "Failed to write default header to new message (%s).",
-			headerString.String);
+		mssError(0, "SMTP", "Failed to write message id to new message");
 	    }
 
 	/** Iterate through all the default email headers. **/
@@ -653,13 +650,10 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	    {
 	    currentHeader = SMTP_ATTR(SMTP_INF.DefaultEmailHeaders.Items[i]);
 
-	    /** Build the header string for the file. **/
-	    xsPrintf(&headerString, "%s: %s\n", currentHeader->Name, currentHeader->Value.String);
-
 	    /** Add the attribute to the file. **/
-	    if (fdWrite(inf->Content, headerString.String, headerString.Length, 0, 0) < 0)
+	    if (fdPrintf(inf->Content, "%s: %s\n", currentHeader->Name, currentHeader->Value.String) < 0)
 		{
-		mssError(1, "SMTP", "Failed to write default header to new message (%s: %s).",
+		mssError(0, "SMTP", "Failed to write default header to new message (%s: %s).",
 			currentHeader->Name, currentHeader->Value.String);
 		goto error;
 		}
@@ -668,13 +662,12 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 	/** Add an empty line for header separation to the file. **/
 	if (fdWrite(inf->Content, "\n", 1, 0, 0) < 0)
 	    {
-	    mssError(1, "SMTP", "Failed to write default header separator to new message.");
+	    mssError(0, "SMTP", "Failed to write default header separator to new message.");
 	    goto error;
 	    }
 
 	xsDeInit(&autoName);
 	xsDeInit(&emailStructPath);
-	xsDeInit(&headerString);
 
 	/** Close the struct file. **/
 	fdClose(emailStructFile, 0);
@@ -684,7 +677,6 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
     error:
 	xsDeInit(&autoName);
 	xsDeInit(&emailStructPath);
-	xsDeInit(&headerString);
 
 	if (inf->Content) fdClose(inf->Content, 0);
 	if (emailStructFile) fdClose(emailStructFile, 0);
@@ -928,7 +920,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	if (!inf)
 	    {
 	    mssError(1, "SMTP", "Could not allocate SmtpData object.");
-	    return -1;
+	    goto error;
 	    }
 	memset(inf, 0, sizeof(SmtpData));
 	inf->Mask = mask;
@@ -942,12 +934,12 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    {
 	    inf->Obj->SubCnt = 1;
 
-	    if (smtp_internal_OpenGeneral(inf, usrtype))
+	    if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
 		{
 		goto error;
 		}
 
-	    if (smtp_internal_OpenRoot(inf))
+	    if (smtp_internal_OpenRoot(inf) < 0)
 		{
 		goto error;
 		}
@@ -958,12 +950,12 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    {
 	    inf->Obj->SubCnt = 2;
 
-	    if (smtp_internal_OpenGeneral(inf, usrtype))
+	    if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
 		{
 		goto error;
 		}
 
-	    if (smtp_internal_OpenEml(inf))
+	    if (smtp_internal_OpenEml(inf) < 0)
 		{
 		goto error;
 		}
@@ -1658,7 +1650,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 
 	    /** Set the given attribute value. **/
-	    if (stSetAttrValue(stLookup(emlStruct, attrname), datatype, val, 0))
+	    if (stSetAttrValue(stLookup(emlStruct, attrname), datatype, val, 0) < 0)
 		{
 		mssError(1, "SMTP", "Unable to write to the given attribute");
 		goto error;
@@ -1929,14 +1921,14 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		}
 
 	    /** Set the default attribute value. **/
-	    if (stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0))
+	    if (stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0) < 0)
 		{
 		mssError(1, "SMTP", "Unable to write to the given attribute");
 		goto error;
 		}
 
 	    /** Write changes to the email struct file. **/
-	    if (stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT))
+	    if (stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) < 0)
 		{
 		mssError(1, "SMTP", "Unable to write to the attribute to the email struct file.");
 		goto error;

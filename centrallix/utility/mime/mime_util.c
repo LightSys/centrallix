@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -99,8 +99,7 @@ libmime_StringLTrim(char *str)
 		 str[i] == '\n' ||
 		 str[i] == '\t' ||
 		 str[i] == ' '); i++);
-    memmove(str, str+i, strlen(str)-i);
-    str[strlen(str)-i] = '\0';
+    memmove(str, str+i, strlen(str)+1-i);
 
     return 0;
     }
@@ -231,23 +230,21 @@ libmime_StringUnquote(char *str)
 int
 libmime_B64Purify(char *string)
     {
-    char *wrk, *tmp;
-    static char allowset[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    char *wrk;
+    static char allowset[66] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     int rem=0;
+    int n;
 
     for (wrk = string; *wrk;)
 	{
-	if (strchr(allowset, *wrk) != NULL)
-	    wrk++;
+	n = strspn(wrk, allowset);
+	if (n)
+	    wrk += n;
 	else
 	    {
-	    char ch = *wrk;
-	    for (tmp = wrk; tmp;)
-		{
-		memmove(tmp, tmp+1, strlen(tmp+1)+1);
-		tmp = strchr(tmp, ch);
-		rem++;
-		}
+	    n = strcspn(wrk, allowset);
+	    memmove(wrk, wrk+n, strlen(wrk+n)+1);
+	    rem += n;
 	    }
 	}
     return rem;
@@ -343,6 +340,8 @@ libmime_xhLookup(pXHashTable this, char* key)
     char* buf;
 
 	buf = nmSysStrdup(key);
+	if (!buf)
+	    return NULL;
 
 	libmime_StringToLower(buf);
 
@@ -363,6 +362,8 @@ libmime_xhAdd(pXHashTable this, char* key, char* data)
     char* buf;
 
 	buf = nmSysStrdup(key);
+	if (!buf)
+	    return -1;
 
 	libmime_StringToLower(buf);
 
@@ -387,6 +388,7 @@ libmime_xhDeInit(pXHashTable this)
 	    }
 
 	xhDeInit(this);
+
     return 0;
     }
 
@@ -397,7 +399,7 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
     {
     pPathname path = NULL;
     char buf[MIME_BUFSIZE+1];
-    pObjSession session = NULL;
+    int rcnt, cnt, wcnt;
 
 	/** Allocate our local path. **/
 	path = (pPathname)nmMalloc(sizeof(Pathname));
@@ -411,12 +413,8 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
 	/** Copy the object's path into our local path. **/
 	obj_internal_CopyPath(path, obj->Pathname);
 
-	/** Get the session. **/
-	session = obj->Session;
-
 	/** Get the path. **/
-	path = obj_internal_PathPart(path, 0, obj->SubPtr);
-	if (!path)
+	if (!obj_internal_PathPart(path, 0, obj->SubPtr))
 	    {
 	    mssError(1, "MIME", "Could not copy pathname.");
 	    goto error;
@@ -424,12 +422,18 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
 
 	/** Copy the file. **/
 	memset(buf, 0, MIME_BUFSIZE + 1);
-	fdRead(fd, NULL, 0, truncSeek, FD_U_SEEK) > 0;
+	fdRead(fd, NULL, 0, truncSeek, FD_U_SEEK);
 	objWrite(obj->Prev, 0, 0, truncSeek, OBJ_U_SEEK | OBJ_U_TRUNCATE);
-	while (fdRead(fd, buf, MIME_BUFSIZE, 0, 0) > 0)
+	while ((rcnt = fdRead(fd, buf, MIME_BUFSIZE, 0, 0)) > 0)
 	    {
-	    objWrite(obj->Prev, buf, strlen(buf), 0, OBJ_U_TRUNCATE);
-	    memset(buf, 0, MIME_BUFSIZE + 1);
+	    wcnt = 0;
+	    while(wcnt < rcnt)
+		{
+		cnt = objWrite(obj->Prev, buf+wcnt, rcnt-wcnt, 0, OBJ_U_TRUNCATE);
+		if (cnt <= 0)
+		    goto error;
+		wcnt += cnt;
+		}
 	    }
 
 	/** Deallocate the pathname. **/
@@ -451,12 +455,25 @@ libmime_internal_MakeARandomFilename(char* name, int len)
     {
     int i;
     int nameLen = strlen(name);
+    unsigned char randomByte;
 
 	for (i = nameLen; i < nameLen + len; i++)
 	    {
-	    name[i] = 'a' + (random() % 26);
+	    cxssGenerateKey(&randomByte, 1);
+	    name[i] = 'a' + (randomByte % 26);
 	    }
 	name[i] = '\0';
 
     return 0;
     }
+
+
+/*** libmime_DumpMessage - print debugging output for the entire message
+ *** structure.
+ ***/
+int
+libmime_DumpMessage(pMimeHeader msg)
+    {
+    }
+
+

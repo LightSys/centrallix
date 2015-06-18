@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "obj.h"
 #include "mime.h"
 
@@ -73,6 +74,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     int flag, toktype, alloc, len;
     XString xsbuf;
     char *hdrnme, *hdrbdy;
+    char *ptr;
     long attrSeekStart = start, attrSeekEnd = start, nameOffset;
 
     /** Initialize the message structure **/
@@ -120,10 +122,14 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		return -1;
 		}
 
-	    hdrnme = (char*)nmMalloc(64);
+	    hdrnme = (char*)nmMalloc(MIME_HDRNAME_SIZE);
+	    if (!hdrnme)
+		return -1;
 	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
-	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String)+1);
-	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, &attrSeekStart, &nameOffset))
+	    if (!hdrbdy)
+		return -1;
+	    strcpy(hdrbdy, xsbuf.String);
+	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, MIME_HDRNAME_SIZE, &attrSeekStart, &nameOffset))
 		{
 		/** Parse the attribute and store it in the Mime header. **/
 		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd, nameOffset))
@@ -166,10 +172,11 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		}
 	    else
 		{
-		xsInit(&xsbuf);
-		xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
-		msg->MsgSeekEnd += strlen(xsbuf.String);
-		xsDeInit(&xsbuf);
+		alloc = 0;
+		ptr = mlxStringVal(lex, &alloc);
+		msg->MsgSeekEnd += strlen(ptr);
+		if (alloc)
+		    nmSysFree(ptr);
 		}
 	    }
 	}
@@ -187,7 +194,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
  ***/
 
 int
-libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, int* attrSeekEnd)
+libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long* attrSeekEnd)
     {
     int toktype, i;
     unsigned long offset;
@@ -284,7 +291,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	if ((cptr=strchr(ptr,'/')))
 	    {
 	    len = cptr - ptr;
-	    if (len>31) len=31;
+	    if (len>=sizeof(maintype)) len=sizeof(maintype)-1;
 	    strncpy(maintype, ptr, len);
 	    maintype[len] = 0;
 	    libmime_StringToLower(cptr+1);
@@ -292,8 +299,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	    }
 	else
 	    {
-	    strncpy(maintype, ptr, 31);
-	    maintype[31] = 0;
+	    strtcpy(maintype, ptr, sizeof(maintype));
 	    }
 
 	/** Determine the primary content type. **/
@@ -408,7 +414,7 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
  ***/
 
 int
-libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOffset)
+libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStart, long* nameOffset)
     {
     int count=0, state=0;
     char *ptr;
@@ -443,9 +449,9 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	/** STATE 2 (the colon has been spotted, left side is header, right is body **/
 	else if (state == 2)
 	    {
-	    memcpy(hdr, buf, (count-1>79?79:count-1));
-	    hdr[(count-1>79?79:count-1)] = 0;
-	    memmove(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));
+	    hdr[((count-1)>(hdrsize-1)?(hdrsize-1):(count-1))] = '\0';
+	    memmove(buf, buf+count+1, strlen(buf+count+1)+1);
 	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
@@ -465,9 +471,9 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int* attrSeekStart, int* nameOf
 	 **/
 	if (state == 2)
 	    {
-	    memcpy(hdr, buf, (count-1>79?79:count-1));
-	    hdr[(count-1>79?79:count-1)] = 0;
-	    memmove(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));
+	    hdr[((count-1)>(hdrsize-1)?(hdrsize-1):(count-1))] = '\0';
+	    memmove(buf, buf+count+1, strlen(buf+count+1)+1);
 	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
@@ -511,10 +517,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     count = msg->MsgSeekStart;
 
     libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type); /* Reusing variable :P */
-    snprintf(bound, 79, "--%s", sub_type);
-    snprintf(bound_end, 81, "--%s--", sub_type);
-    bound[79] = 0;
-    bound_end[81] = 0;
+    snprintf(bound, sizeof(bound), "--%s", sub_type);
+    snprintf(bound_end, sizeof(bound_end), "--%s--", sub_type);
 
     while (flag)
 	{
@@ -547,11 +551,11 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 			    !libmime_GetStringAttr(l_msg, "Content-Type", "ContentSubType", &sub_type) &&
 			    libmime_ContentExtension(ext, main_type, sub_type))
 			{
-			sprintf(buf, "attachment%d.%s", num, ext);
+			snprintf(buf, sizeof(buf), "attachment%d.%s", num, ext);
 			}
 		    else
 			{
-			sprintf(buf, "attachment%d", num);
+			snprintf(buf, sizeof(buf), "attachment%d", num);
 			}
 
 		    /** Set the Name attribute. **/
@@ -591,9 +595,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 int
 libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags)
     {
-    int size=0, bytes_left, len, rem=0, end;
-    int tlen, tsize, tremoved, trem_total, toffset, tleft;  /* these are used for getting a purified b64 chunk */
-    char *ptr, *bptr, *tptr;
+    int size=0;
+    int tlen, tsize, tremoved;  /* these are used for getting a purified b64 chunk */
     int transfer_encoding;
 
     libmime_GetIntAttr(msg, "Transfer-Encoding", NULL, &transfer_encoding);
@@ -612,108 +615,118 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		maxcnt = msg->MsgSeekEnd - (msg->MsgSeekStart + offset);
 	    size = mdat->ReadFn(mdat->Parent, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
 	    break;
+
 	/** BASE64 ENCODING **/
 	case MIME_ENC_BASE64:
-	    ptr = buffer;
-	    if (flags & FD_U_SEEK)
-		{
-		mdat->InternalSeek = offset;
-		}
-	    bytes_left = maxcnt;
+	    /**
+	     **  Seeking or not?  Make sure 'offset' always indicates where we want
+	     **  to start reading from.
+	     **/
+	    if (!(flags & FD_U_SEEK))
+		offset = mdat->DecodedSeek;
 
-	    end = 0;
-	    while (bytes_left > 0 && !end && mdat->ExternalChunkSeek <= msg->MsgSeekEnd)
+	    /**
+	     **  Is the offset within our existing buffered chunk?  If not, we need to
+	     **  re-fill the buffer, possibly scanning from the very beginning of the
+	     **  encoded content.
+	     **/
+	    if (offset < mdat->DecodedChunkSeek)
 		{
-		/**  Figure out what chunk we're inside  **/
-		mdat->InternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_BUF_SIZE;
-		mdat->ExternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_ENCBUF_SIZE+rem;
 		/**
-		 **  If the InternalSeek is not inside the chunk that is already buffered
-		 **  then we need to rebuffer.  We also need to rebuffer if there is nothing
-		 **  currently buffered.
+		 **  Reset back to the beginning, and scan forward from there.
 		 **/
-		if (!mdat->InternalChunkSize || (mdat->InternalSeek <= mdat->InternalChunkSeek || mdat->InternalSeek > (mdat->InternalChunkSeek + mdat->InternalChunkSize)))
-		    {
-		    /**
-		     **  Figure out the ExternalChunkSize (number of b64 characters to get).
-		     **  This checks if we're trying to read past the end or not.  Note that
-		     **  this number includes characters that are not in the b64 alphabet.
-		     **  The next code chunk goes through and purifies the stream, refilling
-		     **  the buffer as necessary.  This is just the initial chunk.
-		     **/
-		    mdat->ExternalChunkSize = MIME_ENCBUF_SIZE;
-		    if (msg->MsgSeekEnd < (msg->MsgSeekStart + mdat->ExternalChunkSeek + MIME_ENCBUF_SIZE))
-			mdat->ExternalChunkSize = msg->MsgSeekEnd - msg->MsgSeekStart - mdat->ExternalChunkSeek;
-
-		    /**
-		     **  Now we need to fetch a chunk of base64 encoded data.  The only
-		     **  problems is that we need to ignore anything that is not in the
-		     **  base64 alphabet.  Here, I'm looping through and filling up the
-		     **  buffer with base64 encoded data until the buffer is full or
-		     **  until I've reached the end of the stream, ignoring all characters
-		     **  that are not part of the base64 alphabet.
-		     **/
-		    tptr = mdat->EncBuffer;
-		    tlen = tsize = toffset = tremoved = trem_total = 0;
-		    tleft = mdat->ExternalChunkSize;
-		    while (tleft > 0)
-			{
-			if (msg->MsgSeekEnd < msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen + tleft)
-			    {
-			    toffset = msg->MsgSeekEnd - (msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen);
-			    tleft = 0;
-			    }
-			else
-			    {
-			    toffset = msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen;
-			    }
-			tsize = mdat->ReadFn(mdat->Parent, tptr, tleft, toffset, FD_U_SEEK);
-			tlen += tsize;
-			tremoved = libmime_B64Purify(mdat->EncBuffer); /* tremoved is the number of chars removed this iteration */
-			trem_total += tremoved; /* trem_total is the total number of chars removed for this chunk */
-			tptr += (tsize - tremoved);
-			tleft -= (tsize - tremoved);
-			}
-		    mdat->EncBuffer[tlen-trem_total] = 0;
-		    tsize = libmime_DecodeBase64(mdat->Buffer, mdat->EncBuffer, tlen-trem_total);
-		    rem += trem_total; /* rem is the total characters removed (non b64 chars) */
-		    }
-
-		/**  Now lets figure out the number of characters that we want out of
-		 **  this chunk.  It could be a few characters on the left side of the
-		 **  buffer, on the right side of the buffer, or the whole buffer.  We
-		 **  gotta check.
+		mdat->DecodedChunkSeek = 0;
+		mdat->DecodedChunkSize = 0;
+		mdat->EncodedChunkSeek = 0;
+		mdat->EncodedChunkSize = 0;
+		mdat->EncodedSeek = 0;
+		mdat->EncodedSeekBeforePurify = 0;
+		}
+	    while (offset >= mdat->DecodedChunkSeek + mdat->DecodedChunkSize)
+		{
+		/**
+		 **  Scan forward from our current location to find the data that
+		 **  we want.  This handles both situations where we're re-scanning
+		 **  from beginning of file, and where the data we want is later
+		 **  than where we currently are.
+		 **
+		 **  Any data left in the encoded buffer to be decoded?  If so, scoot
+		 **  it over; otherwise, clear the encoded buffer so it can be filled.
 		 **/
-		bptr = mdat->Buffer + (mdat->InternalSeek - mdat->InternalChunkSeek);
-		len = MIME_BUF_SIZE - (bptr - mdat->Buffer);
-		if (len > bytes_left) len = bytes_left;
-		if (len >= MIME_BUF_SIZE || len >= maxcnt)
+		if (mdat->EncodedSeek < mdat->EncodedChunkSeek + mdat->EncodedChunkSize)
 		    {
-		    if ((tsize-(bptr-mdat->Buffer)) < MIME_BUF_SIZE)
-			{
-			mdat->InternalChunkSize = (tsize-(bptr-mdat->Buffer));
-			end = 1;
-			}
-		    else
-			{
-			mdat->InternalChunkSize = MIME_BUF_SIZE;
-			}
+		    memmove(mdat->EncodedBuffer, mdat->EncodedBuffer + (mdat->EncodedSeek - mdat->EncodedChunkSeek), mdat->EncodedChunkSize - (mdat->EncodedSeek - mdat->EncodedChunkSeek));
+		    mdat->EncodedChunkSize -= (mdat->EncodedSeek - mdat->EncodedChunkSeek);
+		    mdat->EncodedChunkSeek = mdat->EncodedSeek;
 		    }
 		else
 		    {
-		    mdat->InternalChunkSize = len;
+		    mdat->EncodedChunkSeek = mdat->EncodedSeek;
+		    mdat->EncodedChunkSize = 0;
 		    }
 
-		/**  Now copy the chunk of bytes into the buffer  **/
-		memcpy(ptr, bptr, mdat->InternalChunkSize);
-		/**  Update counters and pointers **/
-		ptr += mdat->InternalChunkSize;
-		bytes_left -= mdat->InternalChunkSize;
-		mdat->InternalSeek += mdat->InternalChunkSize;
-		size += mdat->InternalChunkSize;
+		/** Attempt to fill the encoded buffer **/
+		while (mdat->EncodedChunkSize < sizeof(mdat->EncodedBuffer) - 1)
+		    {
+		    tlen = sizeof(mdat->EncodedBuffer) - 1 - mdat->EncodedChunkSize;
+		    if (tlen > (msg->MsgSeekEnd - msg->MsgSeekStart) - mdat->EncodedSeekBeforePurify)
+			tlen = (msg->MsgSeekEnd - msg->MsgSeekStart) - mdat->EncodedSeekBeforePurify;
+		    if (tlen <= 0)
+			break;
+		    tsize = mdat->ReadFn(mdat->Parent,
+				    mdat->EncodedBuffer + mdat->EncodedChunkSize,
+				    tlen,
+				    msg->MsgSeekStart,
+				    (mdat->EncodedChunkSeek + mdat->EncodedChunkSize == 0)?FD_U_SEEK:0);
+		    if (tsize < 0)
+			return -1;
+		    if (tsize == 0)
+			break;
+		    mdat->EncodedSeekBeforePurify += tsize;
+
+		    /**
+		     **  Remove characters not in the B64 alphabet.  Technically, we should
+		     **  probably only do this for whitespace, and then flag other chars as
+		     **  an error condition.  But this works and may be more robust.
+		     **/
+		    tremoved = libmime_B64Purify(mdat->EncodedBuffer);
+		    mdat->EncodedChunkSize += (tsize - tremoved);
+		    }
+		mdat->EncodedBuffer[mdat->EncodedChunkSize] = '\0';
+
+		/** Not enough data in encoded buffer for any decoding? **/
+		if (mdat->EncodedChunkSize == 0)
+		    return 0;
+		if (mdat->EncodedChunkSize < 4)
+		    {
+		    mssError(1, "MIME", "Malformed end of Base64-encoded MIME data");
+		    return -1;
+		    }
+
+		/** Decode what we are able to decode **/
+		mdat->DecodedChunkSeek += mdat->DecodedChunkSize;
+		tsize = libmime_DecodeBase64(mdat->DecodedBuffer, mdat->EncodedBuffer, sizeof(mdat->DecodedBuffer));
+		if (tsize < 0)
+		    {
+		    mdat->DecodedChunkSize = 0;
+		    return -1;
+		    }
+		mdat->DecodedChunkSize = tsize;
+		mdat->EncodedSeek += ((tsize+2)/3)*4;
 		}
+
+	    /**
+	     **  Okay, we have a buffer with relevant data.  Return the data to the
+	     **  user and update our offset accordingly.
+	     **/
+	    size = mdat->DecodedChunkSeek + mdat->DecodedChunkSize - offset;
+	    if (size > maxcnt)
+		size = maxcnt;
+	    memcpy(buffer, mdat->DecodedBuffer + (offset - mdat->DecodedChunkSeek), size);
+	    mdat->DecodedSeek = offset + size;
 	    break;
 	}
 
     return size;
     }
+
