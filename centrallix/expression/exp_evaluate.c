@@ -192,7 +192,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     MoneyType m;
     int i;
     int is_negative = 0;
-    long long mv;
+    long long mv, mv2;
     double md;
 
 	/** Verify item cnt **/
@@ -335,9 +335,23 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			tree->Types.Money.FractionPart = mv;
 			break;
 		    case DATA_T_MONEY:
-		        tree->DataType = DATA_T_MONEY;
-			mssError(1,"EXP","Unimplemented money <divide> x operation");
-			return -1;
+			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+			mv2 = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			if (mv2 == 0)
+			    {
+			    mssError(1,"EXP","Attempted divide by zero");
+			    return -1;
+			    }
+			if ((mv % mv2) == 0 && (mv / mv2) <= 0x7FFFFFFFLL && (mv / mv2) >= -0x80000000LL)
+			    {
+			    tree->DataType = DATA_T_INTEGER;
+			    tree->Integer = mv / mv2;
+			    }
+			else
+			    {
+			    tree->DataType = DATA_T_DOUBLE;
+			    tree->Types.Double = (double)mv / (double)mv2;
+			    }
 		        break;
 		    }
 	        break;
