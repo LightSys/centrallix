@@ -1110,6 +1110,10 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	}
     payload->mime_type[i] = '\0';
 
+    /** some user agents use "binary/octet-stream" for some obtuse reason **/
+    if (!strcasecmp(payload->mime_type, "binary/octet-stream"))
+	strtcpy(payload->mime_type, "application/octet-stream", sizeof(payload->mime_type));
+
     /** Verify the mime type is valid -- check is that the type is or is
      ** a subtype of application/octet-stream (this basically makes sure we know
      ** about the file type).
