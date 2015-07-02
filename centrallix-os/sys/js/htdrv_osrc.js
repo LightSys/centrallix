@@ -1058,7 +1058,7 @@ function osrc_action_modify(aparam) //up,formobj)
 	}
 
     // initiated by a connector?  use current record and convert the data
-    if (aparam && !aparam.data || !aparam.data.oid)
+    if (aparam && (!aparam.data || !aparam.data.oid))
 	{
 	this.formobj = null;
 	this.modifieddata = [];
@@ -2402,6 +2402,7 @@ function osrc_action_sync(param)
     query.oid=null;
     query.joinstring='AND';
     var p=this.parentosrc.CurrentRecord;
+    var force_empty = false;
     for(var i=1;i<10;i++)
 	{
 	//this.ParentKey[i]=eval('param.ParentKey'+i);
@@ -2420,7 +2421,7 @@ function osrc_action_sync(param)
 		if (on_norecs == 'nullisvalue')
 		    t.nullisvalue = true;
 		else if (on_norecs == 'norecs')
-		    t.force_empty = true;
+		    force_empty = t.force_empty = true;
 		else
 		    t.nullisvalue = false;
 		query.push(t);
@@ -2441,7 +2442,7 @@ function osrc_action_sync(param)
 			    if (on_null == 'nullisvalue')
 				t.nullisvalue = true;
 			    else if (on_null == 'norecs')
-				t.force_empty = true;
+				force_empty = t.force_empty = true;
 			    else
 				t.nullisvalue = false;
 			    }
@@ -2451,6 +2452,29 @@ function osrc_action_sync(param)
 		}
 	    }
 	}
+
+    // Forcing empty (no records in master, or NULL key linkage)?
+    if (force_empty && !this.was_forced_empty)
+	{
+	for(var c in this.child)
+	    {
+	    if (wgtrGetType(this.child[c]) == 'widget/form')
+		{
+		this.child[c].ifcProbe(ifAction).Invoke('Disable');
+		}
+	    }
+	}
+    else if (!force_empty && this.was_forced_empty)
+	{
+	for(var c in this.child)
+	    {
+	    if (wgtrGetType(this.child[c]) == 'widget/form')
+		{
+		this.child[c].ifcProbe(ifAction).Invoke('Enable');
+		}
+	    }
+	}
+    this.was_forced_empty = force_empty;
 
     // Did it change from last time?
     if (!this.lastSync)

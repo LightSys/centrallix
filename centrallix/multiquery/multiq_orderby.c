@@ -320,7 +320,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
     pMQOData context;
     pMqobOrderable item;
     pParamObjects objlist;
-    int n;
+    int n,i;
     int rval = -1;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
@@ -376,7 +376,8 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	/** Copy in the next item **/
 	item = context->Objects.Items[context->IterCnt];
 	objlist = item->ObjList;
-	expCopyList(objlist, stmt->Query->ObjList, -1);
+	for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
+	    stmt->Query->ObjList->Objects[i] = objlist->Objects[i];
 	expFreeParamList(objlist);
 	item->ObjList = NULL;
 	rval = 1;

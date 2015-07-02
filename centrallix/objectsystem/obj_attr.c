@@ -401,6 +401,13 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	        val->String = this->Type->Name;
 		}
 	    }
+
+	/** Ensure annotation is valid **/
+	if (rval != 0 && !strcmp(attrname, "annotation"))
+	    {
+	    rval = 0;
+	    val->String = "";
+	    }
  
     return rval;
     }

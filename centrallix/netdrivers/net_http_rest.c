@@ -703,7 +703,8 @@ nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    if (nht_internal_RestSetOneAttr(target_obj, attrname, j_attr_obj) < 0)
 		return -1;
 	    }
-	objCommit(conn->NhtSession->ObjSess);
+	//objCommit(conn->NhtSession->ObjSess);
+	objCommitObject(target_obj);
 
 	/** Get the new name **/
 	if (objGetAttrValue(target_obj, "name", DATA_T_STRING, POD(&ptr)) != 0 || strchr(ptr, '?') || !strcmp(ptr,"*"))

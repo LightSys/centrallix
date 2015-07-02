@@ -748,7 +748,7 @@ function form_select_element(current, save_if_last, reverse)
     for(var i = 1; i <= this.elements.length; i++)
 	{
 	ctrlnum = (origctrl + this.elements.length + incr*i) % this.elements.length;
-	if (!reverse && ctrlnum == 0 && this.nextform && current)
+	if (!reverse && ctrlnum == 0 && this.nextform && current && this.nextform.is_enabled)
 	    {
 	    if (pg_removekbdfocus())
 		{
@@ -974,6 +974,28 @@ function form_send_event(event, eparam)
     delete evobj;
     }
 
+// Disables the entire form.
+function form_action_disable(ap)
+    {
+    if (!ap || !ap.Enabled || ap.Enabled == 'no')
+	this.DisableAll();
+    else if (this.mode == 'View' || this.mode == 'NoData' || this.mode == 'Modify')
+	this.EnableModifyAll();
+    else if (this.mode == 'New' || this.mode == 'Query')
+	this.EnableNewAll();
+    }
+
+// Re-enables the entire form.
+function form_action_enable(ap)
+    {
+    if (ap && (ap.Enabled === 0 || ap.Enabled == 'no'))
+	this.DisableAll();
+    else if (this.mode == 'View' || this.mode == 'NoData' || this.mode == 'Modify')
+	this.EnableModifyAll();
+    else if (this.mode == 'New' || this.mode == 'Query')
+	this.EnableNewAll();
+    }
+
 /** Clears all children, also resets IsChanged/IsUnsaved flag to false **/
 function form_clear_all(internal_only)
     {
@@ -993,6 +1015,7 @@ function form_clear_all(internal_only)
 /** Disables all children **/
 function form_disable_all()
     {
+    this.is_enabled = false;
     for(var i in this.elements)
 	{
 	if (this.elements[i] == pg_curkbdlayer) pg_removekbdfocus();
@@ -1003,6 +1026,7 @@ function form_disable_all()
 /** Enables all children (for modify) **/
 function form_enable_modify_all()
     {
+    this.is_enabled = true;
     for(var i in this.elements)
 	{
 	if(this.elements[i].enablemodify)
@@ -1015,6 +1039,7 @@ function form_enable_modify_all()
 /** Enables all children (for modify) **/
 function form_enable_new_all()
     {
+    this.is_enabled = true;
     for(var i in this.elements)
 	{
 	if(this.elements[i].enablenew)
@@ -1506,6 +1531,7 @@ function form_init(form,param)
     form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
+    form.is_enabled = true;
     form.recid = 1;
     form.lastrecid = null;
     form.data = null;
@@ -1571,6 +1597,8 @@ function form_init(form,param)
     ia.Add("Save", form_action_save);
     ia.Add("Submit", form_action_submit);
     ia.Add("SetValue", form_action_setvalue);
+    ia.Add("Disable", form_action_disable);
+    ia.Add("Enable", form_action_enable);
 
     // Events
     var ie = form.ifcProbeAdd(ifEvent);
@@ -1605,6 +1633,7 @@ function form_init(form,param)
     iv.Add("is_queryable","is_queryable");
     iv.Add("is_queryexecutable","is_queryexecutable");
     iv.Add("is_multienter","is_multienter");
+    iv.Add("is_enabled","is_enabled");
     iv.Add("confirm_delete","confirm_delete");
     iv.Add("recid","recid");
     iv.Add("lastrecid","lastrecid");

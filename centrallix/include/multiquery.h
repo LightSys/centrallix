@@ -221,6 +221,7 @@ struct _MQ /* MultiQuery */
 #define MQ_F_MULTISTATEMENT	2		/* allow multiple statements separated by semicolons */
 #define MQ_F_ONESTATEMENT	4		/* disable use of multiple statements (such as in subquery) */
 #define MQ_F_NOUPDATE		8		/* disallow changes to any data with this query. */
+#define MQ_F_NOINSERTED		16		/* did not create __inserted object. **/
 
 
 /*** Pseudo-object structure. ***/

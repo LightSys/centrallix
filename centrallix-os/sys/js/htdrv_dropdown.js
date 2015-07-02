@@ -330,7 +330,7 @@ function dd_keyhandler(l,e,k)
 		}
 	}
     dd_lastkey = k;
-    return false;
+    return true;
     }
 
 function dd_notmember(val,list)

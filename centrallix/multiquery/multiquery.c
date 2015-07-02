@@ -2683,9 +2683,16 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    expCopyList(objlist, this->ObjList, -1);
 	    /*expLinkParams(this->ObjList, 0, -1);*/
 	    this->nProvidedObjects = this->ObjList->nObjects;
-	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 	    }
 	this->ObjList->Session = this->SessionID;
+
+	/** Add the __inserted object **/
+	if (expLookupParam(this->ObjList, "__inserted") < 0 && expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
+	    this->nProvidedObjects++;
+	else
+	    this->Flags |= MQ_F_NOINSERTED;
+
+	this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 
 	/** Parse one SQL statement **/
 	if (mq_internal_NextStatement(this) != 1)
@@ -3194,7 +3201,7 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     {
-    int i;
+    int i, id;
     pQueryDeclaredObject qdo;
 
     	/** Check the link cnt **/
@@ -3203,6 +3210,16 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	/** Release resources used by the one SQL statement **/
 	if (qy->CurStmt)
 	    mq_internal_CloseStatement(qy->CurStmt);
+
+	/** Close an __inserted object **/
+	if (qy->ObjList && !(qy->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(qy->ObjList, "__inserted")) >= 0)
+	    {
+	    if (qy->ObjList->Objects[id])
+		{
+		objClose(qy->ObjList->Objects[id]);
+		qy->ObjList->Objects[id] = NULL;
+		}
+	    }
 
 	/** Release the object list for the main query **/
 	if (qy->ObjList)
@@ -3745,13 +3762,18 @@ int
 mqCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    /*int i;*/
+    int i;
 
     	/** Check to see whether we're on current object. **/
 	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Commit each underlying object **/
-	objCommit(p->Stmt->Query->SessionID);
+	//objCommit(p->Stmt->Query->SessionID);
+	for(i=p->Stmt->Query->nProvidedObjects; i<p->ObjList->nObjects; i++)
+	    {
+	    if (p->ObjList->Objects[i])
+		objCommitObject(p->ObjList->Objects[i]);
+	    }
 
     return 0;
     }
