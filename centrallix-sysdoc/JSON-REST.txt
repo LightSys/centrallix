@@ -220,9 +220,16 @@ REST INTERFACE URI PARAMETERS...
 
 	    cx__res_type=collection
 	    cx__res_type=element	(default)
+	    cx__res_type=both
 
 	("res" in the URI parameter above stands for "Resource", not for
 	"REST".)
+
+	When requesting "both" collection and element data from a URI, the
+	response will contain two JSON objects at the top level, named
+	cx__element and cx__collection.  Within each of those objects will
+	be the element and collection data, respectively, had the resource
+	type not been set to "both".
 
     C.	Content vs. Attributes
 
@@ -268,6 +275,14 @@ REST INTERFACE URI PARAMETERS...
 	them.
 
 	If attributes are not being returned, then cx__res_attrs is ignored.
+
+    E.	Recursively retrieving data
+
+	Sometimes it is useful to obtain a multi-level JSON document in order
+	to reduce the number of requests placed with the server.  Using the
+	"cx__res_levels" attribute, you can request multiple levels of data.
+	This can only be done when cx__res_type is set to either "collection"
+	or "both".  The number of levels defaults to 1.
 
 
 AUTHENTICATION...

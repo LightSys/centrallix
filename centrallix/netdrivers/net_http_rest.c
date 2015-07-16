@@ -32,10 +32,14 @@
 
 
 /*** Some enums to control how we're responding to the request ***/
-typedef enum { ResTypeCollection, ResTypeElement } nhtResType_t;
+typedef enum { ResTypeCollection, ResTypeElement, ResTypeBoth } nhtResType_t;
 typedef enum { ResFormatAttrs, ResFormatAuto, ResFormatContent, ResFormatBoth } nhtResFormat_t;
 typedef enum { ResAttrsBasic, ResAttrsFull, ResAttrsNone } nhtResAttrs_t;
 
+int nht_internal_RestGetElementContent(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
+int nht_internal_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
+int nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels);
+int nht_internal_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type);
 
 
 /*** nht_internal_RestGetElementContent() - get a REST element's content.
@@ -265,7 +269,7 @@ nht_internal_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_forma
  *** the attributes for each one.
  ***/
 int
-nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs)
+nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels)
     {
     pObjQuery query;
     pObject subobj;
@@ -304,7 +308,17 @@ nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_fo
 		     **/
 		    if (objGetAttrValue(subobj, "inner_type", DATA_T_STRING, POD(&objtype)) != 0)
 			objtype = "system/void";
-		    nht_internal_RestGetElement(conn, subobj, res_format, res_attrs, objtype);
+		    if (levels <= 1)
+			{
+			nht_internal_RestGetElement(conn, subobj, res_format, res_attrs, objtype);
+			}
+		    else
+			{
+			if (res_type == ResTypeBoth)
+			    nht_internal_RestGetBoth(conn, subobj, res_format, res_attrs, levels-1, objtype);
+			else
+			    nht_internal_RestGetCollection(conn, subobj, ResTypeCollection, res_format, res_attrs, levels-1);
+			}
 		    objClose(subobj);
 		    }
 		}
@@ -312,6 +326,44 @@ nht_internal_RestGetCollection(pNhtConn conn, pObject obj, nhtResFormat_t res_fo
 	    }
 
 	/** And close it with } **/
+	fdPrintf(conn->ConnFD, "}\r\n");
+
+    return 0;
+    }
+
+
+
+/*** nht_internal_RestGetBoth() - get both an element and a collection, combined
+ *** into a two-part JSON document.
+ ***/
+int
+nht_internal_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type)
+    {
+    char* path;
+    char pathbuf[OBJSYS_MAX_PATH];
+
+	/** We open our list with just a { **/
+	fdPrintf(conn->ConnFD, "{\r\n");
+
+	/** First thing we need to output is the URI of the collection/element **/
+	path = objGetPathname(obj);
+	strtcpy(pathbuf, path, sizeof(pathbuf));
+	fdQPrintf(conn->ConnFD, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_type=both&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=%STR&JSONSTR%]\"\r\n",
+		pathbuf,
+		(res_format == ResFormatAttrs)?"attrs":"both",
+		(res_attrs != ResAttrsNone),
+		(res_attrs == ResAttrsFull)?"full":"basic"
+		);
+
+	/** Output the element **/
+	fdPrintf(conn->ConnFD, ",\"cx__element\":");
+	nht_internal_RestGetElement(conn, obj, res_format, res_attrs, mime_type);
+
+	/** Output the collection **/
+	fdPrintf(conn->ConnFD, ",\"cx__collection\":");
+	nht_internal_RestGetCollection(conn, obj, ResTypeBoth, res_format, res_attrs, res_levels);
+
+	/** Close the JSON container **/
 	fdPrintf(conn->ConnFD, "}\r\n");
 
     return 0;
@@ -333,6 +385,7 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
     nhtResAttrs_t res_attrs;
     pObjectInfo info;
     int can_have_content = 1;
+    int res_levels = 1;
 
 	/** Get the MIME type of the object **/
 	if (objGetAttrValue(obj, "inner_type", DATA_T_STRING, POD(&ptr)) == 0)
@@ -356,6 +409,8 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 		res_type = ResTypeCollection;
 	    else if (!strcmp(ptr, "element"))
 		res_type = ResTypeElement;
+	    else if (!strcmp(ptr, "both"))
+		res_type = ResTypeBoth;
 	    }
 	if (res_type == ResTypeCollection)
 	    {
@@ -363,10 +418,16 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	    res_format = ResFormatAttrs;
 	    res_attrs = ResAttrsNone;
 	    }
-	else
+	else if (res_type == ResTypeElement)
 	    {
 	    /** Default settings for Elements **/
 	    res_format = ResFormatContent;
+	    res_attrs = ResAttrsBasic;
+	    }
+	else
+	    {
+	    /** Default for "both" resource type **/
+	    res_format = ResFormatAttrs;
 	    res_attrs = ResAttrsBasic;
 	    }
 
@@ -394,12 +455,19 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 		res_attrs = ResAttrsNone;
 	    }
 
+	/** Number of levels for collection|both resources **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx__res_levels"), &ptr) == 0)
+	    {
+	    res_levels = strtol(ptr, NULL, 10);
+	    if (res_levels <= 0) res_levels = 1;
+	    }
+
 	/** Sanity check -- collection and content are incompatible **/
-	if (res_type == ResTypeCollection && res_format == ResFormatContent)
+	if ((res_type == ResTypeCollection || res_type == ResTypeBoth) && res_format == ResFormatContent)
 	    res_format = ResFormatAttrs;
 
 	/** If collection and 'auto' are both set, use 'attrs' instead **/
-	if (res_type == ResTypeCollection && res_format == ResFormatAuto)
+	if ((res_type == ResTypeCollection || res_type == ResTypeBoth) && res_format == ResFormatAuto)
 	    res_format = ResFormatAttrs;
 
 	/** If we're in 'auto' mode, choose the right option based on the
@@ -428,7 +496,11 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	fdPrintf(conn->ConnFD, "\r\n");
 
 	/** Ok, generate the document **/
-	if (res_type == ResTypeElement)
+	if (res_type == ResTypeBoth)
+	    {
+	    rval = nht_internal_RestGetBoth(conn, obj, res_format, res_attrs, res_levels, mime_type);
+	    }
+	else if (res_type == ResTypeElement)
 	    {
 	    if (res_format == ResFormatContent)
 		rval = nht_internal_RestGetElementContent(conn, obj, res_format, res_attrs, mime_type);
@@ -437,7 +509,7 @@ nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	    }
 	else
 	    {
-	    rval = nht_internal_RestGetCollection(conn, obj, res_format, res_attrs);
+	    rval = nht_internal_RestGetCollection(conn, obj, ResTypeCollection, res_format, res_attrs, res_levels);
 	    }
 
     return rval;
