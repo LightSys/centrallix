@@ -1531,7 +1531,7 @@ function tbld_init(param)
 	    t.cols[i].width = 64;
 	total_w += t.cols[i].width;
 	}
-    var adj = param.width / total_w;
+    var adj = (param.width - t.cols.length*t.innerpadding*2) / total_w;
     for (var i in t.cols)
 	{
 	t.cols[i].width *= adj;
