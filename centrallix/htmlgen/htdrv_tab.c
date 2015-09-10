@@ -229,9 +229,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	/*if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-	    htrAddStylesheetItem_va(s,"\t#tc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x+xoffset,y+yoffset,w,z+1);
-	else if (s->Capabilities.Dom2CSS)*/
 	htrAddStylesheetItem_va(s,"\t#tc%POSbase { background-position: 0px -24px; %STR }\n", id, main_bg);
 
 	/** DOM Linkages **/
@@ -274,130 +271,39 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
 		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
 
-		/** Add stylesheet headers for the layers (tab and tabpage) **/
-		/*if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    {
-		    htrAddStylesheetItem_va(s,"\t#tc%POStab%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; Z-INDEX:%POS; }\n",
-			    id,i+1,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
-		    }*/
+		htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; %[width:%POSpx; %]overflow:hidden; z-index:%POS; cursor:default; border-radius:%POSpx %POSpx %POSpx %POSpx; border-style:%STR&CSSVAL; border-width: %POSpx %POSpx %POSpx %POSpx; border-color: %STR&CSSVAL; box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; text-align:%STR&CSSVAL; color:%STR&CSSVAL; font-weight:bold; %STR }\n",
+			id, i+1,
+			x+xtoffset, y+ytoffset,
+			tab_width>0, tab_width,
+			is_selected?(z+2):z,
+			(tloc==Bottom || tloc==Right)?0:border_radius, (tloc==Bottom || tloc==Left)?0:border_radius, (tloc==Top || tloc==Left)?0:border_radius, (tloc==Top || tloc==Right)?0:border_radius,
+			//(tloc==Top || tloc==Left)?0:border_radius, (tloc==Right)?0:border_radius, border_radius, (tloc==Bottom)?0:border_radius,
+			border_style,
+			(tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0,
+			border_color,
+			sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color,
+			(tloc != Right)?"left":"right",
+			tab_txt, bg
+			);
 
-		/** Generate the tabs along the edge of the control **/
-		/*if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    {
-		    htrAddBodyItem_va(s,"<DIV ID=\"tc%POStab%POS\" %STR>\n",id,i+1,bg);
-		    if (tab_width == 0)
-			htrAddBodyItem(s,   "    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
-		    else
-			htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%POS>\n", tab_width);
-		    if (tloc != Bottom)
-			htrAddBodyItem_va(s,"        <TR><TD colspan=%POS background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
-		    htrAddBodyItem(s,   "        <TR>");
-		    if (tloc != Right)
-			{
-			htrAddBodyItem(s,"<TD width=6><IMG SRC=/sys/images/white_1x1.png height=24 width=1>");
-			if (is_selected)
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24></TD>\n");
-			else
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24></TD>\n");
-			}
-		    htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%STR&HTE><b>&nbsp;%STR&HTE&nbsp;</b></FONT></TD>\n", tab_txt, tabname);
-		    if (tloc != Left && tloc != Right)
-			htrAddBodyItem(s,"           <TD align=right>");
-		    if (tloc == Right)
-			{
-			htrAddBodyItem(s,"           <TD align=right width=6>");
-			if ((!*sel && i == 0) || !strcmp(sel,ptr))
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
-			else
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
-			}
-		    if (tloc != Left)
-			htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
-		    htrAddBodyItem(s,"</TR>\n");
-		    if (tloc != Top)
-			htrAddBodyItem_va(s,"        <TR><TD colspan=%POS background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
-		    htrAddBodyItem(s,"    </TABLE>\n");
-		    htrAddBodyItem(s, "</DIV>\n");
-		    }
-		else if (s->Capabilities.Dom2CSS)
-		    {*/
-		    htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; %[width:%POSpx; %]overflow:hidden; z-index:%POS; cursor:default; border-radius:%POSpx; border-style:%STR&CSSVAL; border-width: %POSpx %POSpx %POSpx %POSpx; border-color: %STR&CSSVAL; box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; text-align:%STR&CSSVAL; color:%STR&CSSVAL; font-weight:bold; %STR }\n",
-			    id, i+1,
-			    x+xtoffset, y+ytoffset,
-			    tab_width>0, tab_width,
-			    is_selected?(z+2):z,
-			    border_radius, border_style,
-			    (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0,
-			    border_color,
-			    sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color,
-			    (tloc != Right)?"left":"right",
-			    tab_txt, bg
-			    );
-		    /*if (tab_width <= 0)
-			htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; overflow:hidden; z-index:%POS; \">\n", id, i+1, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
-		    else*/
-		    /*htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; %[width:%POSpx; %]overflow:hidden; z-index:%POS; \">\n",
-			    id, i+1, x+xtoffset, y+ytoffset,
-				tab_width > 0, tab_width,
-				is_selected?(z+2):z);*/
-		    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\"><p style=\"white-space:nowrap; margin:0px; padding:0px;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]<img src=\"/sys/images/tab_lft%POS.gif\" style=\"width:5px; height:24px; vertical-align:middle;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]</p></div>\n",
-			    id, i+1,
-			    tloc == Right, tabname,
-			    /*(tloc != Right)?"left":"right",*/ is_selected?2:3,
-			    tloc != Right, tabname
-			    );
-		    /*if (tloc != Right)
-			{
-			if (tab_width <= 0)
-			    htrAddBodyItem_va(s, "    <table style=\"border-radius:%POS; border-style:%STR&CSSVAL; border-width: %POSpx %POSpx %POSpx %POSpx; border-color: %STR&CSSVAL; box-shadow:%DBL %DBL %POS %STR&CSSVAL;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%POS.gif width=5 height=24></td><td align=center><b>&nbsp;%STR&HTE&nbsp;</b></td></tr></table>\n",
-				border_radius, border_style,
-				(tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0,
-				border_color,
-				sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color
-				is_selected?2:3, tabname);
-			else
-			    htrAddBodyItem_va(s, "    <table width=%POS style=\"border-style:solid; border-width: %POSpx %POSpx %POSpx %POSpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%POS.gif width=5 height=24></td><td align=center><b>&nbsp;%STR&HTE&nbsp;</b></td></tr></table>\n",
-				tab_width, (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
-			}
-		    else
-			{
-			htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: 1px 1px 1px 0px; border-color: white gray gray white;\" width=%POS border=0 cellspacing=0 cellpadding=0><tr><td valign=middle align=center><b>&nbsp;%STR&HTE&nbsp;</b></td><td><img src=/sys/images/tab_lft%POS.gif align=right width=5 height=24></td></tr></table>\n",
-				tab_width, tabname, is_selected?2:3);
-			}
-		    htrAddBodyItem(s, "</div>\n");*/
-		    /*}*/
+		htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\"><p style=\"white-space:nowrap; margin:0px; padding:0px;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]<img src=\"/sys/images/tab_lft%POS.gif\" style=\"width:5px; height:24px; vertical-align:middle;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]</p></div>\n",
+			id, i+1,
+			tloc == Right, tabname,
+			is_selected?2:3,
+			tloc != Right, tabname
+			);
 		}
 	    }
 
-	/** HTML body <DIV> element for the base layer. **/
-	/*if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"tc%POSbase\">\n",id);
-	    htrAddBodyItem_va(s,"    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w,main_bg);
-	    htrAddBodyItem(s,   "        <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
-	    htrAddBodyItem(s,   "            <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%POS width=1></TD>\n",h-2);
-	    htrAddBodyItem(s,   "            <TD>&nbsp;</TD>\n");
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%POS width=1></TD></TR>\n",h-2);
-	    htrAddBodyItem(s,   "        <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
-	    htrAddBodyItem(s,   "            <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n    </TABLE>\n\n");
-	    }
-	else
-	    */
-
 	/** h-2 and w-2 because w3c dom borders add to actual width **/
-	//htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" style=\"position:absolute; overflow:hidden; height:%POSpx; width:%POSpx; left:%INTpx; top:%INTpx; z-index:%POS;\" ><table cellspacing=0 cellpadding=0 style=\"border-width: 1px; border-style:solid; border-color: white gray gray white;\"><tr><td height=%POS width=%POS>&nbsp;</td></tr></table>\n",
-		//h-2,w-2);
-	htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" style=\"position:absolute; overflow:hidden; height:%POSpx; width:%POSpx; left:%INTpx; top:%INTpx; z-index:%POS; border-width: 1px; border-style:%STR&CSSVAL; border-color: %STR&CSSVAL; border-radius:%POSpx; box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL;\">\n",
+	htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" style=\"position:absolute; overflow:hidden; height:%POSpx; width:%POSpx; left:%INTpx; top:%INTpx; z-index:%POS; border-width: 1px; border-style:%STR&CSSVAL; border-color: %STR&CSSVAL; border-radius:%POSpx %POSpx %POSpx %POSpx; box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL;\">\n",
 		id, h-border_width*2, w-border_width*2, x+xoffset, y+yoffset, z+1,
-		border_style, border_color, border_radius,
+		border_style, border_color,
+		(tloc==Top || tloc==Left)?0:border_radius, (tloc==Right)?0:border_radius, border_radius, (tloc==Bottom)?0:border_radius,
 		sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color
 		);
 
 	/** Check for tabpages within the tab control entity, this time to do the pages themselves **/
-	/*tabcnt = 0;*/
 	for (i=0;i<tabcnt;i++)
 	    {
 	    tabpage_obj = children[i];
@@ -420,13 +326,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(fieldname,field,sizeof(fieldname));
 		}
 
-	    /** Add the pane **/
-	    /*if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		{
-		htrAddStylesheetItem_va(s,"\t#tc%POSpane%POS { POSITION:absolute; VISIBILITY:%STR; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",
-			id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
-		}*/
-	    
 	    /** Add script initialization to add a new tabpage **/
 	    if (tloc == None)
 		htrAddScriptInit_va(s,"    wgtrGetNodeRef('%STR&SYM', '%STR&SYM').addTab(null,wgtrGetContainer(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\")),wgtrGetNodeRef('%STR&SYM','%STR&SYM'),'%STR&JSSTR','%STR&JSSTR','%STR&JSSTR');\n",
@@ -444,9 +343,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
 
 	    /** Add DIV section for the tabpage. **/
-	    /*if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		htrAddBodyItem_va(s,"<DIV ID=\"tc%POSpane%POS\">\n",id,i+1);
-	    else*/
 	    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
 		    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
 
