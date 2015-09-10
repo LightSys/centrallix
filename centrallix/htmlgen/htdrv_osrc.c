@@ -345,6 +345,7 @@ int htosrcInitialize() {
 		"target_key_5",		DATA_T_STRING,
 		"is_slave",		HT_DATA_T_BOOLEAN,
 		"revealed_only",	HT_DATA_T_BOOLEAN,
+		"on_each_reveal",	HT_DATA_T_BOOLEAN,
 		"enforce_create",	HT_DATA_T_BOOLEAN,
 		"autoquery",		HT_DATA_T_BOOLEAN,
 		"master_norecs_action",	DATA_T_STRING,		/* what to do if no record in master (allrecs, sameasnull, norecs) */

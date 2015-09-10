@@ -165,10 +165,14 @@ function osrc_query_text_handler(aparam)
     var sel_re = /^\s*(set\s+rowcount\s+[0-9]+\s+)?select\s+/i;
     var is_select = sel_re.test(this.sql);
 
-    if (this.use_having || aparam.use_having)
+    if (this.use_having)
+	var osrcsep = ' HAVING ';
+    else
+	var osrcsep = ' WHERE ';
+    if (aparam.use_having)
 	var sep = ' HAVING ';
     else
-	var sep = ' WHERE ';
+	var sep = osrcsep;
 
     var fieldlist = (new String(aparam.field_list)).split(',');
     var searchlist = (new String(aparam.query?aparam.query:'')).split(' ');
@@ -234,10 +238,10 @@ function osrc_query_text_handler(aparam)
     // add any preset filtering
     if (this.filter)
 	{
-	if (!firstone)
+	/*if (!firstone)
 	    filter += ' and ';
-	else
-	    filter += sep;
+	else*/
+	    filter += osrcsep;
 	statement += '(' + this.filter + ')';
 	firstone = false;
 	}
@@ -247,10 +251,10 @@ function osrc_query_text_handler(aparam)
     this.ApplyRelationships(rel, false);
     if (rel[0])
 	{
-	if (!firstone)
+	/*if (!firstone)
 	    statement += ' and ';
-	else
-	    statement += sep;
+	else*/
+	    statement += osrcsep;
 	rel.joinstring = 'AND';
 	statement += '(' + this.MakeFilter(rel) + ')';
 	firstone = false;
@@ -2901,8 +2905,20 @@ function osrc_cb_reveal(child)
     if (this.has_onreveal_relationship && this.hidden_change_cnt > 0)
 	{
 	this.hidden_change_cnt = 0;
-	if (!did_query) this.Resync(null);
+	if (!did_query)
+	    {
+	    this.Resync(null);
+	    did_query = true;
+	    }
 	}
+
+    if (!did_query && this.resync_every_reveal)
+	{
+	// Force resync
+	this.lastSync = null;
+	this.Resync(null);
+	}
+
     return 0;
     }
 
@@ -2948,8 +2964,14 @@ function osrc_get_value(n)
 	return this.is_client_savable?1:0;
     if (n == 'is_client_discardable')
 	return this.is_client_discardable?1:0;
-    if (n == 'cx__current_id')
+    /*if (n == 'cx__current_id')
 	return this.CurrentRecord;
+    if (n == 'cx__last_id')
+	return this.LastRecord;
+    if (n == 'cx__first_id')
+	return this.FirstRecord;
+    if (n == 'cx__final_id')
+	return this.FinalRecord;*/
     var eval_rec = this.EvalRecord?this.EvalRecord:this.CurrentRecord;
     if (eval_rec && this.replica && this.replica[eval_rec])
 	{
@@ -3063,6 +3085,9 @@ function osrc_add_rule(rule_widget)
 	rl.revealed_only = rule_widget.revealed_only;
 	if (rl.revealed_only == null)
 	    rl.revealed_only = 0;
+	rl.on_each_reveal = rule_widget.on_each_reveal;
+	if (rl.on_each_reveal == null)
+	    rl.on_each_reveal = 0;
 	rl.enforce_create = rule_widget.enforce_create;
 	if (rl.enforce_create == null)
 	    rl.enforce_create = 1;
@@ -3091,8 +3116,8 @@ function osrc_add_rule(rule_widget)
 	// default to key objectname specified for osrc
 	if (!sobj)
 	    sobj = slave.key_objname;
-	var slaverule = {master:master, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], obj:sobj, master_norecs_action:rl.master_norecs_action, master_null_action:rl.master_null_action};
-	var masterrule = {slave:slave, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], master_norecs_action:rl.master_norecs_action, master_null_action:rl.master_null_action};
+	var slaverule = {master:master, on_each_reveal:rl.on_each_reveal, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], obj:sobj, master_norecs_action:rl.master_norecs_action, master_null_action:rl.master_null_action};
+	var masterrule = {slave:slave, on_each_reveal:rl.on_each_reveal, revealed_only:rl.revealed_only, enforce_create:rl.enforce_create, autoquery:rl.aq, key:[], tkey:[], master_norecs_action:rl.master_norecs_action, master_null_action:rl.master_null_action};
 
 	// Keys
 	for(var keynum = 1; keynum <= 5; keynum++)
@@ -3331,6 +3356,8 @@ function osrc_init_bh()
 	    rule.master.Register(this);
 	    if (rule.revealed_only)
 		this.has_onreveal_relationship = true;
+	    if (rule.on_each_reveal)
+		this.resync_every_reveal = true;
 	    //if (typeof rl.aq != 'undefined' && !rl.aq)
 	    //    this.no_autoquery_on_resync = true;
 		//pg_addsched_fn(this, "Resync", [], 0);
@@ -3657,6 +3684,7 @@ function osrc_init(param)
     loader.lastquery = null;
     loader.prevcurrent = null;
     loader.has_onreveal_relationship = false;
+    loader.resync_every_reveal = false;
     loader.hidden_change_cnt = 0;
     loader.query_delay = 0;
     loader.type_list = [];
@@ -3710,6 +3738,10 @@ function osrc_init(param)
     var iv = loader.ifcProbeAdd(ifValue);
     iv.SetNonexistentCallback(osrc_get_value);
     iv.Add("cx__pending", osrc_get_pending, null);
+    iv.Add("cx__current_id", "CurrentRecord", null);
+    iv.Add("cx__last_id", "LastRecord", null);
+    iv.Add("cx__first_id", "FirstRecord", null);
+    iv.Add("cx__final_id", "FinalRecord", null);
 
     loader.SetEvalRecord = osrc_set_eval_record;
 
