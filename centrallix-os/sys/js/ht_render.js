@@ -477,6 +477,11 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
+function htr_boolean(v)
+    {
+    return !(v==0 || String(v).toLowerCase()=='no' || String(v).toLowerCase() == 'false' || String(v).toLowerCase() == 'off' || v == '0');
+    }
+
 function htr_code_to_keyname(k)
     {
     switch(k)
