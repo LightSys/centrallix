@@ -78,6 +78,7 @@ function wn_init(param)
 	    l.has_titlebar = 1;
 	}
 
+    l.open_params = {};
     l.orig_parent = null;
     l.is_toplevel = false;
     if (param.toplevel == 1)
@@ -250,7 +251,7 @@ function wn_cb_reveal(e)
 	    this.loaded = true;
 	    this.ifcProbe(ifEvent).Activate("Load", {});
 	    }
-	this.ifcProbe(ifEvent).Activate("Open", {});
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 	}
     return true;
     }
@@ -292,7 +293,7 @@ function wn_setvisibility_bh(v)
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
 	if (this.is_modal) pg_setmodal(this);
-	this.ifcProbe(ifEvent).Activate("Open", {});
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 
 	// Point logic
 	if (this.point_at)
@@ -594,6 +595,7 @@ function wn_closewin(aparam)
 
 function wn_openwin(aparam)
     {
+    this.open_params = aparam;
     this.point_at = aparam.PointAt;
     if (this.point_at && (typeof this.point_at != 'object' || !wgtrIsNode(this.point_at)))
 	this.point_at = wgtrGetNode(this, this.point_at);
