@@ -1018,9 +1018,16 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	
     /* find the filename property and copy it to payload */
     ptr = strstr(token, "filename");
+    if(ptr == NULL)
+	{
+	mssError(1,"NHT","Malformed file upload POST request received - no filename specified");
+	payload->status = -1;
+	return payload; //Error
+	}
     ptr = strchr(ptr, '\"');
     if(ptr == NULL)
 	{
+	mssError(1,"NHT","Malformed file upload POST request received - start of filename not found");
 	payload->status = -1;
 	return payload; //Error
 	}
