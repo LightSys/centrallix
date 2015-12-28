@@ -1403,6 +1403,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    {
 	    /** Not found... Allocate a new one **/
 	    dn = (pDatNode)nmMalloc(sizeof(DatNode));
+	    memset(dn, 0, sizeof(DatNode));
 	    new_node = 1;
 	    if (!dn) return NULL;
 	    strcpy(dn->SpecPath, nodefile);
@@ -1438,6 +1439,11 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 			nmFree(dn,sizeof(DatNode));
 			return NULL;
 			}
+		    dn->Flags |= DAT_NODE_F_HDRROW | DAT_NODE_F_ROWIDKEY;
+		    dn->Type = DAT_NODE_T_CSV;
+		    dat_csv_OpenNode(dn);
+		    context->DataObj = obj->Prev;
+		    objLinkTo(context->DataObj);
 		    }
 		else
 		    {
@@ -3593,6 +3599,10 @@ datPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pStructInf stInf = NULL;
     pDatTableInf tdata = NULL;
     int i, j;
+
+    /* No spec file? */
+    if (!inf->Node->Node)
+	return NULL;
 
     tdata = inf->Node->TableInf;
     for (i=0; i < tdata->nCols; i++)
