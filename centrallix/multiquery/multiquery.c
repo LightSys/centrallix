@@ -3112,9 +3112,12 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 		    return NULL;
 		    }
 
-		/** If all select items are assignments, don't return the row at all **/
+		/** If all select items are assignments, don't return the row at all,
+		 ** but still include it in the LIMIT iteration count.
+		 **/
 		if (qy->CurStmt->Flags & MQ_TF_ALLASSIGN)
 		    {
+		    qy->CurStmt->UserIterCnt++;
 		    mq_internal_FreePseudoObject(p);
 		    p = NULL;
 		    continue;
