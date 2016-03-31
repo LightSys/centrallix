@@ -605,6 +605,10 @@ nht_internal_ConnHandler(void* conn_v)
 	            nht_internal_PATCH(conn, url_inf, ptr);
 		    }
 		}
+	    else if (!strcasecmp(find_inf->StrVal,"delete"))
+		{
+		nht_internal_DELETE(conn, url_inf);
+		}
 	    }
 	else
 	    {
@@ -629,6 +633,10 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 	        nht_internal_COPY(conn,url_inf, conn->Destination);
 	        }
+	    else if (!strcmp(conn->Method,"delete"))
+		{
+		nht_internal_DELETE(conn,url_inf);
+		}
 	    else
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 501 Not Implemented\r\n"

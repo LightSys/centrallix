@@ -2239,6 +2239,81 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     }
 
 
+/*** nht_internal_DELETE - implements the HTTP DELETE method, which after
+ *** verifying credentials, deletes the referenced path.
+ ***/
+int
+nht_internal_DELETE(pNhtConn conn, pStruct url_inf)
+    {
+    char* msg;
+    pStruct find_inf;
+    pObject target_obj = NULL;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+    int rval;
+
+	/** Check akey **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
+	    {
+	    mssError(1,"NHT","DELETE request requires akey for validation");
+	    msg = "401 Unauthorized";
+	    goto error;
+	    }
+
+	/** Open the target object **/
+	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
+	if (!target_obj)
+	    {
+	    mssError(0,"NHT","Could not open requested object for DELETE request");
+	    msg = "404 Not Found";
+	    goto error;
+	    }
+
+	/** Determine mode **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf || strcmp(find_inf->StrVal, "rest") != 0)
+	    {
+	    mssError(1,"NHT","DELETE: only REST mode supported");
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+
+	/** Call out to REST functionality **/
+	rval = nht_internal_RestDelete(conn, url_inf, target_obj);
+	if (rval < 0)
+	    {
+	    msg = "400 Bad Request";
+	    goto error;
+	    }
+	target_obj = NULL; /* deleted, handle no longer valid */
+
+	fdPrintf(conn->ConnFD,
+		"HTTP/1.0 204 No Content\r\n"
+		"Server: %s\r\n"
+		"Content-Type: text/html\r\n"
+		"\r\n",
+		NHT.ServerString);
+
+	/** Cleanup and return **/
+	return 0;
+
+    error:
+	fdPrintf(conn->ConnFD,
+		"HTTP/1.0 %s\r\n"
+		"Server: %s\r\n"
+		"Content-Type: text/html\r\n"
+		"\r\n"
+		"<H1>%s</H1>\r\n",
+		msg, NHT.ServerString, msg);
+
+	if (target_obj)
+	    objClose(target_obj);
+
+	return -1;
+    }
+
+
 /*** nht_internal_PATCH - implements the HTTP PATCH method, which is used for
  *** modifying existing data without replacing the entire resource (which is
  *** what PUT would do).

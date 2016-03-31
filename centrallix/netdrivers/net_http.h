@@ -285,7 +285,7 @@ typedef struct
     char	AcceptEncoding[160];
     char*	Referrer;
     char	UserAgent[160];
-    char	RequestContentType[64];
+    char	RequestContentType[128];
     char	RequestBoundary[128];
     char	Method[16];
     char	HTTPVer[16];
@@ -391,5 +391,6 @@ int nht_internal_FreeHeaders(pXArray hdrlist);
 int nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
 int nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
 int nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content);
+int nht_internal_RestDelete(pNhtConn conn, pStruct url_inf, pObject obj);
 
 #endif
