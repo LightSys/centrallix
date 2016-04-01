@@ -1136,7 +1136,12 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		else if (*endptr == '/' || *endptr == '-')
 		    {
 		    /** Date field.  Check. **/
-		    if (reversed_day)
+		    if (last_num > 99)
+			{
+			reversed_day = 0;
+			got_yr = last_num;
+			}
+		    else if (reversed_day)
 		        {
 		        if (got_day == -1) got_day = last_num-1;
 		        else if (got_mo == -1) got_mo = last_num-1;
