@@ -3880,6 +3880,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 		}
 	    }
 	}
+    tdata->ColBuf[tdata->ColBufLen] = '\0';
     for (i = 0; i < tdata->nCols; i++)
 	{
 	/** This is some intelligence to make a guess at the proper type for the column. (Currently Disabled)
