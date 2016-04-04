@@ -201,5 +201,26 @@ SECURITY POLICY FILE
     for a sample of how a policy file is constructed.
 
 
-KEY REPOSITORY
+SIGNING KEY CONFIGURATION
+
+    A security policy file may define what signing keys are used to identify
+    an object as having been authored by a specific identity.  The public key
+    of an RSA key pair will be included in or referenced by the policy file
+    in a subjectkey directive.
+
+
+AUTHENTICATION MAPPING AND TOKEN STORAGE
+
+    The security subsystem will often need to map identities between the
+    Centrallix server and local or remote data sources, and authentication
+    tokens may need to be stored to permit access to those remote sources.
+    Furthermore, sometimes a user may need to connect to a remote source
+    as a different identity, and that information can be stored as well.
+
+    The basic premise of the key repository is that the stored auth tokens
+    (passwords, cookies, oauth1/2 tokens, etc.) will be encrypted with the
+    user's login password (or other persistent authentication token) as the
+    primary key dependency.  If the user's login password changes, then the
+    system will need to prompt the user for their old password in order to
+    update the key repository.
 -------------------------------------------------------------------------------

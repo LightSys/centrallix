@@ -312,7 +312,8 @@ XCXSSMODS=cxss_main.o \
 	  cxss_utility.o \
 	  cxss_entropy.o \
 	  cxss_contextstack.o \
-	  cxss_tlshelper.o
+	  cxss_tlshelper.o \
+	  cxss_policy.o
 CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
 
 # Javascript VM modules... for Centrallix side of things.

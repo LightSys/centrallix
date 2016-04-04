@@ -258,7 +258,7 @@ typedef struct _OSS
 /** Content type descriptor **/
 typedef struct _CT
     {
-    char	Name[64];
+    char	Name[128];
     char	Description[256];
     XArray	Extensions;
     XArray	IsA;
@@ -557,6 +557,8 @@ typedef struct
 #define OBJ_O_RDONLY	(O_RDONLY)
 #define OBJ_O_WRONLY	(O_WRONLY)
 #define OBJ_O_EXCL	(O_EXCL)
+
+#define OBJ_O_ACCMODE	(O_ACCMODE)
 
 #define OBJ_O_AUTONAME	(1<<30)
 #define OBJ_O_NOINHERIT	(1<<29)

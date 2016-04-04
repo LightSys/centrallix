@@ -42,6 +42,32 @@
 
 #define CXSS_DEBUG_CONTEXTSTACK	1
 
+/*** Security policy access types - mask ***/
+#define CXSS_ACC_T_OBSERVE	1
+#define CXSS_ACC_T_READ		2
+#define CXSS_ACC_T_WRITE	4
+#define CXSS_ACC_T_CREATE	8
+#define CXSS_ACC_T_DELETE	16
+#define CXSS_ACC_T_EXEC		32
+#define CXSS_ACC_T_NOEXEC	64
+#define CXSS_ACC_T_DELEGATE	128
+#define CXSS_ACC_T_ENDORSE	256
+
+/*** Authorization subsystem logging indications - mask ***/
+#define CXSS_LOG_T_SUCCESS	1
+#define CXSS_LOG_T_FAILURE	2
+#define CXSS_LOG_T_ALL		(CXSS_LOG_T_SUCCESS | CXSS_LOG_T_FAILURE)
+
+/*** Operation modes ***/
+#define CXSS_MODE_T_DISABLE	1
+#define CXSS_MODE_T_WARN	2
+#define CXSS_MODE_T_ENFORCE	3
+
+/*** Actions for rules - mask ***/
+#define CXSS_ACT_T_ALLOW	1
+#define CXSS_ACT_T_DENY		2
+#define CXSS_ACT_T_ENDORSE	4
+
 /*** CXSS data structures ***/
 typedef struct _EP
     {
@@ -128,6 +154,10 @@ int cxss_internal_GetBytes(unsigned char* data, size_t n_bytes);
 int cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server);
 int cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream);
 int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
+
+/*** Security Policy - Authorization API ***/
+int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
+int cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode);
 
 #endif /* not defined _CXSS_H */
 
