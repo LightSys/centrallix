@@ -213,17 +213,20 @@ mysd_internal_GetConn(pMysdNode node)
             {
             /** Do we have permission to do this? **/
             if (!(CxGlobals.Flags & CX_F_ENABLEREMOTEPW))
-            {
-            mssError(1,"MYSD","use_system_auth requested, but Centrallix global enable_send_credentials is turned off");
-            return NULL;
-            }
+		{
+		mssError(1,"MYSD","use_system_auth requested, but Centrallix global enable_send_credentials is turned off");
+		return NULL;
+		}
         
             /** Get usernamename/password from session **/
             username = mssUserName();
             password = mssPassword();
         
             if(!username || !password)
-            return NULL;
+		{
+		mssError(1,"MYSD","Connect to database: username and/or password not supplied");
+		return NULL;
+		}
             }
         else
             {
@@ -262,7 +265,11 @@ mysd_internal_GetConn(pMysdNode node)
                 {
                 /** Below pool maximum?  Alloc if so **/
                 conn = (pMysdConn)nmMalloc(sizeof(MysdConn));
-                if (!conn) return NULL;
+                if (!conn)
+		    {
+		    mssError(0,"MYSD","Could not connect to database server");
+		    return NULL;
+		    }
                 conn->Node = node;
                 }
             else
@@ -2336,6 +2343,8 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
             if(query->Tree || query->SortBy[0]) 
                 {
                 escape_conn = mysd_internal_GetConn(qy->Data->Node);
+		if (!escape_conn)
+		    return NULL;
                 if (query->Tree)
                     {
                     xsConcatenate(&qy->Clause, " WHERE ", 7);
