@@ -11,9 +11,10 @@
 
 function tbld_format_cell(cell, color)
     {
-    var txt,captxt;
+    var txt,captxt,titletxt;
     var style = 'margin:0px; padding:0px; ';
     var capstyle = 'font-size:80%; margin:2px 0px 0px 0px; padding:0px; ';
+    var titlestyle = 'font-size:120%; margin:0px 0px 2px 0px; padding:0px; ';
     var colinfo = this.cols[cell.colnum];
     if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
 	var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
@@ -62,31 +63,52 @@ function tbld_format_cell(cell, color)
 	    captxt = htutil_nlbr(captxt);
 	capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	}
+    if (cell.titledata)
+	{
+	titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	if (colinfo.wrap != 'no')
+	    titletxt = htutil_nlbr(titletxt);
+	titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
+	}
 
     // If style or content has changed, then update it.
-    if (txt != cell.content || captxt != cell.capcontent || style != cell.cxstyle || capstyle != cell.cxcapstyle)
+    if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle)
 	{
+	// Build the paragraph elements of the cell
+	if (titletxt)
+	    {
+	    var t_p = document.createElement('p');
+	    $(t_p).attr("style", titlestyle);
+	    $(t_p).css({'margin':'0px'});
+	    $(t_p).append(titletxt);
+	    }
 	var p = document.createElement('p');
-	//p.style = style;
 	$(p).attr("style", style);
 	$(p).css({'margin':'0px'});
 	$(p).append(txt);
 	if (captxt)
 	    {
 	    var c_p = document.createElement('p');
-	    //c_p.style = capstyle;
 	    $(c_p).attr("style", capstyle);
 	    $(c_p).css({'margin':'0px'});
 	    $(c_p).append(captxt);
 	    }
+
+	// build the cell
 	$(cell).empty();
+	if (titletxt)
+	    $(cell).append(t_p)
 	$(cell).append(p);
 	if (captxt)
 	    $(cell).append(c_p);
+
+	// Remember the data so we can tell if it changed
 	cell.content = txt;
 	cell.capcontent = captxt;
+	cell.titlecontent = titletxt;
 	cell.cxstyle = style;
 	cell.cxcapstyle = capstyle;
+	cell.cxtitlestyle = titlestyle;
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
@@ -383,9 +405,19 @@ function tbld_setup_row_data(rowslot, is_new)
     else
 	{
 	// Normal
-	// main value
 	for(var j in row.cols)
 	    {
+	    // title value
+	    var titlefield = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "title_fieldname");
+	    if (titlefield)
+		var txt = this.FindOsrcValue(rowslot, titlefield);
+	    else
+		var txt = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "title_value");
+	    if (typeof row.cols[j].titledata == 'undefined' || (row.cols[j].titledata == null && txt) || txt != row.cols[j].titledata)
+		changed = true;
+	    row.cols[j].titledata = txt;
+
+	    // main value
 	    if (this.cols[j].fieldname)
 		var txt = this.FindOsrcValue(rowslot, this.cols[j].fieldname);
 	    else
@@ -393,12 +425,8 @@ function tbld_setup_row_data(rowslot, is_new)
 	    if (typeof row.cols[j].data == 'undefined' || (row.cols[j].data == null && txt) || txt != row.cols[j].data)
 		changed = true;
 	    row.cols[j].data = txt;
-	    }
-	row.name = this.FindOsrcValue(rowslot, 'name');
 
-	// caption value
-	for(var j in row.cols)
-	    {
+	    // caption value
 	    if (this.cols[j].caption_fieldname)
 		var txt = this.FindOsrcValue(rowslot, this.cols[j].caption_fieldname);
 	    else
@@ -407,6 +435,7 @@ function tbld_setup_row_data(rowslot, is_new)
 		changed = true;
 	    row.cols[j].capdata = txt;
 	    }
+	row.name = this.FindOsrcValue(rowslot, 'name');
 	}
 
     if (changed)
@@ -450,6 +479,8 @@ function tbld_update_height(row)
 	    var h = $(col.firstChild).innerHeight();
 	    if (col.firstChild && col.firstChild.nextSibling)
 		h += ($(col.firstChild.nextSibling).innerHeight() + 2);
+	    if (col.firstChild && col.firstChild.nextSibling && col.firstChild.nextSibling.nextSibling)
+		h += ($(col.firstChild.nextSibling.nextSibling).innerHeight() + 2);
 	    if (h > this.max_rowheight - this.cellvspacing*2)
 		h = this.max_rowheight - this.cellvspacing*2;
 	    if (h < this.min_rowheight - this.cellvspacing*2)
