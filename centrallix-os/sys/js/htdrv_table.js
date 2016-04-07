@@ -123,15 +123,18 @@ function tbld_format_cell(cell, color)
 		var row = this.layer.row;
 		var pre_h = $(row).height();
 		var upd_rows = [];
+		//var disp_rows = [];
 		t.UpdateHeight(row);
 		if (pre_h != $(row).height() && row.positioned)
 		    {
-		    for(var i=row.rownum+1; i<=t.rows.lastvis+1; i++)
+		    for(var i=row.rownum+1; i<=t.rows.last; i++)
 			{
 			if (t.rows[i])
 			    {
 			    t.rows[i].positioned = false;
 			    upd_rows.push(t.rows[i]);
+			    /*if (i <= t.rows.lastvis+1)
+				disp_rows.push(t.rows[i]);*/
 			    }
 			}
 		    t.PositionRows(upd_rows);
@@ -155,6 +158,7 @@ function tbld_attr_cmp(a, b)
 
 function tbld_redraw_all(dataobj, force_datafetch)
     {
+    this.log.push("tbld_redraw_all()");
     var new_rows = [];
 
     // Creating a new record?  Give indication if so.
@@ -310,7 +314,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	this.Scroll(new_y, false);
 	return;
 	}
-    if (this.cr < this.rows.firstvis || this.cr > this.rows.lastvis)
+    if ((this.cr < this.rows.firstvis || this.cr > this.rows.lastvis) && this.osrc_last_op != 'ScrollTo')
 	{
 	this.BringIntoView(this.cr);
 	return;
@@ -319,6 +323,9 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // space at bottom of table?
     if (this.CheckBottom())
 	return;
+
+    // Dispatch osrc requests
+    this.OsrcDispatch();
     }
 
 // Handle deletion or new row cancel cases where blank space is now visible
@@ -565,6 +572,7 @@ function tbld_format_row(id, selected, do_new)
 
 function tbld_bring_into_view(rownum)
     {
+    this.log.push("tbld_bring_into_view(" + rownum + ")");
     this.bring_into_view = null;
 
     // Clamp the requested row to the available range
@@ -575,7 +583,10 @@ function tbld_bring_into_view(rownum)
 
     // Already visible?
     if (rownum >= this.rows.firstvis && rownum <= this.rows.lastvis)
+	{
+	this.OsrcDispatch();
 	return;
+	}
 
     // If row is in current set, just scroll backward.
     if (rownum >= this.rows.first && rownum < this.rows.firstvis)
@@ -603,7 +614,7 @@ function tbld_bring_into_view(rownum)
 	    this.target_range.start = this.target_range.end - this.rowcache_size;
 	if (this.target_range.start < 1)
 	    this.target_range.start = 1;
-	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
 	}
     else if (rownum > this.rows.last && this.rows.last != null)
 	{
@@ -612,7 +623,11 @@ function tbld_bring_into_view(rownum)
 	this.target_range = {start:rownum - this.rowcache_size, end:rownum};
 	if (this.target_range.start < 1)
 	    this.target_range.start = 1;
-	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
+	}
+    else
+	{
+	this.OsrcDispatch();
 	}
     }
 
@@ -675,17 +690,20 @@ function tbld_update_thumb(anim)
 
 function tbld_object_created(recnum)
     {
+    this.log.push("Object Created callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     if (this.rows.lastosrc && recnum > this.rows.lastosrc)
 	this.rows.lastosrc = recnum;
     if (recnum < this.rows.first)
 	this.target_range = {start:recnum, end:this.rows.last};
     else if (recnum > this.rows.last)
 	this.target_range = {start:this.rows.first, end:recnum};
+    this.osrc_busy = false;
     this.RedrawAll(null, true);
     }
 
 function tbld_object_deleted(recnum)
     {
+    this.log.push("Object Deleted callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     if (this.rows.lastosrc && this.rows.lastosrc == recnum)
 	this.rows.lastosrc--;
     if (this.rows[recnum] && this.scroll_maxheight)
@@ -693,12 +711,23 @@ function tbld_object_deleted(recnum)
 	this.scroll_maxheight -= ($(this.rows[recnum]).height() + this.cellvspacing*2);
 	this.scroll_maxrec--;
 	}
+    this.osrc_busy = false;
     this.RedrawAll(null, true);
     }
 
 function tbld_object_modified(current, dataobj)
     {
+    this.log.push("Object Modified callback from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    this.osrc_busy = false;
     this.RedrawAll(null, true);
+    }
+
+function tbld_replica_changed(dataobj, force_datafetch)
+    {
+    this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    this.osrc_busy = false;
+    this.RedrawAll(dataobj, force_datafetch);
+    this.osrc_last_op = null;
     }
 
 function tbld_clear_rows(fromobj, why)
@@ -906,11 +935,15 @@ function tbld_sched_scroll(y)
 // Scroll the table to the given y offset
 function tbld_scroll(y, animate)
     {
+    this.log.push("tbld_scroll(" + y + ")");
     this.target_y = null;
 
     // Not enough data to scroll?
     if (this.thumb_height == this.thumb_avail && y != 0 - getRelativeY(this.rows[this.rows.first]))
+	{
+	this.OsrcDispatch();
 	return;
+	}
 
     // Current start and end of scrollable content
     var scroll_start = getRelativeY(this.rows[this.rows.first]);
@@ -934,6 +967,7 @@ function tbld_scroll(y, animate)
 	this.target_range = {start:this.rows.first, end:this.rows.last};
 	this.RescanRowVisibility();
 	this.UpdateThumb(animate);
+	this.OsrcDispatch();
 	}
     else
 	{
@@ -957,14 +991,22 @@ function tbld_scroll(y, animate)
 	    {
 	    // Next data
 	    this.target_range.start = this.rows.firstvis-1;
+	    if (this.target_range.start < 1)
+		this.target_range.start = 1;
 	    this.target_range.end = this.rows.firstvis + this.rowcache_size + this.max_display;
+
+	    // If there are enough rows in the replica, and we got here, we need to
+	    // look further in the result set to satisfy the scroll requirements.
+	    while (this.osrc.FirstRecord <= this.target_range.start && this.osrc.LastRecord >= this.target_range.end)
+		this.target_range.end += this.rowcache_size;
 	    }
 	else
 	    {
 	    // ??
+	    this.OsrcDispatch();
 	    return;
 	    }
-	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
 	}
     }
 
@@ -1413,6 +1455,87 @@ function tbld_instantiate_row(parentDiv, x, y)
     }
 
 
+function tbld_osrc_request(request, param)
+    {
+    var item = {type: request};
+    for(var p in param)
+	item[p] = param[p];
+    this.osrc_request_queue.push(item);
+    this.OsrcDispatch();
+    }
+
+
+function tbld_osrc_dispatch()
+    {
+    if (this.osrc_busy)
+	return;
+    
+    // Scan through requests
+    do  {
+	var item = this.osrc_request_queue.shift();
+	}
+	while (this.osrc_request_queue.length && this.osrc_request_queue[0].type == item.type);
+    if (!item)
+	return;
+
+    // Run the request
+    switch(item.type)
+	{
+	case 'ScrollTo':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.ScrollTo(item.start, item.end);
+	    break;
+
+	case 'MoveToRecord':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.MoveToRecord(item.rownum);
+	    break;
+
+	default:
+	    return;
+	}
+    }
+
+
+/*function tbld_dispatch(dclass)
+    {
+    if (this.dispatch_queue[dclass] === undefined)
+	{
+	this.dispatch_queue[dclass] = [];
+	this.dispatch_queue[dclass].active_cnt = 0;
+	}
+    while (this.dispatch_queue[dclass].active_cnt < this.dispatch_parallel_max && this.dispatch_queue[dclass].length > 0)
+	{
+	let item = this.dispatch_queue[dclass].shift();
+	this.dispatch_queue[dclass].active_cnt++;
+
+	// do request
+	if (item.callback)
+	    item.callback(item.data);
+	this.dispatch_queue[dclass].active_cnt--;
+	this.Dispatch(dclass);
+	if (this.dispatch_queue[dclass].length == 0 && this.dispatch_queue[dclass].active_cnt == 0 && item.completion)
+	    item.completion();
+	}
+    }
+
+
+function tbld_request(dclass, data, callback, completion)
+    {
+    if (this.dispatch_queue[dclass] === undefined)
+	{
+	this.dispatch_queue[dclass] = [];
+	this.dispatch_queue[dclass].active_cnt = 0;
+	}
+    this.dispatch_queue[dclass].push({data:data, callback:callback, completion:completion});
+    this.Dispatch(dclass);
+    }*/
+
+
 function tbld_init(param)
     {
     var t = param.table;
@@ -1462,6 +1585,14 @@ function tbld_init(param)
     t.down.subkind='down';
     t.box.subkind='box';
     t.scrollbar.subkind='bar';
+    /*t.dispatch_queue = {};
+    t.dispatch_parallel_max = 1;
+    t.Dispatch = tbld_dispatch;
+    t.Request = tbld_request;*/
+    t.osrc_request_queue = [];
+    t.osrc_busy = false;
+    t.osrc_last_op = null;
+    t.log = [];
     
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
@@ -1518,12 +1649,14 @@ function tbld_init(param)
     t.CheckBottom = tbld_check_bottom;
     t.ApplyRowGeom = tbld_apply_row_geom;
     t.InitBH = tbld_init_bh;
+    t.OsrcDispatch = tbld_osrc_dispatch;
+    t.OsrcRequest = tbld_osrc_request;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
     t.DataAvailable = tbld_clear_rows;
-    t.ObjectAvailable = tbld_redraw_all;
-    t.ReplicaMoved = tbld_redraw_all;
+    t.ObjectAvailable = tbld_replica_changed;
+    t.ReplicaMoved = tbld_replica_changed;
     t.OperationComplete = new Function();
     t.ObjectDeleted = tbld_object_deleted;
     t.ObjectCreated = tbld_object_created;
@@ -1916,7 +2049,7 @@ function tbld_mousedown(e)
 		    if(ly.rownum && ly.disp_mode != 'newselect')
 			{
 			ly.crname = null;
-			ly.table.osrc.MoveToRecord(ly.rownum);
+			ly.table.OsrcRequest('MoveToRecord', {rownum:ly.rownum});
 			}
 		    }
 		else if (ly.table.initselect !== 1)
