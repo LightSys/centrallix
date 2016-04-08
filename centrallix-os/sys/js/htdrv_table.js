@@ -158,7 +158,7 @@ function tbld_attr_cmp(a, b)
 
 function tbld_redraw_all(dataobj, force_datafetch)
     {
-    this.log.push("tbld_redraw_all()");
+    //this.log.push("tbld_redraw_all()");
     var new_rows = [];
 
     // Creating a new record?  Give indication if so.
@@ -572,7 +572,7 @@ function tbld_format_row(id, selected, do_new)
 
 function tbld_bring_into_view(rownum)
     {
-    this.log.push("tbld_bring_into_view(" + rownum + ")");
+    //this.log.push("tbld_bring_into_view(" + rownum + ")");
     this.bring_into_view = null;
 
     // Clamp the requested row to the available range
@@ -690,7 +690,7 @@ function tbld_update_thumb(anim)
 
 function tbld_object_created(recnum)
     {
-    this.log.push("Object Created callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    //this.log.push("Object Created callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     if (this.rows.lastosrc && recnum > this.rows.lastosrc)
 	this.rows.lastosrc = recnum;
     if (recnum < this.rows.first)
@@ -703,7 +703,7 @@ function tbld_object_created(recnum)
 
 function tbld_object_deleted(recnum)
     {
-    this.log.push("Object Deleted callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    //this.log.push("Object Deleted callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     if (this.rows.lastosrc && this.rows.lastosrc == recnum)
 	this.rows.lastosrc--;
     if (this.rows[recnum] && this.scroll_maxheight)
@@ -717,14 +717,14 @@ function tbld_object_deleted(recnum)
 
 function tbld_object_modified(current, dataobj)
     {
-    this.log.push("Object Modified callback from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    //this.log.push("Object Modified callback from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     this.osrc_busy = false;
     this.RedrawAll(null, true);
     }
 
 function tbld_replica_changed(dataobj, force_datafetch)
     {
-    this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    //this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     this.osrc_busy = false;
     this.RedrawAll(dataobj, force_datafetch);
     this.osrc_last_op = null;
@@ -935,7 +935,7 @@ function tbld_sched_scroll(y)
 // Scroll the table to the given y offset
 function tbld_scroll(y, animate)
     {
-    this.log.push("tbld_scroll(" + y + ")");
+    //this.log.push("tbld_scroll(" + y + ")");
     this.target_y = null;
 
     // Not enough data to scroll?
@@ -1484,14 +1484,14 @@ function tbld_osrc_dispatch()
 	case 'ScrollTo':
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
-	    this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.ScrollTo(item.start, item.end);
 	    break;
 
 	case 'MoveToRecord':
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
-	    this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.MoveToRecord(item.rownum);
 	    break;
 
@@ -1592,7 +1592,7 @@ function tbld_init(param)
     t.osrc_request_queue = [];
     t.osrc_busy = false;
     t.osrc_last_op = null;
-    t.log = [];
+    //t.log = [];
     
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
