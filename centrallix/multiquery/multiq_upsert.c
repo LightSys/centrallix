@@ -390,6 +390,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     pExpression exp, assign_exp;
     int t;
     int rval = -1;
+    int need_update;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
 	pdata = (pMqusData)qe->PrivateData;
@@ -425,16 +426,30 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 			goto error;
 			}
 
-		    /** Set the attribute on the object **/
-		    if (expCopyValue(exp, assign_exp, 1) < 0)
+		    /** See if the value is already correct - avoid a needless update op **/
+		    need_update = 1;
+		    if (expEvalTree(assign_exp, stmt->Query->ObjList) >= 0)
 			{
-			mssError(1,"MQUS","Could not handle UPDATE SET expression's value");
-			goto error;
+			if (expCompareExpressionValues(assign_exp, exp) == 1)
+			    {
+			    /** Values are already the same **/
+			    need_update = 0;
+			    }
 			}
-		    if (expReverseEvalTree(assign_exp, stmt->Query->ObjList) < 0)
+
+		    /** Set the attribute on the object **/
+		    if (need_update)
 			{
-			mssError(0,"MQUS","Could not update the object");
-			goto error;
+			if (expCopyValue(exp, assign_exp, 1) < 0)
+			    {
+			    mssError(1,"MQUS","Could not handle UPDATE SET expression's value");
+			    goto error;
+			    }
+			if (expReverseEvalTree(assign_exp, stmt->Query->ObjList) < 0)
+			    {
+			    mssError(0,"MQUS","Could not update the object");
+			    goto error;
+			    }
 			}
 		    }
 

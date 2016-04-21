@@ -240,6 +240,7 @@ int expReplaceString(pExpression this, char* oldstr, char* newstr);
 int expIsConstant(pExpression this);
 pExpression expReducedDuplicate(pExpression this);
 int expCompareExpressions(pExpression exp1, pExpression exp2);
+int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
