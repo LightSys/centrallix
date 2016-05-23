@@ -735,6 +735,44 @@ expReplaceString(pExpression tree, char* oldstr, char* newstr)
     }
 
 
+/*** expCompareExpressionValues -- see if two expressions have the same value
+ *** Returns: 1 on true, 0 on false
+ ***/
+int
+expCompareExpressionValues(pExpression exp1, pExpression exp2)
+    {
+
+	/** two nulls are equal even if types mismatch **/
+	if ((exp1->Flags & EXPR_F_NULL) && (exp2->Flags & EXPR_F_NULL))
+	    return 1;
+
+	/** otherwise, data type must match **/
+	if (exp1->DataType != exp2->DataType)
+	    return 0;
+
+	/** One is null and the other isn't **/
+	if ((exp1->Flags & EXPR_F_NULL) != (exp2->Flags & EXPR_F_NULL))
+	    return 0;
+
+	/** Supported data types differ. **/
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_STRING && exp1->String && exp2->String && strcmp(exp1->String, exp2->String) != 0)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_INTEGER && exp1->Integer != exp2->Integer)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DOUBLE && exp1->Types.Double != exp2->Types.Double)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && memcmp(&(exp1->Types.Money), &(exp2->Types.Money), sizeof(MoneyType)) != 0)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && memcmp(&(exp1->Types.Date), &(exp2->Types.Date), sizeof(DateTime)) != 0)
+	    return 0;
+
+	/** Unsupported data types **/
+	if (exp1->DataType != DATA_T_STRING && exp1->DataType != DATA_T_INTEGER && exp1->DataType != DATA_T_DOUBLE && exp1->DataType != DATA_T_MONEY && exp1->DataType != DATA_T_DATETIME)
+	    return -1;
+
+    return 1;
+    }
+
 
 /*** expCompareExpressions - see if two expressions are equivalent, and
  *** if so, return 1.  Otherwise return 0 if they are different.
@@ -750,19 +788,7 @@ expCompareExpressions(pExpression exp1, pExpression exp2)
 	    return 0;
 	if (exp1->NodeType == EXPR_N_STRING || exp1->NodeType == EXPR_N_INTEGER || exp1->NodeType == EXPR_N_DOUBLE || exp1->NodeType == EXPR_N_MONEY || exp1->NodeType == EXPR_N_DATETIME)
 	    {
-	    if (exp1->DataType != exp2->DataType)
-		return 0;
-	    if ((exp1->Flags & EXPR_F_NULL) != (exp2->Flags & EXPR_F_NULL))
-		return 0;
-	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_STRING && exp1->String && exp2->String && strcmp(exp1->String, exp2->String) != 0)
-		return 0;
-	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_INTEGER && exp1->Integer != exp2->Integer)
-		return 0;
-	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DOUBLE && exp1->Types.Double != exp2->Types.Double)
-		return 0;
-	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && memcmp(&(exp1->Types.Money), &(exp2->Types.Money), sizeof(MoneyType)) != 0)
-		return 0;
-	    if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && memcmp(&(exp1->Types.Date), &(exp2->Types.Date), sizeof(DateTime)) != 0)
+	    if (expCompareExpressionValues(exp1, exp2) <= 0)
 		return 0;
 	    }
 	if (exp1->NodeType == EXPR_N_FUNCTION || exp1->NodeType == EXPR_N_SUBQUERY)

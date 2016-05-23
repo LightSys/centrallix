@@ -1611,6 +1611,21 @@ qytPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     return hints;
     }
 
+
+/*** qytCommit - commit changes to the underlying object.
+ ***/
+int
+qytCommit(void* inf_v, pObjTrxTree* oxt)
+    {
+    pQytData inf = QYT(inf_v);
+
+	if (inf->LLObj)
+	    return objCommitObject(inf->LLObj);
+    
+    return -1;
+    }
+
+
 /*** qytInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -1659,6 +1674,7 @@ qytInitialize()
 	drv->ExecuteMethod = qytExecuteMethod;
 	drv->Info = qytInfo;
 	drv->PresentationHints = qytPresentationHints;
+	drv->Commit = qytCommit;
 
 	/** Register some structures **/
 	nmRegister(sizeof(QytData),"QytData");

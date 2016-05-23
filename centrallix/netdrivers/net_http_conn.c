@@ -605,6 +605,10 @@ nht_internal_ConnHandler(void* conn_v)
 	            nht_internal_PATCH(conn, url_inf, ptr);
 		    }
 		}
+	    else if (!strcasecmp(find_inf->StrVal,"delete"))
+		{
+		nht_internal_DELETE(conn, url_inf);
+		}
 	    }
 	else
 	    {
@@ -629,6 +633,10 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 	        nht_internal_COPY(conn,url_inf, conn->Destination);
 	        }
+	    else if (!strcmp(conn->Method,"delete"))
+		{
+		nht_internal_DELETE(conn,url_inf);
+		}
 	    else
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 501 Not Implemented\r\n"
@@ -680,6 +688,8 @@ nht_internal_TLSHandler(void* v)
     int intval;
     char* ptr;
     pNhtConn conn;
+    FILE* fp;
+    X509* cert;
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTPS Network Listener");
@@ -732,6 +742,25 @@ nht_internal_TLSHandler(void* v)
 	if (SSL_CTX_check_private_key(NHT.SSL_ctx) != 1)
 	    {
 	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
+	    }
+	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) != 0)
+	    {
+	    /** Load certificate chain also **/
+	    fp = fopen(strval, "r");
+	    if (fp)
+		{
+		while ((cert = PEM_read_X509(fp, NULL, NULL, NULL)) != NULL)
+		    {
+		    /** Got one; let's add it **/
+		    if (!SSL_CTX_add_extra_chain_cert(NHT.SSL_ctx, cert))
+			X509_free(cert);
+		    }
+		fclose(fp);
+		}
+	    else
+		{
+		mssErrorErrno(1, "HTTP", "Warning: could not open certificate chain file.");
+		}
 	    }
 
     	/** Open the server listener socket. **/

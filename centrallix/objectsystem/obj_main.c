@@ -266,8 +266,8 @@ objInitialize()
 	    if (t!=MLX_TOK_STRING) break;
 	    ct = (pContentType)nmMalloc(sizeof(ContentType));
 	    if (!ct) break;
-	    strncpy(ct->Name,mlxStringVal(s,NULL),63);
-	    ct->Name[63]=0;
+	    strncpy(ct->Name,mlxStringVal(s,NULL),127);
+	    ct->Name[127]=0;
 
 	    /** Get the description of the type **/
 	    t = mlxNextToken(s);

@@ -33,7 +33,8 @@ function dd_getvalue()
 function dd_action_set_value(aparam)
     {
     this.setvalue(aparam.Value);
-    this.ifcProbe(ifEvent).Activate('DataModify', {Value:this.Values[this.VisLayer.index].value});
+    dd_datachange(this);
+    //this.ifcProbe(ifEvent).Activate('DataModify', {Value:this.Values[this.VisLayer.index].value});
     }
 
 function dd_setvalue(v) 

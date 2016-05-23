@@ -943,6 +943,7 @@ function osrc_action_create_cb()
 	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
+	this.in_create = false;
 	this.SyncID = osrc_syncid++;
 	if (this.formobj) this.formobj.OperationComplete(true, this);
 	pg_serialized_load(this, 'about:blank', null, true);
@@ -953,6 +954,7 @@ function osrc_action_create_cb()
 	}
     else
 	{
+	this.in_create = false;
 	if (this.formobj) this.formobj.OperationComplete(false, this);
 	}
     this.formobj=null;
@@ -1541,6 +1543,8 @@ function osrc_prune_replica(most_recent_id)
 
 function osrc_action_clear(aparam)
     {
+    this.SyncID = osrc_syncid++;
+    this.lastSync = [];
     this.ClearReplica();
     this.GiveAllCurrentRecord('clear');
     }
@@ -2697,10 +2701,12 @@ function osrc_action_begincreate(aparam)
     if (!obj)
 	return null;
 
+    this.in_create = true;
+
     // Notify all children that we have a child that is creating an object
     for(var i in this.child)
 	if (this.child[i] != aparam.client)
-	    this.child[i].ObjectAvailable([], this, 'create');
+	    this.child[i].ObjectAvailable([], this, 'begincreate');
 
     return obj;
     }
@@ -2708,9 +2714,15 @@ function osrc_action_begincreate(aparam)
 
 function osrc_action_cancelcreate(aparam)
     {
-    for(var i in this.child)
-	if (this.child[i] != aparam.client)
-	    this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, 'create');
+    // We ignore this if we're not actually still in a create operation.
+    if (this.in_create)
+	{
+	this.in_create = false;
+
+	for(var i in this.child)
+	    if (this.child[i] != aparam.client)
+		this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, 'cancelcreate');
+	}
     }
 
 
@@ -3310,7 +3322,9 @@ function osrc_oc_is_discard_ready_no(master_osrc)
 
 function osrc_oc_object_available(o, master_osrc, why)
     {
-    if (why != 'create' || this.replica.length != 0)
+    if (why == 'begincreate' && master_osrc.in_create)
+	this.Clear();
+    else if (why != 'create' || !this.in_create) //if (why != 'create' || this.replica.length != 0)
 	this.Resync(master_osrc);
     return;
     }
@@ -3675,6 +3689,7 @@ function osrc_init(param)
     loader.ChangeCurrentRecord=osrc_change_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
+    loader.Clear = osrc_action_clear;
     loader.child =  [];
     loader.oldoids =  [];
     loader.sid = null;
@@ -3690,6 +3705,7 @@ function osrc_init(param)
     loader.type_list = [];
     loader.do_append = false;
     loader.query_ended = false;
+    loader.in_create = false;
 
     loader.MoveToRecordHandler = osrc_move_to_record_handler;
     loader.QueryObjectHandler = osrc_query_object_handler;
@@ -3700,7 +3716,6 @@ function osrc_init(param)
    
     // Actions
     var ia = loader.ifcProbeAdd(ifAction);
-    //loader.ActionClear=osrc_action_clear;
     ia.Add("Query", osrc_action_query);
     ia.Add("QueryObject", osrc_action_query_object);
     ia.Add("QueryParam", osrc_action_query_param);

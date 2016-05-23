@@ -12,6 +12,7 @@
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
 #include "stparse_ne.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -501,6 +502,30 @@ objTypeFromName(char* name)
 	    }
 
     return apparent_type;
+    }
+
+
+/*** obj_internal_OpenPermission - does the caller have permission to open
+ *** the object with the given permissions (read, write, or read+write)?
+ ***/
+int
+obj_internal_OpenPermission(pPathname pathinfo, int pathcnt, int mode, char* outer_type)
+    {
+    char* path;
+    int acctype = 0;
+    int rval;
+
+	/** Get our path and access type mask **/
+	path = obj_internal_PathPart(pathinfo, 0, pathcnt);
+	if ((mode & OBJ_O_ACCMODE) == OBJ_O_RDONLY || (mode & OBJ_O_ACCMODE) == OBJ_O_RDWR)
+	    acctype |= CXSS_ACC_T_READ;
+	if ((mode & OBJ_O_ACCMODE) == OBJ_O_WRONLY || (mode & OBJ_O_ACCMODE) == OBJ_O_RDWR)
+	    acctype |= CXSS_ACC_T_WRITE;
+
+	/** Check the permission **/
+	rval = cxssAuthorize("", path, outer_type, "", acctype, CXSS_LOG_T_FAILURE);
+
+    return rval;
     }
 
 
@@ -1262,7 +1287,7 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
     pObject tmp;
 
 	/** Lookup the directory path. **/
-	tmp = obj_internal_ProcessOpen(session, path, O_CREAT | O_EXCL, permission_mask, type);
+	tmp = obj_internal_ProcessOpen(session, path, O_WRONLY | O_CREAT | O_EXCL, permission_mask, type);
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to create object - pathname invalid");

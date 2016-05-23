@@ -817,13 +817,13 @@ nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 		"HTTP/1.0 201 Created\r\n"
 		"Date: %STR GMT\r\n"
 		"Server: %STR\r\n"
-		"Location: %STR&PATH/%STR&FILE?cx__mode=rest&cx__res_type=element&cx__res_format=attrs&cx__res_attrs=basic\r\n"
+		"Location: %STR&PATH?cx__mode=rest&cx__res_type=element&cx__res_format=attrs&cx__res_attrs=basic\r\n"
 		"%[Set-Cookie: %STR; path=/\r\n%]"
 		"Pragma: no-cache\r\n"
-		"Content-Type: application/json\r\n",
+		"Content-Type: application/json\r\n\r\n",
 		 tbuf, 
 		 NHT.ServerString,
-		 url_inf->StrVal, new_obj_name,
+		 /*url_inf->StrVal,*/ new_obj_name,
 		 conn->NhtSession->IsNewCookie, conn->NhtSession->Cookie);
 	conn->NhtSession->IsNewCookie = 0;
 
@@ -874,6 +874,31 @@ nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    json_object_put(j_obj);
 	if (target_obj)
 	    objClose(target_obj);
+
+	return -1;
+    }
+
+
+
+/*** nht_internal_RestDelete() - perform a RESTful DELETE operation.
+ ***/
+int
+nht_internal_RestDelete(pNhtConn conn, pStruct url_inf, pObject obj)
+    {
+    char* msg;
+
+	/** Attempt to delete the object **/
+	if (objDeleteObj(obj) < 0)
+	    {
+	    mssError(0,"NHT","REST DELETE operation failed");
+	    goto error;
+	    }
+
+	return 0;
+
+    error:
+	if (obj)
+	    objClose(obj);
 
 	return -1;
     }

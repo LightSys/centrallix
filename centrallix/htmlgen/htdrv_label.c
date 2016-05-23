@@ -197,7 +197,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
 		id,x,y,
 		!auto_height, h,
 		w,z, 
@@ -207,17 +207,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
 	if (is_link && *cfgcolor)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
-	if (strcmp(valign,"top") != 0)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS table { padding:0px; margin:0px; border-spacing:0px; %[height:%POSpx; %]%[height:100%%; %]width:%POSpx; }\n", id, !auto_height, h, auto_height, w);
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS table td { vertical-align:%STR&CSSVAL; text-align:%STR&CSSVAL; }\n", id, valign, align);
-	    }
+	htrAddStylesheetItem_va(s,"\t#lbl%POS p { text-align:%STR&CSSVAL; %[position:relative; top:50%%; transform:translateY(-50%%); %]padding:0px; margin:0px; border-spacing:0px; width:%POSpx; }\n", id, align, !strcmp(valign, "middle"), w);
 
 	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
 	stylestr[0] = '\0';
-	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
-		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
-		w,align,is_bold,font_size > 0,font_size,fgcolor);*/
 	htrAddScriptInit_va(s, "    lbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
 		name, fieldname, form, text, stylestr, tooltip, is_link, pfgcolor);
 
@@ -232,10 +225,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	if (strcmp(valign,"top") != 0)
-	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<table><tr><td><span>%STR&HTENLBR</span></td></tr></table>", text);
-	else
-	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<span>%STR&HTENLBR</span>", text);
+	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<p><span>%STR&HTENLBR</span></p>", text);
 
 	/** Check for more sub-widgets **/
 	htrRenderSubwidgets(s, tree, z+1);
