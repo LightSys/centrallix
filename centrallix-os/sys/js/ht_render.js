@@ -198,6 +198,39 @@ function cxjs_max(v)
 	}
     return highest;
     }
+function cxjs_sum(v)
+    {
+    var cnt = 0;
+    var sum = 0;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (v[i] != null && !isNaN(v[i]))
+		{
+		cnt++;
+		sum += v[i];
+		}
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (v[i] != null && !isNaN(v[i]))
+		{
+		cnt++;
+		sum += v[i];
+		}
+	    }
+	}
+    else
+	{
+	cnt = 1;
+	sum = v;
+	}
+    return (cnt > 0)?sum:null;
+    }
 function cxjs_count(v)
     {
     var cnt = 0;
