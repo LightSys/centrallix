@@ -380,7 +380,10 @@ mqpAnalyze(pQueryStatement stmt)
 	    qe->QSLinkage = (void*)from_qs;
 	    qe->OrderPrio = 999;
 
-	    /** Find the index of the object for this FROM clause **/
+	    /** Find the index of the object for this FROM clause.
+	     ** If this is an expression, Presentation has a forced value
+	     ** if not otherwise supplied by the SQL coder.
+	     **/
 	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
 	    if (src_idx == -1)
 	        {
@@ -761,9 +764,9 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
 	    if (!qe->LLSource) 
 		{
-		if (qe->Flags & MQ_EF_WILDCARD)
+		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
 		    {
-		    /** with wildcarding, it is ok for a source to not exist, we just ignore it. **/
+		    /** with wildcarding and/or expressions, it is ok for a source to not exist, we just ignore it. **/
 		    continue;
 		    }
 		else
@@ -1019,6 +1022,7 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
     pExpression new_exp;
+    pExpression source_exp;
 
 	if (additional_expr)
 	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);
@@ -1044,6 +1048,54 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	qe->LLSource = NULL;
 	qe->LLQuery = NULL;
+
+	/** Evaluate source expression? **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	    {
+	    /** Remove previous source list if necessary, since it will likely
+	     ** be different this time.
+	     **/
+	    if (mi->Flags & MQP_MI_F_SOURCELIST)
+		{
+		while(mi->SourceList.nItems)
+		    {
+		    nmSysFree(mi->SourceList.Items[0]);
+		    xaRemoveItem(&(mi->SourceList), 0);
+		    }
+		mi->Flags &= ~MQP_MI_F_SOURCELIST;
+		}
+
+	    /** Evalute **/
+	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    if (expEvalTree(source_exp, stmt->Query->ObjList) < 0)
+		{
+		mssError(0, "MQP", "Error in expression for FROM clause item");
+		return -1;
+		}
+
+	    /** If NULL, this source is valid but returns no rows **/
+	    if (source_exp->Flags & EXPR_F_NULL)
+		{
+		mi->Flags |= MQP_MI_F_SOURCELIST;
+		return 0;
+		}
+
+	    /** If non-string, error. **/
+	    if (source_exp->DataType != DATA_T_STRING)
+		{
+		mssError(1, "MQP", "Expression for FROM clause item must be a string");
+		return -1;
+		}
+
+	    /** If too long, error **/
+	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+		{
+		mssError(1, "MQP", "Expression for FROM clause item resulted in an over-long string");
+		return -1;
+		}
+
+	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+	    }
 
 	/** Wildcard processing needed? **/
 	if (!(mi->Flags & MQP_MI_F_SOURCELIST))

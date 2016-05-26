@@ -120,52 +120,104 @@ mqjAnalyze(pQueryStatement stmt)
     unsigned char from_srcmap[MQJ_MAX_JOIN];
     int n_joins = 0, n_joins_used;
     int min_objlist = stmt->Query->nProvidedObjects;
+    int our_mask, our_outer_mask;
+    int mask_objcnt;
 
 	memset(join_outer, 0, sizeof(join_outer));
 	memset(join_mask, 0, sizeof(join_mask));
 
     	/** Search for WHERE clauses with join operations... **/
-	while((where_qs = mq_internal_FindItem(stmt->QTree, MQ_T_WHERECLAUSE, where_qs)) != NULL)
+	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMCLAUSE, from_qs)) != NULL)
 	    {
-	    /** Build a list of join expressions available in the where clause. **/
-	    for(i=0;i<where_qs->Children.nItems;i++)
-	        {
-		where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		if (where_item->ObjCnt == 2)
+	    /** Get the WHERE clause corresponding to this FROM, if any **/
+	    where_qs = mq_internal_FindItem(from_qs->Parent, MQ_T_WHERECLAUSE, NULL);
+	    if (where_qs)
+		{
+		/** Build a list of join expressions available in the where clause. **/
+		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
-		    /** Already seen this join combination? **/
-		    for(n=-1,j=0;j<n_joins;j++)
-		        {
-			if (join_mask[j] == where_item->Expr->ObjCoverageMask) 
+		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
+		    if (where_item->ObjCnt == 2)
+			{
+			/** Already seen this join combination? **/
+			for(n=-1,j=0;j<n_joins;j++)
 			    {
-			    n = j;
-			    if (join_outer[n] != where_item->Expr->ObjOuterMask)
-			        {
-				mssError(1,"MQJ","An entity cannot be both an inner and outer member of an outer join");
-				return -1;
+			    if (join_mask[j] == where_item->Expr->ObjCoverageMask) 
+				{
+				n = j;
+				if (join_outer[n] != where_item->Expr->ObjOuterMask)
+				    {
+				    mssError(1,"MQJ","An entity cannot be both an inner and outer member of an outer join");
+				    return -1;
+				    }
+				break;
 				}
-			    break;
 			    }
-			}
 
-		    /** If not seen it, add it to our list **/
-		    if (n < 0)
-		        {
-			n = n_joins;
-			join_outer[n_joins] = where_item->Expr->ObjOuterMask;
-			join_mask[n_joins++] = where_item->Expr->ObjCoverageMask;
+			/** If not seen it, add it to our list **/
+			if (n < 0)
+			    {
+			    n = n_joins;
+			    join_outer[n_joins] = where_item->Expr->ObjOuterMask;
+			    join_mask[n_joins++] = where_item->Expr->ObjCoverageMask;
+			    }
 			}
 		    }
 		}
 
-	    /** No joins in this where clause? **/
+	    /** Also look for joins declared by FROM clause item expressions **/
+	    for(i=0; i<from_qs->Children.nItems; i++)
+		{
+		from_item = (pQueryStructure)(from_qs->Children.Items[i]);
+		if (from_item->Flags & MQ_SF_EXPRESSION)
+		    {
+		    our_mask = from_item->Expr->ObjCoverageMask | 1<<(from_item->ObjID);
+		    //our_outer_mask = 1<<(from_item->ObjID);
+		    our_outer_mask = from_item->Expr->ObjCoverageMask;
+		    mask_objcnt = 0;
+		    n = our_mask & EXPR_MASK_ALLOBJECTS;
+		    n >>= min_objlist;
+		    while (n)
+			{
+			mask_objcnt += (n&1);
+			n >>= 1;
+			}
+		   
+		    if (mask_objcnt > 1)
+			{
+			/** Already seen this join combination? **/
+			for(n=-1,j=0;j<n_joins;j++)
+			    {
+			    if (join_mask[j] == our_mask) 
+				{
+				n = j;
+				if (join_outer[n] != our_outer_mask)
+				    {
+				    mssError(1,"MQJ","An entity cannot be both an inner and outer member of an outer join");
+				    return -1;
+				    }
+				break;
+				}
+			    }
+
+			/** If not seen it, add it to our list **/
+			if (n < 0)
+			    {
+			    n = n_joins;
+			    join_outer[n_joins] = our_outer_mask;
+			    join_mask[n_joins++] = our_mask;
+			    }
+			}
+		    }
+		}
+
+	    /** Did we find joins? **/
 	    if (n_joins == 0) continue;
-	
+
 	    /** Get the select clause **/
-	    select_qs = mq_internal_FindItem(where_qs->Parent, MQ_T_SELECTCLAUSE, NULL);
+	    select_qs = mq_internal_FindItem(from_qs->Parent, MQ_T_SELECTCLAUSE, NULL);
 
 	    /** Build a list of the FROM sources, and init the source mapping **/
-	    from_qs = mq_internal_FindItem(where_qs->Parent, MQ_T_FROMCLAUSE, NULL);
 	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
 	        {
 		/** init the map - which we'll use for sorting the from items by specificity. **/
@@ -407,29 +459,32 @@ mqjAnalyze(pQueryStatement stmt)
 
 		/** Grab up the WHERE expressions for this join... **/
 		qe->Constraint = NULL;
-		for(i=0;i<where_qs->Children.nItems;i++)
+		if (where_qs)
 		    {
-		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    /*if (where_item->Expr->ObjCoverageMask == join_mask[found])*/
-		    if ((where_item->Expr->ObjCoverageMask & (joined_objects | join_mask[found])) == where_item->Expr->ObjCoverageMask)
-		        {
-			if (qe->Constraint)
+		    for(i=0;i<where_qs->Children.nItems;i++)
+			{
+			where_item = (pQueryStructure)(where_qs->Children.Items[i]);
+			/*if (where_item->Expr->ObjCoverageMask == join_mask[found])*/
+			if ((where_item->Expr->ObjCoverageMask & (joined_objects | join_mask[found])) == where_item->Expr->ObjCoverageMask)
 			    {
-			    new_exp = expAllocExpression();
-			    new_exp->NodeType = EXPR_N_AND;
-			    expAddNode(new_exp, qe->Constraint);
-			    expAddNode(new_exp, where_item->Expr);
-			    qe->Constraint = new_exp;
+			    if (qe->Constraint)
+				{
+				new_exp = expAllocExpression();
+				new_exp->NodeType = EXPR_N_AND;
+				expAddNode(new_exp, qe->Constraint);
+				expAddNode(new_exp, where_item->Expr);
+				qe->Constraint = new_exp;
+				}
+			    else
+				{
+				qe->Constraint = where_item->Expr;
+				}
+			    xaRemoveItem(&where_qs->Children,i);
+			    where_item->Expr = NULL;
+			    mq_internal_FreeQS(where_item);
+			    i--;
+			    continue;
 			    }
-			else
-			    {
-			    qe->Constraint = where_item->Expr;
-			    }
-			xaRemoveItem(&where_qs->Children,i);
-			where_item->Expr = NULL;
-			mq_internal_FreeQS(where_item);
-			i--;
-			continue;
 			}
 		    }
 

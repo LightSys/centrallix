@@ -105,6 +105,7 @@ typedef struct _QS
     struct _QS*		Parent;
     int			NodeType;		/* one-of MQ_T_xxx */
     XArray		Children;
+    int			ObjID;
     char		Presentation[32];
     char		Source[OBJSYS_MAX_PATH+1];
     char		Name[32];
@@ -131,6 +132,7 @@ typedef struct _QS
 #define MQ_SF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_SF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 #define MQ_SF_ASSIGNMENT	512		/* SELECT :obj:attr = ... */
+#define MQ_SF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1

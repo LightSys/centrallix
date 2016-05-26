@@ -379,6 +379,8 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    for(i=0;i<from->Children.nItems;i++)
 		{
 		subtree = (pQueryStructure)(from->Children.Items[i]);
+		if (subtree->Flags & MQ_SF_EXPRESSION && !subtree->Presentation[0])
+		    snprintf(subtree->Presentation, sizeof(subtree->Presentation), "from_%d", i);
 		if (subtree->Presentation[0])
 		    ptr = subtree->Presentation;
 		else
@@ -390,7 +392,18 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
 		    }
-		expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
+		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
+
+		/** Compile FROM clause expression if needed **/
+		if (subtree->Flags & MQ_SF_EXPRESSION)
+		    {
+		    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+		    if (!subtree->Expr) 
+			{
+			mssError(0,"MQ","Error in FROM list expression <%s>", subtree->RawData.String);
+			return -1;
+			}
+		    }
 		}
 	    if (from->Children.nItems > 1 && !has_identity && up)
 		{
@@ -1070,7 +1083,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     pQueryStructure declare_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr;
+    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom;
     char* ptr;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
@@ -1908,6 +1921,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    prunesubtr = 0;
 		    wildcard = 0;
 		    fromobject = 0;
+		    expfrom = 0;
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
 			{
 			t = mlxNextToken(lxs);
@@ -1938,6 +1952,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			t = mlxNextToken(lxs);
 			wildcard = 1;
 			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("expression", ptr))
+			{
+			t = mlxNextToken(lxs);
+			expfrom = 1;
+			}
 		    if (prunesubtr && !subtr)
 			{
 			next_state = ParseError;
@@ -1959,7 +1978,14 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			mlxNoteError(lxs);
 			break;
 			}
-		    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
+		    if (expfrom && t != MLX_TOK_OPENPAREN)
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","Expected open parenthesis after EXPRESSION keyword in FROM clause");
+			mlxNoteError(lxs);
+			break;
+			}
+		    else if (!expfrom && (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING))
 		        {
 			next_state = ParseError;
 			mssError(1,"MQ","Expected data source filename in FROM clause");
@@ -1969,16 +1995,42 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    new_qs = mq_internal_AllocQS(MQ_T_FROMSOURCE);
 		    new_qs->Presentation[0] = 0;
 		    new_qs->Name[0] = 0;
+		    new_qs->Source[0] = 0;
 		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
 		    if (inclsubtr) new_qs->Flags |= MQ_SF_INCLSUBTREE;
 		    if (prunesubtr) new_qs->Flags |= MQ_SF_PRUNESUBTREE;
 		    if (identity) new_qs->Flags |= MQ_SF_IDENTITY;
 		    if (wildcard) new_qs->Flags |= MQ_SF_WILDCARD;
 		    if (fromobject) new_qs->Flags |= MQ_SF_FROMOBJECT;
+		    if (expfrom) new_qs->Flags |= MQ_SF_EXPRESSION;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
-		    mlxCopyToken(lxs,new_qs->Source,256);
-		    t = mlxNextToken(lxs);
+		    parenlevel = 0;
+		    if (expfrom)
+			{
+			do /* while (parenlevel > 0) */
+			    {
+			    if (t == MLX_TOK_OPENPAREN) parenlevel++;
+			    if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
+			    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+				break;
+			    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+				break;
+			    ptr = mlxStringVal(lxs, NULL);
+			    if (!ptr) break;
+			    if (t == MLX_TOK_STRING)
+				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
+			    else
+				xsConcatenate(&new_qs->RawData, ptr, -1);
+			    t = mlxNextToken(lxs);
+			    }
+			    while (parenlevel > 0);
+			}
+		    else
+			{
+			mlxCopyToken(lxs,new_qs->Source,256);
+			t = mlxNextToken(lxs);
+			}
 		    if (t == MLX_TOK_KEYWORD)
 		        {
 			mlxCopyToken(lxs,new_qs->Presentation,32);

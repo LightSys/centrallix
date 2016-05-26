@@ -295,11 +295,11 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		/** Set modified. **/
 		this->ModCoverageMask |= (1<<i);
 
-		break;
+		return i;
 		}
 	    }
 
-    return 0;
+    return -1;
     }
 
 
