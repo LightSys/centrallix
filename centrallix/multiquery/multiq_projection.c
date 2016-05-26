@@ -761,7 +761,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		}
 
 	    /** Open the data source in the objectsystem **/
-	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
+	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
 	    if (!qe->LLSource) 
 		{
 		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
