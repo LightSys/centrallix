@@ -2022,6 +2022,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
 			    else
 				xsConcatenate(&new_qs->RawData, ptr, -1);
+			    xsConcatenate(&new_qs->RawData," ",1);
 			    t = mlxNextToken(lxs);
 			    }
 			    while (parenlevel > 0);
