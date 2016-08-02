@@ -391,6 +391,8 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     int t;
     int rval = -1;
     int need_update;
+    pObject ins_obj;
+    int id;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
 	pdata = (pMqusData)qe->PrivateData;
@@ -402,7 +404,14 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 	    objlist = (pParamObjects)xaGetItem(&pdata->ToBeUpdated, i);
 	    if (objlist)
 		{
+		/** Update object list, but preserve the __inserted object **/
+		ins_obj = NULL;
+		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted")) >= 0)
+		    ins_obj = stmt->Query->ObjList->Objects[id];
 		expCopyList(objlist, stmt->Query->ObjList, -1);
+		if (ins_obj)
+		    expModifyParam(stmt->Query->ObjList, "__inserted", ins_obj);
+		//expCopyParams(objlist, stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 
 		/** Apply all of the update criteria **/
 		for(j=0;j<((pQueryStructure)qe->QSLinkage)->Children.nItems;j++)

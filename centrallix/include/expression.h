@@ -286,6 +286,7 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 pParamObjects expCreateParamList();
 int expSetEvalDomain(pParamObjects this, int domain);
 int expCopyList(pParamObjects src, pParamObjects dst, int n_objects);
+int expCopyParams(pParamObjects src, pParamObjects dst, int start, int n_objects);
 int expBindExpression(pExpression exp, pParamObjects this, int domain);
 int expFreeParamList(pParamObjects this);
 int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());

@@ -268,6 +268,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    {
 	    objlist = (pParamObjects)xaGetItem(objects_to_update, j);
 	    expCopyList(objlist, stmt->Query->ObjList, -1);
+	    //expCopyParams(objlist, stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 
 	    /** Loop through list of values to set **/
 	    for(i=0;i<qe->AttrNames.nItems;i++)
