@@ -641,11 +641,14 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		case MLX_TOK_ASTERISK: /* outer join? */
 		    if (cmpflags & EXPR_CMP_OUTERJOIN)
 		        {
-			if (mlxNextToken(lxs) == MLX_TOK_EQUALS)
+			if ((t = mlxNextToken(lxs)) == MLX_TOK_EQUALS || t == MLX_TOK_COMPARE)
 			    {
 			    etmp->NodeType = EXPR_N_COMPARE;
 			    etmp->Flags |= EXPR_F_LOUTERJOIN;
-			    etmp->CompareType = MLX_CMP_EQUALS;
+			    if (t == MLX_TOK_EQUALS)
+				etmp->CompareType = MLX_CMP_EQUALS;
+			    else
+				etmp->CompareType = mlxIntVal(lxs);
 			    break;
 			    }
 			else
@@ -691,6 +694,19 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		case MLX_TOK_COMPARE:
 		    etmp->NodeType = EXPR_N_COMPARE;
 		    etmp->CompareType = mlxIntVal(lxs);
+
+		    /** Check outer join? **/
+		    if (cmpflags & EXPR_CMP_OUTERJOIN)
+		        {
+			if (mlxNextToken(lxs) == MLX_TOK_ASTERISK)
+			    {
+			    etmp->Flags |= EXPR_F_ROUTERJOIN;
+			    }
+			else
+			    {
+			    mlxHoldToken(lxs);
+			    }
+			}
 		    break;
 
 		case MLX_TOK_PLUS:
@@ -995,7 +1011,8 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
 /*** expBindExpression - do late binding of an expression tree to an
  *** object list.  'domain' specifies the requested bind domain, whether
  *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
- *** (EXP_F_RUNCLIENT).
+ *** (EXP_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
+ *** a domainless expression.
  ***/
 int
 expBindExpression(pExpression exp, pParamObjects objlist, int domain)
@@ -1003,7 +1020,7 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
     int i,cm=0;
 
 	/** For a property node, check if the object should be set. **/
-	if (exp->NodeType == EXPR_N_PROPERTY && (exp->Flags & domain))
+	if (exp->NodeType == EXPR_N_PROPERTY && ((exp->Flags & domain) || !domain))
 	    {
 	    if (exp->ObjID == -1 && exp->Parent && exp->Parent->NodeType == EXPR_N_OBJECT)
 		{
@@ -1025,6 +1042,10 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 		{
 		if (exp->ObjID == -2) cm |= (1<<(objlist->CurrentID));
 		if (exp->ObjID == -3) cm |= (1<<(objlist->ParentID));
+		}
+	    else if (exp->ObjID >= 0)
+		{
+		cm |= (1<<(exp->ObjID));
 		}
 	    }
 
