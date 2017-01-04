@@ -68,11 +68,11 @@ int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
 
-#define MAX_EVENTS		256
-#define MAX_THREADS		256
-#define MAX_STACK		(31 * 2048)
+#define MT_MAX_THREADS		256
+#define MT_MAX_EVENTS		(MT_MAX_THREADS * 4)
+#define MT_MAX_STACK		(31 * 2048)
 #define MT_STACK_HIGHWATER	(24 * 2048)
-/*#define MAX_STACK		(31 * 1024)
+/*#define MT_MAX_STACK		(31 * 1024)
 #define MT_STACK_HIGHWATER	(24 * 1024)*/
 #define MT_TASKSEP		256
 #define MT_TICK_MAX		1
@@ -82,8 +82,8 @@ int mtSched();
 
 typedef struct _MTS
     {
-    pEventReq	EventWaitTable[MAX_EVENTS];
-    pThread	ThreadTable[MAX_THREADS];
+    pEventReq	EventWaitTable[MT_MAX_EVENTS];
+    pThread	ThreadTable[MT_MAX_THREADS];
     int 	nThreads;
     int		MaxThreads;
     int		nEvents;
@@ -328,9 +328,9 @@ evRemove(pEventReq event)
 int
 evAdd(pEventReq event)
     {
-    if (MTASK.nEvents >= MAX_EVENTS)
+    if (MTASK.nEvents >= MT_MAX_EVENTS)
         {
-	printf("mtask: Event table exhausted (%d)\n",MAX_EVENTS);
+	printf("mtask: Event table exhausted (%d)\n",MT_MAX_EVENTS);
 	return -1;
 	}
     MTASK.EventWaitTable[MTASK.nEvents++] = event;
@@ -538,10 +538,10 @@ mtInitialize(int flags, void (*start_fn)())
 
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
-	MTASK.MaxThreads = MAX_THREADS;
+	MTASK.MaxThreads = MT_MAX_THREADS;
 	if (getrlimit(RLIMIT_STACK, &stacklimit) == 0 && stacklimit.rlim_cur > 0)
 	    {
-	    room_for_threads = stacklimit.rlim_cur / (MAX_STACK + MT_TASKSEP) - 1;
+	    room_for_threads = stacklimit.rlim_cur / (MT_MAX_STACK + MT_TASKSEP) - 1;
 	    if (room_for_threads < MTASK.MaxThreads)
 		{
 		printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
@@ -556,7 +556,7 @@ mtInitialize(int flags, void (*start_fn)())
 
 	/** Initialize the system-event-wait table **/
 	MTASK.nEvents = 0;
-	for(i=0;i<MAX_EVENTS;i++) MTASK.EventWaitTable[i] = NULL;
+	for(i=0;i<MT_MAX_EVENTS;i++) MTASK.EventWaitTable[i] = NULL;
 
 	/** initialize the ring buffer for pending signals **/
 	xrqInit(&MTASK.PendingSignals,4);
@@ -684,7 +684,7 @@ mtRunStartFn(pThread new_thr, int idx)
 int
 r_mtRun_PokeStack()
     {
-    char buf[MAX_STACK - MT_TASKSEP*2];
+    char buf[MT_MAX_STACK - MT_TASKSEP*2];
     buf[0] = buf[0];
     return 0;
     }
@@ -700,14 +700,14 @@ r_mtRun_Spacer()
     char buf[MT_TASKSEP];
     buf[MT_TASKSEP-1] = buf[MT_TASKSEP-1];
 
-    /*mprotect((char*)((int)(buf-MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
+    /*mprotect((char*)((int)(buf-MT_MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
     MTASK.CurrentThread->Stack = (unsigned char*)buf;
     r_mtRun_PokeStack();
 #ifdef USING_VALGRIND
-    /*MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);
-    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);*/
-    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
-    printf("New stack %d at %p - %p\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
+    /*MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MT_MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);
+    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MT_MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);*/
+    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MT_MAX_STACK + MT_TASKSEP*2, buf + 20);
+    printf("New stack %d at %p - %p\n", MTASK.CurrentThread->ValgrindStackID, buf - MT_MAX_STACK + MT_TASKSEP*2, buf + 20);
 #endif
     if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
@@ -722,8 +722,8 @@ r_mtRunStartFn()
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy.
      **/
-    char buf[MAX_STACK];
-    buf[MAX_STACK-1] = buf[MAX_STACK-1];
+    char buf[MT_MAX_STACK];
+    buf[MT_MAX_STACK-1] = buf[MT_MAX_STACK-1];
 
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
@@ -1742,7 +1742,6 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 		    event_req[i]->TableIdx = evAdd(event_req[i]);
 		    if (event_req[i]->TableIdx == -1)
 		        {
-		        nmFree(event_req[i], sizeof(EventReq));
 		        return -1;
 		        }
 		    }
