@@ -1546,6 +1546,13 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     int use_stock_fn_call;
     char quote;
     char* ptr;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"MYSD","Failed to run query: resource exhaustion occurred");
+	    return -1;
+	    }
     
         xsInit(&tmp);
 
@@ -1888,6 +1895,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			xsConcatenate(where_clause, " ", 1);
 			xsConcatenate(where_clause, subtree->String, -1);
 			xsConcatenate(where_clause, "(", 1);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    else if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "weekday")))
+			{
+			xsConcatenate(where_clause, " dayofweek(", -1);
 			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
 			xsConcatenate(where_clause, ") ", 2);
 			}
