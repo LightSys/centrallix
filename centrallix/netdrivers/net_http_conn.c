@@ -33,11 +33,11 @@
 /************************************************************************/
 
  
- /*** nht_internal_AllocConn() - allocates a connection structure and
+ /*** nht_i_AllocConn() - allocates a connection structure and
  *** initializes it given a network connection.
  ***/
 pNhtConn
-nht_internal_AllocConn(pFile net_conn)
+nht_i_AllocConn(pFile net_conn)
     {
     pNhtConn conn;
     char* remoteip;
@@ -49,6 +49,9 @@ nht_internal_AllocConn(pFile net_conn)
 	conn->ConnFD = net_conn;
 	conn->Size = -1;
 	conn->LastHandle = XHN_INVALID_HANDLE;
+	xaInit(&conn->RequestHeaders, 16);
+	xaInit(&conn->ResponseHeaders, 16);
+	strtcpy(conn->ResponseContentType, "text/html", sizeof(conn->ResponseContentType));
 
 	/** Get the remote IP and port **/
 	remoteip = netGetRemoteIP(net_conn, NET_U_NOBLOCK);
@@ -59,12 +62,19 @@ nht_internal_AllocConn(pFile net_conn)
     }
 
 
-/*** nht_internal_FreeConn() - releases a connection structure and 
+/*** nht_i_FreeConn() - releases a connection structure and 
  *** closes the associated network connection.
  ***/
 int
-nht_internal_FreeConn(pNhtConn conn)
+nht_i_FreeConn(pNhtConn conn)
     {
+
+	/** Issue final chunk in chunked encoding **/
+	if (conn->UsingChunkedEncoding)
+	    fdPrintf(conn->ConnFD, "0\r\n\r\n");
+
+	/** Log the connection **/
+	nht_i_Log(conn);
 
 	/** Close the connection **/
 	if (conn->SSLpid)
@@ -75,98 +85,64 @@ nht_internal_FreeConn(pNhtConn conn)
 	/** Deallocate the structure **/
 	if (conn->Referrer) nmSysFree(conn->Referrer);
 	if (conn->URL) nmSysFree(conn->URL);
+	if (conn->ReqURL) stFreeInf_ne(conn->ReqURL);
 
 	/** Unlink from the session. **/
-	if (conn->NhtSession) nht_internal_UnlinkSess(conn->NhtSession);
+	if (conn->NhtSession) nht_i_UnlinkSess(conn->NhtSession);
 
 	/** Release the connection structure **/
+	nht_i_FreeHeaders(&conn->RequestHeaders);
+	nht_i_FreeHeaders(&conn->ResponseHeaders);
+	xaDeInit(&conn->RequestHeaders);
+	xaDeInit(&conn->ResponseHeaders);
 	nmFree(conn, sizeof(NhtConn));
 
     return 0;
     }
 
 
-/*** nht_internal_WriteConn() - write data to a network connection
+/*** nht_i_Log - generate an access logfile entry
  ***/
 int
-nht_internal_WriteConn(pNhtConn conn, char* buf, int len, int is_hdr)
+nht_i_Log(pNhtConn conn)
     {
-    int wcnt;
-
-	if (len == -1) len = strlen(buf);
-
-	if (!is_hdr && !conn->InBody)
-	    {
-	    conn->InBody = 1;
-	    fdWrite(conn->ConnFD, "\r\n", 2, 0, FD_U_PACKET);
-	    }
-
-	wcnt = fdWrite(conn->ConnFD, buf, len, 0, FD_U_PACKET);
-	if (wcnt > 0 && !is_hdr)
-	    conn->BytesWritten += wcnt;
-
-    return wcnt;
-    }
-
-
-/*** nht_internal_PrintfConn() - write data to the network connection,
- *** formatted.
- ***/
-int
-nht_internal_QPrintfConn(pNhtConn conn, int is_hdr, char* fmt, ...)
-    {
-    va_list va;
-    int wcnt;
-
-	if (!is_hdr && !conn->InBody)
-	    {
-	    conn->InBody = 1;
-	    fdWrite(conn->ConnFD, "\r\n", 2, 0, FD_U_PACKET);
-	    }
-
-	va_start(va, fmt);
-	wcnt = fdQPrintf_va(conn->ConnFD, fmt, va);
-	va_end(va);
-	if (wcnt > 0 && !is_hdr)
-	    conn->BytesWritten += wcnt;
-
-    return wcnt;
-    }
-
-/*** nht_internal_Log - generate an access logfile entry
- ***/
-int
-nht_internal_Log(pNhtConn conn)
-    {
-    /*pStruct req_inf = conn->ReqURL;*/
+    char method[32];
+    int i;
 
 	/** logging not available? **/
 	if (!NHT.AccessLogFD)
 	    return 0;
 
-	/** Print the log message **/
+	/** Upcase the method **/
+	strtcpy(method, conn->Method, sizeof(method));
+	for(i=0;i<strlen(method);i++)
+	    method[i] = toupper(method[i]);
+
+	/** Print the log message, using the typical "combined" log format **/
 	fdQPrintf(NHT.AccessLogFD, 
-		"%STR %STR %STR [%STR] \"%STR&ESCQ\" %INT %INT \"%STR&ESCQ\" \"%STR&ESCQ\"\n",
+		"%STR %STR %STR [%STR] \"%STR&ESCQ %STR&ESCQ %STR&ESCQ\" %INT %INT \"%STR&ESCQ\" \"%STR&ESCQ\"\n",
 		conn->IPAddr,
 		"-",
-		conn->Username,
-		"",
+		(conn->NhtSession && conn->NhtSession->Username[0])?conn->NhtSession->Username:"-",
+		conn->ResponseTime,
+		method,
 		conn->ReqURL?(conn->ReqURL->StrVal):"",
-		conn->ResultCode,
+		conn->HTTPVer,
+		conn->ResponseCode,
 		conn->BytesWritten,
-		conn->Referrer?conn->Referrer:"",
-		conn->UserAgent?conn->UserAgent:"");
+		conn->Referrer?conn->Referrer:"-",
+		conn->UserAgent[0]?conn->UserAgent:"-");
 
 
     return 0;
     }
 
 
-/*** nht_internal_ConnHandler - manages a single incoming HTTP connection
+/*** nht_i_ConnHandler - manages a single incoming HTTP connection
  *** and processes the connection's request.
  ***/
 void
-nht_internal_ConnHandler(void* conn_v)
+nht_i_ConnHandler(void* conn_v)
     {
     char sbuf[160];
     char* msg = "";
@@ -176,7 +152,6 @@ nht_internal_ConnHandler(void* conn_v)
     char* passwd = NULL;
     pStruct url_inf = NULL;
     pStruct find_inf,akey_inf;
-    int tid = -1;
     handle_t w_timer = XHN_INVALID_HANDLE, i_timer = XHN_INVALID_HANDLE;
     pNhtConn conn = (pNhtConn)conn_v;
     unsigned char t_lsb;
@@ -202,7 +177,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    }
 
 	/** Parse the HTTP Headers... **/
-	if (nht_internal_ParseHeaders(conn) < 0)
+	if (nht_i_ParseHeaders(conn) < 0)
 	    {
 	    if (conn->ReportingFD != NULL && cxssStatTLS(conn->ReportingFD, sbuf, sizeof(sbuf)) >= 0)
 		msg = sbuf;
@@ -218,15 +193,8 @@ nht_internal_ConnHandler(void* conn_v)
 	/** Did client send authentication? **/
 	if (!*(conn->Auth))
 	    {
-	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
-	    		 "Server: %s\r\n"
-			 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    /*if (*(conn->Cookie))
-		printf("Warning: session %s did not provide an Auth header.\n", conn->Cookie);*/
+	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 	    goto out;
 	    }
 
@@ -236,12 +204,7 @@ nht_internal_ConnHandler(void* conn_v)
 	if (usrname && !passwd) passwd = "";
 	if (!usrname || !passwd) 
 	    {
-	    snprintf(sbuf,160,"HTTP/1.0 400 Bad Request\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	    nht_i_WriteErrResponse(conn, 404, "Bad Request", "<h1>400 Bad Request</h1>\r\n");
 	    goto out;
 	    }
 
@@ -252,25 +215,12 @@ nht_internal_ConnHandler(void* conn_v)
 	    conn->NhtSession = (pNhtSessionData)xhLookup(&(NHT.CookieSessions), conn->Cookie);
 	    if (conn->NhtSession)
 	        {
-		nht_internal_LinkSess(conn->NhtSession);
+		nht_i_LinkSess(conn->NhtSession);
 		if (strcmp(conn->NhtSession->Username,usrname) || strcmp(passwd,conn->NhtSession->Password))
 		    {
-	    	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
-		    		 "Server: %s\r\n"
-				 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
-				 "Content-Type: text/html\r\n"
-				 "\r\n"
-				 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
-	            fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+		    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		    mssError(1,"NHT","Bark! User supplied valid cookie %s but cred mismatch (sesslink %d, provided %s, stored %s)", conn->Cookie, conn->NhtSession->LinkCnt, usrname, conn->NhtSession->Username);
-		    /*printf("Valid cookie but cred mismatch:  session data structure for %s %s", usrname, conn->Cookie);
-		    for(i=0;i<sizeof(NhtSessionData);i++)
-			{
-			printf("%c%2.2x", (((i%16) == 0)?'\n':' '), ((unsigned char*)conn->NhtSession)[i]);
-			}
-		    printf("\nAuth Data: ");
-		    for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
-		    printf("\n");*/
 		    goto out;
 		    }
 		if (conn->NhtSession->Session)
@@ -279,7 +229,6 @@ nht_internal_ConnHandler(void* conn_v)
 		    thSetParamFunctions(NULL,mssLinkSession,mssUnlinkSession);
 		    mssLinkSession(conn->NhtSession->Session);
 		    }
-		/*thSetUserID(NULL,((pMtSession)(conn->NhtSession->Session))->UserID);*/
 		thSetSecContext(NULL, &(conn->NhtSession->SecurityContext));
 		w_timer = conn->NhtSession->WatchdogTimer;
 		i_timer = conn->NhtSession->InactivityTimer;
@@ -292,16 +241,11 @@ nht_internal_ConnHandler(void* conn_v)
 
 	/** Parse out the requested url **/
 	/*printf("debug: %s\n",urlptr);*/
-	url_inf = htsParseURL(conn->URL);
+	url_inf = conn->ReqURL = htsParseURL(conn->URL);
 	if (!url_inf)
 	    {
-	    snprintf(sbuf,160,"HTTP/1.0 500 Internal Server Error\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
+	    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>500 Internal Server Error</h1>\r\n");
 	    mssError(1,"NHT","Failed to handle HTTP request, exiting thread (could not parse URL).");
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
 	    goto out;
 	    }
 
@@ -317,7 +261,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    }
 
 	/** Fixup the path by re-adding the needed path parameters **/
-	nht_internal_ConstructPathname(url_inf);
+	nht_i_ConstructPathname(url_inf);
 
 	/** Watchdog ping? **/
 	conn->NotActivity = 0;
@@ -331,15 +275,10 @@ nht_internal_ConnHandler(void* conn_v)
 	    if (conn->NhtSession)
 		{
 		/** Reset only the watchdog timer on a ping. **/
-		if (nht_internal_ResetWatchdog(w_timer))
+		if (nht_i_ResetWatchdog(w_timer))
 		    {
-		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-				 "Server: %s\r\n"
-				 "Pragma: no-cache\r\n"
-				 "Content-Type: text/html\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
-		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		    conn->NoCache = 1;
+		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 		    goto out;
 		    }
 		else
@@ -348,11 +287,11 @@ nht_internal_ConnHandler(void* conn_v)
 		    find_inf = stLookup_ne(url_inf,"cx__akey");
 		    if (find_inf)
 			{
-			if (nht_internal_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) == 0)
+			if (nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) == 0)
 			    {
 			    /** session key matched... now update app and group **/
-			    if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
-			    if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
+			    if (app) nht_i_ResetWatchdog(app->WatchdogTimer);
+			    if (group) nht_i_ResetWatchdog(group->WatchdogTimer);
 			    }
 			}
 
@@ -367,13 +306,8 @@ nht_internal_ConnHandler(void* conn_v)
 			    strcpy(timestr, "OK");
 			    }
 			}
-		    fdQPrintf(conn->ConnFD,"HTTP/1.0 200 OK\r\n"
-				 "Server: %STR\r\n"
-				 "Pragma: no-cache\r\n"
-				 "Content-Type: text/html\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET='%STR&HTE'></A>\r\n",
-				 NHT.ServerString, timestr);
+		    nht_i_WriteResponse(conn, 200, "OK", NULL);
+		    nht_i_QPrintfConn(conn, 0, "<A HREF=/ TARGET='%STR&HTE'></A>\r\n", NHT.ServerString, timestr);
 		    goto out;
 		    }
 		}
@@ -383,13 +317,8 @@ nht_internal_ConnHandler(void* conn_v)
 		 ** want to automatically re-login the user since that defeats the purpose
 		 ** of session timeouts.
 		 **/
-		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-			     "Server: %s\r\n"
-			     "Pragma: no-cache\r\n"
-			     "Content-Type: text/html\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
-		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 		goto out;
 		}
 	    }
@@ -400,18 +329,13 @@ nht_internal_ConnHandler(void* conn_v)
 	     **/
 	    err = 0;
 	    if (!conn->NotActivity && err == 0)
-		err = nht_internal_ResetWatchdog(i_timer);
+		err = nht_i_ResetWatchdog(i_timer);
 	    if (err == 0)
-		err = nht_internal_ResetWatchdog(w_timer);
+		err = nht_i_ResetWatchdog(w_timer);
 	    if (err < 0)
 		{
-		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-			     "Server: %s\r\n"
-			     "Pragma: no-cache\r\n"
-			     "Content-Type: text/html\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
-		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 		goto out;
 		}
 	    }
@@ -422,36 +346,23 @@ nht_internal_ConnHandler(void* conn_v)
 	    /** No session, and the connection is a 'non-activity' request? **/
 	    if (conn->NotActivity)
 		{
-		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-			     "Server: %s\r\n"
-			     "Pragma: no-cache\r\n"
-			     "Content-Type: text/html\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
-		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 		goto out;
 		}
 
 	    /** Attempt authentication **/
 	    if (mssAuthenticate(usrname, passwd) < 0)
 	        {
-	        snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
-			     "Server: %s\r\n"
-			     "Content-Type: text/html\r\n"
-			     "WWW-Authenticate: Basic realm=\"%s\"\r\n"
-			     "\r\n"
-			     "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
-	        fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		/*printf("\nNew session requested, but user supplied invalid auth data: ");
-		for(i=0;i<16;i++) printf("%2.2x %2.2x ", usrname[i], passwd[i]);
-		printf("\n");*/
+		nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+		nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		goto out;
 		}
 
 	    /** Authentication succeeded - start a new session **/
-	    conn->NhtSession = nht_internal_AllocSession(usrname);
+	    conn->NhtSession = nht_i_AllocSession(usrname);
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
-	    nht_internal_LinkSess(conn->NhtSession);
+	    nht_i_LinkSess(conn->NhtSession);
 	    }
 
 	/** Start the application security context **/
@@ -505,11 +416,11 @@ nht_internal_ConnHandler(void* conn_v)
 	    }*/
 
 	/** Need to start an available connection completion trigger on this? **/
-	if ((find_inf=stLookup_ne(url_inf,"ls__triggerid")))
+	/*if ((find_inf=stLookup_ne(url_inf,"ls__triggerid")))
 	    {
 	    tid = strtoi(find_inf->StrVal,NULL,0);
-	    nht_internal_StartTrigger(conn->NhtSession, tid);
-	    }
+	    nht_i_StartTrigger(conn->NhtSession, tid);
+	    }*/
 
 	/** If the method was GET and an ls__method was specified, use that method **/
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
@@ -517,35 +428,24 @@ nht_internal_ConnHandler(void* conn_v)
 	    akey_inf = stLookup_ne(url_inf,"cx__akey");
 	    if (!akey_inf || strncmp(akey_inf->StrVal, conn->NhtSession->SKey, strlen(conn->NhtSession->SKey)))
 		{
-		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-			     "Server: %s\r\n"
-			     "Pragma: no-cache\r\n"
-			     "Content-Type: text/html\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
-		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 		goto out;
 		}
 	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
-	        nht_internal_GET(conn,url_inf,conn->IfModifiedSince);
+	        nht_i_GET(conn,url_inf,conn->IfModifiedSince);
 		}
 	    else if (!strcasecmp(find_inf->StrVal,"copy"))
 	        {
 		find_inf = stLookup_ne(url_inf,"ls__destination");
 		if (!find_inf || !(find_inf->StrVal))
 		    {
-	            snprintf(sbuf,160,"HTTP/1.0 400 Method Error\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>400 Method Error - include ls__destination for copy</H1>\r\n",NHT.ServerString);
-	            fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		    nht_i_WriteErrResponse(conn, 400, "Method Error", "<H1>400 Method Error - include ls__destination for copy</H1>\r\n");
 		    }
 		else
 		    {
 		    ptr = find_inf->StrVal;
-		    nht_internal_COPY(conn,url_inf, ptr);
+		    nht_i_COPY(conn,url_inf, ptr);
 		    }
 		}
 	    else if (!strcasecmp(find_inf->StrVal,"put"))
@@ -553,18 +453,13 @@ nht_internal_ConnHandler(void* conn_v)
 		find_inf = stLookup_ne(url_inf,"ls__content");
 		if (!find_inf || !(find_inf->StrVal))
 		    {
-	            snprintf(sbuf,160,"HTTP/1.0 400 Method Error\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>400 Method Error - include ls__content for put</H1>\r\n",NHT.ServerString);
-	            fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		    nht_i_WriteErrResponse(conn, 400, "Method Error", "<H1>400 Method Error - include ls__content for put</H1>\r\n");
 		    }
 		else
 		    {
 		    ptr = find_inf->StrVal;
 		    conn->Size = strlen(ptr);
-	            nht_internal_PUT(conn,url_inf,conn->Size,ptr);
+	            nht_i_PUT(conn,url_inf,conn->Size,ptr);
 		    }
 		}
 	    else if (!strcasecmp(find_inf->StrVal,"post"))
@@ -572,18 +467,13 @@ nht_internal_ConnHandler(void* conn_v)
 		find_inf = stLookup_ne(url_inf,"cx__content");
 		if (!find_inf || !(find_inf->StrVal))
 		    {
-	            fdPrintf(conn->ConnFD,
-			"HTTP/1.0 400 Method Error\r\n"
-	    		"Server: %s\r\n"
-			"Content-Type: text/html\r\n"
-			"\r\n"
-			"<H1>400 Method Error - include cx__content for POST</H1>\r\n",NHT.ServerString);
+		    nht_i_WriteErrResponse(conn, 400, "Method Error", "<H1>400 Method Error - include cx__content for POST</H1>\r\n");
 		    }
 		else
 		    {
 		    ptr = find_inf->StrVal;
 		    conn->Size = strlen(ptr);
-	            nht_internal_POST(conn, url_inf, conn->Size, ptr);
+	            nht_i_POST(conn, url_inf, conn->Size, ptr);
 		    }
 		}
 	    else if (!strcasecmp(find_inf->StrVal,"patch"))
@@ -591,23 +481,18 @@ nht_internal_ConnHandler(void* conn_v)
 		find_inf = stLookup_ne(url_inf,"cx__content");
 		if (!find_inf || !(find_inf->StrVal))
 		    {
-	            fdPrintf(conn->ConnFD,
-			"HTTP/1.0 400 Method Error\r\n"
-	    		"Server: %s\r\n"
-			"Content-Type: text/html\r\n"
-			"\r\n"
-			"<H1>400 Method Error - include cx__content for PATCH</H1>\r\n",NHT.ServerString);
+		    nht_i_WriteErrResponse(conn, 400, "Method Error", "<H1>400 Method Error - include cx__content for PATCH</H1>\r\n");
 		    }
 		else
 		    {
 		    ptr = find_inf->StrVal;
 		    conn->Size = strlen(ptr);
-	            nht_internal_PATCH(conn, url_inf, ptr);
+	            nht_i_PATCH(conn, url_inf, ptr);
 		    }
 		}
 	    else if (!strcasecmp(find_inf->StrVal,"delete"))
 		{
-		nht_internal_DELETE(conn, url_inf);
+		nht_i_DELETE(conn, url_inf);
 		}
 	    }
 	else
@@ -615,70 +500,68 @@ nht_internal_ConnHandler(void* conn_v)
 	    /** Which method was used? **/
 	    if (!strcmp(conn->Method,"get"))
 	        {
-	        nht_internal_GET(conn,url_inf,conn->IfModifiedSince);
+	        nht_i_GET(conn,url_inf,conn->IfModifiedSince);
 	        }
 	    else if (!strcmp(conn->Method,"put"))
 	        {
-	        nht_internal_PUT(conn,url_inf,conn->Size,NULL);
+	        nht_i_PUT(conn,url_inf,conn->Size,NULL);
 	        }
 	    else if (!strcmp(conn->Method,"post"))
 		{
-		nht_internal_POST(conn, url_inf, conn->Size, NULL);
+		nht_i_POST(conn, url_inf, conn->Size, NULL);
 		}
 	    else if (!strcmp(conn->Method,"patch"))
 		{
-		nht_internal_PATCH(conn, url_inf, NULL);
+		nht_i_PATCH(conn, url_inf, NULL);
 		}
 	    else if (!strcmp(conn->Method,"copy"))
 	        {
-	        nht_internal_COPY(conn,url_inf, conn->Destination);
+	        nht_i_COPY(conn,url_inf, conn->Destination);
 	        }
 	    else if (!strcmp(conn->Method,"delete"))
 		{
-		nht_internal_DELETE(conn,url_inf);
+		nht_i_DELETE(conn,url_inf);
 		}
 	    else
 	        {
-	        snprintf(sbuf,160,"HTTP/1.0 501 Not Implemented\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>501 Method Not Implemented</H1>\r\n",NHT.ServerString);
-	        fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	        /*netCloseTCP(conn,1000,0);*/
+		nht_i_WriteErrResponse(conn, 501, "Not Implemented", "<h1>501 Method Not Implemented</h1>\r\n");
 		}
 	    }
 
-	/** End a trigger? **/
-	if (tid != -1) nht_internal_EndTrigger(conn->NhtSession,tid);
+	/** Catch-all, since we relocated the default response calls **/
+	if (!conn->InBody)
+	    {
+	    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>500 Internal Server Error</h1>\r\n");
+	    }
 
-	/*nht_internal_UnlinkSess(conn->NhtSession);*/
+	/** End a trigger? **/
+	/*if (tid != -1) nht_i_EndTrigger(conn->NhtSession,tid);*/
 
 	/** Close and exit. **/
-	if (url_inf) stFreeInf_ne(url_inf);
-	nht_internal_FreeConn(conn);
+	/*if (url_inf) stFreeInf_ne(url_inf);*/
+	nht_i_FreeConn(conn);
 	conn = NULL;
 	if (context_started) cxssPopContext();
 	thExit();
 
     error:
 	mssError(1,"NHT","Failed to handle HTTP request, exiting thread (%s).",msg);
-	snprintf(sbuf,160,"HTTP/1.0 400 Request Error\r\n\r\n%s\r\n",msg);
-	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	nht_i_WriteErrResponse(conn, 400, "Request Error", NULL);
+	nht_i_QPrintfConn(conn, 0, "%STR\r\n", msg);
 
     out:
-	if (url_inf) stFreeInf_ne(url_inf);
-	if (conn) nht_internal_FreeConn(conn);
+	if (url_inf && !conn) stFreeInf_ne(url_inf);
+	if (conn) nht_i_FreeConn(conn);
 	if (context_started) cxssPopContext();
 	thExit();
     }
 
 
-/*** nht_internal_TLSHandler - manages incoming TLS-encrypted HTTP
+/*** nht_i_TLSHandler - manages incoming TLS-encrypted HTTP
  *** connections.
  ***/
 void
-nht_internal_TLSHandler(void* v)
+nht_i_TLSHandler(void* v)
     {
     pFile listen_socket;
     pFile connection_socket;
@@ -690,6 +573,7 @@ nht_internal_TLSHandler(void* v)
     pNhtConn conn;
     FILE* fp;
     X509* cert;
+    int sslflags;
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTPS Network Listener");
@@ -717,8 +601,39 @@ nht_internal_TLSHandler(void* v)
 	    mssError(1,"NHT","Could not initialize SSL library");
 	    thExit();
 	    }
-	SSL_CTX_set_options(NHT.SSL_ctx, SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_ALL);
-	if (stAttrValue(stLookup(CxGlobals.ParsedConfig,"ssl_cipherlist"),NULL,&ptr,0) < 0)
+
+	/** Determine flags to use with OpenSSL.  We opt for a more secure
+	 ** conservative configuration first, but the admin can override
+	 ** our choices if they insist.
+	 **/
+	sslflags = SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_ALL;
+#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+	sslflags |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+	if (stAttrValue(stLookup(my_config, "ssl_enable_client_cipherpref"), &intval, NULL, 0) == 0 && intval != 0)
+	    sslflags &= ~SSL_OP_CIPHER_SERVER_PREFERENCE;
+#else
+	printf("CX: Warning: SSL server cipher preference option not available.\n");
+#endif
+#ifdef SSL_OP_NO_COMPRESSION
+	sslflags |= SSL_OP_NO_COMPRESSION;
+	if (stAttrValue(stLookup(my_config, "ssl_enable_compression"), &intval, NULL, 0) == 0 && intval != 0)
+	    sslflags &= ~SSL_OP_NO_COMPRESSION;
+#else
+	printf("CX: Warning: SSL compression disable option not available.\n");
+#endif
+#ifdef SSL_OP_NO_SSLv3
+	sslflags |= SSL_OP_NO_SSLv3;
+	if (stAttrValue(stLookup(my_config, "ssl_enable_sslv3"), &intval, NULL, 0) == 0 && intval != 0)
+	    sslflags &= ~SSL_OP_NO_SSLv3;
+#else
+	printf("CX: Warning: SSLv3 disable option not available.\n");
+#endif
+	if (stAttrValue(stLookup(my_config, "ssl_enable_sslv2"), &intval, NULL, 0) == 0 && intval != 0)
+	    sslflags &= ~SSL_OP_NO_SSLv2;
+	SSL_CTX_set_options(NHT.SSL_ctx, sslflags);
+
+	/** Cipher list -- check at both top level and at net_http module level **/
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "ssl_cipherlist"),NULL,&ptr,0) < 0)
 	    ptr="DEFAULT";
 	SSL_CTX_set_cipher_list(NHT.SSL_ctx, ptr);
 	if (stAttrValue(stLookup(my_config, "ssl_cipherlist"),NULL,&ptr,0) == 0)
@@ -780,8 +695,11 @@ nht_internal_TLSHandler(void* v)
 		continue;
 		}
 
+	    /** Check reopen **/
+	    nht_i_CheckAccessLog();
+
 	    /** Set up the connection structure **/
-	    conn = nht_internal_AllocConn(connection_socket);
+	    conn = nht_i_AllocConn(connection_socket);
 	    if (!conn)
 		{
 		netCloseTCP(connection_socket, 1000, 0);
@@ -795,14 +713,14 @@ nht_internal_TLSHandler(void* v)
 	    conn->SSLpid = cxssStartTLS(NHT.SSL_ctx, &conn->ConnFD, &conn->ReportingFD, 1);
 	    if (conn->SSLpid <= 0)
 		{
-		nht_internal_FreeConn(conn);
+		nht_i_FreeConn(conn);
 		mssError(1,"NHT","Could not start TLS on the connection!");
 		}
 
 	    /** Start the request handler thread **/
-	    if (!thCreate(nht_internal_ConnHandler, 0, conn))
+	    if (!thCreate(nht_i_ConnHandler, 0, conn))
 	        {
-		nht_internal_FreeConn(conn);
+		nht_i_FreeConn(conn);
 		mssError(1,"NHT","Could not create thread to handle TLS connection!");
 		}
 	    }
@@ -815,11 +733,11 @@ nht_internal_TLSHandler(void* v)
     }
 
 
-/*** nht_internal_Handler - manages incoming HTTP connections and sends
+/*** nht_i_Handler - manages incoming HTTP connections and sends
  *** the appropriate documents/etc to the requesting client.
  ***/
 void
-nht_internal_Handler(void* v)
+nht_i_Handler(void* v)
     {
     pFile listen_socket;
     pFile connection_socket;
@@ -865,8 +783,11 @@ nht_internal_Handler(void* v)
 		continue;
 		}
 
+	    /** Check reopen **/
+	    nht_i_CheckAccessLog();
+
 	    /** Set up the connection structure **/
-	    conn = nht_internal_AllocConn(connection_socket);
+	    conn = nht_i_AllocConn(connection_socket);
 	    if (!conn)
 		{
 		netCloseTCP(connection_socket, 1000, 0);
@@ -875,9 +796,9 @@ nht_internal_Handler(void* v)
 		}
 
 	    /** Start the request handler thread **/
-	    if (!thCreate(nht_internal_ConnHandler, 0, conn))
+	    if (!thCreate(nht_i_ConnHandler, 0, conn))
 	        {
-		nht_internal_FreeConn(conn);
+		nht_i_FreeConn(conn);
 		mssError(1,"NHT","Could not create thread to handle connection!");
 		}
 	    }
@@ -888,3 +809,4 @@ nht_internal_Handler(void* v)
 
     thExit();
     }
+
