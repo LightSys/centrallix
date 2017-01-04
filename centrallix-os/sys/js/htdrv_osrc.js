@@ -1406,6 +1406,7 @@ function osrc_open_query()
     var reqobj = {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()};
     if (!this.sid)
 	reqobj.ls__newsess = 'yes';
+    this.ifcProbe(ifEvent).Activate("BeginQuery", {});
     this.DoRequest('multiquery', '/', reqobj, osrc_get_qid);
     this.querysize = this.replicasize;
     }
@@ -2842,7 +2843,8 @@ function osrc_apply_rel(obj, in_create)
 			}
 
 		    // Force plain search - no wildcards, etc.
-		    obj[obj_index].plainsearch=true;
+		    if (obj[obj_index])
+			obj[obj_index].plainsearch=true;
 
 		    // Type not available?
 		    if (obj[obj_index] && typeof obj[obj_index].type == "undefined" && this.type_list[obj[obj_index].oid])
@@ -3746,6 +3748,7 @@ function osrc_init(param)
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
     ie.Add("EndQuery");
+    ie.Add("BeginQuery");
     ie.Add("Created");
     ie.Add("Modified");
 
