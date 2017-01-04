@@ -95,9 +95,9 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     pQueryElement qe, search_qe;
     int i,j,k;
     int src_idx;
-    int mask;
+    unsigned int mask;
     int n_orderby = 0;
-    int total_mask = 0;
+    unsigned int total_mask = 0;
     int n_sources;
     int n_sources_total;
     int non_simple;

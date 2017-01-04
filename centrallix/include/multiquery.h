@@ -217,6 +217,7 @@ struct _MQ /* MultiQuery */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
     XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    int			ThisObj;		/* a self-reference to a select statement's items */
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
