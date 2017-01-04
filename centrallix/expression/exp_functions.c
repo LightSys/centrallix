@@ -516,6 +516,7 @@ int exp_fn_datepart(pExpression tree, pParamObjects objlist, pExpression i0, pEx
     {
     pDateTime dtptr;
     DateTime dt;
+    struct tm tval;
 
     tree->DataType = DATA_T_INTEGER;
     if (i0 && i1 && ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL)))
@@ -530,7 +531,7 @@ int exp_fn_datepart(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	}
     if (i0->DataType != DATA_T_STRING)
         {
-	mssError(1,"EXP","param 1 to datepart() must be month, day, year, hour, minute, or second");
+	mssError(1,"EXP","param 1 to datepart() must be month, day, weekday, year, hour, minute, or second");
 	return -1;
 	}
     if (i1->DataType == DATA_T_DATETIME)
@@ -563,6 +564,18 @@ int exp_fn_datepart(pExpression tree, pParamObjects objlist, pExpression i0, pEx
         tree->Integer = dtptr->Part.Minute;
     else if (!strcasecmp(i0->String,"second"))
         tree->Integer = dtptr->Part.Second;
+    else if (!strcasecmp(i0->String,"weekday"))
+	{
+	tval.tm_sec = dtptr->Part.Second;
+	tval.tm_min = dtptr->Part.Minute;
+	tval.tm_hour = dtptr->Part.Hour;
+	tval.tm_mday = dtptr->Part.Day + 1;
+	tval.tm_mon = dtptr->Part.Month; /* already base 0 */
+	tval.tm_year = dtptr->Part.Year; /* already base 1900 */
+	tval.tm_isdst = 0;
+	mktime(&tval);
+	tree->Integer = tval.tm_wday + 1;
+	}
     else
         {
 	mssError(1,"EXP","param 1 to datepart() must be month, day, year, hour, minute, or second");
@@ -2288,6 +2301,12 @@ int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     {
     pExpression new_exp;
 
+    if (!i0)
+	{
+	mssError(1,"EXP","count() requires a parameter");
+	return -1;
+	}
+
     /** Init the Aggregate computation expression? **/
     if (!tree->AggExp)
         {
@@ -2326,6 +2345,12 @@ int exp_fn_avg(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     {
     pExpression new_exp, new_subexp;
     pExpression sumexp, cntexp, s_accumexp, c_accumexp, valueexp;
+
+    if (!i0)
+	{
+	mssError(1,"EXP","avg() requires a parameter");
+	return -1;
+	}
 
     /** Init the Aggregate computation expression? **/
     if (!tree->AggExp)
@@ -2443,6 +2468,12 @@ int exp_fn_sum(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     {
     pExpression new_exp;
 
+    if (!i0)
+	{
+	mssError(1,"EXP","sum() requires a parameter");
+	return -1;
+	}
+
     if (!tree->AggExp)
         {
 	tree->AggExp = expAllocExpression();
@@ -2497,6 +2528,12 @@ int exp_fn_sum(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 int exp_fn_max(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression exp,subexp;
+
+    if (!i0)
+	{
+	mssError(1,"EXP","max() requires a parameter");
+	return -1;
+	}
 
     /** Initialize the aggexp tree? **/
     if (!tree->AggExp)
@@ -2554,6 +2591,12 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     {
     pExpression exp,subexp;
 
+    if (!i0)
+	{
+	mssError(1,"EXP","min() requires a parameter");
+	return -1;
+	}
+
     /** Initialize the aggexp tree? **/
     if (!tree->AggExp)
         {
@@ -2609,6 +2652,11 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+    if (!i0)
+	{
+	mssError(1,"EXP","first() requires a parameter");
+	return -1;
+	}
     if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
 	{
 	if (tree->AggCount == 0) 
@@ -2628,6 +2676,11 @@ int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+    if (!i0)
+	{
+	mssError(1,"EXP","last() requires a parameter");
+	return -1;
+	}
     if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
 	{
 	expCopyValue(i0, tree, 1);
@@ -2636,6 +2689,33 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     else
 	{
 	if (tree->AggCount == 0) tree->Flags |= EXPR_F_NULL;
+	}
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
+int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    if (!i0)
+	{
+	mssError(1,"EXP","nth() requires two parameters");
+	return -1;
+	}
+    if (!i1 || (i1->Flags & EXPR_F_NULL) || i1->DataType != DATA_T_INTEGER)
+	{
+	mssError(1,"EXP","nth() function must have a non-null integer second parameter");
+	return -1;
+	}
+    if (tree->AggCount == 0 || tree->AggCount < i1->Integer)
+	tree->Flags |= EXPR_F_NULL;
+    if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
+	{
+	tree->AggCount++;
+	if (i1->Integer == tree->AggCount)
+	    {
+	    expCopyValue(i0, tree, 1);
+	    }
 	}
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
@@ -2698,6 +2778,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "min", (char*)exp_fn_min);
 	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
 	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
+	xhAdd(&EXP.Functions, "nth", (char*)exp_fn_nth);
 
 	/** Reverse functions **/
 	xhAdd(&EXP.ReverseFunctions, "isnull", (char*)exp_fn_reverse_isnull);

@@ -143,10 +143,10 @@ BEELEY'S CODING STYLE...
 	example, a module with the prefix "XYZ" would have externally 
 	accessible functions named "xyzFunctionOne()" or "xyzDoSomething()".
 	For functions that are not accessible to the outside, the "_internal_"
-	tag is added, as in "xyz_internal_HiddenStuff()".  The prefix is used
-	in nearly everything associated with the module, including any global
-	structure, which may be named "XYZ_INF" or "XYZ_GLOBALS" or something
-	like that.
+	or "_i_" tag is added, as in "xyz_internal_HiddenStuff()" or for
+	brevity "xyz_i_HiddenStuff()".  The prefix is used in nearly everything
+	associated with the module, including any global structure, which may
+	be named "XYZ_INF" or "XYZ_GLOBALS" or something like that.
 
 
 -------------------------------------------------------------------------------

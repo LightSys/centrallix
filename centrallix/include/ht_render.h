@@ -267,6 +267,8 @@ typedef struct
     pWgtrClientInfo ClientInfo;
     pHtNamespace Namespace;		/* current namespace */
     int		IsDynamic;
+    void*	Stream;
+    int		(*StreamWrite)(void*, char*, int, int, int);
     }
     HtSession, *pHtSession;
 
@@ -343,7 +345,9 @@ int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
-int htrRender(pFile output, pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
+int htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
+int htrWrite(pHtSession s, char* buf, int len);
+int htrQPrintf(pHtSession s, char* fmt, ...);
 int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);

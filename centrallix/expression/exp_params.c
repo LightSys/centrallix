@@ -170,7 +170,51 @@ expLinkParams(pParamObjects objlist, int start, int end)
     }
 
 
-/*** expCopyList - make a copy of a param objects list
+/*** expCopyParams - copy just certain objects from one param list
+ *** to another.  This is different from expCopyList, since this function
+ *** copies just certain objects, rather than copying the entire list's metadata
+ *** like expCopyList does.
+ ***
+ *** Neither function *Links* to the copied objects.
+ ***/
+int
+expCopyParams(pParamObjects src, pParamObjects dst, int start, int n_objects)
+    {
+    int i;
+
+	/** Copy all? **/
+	if (n_objects == -1)
+	    n_objects = EXPR_MAX_PARAMS - start;
+
+	/** Do the copy **/
+	for(i=start; i<start+n_objects; i++)
+	    {
+	    dst->SeqIDs[i] = src->SeqIDs[i];
+	    dst->GetTypeFn[i] = src->GetTypeFn[i];
+	    dst->GetAttrFn[i] = src->GetAttrFn[i];
+	    dst->SetAttrFn[i] = src->SetAttrFn[i];
+	    if (dst->Names[i]) dst->nObjects--;
+	    if (src->Names[i]) dst->nObjects++;
+	    if (dst->Names[i] != NULL && (dst->Flags[i] & EXPR_O_ALLOCNAME))
+		nmSysFree(dst->Names[i]);
+	    dst->Flags[i] = src->Flags[i];
+	    dst->Names[i] = NULL;
+	    dst->Flags[i] &= ~EXPR_O_ALLOCNAME;
+	    if (src->Names[i])
+		{
+		dst->Names[i] = nmSysStrdup(src->Names[i]);
+		dst->Flags[i] |= EXPR_O_ALLOCNAME;
+		}
+	    dst->Objects[i] = src->Objects[i];
+	    }
+
+    return 0;
+    }
+
+
+/*** expCopyList - make a copy of a param objects list, in its entirety,
+ *** possibly only including the first N objects (set n_objects to -1 to
+ *** include all objects)
  ***/
 int
 expCopyList(pParamObjects src, pParamObjects dst, int n_objects)

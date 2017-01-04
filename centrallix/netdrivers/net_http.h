@@ -80,7 +80,7 @@
 /*** one HTTP header ***/
 typedef struct
     {
-    char	Name[32];
+    char	Name[64];
     char*	Value;
     int		ValueAlloc:1;
     }
@@ -88,13 +88,13 @@ typedef struct
 
 
 /*** This structure is used for wait-for-conn-to-finish ***/
-typedef struct
+/*typedef struct
     {
     int		TriggerID;
     pSemaphore	TriggerSem;
     int		LinkCnt;
     }
-    NhtConnTrigger, *pNhtConnTrigger;
+    NhtConnTrigger, *pNhtConnTrigger;*/
 
 /*** Parameter/information for a control message, as embedded within a
  *** link on the page.
@@ -166,7 +166,7 @@ typedef struct
     pObjSession	ObjSess;
     pSemaphore	Errors;
     XArray	ErrorList;	/* xarray of xstring */
-    XArray	Triggers;	/* xarray of pNhtConnTrigger */
+/*    XArray	Triggers;	** xarray of pNhtConnTrigger */
     HandleContext Hctx;
     DateTime	FirstActivity;
     DateTime	LastActivity;
@@ -301,8 +301,17 @@ typedef struct
     handle_t	LastHandle;
     pFile	ReportingFD;
     int		SSLpid;
+    int		Keepalive:1;
+    int		NoCache:1;
+    int		UsingTLS:1;
+    int		UsingChunkedEncoding:1;
+    char	ResponseContentType[128];
+    int		ResponseContentLength;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
+    int		ResponseCode;
+    char	ResponseText[64];
+    char	ResponseTime[48];
     }
     NhtConn, *pNhtConn;
 
@@ -343,6 +352,8 @@ struct
     char	UploadTmpDir[256];	/* default is /var/tmp */
     XArray	AllowedUploadDirs;	/* where uploads can eventually go */
     XArray	AllowedUploadExts;	/* allowed extensions */
+    pSemaphore	CollectedConns;
+    pSemaphore	CollectedTLSConns;
     }
     NHT;
 
@@ -360,37 +371,41 @@ typedef struct
 pCachedApp CachedAppConstructor();
 int CachedAppInit(pCachedApp this);
 
-pNhtSessionData nht_internal_AllocSession(char* usrname);
-handle_t nht_internal_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
-int nht_internal_RemoveWatchdog(handle_t th);
-void nht_internal_Watchdog(void* v);
+pNhtSessionData nht_i_AllocSession(char* usrname);
+handle_t nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
+int nht_i_RemoveWatchdog(handle_t th);
+void nht_i_Watchdog(void* v);
 
-int nht_internal_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
+int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 
-pNhtApp nht_internal_AllocApp(char* path, pNhtAppGroup g);
-int nht_internal_FreeApp(pNhtApp app);
-pNhtAppGroup nht_internal_AllocAppGroup(char* path, pNhtSessionData s);
-int nht_internal_FreeAppGroup(pNhtAppGroup group);
+pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g);
+int nht_i_FreeApp(pNhtApp app);
+pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s);
+int nht_i_FreeAppGroup(pNhtAppGroup group);
 
-void nht_internal_TLSHandler(void* v);
-void nht_internal_Handler(void* v);
-int nht_internal_ITimeout(void* sess_v);
-int nht_internal_WTimeout(void* sess_v);
-int nht_internal_ITimeoutAppGroup(void* sess_v);
-int nht_internal_WTimeoutAppGroup(void* sess_v);
-int nht_internal_ITimeoutApp(void* sess_v);
-int nht_internal_WTimeoutApp(void* sess_v);
+void nht_i_TLSHandler(void* v);
+void nht_i_Handler(void* v);
+int nht_i_ITimeout(void* sess_v);
+int nht_i_WTimeout(void* sess_v);
+int nht_i_ITimeoutAppGroup(void* sess_v);
+int nht_i_WTimeoutAppGroup(void* sess_v);
+int nht_i_ITimeoutApp(void* sess_v);
+int nht_i_WTimeoutApp(void* sess_v);
 
-int nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);
-void nht_internal_ErrorExit(pNhtConn conn, int code, char* text) __attribute__ ((noreturn));
-int nht_internal_AddHeader(pXArray hdrlist, char* hdrname, char* hdrval, int hdralloc);
-char* nht_internal_GetHeader(pXArray hdrlist, char* hdrname);
-int nht_internal_FreeHeaders(pXArray hdrlist);
+/*int nht_i_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt);*/
+int nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt);
+void nht_i_ErrorExit(pNhtConn conn, int code, char* text) __attribute__ ((noreturn));
+int nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrval, int hdralloc);
+int nht_i_AddResponseHeader(pNhtConn conn, char* hdrname, char* hdrval, int hdralloc);
+int nht_i_AddResponseHeaderQPrintf(pNhtConn conn, char* hdrname, char* hdrfmt, ...);
+char* nht_i_GetHeader(pXArray hdrlist, char* hdrname);
+int nht_i_FreeHeaders(pXArray hdrlist);
+int nht_i_CheckAccessLog();
 
 /*** REST implementation ***/
-int nht_internal_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
-int nht_internal_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
-int nht_internal_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content);
-int nht_internal_RestDelete(pNhtConn conn, pStruct url_inf, pObject obj);
+int nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
+int nht_i_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
+int nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content);
+int nht_i_RestDelete(pNhtConn conn, pStruct url_inf, pObject obj);
 
 #endif

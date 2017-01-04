@@ -34,10 +34,69 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
+int nht_codes[] = 
+    {
+    100,101,
+    200,201,202,203,204,205,206,
+    300,301,302,303,304,305,307,
+    400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,
+    500,501,502,503,504,505,
+    -1
+    };
+
+char* nht_texts[] = 
+    {
+    "Continue",
+    "Switching Protocols",
+
+    "OK",
+    "Created",
+    "Accepted",
+    "Non-Authoritative Information",
+    "No Content",
+    "Reset Content",
+    "Partial Content",
+
+    "Multiple Choices",
+    "Moved Permanently",
+    "Found",
+    "See Other",
+    "Not Modified",
+    "Use Proxy",
+    "Temporary Redirect",
+    
+    "Bad Request",
+    "Unauthorized",
+    "Payment Required",
+    "Forbidden",
+    "Not Found",
+    "Method Not Allowed",
+    "Not Acceptable",
+    "Proxy Authentication Required",
+    "Request Timeout",
+    "Conflict",
+    "Gone",
+    "Length Required",
+    "Precondition Failed",
+    "Request Entity Too Large",
+    "Request-URI Too Long",
+    "Unsupported Media Type",
+    "Requested Range Not Satisfiable",
+    "Expectation Failed",
+
+    "Internal Server Error",
+    "Not Implemented",
+    "Bad Gateway",
+    "Service Unavailable",
+    "Gateway Timeout",
+    "HTTP Version Not Supported",
+    NULL
+    };
+
 
 /*** Functions for enumerating users for the cx.sysinfo directory ***/
 pXArray
-nht_internal_UsersAttrList(void* ctx, char* objname)
+nht_i_UsersAttrList(void* ctx, char* objname)
     {
     pXArray xa;
 
@@ -53,7 +112,7 @@ nht_internal_UsersAttrList(void* ctx, char* objname)
     return xa;
     }
 pXArray
-nht_internal_UsersObjList(void* ctx)
+nht_i_UsersObjList(void* ctx)
     {
     pXArray xa;
     int i;
@@ -71,7 +130,7 @@ nht_internal_UsersObjList(void* ctx)
     return xa;
     }
 int
-nht_internal_UsersAttrType(void *ctx, char* objname, char* attrname)
+nht_i_UsersAttrType(void *ctx, char* objname, char* attrname)
     {
 
 	if (!objname || !attrname) return -1;
@@ -85,7 +144,7 @@ nht_internal_UsersAttrType(void *ctx, char* objname, char* attrname)
     return -1;
     }
 int
-nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+nht_i_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
     {
     pObjData val = (pObjData)val_v;
     pNhtUser usr;
@@ -138,7 +197,7 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
 
 /*** Functions for enumerating sessions for the cx.sysinfo directory ***/
 pXArray
-nht_internal_SessionsAttrList(void* ctx, char* objname)
+nht_i_SessionsAttrList(void* ctx, char* objname)
     {
     pXArray xa;
 
@@ -156,7 +215,7 @@ nht_internal_SessionsAttrList(void* ctx, char* objname)
     }
 
 pXArray
-nht_internal_SessionsObjList(void* ctx)
+nht_i_SessionsObjList(void* ctx)
     {
     pXArray xa;
     int i;
@@ -175,7 +234,7 @@ nht_internal_SessionsObjList(void* ctx)
     }
 
 int
-nht_internal_SessionsAttrType(void *ctx, char* objname, char* attrname)
+nht_i_SessionsAttrType(void *ctx, char* objname, char* attrname)
     {
 
 	if (!objname || !attrname) return -1;
@@ -191,7 +250,7 @@ nht_internal_SessionsAttrType(void *ctx, char* objname, char* attrname)
     }
 
 int
-nht_internal_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+nht_i_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
     {
     pObjData val = (pObjData)val_v;
     pNhtSessionData s;
@@ -233,7 +292,7 @@ nht_internal_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* v
 
 /*** Functions for enumerating application groups for the cx.sysinfo directory ***/
 pXArray
-nht_internal_GroupsAttrList(void* ctx, char* objname)
+nht_i_GroupsAttrList(void* ctx, char* objname)
     {
     pXArray xa;
 
@@ -251,7 +310,7 @@ nht_internal_GroupsAttrList(void* ctx, char* objname)
     }
 
 pXArray
-nht_internal_GroupsObjList(void* ctx)
+nht_i_GroupsObjList(void* ctx)
     {
     pXArray xa;
     int i,j;
@@ -278,7 +337,7 @@ nht_internal_GroupsObjList(void* ctx)
     }
 
 int
-nht_internal_GroupsAttrType(void *ctx, char* objname, char* attrname)
+nht_i_GroupsAttrType(void *ctx, char* objname, char* attrname)
     {
 
 	if (!objname || !attrname) return -1;
@@ -294,7 +353,7 @@ nht_internal_GroupsAttrType(void *ctx, char* objname, char* attrname)
     }
 
 int
-nht_internal_GroupsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+nht_i_GroupsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
     {
     pObjData val = (pObjData)val_v;
     pNhtSessionData s;
@@ -341,7 +400,7 @@ nht_internal_GroupsAttrValue(void* ctx, char* objname, char* attrname, void* val
 
 /*** Functions for enumerating applications for the cx.sysinfo directory ***/
 pXArray
-nht_internal_AppsAttrList(void* ctx, char* objname)
+nht_i_AppsAttrList(void* ctx, char* objname)
     {
     pXArray xa;
 
@@ -359,7 +418,7 @@ nht_internal_AppsAttrList(void* ctx, char* objname)
     }
 
 pXArray
-nht_internal_AppsObjList(void* ctx)
+nht_i_AppsObjList(void* ctx)
     {
     pXArray xa;
     int i,j,k;
@@ -394,7 +453,7 @@ nht_internal_AppsObjList(void* ctx)
     }
 
 int
-nht_internal_AppsAttrType(void *ctx, char* objname, char* attrname)
+nht_i_AppsAttrType(void *ctx, char* objname, char* attrname)
     {
 
 	if (!objname || !attrname) return -1;
@@ -410,7 +469,7 @@ nht_internal_AppsAttrType(void *ctx, char* objname, char* attrname)
     }
 
 int
-nht_internal_AppsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+nht_i_AppsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
     {
     pObjData val = (pObjData)val_v;
     pNhtSessionData s;
@@ -465,38 +524,38 @@ nht_internal_AppsAttrValue(void* ctx, char* objname, char* attrname, void* val_v
     }
 
 
-/*** nht_internal_RegisterSessionInfo() - register a handler for listing
+/*** nht_i_RegisterSessionInfo() - register a handler for listing
  *** users logged into the server.
  ***/
 int
-nht_internal_RegisterSessionInfo()
+nht_i_RegisterSessionInfo()
     {
     pSysInfoData si;
 
 	/** users list **/
-	si = sysAllocData("/session/users", nht_internal_UsersAttrList, nht_internal_UsersObjList, NULL, nht_internal_UsersAttrType, nht_internal_UsersAttrValue, NULL, 0);
+	si = sysAllocData("/session/users", nht_i_UsersAttrList, nht_i_UsersObjList, NULL, nht_i_UsersAttrType, nht_i_UsersAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
 	/** sessions list **/
-	si = sysAllocData("/session/sessions", nht_internal_SessionsAttrList, nht_internal_SessionsObjList, NULL, nht_internal_SessionsAttrType, nht_internal_SessionsAttrValue, NULL, 0);
+	si = sysAllocData("/session/sessions", nht_i_SessionsAttrList, nht_i_SessionsObjList, NULL, nht_i_SessionsAttrType, nht_i_SessionsAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
 	/** groups list **/
-	si = sysAllocData("/session/appgroups", nht_internal_GroupsAttrList, nht_internal_GroupsObjList, NULL, nht_internal_GroupsAttrType, nht_internal_GroupsAttrValue, NULL, 0);
+	si = sysAllocData("/session/appgroups", nht_i_GroupsAttrList, nht_i_GroupsObjList, NULL, nht_i_GroupsAttrType, nht_i_GroupsAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
 	/** apps list **/
-	si = sysAllocData("/session/apps", nht_internal_AppsAttrList, nht_internal_AppsObjList, NULL, nht_internal_AppsAttrType, nht_internal_AppsAttrValue, NULL, 0);
+	si = sysAllocData("/session/apps", nht_i_AppsAttrList, nht_i_AppsObjList, NULL, nht_i_AppsAttrType, nht_i_AppsAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
     return 0;
     }
 
 
-/*** nht_internal_AddRequestHeader - add a header to the HTTP request
+/*** nht_i_AddRequestHeader - add a header to the HTTP request
  ***/
 int
-nht_internal_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
+nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
     {
     pHttpHeader hdr;
     int i;
@@ -543,10 +602,45 @@ nht_internal_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdral
     }
 
 
-/*** nht_internal_FreeHeaders - release HTTP headers from an xarray
+/*** nht_i_AddResponseHeader - add a HTTP response header
  ***/
 int
-nht_internal_FreeHeaders(pXArray xa)
+nht_i_AddResponseHeader(pNhtConn conn, char* hdrname, char* hdrvalue, int hdralloc)
+    {
+    return nht_i_AddHeader(&conn->ResponseHeaders, hdrname, hdrvalue, hdralloc);
+    }
+
+
+/*** nht_i_AddResponseHeaderQPrintf - add a HTTP response header
+ ***/
+int
+nht_i_AddResponseHeaderQPrintf(pNhtConn conn, char* hdrname, char* hdrfmt, ...)
+    {
+    va_list va;
+    char* hdrval;
+    pXString xs;
+
+	xs = xsNew();
+	if (!xs) return -1;
+
+	va_start(va, hdrfmt);
+	xsQPrintf_va(xs, hdrfmt, va);
+	va_end(va);
+
+	hdrval = nmSysStrdup(xsString(xs));
+	xsFree(xs);
+
+	if (!hdrval)
+	    return -1;
+
+    return nht_i_AddResponseHeader(conn, hdrname, hdrval, 1);
+    }
+
+
+/*** nht_i_FreeHeaders - release HTTP headers from an xarray
+ ***/
+int
+nht_i_FreeHeaders(pXArray xa)
     {
     pHttpHeader hdr;
 
@@ -567,10 +661,10 @@ nht_internal_FreeHeaders(pXArray xa)
     }
 
 
-/*** nht_internal_GetHeader - find a header with the given name
+/*** nht_i_GetHeader - find a header with the given name
  ***/
 char*
-nht_internal_GetHeader(pXArray xa, char* name)
+nht_i_GetHeader(pXArray xa, char* name)
     {
     int i;
     pHttpHeader hdr;
@@ -587,68 +681,186 @@ nht_internal_GetHeader(pXArray xa, char* name)
     }
 
 
-/*** error exit handler -- does not return
+/*** nht_i_WriteConn() - write data to a network connection
  ***/
-void
-nht_internal_ErrorExit(pNhtConn conn, int code, char* text)
+int
+nht_i_WriteConn(pNhtConn conn, char* buf, int len, int is_hdr)
     {
+    int wcnt, rval;
 
-	/** Write the standard HTTP response **/
-	nht_internal_WriteResponse(conn, code, text, -1, "text/html", NULL, NULL);
-	fdQPrintf(conn->ConnFD, "<H1>%POS %STR</H1>\r\n<hr><pre>\r\n", code, text);
+	if (len == -1) len = strlen(buf);
 
-	/** Display error info **/
-	mssPrintError(conn->ConnFD);
+	/** Catch a type of error in our header handling **/
+	if (is_hdr && conn->InBody)
+	    {
+	    mssError(1, "NHT", "Attempt to add header information after headers have been emitted");
+	    return -1;
+	    }
 
-	/** Shutdown the connection and free memory **/
-	nht_internal_FreeConn(conn);
+	/** Emit the header/body separator **/
+	if (!is_hdr && !conn->InBody)
+	    {
+	    conn->InBody = 1;
+	    fdWrite(conn->ConnFD, "\r\n", 2, 0, FD_U_PACKET);
+	    }
 
-    thExit();
+	if (len == 0)
+	    return 0;
+
+	/** Write the data, direct or as a chunk, and count the bytes we used **/
+	wcnt = 0;
+	if (conn->UsingChunkedEncoding)
+	    {
+	    rval = fdPrintf(conn->ConnFD, "%x\r\n", len);
+	    if (rval > 0)
+		wcnt += rval;
+	    }
+	rval = fdWrite(conn->ConnFD, buf, len, 0, FD_U_PACKET);
+	if (rval > 0)
+	    wcnt += rval;
+	if (conn->UsingChunkedEncoding)
+	    {
+	    rval = fdPrintf(conn->ConnFD, "\r\n");
+	    if (rval > 0)
+		wcnt += rval;
+	    }
+	if (wcnt > 0 && !is_hdr)
+	    conn->BytesWritten += wcnt;
+
+    return wcnt;
     }
 
 
-/*** nht_internal_WriteResponse() - write the HTTP response header,
+/*** nht_i_QPrintfConn() - write data to the network connection,
+ *** formatted.
+ ***/
+int
+nht_i_QPrintfConn(pNhtConn conn, int is_hdr, char* fmt, ...)
+    {
+    va_list va;
+    int wcnt;
+
+	if (!is_hdr && !conn->InBody)
+	    {
+	    conn->InBody = 1;
+	    fdWrite(conn->ConnFD, "\r\n", 2, 0, FD_U_PACKET);
+	    }
+
+	va_start(va, fmt);
+	wcnt = fdQPrintf_va(conn->ConnFD, fmt, va);
+	va_end(va);
+	if (wcnt > 0 && !is_hdr)
+	    conn->BytesWritten += wcnt;
+
+    return wcnt;
+    }
+
+
+/*** error exit handler -- does not return
+ ***/
+void
+nht_i_ErrorExit(pNhtConn conn, int code, char* text)
+    {
+    pXString err_message;
+
+	/** Write the standard HTTP response **/
+	nht_i_WriteResponse(conn, code, text, NULL);
+
+	/** Display error info **/
+	err_message = xsNew();
+	if (err_message)
+	    {
+	    mssStringError(err_message);
+	    fdQPrintf(conn->ConnFD, "<!doctype html>\r\n<html>\r\n<head><title>Error</title></head>\r\n<body>\r\n<h1>%POS %STR&HTE</h1>\r\n<hr>\r\n<pre>%STR&HTE</pre>\r\n</body>\r\n</html>\r\n",
+		    code,
+		    text,
+		    xsString(err_message)
+		    );
+	    xsFree(err_message);
+	    }
+
+	/** Shutdown the connection and free memory **/
+	nht_i_FreeConn(conn);
+
+    thExit(); /* no return */
+    }
+
+
+/*** nht_i_WriteResponse() - write the HTTP response header,
  *** not including content.
  ***/
 int
-nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt)
+nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
     {
     int wcnt, rval;
     struct tm* thetime;
     time_t tval;
     char tbuf[40];
+    int i;
+    pHttpHeader hdr;
 
 	/** Get the current date/time **/
 	tval = time(NULL);
 	thetime = gmtime(&tval);
 	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
 
-	wcnt = fdQPrintf(conn->ConnFD, 
+	/** Record the time and response code **/
+	thetime = localtime(&tval);
+	strftime(conn->ResponseTime, sizeof(conn->ResponseTime), "%d/%a/%Y:%T %z", thetime);
+	conn->ResponseCode = code;
+	strtcpy(conn->ResponseText, text, sizeof(conn->ResponseText));
+
+	/** Send the main headers **/
+	wcnt = nht_i_QPrintfConn(conn, 1,
 		"HTTP/1.0 %INT %STR\r\n"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
-		"%[Set-Cookie: %STR\r\n%]"
+		"%[Set-Cookie: %STR; path=/; HttpOnly]%[; Secure%]%[; SameSite=strict\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
 		"%[Content-Type: %STR\r\n%]"
 		"%[Pragma: %STR\r\n%]"
-		"\r\n",
+		"%[Transfer-Encoding: chunked\r\n%]"
+		"Connection: %STR\r\n",
 		code,
 		text,
 		NHT.ServerString,
 		tbuf,
 		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie), (conn->NhtSession)?conn->NhtSession->Cookie:NULL,
-		contentlen > 0, contentlen,
-		contenttype != NULL, contenttype,
-		pragma != NULL, pragma);
+		conn->UsingTLS,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
+		conn->ResponseContentLength > 0, conn->ResponseContentLength,
+		conn->ResponseContentType[0] && !strpbrk(conn->ResponseContentType, "\r\n"), conn->ResponseContentType,
+		conn->NoCache, "no-cache",
+		conn->UsingChunkedEncoding,
+		(conn->Keepalive?"keep-alive":"close")
+		);
 	if (wcnt < 0) return wcnt;
 
-	if (resptxt)
+	/** Send any auxiliary headers **/
+	for(i=0;i<conn->ResponseHeaders.nItems;i++)
 	    {
-	    rval = nht_internal_WriteConn(conn, resptxt, strlen(resptxt), 0);
+	    hdr = (pHttpHeader)conn->ResponseHeaders.Items[i];
+	    if (strpbrk(hdr->Name, ": \r\n\t") || strpbrk(hdr->Value, "\r\n"))
+		continue;
+	    rval = nht_i_QPrintfConn(conn, 1, "%STR: %STR\r\n", hdr->Name, hdr->Value);
 	    if (rval < 0) return rval;
 	    wcnt += rval;
 	    }
 
+	/** End of headers **/
+	/*rval = fdPrintf(conn->ConnFD, "\r\n");
+	if (rval < 0) return rval;
+	wcnt += rval;*/
+
+	/** Send any response text **/
+	if (resptxt && *resptxt)
+	    {
+	    rval = nht_i_WriteConn(conn, resptxt, strlen(resptxt), 0);
+	    if (rval < 0) return rval;
+	    wcnt += rval;
+	    }
+
+	/** Mark the cookie as having been sent **/
 	if (conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie)
 	    conn->NhtSession->IsNewCookie = 0;
 
@@ -656,33 +868,27 @@ nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, 
     }
 
 
-/*** nht_internal_WriteErrResponse() - write an HTTP error response
+/*** nht_i_WriteErrResponse() - write an HTTP error response
  *** header without any real content.  Use the normal WriteResponse
  *** routine if you want more flexible content.
  ***/
 int
-nht_internal_WriteErrResponse(pNhtConn conn, int code, char* text, char* bodytext)
+nht_i_WriteErrResponse(pNhtConn conn, int code, char* text, char* bodytext)
     {
-    int wcnt, rval;
+    int wcnt;
 
-	wcnt = nht_internal_WriteResponse(conn, code, text, strlen(bodytext), "text/html", NULL, NULL);
-	if (wcnt < 0) return wcnt;
-	if (bodytext && *bodytext)
-	    {
-	    rval = nht_internal_WriteConn(conn, bodytext, strlen(bodytext), 0);
-	    if (rval < 0) return rval;
-	    wcnt += rval;
-	    }
+	conn->ResponseContentLength = bodytext?strlen(bodytext):0;
+	wcnt = nht_i_WriteResponse(conn, code, text, bodytext);
 
     return wcnt;
     }
 
 
-/*** nht_internal_FreeControlMsg() - release memory used by a control
+/*** nht_i_FreeControlMsg() - release memory used by a control
  *** message, its parameters, etc.
  ***/
 int
-nht_internal_FreeControlMsg(pNhtControlMsg cm)
+nht_i_FreeControlMsg(pNhtControlMsg cm)
     {
     int i;
     pNhtControlMsgParam cmp;
@@ -712,7 +918,7 @@ nht_internal_FreeControlMsg(pNhtControlMsg cm)
 
 #if 0
 int
-nht_internal_CacheHandler(pNhtConn conn)
+nht_i_CacheHandler(pNhtConn conn)
     {
 #if 0
     pWgtrNode tree = xmGet(conn->NhtSession->CachedApps2, "0");
@@ -745,12 +951,12 @@ nht_internal_CacheHandler(pNhtConn conn)
 
 
 
-/*** nht_internal_ControlMsgHandler() - the main handler for all connections
+/*** nht_i_ControlMsgHandler() - the main handler for all connections
  *** which access /INTERNAL/control, thus requesting to receive control
  *** messages from the system.
  ***/
 int
-nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
+nht_i_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
     {
     pNhtControlMsg cm, usr_cm;
     pNhtControlMsgParam cmp;
@@ -786,7 +992,8 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    /** No such id? **/
 	    if (!cm)
 		{
-		nht_internal_WriteResponse(conn, 200, "OK", -1, "text/html", "no-cache", "<A HREF=0.0 TARGET=0>NO SUCH MESSAGE</A>\r\n");
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=0.0 TARGET=0>NO SUCH MESSAGE</A>\r\n");
 		return 0;
 		}
 
@@ -810,21 +1017,22 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    else if (cm->ResponseFn)
 		cm->ResponseFn(cm);
 	    else
-		nht_internal_FreeControlMsg(cm);
+		nht_i_FreeControlMsg(cm);
 
 	    /** Tell syGetSem to return immediately, below **/
 	    wait_for_sem = 0;
 	    }
 
 	/** Send header **/
-	nht_internal_WriteResponse(conn, 200, "OK", -1, "text/html", "no-cache", NULL);
+	conn->NoCache = 1;
+	nht_i_WriteResponse(conn, 200, "OK", NULL);
 
     	/** Wait on the control msgs semaphore **/
 	while (1)
 	    {
 	    if (syGetSem(sess->ControlMsgs, 1, wait_for_sem?0:SEM_U_NOBLOCK) < 0)
 		{
-		nht_internal_WriteConn(conn, "<A HREF=0.0 TARGET=0>END OF CONTROL MESSAGES</A>\r\n", -1, 0);
+		nht_i_WriteConn(conn, "<A HREF=0.0 TARGET=0>END OF CONTROL MESSAGES</A>\r\n", -1, 0);
 		return 0;
 		}
 
@@ -841,7 +1049,7 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 
 	    /** Send ctl message header **/
             // TODO Once LONG is implemented in qprintf, use it
-	    nht_internal_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%POS>CONTROL MESSAGE</A>\r\n",
+	    nht_i_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%POS>CONTROL MESSAGE</A>\r\n",
 			    cm->MsgType,
 			    cm->Params.nItems,
 			    (unsigned int)(unsigned long)cm);
@@ -876,7 +1084,7 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    if (!cm->ResponseSem && !cm->ResponseFn)
 		{
 		xaRemoveItem(&(sess->ControlMsgsList), xaFindItem(&(sess->ControlMsgsList), cm));
-		nht_internal_FreeControlMsg(cm);
+		nht_i_FreeControlMsg(cm);
 		}
 
 	    wait_for_sem = 0;
@@ -887,12 +1095,12 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 
 
 
-/*** nht_internal_ErrorHandler - handle the printing of notice and error
+/*** nht_i_ErrorHandler - handle the printing of notice and error
  *** messages to the error stream for the client, if the client has such
  *** an error stream (which is how this is called).
  ***/
 int
-nht_internal_ErrorHandler(pNhtConn net_conn)
+nht_i_ErrorHandler(pNhtConn net_conn)
     {
     pNhtSessionData nsess = net_conn->NhtSession;
     pXString errmsg;
@@ -900,12 +1108,8 @@ nht_internal_ErrorHandler(pNhtConn net_conn)
     	/** Wait on the errors semaphore **/
 	if (syGetSem(nsess->Errors, 1, 0) < 0)
 	    {
-	    fdPrintf(net_conn->ConnFD,"HTTP/1.0 200 OK\r\n"
-			 "Server: %s\r\n"
-			 "Pragma: no-cache\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
+	    net_conn->NoCache = 1;
+	    nht_i_WriteResponse(net_conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 	    return -1;
 	    }
 
@@ -914,14 +1118,9 @@ nht_internal_ErrorHandler(pNhtConn net_conn)
 	xaRemoveItem(&nsess->ErrorList, 0);
 
 	/** Format the error and print it as HTML. **/
-	fdPrintf(net_conn->ConnFD,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Pragma: no-cache\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "<HTML><BODY><PRE><A NAME=\"Message\">",NHT.ServerString);
-	fdWrite(net_conn->ConnFD,errmsg->String,strlen(errmsg->String),0,0);
-	fdPrintf(net_conn->ConnFD,"</A></PRE></BODY></HTML>\r\n");
+	net_conn->NoCache = 1;
+	nht_i_WriteResponse(net_conn, 200, "OK", NULL);
+	nht_i_QPrintfConn(net_conn, 0, "<HTML><BODY><PRE><A NAME=\"Message\">%STR&HTE</A></PRE></BODY></HTML>\r\n", errmsg->String);
 
 	/** Discard the string **/
 	xsDeInit(errmsg);
@@ -931,13 +1130,13 @@ nht_internal_ErrorHandler(pNhtConn net_conn)
     }
 
 
-/*** nht_internal_GenerateError - grab up the current error text listing
+/*** nht_i_GenerateError - grab up the current error text listing
  *** and queue it on the outbound error queue for this session, so that
  *** the error stream reader in the DHTML client can pick it up and show
  *** it to the user.
  ***/
 int
-nht_internal_GenerateError(pNhtSessionData nsess)
+nht_i_GenerateError(pNhtSessionData nsess)
     {
     pXString errmsg;
 
@@ -954,11 +1153,11 @@ nht_internal_GenerateError(pNhtSessionData nsess)
     }
 
 
-/*** nht_internal_Hex16ToInt - convert a 16-bit hex value, in four chars, to
+/*** nht_i_Hex16ToInt - convert a 16-bit hex value, in four chars, to
  *** an unsigned integer.
  ***/
 unsigned int
-nht_internal_Hex16ToInt(char* hex)
+nht_i_Hex16ToInt(char* hex)
     {
     char hex2[5];
     memcpy(hex2, hex, 4);
@@ -967,14 +1166,14 @@ nht_internal_Hex16ToInt(char* hex)
     }
 
 
-/*** nht_internal_ParsePostPayload - parses the payload of a post request.
+/*** nht_i_ParsePostPayload - parses the payload of a post request.
  *** The request includes one or more files.  This function needs to be
  *** called once for each file recieved and -not- per request.  Payload
  *** contains relevant info about the given file and a pointer to the file on disk.
  *** Returns the payload struct.
  ***/
 pNhtPostPayload
-nht_internal_ParsePostPayload(pNhtConn conn)
+nht_i_ParsePostPayload(pNhtConn conn)
     {
     char hex_chars[] = "0123456789abcdef";
     char token[512];
@@ -995,7 +1194,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     memset(payload, 0, sizeof(*payload));
     
     /* Remove the boundary line and test to see if the stream is empty */
-    length = nht_internal_NextLine(token, conn, sizeof token);
+    length = nht_i_NextLine(token, conn, sizeof token);
     if(length <= 0)
 	{
 	payload->status = 1;
@@ -1008,7 +1207,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	return payload; //Error
 	}
 	
-    length = nht_internal_NextLine(token, conn, sizeof token);
+    length = nht_i_NextLine(token, conn, sizeof token);
     if(length <= 0)
 	{
 	payload->status = -1;
@@ -1082,7 +1281,7 @@ nht_internal_ParsePostPayload(pNhtConn conn)
 	}
     
     /* find the "ContentType" which seems to be the MIME type.  This may possibly be sorta useful sometime in the future.  Maybe... */
-    length = nht_internal_NextLine(token, conn, sizeof token);
+    length = nht_i_NextLine(token, conn, sizeof token);
     if(length <= 0)
 	{
 	payload->status = -1;
@@ -1281,13 +1480,13 @@ nht_internal_ParsePostPayload(pNhtConn conn)
     }
    
 
-/*** nht_internal_NextLine - fills token with the next line of data.
+/*** nht_i_NextLine - fills token with the next line of data.
  *** Ignores leading newlines.  Returns the length of data in the buffer.
  *** Size is the size of token.  If the buffer is too small, returns -1
  *** and leaves token empty.  Token is always null terminated.
  ***/
 int
-nht_internal_NextLine(char * token, pNhtConn conn, int size)
+nht_i_NextLine(char * token, pNhtConn conn, int size)
     {
     char buffer[2048];
     int length;
@@ -1350,19 +1549,16 @@ nht_internal_NextLine(char * token, pNhtConn conn, int size)
     }
 
 
-/*** nht_internal_POST - handle the HTTP POST method.
+/*** nht_i_POST - handle the HTTP POST method.
  ***/
 int
-nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
+nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
     pFile file;
     pObject obj;
     pNhtPostPayload payload;
-    struct tm* thetime;
-    time_t tval;
-    char tbuf[32];
     XString json;
     char buffer[2048];
     int length, wcnt, bytes_written;
@@ -1375,16 +1571,9 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	 ** must be supplied with all POST requests.
 	 **/
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
 	    {
-	    tval = time(NULL);
-	    thetime = gmtime(&tval);
-	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD,"HTTP/1.0 403 FORBIDDEN\r\n"
-		 "Date: %s GMT\r\n"
-		 "Server: %s\r\n",
-		 tbuf, NHT.ServerString);
-	    
+	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
 	    return -1;
 	    }
 
@@ -1392,7 +1581,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	find_inf = stLookup_ne(url_inf,"cx__mode");
 	if (find_inf && !strcmp(find_inf->StrVal, "rest"))
 	    {
-	    return nht_internal_RestPost(conn, url_inf, size, content);
+	    return nht_i_RestPost(conn, url_inf, size, content);
 	    }
 	   
 	/** Standard file upload POST request **/
@@ -1400,14 +1589,7 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	find_inf = stLookup_ne(url_inf,"target");
 	if(!find_inf)
 	    {
-	    tval = time(NULL);
-	    thetime = gmtime(&tval);
-	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
-		 "Date: %s GMT\r\n"
-		 "Server: %s\r\n",
-		 tbuf, NHT.ServerString);
-	    
+	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    return -1;
 	    }
 
@@ -1423,22 +1605,15 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    }
 	if (!allowed)
 	    {
-	    tval = time(NULL);
-	    thetime = gmtime(&tval);
-	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD,"HTTP/1.0 400 BAD REQUEST\r\n"
-		 "Date: %s GMT\r\n"
-		 "Server: %s\r\n",
-		 tbuf, NHT.ServerString);
-	    
+	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    return -1;
 	    }
 	
-	xsInit(&json);
 	/** Keep parsing files until stream is empty. **/
+	xsInit(&json);
 	while(1)
 	    {
-	    payload = nht_internal_ParsePostPayload(conn);
+	    payload = nht_i_ParsePostPayload(conn);
 	    
 	    if(payload->status == 0)
 		{
@@ -1473,56 +1648,26 @@ nht_internal_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    }
 	xsRTrim(&json);
 
+	/** Error if POST with no files **/
 	if (n_uploaded_files == 0)
 	    {
-	    fdPrintf(conn->ConnFD,"HTTP/1.0 400 Bad Request\r\n"
-		 "Server: %s\r\n"
-		 "Content-Type: text/html\r\n"
-		 "\r\n"
-		 "<H1>400 Bad Request</H1>\r\n",
-		 NHT.ServerString);
+	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    return -1;
 	    }
 
-	//printf(xsString(&json));
-	if (nsess->IsNewCookie)
-	    {
-	    tval = time(NULL);
-	    thetime = gmtime(&tval);
-	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
-		 "Date: %s GMT\r\n"
-		 "Server: %s\r\n"
-		 "Set-Cookie: %s; path=/\r\n"
-		 "Content-Type: application/json\r\n"
-		 "\r\n"
-		 "[%s]", 
-		  tbuf, NHT.ServerString, nsess->Cookie, json.String+1);
-	    nsess->IsNewCookie = 0;
-	    }
-	else
-	    {
-	    tval = time(NULL);
-	    thetime = gmtime(&tval);
-	    strftime(tbuf, sizeof tbuf, "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD,"HTTP/1.0 202 ACCEPTED\r\n"
-		 "Date: %s GMT\r\n"
-		 "Server: %s\r\n"
-		 "Content-Type: application/json\r\n"
-		 "\r\n"
-		 "[%s]",
-		 tbuf, NHT.ServerString, json.String+1);
-	    }
+	/** Send out the response **/
+	nht_i_WriteResponse(conn, 202, "Accepted", NULL);
+	nht_i_QPrintfConn(conn, 0, "[%STR]", json.String+1);
 
     return 0;
     }
 
 
-/*** nht_internal_GET - handle the HTTP GET method, reading a document or
+/*** nht_i_GET - handle the HTTP GET method, reading a document or
  *** attribute list, etc.
  ***/
 int
-nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
+nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     {
     pNhtSessionData nsess = conn->NhtSession;
     int cnt;
@@ -1536,7 +1681,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* bufptr;
     char path[256];
     int rowid;
-    int tid = -1;
     int convert_text = 0;
     pDateTime dt = NULL;
     DateTime dtval;
@@ -1567,21 +1711,22 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     pNhtAppGroup group = NULL;
     int rval;
     char* kname;
+    pXString err_xs;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
 //START INTERNAL handler -------------------------------------------------------------------
-//TODO (from Seth): should this be moved out of nht_internal_GET and back into nht_internal_ConnHandler?
+//TODO (from Seth): should this be moved out of nht_i_GET and back into nht_i_ConnHandler?
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
 	if (!strncmp(url_inf->StrVal,"/INTERNAL/errorstream",21))
 	    {
-		return nht_internal_ErrorHandler(conn);
+		return nht_i_ErrorHandler(conn);
 	    }
 	else if (!strncmp(url_inf->StrVal, "/INTERNAL/control", 17))
 	    {
-		return nht_internal_ControlMsgHandler(conn, url_inf);
+		return nht_i_ControlMsgHandler(conn, url_inf);
 	    }
 #if 0 //TODO: finish the caching ability. (this section could very well belong somewhere else)
 	else if (!strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
@@ -1600,7 +1745,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	     ** need the group and app tokens to match too for full security
 	     ** authorization.
 	     **/
-	    if (nht_internal_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+	    if (nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
 		{
 		if (group && app) 
 		    {
@@ -1619,11 +1764,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    if (group) objCurrentDate(&(group->LastActivity));
 	    if (app) objCurrentDate(&(app->LastActivity));
-	    /*if (group) nht_internal_ResetWatchdog(group->InactivityTimer);
-	    if (app) nht_internal_ResetWatchdog(app->InactivityTimer);*/
+	    /*if (group) nht_i_ResetWatchdog(group->InactivityTimer);
+	    if (app) nht_i_ResetWatchdog(app->InactivityTimer);*/
 	    }
-	if (group) nht_internal_ResetWatchdog(group->WatchdogTimer);
-	if (app) nht_internal_ResetWatchdog(app->WatchdogTimer);
+	if (group) nht_i_ResetWatchdog(group->WatchdogTimer);
+	if (app) nht_i_ResetWatchdog(app->WatchdogTimer);
 
 	/** Check GET mode. **/
 	find_inf = stLookup_ne(url_inf,"cx__mode");
@@ -1636,18 +1781,9 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
 	    if (!target_obj)
 		{
-		nht_internal_GenerateError(nsess);
-		fdPrintf(conn->ConnFD,"HTTP/1.0 404 Not Found\r\n"
-			     "Server: %s\r\n"
-			     "Content-Type: text/html\r\n"
-			     "\r\n"
-			     "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-		mssPrintError(conn->ConnFD);
-		/*netCloseTCP(conn->ConnFD,1000,0);
-		nht_internal_UnlinkSess(nsess);*/
-		nht_internal_FreeConn(conn);
-		if (url_inf) stFreeInf_ne(url_inf);
-		thExit();
+		nht_i_GenerateError(nsess);
+		/*if (url_inf) stFreeInf_ne(url_inf);*/
+		nht_i_ErrorExit(conn, 404, "Not Found"); /* does not return */
 		}
 
 	    /** Directory indexing? **/
@@ -1682,7 +1818,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	    /** Do we need to set params as a part of the open? **/
 	    if (akey_match && (!find_inf || strcmp(find_inf->StrVal, "rest") != 0))
-		nht_internal_CkParams(url_inf, target_obj);
+		nht_i_CkParams(url_inf, target_obj);
 	    }
 	else
 	    {
@@ -1690,15 +1826,15 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    }
 
 	/** WAIT TRIGGER mode. **/
-	if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
+	/*if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__waitid");
 	    if (find_inf)
 	        {
 		tid = strtoi(find_inf->StrVal,NULL,0);
-		nht_internal_WaitTrigger(nsess,tid);
+		nht_i_WaitTrigger(nsess,tid);
 		}
-	    }
+	    }*/
 
 	/** Check object's modification time **/
 	if (target_obj && objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
@@ -1731,9 +1867,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	thetime = gmtime(&tval);
 	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
 
-	/** Ok, issue the HTTP header for this one. **/
+	/** Ok, set options on the connection; header will be issued later **/
 	fdSetOptions(conn->ConnFD, FD_UF_WRBUF);
-	if (nsess->IsNewCookie)
+
+	/*if (nsess->IsNewCookie)
 	    {
 	    fdPrintf(conn->ConnFD,"HTTP/1.0 200 OK\r\n"
 		     "Date: %s GMT\r\n"
@@ -1748,15 +1885,15 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		     "Date: %s GMT\r\n"
 		     "Server: %s\r\n",
 		     tbuf, NHT.ServerString);
-	    }
+	    }*/
 
 	/** Exit now if wait trigger. **/
-	if (tid != -1)
+	/*if (tid != -1)
 	    {
 	    fdWrite(conn->ConnFD,"OK\r\n",4,0,0);
 	    objClose(target_obj);
 	    return 0;
-	    }
+	    }*/
 
 	/** Add anti-clickjacking X-Frame-Options header?
 	 ** see: https://developer.mozilla.org/en/The_X-FRAME-OPTIONS_response_header
@@ -1767,9 +1904,9 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    if (objGetAttrValue(target_obj, "http_frame_options", DATA_T_STRING, POD(&xfo_ptr)) == 0 || NHT.XFrameOptions != NHT_XFO_T_NONE)
 		{
 		if ((xfo_ptr && !strcmp(xfo_ptr,"deny")) || (!xfo_ptr && NHT.XFrameOptions == NHT_XFO_T_DENY))
-		    fdPrintf(conn->ConnFD, "X-Frame-Options: DENY\r\n");
+		    nht_i_AddResponseHeader(conn, "X-Frame-Options", "DENY", 0);
 		else if ((xfo_ptr && !strcmp(xfo_ptr,"sameorigin")) || (!xfo_ptr && NHT.XFrameOptions == NHT_XFO_T_SAMEORIGIN))
-		    fdPrintf(conn->ConnFD, "X-Frame-Options: SAMEORIGIN\r\n");
+		    nht_i_AddResponseHeader(conn, "X-Frame-Options", "SAMEORIGIN", 0);
 		}
 	    }
 
@@ -1778,7 +1915,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    find_inf2 = stLookup_ne(url_inf,"cx__forcedownload");
 	    if (!strpbrk(name, "\r\n\t"))
-		fdQPrintf(conn->ConnFD, "Content-Disposition: %STR&SYM; filename=%STR&DQUOT\r\n",
+		nht_i_AddResponseHeaderQPrintf(conn, "Content-Disposition", "%STR&SYM; filename=%STR&DQUOT", 
 			(find_inf2 && find_inf2->StrVal && *(find_inf2->StrVal))?"attachment":"inline", name);
 	    }
 
@@ -1795,7 +1932,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    tval = mktime(&systime);
 	    thetime = gmtime(&tval);
 	    strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD, "Last-Modified: %s GMT\r\n", tbuf);
+	    nht_i_AddResponseHeaderQPrintf(conn, "Last-Modified", "%STR GMT", tbuf);
 	    }
 
 	/** GET CONTENT mode. **/
@@ -1815,8 +1952,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (!gptr || (strlen(gptr) != 20 && strcmp(gptr,"design") != 0))
 		    {
 		    /** Deploy snippet to get geom from browser **/
-		    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-		    nht_internal_GetGeom(target_obj, conn->ConnFD);
+		    nht_i_WriteResponse(conn, 200, "OK", NULL);
+		    nht_i_GetGeom(target_obj, conn);
 		    objClose(target_obj);
 		    return 0;
 		    }
@@ -1844,11 +1981,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			if (client_h < 0) client_h = 0;
 			if (client_h > 10000) client_h = 10000;
 			}*/
-		    client_w = nht_internal_Hex16ToInt(gptr);
-		    client_h = nht_internal_Hex16ToInt(gptr+4);
-		    wgtr_params.CharWidth = nht_internal_Hex16ToInt(gptr+8);
-		    wgtr_params.CharHeight = nht_internal_Hex16ToInt(gptr+12);
-		    wgtr_params.ParagraphHeight = nht_internal_Hex16ToInt(gptr+16);
+		    client_w = nht_i_Hex16ToInt(gptr);
+		    client_h = nht_i_Hex16ToInt(gptr+4);
+		    wgtr_params.CharWidth = nht_i_Hex16ToInt(gptr+8);
+		    wgtr_params.CharHeight = nht_i_Hex16ToInt(gptr+12);
+		    wgtr_params.ParagraphHeight = nht_i_Hex16ToInt(gptr+16);
 		    }
 		wgtr_params.MaxHeight = client_h;
 		wgtr_params.MinHeight = client_h;
@@ -1867,9 +2004,13 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 #endif
 		if(gzip==1)
 		    {
-		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
+		    nht_i_AddResponseHeader(conn, "Content-Encoding", "gzip", 0);
 		    }
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
+
+		/** Send the response **/
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+
 		if(gzip==1)
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 
@@ -1930,9 +2071,9 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (!strcmp(ptr, "widget/page"))
 		    {
 		    if (!group)
-			group = nht_internal_AllocAppGroup(url_inf->StrVal, nsess);
+			group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
 		    if (group && !app)
-			app = nht_internal_AllocApp(url_inf->StrVal, group);
+			app = nht_i_AllocApp(url_inf->StrVal, group);
 		    }
 
 		/** Build the akey - CSRF prevention **/
@@ -1945,13 +2086,19 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		//pWgtrNode tree;
 		//if ((tree = wgtrParseOpenObject(target_obj, url_inf, wgtr_params.Templates)) < 0
 		    //|| (objpath = objGetPathname(obj)) && wgtrMergeOverlays(tree, objpath, client_info->AppPath, client_info->Overlays, client_info->Templates) < 0 )
-		    //|| nht_internal_Parse_and_Cache_an_App(target_obj, url_inf, &wgtr_params, nsess, &tree) < 0
-		    //|| nht_internal_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
-		if (nhtRenderApp(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
+		    //|| nht_i_Parse_and_Cache_an_App(target_obj, url_inf, &wgtr_params, nsess, &tree) < 0
+		    //|| nht_i_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
+		nht_i_WriteConn(conn, "", 0, 0);
+		if (nhtRenderApp(conn, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
 		    mssError(0, "HTTP", "Unable to render application %s of type %s", url_inf->StrVal, ptr);
-		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
-		    mssPrintError(conn->ConnFD);
+		    err_xs = xsNew();
+		    if (err_xs)
+			{
+			mssStringError(err_xs);
+			nht_i_QPrintfConn(conn, 0, "<h1>An error occurred while constructing the application:</h1><pre>%STR&HTE\r\n</pre>", xsString(err_xs));
+			xsFree(err_xs);
+			}
 		    objClose(target_obj);
 		    if (tptr) nmSysFree(tptr);
 		    if (lptr) nmSysFree(lptr);
@@ -1982,17 +2129,17 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		objGetAttrValue(target_obj, "type", DATA_T_STRING, POD(&ptr));
 
 		/** end the headers **/
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
 
 		/** call the html-related interface translating function **/
 		if (ifcToHtml(conn->ConnFD, nsess->ObjSess, url_inf->StrVal) < 0)
 		    {
 		    mssError(0, "NHT", "Error sending Interface info for '%s' to client", url_inf->StrVal);
-		    fdQPrintf(conn->ConnFD, "<A TARGET=\"ERR\" HREF=\"%STR&HTE\"></A>", url_inf->StrVal);
+		    nht_i_QPrintfConn(conn, 0, "<A TARGET=\"ERR\" HREF=\"%STR&HTE\"></A>", url_inf->StrVal);
 		    }
 		else
 		    {
-		    fdQPrintf(conn->ConnFD, "<A NAME=\"%s\" TARGET=\"OK\" HREF=\"%STR&HTE\"></A>", ptr, url_inf->StrVal);
+		    nht_i_QPrintfConn(conn, 0, "<A NAME=\"%s\" TARGET=\"OK\" HREF=\"%STR&HTE\"></A>", ptr, url_inf->StrVal);
 		    }
 		}
 	    /** some other sort of request **/
@@ -2023,33 +2170,37 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 #endif
 		if(gzip==1)
 		    {
-		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
+		    nht_i_AddResponseHeader(conn, "Content-Encoding", "gzip", 0);
 		    }
-		fdPrintf(conn->ConnFD,"Content-Type: %s\r\n\r\n", ptr);
+		strtcpy(conn->ResponseContentType, ptr, sizeof(conn->ResponseContentType));
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
 		if(gzip==1)
 		    {
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 		    }
-		if (convert_text) fdWrite(conn->ConnFD,"<HTML><PRE>",11,0,FD_U_PACKET);
 		bufptr = (char*)nmMalloc(4096);
-	        while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
-	            {
-		    fdWrite(conn->ConnFD,bufptr,cnt,0,FD_U_PACKET);
-		    }
-		if (convert_text) fdWrite(conn->ConnFD,"</HTML></PRE>",13,0,FD_U_PACKET);
-		if (cnt < 0) 
+		if (bufptr)
 		    {
-		    mssError(0,"NHT","Incomplete read of object's content");
-		    nht_internal_GenerateError(nsess);
+		    if (convert_text) nht_i_WriteConn(conn, "<HTML><PRE>",11,0);
+		    while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
+			{
+			nht_i_WriteConn(conn,bufptr,cnt,0);
+			}
+		    if (convert_text) nht_i_WriteConn(conn,"</HTML></PRE>",13,0);
+		    if (cnt < 0) 
+			{
+			mssError(0,"NHT","Incomplete read of object's content");
+			nht_i_GenerateError(nsess);
+			}
+		    nmFree(bufptr, 4096);
 		    }
-		nmFree(bufptr, 4096);
 	        }
 	    }
 
 	/** REST mode? **/
 	else if (!strcmp(find_inf->StrVal,"rest"))
 	    {
-	    rval = nht_internal_RestGet(conn, url_inf, target_obj);
+	    rval = nht_i_RestGet(conn, url_inf, target_obj);
 	    }
 
 	/** Retrieve a new session/group/app key? **/
@@ -2063,7 +2214,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	    /** Try to join an existing app group, if specified **/
 	    if (!group)
-		group = nht_internal_AllocAppGroup(kname, nsess);
+		group = nht_i_AllocAppGroup(kname, nsess);
 	    if (group)
 		{
 		find_inf = stLookup_ne(url_inf, "cx__appname");
@@ -2073,7 +2224,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    kname = find_inf->StrVal;
 
 		/** Set up a new active app **/
-		app = nht_internal_AllocApp(kname, group);
+		app = nht_i_AllocApp(kname, group);
 		if (app)
 		    {
 		    /** We want to give the api client information about our
@@ -2093,9 +2244,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			if (strftime(tbuf2, sizeof(tbuf2), "%Y %m %d %T", thetime) <= 0)
 			    tbuf2[0] = '\0';
 			}
-		    fdQPrintf(conn->ConnFD,
-			    "Content-Type: application/json\r\n"
-			    "\r\n"
+		    conn->NoCache = 1;
+		    strtcpy(conn->ResponseContentType, "application/json", sizeof(conn->ResponseContentType));
+		    nht_i_WriteResponse(conn, 200, "OK", NULL);
+		    nht_i_QPrintfConn(conn, 0,
 			    "{\"akey\":\"%STR&JSONSTR-%STR&JSONSTR-%STR&JSONSTR\", \"watchdogtimer\":%INT, \"servertime\":\"%STR&JSONSTR\", \"servertime_notz\":\"%STR&JSONSTR\"}\r\n",
 			    nsess->SKey, group->GKey, app->AKey, NHT.WatchdogTime, tbuf, tbuf2
 			    );
@@ -2116,8 +2268,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-		fdQPrintf(conn->ConnFD,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_QPrintfConn(conn, 0, "<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
 		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
@@ -2130,17 +2282,17 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
 		    if (send_info && objinfo)
 			{
-			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
 			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
 			}
 		    else if (send_info && !objinfo)
 			{
-			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
 			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
 			}
 		    else
 			{
-			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
 			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
 			}
 		    objClose(sub_obj);
@@ -2149,7 +2301,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 	    else
 	        {
-		nht_internal_GenerateError(nsess);
+		nht_i_GenerateError(nsess);
 		}
 	    }
 
@@ -2157,7 +2309,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	else if (!strcmp(find_inf->StrVal,"query") && akey_match)
 	    {
 	    /** Change directory to appropriate query root **/
-	    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+	    conn->NoCache = 1;
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	    strtcpy(path, objGetWD(nsess->ObjSess), sizeof(path));
 	    objSetWD(nsess->ObjSess, target_obj);
 
@@ -2175,7 +2328,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    rowid = 0;
 		    while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		        {
-			nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
+			nht_i_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
 			objClose(sub_obj);
 			rowid++;
 			if (rowid == rowlimit) break;
@@ -2210,7 +2363,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    find_inf = stLookup_ne(url_inf,"ls__req");
-	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
+	    nht_i_OSML(conn,target_obj, find_inf->StrVal, url_inf);
 	    }
 
 	/** Exec method mode **/
@@ -2218,17 +2371,18 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__methodname");
 	    find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
-	    fdPrintf(conn->ConnFD, "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
+	    conn->NoCache = 1;
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	    if (!find_inf || !find_inf2)
 	        {
 		mssError(1,"NHT","Invalid call to execmethod - requires name and param");
-		nht_internal_GenerateError(nsess);
+		nht_i_GenerateError(nsess);
 		}
 	    else
 	        {
 	    	ptr = find_inf2->StrVal;
 	    	objExecuteMethod(target_obj, find_inf->StrVal, POD(&ptr));
-		fdWrite(conn->ConnFD,"OK",2,0,0);
+		nht_i_WriteConn(conn, "OK", 2, 0);
 		}
 	    }
 
@@ -2239,13 +2393,14 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     }
 
 
-/*** nht_internal_DELETE - implements the HTTP DELETE method, which after
+/*** nht_i_DELETE - implements the HTTP DELETE method, which after
  *** verifying credentials, deletes the referenced path.
  ***/
 int
-nht_internal_DELETE(pNhtConn conn, pStruct url_inf)
+nht_i_DELETE(pNhtConn conn, pStruct url_inf)
     {
     char* msg;
+    int code;
     pStruct find_inf;
     pObject target_obj = NULL;
     pNhtApp app = NULL;
@@ -2254,10 +2409,11 @@ nht_internal_DELETE(pNhtConn conn, pStruct url_inf)
 
 	/** Check akey **/
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
 	    {
 	    mssError(1,"NHT","DELETE request requires akey for validation");
-	    msg = "401 Unauthorized";
+	    msg = "Unauthorized";
+	    code = 401;
 	    goto error;
 	    }
 
@@ -2266,7 +2422,8 @@ nht_internal_DELETE(pNhtConn conn, pStruct url_inf)
 	if (!target_obj)
 	    {
 	    mssError(0,"NHT","Could not open requested object for DELETE request");
-	    msg = "404 Not Found";
+	    msg = "Not Found";
+	    code = 404;
 	    goto error;
 	    }
 
@@ -2275,37 +2432,28 @@ nht_internal_DELETE(pNhtConn conn, pStruct url_inf)
 	if (!find_inf || strcmp(find_inf->StrVal, "rest") != 0)
 	    {
 	    mssError(1,"NHT","DELETE: only REST mode supported");
-	    msg = "400 Bad Request";
+	    msg = "Bad Request";
+	    code = 400;
 	    goto error;
 	    }
 
 	/** Call out to REST functionality **/
-	rval = nht_internal_RestDelete(conn, url_inf, target_obj);
+	rval = nht_i_RestDelete(conn, url_inf, target_obj);
 	if (rval < 0)
 	    {
-	    msg = "400 Bad Request";
+	    msg = "Bad Request";
+	    code = 400;
 	    goto error;
 	    }
 	target_obj = NULL; /* deleted, handle no longer valid */
 
-	fdPrintf(conn->ConnFD,
-		"HTTP/1.0 204 No Content\r\n"
-		"Server: %s\r\n"
-		"Content-Type: text/html\r\n"
-		"\r\n",
-		NHT.ServerString);
+	nht_i_WriteResponse(conn, 204, "No Content", NULL);
 
 	/** Cleanup and return **/
 	return 0;
 
     error:
-	fdPrintf(conn->ConnFD,
-		"HTTP/1.0 %s\r\n"
-		"Server: %s\r\n"
-		"Content-Type: text/html\r\n"
-		"\r\n"
-		"<H1>%s</H1>\r\n",
-		msg, NHT.ServerString, msg);
+	nht_i_WriteErrResponse(conn, code, msg, NULL);
 
 	if (target_obj)
 	    objClose(target_obj);
@@ -2314,12 +2462,12 @@ nht_internal_DELETE(pNhtConn conn, pStruct url_inf)
     }
 
 
-/*** nht_internal_PATCH - implements the HTTP PATCH method, which is used for
+/*** nht_i_PATCH - implements the HTTP PATCH method, which is used for
  *** modifying existing data without replacing the entire resource (which is
  *** what PUT would do).
  ***/
 int
-nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
+nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
     {
     pStruct find_inf;
     struct json_tokener* jtok = NULL;
@@ -2328,16 +2476,18 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
     int rcnt, rval, total_rcnt;
     struct json_object*	j_obj = NULL;
     char* msg;
+    int code;
     pObject target_obj = NULL;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
 
 	/** Check akey **/
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (!find_inf || nht_internal_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
 	    {
 	    mssError(1,"NHT","PATCH request requires akey for validation");
-	    msg = "401 Unauthorized";
+	    msg = "Unauthorized";
+	    code = 401;
 	    goto error;
 	    }
 
@@ -2346,7 +2496,8 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	if (!target_obj)
 	    {
 	    mssError(0,"NHT","Could not open requested object for PATCH request");
-	    msg = "404 Not Found";
+	    msg = "Not Found";
+	    code = 404;
 	    goto error;
 	    }
 
@@ -2355,7 +2506,8 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	if (!jtok)
 	    {
 	    mssError(1,"NHT","Could not initialize JSON parser");
-	    msg = "500 Internal Server Error";
+	    msg = "Internal Server Error";
+	    code = 500;
 	    goto error;
 	    }
 
@@ -2375,14 +2527,16 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 		if (rcnt <= 0)
 		    {
 		    mssError(1,"NHT","Could not read JSON object from HTTP connection");
-		    msg = "400 Bad Request";
+		    msg = "Bad Request";
+		    code = 400;
 		    goto error;
 		    }
 		total_rcnt += rcnt;
 		if (total_rcnt > NHT_PAYLOAD_MAX)
 		    {
 		    mssError(1,"NHT","JSON object too large");
-		    msg = "400 Bad Request";
+		    msg = "Bad Request";
+		    code = 400;
 		    goto error;
 		    }
 		j_obj = json_tokener_parse_ex(jtok, rbuf, rcnt);
@@ -2393,7 +2547,8 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	if (!j_obj || jerr != json_tokener_success)
 	    {
 	    mssError(1,"NHT","Invalid JSON object in PATCH request");
-	    msg = "400 Bad Request";
+	    msg = "Bad Request";
+	    code = 400;
 	    goto error;
 	    }
 	json_tokener_free(jtok);
@@ -2404,15 +2559,17 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	if (!find_inf || strcmp(find_inf->StrVal, "rest") != 0)
 	    {
 	    mssError(1,"NHT","PATCH: only REST mode supported");
-	    msg = "400 Bad Request";
+	    msg = "Bad Request";
+	    code = 400;
 	    goto error;
 	    }
 
 	/** Call out to REST functionality **/
-	rval = nht_internal_RestPatch(conn, url_inf, target_obj, j_obj);
+	rval = nht_i_RestPatch(conn, url_inf, target_obj, j_obj);
 	if (rval < 0)
 	    {
-	    msg = "400 Bad Request";
+	    msg = "Bad Request";
+	    code = 400;
 	    goto error;
 	    }
 
@@ -2422,13 +2579,7 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	return 0;
 
     error:
-	fdPrintf(conn->ConnFD,
-		"HTTP/1.0 %s\r\n"
-		"Server: %s\r\n"
-		"Content-Type: text/html\r\n"
-		"\r\n"
-		"<H1>%s</H1>\r\n",
-		msg, NHT.ServerString, msg);
+	nht_i_WriteErrResponse(conn, code, msg, NULL);
 
 	if (jtok)
 	    json_tokener_free(jtok);
@@ -2441,12 +2592,12 @@ nht_internal_PATCH(pNhtConn conn, pStruct url_inf, char* content)
     }
 
 
-/*** nht_internal_PUT - implements the PUT HTTP method.  Set content_buf to
+/*** nht_i_PUT - implements the PUT HTTP method.  Set content_buf to
  *** data to write, otherwise it will be read from the connection if content_buf
  *** is NULL.
  ***/
 int
-nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
+nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pObject target_obj;
@@ -2468,18 +2619,8 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
 	if (!target_obj)
 	    {
-	    snprintf(sbuf,160,"HTTP/1.0 404 Not Found\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    mssPrintError(conn->ConnFD);
-	    /*netCloseTCP(conn->ConnFD,1000,0);
-	    nht_internal_UnlinkSess(nsess);*/
-	    nht_internal_FreeConn(conn);
 	    if (url_inf) stFreeInf_ne(url_inf);
-	    thExit();
+	    nht_i_ErrorExit(conn, 404, "Not Found"); /* does not return */
 	    }
 
 	/** OK, we're ready.  Send the 100 Continue message. **/
@@ -2540,57 +2681,20 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	objClose(target_obj);
 
 	/** Ok, issue the HTTP header for this one. **/
-	if (nsess->IsNewCookie)
-	    {
-	    if (already_exist)
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Set-Cookie: %s; path=/\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
-		}
-	    else
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
-		     "Server: %s\r\n"
-		     "Set-Cookie: %s; path=/\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
-		}
-	    nsess->IsNewCookie = 0;
-	    }
+	if (already_exist)
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	else
-	    {
-	    if (already_exist)
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
-		}
-	    else
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
-		     "Server: %s\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
-		}
-	    }
-	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	    nht_i_WriteResponse(conn, 201, "Created", NULL);
+	nht_i_QPrintfConn(conn, 0, "%STR\r\n", url_inf->StrVal);
 
     return 0;
     }
 
 
-/*** nht_internal_COPY - implements the COPY centrallix-http method.
+/*** nht_i_COPY - implements the COPY centrallix-http method.
  ***/
 int
-nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
+nht_i_COPY(pNhtConn conn, pStruct url_inf, char* dest)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pObject source_obj = NULL;
@@ -2618,7 +2722,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, copytype?copytype:"application/octet-stream");
 	    if (!source_obj)
 		{
-		nht_internal_ErrorExit(conn, 404, "Source Not Found");
+		nht_i_ErrorExit(conn, 404, "Source Not Found");
 		}
 
 	    /** If using srctype copy mode, get the type now **/
@@ -2627,7 +2731,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    }
 
 	/** Do we need to set params as a part of the open? **/
-	nht_internal_CkParams(url_inf, source_obj);
+	nht_i_CkParams(url_inf, source_obj);
 
 	/** Try to open the new object without O_CREAT to see if it exists... **/
 	target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC, 0600, "text/html");
@@ -2641,7 +2745,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
 	    if (!target_obj)
 		{
-		nht_internal_ErrorExit(conn, 404, "Target Not Found");
+		nht_i_ErrorExit(conn, 404, "Target Not Found");
 		}
 	    }
 
@@ -2655,7 +2759,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, copytype?copytype:"application/octet-stream");
 	    if (!source_obj)
 		{
-		nht_internal_ErrorExit(conn, 404, "Source Not Found");
+		nht_i_ErrorExit(conn, 404, "Source Not Found");
 		}
 	    }
 
@@ -2681,18 +2785,18 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	objClose(target_obj);
 
 	/** Ok, issue the HTTP header for this one. **/
-	nht_internal_WriteResponse(conn, already_exists?200:201, already_exists?"OK":"Created", -1, "text/html", NULL, NULL);
-	fdQPrintf(conn->ConnFD, "%STR\r\n", dest);
+	nht_i_WriteResponse(conn, already_exists?200:201, already_exists?"OK":"Created", NULL);
+	nht_i_QPrintfConn(conn, 0, "%STR\r\n", dest);
 
     return 0;
     }
 
 
-/*** nht_internal_ParseHeaders - read from the connection and parse the
+/*** nht_i_ParseHeaders - read from the connection and parse the
  *** headers into the NhtConn structure
  ***/
 int
-nht_internal_ParseHeaders(pNhtConn conn)
+nht_i_ParseHeaders(pNhtConn conn)
     {
     char* msg;
     pLxSession s = NULL;
@@ -2715,7 +2819,7 @@ nht_internal_ParseHeaders(pNhtConn conn)
 	     ** sending a request; don't print errors on this condition.
 	     **/
 	    mlxCloseSession(s);
-	    nht_internal_FreeConn(conn);
+	    nht_i_FreeConn(conn);
 	    thExit();
 	    }
 
@@ -2788,6 +2892,19 @@ nht_internal_ParseHeaders(pNhtConn conn)
 		conn->Size = mlxIntVal(s);
 		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after length"; goto error; }
 		}
+	    else if (!strcmp(hdr,"referer"))
+		{
+		mlxSetOptions(s, MLX_F_LINEONLY);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Referer:"; goto error; }
+		did_alloc = 1;
+		conn->Referrer = mlxStringVal(s, &did_alloc);
+		if (conn->Referrer[0] == ' ')
+		    memmove(conn->Referrer, conn->Referrer+1, strlen(conn->Referrer));
+		if (strpbrk(conn->Referrer, "\r\n"))
+		    *(strpbrk(conn->Referrer, "\r\n")) = '\0';
+		mlxUnsetOptions(s,MLX_F_LINEONLY);
+		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after Referer: header"; goto error; }
+		}
 	    else if (!strcmp(hdr,"user-agent"))
 	        {
 		/** Copy whole User-Agent. **/
@@ -2800,6 +2917,10 @@ nht_internal_ParseHeaders(pNhtConn conn)
 		    January 6, 2002   NRE
 		 **/
 		mlxCopyToken(s,conn->UserAgent,sizeof(conn->UserAgent));
+		if (conn->UserAgent[0] == ' ')
+		    memmove(conn->UserAgent, conn->UserAgent+1, strlen(conn->UserAgent));
+		if (strpbrk(conn->UserAgent, "\r\n"))
+		    *(strpbrk(conn->UserAgent, "\r\n")) = '\0';
 		/*while((toktype=mlxNextToken(s)))
 		    {
 		    if(toktype == MLX_TOK_STRING && strlen(conn->UserAgent)<158)
@@ -2891,6 +3012,50 @@ nht_internal_ParseHeaders(pNhtConn conn)
     }
 
 
+/*** nht_i_CheckAccessLog - check to see if the access log needs to be
+ *** (re)opened.
+ ***/
+int
+nht_i_CheckAccessLog()
+    {
+    pFile test_fd;
+
+	/** Is it open yet? **/
+	if (!NHT.AccessLogFD)
+	    {
+	    NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
+	    if (!NHT.AccessLogFD)
+		{
+		mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
+		}
+	    }
+	else
+	    {
+	    /** Has file been renamed (e.g., by logrotate) **/
+	    test_fd = fdOpen(NHT.AccessLogFile, O_RDONLY, 0600);
+	    if (!test_fd)
+		{
+		test_fd = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
+		if (!test_fd)
+		    {
+		    mssErrorErrno(1,"NHT","Could not reopen access_log file '%s'", NHT.AccessLogFile);
+		    }
+		else
+		    {
+		    fdClose(NHT.AccessLogFD, 0);
+		    NHT.AccessLogFD = test_fd;
+		    }
+		}
+	    else
+		{
+		fdClose(test_fd, 0);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** nhtInitialize - initialize the HTTP network handler and start the 
  *** listener thread.
  ***/
@@ -2926,6 +3091,8 @@ nhtInitialize()
 	strcpy(NHT.UploadTmpDir, "/var/tmp");
 	xaInit(&NHT.AllowedUploadDirs, 16);
 	xaInit(&NHT.AllowedUploadExts, 16);
+	NHT.CollectedConns = syCreateSem(0, 0);
+	NHT.CollectedTLSConns = syCreateSem(0, 0);
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
@@ -2937,7 +3104,7 @@ nhtInitialize()
 	NHT.G_ID_Count = 0;
 	NHT.S_ID_Count = 0;
 
-	nht_internal_RegisterSessionInfo();
+	nht_i_RegisterSessionInfo();
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
@@ -3014,11 +3181,7 @@ nhtInitialize()
 	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
 		{
 		strtcpy(NHT.AccessLogFile, strval, sizeof(NHT.AccessLogFile));
-		NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_WRONLY | O_APPEND, 0600);
-		if (!NHT.AccessLogFD)
-		    {
-		    mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
-		    }
+		nht_i_CheckAccessLog();
 		}
 
 	    /** Upload temporary directory **/
@@ -3035,11 +3198,11 @@ nhtInitialize()
 	    }
 
 	/** Start the watchdog timer thread **/
-	thCreate(nht_internal_Watchdog, 0, NULL);
+	thCreate(nht_i_Watchdog, 0, NULL);
 
 	/** Start the network listeners. **/
-	thCreate(nht_internal_Handler, 0, NULL);
-	thCreate(nht_internal_TLSHandler, 0, NULL);
+	thCreate(nht_i_Handler, 0, NULL);
+	thCreate(nht_i_TLSHandler, 0, NULL);
 
     return 0;
     }

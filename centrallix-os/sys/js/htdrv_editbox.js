@@ -474,6 +474,7 @@ function eb_select(x,y,l,c,n,a,k)
 	    this.Update(this.content);
 	    }, [], got_focus?10:201);
     this.has_focus = true;
+    eb_current = this;
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
     cn_activate(this,"GetFocus", {});
@@ -484,6 +485,7 @@ function eb_deselect(p)
     {
     this.ContentLayer.blur();
     this.has_focus = false;
+    eb_current = null;
     if (this.changed)
 	{
 	if (!p || !p.nodatachange)

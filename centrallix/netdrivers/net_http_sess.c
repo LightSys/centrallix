@@ -34,11 +34,11 @@
 
  
  
-/*** nht_internal_CreateCookie - generate a random string value that can
+/*** nht_i_CreateCookie - generate a random string value that can
  *** be used as an HTTP cookie.
  ***/
 int
-nht_internal_CreateCookie(char* ck, int cksize)
+nht_i_CreateCookie(char* ck, int cksize)
     {
     int key[4];
 
@@ -51,11 +51,11 @@ nht_internal_CreateCookie(char* ck, int cksize)
     }
 
 
-/*** nht_internal_LinkSess() - link to a session, thus increasing its link
+/*** nht_i_LinkSess() - link to a session, thus increasing its link
  *** count.
  ***/
 int
-nht_internal_LinkSess(pNhtSessionData sess)
+nht_i_LinkSess(pNhtSessionData sess)
     {
     if (sess->LinkCnt <= 0 || sess->LinkCnt > 65535)
 	mssError(1,"NHT","Bark!  Bad link count %d for session %s", sess->LinkCnt, sess->Cookie);
@@ -65,11 +65,11 @@ nht_internal_LinkSess(pNhtSessionData sess)
     }
 
 
-/*** nht_internal_UnlinkSess_r() - does the work of freeing an individual 
+/*** nht_i_UnlinkSess_r() - does the work of freeing an individual 
  *** handle within the session.
  ***/
 int
-nht_internal_UnlinkSess_r(void* v)
+nht_i_UnlinkSess_r(void* v)
     {
     if (ISMAGIC(v, MGK_OBJSESSION)) 
 	{
@@ -79,10 +79,10 @@ nht_internal_UnlinkSess_r(void* v)
     }
 
 
-/*** nht_internal_AllocSession() - create a new session.
+/*** nht_i_AllocSession() - create a new session.
  ***/
 pNhtSessionData
-nht_internal_AllocSession(char* usrname)
+nht_i_AllocSession(char* usrname)
     {
     pNhtUser usr;
     pNhtSessionData nsess;
@@ -106,7 +106,7 @@ nht_internal_AllocSession(char* usrname)
 	/** Too many sessions already for this user? **/
 	if (usr->SessionCnt >= NHT.UserSessionLimit)
 	    {
-	    nht_internal_DiscardASession(usr);
+	    nht_i_DiscardASession(usr);
 	    }
 
 	/** Create the session. **/
@@ -122,10 +122,10 @@ nht_internal_AllocSession(char* usrname)
 	nsess->ObjSess = objOpenSession("/");
 	nsess->Errors = syCreateSem(0,0);
 	nsess->ControlMsgs = syCreateSem(0,0);
-	nsess->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeout, (void*)nsess);
-	nsess->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeout, (void*)nsess);
+	nsess->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeout, (void*)nsess);
+	nsess->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeout, (void*)nsess);
 	nsess->LinkCnt = 1;
-	xaInit(&nsess->Triggers,16);
+	/*xaInit(&nsess->Triggers,16);*/
 	xaInit(&nsess->ErrorList,16);
 	xaInit(&nsess->ControlMsgsList,16);
 	xaInit(&nsess->OsmlQueryList,64);
@@ -139,7 +139,7 @@ nht_internal_AllocSession(char* usrname)
 	objCurrentDate(&(nsess->LastActivity));
 
 	/** Create the cookie and the CSRF token (akey) **/
-	nht_internal_CreateCookie(nsess->Cookie, sizeof(nsess->Cookie));
+	nht_i_CreateCookie(nsess->Cookie, sizeof(nsess->Cookie));
 	cxssGenerateKey((unsigned char*)akey, sizeof(akey));
 	sprintf(nsess->SKey, "%8.8x%8.8x%8.8x%8.8x", akey[0], akey[1], akey[2], akey[3]);
 
@@ -152,13 +152,13 @@ nht_internal_AllocSession(char* usrname)
     }
 
 
-/*** nht_internal_UnlinkSess() - free a session when its link count reaches 0.
+/*** nht_i_UnlinkSess() - free a session when its link count reaches 0.
  ***/
 int
-nht_internal_UnlinkSess(pNhtSessionData sess)
+nht_i_UnlinkSess(pNhtSessionData sess)
     {
     pXString errmsg;
-    pNhtConnTrigger trg;
+    /*pNhtConnTrigger trg;*/
     pNhtControlMsg cm;
     int i;
     pNhtQuery nht_query;
@@ -172,8 +172,8 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 	    printf("NHT: releasing session for username [%s], cookie [%s]\n", sess->Username, sess->Cookie);
 
 	    /** Kill the inactivity timers first so we don't get re-entered **/
-	    nht_internal_RemoveWatchdog(sess->WatchdogTimer);
-	    nht_internal_RemoveWatchdog(sess->InactivityTimer);
+	    nht_i_RemoveWatchdog(sess->WatchdogTimer);
+	    nht_i_RemoveWatchdog(sess->InactivityTimer);
 
 	    /** Decrement user session count **/
 	    sess->User->SessionCnt--;
@@ -187,11 +187,11 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 	    /** Destroy any active app groups. **/
 	    while(sess->AppGroups.nItems)
 		{
-		nht_internal_FreeAppGroup((pNhtAppGroup)(sess->AppGroups.Items[0]));
+		nht_i_FreeAppGroup((pNhtAppGroup)(sess->AppGroups.Items[0]));
 		}
 
 	    /** Close all open handles. **/
-	    xhnClearHandles(&(sess->Hctx), nht_internal_UnlinkSess_r);
+	    xhnClearHandles(&(sess->Hctx), nht_i_UnlinkSess_r);
 
 	    /** Close the master session. **/
 	    objCloseSession(sess->ObjSess);
@@ -210,7 +210,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		}
 
 	    /** Clear the triggers list **/
-	    while(sess->Triggers.nItems)
+	    /*while(sess->Triggers.nItems)
 		{
 		trg = (pNhtConnTrigger)(sess->Triggers.Items[0]);
 		trg->LinkCnt--;
@@ -220,14 +220,14 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		    xaRemoveItem(&(sess->Triggers), 0);
 		    nmFree(trg, sizeof(NhtConnTrigger));
 		    }
-		}
+		}*/
 
 	    /** Clear control msg list **/
 	    while(sess->ErrorList.nItems)
 		{
 		cm = (pNhtControlMsg)(sess->ControlMsgsList.Items[0]);
 		xaRemoveItem(&sess->ControlMsgsList, 0);
-		nht_internal_FreeControlMsg(cm);
+		nht_i_FreeControlMsg(cm);
 		}
 
 	    /** Query data **/
@@ -243,7 +243,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		mssUnlinkSession(sess->Session);
 
 	    /** Dealloc the xarrays and such **/
-	    xaDeInit(&(sess->Triggers));
+	    /*xaDeInit(&(sess->Triggers));*/
 	    xaDeInit(&(sess->ErrorList));
 	    xaDeInit(&(sess->ControlMsgsList));
 	    xaDeInit(&(sess->OsmlQueryList));
@@ -258,7 +258,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
     }
 
 
-/*** nht_internal_Watchdog() - manages the session watchdog timers.  These
+/*** nht_i_Watchdog() - manages the session watchdog timers.  These
  *** timers cause sessions to automatically time out if a certain operation
  *** isn't performed every so often.
  ***
@@ -268,7 +268,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
  *** CLK_TCK==100, the 32bit tick counter wraps at just under 500 days).
  ***/
 void
-nht_internal_Watchdog(void* v)
+nht_i_Watchdog(void* v)
     {
     unsigned int cur_tick, next_tick;
     int i;
@@ -365,10 +365,10 @@ nht_internal_Watchdog(void* v)
     }
 
 
-/*** nht_internal_AddWatchdog() - adds a timer to the watchdog timer list.
+/*** nht_i_AddWatchdog() - adds a timer to the watchdog timer list.
  ***/
 handle_t
-nht_internal_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg)
+nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg)
     {
     pNhtTimer t;
 
@@ -393,13 +393,13 @@ nht_internal_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg)
     }
 
 
-/*** nht_internal_RemoveWatchdog() - removes a timer from the timer list.
+/*** nht_i_RemoveWatchdog() - removes a timer from the timer list.
  *** Returns 0 if it successfully removed it, or -1 if the timer did not
  *** exist.  In either case, the caller MUST consider the pointer 't'
  *** as invalid once the call returns.
  ***/
 int
-nht_internal_RemoveWatchdog(handle_t th)
+nht_i_RemoveWatchdog(handle_t th)
     {
     int idx;
     pNhtTimer t = xhnHandlePtr(&(NHT.TimerHctx), th);
@@ -424,12 +424,12 @@ nht_internal_RemoveWatchdog(handle_t th)
     }
 
 
-/*** nht_internal_ResetWatchdog() - resets the countdown timer for a 
+/*** nht_i_ResetWatchdog() - resets the countdown timer for a 
  *** given watchdog to its original value.  Returns 0 if successful,
  *** or -1 if the thing is no longer valid.
  ***/
 int
-nht_internal_ResetWatchdog(handle_t th)
+nht_i_ResetWatchdog(handle_t th)
     {
     int idx;
     pNhtTimer t = xhnHandlePtr(&(NHT.TimerHctx), th);
@@ -449,103 +449,103 @@ nht_internal_ResetWatchdog(handle_t th)
     }
 
 
-/*** nht_internal_WTimeout() - this routine is called when the session 
+/*** nht_i_WTimeout() - this routine is called when the session 
  *** watchdog timer expires for a session.  The response is to remove the
  *** session.
  ***/
 int
-nht_internal_WTimeout(void* sess_v)
+nht_i_WTimeout(void* sess_v)
     {
     pNhtSessionData sess = (pNhtSessionData)sess_v;
 
 	/** Unlink from the session. **/
-	nht_internal_UnlinkSess(sess);
+	nht_i_UnlinkSess(sess);
 
     return 0;
     }
 
 
-/*** nht_internal_ITimeout() - this routine is called when the session 
+/*** nht_i_ITimeout() - this routine is called when the session 
  *** inactivity timer expires for a session.  The response is to remove the
  *** session.
  ***/
 int
-nht_internal_ITimeout(void* sess_v)
+nht_i_ITimeout(void* sess_v)
     {
     pNhtSessionData sess = (pNhtSessionData)sess_v;
 
 	/** Right now, does the same as WTimeout, so call that. **/
-	nht_internal_WTimeout(sess);
+	nht_i_WTimeout(sess);
 
     return 0;
     }
 
 
-/*** nht_internal_WTimeoutApp() - this routine is called when the session 
+/*** nht_i_WTimeoutApp() - this routine is called when the session 
  *** watchdog timer expires for an application.  The response is to remove the
  *** application.
  ***/
 int
-nht_internal_WTimeoutApp(void* app_v)
+nht_i_WTimeoutApp(void* app_v)
     {
     pNhtApp app = (pNhtApp)app_v;
 
 	/** Free the App. **/
-	nht_internal_FreeApp(app);
+	nht_i_FreeApp(app);
 
     return 0;
     }
 
 
-/*** nht_internal_ITimeoutApp()
+/*** nht_i_ITimeoutApp()
  ***/
 int
-nht_internal_ITimeoutApp(void* app_v)
+nht_i_ITimeoutApp(void* app_v)
     {
     pNhtApp app = (pNhtApp)app_v;
 
 	/** Right now, does the same as WTimeout, so call that. **/
-	nht_internal_WTimeoutApp(app);
+	nht_i_WTimeoutApp(app);
 
     return 0;
     }
 
 
-/*** nht_internal_WTimeoutAppGroup() - this routine is called when the session 
+/*** nht_i_WTimeoutAppGroup() - this routine is called when the session 
  *** watchdog timer expires for an app group.  The response is to remove the
  *** application group.
  ***/
 int
-nht_internal_WTimeoutAppGroup(void* group_v)
+nht_i_WTimeoutAppGroup(void* group_v)
     {
     pNhtAppGroup group = (pNhtAppGroup)group_v;
 
 	/** Free the App. **/
-	nht_internal_FreeAppGroup(group);
+	nht_i_FreeAppGroup(group);
 
     return 0;
     }
 
 
-/*** nht_internal_ITimeoutAppGroup()
+/*** nht_i_ITimeoutAppGroup()
  ***/
 int
-nht_internal_ITimeoutAppGroup(void* group_v)
+nht_i_ITimeoutAppGroup(void* group_v)
     {
     pNhtAppGroup group = (pNhtAppGroup)group_v;
 
 	/** Right now, does the same as WTimeout, so call that. **/
-	nht_internal_WTimeoutAppGroup(group);
+	nht_i_WTimeoutAppGroup(group);
 
     return 0;
     }
 
 
-/*** nht_internal_DiscardASession - search for sessions by a given user,
+/*** nht_i_DiscardASession - search for sessions by a given user,
  *** and discard a suitably old one.
  ***/
 int
-nht_internal_DiscardASession(pNhtUser usr)
+nht_i_DiscardASession(pNhtUser usr)
     {
     int i;
     pNhtSessionData search_s, old_s = NULL;
@@ -557,16 +557,16 @@ nht_internal_DiscardASession(pNhtUser usr)
 		old_s = search_s;
 	    }
 	if (old_s)
-	    nht_internal_UnlinkSess(old_s);
+	    nht_i_UnlinkSess(old_s);
 
     return 0;
     }
 
 
-/*** nht_internal_AllocApp() - allocate a new application structure
+/*** nht_i_AllocApp() - allocate a new application structure
  ***/
 pNhtApp
-nht_internal_AllocApp(char* path, pNhtAppGroup group)
+nht_i_AllocApp(char* path, pNhtAppGroup group)
     {
     pNhtApp app;
     int akey[2];
@@ -586,8 +586,8 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
 	objCurrentDate(&(app->FirstActivity));
 	objCurrentDate(&(app->LastActivity));
 	app->AppObjSess = objOpenSession("/");
-	app->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeoutApp, (void*)app);
-	/*app->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutApp, (void*)app);*/
+	app->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeoutApp, (void*)app);
+	/*app->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeoutApp, (void*)app);*/
 	xaAddItem(&group->Apps, (void*)app);
 	xaInit(&app->Endorsements, 16);
 	xaInit(&app->Contexts, 16);
@@ -596,10 +596,10 @@ nht_internal_AllocApp(char* path, pNhtAppGroup group)
     }
 
 
-/*** nht_internal_FreeApp() - free and clean up an application structure
+/*** nht_i_FreeApp() - free and clean up an application structure
  ***/
 int
-nht_internal_FreeApp(pNhtApp app)
+nht_i_FreeApp(pNhtApp app)
     {
     int i;
 
@@ -616,8 +616,8 @@ nht_internal_FreeApp(pNhtApp app)
 	xaDeInit(&app->Contexts);
 
 	/** Clean up... **/
-	nht_internal_RemoveWatchdog(app->WatchdogTimer);
-	/*nht_internal_RemoveWatchdog(app->InactivityTimer);*/
+	nht_i_RemoveWatchdog(app->WatchdogTimer);
+	/*nht_i_RemoveWatchdog(app->InactivityTimer);*/
 	objCloseSession(app->AppObjSess);
 	nmFree(app, sizeof(NhtApp));
 
@@ -625,10 +625,10 @@ nht_internal_FreeApp(pNhtApp app)
     }
 
 
-/*** nht_internal_AllocAppGroup() - allocate a new application group structure
+/*** nht_i_AllocAppGroup() - allocate a new application group structure
  ***/
 pNhtAppGroup
-nht_internal_AllocAppGroup(char* path, pNhtSessionData s)
+nht_i_AllocAppGroup(char* path, pNhtSessionData s)
     {
     pNhtAppGroup group;
     int gkey[2];
@@ -647,8 +647,8 @@ nht_internal_AllocAppGroup(char* path, pNhtSessionData s)
 	snprintf(group->G_ID_Text, sizeof(group->G_ID_Text), "%s|%lld", s->S_ID_Text, group->G_ID);
 	objCurrentDate(&(group->FirstActivity));
 	objCurrentDate(&(group->LastActivity));
-	group->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeoutAppGroup, (void*)group);
-	/*group->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeoutAppGroup, (void*)group);*/
+	group->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeoutAppGroup, (void*)group);
+	/*group->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeoutAppGroup, (void*)group);*/
 	xaInit(&group->Apps, 16);
 	xaAddItem(&s->AppGroups, (void*)group);
 
@@ -656,10 +656,10 @@ nht_internal_AllocAppGroup(char* path, pNhtSessionData s)
     }
 
 
-/*** nht_internal_FreeAppGroup() - free and clean up an application structure
+/*** nht_i_FreeAppGroup() - free and clean up an application structure
  ***/
 int
-nht_internal_FreeAppGroup(pNhtAppGroup group)
+nht_i_FreeAppGroup(pNhtAppGroup group)
     {
 
 	/** Disconnect from the session **/
@@ -668,20 +668,20 @@ nht_internal_FreeAppGroup(pNhtAppGroup group)
 	/** Destroy any apps still active **/
 	while(group->Apps.nItems)
 	    {
-	    nht_internal_FreeApp((pNhtApp)(group->Apps.Items[0]));
+	    nht_i_FreeApp((pNhtApp)(group->Apps.Items[0]));
 	    }
 
 	/** Clean up... **/
 	xaDeInit(&group->Apps);
-	nht_internal_RemoveWatchdog(group->WatchdogTimer);
-	/*nht_internal_RemoveWatchdog(group->InactivityTimer);*/
+	nht_i_RemoveWatchdog(group->WatchdogTimer);
+	/*nht_i_RemoveWatchdog(group->InactivityTimer);*/
 	nmFree(group, sizeof(NhtAppGroup));
 
     return 0;
     }
 
 
-/*** nht_internal_VerifyAKey() - given an akey (CSRF token) from the client,
+/*** nht_i_VerifyAKey() - given an akey (CSRF token) from the client,
  *** verify that it matches the key in the session, and if the group and app
  *** parts match an existing app group and app, then return the group and app
  *** to the caller, as well.
@@ -693,7 +693,7 @@ nht_internal_FreeAppGroup(pNhtAppGroup group)
  ***    session, group, and app - "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS-GGGGGGGGGGGGGGGG-AAAAAAAAAAAAAAAA"
  ***/
 int
-nht_internal_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app)
+nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app)
     {
     int i;
     pNhtAppGroup group_search;

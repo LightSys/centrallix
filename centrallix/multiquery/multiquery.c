@@ -1772,11 +1772,10 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    while(1)
 		        {
 			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON)
-			    {
+			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 			    break;
-			    }
-			if (t == MLX_TOK_COMMA && parenlevel == 0) break;
+			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON || t == MLX_TOK_COMMA) && parenlevel == 0)
+			    break;
 			if (t == MLX_TOK_OPENPAREN) parenlevel++;
 			if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
 			ptr = mlxStringVal(lxs,NULL);
@@ -2610,7 +2609,7 @@ mq_internal_NextStatement(pMultiQuery this)
 	qs = mq_internal_FindItem(stmt->QTree, MQ_T_HAVINGCLAUSE, NULL);
 	if (qs)
 	    {
-	    qs->Expr = expCompileExpression(qs->RawData.String, stmt->OneObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    qs->Expr = expCompileExpression(qs->RawData.String, this->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, EXPR_CMP_LATEBIND);
 	    if (!qs->Expr)
 	        {
 		mssError(0,"MQ","Error in query's HAVING clause");
@@ -2935,6 +2934,7 @@ mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
     {
     pPseudoObject our_p = p;
     int rval;
+    pParamObjects having_objlist;
 
 	/** No having clause? **/
 	if (!stmt->HavingClause)
@@ -2946,9 +2946,22 @@ mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
 	if (!our_p)
 	    our_p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
 
-	/** Evaluate it **/
-	expModifyParam(stmt->OneObjList, "this", (void*)our_p);
-	rval = expEvalTree(stmt->HavingClause, stmt->OneObjList);
+	/** Create our param list for having clause evaluation **/
+	having_objlist = expCreateParamList();
+	expCopyList(stmt->Query->ObjList, having_objlist, -1);
+	having_objlist->Session = stmt->Query->SessionID;
+	expAddParamToList(having_objlist, "this", (void*)our_p, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expSetParamFunctions(having_objlist, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
+
+	/** Do late binding, and evaluate it **/
+	/*expModifyParam(having_objlist, "this", (void*)our_p);*/
+	expBindExpression(stmt->HavingClause, having_objlist, 0);
+	rval = expEvalTree(stmt->HavingClause, having_objlist);
+
+	/** Release the parameter list **/
+	expFreeParamList(having_objlist);
+
+	/** Determine our results **/
 	if (p != our_p)
 	    mq_internal_FreePseudoObject(our_p);
 	if (rval < 0)

@@ -2142,16 +2142,16 @@ wgtrAddDeploymentMethod(char* method, int (*Render)(pFile, pObjSession, pWgtrNod
  ***/
 
 int
-wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method)
+wgtrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method)
     {
-    int	    (*Render)(pFile, pObjSession, pWgtrNode, pStruct, pWgtrClientInfo);
+    int	    (*Render)(void*, int (*)(void*, char*, int, int, int), pObjSession, pWgtrNode, pStruct, pWgtrClientInfo);
 
 	if ( (Render = (void*)xhLookup(&(WGTR.Methods), method)) == NULL)
 	    {
 	    mssError(1, "WGTR", "Couldn't render widget tree '%s': no render function for '%s'", tree->Name, method);
 	    return -1;
 	    }
-	return Render(output, obj_s, tree, params, c_info);
+	return Render(stream, stream_write, obj_s, tree, params, c_info);
     }
 
 
@@ -2332,7 +2332,7 @@ wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
  *** and expressions.
  ***/
 int
-wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method)
+wgtrRenderObject(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method)
     {
     pWgtrNode tree;
     int rval;
@@ -2354,7 +2354,7 @@ wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, p
 	return -1;
 	}
 
-    rval = wgtrRender(output, s, tree, app_params, client_info, method);
+    rval = wgtrRender(stream, stream_write, s, tree, app_params, client_info, method);
 
     if(tree) wgtrFree(tree);
     return rval;

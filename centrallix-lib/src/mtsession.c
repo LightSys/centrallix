@@ -684,7 +684,6 @@ mssPrintError(pFile fd)
 int
 mssStringError(pXString str)
     {
-    char sbuf[200];
     int i;
     pMtSession s;
 
@@ -693,12 +692,10 @@ mssStringError(pXString str)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
-	xsConcatenate(str,sbuf,-1);
+	xsConcatPrintf(str, "ERROR - Session By Username [%s]\r\n", s->UserName);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
-	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
-	    xsConcatenate(str,sbuf, -1);
+	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
 	    }
     	
     return 0;

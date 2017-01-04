@@ -342,7 +342,7 @@ mqtAnalyze(pQueryStatement stmt)
 
 
 int
-mqt_internal_ResetAggregates(pQueryElement qe, int level)
+mqt_internal_ResetAggregates(pQueryStatement stmt, pQueryElement qe, int level)
     {
     int i;
     pExpression exp;
@@ -364,14 +364,27 @@ mqt_internal_ResetAggregates(pQueryElement qe, int level)
 		    break;
 	    }
     
+	/** Reset HAVING clause **/
+	if (stmt->HavingClause)
+	    {
+	    expResetAggregates(stmt->HavingClause, -1, level);
+	    /*id = -1;
+	    if (expLookupParam(objlist, "this") < 0)
+		id = expAddParamToList(objlist, "this", NULL, 0);
+	    expUnlockAggregates(stmt->HavingClause, level);
+	    expEvalTree(stmt->HavingClause, objlist);
+	    if (id >= 0)
+		expRemoveParamFromList(objlist, "this");*/
+	    }
+
     return 0;
     }
 
 
 int
-mqt_internal_UpdateAggregates(pQueryElement qe, int level, pParamObjects objlist)
+mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level, pParamObjects objlist)
     {
-    int i;
+    int i, id;
     pExpression exp;
 
 	/** Update our SELECT item expressions **/
@@ -396,6 +409,18 @@ mqt_internal_UpdateAggregates(pQueryElement qe, int level, pParamObjects objlist
 		    }
 		else
 		    break;
+	    }
+
+	/** Update HAVING clause **/
+	if (stmt->HavingClause)
+	    {
+	    id = -1;
+	    if (expLookupParam(objlist, "this") < 0)
+		id = expAddParamToList(objlist, "this", NULL, 0);
+	    expUnlockAggregates(stmt->HavingClause, level);
+	    expEvalTree(stmt->HavingClause, objlist);
+	    if (id >= 0)
+		expRemoveParamFromList(objlist, "this");
 	    }
 
     return 0;
@@ -423,7 +448,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    }
 
 	/** Clear aggregates - level 2 **/
-	mqt_internal_ResetAggregates(qe, 2);
+	mqt_internal_ResetAggregates(stmt, qe, 2);
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
 	for(i=0;i<qe->Children.nItems;i++)
@@ -511,7 +536,6 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     int i;
     pMQTData md = (pMQTData)(qe->PrivateData);
     unsigned char* bptr;
-    pObject tmp_obj;
 
     	/** Check the setrowcount... **/
 	if (qe->SlaveIterCnt > 0 && qe->IterCnt >= qe->SlaveIterCnt) return 0;
@@ -547,7 +571,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	else
 	    {
 	    /** Then, reset all aggregate counters/sums/etc - level 1 **/
-	    mqt_internal_ResetAggregates(qe, 1);
+	    mqt_internal_ResetAggregates(stmt, qe, 1);
 
 	    /** Restore a saved object list? **/
 	    if (md->nObjects != 0 && qe->IterCnt > 1)
@@ -606,7 +630,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		while(1)
 		    {
 		    /** Update all aggregate counters - level 1 **/
-		    mqt_internal_UpdateAggregates(qe, 1, stmt->Query->ObjList);
+		    mqt_internal_UpdateAggregates(stmt, qe, 1, stmt->Query->ObjList);
 
 		    /** Link to all objects in the current object list **/
 		    memcpy(md->SavedObjList + stmt->Query->nProvidedObjects, stmt->Query->ObjList->Objects + stmt->Query->nProvidedObjects, (stmt->Query->ObjList->nObjects - stmt->Query->nProvidedObjects)*sizeof(pObject));
@@ -679,7 +703,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		if (fetch_rval == 1 && md->AggLevel == 2)
 		    {
 		    /** Re-eval second level group **/
-		    mqt_internal_UpdateAggregates(qe, 2, stmt->Query->ObjList);
+		    mqt_internal_UpdateAggregates(stmt, qe, 2, stmt->Query->ObjList);
 		    }
 
 		/** 2-level group and this is the last row?  If so, return. **/
@@ -687,7 +711,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    break;
 
 		/** Reset all aggregate counters/sums/etc - level 1 **/
-		mqt_internal_ResetAggregates(qe, 1);
+		mqt_internal_ResetAggregates(stmt, qe, 1);
 
 		/** Force recalc **/
 		if (md->nObjects != 0)
@@ -712,7 +736,6 @@ mqtFinish(pQueryElement qe, pQueryStatement stmt)
     pQueryElement cld;
     int i;
     pMQTData md = (pMQTData)(qe->PrivateData);
-    pObject tmp_obj;
 
 	/** Restore a saved object list? **/
 	if (md->nObjects != 0 && qe->IterCnt > 0)

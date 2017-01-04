@@ -191,6 +191,7 @@ function tx_select(x,y,l,c,n,a,k)
     if (!got_focus)
 	pg_addsched_fn(this.txa, function() { this.focus() }, {}, 200);
     this.has_focus = true;
+    tx_current = this;
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
     cn_activate(this, 'GetFocus');
@@ -202,6 +203,7 @@ function tx_deselect(p)
     {
     this.txa.blur();
     this.has_focus = false;
+    tx_current = null;
     if (this.changed)
 	{
 	if (!p || !p.nodatachange)
