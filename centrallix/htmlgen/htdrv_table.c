@@ -264,6 +264,11 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tbld","tbld_mousemove");
 	htrAddEventHandlerFunction(s, "document","MOUSEUP","tbld","tbld_mouseup");
 	htrAddEventHandlerFunction(s, "document","WHEEL","tbld","tbld_wheel");
+	htrAddEventHandlerFunction(s, "document","KEYDOWN","tbld","tbld_keydown");
+	htrAddEventHandlerFunction(s, "document","TOUCHSTART","tbld","tbld_touchstart");
+	htrAddEventHandlerFunction(s, "document","TOUCHEND","tbld","tbld_touchend");
+	htrAddEventHandlerFunction(s, "document","TOUCHMOVE","tbld","tbld_touchmove");
+	htrAddEventHandlerFunction(s, "document","TOUCHCANCEL","tbld","tbld_touchcancel");
 	if (s->Capabilities.Dom1HTML)
 	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "tbld", "tbld_contextmenu");
 
