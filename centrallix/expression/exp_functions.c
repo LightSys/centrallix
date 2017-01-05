@@ -339,6 +339,10 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
     if (i0->Integer != 0)
         {
 	/** True, return 2nd argument i1 **/
+	if (exp_internal_EvalTree(i1,objlist) < 0)
+	    {
+	    return -1;
+	    }
 	if (i2->AggLevel > 0)
 	    {
 	    if (exp_internal_EvalAggregates(i2,objlist) < 0)
@@ -348,13 +352,6 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    {
 	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	    }
-	if (exp_internal_EvalTree(i1,objlist) < 0)
-	    {
-	    return -1;
-	    }
-	if (i2->AggLevel > 0)
-	    if (exp_internal_EvalTree(i2,objlist) < 0)
-		return -1;
 	tree->DataType = i1->DataType;
 	if (i1->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
 	switch(i1->DataType)
