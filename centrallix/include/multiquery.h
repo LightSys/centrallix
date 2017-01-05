@@ -41,6 +41,9 @@
 #include "stparse.h"
 
 
+#define MQ_MAX_ORDERBY	25
+
+
 /*** Structure for a query driver.  A query driver basically manages a type
  *** of query operation, such as join, projection, union, etc.
  ***/
@@ -82,7 +85,7 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[25];
+    pExpression		OrderBy[MQ_MAX_ORDERBY];
     int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
