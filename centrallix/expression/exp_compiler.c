@@ -258,7 +258,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				if (!strcasecmp(etmp->Name,"count") || !strcasecmp(etmp->Name,"avg") ||
 				    !strcasecmp(etmp->Name,"max") || !strcasecmp(etmp->Name,"min") ||
 				    !strcasecmp(etmp->Name,"sum") || !strcasecmp(etmp->Name,"first") ||
-				    !strcasecmp(etmp->Name,"last"))
+				    !strcasecmp(etmp->Name,"last") || !strcasecmp(etmp->Name,"nth"))
 				    {
 				    etmp->Flags |= (EXPR_F_AGGREGATEFN | EXPR_F_AGGLOCKED);
 				    /*etmp->AggExp = expAllocExpression();*/
