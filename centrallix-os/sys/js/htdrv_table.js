@@ -196,6 +196,8 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // Presentation mode -- rows or propsheet?
     if (this.datamode == 1)
 	{
+	if (!dataobj && this.osrc.CurrentRecord && this.osrc.replica[this.osrc.CurrentRecord])
+	    dataobj = this.osrc.replica[this.osrc.CurrentRecord];
 	// Propsheet mode - build the attr list
 	this.attrlist = [];
 	for(var j in dataobj)
@@ -416,6 +418,8 @@ function tbld_setup_row_data(rowslot, is_new)
 		}
 	    if(txt == null || typeof txt == 'undefined')
 		txt = '';
+	    if (typeof row.cols[j].data == 'undefined' || (row.cols[j].data == null && txt) || txt != row.cols[j].data)
+		changed = true;
 	    row.cols[j].data=txt;
 	    }
 	}
