@@ -848,7 +848,15 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		if (child->AggLevel > 0)
+		    {
+		    if (exp_internal_EvalAggregates(child, objlist) < 0)
+			return -1;
+		    }
+		else
+		    {
+		    child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    }
 		}
 	    else
 		{
@@ -887,7 +895,15 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		if (child->AggLevel > 0)
+		    {
+		    if (exp_internal_EvalAggregates(child, objlist) < 0)
+			return -1;
+		    }
+		else
+		    {
+		    child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    }
 		}
 	    else
 		{
@@ -1791,6 +1807,37 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	tree->ObjDelayChangeMask = 0;
 
     return rval;
+    }
+
+
+/*** exp_internal_EvalAggregates() - scan the tree, looking for aggregate
+ *** functions, and ensure that we evaluate those aggregate functions.  This
+ *** function is needed so that short-circuit evaluation works and we can
+ *** still update aggregate subtrees that need to be updated.
+ ***/
+int
+exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
+    {
+    int i;
+    pExpression child;
+
+	/** Is this an aggregate function?  Call normal eval if so **/
+	if (tree->Flags & EXPR_F_AGGREGATEFN)
+	    {
+	    return exp_internal_EvalTree(tree, objlist);
+	    }
+	else
+	    {
+	    tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
+	    for(i=0; i<tree->Children.nItems; i++)
+		{
+		child = (pExpression)tree->Children.Items[i];
+		if (exp_internal_EvalAggregates(child, objlist) < 0)
+		    return -1;
+		}
+	    }
+
+    return 0;
     }
 
 

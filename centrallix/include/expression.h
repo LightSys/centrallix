@@ -252,6 +252,7 @@ int exp_internal_CopyNode(pExpression src, pExpression dst);
 pExpression exp_internal_CopyTree(pExpression orig_exp);
 int expSplitTree(pExpression src_tree, pExpression split_point, pExpression result_trees[]);
 int exp_internal_EvalTree(pExpression tree, pParamObjects objlist);
+int exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist);
 int exp_internal_DefineFunctions();
 int exp_internal_DefineNodeEvals();
 int expCopyValue(pExpression src, pExpression dst, int make_independent);
