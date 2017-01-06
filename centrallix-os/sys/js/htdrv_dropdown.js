@@ -1134,6 +1134,35 @@ function dd_action_set_items(aparam)
 	}
     }
 
+function dd_cb_reveal(e)
+    {
+    switch (e.eventName) 
+	{
+	case 'Reveal':
+	    if (this.form)
+		this.form.Reveal(this,e);
+	    else if (this.osrc)
+		this.osrc.Reveal(this);
+	    break;
+	case 'Obscure':
+	    // yes the below is correct. API is different between form and osrc.
+	    if (this.form)
+		this.form.Reveal(this,e);
+	    else if (this.osrc)
+		this.osrc.Obscure(this);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.form)
+		this.form.Reveal(this,e);
+	    else
+		pg_reveal_check_ok(e);
+	    break;
+	}
+
+    return true;
+    }
+
 function dd_deinit()
     {
     dd_collapse(this);
@@ -1249,6 +1278,19 @@ function dd_init(param)
     if (l.form)
 	{
 	l.form.ifcProbe(ifEvent).Hook('StatusChange',dd_changemode,l);
+	}
+
+    if (l.form || l.osrc)
+	{
+	l.Reveal = dd_cb_reveal;
+	if (pg_reveal_register_listener(l)) 
+	    {
+	    // already visible
+	    if (l.form)
+		l.form.Reveal(l, { eventName:'Reveal' });
+	    else
+		l.osrc.Reveal(l, { eventName:'Reveal' });
+	    }
 	}
 
     return l;
