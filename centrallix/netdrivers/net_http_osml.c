@@ -449,7 +449,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
     int mode,mask;
     char* usrtype;
     int i,t,n,o,cnt,start,flags,len,rval;
-    pStruct subinf;
+    pStruct subinf, find_inf;
     MoneyType m;
     DateTime dt;
     pDateTime pdt;
@@ -1087,7 +1087,17 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
 			    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
 				{
 				reopen_having = stLookup_ne(req_inf,"ls__reopen_having")?1:0;
-				xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT FOR UPDATE", reopen_sql, !reopen_having, reopen_having, ptr);
+				find_inf = stLookup_ne(nht_query->ParamData, "name");
+				if (find_inf)
+				    {
+				    xsQPrintf(reopen_str, "string:V:%STR", ptr);
+				    stAddValue_ne(find_inf, xsString(reopen_str));
+				    xsQPrintf(reopen_str, "%STR FOR UPDATE", reopen_sql);
+				    }
+				else
+				    {
+				    xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT FOR UPDATE", reopen_sql, !reopen_having, reopen_having, ptr);
+				    }
 				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL, 0);
 				if (qy)
 				    {
