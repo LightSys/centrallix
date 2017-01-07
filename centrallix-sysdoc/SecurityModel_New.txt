@@ -302,7 +302,7 @@ SECURITY POLICY FILE
 
     B.	Subject Definitions "system/sec-policy-subject"
 
-	authentication_methods = {static|unix|altpasswd|...} - defines the
+	authentication_method = {static|unix|altpasswd|...} - defines the
 	    method of identification and authentication that are allowed for
 	    this subject list.  This is a comma-separated list of values.
 

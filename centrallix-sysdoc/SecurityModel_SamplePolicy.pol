@@ -31,8 +31,8 @@ SecurityModel_SamplePolicy "system/sec-policy"
     //
     include_app_policies "system/sec-policy-inclusion"
 	{
-	probe_sql = "select path = :cx__pathname, mask = :cx__pathpart2 + ':::' from object wildcard /apps/*/secpolicy.pol";
-	allow_inclusion = no;
+	probe_sql = 'select path = :cx__pathname, mask = :cx__pathpart2 + ":::" from object wildcard "/apps/*/secpolicy.pol" ';
+	allow_inclusion = yes;
 	allow_subjectlist = no;
 	allow_rule = yes;
 	allow_mode = no;
