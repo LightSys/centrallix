@@ -307,7 +307,7 @@ nht_i_ConnHandler(void* conn_v)
 			    }
 			}
 		    nht_i_WriteResponse(conn, 200, "OK", NULL);
-		    nht_i_QPrintfConn(conn, 0, "<A HREF=/ TARGET='%STR&HTE'></A>\r\n", NHT.ServerString, timestr);
+		    nht_i_QPrintfConn(conn, 0, "<A HREF=/ TARGET='%STR&HTE'></A>\r\n", timestr);
 		    goto out;
 		    }
 		}
