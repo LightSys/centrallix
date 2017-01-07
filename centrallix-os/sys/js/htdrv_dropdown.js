@@ -411,7 +411,7 @@ function dd_expand(l)
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, 
+	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, 
 		getClipWidth(l));
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
