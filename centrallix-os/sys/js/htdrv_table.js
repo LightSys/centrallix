@@ -19,6 +19,9 @@ $.easing.tostop = function(x,t,b,c,d)
     return b + c*Math.pow(pct,1/4);
     }
 
+// tbld_format_cell (FormatCell) - This function formats one cell in one row of the
+// table, based on the source data and style configuration.
+//
 function tbld_format_cell(cell, color)
     {
     var txt,captxt,titletxt;
@@ -155,6 +158,10 @@ function tbld_format_cell(cell, color)
 	}
     }
 
+
+// This function is used to compare two property sheet rows, and is used in
+// the sorting process to alphabetize the property sheet items.
+//
 function tbld_attr_cmp(a, b)
     {
     if (a.oid > b.oid)
@@ -166,6 +173,9 @@ function tbld_attr_cmp(a, b)
     }
 
 
+// tbld_redraw_all (RedrawAll) - this is the core function that uses the objectsource
+// data to create the necessary data rows in the table.
+//
 function tbld_redraw_all(dataobj, force_datafetch)
     {
     //this.log.push("tbld_redraw_all()");
@@ -340,8 +350,11 @@ function tbld_redraw_all(dataobj, force_datafetch)
     this.OsrcDispatch();
     }
 
+
 // Handle deletion or new row cancel cases where blank space is now visible
-// even though there are enough rows to fill the visible area.
+// at the bottom of the table, even though there are enough rows to fill the
+// visible area.
+//
 function tbld_check_bottom()
     {
     if (this.rows.lastvis > 0)
@@ -744,6 +757,13 @@ function tbld_replica_changed(dataobj, force_datafetch)
     this.osrc_last_op = null;
     }
 
+function tbld_operation_complete(stat, osrc)
+    {
+    // If the operation (move, etc.) failed...
+    if (!stat)
+	this.osrc_busy = false;
+    }
+
 function tbld_clear_rows(fromobj, why)
     {
     if (why == 'refresh')
@@ -922,7 +942,9 @@ function tbld_setbackground(obj, widget, prefix)
 
 function tbld_domouseover()
     {
-    if(this.rownum!=null && this.subkind!='headerrow')
+    var mfocus = wgtrGetServerProperty(this.table, "show_mouse_focus");
+    mfocus = (mfocus == 'yes' || mfocus == 1 || mfocus == true || mfocus == 'on' || mfocus == 'true' || mfocus == null)?true:false;
+    if(this.rownum!=null && this.subkind!='headerrow' && mfocus)
 	$(this).css({"border": "1px solid black"});
     }
 
@@ -935,7 +957,10 @@ function tbld_domouseout()
 	    rbc = wgtrGetServerProperty(this.table,"rowhighlight_border_color");
 	if (!rbc)
 	    rbc = wgtrGetServerProperty(this.table,"row_border_color");
-	$(this).css({"border": "1px solid " + (rbc?rbc:"transparent") });
+	var mfocus = wgtrGetServerProperty(this.table, "show_mouse_focus");
+	mfocus = (mfocus == 'yes' || mfocus == 1 || mfocus == true || mfocus == 'on' || mfocus == 'true' || mfocus == null)?true:false;
+	if (mfocus)
+	    $(this).css({"border": "1px solid " + (rbc?rbc:"transparent") });
 	}
     }
 
@@ -1512,7 +1537,7 @@ function tbld_osrc_dispatch()
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
-	    this.osrc.MoveToRecord(item.rownum);
+	    this.osrc.MoveToRecord(item.rownum, this);
 	    break;
 
 	default:
@@ -1678,7 +1703,7 @@ function tbld_init(param)
     t.DataAvailable = tbld_clear_rows;
     t.ObjectAvailable = tbld_replica_changed;
     t.ReplicaMoved = tbld_replica_changed;
-    t.OperationComplete = new Function();
+    t.OperationComplete = tbld_operation_complete;
     t.ObjectDeleted = tbld_object_deleted;
     t.ObjectCreated = tbld_object_created;
     t.ObjectModified = tbld_object_modified;
@@ -2064,6 +2089,11 @@ function tbld_keydown(e)
     var t = tbld_mcurrent;
     if (t && !window.eb_current && !window.tx_current)
 	{
+	var ttf = wgtrGetServerProperty(t, 'type_to_find');
+	if (ttf == 'yes' || ttf == 1 || ttf == 'on' || ttf == 'true')
+	    ttf = true;
+	else
+	    ttf = false;
 	if (e.keyCode == e.DOM_VK_HOME || e.key == 'Home')
 	    {
 	    var target_row = t.rows[t.rows.first];
@@ -2082,7 +2112,7 @@ function tbld_keydown(e)
 	    var target_y = t.vis_height - getRelativeY(target_row);
 	    t.Scroll(target_y, true);
 	    }
-	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown')
+	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || e.key == ' ')
 	    {
 	    var target_row = t.rows[t.rows.lastvis];
 	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);

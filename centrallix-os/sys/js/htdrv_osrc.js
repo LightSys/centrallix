@@ -157,7 +157,7 @@ function osrc_action_query_text(aparam)
 
 function osrc_query_text_handler(aparam)
     {
-    var formobj = aparam.client;
+    var initiating_client = aparam.client;
     var appendrows = (aparam.cx__appendrows)?true:false;
     var statement=this.sql;
     var case_insensitive = (aparam.cx__case_insensitive)?true:false;
@@ -281,11 +281,11 @@ function osrc_query_text_handler(aparam)
     this.querytext_icase = case_insensitive;
     this.queryobject = null;
 
-    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj, appendrows:appendrows});
+    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
     }
 
 
-function osrc_action_query_object(aparam) //q, formobj, readonly)
+function osrc_action_query_object(aparam) //q, initiating_client, readonly)
     {
     this.init = true;
     if (this.query_delay_schedid)
@@ -299,7 +299,7 @@ function osrc_action_query_object(aparam) //q, formobj, readonly)
 
 function osrc_query_object_handler(aparam)
     {
-    var formobj = aparam.client;
+    var initiating_client = aparam.client;
     var q = aparam.query;
     var readonly = aparam.ro;
     var appendrows = (aparam.cx__appendrows)?true:false;
@@ -400,7 +400,7 @@ function osrc_query_object_handler(aparam)
 	    }
     if (!readonly && is_select)
 	statement += ' FOR UPDATE'
-    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj, appendrows:appendrows});
+    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
     }
 
 
@@ -726,7 +726,7 @@ function osrc_go_nogo(go_func, nogo_func, context)
     }
 
 
-function osrc_action_query(aparam) //q, formobj)
+function osrc_action_query(aparam) //q, initiating_client)
     {
     this.init = true;
     if (this.query_delay_schedid)
@@ -741,7 +741,7 @@ function osrc_action_query(aparam) //q, formobj)
 function osrc_query_handler(aparam)
     {
     var q = aparam.query;
-    var formobj = aparam.client;
+    var initiating_client = aparam.client;
 
     if(this.pending)
 	{
@@ -757,18 +757,18 @@ function osrc_query_handler(aparam)
     this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2, null);
     }
 
-function osrc_action_delete(aparam) //up,formobj)
+function osrc_action_delete(aparam) //up,initiating_client)
     {
     var up = aparam.data;
-    var formobj = aparam.client;
+    var initiating_client = aparam.client;
 
     //Delete an object through OSML
     //var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
-    this.formobj = formobj;
+    this.initiating_client = initiating_client;
     this.deleteddata=up;
     this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
-    //this.formobj.ObjectDeleted();
-    //this.formobj.OperationComplete();
+    //this.initiating_client.ObjectDeleted();
+    //this.initiating_client.OperationComplete();
     return 0;
     }
 
@@ -811,14 +811,14 @@ function osrc_action_delete_cb()
 		this.MoveToRecord(this.CurrentRecord, true);
 		}
 	    }
-	if (this.formobj) this.formobj.OperationComplete(true, this);
+	if (this.initiating_client) this.initiating_client.OperationComplete(true, this);
 	}
     else
 	{
 	// delete failed
-	if (this.formobj) this.formobj.OperationComplete(false, this);
+	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
 	}
-    this.formobj=null;
+    this.initiating_client=null;
     delete this.deleteddata;
     return 0;
     }
@@ -831,12 +831,12 @@ function osrc_action_create(aparam)
     this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj});
     }
 
-function osrc_action_create_object(aparam) //up,formobj)
+function osrc_action_create_object(aparam) //up,initiating_client)
     {
     var up = aparam.data;
-    var formobj = aparam.client;
+    var initiating_client = aparam.client;
 
-    this.formobj=formobj;
+    this.initiating_client=initiating_client;
     this.createddata=up;
     //First close the currently open query
     if(this.qid)
@@ -945,7 +945,7 @@ function osrc_action_create_cb()
 	//alert(this.replica[this.CurrentRecord].oid);
 	this.in_create = false;
 	this.SyncID = osrc_syncid++;
-	if (this.formobj) this.formobj.OperationComplete(true, this);
+	if (this.initiating_client) this.initiating_client.OperationComplete(true, this);
 	pg_serialized_load(this, 'about:blank', null, true);
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum, this);
@@ -955,9 +955,9 @@ function osrc_action_create_cb()
     else
 	{
 	this.in_create = false;
-	if (this.formobj) this.formobj.OperationComplete(false, this);
+	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
 	}
-    this.formobj=null;
+    this.initiating_client=null;
     delete this.createddata;
     }
 
@@ -1054,19 +1054,19 @@ function osrc_refresh_object_cb()
 	}
     }
 
-function osrc_action_modify(aparam) //up,formobj)
+function osrc_action_modify(aparam) //up,initiating_client)
     {
     this.doing_refresh = false;
     if (aparam)
 	{
 	this.modifieddata = aparam.data;
-	this.formobj = aparam.client;
+	this.initiating_client = aparam.client;
 	}
 
     // initiated by a connector?  use current record and convert the data
     if (aparam && (!aparam.data || !aparam.data.oid))
 	{
-	this.formobj = null;
+	this.initiating_client = null;
 	this.modifieddata = [];
 	if (this.CurrentRecord && this.replica[this.CurrentRecord])
 	    this.modifieddata.oid = this.replica[this.CurrentRecord].oid;
@@ -1155,8 +1155,8 @@ function osrc_action_modify_cb()
 	}
     else
 	{
-	if (this.formobj) this.formobj.OperationComplete(false, this);
-	this.formobj=null;
+	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
+	this.initiating_client=null;
 	delete this.modifieddata;
 	}
     }
@@ -1179,16 +1179,16 @@ function osrc_action_modify_cb_2(diff)
     {
     this.SyncID = osrc_syncid++;
     pg_serialized_load(this, 'about:blank', null, true);
-    if (this.formobj)
-	this.formobj.OperationComplete(true, this);
+    if (this.initiating_client)
+	this.initiating_client.OperationComplete(true, this);
     for(var i in this.child)
 	this.child[i].ObjectModified(this.CurrentRecord, this.replica[this.CurrentRecord], this);
     this.ChangeCurrentRecord();
     if (diff)
 	this.GiveAllCurrentRecord('modify');
-    if (!this.formobj)
+    if (!this.initiating_client)
 	this.ifcProbe(ifEvent).Activate('Modified', {});
-    this.formobj=null;
+    this.initiating_client=null;
     delete this.modifieddata;
     }
 
@@ -1271,6 +1271,8 @@ function osrc_cb_query_cancel_2()
     {
     this.pendingquery=null;
     this.SetPending(false);
+    if (this.initiating_client && this.initiating_client.OperationComplete)
+	this.initiating_client.OperationComplete(false, this);
     /*this.pending=false;
     this.Dispatch();*/
     }
@@ -1616,7 +1618,7 @@ function osrc_query_timeout()
 
 function osrc_end_query()
     {
-    //this.formobj.OperationComplete(); /* don't need this...I think....*/
+    //this.initiating_client.OperationComplete(); /* don't need this...I think....*/
     var qid=this.qid
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
@@ -2022,8 +2024,10 @@ function osrc_tell_all_replica_moved()
     }
 
 
-function osrc_move_to_record(recnum, from_internal)
+function osrc_move_to_record(recnum, source)
     {
+    var from_internal = (source === true);
+    this.initiating_client = (source !== false && source !== true)?source:null;
     if (typeof recnum != 'number') recnum = parseInt(recnum);
     this.QueueRequest({Request:'MoveTo', Param:{recnum:recnum, from_internal:from_internal}});
     this.Dispatch();
