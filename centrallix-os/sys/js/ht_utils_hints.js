@@ -428,6 +428,10 @@ function cx_hints_checkmodify(e, ov, nv, type, onchange)
 	    for(var i = 0; i<h.BadChars.length; i++) if ((''+nv).indexOf(h.BadChars.charAt(i)) >= 0) return ov;
 	    }
 
+	// Empty string is null?
+	if ((h.Style & cx_hints_style.strnull) && ((typeof nv == 'string') || (typeof nv == 'object' && nv != null && nv.constructor == String)) && nv == '')
+	    return null;
+
     return nv;
     }
 
