@@ -139,7 +139,7 @@ function wn_init(param)
     // Show container API
     l.showcontainer = wn_showcontainer;
 
-    if (l.is_modal && l.is_visible) pg_setmodal(l);
+    if (l.is_modal && l.is_visible) pg_setmodal(l, true);
 
     return l;
     }
@@ -292,7 +292,7 @@ function wn_setvisibility_bh(v)
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
-	if (this.is_modal) pg_setmodal(this);
+	if (this.is_modal) pg_setmodal(this, true);
 	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 
 	// Point logic
@@ -308,6 +308,27 @@ function wn_setvisibility_bh(v)
 	    // Compute based on which side of the window the point will be on
 	    switch(this.point_side)
 		{
+		case 'bottom':
+		    // Allowable point positions
+		    var pt_y = $(this).outerHeight() + 15;
+		    var min_pt_x = 20;
+		    var max_pt_x = $(this).outerWidth() - 20;
+		    if (min_pt_x > max_pt_x) return;
+
+		    // Allowable window positions
+		    var win_y = geom.y - $(this).outerHeight() - 15;
+		    var min_win_x = Math.max(geom.x + (using_offset?this.point_offset:0) - max_pt_x, 0);
+		    var max_win_x = Math.min(geom.x + (using_offset?this.point_offset:geom.width) - min_pt_x, pg_width - $(this).outerWidth());;
+		    if (min_win_x > max_win_x) return;
+
+		    // Go with midpoint of min/max win x
+		    win_x = (min_win_x + max_win_x)/2;
+
+		    // Compute point x from there
+		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
+		    break;
+
 		case 'top':
 		    // Allowable point positions
 		    var pt_y = -15;
@@ -494,7 +515,7 @@ function wn_graphical_shade(l,to,speed,size)
 
 function wn_close(l)
     {
-    if (l.is_modal) pg_setmodal(null);
+    if (l.is_modal) pg_setmodal(l, false);
     if (wn_popped[l.id]) delete wn_popped[l.id];
     //l.is_modal = false;
     l.no_close = false;
@@ -579,7 +600,8 @@ function wn_togglevisibility(aparam)
     var vis = htr_getvisibility(this);
     if (vis != 'inherit' && vis != 'visible')
 	{
-	this.SetVisibilityTH(true);
+	//this.SetVisibilityTH(true);
+	wn_openwin.call(this, aparam);
 	}
     else
 	{

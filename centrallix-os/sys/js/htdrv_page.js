@@ -633,13 +633,37 @@ function pg_set_emulation(d)
     }
 
 /** Function to set modal mode to a layer. **/
-function pg_setmodal(l)
+function pg_setmodal(l, is_modal)
     {
-    if (pg_modallist.length && !l)
+    // Find l in the modal list
+    var pos = pg_modallist.indexOf(l);
+    if (!is_modal)
+	{
+	if (pos >= 0)
+	    {
+	    pg_modallist.splice(pos, 1);
+	    }
+	else if (l == pg_modallayer)
+	    {
+	    pg_modallayer = pg_modallist.pop();
+	    if (pg_modallayer === undefined)
+		pg_modallayer = null;
+	    }
+	}
+    else
+	{
+	if (pos === -1 && l !== pg_modallayer)
+	    {
+	    if (pg_modallayer)
+		pg_modallist.push(pg_modallayer);
+	    pg_modallayer = l;
+	    }
+	}
+    /*if (pg_modallist.length && !l)
 	l = pg_modallist.pop();
     else if (l && pg_modallayer)
 	pg_modallist.push(pg_modallayer);
-    pg_modallayer = l;
+    pg_modallayer = l;*/
     if (!window.pg_masklayer)
         {
 	pg_masklayer = htr_new_layer(pg_width, null);
@@ -651,8 +675,9 @@ function pg_setmodal(l)
 	else
 	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
 	}
-    if (l)
+    if (pg_modallayer)
 	{
+	var l = pg_modallayer;
 	if (l.mainlayer) l = l.mainlayer;
 	moveBelow(pg_masklayer, l);
 	moveTo(pg_masklayer, 0, 0);
@@ -1490,6 +1515,13 @@ function pg_launch(aparam)
 		break;
 		}
 	    }
+	}
+
+    // Mailto?  We handle this differently if so.
+    if (url.substr(0,7) == 'mailto:')
+	{
+	$('<iframe src="' + htutil_encode(url) + '">').appendTo('body').css('display', 'none');
+	return;
 	}
 
     // Already exists?
