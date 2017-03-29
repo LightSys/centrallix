@@ -120,8 +120,8 @@ function form_cb_data_notify(control, user_modify)
 	    this.IsUnsaved=true;
 	    this.is_savable = true;
 	    this.SendEvent('StatusChange');
-	    this.SendEvent('DataChange');
 	    }
+	this.SendEvent('DataChange');
 	}
     }
 
@@ -603,7 +603,7 @@ function form_show_3bconfirm()
     //cancel.EventClick=this._3bconfirm_cancel;
     
     var funclate=new Function("this.cb['_3bConfirmCancel'].clear();this.cb['_3bConfirmDiscard'].clear();this.cb['_3bConfirmSave'].clear();");
-    var func=new Function("pg_setmodal(null);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ifcProbe(ifAction).Invoke(\"Close\", {});");
+    var func=new Function("pg_setmodal(null,false);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ifcProbe(ifAction).Invoke(\"Close\", {});");
     
 /** funclate will fire last (or very close, with a level of 1000) **/
     this.cb['_3bConfirmCancel'].add(this,funclate,null,1000);
@@ -1263,6 +1263,8 @@ function form_action_submit(aparam)
     var nodetype = wgtrGetType(node);
     if (nodetype == "widget/component")
 	node.ifcProbe(ifAction).Invoke("Instantiate", param);
+    else if (nodetype == "widget/osrc")
+	node.ifcProbe(ifAction).Invoke("QueryParam", param);
     else if (nodetype == "widget/image")
 	node.ifcProbe(ifAction).Invoke("LoadImage", param);
     else if ((nodetype == "widget/page" || nodetype == "widget/component-decl") && aparam.NewPage)
@@ -1387,7 +1389,7 @@ function form_cb_reveal(element,event)
 	    break;
 	case 'ObscureCheck':
 	    // unsaved data?
-	    if (!this.allowobscure)
+	    if (!this.allowobscure && this.revealed_elements == 1)
 		{
 		if (this.IsUnsaved)
 		    {
