@@ -259,7 +259,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
    /** HTML body element for the frame **/
-   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%POSloader",id);
+   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%POSloader",id, NULL);
    htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
    htrAddBodyItem(s, "\n");
 
@@ -364,6 +364,10 @@ int htosrcInitialize() {
 		"counter_attribute",	DATA_T_STRING,
 		"sql",			DATA_T_STRING,
 		"osrc",			DATA_T_STRING,
+		NULL);
+
+    htruleRegister("osrc_sequence",
+		"fieldname",		DATA_T_STRING,
 		NULL);
 
    return 0;

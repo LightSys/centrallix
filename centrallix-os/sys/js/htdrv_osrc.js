@@ -801,6 +801,7 @@ function osrc_action_delete_cb()
 		this.child[i].ObjectDeleted(recnum, this);
 
 	    // Need to fetch another record (delete was on last one in replica)?
+	    this.SyncID = osrc_syncid++; // force any client osrc's to resync
 	    if (this.CurrentRecord > this.LastRecord)
 		{
 		this.CurrentRecord--;
@@ -827,8 +828,9 @@ function osrc_action_create(aparam)
     {
     var newobj = [];
     for(var p in aparam)
-	newobj.push({oid:p, value:aparam[p]});
-    this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj});
+	if (p != 'cx__focus')
+	    newobj.push({oid:p, value:aparam[p]});
+    this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj, focus:aparam['cx__focus']});
     }
 
 function osrc_action_create_object(aparam) //up,initiating_client)
@@ -837,6 +839,7 @@ function osrc_action_create_object(aparam) //up,initiating_client)
     var initiating_client = aparam.client;
 
     this.initiating_client=initiating_client;
+    this.create_focus = aparam.focus?aparam.focus:false;
     this.createddata=up;
     //First close the currently open query
     if(this.qid)
@@ -866,6 +869,7 @@ function osrc_action_create_cb2()
     if(!this.sid) this.sid=pg_links(this)[0].target;
     //var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
     this.ApplyRelationships(this.createddata, true);
+    this.ApplySequence(this.createddata);
     //htr_alert(this.createddata, 2);
     /*for(var i in this.createddata) if(i!='oid')
 	{
@@ -951,6 +955,8 @@ function osrc_action_create_cb()
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
 	this.ifcProbe(ifEvent).Activate("Created", {});
+	//if (this.create_focus)
+	//    this.MoveToRecord(this.LastRecord, true);
 	}
     else
 	{
@@ -2687,6 +2693,7 @@ function osrc_cb_new_object_template()
     // Apply relationships and keys
     this.ApplyRelationships(obj, false);
     this.ApplyKeys(obj);
+    this.ApplySequence(obj);
 
     // If 'force empty' because no master rec present, return null.
     for(var prop in obj)
@@ -2727,6 +2734,143 @@ function osrc_action_cancelcreate(aparam)
 	for(var i in this.child)
 	    if (this.child[i] != aparam.client)
 		this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, 'cancelcreate');
+	}
+    }
+
+
+function osrc_seq(direction)
+    {
+    // Find the sequence field
+    var seqfield = null;
+    this.rulelist.forEach(function(rule)
+	{
+	if (rule.ruletype == 'osrc_sequence')
+	    seqfield = rule.field;
+	});
+    if (!seqfield)
+	return;
+
+    // Get the current sequence ID
+    var cur_seq = this.GetValue(seqfield);
+    if (!cur_seq)
+	cur_seq = 0;
+
+    // Find the record just before or after it in the sequence order.
+    var previtem = null;
+    var prevseq = null;
+    this.replica.forEach(function(item, idx)
+	{
+	item.forEach(function(field)
+	    {
+	    if (field.oid == seqfield &&
+		((direction == 'backward' && parseInt(field.value) < cur_seq) || (direction == 'forward' && parseInt(field.value) > cur_seq)) &&
+		(prevseq === null || ((direction == 'backward' && parseInt(field.value) > prevseq) || (direction == 'forward' && parseInt(field.value) < prevseq))))
+		{
+		previtem = idx;
+		prevseq = parseInt(field.value);
+		}
+	    });
+	});
+
+    // Didn't find anything?  Nothing to do then.
+    if (previtem === null)
+	return;
+
+    // Ok, we get to switch the sequence numbers of the current and previous item.
+    var doneprev = donecurr = false;
+    (function seqproc()
+	{
+	// Step 1: make sure query is closed.
+	if (this.qid)
+	    {
+	    this.DoRequest('queryclose', '/', {ls__qid:this.qid}, seqproc);
+	    this.qid=null;
+	    return;
+	    }
+
+	// Step 2: update prior record's sequence
+	var reqparam = {ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
+	if (!doneprev)
+	    {
+	    reqparam[seqfield] = cur_seq;
+	    reqparam.ls__oid = this.replica[previtem].oid;
+	    this.SetValue(seqfield, cur_seq, previtem);
+	    this.DoRequest('setattrs', '/', reqparam, seqproc);
+	    doneprev = true;
+	    return;
+	    }
+
+	// Step 3: update current record's sequence
+	if (!donecurr)
+	    {
+	    reqparam[seqfield] = prevseq;
+	    reqparam.ls__oid = this.replica[this.CurrentRecord].oid;
+	    this.SetValue(seqfield, prevseq);
+	    this.DoRequest('setattrs', '/', reqparam, seqproc);
+	    donecurr = true;
+	    return;
+	    }
+
+	// Step 4: swap the replica entries and notify everyone.
+	var tmpobj = this.replica[this.CurrentRecord];
+	this.replica[this.CurrentRecord] = this.replica[previtem];
+	this.replica[previtem] = tmpobj;
+	this.CurrentRecord = previtem;
+	this.GiveAllCurrentRecord('modify');
+	this.ifcProbe(ifEvent).Activate("Sequenced", {});
+	}).apply(this);
+    }
+
+
+// Move the current row backwards using an osrc_sequence rule
+function osrc_seq_backward(aparam)
+    {
+    this.Sequence('backward');
+    }
+
+
+// Move the current row forwards using an osrc_sequence rule
+function osrc_seq_forward(aparam)
+    {
+    this.Sequence('forward');
+    }
+
+
+function osrc_apply_sequence(obj)
+    {
+    for(var i in this.rulelist)
+	{
+	var rl = this.rulelist[i];
+	if (rl.ruletype == 'osrc_sequence')
+	    {
+	    // Search for the sequence maximum in the replica.
+	    var maxval = -1;
+	    this.replica.forEach(function(item)
+		{
+		item.forEach(function(field)
+		    {
+		    if (field.oid == rl.field)
+			{
+			var ckval = parseInt(field.value);
+			if (ckval > maxval)
+			    maxval = ckval;
+			}
+		    });
+		});
+
+	    // got maximum value in the osrc's replica.  Assign it now.
+	    var found=false;
+	    obj.forEach(function(field)
+		{
+		if (field.oid == rl.field)
+		    {
+		    found = true;
+		    field.value = '' + (maxval + 1);
+		    }
+		});
+	    if (!found)
+		obj.push({hints:"", oid:rl.field, system:false, type:"integer", value:'' + (maxval + 1)});
+	    }
 	}
     }
 
@@ -2975,6 +3119,27 @@ function osrc_set_eval_record(recnum)
 	this.EvalRecord = null;
     }
 
+function osrc_set_value(n, v, recno)
+    {
+    var eval_rec = recno?recno:(this.EvalRecord?this.EvalRecord:this.CurrentRecord);
+    if (eval_rec && this.replica && this.replica[eval_rec])
+	{
+	this.replica[eval_rec].forEach(function(field)
+	    {
+	    if (field.oid == n)
+		{
+		var oldval = field.value;
+		if (v === null)
+		    field.value = v;
+		else
+		    field.value = '' + v;
+		if (eval_rec == this.CurrentRecord)
+		    this.ifcProbe(ifValue).Changing(n, field.value, true, oldval, true);
+		}
+	    });
+	}
+    }
+
 function osrc_get_value(n)
     {
     var v = null;
@@ -3075,7 +3240,12 @@ function osrc_filter_changed(prop, oldv, newv)
 function osrc_add_rule(rule_widget)
     {
     var rl = {ruletype:rule_widget.ruletype, widget:rule_widget};
-    if (rl.ruletype == 'osrc_filter')
+    if (rl.ruletype == 'osrc_sequence')
+	{
+	rl.field = rule_widget.fieldname;
+	this.rulelist.push(rl);
+	}
+    else if (rl.ruletype == 'osrc_filter')
 	{
 	rl.mc = rule_widget.min_chars;
 	if (rl.mc == null) rl.mc = 1;
@@ -3681,6 +3851,8 @@ function osrc_init(param)
     loader.ClearReplica = osrc_clear_replica;
     loader.ApplyRelationships = osrc_apply_rel;
     loader.ApplyKeys = osrc_apply_keys;
+    loader.ApplySequence = osrc_apply_sequence;
+    loader.Sequence = osrc_seq;
     loader.EndQuery = osrc_end_query;
     loader.FoundRecord = osrc_found_record;
     loader.DoFetch = osrc_do_fetch;
@@ -3720,6 +3892,9 @@ function osrc_init(param)
     loader.RefreshObjectHandler = osrc_refresh_object_handler;
     loader.FindObjectHandler = osrc_find_object_handler;
    
+    // Zero out the replica
+    loader.ClearReplica();
+
     // Actions
     var ia = loader.ifcProbeAdd(ifAction);
     ia.Add("Query", osrc_action_query);
@@ -3747,6 +3922,8 @@ function osrc_init(param)
     ia.Add("Clear", osrc_action_clear);
     ia.Add("BeginCreateObject", osrc_action_begincreate);
     ia.Add("CancelCreateObject", osrc_action_cancelcreate);
+    ia.Add("SeqBackward", osrc_seq_backward);
+    ia.Add("SeqForward", osrc_seq_forward);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
@@ -3755,6 +3932,7 @@ function osrc_init(param)
     ie.Add("BeginQuery");
     ie.Add("Created");
     ie.Add("Modified");
+    ie.Add("Sequenced");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
@@ -3764,6 +3942,9 @@ function osrc_init(param)
     iv.Add("cx__last_id", "LastRecord", null);
     iv.Add("cx__first_id", "FirstRecord", null);
     iv.Add("cx__final_id", "FinalRecord", null);
+
+    loader.GetValue = osrc_get_value;
+    loader.SetValue = osrc_set_value;
 
     loader.SetEvalRecord = osrc_set_eval_record;
 
@@ -3839,9 +4020,6 @@ function osrc_init(param)
     // do sql loader
     loader.do_sql_loader = null;
     loader.osrc_action_do_sql_cb = osrc_action_do_sql_cb;
-
-    // Zero out the replica
-    loader.ClearReplica();
 
     /*if (loader.autoquery == loader.AQonLoad) 
 	pg_addsched_fn(loader,'InitQuery', [], 0);*/
