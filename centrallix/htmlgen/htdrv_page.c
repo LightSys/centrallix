@@ -359,7 +359,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (show == 1)
 	    {
 	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
-	    htrAddBodyItemLayerStart(s,0,"pgstat",0);
+	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
 	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
 	    htrAddBodyItemLayerEnd(s,0);
@@ -387,9 +387,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 

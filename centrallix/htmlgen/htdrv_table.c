@@ -147,7 +147,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     int subcnt = 0;
     char *nptr;
     int h;
-    int first_offset = (t->has_header)?(t->min_rowheight):0;
+    int first_offset = (t->has_header)?(t->min_rowheight + t->cellvspacing):0;
     pWgtrNode children[32];
     int detailcnt;
     httbl_col* col;
@@ -248,15 +248,15 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddBodyItem(s,"</DIV>\n");
 
 	/** HTML body <DIV> element for the scrollbar layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSscroll\">\n",t->id);
-	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
-	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
-	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-first_offset-t->cellvspacing);
-	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
-	htrAddBodyItem(s,"</TABLE>\n");
+	htrAddBodyItem_va(s,"<div id=\"tbld%POSscroll\">\n",t->id);
+	htrAddBodyItem(s,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"18\">\n");
+	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico13b.gif\" name=\"u\"></td></tr>\n");
+	htrAddBodyItem_va(s,"<tr><td id=\"tbld%POSscrarea\" height=\"%POS\"></td></tr>\n", t->id, t->h-2*18-first_offset);
+	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico12b.gif\" name=\"d\"></td></tr>\n");
+	htrAddBodyItem(s,"</table>\n");
 	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"></DIV>\n",t->id);
-	htrAddBodyItem(s,"</DIV>\n");
+	htrAddBodyItem_va(s,"<div id=\"tbld%POSbox\"></div>\n",t->id);
+	htrAddBodyItem(s,"</div>\n");
 
 	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
 	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tbld","tbld_mouseout");

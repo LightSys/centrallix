@@ -225,7 +225,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<p><span>%STR&HTENLBR</span></p>", text);
+	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, NULL, "<p><span>%STR&HTENLBR</span></p>", text);
 
 	/** Check for more sub-widgets **/
 	htrRenderSubwidgets(s, tree, z+1);

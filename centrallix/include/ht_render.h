@@ -105,6 +105,7 @@ typedef struct
     {
     char	Name[64];		/* Driver name */
     char	WidgetName[64];		/* Name of widget. */
+    int		(*Setup)();
     int		(*Render)();		/* Function to render the page */
     XArray	PosParams;		/* Positioning parameter listing. */
     XArray	Properties;		/* Properties this thing will have. */
@@ -269,6 +270,7 @@ typedef struct
     int		IsDynamic;
     void*	Stream;
     int		(*StreamWrite)(void*, char*, int, int, int);
+    XHashTable	UsedDrivers;
     }
     HtSession, *pHtSession;
 
@@ -338,8 +340,8 @@ int htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int 
 int htrGetBoolean(pWgtrNode obj, char* attr, int default_value);
 
 /** Content-intelligent (useragent-sensitive) rendering engine functions **/
-int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...);
-int htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt);
+int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, const char* fmt, ...);
+int htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls);
 int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 
 /** Administrative functions **/
