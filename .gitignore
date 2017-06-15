@@ -28,6 +28,7 @@ centrallix/man/centrallix.8.gz
 centrallix/man/centrallix.conf.5.gz
 centrallix/man/test_obj.1.gz
 centrallix/osdrivers/*.so
+centrallix/netdrivers/*.so
 centrallix/test_obj
 centrallix/test_prt
 centrallix-os/apps/kardia
