@@ -1013,6 +1013,81 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
     ]
 )
 
+dnl Test for LDAP netdriver.
+AC_DEFUN(CENTRALLIX_CHECK_NET_LDAP,
+    [
+	AC_MSG_CHECKING(if LDAP netdriver support is desired)
+
+	AC_ARG_ENABLE(net-ldap,
+	    AC_HELP_STRING([--enable-net-ldap],
+		[enable LDAP netdriver support]
+	    ),
+	    WITH_NETLDAP="$enableval",
+	    WITH_NETLDAP="no"
+	)
+
+	default_lber_incdir="$prefix/include"
+	default_lber_libdir="$prefix/lib"
+	
+	AC_ARG_WITH(lber-inc,
+	    AC_HELP_STRING([--with-lber-inc=PATH],
+		[include path for OpenLDAP LBER headers (default is $default_lber_incdir)]
+	    ),
+	    lber_incdir="$withval",
+	    lber_incdir="$default_lber_incdir"
+	)
+ 
+	AC_ARG_WITH(lber-lib,
+	    AC_HELP_STRING([--with-lber-lib=PATH],
+		[library path for OpenLDAP LBER libraries (default is $default_lber_libdir)]
+	    ),
+	    lber_libdir="$withval",
+	    lber_libdir="$default_lber_libdir"
+	)
+
+	ENABLE_NETLDAP="no"
+
+	if test "$WITH_NETLDAP" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+ 
+	    temp=$CPPFLAGS
+	    CPPFLAGS="$CPPFLAGS -I$lber_incdir -L$lber_libdir -llber"
+	    AC_CHECK_HEADER(lber.h, 
+		WITH_NETLDAP="yes",
+		WITH_NETLDAP="no"
+	    )
+	    CPPFLAGS="$temp"
+	    
+	    AC_MSG_CHECKING(if LDAP netdriver support can be enabled)
+	    if test "$WITH_NETLDAP" = "yes"; then
+		AC_DEFINE(USE_NETLDAP)
+		if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		    NETDRIVERMODULES="$NETDRIVERMODULES net_ldap.so"
+		else
+		    STATIC_CFLAGS="$STATIC_CFLAGS $NETLDAP_CFLAGS"
+		    STATIC_LIBS="$STATIC_LIBS $NETLDAP_LIBS"
+		    NETDRIVERS="$NETDRIVERS net_ldap.o"
+		fi
+		ENABLE_NETLDAP="yes"
+		AC_MSG_RESULT(yes)
+		CENTRALLIX_ADD_DRIVER(ldap,ldap)
+	    else
+		AC_MSG_RESULT(no)
+	    fi
+	fi
+
+	NETLDAP_CFLAGS="-I$lber_incdir"
+	NETLDAP_LIBS="-L$lber_libdir -llber"
+	LIBS="$LIBS -L$lber_libdir"
+
+	AC_SUBST(ENABLE_NETLDAP)
+	AC_SUBST(NETLDAP_LIBS)
+	AC_SUBST(NETLDAP_CFLAGS)
+    ]
+)
+
 dnl Test for the nfs netdriver.
 AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
     [

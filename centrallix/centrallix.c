@@ -564,6 +564,14 @@ cxNetworkInit()
 	cgiInitialize();			/* CGI "listener" */
 #endif
 
+#ifndef WITH_DYNAMIC_LOAD
+
+#ifdef USE_NETLDAP
+	nldapInitialize();			/* LDAP network interface */
+#endif
+
+#endif
+
 	bnetInitialize();			/* BDQS network listener */
 
 	/** Load any network driver modules **/

@@ -135,6 +135,10 @@ dnl NFS netdriver support.
 AH_TEMPLATE([USE_NETNFS], [Define for NFS netdriver support])
 CENTRALLIX_CHECK_NET_NFS
 
+dnl LDAP netdriver support.
+AH_TEMPLATE([USE_NETLDAP], [Define for LDAP netdriver support])
+CENTRALLIX_CHECK_NET_LDAP
+
 AC_SUBST(OBJDRIVERMODULES)
 AC_SUBST(OBJDRIVERS)
 AC_SUBST(NETDRIVERMODULES)
