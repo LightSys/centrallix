@@ -815,11 +815,12 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"HTTP/1.0 %INT %STR\r\n"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
-		"%[Set-Cookie: %STR; path=/; HttpOnly]%[; Secure%]%[; SameSite=strict\r\n%]"
+		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
 		"%[Content-Type: %STR\r\n%]"
 		"%[Pragma: %STR\r\n%]"
 		"%[Transfer-Encoding: chunked\r\n%]"
+		"Referrer-Policy: same-origin\r\n"
 		"Connection: %STR\r\n",
 		code,
 		text,
