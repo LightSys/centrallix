@@ -10,6 +10,8 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -65,6 +67,9 @@ expCreateParamList()
 	objlist->PSeqID = (EXP.PSeqID++);
 	objlist->Session = NULL;
 	objlist->CurControl = NULL;
+
+	/** Initialize the per-objlist random seed **/
+	objlist->RandomInit = 0;
 
     return objlist;
     }

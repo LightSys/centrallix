@@ -36,6 +36,8 @@
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/xhash.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #define EXPR_MAX_PARAMS		30
 
@@ -49,6 +51,7 @@ typedef struct
     int         Precedence[64];
     XHashTable  Functions;
     XHashTable  ReverseFunctions;
+    unsigned char Random[SHA256_DIGEST_LENGTH];
     }
     EXP_Globals;
 
@@ -144,6 +147,8 @@ typedef struct _PO
     unsigned int 	PSeqID;
     int			ModCoverageMask;
     pExpControl		CurControl;
+    int			RandomInit;
+    unsigned char	Random[SHA256_DIGEST_LENGTH];		/* current seed for rand() */
     }
     ParamObjects, *pParamObjects;
 

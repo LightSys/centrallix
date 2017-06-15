@@ -14,6 +14,8 @@
 #include "expression.h"
 #include "cxlib/mtsession.h"
 #include "cxss/cxss.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1808,6 +1810,12 @@ int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     diff_yr += carry;
     tree->Types.Date.Part.Year += diff_yr;
 
+    /** Correct for jumping to a month with fewer days **/
+    if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
+	{
+	tree->Types.Date.Part.Day = (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
+	}
+
     /** Adding days is more complicated **/
     while (diff_day > 0)
 	{
@@ -2302,6 +2310,55 @@ int exp_fn_has_endorsement(pExpression tree, pParamObjects objlist, pExpression 
     }
 
 
+int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    SHA256_CTX hashctx;
+    unsigned char tmpseed[SHA256_DIGEST_LENGTH];
+    unsigned long long val;
+
+	/** Seed provided? **/
+	if (i0 && !(i0->Flags & EXPR_F_NULL))
+	    {
+	    if (i0->DataType != DATA_T_INTEGER)
+		{
+		mssError(1,"EXP","rand() seed, if provided, must be an integer");
+		return -1;
+		}
+	    memset(objlist->Random, 0, sizeof(objlist->Random));
+	    memcpy(objlist->Random, &(i0->Integer), sizeof(i0->Integer));
+	    objlist->RandomInit = 1;
+	    }
+
+	/** Seed initialized? **/
+	if (!objlist->RandomInit)
+	    {
+	    /** Init seed by deriving from system master random data **/
+	    SHA256_Init(&hashctx);
+	    SHA256_Update(&hashctx, (unsigned char*)&(objlist->PSeqID), sizeof(objlist->PSeqID));
+	    SHA256_Update(&hashctx, EXP.Random, sizeof(EXP.Random));
+	    SHA256_Update(&hashctx, (unsigned char*)&(objlist->PSeqID), sizeof(objlist->PSeqID));
+	    SHA256_Update(&hashctx, EXP.Random, sizeof(EXP.Random));
+	    SHA256_Final(objlist->Random, &hashctx);
+	    objlist->RandomInit = 1;
+
+	    /** Update the master seed **/
+	    memcpy(tmpseed, EXP.Random, sizeof(tmpseed));
+	    SHA256(tmpseed, sizeof(tmpseed), EXP.Random);
+	    }
+
+	/** Chain our local seed **/
+	memcpy(tmpseed, objlist->Random, sizeof(tmpseed));
+	SHA256(tmpseed, sizeof(tmpseed), objlist->Random);
+
+	/** Get the 64-bit value and convert to double **/
+	memcpy(&val, objlist->Random, sizeof(val));
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = (double)val / (double)ULLONG_MAX;
+
+    return 0;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -2775,6 +2832,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
 	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
 	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
+	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);

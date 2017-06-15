@@ -12,6 +12,8 @@
 #include "expression.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/magic.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -892,6 +894,9 @@ expInitialize()
 
 	/** Define the null objectlist **/
 	expNullObjlist = expCreateParamList();
+
+	/** Initialize random number generator seed **/
+	cxssGenerateKey(EXP.Random, sizeof(EXP.Random));
 
     return 0;
     }
