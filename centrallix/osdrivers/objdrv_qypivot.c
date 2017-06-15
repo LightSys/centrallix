@@ -373,7 +373,7 @@ qyp_internal_ReadNode(char* nodepath, pSnNode nodestruct)
 
 
 /*** qyp_internal_LoadDatum() - take one source object from the underlying
- *** data source, and build a single QytDatum structure from it.
+ *** data source, and build a single QypDatum structure from it.
  ***/
 pQypDatum
 qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
@@ -504,7 +504,11 @@ qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
 	/** Didn't find any valid values?  Treat as NULL if so. **/
 	if (one_datum->Data.DataType == DATA_T_UNAVAILABLE)
 	    {
-	    one_datum->Data.DataType = given_type;
+	    /** If only one value field, use its type **/
+	    if (inf->Node->nValues == 1 && given_type == DATA_T_UNAVAILABLE)
+		one_datum->Data.DataType = inf->Node->ValueTypes[0];
+	    else
+		one_datum->Data.DataType = given_type;
 	    one_datum->Data.Flags |= DATA_TF_NULL;
 	    }
 
@@ -1104,11 +1108,11 @@ qypClose(void* inf_v, pObjTrxTree* oxt)
 	for(i=0;i<inf->PivotData.nItems;i++)
 	    {
 	    datum = (pQypDatum)inf->PivotData.Items[i];
-	    if (datum->Data.DataType == DATA_T_STRING)
+	    if (datum->Data.DataType == DATA_T_STRING && datum->Data.Data.String)
 		nmSysFree(datum->Data.Data.String);
-	    else if (datum->Data.DataType == DATA_T_DATETIME)
+	    else if (datum->Data.DataType == DATA_T_DATETIME && datum->Data.Data.DateTime)
 		nmFree(datum->Data.Data.DateTime, sizeof(DateTime));
-	    else if (datum->Data.DataType == DATA_T_MONEY)
+	    else if (datum->Data.DataType == DATA_T_MONEY && datum->Data.Data.Money)
 		nmFree(datum->Data.Data.Money, sizeof(MoneyType));
 	    nmFree(datum, sizeof(QypDatum));
 	    }
@@ -1560,6 +1564,8 @@ qypSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** No attribute found? Add a new one **/
 	if (!datum)
 	    {
+	    if (val == NULL)
+		return 0;
 	    if (datatype <= 0)
 		return -1;
 	    new_datum = (pQypDatum)nmMalloc(sizeof(QypDatum));
@@ -1590,8 +1596,14 @@ qypSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Modify the datum **/
 	if ((datum->Flags & QYP_DATUM_F_KEY) && !(inf->Flags & QYP_F_NEW))
 	    {
-	    mssError(1,"QYP","Setting entity/key value '%s' not supported on existing objects",attrname);
-	    goto error;
+	    /** Only complain about keys if the value is actually changing **/
+	    if (!val || (datatype == DATA_T_INTEGER && datum->Data.Data.Integer != val->Integer) || (datatype == DATA_T_STRING && strcmp(datum->Data.Data.String, val->String) != 0) || (datatype != DATA_T_INTEGER && datatype != DATA_T_STRING))
+		{
+		mssError(1,"QYP","Setting entity/key value '%s' not supported on existing objects",attrname);
+		goto error;
+		}
+	    else
+		return 0;
 	    }
 	if (datum->Data.DataType != datatype)
 	    {
