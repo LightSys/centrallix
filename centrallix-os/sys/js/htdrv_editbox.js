@@ -252,27 +252,33 @@ function eb_paste(e)
 function eb_receiving_input(e)
     {
     var eb=this.mainlayer;
-    var sel = document.getSelection();
-    var range = sel.getRangeAt(0);
-    var rstart = range.startOffset;
-    var rend = range.endOffset;
+    //var sel = document.getSelection();
+    //var range = sel.getRangeAt(0);
+    var rstart = eb.ContentLayer.selectionStart;
+    var rend = eb.ContentLayer.selectionEnd;
+    //var rstart = range.startOffset;
+    //var rend = range.endOffset;
+    //htr_alert(sel.focusNode, 1);
     var orig_curtxt = this.value;
     var changed = false;
     var curtxt = orig_curtxt.replace(/\n$/,"");
+    var curlen = curtxt?curtxt.length:0;
 
     if (curtxt != orig_curtxt)
-	changed = true;
-    if (rend > curtxt.length)
 	{
 	changed = true;
-	rend = curtxt.length;
 	}
-    if (rstart > curtxt.length)
+    if (rend > curlen)
 	{
 	changed = true;
-	rstart = curtxt.length;
+	rend = curlen;
 	}
-    for(var i=0; i<curtxt.length; i++)
+    if (rstart > curlen)
+	{
+	changed = true;
+	rstart = curlen;
+	}
+    for(var i=0; i<curlen; i++)
 	{
 	if (curtxt.charCodeAt(i) < 32 || curtxt.charCodeAt(i) == 127)
 	    {
@@ -283,8 +289,9 @@ function eb_receiving_input(e)
     if (changed)
 	{
 	this.value = curtxt;
-	range.setStart(range.startContainer, rstart);
-	range.setEnd(range.startContainer, rend);
+	//range.setStart(range.startContainer, rstart);
+	//range.setEnd(range.startContainer, rend);
+	eb.ContentLayer.setSelectionRange(rstart, rend);
 	}
 
     var oldtxt = eb.content;
