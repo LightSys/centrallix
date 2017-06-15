@@ -452,10 +452,9 @@ function tbld_setup_row_data(rowslot, is_new)
 	    row.cols[j].titledata = txt;
 
 	    // main value
-	    if (this.cols[j].fieldname)
-		var txt = this.FindOsrcValue(rowslot, this.cols[j].fieldname);
-	    else
-		var txt = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "value");
+	    var txt = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "value");
+	    if (!txt && this.cols[j].fieldname)
+		txt = this.FindOsrcValue(rowslot, this.cols[j].fieldname);
 	    if (typeof row.cols[j].data == 'undefined' || (row.cols[j].data == null && txt) || txt != row.cols[j].data)
 		changed = true;
 	    row.cols[j].data = txt;
@@ -834,6 +833,7 @@ function tbld_select()
 		if ($(dw).css("visibility") == 'inherit')
 		    {
 		    pg_reveal_event(dw, dw, 'Obscure');
+		    dw.is_visible = 0;
 		    dw.ifcProbe(ifEvent).Activate('Close', {});
 		    }
 
@@ -847,6 +847,7 @@ function tbld_select()
 		    "top": "0px",
 		    });
 		pg_reveal_event(dw, dw, 'Reveal');
+		dw.is_visible = 1;
 		dw.ifcProbe(ifEvent).Activate('Open', {});
 		}
 	    }
@@ -863,6 +864,7 @@ function tbld_select()
 			"visibility": "hidden",
 			});
 		    this.table.appendChild(dw);
+		    dw.is_visible = 0;
 		    dw.ifcProbe(ifEvent).Activate('Close', {});
 		    break;
 		    }
@@ -897,6 +899,7 @@ function tbld_deselect()
 		"visibility": "hidden",
 		});
 	    this.table.appendChild(dw);
+	    dw.is_visible = 0;
 	    dw.ifcProbe(ifEvent).Activate('Close', {});
 	    }
 	}
@@ -1207,7 +1210,18 @@ function tbld_unsetclick(l,n)
 // Callback used for obscure and reveal checks from row detail widgets
 function tbld_cb_dw_reveal(event)
     {
-    // we don't do obscure/reveal checks yet, so we just return true here.
+    /*switch(e.eventName)
+	{
+	case 'ObscureOK':
+	    this.tabctl.ChangeSelection2(e.c);
+	    break;
+	case 'RevealOK':
+	    this.tabctl.ChangeSelection3(e.c);
+	    break;
+	case 'ObscureFailed':
+	case 'RevealFailed':
+	    break;
+	}*/
     return true;
     }
 
@@ -1272,6 +1286,7 @@ function tbld_remove_row(rowobj)
 		"visibility": "hidden",
 		});
 	    this.appendChild(dw);
+	    dw.is_visible = 0;
 	    dw.ifcProbe(ifEvent).Activate('Close', {});
 	    }
 	}
@@ -1867,6 +1882,15 @@ function tbld_init(param)
 	$(t.scrollbar).css({"opacity": 0.0, "visibility": "inherit"});
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
+    $(t.scrollbar).css(
+	{
+	"top": (((t.has_header)?($(t.hdrrow).height() + t.cellvspacing):0) + $(t).position().top) + "px",
+	//(t.vis_height - $(t).height()) + "px",
+	});
+    $($(t.scrollbar).find('td')[1]).css(
+	{
+	"height": (t.vis_height - 2*18 - 1) + "px"
+	});
 
     // No data message
     var ndm = document.createElement("div");
@@ -1900,6 +1924,7 @@ function tbld_init(param)
 	dw.Reveal = tbld_cb_dw_reveal;
 	pg_reveal_register_triggerer(dw);
 	dw.display_for = 1;
+	dw.is_visible = 0;
 	ifc_init_widget(dw);
 	var ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
