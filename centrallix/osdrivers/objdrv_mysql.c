@@ -1986,6 +1986,11 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** These functions always invariably return a string... **/
 		    subtree->DataType = DATA_T_STRING;
 		    }
+		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "charindex")))
+		    {
+		    /** These functions always invariably return an integer... **/
+		    subtree->DataType = DATA_T_INTEGER;
+		    }
 		if (subtree->DataType == DATA_T_STRING)
 		    {
 		    /** We get here if 1) op 1 is a constant STRING, 2) op 1 is one of
@@ -2504,6 +2509,23 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
         qy->ItemCnt++;
 
     return (void*)inf;
+    }
+
+
+/*** mysdQueryDelete() - delete objects matching the query
+ ***/
+int
+mysdQueryDelete(void* qy_v, pObjTrxTree* oxt)
+    {
+    pMysdQuery qy = (pMysdQuery)qy_v;
+    MYSQL_RES * result;
+
+	/** Run the delete. **/
+	result = mysd_internal_RunQuery(qy->Data->Node, "DELETE FROM `?` ?q", qy->Data->TData->Name, qy->Clause.String);
+	if (result == MYSD_RUNQUERY_ERROR)
+	    return -1;
+
+    return 0;
     }
 
 
@@ -3231,7 +3253,7 @@ mysdInitialize()
         drv->Delete = mysdDelete;
         drv->DeleteObj = mysdDeleteObj;
         drv->OpenQuery = mysdOpenQuery;
-        drv->QueryDelete = NULL;
+        drv->QueryDelete = mysdQueryDelete;
         drv->QueryFetch = mysdQueryFetch;
         drv->QueryClose = mysdQueryClose;
         drv->Read = mysdRead;

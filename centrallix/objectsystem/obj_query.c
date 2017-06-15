@@ -485,9 +485,11 @@ objQueryDelete(pObjQuery this)
 	if (this->Drv) return this->Drv->QueryDelete(this->Data);
 
 	/** Intelligent query support in driver? **/
-	if ((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
+	if (((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
 	    ((this->Obj->Driver->Capabilities & OBJDRV_C_LLQUERY) &&
-	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY)))
+	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY))) &&
+	    this->Obj->Driver->QueryDelete != NULL && 
+	    (!this->Obj->TLowLevelDriver || this->Obj->TLowLevelDriver->QueryDelete != NULL))
 	    {
 	    rval = this->Obj->Driver->QueryDelete(this->Data, &(this->Obj->Session->Trx));
 	    }
