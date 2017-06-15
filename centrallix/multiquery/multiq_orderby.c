@@ -413,7 +413,10 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	    exp->Flags |= EXPR_F_FREEZEEVAL;
 	    }
 	for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
+	    {
 	    stmt->Query->ObjList->Objects[i] = objlist->Objects[i];
+	    stmt->Query->ObjList->SeqIDs[i] = objlist->SeqIDs[i];
+	    }
 	expFreeParamList(objlist);
 	item->ObjList = NULL;
 	rval = 1;
