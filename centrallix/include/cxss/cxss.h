@@ -39,34 +39,10 @@
 #include "cxlib/xarray.h"
 
 #define CXSS_ENTROPY_SIZE	1280
-
 #define CXSS_DEBUG_CONTEXTSTACK	1
+#define CXSS_IDENTIFIER_LENGTH	64
 
-/*** Security policy access types - mask ***/
-#define CXSS_ACC_T_OBSERVE	1
-#define CXSS_ACC_T_READ		2
-#define CXSS_ACC_T_WRITE	4
-#define CXSS_ACC_T_CREATE	8
-#define CXSS_ACC_T_DELETE	16
-#define CXSS_ACC_T_EXEC		32
-#define CXSS_ACC_T_NOEXEC	64
-#define CXSS_ACC_T_DELEGATE	128
-#define CXSS_ACC_T_ENDORSE	256
-
-/*** Authorization subsystem logging indications - mask ***/
-#define CXSS_LOG_T_SUCCESS	1
-#define CXSS_LOG_T_FAILURE	2
-#define CXSS_LOG_T_ALL		(CXSS_LOG_T_SUCCESS | CXSS_LOG_T_FAILURE)
-
-/*** Operation modes ***/
-#define CXSS_MODE_T_DISABLE	1
-#define CXSS_MODE_T_WARN	2
-#define CXSS_MODE_T_ENFORCE	3
-
-/*** Actions for rules - mask ***/
-#define CXSS_ACT_T_ALLOW	1
-#define CXSS_ACT_T_DENY		2
-#define CXSS_ACT_T_ENDORSE	4
+#include "cxss/policy.h"
 
 /*** CXSS data structures ***/
 typedef struct _EP
@@ -102,7 +78,7 @@ typedef struct _AS
 /*** Session Variable ***/
 typedef struct _CXSV
     {
-    char		Name[32];
+    char		Name[CXSS_IDENTIFIER_LENGTH];
     char*		Value;			/* allocated with nmSysMalloc/nmSysStrdup */
     }
     CxssVariable, *pCxssVariable;
@@ -111,8 +87,8 @@ typedef struct _CXSV
 /*** Endorsement info ***/
 typedef struct _EN
     {
-    char		Endorsement[32];
-    char		Context[64];
+    char		Endorsement[CXSS_IDENTIFIER_LENGTH];
+    char		Context[CXSS_IDENTIFIER_LENGTH];
     }
     CxssEndorsement, *pCxssEndorsement;
 
@@ -121,6 +97,7 @@ typedef struct _EN
 typedef struct _CXSS
     {
     CxssEntropyPool	Entropy;
+    pCxssPolicy		Policy;
     }
     CXSS_t;
 

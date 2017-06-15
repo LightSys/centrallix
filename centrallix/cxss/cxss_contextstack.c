@@ -224,8 +224,8 @@ cxss_internal_FreeContext(void* ctx_v)
 int
 cxss_internal_CompareContexts(char* ctx1, char* ctx2)
     {
-    char buf1[64];
-    char buf2[64];
+    char buf1[CXSS_IDENTIFIER_LENGTH];
+    char buf2[CXSS_IDENTIFIER_LENGTH];
     char* ptr1;
     char* ptr2;
     char* end1;
