@@ -284,6 +284,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
     pParam one_param;
     pStruct one_open_ctl, open_ctl;
     pObjQuery lookup_qy;
+    char* endorsement_name;
 
 	/** Allocate the structure **/
 	inf = (pQyData)nmMalloc(sizeof(QyData));
@@ -324,6 +325,13 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	if (!node)
 	    {
 	    node = snReadNode(obj->Prev);
+	    }
+
+	/** Security check **/
+	if (node && endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    mssError(1,"QY","Security check failed - endorsement '%s' required", endorsement_name);
+	    goto error;
 	    }
 
 	/** If no node, and user said CREAT ok, try that. **/
