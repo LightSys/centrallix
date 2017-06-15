@@ -50,3 +50,4 @@ centrallix/depcomp
 centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
+.gdb_history
