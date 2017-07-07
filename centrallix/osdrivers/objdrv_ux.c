@@ -530,6 +530,12 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    return NULL;
 	    }
 	tmp_path = (pPathname)obj_internal_NormalizePath(node->UXPath, uxpart);
+	if (!tmp_path)
+	    {
+	    nmFree(inf, sizeof(UxdData));
+	    if (is_new_node) nmFree(node, sizeof(UxdNode));
+	    return NULL;
+	    }
 	strcpy(inf->RealPathname, obj_internal_PathPart(tmp_path,0,0));
 	/*basecnt = tmp_path->nElements - (obj->Pathname->nElements-1);*/
 	basecnt = tmp_path->nElements - 1 - (obj->Pathname->nElements - obj->SubPtr - 1);
