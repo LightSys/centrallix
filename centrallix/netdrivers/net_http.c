@@ -1317,6 +1317,17 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	}
     payload->mime_type[i] = '\0';
 
+    length = nht_i_NextLine(token, conn, sizeof token);
+    if (strncasecmp(token, "Content-Length", 14) == 0)
+	{
+	length = 0;
+	start = 4;
+	}
+    else
+	{
+	start = 0;
+	}
+
     /** some user agents use "binary/octet-stream" for some obtuse reason **/
     if (!strcasecmp(payload->mime_type, "binary/octet-stream"))
 	strtcpy(payload->mime_type, "application/octet-stream", sizeof(payload->mime_type));
@@ -1407,7 +1418,10 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	payload->status = -1;
 	return payload; //Error
 	}
-    start = 4;
+
+    /** Data transfer loop **/
+    if (length)
+	fdWrite(file, token, length, 0, 0);
     length = fdRead(conn->ConnFD, buffer, sizeof buffer, 0, 0);
     half = buffer + offset;
     while(length > 0)
@@ -1618,10 +1632,10 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    
 	    if(payload->status == 0)
 		{
-		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, payload->full_new_path);
 		/** Copy file into object system **/
 		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
 		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
+		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		while(1)
 		    {
