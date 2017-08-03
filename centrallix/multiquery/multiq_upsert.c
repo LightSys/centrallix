@@ -341,8 +341,9 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		    goto error;
 		    }
 		expCopyList(stmt->Query->ObjList, objlist, -1);
+		//objlist->PSeqID = stmt->Query->ObjList->PSeqID;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT);
+		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_REPLACE);
 		xaAddItem(&pdata->ToBeUpdated, (void*)objlist);
 		dup_cnt++;
 		}
@@ -409,6 +410,11 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted")) >= 0)
 		    ins_obj = stmt->Query->ObjList->Objects[id];
 		expCopyList(objlist, stmt->Query->ObjList, -1);
+		//for(j=stmt->Query->nProvidedObjects;j<stmt->Query->ObjList->nObjects;j++)
+		//    {
+		    //stmt->Query->ObjList->Objects[j] = objlist->Objects[j];
+		//    stmt->Query->ObjList->SeqIDs[j] = objlist->SeqIDs[j];
+		//    }
 		if (ins_obj)
 		    expModifyParam(stmt->Query->ObjList, "__inserted", ins_obj);
 		//expCopyParams(objlist, stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
