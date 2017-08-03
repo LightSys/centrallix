@@ -646,6 +646,39 @@ int exp_fn_isnull(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     return 0;
     }
 
+int exp_fn_nullif(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    if (!i0 || !i1)
+        {
+	mssError(1,"EXP","nullif() requires two parameters");
+	return -1;
+	}
+    tree->DataType = i0->DataType;
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    tree->CompareType = MLX_CMP_EQUALS;
+    if (expEvalCompare(tree, objlist) < 0)
+	return -1;
+    tree->DataType = i0->DataType;
+    if (tree->Integer == 0)
+	{
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER: tree->Integer = i0->Integer; break;
+	    case DATA_T_STRING: tree->String = i0->String; tree->Alloc = 0; break;
+	    default: memcpy(&(tree->Types), &(i0->Types), sizeof(tree->Types));
+	    }
+	}
+    else
+	{
+	tree->Flags |= EXPR_F_NULL;
+	}
+    return 0;
+    }
+
 int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int nl,n,l;
@@ -2833,6 +2866,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
 	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
 	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
+	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
