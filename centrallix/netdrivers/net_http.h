@@ -38,7 +38,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
-#include "json.h"
+#include "json/json.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

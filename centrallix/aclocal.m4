@@ -77,6 +77,16 @@ AC_DEFUN(CENTRALLIX_CHECK_OPENSSL,
     ]
 )
 
+
+dnl Test for JSON-C
+AC_DEFUN(CENTRALLIX_CHECK_JSONC,
+    [
+	AC_CHECK_LIB(json-c, json_tokener_new, [LIBS="$LIBS -ljson-c"], AC_MSG_ERROR([Centrallix requires JSON-C to be installed.]))
+	AC_CHECK_HEADER([json/json.h], [], AC_MSG_ERROR([Centrallix requires JSON-C development header files to be installed.]))
+    ]
+)
+
+
 dnl Test for the Centrallix-LIB header and library files.
 AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
     [
@@ -289,7 +299,11 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		    if test "$WITH_SYBASE_CT" = "no"; then
 			WITH_SYBASE="no"
 		    else
-			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
+		        if test "$PTRSIZE" = "8"; then
+			    SYBASE_LIBS="-L$sybase_libdir -lsybct64 -lsybcomn64 -lsybintl64 -lsybtcl64 -lsybcs64"
+			else
+			    SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
+			fi
 		    fi
 		else
 		    SYBASE_LIBS="-L$sybase_libdir -lct -lcomn -lintl -lsybtcl -lcs -linsck"

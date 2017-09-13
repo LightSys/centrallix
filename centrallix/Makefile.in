@@ -356,14 +356,17 @@ YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
 
 # JSON-C library location
-JSONC=$(shell cd thirdparty; ls -d json-c-* | grep -v inst | tail -n 1)
+#JSONC=$(shell cd thirdparty; ls -d json-c-* | grep -v inst | tail -n 1)
 
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
-CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+#CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
-LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
-STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+LIBS=@LIBS@ @STATIC_LIBS@
+STATIC_LIBS=@STATIC_LIBS@
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
@@ -418,8 +421,8 @@ manpages_install: manpages
 	done
 
 # JSON-C library
-osdrivers/objdrv_json.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
-utility/json_util.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#osdrivers/objdrv_json.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#utility/json_util.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
 
 thirdparty/$(JSONC)-inst/lib/libjson-c.a: thirdparty/$(JSONC)/Makefile
 	@echo ""

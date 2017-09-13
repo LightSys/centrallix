@@ -17,8 +17,8 @@
 #endif
 #include "centrallix.h"
 #include <sys/types.h>
-#include "json.h"
-#include "json_util.h"
+#include "json/json.h"
+#include "json/json_util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include "json.h"
+#include "json/json.h"
 #include "cxlib/datatypes.h"
 #include "obj.h"
 
