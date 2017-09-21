@@ -2326,7 +2326,7 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
 	for(i=0;i<cnt;i++)
 	    {
 	    ptr = NULL;
-	    maxlen = 900;
+	    maxlen = 1536;
 	    if (((inf->RowBuf + 2048) - endptr) - 2 < maxlen) 
 		maxlen = ((inf->RowBuf + 2048) - endptr) - 2;
 	    if (maxlen <= 0)
