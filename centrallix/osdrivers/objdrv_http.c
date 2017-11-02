@@ -14,6 +14,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
+#include "param.h"
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
@@ -64,6 +65,25 @@ typedef struct
     HttpHeader, *pHttpHeader;
 
 
+/*** HTTP object parameter ***/
+typedef struct
+    {
+    pParam	Parameter;	/* standard centrallix parameter data */
+    int		Usage;		/* HTTP_PUSAGE_T_xxx */
+    int		Source;		/* HTTP_PSOURCE_T_xxx */
+    int		PathPart;	/* subpart of path, 0=this, 1=first subelement, 2=second subelement */
+    }
+    HttpParam, *pHttpParam;
+
+#define HTTP_PUSAGE_T_URL	1	/* parameter is encoded into the url */
+#define HTTP_PUSAGE_T_POST	2	/* parameter is encoded into the post data */
+
+#define HTTP_PSOURCE_T_PATH	1	/* parameter comes from pathname subpart */
+#define HTTP_PSOURCE_T_PARAM	2	/* parameter comes from OSML open parameter */
+
+#define HTTP_DEFAULT_MEM_CACHE	1024*1024
+
+
 /*** Structure used by this driver internally. ***/
 typedef struct 
     {
@@ -76,6 +96,7 @@ typedef struct
     char	*Server;
     char	*Port;
     char	*Path;
+    char	*Method;
     char	*Protocol;
     char	*Cipherlist;
     char	*ProxyServer;
@@ -91,13 +112,23 @@ typedef struct
     DateTime	LastModified;
     char	*Annotation;
     int		ContentLength;
-    int		Offset;
+    int		NetworkOffset;
+    int		ReadOffset;
     char*	ContentType;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
     int		ModDateAlwaysNow;
+    XArray	Params;			/* of pHttpParam */
+    int		ParamSubCnt;
+    int		CacheMinTime;		/* in milliseconds */
+    int		CacheMaxTime;		/* in milliseconds */
+    pXString	ContentCache;
+    int		ContentCacheTS;
+    int		ContentCacheMaxLen;
     }
     HttpData, *pHttpData;
+
+#define HTTP_F_CONTENTCOMPLETE	1
 
     
 #define HTTP(x) ((pHttpData)(x))
@@ -227,6 +258,7 @@ int
 http_internal_CloseConnection(pHttpData inf)
     {
 
+	inf->ContentCacheTS = mtRealTicks() * 1000 / CxGlobals.ClkTck;
 	if (inf->SSLpid > 0)
 	    {
 	    cxssFinishTLS(inf->SSLpid, inf->Socket, inf->SSLReporting);
@@ -258,6 +290,9 @@ http_internal_Cleanup(pHttpData inf)
 	    xaDeInit(&inf->RequestHeaders);
 	    http_internal_FreeHeaders(&inf->ResponseHeaders);
 	    xaDeInit(&inf->ResponseHeaders);
+	    xaDeInit(&inf->Params);
+
+	    http_internal_FreeParams(inf);
 
 	    /** Free connection data **/
 	    if (inf->Server) nmSysFree(inf->Server);
@@ -266,6 +301,8 @@ http_internal_Cleanup(pHttpData inf)
 	    inf->Port = NULL;
 	    if (inf->Path) nmSysFree(inf->Path);
 	    inf->Path = NULL;
+	    if (inf->Method) nmSysFree(inf->Method);
+	    inf->Method = NULL;
 	    if (inf->Protocol) nmSysFree(inf->Protocol);
 	    inf->Protocol = NULL;
 	    if (inf->Cipherlist) nmSysFree(inf->Cipherlist);
@@ -279,6 +316,9 @@ http_internal_Cleanup(pHttpData inf)
 
 	    /** Close socket, if needed **/
 	    http_internal_CloseConnection(inf);
+
+	    if (inf->ContentCache)
+		xsFree(inf->ContentCache);
 
 	    nmFree(inf,sizeof(HttpData));
 	    }
@@ -493,7 +533,7 @@ http_internal_ConnectHttps(pHttpData inf)
 	    }
 
 	/** Start up TLS on the connection **/
-	inf->SSLpid = cxssStartTLS(HTTP_INF.SSL_ctx, &inf->Socket, &inf->SSLReporting, 0);
+	inf->SSLpid = cxssStartTLS(HTTP_INF.SSL_ctx, &inf->Socket, &inf->SSLReporting, 0, inf->Server);
 	if (inf->SSLpid <= 0)
 	    {
 	    netCloseTCP(inf->Socket,1,0);
@@ -526,26 +566,25 @@ int
 http_internal_ConnectHttp(pHttpData inf)
     {
 
-	/** Proxy? **/
 	if (inf->ProxyServer[0])
 	    {
-	    inf->Socket = netConnectTCP(inf->ProxyServer, inf->ProxyPort, 0);
+	    /** Proxy **/
+	    inf->Socket = netConnectTCP(inf->ProxyServer, (inf->ProxyPort[0])?inf->ProxyPort:"80", 0);
 	    if (!inf->Socket)
 		{
-		mssError(0, "HTTP", "Could not connect to proxy server");
+		mssError(0, "HTTP", "Could not connect to proxy server %s on port %s", inf->ProxyServer, (inf->ProxyPort[0])?inf->ProxyPort:"80");
 		return -1;
 		}
 	    }
-
-	/** Standard? **/
-	if (!inf->ProxyServer[0] && inf->Port[0])
-	    inf->Socket = netConnectTCP(inf->Server, inf->Port, 0);
-	else if (!inf->ProxyServer[0])
-	    inf->Socket = netConnectTCP(inf->Server, "80", 0);
-	if (!inf->Socket)
+	else
 	    {
-	    mssError(0, "HTTP", "Could not connect to server");
-	    return -1;
+	    /** Standard **/
+	    inf->Socket = netConnectTCP(inf->Server, (inf->Port[0])?inf->Port:"80", 0);
+	    if (!inf->Socket)
+		{
+		mssError(0, "HTTP", "Could not connect to server %s on port %s", inf->Server, (inf->Port[0])?inf->Port:"80");
+		return -1;
+		}
 	    }
 
     return 0;
@@ -558,7 +597,7 @@ int
 http_internal_SendRequest(pHttpData inf, char* path)
     {
     int rval;
-    int i;
+    int i, n_output;
     pHttpHeader hdr;
     char* nonce;
     unsigned char hash[20];
@@ -566,6 +605,10 @@ http_internal_SendRequest(pHttpData inf, char* path)
     unsigned char noncelen;
     int hashpos;
     char hexval[17] = "0123456789abcdef";
+    pXString post_params = NULL;
+    pXString url_params = NULL;
+    pHttpParam one_http_param;
+    char reqlen[24];
 
 	/** Compute header nonce.  This is used for functionally nothing, but
 	 ** it causes the content and offsets to values in the header to change
@@ -594,23 +637,97 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1);
 	    }
 
-	/** Send GET line **/
+	/** Build the URL parameters **/
+	url_params = xsNew();
+	if (!url_params)
+	    goto error;
+	for(n_output=i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_URL)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    /** Encode one parameter into the post data **/
+		    xsConcatenate(url_params, n_output?"&":"?", 1);
+		    xsConcatQPrintf(url_params, "%STR&URL=", one_http_param->Parameter->Name);
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(url_params, "%STR&URL", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(url_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for url parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    n_output++;
+		    }
+		}
+	    }
+
+	/** Send command line **/
 	if (strpbrk(path, " \t\r\n") || strpbrk(inf->Server, " \t\r\n:/") || strpbrk(inf->Port, " \t\r\n:/"))
 	    {
 	    mssError(1, "HTTP", "Invalid HTTP request");
 	    return -1;
 	    }
-	rval = fdQPrintf(inf->Socket, "GET %[http://%STR%]%[:%STR%]%STR HTTP/1.0\r\nHost: %STR%[:%STR%]\r\n",
+	rval = fdQPrintf(inf->Socket, "%STR %[http://%STR%]%[:%STR%]%STR%STR HTTP/1.0\r\nHost: %STR%[:%STR%]\r\n",
+		inf->Method,
 		inf->ProxyServer[0],
 		inf->Server,
 		inf->ProxyPort[0] && inf->ProxyServer[0],
 		inf->Port,
 		path,
+		xsString(url_params),
 		inf->Server,
 		inf->Port[0],
 		inf->Port);
 	if (rval < 0)
 	    return rval;
+
+	/** POST parameters? **/
+	if (!strcmp(inf->Method, "POST"))
+	    {
+	    http_internal_AddRequestHeader(inf, "Content-Type", "application/x-www-form-urlencoded", 0);
+
+	    post_params = xsNew();
+	    if (!post_params)
+		goto error;
+	    for(n_output=i=0; i<xaCount(&inf->Params); i++)
+		{
+		one_http_param = xaGetItem(&inf->Params, i);
+		if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		    {
+		    if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+			{
+			/** Encode one parameter into the post data **/
+			if (n_output > 0)
+			    xsConcatenate(post_params, "&", 1);
+			xsConcatQPrintf(post_params, "%STR&URL=", one_http_param->Parameter->Name);
+			if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			    xsConcatQPrintf(post_params, "%STR&URL", one_http_param->Parameter->Value->Data.String);
+			else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			    xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+			else
+			    {
+			    mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			    goto error;
+			    }
+
+			n_output++;
+			}
+		    }
+		}
+
+	    snprintf(reqlen, sizeof(reqlen), "%d", xsLength(post_params));
+	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1);
+	    }
+
+	printf("Web client sending request: %s - %s%s - %s\n", inf->Server, path, xsString(url_params), xsString(post_params));
+
+	xsFree(url_params);
+	url_params = NULL;
 
 	/** Send Headers **/
 	for(i=0; i<inf->RequestHeaders.nItems; i++)
@@ -632,7 +749,21 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	/** End-of-headers **/
 	fdQPrintf(inf->Socket, "\r\n");
 
-    return 0;
+	/** Post parameters? **/
+	if (post_params)
+	    {
+	    fdWrite(inf->Socket, xsString(post_params), xsLength(post_params), 0, FD_U_PACKET);
+	    xsFree(post_params);
+	    }
+
+	return 0;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	if (url_params)
+	    xsFree(url_params);
+	return -1;
     }
 
 
@@ -656,17 +787,31 @@ http_internal_GetPageStream(pHttpData inf)
     pHttpHeader resp_hdr;
     int resp_cnt;
     char* hdr_val;
+    int i;
+    pParam one_param = NULL;
+    pHttpParam one_http_param = NULL;
 
 	/** Reset ContentLength and Offset **/
-	inf->ContentLength = inf->Offset = 0;
+	inf->ContentLength = inf->NetworkOffset = inf->ReadOffset = 0;
+
+	/** Re-evaluate hints on parameters, as needed **/
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = (pHttpParam)xaGetItem(&inf->Params, i);
+	    one_param = one_http_param->Parameter;
+
+	    /** Apply hints **/
+	    if (paramEvalHints(one_param, NULL, inf->Obj->Session) < 0)
+		goto error;
+	    }
 
 	/** decide what path we're going for.  Once we've been redirected, 
 	    SubCnt is locked, and the server path is altered 
 	    and will just follow redirects **/
-	if(inf->Redirected || inf->Obj->SubCnt==1)
+	if(inf->Redirected || inf->Obj->SubCnt - inf->ParamSubCnt == 1)
 	    ptr=NULL;
 	else		    
-	    ptr=obj_internal_PathPart(inf->Obj->Pathname,inf->Obj->SubPtr,inf->Obj->SubCnt-1);
+	    ptr=obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->SubPtr + inf->ParamSubCnt, inf->Obj->SubCnt - inf->ParamSubCnt - 1);
 	if(ptr)
 	    {
 	    if(inf->Path[0])
@@ -940,6 +1085,8 @@ http_internal_GetPageStream(pHttpData inf)
 	/** Normal connection response **/
 	if (status/100 == 2)
 	    {
+	    inf->ContentCacheTS = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	    objCurrentDate(&inf->LastModified);
 	    if ((hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Last-Modified")) != NULL)
 		{
 		http_internal_ParseDate(&(inf->LastModified),hdr_val);
@@ -991,21 +1138,231 @@ http_internal_GetPageStream(pHttpData inf)
     }
 
 
-/*** http_internal_GetParamString - get a configuration parameter
+/*** http_internal_GetConfigString - get a configuration value
  ***/
 char*
-http_internal_GetParamString(pHttpData inf, char* paramname, char* default_value)
+http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value)
     {
     char* ptr;
 
-	if (stAttrValue(stLookup(inf->Node->Data,(paramname)),NULL,&ptr,0) < 0)
+	if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
 	    ptr = default_value;
 	ptr = nmSysStrdup(ptr);
 	if (!ptr)
 	    return NULL;
-	if (HTTP_OS_DEBUG) printf("%s: %s\n",paramname,ptr);
+	if (HTTP_OS_DEBUG) printf("%s: %s\n",configname,ptr);
 
     return ptr;
+    }
+
+
+/*** http_internal_FreeParams - clean up any parameters
+ ***/
+int
+http_internal_FreeParams(pHttpData inf)
+    {
+    int i;
+    pHttpParam one_http_param;
+    pParam one_param;
+
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = (pHttpParam)xaGetItem(&inf->Params, i);
+	    one_param = one_http_param->Parameter;
+	    nmFree(one_http_param, sizeof(HttpParam));
+	    paramFree(one_param);
+	    }
+	xaClear(&inf->Params);
+
+    return 0;
+    }
+
+
+/*** http_internal_LoadParams - look through the list of "http/parameter"
+ *** objects in the node data, and load them into the Params array.
+ ***/
+int
+http_internal_LoadParams(pHttpData inf)
+    {
+    int i, j;
+    pStructInf param_inf, attr_inf;
+    pParam one_param = NULL, one_new_param = NULL;
+    pHttpParam one_http_param = NULL, one_new_http_param = NULL;
+    pStruct one_open_ctl, open_ctl;
+    char* val;
+    TObjData tod;
+    char* endval;
+
+	/** Get parameter list **/
+	for(i=0; i<inf->Node->Data->nSubInf; i++)
+	    {
+	    param_inf = inf->Node->Data->SubInf[i];
+	    if (stStructType(param_inf) == ST_T_SUBGROUP && !strcmp(param_inf->UsrType,"http/parameter"))
+		{
+		/** Found a parameter.  Now set it up **/
+		one_new_param = paramCreateFromInf(param_inf);
+		if (!one_new_param) goto error;
+		one_new_http_param = (pHttpParam)nmMalloc(sizeof(HttpParam));
+		if (!one_new_http_param) goto error;
+		one_new_http_param->Parameter = one_new_param;
+		one_new_http_param->Usage = HTTP_PUSAGE_T_URL;
+		one_new_http_param->Source = HTTP_PSOURCE_T_PARAM;
+		one_new_http_param->PathPart = 0;
+
+		/** Parameter Usage HTTP_PUSAGE_T_xxx **/
+		val = NULL;
+		if ((attr_inf = stLookup(param_inf, "usage")))
+		    {
+		    if (stAttrValue(attr_inf, NULL, &val, 0) == 0 && val)
+			{
+			if (!strcmp(val, "url"))
+			    one_new_http_param->Usage = HTTP_PUSAGE_T_URL;
+			else if (!strcmp(val, "post"))
+			    one_new_http_param->Usage = HTTP_PUSAGE_T_POST;
+			else
+			    {
+			    mssError(1, "HTTP", "Parameter %s usage must be 'url' or 'post'", param_inf->Name);
+			    goto error;
+			    }
+			}
+		    else
+			{
+			mssError(1, "HTTP", "Parameter %s usage must be 'url' or 'post'", param_inf->Name);
+			goto error;
+			}
+		    }
+
+		/** Parameter Source HTTP_PSOURCE_T_xxx **/
+		val = NULL;
+		if ((attr_inf = stLookup(param_inf, "source")))
+		    {
+		    if (stAttrValue(attr_inf, NULL, &val, 0) == 0 && val)
+			{
+			if (!strcmp(val, "path"))
+			    one_new_http_param->Source = HTTP_PSOURCE_T_PATH;
+			else if (!strcmp(val, "param"))
+			    one_new_http_param->Source = HTTP_PSOURCE_T_PARAM;
+			else
+			    {
+			    mssError(1, "HTTP", "Parameter %s source must be 'path' or 'param'", param_inf->Name);
+			    goto error;
+			    }
+			}
+		    else
+			{
+			mssError(1, "HTTP", "Parameter %s source must be 'path' or 'param'", param_inf->Name);
+			goto error;
+			}
+		    }
+
+		/** Parameter path part for source=path **/
+		if ((attr_inf = stLookup(param_inf, "pathpart")))
+		    {
+		    if (one_new_http_param->Source != HTTP_PSOURCE_T_PATH)
+			{
+			mssError(1, "HTTP", "Parameter %s has 'pathpart' specified but is not source=\"path\"", param_inf->Name);
+			goto error;
+			}
+		    if (stAttrValue(attr_inf, &one_new_http_param->PathPart, NULL, 0) < 0)
+			{
+			mssError(1, "HTTP", "Parameter %s path part must be an integer 1 or greater", param_inf->Name);
+			goto error;
+			}
+		    }
+
+		/** Add to our list **/
+		xaAddItem(&inf->Params, one_new_http_param);
+		one_new_param = NULL;
+		one_new_http_param = NULL;
+		}
+	    }
+
+	/** Go through the parameters and set any path params **/
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = (pHttpParam)xaGetItem(&inf->Params, i);
+	    one_param = one_http_param->Parameter;
+
+	    if (one_http_param->Source == HTTP_PSOURCE_T_PATH)
+		{
+		/** Did the user supply the path item? **/
+		if (one_http_param->PathPart + inf->Obj->SubPtr <= inf->Obj->Pathname->nElements)
+		    {
+		    /** Keep track of how many elements we're using for parameters **/
+		    if (inf->ParamSubCnt < one_http_param->PathPart)
+			{
+			inf->ParamSubCnt = one_http_param->PathPart;
+			}
+
+		    /** Get the path element **/
+		    val = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->SubPtr + one_http_param->PathPart - 1, 1);
+		    if (!val)
+			goto error;
+		    if (one_param->Value->DataType == DATA_T_INTEGER)
+			{
+			tod.DataType = DATA_T_INTEGER;
+			tod.Flags = 0;
+			tod.Data.Integer = strtol(val, &endval, 10);
+			if (!val[0] || endval[0])
+			    {
+			    mssError(1, "HTTP", "Invalid integer parameter %s from path", one_param->Name);
+			    goto error;
+			    }
+			}
+		    else if (one_param->Value->DataType == DATA_T_STRING)
+			{
+			tod.DataType = DATA_T_STRING;
+			tod.Flags = 0;
+			tod.Data.String = val;
+			}
+		    else
+			{
+			mssError(1, "HTTP", "Parameter %s must be string or integer", one_param->Name);
+			goto error;
+			}
+		    paramSetValue(one_param, &tod);
+		    }
+		}
+	    }
+
+	/** Go through the parameters and set any url params, and evaluate hints. **/
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = (pHttpParam)xaGetItem(&inf->Params, i);
+	    one_param = one_http_param->Parameter;
+
+	    /** Set the value supplied by the user, if needed. **/
+	    if (one_http_param->Source == HTTP_PSOURCE_T_PARAM)
+		{
+		open_ctl = inf->Obj->Pathname->OpenCtl[inf->Obj->SubPtr + inf->ParamSubCnt - 1];
+		if (open_ctl)
+		    {
+		    for(j=0; j<open_ctl->nSubInf; j++)
+			{
+			one_open_ctl = open_ctl->SubInf[j];
+			if (!strcmp(one_open_ctl->Name, one_param->Name))
+			    {
+			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    break;
+			    }
+			}
+		    }
+		}
+
+	    /** Apply hints **/
+	    if (paramEvalHints(one_param, NULL, inf->Obj->Session) < 0)
+		goto error;
+	    }
+
+	return 0;
+
+    error:
+	if (one_new_http_param)
+	    nmFree(one_new_http_param, sizeof(HttpParam));
+	if (one_new_param)
+	    paramFree(one_new_param);
+	http_internal_FreeParams(inf);
+	return -1;
     }
 
 
@@ -1030,11 +1387,16 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	objCurrentDate(&inf->LastModified);
 	xaInit(&inf->RequestHeaders, 16);
 	xaInit(&inf->ResponseHeaders, 16);
+	xaInit(&inf->Params, 16);
 	http_internal_AddRequestHeader(inf, "X-Nonce", "", 0);
+	inf->ContentCache = NULL;
+	inf->Flags = 0;
+	inf->NetworkOffset = 0;
+	inf->ReadOffset = 0;
 
 	//printf("objdrv_http.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
 	//	obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
-	obj->SubCnt = obj->Pathname->nElements-obj->SubPtr+1; // Grab everything...
+	obj->SubCnt = obj->Pathname->nElements - obj->SubPtr + 1; // Grab everything...
 
 	/** Otherwise, try to open it first. **/
 	if (!node)
@@ -1055,23 +1417,31 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Node->OpenCnt++;
 
 	/** Configuration **/
-	inf->ProxyServer = http_internal_GetParamString(inf, "proxyserver", "");
-	inf->ProxyPort = http_internal_GetParamString(inf, "proxyport", "80");
-	inf->Server = http_internal_GetParamString(inf, "server", "");
-	inf->Port = http_internal_GetParamString(inf, "port", "");
-	inf->Path = http_internal_GetParamString(inf, "path", "/");
-	inf->Protocol = http_internal_GetParamString(inf, "protocol", "http");
-	inf->Cipherlist = http_internal_GetParamString(inf, "ssl_cipherlist", "");
+	inf->ProxyServer = http_internal_GetConfigString(inf, "proxyserver", "");
+	inf->ProxyPort = http_internal_GetConfigString(inf, "proxyport", "80");
+	inf->Server = http_internal_GetConfigString(inf, "server", "");
+	inf->Port = http_internal_GetConfigString(inf, "port", "");
+	inf->Path = http_internal_GetConfigString(inf, "path", "/");
+	inf->Method = http_internal_GetConfigString(inf, "method", "GET");
+	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
+	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
+
+	/** Valid method? **/
+	if (strcmp(inf->Method, "GET") && strcmp(inf->Method, "POST"))
+	    {
+	    mssError(1, "HTTP", "Invalid method '%s'", inf->Method);
+	    goto error;
+	    }
 
 	/** Authentication headers **/
-	if ((ptr = http_internal_GetParamString(inf, "proxyauthline", "")))
+	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", "")))
 	    {
 	    if (ptr[0])
 		http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1);
 	    else
 		nmSysFree(ptr);
 	    }
-	if ((ptr = http_internal_GetParamString(inf, "authline", "")))
+	if ((ptr = http_internal_GetConfigString(inf, "authline", "")))
 	    {
 	    if (ptr[0])
 		http_internal_AddRequestHeader(inf, "Authorization", ptr, 1);
@@ -1086,15 +1456,37 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    inf->AllowSubDirs=1;
 	if (stAttrValue(stLookup(node->Data, "allowredirects"), &inf->AllowRedirects, NULL, 0) < 0)
 	    inf->AllowRedirects=1;
-	if(!inf->AllowSubDirs)
+	if (!inf->AllowSubDirs)
 	    inf->Obj->SubCnt=1;
 
-	/** Ensure all required parameters are given **/
+	/** Cache control **/
+	if (stAttrValue(stLookup(node->Data, "cache_min_ttl"), &inf->CacheMinTime, NULL, 0) < 0)
+	    inf->CacheMinTime = 0;
+	if (inf->CacheMinTime < 0)
+	    inf->CacheMinTime = 0;
+	if (stAttrValue(stLookup(node->Data, "cache_max_ttl"), &inf->CacheMaxTime, NULL, 0) < 0)
+	    inf->CacheMaxTime = 0;
+	if (inf->CacheMaxTime < 0)
+	    inf->CacheMaxTime = 0;
+	if (stAttrValue(stLookup(node->Data, "cache_max_length"), &inf->ContentCacheMaxLen, NULL, 0) < 0)
+	    inf->ContentCacheMaxLen = HTTP_DEFAULT_MEM_CACHE;
+	if (inf->ContentCacheMaxLen < 0)
+	    inf->ContentCacheMaxLen = 0;
+
+	/** Ensure all required config items are given **/
 	if (!inf->Server[0])
 	    {
 	    mssError(1, "HTTP", "Server name must be provided");
 	    goto error;
 	    }
+
+	/** Load parameters **/
+	if (http_internal_LoadParams(inf) < 0)
+	    goto error;
+
+	/** Adjust SubCnt based on parameter usage **/
+	if (!inf->AllowSubDirs)
+	    inf->Obj->SubCnt = 1 + inf->ParamSubCnt;
 
 	/** Connect to server and retrieve the response headers **/
 	redir_cnt = 0;
@@ -1165,12 +1557,42 @@ int
 httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
-    int i=maxcnt; /* if we get no other info, use the size requested */
+    int readcnt=maxcnt; /* if we get no other info, use the size requested */
     int redir_cnt;
     int maxread;
     int rval;
+    int cur_msec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+    int len;
 
-	if(!inf->Socket || (flags & FD_U_SEEK && offset < inf->Offset))
+	if (flags & OBJ_U_SEEK)
+	    inf->ReadOffset = offset;
+
+	if (maxcnt <= 0)
+	    return 0;
+
+	/** Cached and data available? **/
+	if (!inf->ContentCache)
+	    inf->ContentCache = xsNew();
+	if (!inf->ContentCache)
+	    return -1;
+	len = xsLength(inf->ContentCache);
+	if ((inf->Flags & HTTP_F_CONTENTCOMPLETE || inf->ReadOffset < len) && cur_msec < inf->ContentCacheTS + inf->CacheMinTime)
+	    {
+	    if (inf->ReadOffset <= len)
+		{
+		if (maxcnt > len - inf->ReadOffset)
+		    maxcnt = len - inf->ReadOffset;
+		if (maxcnt)
+		    memcpy(buffer, xsString(inf->ContentCache) + inf->ReadOffset, maxcnt);
+		inf->ReadOffset += maxcnt;
+		return maxcnt;
+		}
+	    else
+		return 0;
+	    }
+
+	/** Restart connection? **/
+	if(!inf->Socket || inf->ReadOffset < inf->NetworkOffset)
 	    {
 	    /** if there's no connection or we're told to seek to 0, reinit the connection **/
 	    int rval;
@@ -1187,46 +1609,61 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 		}
 	    if(rval==0)
 		return -1;
-	    inf->Offset = 0;
+	    inf->NetworkOffset = 0;
+	    inf->Flags &= ~HTTP_F_CONTENTCOMPLETE;
 	    }
 	if(inf->ContentLength)
 	    {
 	    /** if the server provided a Content-Length header, use it... **/
-	    i=inf->ContentLength-inf->Offset; /* the maximum length we're allowed to request */
-	    i=i>maxcnt?maxcnt:i; /* drop down to what the requesting object wants */
+	    readcnt = inf->ContentLength - inf->NetworkOffset; /* the maximum length we're allowed to request */
+	    readcnt = readcnt>maxcnt?maxcnt:readcnt; /* drop down to what the requesting object wants */
 	    }
 	if(!inf->Socket) return -1;
-	if(HTTP_OS_DEBUG) printf("HTTP -- starting fdRead -- asking for: %i bytes\n",i);
+	if(HTTP_OS_DEBUG) printf("HTTP -- starting fdRead -- asking for: %i bytes\n", readcnt);
 
 	/** Skip to offset - the hard way (optimize - honor HTTP ranges) **/
-	while ((flags & FD_U_SEEK) && (offset > inf->Offset))
+	while (inf->ReadOffset > inf->NetworkOffset)
 	    {
 	    maxread = maxcnt;
-	    if (maxread > (offset - inf->Offset))
-		maxread = offset - inf->Offset;
-	    rval=fdRead(inf->Socket,buffer,maxread,offset,flags & ~FD_U_SEEK);
+	    if (maxread > (inf->ReadOffset - inf->NetworkOffset))
+		maxread = inf->ReadOffset - inf->NetworkOffset;
+	    rval = fdRead(inf->Socket, buffer, maxread, inf->NetworkOffset, flags & ~FD_U_SEEK);
 	    if (rval <= 0)  
 		{
-		http_internal_CloseConnection(inf);
+		if (rval == 0 && maxread > 0 && inf->NetworkOffset <= inf->ContentCacheMaxLen)
+		    inf->Flags |= HTTP_F_CONTENTCOMPLETE;
+		if (rval < 0 || maxread > 0)
+		    http_internal_CloseConnection(inf);
 		return rval;
 		}
-	    inf->Offset += rval;
+	    if (inf->NetworkOffset + rval <= inf->ContentCacheMaxLen)
+		xsWrite(inf->ContentCache, buffer, rval, inf->NetworkOffset, XS_U_SEEK);
+	    inf->NetworkOffset += rval;
 	    }
 
 	/** Do the "real read" **/
-	i=fdRead(inf->Socket,buffer,i,offset,flags & ~FD_U_SEEK);
-	if(HTTP_OS_DEBUG) printf("HTTP -- done with fdRead -- got: %i bytes\n",i);
+	rval = fdRead(inf->Socket, buffer, readcnt, offset, flags & ~FD_U_SEEK);
+	if(HTTP_OS_DEBUG) printf("HTTP -- done with fdRead -- got: %i bytes\n", rval);
 
 	/** update inf->Offset with the new distance we are into the stream **/
-	if (i>0)
-	    inf->Offset+=i;
+	if (rval > 0)
+	    {
+	    if (inf->NetworkOffset + rval <= inf->ContentCacheMaxLen)
+		xsWrite(inf->ContentCache, buffer, rval, inf->NetworkOffset, XS_U_SEEK);
+	    inf->NetworkOffset += rval;
+	    inf->ReadOffset += rval;
+	    }
 	else
 	    {
+	    if (rval == 0 && readcnt > 0 && inf->NetworkOffset <= inf->ContentCacheMaxLen)
+		inf->Flags |= HTTP_F_CONTENTCOMPLETE;
+
 	    /** end of file - close up **/
-	    http_internal_CloseConnection(inf);
+	    if (rval < 0 || readcnt > 0)
+		http_internal_CloseConnection(inf);
 	    }
 
-    return i;
+    return rval;
     }
 
 
@@ -1312,6 +1749,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     pStructInf find_inf;
     char* ptr;
     int i;
+    int cur_msec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1384,7 +1822,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if(inf->LastModified.Value)
 		{
-		if (inf->ModDateAlwaysNow)
+		if (inf->ModDateAlwaysNow && cur_msec > inf->ContentCacheTS + inf->CacheMinTime)
 		    objCurrentDate(&inf->LastModified);
 		val->DateTime=&(inf->LastModified);
 		return 0;
