@@ -1667,6 +1667,54 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* ptr;
+
+    /** checks **/
+    if (!i0 || !i1)
+	{
+	mssError(1, "EXP", "formatdate() takes two parameters: (datetime, string)");
+	return -1;
+	}
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+	tree->DataType = DATA_T_STRING;
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_DATETIME)
+	{
+	mssError(1, "EXP", "formatdate() first parameter must be a date");
+	return -1;
+	}
+    if (!i1 || i1->DataType != DATA_T_STRING)
+	{
+	mssError(1, "EXP", "formatdate() second parameter must be a string");
+	return -1;
+	}
+
+    ptr = objFormatDateTmp(&i0->Types.Date, i1->String);
+    if (!ptr)
+	return -1;
+
+    if (tree->Alloc && tree->String) nmSysFree(tree->String);
+    tree->Alloc = 0;
+    if (strlen(ptr) >= 64)
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysStrdup(ptr);
+	}
+    else
+	{
+	tree->String = tree->Types.StringBuf;
+	strcpy(tree->Types.StringBuf, ptr);
+	}
+
+    return 0;
+    }
+
+
 int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int yr, mo;
@@ -2867,6 +2915,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
 	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
 	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
+	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
