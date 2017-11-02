@@ -1,0 +1,8 @@
+##NAME ON DUP clause, insert/update, two sources
+##UNDO /tests/Testdata1.csv
+
+csv select * from /tests/Testdata1.csv/rows
+csv select * from /tests/Testdata2.csv/rows
+query insert into /tests/Testdata1.csv/rows select f_id = :t2:f_id + 6, :t2:f_desc, f_count = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id < 4 and :t2:f_id = :t1:f_id on duplicate :f_id update set :f_count = :f_count + :t1:f_count + :t2:f_square
+csv select * from /tests/Testdata1.csv/rows
+csv select * from /tests/Testdata2.csv/rows
