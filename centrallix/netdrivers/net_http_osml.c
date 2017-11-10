@@ -434,7 +434,7 @@ nht_i_WriteHandle(pNhtConn conn, handle_t handle)
  *** DHTML document.
  ***/
 int
-nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
+nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pNhtApp app)
     {
     pNhtSessionData sess = conn->NhtSession;
     char* ptr;
@@ -484,9 +484,14 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
 	    {
 	    objsess = objOpenSession(req_inf->StrVal);
 	    if (!objsess) 
+		{
 		session_handle = XHN_INVALID_HANDLE;
+		}
 	    else
+		{
+		if (app) xaAddItem(&app->AppOSMLSessions, objsess);
 		session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
+		}
 	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	    nht_i_WriteHandle(conn, session_handle);
 	    if (DEBUG_OSML) printf("ls__mode=opensession X" XHN_HANDLE_PRT "\n", session_handle);
@@ -520,6 +525,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
 			}
 		    else
 			{
+			if (app) xaAddItem(&app->AppOSMLSessions, objsess);
 			session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
 			}
 		    }
@@ -613,6 +619,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
 		    return -1;
 		    }
 		xhnFreeHandle(&(sess->Hctx), session_handle);
+		if (app)
+		    xaRemoveItem(&app->AppOSMLSessions, xaFindItem(&app->AppOSMLSessions, objsess));
 	        objCloseSession(objsess);
 		nht_i_WriteResponse(conn, 200, "OK", NULL);
 		nht_i_WriteHandle(conn, (handle_t)0);

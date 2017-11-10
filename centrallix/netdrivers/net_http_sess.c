@@ -591,6 +591,7 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
 	xaAddItem(&group->Apps, (void*)app);
 	xaInit(&app->Endorsements, 16);
 	xaInit(&app->Contexts, 16);
+	xaInit(&app->AppOSMLSessions, 16);
 
     return app;
     }
@@ -602,6 +603,7 @@ int
 nht_i_FreeApp(pNhtApp app)
     {
     int i;
+    pObjSession one_sess;
 
 	/** Disconnect from the app group **/
 	xaRemoveItem(&(app->Group->Apps), xaFindItem(&(app->Group->Apps), (void*)app));
@@ -614,6 +616,15 @@ nht_i_FreeApp(pNhtApp app)
 	    }
 	xaDeInit(&app->Endorsements);
 	xaDeInit(&app->Contexts);
+
+	/** Close OSML sessions we opened during this particular app **/
+	for(i=0; i<xaCount(&app->AppOSMLSessions); i++)
+	    {
+	    one_sess = (pObjSession)xaGetItem(&app->AppOSMLSessions, i);
+	    xhnFreeHandle(&app->Group->Session->Hctx, xhnHandle(&app->Group->Session->Hctx, one_sess));
+	    objCloseSession(one_sess);
+	    }
+	xaDeInit(&app->AppOSMLSessions);
 
 	/** Clean up... **/
 	nht_i_RemoveWatchdog(app->WatchdogTimer);

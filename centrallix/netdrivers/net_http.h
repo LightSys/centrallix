@@ -234,6 +234,7 @@ typedef struct
     /*handle_t	InactivityTimer;*/
     pObjSession	AppObjSess;
     pNhtAppGroup    Group;
+    XArray	AppOSMLSessions;
     XArray	Endorsements;
     XArray	Contexts;
     }

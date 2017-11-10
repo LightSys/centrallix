@@ -2378,7 +2378,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    find_inf = stLookup_ne(url_inf,"ls__req");
-	    nht_i_OSML(conn,target_obj, find_inf->StrVal, url_inf);
+	    nht_i_OSML(conn,target_obj, find_inf->StrVal, url_inf, app);
 	    }
 
 	/** Exec method mode **/
