@@ -256,7 +256,7 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
     error:
 	/** Close the SELECT **/
-	if (is_started)
+	if (rval < 0 && is_started)
 	    if (cld->Driver->Finish(cld, stmt) < 0)
 		return -1;
 
@@ -311,6 +311,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		/** Evaluate the expression on the SELECTed row **/
 		p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
 		expModifyParam(stmt->OneObjList, "this", (void*)p);
+		expBindExpression(pdata->Criteria[i].Exp, stmt->OneObjList, 0);
 		rval = expEvalTree(pdata->Criteria[i].Exp, stmt->OneObjList);
 		mq_internal_FreePseudoObject(p);
 		if (rval < 0)
@@ -323,6 +324,15 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		else
 		    pdata->Criteria[i].Value->NodeType = expDataTypeToNodeType(pdata->Criteria[i].Exp->DataType);
 		}
+
+	    /** Rebind the criteria so current = object zero **/
+	    objlist = expCreateParamList();
+	    if (!objlist)
+		goto error;
+	    expAddParamToList(objlist, "this", NULL, EXPR_O_CURRENT);
+	    expBindExpression(pdata->AllCriteria, objlist, 0);
+	    expFreeParamList(objlist);
+	    objlist = NULL;
 
 	    /** Search for existing duplicate rows in the insert source **/
 	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL);
