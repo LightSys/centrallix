@@ -313,6 +313,12 @@ cxInitialize(void* v)
 	if (CxGlobals.PidFile[0])
 	    cxAddShutdownHandler(cxRemovePidFile);
 
+#ifdef _SC_CLK_TCK
+        CxGlobals.ClkTck = sysconf(_SC_CLK_TCK);
+#else
+        CxGlobals.ClkTck = CLK_TCK;
+#endif
+
 	/** Startup message **/
 	if (!CxGlobals.QuietInit)
 	    {
