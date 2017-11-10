@@ -273,6 +273,7 @@ obj_internal_AllocObj()
     	/** Allocate the thing **/
 	this = (pObject)nmMalloc(sizeof(Object));
 	if (!this) return NULL;
+	memset(this, 0, sizeof(Object));
 
 	/** Initialize it **/
 	this->Magic = MGK_OBJECT;
@@ -293,7 +294,6 @@ obj_internal_AllocObj()
 	this->AttrExp = NULL;
 	this->AttrExpName = NULL;
 	this->LinkCnt = 1;
-	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
 	xaInit(&(this->Attrs),16);
 
     return this;
@@ -355,8 +355,34 @@ obj_internal_FreeObj(pObject this)
 int
 obj_internal_GetDCHash(pPathname pathinfo, int mode, char* hash, int hashmaxlen, int pathcnt)
     {
+    pXString url_params = NULL;
+    char* paramstr = "";
+    pStruct one_open_ctl, open_ctl;
+    int i;
 
-	snprintf(hash, hashmaxlen, "%8.8x%s", mode, obj_internal_PathPart(pathinfo, 0, pathcnt));
+	url_params = xsNew();
+	if (url_params)
+	    {
+	    paramstr = xsString(url_params);
+	    open_ctl = pathinfo->OpenCtl[pathcnt - 1];
+	    if (open_ctl)
+		{
+		for(i=0; i<open_ctl->nSubInf; i++)
+		    {
+		    one_open_ctl = open_ctl->SubInf[i];
+		    xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
+			    (xsString(url_params)[0])?"&":"?",
+			    one_open_ctl->Name,
+			    one_open_ctl->StrVal);
+		    }
+		paramstr = xsString(url_params);
+		}
+	    }
+
+	snprintf(hash, hashmaxlen, "%8.8x%s%s", mode, obj_internal_PathPart(pathinfo, 0, pathcnt), paramstr);
+
+	if (url_params)
+	    xsFree(url_params);
 
     return 0;
     }
@@ -861,7 +887,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		 ** item later on.
 		 **/
 		dc = obj_internal_AllocDC(this->Prev, mode, this->SubPtr);
-		xe = xhqAdd(&(s->DirectoryCache), dc->Hashname, dc);
+		xe = xhqAdd(&(s->DirectoryCache), dc->Hashname, dc, 1);
 		if (!xe)
 		    {
 		    /** Already cached -- oops!  Probably bug! **/

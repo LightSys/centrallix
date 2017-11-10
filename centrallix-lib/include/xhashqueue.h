@@ -102,6 +102,7 @@ typedef struct _HE
     void*	KeyPtr;		/* pointer to key value for hash */
     int		LinkCnt;	/* references to this element */
     int		Locked;
+    int		Weight;
     }
     XHQElement, *pXHQElement;
 
@@ -126,7 +127,7 @@ typedef struct _HQ
 /*** Functions used to access the hashqueue ***/
 int xhqInit(pXHashQueue this, int maxcnt, int keylen, int hashtablesize, int (*discard_fn)(), int (*full_fn)());
 int xhqDeInit(pXHashQueue this);
-pXHQElement xhqAdd(pXHashQueue this, void* key, void* data);
+pXHQElement xhqAdd(pXHashQueue this, void* key, void* data, int weight);
 pXHQElement xhqLookup(pXHashQueue this, void* key);
 void* xhqGetData(pXHashQueue this, pXHQElement item, int flags);
 int xhqRemove(pXHashQueue this, pXHQElement item, int flags);

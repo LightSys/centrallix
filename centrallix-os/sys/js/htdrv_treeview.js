@@ -262,6 +262,9 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
     else if(cx__capabilities.Dom1HTML)
 	{
 	var c;
+
+	$(l).css({'white-space': 'nowrap'});
+
 	/** remove all current children of this node **/
 	while(c = l.firstChild)
 	    {

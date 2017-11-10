@@ -401,7 +401,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 		    }
 
 		/** Apply hints **/
-		paramEvalHints(one_param, NULL);
+		paramEvalHints(one_param, NULL, obj->Session);
 		}
 	    }
 

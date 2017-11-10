@@ -346,6 +346,7 @@ typedef struct _OF
     void*	EvalContext;	/* a pParamObjects list -- for evaluation of runserver() exprs */
     void*	AttrExp;	/* an expression used for the above */
     char*	AttrExpName;	/* Name of attr for above expression */
+    DateTime	CacheExpire;	/* Date/time after which cached data is no longer valid */
     }
     Object, *pObject;
 

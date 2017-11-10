@@ -781,7 +781,7 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	'background-color': styleobj.bgcolor,
 	'padding': styleobj.padding + 'px',
 	'border-radius': styleobj.border_radius + 'px',
-	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):'none',
+	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):(styleobj.border_style?('1px ' + styleobj.border_style + ' #c0c0c0'):'none'),
 	'text-align': styleobj.align?styleobj.align:'initial',
 	'white-space': (styleobj.wrap=='no')?'nowrap':'normal',
 	'box-shadow': (!styleobj.shadow_color || !styleobj.shadow_radius)?'none':

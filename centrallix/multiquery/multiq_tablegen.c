@@ -219,7 +219,7 @@ mqtAnalyze(pQueryStatement stmt)
 		else
 		    {
 		    /** No linkage but we can't handle it??? **/
-		    if (item->ObjCnt > 0 && !(item->Expr->ObjCoverageMask & EXPR_MASK_INDETERMINATE))
+		    if (!(item->Flags & MQ_SF_ASTERISK) && item->ObjCnt > 0 && !(item->Expr->ObjCoverageMask & EXPR_MASK_INDETERMINATE))
 			{
 			nmFree(qe->PrivateData,sizeof(MQTData));
 			nmFree(qe,sizeof(QueryElement));
@@ -438,7 +438,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pQueryElement cld;
 
     	/** First, evaluate all of the attributes that we 'own' **/
-	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
+	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && qe->AttrCompiledExpr.Items[i] && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
 	    {
 	    if (expEvalTree((pExpression)qe->AttrCompiledExpr.Items[i], stmt->Query->ObjList) < 0) 
 	        {

@@ -251,12 +251,12 @@ paramSetValueFromInfNe(pParam param, pStruct inf)
  *** expressions (min/max/default/etc) in the hints.
  ***/
 int
-paramEvalHints(pParam param, pParamObjects objlist)
+paramEvalHints(pParam param, pParamObjects objlist, pObjSession sess)
     {
     char* str;
 
 	/** set default value and/or verify that the given value is valid **/
-	if (hntVerifyHints(param->Hints, param->Value, &str, objlist, objlist?(objlist->Session):NULL) < 0)
+	if (hntVerifyHints(param->Hints, param->Value, &str, objlist, objlist?(objlist->Session):sess) < 0)
 	    {
 	    mssError(1, "PARAM", "Parameter '%s' specified incorrectly: %s", param->Name, str);
 	    return -1;

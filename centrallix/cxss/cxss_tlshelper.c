@@ -52,7 +52,7 @@
 /*** cxss_internal_DoTLS - perform the actual TLS negotiation and cryptography.
  ***/
 int
-cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pFile report_fd, int as_server)
+cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pFile report_fd, int as_server, char* remotename)
     {
     int pid, tm, ret, err;
     SSL* encrypted_conn;
@@ -76,6 +76,10 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 	encrypted_conn = SSL_new(context);
 	if (!encrypted_conn) return -1;
 	SSL_set_fd(encrypted_conn, fdFD(encrypted_fd));
+
+	/** SNI? **/
+	if (remotename && remotename[0] && !as_server)
+	    SSL_set_tlsext_host_name(encrypted_conn, remotename);
 
 	/** start the handshake **/
 	while (1)
@@ -332,7 +336,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
  *** the PID of the SSL helper process.
  ***/
 int
-cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server)
+cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server, char* remotename)
     {
     int pid;
     int fds[2];
@@ -358,7 +362,7 @@ cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_
 	    thLock();
 	    fdClose(mainprocess_fd, 0);
 	    fdClose(mainprocess_report_fd, 0);
-	    cxss_internal_DoTLS(context, *ext_conn, subprocess_fd, subprocess_report_fd, as_server);
+	    cxss_internal_DoTLS(context, *ext_conn, subprocess_fd, subprocess_report_fd, as_server, remotename);
 	    _exit(0);
 	    }
 	else

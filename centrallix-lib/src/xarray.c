@@ -235,7 +235,7 @@ int
 xaSetItem(pXArray this, int index, void* item)
     {
     int new_alloc;
-    void* ptr;
+    void** ptr;
     int i, oldend;
 
 	if (index < 0) return -1;
@@ -265,7 +265,7 @@ xaSetItem(pXArray this, int index, void* item)
 int
 xaInsertBefore(pXArray this, int index, void* item)
     {
-    void* ptr;
+    void** ptr;
     int i;
 
 	/** sanity check on args **/
@@ -280,6 +280,7 @@ xaInsertBefore(pXArray this, int index, void* item)
 	    this->Items = ptr;
 	    memset(ptr+this->nItems, 0, BLK_INCR*sizeof(void*));
 	    }
+
 	/** Move from index on inclusive ahead one slot **/
 	for (i=this->nItems-1;i>=index;i--) this->Items[i+1] = this->Items[i];
 
@@ -287,14 +288,14 @@ xaInsertBefore(pXArray this, int index, void* item)
 	this->Items[index] = item;
 	this->nItems++;
 
-	return index;
+    return index;
     }
 
 /*** xaInsertAfter - insert after index
  ***/
 int xaInsertAfter(pXArray this, int index, void* item)
     {
-    void* ptr;
+    void** ptr;
     int i;
 
 	/** sanity check on args **/
@@ -309,6 +310,7 @@ int xaInsertAfter(pXArray this, int index, void* item)
 	    this->Items = ptr;
 	    memset(ptr+this->nItems, 0, BLK_INCR*sizeof(void*));
 	    }
+
 	/** Move from index on inclusive ahead one slot **/
 	for (i=this->nItems-1;i>index;i--) this->Items[i+1] = this->Items[i];
 
@@ -316,7 +318,7 @@ int xaInsertAfter(pXArray this, int index, void* item)
 	this->Items[index+1] = item;
 	this->nItems++;
 
-	return index+1;
+    return index+1;
     }
 
 

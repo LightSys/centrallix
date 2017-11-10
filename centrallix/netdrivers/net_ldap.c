@@ -482,7 +482,7 @@ nldap_i_TLSHandler(void* v)
 	    /** Start TLS on the connection.  This replaces conn->ConnFD with
 	     ** a pipe to the TLS encryption/decryption process.
 	     **/
-	    conn->SSLpid = cxssStartTLS(NLDAP.SSL_ctx, &conn->ConnFD, &conn->ReportingFD, 1);
+	    conn->SSLpid = cxssStartTLS(NLDAP.SSL_ctx, &conn->ConnFD, &conn->ReportingFD, 1, NULL);
 	    if (conn->SSLpid <= 0)
 		{
 		nldap_i_FreeConn(conn);

@@ -52,6 +52,7 @@ typedef struct _CXG
     pCxModule	ModuleList;
     XArray	ShutdownHandlers;
     int		Flags;
+    int		ClkTck;
     }
     CxGlobals_t, *pCxGlobals_t;
 

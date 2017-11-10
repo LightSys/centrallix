@@ -292,13 +292,17 @@ objInfToHints(pStructInf inf, int data_type)
 	xaInit(&(ph->EnumList),16);
 
 	/** Check for constraint, default, min, and max expressions. **/
-	stAttrValue(stLookup(inf,"constraint"),NULL,(char**)&(ph->Constraint),0);
+	/*stAttrValue(stLookup(inf,"constraint"),NULL,(char**)&(ph->Constraint),0);
 	stAttrValue(stLookup(inf,"default"),NULL,(char**)&(ph->DefaultExpr),0);
 	stAttrValue(stLookup(inf,"min"),NULL,(char**)&(ph->MinValue),0);
-	stAttrValue(stLookup(inf,"max"),NULL,(char**)&(ph->MaxValue),0);
+	stAttrValue(stLookup(inf,"max"),NULL,(char**)&(ph->MaxValue),0);*/
+	ph->Constraint = stGetExpression(stLookup(inf,"constraint"), 0);
+	ph->DefaultExpr = stGetExpression(stLookup(inf,"default"), 0);
+	ph->MinValue = stGetExpression(stLookup(inf,"min"), 0);
+	ph->MaxValue = stGetExpression(stLookup(inf,"max"), 0);
 
 	/** Compile expressions, if any **/
-	if (ph->Constraint || ph->DefaultExpr || ph->MinValue || ph->MaxValue)
+	/*if (ph->Constraint || ph->DefaultExpr || ph->MinValue || ph->MaxValue)
 	    {
 	    tmplist = expCreateParamList();
 	    expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
@@ -338,7 +342,7 @@ objInfToHints(pStructInf inf, int data_type)
 		    }
 		}
 	    expFreeParamList(tmplist);
-	    }
+	    }*/
 
 	/** Enumerated values list, given explicitly? **/
 	ptr = NULL;

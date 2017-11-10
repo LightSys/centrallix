@@ -1,16 +1,17 @@
-#ifndef _PARAM_H
-#define _PARAM_H
+#ifndef _CXCACHE_H
+#define _CXCACHE_H
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2017 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
 /* the Free Software Foundation; either version 2 of the License, or	*/
-/* (at your option) any later version.					*/
+/* (at your option) any later version approved by LightSys Technology	*/
+/* Services, Inc.							*/
 /* 									*/
 /* This program is distributed in the hope that it will be useful,	*/
 /* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
@@ -25,38 +26,34 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	param.c, param.h                                        */
+/* Module:	cxcache.h, cxcache.c					*/
 /* Author:	Greg Beeley (GRB)                                       */
-/* Date:	26-May-2012                                             */
+/* Date:	Oct 23, 2017                                            */
 /*									*/
-/* Description:	Based on WgtrAppParam from the wgtr module.  This	*/
-/*		provides a simple ability to parse and free parameters	*/
-/*		that are in the form of a presentation hints record but	*/
-/*		with a data type and name supplied, too.		*/
-/*									*/
+/* Description:	This utility module provides caching services and logic.*/
 /************************************************************************/
 
-#include "obj.h"
-#include "hints.h"
-#include "ptod.h"
 
-#define PARAM_NAME_LEN		64
-
+/*** Cache control structure ***/
 typedef struct
     {
-    int				Type;		/* data type DATA_T_xxx */
-    char			Name[PARAM_NAME_LEN];	/* name of parameter */
-    pObjPresentationHints	Hints;		/* controls to apply to the param, incl defaults */
-    pTObjData			Value;		/* Value */
+    char*		Directory;
+    XHashQueue		Cache;
     }
-    Param, *pParam;
+    CxCache, *pCxCache;
 
-/*** Functions for handling parameters ***/
-int paramFree(pParam param);
-pParam paramCreateFromObject(pObject obj);
-pParam paramCreateFromInf(pStructInf inf);
-int paramSetValue(pParam param, pTObjData value);
-int paramSetValueFromInfNe(pParam param, pStruct inf);
-int paramEvalHints(pParam param, pParamObjects objlist, pObjSession sess);
 
-#endif /* not defined _PARAM_H */
+/*** Cache item structure ***/
+typedef struct
+    {
+    char*		ContentFile;
+    char*		AttrsFile;
+    }
+    CxCacheItem, *pCxCacheItem;
+
+
+/*** Functions ***/
+pCxCache cxcOpenCache(char* directory, int max_size_mb);
+
+
+#endif /* not defined _CXCACHE_H */

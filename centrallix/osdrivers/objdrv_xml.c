@@ -424,6 +424,22 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
     return -1;
     }
 
+
+int
+xml_internal_CloseCachedDocument(pXmlCacheObj document)
+    {
+
+	document->LinkCnt--;
+	if (document->LinkCnt > 0)
+	    return 0;
+
+	xmlFreeDoc(document->document);
+	nmFree(document, sizeof(XmlCacheObj));
+
+    return 0;
+    }
+
+
 pXmlCacheObj
 xml_internal_ReadDoc(pObject obj)
     {
@@ -434,20 +450,29 @@ xml_internal_ReadDoc(pObject obj)
     pXmlCacheObj pCache;
     pDateTime pDT=0;
 
-	path=obj_internal_PathPart(obj->Pathname,0,3);
-	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache,path)))
+	/** Determine path of just the XML file itself **/
+	path=obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
+
+	/** Check cache for an existing copy already **/
+	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, path)))
 	    {
-	    if(XML_DEBUG) printf("found %s in cache\n",path);
+	    if(XML_DEBUG) printf("found %s in cache\n", path);
+
 	    /** found match in cache -- check modification time **/
-	    if(objGetAttrValue(obj->Prev,"last_modification",DATA_T_DATETIME,POD(&pDT))==0)
-	    if(pDT && pDT->Value!=pCache->lastmod.Value)
+	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
 		{
-		/** modification time changed -- update **/
-		xmlFreeDoc(pCache->document);
-		pCache->document=NULL;
+		if(pDT && pDT->Value!=pCache->lastmod.Value)
+		    {
+		    /** modification time changed -- update **/
+		    xhRemove(&XML_INF.cache, path);
+		    xml_internal_CloseCachedDocument(pCache);
+		    pCache = NULL;
+		    }
 		}
 	    }
-	else
+
+	/** Not in cache, or cache was stale **/
+	if (!pCache)	
 	    {
 	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
 	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
@@ -456,8 +481,10 @@ xml_internal_ReadDoc(pObject obj)
 	    ptr=(char*)malloc(strlen(path)+1);
 	    strcpy(ptr,path);
 	    xhAdd(&XML_INF.cache,ptr,(char*)pCache);
+	    pCache->LinkCnt = 1;
 	    }
 
+	/** Need to load the content itself **/
 	if(!pCache->document)
 	    {
 #ifndef USE_LIBXML1
@@ -486,6 +513,7 @@ xml_internal_ReadDoc(pObject obj)
 	    pCache->document=ctxt->myDoc;
 	    xmlFreeParserCtxt(ctxt);
 	}
+
     return pCache;
     }
 
@@ -568,8 +596,9 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	    free(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
+
 	/** Release the memory **/
-	inf->CacheObj->LinkCnt--;
+	xml_internal_CloseCachedDocument(inf->CacheObj);
 	nmFree(inf,sizeof(XmlData));
 
     return 0;
@@ -813,8 +842,8 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		/** the structure file driver will return the node's literal name, even if it isn't unique
 		 **   -- for now, we'll follow suit -- should we not do this?
 		 **/
-		//cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
-		cnt = snprintf(name,256,"%s",qy->NextNode->name);
+		cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
+		//cnt = snprintf(name,256,"%s",qy->NextNode->name);
 		}
 
 	    }
@@ -828,18 +857,13 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    return NULL;
 	    }
 
-
 	/** Shamelessly stolen from objdrv_sybase.c :) **/
-	ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
-	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(name) >= 255)
+	if (obj_internal_AddToPath(obj->Pathname, name) < 0)
 	    {
-	    mssError(1,"XML","Pathname too long for internal representation");
+	    mssError(1,"XML","Query result pathname exceeds internal limits");
 	    nmFree(inf,sizeof(XmlData));
 	    return NULL;
 	    }
-	*(ptr++) = '/';
-	strcpy(ptr,name);
-	obj->Pathname->Elements[obj->Pathname->nElements++] = ptr;
 	obj->SubCnt++;
 
 	if(XML_DEBUG) printf("QueryFetch gave back: (%i,%i,%i) %s\n",obj->SubPtr,
@@ -849,6 +873,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	qy->ItemCnt++;
 
 	inf->CacheObj->LinkCnt++;
+
     return (void*)inf;
     }
 

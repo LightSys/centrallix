@@ -365,6 +365,7 @@ qpfInitialize()
 	qpf_internal_SetupTable(&QPF.hex_matrix);
 
 	/* set up table for url encoding everything except 0-9, A-Z, and a-z */
+	memset(&QPF.url_matrix, 0, sizeof(QPF.url_matrix));
 	for(i=0;i<48;i++) /* escape until 0-9 */
 	    {
 	    buf[0] = '%';

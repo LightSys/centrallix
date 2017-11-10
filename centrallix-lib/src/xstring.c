@@ -859,6 +859,17 @@ xsString(pXString this)
     }
 
 
+int
+xsLength(pXString this)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+    CXSEC_EXIT(XS_FN_KEY);
+    return this->Length;
+    }
+
+
 /*** xs_internal_Grow - grow function needed by QPrintf
  ***/
 int

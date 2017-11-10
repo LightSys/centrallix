@@ -53,6 +53,7 @@ int xsConcatenate(pXString this, char* text, int len);
 int xsCopy(pXString this, char* text, int len);
 char* xsString(pXString this);
 char* xsStringEnd(pXString this);
+int xsLength(pXString this);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);
 int xsWrite(pXString this, char* buf, int len, int offset, int flags);
