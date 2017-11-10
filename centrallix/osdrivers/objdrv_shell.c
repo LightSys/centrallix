@@ -536,7 +536,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		int i;
 		pXArray values;
 		pEnvVar pEV=NULL;
-		values = &argStruct->Value->Children;
+		values = &changeStruct->Value->Children;
 		for(i=0;i<values->nItems;i++)
 		    {
 		    pEV=(pEnvVar)xhLookup(&inf->envHash,((pExpression)(values->Items[i]))->String);
