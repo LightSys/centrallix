@@ -899,7 +899,7 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    orig_len = cur_len;
 
 	    /** Open path so far and query for matching objects **/
-	    obj = objOpen(stmt->Query->SessionID, pathbuf, O_RDONLY, 0600, "system/directory");
+	    obj = objOpen(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory");
 	    if (!obj)
 		goto finished;
 	    info = objInfo(obj);
