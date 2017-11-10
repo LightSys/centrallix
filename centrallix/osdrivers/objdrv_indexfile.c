@@ -974,7 +974,7 @@ idx_internal_AllocPage(pIdxTableData tdata, int type, int target)
 	    a_pg->Flags = IDX_PAGE_F_DIRTY;
 	    a_pg->Type = IDX_PAGE_HEADER;
 	    a_pg->Lock = syCreateSem(0,0);
-	    a_pg->Xe = xhqAdd(&IDX_INF.PageCache, &(a_pg->TData), a_pg);
+	    a_pg->Xe = xhqAdd(&IDX_INF.PageCache, &(a_pg->TData), a_pg, 1);
 	    ag = (pIdxAllocGroup)(a_pg->Data.Raw);
 	    ag->FreePages = IDX_PAGESPERGROUP;
 	    ag->TotalPages = IDX_PAGESPERGROUP;
@@ -1015,7 +1015,7 @@ idx_internal_AllocPage(pIdxTableData tdata, int type, int target)
 	pg->Type = type;
 	pg->Flags = IDX_PAGE_F_DIRTY;
 	pg->Lock = syCreateSem(0,0);
-	pg->Xe = xhqAdd(&IDX_INF.PageCache, &(pg->TData), pg);
+	pg->Xe = xhqAdd(&IDX_INF.PageCache, &(pg->TData), pg ,1);
 	idx_internal_ReleasePage(a_pg);
 
     return pg;
@@ -1072,7 +1072,7 @@ idx_internal_GetPage(pIdxTableData tdata, int type, int req_pageid)
 	pg->Flags = 0;
 	pg->Type = type;
 	pg->Lock = syCreateSem(0,0);
-	pg->Xe = xhqAdd(&IDX_INF.PageCache, &(pg->TData), pg);
+	pg->Xe = xhqAdd(&IDX_INF.PageCache, &(pg->TData), pg, 1);
 
     return pg;
     }
