@@ -128,7 +128,7 @@ int cxss_internal_StirPool();
 int cxss_internal_GetBytes(unsigned char* data, size_t n_bytes);
 
 /*** TLS helper functions ***/
-int cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server);
+int cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server, char* remotename);
 int cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream);
 int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
 
