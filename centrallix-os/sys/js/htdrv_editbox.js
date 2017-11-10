@@ -431,7 +431,7 @@ function eb_keyhandler(l,e,k)
     {
     if(l.enabled!='full') return 1;
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
-    if (e.keyName == 'f3') return true;
+    if (e.keyName == 'f3' && e.Dom2Event.type == 'keypress') return true;
     return false;
     }
 
