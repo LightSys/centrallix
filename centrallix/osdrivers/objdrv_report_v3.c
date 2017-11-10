@@ -3917,7 +3917,8 @@ rpt_internal_GenerateName(pRptData inf, char* prop_name)
 		objlist->Session = inf->Obj->Session;
 		expBindExpression(exp, objlist, EXPR_F_RUNSERVER);
 		rval = (expEvalTree(exp, objlist) == 0 && exp->DataType == DATA_T_STRING && !(exp->Flags & EXPR_F_NULL));
-		strval = nmSysStrdup(exp->String);
+		if (rval)
+		    strval = nmSysStrdup(exp->String);
 		expFreeParamList(objlist);
 		expFreeExpression(exp);
 		}
