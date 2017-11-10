@@ -179,6 +179,7 @@ mq_internal_AllocQS(int type)
     	/** Allocate **/
 	this = (pQueryStructure)nmMalloc(sizeof(QueryStructure));
 	if (!this) return NULL;
+	memset(this, 0, sizeof(QueryStructure));
 
 	/** Fill in the structure **/
 	this->NodeType = type;
@@ -1088,7 +1089,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
-				   NULL};
+				   "showplan", "multistatement", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -1377,6 +1378,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
 			        {
 				next_state = ParseError;
+				mssError(1,"MQ","SET requires one of rowcount, multistatement, or showplan");
+				mlxNoteError(lxs);
 				}
 			    else
 			        {
@@ -1412,6 +1415,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 					if (mlxIntVal(lxs))
 					    {
 					    stmt->Query->Flags |= MQ_F_MULTISTATEMENT;
+					    next_state = LookForClause;
 					    }
 					else
 					    {
@@ -1424,6 +1428,38 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 					    else
 						{
 						stmt->Query->Flags &= ~MQ_F_MULTISTATEMENT;
+						next_state = LookForClause;
+						}
+					    }
+					}
+				    }
+				else if (!strcmp(ptr,"showplan"))
+				    {
+				    if (mlxNextToken(lxs) != MLX_TOK_INTEGER)
+				        {
+					next_state = ParseError;
+			                mssError(1,"MQ","SET SHOWPLAN expects 0 or 1 following");
+					mlxNoteError(lxs);
+					}
+				    else
+				        {
+					if (!mlxIntVal(lxs))
+					    {
+					    stmt->Query->Flags &= ~MQ_F_SHOWPLAN;
+					    next_state = LookForClause;
+					    }
+					else
+					    {
+					    if (stmt->Query->Flags & MQ_F_ONESTATEMENT)
+						{
+						next_state = ParseError;
+						mssError(1,"MQ","SET SHOWPLAN disabled in this context");
+						mlxNoteError(lxs);
+						}
+					    else
+						{
+						stmt->Query->Flags |= MQ_F_SHOWPLAN;
+						next_state = LookForClause;
 						}
 					    }
 					}
@@ -2659,6 +2695,12 @@ mq_internal_NextStatement(pMultiQuery this)
 	/** Build dependency mask **/
 	mq_internal_SetCoverage(stmt, stmt->Tree);
 	mq_internal_SetDependencies(stmt, stmt->Tree, NULL);
+
+	/** Query plan diagnostics? **/
+	if (stmt->Query->Flags & MQ_F_SHOWPLAN)
+	    {
+	    mq_internal_DumpQE(stmt->Tree, 0);
+	    }
 
 	/** Have the MQ drivers start the query. **/
 	if (stmt->Tree->Driver->Start(stmt->Tree, stmt, NULL) < 0)
