@@ -173,7 +173,7 @@ wgtrParseParameter(pObject obj, pStruct inf, pParamObjects objlist)
 	    }
 
 	/** Check hints/default/etc **/
-	if (paramEvalHints(param, objlist) < 0)
+	if (paramEvalHints(param, objlist, NULL) < 0)
 	    goto error;
 
 #if 00

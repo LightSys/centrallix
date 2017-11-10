@@ -57,6 +57,6 @@ pParam paramCreateFromObject(pObject obj);
 pParam paramCreateFromInf(pStructInf inf);
 int paramSetValue(pParam param, pTObjData value);
 int paramSetValueFromInfNe(pParam param, pStruct inf);
-int paramEvalHints(pParam param, pParamObjects objlist);
+int paramEvalHints(pParam param, pParamObjects objlist, pObjSession sess);
 
 #endif /* not defined _PARAM_H */
