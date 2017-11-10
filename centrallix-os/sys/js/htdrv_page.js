@@ -1178,7 +1178,8 @@ function pg_keyhandler(k,m,e)
     //alert(this.caller);
 
     // block non-special codes for IE here - handle em in keypress, not keydown.
-    if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+    //if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+    if (cx__capabilities.Dom0IE)
 	{
 	if (k >= 32 && k != 46)
 	    return true;
@@ -2860,13 +2861,13 @@ function pg_keydown(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	var k = e.Dom2Event.which;
-        if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
+        /*if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
 	pg_lastmodifiers = e.Dom2Event.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
+        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);*/
         //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
 	//if (e.ctrlKey && k == 17)
 	//    window.paste_input.focus();

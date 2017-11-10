@@ -19,6 +19,10 @@ AC_CACHE_SAVE
 
 CHECK_EXPORT_DYNAMIC
 
+dnl Check 32 bit vs 64 bit build
+AC_CHECK_SIZEOF([void *])
+PTRSIZE="$ac_cv_sizeof_void_p"
+
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lcrypt:
 AC_CHECK_LIB(crypt, main)
@@ -69,6 +73,9 @@ CHECK_MAKEDEPEND
 
 dnl Check for OpenSSL
 CENTRALLIX_CHECK_OPENSSL
+
+dnl Check for JSON-C
+CENTRALLIX_CHECK_JSONC
 
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])

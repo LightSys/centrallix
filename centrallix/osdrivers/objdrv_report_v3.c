@@ -3891,7 +3891,7 @@ rpt_internal_StartGenerator(pRptData inf)
 int
 rpt_internal_GenerateName(pRptData inf, char* prop_name)
     {
-    char* strval;
+    char* strval = NULL;
     pParamObjects objlist;
     pExpression exp;
     int t, rval = 0;
@@ -3902,6 +3902,8 @@ rpt_internal_GenerateName(pRptData inf, char* prop_name)
 	    {
 	    if (stGetAttrValue(stLookup(inf->Node->Data, prop_name), DATA_T_STRING, POD(&strval), 0) != 0)
 		return -1;
+	    if (strval)
+		strval = nmSysStrdup(strval);
 	    }
 	else
 	    {
@@ -3915,7 +3917,7 @@ rpt_internal_GenerateName(pRptData inf, char* prop_name)
 		objlist->Session = inf->Obj->Session;
 		expBindExpression(exp, objlist, EXPR_F_RUNSERVER);
 		rval = (expEvalTree(exp, objlist) == 0 && exp->DataType == DATA_T_STRING && !(exp->Flags & EXPR_F_NULL));
-		strval = exp->String;
+		strval = nmSysStrdup(exp->String);
 		expFreeParamList(objlist);
 		expFreeExpression(exp);
 		}
@@ -3923,7 +3925,11 @@ rpt_internal_GenerateName(pRptData inf, char* prop_name)
 		return -1;
 	    }
 
-	strtcpy(inf->DownloadAs, strval, sizeof(inf->DownloadAs));
+	if (strval)
+	    {
+	    strtcpy(inf->DownloadAs, strval, sizeof(inf->DownloadAs));
+	    nmSysFree(strval);
+	    }
 
     return 0;
     }
