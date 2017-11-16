@@ -1634,9 +1634,22 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		{
 		/** Copy file into object system **/
 		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
+		if (!file)
+		    {
+		    mssErrorErrno(1, "NHT", "POST request: could not open file %s", payload->full_new_path);
+		    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", NULL);
+		    return -1;
+		    }
 		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
 		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
+		if (!obj)
+		    {
+		    mssError(0, "NHT", "POST request: could not create object %s", buffer);
+		    fdClose(file, 0);
+		    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
+		    return -1;
+		    }
 		while(1)
 		    {
 		    length = fdRead(file, buffer, sizeof buffer, 0, 0);
