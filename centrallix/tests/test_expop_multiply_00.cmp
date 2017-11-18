@@ -1,0 +1,16 @@
+Attribute [2 * 3]:  integer  6
+Attribute [2 * 3.4]:   double  6.8
+Attribute [2.3 * 4]:   double  9.2
+Attribute [1.2 * 3.4]:   double  4.08
+Attribute [2 * 3 * 5]:  integer  30
+Attribute [$3 * 2]:    money   $6.00 
+Attribute [3 * $2]:    money   $6.00 
+Attribute [$2.30 * 4]:    money   $9.20 
+Attribute [4 * $2.30]:    money   $9.20 
+Attribute [$4 * 2.3]:    money   $9.20 
+Attribute [1.2 * $3.4]:    money   $4.08 
+Attribute [4 * "abc"]:   string   "abcabcabcabc" 
+Attribute ["abc" * 4]:   string   "abcabcabcabc" 
+Attribute [2 * null]:  integer  NULL
+Attribute [null * 2]:  integer  NULL
+Attribute [null * null]:  integer  NULL

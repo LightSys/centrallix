@@ -1,0 +1,21 @@
+##NAME Multiplication (*)
+
+query select '2 * 3' = 2 * 3
+query select '2 * 3.4' = 2 * 3.4
+query select '2.3 * 4' = 2.3 * 4
+query select '1.2 * 3.4' = 1.2 * 3.4
+query select '2 * 3 * 5' = 2 * 3 * 5
+query select '$3 * 2' = $3 * 2
+query select '3 * $2' = 3 * $2
+query select '$2.30 * 4' = $2.30 * 4
+query select '4 * $2.30' = 4 * $2.30
+
+query select '$4 * 2.3' = $4 * 2.3
+query select '1.2 * $3.4' = 1.2 * $3.4
+
+query select '4 * "abc"' = 4 * "abc"
+query select '"abc" * 4' = "abc" * 4
+
+query select '2 * null' = 2 * null
+query select 'null * 2' = null * 2
+query select 'null * null' = null * null

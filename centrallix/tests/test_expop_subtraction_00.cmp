@@ -1,0 +1,23 @@
+Attribute [3 - 1]:  integer  2
+Attribute [3.3 - 1]:   double  2.3
+Attribute [2 - 1.3]:   double  0.7
+Attribute [3.4 - 1.2]:   double  2.2
+Attribute [4 - 2 - 1]:  integer  1
+Attribute [$3 - 1]:    money   $2.00 
+Attribute [3 - $1]:    money   $2.00 
+Attribute [$3.30 - 1]:    money   $2.30 
+Attribute [3 - $1.30]:    money   $1.70 
+Attribute [$3 - $1]:    money   $2.00 
+Attribute [$3 - $1.30]:    money   $1.70 
+Attribute [$3.50 - $1.30]:    money   $2.20 
+Attribute [$3 - 1.3]:   double  1.7
+Attribute [3.4 - $1.2]:   double  2.2
+Attribute ["21" - 1]:   string   "2" 
+Attribute [21 - "1"]:  integer  20
+Attribute ["21" - "1"]:   string   "2" 
+Attribute ["21" - "2"]:   string   "21" 
+Attribute ["21" - 1.3]:   string   "21" 
+Attribute ["21" - $1.3]:   string   "21" 
+Attribute [3.3 - "1"]:   double  2.3
+Attribute [$3.3 - "1"]:    money   $2.30 
+Attribute [$3.3 - "1.40"]:    money   $1.90 
