@@ -1166,7 +1166,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		        {
 			/** For seconds in '12:00:01' or minutes in '12:00' **/
 			if (got_min == -1) got_min = last_num;
-			if (got_sec == -1) got_sec = last_num;
+			else if (got_sec == -1) got_sec = last_num;
 			}
 		    else if (startptr != origptr && (startptr[-1] == '/' || startptr[-1] == '-'))
 		        {
@@ -1373,8 +1373,10 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    return -1;
 		if ((endptr - ptr) != strspn(ptr, "0123456789"))
 		    return -1;
-		m->WholePart = intval;
-		if (is_neg) m->WholePart = -m->WholePart;
+		if (is_neg)
+		    m->WholePart = -intval;
+		else
+		    m->WholePart = intval;
 		if (*endptr == (intl_format?',':'.'))
 		    {
 		    intval = strtoul(endptr+1, &endptr2, 10);

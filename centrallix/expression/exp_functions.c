@@ -307,7 +307,7 @@ int exp_fn_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	mssError(1,"EXP","ascii() function takes a string parameter.");
 	return -1;
 	}
-    if (i0->String[0] == '\0')
+    if ((i0->Flags & EXPR_F_NULL) || i0->String[0] == '\0')
 	tree->Flags |= EXPR_F_NULL;
     else
 	tree->Integer = i0->String[0];

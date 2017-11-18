@@ -50,7 +50,7 @@ Attribute [f_datetime]: datetime   '01 Jan 2010 20:00'
 Attribute [f_double]:   double  -50.3
 Attribute [f_integer]:  integer  -700
 Attribute [f_string]:   string   "this is a much longer test string" 
-Attribute [f_money]:    money   $0.00 
+Attribute [f_money]:    money   -$2147483647.99 
 Attribute [f_datetime]: datetime   '01 Jan 2010 00:00' 
 Attribute [f_double]:   double  50.3
 Attribute [f_integer]:  integer  17000000
