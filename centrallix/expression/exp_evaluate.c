@@ -373,8 +373,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
     void* dptr;
-    int n, i;
+    int n, i, j;
     char* ptr;
+    char* str;
     long long mv;
     double md;
 
@@ -419,13 +420,47 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	switch(i0->DataType)
 	    {
 	    case DATA_T_INTEGER: 
-	        tree->Integer = i0->Integer * objDataToInteger(i1->DataType, dptr, NULL);
-		tree->DataType = DATA_T_INTEGER;
+		switch(i1->DataType)
+		    {
+		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i0->Integer * i1->Types.Double;
+			break;
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv *= i0->Integer;
+			break;
+		    case DATA_T_STRING:
+			tree->DataType = DATA_T_STRING;
+			if (i0->Integer < 0)
+			    {
+			    mssError(1,"EXP","Strings can only be multiplied by a non-negative integer");
+			    return -1;
+			    }
+			i = i0->Integer;
+			str = i1->String;
+			break;
+		    default:
+			tree->Integer = i0->Integer * objDataToInteger(i1->DataType, dptr, NULL);
+			tree->DataType = DATA_T_INTEGER;
+			break;
+		    }
 		break;
 
 	    case DATA_T_DOUBLE:
-	        tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
-		tree->DataType = DATA_T_DOUBLE;
+		switch(i1->DataType)
+		    {
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv *= i0->Types.Double;
+			break;
+		    default:
+			tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
+			tree->DataType = DATA_T_DOUBLE;
+			break;
+		    }
 		break;
 
 	    case DATA_T_MONEY:
@@ -449,14 +484,6 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 			mssError(1,"EXP","Can only multiply a money data type by an integer or double");
 			return -1;
 		    }
-		tree->Types.Money.WholePart = mv/10000;
-		mv = mv % 10000;
-		if (mv < 0)
-		    {
-		    mv += 10000;
-		    tree->Types.Money.WholePart -= 1;
-		    }
-		tree->Types.Money.FractionPart = mv;
 		break;
 
 	    case DATA_T_STRING:
@@ -466,32 +493,50 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		tree->DataType = DATA_T_STRING;
-		n = strlen(i0->String);
-	        if (tree->Alloc && tree->String)
-	            {
-		    nmSysFree(tree->String);
-		    tree->String = NULL;
-		    }
-		tree->Alloc = 0;
-		if (n*i1->Integer >= 64)
-		    {
-		    tree->String = (char*)nmSysMalloc(n*i1->Integer+1);
-		    tree->Alloc = 1;
-		    }
-		else
-		    tree->String = tree->Types.StringBuf;
-		ptr = tree->String;
-		for(i=0;i<i1->Integer;i++)
-		    {
-		    memcpy(ptr, i0->String, n);
-		    ptr += n;
-		    }
-		*ptr = '\0';
+		i = i1->Integer;
+		str = i0->String;
 		break;
 
 	    default:
 	        mssError(1,"EXP","Only integer, double, and money types supported by *");
 		return -1;
+	    }
+
+	/** Common processing **/
+	if (tree->DataType == DATA_T_MONEY)
+	    {
+	    tree->Types.Money.WholePart = mv/10000;
+	    mv = mv % 10000;
+	    if (mv < 0)
+		{
+		mv += 10000;
+		tree->Types.Money.WholePart -= 1;
+		}
+	    tree->Types.Money.FractionPart = mv;
+	    }
+	else if (tree->DataType == DATA_T_STRING)
+	    {
+	    n = strlen(str);
+	    if (tree->Alloc && tree->String)
+		{
+		nmSysFree(tree->String);
+		tree->String = NULL;
+		}
+	    tree->Alloc = 0;
+	    if (n*i >= 64)
+		{
+		tree->String = (char*)nmSysMalloc(n*i+1);
+		tree->Alloc = 1;
+		}
+	    else
+		tree->String = tree->Types.StringBuf;
+	    ptr = tree->String;
+	    for(j=0;j<i;j++)
+		{
+		memcpy(ptr, str, n);
+		ptr += n;
+		}
+	    *ptr = '\0';
 	    }
 
     return 0;
@@ -508,6 +553,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
     void* dptr;
     char* ptr;
     int n;
+    MoneyType m;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -529,6 +575,18 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
+	    }
+
+	switch(i1->DataType)
+	    {
+	    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
+	    case DATA_T_STRING: dptr = i1->String; break;
+	    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
+	    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
+	    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
+		return -1;
 	    }
 
 	/** Perform the operation depending on data type **/
@@ -558,6 +616,9 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    tree->Types.Money.FractionPart = 10000 - i1->Types.Money.FractionPart;
 			    }
 			break;
+		    default:
+			tree->Integer = i0->Integer - objDataToInteger(i1->DataType, dptr, NULL);
+			break;
 		    }
 		break;
 
@@ -575,6 +636,10 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    case DATA_T_MONEY:
 		        tree->DataType = DATA_T_DOUBLE;
 			tree->Types.Double = i0->Types.Double - (i1->Types.Money.WholePart + i1->Types.Money.FractionPart/10000.0);
+			break;
+		    default:
+		        tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i0->Types.Double - objDataToDouble(i1->DataType, dptr);
 			break;
 		    }
 		break;
@@ -604,22 +669,25 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    tree->Types.Money.WholePart--;
 			    }
 		        break;
+		    default:
+			if (objDataToMoney(i1->DataType, dptr, &m) < 0)
+			    {
+			    mssError(1,"EXP","Invalid conversion for subtraction from 'money' data type");
+			    return -1;
+			    }
+		        tree->DataType = DATA_T_MONEY;
+			tree->Types.Money.WholePart = i0->Types.Money.WholePart - m.WholePart;
+			tree->Types.Money.FractionPart = 10000 + i0->Types.Money.FractionPart - m.FractionPart;
+			if (tree->Types.Money.FractionPart >= 10000)
+			    tree->Types.Money.FractionPart -= 10000;
+			else
+			    tree->Types.Money.WholePart--;
+			break;
 		    }
 		break;
 
 	    case DATA_T_STRING:
 		/** subtracting from a string -- remove the tail -- reverse of string concat with +  **/
-		switch(i1->DataType)
-		    {
-		    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
-		    case DATA_T_STRING: dptr = i1->String; break;
-		    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
-		    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
-		    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
-		    default:
-			mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
-			return -1;
-		    }
 		ptr = objDataToStringTmp(i1->DataType, dptr, 0);
 		tree->DataType = DATA_T_STRING;
 		if (strlen(ptr) > strlen(i0->String) || strcmp(ptr, i0->String + (strlen(i0->String) - strlen(ptr))) != 0)
@@ -724,11 +792,28 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		return -1;
 	    }
 
-	/** If first is an Integer, do integer addition. **/
+	/** Select how to do this based on the data type **/
 	switch(i0->DataType)
 	    {
+	    /** Integer - promote to Double or Money if that is 2nd arg **/
 	    case DATA_T_INTEGER:
-	        tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
+		switch (i1->DataType)
+		    {
+		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i1->Types.Double + i0->Integer;
+			break;
+
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			tree->Types.Money.WholePart = i1->Types.Money.WholePart + i0->Integer;
+			tree->Types.Money.FractionPart = i1->Types.Money.FractionPart;
+			break;
+
+		    default:
+			tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
+			break;
+		    }
 		break;
 
 	    case DATA_T_STRING:
@@ -913,7 +998,7 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer == 1) 
+		if (child->Integer != 0) 
 		    {
 		    tree->Integer = 1;
 		    short_circuiting = 1;
