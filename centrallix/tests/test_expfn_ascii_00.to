@@ -1,0 +1,8 @@
+##NAME ascii() function
+
+query select 'ascii("A")' = ascii("A")
+query select 'ascii("Ab")' = ascii("Ab")
+query select 'ascii("1")' = ascii("1")
+query select 'ascii("10")' = ascii("10")
+query select 'ascii(null)' = ascii(null)
+query select 'ascii("")' = ascii("")
