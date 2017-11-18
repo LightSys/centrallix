@@ -1,4 +1,4 @@
-.TH CENTRALLIX.CONF 5 "Sept 17, 2010" "Version 0.9.1" "Centrallix Manual"
+.TH CENTRALLIX.CONF 5 "Nov 17, 2017" "Version 0.9.1" "Centrallix Manual"
 .SH NAME
 centrallix.conf - configuration file for the centrallix server
 .SH SYNOPSIS
@@ -90,6 +90,38 @@ network interface (Centrallix's builtin webserver).
 This configures the TCP port that the HTTP server will listen on.  The
 typical value is 800.
 .TP 8
+\fBssl_listen_port = portnum;\fP
+This configures the TCP port that the HTTP server will listen on using SSL/TLS.
+The typical value is 843.
+.TP 8
+\fBssl_key = "pathname";\fP
+This sets the operating system filename of the key used for SSL/TLS connections.
+.TP 8
+\fBssl_cert = "pathname";\fP
+This sets the operating system filename of the certificate used for SSL/TLS connections.
+.TP 8
+\fBssl_cert_chain = "pathname";\fP
+This sets the operating system filename of the certificate chain used for SSL/TLS connections.
+.TP 8
+\fBssl_cipherlist = "cipherspec";\fP
+This determines what ciphers the server is willing to negotiate.  See the OpenSSL
+documentation for information about the format of this cipher list specification.
+.TP 8
+\fBssl_enable_client_cipherpref = 0|1;\fP
+Set to 1 to allow the client to determine the preference order for SSL ciphers.  By default, the
+server's preferred cipher order will dominate.
+.TP 8
+\fBssl_enable_sslv3 = 0|1;\fP
+Set to 1 to enable the use of SSL version 3.  This is disabled by default because
+SSL version 3 has known cryptographic weaknesses.
+.TP 8
+\fBssl_enable_sslv2 = 0|1;\fP
+Set to 1 to enable the use of SSL version 2.  This is disabled by default because
+SSL version 2 has known cryptographic weaknesses.
+.TP 8
+\fBssl_enable_compression = 0|1;\fP
+Set to 1 to enable the use of compression in the SSL/TLS connection.  Compression is disabled by default.
+.TP 8
 \fBaccept_localhost_only = 0|1;\fP
 When set to 1, this causes Centrallix to only accept HTTP connections from
 localhost (127.0.0.1), which prevents connections from other computers.  This
@@ -150,6 +182,18 @@ directory indexing will be done (in this case, only "/" will be tried).
 .TP 8
 \fBx_frame_options = none | sameorigin | deny;\fP
 Defaults to "sameorigin".  Controls the anti-clickjacking countermeasure HTTP header X-Frame-Options, which applies when the Centrallix server renders a widget/page, widget/frameset, or widget/component-decl, and can be overriden by those widgets (see widget reference for details). When set to "none", no restrictions are in effect. "deny" means that the frameset, page, or component cannot render inside a frame or iframe. "sameorigin" means that the frame or iframe have to originate from the same server. NOTE: using "deny" will prevent a widget/component-decl from being loaded dynamically, though components can still be used statically. If "deny" is needed, you will need to override it on a per-component basis in order to use dynamic-load components. Available in Centrallix 0.9.2 and newer.
+.TP 8
+\fBaccess_log = "pathname";\fP
+This sets the operating system filename where HTTP/HTTPS accesses are recorded.
+.TP 8
+\fBupload_extensions = list of strings;\fP
+Controls what types of files are allowed to be uploaded to the server.  This should be a comma-separated list of strings, each containing a filename extension.
+.TP 8
+\fBupload_dirs = list of strings;\fP
+Controls what OSML directories on the server can receive an uploaded file.  This should be a comma-separated list of strings, each containing a directory.
+.TP 8
+\fBupload_tmpdir = "pathname";\fP
+Specifies the operating system directory where file uploads are temporarily stored before being transferred into the ObjectSystem.
 .SH "NET_NFS SUBSYSTEM"
 The net_nfs subsystem provides an NFS server interface to the Centrallix ObjectSystem, thus allowing the ObjectSystem to be "mounted" via NFS.  The Centrallix NFS server is currently
 .B EXPERIMENTAL
@@ -305,7 +349,7 @@ Greg.Beeley at LightSys.org
 .SH AUTHORS
 Greg Beeley and other Centrallix developers.
 .SH COPYRIGHT
-Copyright (c) 1998-2010 LightSys Technology Services, Inc.
+Copyright (c) 1998-2017 LightSys Technology Services, Inc.
 .SH "SEE ALSO"
 .BR test_obj (1),
 .BR centrallix (8),

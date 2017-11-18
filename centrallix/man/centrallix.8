@@ -1,4 +1,4 @@
-.TH CENTRALLIX 8 "Sept 17, 2010" "Version 0.9.1" "Centrallix Manual"
+.TH CENTRALLIX 8 "Nov 17, 2017" "Version 0.9.1" "Centrallix Manual"
 .SH NAME
 centrallix - the Centrallix Application Platform server daemon
 .SH SYNOPSIS
@@ -155,13 +155,6 @@ entire Centrallix process, giving rise to the potential for application
 level deadlocks or denial of service situations.
 .IP 3.
 We are aware of some memory/resource leaks in the Centrallix codebase.
-.IP 4.
-Centrallix does not yet support SSL/TLS.  This means that connections to
-a Centrallix server over an untrusted network (e.g., the Internet) could
-allow logon credentials to be exposed.  If you require access across an
-untrusted network (such as the Internet), use software such as a VPN, SSH
-port forwarding, SSL tunneling (stunnel), or front the server with Apache
-using mod_ssl and set up as a reverse proxy.
 .SH "REPORTING BUGS"
 E-mail bug reports to:  centrallix-devel at lists.sourceforge.net
 
@@ -171,7 +164,7 @@ Greg.Beeley at LightSys.org
 .SH AUTHORS
 Greg Beeley, Josiah Ritchie, and other Centrallix developers.
 .SH COPYRIGHT
-Copyright (c) 1998-2010 LightSys Technology Services, Inc.
+Copyright (c) 1998-2017 LightSys Technology Services, Inc.
 .SH "SEE ALSO"
 .BR test_obj (1),
 .BR centrallix.conf (5)

@@ -1,4 +1,4 @@
-.TH TEST_OBJ 1 "Sept 17, 2010" "Version 0.9.1" "Centrallix Manual"
+.TH TEST_OBJ 1 "Nov 17, 2017" "Version 0.9.1" "Centrallix Manual"
 .SH NAME
 test_obj - command-line version of Centrallix for testing purposes
 .SH SYNOPSIS
@@ -122,6 +122,9 @@ Display a list of commands.
 .B ls /path/to/object | list /path/to/object
 List the objects in the current directory in the objectsystem, or if an objectpath is supplied, list the objects within that object.
 .TP 8
+.B mlquery {sql-query}
+Run a SQL query, displaying every attribute from every object in the query result set on a separate line.  With this command, the query is entered on successive lines (multi-line query), with a blank line to end the query text.
+.TP 8
 .B output {local-filename}
 Change where command output is sent. This command takes a filename, not an objectpath, as output is saved into the local filesystem, not into the OSML. This command will override any "-o" option passed to test_obj. If no filename is supplied, output reverts to standard output.
 .TP 8
@@ -141,7 +144,7 @@ Below is an example run of test_obj:
 .RS 4
 .nf
 
-linux# test_obj 
+linux$ test_obj 
 
 Centrallix/0.9.1 build #1358-1 [DEVELOPMENT]
 
@@ -202,7 +205,7 @@ Greg.Beeley at LightSys.org
 .SH AUTHORS
 Greg Beeley, Josiah Ritchie, and other Centrallix developers.
 .SH COPYRIGHT
-Copyright (c) 1998-2010 LightSys Technology Services, Inc.
+Copyright (c) 1998-2017 LightSys Technology Services, Inc.
 .SH "SEE ALSO"
 .BR centrallix (8),
 .BR centrallix.conf (5)
