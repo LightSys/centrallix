@@ -710,7 +710,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		/** Name might be NULL if Autoname in progress **/
 		name = "*";
 		}
-	    objGetAttrValue(this,"inner_type",DATA_T_STRING,POD(&type));
+	    if (objGetAttrValue(this,"inner_type",DATA_T_STRING,POD(&type)) < 0)
+		{
+		mssError(1,"OSML","Object access failed - could not determine content type");
+		obj_internal_FreeObj(this);
+		return NULL;
+		}
 
 	    /** If the driver "claimed" the last path element, we're done. **/
 	    if (this->SubPtr + this->SubCnt - 1 > this->Pathname->nElements) break;
