@@ -18,3 +18,12 @@ Attribute [0 or 0]:  integer  0
 Attribute [0 or 2]:  integer  1
 Attribute [-1 or 0]:  integer  1
 Attribute [-1 or 2]:  integer  1
+Attribute [not null]:  integer  NULL
+Attribute [1 and null]:  integer  NULL
+Attribute [0 and null]:  integer  0
+Attribute [null and 1]:  integer  NULL
+Attribute [null and 0]:  integer  0
+Attribute [1 or null]:  integer  1
+Attribute [0 or null]:  integer  NULL
+Attribute [null or 1]:  integer  1
+Attribute [null or 0]:  integer  NULL

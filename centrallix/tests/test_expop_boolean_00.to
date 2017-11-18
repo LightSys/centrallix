@@ -23,3 +23,13 @@ query select '0 or 0' = 0 or 0
 query select '0 or 2' = 0 or 2
 query select '-1 or 0' = -1 or 0
 query select '-1 or 2' = -1 or 2
+
+query select 'not null' = not null
+query select '1 and null' = 1 and null
+query select '0 and null' = 0 and null
+query select 'null and 1' = null and 1
+query select 'null and 0' = null and 0
+query select '1 or null' = 1 or null
+query select '0 or null' = 0 or null
+query select 'null or 1' = null or 1
+query select 'null or 0' = null or 0

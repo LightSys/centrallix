@@ -17,3 +17,6 @@ Attribute ["1" + 2]:   string   "12"
 Attribute ["1" + 2.3]:   string   "12.3" 
 Attribute ["1" + "2"]:   string   "12" 
 Attribute ["1" + "2" + "3"]:   string   "123" 
+Attribute [1 + null]:  integer  NULL
+Attribute [null + 1]:   string  NULL
+Attribute [null + null]:   string  NULL
