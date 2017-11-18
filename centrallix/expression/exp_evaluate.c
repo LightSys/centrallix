@@ -924,10 +924,12 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
     int i,t;
     int short_circuiting = 0;
     pExpression child;
+    int has_null;
 
 	/** Loop through items... **/
 	tree->DataType = DATA_T_INTEGER;
 	tree->Integer = 1;
+	has_null = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
 	    child = (pExpression)(tree->Children.Items[i]);
@@ -946,18 +948,21 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		if (t < 0 || (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)) 
 		    {
 		    mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer == 0) 
+		if (child->Flags & EXPR_F_NULL) has_null = 1;
+		if (!(child->Flags & EXPR_F_NULL) && child->Integer == 0)
 		    {
 		    tree->Integer = 0;
 		    short_circuiting = 1;
 		    }
 		}
 	    }
+	if (tree->Integer == 1 && has_null)
+	    tree->Flags |= EXPR_F_NULL;
 
     return tree->Integer;
     }
@@ -971,10 +976,12 @@ expEvalOr(pExpression tree, pParamObjects objlist)
     int i,t;
     int short_circuiting = 0;
     pExpression child;
+    int has_null;
 
     	/** Loop through items **/
 	tree->DataType = DATA_T_INTEGER;
 	tree->Integer = 0;
+	has_null = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
 	    child = (pExpression)(tree->Children.Items[i]);
@@ -993,18 +1000,21 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		if (t < 0 || (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)) 
 		    {
 		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer != 0) 
+		if (child->Flags & EXPR_F_NULL) has_null = 1;
+		if (!(child->Flags & EXPR_F_NULL) && child->Integer != 0) 
 		    {
 		    tree->Integer = 1;
 		    short_circuiting = 1;
 		    }
 		}
 	    }
+	if (tree->Integer == 0 && has_null)
+	    tree->Flags |= EXPR_F_NULL;
 
     return tree->Integer;;
     }
