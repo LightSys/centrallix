@@ -1386,6 +1386,10 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    m->FractionPart = intval;
 		    endptr = endptr2;
 		    }
+		if (endptr == ptr)
+		    {
+		    return -1;
+		    }
 		if (*endptr == '-')
 		    {
 		    m->WholePart = -m->WholePart;
