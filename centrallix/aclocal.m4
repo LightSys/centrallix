@@ -1134,6 +1134,25 @@ AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
     ]
 )
 
+dnl check if test coverage metering is desired
+AC_DEFUN(CHECK_COVERAGE,
+    [
+	AC_MSG_CHECKING(if test coverage metering is desired)
+	AC_ARG_ENABLE(coverage,
+	    AC_HELP_STRING([--enable-coverage],
+		[enable test coverage metering]
+	    ),
+	    COVERAGE="-fprofile-arcs -ftest-coverage",
+	    COVERAGE=""
+	)
+	if test "$COVERAGE" = ""; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	fi
+    ]
+)
+
 
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,

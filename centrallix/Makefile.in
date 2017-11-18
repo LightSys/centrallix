@@ -348,6 +348,7 @@ TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
+COVERAGE=@COVERAGE@
 BUILD=$(shell cat .build)
 BLDFILE=$(shell if [ -f .ismaster ]; then echo ".build"; echo '1' >.subbuild; else echo ".subbuild"; if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; fi)
 SUBBUILD=$(shell if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; cat .subbuild)
@@ -361,7 +362,7 @@ VERSION=$(shell cat .version)
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
 #CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
-CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
 #LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
 #STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
@@ -396,13 +397,13 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
-	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o centrallix
+	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	#@rm centrallix.o
 	@echo ''
 
 cxpasswd: cxpasswd.o $(STATIC_LIBS) $(CXSSMODS)
-	$(CC) cxpasswd.o $(CXSSMODS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+	$(CC) cxpasswd.o $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
 
 install: all config_install modules_install manpages_install test_install
 	@mkdir -p "$(sbindir)"
@@ -523,7 +524,7 @@ test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
 		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
 		echo -n "$$CBLUE"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | sed 's/^/    /'; \
+	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
 		if [ "$$RET" -eq 142 ]; then \
@@ -535,7 +536,7 @@ test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
 		else \
 		    echo -n "$$CRED"; \
-		    diff --label EXPECTED -U3 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
+		    diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
 		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
 		fi; \
 	    fi \
@@ -545,34 +546,34 @@ sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
 
 sfedit: sfeditor/sfedit.o $(V3LSOBJS)
-	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -o sfedit $(LIBS) `gtk-config --libs`
+	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o sfedit $(LIBS) `gtk-config --libs`
 
 clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
-	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) -o clog $(LIBS)
+	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o clog $(LIBS)
 
 .c.so:	$<
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) $(COVERAGE) -shared -fPIC $< -o $@
 
 %.gz:	%
 	$(GZIP) -9 < $< > $@
 
 jsengine: $(JSVM)
-	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
+	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o jsvm
 
 test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
+	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)
-	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
+	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o test_prt $(LIBS)
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
-	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) -o ts $(LIBS)
+	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS)
 
 lsclient: lsclient.o $(BASIC)
-	$(CC) lsclient.o $(BASIC) $(PROFILE) -o lsclient
+	$(CC) lsclient.o $(BASIC) $(PROFILE) $(COVERAGE) -o lsclient
 
 htmltest: htmltest.o $(SUPPORT)
-	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
+	$(CC) htmltest.o $(SUPPORT) $(PROFILE) $(COVERAGE) -o htmltest
 
 etc/rootnode: etc/rootnode.in
 	@CXOSDIR=$(cxosdir); \
@@ -602,13 +603,16 @@ etc/centrallix.init: etc/centrallix.init.in
 clean:
 	@rm -f */*.o
 	@rm -f */*.so
-	@rm -f centrallix test_obj lsclient sfedit
+	@rm -f centrallix test_obj lsclient sfedit test_prt
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
 	@rm -rf thirdparty/*-inst
+	@rm -f *.gcov */*.gcov
+	@rm -f *.gcda */*.gcda
+	@rm -f *.gcno */*.gcno
 
 distclean: clean
 	@rm -f config.status config.cache config.log

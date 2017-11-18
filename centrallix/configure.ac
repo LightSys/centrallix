@@ -85,6 +85,9 @@ dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE
 
+dnl Check if test coverage metering is desired
+CHECK_COVERAGE
+
 dnl GZIP osdriver support.
 AH_TEMPLATE([USE_GZIP], [Define for GZIP support])
 CENTRALLIX_CHECK_GZIP_OS
@@ -153,6 +156,7 @@ AC_SUBST(NETDRIVERS)
 AC_SUBST(STATIC_CFLAGS)
 AC_SUBST(STATIC_LIBS)
 AC_SUBST(PROFILE)
+AC_SUBST(COVERAGE)
 
 dnl Check security hardening facilities
 CHECK_HARDENING

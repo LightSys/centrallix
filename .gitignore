@@ -51,3 +51,6 @@ centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
 .gdb_history
+*.gcno
+*.gcov
+*.gcda
