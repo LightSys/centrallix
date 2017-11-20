@@ -1233,6 +1233,7 @@ function tbld_cb_reveal(event)
 	{
 	case 'Reveal':
 	    if (this.osrc) this.osrc.Reveal(this);
+	    this.RefreshRowVisibility();
 	    break;
 	case 'Obscure':
 	    if (this.osrc) this.osrc.Obscure(this);
@@ -1243,6 +1244,27 @@ function tbld_cb_reveal(event)
 	case 'ObscureCheck':
 	    pg_reveal_check_ok(event);
 	    break;
+	}
+    }
+
+
+// This is due to a Google Chrome 62 bug.  Sub-divs created
+// in a hidden div do not show up when the parent div is made
+// visible.  We jiggle them here (things other than the visibility
+// toggle below do successfully jiggle the sub-divs also.)
+//
+// https://bugs.chromium.org/p/chromium/issues/detail?id=778873
+// 
+function tbld_refresh_row_visibility()
+    {
+    for(var i=0; i<=this.rows.last; i++)
+	{
+	var rowobj = this.rows[i];
+	if (rowobj && rowobj.vis != 'none')
+	    {
+	    $(rowobj).css({'visibility': 'hidden'});
+	    $(rowobj).css({'visibility': 'inherit'});
+	    }
 	}
     }
 
@@ -1466,6 +1488,7 @@ function tbld_instantiate_row(parentDiv, x, y)
 	"border": "1px solid " + (rbc?rbc:"transparent"),
 	"border-radius": (rbr?rbr:0) + "px",
 	"background-clip": "padding-box",
+	"clip": "auto"
 	});
     if (rsr)
 	{
@@ -1697,6 +1720,7 @@ function tbld_init(param)
     t.PositionRows = tbld_position_rows;
     t.IsRowVisible = tbld_is_row_visible;
     t.RescanRowVisibility = tbld_rescan_row_visibility;
+    t.RefreshRowVisibility = tbld_refresh_row_visibility;
     t.UpdateThumb = tbld_update_thumb;
     t.FormatRow = tbld_format_row;
     t.FormatCell = tbld_format_cell;
