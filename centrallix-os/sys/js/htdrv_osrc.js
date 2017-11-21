@@ -775,6 +775,7 @@ function osrc_action_delete(aparam) //up,initiating_client)
 function osrc_action_delete_cb()
     {
     var links = pg_links(this);
+    var initiating_client = this.initiating_client;
     if(links && links[0] && links[0].target != 'ERR')
 	{
 	var recnum=this.CurrentRecord;
@@ -812,12 +813,12 @@ function osrc_action_delete_cb()
 		this.MoveToRecord(this.CurrentRecord, true);
 		}
 	    }
-	if (this.initiating_client) this.initiating_client.OperationComplete(true, this);
+	if (initiating_client) initiating_client.OperationComplete(true, this);
 	}
     else
 	{
 	// delete failed
-	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
+	if (initiating_client) initiating_client.OperationComplete(false, this);
 	}
     this.initiating_client=null;
     delete this.deleteddata;
