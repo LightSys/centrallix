@@ -598,7 +598,7 @@ function dt_keyhandler(l,e,k) {
 		if (dt.form) dt.form.DataNotify(dt);
 		cn_activate(dt, 'DataChange');
 	}*/
-	else if ((k >= 97 && k <= 122) ||( k>=65 && k<=90) || k ==45) { //letters or numbers or hyphen
+	else if ((k >= 97 && k <= 122) ||( k>=65 && k<=90) || k ==45 || (k >= 48 && k < 58)) { //letters or numbers or hyphen
 	    if(!dt_current) {
 		dt_expand(dt);
 		dt_current = dt;
@@ -607,16 +607,11 @@ function dt_keyhandler(l,e,k) {
 	    dt_update_typed(dt);
 	    if(dt.form) dt.form.DataNotify(dt);
 	    cn_activate(dt, 'DataChange');
-	}
-	else if (k >= 48 && k < 58) { // 0 - 9
-		if (!dt_current) {
-			dt_expand(dt);
-			dt_current = dt;
+	} else if (e.keyText == '/' || e.keyText == '-') {
+		if (dt_current && dt.typed_content) {
+			dt.typed_content += e.keyText;
+			dt_update_typed(dt);
 		}
-		dt.typed_content += String.fromCharCode(k);
-		dt_update_typed(dt);
-		if(dt.form) dt.form.DataNotify(dt);
-		cn_activate(dt, 'DataChange');
 	} else if (k == '/'.charCodeAt() || k == ':'.charCodeAt()) {
 		if (dt_current && dt.typed_content) {
 			dt.typed_content += String.fromCharCode(k);

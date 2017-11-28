@@ -549,6 +549,7 @@ function htr_event(e)
 	cx__event.modifiers = e.modifiers;
 	cx__event.shiftKey = e.shiftKey;
 	cx__event.ctrlKey = e.ctrlKey;
+	cx__event.keyText = e.key;
 	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
 	    {
 	    cx__event.key = e.which;
