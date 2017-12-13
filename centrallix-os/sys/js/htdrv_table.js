@@ -12,13 +12,6 @@
 
 window.tbld_touches = [];
 
-// Easing function for touch drag
-$.easing.tostop = function(x,t,b,c,d)
-    {
-    var pct = t/d;
-    return b + c*Math.pow(pct,1/4);
-    }
-
 // tbld_format_cell (FormatCell) - This function formats one cell in one row of the
 // table, based on the source data and style configuration.
 //
@@ -1953,6 +1946,16 @@ function tbld_init(param)
 	var ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
 	ie.Add("Close");
+	}
+
+    // Easing function for touch drag
+    if (!$.easing.tostop)
+	{
+	$.easing.tostop = function(x,t,b,c,d)
+	    {
+	    var pct = t/d;
+	    return b + c*Math.pow(pct,1/4);
+	    }
 	}
 
     t.InitBH();
