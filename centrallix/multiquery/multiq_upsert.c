@@ -453,6 +453,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 
 		    /** See if the value is already correct - avoid a needless update op **/
 		    need_update = 1;
+		    expBindExpression(assign_exp, stmt->Query->ObjList, 0);
 		    if (expEvalTree(assign_exp, stmt->Query->ObjList) >= 0)
 			{
 			if (expCompareExpressionValues(assign_exp, exp) == 1)
