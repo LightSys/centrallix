@@ -457,6 +457,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 		case DATA_T_STRING: printf(", string='%s'",this->String); break;
 		case DATA_T_DOUBLE: printf(", double=%f",this->Types.Double); break;
 		case DATA_T_MONEY: ptr = objDataToStringTmp(DATA_T_MONEY, &(this->Types.Money), 0); printf(", money=%s", ptr); break;
+		case DATA_T_DATETIME: ptr = objDataToStringTmp(DATA_T_DATETIME, &(this->Types.Date), 0); printf(", datetime=%s", ptr); break;
 		}
 	    }
 	if (this->Flags & EXPR_F_NEW) printf(", NEW");
@@ -763,9 +764,9 @@ expCompareExpressionValues(pExpression exp1, pExpression exp2)
 	    return 0;
 	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DOUBLE && exp1->Types.Double != exp2->Types.Double)
 	    return 0;
-	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && memcmp(&(exp1->Types.Money), &(exp2->Types.Money), sizeof(MoneyType)) != 0)
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && (exp1->Types.Money.WholePart != exp2->Types.Money.WholePart || exp1->Types.Money.FractionPart != exp2->Types.Money.FractionPart))
 	    return 0;
-	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && memcmp(&(exp1->Types.Date), &(exp2->Types.Date), sizeof(DateTime)) != 0)
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && (exp1->Types.Date.Part.Second != exp2->Types.Date.Part.Second || exp1->Types.Date.Part.Minute != exp2->Types.Date.Part.Minute || exp1->Types.Date.Part.Hour != exp2->Types.Date.Part.Hour || exp1->Types.Date.Part.Day != exp2->Types.Date.Part.Day || exp1->Types.Date.Part.Month != exp2->Types.Date.Part.Month || exp1->Types.Date.Part.Year != exp2->Types.Date.Part.Year))
 	    return 0;
 
 	/** Unsupported data types **/
