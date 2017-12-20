@@ -136,6 +136,7 @@ typedef struct _QS
 #define MQ_SF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 #define MQ_SF_ASSIGNMENT	512		/* SELECT :obj:attr = ... */
 #define MQ_SF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
+#define MQ_SF_IFMODIFIED	2048		/* UPDATE ... SET ... IF MODIFIED */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1

@@ -402,6 +402,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     int t;
     int rval = -1;
     int need_update;
+    int did_update;
     pObject ins_obj;
     int id;
 
@@ -420,20 +421,22 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted")) >= 0)
 		    ins_obj = stmt->Query->ObjList->Objects[id];
 		expCopyList(objlist, stmt->Query->ObjList, -1);
-		//for(j=stmt->Query->nProvidedObjects;j<stmt->Query->ObjList->nObjects;j++)
-		//    {
-		    //stmt->Query->ObjList->Objects[j] = objlist->Objects[j];
-		//    stmt->Query->ObjList->SeqIDs[j] = objlist->SeqIDs[j];
-		//    }
 		if (ins_obj)
 		    expModifyParam(stmt->Query->ObjList, "__inserted", ins_obj);
-		//expCopyParams(objlist, stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 
-		/** Apply all of the update criteria **/
-		for(j=0;j<((pQueryStructure)qe->QSLinkage)->Children.nItems;j++)
+		/** Apply all of the update criteria.  We loop twice - first for all
+		 ** items not marked IF MODIFIED, and a second time for only items
+		 ** so marked.
+		 **/
+		did_update = 0;
+		for(j=0; j<((pQueryStructure)qe->QSLinkage)->Children.nItems * 2; j++)
 		    {
-		    update_qs = ((pQueryStructure)qe->QSLinkage)->Children.Items[j];
+		    update_qs = ((pQueryStructure)qe->QSLinkage)->Children.Items[j % ((pQueryStructure)qe->QSLinkage)->Children.nItems];
 		    if (update_qs->NodeType != MQ_T_ONDUPUPDATEITEM)
+			continue;
+		    if (j < ((pQueryStructure)qe->QSLinkage)->Children.nItems && (update_qs->Flags & MQ_SF_IFMODIFIED))
+			continue;
+		    if (j >= ((pQueryStructure)qe->QSLinkage)->Children.nItems && (!did_update || !(update_qs->Flags & MQ_SF_IFMODIFIED)))
 			continue;
 		    exp = update_qs->Expr;
 		    assign_exp = update_qs->AssignExpr;
@@ -476,6 +479,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 			    mssError(0,"MQUS","Could not update the object");
 			    goto error;
 			    }
+			did_update = 1;
 			}
 		    }
 

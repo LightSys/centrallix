@@ -1014,7 +1014,7 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 int
 mq_internal_ParseUpdateItem(pQueryStructure item_qs, pLxSession lxs)
     {
-    int t;
+    int t, prev_t;
     int parenlevel;
     int in_assign;
     char* ptr;
@@ -1059,6 +1059,36 @@ mq_internal_ParseUpdateItem(pQueryStructure item_qs, pLxSession lxs)
 	    xsConcatenate(&item_qs->RawData," ",1);
 	    }
 
+	/** Check for IF MODIFIED modifier **/
+	if (t == MLX_TOK_RESERVEDWD)
+	    {
+	    ptr = mlxStringVal(lxs, NULL);
+	    if (!strcasecmp(ptr, "if"))
+		{
+		prev_t = t;
+		t = mlxNextToken(lxs);
+		if (t == MLX_TOK_RESERVEDWD)
+		    {
+		    ptr = mlxStringVal(lxs, NULL);
+		    if (!strcasecmp(ptr, "modified"))
+			{
+			item_qs->Flags |= MQ_SF_IFMODIFIED;
+			t = mlxNextToken(lxs);
+			}
+		    else
+			{
+			mlxHoldToken(lxs);
+			t = prev_t;
+			}
+		    }
+		else
+		    {
+		    mlxHoldToken(lxs);
+		    t = prev_t;
+		    }
+		}
+	    }
+
 	if (!item_qs->RawData.String[0] || !item_qs->AssignRawData.String[0])
 	    {
 	    mssError(1, "MQ", "UPDATE assignment must have form '{assign-expr} = {value-expr}'");
@@ -1089,7 +1119,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
-				   "showplan", "multistatement", NULL};
+				   "showplan", "multistatement", "if", "modified", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
