@@ -3134,6 +3134,11 @@ nhtInitialize()
 
 	nht_i_RegisterSessionInfo();
 
+	/** Set up header nonce **/
+	NHT.NonceData = cxssKeystreamNew(NULL, 0);
+	if (!NHT.NonceData)
+	    mssError(1, "NHT", "Warning: X-Nonce headers will not be emitted");
+
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
 	if(!NHT.reNet47 || regcomp(NHT.reNet47, "Mozilla\\/4\\.(7[5-9]|8)",REG_EXTENDED|REG_NOSUB|REG_ICASE))

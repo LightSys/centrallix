@@ -162,6 +162,11 @@ nht_i_ConnHandler(void* conn_v)
     pNhtApp app;
     pNhtAppGroup group;
     int context_started = 0;
+    unsigned char* keydata;
+    char* nonce;
+    unsigned char noncelen;
+    int cnt, i;
+    char hexval[17] = "0123456789abcdef";
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
@@ -184,6 +189,31 @@ nht_i_ConnHandler(void* conn_v)
 	    else
 		msg = "Error parsing headers";
 	    goto error;
+	    }
+
+	/** Compute header nonce.  This is used for functionally nothing, but
+	 ** it causes the content and offsets to values in the header to change
+	 ** with each request; this can help frustrate certain types of 
+	 ** cryptographic attacks.
+	 **/
+	if (conn->UsingTLS && NHT.NonceData)
+	    {
+	    keydata = nmSysMalloc(128+8+1);
+	    nonce = nmSysMalloc(256+16+1);
+	    cxssKeystreamGenerate(NHT.NonceData, &noncelen, 1);
+	    cnt = noncelen;
+	    cnt += 16;
+	    cxssKeystreamGenerate(NHT.NonceData, keydata, cnt / 2 + 1);
+	    for(i=0;i<cnt;i++)
+		{
+		if (i & 1)
+		    nonce[i] = hexval[(keydata[i/2] & 0xf0) >> 4];
+		else
+		    nonce[i] = hexval[keydata[i/2] & 0x0f];
+		}
+	    nonce[cnt] = '\0';
+	    nht_i_AddResponseHeader(conn, "X-Nonce", nonce, 1);
+	    nmSysFree(keydata);
 	    }
 
 	/** Add some entropy to the pool - just the LSB of the time **/

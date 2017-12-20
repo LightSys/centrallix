@@ -56,7 +56,7 @@
 int cxss_internal_InitEntropy(int pool_size)
     {
     pFile fd;
-    unsigned char data[16];
+    unsigned char data[32];
     struct timeval tm;
     int err = 0;
     pid_t pid;
@@ -95,7 +95,7 @@ int cxss_internal_InitEntropy(int pool_size)
 	    if (fdRead(fd, (char*)CXSS.Entropy.XORkey, SHA_DIGEST_LENGTH, 0, FD_U_PACKET) != SHA_DIGEST_LENGTH)
 		memset(CXSS.Entropy.XORkey, '\0', SHA_DIGEST_LENGTH);
 
-	    /** Add 128 bits from /dev/urandom, if possible **/
+	    /** Add 256 bits from /dev/urandom, if possible **/
 	    if (fdRead(fd, (char*)data, sizeof(data), 0, FD_U_PACKET) == sizeof(data))
 		{
 		cxss_internal_AddToPool(data, sizeof(data), sizeof(data)*8);

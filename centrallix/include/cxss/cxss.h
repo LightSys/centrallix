@@ -36,11 +36,15 @@
 
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 #include "cxlib/xarray.h"
 
 #define CXSS_ENTROPY_SIZE	1280
 #define CXSS_DEBUG_CONTEXTSTACK	1
 #define CXSS_IDENTIFIER_LENGTH	64
+#define CXSS_CIPHER_STRENGTH	(256 / 8)
 
 #include "cxss/policy.h"
 
@@ -93,6 +97,18 @@ typedef struct _EN
     CxssEndorsement, *pCxssEndorsement;
 
 
+/*** Keystream generation state ***/
+typedef struct _KSS
+    {
+    EVP_CIPHER_CTX*	Context;
+    unsigned char	Key[32];	/* AES256 key size */
+    unsigned char	IV[16];		/* AES256 IV size */
+    unsigned char	Data[CXSS_CIPHER_STRENGTH];
+    int			DataIndex;
+    }
+    CxssKeystreamState, *pCxssKeystreamState;
+
+
 /*** CXSS module-wide data structure ***/
 typedef struct _CXSS
     {
@@ -131,6 +147,11 @@ int cxss_internal_GetBytes(unsigned char* data, size_t n_bytes);
 int cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server, char* remotename);
 int cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream);
 int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
+
+/*** Keystream sequence functions ***/
+pCxssKeystreamState cxssKeystreamNew(unsigned char* key, int keylen);
+int cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datalen);
+int cxssKeystreamFree(pCxssKeystreamState kstate);
 
 /*** Security Policy - Authorization API ***/
 int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);

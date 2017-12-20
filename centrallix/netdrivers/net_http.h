@@ -355,6 +355,7 @@ struct
     XArray	AllowedUploadExts;	/* allowed extensions */
     pSemaphore	CollectedConns;
     pSemaphore	CollectedTLSConns;
+    pCxssKeystreamState NonceData;
     }
     NHT;
 

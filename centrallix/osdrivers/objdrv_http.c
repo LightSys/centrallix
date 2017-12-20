@@ -151,7 +151,7 @@ struct
     regex_t	parsehttp;
     regex_t	httpheader;
     SSL_CTX*	SSL_ctx;
-    char	HashInit[SHA_DIGEST_LENGTH + sizeof(int)];
+    pCxssKeystreamState NonceData;
     }
     HTTP_INF;
 
@@ -159,7 +159,7 @@ struct
 /*** http_internal_AddRequestHeader - add a header to the HTTP request
  ***/
 int
-http_internal_AddRequestHeader(pHttpData inf, char* hdrname, char* hdrvalue, int hdralloc)
+http_internal_AddRequestHeader(pHttpData inf, char* hdrname, char* hdrvalue, int hdralloc, int first)
     {
     pHttpHeader hdr;
     int i;
@@ -200,7 +200,10 @@ http_internal_AddRequestHeader(pHttpData inf, char* hdrname, char* hdrvalue, int
 	strtcpy(hdr->Name, hdrname, sizeof(hdr->Name));
 	hdr->Value = hdrvalue;
 	hdr->ValueAlloc = hdralloc;
-	xaAddItem(&inf->RequestHeaders, (void*)hdr);
+	if (first)
+	    xaInsertBefore(&inf->RequestHeaders, 0, (void*)hdr);
+	else
+	    xaAddItem(&inf->RequestHeaders, (void*)hdr);
 
     return 0;
     }
@@ -600,7 +603,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
     int i, n_output;
     pHttpHeader hdr;
     char* nonce;
-    unsigned char hash[20];
+    unsigned char* keydata;
     int cnt;
     unsigned char noncelen;
     int hashpos;
@@ -615,26 +618,24 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	 ** with each request; this can help frustrate certain types of 
 	 ** cryptographic attacks.
 	 **/
-	if (inf->SSLpid)
+	if (inf->SSLpid && HTTP_INF.NonceData)
 	    {
+	    keydata = nmSysMalloc(128+8+1);
 	    nonce = nmSysMalloc(256+16+1);
-	    memcpy(&cnt, HTTP_INF.HashInit + SHA_DIGEST_LENGTH, sizeof(int));
-	    cnt++;
-	    memcpy(HTTP_INF.HashInit + SHA_DIGEST_LENGTH, &cnt, sizeof(int));
-	    SHA1((unsigned char*)HTTP_INF.HashInit, sizeof(HTTP_INF.HashInit), hash);
-	    memcpy(&noncelen, hash + SHA_DIGEST_LENGTH - sizeof(unsigned char), sizeof(unsigned char));
+	    cxssKeystreamGenerate(HTTP_INF.NonceData, &noncelen, 1);
 	    cnt = noncelen;
 	    cnt += 16;
+	    cxssKeystreamGenerate(HTTP_INF.NonceData, keydata, cnt / 2 + 1);
 	    for(i=0;i<cnt;i++)
 		{
-		hashpos = i % 37; /* 37 = largest prime less than 40 */
-		if (hashpos & 1)
-		    nonce[i] = hexval[hash[hashpos/2] & 0xf];
+		if (i & 1)
+		    nonce[i] = hexval[(keydata[i/2] & 0xf0) >> 4];
 		else
-		    nonce[i] = hexval[hash[hashpos/2] >> 4];
+		    nonce[i] = hexval[keydata[i/2] & 0x0f];
 		}
 	    nonce[cnt] = '\0';
-	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1);
+	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1, 1);
+	    nmSysFree(keydata);
 	    }
 
 	/** Build the URL parameters **/
@@ -689,7 +690,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	/** POST parameters? **/
 	if (!strcmp(inf->Method, "POST"))
 	    {
-	    http_internal_AddRequestHeader(inf, "Content-Type", "application/x-www-form-urlencoded", 0);
+	    http_internal_AddRequestHeader(inf, "Content-Type", "application/x-www-form-urlencoded", 0, 0);
 
 	    post_params = xsNew();
 	    if (!post_params)
@@ -721,7 +722,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 		}
 
 	    snprintf(reqlen, sizeof(reqlen), "%d", xsLength(post_params));
-	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1);
+	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
 	    }
 
 	printf("Web client sending request: %s - %s%s - %s\n", inf->Server, path, xsString(url_params), xsString(post_params));
@@ -860,9 +861,9 @@ http_internal_GetPageStream(pHttpData inf)
 
 	/** Set some headers **/
 	snprintf(buf, sizeof(buf), "Centrallix/%s (objdrv_http)", cx__version);
-	http_internal_AddRequestHeader(inf, "User-Agent", nmSysStrdup(buf), 1);
-	http_internal_AddRequestHeader(inf, "Accept", "*/*;q=1.0", 0);
-	http_internal_AddRequestHeader(inf, "Connection", "close", 0);
+	http_internal_AddRequestHeader(inf, "User-Agent", nmSysStrdup(buf), 1, 0);
+	http_internal_AddRequestHeader(inf, "Accept", "*/*;q=1.0", 0, 0);
+	http_internal_AddRequestHeader(inf, "Connection", "close", 0, 0);
 
 	/** Send the request **/
 	if (http_internal_SendRequest(inf, fullpath) < 0)
@@ -1388,7 +1389,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	xaInit(&inf->RequestHeaders, 16);
 	xaInit(&inf->ResponseHeaders, 16);
 	xaInit(&inf->Params, 16);
-	http_internal_AddRequestHeader(inf, "X-Nonce", "", 0);
+	http_internal_AddRequestHeader(inf, "X-Nonce", "", 0, 0);
 	inf->ContentCache = NULL;
 	inf->Flags = 0;
 	inf->NetworkOffset = 0;
@@ -1437,14 +1438,14 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", "")))
 	    {
 	    if (ptr[0])
-		http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1);
+		http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1, 0);
 	    else
 		nmSysFree(ptr);
 	    }
 	if ((ptr = http_internal_GetConfigString(inf, "authline", "")))
 	    {
 	    if (ptr[0])
-		http_internal_AddRequestHeader(inf, "Authorization", ptr, 1);
+		http_internal_AddRequestHeader(inf, "Authorization", ptr, 1, 0);
 	    else
 		nmSysFree(ptr);
 	    }
@@ -2053,8 +2054,9 @@ httpInitialize()
 	    }
 
 	/** Set up header nonce **/
-	cxssGenerateKey((unsigned char*)temp, 8);
-	SHA1((unsigned char*)temp, 8, (unsigned char*)HTTP_INF.HashInit);
+	HTTP_INF.NonceData = cxssKeystreamNew(NULL, 0);
+	if (!HTTP_INF.NonceData)
+	    mssError(1, "HTTP", "Warning: X-Nonce headers will not be emitted");
 
 	/** Set up OpenSSL **/
 	HTTP_INF.SSL_ctx = SSL_CTX_new(SSLv23_client_method());
