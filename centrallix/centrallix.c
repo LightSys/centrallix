@@ -70,7 +70,7 @@ char* cx__years = YEARS;
 
 
 
-/*** Instantiate the globals from centrallix.h 
+/*** Instantiate the globals from centrallix.h
  ***/
 CxGlobals_t CxGlobals;
 int CxSupportedInterfaces[] = {2, 0};
@@ -93,7 +93,7 @@ cx_internal_LoadModules(char* type)
 	 ** will be done.  But, we'll warn about it anyhow.
 	 **/
 	modules_inf = stLookup(CxGlobals.ParsedConfig, "modules");
-	if (!modules_inf) 
+	if (!modules_inf)
 	    {
 	    mssError(1,"CX","Warning - no modules section in config file");
 	    return 0;
@@ -195,7 +195,7 @@ cx_internal_LoadModules(char* type)
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		continue;
 		}
-	    
+
 	    /** Ok, add this one to the list of modules. **/
 	    moduledata->Next = CxGlobals.ModuleList;
 	    CxGlobals.ModuleList = moduledata;
@@ -219,7 +219,7 @@ cx_internal_LoadModules(char* type)
     }
 
 
-/** cxShutdownThread - thread created from the SIGINT handler, 
+/** cxShutdownThread - thread created from the SIGINT handler,
 ***   call all registered shutdown handlers then exits
 **/
 void cxShutdownThread(void *v)
@@ -252,7 +252,7 @@ cxRemovePidFile()
     int pidbuf_id;
     int fd;
     int cnt;
-	
+
 
 	if (CxGlobals.PidFile[0] && (CxGlobals.Flags & CX_F_SERVICE))
 	    {
@@ -278,7 +278,7 @@ cxRemovePidFile()
 		    }
 		close(fd);
 		}
-	    
+
 	    CxGlobals.PidFile[0] = '\0';
 	    }
 
@@ -355,7 +355,7 @@ cxInitialize(void* v)
 	 **/
 	cxssInitialize();
 
-	/** Init the session handler.  We have to extract the config data for this 
+	/** Init the session handler.  We have to extract the config data for this
 	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't
 	 ** use the new stparse module's routines.
 	 **/
@@ -457,7 +457,7 @@ cxInitialize(void* v)
 	ifcInitialize();
 
 	/** Init the modules being used if dynamic loading is disabled **/
-	
+
 #if (USE_DBL == CX_STATIC)
 	dblInitialize();
 #endif
@@ -527,6 +527,7 @@ cxHtInit()
 	htddInitialize();			/* dropdown htdrv module */
 	htdtInitialize();			/* datetime htdrv module */
 	httxInitialize();			/* textarea htdrv module */
+  htrteInitialize();    /*richtexteditor htdrv module */
 	htclInitialize();			/* clock htdrv module */
 	htcaInitialize();			/* calendar module */
 	htsbInitialize();			/* scrollbar module */

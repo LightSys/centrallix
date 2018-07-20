@@ -168,6 +168,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_parameter.o \
 	wgtdrv_radiobutton.o \
 	wgtdrv_repeat.o \
+	wgtdrv_richtextedit.o \
 	wgtdrv_rule.o \
 	wgtdrv_scrollbar.o \
 	wgtdrv_scrollpane.o \
@@ -541,7 +542,7 @@ test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
 		fi; \
 	    fi \
-	done 
+	done
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
@@ -670,7 +671,6 @@ netdrivers/net_ldap.so: netdrivers/net_ldap.c
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-	
+
 # Dependencies made by "make depend"
 include .depend
-
