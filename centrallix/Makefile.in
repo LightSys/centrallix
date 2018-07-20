@@ -223,6 +223,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_datetime.o \
 	   htdrv_label.o \
 	   htdrv_textarea.o \
+	   htdrv_richtextedit.o\
 	   htdrv_clock.o \
 	   htdrv_terminal.o \
 	   htdrv_calendar.o \

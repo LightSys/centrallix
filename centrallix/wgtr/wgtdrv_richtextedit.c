@@ -44,19 +44,19 @@
  *** checking interface versions on widgets to be interacted with, etc.
  ***/
 int
-wgttxVerify(pWgtrVerifySession s)
+wgtrteVerify(pWgtrVerifySession s)
     {
     return 0;
     }
 
 
-/*** wgttxNew - after a node has been filled out with initial values,
+/*** wgttxNew - after a node has been filled out with inital values,
  *** the driver uses this function to take care of any other initialization
  *** that needs to be done on a per-node basis. By far the most important
  *** is declaring interfaces.
  ***/
 int
-wgttxNew(pWgtrNode node)
+wgtrteNew(pWgtrNode node)
     {
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
@@ -66,11 +66,11 @@ wgttxNew(pWgtrNode node)
 
 
 int
-wgttxInitialize()
+wgtrteInitialize()
     {
     char* name = "rich text editor Driver";
 
-	wgtrRegisterDriver(name, wgttxVerify, wgttxNew);
+	wgtrRegisterDriver(name, wgtrteVerify, wgtrteNew);
 	wgtrAddType(name, "richtextedit");
 
 	return 0;

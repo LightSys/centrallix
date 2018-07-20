@@ -10,13 +10,13 @@
 // GNU Lesser General Public License for more details.
 
 /** Get value function **/
-function tx_getvalue()
+function rte_getvalue()
     {
     return this.value;
     }
 
 /** Set value function **/
-function tx_setvalue(txt)
+function rte_setvalue(txt)
     {
     txt = htutil_obscure(txt);
     this.content = txt;
@@ -24,7 +24,7 @@ function tx_setvalue(txt)
     this.txa.value = txt;
     }
 
-function tx_action_set_value(ap)
+function rte_action_set_value(ap)
     {
     var txt = ap.Value?ap.Value:"";
     this.setvalue(txt);
@@ -32,7 +32,7 @@ function tx_action_set_value(ap)
     cn_activate(this, 'DataChange');
     }
 
-function tx_action_insert_text(ap)
+function rte_action_insert_text(ap)
     {
     var txt = ap.Text?ap.Text:"";
     if (ap.SetFocus && tx_current != this)
@@ -59,7 +59,7 @@ function tx_action_insert_text(ap)
 	}
     }
 
-function tx_action_set_focus(aparam)
+function rte_action_set_focus(aparam)
     {
     var x = (typeof aparam.X == 'undefined')?null:aparam.X;
     var y = (typeof aparam.Y == 'undefined')?null:aparam.Y;
@@ -67,7 +67,7 @@ function tx_action_set_focus(aparam)
     }
 
 /** Clear function **/
-function tx_clearvalue()
+function rte_clearvalue()
     {
     this.setvalue(null);
     }
@@ -87,17 +87,17 @@ function tx_disable()
     }
 
 /** Readonly-mode function **/
-function tx_readonly()
+function rte_readonly()
     {
     this.enabled='readonly';
     $(this.txa).prop('disabled',true);
     }
 
-function tx_paste(e)
+function rte_paste(e)
     {
     }
 
-function tx_receiving_input(e)
+function rte_receiving_input(e)
     {
     var tx=this.mainlayer;
     var sel = document.getSelection();
@@ -128,7 +128,7 @@ function tx_receiving_input(e)
     return;
     }
 
-function tx_keydown(e)
+function rte_keydown(e)
     {
     var tx = this.mainlayer;
 
@@ -165,16 +165,16 @@ function tx_keydown(e)
     return;
     }
 
-function tx_keyup(e)
+function rte_keyup(e)
     {
     }
 
-function tx_keypress(e)
+function rte_keypress(e)
     {
     }
 
 /** richtextedit keyboard handler **/
-function tx_keyhandler(l,e,k)
+function rte_keyhandler(l,e,k)
     {
     if (l.enabled!='full') return 1;
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
@@ -183,7 +183,7 @@ function tx_keyhandler(l,e,k)
     }
 
 /** Set focus to a new richtextedit **/
-function tx_select(x,y,l,c,n,a,k)
+function rte_select(x,y,l,c,n,a,k)
     {
     if (this.enabled != 'full') return 0;
     this.txa.focus();
@@ -199,7 +199,7 @@ function tx_select(x,y,l,c,n,a,k)
     }
 
 /** Take focus away from richtextedit **/
-function tx_deselect(p)
+function rte_deselect(p)
     {
     this.txa.blur();
     this.has_focus = false;
@@ -216,7 +216,7 @@ function tx_deselect(p)
     return true;
     }
 
-function tx_do_data_change(from_osrc, from_kbd)
+function rte_do_data_change(from_osrc, from_kbd)
     {
     var nv = cx_hints_checkmodify(this, this.value, this.content, null, true);
     if (nv != this.content)
@@ -237,35 +237,35 @@ function tx_do_data_change(from_osrc, from_kbd)
     }
 
 /** richtextedit initializer **/
-function tx_init(param)
+function rte_init(param)
     {
     var l = param.layer;
     ifc_init_widget(l);
     l.txa = $(l).find('richtextedit').get(0);
-    l.txa.value = '';
-    htr_init_layer(l,l,'tx');
-    htr_init_layer(l.txa, l, 'tx');
+    l.txa.value = ' ';
+    htr_init_layer(l,l,'rte');
+    htr_init_layer(l.txa, l, 'rte');
     l.fieldname = param.fieldname;
-    l.keyhandler = tx_keyhandler;
-    l.getfocushandler = tx_select;
-    l.losefocushandler = tx_deselect;
-    l.getvalue = tx_getvalue;
-    l.setvalue = tx_setvalue;
-    l.clearvalue = tx_clearvalue;
-    l.DoDataChange = tx_do_data_change;
+    l.keyhandler = rte_keyhandler;
+    l.getfocushandler = rte_select;
+    l.losefocushandler = rte_deselect;
+    l.getvalue = rte_getvalue;
+    l.setvalue = rte_setvalue;
+    l.clearvalue = rte_clearvalue;
+    l.DoDataChange = rte_do_data_change;
     l.setoptions = null;
-    l.enablenew = tx_enable;
-    l.disable = tx_disable;
-    l.readonly = tx_readonly;
+    l.enablenew = rte_enable;
+    l.disable = rte_disable;
+    l.readonly = rte_readonly;
     if (param.isReadonly)
         {
-        l.enablemodify = tx_disable;
+        l.enablemodify = rte_disable;
         l.enabled = 'disable';
 	$(l.txa).prop('disabled',true);
         }
     else
         {
-        l.enablemodify = tx_enable;
+        l.enablemodify = rte_enable;
         l.enabled = 'full';
 	$(l.txa).prop('disabled',false);
         }
@@ -284,10 +284,10 @@ function tx_init(param)
     l.value = null;
     l.content = null;
     l.changed = false;
-    $(l.txa).on("input", tx_receiving_input);
-    $(l.txa).on("keydown", tx_keydown);
-    $(l.txa).on("keyup", tx_keyup);
-    $(l.txa).on("keypress", tx_keypress);
+    $(l.txa).on("input", rte_receiving_input);
+    $(l.txa).on("keydown", rte_keydown);
+    $(l.txa).on("keyup", rte_keyup);
+    $(l.txa).on("keypress", rte_keypress);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -306,9 +306,9 @@ function tx_init(param)
     ie.Add("EscapePressed");
 
     var ia = l.ifcProbeAdd(ifAction);
-    ia.Add("InsertText", tx_action_insert_text);
-    ia.Add("SetFocus", tx_action_set_focus);
-    ia.Add("SetValue", tx_action_set_value);
+    ia.Add("InsertText", rte_action_insert_text);
+    ia.Add("SetFocus", rte_action_set_focus);
+    ia.Add("SetValue", rte_action_set_value);
 
     return l;
     }
@@ -341,7 +341,7 @@ function tx_mouseover(e)
 
 function tx_mousemove(e)
     {
-    if (tx_cur_mainlayer && e.kind != 'tx')
+    if (tx_cur_mainlayer && e.kind != 'rte')
         {
 	// This is MouseOut Detection!
         cn_activate(tx_cur_mainlayer, 'MouseOut');

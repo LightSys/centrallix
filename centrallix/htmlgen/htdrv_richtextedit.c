@@ -34,10 +34,10 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	htdrv_textarea.c         				*/
-/* Author:	Peter Finley (PMF)					*/
-/* Creation:	July 9, 2002						*/
-/* Description:	HTML Widget driver for a multi-line textarea.		*/
+/* Module: 	htdrv_richtext.c         				*/
+/* Author:	Judson Hayes/ Jordan Thompson					*/
+/* Creation:	July 20, 2018						*/
+/* Description:	HTML Widget driver for a rich text editior.		*/
 /************************************************************************/
 
 
@@ -50,7 +50,7 @@ static struct
     HTTX;
 
 
-/*** httxRender - generate the HTML code for the textarea widget.
+/*** httxRender - generate the HTML code for the richtextedit widget.
  ***/
 int
 htrteRender(pHtSession s, pWgtrNode tree, int z)
@@ -83,12 +83,12 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
-	    mssError(1,"HTTX","Textarea widget must have a 'width' property");
+	    mssError(1,"HTTX","richtextedit widget must have a 'width' property");
 	    return -1;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
-	    mssError(1,"HTTX","Textarea widget must have a 'height' property");
+	    mssError(1,"HTTX","richtextedit widget must have a 'height' property");
 	    return -1;
 	    }
 
@@ -106,7 +106,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (!strcasecmp(ptr,"wiki")) mode = 2;
 	    else
 		{
-		mssError(1,"HTTX","Textarea widget 'mode' property must be either 'text','html', or 'wiki'");
+		mssError(1,"HTTX","richtextedit widget 'mode' property must be either 'text','html', or 'wiki'");
 		return -1;
 		}
 	    }
@@ -118,7 +118,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
-	/** Style of Textarea - raised/lowered **/
+	/** Style of richtextedit - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
 
 	/** Form linkage **/
@@ -150,22 +150,23 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
-	htrAddScriptGlobal(s, "tx_current", "null", 0);
-	htrAddScriptGlobal(s, "tx_cur_mainlayer", "null", 0);
+	htrAddScriptGlobal(s, "rte_current", "null", 0);
+	htrAddScriptGlobal(s, "rte_cur_mainlayer", "null", 0);
 
-	htrAddScriptInclude(s, "/sys/js/htdrv_textarea.js", 0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_richtextedit.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
+        htrAddScriptInclude(s, "../../../thirdparty/ckeditor/ckeditor/ckeditor.js",0);
 
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "tx", "tx_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "tx","tx_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "tx", "tx_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
-	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "rte", "rte_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "rte","rte_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "rte", "rte_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "rte", "rte_mousemove");
+	htrAddEventHandlerFunction(s, "document","PASTE", "rte", "rte_paste");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
+	htrAddScriptInit_va(s, "    rte_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
 	    name, fieldname, form, is_readonly, mode);
 
 	/** HTML body <DIV> element for the base layer. **/
@@ -185,7 +186,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</textarea></div>\n");
-
+  htrAddBodyItem_va(s, "<script> CKEDITOR.replace(\"tx%POSbase\",{});</script>\n",name);
     return 0;
     }
 
@@ -202,9 +203,9 @@ htrteInitialize()
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
-	strcpy(drv->Name,"DHTML Multiline Textarea Driver");
-	strcpy(drv->WidgetName,"textarea");
-	drv->Render = httxRender;
+	strcpy(drv->Name,"DHTML richtexteditor Driver");
+	strcpy(drv->WidgetName,"richtextedit");
+	drv->Render = htrteRender;
 
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");
