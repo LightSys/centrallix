@@ -130,7 +130,7 @@ wgtr_internal_LookupDriver(pWgtrNode node)
 		if (!strncmp(node->Type+7, this_type, 64)) return drv;
 		}
 	    }*/
-	if (!drv) 
+	if (!drv)
 	    mssError(1, "WGTR", "No driver registered for type '%s'", node->Type+7);
 
     return drv;
@@ -350,8 +350,8 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	    {
 	    subtree = (pWgtrNode)(xaGetItem(&(match->Children), i));
 	    snprintf(new_name, sizeof(new_name), "%s_%s", base_name, subtree->Name);
-	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
-			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
+	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession,
+			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height,
 			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
 		return -1;
 
@@ -389,7 +389,7 @@ wgtrCheckTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode template, char* cl
 	/** Search through the template and see if we have a match. **/
 	match = NULL;
 	wgtrGetPropertyValue(tree, "path", DATA_T_STRING, POD(&wgt_path));
-	for (i=0;i<xaCount(&(template->Children));i++) 
+	for (i=0;i<xaCount(&(template->Children));i++)
 	    {
 	    search = (pWgtrNode)xaGetItem(&(template->Children), i);
 	    if (!strcmp(search->Type, tree->Type))
@@ -472,12 +472,12 @@ wgtrLoadTemplate(pObjSession s, char* path, pWgtrClientInfo client_info, pStruct
     }
 
 
-pWgtrNode 
+pWgtrNode
 wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, pWgtrClientInfo client_info, int flags)
     {
     pObject obj;
     pWgtrNode results;
-    
+
 	/** attempt to open OSML object **/
 	if ( (obj = objOpen(s, path, mode, permission_mask, type)) == NULL)
 	    {
@@ -503,7 +503,7 @@ wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* typ
 	    mssError(0, "WGTR", "Couldn't get outer_type for %s", obj->Pathname->Pathbuf);
 	    goto error;
 	    }
-	
+
 	if (strncmp(val.String, "widget/", 7) != 0)
 	    {
 	    mssError(1, "WGTR", "Object %s is not a widget", obj->Pathname->Pathbuf);
@@ -590,7 +590,7 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		    }
 		}
 	    }
-	
+
 	/** loop through attributes to fill out the properties array **/
 	for(prop_name = objGetFirstAttr(obj); prop_name; prop_name = objGetNextAttr(obj))
 	    {
@@ -599,12 +599,12 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		continue;
 
 	    /** Get the type **/
-	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0) 
+	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0)
 		{
 		mssError(0, "WGTR", "Couldn't get type for property %s", prop_name);
 		goto error;
 		}
-	    /** get the value **/ 
+	    /** get the value **/
 	    if ((rval = objGetAttrValue(obj, prop_name, prop_type, &val)) < 0)
 		{
 		mssError(0, "WGTR", "Couldn't get value for property %s", prop_name);
@@ -632,7 +632,7 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 	/** Add offsets? **/
 	if (this_node->r_x >= 0) this_node->r_x += xoffset;
 	if (this_node->r_y >= 0) this_node->r_y += yoffset;
-	
+
 	/** initialize all other struct members **/
 	this_node->x = this_node->r_x;
 	this_node->y = this_node->r_y;
@@ -920,7 +920,7 @@ wgtr_internal_VerifyEndorsements(pWgtrNode node)
 /*** wgtr_internal_ParseOpenObject - recursively load in one widget and
  *** its child widget trees.
  ***/
-pWgtrNode 
+pWgtrNode
 wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pWgtrClientInfo client_info, pStruct client_params, int xoffset, int yoffset, int flags, int* err, char* namespace)
     {
     pWgtrNode	this_node = NULL;
@@ -965,7 +965,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    {
 	    /** Set up the object list to be used by the parameters **/
 	    context_objlist = expCreateParamList();
-	    if (!context_objlist) 
+	    if (!context_objlist)
 		goto error;
 	    context_objlist->Session = obj->Session;
 	    n_params = 0;
@@ -1090,7 +1090,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		     **/
 		    snprintf(rpt_ns, sizeof(rpt_ns), "%s_%6.6x", root->DName, (WGTR.RepeatID++) & 0xffffff);
 		    expModifyParam(context_objlist,this_node->Name, rptrow);
-		   
+
 		    /** Add the children of the repeat widget **/
 		    if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_info, client_params, xoffset, yoffset, flags, rpt_ns) < 0)
 			goto error;
@@ -1204,7 +1204,7 @@ void wgtr_internal_FreeProperty(pObjProperty prop)
 
     }
 
-void 
+void
 wgtrFree(pWgtrNode tree)
     {
     int i;
@@ -1216,7 +1216,7 @@ wgtrFree(pWgtrNode tree)
 	if (!tree) return;
 
 	/** free all children **/
-	for (i=0;i<xaCount(&(tree->Children));i++) 
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    wgtrFree(xaGetItem(&(tree->Children), i));
 	    }
@@ -1246,7 +1246,7 @@ wgtrFree(pWgtrNode tree)
     }
 
 
-pWgtrIterator 
+pWgtrIterator
 wgtrGetIterator(pWgtrNode tree, int traversal_type)
     {
 	ASSERTMAGIC(tree, MGK_WGTR);
@@ -1254,20 +1254,20 @@ wgtrGetIterator(pWgtrNode tree, int traversal_type)
     }
 
 
-pWgtrNode 
+pWgtrNode
 wgtrNext(pWgtrIterator itr)
     {
 	return NULL;
     }
 
 
-void 
+void
 wgtrFreeIterator(pWgtrIterator itr)
     {
     }
 
 
-int 
+int
 wgtrGetPropertyType(pWgtrNode widget, char* name)
     {
     int i, count;
@@ -1286,12 +1286,12 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
 	    if (prop && !strcmp(name, prop->Name)) break;
 	    }
 	if (i == count) return -1;
-	
+
 	return prop->Type;
     }
 
 
-int 
+int
 wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
     {
 	int i, count;
@@ -1325,7 +1325,7 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 	    if (!strcmp(name, "name")) { val->String = widget->Name; return 0; }
 	    else if (!strcmp(name, "outer_type")) { val->String = widget->Type; return 0; }
 	    }
-	    
+
 	/** if we didn't find it there, loop through the list of properties until we do **/
 	count = xaCount(&(widget->Properties));
 	for (i=0;i<count;i++)
@@ -1343,7 +1343,7 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
     }
 
 
-char* 
+char*
 wgtrFirstPropertyName(pWgtrNode widget)
     {
 	ASSERTMAGIC(widget, MGK_WGTR);
@@ -1352,7 +1352,7 @@ wgtrFirstPropertyName(pWgtrNode widget)
     }
 
 
-char* 
+char*
 wgtrNextPropertyName(pWgtrNode widget)
     {
     pObjProperty prop;
@@ -1363,8 +1363,8 @@ wgtrNextPropertyName(pWgtrNode widget)
 	return prop->Name;
     }
 
-    
-int 
+
+int
 wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int isnull)
     /** XXX Should this check for duplicates? **/
     {
@@ -1391,19 +1391,19 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int is
 	    switch (datatype)
 		/** XXX Is this right? XXX **/
 		{
-		case DATA_T_INTEGER: 
-		    prop->Val.Integer = val->Integer; 
+		case DATA_T_INTEGER:
+		    prop->Val.Integer = val->Integer;
 		    break;
-		case DATA_T_STRING: 
-		    prop->Val.String = nmSysStrdup(val->String); 
+		case DATA_T_STRING:
+		    prop->Val.String = nmSysStrdup(val->String);
 		    break;
-		case DATA_T_DOUBLE: 
-		    prop->Val.Double = val->Double; 
+		case DATA_T_DOUBLE:
+		    prop->Val.Double = val->Double;
 		    break;
-		case DATA_T_DATETIME: 
+		case DATA_T_DATETIME:
 		    prop->Buf.Date = *(val->DateTime);
 		    prop->Val.DateTime = &(prop->Buf.Date);
-		    break;	
+		    break;
 		case DATA_T_MONEY:
 		    prop->Buf.Money = *(val->Money);
 		    prop->Val.Money = &(prop->Buf.Money);
@@ -1417,7 +1417,7 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int is
 		    prop->Val.StringVec = &(prop->Buf.SV);
 		    break;
 		case DATA_T_CODE:
-		    prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);    
+		    prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);
 		    break;
 		}
 	    }
@@ -1439,8 +1439,8 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int is
 	return 0;
     }
 
-    
-int 
+
+int
 wgtrDeleteProperty(pWgtrNode widget, char* name)
     {
     int i, count;
@@ -1461,8 +1461,8 @@ wgtrDeleteProperty(pWgtrNode widget, char* name)
 	return 0;
     }
 
-    
-int 
+
+int
 wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
     {
     int i, count;
@@ -1491,10 +1491,10 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 	    case DATA_T_INTEGER: prop->Val.Integer = val->Integer; break;
 	    case DATA_T_STRING: prop->Val.String = nmSysStrdup(val->String); break;
 	    case DATA_T_DOUBLE: prop->Val.Double = val->Double; break;
-	    case DATA_T_DATETIME: 
+	    case DATA_T_DATETIME:
 		prop->Buf.Date = *(val->DateTime);
 		prop->Val.DateTime = &(prop->Buf.Date);
-		break;	
+		break;
 	    case DATA_T_MONEY:
 		prop->Buf.Money = *(val->Money);
 		prop->Val.Money = &(prop->Buf.Money);
@@ -1512,7 +1512,7 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
     }
 
 
-pWgtrNode 
+pWgtrNode
 wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
 		int flx, int fly, int flwidth, int flheight)
@@ -1562,7 +1562,7 @@ wgtrSetupNode(pWgtrNode node)
     pWgtrDriver drv;
 
 	/** look up the 'new' function and call it on the now-init'd struct **/
-	if ( (drv = wgtr_internal_LookupDriver(node)) == NULL) 
+	if ( (drv = wgtr_internal_LookupDriver(node)) == NULL)
 	    {
 	    return -1;
 	    }
@@ -1575,8 +1575,8 @@ wgtrSetupNode(pWgtrNode node)
     return 0;
     }
 
-    
-int 
+
+int
 wgtrDeleteChild(pWgtrNode widget, char* child_name)
     {
     int i;
@@ -1595,8 +1595,8 @@ wgtrDeleteChild(pWgtrNode widget, char* child_name)
 	return 0;
     }
 
-    
-int 
+
+int
 wgtrAddChild(pWgtrNode widget, pWgtrNode child)
     {
 	ASSERTMAGIC(widget, MGK_WGTR);
@@ -1618,7 +1618,7 @@ wgtr_internal_Indent(int indent)
     }
 
 
-pWgtrNode 
+pWgtrNode
 wgtrFirstChild(pWgtrNode tree)
     {
 	ASSERTMAGIC(tree, MGK_WGTR);
@@ -1667,7 +1667,7 @@ char*
 wgtr_internal_GetString(pWgtrNode wgt, char* attrname)
     {
     char* str;
-	
+
 	if (wgtrGetPropertyValue(wgt, attrname, DATA_T_STRING, POD(&str)) != 0)
 	    return NULL;
 	str = nmSysStrdup(str);
@@ -1830,7 +1830,7 @@ wgtrPrint(pWgtrNode tree, int indent)
 	name = wgtrFirstPropertyName(tree);
 	indent += 4;
 	while (name)
-	    { 
+	    {
 	    type = wgtrGetPropertyType(tree, name);
 	    wgtrGetPropertyValue(tree, name, type, &val);
 	    wgtr_internal_Indent(indent);
@@ -1848,7 +1848,7 @@ wgtrPrint(pWgtrNode tree, int indent)
 		}
 	    name  = wgtrNextPropertyName(tree);
 	    }
-	
+
 	/** now print the sub-objects **/
 	subobj = wgtrFirstChild(tree);
 	while (subobj)
@@ -1859,7 +1859,7 @@ wgtrPrint(pWgtrNode tree, int indent)
     }
 
 
-int 
+int
 wgtr_internal_BuildVerifyQueue(pWgtrVerifySession vs, pWgtrNode node)
     {
     int i;
@@ -1918,7 +1918,7 @@ wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info)
 	    drv = wgtr_internal_LookupDriver(vs.CurrWidget);
 	    if (!drv)
 		{
-		mssError(1, "WGTR", "Unknown widget object type '%s' for widget '%s'", 
+		mssError(1, "WGTR", "Unknown widget object type '%s' for widget '%s'",
 		    vs.CurrWidget->Type, vs.CurrWidget->Name);
 		goto error;
 		}
@@ -1938,7 +1938,7 @@ wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info)
 	    mssError(0, "WGTR", "Couldn't auto-position widget tree");
 	    goto error;
 	    }
-	
+
 	/** free up data structures **/
 	for(i=0;i<xaCount(&Names);i++)
 	    nmSysFree(xaGetItem(&Names, i));
@@ -1953,7 +1953,7 @@ error:
     }
 
 
-int 
+int
 wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget)
     {
 	xaAddItem(&(vs->VerifyQueue), widget);
@@ -1974,20 +1974,20 @@ wgtrReverify(pWgtrVerifySession vs, pWgtrNode widget)
     }
 
 
-int 
+int
 wgtrCancelVerify(pWgtrVerifySession vs, pWgtrNode widget)
     {
     int i;
 
 	/** find the widget **/
-	if ( (i=xaFindItem(&(vs->VerifyQueue), widget)) < 0) 
+	if ( (i=xaFindItem(&(vs->VerifyQueue), widget)) < 0)
 	    {
 	    mssError(1, "WGTR", "wgtrCancelVerify() - couldn't find widget '%s'", widget->Name);
 	    return -1;
 	    }
 
 	/** if we've already verified it, or we're currently verifying it, this fails **/
-	if (i <= vs->CurrWidgetIndex || widget->Verified) 
+	if (i <= vs->CurrWidgetIndex || widget->Verified)
 	    {
 	    mssError(1, "WGTR", "wgtrCancelVerify() - widget '%s' already verified", widget->Name);
 	    return -1;
@@ -2010,10 +2010,10 @@ wgtrInitialize()
 
 	WGTR.SerialID = lrand48();
 	WGTR.RepeatID = 1;
-	
+
 	/** init datastructures for auto-positioning **/
 	aposInit();
-	
+
 	/** call the initialization routines of all the widget drivers. I suppose it's a
 	 ** little weird to do things this way - if they're going to be init'ed from here,
 	 ** why have 'drivers'? Why not just hard-code them? Well, maybe later on they'll
@@ -2049,6 +2049,7 @@ wgtrInitialize()
 	wgtpnInitialize();
 	wgtrbInitialize();
 	wgtrptInitialize();
+        wgtrteInitialize();
 	wgtsbInitialize();
 	wgtspaneInitialize();
 	wgtspnrInitialize();
@@ -2072,9 +2073,9 @@ wgtrInitialize()
     }
 
 
-/*** wgtrRegisterDriver - registers a driver 
+/*** wgtrRegisterDriver - registers a driver
  ***/
-int 
+int
 wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
     {
     int i;
@@ -2089,7 +2090,7 @@ wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
 		return -1;
 		}
 	    }
-	
+
 	/** allocate memory **/
 	if ( (drv = nmMalloc(sizeof(WgtrDriver))) == NULL)
 	    {
@@ -2108,9 +2109,9 @@ wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
     }
 
 
-/*** wgtrAddType - associates a widget type with a wgtr driver 
+/*** wgtrAddType - associates a widget type with a wgtr driver
  ***/
-int 
+int
 wgtrAddType(char* name, char* type_name)
     {
     pWgtrDriver drv;
@@ -2155,10 +2156,10 @@ wgtrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjS
     }
 
 
-/*** wgtrImplementsInterface - adds an interface definition to the list if interfaces 
+/*** wgtrImplementsInterface - adds an interface definition to the list if interfaces
  *** implemented by this widget
  ***/
-int 
+int
 wgtrImplementsInterface(pWgtrNode this, char* iface_ref)
     {
     IfcHandle h;
@@ -2169,7 +2170,7 @@ wgtrImplementsInterface(pWgtrNode this, char* iface_ref)
 	    return -1;
 	    }
 	xaAddItem(&(this->Interfaces), h);
-	
+
 	return 0;
     }
 
@@ -2539,5 +2540,3 @@ wgtrGetNamespace(pWgtrNode widget)
     {
     return widget->Namespace;
     }
-
-
