@@ -15,13 +15,27 @@ function rte_getvalue()
     return this.value;
     }
 
-/** Set value function **/
-function rte_setvalue(txt)
+
+//sets the RICHTEXTEDITOR's value
+ function rte_setvalue(txt)
+    {
+        txt = htutil_obscure(txt);
+        this.content = txt;
+        this.value = txt;
+        this.rte.value = txt;
+    }
+
+/** Set value function for the underlying textarea **/
+function rte_tasetvalue(txt)
     {
     txt = htutil_obscure(txt);
+    alert('name is : ' + this.name);
+    alert('id is : ' + this.id);
+    var taname = this.name.replace('cke_','');
     this.content = txt;
     this.value = txt;
-    this.txa.value = txt;
+
+    this.rte.value = txt;
     }
 
 function rte_action_set_value(ap)
@@ -73,24 +87,24 @@ function rte_clearvalue()
     }
 
 /** Enable control function **/
-function tx_enable()
+function rte_enable()
     {
     this.enabled='full';
-    $(this.txa).prop('disabled',false);
+    $(this.rte).prop('disabled',false);
     }
 
 /** Disable control function **/
-function tx_disable()
+function rte_disable()
     {
     this.enabled='disabled';
-    $(this.txa).prop('disabled',true);
+    $(this.rte).prop('disabled',true);
     }
 
 /** Readonly-mode function **/
 function rte_readonly()
     {
     this.enabled='readonly';
-    $(this.txa).prop('disabled',true);
+    $(this.rte).prop('disabled',true);
     }
 
 function rte_paste(e)
@@ -186,10 +200,10 @@ function rte_keyhandler(l,e,k)
 function rte_select(x,y,l,c,n,a,k)
     {
     if (this.enabled != 'full') return 0;
-    this.txa.focus();
-    var got_focus = $(this.txa).is(':focus');
+    this.rte.focus();
+    var got_focus = $(this.rte).is(':focus');
     if (!got_focus)
-	pg_addsched_fn(this.txa, function() { this.focus() }, {}, 200);
+	pg_addsched_fn(this.rte, function() { this.focus() }, {}, 200);
     this.has_focus = true;
     tx_current = this;
     if(this.form)
@@ -201,7 +215,7 @@ function rte_select(x,y,l,c,n,a,k)
 /** Take focus away from richtextedit **/
 function rte_deselect(p)
     {
-    this.txa.blur();
+    this.rte.blur();
     this.has_focus = false;
     tx_current = null;
     if (this.changed)
@@ -223,12 +237,12 @@ function rte_do_data_change(from_osrc, from_kbd)
 	{
 	this.value = nv;
 	this.content = nv;
-	this.txa.value = nv;
+	this.rte.value = nv;
 	}
     if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.value, Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
 	{
 	this.content = this.value;
-	this.txa.value = this.value;
+	this.rte.value = this.value;
 	return false;
 	}
     this.oldvalue = this.value;
@@ -241,10 +255,10 @@ function rte_init(param)
     {
     var l = param.layer;
     ifc_init_widget(l);
-    l.txa = $(l).find('richtextedit').get(0);
-    l.txa.value = ' ';
+    l.rte = $(l).find('textarea').get(0);
+    l.rte.value = ' ';
     htr_init_layer(l,l,'rte');
-    htr_init_layer(l.txa, l, 'rte');
+    htr_init_layer(l.rte, l, 'rte');
     l.fieldname = param.fieldname;
     l.keyhandler = rte_keyhandler;
     l.getfocushandler = rte_select;
@@ -257,17 +271,18 @@ function rte_init(param)
     l.enablenew = rte_enable;
     l.disable = rte_disable;
     l.readonly = rte_readonly;
+    l.tasetvalue = rte_tasetvalue;
     if (param.isReadonly)
         {
         l.enablemodify = rte_disable;
         l.enabled = 'disable';
-	$(l.txa).prop('disabled',true);
+	$(l.rte).prop('disabled',true);
         }
     else
         {
         l.enablemodify = rte_enable;
         l.enabled = 'full';
-	$(l.txa).prop('disabled',false);
+	$(l.rte).prop('disabled',false);
         }
     l.mode = param.mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;
@@ -284,10 +299,10 @@ function rte_init(param)
     l.value = null;
     l.content = null;
     l.changed = false;
-    $(l.txa).on("input", rte_receiving_input);
-    $(l.txa).on("keydown", rte_keydown);
-    $(l.txa).on("keyup", rte_keyup);
-    $(l.txa).on("keypress", rte_keypress);
+    $(l.rte).on("input", rte_receiving_input);
+    $(l.rte).on("keydown", rte_keydown);
+    $(l.rte).on("keyup", rte_keyup);
+    $(l.rte).on("keypress", rte_keypress);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -314,19 +329,19 @@ function rte_init(param)
     }
 
 // Event handlers
-function tx_mouseup(e)
+function rte_mouseup(e)
     {
     if (e.kind == 'tx') cn_activate(e.mainlayer, 'MouseUp');
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
-function tx_mousedown(e)
+function rte_mousedown(e)
     {
     if (e.kind == 'tx') cn_activate(e.mainlayer, 'MouseDown');
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
-function tx_mouseover(e)
+function rte_mouseover(e)
     {
     if (e.kind == 'tx')
         {
@@ -339,7 +354,7 @@ function tx_mouseover(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
-function tx_mousemove(e)
+function rte_mousemove(e)
     {
     if (tx_cur_mainlayer && e.kind != 'rte')
         {

@@ -138,7 +138,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Write Style header items. **/
-	snprintf(elementid, sizeof(elementid), "#tx%dbase", id);
+	snprintf(elementid, sizeof(elementid), "#rte%dbase", id);
 	htrFormatElement(s, tree, elementid, 0,
 		x, y, w-2*box_offset, h-2*box_offset, z, "",
 		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
@@ -146,7 +146,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	//htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
+	htrAddWgtrObjLinkage_va(s, tree, "rte%POSbase",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
@@ -157,7 +157,8 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
-        htrAddScriptInclude(s, "../../../thirdparty/ckeditor/ckeditor/ckeditor.js",0);
+        htrAddScriptInclude(s, "/sys/thirdparty/ckeditor/ckeditor/ckeditor.js",0);
+        htrAddScriptInclude(s, "/sys/thirdparty/ckeditor/ckeditor/adapters/jquery.js",0);
 
 	htrAddEventHandlerFunction(s, "document","MOUSEUP", "rte", "rte_mouseup");
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "rte","rte_mousedown");
@@ -168,9 +169,15 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    rte_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
 	    name, fieldname, form, is_readonly, mode);
+        htrAddScriptInit(s, "$('body').on('click', function() { setTimeout( function() { $('.cke_panel').css({'z-index': '20000'}); }, 100) } );\n");
+        htrAddScriptInit_va(s, "var rtobj%POS = CKEDITOR.replace(\"rte%POSbase\",{customConfig:'/sys/thirdparty/ckeditor/ckeditor/config.js'});\n",id,id);
+        htrAddScriptInit_va(s, "rtobj%POS.on('change',function(){rte_tasetvalue(rtobj%POS.getData());});",id,id);
+        //htrAddScriptInit_va(s,"var ckei_%POSbase = $('ckei_%POSbase').ckeditor().editor;\n",id,id);
+        //htrAddScriptInit_va(s," $('%s').on('change',function(){rte.SetValue(this.val());});\n","ckei_"+id);
 
-	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none;\">\n",id);
+
+        /** HTML body <DIV> element for the base layer. **/
+	htrAddBodyItem_va(s, "<div id=\"rte%POSbase\"><textarea name = \"rte%POSbasetx\", style=\"width:100%%; height:100%%; border:none; outline:none;\">\n",id,id);
 
 	/** Use CSS border or table for drawing? **/
 	/*if (is_raised)
@@ -180,15 +187,19 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	if (h >= 0)
 	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);*/
 
+
+
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</textarea></div>\n");
-  htrAddBodyItem_va(s, "<script> CKEDITOR.replace(\"tx%POSbase\",{});</script>\n",name);
-    return 0;
-    }
+	htrAddBodyItem(s, "</textarea>\n");
+
+
+        htrAddBodyItem(s, "</div>\n");
+        return 0;
+            }
 
 
 /*** httxInitialize - register with the ht_render module.
