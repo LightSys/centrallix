@@ -170,8 +170,8 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    rte_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
 	    name, fieldname, form, is_readonly, mode);
         htrAddScriptInit(s, "$('body').on('click', function() { setTimeout( function() { $('.cke_panel').css({'z-index': '20000'}); }, 100) } );\n");
-        htrAddScriptInit_va(s, "var rtobj%POS = CKEDITOR.replace(\"rte%POSbase\",{customConfig:'/sys/thirdparty/ckeditor/ckeditor/config.js'});\n",id,id);
-        htrAddScriptInit_va(s, "rtobj%POS.on('change',function(){rte_tasetvalue(rtobj%POS.getData());});",id,id);
+        //htrAddScriptInit_va(s, "var rtobj%POS = CKEDITOR.replace(\"rte%POSbase\",{customConfig:'/sys/thirdparty/ckeditor/ckeditor/config.js'});\n",id,id);
+        //htrAddScriptInit_va(s, "rtobj%POS.on('change',function(){rte_action_set_value(rtobj%POS.getData());});",id,id);
         //htrAddScriptInit_va(s,"var ckei_%POSbase = $('ckei_%POSbase').ckeditor().editor;\n",id,id);
         //htrAddScriptInit_va(s," $('%s').on('change',function(){rte.SetValue(this.val());});\n","ckei_"+id);
 

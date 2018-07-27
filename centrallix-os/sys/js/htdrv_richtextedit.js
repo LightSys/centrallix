@@ -272,6 +272,15 @@ function rte_init(param)
     l.disable = rte_disable;
     l.readonly = rte_readonly;
     l.tasetvalue = rte_tasetvalue;
+    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js"});
+    l.richeditor.on('change',function(){
+
+            txt = l.richeditor.getData();
+            l.setvalue(txt);
+            if (l.rte.form) l.rte.form.DataNotify(l, true);
+            cn_activate(l, 'DataChange');
+
+    });
     if (param.isReadonly)
         {
         l.enablemodify = rte_disable;
