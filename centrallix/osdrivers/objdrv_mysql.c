@@ -146,7 +146,7 @@ typedef struct
         IntVec		IV;
         StringVec	SV;
         } Types;
-    char	Autoname[256];
+    char	Objname[256];
     }
     MysdData, *pMysdData;
 
@@ -382,6 +382,7 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
 ***     it will become: item1,item2,items3 (length = 3, separator = ',')
 *** '?a' => same as array except with individual quoting specified
 ***     it will become: 'item1','item2','items3' (length = 3, separator = ',')
+*** ?n => transform name of object into criteria (field1 = 'value1' and field2 = 'value2')
 *** add_quote can be left NULL, in which case nothing gets quoted with ?a.
 *** (add_quote has no effect on '?a' forms).  Otherwise, a non-'\0' value
 *** for add_quote[x] means to add single quotes '' onto the value.
@@ -405,8 +406,11 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char tmp[32];
     char * add_quote;
     char * str;
+    char * endstr;
     int err;
     char * errtxt;
+    char ch;
+    pMysdData data;
 
         xsInit(&query);
 
@@ -483,7 +487,37 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
                         start = &stmt[i+2];
                         i++;
                     }
-                else /** handle plain sanatize+insert **/
+		else if(stmt[i+1]=='n') /** object name criteria - expect pMysdData **/
+		    {
+			data = va_arg(ap, pMysdData);
+			xsConcatenate(&query, " (", 2);
+			str = data->Name;
+			for(j=0; j<data->TData->nKeys; j++)
+			    {
+			    endstr = strchr(str, '|');
+			    if (!endstr)
+				endstr = str + strlen(str);
+			    if (j != 0)
+				xsConcatenate(&query, " and ", 5);
+			    xsConcatenate(&query, "`", 1);
+			    if (mysd_internal_SafeAppend(&conn->Handle, &query, data->TData->Keys[j])) goto error;
+			    xsConcatenate(&query, "` = '", 5);
+			    ch = *endstr;
+			    *endstr = '\0';
+			    if (mysd_internal_SafeAppend(&conn->Handle, &query, str))
+				{
+				*endstr = ch;
+				goto error;
+				}
+			    *endstr = ch;
+			    xsConcatenate(&query, "'", 1);
+			    str = (*endstr)?(endstr+1):(endstr);
+			    }
+			xsConcatenate(&query, ") ", 2);
+                        start = &stmt[i+2];
+                        i++;
+		    }
+                else /** handle plain sanitize+insert **/
                     {
                     if(mysd_internal_SafeAppend(&conn->Handle,&query,va_arg(ap,char*))) goto error;
                     start = &stmt[i+1];
@@ -878,7 +912,11 @@ mysd_internal_GetRowByKey(char* key, pMysdData data)
 
         if(!(data->TData)) return -1;
 
-        result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` WHERE CONCAT_WS('|',`?a`)='?' LIMIT 0,1",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',key);
+        //result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` WHERE CONCAT_WS('|',`?a`)='?' LIMIT 0,1",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',key);
+        result = mysd_internal_RunQuery(data->Node, "SELECT * FROM `?` WHERE ?n LIMIT 0,1",
+		data->TData->Name,
+		data
+		);
 	if (!result || result == MYSD_RUNQUERY_ERROR)
 	    {
 	    result = NULL;
@@ -927,7 +965,7 @@ mysd_internal_RefreshRow(pMysdData data)
 
 /*** mysd_internal_BuildAutoname - figures out how to fill in the required 
  *** information for an autoname-based row insertion, and populates the
- *** "Autoname" field in the MysdData structure accordingly.  Looks in the
+ *** "Objname" field in the MysdData structure accordingly.  Looks in the
  *** OXT for a partially (or fully) completed key, and uses an autonumber
  *** type of approach to complete the remainder of the key.  Returns nonnegative
  *** on success and with the autoname semaphore held.  Returns negative on error
@@ -1068,13 +1106,13 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 	    }
 
 	/** Okay, all keys filled in.  Build the autoname. **/
-	inf->Autoname[0] = '\0';
+	inf->Objname[0] = '\0';
 	for(len=j=0;j<inf->TData->nKeys;j++)
 	    {
 	    if (j) len += 1; /* for | separator */
 	    len += strlen(key_values[j]);
 	    }
-	if (len >= sizeof(inf->Autoname))
+	if (len >= sizeof(inf->Objname))
 	    {
 	    mssError(1,"MYSD","Autoname too long!");
 	    rval = -1;
@@ -1082,8 +1120,8 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 	    }
 	for(j=0;j<inf->TData->nKeys;j++)
 	    {
-	    if (j) strcat(inf->Autoname,"|");
-	    strcat(inf->Autoname, key_values[j]);
+	    if (j) strcat(inf->Objname,"|");
+	    strcat(inf->Objname, key_values[j]);
 	    }
 
     exit_BuildAutoname:
@@ -1112,19 +1150,9 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
     {
     pMysdConn conn = NULL;
     int i = 0;
-    char* filename;
-    char tablename[MYSD_NAME_LEN];
     MYSQL_RES* result;
     int use_quotes;
     
-        /** get the filename from the path **/
-        filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
-        
-        /** get the table name from the path **/
-        i = (data->Pathname.Elements[data->Pathname.nElements - 2] - data->Pathname.Elements[data->Pathname.nElements - 3]);
-        memcpy(tablename, data->Pathname.Elements[data->Pathname.nElements - 3], i); 
-        tablename[i-1]=0x00; /** clean trailing slash **/
-
 	/** Handle bits **/
 	/*if (!strcmp(data->TData->ColTypes[col], "bit") && newval)
 	    {
@@ -1137,7 +1165,14 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 	/** Quote the value if not an integer and value is not NULL **/
 	use_quotes = (data->TData->ColCxTypes[col] != DATA_T_INTEGER && newval != NULL);
         
-        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval?newval:"NULL",use_quotes, data->TData->Keys,NULL,data->TData->nKeys,',',filename);
+        //result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'", data->TData->Name, data->TData->Cols[col],newval?newval:"NULL",use_quotes, data->TData->Keys,NULL,data->TData->nKeys,',', data->Name);
+        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE ?n",
+		data->TData->Name,
+		data->TData->Cols[col],
+		newval?newval:"NULL",
+		use_quotes,
+		data
+		);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
 
@@ -1152,17 +1187,16 @@ mysd_internal_DeleteRow(pMysdData data)
     {
     pMysdConn conn = NULL;
     int i = 0;
-    char* filename;
-    char tablename[MYSD_NAME_LEN];
     MYSQL_RES* result;
 
 	/** Only rows can be deleted **/
 	if (data->Type != MYSD_T_ROW) return -1;
 
-        /** get the filename from the path **/
-        filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
-        
-        result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE CONCAT_WS('|',`?a`)='?'",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',filename);
+        //result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE CONCAT_WS('|',`?a`)='?'",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',', data->Name);
+        result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE ?n",
+		data->TData->Name,
+		data
+		);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
         return 0;
@@ -1209,7 +1243,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
 		mssError(0, "MYSD", "Could not generate a name for new object.");
 		goto error;
 		}
-	    inf->Name = inf->Autoname;
+	    inf->Name = inf->Objname;
 	    }
 
 	/** Make a copy of the object name so we can parse it out **/
@@ -1528,7 +1562,8 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
             }
 
 	/** Point to name. **/
-	inf->Name = inf->Pathname.Elements[obj->SubPtr + obj->SubCnt - 1 - 1];
+	strtcpy(inf->Objname, inf->Pathname.Elements[obj->SubPtr + obj->SubCnt - 1 - 1], sizeof(inf->Objname));
+	inf->Name = inf->Objname;
 
     return 0;
     }
@@ -2500,7 +2535,8 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 #endif
 
         obj_internal_CopyPath(&(inf->Pathname), obj->Pathname);
-	inf->Name = inf->Pathname.Elements[inf->Pathname.nElements - 1];
+	strtcpy(inf->Objname, inf->Pathname.Elements[inf->Pathname.nElements - 1], sizeof(inf->Objname));
+	inf->Name = inf->Objname;
         if (!inf->TData)
 	    inf->TData = qy->Data->TData;
         inf->Node = qy->Data->Node;
