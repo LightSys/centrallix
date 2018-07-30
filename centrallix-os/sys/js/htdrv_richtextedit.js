@@ -23,10 +23,11 @@ function rte_getvalue()
         this.content = txt;
         this.value = txt;
         this.rte.value = txt;
+        this.richeditor.setData(txt)
     }
 
 /** Set value function for the underlying textarea **/
-function rte_tasetvalue(txt)
+/*function rte_tasetvalue(txt)
     {
     txt = htutil_obscure(txt);
     alert('name is : ' + this.name);
@@ -37,7 +38,7 @@ function rte_tasetvalue(txt)
 
     this.rte.value = txt;
     }
-
+*/
 function rte_action_set_value(ap)
     {
     var txt = ap.Value?ap.Value:"";
@@ -271,13 +272,22 @@ function rte_init(param)
     l.enablenew = rte_enable;
     l.disable = rte_disable;
     l.readonly = rte_readonly;
-    l.tasetvalue = rte_tasetvalue;
-    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js"});
-    l.richeditor.on('change',function(){
+    //l.tasetvalue = rte_tasetvalue;
 
+    //set height of text area to compatible numbers.
+
+    var pxheight = $(l.rte).height();
+    var pxwidth = $(l.rte).width();
+    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js", height : pxheight, width : pxwidth });
+   // var rows = l.richeditor.toolbarGroups.length();
+    l.richeditor.on('loaded',function(){l.richeditor.resize(pxwidth,pxheight,false)});
+    l.richeditor.on('change',function(){
             txt = l.richeditor.getData();
-            l.setvalue(txt);
-            if (l.rte.form) l.rte.form.DataNotify(l, true);
+            txt = htutil_obscure(txt);
+            l.content = txt;
+            l.value = txt;
+            l.rte.value = txt;
+            if (l.form) l.form.DataNotify(l, true);
             cn_activate(l, 'DataChange');
 
     });

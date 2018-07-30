@@ -2,19 +2,19 @@ $Version=2$
 editing "widget/page"
     {
     width=900;
-    height=600;
+    height=800;
     title="File Editing Test App";
     bgcolor="#334466";
 
     hbox "widget/hbox"
 	{
 	x=10; y=10;
-	width=880; height=580;
+	width=2000; height=400;
 	spacing=10;
 
 	left_vbox "widget/vbox"
 	    {
-	    width=435;
+	    width=900;
 	    spacing=10;
 
 	    text_osrc "widget/osrc"
@@ -26,9 +26,11 @@ editing "widget/page"
 		    {
 		    textarea "widget/textarea"
 			{
-			height=538;
+                        width=400;
+			height=760;
 			bgcolor=white;
-			
+                        fieldname=file_content;
+
 			}
 
 		    textarea_ctls "widget/hbox"
@@ -62,7 +64,7 @@ editing "widget/page"
 
 	right_vbox "widget/vbox"
 	    {
-	    width=435;
+	    width=900;
 	    spacing=10;
 
 	    html_osrc "widget/osrc"
@@ -74,7 +76,8 @@ editing "widget/page"
 		    {
 		    richtext "widget/richtextedit"
 			{
-			height=538;
+                        width = 400;
+			height=760;
 			bgcolor=white;
 			fieldname=file_content;
 			}
