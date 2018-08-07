@@ -128,10 +128,14 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(fieldname,ptr,sizeof(fieldname));
+                    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else
 	    fieldname[0]='\0';
 
+        if((strcmp(form,"") != 0) && (strcmp(fieldname,"")==0)) {
+                mssError(1,"HTTX","if there is a form specified within the widget, there must be a fieldname specified");
+                return -1;
+        }
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
 	else
@@ -168,7 +172,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    rte_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
-	    name, fieldname, form, is_readonly, mode);
+	    name, fieldname,form, is_readonly, mode);
         htrAddScriptInit(s, "$('body').on('click', function() { setTimeout( function() { $('.cke_panel').css({'z-index': '20000'}); }, 100) } );\n");
         //htrAddScriptInit_va(s, "var rtobj%POS = CKEDITOR.replace(\"rte%POSbase\",{customConfig:'/sys/thirdparty/ckeditor/ckeditor/config.js'});\n",id,id);
         //htrAddScriptInit_va(s, "rtobj%POS.on('change',function(){rte_action_set_value(rtobj%POS.getData());});",id,id);

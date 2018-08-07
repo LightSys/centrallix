@@ -4,7 +4,7 @@ editing "widget/page"
     width=900;
     height=800;
     title="File Editing Test App";
-    bgcolor="#334466";
+    bgcolor="F0F0F0";
 
     hbox "widget/hbox"
 	{
@@ -14,7 +14,7 @@ editing "widget/page"
 
 	left_vbox "widget/vbox"
 	    {
-	    width=900;
+	    width=435;
 	    spacing=10;
 
 	    text_osrc "widget/osrc"
@@ -24,13 +24,15 @@ editing "widget/page"
 
 		text_form "widget/form"
 		    {
+                    next_form= html_form;
 		    textarea "widget/textarea"
 			{
-                        width=400;
-			height=760;
+
+                        //width=400;
+			//height=760;
+                        height=600;
 			bgcolor=white;
                         fieldname=file_content;
-
 			}
 
 		    textarea_ctls "widget/hbox"
@@ -64,7 +66,7 @@ editing "widget/page"
 
 	right_vbox "widget/vbox"
 	    {
-	    width=900;
+	    width=435;
 	    spacing=10;
 
 	    html_osrc "widget/osrc"
@@ -74,12 +76,17 @@ editing "widget/page"
 
 		html_form "widget/form"
 		    {
+                    next_form = text_form;
+
 		    richtext "widget/richtextedit"
 			{
-                        width = 400;
-			height=760;
-			bgcolor=white;
-			fieldname=file_content;
+                        //width = 400;
+			//height=760;
+                        height=600;
+                        bgcolor=white;
+                        form=html_form;
+                        fieldname=file_content;
+
 			}
 
 		    richtext_ctls "widget/hbox"

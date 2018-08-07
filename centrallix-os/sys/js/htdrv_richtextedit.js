@@ -9,20 +9,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-/** Get value function **/
+/** Get value function for underlying text area **/
 function rte_getvalue()
     {
-    return this.value;
+    return this.richeditor.getData();
     }
 
 
-//sets the RICHTEXTEDITOR's value
+//presets the RICHTEXTEDITOR's value
  function rte_setvalue(txt)
-    {
+    {   alert('set value was called');
         txt = htutil_obscure(txt);
-        this.content = txt;
+        /*this.content = txt;
         this.value = txt;
         this.rte.value = txt;
+        */
         this.richeditor.setData(txt)
     }
 
@@ -42,14 +43,14 @@ function rte_getvalue()
 function rte_action_set_value(ap)
     {
     var txt = ap.Value?ap.Value:"";
-    this.setvalue(txt);
+    this.richeditor.setData(txt);
     if (this.form) this.form.DataNotify(this, true);
     cn_activate(this, 'DataChange');
     }
 
 function rte_action_insert_text(ap)
-    {
-    var txt = ap.Text?ap.Text:"";
+    { alert('insert text was called');
+    /*var txt = ap.Text?ap.Text:"";
     if (ap.SetFocus && tx_current != this)
 	{
 	pg_setkbdfocus(this, null, null, null);
@@ -72,40 +73,48 @@ function rte_action_insert_text(ap)
 	if (this.form) this.form.DataNotify(this, true);
 	cn_activate(this, 'DataChange');
 	}
+        */
     }
 
 function rte_action_set_focus(aparam)
     {
+            alert('set focus was called');
+    /*
     var x = (typeof aparam.X == 'undefined')?null:aparam.X;
     var y = (typeof aparam.Y == 'undefined')?null:aparam.Y;
     pg_setkbdfocus(this, null, x, y);
+    */
     }
 
 /** Clear function **/
 function rte_clearvalue()
     {
-    this.setvalue(null);
+    this.richeditor.setData('');
     }
 
 /** Enable control function **/
 function rte_enable()
     {
+    alert("enable was called");
+    this.richeditor.setReadOnly(false);
     this.enabled='full';
-    $(this.rte).prop('disabled',false);
+    $(this.richeditor).prop('disabled',false);
     }
 
 /** Disable control function **/
 function rte_disable()
     {
-    this.enabled='disabled';
-    $(this.rte).prop('disabled',true);
+        this.richeditor.setReadOnly(true);
+        this.enabled='disabled';
+    //$(this.rte).prop('disabled',true);
     }
 
 /** Readonly-mode function **/
 function rte_readonly()
     {
+    this.richeditor.setReadOnly(true);
     this.enabled='readonly';
-    $(this.rte).prop('disabled',true);
+    //$(this.rte).prop('disabled',true);
     }
 
 function rte_paste(e)
@@ -113,7 +122,7 @@ function rte_paste(e)
     }
 
 function rte_receiving_input(e)
-    {
+    {/*
     var tx=this.mainlayer;
     var sel = document.getSelection();
     var range = sel.getRangeAt(0);
@@ -140,7 +149,7 @@ function rte_receiving_input(e)
     cn_activate(tx,"DataModify", {Value:curtxt, FromKeyboard:1, FromOSRC:0, OldValue:oldtxt});
     if (tx.form) tx.form.DataNotify(tx);
 
-    return;
+    return; */
     }
 
 function rte_keydown(e)
@@ -148,25 +157,25 @@ function rte_keydown(e)
     var tx = this.mainlayer;
 
     // check before keypress...
-    if (isCancel(tx.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode)})))
+    if (isCancel(tx.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.data.keyCode, Name:htr_code_to_keyname(e.data.keyCode)})))
 	{
-	e.preventDefault();
+	e.data.preventDefault();
 	return;
 	}
 
-    if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && !e.shiftKey)
+    if (e.data.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && !e.shiftKey)
 	{
 	if (tx.form) tx.form.TabNotify(tx);
 	cn_activate(tx, 'TabPressed', {Shift:0});
-	tx.DoDataChange(0, 1);
+	rte.DoDataChange(0, 1);
 	}
-    else if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && e.shiftKey)
+    else if (e.data.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && e.shiftKey)
 	{
 	if (tx.form) tx.form.ShiftTabNotify(tx);
 	cn_activate(tx, 'TabPressed', {Shift:1});
-	tx.DoDataChange(0, 1);
+	rte.DoDataChange(0, 1);
 	}
-    else if (e.keyCode == (KeyboardEvent.DOM_VK_ESCAPE || 27))
+    else if (e.data.keyCode == (KeyboardEvent.DOM_VK_ESCAPE || 27))
 	{
 	if (tx.form) tx.form.EscNotify(tx);
 	cn_activate(tx, 'EscapePressed', {});
@@ -191,7 +200,7 @@ function rte_keypress(e)
 /** richtextedit keyboard handler **/
 function rte_keyhandler(l,e,k)
     {
-    if (l.enabled!='full') return 1;
+    if (l.readonly !='false') return 1;
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
     if (e.keyName == 'f3') return true;
     return false;
@@ -200,6 +209,12 @@ function rte_keyhandler(l,e,k)
 /** Set focus to a new richtextedit **/
 function rte_select(x,y,l,c,n,a,k)
     {
+
+            alert('rich select');
+
+    //cn_activate(this,'GetFocus')
+   // l.richeditor.focus();
+
     if (this.enabled != 'full') return 0;
     this.rte.focus();
     var got_focus = $(this.rte).is(':focus');
@@ -210,12 +225,19 @@ function rte_select(x,y,l,c,n,a,k)
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
     cn_activate(this, 'GetFocus');
+    this.form.FocusNotify(this)
     return 1;
+
     }
 
 /** Take focus away from richtextedit **/
 function rte_deselect(p)
-    {
+    {   alert('deslect called');
+        /* var myfocusManger=new CKEDITOR.focusManager(this.richeditor);
+        myfocusManger.blur(true);
+        cn_activate(this,"LoseFocus",{});
+        return true;
+            */
     this.rte.blur();
     this.has_focus = false;
     tx_current = null;
@@ -233,22 +255,21 @@ function rte_deselect(p)
 
 function rte_do_data_change(from_osrc, from_kbd)
     {
-    var nv = cx_hints_checkmodify(this, this.value, this.content, null, true);
+    var nv = cx_hints_checkmodify(this, this.richeditor.getData(), this.richeditor.getData(), null, true);
     if (nv != this.content)
 	{
-	this.value = nv;
-	this.content = nv;
-	this.rte.value = nv;
+	this.richeditor.setData(nv);
+	//this.content = nv;
+	//this.rte.value = nv;
 	}
-    if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.value, Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
+    if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.richeditor.getData(nv), Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
 	{
-	this.content = this.value;
-	this.rte.value = this.value;
+
 	return false;
 	}
-    this.oldvalue = this.value;
-    this.value = nv;
-    cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
+    var oldvalue = this.richeditor.getData();
+    this.richeditor.setData(nv);
+    cn_activate(this, "DataChange", {Value:this.value, OldValue:oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
     }
 
 /** richtextedit initializer **/
@@ -256,8 +277,8 @@ function rte_init(param)
     {
     var l = param.layer;
     ifc_init_widget(l);
-    l.rte = $(l).find('textarea').get(0);
-    l.rte.value = ' ';
+    l.rte = $(l).find('textarea').get(0); //l.rte is the textarea object, NOT THE RICHTEXTEDITOR
+    l.rte.value = '';
     htr_init_layer(l,l,'rte');
     htr_init_layer(l.rte, l, 'rte');
     l.fieldname = param.fieldname;
@@ -272,36 +293,120 @@ function rte_init(param)
     l.enablenew = rte_enable;
     l.disable = rte_disable;
     l.readonly = rte_readonly;
-    //l.tasetvalue = rte_tasetvalue;
 
-    //set height of text area to compatible numbers.
 
-    var pxheight = $(l.rte).height();
+
+    var pxheight = $(l.rte).height(); //height and with found in centrallix or inherited
     var pxwidth = $(l.rte).width();
-    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js", height : pxheight, width : pxwidth });
-   // var rows = l.richeditor.toolbarGroups.length();
-    l.richeditor.on('loaded',function(){l.richeditor.resize(pxwidth,pxheight,false)});
-    l.richeditor.on('change',function(){
-            txt = l.richeditor.getData();
-            txt = htutil_obscure(txt);
-            l.content = txt;
-            l.value = txt;
-            l.rte.value = txt;
-            if (l.form) l.form.DataNotify(l, true);
-            cn_activate(l, 'DataChange');
 
+    // for more documentation on CKEDITOR, ckeditor.com specificaly ckeditor 4.
+    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js", height : pxheight, width : pxwidth }); //this is the richTextarea, using values from centrallix and config.js
+
+
+//The folloring funciotn is ment to notice when data in the ckeditor is changing and set off the internal DoDataChange.
+//There are two cases, when the editor is preset with data using fieldname and when it is  not.
+//The change event fired by the ckeditor fires twice with most changes and fires when data is preloaded.
+//The folloning If statement makes the init use two different listeners, one ignores the first change fire cauesed by the editor preloadihg.
+//A list of useabble events can be found at https://docs.ckeditor.com/ckeditor4/latest/api/CKEDITOR_editor.html
+
+    var preset='true';
+    l.richeditor.on('afterSetData',function(){
+        if (preset=='false'){
+                //alert("inside the if, above first change");
+                l.richeditor.once('change',function(){
+
+                        if (l.form) l.form.DataNotify(l, true);
+                        cn_activate(l, 'DataChange');
+                });
+        }
+        else{
+                //alert("inside the else, above first change...");
+                l.richeditor.once('change',function(){
+                        //alert("inside the else, above second change");
+                        l.richeditor.once('change',function(){
+
+                                if (l.form) l.form.DataNotify(l, true);
+                                cn_activate(l, 'DataChange');
+                                preset='false';
+                        });
+                });
+        }
     });
+
+/*
+    l.richeditor.on('afterSetData',function(){
+            alert('set data happend');
+                l.richeditor.once('change',function(){
+                        alert('change happened');
+                        if (!(l.rte.value === l.richeditor.getData())){
+                                alert("form will be notified");
+                                //alert(l.rte.mode+' '+l.richeditor.mode + ' '+l.mode + ' ' + this.mode);
+
+                                if (l.form) l.form.DataNotify(this, true);
+                                cn_activate(l, 'DataChange');
+                        }
+                });
+    });
+ */
+
+l.richeditor.on("key", function(evt){
+
+        var tx = this.mainlayer;
+
+
+        if(evt.data.keyCode==27){
+                alert("high");
+                //var myfocusManger=new CKEDITOR.focusManager(l.richeditor);
+                //myfocusManger.add(l.richeditor);
+                //myfocusManger.blur(true);
+
+
+                //l.richeditor.myfocusManger.hasFocus=false;
+
+
+                var typingArea = l.richeditor.editable();
+
+                typingArea.hasFocus=false;
+
+                if(l.form) l.form.EscNotify(l);
+                cn_activate(l,'EscapePressed',{});
+                cn_activate(l,"LoseFocus",{});
+                l.losefocushandler();
+        }
+        if(evt.data.keyCode==9){
+                alert('tab pressed');
+                //l.losefocushandler(evt);
+
+                if (l.form) l.form.TabNotify(l);
+        	cn_activate(l, 'TabPressed', {Shift:0});
+        	l.DoDataChange(0, 1);
+                evt.cancel();
+        }
+
+
+});
+
+    l.richeditor.on('focus',function(){
+                alert('focus fired');
+                l.getfocushandler();
+    });
+
+    l.richeditor.on('loaded',function(){l.richeditor.resize(pxwidth,pxheight,false);});
+
+
     if (param.isReadonly)
         {
         l.enablemodify = rte_disable;
-        l.enabled = 'disable';
-	$(l.rte).prop('disabled',true);
+        l.enabled='disable';
+        l.richeditor.on("loaded",function(){l.richeditor.setReadOnly(true);});
+	//$(l.rte).prop('disabled',true);
         }
     else
         {
         l.enablemodify = rte_enable;
-        l.enabled = 'full';
-	$(l.rte).prop('disabled',false);
+        l.enabled='full';
+        l.richeditor.on("loaded",function(){l.richeditor.setReadOnly(false);});
+	//$(l.rte).prop('disabled',false);
         }
     l.mode = param.mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;
@@ -311,8 +416,9 @@ function rte_init(param)
 	pg_addarea(l, -1, -1, $(l).width()+1, $(l).height()+1, 'tbox', 'tbox', param.isReadonly?0:3);
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
-    else
+    else if (!(l.fieldname===""))
 	l.form = wgtrFindContainer(l,"widget/form");
+
     if (l.form) l.form.Register(l);
     l.changed = false;
     l.value = null;
@@ -364,10 +470,10 @@ function rte_mouseover(e)
     {
     if (e.kind == 'tx')
         {
-        if (!tx_cur_mainlayer)
+        if (!rte_cur_mainlayer)
             {
             cn_activate(e.mainlayer, 'MouseOver');
-            tx_cur_mainlayer = e.mainlayer;
+            rte_cur_mainlayer = e.mainlayer;
             }
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -375,11 +481,11 @@ function rte_mouseover(e)
 
 function rte_mousemove(e)
     {
-    if (tx_cur_mainlayer && e.kind != 'rte')
+    if (rte_cur_mainlayer && e.kind != 'rte')
         {
 	// This is MouseOut Detection!
-        cn_activate(tx_cur_mainlayer, 'MouseOut');
-        tx_cur_mainlayer = null;
+        cn_activate(rte_cur_mainlayer, 'MouseOut');
+        rte_cur_mainlayer = null;
         }
     if (e.kind == 'tx') cn_activate(e.mainlayer, 'MouseMove');
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;

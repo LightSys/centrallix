@@ -14,6 +14,7 @@ main "widget/page"
 
 	textarea1 "widget/richtextedit"
 	    {
+            fieldname=helloworld;
             x=15; y=15; width=500; height=500;
             bgcolor="white";
 	    }
