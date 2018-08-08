@@ -1,0 +1,89 @@
+Overview:
+
+First, thank you for looking into the widget richtextedit. The purpose of this widget is to give centrallix a rich text editor so that the
+user can enter more then just plain text. This will be very usefull for example in sending emails. This is accomplished by integrating
+ckeditor4 in the centrallix widget richtextedit. It is hoped that the widget can be modified to have the same functionality as the current
+centrallix editor textarea.
+
+
+How It Works:
+
+Most of the implemented code was copied from textarea then modified to fit the ckeditor. The ckeditor in effect masks an underlying text area
+copying its size, position, and data. It also updates this textarea data to match its own when the form is submited. Many of the old functions
+and events that worked with the text area have been (and need to be) updated to interact with the ckeditor in the way it wishes instead of
+trying to change the underlying text area. Some of the old functions, however, appear to be holdovers from previous versions of textarea that
+even textarea no longer uses. These functions have been commented out but not deleted in case they are used in special corner cases.
+
+
+Helpful Resources:
+
+  * Documentation for centrallix is both in get hub richtextedit branch and http://www.centrallix.net/docs/docs.php
+	  * Sets up the underlying text area https://github.com/LightSys/centrallix/blob/richtextedit/centrallix/htmlgen/htdrv_richtextedit.c
+	  * Drives the widget https://github.com/LightSys/centrallix/blob/richtextedit/centrallix/wgtr/wgtdrv_richtextedit.c
+	  * Initializes ckeditor4 and does tons of functionality https://github.com/LightSys/centrallix/blob/richtextedit/centrallix-os/sys/js/htdrv_richtextedit.js
+	  * The form and page javascrips hold much of the underlying code that all the widgets use
+		
+  * Documentation for ckeditor4 is found at ckeditor.com more specifically:
+	  * Initial configuration https://ckeditor.com/docs/ckeditor4/latest/api/CKEDITOR_config.html
+	  * Events and useful methods https://ckeditor.com/docs/ckeditor4/latest/api/CKEDITOR_editor.html
+	  * Developer guides https://ckeditor.com/docs/ckeditor4/latest/guide/index.html
+	  * Working examples https://sdk.ckeditor.com/  use f12 or viewsourse to see the underlying html
+		
+  * Greg Beeley - just don't overload him
+ 
+ 
+ To Do (for further functionality in centrallix codeing):
+ 
+  * To Test (probably working):
+	  * Properties (name)
+	  * Events (DataChange, EscapePressed, LoseFocus, TabPressed)
+	  * Actions (SetValue)
+		
+  * To Debug (mostly working we hope):
+	  * Properties (readonly)
+	  * Events (BeforeKeyPress, DataModify, GetFocus, KeyPress)
+	  * Actions (InsetText, SetFocus)
+		
+  * To Build (probably not working, may be hard to implement)
+	  * Properties (maxchars)
+	  * Events (MouseDown, MouseMove,MouseOut, MouseOver, MouseUp)
+	  * Actions ()
+		
+  * Extras (may be impossible and or not wanted - ask Greg Beeley)
+	  * Properties (background, bgcolor, mode, style)
+	  * Events ()
+	  * Actions ()
+
+
+
+In Depth Explianations:
+
+
+htdrv_richtextedit.js:
+
+	This is the file where most of the widget functionality is created. It contains several important functions:
+
+	rte_init:
+		This is the initializing funtion that is called once at the very begining of the program. 'l' (the letter L lowercase not 1) represents the form and is
+		often refered to in other functions as 'this'. l.rte represents the underlying text area that ckeditor took over. l.richeditor represents the ckeditor and must
+		be used in order to use any of the ckeditor funtions (l.richeditor.funtion()) and is initialized when CKEDITOR.replace is called replacing the old plain
+		text area with the ckeditor mask. Note that l can only be used in Rte_init elsewhere use (this.richeditor.function()). l.richeditor.on('listener',function{});
+		is used in init to assign ckeditor approved listeners at the very beginning. This code will begin listening at init and will continue listening as long as
+		the widget runs. pg_addarea is used to create a box around the ckeditor and help keep track of if it has focus. This box might be able to be used for the
+		mouse events. Lastly the events and actions are initalized.
+
+	rte_action_set_value:
+		This sanatizes input, sends data modified events and updates the value of the ckeditor. It is heavely suggested to use this instead of rte_setvalue.
+
+	rte_enable,disable&readomly:
+		These three funtions work with the read only property. These were played with and modified but never got to work completely.
+
+	rte_select&deselect:
+		These two funtions handle when the richtextedit is recieving and giving up focus. These are the key behind tab and eacape working. When this document
+		was written they were being finicky and worked on. Select is supposed to be called by the centrallix engine to give a widget focus. Deselect is called
+		by the centrallix engine to remove focus from a widget. Deselect should be called even if no focus is given to another widget. Select should only be called
+		when a widget that does not have focus gains it. Select fires a focus notify and a GainFocus event. Deselect only fires a LoseFocus event. It is very
+		important that the ckeditor and the centrallix engine are in agreement on who has focus. Strange errors result otherwise. Currently they do not agree. 
+
+	rte_do_data_change:
+		This is being used by deselect for some unknown reason.
