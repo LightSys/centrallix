@@ -18,28 +18,12 @@ function rte_getvalue()
 
 //presets the RICHTEXTEDITOR's value
  function rte_setvalue(txt)
-    {   alert('set value was called');
-        txt = htutil_obscure(txt);
-        /*this.content = txt;
-        this.value = txt;
-        this.rte.value = txt;
-        */
-        this.richeditor.setData(txt)
-    }
-
-/** Set value function for the underlying textarea **/
-/*function rte_tasetvalue(txt)
     {
     txt = htutil_obscure(txt);
-    alert('name is : ' + this.name);
-    alert('id is : ' + this.id);
-    var taname = this.name.replace('cke_','');
-    this.content = txt;
-    this.value = txt;
-
-    this.rte.value = txt;
+    this.richeditor.setData(txt)
     }
-*/
+
+//like set value, but fires events and notifications as well
 function rte_action_set_value(ap)
     {
     var txt = ap.Value?ap.Value:"";
@@ -49,7 +33,8 @@ function rte_action_set_value(ap)
     }
 
 function rte_action_insert_text(ap)
-    { alert('insert text was called');
+    {
+    alert('insert text was called, a currently unimplemented function in the js file');
     /*var txt = ap.Text?ap.Text:"";
     if (ap.SetFocus && tx_current != this)
 	{
@@ -78,7 +63,7 @@ function rte_action_insert_text(ap)
 
 function rte_action_set_focus(aparam)
     {
-            alert('set focus was called');
+    alert('set focus was called, a currently unimplemented function in the js file');
     /*
     var x = (typeof aparam.X == 'undefined')?null:aparam.X;
     var y = (typeof aparam.Y == 'undefined')?null:aparam.Y;
@@ -95,7 +80,6 @@ function rte_clearvalue()
 /** Enable control function **/
 function rte_enable()
     {
-    alert("enable was called");
     this.richeditor.setReadOnly(false);
     this.enabled='full';
     $(this.richeditor).prop('disabled',false);
@@ -104,9 +88,8 @@ function rte_enable()
 /** Disable control function **/
 function rte_disable()
     {
-        this.richeditor.setReadOnly(true);
-        this.enabled='disabled';
-    //$(this.rte).prop('disabled',true);
+    this.richeditor.setReadOnly(true);
+    this.enabled='disabled';
     }
 
 /** Readonly-mode function **/
@@ -114,15 +97,17 @@ function rte_readonly()
     {
     this.richeditor.setReadOnly(true);
     this.enabled='readonly';
-    //$(this.rte).prop('disabled',true);
     }
 
 function rte_paste(e)
     {
+    alert('the rte_paste function was called in the js file... why? its not implemented and ckeditor does it');
     }
 
 function rte_receiving_input(e)
-    {/*
+    {
+    alert('rte_receiving_input was called, a unimplemented function in the js file');
+    /*
     var tx=this.mainlayer;
     var sel = document.getSelection();
     var range = sel.getRangeAt(0);
@@ -154,7 +139,8 @@ function rte_receiving_input(e)
 
 function rte_keydown(e)
     {
-    var tx = this.mainlayer;
+    alert('rte_keydown was called, an unimplemented function in the js file.');
+    /*var tx = this.mainlayer;
 
     // check before keypress...
     if (isCancel(tx.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.data.keyCode, Name:htr_code_to_keyname(e.data.keyCode)})))
@@ -185,16 +171,18 @@ function rte_keydown(e)
 	return;
 	}
 
-    e.preventDefault();
+    e.preventDefault();*/
     return;
     }
 
 function rte_keyup(e)
     {
+    alert('rte_keyup was called...how? look in the js file, currently does nothing.');
     }
 
 function rte_keypress(e)
     {
+     alert('rte_keypress was called...how? look in the js file, currently does nothing.');
     }
 
 /** richtextedit keyboard handler **/
@@ -209,36 +197,26 @@ function rte_keyhandler(l,e,k)
 /** Set focus to a new richtextedit **/
 function rte_select(x,y,l,c,n,a,k)
     {
-
-            alert('rich select');
-
-    //cn_activate(this,'GetFocus')
-   // l.richeditor.focus();
-
     if (this.enabled != 'full') return 0;
-    this.rte.focus();
-    var got_focus = $(this.rte).is(':focus');
+    this.focus();
+    this.richeditor.focusManager.focus();
+    var got_focus = $(this.richeditor).is(':focus');
     if (!got_focus)
-	pg_addsched_fn(this.rte, function() { this.focus() }, {}, 200);
+      pg_addsched_fn(this.richeditor, function() { this.focus() }, {}, 200);
     this.has_focus = true;
     tx_current = this;
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
     cn_activate(this, 'GetFocus');
-    this.form.FocusNotify(this)
-    return 1;
 
+    return 1;
     }
 
 /** Take focus away from richtextedit **/
 function rte_deselect(p)
-    {   alert('deslect called');
-        /* var myfocusManger=new CKEDITOR.focusManager(this.richeditor);
-        myfocusManger.blur(true);
-        cn_activate(this,"LoseFocus",{});
-        return true;
-            */
+    {
     this.rte.blur();
+    this.richeditor.focusManager.blur();
     this.has_focus = false;
     tx_current = null;
     if (this.changed)
@@ -259,8 +237,7 @@ function rte_do_data_change(from_osrc, from_kbd)
     if (nv != this.content)
 	{
 	this.richeditor.setData(nv);
-	//this.content = nv;
-	//this.rte.value = nv;
+
 	}
     if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.richeditor.getData(nv), Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
 	{
@@ -299,32 +276,30 @@ function rte_init(param)
     var pxheight = $(l.rte).height(); //height and with found in centrallix or inherited
     var pxwidth = $(l.rte).width();
 
-    // for more documentation on CKEDITOR, ckeditor.com specificaly ckeditor 4.
-    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js", height : pxheight, width : pxwidth }); //this is the richTextarea, using values from centrallix and config.js
 
+    //this is the richTextarea, using values from centrallix and config.js with l.id being a textarea to be replaced
+    l.richeditor = CKEDITOR.replace(l.id,{customConfig: "config.js", height : pxheight, width : pxwidth });
 
-//The folloring funciotn is ment to notice when data in the ckeditor is changing and set off the internal DoDataChange.
+    // upon loading of the CKEDITOR instance, resizes it to account for toolbars.
+    // this means that the size given in centrallix will include the toolbar size as well
+    l.richeditor.on('loaded',function(){l.richeditor.resize(pxwidth,pxheight,false);});
+
+//The following function is meant to notice when data in the ckeditor is changing and set off the internal DoDataChange.
 //There are two cases, when the editor is preset with data using fieldname and when it is  not.
 //The change event fired by the ckeditor fires twice with most changes and fires when data is preloaded.
-//The folloning If statement makes the init use two different listeners, one ignores the first change fire cauesed by the editor preloadihg.
-//A list of useabble events can be found at https://docs.ckeditor.com/ckeditor4/latest/api/CKEDITOR_editor.html
+//The following If statement makes the init use two different listeners, one ignores the first change fire cauesed by the editor preloadihg.
 
     var preset='true';
     l.richeditor.on('afterSetData',function(){
         if (preset=='false'){
-                //alert("inside the if, above first change");
                 l.richeditor.once('change',function(){
-
                         if (l.form) l.form.DataNotify(l, true);
                         cn_activate(l, 'DataChange');
                 });
         }
         else{
-                //alert("inside the else, above first change...");
                 l.richeditor.once('change',function(){
-                        //alert("inside the else, above second change");
                         l.richeditor.once('change',function(){
-
                                 if (l.form) l.form.DataNotify(l, true);
                                 cn_activate(l, 'DataChange');
                                 preset='false';
@@ -333,80 +308,48 @@ function rte_init(param)
         }
     });
 
-/*
-    l.richeditor.on('afterSetData',function(){
-            alert('set data happend');
-                l.richeditor.once('change',function(){
-                        alert('change happened');
-                        if (!(l.rte.value === l.richeditor.getData())){
-                                alert("form will be notified");
-                                //alert(l.rte.mode+' '+l.richeditor.mode + ' '+l.mode + ' ' + this.mode);
 
-                                if (l.form) l.form.DataNotify(this, true);
-                                cn_activate(l, 'DataChange');
-                        }
-                });
-    });
- */
+//listens for escape key(keycode 27), and tab (keycode 9).
+// this listener still activates, but does not do anything on other key presses
+        l.richeditor.on("key", function(evt){
+                var tx = this.mainlayer;
 
-l.richeditor.on("key", function(evt){
+                if(evt.data.keyCode==27){
+                        var typingArea = l.richeditor.editable();
+                        typingArea.hasFocus=false;
 
-        var tx = this.mainlayer;
+                        if(l.form) l.form.EscNotify(l);
+                        cn_activate(l,'EscapePressed',{});
+                        cn_activate(l,"LoseFocus",{});
+                        l.losefocushandler();
+                }
+                if(evt.data.keyCode==9){
 
+                        if (l.form) l.form.TabNotify(l);
+        	        cn_activate(l, 'TabPressed', {Shift:0});
+        	        l.DoDataChange(0, 1);
+                        evt.cancel();
+                }
+        });
 
-        if(evt.data.keyCode==27){
-                alert("high");
-                //var myfocusManger=new CKEDITOR.focusManager(l.richeditor);
-                //myfocusManger.add(l.richeditor);
-                //myfocusManger.blur(true);
-
-
-                //l.richeditor.myfocusManger.hasFocus=false;
-
-
-                var typingArea = l.richeditor.editable();
-
-                typingArea.hasFocus=false;
-
-                if(l.form) l.form.EscNotify(l);
-                cn_activate(l,'EscapePressed',{});
-                cn_activate(l,"LoseFocus",{});
-                l.losefocushandler();
-        }
-        if(evt.data.keyCode==9){
-                alert('tab pressed');
-                //l.losefocushandler(evt);
-
-                if (l.form) l.form.TabNotify(l);
-        	cn_activate(l, 'TabPressed', {Shift:0});
-        	l.DoDataChange(0, 1);
-                evt.cancel();
-        }
-
-
-});
-
-    l.richeditor.on('focus',function(){
-                alert('focus fired');
+//the focus event is fired by the CKEDITOR when an editior instance GAINS focus.
+// this listener activates the getfocushandler defined in init.
+    l.richeditor.on('focus',function(e){
                 l.getfocushandler();
     });
 
-    l.richeditor.on('loaded',function(){l.richeditor.resize(pxwidth,pxheight,false);});
-
-
+//non functional currently, lets the richtexteditor be a readonly field (if you would want that???)
     if (param.isReadonly)
         {
         l.enablemodify = rte_disable;
         l.enabled='disable';
         l.richeditor.on("loaded",function(){l.richeditor.setReadOnly(true);});
-	//$(l.rte).prop('disabled',true);
         }
     else
         {
         l.enablemodify = rte_enable;
         l.enabled='full';
         l.richeditor.on("loaded",function(){l.richeditor.setReadOnly(false);});
-	//$(l.rte).prop('disabled',false);
         }
     l.mode = param.mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;

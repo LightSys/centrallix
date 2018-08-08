@@ -8,8 +8,8 @@ CKEDITOR.editorConfig = function( config ) {
 	// config.language = 'fr';
 	// config.uiColor = '#AADC6E';
 
-        
 
+//probably should not change this, keeps user interface standard
         config.toolbarGroups = [
     { name: 'document',    groups: [ 'mode', 'document', 'doctools' ] },
     { name: 'clipboard',   groups: [ 'clipboard', 'undo' ] },
@@ -26,6 +26,6 @@ CKEDITOR.editorConfig = function( config ) {
     { name: 'others' },
     { name: 'about' }
 ];
-
-        config.removeButtons='Subscript,Superscript,BidiLtr,BidiRtl,Anchor,Language,Source,Preview,PasteText,PasteFromWord,Find,Replace,ShowBlocks';
+        //removes unnessecary features
+        config.removeButtons='Subscript,Superscript,BidiLtr,BidiRtl,Anchor,Language,Source,Preview,PasteText,PasteFromWord,Find,Replace,ShowBlocks,Format,Styles';
 };

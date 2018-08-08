@@ -132,6 +132,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    fieldname[0]='\0';
 
+        //gives an error to the centrallix console if a form is specified within the widget without a fieldname.
         if((strcmp(form,"") != 0) && (strcmp(fieldname,"")==0)) {
                 mssError(1,"HTTX","if there is a form specified within the widget, there must be a fieldname specified");
                 return -1;
@@ -147,7 +148,6 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 		x, y, w-2*box_offset, h-2*box_offset, z, "",
 		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
 		"overflow:hidden; position:absolute;");
-	//htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "rte%POSbase",id);
@@ -157,6 +157,7 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "rte_current", "null", 0);
 	htrAddScriptGlobal(s, "rte_cur_mainlayer", "null", 0);
 
+        //third party scripts used for ckeditor generation.
 	htrAddScriptInclude(s, "/sys/js/htdrv_richtextedit.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
@@ -173,24 +174,14 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    rte_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
 	    name, fieldname,form, is_readonly, mode);
+        //following scirpt deals with layering issues ckeditor has with centrallix. lets pop ups have proper z index. delete at your own peril. you have been warned.
         htrAddScriptInit(s, "$('body').on('click', function() { setTimeout( function() { $('.cke_panel').css({'z-index': '20000'}); }, 100) } );\n");
-        //htrAddScriptInit_va(s, "var rtobj%POS = CKEDITOR.replace(\"rte%POSbase\",{customConfig:'/sys/thirdparty/ckeditor/ckeditor/config.js'});\n",id,id);
-        //htrAddScriptInit_va(s, "rtobj%POS.on('change',function(){rte_action_set_value(rtobj%POS.getData());});",id,id);
-        //htrAddScriptInit_va(s,"var ckei_%POSbase = $('ckei_%POSbase').ckeditor().editor;\n",id,id);
-        //htrAddScriptInit_va(s," $('%s').on('change',function(){rte.SetValue(this.val());});\n","ckei_"+id);
 
 
         /** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<div id=\"rte%POSbase\"><textarea name = \"rte%POSbasetx\", style=\"width:100%%; height:100%%; border:none; outline:none;\">\n",id,id);
 
 	/** Use CSS border or table for drawing? **/
-	/*if (is_raised)
-	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
-	else
-	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
-	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);*/
-
 
 
 	/** Check for more sub-widgets **/
@@ -199,8 +190,6 @@ htrteRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</textarea>\n");
-
-
         htrAddBodyItem(s, "</div>\n");
         return 0;
             }
