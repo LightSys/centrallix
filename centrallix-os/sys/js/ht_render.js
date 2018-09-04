@@ -1195,7 +1195,12 @@ function htr_getbgimage(l)
     if (cx__capabilities.Dom0NS)
 	return l.background.src;
     else if (cx__capabilities.Dom1HTML)
-	return l.style.backgroundImage;
+	{
+	var i = l.style.backgroundImage;
+	if (i && i.substr(0,4) == 'url(')
+	    i = i.substr(5, i.length - 7);
+	return i;
+	}
     return null;
     }
 
