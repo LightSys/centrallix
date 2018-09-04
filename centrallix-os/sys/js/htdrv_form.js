@@ -920,6 +920,7 @@ function form_change_mode(newmode, reason)
     // on New or Modify, call appropriate hints routines
     if (newmode == 'New')
 	{
+	this.BeginTransaction();
 	for(var e in this.elements)
 	    {
 	    if (this.elements[e].cx_hints) cx_hints_setup(this.elements[e]);
@@ -932,6 +933,7 @@ function form_change_mode(newmode, reason)
 	    {
 	    this.LoadFields(templ, true, true);
 	    }
+	this.CommitTransaction();
 	}
     else if (newmode == 'Modify')
 	{
@@ -970,8 +972,34 @@ function form_send_event(event, eparam)
     evobj.PrevStatus = this.oldmode;
     evobj.IsUnsaved = this.IsUnsaved;
     evobj.is_savable = this.is_savable;
-    cn_activate(this, event, evobj);
-    delete evobj;
+    if (this.in_transaction)
+	this.trx_events.push({event: event, evobj: evobj});
+    else
+	cn_activate(this, event, evobj);
+    }
+
+function form_begin_transaction()
+    {
+    this.trx_events = [];
+    this.in_transaction = true;
+    }
+
+function form_commit_transaction()
+    {
+    // scan for duplicate data change events
+    var found_datachange = false;
+    for(var i=0; i<this.trx_events.length; i++)
+	{
+	var e = this.trx_events[i];
+	if (e.event == 'DataChange')
+	    {
+	    if (found_datachange)
+		continue;
+	    found_datachange = true;
+	    }
+	cn_activate(this, e.event, e.evobj);
+	}
+    this.in_transaction = false;
     }
 
 // Disables the entire form.
@@ -1537,6 +1565,8 @@ function form_init(form,param)
     form.recid = 1;
     form.lastrecid = null;
     form.data = null;
+    form.in_transaction = false;
+    form.trx_events = [];
 
 /** initialize actions and callbacks **/
     form.form_cb_getvalue = form_cb_getvalue;
@@ -1579,6 +1609,11 @@ function form_init(form,param)
     form.ActionSaveSuccessCB = form_action_save_success;
     form.ActionDeleteSuccessCB = form_action_delete_success;
     form.AddInterlock = form_add_interlock;
+
+    // Used for making a series of related changes and generating only
+    // one set of events.
+    form.BeginTransaction = form_begin_transaction;
+    form.CommitTransaction = form_commit_transaction;
 
     // Actions
     var ia = form.ifcProbeAdd(ifAction);
