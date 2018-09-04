@@ -1222,7 +1222,7 @@ function pg_keyhandler_internal(k,m,e)
 	    return false;
 	    }
 	}
-    return false;
+    return true;
     }
  
 function pg_status_init() //SETH: ??
@@ -1533,6 +1533,11 @@ function pg_launch(aparam)
 	w_exists = false;
 	}
 
+    // Compute the height
+    var h = aparam.Height;
+    if (window.devicePixelRatio)
+	h *= window.devicePixelRatio;
+
     // Open it.
     if (!w_exists) 
 	{
@@ -1548,7 +1553,7 @@ function pg_launch(aparam)
 	    var scroll = ",scrollbars=yes";
 	else
 	    var scroll = ",scrollbars=no";
-	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + h + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
 	}
     }
 
@@ -2970,6 +2975,18 @@ function pg_check_resize(l)
 	    }
 	}
     return null;
+    }
+
+function pg_scroll(e)
+    {
+    if (e.target == document)
+	{
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else
+	{
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+	}
     }
 
 

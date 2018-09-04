@@ -136,6 +136,12 @@ function wn_init(param)
 	pg_addsched_fn(window, "pg_reveal_event", [l,l,'Reveal'], 0);
 	}
 
+    // force on page...
+    if (getPageY(l) + l.orig_height > getInnerHeight())
+	{
+	moveToAbsolute(l, getPageX(l), getInnerHeight() - l.orig_height - 2);
+	}
+
     // Show container API
     l.showcontainer = wn_showcontainer;
 
@@ -291,6 +297,7 @@ function wn_setvisibility_bh(v)
 	    moveBy(this, 16, 16);
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
+	$(this).css({display:"block"});
 	this.is_visible = 1;
 	if (this.is_modal) pg_setmodal(this, true);
 	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
@@ -532,6 +539,7 @@ function wn_close(l)
     if (l.closetype == 0 || !cx__capabilities.Dom0NS)
 	{
 	htr_setvisibility(l,'hidden');
+	$(l).css({display:"none"});
 	if (l.point1) htr_setvisibility(l.point1,'hidden');
 	if (l.point2) htr_setvisibility(l.point2,'hidden');
 	l.is_visible = 0;
