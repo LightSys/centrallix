@@ -281,7 +281,6 @@ pObjPresentationHints
 objInfToHints(pStructInf inf, int data_type)
     {
     pObjPresentationHints ph;
-    pParamObjects tmplist;
     char* ptr;
     char* newptr;
     int n,cnt;

@@ -642,7 +642,7 @@ function ifEvent()
 // key/value pairs.
     function ifvalue_checkexist(n)
 	{
-	if (!this._Attributes[n])
+	if (!(n in this._Attributes))
 	    this._Attributes[n] = {name:n, exists:false, obj:this.obj, instance:this, watchlist:[], get:null, set:null};
 	return this._Attributes[n];
 	}

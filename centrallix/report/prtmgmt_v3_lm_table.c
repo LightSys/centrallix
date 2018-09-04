@@ -240,7 +240,7 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
 int
 prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
-    pPrtObjStream table_obj, new_parent, old_parent;
+    pPrtObjStream table_obj, new_parent, old_parent = NULL;
     double new_height;
 
 	PRT_DEBUG("prt_tablm_ChildResizeReq() %s %8.8x %s %8.8x\n", this->ObjType->TypeName, this, child->ObjType->TypeName, child);

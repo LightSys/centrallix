@@ -836,7 +836,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream split_obj_list = NULL;
     pPrtObjStream new_parent;
     pPrtObjStream search;
-    double x,y,yb;
+    double x,y;
     int handle_id;
 
 	/** Need to adjust the height/width if unspecified? **/

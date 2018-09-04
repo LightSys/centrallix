@@ -3754,7 +3754,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     int columns = 0;
     unsigned char text[DAT_CACHE_PAGESIZE];
     /** Read in the first line of the csv file **/
-    int len = objRead(obj->Prev, text, DAT_CACHE_PAGESIZE, 0, 0);
+    int len = objRead(obj->Prev, (char*)text, DAT_CACHE_PAGESIZE, 0, 0);
     if (len < 1)
 	{
 	success = 0;

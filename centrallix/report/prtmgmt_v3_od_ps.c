@@ -867,7 +867,7 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    direct_map = 1;
 
 	/** Allocate image data row **/
-	imgrow = (char*)nmSysMalloc(cols*6 + 1 + 1);
+	imgrow = (unsigned char*)nmSysMalloc(cols*6 + 1 + 1);
 	if (!imgrow)
 	    return -1;
 
@@ -919,7 +919,7 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 		}
 	    imgrow[cols*6] = '\n';
 	    imgrow[cols*6+1] = '\0';
-	    prt_psod_Output(context, imgrow, cols*6+1);
+	    prt_psod_Output(context, (char*)imgrow, cols*6+1);
 	    }
 
 	/** Restore graphics context when done **/
