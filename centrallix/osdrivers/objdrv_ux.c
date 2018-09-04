@@ -551,69 +551,92 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    /** Access a path element **/
 	    path = obj_internal_PathPart(tmp_path,0,i);
-	    if (stat(path,&(inf->Fileinfo)) < 0)
-	        {
-		/** Couldn't get it?  if not last or not create, error. **/
-		e = errno;
-		if (e != ENOENT || (!(obj->Mode & O_CREAT) || i != tmp_path->nElements))
-		    {
-		    mssErrorErrno(1,"UXD","Cannot access UNIX path component '%s'",path);
-	    	    nmFree(inf, sizeof(UxdData));
-	    	    if (is_new_node) nmFree(node, sizeof(UxdNode));
-		    nmFree(tmp_path, sizeof(Pathname));
-		    snnode->OpenCnt--;
-	    	    return NULL;
-		    }
 
-		/** Try to make a directory or file? **/
-		if (!strcmp(usrtype, "system/directory")) 
-		    {
-		    if (mkdir(path, obj->Mode) < 0)
-		        {
-		        mssErrorErrno(1,"UXD","Cannot create directory '%s'",path);
-	    	        nmFree(inf, sizeof(UxdData));
-	    	        if (is_new_node) nmFree(node, sizeof(UxdNode));
-		        nmFree(tmp_path, sizeof(Pathname));
-		        snnode->OpenCnt--;
-	    	        return NULL;
-			}
-		    }
-		else 
-		    {
-		    fd = fdOpen(path, obj->Mode, mask);
-		    if (!fd)
-		        {
-		        mssErrorErrno(1,"UXD","Cannot create file '%s'",path);
-	    	        nmFree(inf, sizeof(UxdData));
-	    	        if (is_new_node) nmFree(node, sizeof(UxdNode));
-		        nmFree(tmp_path, sizeof(Pathname));
-		        snnode->OpenCnt--;
-	    	        return NULL;
-			}
-		    inf->fd = fd;
-		    inf->Flags |= UXD_F_ISOPEN;
-		    }
-		obj->Flags |= OBJ_F_CREATED;
-		stat(path,&(inf->Fileinfo));
-		}
-
-	    /** Was it a file?  Or last element?  That ends the UXD's part of the path **/
-	    if (!(S_ISDIR(inf->Fileinfo.st_mode)) || i == tmp_path->nElements)
-	        {
-		/** Last item is a directory? **/
-		if (S_ISDIR(inf->Fileinfo.st_mode)) inf->Flags |= UXD_F_ISDIR;
-
-		/** Set the count of elements we "consumed" **/
+	    /** Autoname this path element? **/
+	    if (i == tmp_path->nElements && (obj->Mode & OBJ_O_AUTONAME) && (obj->Mode & O_CREAT))
+		{
+		/** wait to actually create it **/
 		obj->SubCnt = 1 + i - basecnt;
 		strcpy(inf->RealPathname, path);
+		if (strcmp(usrtype, "system/directory") == 0)
+		    inf->Flags |= UXD_F_ISDIR;
+		obj->Flags |= OBJ_F_CREATED;
 
 		/** Exit the search loop. **/
 		break;
 		}
+	    else
+		{
+		/** non-autoname: try to access the path element **/
+		if (stat(path,&(inf->Fileinfo)) < 0)
+		    {
+		    /** Couldn't get it?  if not last or not create, error. **/
+		    e = errno;
+		    if (e != ENOENT || (!(obj->Mode & O_CREAT) || i != tmp_path->nElements))
+			{
+			mssErrorErrno(1,"UXD","Cannot access UNIX path component '%s'",path);
+			nmFree(inf, sizeof(UxdData));
+			if (is_new_node) nmFree(node, sizeof(UxdNode));
+			nmFree(tmp_path, sizeof(Pathname));
+			snnode->OpenCnt--;
+			return NULL;
+			}
+
+		    /** Try to make a directory or file? **/
+		    if (!strcmp(usrtype, "system/directory")) 
+			{
+			if (mkdir(path, obj->Mode) < 0)
+			    {
+			    mssErrorErrno(1,"UXD","Cannot create directory '%s'",path);
+			    nmFree(inf, sizeof(UxdData));
+			    if (is_new_node) nmFree(node, sizeof(UxdNode));
+			    nmFree(tmp_path, sizeof(Pathname));
+			    snnode->OpenCnt--;
+			    return NULL;
+			    }
+			}
+		    else 
+			{
+			fd = fdOpen(path, obj->Mode, mask);
+			if (!fd)
+			    {
+			    mssErrorErrno(1,"UXD","Cannot create file '%s'",path);
+			    nmFree(inf, sizeof(UxdData));
+			    if (is_new_node) nmFree(node, sizeof(UxdNode));
+			    nmFree(tmp_path, sizeof(Pathname));
+			    snnode->OpenCnt--;
+			    return NULL;
+			    }
+			inf->fd = fd;
+			inf->Flags |= UXD_F_ISOPEN;
+			}
+		    obj->Flags |= OBJ_F_CREATED;
+		    stat(path,&(inf->Fileinfo));
+		    }
+
+		/** Was it a file?  Or final element?  That ends the UXD's part of the path **/
+		if (!(S_ISDIR(inf->Fileinfo.st_mode)) || i == tmp_path->nElements)
+		    {
+		    /** Last item is a directory? **/
+		    if (S_ISDIR(inf->Fileinfo.st_mode))
+			inf->Flags |= UXD_F_ISDIR;
+
+		    /** Set the count of elements we "consumed" **/
+		    obj->SubCnt = 1 + i - basecnt;
+		    strcpy(inf->RealPathname, path);
+
+		    /** Exit the search loop. **/
+		    break;
+		    }
+		}
 	    }
 
-	/** Access called for RDWR but we can't open it RDWR? **/
-	if ((obj->Mode & O_ACCMODE) == O_RDWR && fdAccess(inf->RealPathname,W_OK) < 0)
+	/** Access called for RDWR but we can't open it RDWR?
+	 ** We skip this check if we're autoname creating the final element.
+	 **/
+	if ((obj->Mode & O_ACCMODE) == O_RDWR &&
+	    !(i == tmp_path->nElements && (obj->Mode & OBJ_O_AUTONAME) && (obj->Mode & O_CREAT)) &&
+	    fdAccess(inf->RealPathname,W_OK) < 0)
 	    {
 	    obj->Mode &= ~O_ACCMODE;
 	    obj->Mode |= O_RDONLY;
@@ -636,6 +659,38 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Node = node;
 
     return (void*)inf;
+    }
+
+
+/*** uxd_internal_CheckOpen - see if we need to open the file or directory
+ ***/
+int
+uxd_internal_CheckOpen(pUxdData inf)
+    {
+
+	/** Ok, do we need to open the file? **/
+	if (!(inf->Flags & UXD_F_ISOPEN))
+	    {
+	    /** Need to generate autoname? **/
+	    if ((inf->Mode & OBJ_O_AUTONAME) && (inf->Mode & O_CREAT))
+		{
+		if (strrchr(inf->RealPathname, '*') == inf->RealPathname + strlen(inf->RealPathname) - 1)
+		    {
+		    mssError(1, "UXD", "Cannot read or write the file until a name is given");
+		    return -1;
+		    }
+		}
+
+	    inf->fd = fdOpen(inf->RealPathname, inf->Mode & ~OBJ_O_CXOPTS, inf->Mask);
+	    if (!(inf->fd)) 
+	        {
+		mssErrorErrno(1,"UXD","Could not open file");
+		return -1;
+		}
+	    inf->Flags |= UXD_F_ISOPEN;
+	    }
+
+    return 0;
     }
 
 
@@ -752,17 +807,9 @@ uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	    return -1;
 	    }
 
-	/** Ok, do we need to open the dumb thing? **/
-	if (!(inf->Flags & UXD_F_ISOPEN))
-	    {
-	    inf->fd = fdOpen(inf->RealPathname, inf->Mode, inf->Mask);
-	    if (!(inf->fd)) 
-	        {
-		mssErrorErrno(1,"UXD","Could not read from file");
-		return -1;
-		}
-	    inf->Flags |= UXD_F_ISOPEN;
-	    }
+	/** Need to open it? */
+	if (uxd_internal_CheckOpen(inf) < 0)
+	    return -1;
 
 	/** Now, do the read. **/
 	rval = fdRead(inf->fd, buffer, maxcnt, offset, flags);
@@ -786,17 +833,9 @@ uxdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	    return -1;
 	    }
 
-	/** Ok, do we need to open the dumb thing? **/
-	if (!(inf->Flags & UXD_F_ISOPEN))
-	    {
-	    inf->fd = fdOpen(inf->RealPathname, inf->Mode, inf->Mask);
-	    if (!(inf->fd))
-	        {
-		mssErrorErrno(1,"UXD","Could not read from file");
-		return -1;
-		}
-	    inf->Flags |= UXD_F_ISOPEN;
-	    }
+	/** Need to open it? */
+	if (uxd_internal_CheckOpen(inf) < 0)
+	    return -1;
 
 	/** Now, do the write. **/
 	rval = fdWrite(inf->fd, buffer, cnt, offset, flags);
@@ -1189,6 +1228,24 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		{
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
+		}
+	    if (!(inf->Flags & UXD_F_ISOPEN) && (inf->Mode & OBJ_O_AUTONAME) && (inf->Mode & O_CREAT) && val)
+		{
+		if (strlen(val->String) + strlen(inf->RealPathname) + 1 >= sizeof(inf->RealPathname))
+		    {
+		    mssError(1, "UXD", "Pathname exceeded internal representation: name=%s", val->String);
+		    return -1;
+		    }
+
+		if (strrchr(inf->RealPathname, '*') == inf->RealPathname + strlen(inf->RealPathname) - 1)
+		    {
+		    strcpy(strrchr(inf->RealPathname, '*'), val->String);
+		    }
+		else
+		    {
+		    mssError(1, "UXD", "Improperly formatted autoname pathname");
+		    return -1;
+		    }
 		}
 	    /*if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	    if (strlen(inf->Obj->Pathname->Pathbuf) - 
