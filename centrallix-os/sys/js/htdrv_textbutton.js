@@ -72,9 +72,10 @@ function tb_init(param)
     else
 	l.enabled = true;*/
     l.enabled = param.ena?true:false;
-	
+
+    l.tb_setenable = tb_setenable;
     if (!cx__capabilities.Dom0IE)
-        l.watch('enabled', tb_setenable);
+        htr_watch(l, 'enabled', 'tb_setenable');
     else
     	{
     	//alert("watch is not supported!");
@@ -93,6 +94,7 @@ function tb_init(param)
     // Values
     var iv = l.ifcProbeAdd(ifValue);
     iv.Add("text", tb_cb_gettext, tb_cb_settext);
+    iv.Add("enabled", "enabled");
 
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
