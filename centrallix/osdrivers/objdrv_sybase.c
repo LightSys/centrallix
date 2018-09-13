@@ -2257,6 +2257,13 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 			xsConcatenate(where_clause, ") ", 2);
 			}
 		    }
+		else if (!strcmp(tree->Name,"round") && tree->Children.nItems == 1)
+		    {
+		    /** Centrallix accepts single-argument round() but Sybase does not **/
+		    xsConcatenate(where_clause, " round(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ", 0) ", -1);
+		    }
 		else
 		    {
 	            xsConcatenate(where_clause, " ", 1);
