@@ -1715,6 +1715,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     int colspan;
     double cellwidth;
     int context_pushed = 0;
+    int is_autowidth = 0;
 	
 	/** conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,table);
@@ -1733,6 +1734,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
 	if (rpt_internal_GetBool(table, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
 	if (rpt_internal_GetBool(table, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	is_autowidth = rpt_internal_GetBool(table, "autowidth", 0, 0);
 
 	/** Get column count and widths. **/
 	numcols = 0;
@@ -1822,7 +1824,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags,
 		"numcols", numcols, "colwidths", cwidths, "colsep", colsep, "outerborder", outerborder,
 		"innerborder", innerborder, "shadow", shadow, "topborder", tb, "bottomborder", bb,
-		"leftborder", lb, "rightborder", rb, NULL);
+		"leftborder", lb, "rightborder", rb, "autowidth", is_autowidth, NULL);
 	if (outerborder) prtFreeBorder(outerborder);
 	if (innerborder) prtFreeBorder(innerborder);
 	if (shadow) prtFreeBorder(shadow);
@@ -4826,7 +4828,7 @@ rptExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt
 int
 rptInfo(void* inf_v, pObjectInfo info)
     {
-    pRptData inf = RPT(inf);
+    pRptData inf = RPT(inf_v);
 
 	info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | 
 	    OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT | 
