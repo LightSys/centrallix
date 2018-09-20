@@ -16,6 +16,7 @@
 #include "cxss/cxss.h"
 #include <openssl/sha.h>
 #include <openssl/md5.h>
+#include <openssl/evp.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -2440,6 +2441,186 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     }
 
 
+int exp_fn_hash(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    /*EVP_MD_CTX *hashctx = NULL;
+    const EVP_MD *hashtype = NULL;
+    unsigned char hashvalue[EVP_MAX_MD_SIZE];*/
+    unsigned char hashvalue[SHA512_DIGEST_LENGTH];
+    unsigned int hashlen;
+
+	/** Init the hash function **/
+	/*hashctx = EVP_MD_CTX_new();
+	if (!hashctx)
+	    {
+	    mssError(1, "EXP", "hash(): could not allocate hash digest context");
+	    goto error;
+	    }*/
+	if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires hash type as its first parameter");
+	    goto error;
+	    }
+	if (!i1)
+	    {
+	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    goto error;
+	    }
+	if (i1->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	if (i1->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    goto error;
+	    }
+	/*if (!strcmp(i0->String, "md5"))
+	    hashtype = EVP_md5();
+	else if (!strcmp(i0->String, "sha1"))
+	    hashtype = EVP_sha1();
+	else if (!strcmp(i0->String, "sha256"))
+	    hashtype = EVP_sha256();
+	else if (!strcmp(i0->String, "sha384"))
+	    hashtype = EVP_sha384();
+	else if (!strcmp(i0->String, "sha512"))
+	    hashtype = EVP_sha512();
+	if (!hashtype)
+	    {
+	    mssError(1, "EXP", "hash(): invalid or unsupported hash type %s", i0->String);
+	    goto error;
+	    }
+	EVP_DigestInit_ex(hashctx, hashtype, NULL);
+	EVP_DigestUpdate(hashctx, i1->String, strlen(i1->String));
+	EVP_DigestFinal_ex(hashctx, hashvalue, &hashlen);*/
+	if (!strcmp(i0->String, "md5"))
+	    {
+	    MD5((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 16;
+	    }
+	else if (!strcmp(i0->String, "sha1"))
+	    {
+	    SHA1((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 20;
+	    }
+	else if (!strcmp(i0->String, "sha256"))
+	    {
+	    SHA256((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 32;
+	    }
+	else if (!strcmp(i0->String, "sha384"))
+	    {
+	    SHA384((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 48;
+	    }
+	else if (!strcmp(i0->String, "sha512"))
+	    {
+	    SHA512((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 64;
+	    }
+	tree->String = nmSysMalloc(hashlen * 2 + 1);
+	if (!tree->String)
+	    {
+	    mssError(1, "EXP", "hash(): out of memory");
+	    goto error;
+	    }
+	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
+
+	/*EVP_MD_CTX_free(hashctx);*/
+	return 0;
+
+    error:
+	/*if (hashctx)
+	    EVP_MD_CTX_free(hashctx);*/
+	return -1;
+    }
+
+
+int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    /*EVP_MD_CTX *hashctx = NULL;*/
+    const EVP_MD *hashtype = NULL;
+    unsigned char hashvalue[EVP_MAX_MD_SIZE];
+    unsigned int hashlen;
+
+	/** Init the hash function **/
+	/*hashctx = EVP_MD_CTX_new();
+	if (!hashctx)
+	    {
+	    mssError(1, "EXP", "hash(): could not allocate hash digest context");
+	    goto error;
+	    }*/
+	if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires hash type as its first parameter");
+	    goto error;
+	    }
+	if (!i1)
+	    {
+	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    goto error;
+	    }
+	if (i1->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	if (i1->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires a string (input data) as its second parameter");
+	    goto error;
+	    }
+	if (i2->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	if (i2->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires a string (key) as its third parameter");
+	    goto error;
+	    }
+	if (!strcmp(i0->String, "md5"))
+	    hashtype = EVP_md5();
+	else if (!strcmp(i0->String, "sha1"))
+	    hashtype = EVP_sha1();
+	else if (!strcmp(i0->String, "sha256"))
+	    hashtype = EVP_sha256();
+	else if (!strcmp(i0->String, "sha384"))
+	    hashtype = EVP_sha384();
+	else if (!strcmp(i0->String, "sha512"))
+	    hashtype = EVP_sha512();
+	if (!hashtype)
+	    {
+	    mssError(1, "EXP", "hash(): invalid or unsupported hash type %s", i0->String);
+	    goto error;
+	    }
+	/*EVP_DigestInit_ex(hashctx, hashtype, NULL);
+	EVP_DigestUpdate(hashctx, i1->String, strlen(i1->String));
+	EVP_DigestFinal_ex(hashctx, hashvalue, &hashlen);*/
+	HMAC(hashtype, (unsigned char*)i2->String, strlen(i2->String), (unsigned char*)i1->String, strlen(i1->String), hashvalue, &hashlen);
+	tree->String = nmSysMalloc(hashlen * 2 + 1);
+	if (!tree->String)
+	    {
+	    mssError(1, "EXP", "hash(): out of memory");
+	    goto error;
+	    }
+	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
+
+	/*EVP_MD_CTX_free(hashctx);*/
+	return 0;
+
+    error:
+	/*if (hashctx)
+	    EVP_MD_CTX_free(hashctx);*/
+	return -1;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -2916,6 +3097,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
 	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
 	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
+	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
+	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);

@@ -2232,6 +2232,15 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 			xsConcatenate(where_clause, ") ", 2);
 			}
 		    }
+		else if (!strcmp(tree->Name, "hash"))
+		    {
+		    /** Sybase ASE uses hashbytes() instead of hash(), but the param order is the same. **/
+		    xsConcatenate(where_clause, " hashbytes(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") ", 2);
+		    }
 		else
 		    {
 	            xsConcatenate(where_clause, " ", 1);
