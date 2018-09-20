@@ -793,6 +793,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	     **/
 	    orig_ck_type = ck_type;
 	    obj_info = objInfo(this);
+	    drv = NULL;
 	    if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF) || used_openas || this->SubPtr + this->SubCnt < this->Pathname->nElements)
 		{
 		/** Find out what driver handles this type.   Since type was determined from
@@ -1390,6 +1391,7 @@ objDelete(pObjSession session, char* path)
 pObjectInfo
 objInfo(pObject this)
     {
+    memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
     if (this->Driver->Info)
 	if (this->Driver->Info(this->Data, &(this->AdditionalInfo)) < 0)
 	    return NULL;

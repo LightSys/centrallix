@@ -896,6 +896,8 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    slashptr = strchr(element_list[0]+1, '/');
 	    if (!slashptr) slashptr = strchr(element_list[0], '\0');
 	    qptr = strchr(element_list[0], '?');
+	    if (qptr > slashptr)
+		qptr = NULL;
 	    orig_len = cur_len;
 
 	    /** Open path so far and query for matching objects **/

@@ -296,9 +296,13 @@ objInfToHints(pStructInf inf, int data_type)
 	stAttrValue(stLookup(inf,"min"),NULL,(char**)&(ph->MinValue),0);
 	stAttrValue(stLookup(inf,"max"),NULL,(char**)&(ph->MaxValue),0);*/
 	ph->Constraint = stGetExpression(stLookup(inf,"constraint"), 0);
+	if (ph->Constraint) ph->Constraint = expDuplicateExpression(ph->Constraint);
 	ph->DefaultExpr = stGetExpression(stLookup(inf,"default"), 0);
+	if (ph->DefaultExpr) ph->DefaultExpr = expDuplicateExpression(ph->DefaultExpr);
 	ph->MinValue = stGetExpression(stLookup(inf,"min"), 0);
+	if (ph->MinValue) ph->MinValue = expDuplicateExpression(ph->MinValue);
 	ph->MaxValue = stGetExpression(stLookup(inf,"max"), 0);
+	if (ph->MaxValue) ph->MaxValue = expDuplicateExpression(ph->MaxValue);
 
 	/** Compile expressions, if any **/
 	/*if (ph->Constraint || ph->DefaultExpr || ph->MinValue || ph->MaxValue)

@@ -1566,6 +1566,9 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
     int n_left;
     int n;
     unsigned long long col64;
+    ObjData val;
+    MoneyType m;
+    char* mstr;
 
     	/** Get pointers to the key data. **/
 	ptr = fbuf;
@@ -1583,13 +1586,22 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 		{
 		switch(tdata->ColTypes[tdata->KeyCols[i]])
 		    {
-		    case 21: /** 8 byte money **/
+		    case 11: /** 8 byte money **/
+			memcpy(&col64, inf->ColPtrs[tdata->KeyCols[i]], 8);
+			val.Money = &m;
+			if (sybd_internal_GetCxValue(&col64, 11, &val, DATA_T_MONEY) < 0)
+			    return NULL;
+			mstr = objFormatMoneyTmp(val.Money, "0.0000");
+			snprintf(ptr, n_left, "%s", mstr);
+			break;
+		    case 21: /** 4 byte money **/
+			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
+			break;
 		    case 22: /** date value **/
 		    case 12: /** date value **/
 			memcpy(&col64, inf->ColPtrs[tdata->KeyCols[i]], 8);
 			snprintf(ptr,n_left,"%8.8llX",col64);
 			break;
-		    case 11: /** 4 byte money **/
 		    case 7: /** INT **/
 			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
 			snprintf(ptr,n_left,"%d",col);
@@ -1684,7 +1696,7 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		}
 	    is_string = 1;
 	    t = sybd_internal_GetCxType(key->ColTypes[key->KeyCols[i]]);
-	    if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE) is_string = 0;
+	    if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE || t == DATA_T_MONEY) is_string = 0;
 	    if (wbuf[0]) 
 	        {
 		strcpy(wptr," AND ");
@@ -1723,17 +1735,26 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		strcpy(wptr,sptr);
 		wptr += strlen(sptr);
 		}
-	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 21)
+	    else if (t == DATA_T_MONEY && (key->ColTypes[key->KeyCols[i]] == 11 || key->ColTypes[key->KeyCols[i]] == 21))
 		{
-		/** 8-byte raw value at ptr **/
+		/** String representation at full precision 0.0000 **/
 		val.Money = &m;
+		if (objDataToMoney(DATA_T_STRING, ptr, &m) < 0)
+		    {
+		    mssError(1,"SYBD","Invalid money value in object name");
+		    return NULL;
+		    }
+		sptr = objFormatMoneyTmp(val.Money,"0.0000");
+
+		/** 8-byte raw value at ptr **/
+		/*val.Money = &m;
 		i64 = strtoull(ptr, NULL, 16);
 		if (sybd_internal_GetCxValue(&i64, key->ColTypes[key->KeyCols[i]], &val, t) < 0)
 		    {
 		    mssError(1,"SYBD","Invalid money value in object name");
 		    return NULL;
 		    }
-		sptr = objFormatMoneyTmp(val.Money,"0.00");
+		sptr = objFormatMoneyTmp(val.Money,"0.00");*/
 		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
 		    {
 		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
@@ -1742,7 +1763,8 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		strcpy(wptr,sptr);
 		wptr += strlen(sptr);
 		}
-	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 11)
+#if 00
+	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 21)
 		{
 		/** 4-byte raw value at ptr **/
 		val.Money = &m;
@@ -1761,6 +1783,7 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		strcpy(wptr,sptr);
 		wptr += strlen(sptr);
 		}
+#endif
 	    else
 		{
 		strcpy(wptr,ptr);
@@ -1871,7 +1894,9 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 	        break;
 
 	    case DATA_T_MONEY:
-		objDataToString(clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
+		ptr = objFormatMoneyTmp(&(tree->Types.Money), "0.0000");
+		xsConcatPrintf(clause, " %s ", ptr);
+		/*objDataToString(clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);*/
 	        break;
 
 	    case DATA_T_DOUBLE:
@@ -2240,6 +2265,13 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		    xsConcatenate(where_clause, ",", 1);
 		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ") ", 2);
+		    }
+		else if (!strcmp(tree->Name,"round") && tree->Children.nItems == 1)
+		    {
+		    /** Centrallix accepts single-argument round() but Sybase does not **/
+		    xsConcatenate(where_clause, " round(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ", 0) ", -1);
 		    }
 		else
 		    {
@@ -2698,7 +2730,14 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
 		{
 		n_keys_provided++;
 		keys_provided[j] = find_oxt;
-		ptr = objDataToStringTmp(find_oxt->AttrType, find_oxt->AttrValue, 0);
+		if (find_oxt->AttrType == DATA_T_MONEY)
+		    {
+		    ptr = objFormatMoneyTmp(find_oxt->AttrValue, "0.0000");
+		    }
+		else
+		    {
+		    ptr = objDataToStringTmp(find_oxt->AttrType, find_oxt->AttrValue, 0);
+		    }
 		key_values[j] = nmSysStrdup(ptr);
 		if (!key_values[j])
 		    {
@@ -2836,6 +2875,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
     char tmpch;
     int colid;
     int holding_sem = 0;
+    MoneyType m;
 
         /** Allocate a buffer for our insert statement. **/
 	insbuf = (pXString)nmMalloc(sizeof(XString));
@@ -2880,18 +2920,29 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		if (!kendptr) len = strlen(kptr); else len = kendptr-kptr;
 
 		/** Copy it to the INSERT statement buffer **/
-		ctype = inf->TData->ColTypes[j];
-		if (ctype == 5 || ctype == 6 || ctype == 7 || ctype == 16)
+		ctype = sybd_internal_AttrType(inf->TData, j);
+		if (ctype == DATA_T_INTEGER)
 		    {
 		    xsConcatenate(insbuf, kptr, len);
 		    }
-		else if (ctype == 1 || ctype == 2 || ctype == 18 || ctype == 19)
+		else if (ctype == DATA_T_STRING)
 		    {
 		    tmpch = kptr[len];
 		    kptr[len] = 0;
 		    tmpptr = objDataToStringTmp(DATA_T_STRING, kptr, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    kptr[len] = tmpch;
 		    xsConcatenate(insbuf, tmpptr, -1);
+		    }
+		else if (ctype == DATA_T_MONEY)
+		    {
+		    tmpch = kptr[len];
+		    kptr[len] = 0;
+		    if (objDataToMoney(DATA_T_STRING, kptr, &m) == 0)
+			{
+			tmpptr = objFormatMoneyTmp(&m, "0.0000");
+			xsConcatenate(insbuf, tmpptr, -1);
+			}
+		    kptr[len] = tmpch;
 		    }
 		}
 	    else
@@ -2938,6 +2989,8 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		    {
 		    if (find_oxt->AttrType == DATA_T_DATETIME)
 			xsConcatPrintf(insbuf, " \"%s\" ", objFormatDateTmp(find_oxt->AttrValue, obj_default_date_fmt));
+		    else if (find_oxt->AttrType == DATA_T_MONEY)
+			xsConcatPrintf(insbuf, " %s ", objFormatMoneyTmp(find_oxt->AttrValue, "0.0000"));
 		    else
 			objDataToString(insbuf, find_oxt->AttrType, find_oxt->AttrValue, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    }
@@ -4411,7 +4464,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    else if (type == DATA_T_MONEY)
 		        {
 	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
-			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
+			    objFormatMoneyTmp(*(void**)val, "0.0000"), ptr);
 			}
 		    else if (type == DATA_T_DATETIME)
 			{

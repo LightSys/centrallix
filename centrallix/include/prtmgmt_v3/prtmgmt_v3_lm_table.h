@@ -40,6 +40,7 @@
 #define PRT_TABLM_F_ISHEADER            1       /* row is a header that repeats */
 #define PRT_TABLM_F_ISFOOTER            2       /* row is a repeating footer */
 #define PRT_TABLM_F_INNEROUTER          4       /* user inner/outer bdr instead of l/r/t/b */
+#define PRT_TABLM_F_AUTOWIDTH		8       /* auto-expand columns to fill entire table */
 
 #define PRT_TABLM_DEFAULT_FLAGS         (0)
 #define PRT_TABLM_DEFAULT_COLSEP        1.0     /* column separation */

@@ -463,11 +463,12 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	    totalwidth += lm_inf->ColWidths[i];
 	    }
 
-	/** Check total of column widths. **/
-	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
+	/** Check total of column widths.  If too wide, we always scale it back
+	 ** to fit.  If too narrow, we only scale it to fill if AUTOWIDTH is
+	 ** enabled.
+	 **/
+	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE) || (lm_inf->Flags & PRT_TABLM_F_AUTOWIDTH))
 	    {
-	    /*mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
-	    return -EINVAL;*/
 	    for(i=0;i<lm_inf->nColumns;i++)
 		{
 		lm_inf->ColWidths[i] *= (prtInnerWidth(this)/totalwidth);
@@ -708,6 +709,13 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		    {
 		    lm_inf->ColWidths[i] = prtUnitX(this->Session, widths[i]);
 		    }
+		}
+	    else if (!strcmp(attrname, "autowidth"))
+		{
+		if (va_arg(va, int) != 0)
+		    lm_inf->Flags |= PRT_TABLM_F_AUTOWIDTH;
+		else
+		    lm_inf->Flags &= ~PRT_TABLM_F_AUTOWIDTH;
 		}
 	    else if (!strcmp(attrname, "colsep"))
 		{
