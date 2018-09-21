@@ -77,7 +77,9 @@ typedef struct
 
 #define HTTP_PUSAGE_T_URL	1	/* parameter is encoded into the url */
 #define HTTP_PUSAGE_T_POST	2	/* parameter is encoded into the post data */
+#define HTTP_PUSAGE_T_HEADER	3	/* parameter is encoded into an HTTP request header */
 
+#define HTTP_PSOURCE_T_NONE	0	/* parameter has no source - only the provided default */
 #define HTTP_PSOURCE_T_PATH	1	/* parameter comes from pathname subpart */
 #define HTTP_PSOURCE_T_PARAM	2	/* parameter comes from OSML open parameter */
 
@@ -636,6 +638,27 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    nonce[cnt] = '\0';
 	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1, 1);
 	    nmSysFree(keydata);
+	    }
+
+	/** Add any parameterized request headers **/
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_HEADER)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			{
+			if (one_http_param->Parameter->Value->Data.String)
+			    http_internal_AddRequestHeader(inf, one_http_param->Parameter->Name, nmSysStrdup(one_http_param->Parameter->Value->Data.String), 1, 0);
+			}
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for '%s' header", one_http_param->Parameter->Name);
+			}
+		    }
+		}
 	    }
 
 	/** Build the URL parameters **/
@@ -1220,15 +1243,17 @@ http_internal_LoadParams(pHttpData inf)
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_URL;
 			else if (!strcmp(val, "post"))
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_POST;
+			else if (!strcmp(val, "header"))
+			    one_new_http_param->Usage = HTTP_PUSAGE_T_HEADER;
 			else
 			    {
-			    mssError(1, "HTTP", "Parameter %s usage must be 'url' or 'post'", param_inf->Name);
+			    mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
 			    goto error;
 			    }
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Parameter %s usage must be 'url' or 'post'", param_inf->Name);
+			mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
 			goto error;
 			}
 		    }
@@ -1243,15 +1268,17 @@ http_internal_LoadParams(pHttpData inf)
 			    one_new_http_param->Source = HTTP_PSOURCE_T_PATH;
 			else if (!strcmp(val, "param"))
 			    one_new_http_param->Source = HTTP_PSOURCE_T_PARAM;
+			else if (!strcmp(val, "none"))
+			    one_new_http_param->Source = HTTP_PSOURCE_T_NONE;
 			else
 			    {
-			    mssError(1, "HTTP", "Parameter %s source must be 'path' or 'param'", param_inf->Name);
+			    mssError(1, "HTTP", "Parameter %s source must be 'path', 'param', or 'none'", param_inf->Name);
 			    goto error;
 			    }
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Parameter %s source must be 'path' or 'param'", param_inf->Name);
+			mssError(1, "HTTP", "Parameter %s source must be 'path', 'param', or 'none'", param_inf->Name);
 			goto error;
 			}
 		    }
