@@ -1963,6 +1963,36 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			xsConcatenate(where_clause, ") ", 2);
 			}
 		    }
+		else if (!strcmp(tree->Name, "hash"))
+		    {
+		    /** MySQL uses MD5(), SHA1(), SHA2(data, bitsize) **/
+		    subtree = (pExpression)(tree->Children.Items[0]);
+		    if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "md5") || !strcmp(subtree->String, "sha1") || !strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512")))
+			{
+			/** Function call itself **/
+			if (!strcmp(subtree->String, "md5"))
+			    xsConcatenate(where_clause, " MD5(", 5);
+			else if (!strcmp(subtree->String, "sha1"))
+			    xsConcatenate(where_clause, " SHA1(", 6);
+			else if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
+			    xsConcatenate(where_clause, " SHA2(", 6);
+
+			/** Data **/
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
+
+			/** Bit length, if needed **/
+			if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
+			    {
+			    xsConcatQPrintf(where_clause, ", %POS", strtoi(subtree->String+3, NULL, 10));
+			    }
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    else
+			{
+			mssError(1,"MYSD","Invalid algorithm for hash()");
+			return -1;
+			}
+		    }
                 else
                     {
 		    use_stock_fn_call = 1;
