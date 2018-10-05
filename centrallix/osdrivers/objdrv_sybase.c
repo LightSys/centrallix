@@ -82,7 +82,7 @@ const unsigned short int* __ctype_b;
 /*** Module Controls ***/
 #define SYBD_USE_CURSORS	1	/* use cursors for all multirow SELECTs */
 #define SYBD_CURSOR_ROWCOUNT	50	/* # of rows to fetch at a time */
-#define SYBD_SHOW_SQL		0	/* debug printout SQL issued to Sybase */
+#define SYBD_SHOW_SQL		1	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
 
@@ -1592,7 +1592,7 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 			if (sybd_internal_GetCxValue(&col64, 11, &val, DATA_T_MONEY) < 0)
 			    return NULL;
 			mstr = objFormatMoneyTmp(val.Money, "0.0000");
-			snprintf(ptr, n_left, "%s", mstr);
+			if (mstr) snprintf(ptr, n_left, "%s", mstr);
 			break;
 		    case 21: /** 4 byte money **/
 			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
@@ -2730,6 +2730,11 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
 		{
 		n_keys_provided++;
 		keys_provided[j] = find_oxt;
+		if (find_oxt->AttrValue == NULL)
+		    {
+		    /** Null key value **/
+		    ptr = "";
+		    }
 		if (find_oxt->AttrType == DATA_T_MONEY)
 		    {
 		    ptr = objFormatMoneyTmp(find_oxt->AttrValue, "0.0000");
@@ -2940,6 +2945,8 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		    if (objDataToMoney(DATA_T_STRING, kptr, &m) == 0)
 			{
 			tmpptr = objFormatMoneyTmp(&m, "0.0000");
+			if (!tmpptr)
+			    tmpptr = " NULL ";
 			xsConcatenate(insbuf, tmpptr, -1);
 			}
 		    kptr[len] = tmpch;
@@ -2966,7 +2973,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		if (j!=0) xsConcatenate(insbuf,",",1);
 
                 /** Print the appropriate type. **/
-                if (!find_oxt)
+                if (!find_oxt || find_oxt->AttrValue == NULL)
                     {
                     if (inf->TData->ColFlags[j] & SYBD_CF_ALLOWNULL)
                         {
