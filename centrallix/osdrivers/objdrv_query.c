@@ -664,6 +664,7 @@ int
 qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
+    int rval;
 
 	if (inf == NULL) return -1;
 
@@ -678,8 +679,7 @@ qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** Put checking for your own attributes here. **/
 	if (inf->Type == QY_T_LIST)
 	    {
-	    /** None, currently **/
-	    return -1;
+	    return qy_internal_GetParamType(inf, attrname);
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
@@ -730,7 +730,7 @@ qyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	    }
 	if (inf->Type == QY_T_LIST)
 	    {
-	    return -1;
+	    return qy_internal_GetParamValue(inf, attrname, datatype, val);
 	    }
 
 	mssError(1,"QY","Could not locate requested attribute");
