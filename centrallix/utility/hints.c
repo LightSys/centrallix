@@ -518,6 +518,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Check default **/
 	if (rval == 0 && (ptod->Flags & DATA_TF_NULL) && ph->DefaultExpr)
 	    {
+	    expBindExpression(ph->DefaultExpr, our_objlist, 0);
 	    if (expEvalTree(ph->DefaultExpr, our_objlist) < 0)
 		{
 		rval = -1;
@@ -582,6 +583,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Test constraint **/
 	if (ph->Constraint)
 	    {
+	    expBindExpression(ph->Constraint, our_objlist, 0);
 	    if (expEvalTree(ph->Constraint, our_objlist) < 0)
 		{
 		rval = -1;
@@ -608,6 +610,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Max/Min expression **/
 	if (ph->MinValue)
 	    {
+	    expBindExpression(ph->MinValue, our_objlist, 0);
 	    if (expEvalTree(ph->MinValue, our_objlist) < 0)
 		{
 		rval = -1;
@@ -629,6 +632,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	    }
 	if (ph->MaxValue)
 	    {
+	    expBindExpression(ph->MaxValue, our_objlist, 0);
 	    if (expEvalTree(ph->MaxValue, our_objlist) < 0)
 		{
 		rval = -1;
