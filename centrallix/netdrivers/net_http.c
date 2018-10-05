@@ -806,7 +806,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 
 	/** Record the time and response code **/
 	thetime = localtime(&tval);
-	strftime(conn->ResponseTime, sizeof(conn->ResponseTime), "%d/%a/%Y:%T %z", thetime);
+	strftime(conn->ResponseTime, sizeof(conn->ResponseTime), "%d/%b/%Y:%T %z", thetime);
 	conn->ResponseCode = code;
 	strtcpy(conn->ResponseText, text, sizeof(conn->ResponseText));
 
