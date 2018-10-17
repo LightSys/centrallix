@@ -1310,9 +1310,11 @@ http_internal_GetPageStream(pHttpData inf)
 char*
 http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value)
     {
-    char* ptr;
+    char* ptr = NULL;
 
-	if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
+	//if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
+	//if (stGetObjAttrValue(inf->Node->Data, configname, DATA_T_STRING, POD(&ptr)) < 0 || !ptr)
+	if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
 	    ptr = default_value;
 	ptr = nmSysStrdup(ptr);
 	if (!ptr)
