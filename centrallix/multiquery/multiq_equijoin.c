@@ -37,7 +37,7 @@
 /* Module: 	multiq_equijoin.c	 				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 8, 1999    					*/
-/* Description:	Provides support for equi-joins, where the join is 	*/
+/* Description:	Provides support for joins, where the join is		*/
 /*		fully resolved on a given data field, and is not a	*/
 /*		cartesian-product type of join.				*/
 /*		April 5, 2000 - added <n>-orquery optimization		*/
@@ -63,6 +63,7 @@
 #define MQJ_MAX_PREFETCH	16
 
 #define MQJ_MAX_JOIN		(EXPR_MAX_PARAMS)
+#define MQJ_MAX_SOURCE		(EXPR_MAX_PARAMS)
 
 
 /*** Globals ***/
@@ -71,6 +72,32 @@ struct
     pQueryDriver        ThisDriver;
     }
     MQJINF;
+
+
+/*** Data on one join operation ***/
+typedef struct
+    {
+    unsigned int	Mask;			/* objects in this join */
+    unsigned int	OuterMask;		/* if an outer join, these are the outer objects */
+    unsigned int	InnerMask;		/* inner joined objects */
+    unsigned int	GlobalInnerMask;	/* if an outer join, these are all query objects forced to be inner */
+#if 00
+    int			Specificity;
+    int			Score;
+    int			Used;
+    int			PrimarySource;
+#endif
+    }
+    MqjJoin, *pMqjJoin;
+
+
+/*** Data on one source ***/
+typedef struct _MQJS
+    {
+    pQueryStructure	FromItem;
+    int			Score;
+    }
+    MqjSource, *pMqjSource;
 
 
 /*** "private data" structure for mqj-specific operations, including the
@@ -89,9 +116,121 @@ typedef struct
     MqjJoinData, *pMqjJoinData;
 
 
+/*** mqj_internal_DetermineJoinOrder - take the list of sources and joins, and
+ *** via recursive iteration, determine a viable ordering which satisfies the
+ *** outer/inner relationships, specificities, and the complexities of 2-way
+ *** and N-way joins.
+ ***/
+int
+mqj_internal_DetermineJoinOrder(int n_joins, pMqjJoin joins[], int n_sources, pMqjSource sources[], unsigned int used_sourcemask, unsigned int constant_sources, pMqjSource ordered_sources[])
+    {
+    int i,j,rval;
+    int source_objid;
+    unsigned int to_try;
+    int highest, highest_score;
+    int dont_use, tied, covered;
+    int our_score;
+
+	/** Obtain a mask of source ID's to try **/
+	for(i=to_try=0; i<n_sources; i++)
+	    if (!(used_sourcemask & (1<<i)) && sources[i])
+		to_try |= (1<<sources[i]->FromItem->ObjID);
+
+	/** We're done? **/
+	if (!to_try)
+	    return 0;
+
+	/** Loop through our sources, trying to find one that should go first **/
+	while(to_try)
+	    {
+	    highest = -1;
+	    highest_score = -1;
+	    for(i=0; i<n_sources; i++)
+		{
+		if (!sources[i]) continue;
+		source_objid = sources[i]->FromItem->ObjID;
+
+		/** The source must not have been tried yet **/
+		if (to_try & (1<<source_objid))
+		    {
+		    /** Our rules for source selection, in order of precedence:
+		     **
+		     ** 1.  It must not be an inner member of an outer join whose
+		     **     outer members have not yet been used.
+		     ** 2.  If there are joins that tie this source to used
+		     **     sources, at least one must covered entirely by this
+		     **     source and already-used sources.
+		     ** 3.  Sources tied by joins to used sources must be tried
+		     **     before sources that have no joins to used sources.
+		     ** 4.  Higher-scoring sources should be tried before lower-
+		     **     scoring ones.
+		     **/
+
+		    /** First, we start with the existing score, for criteria 4 **/
+		    our_score = sources[i]->Score;
+
+		    /** Scan the list of joins to take care of criteria 1, 2, & 3 **/
+		    dont_use = 0;
+		    tied = 0;
+		    covered = 0;
+		    for(j=0; j<n_joins; j++)
+			{
+			/** Criteria #1 **/
+			if (((1<<source_objid) & joins[j]->GlobalInnerMask) && ((joins[j]->OuterMask) & used_sourcemask) != joins[j]->OuterMask)
+			    {
+			    dont_use = 1;
+			    break;
+			    }
+
+			/** Criteria #2 and #3 **/
+			if (((1<<source_objid) & joins[j]->Mask) && (joins[j]->Mask & (used_sourcemask & ~constant_sources)))
+			    {
+			    tied = 1;
+			    if ((((1<<source_objid) | (used_sourcemask & ~constant_sources)) & (joins[j]->Mask & ~constant_sources)) == (joins[j]->Mask & ~constant_sources))
+				covered = 1;
+			    }
+			}
+
+		    /** Criteira #1 and #2 **/
+		    if (dont_use || (tied && !covered))
+			continue;
+
+		    /** Criteria #3 **/
+		    if (tied)
+			our_score += 0x20000000;
+
+		    /** Compare the scores: criteria #3 and #4 **/
+		    if (highest == -1 || our_score > highest_score)
+			{
+			highest = i;
+			highest_score = our_score;
+			}
+		    }
+		}
+
+	    /** None found? **/
+	    if (highest == -1)
+		return -1;
+
+	    /** Try this one **/
+	    rval = mqj_internal_DetermineJoinOrder(n_joins, joins, n_sources, sources, used_sourcemask | (1<<sources[highest]->FromItem->ObjID), constant_sources, ordered_sources+1);
+	    if (rval >= 0)
+		{
+		/** A sequence beginning with this highest source worked. **/
+		ordered_sources[0] = sources[highest];
+		return rval + 1;
+		}
+
+	    /** Try another **/
+	    to_try &= ~(1<<sources[highest]->FromItem->ObjID);
+	    }
+
+    return -1;
+    }
+
 
 /*** mqjAnalyze - take a given query syntax structure (qs) and scans it for
- *** equijoin operations, by first scanning the Where clause for the various
+ *** join operations, by first scanning the Where clause for the various
  *** join statements, and then piecing them together to form a set of joins
  *** done in the 'proper' order :)
  ***/
@@ -106,25 +245,23 @@ mqjAnalyze(pQueryStatement stmt)
     pQueryStructure select_item;
     pQueryStructure where_item;
     pQueryStructure from_item=NULL;
-    int i,n=0,j,found,m;
+    int i,n=0,j,found;
     pExpression new_exp;
-    unsigned int join_mask[MQJ_MAX_JOIN];
-    unsigned int join_outer[MQJ_MAX_JOIN];
-    signed char join_obj1[MQJ_MAX_JOIN];
-    signed char join_obj2[MQJ_MAX_JOIN];
-    unsigned char join_spec[MQJ_MAX_JOIN];
-    unsigned char join_map[MQJ_MAX_JOIN];
-    unsigned int joined_objects;
-    unsigned char join_used[MQJ_MAX_JOIN];
-    pQueryStructure from_sources[MQJ_MAX_JOIN];
-    unsigned char from_srcmap[MQJ_MAX_JOIN];
-    int n_joins = 0, n_joins_used;
+    pMqjJoin joins[MQJ_MAX_JOIN];
+    pMqjJoin found_join;
+    pMqjSource sources[MQJ_MAX_SOURCE];
+    pMqjSource ordered_sources[MQJ_MAX_SOURCE];
+    int joined_objects;
+    int n_joins = 0;
+    int n_sources = 0;
+    unsigned int used_sourcemask, provided_mask;
     int min_objlist = stmt->Query->nProvidedObjects;
-    int our_mask, our_outer_mask;
+    unsigned int our_mask, our_outer_mask;
     int mask_objcnt;
 
-	memset(join_outer, 0, sizeof(join_outer));
-	memset(join_mask, 0, sizeof(join_mask));
+	n_sources = stmt->Query->ObjList->nObjects;
+	for(i=0; i<n_sources; i++)
+	    sources[i] = NULL;
 
     	/** Search for WHERE clauses with join operations... **/
 	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMCLAUSE, from_qs)) != NULL)
@@ -140,26 +277,42 @@ mqjAnalyze(pQueryStatement stmt)
 		    if (where_item->ObjCnt == 2)
 			{
 			/** Already seen this join combination? **/
-			for(n=-1,j=0;j<n_joins;j++)
+			found_join = NULL;
+			for(j=0;j<n_joins;j++)
 			    {
-			    if (join_mask[j] == where_item->Expr->ObjCoverageMask) 
+			    if (joins[j]->Mask == where_item->Expr->ObjCoverageMask) 
 				{
-				n = j;
-				if (join_outer[n] != where_item->Expr->ObjOuterMask)
+				found_join = joins[j];
+				if (found_join->OuterMask != where_item->Expr->ObjOuterMask)
 				    {
 				    mssError(1,"MQJ","An entity cannot be both an inner and outer member of an outer join");
-				    return -1;
+				    goto error;
 				    }
 				break;
 				}
 			    }
 
-			/** If not seen it, add it to our list **/
-			if (n < 0)
+			/** Join has not been seen yet -- add it. **/
+			if (!found_join)
 			    {
-			    n = n_joins;
-			    join_outer[n_joins] = where_item->Expr->ObjOuterMask;
-			    join_mask[n_joins++] = where_item->Expr->ObjCoverageMask;
+			    /** Too many? **/
+			    if (n_joins >= MQJ_MAX_JOIN)
+				{
+				mssError(1, "MQJ", "Too many join operations (max = %d)", MQJ_MAX_JOIN);
+				goto error;
+				}
+
+			    /** Allocate the join **/
+			    joins[n_joins] = nmMalloc(sizeof(MqjJoin));
+			    if (!joins[n_joins])
+				goto error;
+
+			    /** Add to our list **/
+			    joins[n_joins]->Mask = where_item->Expr->ObjCoverageMask;
+			    joins[n_joins]->OuterMask = where_item->Expr->ObjOuterMask;
+			    joins[n_joins]->InnerMask = joins[n_joins]->Mask & ~(joins[n_joins]->OuterMask);
+			    joins[n_joins]->GlobalInnerMask = joins[n_joins]->InnerMask;
+			    n_joins++;
 			    }
 			}
 		    }
@@ -172,7 +325,6 @@ mqjAnalyze(pQueryStatement stmt)
 		if (from_item->Flags & MQ_SF_EXPRESSION)
 		    {
 		    our_mask = from_item->Expr->ObjCoverageMask | 1<<(from_item->ObjID);
-		    //our_outer_mask = 1<<(from_item->ObjID);
 		    our_outer_mask = from_item->Expr->ObjCoverageMask;
 		    mask_objcnt = 0;
 		    n = our_mask & EXPR_MASK_ALLOBJECTS;
@@ -186,43 +338,50 @@ mqjAnalyze(pQueryStatement stmt)
 		    if (mask_objcnt > 1)
 			{
 			/** Already seen this join combination? **/
-			for(n=-1,j=0;j<n_joins;j++)
+			found_join = NULL;
+			for(j=0;j<n_joins;j++)
 			    {
-			    if (join_mask[j] == our_mask) 
+			    if (joins[j]->Mask == our_mask) 
 				{
-				n = j;
-				if (join_outer[n] != our_outer_mask)
+				found_join = joins[j];
+				if (found_join->OuterMask != our_outer_mask)
 				    {
 				    mssError(1,"MQJ","An entity cannot be both an inner and outer member of an outer join");
-				    return -1;
+				    goto error;
 				    }
 				break;
 				}
 			    }
 
-			/** If not seen it, add it to our list **/
-			if (n < 0)
+			/** Join has not been seen yet -- add it. **/
+			if (!found_join)
 			    {
-			    n = n_joins;
-			    join_outer[n_joins] = our_outer_mask;
-			    join_mask[n_joins++] = our_mask;
+			    /** Too many? **/
+			    if (n_joins >= MQJ_MAX_JOIN)
+				{
+				mssError(1, "MQJ", "Too many join operations (max = %d)", MQJ_MAX_JOIN);
+				goto error;
+				}
+
+			    /** Allocate the join **/
+			    joins[n_joins] = nmMalloc(sizeof(MqjJoin));
+			    if (!joins[n_joins])
+				goto error;
+
+			    /** Add to our list **/
+			    joins[n_joins]->Mask = our_mask;
+			    joins[n_joins]->OuterMask = our_outer_mask;
+			    joins[n_joins]->InnerMask = joins[n_joins]->Mask & ~(joins[n_joins]->OuterMask);
+			    joins[n_joins]->GlobalInnerMask = joins[n_joins]->InnerMask;
+			    n_joins++;
 			    }
 			}
 		    }
 		}
 
-	    /** Did we find joins? **/
-	    if (n_joins == 0) continue;
-
-	    /** Get the select clause **/
-	    select_qs = mq_internal_FindItem(from_qs->Parent, MQ_T_SELECTCLAUSE, NULL);
-
-	    /** Build a list of the FROM sources, and init the source mapping **/
-	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
+	    /** Build a list of the FROM sources **/
+	    for(i=min_objlist; i<n_sources; i++)
 	        {
-		/** init the map - which we'll use for sorting the from items by specificity. **/
-		from_srcmap[i] = i;
-
 		/** Search for the object in the FROM clause **/
 		found = -1;
 		for(j=0;j<from_qs->Children.nItems;j++)
@@ -238,96 +397,51 @@ mqjAnalyze(pQueryStatement stmt)
 		if (found < 0) 
 		    {
 		    mssError(1,"MQE","Join: referenced object not found in FROM clause");
-		    return -1;
+		    goto error;
 		    }
-		from_sources[i] = from_item;
+
+		/** Setup our source data structure **/
+		sources[i] = nmMalloc(sizeof(MqjSource));
+		if (!sources[i])
+		    goto error;
+		sources[i]->FromItem = from_item;
+		sources[i]->Score = from_item->Specificity + (1000 - from_item->QELinkage->OrderPrio) * 0x10000;
 		}
 
-	    /** Ok, now sort by specificity **/
-	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
-	        {
-		for(j=i+1;j<stmt->Query->ObjList->nObjects;j++)
-		    {
-		    if (from_sources[from_srcmap[i]]->Specificity < from_sources[from_srcmap[j]]->Specificity)
-		        {
-			n = from_srcmap[i];
-			from_srcmap[i] = from_srcmap[j];
-			from_srcmap[j] = n;
-			}
-		    }
-		}
+	    /** Only one source? **/
+	    if (n_sources <= min_objlist + 1)
+		return 0;
 
-	    /** Make it easier to find out which two objects are in each join. **/
-	    for(i=0;i<n_joins;i++)
-	        {
-		join_obj1[i] = -1;
-		join_obj2[i] = -1;
-		j = 0;
-		m = join_mask[i];
-		while(join_obj1[i] < 0) 
+	    /** Determine inner/outer relationships query-wide **/
+	    for(i=n_joins-1; i>=0; i--)
+		{
+		for(j=0; j<n_joins; j++)
 		    {
-		    if (m & 1) join_obj1[i] = j;
-		    m >>= 1;
-		    j++;
-		    }
-		while(join_obj2[i] < 0)
-		    {
-		    if (m & 1) join_obj2[i] = j;
-		    m >>= 1;
-		    j++;
-		    }
-		}
-
-	    /** Build the join specificity array **/
-	    for(i=0;i<n_joins;i++)
-	        {
-		join_spec[i] = from_sources[join_obj1[i]]->Specificity + from_sources[join_obj2[i]]->Specificity + 1;
-		join_map[i] = i;
-		join_used[i] = 0;
-		}
-
-	    /** Adjust the specificity to properly order according to outer-inner relationships **/
-	    for(i=0;i<n_joins;i++)
-	        {
-		for(j=0;j<n_joins;j++)
-		    {
-		    if (i==j) continue;
-		    if (join_obj1[i] == join_obj1[j] && (join_outer[i] & (1<<join_obj1[i])) && !(join_outer[j] & (1<<join_obj1[j])))
-		        {
-			join_spec[j] += join_spec[i];
-			}
-		    else if (join_obj1[i] == join_obj2[j] && (join_outer[i] & (1<<join_obj1[i])) && !(join_outer[j] & (1<<join_obj2[j])))
-		        {
-			join_spec[j] += join_spec[i];
-			}
-		    else if (join_obj2[i] == join_obj1[j] && (join_outer[i] & (1<<join_obj2[i])) && !(join_outer[j] & (1<<join_obj1[j])))
-		        {
-			join_spec[j] += join_spec[i];
-			}
-		    else if (join_obj2[i] == join_obj2[j] && (join_outer[i] & (1<<join_obj2[i])) && !(join_outer[j] & (1<<join_obj2[j])))
-		        {
-			join_spec[j] += join_spec[i];
+		    if (i != j)
+			{
+			if (joins[i]->OuterMask && (joins[j]->Mask & joins[i]->GlobalInnerMask))
+			    joins[i]->GlobalInnerMask |= joins[j]->GlobalInnerMask;
 			}
 		    }
 		}
 
-	    /** Sort the joins by specificity **/
-	    for(i=0;i<n_joins;i++)
-	        {
-		for(j=i+1;j<n_joins;j++)
-		    {
-		    if (join_spec[join_map[i]] < join_spec[join_map[j]])
-		        {
-			n = join_map[i];
-			join_map[i] = join_map[j];
-			join_map[j] = n;
-			}
-		    }
+	    /** Sequence our sources based on joins and specificity.  This is
+	     ** where the hard work of query optimization is really done.
+	     **/
+	    provided_mask = EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE;
+	    for(i=0; i<min_objlist; i++)
+		provided_mask |= (1<<i);
+	    joined_objects = mqj_internal_DetermineJoinOrder(n_joins, joins, n_sources, sources, provided_mask, provided_mask, ordered_sources);
+	    if (joined_objects < 0)
+		{
+		mssError(1, "MQJ", "Invalid join structure in query");
+		goto error;
 		}
+
 #if 00
 	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
 		{
-		printf("F%d: spec:%d src:%s\n", i, from_sources[i]->Specificity, from_sources[i]->Source);
+		printf("F%d: spec:%d ref:%s src:%s\n", i, from_sources[i]->Specificity, from_sources[i]->Presentation, from_sources[i]->Source);
 		}
 	    for(i=0;i<n_joins;i++)
 		{
@@ -337,114 +451,77 @@ mqjAnalyze(pQueryStatement stmt)
 	    printf("\n");
 #endif
 
+	    /** Get the select clause **/
+	    select_qs = mq_internal_FindItem(from_qs->Parent, MQ_T_SELECTCLAUSE, NULL);
+
 	    /** Ok, got list of join expressions.  Now create a JOIN from each one. **/
-	    joined_objects = 0;
-	    n_joins_used = 0;
-	    do  {  /** do ... while (n_joins_used < n_joins); **/
-	        /** Find a high-specificity join that can hook into any already processed joins **/
-	        found = -1;
-		for(i=0;i<n_joins;i++) if (!join_used[join_map[i]])
-		    {
-		    if (n_joins_used == 0 || (joined_objects & join_mask[join_map[i]]))
-		        {
-			found = join_map[i];
-			break;
-			}
-		    }
-
-		/** This join already covered? **/
-		if ((join_mask[found] & joined_objects) == join_mask[found])
-		    {
-		    n_joins_used++;
-		    continue;
-		    }
-
+	    used_sourcemask = 0;
+	    for(i=0; i<joined_objects-1; i++)
+		{
 		/** Create the new QueryElement and link into the exec tree... **/
 		qe = mq_internal_AllocQE();
+		if (!qe)
+		    goto error;
 		qe->Driver = MQJINF.ThisDriver;
-		if (join_outer[found]) qe->Flags |= MQ_EF_OUTERJOIN;
-
-		/** Check master/slave ordering of the join. **/
-		if (qe->Flags & MQ_EF_OUTERJOIN)
-		    {
-		    /** If outerjoin, the ordering is preset.  Forget about specificity. **/
-		    if (join_outer[found] & (1<<join_obj2[found]))
-		        {
-		        n = join_obj1[found];
-		        join_obj1[found] = join_obj2[found];
-		        join_obj2[found] = n;
-			}
-		    }
-		else if (from_sources[join_obj1[found]]->QELinkage->OrderPrio != from_sources[join_obj2[found]]->QELinkage->OrderPrio)
-		    {
-		    /** ORDER BY clause trumps specificity at present **/
-		    if (from_sources[join_obj1[found]]->QELinkage->OrderPrio > from_sources[join_obj2[found]]->QELinkage->OrderPrio)
-			{
-			n = join_obj1[found];
-			join_obj1[found] = join_obj2[found];
-			join_obj2[found] = n;
-			}
-		    }
-		else if (from_sources[join_obj1[found]]->Specificity < from_sources[join_obj2[found]]->Specificity)
-		    {
-		    n = join_obj1[found];
-		    join_obj1[found] = join_obj2[found];
-		    join_obj2[found] = n;
-		    }
-
-		/** Verify that the master object connects with existing join(s) **/
-		if (n_joins_used > 0 && !(joined_objects & (1<<join_obj1[found])))
-		    {
-		    if (qe->Flags & MQ_EF_OUTERJOIN)
-		        {
-			/** Can't reverse outer join!  Error! **/
-			mssError(1,"MQJ","Bark!  Internal join order problem!");
-			mq_internal_FreeQE(qe);
-			return -1;
-			}
-		    n = join_obj1[found];
-		    join_obj1[found] = join_obj2[found];
-		    join_obj2[found] = n;
-		    }
 
 		/** Find the master QE from the MQ->Trees array if 1st join, otherwise use MQ->Tree. **/
-		if (n_joins_used == 0)
+		if (i == 0)
 		    {
-		    for(i=0;i < xaCount(&stmt->Trees);i++)
+		    for(j=0; j<xaCount(&stmt->Trees); j++)
 		        {
-			master = (pQueryElement)xaGetItem(&stmt->Trees, i);
-			if (((pQueryStructure)(master->QSLinkage)) == from_sources[join_obj1[found]]) break;
+			master = (pQueryElement)xaGetItem(&stmt->Trees, j);
+			if (((pQueryStructure)(master->QSLinkage)) == ordered_sources[i]->FromItem) break;
 			}
+		    used_sourcemask |= 1<<ordered_sources[i]->FromItem->ObjID;
 		    }
 		else
 		    {
 		    master = stmt->Tree;
 		    }
-		qe->SrcIndex = join_obj1[found];
-		qe->SrcIndexSlave = join_obj2[found];
+		qe->SrcIndex = ordered_sources[i]->FromItem->ObjID;
 
 		/** Find the slave QE, from the MQ->Trees array, whether 1st or nth join. **/
-		for(i=0;i<xaCount(&stmt->Trees);i++)
+		for(j=0; j<xaCount(&stmt->Trees); j++)
 		    {
-		    slave = (pQueryElement)xaGetItem(&stmt->Trees, i);
-		    if (((pQueryStructure)(slave->QSLinkage)) == from_sources[join_obj2[found]]) break;
+		    slave = (pQueryElement)xaGetItem(&stmt->Trees, j);
+		    if (((pQueryStructure)(slave->QSLinkage)) == ordered_sources[i+1]->FromItem) break;
+		    }
+		qe->SrcIndexSlave = ordered_sources[i+1]->FromItem->ObjID;
+
+		/** Is it an outer join? **/
+		for(j=0; j<n_joins; j++)
+		    {
+		    /** Yes if:
+		     **   1) The join is an outer join,
+		     **   2) All outer members are now covered,
+		     **   3) This current object is an inner member.
+		     **/
+		    if ((joins[j]->OuterMask & ~provided_mask) != 0 && ((joins[j]->OuterMask & ~provided_mask) & used_sourcemask) == (joins[j]->OuterMask & ~provided_mask) && (joins[j]->InnerMask & (1<<(qe->SrcIndexSlave))))
+			{
+			qe->Flags |= MQ_EF_OUTERJOIN;
+			break;
+			}
 		    }
 
-		/** 'steal' the qe-linkages from the select items for any sub-objects. **/
+		/** We're now "using" this object ID **/
+		used_sourcemask |= 1<<qe->SrcIndexSlave;
+
+		/** Handle SELECT clause items **/
 		if (select_qs)
 		    {
-		    for(i=0;i<select_qs->Children.nItems;i++)
+		    /** Inherit the qe-linkages from the select items for any sub-objects. **/
+		    for(j=0; j<select_qs->Children.nItems; j++)
 			{
-			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
+			select_item = (pQueryStructure)(select_qs->Children.Items[j]);
 			if (select_item->QELinkage == slave || select_item->QELinkage == master)
 			    select_item->QELinkage = qe;
 			}
 
 		    /** Setup the attribute list in the queryelement structure **/
-		    for(i=0;i<select_qs->Children.nItems;i++)
+		    for(j=0; j<select_qs->Children.nItems; j++)
 			{
-			select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | joined_objects | join_mask[found] | EXPR_MASK_EXTREF)) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && n_joins_used == n_joins-1))
+			select_item = (pQueryStructure)(select_qs->Children.Items[j]);
+			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | used_sourcemask | EXPR_MASK_EXTREF)) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && i == joined_objects-2))
 			    {
 			    if (select_item->Flags & MQ_SF_ASTERISK)
 				stmt->Flags |= MQ_TF_ASTERISK;
@@ -461,15 +538,16 @@ mqjAnalyze(pQueryStatement stmt)
 		qe->Constraint = NULL;
 		if (where_qs)
 		    {
-		    for(i=0;i<where_qs->Children.nItems;i++)
+		    for(j=0; j<where_qs->Children.nItems; j++)
 			{
-			where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-			/*if (where_item->Expr->ObjCoverageMask == join_mask[found])*/
-			if ((where_item->Expr->ObjCoverageMask & (joined_objects | join_mask[found])) == where_item->Expr->ObjCoverageMask)
+			where_item = (pQueryStructure)(where_qs->Children.Items[j]);
+			if (where_item->Expr && (where_item->Expr->ObjCoverageMask & used_sourcemask) == where_item->Expr->ObjCoverageMask)
 			    {
 			    if (qe->Constraint)
 				{
 				new_exp = expAllocExpression();
+				if (!new_exp)
+				    goto error;
 				new_exp->NodeType = EXPR_N_AND;
 				expAddNode(new_exp, qe->Constraint);
 				expAddNode(new_exp, where_item->Expr);
@@ -479,10 +557,10 @@ mqjAnalyze(pQueryStatement stmt)
 				{
 				qe->Constraint = where_item->Expr;
 				}
-			    xaRemoveItem(&where_qs->Children,i);
+			    xaRemoveItem(&where_qs->Children, j);
 			    where_item->Expr = NULL;
 			    mq_internal_FreeQS(where_item);
-			    i--;
+			    j--;
 			    continue;
 			    }
 			}
@@ -493,7 +571,7 @@ mqjAnalyze(pQueryStatement stmt)
 		    {
 		    mssError(1,"MQJ","Bark!  Could not locate master/slave query component(s)!");
 		    mq_internal_FreeQE(qe);
-		    return -1;
+		    goto error;
 		    }
 		xaAddItem(&qe->Children,(void*)master);
 		master->Parent = qe;
@@ -504,17 +582,27 @@ mqjAnalyze(pQueryStatement stmt)
 		qe->PrivateData = (void*)nmMalloc(sizeof(MqjJoinData));
 		memset(qe->PrivateData, 0, sizeof(MqjJoinData));
 		qe->OrderPrio = (slave->OrderPrio < master->OrderPrio)?slave->OrderPrio:master->OrderPrio;
-
-		/** Set the joined_objects bitmask to include the objects we have here **/
-		joined_objects |= join_mask[found];
-
-		/** Mark the one we found used. **/
-		join_used[found] = 1;
-		n_joins_used++;
-	        } while (n_joins_used < n_joins);  /** do ... while **/
+		}
 	    }
 
-    return 0;
+	/** Clean up **/
+	for(i=0;i<n_joins;i++)
+	    nmFree(joins[i], sizeof(MqjJoin));
+	for(i=min_objlist; i<n_sources; i++)
+	    if (sources[i])
+		nmFree(sources[i], sizeof(MqjSource));
+
+	return 0;
+
+    error:
+	/** Error condition **/
+	for(i=0;i<n_joins;i++)
+	    nmFree(joins[i], sizeof(MqjJoin));
+	for(i=min_objlist; i<n_sources; i++)
+	    if (sources[i])
+		nmFree(sources[i], sizeof(MqjSource));
+
+	return -1;
     }
 
 
@@ -763,7 +851,7 @@ mqjInitialize()
 	memset(drv,0,sizeof(QueryDriver));
 
 	/** Fill in the structure elements **/
-	strcpy(drv->Name, "MQJ - MultiQuery Equi-Join Module");
+	strcpy(drv->Name, "MQJ - MultiQuery Join Module");
 	drv->Precedence = 3000;
 	drv->Flags = 0;
 	drv->Analyze = mqjAnalyze;

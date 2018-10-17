@@ -102,7 +102,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     unsigned int total_mask = 0;
     int n_sources;
     int n_sources_total;
-    int non_simple;
+    int non_simple, non_primary;
     int clauses[2] = {MQ_T_GROUPBYCLAUSE, MQ_T_ORDERBYCLAUSE};
 
 	/** Allocate a new query-element **/
@@ -141,10 +141,12 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 			for(n_sources = 0; mask; mask >>= 1)
 			    n_sources += (mask & 0x01);
 			non_simple = 0;
+			non_primary = 0;
 			if (n_sources == 1)
 			    {
 			    /** One source.  However, we'll still grab this one if it 
-			     ** uses WILDCARD or SUBTREE (i.e., a "non-simple" source)
+			     ** uses WILDCARD or SUBTREE (i.e., a "non-simple" source), or
+			     ** if the source is not connected to the primary side of a join.
 			     **/
 			    mask = item->Expr->ObjCoverageMask;
 			    src_idx = 0;
@@ -163,10 +165,15 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 					non_simple = 1;
 					break;
 					}
+				    if (search_qe->Parent && !strncmp(search_qe->Parent->Driver->Name, "MQJ", 3) && search_qe->Parent->SrcIndexSlave == src_idx)
+					{
+					non_primary = 1;
+					break;
+					}
 				    }
 				}
 			    }
-			if ((n_sources > 1 || non_simple || n_sources_total > 1) && n_orderby < 24)
+			if ((n_sources > 1 || non_primary || non_simple || n_sources_total > 1) && n_orderby < 24)
 			    {
 			    /** Grab this one **/
 			    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(item->Expr);

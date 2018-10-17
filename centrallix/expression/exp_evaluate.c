@@ -1891,7 +1891,8 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	if (!fn)
 	    {
 	    tree->Flags &= ~EXPR_F_NEW;
-	    objlist->ModCoverageMask = old_objmask;
+	    if (objlist)
+		objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	rval = fn(tree,objlist);

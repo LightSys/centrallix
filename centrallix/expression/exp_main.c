@@ -837,6 +837,7 @@ exp_internal_SetupControl(pExpression exp)
 	if (!exp->Control) return -ENOMEM;
 	memset(exp->Control, 0, sizeof(ExpControl));
 	exp->Control->LinkCnt = 1;
+	exp->Control->PSeqID = (EXP.PSeqID++);
 
 	if (old_control)
 	    exp_internal_UnlinkControl(old_control);
