@@ -1,0 +1,4 @@
+##NAME Expression join, 3-way expression with subquery
+#
+query select camt = :c:amount, cdate = :c:create_date, cid = :c:"@id", rid = :r:"@id", rdate = :r:create_date from /tests/multilevel1.json c, expression ('/tests/multilevel1.json' + (select '/') + :c:name) r where :r:name = 'q'
+query select camt = :c:amount, rdate = :r:create_date, c2amt = :c2:amount, :cm:create_date from /tests/multilevel1.json c, expression ('/tests/multilevel1.json/' + :c:name) r, expression ('/tests/multilevel1.json/' + :c:name + '/a/') c2, expression ('/tests/multilevel1.json/' + :c:name + (select '/a/') + :c2:name) cm where :r:name = 'q' and :cm:name = 'j'

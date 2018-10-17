@@ -1,0 +1,4 @@
+##NAME Expression join, by object
+#
+query select camt = :c:amount, cdate = :c:create_date, cid = :c:"@id", rid = :r:"@id", rdate = :r:create_date from /tests/multilevel1.json c, object expression ('/tests/multilevel1.json/' + :c:name + '/q') r
+
