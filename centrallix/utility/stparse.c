@@ -448,7 +448,7 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    }
 
 	/** If external ref, do eval **/
-	if ((find_exp->ObjCoverageMask & EXPR_MASK_EXTREF) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
+	if ((find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
 	    objlist = expCreateParamList();
 	    objlist->Session = sess;
