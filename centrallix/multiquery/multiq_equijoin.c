@@ -753,7 +753,7 @@ mqjNextItem(pQueryElement qe, pQueryStatement stmt)
 		    /** If slave only depends on NULL outer elements, then don't run it **/
 		    nullouter = 0;
 		    for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
-			if (stmt->Query->ObjList->Objects[i] == NULL)
+			if (stmt->Query->ObjList->Objects[i] == NULL && ((1<<i) & master->CoverageMask))
 			    nullouter |= (1<<i);
 		    if (slave->DependencyMask && (slave->DependencyMask & ~nullouter) == 0)
 			{
