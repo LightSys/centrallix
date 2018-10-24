@@ -81,6 +81,8 @@ typedef struct
     unsigned int	OuterMask;		/* if an outer join, these are the outer objects */
     unsigned int	InnerMask;		/* inner joined objects */
     unsigned int	GlobalInnerMask;	/* if an outer join, these are all query objects forced to be inner */
+    unsigned int	DependencyMask;
+    unsigned int	GlobalDependencyMask;
 #if 00
     int			Specificity;
     int			Score;
@@ -96,6 +98,7 @@ typedef struct _MQJS
     {
     pQueryStructure	FromItem;
     int			Score;
+    unsigned int	DependencyMask;
     }
     MqjSource, *pMqjSource;
 
@@ -229,6 +232,26 @@ mqj_internal_DetermineJoinOrder(int n_joins, pMqjJoin joins[], int n_sources, pM
     }
 
 
+int
+mqj_internal_PrintMask(int mask, pMqjSource sources[], int n_sources)
+    {
+    int first;
+    int i;
+
+	first = 1;
+	for(i=0; i<n_sources; i++)
+	    {
+	    if (mask & 1<<sources[i]->FromItem->ObjID)
+		{
+		fprintf(stderr, "%s%s", first?"":" ", sources[i]->FromItem->Presentation);
+		first = 0;
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** mqjAnalyze - take a given query syntax structure (qs) and scans it for
  *** join operations, by first scanning the Where clause for the various
  *** join statements, and then piecing them together to form a set of joins
@@ -245,7 +268,7 @@ mqjAnalyze(pQueryStatement stmt)
     pQueryStructure select_item;
     pQueryStructure where_item;
     pQueryStructure from_item=NULL;
-    int i,n=0,j,found;
+    int i,n=0,j,found,first;
     pExpression new_exp;
     pMqjJoin joins[MQJ_MAX_JOIN];
     pMqjJoin found_join;
@@ -404,6 +427,7 @@ mqjAnalyze(pQueryStatement stmt)
 		sources[i] = nmMalloc(sizeof(MqjSource));
 		if (!sources[i])
 		    goto error;
+		sources[i]->DependencyMask = 0;
 		sources[i]->FromItem = from_item;
 		sources[i]->Score = from_item->Specificity + (1000 - from_item->QELinkage->OrderPrio) * 0x10000;
 		}
@@ -438,17 +462,72 @@ mqjAnalyze(pQueryStatement stmt)
 		goto error;
 		}
 
-#if 00
-	    for(i=min_objlist;i<stmt->Query->ObjList->nObjects;i++)
+	    /** Determine direct dependencies for a given join **/
+	    for(i=0; i<n_joins; i++)
 		{
-		printf("F%d: spec:%d ref:%s src:%s\n", i, from_sources[i]->Specificity, from_sources[i]->Presentation, from_sources[i]->Source);
+		joins[i]->DependencyMask = 0;
+		first = 1;
+		for(j=joined_objects-1; j>=0; j--)
+		    {
+		    if (joins[i]->Mask & (1<<ordered_sources[j]->FromItem->ObjID))
+			{
+			if (!first)
+			    joins[i]->DependencyMask |= (1<<ordered_sources[j]->FromItem->ObjID);
+			first = 0;
+			}
+		    }
+		joins[i]->GlobalDependencyMask = joins[i]->DependencyMask;
+		}
+
+	    /** Determine all dependencies for a given join **/
+	    for(i=0; i<n_joins; i++)
+		{
+		for(j=0; j<n_joins; j++)
+		    {
+		    if (i != j && (joins[j]->Mask & joins[i]->GlobalDependencyMask) && !(joins[j]->DependencyMask & joins[i]->GlobalDependencyMask))
+			joins[i]->GlobalDependencyMask |= joins[j]->DependencyMask;
+		    }
+		}
+
+	    /** Set dependencies for sources **/
+	    for(i=0; i<joined_objects; i++)
+		{
+		for(j=0; j<n_joins; j++)
+		    {
+		    if ((joins[j]->Mask & (1<<ordered_sources[i]->FromItem->ObjID)) && !(joins[j]->GlobalDependencyMask & (1<<ordered_sources[i]->FromItem->ObjID)))
+			ordered_sources[i]->DependencyMask |= joins[j]->GlobalDependencyMask;
+		    }
+		}
+
+#if 00
+	    for(i=0;i<joined_objects;i++)
+		{
+		fprintf(stderr, "Src%d: %s %s score 0x%1.1x, dep %2.2x (",
+			i,
+			ordered_sources[i]->FromItem->Presentation,
+			ordered_sources[i]->FromItem->Source,
+			ordered_sources[i]->Score,
+			ordered_sources[i]->DependencyMask
+			);
+		mqj_internal_PrintMask(ordered_sources[i]->DependencyMask, ordered_sources, joined_objects);
+		fprintf(stderr, ")\n");
 		}
 	    for(i=0;i<n_joins;i++)
 		{
-		found = join_map[i];
-		printf("J%d(%d): mask:%2.2x outer:%2.2x spec:%d obj1:%d obj2:%d\n", i, found, join_mask[found], join_outer[found], join_spec[found], join_obj1[found], join_obj2[found]);
+		fprintf(stderr, "Join%d: mask %2.2x (", i, joins[i]->Mask);
+		mqj_internal_PrintMask(joins[i]->Mask, ordered_sources, joined_objects);
+		fprintf(stderr, "), outer %2.2x (", joins[i]->OuterMask);
+		mqj_internal_PrintMask(joins[i]->OuterMask, ordered_sources, joined_objects);
+		fprintf(stderr, "), inner %2.2x (", joins[i]->InnerMask);
+		mqj_internal_PrintMask(joins[i]->InnerMask, ordered_sources, joined_objects);
+		fprintf(stderr, "), globalinner %2.2x (", joins[i]->GlobalInnerMask);
+		mqj_internal_PrintMask(joins[i]->GlobalInnerMask, ordered_sources, joined_objects);
+		fprintf(stderr, "), dep %2.2x (", joins[i]->DependencyMask);
+		mqj_internal_PrintMask(joins[i]->DependencyMask, ordered_sources, joined_objects);
+		fprintf(stderr, "), globaldep %2.2x (", joins[i]->GlobalDependencyMask);
+		mqj_internal_PrintMask(joins[i]->GlobalDependencyMask, ordered_sources, joined_objects);
+		fprintf(stderr, ")\n");
 		}
-	    printf("\n");
 #endif
 
 	    /** Get the select clause **/
@@ -488,10 +567,10 @@ mqjAnalyze(pQueryStatement stmt)
 		    }
 		qe->SrcIndexSlave = ordered_sources[i+1]->FromItem->ObjID;
 
-		/** Is it an outer join? **/
+		/** Handle joins **/
 		for(j=0; j<n_joins; j++)
 		    {
-		    /** Yes if:
+		    /** Is it an outer join? Yes if:
 		     **   1) The join is an outer join,
 		     **   2) All outer members are now covered,
 		     **   3) This current object is an inner member.
@@ -499,8 +578,9 @@ mqjAnalyze(pQueryStatement stmt)
 		    if ((joins[j]->OuterMask & ~provided_mask) != 0 && ((joins[j]->OuterMask & ~provided_mask) & used_sourcemask) == (joins[j]->OuterMask & ~provided_mask) && (joins[j]->InnerMask & (1<<(qe->SrcIndexSlave))))
 			{
 			qe->Flags |= MQ_EF_OUTERJOIN;
-			break;
 			}
+		    qe->DependencyMask = ordered_sources[i+1]->DependencyMask;
+		    //qe->DependencyMask |= joins[j]->GlobalDependencyMask;
 		    }
 
 		/** We're now "using" this object ID **/
@@ -755,7 +835,8 @@ mqjNextItem(pQueryElement qe, pQueryStatement stmt)
 		    for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
 			if (stmt->Query->ObjList->Objects[i] == NULL && ((1<<i) & master->CoverageMask))
 			    nullouter |= (1<<i);
-		    if (slave->DependencyMask && (slave->DependencyMask & ~nullouter) == 0)
+		    //if (slave->DependencyMask && (slave->DependencyMask & ~nullouter) == 0)
+		    if (qe->DependencyMask & nullouter)
 			{
 			rval = 1;
 			break;

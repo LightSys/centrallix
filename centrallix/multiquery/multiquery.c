@@ -268,6 +268,8 @@ mq_internal_SetDependencies(pQueryStatement stmt, pQueryElement tree, pQueryElem
     int i;
     pQueryElement subtree;
 
+	return 0; /* now done by join analysis */
+
 	/** Parent's dependency mask applies to this too **/
 	if (parent)
 	    tree->DependencyMask = parent->DependencyMask;
@@ -2344,8 +2346,9 @@ mq_internal_DumpQE(pQueryElement tree, int level)
     int i;
 
     	/** print the driver type handling this tree **/
-	printf("%*.*sDRIVER=%s, CPTR=%8.8lx, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
-	    (unsigned long)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
+	printf("%*.*sDRIVER=%s, CPTR=%8.8lx, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X, CCOV=0x%X",level*4,level*4,"",tree->Driver->Name,
+	    (unsigned long)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask,
+	    tree->Constraint?tree->Constraint->ObjCoverageMask:0);
 
 	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
 	    printf(", IDX=%d, REF=%s, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Presentation, ((pQueryStructure)tree->QSLinkage)->Source);
