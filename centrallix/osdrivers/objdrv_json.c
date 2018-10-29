@@ -109,6 +109,53 @@ struct
     JSON_INF;
 
 
+struct json_object*
+json_internal_Get(struct json_object* jobj)
+    {
+    struct json_object* rval;
+    rval = json_object_get(jobj);
+    //fprintf(stderr, "GET JOBJ %8.8llx ref %d\n", jobj, ((int*)(jobj))[6]);
+    return rval;
+    }
+
+void
+json_internal_Put(struct json_object* jobj)
+    {
+    int cnt = ((int*)(jobj))[6];
+    json_object_put(jobj);
+    //fprintf(stderr, "PUT JOBJ %8.8llx ref %d\n", jobj, cnt);
+    return;
+    }
+
+
+int
+json_internal_CacheUnlink(pJsonCacheObj cache_obj)
+    {
+
+	cache_obj->LinkCnt--;
+	json_internal_Put(cache_obj->JObj);
+
+	/** Release if the link cnt went to zero **/
+	if (cache_obj->LinkCnt <= 0)
+	    {
+	    nmFree(cache_obj, sizeof(JsonCacheObj));
+	    }
+
+    return 0;
+    }
+
+
+int
+json_internal_CacheLink(pJsonCacheObj cache_obj)
+    {
+
+	cache_obj->LinkCnt++;
+	json_internal_Get(cache_obj->JObj);
+
+    return 0;
+    }
+
+
 /*** json_internal_ReadDoc - read a new json document or else look up an
  *** existing parsed one in the document cache
  ***/
@@ -125,23 +172,26 @@ json_internal_ReadDoc(pObject obj)
     int first_read;
 
 	/** Already cached? **/
-	path = obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
-	if ((cache_obj = (pJsonCacheObj)xhLookup(&JSON_INF.Cache,path)))
+	path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
+	if ((cache_obj = (pJsonCacheObj)xhLookup(&JSON_INF.Cache, path)))
 	    {
 	    /** Found match in cache -- check modification time **/
 	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
 		{
-		if (dt && dt->Value != cache_obj->LastModified.Value)
+		if (!cache_obj->JObj || (dt && dt->Value != cache_obj->LastModified.Value))
 		    {
-		    /** modification time changed -- update **/
-		    json_object_put(cache_obj->JObj);
-		    cache_obj->JObj = NULL;
+		    /** modification time changed -- discard cached copy **/
+		    //fprintf(stderr, "DONE JOBJ %8.8llx ref %d\n", cache_obj->JObj, ((int*)(cache_obj->JObj))[6]);
+		    xhRemove(&JSON_INF.Cache, cache_obj->Pathname);
+		    json_internal_CacheUnlink(cache_obj);
+		    cache_obj = NULL;
 		    }
 		}
 	    }
-	else
+
+	/** Newly parsed document? **/
+	if (!cache_obj)
 	    {
-	    /** Newly parsed document **/
 	    cache_obj = (pJsonCacheObj)nmMalloc(sizeof(JsonCacheObj));
 	    if (!cache_obj)
 		goto error;
@@ -181,6 +231,8 @@ json_internal_ReadDoc(pObject obj)
 		cache_obj->JObj = json_tokener_parse_ex(jtok, rbuf, rcnt);
 		first_read = 0;
 		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
+	    //if (cache_obj->JObj)
+		//fprintf(stderr, "NEW JOBJ %8.8llx ref %d\n", cache_obj->JObj, ((int*)(cache_obj->JObj))[6]);
 
 	    /** Got it? **/
 	    if (jerr == json_tokener_continue)
@@ -198,8 +250,7 @@ json_internal_ReadDoc(pObject obj)
 	    }
 
 	/** Return the parsed JSON document **/
-	json_object_get(cache_obj->JObj);
-	cache_obj->LinkCnt++;
+	json_internal_CacheLink(cache_obj);
 	return cache_obj;
 
     error:
@@ -320,8 +371,8 @@ jsonOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    {
 	    if (inf->CacheObj)
 		{
-		json_object_put(inf->CacheObj->JObj);
-		inf->CacheObj->LinkCnt--;
+		json_internal_CacheUnlink(inf->CacheObj);
+		inf->CacheObj = NULL;
 		}
 	    nmFree(inf, sizeof(JsonData));
 	    }
@@ -339,8 +390,8 @@ jsonClose(void* inf_v, pObjTrxTree* oxt)
 	/** Release the memory **/
 	if (inf->CacheObj)
 	    {
-	    json_object_put(inf->CacheObj->JObj);
-	    inf->CacheObj->LinkCnt--;
+	    json_internal_CacheUnlink(inf->CacheObj);
+	    inf->CacheObj = NULL;
 	    }
 	nmFree(inf,sizeof(JsonData));
 
@@ -477,7 +528,7 @@ jsonOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		{
 		if (json_internal_IsSubobjectNode(iter.val))
 		    {
-		    json_object_get(iter.val);
+		    json_internal_Get(iter.val);
 		    xaAddItem(&qy->ItemList, (void*)iter.val);
 		    xaAddItem(&qy->NameList, nmSysStrdup(iter.key));
 		    }
@@ -495,7 +546,7 @@ jsonOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    return NULL; /* should never happen */
 		if (json_internal_IsSubobjectNode(jobj))
 		    {
-		    json_object_get(jobj);
+		    json_internal_Get(jobj);
 		    xaAddItem(&qy->ItemList, (void*)jobj);
 		    xaAddItem(&qy->NameList, nmSysStrdup(nbuf));
 		    }
@@ -535,8 +586,7 @@ jsonQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    return NULL;
 
 	/** Link **/
-	inf->CacheObj->LinkCnt++;
-	json_object_get(inf->CacheObj->JObj);
+	json_internal_CacheLink(inf->CacheObj);
 
     return (void*)inf;
     }
@@ -554,7 +604,7 @@ jsonQueryClose(void* qy_v, pObjTrxTree* oxt)
 	for(i=0;i<qy->ItemCnt;i++)
 	    {
 	    nmSysFree((char*)qy->NameList.Items[i]);
-	    json_object_put((struct json_object*)qy->ItemList.Items[i]);
+	    json_internal_Put((struct json_object*)qy->ItemList.Items[i]);
 	    }
 
 	/** Free the structure **/
