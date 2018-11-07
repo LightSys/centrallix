@@ -1814,21 +1814,6 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
     }
 
 
-int
-exp_fn_dateadd_mod_add(int v1, int v2, int mod, int* overflow)
-    {
-    int rv;
-    rv = (v1 + v2)%mod;
-    *overflow = (v1 + v2)/mod;
-    if (rv < 0)
-	{
-	*overflow -= 1;
-	rv += mod;
-	}
-    return rv;
-    }
-
-
 int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr;
@@ -1879,51 +1864,8 @@ int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	return -1;
 	}
 
-    /** Do the add **/
-    tree->Types.Date.Part.Second = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Second, diff_sec, 60, &carry);
-    diff_min += carry;
-    tree->Types.Date.Part.Minute = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Minute, diff_min, 60, &carry);
-    diff_hr += carry;
-    tree->Types.Date.Part.Hour = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Hour, diff_hr, 24, &carry);
-    diff_day += carry;
-
-    /** Now add months and years **/
-    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, diff_mo, 12, &carry);
-    diff_yr += carry;
-    tree->Types.Date.Part.Year += diff_yr;
-
-    /** Correct for jumping to a month with fewer days **/
-    if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
-	{
-	tree->Types.Date.Part.Day = (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
-	}
-
-    /** Adding days is more complicated **/
-    while (diff_day > 0)
-	{
-	tree->Types.Date.Part.Day++;
-	if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
-	    {
-	    tree->Types.Date.Part.Day = 0;
-	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, 1, 12, &carry);
-	    tree->Types.Date.Part.Year += carry;
-	    }
-	diff_day--;
-	}
-    while (diff_day < 0)
-	{
-	if (tree->Types.Date.Part.Day == 0)
-	    {
-	    tree->Types.Date.Part.Day = (obj_month_days[exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry)] + ((tree->Types.Date.Part.Month==2 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
-	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry);
-	    tree->Types.Date.Part.Year += carry;
-	    }
-	else
-	    {
-	    tree->Types.Date.Part.Day--;
-	    }
-	diff_day++;
-	}
+    /** Adjust it **/
+    objDateAdd(&tree->Types.Date, diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr);
 
     return 0;
     }

@@ -1074,7 +1074,9 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     {
     int got_hr=-1, got_min=-1, got_sec=-1;
     int got_day=-1, got_yr=-1, got_mo=-1;
+    int got_hroffset=9999, got_minoffset=9999;
     int last_num;
+    char* prev_startptr;
     char* startptr;
     char* endptr;
     char* origptr;
@@ -1083,6 +1085,9 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     time_t int_time;
     int reversed_day=0;
     int iso = 0;
+    time_t z_time, loc_time;
+    int ouroffset;
+    int timediff;
 
     	/** Only accept string, datetime, integer... **/
 	if (data_type != DATA_T_STRING && data_type != DATA_T_DATETIME) return -1;
@@ -1114,6 +1119,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	    if (!strncmp(format,"ISO",5)) iso = 1;
 	    }
 
+	prev_startptr = NULL;
 	startptr = (char*)data_ptr;
 	origptr = startptr;
 	while(*startptr)
@@ -1129,12 +1135,28 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		/** Got a number **/
 		if (*endptr == ':')
 		    {
-		    /** time field.  Check which ones we have. **/
-		    if (got_hr == -1) got_hr = last_num;
-		    else if (got_min == -1) got_min = last_num;
+		    /** If the number starts with + or - and ends with :, it may be a timezone offset **/
+		    if (startptr == origptr || (startptr[0] != '-' && startptr[0] != '+'))
+			{
+			/** time field.  Check which ones we have. **/
+			if (got_hr == -1)
+			    got_hr = last_num;
+			else if (got_min == -1)
+			    got_min = last_num;
+			}
+		    else
+			{
+			/** timezone offset hours field **/
+			if (got_hroffset == 9999)
+			    {
+			    got_hroffset = last_num;
+			    if (startptr != origptr && startptr[0] == '-')
+				got_hroffset = -got_hroffset;
+			    }
+			}
 		    endptr++;
 		    }
-		else if (*endptr == '/' || *endptr == '-')
+		else if (*endptr == '/' || (*endptr == '-' && (got_day == -1 || got_mo == -1 || got_yr == -1)))
 		    {
 		    /** Date field.  Check. **/
 		    if (last_num > 99)
@@ -1165,9 +1187,21 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    /** End-of-string -or- space-separated date/time **/
 		    if (startptr != origptr && startptr[-1] == ':')
 		        {
-			/** For seconds in '12:00:01' or minutes in '12:00' **/
-			if (got_min == -1) got_min = last_num;
-			else if (got_sec == -1) got_sec = last_num;
+			/** If we have a tz hr offset but no min offset, and the previous
+			 ** number had a + or - right before it, this is a TZ minute
+			 ** offset.
+			 **/
+			if (got_hroffset != 9999 && got_minoffset == 9999 && prev_startptr && prev_startptr != origptr && (prev_startptr[0] == '-' || prev_startptr[0] == '+'))
+			    {
+			    got_minoffset = last_num;
+			    if (got_hroffset < 0)
+				got_minoffset = -got_minoffset;
+			    }
+			/** Otherwise, seconds in '12:00:01' or minutes in '12:00' **/
+			else if (got_min == -1)
+			    got_min = last_num;
+			else if (got_sec == -1)
+			    got_sec = last_num;
 			}
 		    else if (startptr != origptr && (startptr[-1] == '/' || startptr[-1] == '-'))
 		        {
@@ -1189,6 +1223,13 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    else if (startptr != origptr && startptr[-1] == '.')
 		        {
 			/** Milliseconds as in 12:00:01.000 -- just ignore them **/
+			}
+		    else if (startptr != origptr && (startptr[0] == '+' || startptr[0] == '-') && got_day != -1 && got_yr != -1 && got_mo != -1)
+			{
+			/** Timezone offset, hours **/
+			got_hroffset = last_num;
+			if (startptr[0] == '-')
+			    got_hroffset = -got_hroffset;
 			}
 		    else if (got_mo != -1 && got_day != -1 && got_yr == -1)
 		        {
@@ -1272,6 +1313,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		}
 
 	    /** Next item. **/
+	    prev_startptr = startptr;
 	    startptr = endptr;
 	    }
 
@@ -1311,6 +1353,39 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	dt->Part.Hour = got_hr;
 	dt->Part.Minute = got_min;
 	dt->Part.Second = got_sec;
+
+	/** Adjust for timezone, if necessary.  If no offset was
+	 ** given in the date/time, then we assume the date/time is
+	 ** local time and no more work needs to be done.  IF an
+	 ** offset however was supplied, then we need to convert
+	 ** to local time.
+	 **/
+	if (got_hroffset != 9999)
+	    {
+	    /** Get offset in the date string **/
+	    if (got_minoffset == 9999)
+		{
+		/** ISO form, +XXXX **/
+		got_minoffset = got_hroffset/100*60 + got_hroffset%100;
+		got_hroffset = 0;
+		}
+	    else
+		{
+		/** MySQL form, +XX:XX **/
+		got_minoffset = got_minoffset + got_hroffset*60;
+		got_hroffset = 0;
+		}
+
+	    /** Determine local offset, in minutes **/
+	    loc_time = time(NULL);
+	    t = gmtime(&loc_time);
+	    z_time = mktime(t);
+	    ouroffset = difftime(loc_time, z_time)/60;
+	    timediff = ouroffset - got_minoffset;
+
+	    /** Adjust the date/time **/
+	    objDateAdd(dt, 0, timediff, 0, 0, 0, 0);
+	    }
 
     return 0;
     }
@@ -2261,3 +2336,72 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
     return str->Length - startoffset;
     }
 
+
+int
+obj_internal_DateAddModAdd(int v1, int v2, int mod, int* overflow)
+    {
+    int rv;
+    rv = (v1 + v2)%mod;
+    *overflow = (v1 + v2)/mod;
+    if (rv < 0)
+	{
+	*overflow -= 1;
+	rv += mod;
+	}
+    return rv;
+    }
+
+
+int
+objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr)
+    {
+    int carry;
+
+    /** Do the add **/
+    dt->Part.Second = obj_internal_DateAddModAdd(dt->Part.Second, diff_sec, 60, &carry);
+    diff_min += carry;
+    dt->Part.Minute = obj_internal_DateAddModAdd(dt->Part.Minute, diff_min, 60, &carry);
+    diff_hr += carry;
+    dt->Part.Hour = obj_internal_DateAddModAdd(dt->Part.Hour, diff_hr, 24, &carry);
+    diff_day += carry;
+
+    /** Now add months and years **/
+    dt->Part.Month = obj_internal_DateAddModAdd(dt->Part.Month, diff_mo, 12, &carry);
+    diff_yr += carry;
+    dt->Part.Year += diff_yr;
+
+    /** Correct for jumping to a month with fewer days **/
+    if (dt->Part.Day >= (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)))
+	{
+	dt->Part.Day = (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)) - 1;
+	}
+
+    /** Adding days is more complicated **/
+    while (diff_day > 0)
+	{
+	dt->Part.Day++;
+	if (dt->Part.Day >= (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)))
+	    {
+	    dt->Part.Day = 0;
+	    dt->Part.Month = obj_internal_DateAddModAdd(dt->Part.Month, 1, 12, &carry);
+	    dt->Part.Year += carry;
+	    }
+	diff_day--;
+	}
+    while (diff_day < 0)
+	{
+	if (dt->Part.Day == 0)
+	    {
+	    dt->Part.Day = (obj_month_days[obj_internal_DateAddModAdd(dt->Part.Month, -1, 12, &carry)] + ((dt->Part.Month==2 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)) - 1;
+	    dt->Part.Month = obj_internal_DateAddModAdd(dt->Part.Month, -1, 12, &carry);
+	    dt->Part.Year += carry;
+	    }
+	else
+	    {
+	    dt->Part.Day--;
+	    }
+	diff_day++;
+	}
+
+    return 0;
+    }

@@ -704,6 +704,7 @@ char* objFormatDateTmp(pDateTime dt, char* format);
 int objCurrentDate(pDateTime dt);
 int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
 int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
+int objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr);
 
 
 /** objectsystem replication services - open object notification (Rn) system **/
