@@ -1194,7 +1194,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 			if (got_hroffset != 9999 && got_minoffset == 9999 && prev_startptr && prev_startptr != origptr && (prev_startptr[0] == '-' || prev_startptr[0] == '+'))
 			    {
 			    got_minoffset = last_num;
-			    if (got_hroffset < 0)
+			    if (prev_startptr[0] == '-')
 				got_minoffset = -got_minoffset;
 			    }
 			/** Otherwise, seconds in '12:00:01' or minutes in '12:00' **/
