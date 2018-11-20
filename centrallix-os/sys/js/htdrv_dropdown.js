@@ -828,7 +828,8 @@ function dd_add_items(l,ary)
 		break;
 		}
 	    }
-	if (!found && this.invalid_select_default && this.value)
+	//if (!found && this.invalid_select_default && this.value)
+	if (!found && this.invalid_select_default && (!this.form || this.form.mode == 'Modify'))
 	    cx_hints_setdefault(this);
 	}
     l.init_items = true;

@@ -668,7 +668,7 @@ http_internal_ConnectHttps(pHttpData inf)
 	    inf->Socket = netConnectTCP(inf->Server, "443", 0);
 	if (!inf->Socket)
 	    {
-	    mssError(0, "HTTP", "Could not connect to server");
+	    mssErrorErrno(1, "HTTP", "Could not connect to server %s:%s", inf->Server, inf->Port[0]?inf->Port:"443");
 	    return -1;
 	    }
 

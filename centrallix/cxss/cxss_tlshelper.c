@@ -388,11 +388,11 @@ cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream)
     int rval;
     int interval;
 
-	/** Close up the streams.  We linger for 5 seconds on the
-	 ** ext_conn to make sure things are flushed out.
-	 **/
-	fdClose(ext_conn, 5000);
-	fdClose(reporting_stream, 0);
+	/** Close up the streams. **/
+	if (ext_conn)
+	    fdClose(ext_conn, 0);
+	if (reporting_stream)
+	    fdClose(reporting_stream, 0);
 
 	/** Shutdown and/or wait for the TLS helper process **/
 	interval = 1;
