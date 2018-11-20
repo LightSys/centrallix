@@ -364,7 +364,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc,
 			pQueryStructure odc, pQueryStructure dec)
     {
-    int i,j,cnt,n_assign;
+    int i,j,cnt,n_assign,exists;
     pQueryStructure subtree;
     pQueryStructure having;
     char* ptr;
@@ -382,25 +382,37 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    /** Object vs Collection **/
 	    if (dec->Flags & MQ_SF_COLLECTION)
 		{
-		/** Collection **/
-		qdc = (pQueryDeclaredCollection)nmMalloc(sizeof(QueryDeclaredCollection));
-		if (qdc)
+		/** Check to see if it already exists **/
+		exists = 0;
+		for(i=0; i<appdata->DeclaredCollections.nItems; i++)
 		    {
-		    /** Create it **/
-		    strtcpy(qdc->Name, dec->Name, sizeof(qdc->Name));
-		    qdc->Collection = objCreateTempObject(stmt->Query->SessionID);
-		    if (qdc->Collection == XHN_INVALID_HANDLE)
-			{
-			mssError(1, "MQ", "DECLARE COLLECTION: could not allocate temporary collection '%s'", qdc->Name);
-			nmFree(qdc, sizeof(QueryDeclaredCollection));
-			return -1;
-			}
+		    qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
+		    if (!strcmp(qdc->Name, dec->Name))
+			exists = 1;
+		    }
 
-		    /** Query vs Application scope **/
-		    if (dec->Flags & MQ_SF_APPSCOPE)
-			xaAddItem(&appdata->DeclaredCollections, (void*)qdc);
-		    else
-			xaAddItem(&stmt->Query->DeclaredCollections, (void*)qdc);
+		if (!exists)
+		    {
+		    /** New Collection **/
+		    qdc = (pQueryDeclaredCollection)nmMalloc(sizeof(QueryDeclaredCollection));
+		    if (qdc)
+			{
+			/** Create it **/
+			strtcpy(qdc->Name, dec->Name, sizeof(qdc->Name));
+			qdc->Collection = objCreateTempObject(stmt->Query->SessionID);
+			if (qdc->Collection == XHN_INVALID_HANDLE)
+			    {
+			    mssError(1, "MQ", "DECLARE COLLECTION: could not allocate temporary collection '%s'", qdc->Name);
+			    nmFree(qdc, sizeof(QueryDeclaredCollection));
+			    return -1;
+			    }
+
+			/** Query vs Application scope **/
+			if (dec->Flags & MQ_SF_APPSCOPE)
+			    xaAddItem(&appdata->DeclaredCollections, (void*)qdc);
+			else
+			    xaAddItem(&stmt->Query->DeclaredCollections, (void*)qdc);
+			}
 		    }
 		}
 	    else

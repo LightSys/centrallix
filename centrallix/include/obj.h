@@ -301,6 +301,7 @@ typedef struct _OA
 #define OBJ_INFO_F_NO_CONTENT		(1<<13)	/* object does not have content, objRead() would fail */
 #define OBJ_INFO_F_SUPPORTS_INHERITANCE	(1<<14)	/* object can support inheritance attr cx__inherit, etc. */
 #define OBJ_INFO_F_FORCED_LEAF		(1<<15)	/* object is forced to be a 'leaf' unless ls__type used. */
+#define OBJ_INFO_F_TEMPORARY		(1<<16)	/* this is a temporary object without a vaoid pathname. */
 
 
 /** object virtual attribute - these are attributes which persist only while
@@ -380,6 +381,7 @@ typedef struct _SRT
     XArray	SortNames[2];	/* names of objects */
     XString	SortDataBuf;	/* buffer for sort key data */
     XString	SortNamesBuf;	/* buffer for object names */
+    int		IsTemp;
     }
     ObjQuerySort, *pObjQuerySort;
 
