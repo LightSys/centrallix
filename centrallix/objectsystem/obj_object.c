@@ -1573,3 +1573,61 @@ objCommitObject(pObject this)
     }
 
 
+/*** objOpenChild - open a child object for access to its content, attributes, and
+ *** methods.  Optionally create a new object.  Open 'mode' uses flags like the
+ *** UNIX open() call.
+ ***/
+pObject 
+objOpenChild(pObject parent, char* childname, int mode, int permission_mask, char* type)
+    {
+    pObject this = NULL;
+    void* obj_data;
+    pContentType typeinfo;
+
+	ASSERTMAGIC(parent, MGK_OBJECT);
+
+	/** Ensure driver support.  FIXME this can be processed using a query
+	 ** instead of open-child for drivers that do not support OpenChild
+	 **/
+	if (!parent->Driver->OpenChild)
+	    goto error;
+
+	/** Allocate the new object **/
+	this = obj_internal_AllocObj();
+	if (!this)
+	    goto error;
+
+	/** Set up basic info **/
+	this->EvalContext = parent->EvalContext;	/* inherit from parent */
+	this->Driver = parent->Driver;
+	this->ILowLevelDriver = parent->ILowLevelDriver;
+	this->TLowLevelDriver = parent->TLowLevelDriver;
+	this->Mode = mode;
+	this->Session = parent->Session;
+	this->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	memset(this->Pathname, 0, sizeof(Pathname));
+	this->Pathname->OpenCtlBuf = NULL;
+	if (parent->Prev)
+	    objLinkTo(parent->Prev);
+	this->Prev = parent->Prev;
+	obj_internal_CopyPath(this->Pathname, parent->Pathname);
+	this->Pathname->LinkCnt = 1;
+	this->SubPtr = parent->SubPtr;
+	this->SubCnt = parent->SubCnt+1;
+
+	/** Call the driver **/
+	typeinfo = (pContentType)xhLookup(&OSYS.Types, (void*)"system/object");
+	if (!typeinfo)
+	    goto error;
+	obj_data = parent->Driver->OpenChild(parent->Data, this, childname, mode, typeinfo, type, &(this->Session->Trx));
+	if (!obj_data)
+	    goto error;
+	this->Data = obj_data;
+
+	return this;
+
+    error:
+	if (this)
+	    obj_internal_FreeObj(this);
+	return NULL;
+    }

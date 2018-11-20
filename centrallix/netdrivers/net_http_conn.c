@@ -1,5 +1,6 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,6 +50,7 @@ nht_i_AllocConn(pFile net_conn)
 	conn->ConnFD = net_conn;
 	conn->Size = -1;
 	conn->LastHandle = XHN_INVALID_HANDLE;
+	conn->StrictSameSite = 1;
 	xaInit(&conn->RequestHeaders, 16);
 	xaInit(&conn->ResponseHeaders, 16);
 	strtcpy(conn->ResponseContentType, "text/html", sizeof(conn->ResponseContentType));
@@ -193,7 +195,7 @@ nht_i_ConnHandler(void* conn_v)
 
 	/** Compute header nonce.  This is used for functionally nothing, but
 	 ** it causes the content and offsets to values in the header to change
-	 ** with each request; this can help frustrate certain types of 
+	 ** with each response; this can help frustrate certain types of 
 	 ** cryptographic attacks.
 	 **/
 	if (conn->UsingTLS && NHT.NonceData)
@@ -234,7 +236,7 @@ nht_i_ConnHandler(void* conn_v)
 	if (usrname && !passwd) passwd = "";
 	if (!usrname || !passwd) 
 	    {
-	    nht_i_WriteErrResponse(conn, 404, "Bad Request", "<h1>400 Bad Request</h1>\r\n");
+	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>401 Unauthorized</h1>\r\n");
 	    goto out;
 	    }
 
@@ -396,10 +398,17 @@ nht_i_ConnHandler(void* conn_v)
 	    }
 
 	/** Start the application security context **/
+	akey_inf = stLookup_ne(url_inf,"cx__akey");
 	if (conn->NhtSession && conn->NhtSession->Session)
 	    {
 	    cxssPushContext();
 	    context_started = 1;
+
+	    /** If a valid akey was specified, resume the application **/
+	    if (akey_inf && nht_i_VerifyAKey(akey_inf->StrVal, conn->NhtSession, &group, &app) == 0 && group && app)
+		{
+		appResume(app->Application);
+		}
 	    }
 
 	/** Bump last activity dates. **/
@@ -455,7 +464,6 @@ nht_i_ConnHandler(void* conn_v)
 	/** If the method was GET and an ls__method was specified, use that method **/
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
-	    akey_inf = stLookup_ne(url_inf,"cx__akey");
 	    if (!akey_inf || strncmp(akey_inf->StrVal, conn->NhtSession->SKey, strlen(conn->NhtSession->SKey)))
 		{
 		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
@@ -736,6 +744,7 @@ nht_i_TLSHandler(void* v)
 		thSleep(1);
 		continue;
 		}
+	    conn->UsingTLS = 1;
 
 	    /** Start TLS on the connection.  This replaces conn->ConnFD with
 	     ** a pipe to the TLS encryption/decryption process.

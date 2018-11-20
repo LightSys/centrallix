@@ -573,7 +573,8 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
 	obj->Pathname->LinkCnt = 1;
 	obj->Pathname->OpenCtlBuf = NULL;
-	objLinkTo(this->Obj->Prev);
+	if (this->Obj->Prev)
+	    objLinkTo(this->Obj->Prev);
 	obj->Prev = this->Obj->Prev;
 
 	/** Scan objects til we find one matching the query. **/

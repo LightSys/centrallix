@@ -58,7 +58,7 @@ INSTALL_DATA = @INSTALL_DATA@
 GZIP = @GZIP@
 
 # VPATH - all the directories we manage.
-VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man:tests
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man:tests:application
 
 # Support modules -- only basic utilities.
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
@@ -83,6 +83,11 @@ XSUPPORT=stparse.o \
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
+# App Management Layer (AML)
+XAPPLAYER=app_main.o
+
+APPLAYER=$(patsubst %,application/%,$(XAPPLAYER))
+
 # OSML modules that implement the OSML API for internal C use
 XOBJECTSYSTEM=obj_main.o \
 	      obj_session.o \
@@ -96,7 +101,8 @@ XOBJECTSYSTEM=obj_main.o \
 	      obj_inherit.o \
 	      obj_datatypes.o \
 	      obj_rootnode.o \
-	      obj_replica.o
+	      obj_replica.o \
+	      obj_temp.o
 
 OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 
@@ -370,9 +376,9 @@ CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(B
 LIBS=@LIBS@ @STATIC_LIBS@
 STATIC_LIBS=@STATIC_LIBS@
 
-BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
+BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
-V3BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)
+V3BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS)
 V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 
 .PHONY:	modules
@@ -564,8 +570,8 @@ jsengine: $(JSVM)
 test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
-test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)
-	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o test_prt $(LIBS)
+test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS)
+	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o test_prt $(LIBS)
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
 	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS)

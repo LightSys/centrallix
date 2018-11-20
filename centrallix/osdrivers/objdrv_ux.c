@@ -1316,6 +1316,12 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
 		return -1;
 		}
+	    if ((inf->Mode & O_ACCMODE) != O_RDWR && (inf->Mode & O_ACCMODE) != O_WRONLY)
+		{
+		mssError(1,"UXD","Permission denied setattr 'permissions'");
+		return -1;
+		}
+	    chmod(inf->RealPathname, val->Integer);
 	    }
 	else if (!strcmp(attrname,"last_modification"))
 	    {

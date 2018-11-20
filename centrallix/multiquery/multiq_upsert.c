@@ -67,6 +67,7 @@ typedef struct _MQUS
     int		nCriteria;
     char	InsertPath[OBJSYS_MAX_PATH+1];
     pObject	InsertPathObj;
+    int		IsCollection;
     XArray	ToBeUpdated; /* of pParamObjects */
     }
     MqusData, *pMqusData;
@@ -138,6 +139,7 @@ mqusAnalyze(pQueryStatement stmt)
 	/** Private data **/
 	pdata = (pMqusData)nmMalloc(sizeof(MqusData));
 	pdata->nCriteria = 0;
+	pdata->IsCollection = 0;
 	qe->PrivateData = pdata;
 
 	/** Handle the ON DUPLICATE keying items **/
@@ -182,6 +184,8 @@ mqusAnalyze(pQueryStatement stmt)
 
 	/** What path are we inserting into (and thus potentially updating)? **/
 	strtcpy(pdata->InsertPath, insert_qs->Source, sizeof(pdata->InsertPath));
+	if (insert_qs->Flags & MQ_SF_COLLECTION)
+	    pdata->IsCollection = 1;
 
 	/** Link the qe into the multiquery **/
 	xaAddItem(&stmt->Trees, qe);
@@ -231,6 +235,7 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pQueryElement cld;
     int rval = -1;
     int is_started = 0;
+    handle_t collection;
 
 	pdata = (pMqusData)qe->PrivateData;
 	xaInit(&pdata->ToBeUpdated, 16);
@@ -248,9 +253,27 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	qe->IterCnt = 0;
 
 	/** Open the insert path object (used for dup checking) **/
-	pdata->InsertPathObj = objOpen(stmt->Query->SessionID, pdata->InsertPath, O_RDWR, 0600, "system/directory");
-	if (!pdata->InsertPathObj)
-	    goto error;
+	if (pdata->IsCollection)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, pdata->InsertPath);
+	    if (collection == XHN_INVALID_HANDLE)
+		{
+		mssError(1,"MQUS","Could not find destination collection '%s' for SQL upsert", pdata->InsertPath);
+		goto error;
+		}
+	    pdata->InsertPathObj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    if (!pdata->InsertPathObj)
+		{
+		mssError(1,"MQUS","Could not open destination collection '%s' for SQL upsert", pdata->InsertPath);
+		goto error;
+		}
+	    }
+	else
+	    {
+	    pdata->InsertPathObj = objOpen(stmt->Query->SessionID, pdata->InsertPath, O_RDWR, 0600, "system/directory");
+	    if (!pdata->InsertPathObj)
+		goto error;
+	    }
 
 	rval = 0;
 
