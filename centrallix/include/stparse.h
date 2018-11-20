@@ -49,9 +49,9 @@ typedef struct _SI
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
     struct _SI*	    Parent;	/* Parent inf, null if toplevel */
     struct _SI**    SubInf;	/* List of attrs/groups included */
-    unsigned short  nSubInf;	/* Number of attrs/groups - up to 65535 */
-    unsigned char   nSubAlloc;	/* Amount of space allocated for subinf ptrs */
-    unsigned char   Flags;	/* ST_F_xxx - either top, attrib, or group */
+    unsigned int    nSubInf:21;	/* Number of attrs/groups - up to ST_SUBINF_LIMIT */
+    unsigned char   nSubAlloc:6; /* Amount of space allocated for subinf ptrs */
+    unsigned char   Flags:5;	/* ST_F_xxx - either top, attrib, or group */
     unsigned char*  ScriptText;	/* If a ST_F_SCRIPT node, here is the script text */
     void*	    ScriptCode;	/* "compiled" script code */
     void*	    UserData;	/* Misc linkage for use by app */
@@ -70,7 +70,7 @@ typedef struct _SI
 
 #define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))
 
-#define ST_SUBINF_LIMIT	    65535
+#define ST_SUBINF_LIMIT	    (2 * 1024 * 1024 - 1)
 
 
 #if 00 /* GRB - old version */
