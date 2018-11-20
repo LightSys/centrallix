@@ -1675,7 +1675,7 @@ int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, p
     /** checks **/
     if (!i0 || !i1)
 	{
-	mssError(1, "EXP", "formatdate() takes two parameters: (datetime, string)");
+	mssError(1, "EXP", "dateformat() takes two parameters: (datetime, string)");
 	return -1;
 	}
     if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
@@ -1686,12 +1686,12 @@ int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, p
 	}
     if (!i0 || i0->DataType != DATA_T_DATETIME)
 	{
-	mssError(1, "EXP", "formatdate() first parameter must be a date");
+	mssError(1, "EXP", "dateformat() first parameter must be a date");
 	return -1;
 	}
     if (!i1 || i1->DataType != DATA_T_STRING)
 	{
-	mssError(1, "EXP", "formatdate() second parameter must be a string");
+	mssError(1, "EXP", "dateformat() second parameter must be a string");
 	return -1;
 	}
 
@@ -2621,6 +2621,101 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     }
 
 
+int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double n;
+
+	if (!i0)
+	    {
+	    mssError(1, "EXP", "log10() requires a number as its first parameter");
+	    goto error;
+	    }
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		n = i0->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		n = i0->Types.Double;
+		break;
+	    case DATA_T_MONEY:
+		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
+		break;
+	    default:
+		mssError(1, "EXP", "log10() requires a number as its first parameter");
+		goto error;
+	    }
+	if (n < 0)
+	    {
+	    mssError(1, "EXP", "log10(): cannot compute the logarithm of a negative number");
+	    goto error;
+	    }
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = log10(n);
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
+int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double n, p;
+
+	if (!i0 || !i1)
+	    {
+	    mssError(1, "EXP", "power() requires numbers as its first and second parameters");
+	    goto error;
+	    }
+	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	    {
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		n = i0->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		n = i0->Types.Double;
+		break;
+	    case DATA_T_MONEY:
+		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
+		break;
+	    default:
+		mssError(1, "EXP", "power() requires a number as its first parameter");
+		goto error;
+	    }
+	switch(i1->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		p = i1->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		p = i1->Types.Double;
+		break;
+	    default:
+		mssError(1, "EXP", "power() requires an integer or double as its second parameter");
+		goto error;
+	    }
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = pow(n, p);
+	return 0;
+    
+    error:
+	return -1;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -3099,6 +3194,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
 	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
 	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
+	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
