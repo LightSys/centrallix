@@ -2726,15 +2726,10 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
 			}
 		    }
 		}
-	    if (find_oxt) 
+	    if (find_oxt && find_oxt->AttrValue != NULL) 
 		{
 		n_keys_provided++;
 		keys_provided[j] = find_oxt;
-		if (find_oxt->AttrValue == NULL)
-		    {
-		    /** Null key value **/
-		    ptr = "";
-		    }
 		if (find_oxt->AttrType == DATA_T_MONEY)
 		    {
 		    ptr = objFormatMoneyTmp(find_oxt->AttrValue, "0.0000");
