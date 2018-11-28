@@ -734,6 +734,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     pMqpRowCache rc;
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    handle_t collection;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -761,7 +762,20 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		}
 
 	    /** Open the data source in the objectsystem **/
-	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+		if (collection == XHN_INVALID_HANDLE)
+		    {
+		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
+		    return -1;
+		    }
+		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
+		}
+	    else
+		{
+		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+		}
 	    if (!qe->LLSource) 
 		{
 		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))

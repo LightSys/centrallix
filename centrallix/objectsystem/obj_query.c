@@ -230,6 +230,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     char* ptr;
     char* start_ptr;
     pObject linked_obj = NULL;
+    pObjectInfo info;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
@@ -319,16 +320,28 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    {
 	    /** Ok, first item of business is to read entire result set.  Init the sort structure **/
 	    this->SortInf = (pObjQuerySort)nmMalloc(sizeof(ObjQuerySort));
+	    if (!this->SortInf)
+		goto error_return;
 	    xaInit(this->SortInf->SortPtr+0,4096);
 	    xaInit(this->SortInf->SortPtrLen+0,4096);
 	    xaInit(this->SortInf->SortNames+0,4096);
 	    xsInit(&this->SortInf->SortDataBuf);
 	    xsInit(&this->SortInf->SortNamesBuf);
+	    this->SortInf->IsTemp = 0;
+
+	    /** Temp object? **/
+	    info = objInfo(obj);
+	    if (info && (info->Flags & OBJ_INFO_F_TEMPORARY))
+		this->SortInf->IsTemp = 1;
 
 	    /** Read result set **/
 	    while((tmp_obj = objQueryFetch(this, 0400)))
 	        {
-		xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
+		/** We keep temp objects open, for others we squirrel away the name instead and re-open later **/
+		if (this->SortInf->IsTemp)
+		    xaAddItem(this->SortInf->SortNames+0, (void*)tmp_obj);
+		else
+		    xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
 		objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr));
 		xsConcatenate(&this->SortInf->SortNamesBuf, ptr, strlen(ptr)+1);
 		expModifyParam(this->ObjList, NULL, tmp_obj);
@@ -341,98 +354,18 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
 		    goto error_return;
 		    }
-#if 00
-		len = 0;
-		for(i=0;this->SortBy[i];i++)
-		    {
-		    sort_item = this->SortBy[i];
-		    if (expEvalTree(sort_item, this->ObjList) < 0)
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "0", 1);
-			}
-		    else if (sort_item->Flags & EXPR_F_NULL)
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "0", 1);
-			}
-		    else
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "1", 1);
-			switch(sort_item->DataType)
-			    {
-			    case DATA_T_INTEGER:
-			        n = htonl(sort_item->Integer + 0x80000000);
-			        if (sort_item->Flags & EXPR_F_DESC) n = ~n;
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&n, 4);
-			        len+=4;
-				break;
 
-			    case DATA_T_DOUBLE:
-			        if (sort_item->Flags & EXPR_F_DESC) sort_item->Types.Double = -sort_item->Types.Double;
-				xsConcatenate(&this->SortInf->SortDataBuf, (char*)&(sort_item->Types.Double), 8);
-			        if (sort_item->Flags & EXPR_F_DESC) sort_item->Types.Double = -sort_item->Types.Double;
-				len+=8;
-				break;
-
-			    case DATA_T_MONEY:
-				n = htonl(sort_item->Types.Money.WholePart + 0x80000000);
-				sn = htons(sort_item->Types.Money.FractionPart);
-			        if (sort_item->Flags & EXPR_F_DESC)
-				    {
-				    n = ~n;
-				    sn = ~sn;
-				    }
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&n, 4);
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&sn, 2);
-				len+=6;
-				break;
-
-			    case DATA_T_DATETIME:
-			        if (sort_item->Flags & EXPR_F_DESC) 
-				    {
-				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
-				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
-				    }
-				dbuf[0] = sort_item->Types.Date.Part.Year>>8;
-				dbuf[1] = sort_item->Types.Date.Part.Year & 0xFF;
-				dbuf[2] = sort_item->Types.Date.Part.Month;
-				dbuf[3] = sort_item->Types.Date.Part.Day;
-				dbuf[4] = sort_item->Types.Date.Part.Hour;
-				dbuf[5] = sort_item->Types.Date.Part.Minute;
-				dbuf[6] = sort_item->Types.Date.Part.Second;
-				xsConcatenate(&this->SortInf->SortDataBuf, dbuf, 7);
-			        if (sort_item->Flags & EXPR_F_DESC) 
-				    {
-				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
-				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
-				    }
-				len+=7;
-				break;
-			    
-			    case DATA_T_STRING:
-			        n = strlen(sort_item->String);
-			        len += (n+1);
-			        if (sort_item->Flags & EXPR_F_DESC)
-			            {
-				    for(j=0;j<n;j++) sort_item->String[j] = ~(sort_item->String[j]);
-				    }
-			        xsConcatenate(&this->SortInf->SortDataBuf, sort_item->String, n+1);
-				break;
-			    }
-			}
-		    }
-#endif /* 00 */
 		xaAddItem(this->SortInf->SortPtrLen+0, (void*)(intptr_t)len);
-		objClose(tmp_obj);
+		if (!this->SortInf->IsTemp)
+		    objClose(tmp_obj);
 		}
 
 	    /** Absolute-reference the string offsets. **/
 	    n = this->SortInf->SortPtr[0].nItems;
 	    for(i=0;i<n;i++)
 	        {
-		this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
+		if (!this->SortInf->IsTemp)
+		    this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
 		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (intptr_t)(this->SortInf->SortPtr[0].Items[i]);
 		}
 
@@ -529,7 +462,6 @@ objQueryFetch(pObjQuery this, int mode)
 	    if (!obj) return NULL;
 	    if ((obj->Data = this->Drv->QueryFetch(this->Data, obj, mode, NULL)) == NULL)
 	        {
-		/*nmFree(obj,sizeof(Object));*/
 		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
@@ -553,9 +485,18 @@ objQueryFetch(pObjQuery this, int mode)
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
-	    obj_internal_PathPart(this->Obj->Pathname, 0, 0);
-	    snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
-	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+
+	    /** Temp objects we kept open; others we reopen by name **/
+	    if (this->SortInf->IsTemp)
+		{
+		obj = (pObject)this->SortInf->SortNames[0].Items[this->RowID++];
+		}
+	    else
+		{
+		obj_internal_PathPart(this->Obj->Pathname, 0, 0);
+		snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
+		obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+		}
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
@@ -573,7 +514,8 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
 	obj->Pathname->LinkCnt = 1;
 	obj->Pathname->OpenCtlBuf = NULL;
-	objLinkTo(this->Obj->Prev);
+	if (this->Obj->Prev)
+	    objLinkTo(this->Obj->Prev);
 	obj->Prev = this->Obj->Prev;
 
 	/** Scan objects til we find one matching the query. **/

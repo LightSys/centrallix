@@ -27,6 +27,7 @@
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
 #include "obfuscate.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1390,6 +1391,7 @@ start(void* v)
     pLxSession input_lx;
     char* ptr;
     int alloc;
+    pApplication app;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -1442,9 +1444,12 @@ start(void* v)
 	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	    }
 
+	/** Application context **/
+	cxssPushContext();
+	app = appCreate("test_obj");
+
 	/** Open a session **/
 	s = objOpenSession("/");
-	cxssPushContext();
 
 	/** -C cmd provided on command line? **/
 	if (TESTOBJ.Command[0])
@@ -1508,6 +1513,8 @@ start(void* v)
 	    if (!inbuf)
 	        {
 		printf("quit\n");
+		appDestroy(app);
+		cxssPopContext();
 		objCloseSession(s);
 		thExit();
 		}
@@ -1516,6 +1523,7 @@ start(void* v)
 	    if (rval == 1) break;
 	    }
 
+	appDestroy(app);
 	cxssPopContext();
 	objCloseSession(s);
 

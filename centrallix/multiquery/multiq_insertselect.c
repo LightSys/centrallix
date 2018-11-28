@@ -116,6 +116,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pObject new_obj = NULL;
     pObject reopen_obj;
     pObject old_newobj;
+    pObject parent_obj = NULL;
     int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
@@ -124,6 +125,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int t;
     int use_attrid;
     int hc_rval;
+    handle_t collection;
 
 	/** Prepare for the inserts **/
 	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
@@ -139,6 +141,25 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    goto error;
 	is_started = 1;
 
+	/** If we're working with a collection, open its parent so we can
+	 ** later do objOpenChild() calls to create the child objects.
+	 **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (collection == XHN_INVALID_HANDLE)
+		{
+		mssError(1,"MQIS","Could not find destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    parent_obj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    if (!parent_obj)
+		{
+		mssError(1,"MQIS","Could not open destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    }
+
 	/** Select all items in the result set **/
 	while((sel_rval = sel->Driver->NextItem(sel, stmt)) == 1)
 	    {
@@ -150,7 +171,14 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		continue;
 
 	    /** open a new object **/
-	    new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		}
+	    else
+		{
+		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		}
 	    if (!new_obj)
 		goto error;
 	    objUnmanageObject(stmt->Query->SessionID, new_obj);
@@ -193,7 +221,6 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		}
 
 	    /** Commit and get new object name **/
-	    //objCommit(stmt->Query->SessionID);
 	    objCommitObject(new_obj);
 	    new_objname = NULL;
 	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
@@ -212,14 +239,20 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    /** Link the new object as the __inserted object in the object list.**/
 	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
 		{
-		reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
-		if (reopen_obj)
+		/** Don't reopen for inserts into collections (won't find it) **/
+		if (!(((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION))
 		    {
-		    objUnmanageObject(stmt->Query->SessionID, reopen_obj);
-		    objClose(new_obj);
-		    new_obj = reopen_obj;
-		    ASSERTMAGIC(new_obj, MGK_OBJECT);
+		    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+		    if (reopen_obj)
+			{
+			objUnmanageObject(stmt->Query->SessionID, reopen_obj);
+			objClose(new_obj);
+			new_obj = reopen_obj;
+			ASSERTMAGIC(new_obj, MGK_OBJECT);
+			}
 		    }
+
+		/** Replace the previous __inserted object with our newly created one **/
 		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
 		if (old_newobj_id >= 0)
 		    {
@@ -241,6 +274,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	rval = 0;
 
     error:
+	if (parent_obj)
+	    objClose(parent_obj);
+
 	/** Close the SELECT **/
 	if (is_started)
 	    if (sel->Driver->Finish(sel, stmt) < 0)

@@ -39,6 +39,7 @@
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
 #include "json/json.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -219,6 +220,7 @@ typedef struct
     }
     NhtPostPayload, *pNhtPostPayload;
 
+
 /*** One-page app data.  Each time the user launches an .app, a new app
  *** structure is created with a new key.
  ***/
@@ -237,6 +239,7 @@ typedef struct
     XArray	AppOSMLSessions;
     XArray	Endorsements;
     XArray	Contexts;
+    pApplication Application;
     }
     NhtApp, *pNhtApp;
 
@@ -306,6 +309,7 @@ typedef struct
     int		NoCache:1;
     int		UsingTLS:1;
     int		UsingChunkedEncoding:1;
+    int		StrictSameSite:1;
     char	ResponseContentType[128];
     int		ResponseContentLength;
     XArray	RequestHeaders;		/* of pHttpHeader */
@@ -318,7 +322,7 @@ typedef struct
 
 
 /*** GLOBALS ***/
-struct 
+typedef struct 
     {
     XHashTable	CookieSessions;
     XHashTable	SessionsByID;
@@ -357,7 +361,9 @@ struct
     pSemaphore	CollectedTLSConns;
     pCxssKeystreamState NonceData;
     }
-    NHT;
+    NHT_t;
+
+extern NHT_t NHT;
 
 #define NHT_XFO_T_NONE		0
 #define NHT_XFO_T_DENY		1

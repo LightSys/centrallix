@@ -368,6 +368,7 @@ stGetExpression(pStructInf this, int nval)
 
 	/** Do some error-cascade checking. **/
 	if (!this) return NULL;
+	if (!this->Value) return NULL;
 	
 	if (!(this->Flags & ST_F_ATTRIB)) return NULL;
 	if (nval == 0 && this->Value->NodeType != EXPR_N_LIST)

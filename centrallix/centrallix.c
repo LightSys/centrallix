@@ -456,6 +456,9 @@ cxInitialize(void* v)
 	/** Initialize the Interface module **/
 	ifcInitialize();
 
+	/** Application management layer **/
+	appInitialize();
+
 	/** Init the modules being used if dynamic loading is disabled **/
 	
 #if (USE_DBL == CX_STATIC)
