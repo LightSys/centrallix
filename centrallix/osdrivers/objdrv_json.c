@@ -121,7 +121,7 @@ json_internal_Get(struct json_object* jobj)
 void
 json_internal_Put(struct json_object* jobj)
     {
-    int cnt = ((int*)(jobj))[6];
+    //int cnt = ((int*)(jobj))[6];
     json_object_put(jobj);
     //fprintf(stderr, "PUT JOBJ %8.8llx ref %d\n", jobj, cnt);
     return;
@@ -133,7 +133,8 @@ json_internal_CacheUnlink(pJsonCacheObj cache_obj)
     {
 
 	cache_obj->LinkCnt--;
-	json_internal_Put(cache_obj->JObj);
+	if (cache_obj->JObj)
+	    json_internal_Put(cache_obj->JObj);
 
 	/** Release if the link cnt went to zero **/
 	if (cache_obj->LinkCnt <= 0)

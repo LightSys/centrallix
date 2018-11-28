@@ -29,6 +29,7 @@ function dt_cb_setvalue(a,v) {
 }
 
 function dt_setvalue(v,nodrawdate) {
+	var oldval = this.getvalue();
 	if (v) {
 		this.DateObj = new Date(v);
 		this.TmpDateObj = new Date(v);
@@ -46,6 +47,7 @@ function dt_setvalue(v,nodrawdate) {
 		if (!this.date_only)
 			dt_drawtime(this.PaneLayer, this.DateObj);
 	}
+	this.ifcProbe(ifValue).Changing('value', this.getvalue(), true, oldval, true);
 }
 
 function dt_setvalue2(v,nodrawdate) {
@@ -185,9 +187,11 @@ function dt_init(param){
 		l.TmpDateObj2 = new Date(param.id);
 		dt_drawdate(l, l.DateObj);
 	} else {
-		l.DateObj = new Date();
+		//l.DateObj = new Date();
+		l.DateObj = null;
 		l.TmpDateObj = new Date();
-		l.DateObj2 = new Date();
+		//l.DateObj2 = new Date();
+		l.DateObj2 = null;
 		l.TmpDateObj2 = new Date();
 		dt_drawdate(l, '');
 	}
@@ -740,6 +744,8 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	if (e != 'dt_today' && e != 'dt_day' && e != 'dt_null') return;
 	if (!dt_current) return;
 
+	var oldval = dt_current.getvalue();
+
 	// hide the drop down part of the control
 	if(!dt_current.form || dt_current.form.mode != 'Query' || !dt_current.sbr){
 	    dt_collapse(dt_current);
@@ -790,6 +796,9 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 		dt_current.form.DataNotify(dt_current);
 		cn_activate(dt_current, 'DataChange');
 	}
+	var newval = dt_current.getvalue();
+	if (newval != oldval)
+	    dt_current.ifcProbe(ifValue).Changing('value', newval, true, oldval, true);
 
 	// draw the date/time on the collapsed control
 	if(dt_current.form && dt_current.form.mode == 'Query' && dt_current.sbr){
