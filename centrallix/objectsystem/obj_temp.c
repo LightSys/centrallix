@@ -424,9 +424,7 @@ tmpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	find_inf = stLookup(inf->Data, attrname);
 	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
 	    {
-	    /** For unset attributes on a structure file, we default to a NULL integer **/
-	    /*mssError(1,"STX","Could not locate requested structure file attribute");*/
-	    return (find_inf)?(-1):DATA_T_INTEGER;
+	    return (find_inf)?(-1):DATA_T_UNAVAILABLE;
 	    }
 
 	/** Examine the expr to determine the type **/
