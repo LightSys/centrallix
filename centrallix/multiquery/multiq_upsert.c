@@ -418,16 +418,18 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pMqusData pdata;
     pQueryElement cld;
-    int i,j;
-    pParamObjects objlist;
+    int i,j,k;
+    pParamObjects objlist, check_objlist;
     pQueryStructure update_qs;
     pExpression exp, assign_exp;
     int t;
     int rval = -1;
     int need_update;
     int did_update;
-    pObject ins_obj;
+    pObject ins_obj, upd_obj, refresh_obj;
     int id;
+    char* path;
+    pObjectInfo info;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
 	pdata = (pMqusData)qe->PrivateData;
@@ -439,6 +441,27 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 	    objlist = (pParamObjects)xaGetItem(&pdata->ToBeUpdated, i);
 	    if (objlist)
 		{
+		/** Reopen the object to be updated, in case it has changed. **/
+		id = expLookupParam(objlist, "this");
+		if (id >= 0)
+		    {
+		    upd_obj = objlist->Objects[id];
+		    if (upd_obj)
+			{
+			info = objInfo(upd_obj);
+			if (info && !(info->Flags & OBJ_INFO_F_TEMPORARY))
+			    {
+			    path = objGetPathname(upd_obj);
+			    refresh_obj = objOpen(stmt->Query->SessionID, path, OBJ_O_RDWR, 0600, "system/object");
+			    if (refresh_obj)
+				{
+				expModifyParamByID(objlist, id, refresh_obj);
+				objClose(upd_obj);
+				}
+			    }
+			}
+		    }
+
 		/** Update object list, but preserve the __inserted object **/
 		ins_obj = NULL;
 		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted")) >= 0)
@@ -465,6 +488,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 		    assign_exp = update_qs->AssignExpr;
 
 		    /** Get the value to be assigned **/
+		    expBindExpression(exp, stmt->Query->ObjList, 0);
 		    if (expEvalTree(exp, stmt->Query->ObjList) < 0) 
 			{
 			mssError(0,"MQUS","Could not evaluate UPDATE SET expression's value");
@@ -505,6 +529,29 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 			did_update = 1;
 			}
 		    }
+
+		/** Did any objects change?  Note that if so **/
+#if 00
+		for(j=0;j<stmt->Query->ObjList->nObjects;j++)
+		    {
+		    if (objlist->SeqIDs[j] != stmt->Query->ObjList->SeqIDs[j])
+			{
+			/** Found a change.  Scan the other objlists to see if
+			 ** we need to change the sequence ID there too.
+			 **/
+			for(k=i+1;k<pdata->ToBeUpdated.nItems;k++)
+			    {
+			    check_objlist = (pParamObjects)xaGetItem(&pdata->ToBeUpdated, k);
+			    if (check_objlist)
+				{
+				/** Does it have the same object/seq? **/
+				if (check_objlist->SeqIDs[j] == objlist->SeqIDs[j])
+				    check_objlist->SeqIDs[j] = stmt->Query->ObjList->SeqIDs[j];
+				}
+			    }
+			}
+		    }
+#endif
 
 		/** Release the object list **/
 		expUnlinkParams(objlist, stmt->Query->nProvidedObjects, -1);
