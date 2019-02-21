@@ -611,7 +611,7 @@ function dt_keyhandler(l,e,k) {
 	    dt_update_typed(dt);
 	    if(dt.form) dt.form.DataNotify(dt);
 	    cn_activate(dt, 'DataChange');
-	} else if (e.keyText == '/' || e.keyText == '-') {
+	} else if (e.keyText == '/' || e.keyText == '-' || e.keyText == ':') {
 		if (dt_current && dt.typed_content) {
 			dt.typed_content += e.keyText;
 			dt_update_typed(dt);
