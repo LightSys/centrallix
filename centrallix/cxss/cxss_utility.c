@@ -59,6 +59,28 @@ cxssGenerateKey(unsigned char* key, size_t n_bytes)
     }
 
 
+/*** cxssGenerateHexKey - generate a random key in hexadecimal form.
+ ***/
+int
+cxssGenerateHexKey(char* hexkey, size_t len)
+    {
+    int rval;
+    int i;
+    char hex_chars[] = "0123456789abcdef";
+    
+	/** Get entropy bytes first **/
+	rval = cxss_internal_GetBytes((unsigned char*)hexkey, len/2+1);
+
+	/** Convert to hex **/
+	for(i=len-1; i>=0; i--)
+	    {
+	    hexkey[i] = hex_chars[(i&1)?(hexkey[i/2] & 0x0f):((hexkey[i/2]>>4) & 0x0f)];
+	    }
+	hexkey[len] = '\0';
+
+    return rval;
+    }
+
 
 /*** cxssShred - erase the given data so that it is no longer readable
  *** even in raw memory.  At this point, basically the same as memset().

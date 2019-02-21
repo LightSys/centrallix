@@ -164,6 +164,7 @@ nht_i_ConnHandler(void* conn_v)
     pNhtApp app;
     pNhtAppGroup group;
     int context_started = 0;
+    pApplication tmp_app = NULL;
     unsigned char* keydata;
     char* nonce;
     unsigned char noncelen;
@@ -409,6 +410,14 @@ nht_i_ConnHandler(void* conn_v)
 		{
 		appResume(app->Application);
 		}
+	    else
+		{
+		tmp_app = appCreate(NULL);
+		}
+	    }
+	else
+	    {
+	    tmp_app = appCreate(NULL);
 	    }
 
 	/** Bump last activity dates. **/
@@ -590,6 +599,7 @@ nht_i_ConnHandler(void* conn_v)
     out:
 	if (url_inf && !conn) stFreeInf_ne(url_inf);
 	if (conn) nht_i_FreeConn(conn);
+	if (tmp_app) appDestroy(tmp_app);
 	if (context_started) cxssPopContext();
 	thExit();
     }

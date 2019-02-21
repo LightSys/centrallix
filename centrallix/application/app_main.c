@@ -82,12 +82,17 @@ appCreate(char* akey)
 	if (!app)
 	    goto error;
 
+	/** Need to generate a temporary key? **/
+	if (akey)
+	    strtcpy(app->Key, akey, sizeof(app->Key));
+	else
+	    cxssGenerateHexKey(app->Key, 16);
+
 	/** Set it up **/
-	strtcpy(app->Key, akey, sizeof(app->Key));
 	xhInit(&app->AppData, 255, 0);
 
 	/** Set context **/
-	cxssSetVariable("APP:akey", akey, 0);
+	cxssSetVariable("APP:akey", app->Key, 0);
 
 	/** List it in our applications array **/
 	xaAddItem(&AML.Applications, (void*)app);
@@ -161,6 +166,8 @@ appRegisterAppData(char* datakey, void* data, int (*finalize_fn)())
 		    appdata->Data = data;
 		    appdata->Finalize = finalize_fn;
 		    xhAdd(&app->AppData, appdata->Key, (void*)appdata);
+
+		    return 0;
 		    }
 		}
 	    }
