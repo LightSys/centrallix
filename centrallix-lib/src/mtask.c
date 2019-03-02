@@ -29,6 +29,10 @@
 #include "qprintf.h"
 #include "util.h"
 
+#if HAVE_SIOCOUTQ
+#include <linux/sockios.h>
+#endif
+
 #ifdef USING_VALGRIND
 #include "valgrind/valgrind.h"
 #endif
@@ -3606,13 +3610,28 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 #endif
 
     	/** Close the file descriptor normally first. **/
-	t = mtTicks();
+	t = mtRealTicks();
 	fdClose(net_filedesc, (flags & (FD_U_IMMEDIATE)) | FD_XU_NODST);
 
 	/** Now we set linger on the fd. **/
-	l.l_onoff = 1;
-	l.l_linger = (linger_msec) / 1000;
-	setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+#if HAVE_SIOCOUTQ && defined(SIOCOUTQ)
+	t2 = t;
+	while((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec)
+	    {
+	    if (ioctl(net_filedesc->FD, SIOCOUTQ, &arg) < 0 || arg == 0)
+		break;
+	    thSleep(100);
+	    t2 = mtRealTicks();
+	    }
+	linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
+#endif
+
+	if (linger_msec > 0)
+	    {
+	    l.l_onoff = 1;
+	    l.l_linger = (linger_msec) / 1000;
+	    setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+	    }
 
 	/** Shutdown read and write sides of the connection. **/
 	shutdown(net_filedesc->FD, 2);
@@ -3621,7 +3640,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	rval = -1;
 	while(linger_msec > 0)
 	    {
-	    t2 = mtTicks();
+	    t2 = mtRealTicks();
 	    linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
 	    t = t2;
 	    rval=close(net_filedesc->FD);
