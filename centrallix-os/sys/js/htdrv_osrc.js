@@ -1643,6 +1643,11 @@ function osrc_end_query()
 	this.replica[this.LastRecord].__osrc_is_last = true;
 	this.FinalRecord = this.LastRecord;
 	}
+    else if (this.LastRecord < this.FirstRecord)
+	{
+	// No data returned at all
+	this.FinalRecord = this.LastRecord;
+	}
     this.query_ended = true;
     this.FoundRecord();
     if(qid)
