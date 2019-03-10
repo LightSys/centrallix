@@ -79,7 +79,7 @@ nht_i_FreeConn(pNhtConn conn)
 	nht_i_Log(conn);
 
 	/** Close the connection **/
-	if (conn->SSLpid)
+	if (conn->SSLpid && conn->UsingTLS)
 	    cxssFinishTLS(conn->SSLpid, conn->ConnFD, conn->ReportingFD);
 	else
 	    netCloseTCP(conn->ConnFD, 1000, 0);
@@ -764,6 +764,7 @@ nht_i_TLSHandler(void* v)
 		{
 		nht_i_FreeConn(conn);
 		mssError(1,"NHT","Could not start TLS on the connection!");
+		continue;
 		}
 
 	    /** Start the request handler thread **/
