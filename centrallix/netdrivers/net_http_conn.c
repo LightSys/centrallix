@@ -79,7 +79,7 @@ nht_i_FreeConn(pNhtConn conn)
 	nht_i_Log(conn);
 
 	/** Close the connection **/
-	if (conn->SSLpid && conn->UsingTLS)
+	if (conn->SSLpid > 0 && conn->UsingTLS)
 	    cxssFinishTLS(conn->SSLpid, conn->ConnFD, conn->ReportingFD);
 	else
 	    netCloseTCP(conn->ConnFD, 1000, 0);
