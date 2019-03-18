@@ -2023,6 +2023,7 @@ wgtrInitialize()
 	wgtbtnInitialize();
 	wgtcaInitialize();
 	wgtcbInitialize();
+	wgtchtInitialize();
 	wgtclInitialize();
 	wgtcmpInitialize();
 	wgtcmpdInitialize();
