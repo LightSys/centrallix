@@ -55,7 +55,7 @@ while(<>){
             @imports = ();
         }
     }
-    elsif(/^typedef struct[ \t]+([__a-zA-Z][__a-zA-Z0-9]*)/){
+    elsif(/^typedef struct([ \t]+([__a-zA-Z][__a-zA-Z0-9]*))?/){
         $inStruct = 1;
         $structName = $1;
     }
