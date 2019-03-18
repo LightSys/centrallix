@@ -9,70 +9,28 @@ my @imports = ();
 while(<>){
     chomp;
     if($inStruct){
-        # array field
-        if(/XArray[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
-            $fieldName = ucfirst($1);
-            push @members, "    List get$fieldName();\n";
-            push @imports, "import java.util.List;";
-        }
         # string field
-        if(/XString[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
-            $fieldName = removePtr(ucfirst($1));
-            push @members, "    String get$fieldName();\n";
-        }
-        # string field
-        elsif(/char[ \t]+([_a-zA-Z][_a-zA-Z0-9]*)\[(\d+)\];/){
+        if(/char[ \t]+([_a-zA-Z][_a-zA-Z0-9]*)\[(\d+)\];/){
             $fieldName = ucfirst($1);
             $size = $2;
             push @members, "    String get$fieldName(); // size $size\n";
         }
-        # int field
-        elsif(/int[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
-            $fieldName = ucfirst($1);
-            push @members, "    int get$fieldName();\n";
-        }
-        # regular field
-        elsif(/([_a-zA-Z][_a-zA-Z0-9]*)[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
-            $type = $1;
-            if($type eq "XString"){
-                $type = "String";
-            }
-            $type = fixTypeName($type);
-            $fieldName = removePtr(ucfirst($2));
-            push @members, "    $type get$fieldName();\n";
-        }
-        # object field
-        elsif(/void\*[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
-            $fieldName = ucfirst($1);
-            push @members, "    Object $fieldName();\n";
-        }
-        # object method
-        elsif(/void\*[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
-            $methodName = $1;
-            push @members, "    Object $methodName();\n";
-        }
-        # string method
-        elsif(/char\*[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
-            $methodName = $1;
-            push @members, "    String $methodName();\n";
-        }
-        # int method
-        elsif(/int[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
-            $methodName = $1;
-            push @members, "    int $methodName();\n";
-        }
         # struct-returning method
-        elsif(/struct\*[ \t]+(_[A-Z]+)[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
+        elsif(/struct[ \t]+(_[A-Z]+)\*[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
             $type = $1;
             $methodName = $2;
             push @members, "    $type $methodName();\n";
         }
-        # regular method
-        elsif(/([_a-zA-Z][_a-zA-Z0-9]*)[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
+        # regular field
+        elsif(/([_a-zA-Z][_a-zA-Z0-9]*\*?)[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
             $type = $1;
-            if($type eq "XString"){
-                $type = "String";
-            }
+            $type = fixTypeName($type);
+            $fieldName = fixFieldName($2);
+            push @members, "    $type get$fieldName();\n";
+        }
+        # regular method
+        elsif(/([_a-zA-Z][_a-zA-Z0-9]*\*?)[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
+            $type = $1;
             $type = fixTypeName($type);
             $methodName = $2;
             push @members, "    $type $methodName();\n";
@@ -115,11 +73,26 @@ sub dumpLines {
 }
 
 sub fixTypeName {
-    my $a = shift;
-    if($a =~ /^p[A-Z]/){
-        $a = substr($a, 1)
+    my $type = shift;
+    if($type =~ /^(int|short|float|double|char)$/) { 0; }
+    elsif($type eq 'char*') { $type = 'String'; }
+    elsif($type eq 'XString') { $type = 'String'; }
+    elsif($type eq 'pXString') { $type = 'String'; }
+    elsif($type eq 'void*') { $type = 'Object'; }
+    elsif($type eq 'XArray') { 
+        $type = 'List';
+        push @imports, "import java.util.List;";
     }
-    ucfirst($a)
+    elsif($type =~ /^(_[A-Z])\*/) { $type = $1; }
+    elsif($type =~ /^p[A-Z]/) { $type = substr($type,1); }
+    else { $type = ucfirst($type); }
+    return $type;
+}
+
+sub fixFieldName {
+    my $name = shift;
+    $name = ucfirst($name);
+    return $name;
 }
 
 sub uniq {
