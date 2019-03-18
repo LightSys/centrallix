@@ -16,15 +16,29 @@ while(<>){
             push @imports, "import java.util.List;";
         }
         # string field
+        if(/XString[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
+            $fieldName = removePtr(ucfirst($1));
+            push @members, "    String get$fieldName();\n";
+        }
+        # string field
         elsif(/char[ \t]+([_a-zA-Z][_a-zA-Z0-9]*)\[(\d+)\];/){
             $fieldName = ucfirst($1);
             $size = $2;
             push @members, "    String get$fieldName(); // size $size\n";
         }
+        # int field
+        elsif(/int[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
+            $fieldName = ucfirst($1);
+            push @members, "    int get$fieldName();\n";
+        }
         # regular field
         elsif(/([_a-zA-Z][_a-zA-Z0-9]*)[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
             $type = $1;
-            $fieldName = ucfirst($2);
+            if($type eq "XString"){
+                $type = "String";
+            }
+            $type = fixTypeName($type);
+            $fieldName = removePtr(ucfirst($2));
             push @members, "    $type get$fieldName();\n";
         }
         # object field
@@ -42,16 +56,34 @@ while(<>){
             $methodName = $1;
             push @members, "    String $methodName();\n";
         }
+        # int method
+        elsif(/int[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
+            $methodName = $1;
+            push @members, "    int $methodName();\n";
+        }
+        # struct-returning method
+        elsif(/struct\*[ \t]+(_[A-Z]+)[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
+            $type = $1;
+            $methodName = $2;
+            push @members, "    $type $methodName();\n";
+        }
         # regular method
         elsif(/([_a-zA-Z][_a-zA-Z0-9]*)[ \t]+\(\*([_a-zA-Z][_a-zA-Z0-9]*)\)\(\);/){
-            $returnType = $1;
+            $type = $1;
+            if($type eq "XString"){
+                $type = "String";
+            }
+            $type = fixTypeName($type);
             $methodName = $2;
-            push @members, "    $returnType $methodName();\n";
+            push @members, "    $type $methodName();\n";
         }
         elsif(/}/){
         }
         elsif(/^[ \t]*([_a-zA-Z][_a-zA-Z0-9]*), .*;/){
             $structName = $1;
+            if($structName eq "Object"){
+                $structName = "ObjectInstance";
+            }
             @lines = ();
             push @lines, "package org.lightsys.centrallix.objectsystem;\n\n";
             push @lines, uniq(@imports);
@@ -82,7 +114,21 @@ sub dumpLines {
     close $out;
 }
 
+sub fixTypeName {
+    my $a = shift;
+    if($a =~ /^p[A-Z]/){
+        $a = substr($a, 1)
+    }
+    ucfirst($a)
+}
+
 sub uniq {
     my %seen;
     grep !$seen{$_}++, @_;
+}
+
+sub removePtr {
+    shift;
+    s/Ptr$//;
+    return $_;
 }
