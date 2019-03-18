@@ -5,6 +5,7 @@ my $inStruct = 0;
 my $structName = 0;
 
 my @members = ();
+my @imports = ();
 while(<>){
     chomp;
     if($inStruct){
@@ -53,14 +54,15 @@ while(<>){
             $structName = $1;
             @lines = ();
             push @lines, "package org.lightsys.centrallix.objectsystem;\n\n";
-            push @lines, @imports;
-            push @lines, "\n";
+            push @lines, uniq(@imports);
+            push @lines, "\n\n";
             push @lines, "public interface $structName {\n";
             push @lines, @members;
             push @lines, "}\n";
             dumpLines();
             $inStruct = 0;
             @members = ();
+            @imports = ();
         }
     }
     elsif(/^typedef struct[ \t]+([__a-zA-Z][__a-zA-Z0-9]*)/){
@@ -78,4 +80,9 @@ sub dumpLines {
         print $out $line;
     }
     close $out;
+}
+
+sub uniq {
+    my %seen;
+    grep !$seen{$_}++, @_;
 }
