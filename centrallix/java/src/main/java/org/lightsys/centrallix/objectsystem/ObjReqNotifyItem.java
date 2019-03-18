@@ -3,7 +3,7 @@ package org.lightsys.centrallix.objectsystem;
 import java.util.List;
 
 public interface ObjReqNotifyItem {
-    _ORNI Next();
+    ObjReqNotifyItem Next();
     ObjReqNotify getNotifyStruct();
     Object getObj();
     int getFlags();

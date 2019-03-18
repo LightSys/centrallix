@@ -8,7 +8,7 @@ public interface ObjectInstance {
     ObjDriver getTLowLevelDriver();
     ObjDriver getILowLevelDriver();
     Object getData();
-    _OF Obj();
+    ObjectInstance Obj();
     List getAttrs();
     Pathname getPathname();
     short getSubPtr();
@@ -19,8 +19,8 @@ public interface ObjectInstance {
     ObjSession getSession();
     int getLinkCnt();
     String getContentPtr();
-    _OF Prev();
-    _OF Next();
+    ObjectInstance Prev();
+    ObjectInstance Next();
     ObjectInfo getAdditionalInfo();
     Object getNotifyItem();
     ObjVirtualAttr getVAttrs();

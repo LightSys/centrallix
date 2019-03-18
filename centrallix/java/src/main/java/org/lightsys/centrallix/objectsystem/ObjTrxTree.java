@@ -6,10 +6,10 @@ public interface ObjTrxTree {
     int getMagic();
     int getStatus();
     int getOpType();
-    _OT Parent();
-    _OT Parallel();
-    _OT Next();
-    _OT Prev();
+    ObjTrxTree Parent();
+    ObjTrxTree Parallel();
+    ObjTrxTree Next();
+    ObjTrxTree Prev();
     List getChildren();
     Object getObject();
     int getAllocObj();

@@ -3,7 +3,7 @@ package org.lightsys.centrallix.objectsystem;
 
 
 public interface ObjVirtualAttr {
-    _OVA Next();
+    ObjVirtualAttr Next();
     String getName(); // size 32
     Object getContext();
     int TypeFn();
