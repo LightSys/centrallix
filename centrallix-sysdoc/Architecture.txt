@@ -1,0 +1,66 @@
+= Centrallix Architecture =
+
+== Threading ==
+
+Centrallix uses "green threads" - i.e. a cooperative threading model. Each "thread" is allocated part of the overall
+available stack space. All "threads" actually execute within the main OS thread that started Centrallix, and each
+thread is responsible for yielding control to other threads when finished with a chunk of work.
+
+- This functionality is in centrallix/src/mtask.c
+
+== HTTP / HTTPS ==
+
+HTTP and HTTPS is implemented by hand (not a library). TLS is implemented by spinning up a second OS process that does
+the encryption/decryption, and communication between the HTTP driver and this process is done by a socket pair. This
+allows a single HTTP driver to handle HTTPS connections also by connecting the HTTP driver to the TLS process socket
+instead of the original incoming TCP connection socket.
+
+- This functionality is in
+    - centrallix/netdrivers/*   - HTTP/REST, NFS, LDAP, CGI drivers
+    - centrallix/cxss/*         - security system
+
+== Domain-Specific Languages ==
+
+In Centrallix, there are three domain-specific languages:
+ * SQL - language documented in centrallix-doc/SQL.txt
+ * Expression
+ * Structure - language documented in centrallix-doc/StructureFile.txt
+
+All of the parsers for these languages are hand-rolled; they don't use yacc or other grammar-based parser generators.
+
+The Expression language is used independently as well as within the SQL language.
+
+The Structure parser is used to parse Object System config files.
+
+- The SQL parser is implemented in centrallix/multiquery/multiquery.c
+- The Expression parser is implemented in centrallix/expression/exp_compiler.c
+- The Structure parser is implemented in centrallix/utility/stparse.c
+
+== Object System ==
+
+See centrallix-sysdoc/ObjectSystem.txt for a full explanation.
+
+See centrallix-sysdoc/OSDriver_Overview.txt for how Object Drivers work.
+
+See centrallix-sysdoc/OSDriver_Authoring.txt for an explanation of how to write a new Object Driver implementation.
+
+- This functionality is implemented in centrallix/objectsystem/*
+- Individual object drivers are implemented in centrallix/osdrivers/*
+
+== Object Query System ==
+
+See centrallix-sysdoc/Legacy/MultiQuery.txt
+
+- This functionality is implemented in
+    - centrallix/objectsystem/obj_query.c
+    - centrallix/multiquery/*
+
+== Widget System ==
+
+Widgets are components that have a client-side HTML/JS UI. The HTML and CSS for these widgets is generated on the
+server side in C code.
+
+See centrallix-sysdoc/WidgetTree.txt
+
+- The individual widgets are implemented in centrallix/wgtr/*
+- The Widget Tree functionality is implemented in
