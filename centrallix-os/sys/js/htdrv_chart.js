@@ -10,11 +10,65 @@
 // GNU Lesser General Public License for more details.
 //
 
-window.chtd_touches = [];
+window.cht_touches = [];
 
-function chtd_init(params)
+function cht_data_available(fromobj, why)
     {
-        let thing=params.item
+        //Called when there is new data on the way
+    }
+function cht_object_available(dataobj, force_datafetch, why)
+    {
+        //update chart with new datums
+    }
+function cht_replica_moved(dataobj, force_datafetch)
+    {
+        //Called when the set of available records changes
+    }
+function cht_operation_complete(stat, osrc)
+    {
+        //Unknown
+    }
+function cht_object_deleted(recnum)
+    {
+        //Called when an object is deleted
+    }
+
+function cht_object_created(recnum)
+    {
+        //Called when an object is created
+    }
+
+function cht_object_modified(current, dataobj)
+    {
+        //Called when an object is modified
+    }
+
+function cht_init(params)
+    {
+    var chart = params.chart;
+
+        if (params.osrc)
+            chart.osrc = wgtrGetNode(chart, params.osrc, "widget/osrc");
+        else
+	        chart.osrc = wgtrFindContainer(chart, "widget/osrc");
+
+        if(!chart.osrc)
+	        {
+	        alert('The chart widget requires an objectsource and at least one column');
+	        return chart;
+	        }
+
+        chart.IsDiscardReady = new Function('return true;');
+        chart.DataAvailable = cht_data_available;
+        chart.ObjectAvailable = cht_object_available;
+        chart.ReplicaMoved = cht_replica_moved;
+        chart.OperationComplete = cht_operation_complete;
+        chart.ObjectDeleted = cht_object_deleted;
+        chart.ObjectCreated = cht_object_created;
+        chart.ObjectModified = cht_object_modified;
+        chart.osrc.Register(chart);
+
+    	return chart
     }
 
 // Load indication
