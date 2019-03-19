@@ -62,15 +62,14 @@
 #define HTTBL_MAX_COLS		(32)
 
 /** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTTBL;
+static struct
+{
+    int idcnt;
+} HTTBL;
 
 
 typedef struct
-    {
+{
     char name[64];
     char sbuf[160];
     char cht_bgnd[128];
@@ -115,40 +114,46 @@ typedef struct
     int demand_scrollbar;	/* only show scrollbar when needed */
     int has_header;		/* table has header/title row? */
     int rowcache_size;		/* number of rows the table caches for display */
-    } htcht_struct;
+} htcht_struct;
 
 int
-htchtRenderDynamic(pHtSession s, pWgtrNode tree, int z, htcht_struct* t)
+htchtRenderDynamic(pHtSession s, pWgtrNode tree, int z, htcht_struct* c)
     {
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-	    {
-	    mssError(1,"HTTBL","Netscape 4 DOM or W3C DOM support required");
-	    return -1;
-	    }
+        if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
+        {
+            mssError(1,"HTTBL","Netscape 4 DOM or W3C DOM support required");
+            return -1;
+        }
 
-	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#chtd%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+0);
-	htrAddStylesheetItem_va(s,"\t#chtd%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+1);
+        /** STYLE for the layer **/
+        htrAddStylesheetItem_va(s,"\t#cht%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",c->id,c->x,c->y,(c->overlap_scrollbar)?(c->w):(c->w-18),z+0);
+        htrAddStylesheetItem_va(s,"\t#cht%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",c->id,z+1);
 
-	htrAddScriptGlobal(s,"chtd_current","null",0);
-	htrAddScriptGlobal(s,"chtdb_current","null",0);
-	htrAddScriptGlobal(s,"chtdx_current","null",0);
-	htrAddScriptGlobal(s,"chtdb_start","null",0);
-	htrAddScriptGlobal(s,"chtdbdbl_current","null",0);
+        htrAddScriptGlobal(s,"cht_current","null",0);
+        htrAddScriptGlobal(s,"chtb_current","null",0);
+        htrAddScriptGlobal(s,"chtx_current","null",0);
+        htrAddScriptGlobal(s,"chtb_start","null",0);
+        htrAddScriptGlobal(s,"chtbdbl_current","null",0);
 
-	htrAddScriptInclude(s, "/sys/js/htdrv_chart.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+        htrAddScriptInclude(s, "/sys/js/htdrv_chart.js", 0);
+        htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
-	htrAddScriptInit_va(s,"    chtd_init({item:'foo'");
+        htrAddScriptInit_va(s,"    cht_init({"
+                                  "osrc: %['%STR&SYM'%]%[null%],"
+                                  "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"),"
+                                  "width: %POS"
+                              "});\n",
+                              *(c->osrc) != '\0', c->osrc, *(c->osrc) == '\0',
+                              c->name,
+                              c->w
+        );
 
-	htrAddScriptInit(s,"});\n");
+        htrAddBodyItem_va(s,"<DIV ID=\"cht%POSpane\">\n",c->id);
 
-	htrAddBodyItem_va(s,"<DIV ID=\"chtd%POSpane\">\n",t->id); 
+        htrAddBodyItem(s,"<P> CHART HERE </P>");
+        htrAddBodyItem(s,"</DIV>\n");
 
-	htrAddBodyItem(s,"<P> CHART HERE <\P>");
-	htrAddBodyItem(s,"</DIV>\n");
-
-    return 0;
+        return 0;
     }
 
 
@@ -160,56 +165,59 @@ htchtRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     int rval;
-    htcht_struct* t;
+    htcht_struct* chart;
 
-	/** Don't try to render table-column, etc.  We do that elsewhere **/
-	wgtrGetPropertyValue(tree,"outer_type",DATA_T_STRING,POD(&ptr));
-	if (strcmp(ptr, "widget/chart") != 0)
-	    return 0;
+        /** Don't try to render table-column, etc.  We do that elsewhere **/
+        wgtrGetPropertyValue(tree,"outer_type",DATA_T_STRING,POD(&ptr));
+        if (strcmp(ptr, "widget/chart") != 0)
+            return 0;
 
-	t = (htcht_struct*)nmMalloc(sizeof(htcht_struct));
-	if (!t) return -1;
-	memset(t, 0, sizeof(htcht_struct));
+        chart = (htcht_struct*)nmMalloc(sizeof(htcht_struct));
+        if (!chart) return -1;
 
-	t->x=-1;
-	t->y=-1;
-    
-    	/** Get an id for thit. **/
-	t->id = (HTTBL.idcnt++);
+        memset(chart, 0, sizeof(htcht_struct));
 
-    	/** Get x,y,w,h of this object **/
-	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&(t->x))) != 0) t->x = -1;
-	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&(t->y))) != 0) t->y = -1;
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&(t->w))) != 0) t->w = -1;
-	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&(t->h))) != 0)
-	    {
-	    mssError(1,"HTTBL","'height' property is required");
-	    return -1;
-	    }
+        chart->x=-1;
+        chart->y=-1;
 
-	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) 
-	    {
-	    nmFree(t, sizeof(htcht_struct));
-	    return -1;
-	    }
-	strtcpy(t->name,ptr,sizeof(t->name));
+        /** Get an id for thit. **/
+        chart->id = (HTTBL.idcnt++);
 
-	if (wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->osrc,ptr,sizeof(t->osrc));
-	else
-	    strcpy(t->osrc,"");
-	
-	/** Text color information **/
-	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->textcolor,ptr,sizeof(t->textcolor));
+        /** Get x,y,w,h of this object **/
+        if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&(chart->x))) != 0) chart->x = -1;
+        if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&(chart->y))) != 0) chart->y = -1;
+        if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&(chart->w))) != 0) chart->w = -1;
+        if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&(chart->h))) != 0)
+        {
+            mssError(1,"HTTBL","'height' property is required");
+            return -1;
+        }
 
+        /** Get name **/
+        if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0)
+        {
+            nmFree(chart, sizeof(htcht_struct));
+            return -1;
+        }
 
-	rval = htchtRenderDynamic(s, tree, z, t);
+        strtcpy(chart->name,ptr,sizeof(chart->name));
 
-	nmFree(t, sizeof(htcht_struct));
+        if (wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr)) == 0)
+            strtcpy(chart->osrc,ptr,sizeof(chart->osrc));
+        else
+            strcpy(chart->osrc,"");
 
-    return rval;
+//        chart->ncols = wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr));
+
+        /** Text color information **/
+        if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
+            strtcpy(chart->textcolor,ptr,sizeof(chart->textcolor));
+
+        rval = htchtRenderDynamic(s, tree, z, chart);
+
+        nmFree(chart, sizeof(htcht_struct));
+
+        return rval;
     }
 
 
@@ -220,24 +228,24 @@ htchtInitialize()
     {
     pHtDriver drv;
 
-    	/** Allocate the driver **/
-	drv = htrAllocDriver();
-	if (!drv) return -1;
+        /** Allocate the driver **/
+        drv = htrAllocDriver();
+        if (!drv) return -1;
 
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"DHTML Chart Driver");
-	strcpy(drv->WidgetName,"chart");
-	drv->Render = htchtRender;
+        /** Fill in the structure. **/
+        strcpy(drv->Name,"DHTML Chart Driver");
+        strcpy(drv->WidgetName,"chart");
+        drv->Render = htchtRender;
 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"DblClick");
+        htrAddEvent(drv,"Click");
+        htrAddEvent(drv,"DblClick");
 
-	/** Register. **/
-	htrRegisterDriver(drv);
+        /** Register. **/
+        htrRegisterDriver(drv);
 
-	htrAddSupport(drv, "dhtml");
+        htrAddSupport(drv, "dhtml");
 
-	HTTBL.idcnt = 0;
+        HTTBL.idcnt = 0;
 
-    return 0;
-    }
+        return 0;
+}
