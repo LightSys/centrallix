@@ -1,0 +1,46 @@
+This is a proposal / design for how we could port Centrallix to Java.
+
+Given the size of the Centrallix codebase, it is desirable to be able
+to port one portion of the system at a time, while keeping the overall
+system working. This means we must find a way that Java and C can
+interact with one another, so that some modules are in C and others
+in Java.
+
+The natural choice for integrating C and Java together is JNI or JNA.
+
+An overview of how JNI works:
+
+* The application starts up and runs within the JVM as a Java process.
+
+* Java code can call into native (C) code by marking a Java class method as "native"
+  and then implementing a C function that follows a specific naming convention
+
+* The C code is built as a shared library and loaded at runtime from Java code by
+  calling System.loadLibrary("shared-library-filename")
+
+* Threads started from within C code that wish to interact with Java must call
+  AttachCurrentThread() to attach themselves to the VM and obtain a JNI interface pointer.
+  Once attached, a native thread works like a regular Java thread running within a native
+  method. The native thread remains attached to the VM until it calls DetachCurrentThread()
+  to detach itself.
+
+* All data passed between C and Java code must be converted, which is typically O(n)
+  with respect to the number of data elements and/or array size being converted.
+
+An alternative to JNI is JNA:
+
+    - https://en.wikipedia.org/wiki/Java_Native_Access
+
+
+
+A general implementation approach could follow these steps:
+
+* JNI requires that the actual
+
+
+Reference Documentation
+
+* JNI
+    * Overview:  https://en.wikipedia.org/wiki/Java_Native_Interface
+    * Tutorial:  https://www.baeldung.com/jni
+    * Full docs: https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
