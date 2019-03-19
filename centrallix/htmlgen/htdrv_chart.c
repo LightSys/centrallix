@@ -65,12 +65,13 @@
 static struct
 {
     int idcnt;
-} HTTBL;
+} HTCHT;
 
 
 typedef struct
 {
     char name[64];
+    char canvas_id[64];
     char sbuf[160];
     char cht_bgnd[128];
     char hdr_bgnd[128];
@@ -90,7 +91,6 @@ typedef struct
     int row_shadow_radius;
     int row_radius;
     int x,y,w,h;
-    int id;
     int data_mode;		/* 0="rows" or 1="properties" */
     int outer_border;
     int inner_border;
@@ -126,32 +126,25 @@ htchtRenderDynamic(pHtSession s, pWgtrNode tree, int z, htcht_struct* c)
         }
 
         /** STYLE for the layer **/
-        htrAddStylesheetItem_va(s,"\t#cht%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",c->id,c->x,c->y,(c->overlap_scrollbar)?(c->w):(c->w-18),z+0);
-        htrAddStylesheetItem_va(s,"\t#cht%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",c->id,z+1);
-
-        htrAddScriptGlobal(s,"cht_current","null",0);
-        htrAddScriptGlobal(s,"chtb_current","null",0);
-        htrAddScriptGlobal(s,"chtx_current","null",0);
-        htrAddScriptGlobal(s,"chtb_start","null",0);
-        htrAddScriptGlobal(s,"chtbdbl_current","null",0);
-
         htrAddScriptInclude(s, "/sys/js/htdrv_chart.js", 0);
+        htrAddScriptInclude(s, "/sys/js/chartjs/Chart.js", 0);
         htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
         htrAddScriptInit_va(s,"    cht_init({"
                                   "osrc: %['%STR&SYM'%]%[null%],"
                                   "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"),"
-                                  "width: %POS"
+                                  "width: %POS,"
+                                  "canvas_id: '%STR&SYM'"
                               "});\n",
                               *(c->osrc) != '\0', c->osrc, *(c->osrc) == '\0',
                               c->name,
-                              c->w
+                              c->w,
+                              c->canvas_id
         );
 
-        htrAddBodyItem_va(s,"<DIV ID=\"cht%POSpane\">\n",c->id);
-
-        htrAddBodyItem(s,"<P> CHART HERE </P>");
-        htrAddBodyItem(s,"</DIV>\n");
+        htrAddBodyItem_va(s,"<DIV> <CANVAS ID=\"%STR&SYM\">\n",c->canvas_id);
+        htrAddBodyItem(s,"<P>CHART HERE</P>\n");
+        htrAddBodyItem(s,"</CANVAS> </DIV>\n");
 
         return 0;
     }
@@ -180,8 +173,8 @@ htchtRender(pHtSession s, pWgtrNode tree, int z)
         chart->x=-1;
         chart->y=-1;
 
-        /** Get an id for thit. **/
-        chart->id = (HTTBL.idcnt++);
+        /** Get an id for that. **/
+        sprintf(chart->canvas_id, "cht%dcanvas", HTCHT.idcnt++);
 
         /** Get x,y,w,h of this object **/
         if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&(chart->x))) != 0) chart->x = -1;
@@ -245,7 +238,7 @@ htchtInitialize()
 
         htrAddSupport(drv, "dhtml");
 
-        HTTBL.idcnt = 0;
+        HTCHT.idcnt = 0;
 
         return 0;
 }

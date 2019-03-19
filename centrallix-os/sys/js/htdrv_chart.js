@@ -42,6 +42,23 @@ function cht_object_modified(current, dataobj)
     {
         //Called when an object is modified
     }
+function cht_chartjs_init(params)
+    {
+        console.log(params);
+        canvas = document.getElementById(params.canvas_id).getContext("2d");
+        return new Chart(canvas, {
+            type: "bar",
+            data: {
+                datasets: [{
+                  data: [1, 2, 3],
+                  label: "Horse",
+                  background_color: 'blue',
+                  border_color: 'black'
+                }],
+                labels:["small", "big", "huge"]
+            },
+        })
+    }
 
 function cht_init(params)
     {
@@ -68,6 +85,7 @@ function cht_init(params)
         chart.ObjectModified = cht_object_modified;
         chart.osrc.Register(chart);
 
+        cht_chartjs_init(params);
     	return chart
     }
 
