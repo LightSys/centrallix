@@ -1,6 +1,25 @@
 #!/usr/bin/perl -w
 #use strict;
 
+sub usage {
+    print "Usage: $0 <output-root> <java-package-name> <header-files...>\n\n" .
+    "  This script converts all of the C structs within a given header file into Java interfaces.\n" .
+    "  It should be run from the root directory of where you want the Java code to be placed.\n" .
+    "  One .java file will be created for each interface, and package subdirectories will be\n" .
+    "  created automatically under the root output directory.\n\n" .
+    "  - output-root - path of the root output directory\n" .
+    "  - java-package-name - fully qualified package name (e.g. org.lightsys.centrallix.module.name)\n" .
+    "  - header-files... - a space separated list of header files";
+    exit(1);
+}
+
+my $rootDirectory = shift @ARGV || usage();
+my $packageName = shift @ARGV || usage();
+my $outputPath = $packageName;
+$outputPath =~ s/\./\//g;
+$outputPath = $rootDirectory . "/" . $outputPath;
+mkdirs($outputPath);
+
 my $inStruct = 0;
 my $structName = 0;
 
@@ -43,13 +62,13 @@ while(<>){
                 $structName = "ObjectInstance";
             }
             @lines = ();
-            push @lines, "package org.lightsys.centrallix.objectsystem;\n\n";
+            push @lines, "package $packageName;\n\n";
             push @lines, uniq(@imports);
             push @lines, "\n\n";
             push @lines, "public interface $structName {\n";
             push @lines, @members;
             push @lines, "}\n";
-            dumpLines();
+            dumpLines($structName, $outputPath);
             $inStruct = 0;
             @members = ();
             @imports = ();
@@ -62,8 +81,9 @@ while(<>){
 }
 
 sub dumpLines {
-    my $name = $structName;
-    my $file = "src/main/java/org/lightsys/centrallix/objectsystem/$name.java";
+    my $name = shift;
+    my $path = shift;
+    my $file = "$path/$name.java";
     print "Writing $file ...\n";
     open $out, ">", $file or die "can't open file $file";
     for $line (@lines){
@@ -104,4 +124,16 @@ sub removePtr {
     shift;
     s/Ptr$//;
     return $_;
+}
+
+sub mkdirs {
+    my $path = shift;
+    my @pathParts = split /\//, $path;
+    my $currentPath = "";
+    for $pathPart (@pathParts){
+        $currentPath .= "/" . $pathPart;
+        if( ! -d $currentPath ){
+            mkdir $currentPath;
+        }
+    }
 }
