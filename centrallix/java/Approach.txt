@@ -1,5 +1,47 @@
 This is a proposal / design for how we could port Centrallix to Java.
 
+Advantages of porting to Java
+
+* There is a very large and mature ecosystem of libraries that run on the JVM and would be available
+  for many of the features that had to be implemented by hand in Centrallix C code. This allows:
+  * Many future extensions could be added to Centrallix with less work by using these libraries
+  * Much existing C code could be replaced by built-in Java features and third-party libraries
+    (see list in a later section below).
+* Java is an easier language to work with for less-experienced developers
+* Concerns such as memory management are greatly reduced or eliminated
+* Much of Centrallix is already object-oriented and Java fits well with this paradigm
+* Use of JDBC to access databases would allow a single ObjectDriver that can handle all access to
+  relational databases by simply loading the appropriate JDBC driver
+* Java has a variety of mature unit testing frameworks, facilitating easier testing
+* Easier debugging - Java provides a variety of local and remote debugging tools such as through
+  IDEs like IntelliJ
+
+Disadvantages of porting to Java
+
+* Potential performance impact in places where the JVM JIT compiler is not able to make the code
+  run as fast at the original C code.
+* Performance overhead that occurs in JNI to copy data between C and Java data structures;
+  overhead of JNA itself.
+* Loss of portability - we would lose the ability to embed Centrallix as, for instance, a Firefox
+  extension. To work around this, we would need to compile Java code into native code, but as of
+  2019, it appears there are not many options for this. GCJ was a project but has ended and there
+  is a commercial product called Excelsior JET. See the link below:
+   - https://stackoverflow.com/questions/2991799/can-i-compile-java-to-native-code
+
+Functionality that could be replaced by either built-in Java features or open source third party libraries:
+
+* MTASK / Locking / Semaphore - Java's built-in true threading, locking and concurrency features/libraries
+* HTTP server - Tomcat or Jetty servers, which are embeddable within an application
+  * REST / HTTP handlers - Java Servlet API
+* Dynamic module loading - Java dynamically loads classes from the classpath
+* Database drivers - JDBC provides a generic abstraction that can be used against all database systems
+* Net drivers (LDAP, NFS) -
+* JSON parsing / building - Jackson library
+* Domain-specific language - DSLs handlers can be built fairly easily using Groovy (another JVM language
+  that interoperates with Java) as the parser and dispatcher mechanism
+
+A Hybrid / Incremental Approach
+
 Given the size of the Centrallix codebase, it is desirable to be able
 to port one portion of the system at a time, while keeping the overall
 system working. This means we must find a way that Java and C can
@@ -27,16 +69,19 @@ An overview of how JNI works:
 * All data passed between C and Java code must be converted, which is typically O(n)
   with respect to the number of data elements and/or array size being converted.
 
-An alternative to JNI is JNA:
+An alternative to JNI is JNA, built on top of JNI:
 
     - https://en.wikipedia.org/wiki/Java_Native_Access
 
+* The application starts up and runs within the JVM as a Java process.
 
+* Instead of static binds and special headers, native methods are accessed through a Java
+  interface whose method names match those of the native methods to be called.
 
-A general implementation approach could follow these steps:
+* Java code can access pointers from C, through an abstraction.
 
-* JNI requires that the actual
-
+* It appears that JNA is able to allow for less conversion between data types in C and Java,
+  but this point needs further investigation.
 
 Reference Documentation
 
@@ -44,3 +89,23 @@ Reference Documentation
     * Overview:  https://en.wikipedia.org/wiki/Java_Native_Interface
     * Tutorial:  https://www.baeldung.com/jni
     * Full docs: https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
+
+* JNA
+    * Overview:  https://en.wikipedia.org/wiki/Java_Native_Access
+    * Source:    https://github.com/java-native-access/jna
+    * License:   This library is licensed under the LGPL, version 2.1 or later, and
+                 (from version 4.0 onward) the Apache Software License, version 2.0.
+                 Commercial license arrangements are negotiable.
+
+A general implementation approach could follow these steps:
+
+* The main entry point of the application would be a Java main class
+* A series of Java interfaces would define how various parts of the system interact
+    * The interface names and method names could match those already use in Centrallix,
+      such as for the Object Drivers, Widgets, and so on
+* Each Object Driver, Widget, etc. would define an implementation of the interface that would
+  either be implemented in Java or would be a thin wrapper that would call the C implementation
+  via JNA.
+    * At first, all Object drivers would simply delegate to C code.
+    * Over time, each Object Driver could be reimplemented in Java directly.
+
