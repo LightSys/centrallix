@@ -20,6 +20,9 @@ $outputPath =~ s/\./\//g;
 $outputPath = $rootDirectory . "/" . $outputPath;
 mkdirs($outputPath);
 
+# mappings like _WN => WgtrNode
+my %shortToLongNames = loadShortNames();
+
 my $inStruct = 0;
 my $structName = 0;
 
@@ -36,7 +39,7 @@ while(<>){
         }
         # struct-returning method
         elsif(/struct[ \t]+(_[A-Z]+)\*[ \t]+([_a-zA-Z][_a-zA-Z0-9]*);/){
-            $type = $1;
+            $type = fixTypeName($1);
             $methodName = $2;
             push @members, "    $type $methodName();\n";
         }
@@ -99,11 +102,12 @@ sub fixTypeName {
     elsif($type eq 'XString') { $type = 'String'; }
     elsif($type eq 'pXString') { $type = 'String'; }
     elsif($type eq 'void*') { $type = 'Object'; }
-    elsif($type eq 'XArray') { 
+    elsif($type eq 'XArray') {
         $type = 'List';
         push @imports, "import java.util.List;";
     }
-    elsif($type =~ /^(_[A-Z])\*/) { $type = $1; }
+    elsif($type =~ /^(_[A-Z]+)\*/) { $type = $shortToLongNames{$1} || $1; }
+    elsif($type =~ /^(_[A-Z]+)/) { $type = $shortToLongNames{$1} || $1; }
     elsif($type =~ /^p[A-Z]/) { $type = substr($type,1); }
     else { $type = ucfirst($type); }
     return $type;
@@ -126,14 +130,26 @@ sub removePtr {
     return $_;
 }
 
+sub loadShortNames {
+    open(my $fh, "<", "struct-short-names.txt") || die "Cannot open support file!";
+    my @lines = grep { /./ } <$fh>; # remove empty lines
+    my %h = map { chomp $_; split / /; } @lines;
+    close($fh);
+#    for my $key (sort keys %h){
+#        print "$key => " . $h{$key} . "\n";
+#    }
+    return %h
+}
+
 sub mkdirs {
     my $path = shift;
     my @pathParts = split /\//, $path;
     my $currentPath = "";
     for $pathPart (@pathParts){
-        $currentPath .= "/" . $pathPart;
+        $currentPath .= $pathPart;
         if( ! -d $currentPath ){
             mkdir $currentPath;
         }
+        $currentPath .= "/";
     }
 }
