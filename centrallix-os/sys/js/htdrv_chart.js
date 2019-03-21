@@ -15,10 +15,14 @@ window.cht_touches = [];
 function cht_data_available(fromobj, why)
     {
         //Called when there is new data on the way
+        //Since this is a chart, do nothing
     }
 function cht_object_available(dataobj, force_datafetch, why)
     {
         //update chart with new datums
+        this.ParseOsrcData();
+        if (this.chart) this.chart.update();
+        else console.log("no chart")
     }
 function cht_replica_moved(dataobj, force_datafetch)
     {
@@ -44,25 +48,54 @@ function cht_object_modified(current, dataobj)
     }
 function cht_chartjs_init(params)
     {
-        console.log(params);
+        //console.log(params);
         canvas = document.getElementById(params.canvas_id).getContext("2d");
-        return new Chart(canvas, {
+        this.chart = new Chart(canvas, {
             type: "bar",
-            data: {
-                datasets: [{
-                  data: [1, 2, 3],
-                  label: "Horse",
-                  background_color: 'blue',
-                  border_color: 'black'
-                }],
-                labels:["small", "big", "huge"]
+            data: {},
+            options: {
+                maintainAspectRatio: true
             },
-        })
+        });
     }
+
+function cht_parse_osrc_data() {
+    let category = "";
+    let cols = {};
+    // assert that there's only one string column later...
+    for (let r in this.osrc.replica) {
+        for (let c in this.osrc.replica[r]) {
+            if (this.osrc.replica[r][c].hasOwnProperty("system") && !this.osrc.replica[r][c].system) {
+                if (!cols.hasOwnProperty(this.osrc.replica[r][c].oid)) {
+                    cols[this.osrc.replica[r][c].oid] = [];
+                    if (this.osrc.replica[r][c].type === "string") category = this.osrc.replica[r][c].oid;
+                }
+                cols[this.osrc.replica[r][c].oid].push(this.osrc.replica[r][c].value);
+            }
+        }
+    }
+    // now re-sort into datasets
+    let datas = [];
+    if (category) this.chart.data.labels = cols[category];
+    for (let i in cols) {
+        if (i !== category) {
+            datas.push({
+                data: cols[i],
+                label: i
+            });
+/*            datas.push({
+                data: cols[i].slice(2,7),
+                label: "double"
+            });*/
+        }
+    }
+    this.chart.data.datasets = datas;
+}
 
 function cht_init(params)
     {
-    var chart = params.chart;
+        console.log("params: ", params);
+        var chart = params.chart;
 
         if (params.osrc)
             chart.osrc = wgtrGetNode(chart, params.osrc, "widget/osrc");
@@ -75,6 +108,7 @@ function cht_init(params)
 	        return chart;
 	        }
 
+        // osrc callback stuff
         chart.IsDiscardReady = new Function('return true;');
         chart.DataAvailable = cht_data_available;
         chart.ObjectAvailable = cht_object_available;
@@ -85,7 +119,12 @@ function cht_init(params)
         chart.ObjectModified = cht_object_modified;
         chart.osrc.Register(chart);
 
-        cht_chartjs_init(params);
+        // private functions and attributes
+        chart.ChartJsInit = cht_chartjs_init;
+        chart.ParseOsrcData = cht_parse_osrc_data; // pls rename later
+        chart.data = {};
+
+        chart.ChartJsInit(params);
     	return chart
     }
 
