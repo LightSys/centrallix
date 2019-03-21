@@ -35,7 +35,9 @@ Functionality that could be replaced by either built-in Java features or open so
   * REST / HTTP handlers - Java Servlet API
 * Dynamic module loading - Java dynamically loads classes from the classpath
 * Database drivers - JDBC provides a generic abstraction that can be used against all database systems
-* Net drivers (LDAP, NFS) -
+* NFS - NFS4J (https://github.com/dCache/nfs4j)
+* LDAP - JNDI; Apache Directory API 2.0
+* POP3 - JavaMail
 * JSON parsing / building - Jackson library
 * Domain-specific language - DSLs handlers can be built fairly easily using Groovy (another JVM language
   that interoperates with Java) as the parser and dispatcher mechanism
@@ -78,6 +80,9 @@ An alternative to JNI is JNA, built on top of JNI:
 * Instead of static binds and special headers, native methods are accessed through a Java
   interface whose method names match those of the native methods to be called.
 
+* The mappings between Java and C data types is customizable, and so the the mapping between
+  Java method names and C function names.
+
 * Java code can access pointers from C, through an abstraction.
 
 * It appears that JNA is able to allow for less conversion between data types in C and Java,
@@ -109,3 +114,4 @@ A general implementation approach could follow these steps:
     * At first, all Object drivers would simply delegate to C code.
     * Over time, each Object Driver could be reimplemented in Java directly.
 
+So it will take a fair amount of work to just get things initially set up as described above.
