@@ -73,7 +73,7 @@ htchtGetIntValue(pWgtrNode tree, char* prop_name, int default_val)
 
 
 int
-htchtGetStrValue(pWgtrNode tree, char* prop_name, char* default_val, char* buf)
+htchtGetStrValue(pWgtrNode tree, char* prop_name, char* default_val, char* buf, int buf_len)
     {
     int rval;
     char* ptr;
@@ -83,12 +83,12 @@ htchtGetStrValue(pWgtrNode tree, char* prop_name, char* default_val, char* buf)
 
         if(rval == 0)
             {
-            strtcpy(buf, ptr, sizeof(buf));
+            strtcpy(buf, ptr, buf_len);
             return 0;
             }
         else
             {
-            strtcpy(buf, default_val, sizeof(buf));
+            strtcpy(buf, default_val, buf_len);
             return -1;
             }
     }
@@ -118,18 +118,21 @@ htchtGetHeight(pWgtrNode tree)
     }
 
 int
-htchtGetName(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "name", "", buf);}
+htchtGetName(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "name", "", buf, 64);}
+
+int
+htchtGetTitle(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "title", "", buf, 64);}
 
 int
 htchtGetType(pWgtrNode tree, char* buf)
     {
-    char chart_types[16][16] = {"line", "bar"};
+    char chart_types[16][16] = {"line", "bar", "scatter", "pie"};
     int rval;
     char err_msg[256];
     int found = 0;
     int type_idx;
 
-        rval = htchtGetStrValue(tree, "chart_type", "", buf);
+        rval = htchtGetStrValue(tree, "chart_type", "bar", buf, 64);
 
         if (rval != 0)
             return rval;
@@ -155,7 +158,7 @@ htchtGetType(pWgtrNode tree, char* buf)
     }
 
 int
-htchtGetTextColor(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "textcolor", "", buf);}
+htchtGetTitleColor(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "titlecolor", "", buf, 64);}
 
 int
 htchtGetObjectSource(pWgtrNode tree, char* buf)
@@ -164,7 +167,7 @@ htchtGetObjectSource(pWgtrNode tree, char* buf)
          **  but it is usually determined by the javascript driver.
          **  Setting ObjectSource to an empty string indicates that the javascript should determine the ObjectSource.
          **/
-        return htchtGetStrValue(tree, "objectsource", "", buf);
+        return htchtGetStrValue(tree, "objectsource", "", buf, 64);
     }
 
 void
@@ -181,6 +184,8 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
 
     char label[32];
     char color[32];
+    char x_column[32];
+    char y_column[32];
 
         buf[0] = '\0';
         strcat(buf, "[");
@@ -193,17 +198,23 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
             /** It is actually possible for the subwidgets to be in another namespace, so we check that **/
             htrCheckNSTransition(session, tree, sub_tree);
 
-            htchtGetStrValue(sub_tree, "label", "", label);
-            htchtGetStrValue(sub_tree, "color", "", color);
+            htchtGetStrValue(sub_tree, "label", "", label, 32);
+            htchtGetStrValue(sub_tree, "color", "", color, 32);
+            htchtGetStrValue(sub_tree, "x_column", "", x_column, 32);
+            htchtGetStrValue(sub_tree, "y_column", "", y_column, 32);
 
             htrCheckNSTransitionReturn(session, tree, sub_tree);
 
             sprintf(series_object, "{"
                                        "label: \"%s\", "
-                                       "color: \"%s\""
+                                       "color: \"%s\","
+                                       "x_column: \"%s\","
+                                       "y_column: \"%s\""
                                    "},",
                                    label,
-                                   color);
+                                   color,
+                                   x_column,
+                                   y_column);
 
             strcat(buf, series_object);
             }
@@ -236,15 +247,15 @@ htchtGetAxesProperties(pHtSession session, pWgtrNode tree, char* buf)
                 /** It is actually possible for the subwidgets to be in another namespace, so we check that **/
                 htrCheckNSTransition(session, tree, sub_tree);
 
-                htchtGetStrValue(sub_tree, "label", "", label);
+                htchtGetStrValue(sub_tree, "label", "", label, 32);
                 bold = htrGetBoolean(tree, "bold", 0);
 
                 htrCheckNSTransitionReturn(session, tree, sub_tree);
 
                 sprintf(axis_object, "{"
-                                     "label: \"%s\", "
-                                       "bold: \"%d\""
-                                       "},",
+                                         "label: \"%s\", "
+                                         "bold: \"%d\""
+                                      "},",
                         label,
                         bold);
 
@@ -262,17 +273,19 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
     {
     char object_source[64];
     char name[64];
+    char title[64];
     char chart_type[64];
     char canvas_id[64];
-    char text_color[64];
+    char title_color[64];
     char axes_properties[2048];
     char series_properties[2048];
 
         htchtGetObjectSource(tree, object_source);
         htchtGetName(tree, name);
+        htchtGetTitle(tree, title);
         htchtGetType(tree, chart_type);
         htchtGetCanvasId(tree, canvas_id);
-        htchtGetTextColor(tree, text_color);
+        htchtGetTitleColor(tree, title_color);
         htchtGetAxesProperties(session, tree, axes_properties);
         htchtGetSeriesProperties(session, tree, series_properties);
 
@@ -286,7 +299,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     "chart_type: '%STR',"
                     "canvas_id: '%STR&SYM',"
                     "osrc: '%STR',"
-                    "text_color: '%STR',"
+                    "title_color: '%STR',"
                     "axes: %STR,"
                     "series: %STR"
                 "});\n",
@@ -298,7 +311,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     chart_type,
                     canvas_id,
                     object_source,
-                    text_color,
+                    title_color,
                     axes_properties,
                     series_properties
         );
