@@ -121,13 +121,22 @@ function cht_get_categories(series_idx) {
     return this.GetColValues(this.GetXColName(series_idx));
 }
 
+function cht_get_datasets(){
+    let datasets = [];
+    for (let series_idx in this.params.series){
+        datasets.push({
+            data: this.GetLinearData(series_idx),
+            label: this.GetSeriesLabel(series_idx),
+            type: this.params.series[series_idx].chart_type
+        });
+    }
+    return datasets;
+}
+
 function cht_get_chart_data(){
     return {
         labels: this.LinearXAxis() ? [] : this.GetCategories(0),
-        datasets: [{
-            data: this.GetLinearData(0),
-            label: this.GetSeriesLabel(0)
-        }]
+        datasets: this.GetDatasets()
     };
 }
 
@@ -179,6 +188,7 @@ function cht_register_helper_functions(chart_wgt){
     chart_wgt.GetXColName = cht_get_x_col_name;
     chart_wgt.GetYColName = cht_get_y_col_name;
     chart_wgt.IsNumberType = cht_is_number_type;
+    chart_wgt.GetDatasets = cht_get_datasets;
 }
 
 function cht_init(params) {

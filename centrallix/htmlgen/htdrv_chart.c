@@ -186,6 +186,7 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
     char color[32];
     char x_column[32];
     char y_column[32];
+    char chart_type[32];
 
         buf[0] = '\0';
         strcat(buf, "[");
@@ -202,6 +203,7 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
             htchtGetStrValue(sub_tree, "color", "", color, 32);
             htchtGetStrValue(sub_tree, "x_column", "", x_column, 32);
             htchtGetStrValue(sub_tree, "y_column", "", y_column, 32);
+            htchtGetStrValue(sub_tree, "chart_type", "", chart_type, 32);
 
             htrCheckNSTransitionReturn(session, tree, sub_tree);
 
@@ -209,12 +211,14 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
                                        "label: \"%s\", "
                                        "color: \"%s\","
                                        "x_column: \"%s\","
-                                       "y_column: \"%s\""
+                                       "y_column: \"%s\","
+                                       "chart_type: \"%s\""
                                    "},",
                                    label,
                                    color,
                                    x_column,
-                                   y_column);
+                                   y_column,
+                                   chart_type);
 
             strcat(buf, series_object);
             }
