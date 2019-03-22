@@ -142,7 +142,8 @@ The following phases could be followed to incrementally port Centrallix to Java:
     * Create the initial Java class that starts the whole application.
         * Call the main application entry point for Centrallix, via JNA.
     * Allow Java to know about all of the C Object Drivers.
-        * Create a Java interface "CObjectDriver" that extends from JNA Structure and matches the ObjDriver C struct.
+        * Create a Java interface "CObjDriver" that extends from JNA Structure and matches the ObjDriver C struct.
+            * See https://java-native-access.github.io/jna/4.2.1/com/sun/jna/Structure.html
         * Create an ObjectDriverRegistry Java class that is capable of keeping track of all the registered
           Object Drivers. It should have a method like "register(CObjectDriver objectDriver)".
         * Create a C function like "setObjectRegistry" that accepts a function pointer to a callback function
@@ -153,14 +154,23 @@ The following phases could be followed to incrementally port Centrallix to Java:
         * In obj_main.c/objRegisterDriver, call the register() via the function pointer from above. JNA
           will route this to the Java ObjectRegistry.
     * Create a generic implementation of the ObjDriver interface that simply delegates to the function pointers
-      on a CObjDriver object. This implementation of ObjDriver would be returned to any calling Java code when
-      an Object Driver being referenced has a C implementation.
+      on a CObjDriver object. You can name this "CObjDriverWrapper".
+        * This implementation of ObjDriver would be returned to any calling Java code when an Object Driver
+          being referenced has a C implementation.
+        * Java uses exceptions to signal errors, whereas Centrallix C code uses a convention of null pointer
+          or negative return values. Therefore, each method of this class should check the return value of
+          the call to the CObjDriver method, and if it is negative, zero or null (whichever is applicable for
+          that particular function), then throw a CentrallixException.
+            * You may be able to create a Proxy and ProxyHandler to implement the error handling above in a more
+              generic manner, instead of repeating the same logic in every method.
     * Change the main startup script that starts Centrallix to instead call Java with the appropriate command
       line options and classpath.
 
 * Phase 2 - Object Drivers in Java
     * At the end of this phase, you will have one or more Java implementations of Object Drivers, which can be
       called from both C and Java.
+    * TODO add notes on creating a generic CObjDriver implementation that converts exceptions thrown to an
+      appropriate return value
     * Modify the dynamic module loading mechanism on the C side to know that a given module has already been
       loaded from the Java side, so that it doesn't try to load it from the C side.
     * Create another function like obj_main.c/objRegisterDriver, named objRegisterDriverExternal. This should
@@ -182,7 +192,7 @@ The following phases could be followed to incrementally port Centrallix to Java:
 * Phase 3 - Multithreading, HTTP server and security system
     * At the end of this phase, all incoming HTTP and HTTPS requests will be handled by a Java HTTP server, and
       multi-threading of incoming requests will be handled by Java threads, allowing multiple CPUs to be used.
-    * Prepare code for being multi-threaded
+    * Prepare C code for being multi-threaded
         * When working on this phase, care should be taken to investigate whether there are any parts of any of the
           Object Driver implementations that are not thread-safe - i.e. that do any of the following:
             * return or pass references to shared buffers in static storage
@@ -192,6 +202,9 @@ The following phases could be followed to incrementally port Centrallix to Java:
           storage, use an appropriate locking or semaphore mechanism, or add appropriate locking within the Java
           code that wraps the C code, and ensure that all C code that calls this code goes through the Java code
           first as a facade to take advantage of the Java-side locking.
+        * An alternative approach is to load the C code via Native.synchronizedLibrary(com.sun.jna.Library) instead
+          of Native.library(...), which will only allow a single Java thread to access the C code at a time by
+          synchronizing all method calls on the same monitor per library.
     * Embed a webserver (Jetty or Tomcat) into the Java process and initialize it from the main java startup class
     * Create a Java Servlet class to handle each of type of HTTP or REST request
     * Configure the webserver to pass calls from the outside world to the appropriate Servlets created above
