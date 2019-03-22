@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jna-5.2.0">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/centrallix/java/lib/jna-5.2.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
