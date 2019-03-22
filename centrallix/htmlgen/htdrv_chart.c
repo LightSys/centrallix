@@ -158,7 +158,10 @@ htchtGetType(pWgtrNode tree, char* buf)
     }
 
 int
-htchtGetTitleColor(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "titlecolor", "", buf, 64);}
+htchtGetTitleColor(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "titlecolor", "", buf, 32);}
+
+int
+htchtGetLegendPosition(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "legend_position", "", buf, 32);}
 
 int
 htchtGetObjectSource(pWgtrNode tree, char* buf)
@@ -210,12 +213,14 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
             sprintf(series_object, "{"
                                        "label: \"%s\", "
                                        "color: \"%s\","
+                                       "fill: %d,"
                                        "x_column: \"%s\","
                                        "y_column: \"%s\","
                                        "chart_type: \"%s\""
                                    "},",
                                    label,
                                    color,
+                                   htrGetBoolean(tree, "fill", 1),
                                    x_column,
                                    y_column,
                                    chart_type);
@@ -238,7 +243,7 @@ htchtGetAxesProperties(pHtSession session, pWgtrNode tree, char* buf)
     char axis_object[256];
 
     char label[32];
-    int bold;
+    char axis[8];
 
         buf[0] = '\0';
         strcat(buf, "[");
@@ -252,16 +257,16 @@ htchtGetAxesProperties(pHtSession session, pWgtrNode tree, char* buf)
                 htrCheckNSTransition(session, tree, sub_tree);
 
                 htchtGetStrValue(sub_tree, "label", "", label, 32);
-                bold = htrGetBoolean(tree, "bold", 0);
+                htchtGetStrValue(sub_tree, "axis", "x", axis, 8);
 
                 htrCheckNSTransitionReturn(session, tree, sub_tree);
 
                 sprintf(axis_object, "{"
                                          "label: \"%s\", "
-                                         "bold: \"%d\""
+                                         "axis: \"%s\", "
                                       "},",
                         label,
-                        bold);
+                        axis);
 
                 strcat(buf, axis_object);
             }
@@ -271,16 +276,16 @@ htchtGetAxesProperties(pHtSession session, pWgtrNode tree, char* buf)
     }
 
 
-
 void
 htchtInitCall(pHtSession session, pWgtrNode tree)
     {
     char object_source[64];
     char name[64];
     char title[64];
-    char chart_type[64];
-    char canvas_id[64];
-    char title_color[64];
+    char chart_type[32];
+    char canvas_id[32];
+    char title_color[32];
+    char legend_position[32];
     char axes_properties[2048];
     char series_properties[2048];
 
@@ -290,6 +295,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
         htchtGetType(tree, chart_type);
         htchtGetCanvasId(tree, canvas_id);
         htchtGetTitleColor(tree, title_color);
+        htchtGetLegendPosition(tree, legend_position);
         htchtGetAxesProperties(session, tree, axes_properties);
         htchtGetSeriesProperties(session, tree, series_properties);
 
@@ -299,11 +305,15 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     "y_pos: %INT,"
                     "width: %INT,"
                     "height: %INT,"
+                    "title_size: %INT,"
+                    "start_at_zero: %INT,"
                     "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"),"
                     "chart_type: '%STR',"
                     "canvas_id: '%STR&SYM',"
                     "osrc: '%STR',"
+                    "title: '%STR',"
                     "title_color: '%STR',"
+                    "legend_position: '%STR',"
                     "axes: %STR,"
                     "series: %STR"
                 "});\n",
@@ -311,11 +321,15 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     htchtGetY(tree),
                     htchtGetWidth(tree),
                     htchtGetHeight(tree),
+                    htchtGetIntValue(tree, "title_size", 12),
+                    htrGetBoolean(tree, "start_at_zero", 1),
                     name,
                     chart_type,
                     canvas_id,
                     object_source,
+                    title,
                     title_color,
+                    legend_position,
                     axes_properties,
                     series_properties
         );

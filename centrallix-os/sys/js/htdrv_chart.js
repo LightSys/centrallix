@@ -12,20 +12,24 @@
 
 window.cht_touches = [];
 
-function cht_data_available(fromobj, why) {}
+function cht_data_available(fromobj, why) {this.update_soon = true}
 
 function cht_object_available(dataobj, force_datafetch, why) {
-    //update chart with new data
-    this.columns = this.GetColumns();
-    this.chart.data = this.GetChartData();
-    this.chart.update();
+    // update chart with new data only
+    // if you want to update with focus change, remove the if statement
+    if(this.update_soon) {
+        this.columns = this.GetColumns();
+        this.chart.data = this.GetChartData();
+        this.chart.update(); // pass in 0 for no animation
+        this.update_soon = false;
+    }
 }
 
-function cht_replica_moved(dataobj, force_datafetch) {}
+function cht_replica_moved(dataobj, force_datafetch) {this.update_soon = true;}
 function cht_operation_complete(stat, osrc) {}
-function cht_object_deleted(recnum) {}
-function cht_object_created(recnum) {}
-function cht_object_modified(current, dataobj) {}
+function cht_object_deleted(recnum) {this.update_soon = true;}
+function cht_object_created(recnum) {this.update_soon = true;}
+function cht_object_modified(current, dataobj) {this.update_soon = true;}
 
 function cht_linear_x_axis() {
     // fancier logic in future
@@ -57,7 +61,7 @@ function cht_get_col_values(col_name) {
     for (let row in this.osrc.replica) {
         for (let col in this.osrc.replica[row]) {
             let datum = this.osrc.replica[row][col];
-            if (datum.oid === col_name){
+            if (datum.oid === col_name && !datum.system){
                col_values.push(datum.value);
                break;
             }
@@ -77,7 +81,6 @@ function cht_get_linear_data(series_idx) {
     } else {
        let x_vals = this.GetColValues(this.GetXColName(series_idx));
        let y_vals = this.GetColValues(this.GetYColName(series_idx));
-       console.log(x_vals, y_vals);
        let zipped = [];
 
        for (let idx = 0; idx < Math.min(x_vals.length, y_vals.length); idx++) {
@@ -121,13 +124,38 @@ function cht_get_categories(series_idx) {
     return this.GetColValues(this.GetXColName(series_idx));
 }
 
+function cht_generate_rgba(id, alpha = 1) {
+    let colors = {
+        blue: 'rgb(54, 162, 235)',
+        purple: 'rgb(153, 102, 255)',
+        red: 'rgb(255, 99, 132)',
+        orange: 'rgb(255, 159, 64)',
+        yellow: 'rgb(255, 205, 86)',
+        green: 'rgb(75, 192, 192)',
+        grey: 'rgb(201, 203, 207)'
+    };
+    let color_names = Object.keys(colors);
+    if (typeof id === 'string' && colors[id]) return Color(colors[id]).alpha(alpha).rgbString();
+    else if (typeof id === 'number') return Color(colors[color_names[id % color_names.length]]).alpha(alpha).rgbString();
+    else return Color('rgb(54, 162, 235)').alpha(alpha).rgbString();
+}
+
+function cht_choose_rgba(series_idx, alpha) {
+    if (this.params.series[series_idx].color) return this.GenerateRgba(this.params.series[series_idx].color, alpha);
+    else return this.GenerateRgba(Number.parseInt(series_idx), alpha);
+}
+
 function cht_get_datasets(){
     let datasets = [];
     for (let series_idx in this.params.series){
         datasets.push({
             data: this.GetLinearData(series_idx),
             label: this.GetSeriesLabel(series_idx),
-            type: this.params.series[series_idx].chart_type
+            type: this.params.series[series_idx].chart_type,
+            borderColor: this.ChooseRgba(series_idx),
+            backgroundColor: this.ChooseRgba(series_idx, (this.params.type === "line") ? 1 : 0.5),
+            borderWidth: 2,
+            fill: this.params.series[series_idx].fill
         });
     }
     return datasets;
@@ -140,15 +168,49 @@ function cht_get_chart_data(){
     };
 }
 
+function cht_get_scale_label(x_y) {
+    let axes = this.params.axes.filter(function (elem) {return elem.axis === x_y});
+    if (axes.length === 0) return {};
+    return {
+        display: (axes[0].label !== ""),
+        labelString: axes[0].label,
+    }
+}
+
+function cht_get_scales() {
+    if (this.params.chart_type === "pie") return {};
+    return {
+        xAxes: [{
+            type: this.LinearXAxis() ? "linear" : "category",
+            scaleLabel: this.GetScaleLabel('x')
+        }],
+        yAxes: [{
+            ticks: {
+                beginAtZero: this.params.start_at_zero,
+            },
+            scaleLabel: this.GetScaleLabel('y'),
+        }]
+    };
+}
+
 function cht_chartjs_init() {
     let canvas = document.getElementById(this.params.canvas_id).getContext("2d");
     this.chart = new Chart(canvas, {
         type: this.params.chart_type,
         data: {},
-        options: {},
+        options: {
+            scales: this.GetScales(),
+            title: {
+                display: true,
+                text: this.params.title,
+                fontColor: this.params.title_color,
+                fontSize: this.params.title_size
+            },
+            legend: {
+                position: this.params.legend_position
+            }
+        },
     });
-    if (this.params.chart_type != "pie")
-        this.chart.options.scales.xAxes[0].type = this.LinearXAxis() ? "linear" : "";
 }
 
 function cht_get_osrc(){
@@ -189,17 +251,23 @@ function cht_register_helper_functions(chart_wgt){
     chart_wgt.GetYColName = cht_get_y_col_name;
     chart_wgt.IsNumberType = cht_is_number_type;
     chart_wgt.GetDatasets = cht_get_datasets;
+    chart_wgt.ChooseRgba = cht_choose_rgba;
+    chart_wgt.GenerateRgba = cht_generate_rgba;
+    chart_wgt.GetScales = cht_get_scales;
+    chart_wgt.GetScaleLabel = cht_get_scale_label;
 }
 
 function cht_init(params) {
     console.log("params: ", params);
-    var chart_wgt = params.chart;
+    let chart_wgt = params.chart;
     delete params.chart;
     chart_wgt.params = params;
 
     cht_register_helper_functions(chart_wgt);
     chart_wgt.GetOsrc();
     cht_register_osrc_functions(chart_wgt);
+
+    this.update_soon = false; //see cht_object_available
 
     chart_wgt.ChartJsInit();
 }
