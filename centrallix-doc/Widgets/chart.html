@@ -1,0 +1,115 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'chart.html' -->
+<h2 class="widgetname"><a name="chart">chart</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/chart</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>A chart widget is used to display charts and graphs of data. Uses the CHart.js library. </p>
+</span>
+<h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used between chart cells and rows.If neither bgcolor nor background are specified, the chart is transparent.</td>
+</tr>
+<tr>
+<td class="name">chart_type</td>
+<td class="type">string</td>
+<td class="description">Currently supported types are "bar", "line", "radar", and "pie". Defaults to "bar". Chart.js supports much more than this, so new types could be added with relative ease.</td>
+</tr>
+<tr>
+<td class="name">objectsource</td>
+<td class="type">string</td>
+<td class="description">The name of the ObjectSource widget which will supply data for the chart. We recommend that you do not specify this directly but instead give the chart widget a parent ObjectSource. If not specified, the chart will look for an ObjectSource in its parents.</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The title of the chart. Default is none.</td>
+</tr>
+<tr>
+<td class="name">titlecolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, of the chart title.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the chart. The height is determined dynamically.</td>
+</tr>
+<tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the chart. Default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the chart. Default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">chart-series</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">color</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the chart element (ex: bar) which represents this series.</td>
+</tr>
+<tr>
+</table>
+<p class="childname">chart-axis</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">A label for the axis. Default is none.</td>
+</tr>
+<tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// Here is a simple chart.
+chart "widget/chart"
+    {
+    x=0; y=0;
+    width=483;
+    chart_type="line";
+
+    series1 "widget/chart-series" {color="green";}
+    series2 "widget/chart-series" {color="blue";}
+
+    x_axis "widget/chart-axis" {label="X";}
+    y_axis "widget/chart-axis" {label="Y";}
+
+    }
+
+</pre>
+</body>
+</html>
