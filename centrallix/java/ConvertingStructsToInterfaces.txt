@@ -1,5 +1,0 @@
-To convert a C struct to a Java interface, use the convert-struct.pl script.
-
-Example:
-
-./convert-struct.pl src/main/java org.lightsys.centrallix.objectsystem ../include/obj.h
