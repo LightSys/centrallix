@@ -15,6 +15,10 @@ Known Issues / Limitations with struct converter:
   between the function pointer struct field names and the names of the functions are all in the
   C file that corresponds to the header file, generally in some sort of initialization function.
 - Imports for Centrallix classes that are in different packages are not added automatically
+- Methods with return types that are collections (List) do not include a generic type parameter
+  for their elements (e.g. List<String>). This can be discerned their by looking at the return
+  type of the C function definitions or, in some cases, by looking at what type of object is
+  being constructed and returned within the function implementation.
 - If the struct definition does not include a ", *pTheName", the struct ends up being ignored
 - Unions within a struct are not handled correctly
 - Nested structs are not handled correctly
