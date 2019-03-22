@@ -3,24 +3,26 @@ package org.lightsys.centrallix.objectsystem;
 import java.util.List;
 
 public interface ObjDriver {
+
     String getName(); // size 64
     List<String> getRootContentTypes();
     int getCapabilities();
-    void open(ObjectInstance obj, int mask, ContentType systype, String usrtype, ObjTrxTree oxt);
+
+    ObjectInstance open(ObjectInstance obj, int mask, ContentType systype, String usrtype, ObjTrxTree oxt);
     Object openChild();
-    void close(Object infV, ObjTrxTree oxt);
-    int create(ObjectInstance obj, int mask, ContentType systype, String usrtype, ObjTrxTree oxt);
-    int delete(ObjectInstance obj, ObjTrxTree oxt);
-    int deleteObj(Object infV, ObjTrxTree oxt);
+    void close(ObjectInstance obj, ObjTrxTree oxt);
+    void create(ObjectInstance obj, int mask, ContentType systype, String usrtype, ObjTrxTree oxt);
+    void delete(ObjectInstance obj, ObjTrxTree oxt);
+    void deleteObj(Object infV, ObjTrxTree oxt);
     Object openQuery();
-    int queryDelete();
+    void queryDelete();
     Object queryFetch();
     Object queryCreate();
-    int queryClose();
+    void queryClose();
     // named readData instead of read due to clash with JNA Structure class
-    int readData(Object infV, String buffer, int maxcnt, int flags, ObjTrxTree oxt);
+    void readData(Object infV, String buffer, int maxcnt, int flags, ObjTrxTree oxt);
     // named readData instead of read due to clash with JNA Structure class
-    int writeData();
+    void writeData();
     int getAttrType();
     int getAttrValue();
     String getFirstAttr();
@@ -30,10 +32,10 @@ public interface ObjDriver {
     Object openAttr();
     String getFirstMethod();
     String getNextMethod();
-    int executeMethod();
-    ObjPresentationHints presentationHints();
-    int info();
-    int commit();
+    void executeMethod();
+    ObjPresentationHints getPresentationHints();
+    int info(); // TODO what does this return value represent?
+    void commit();
     int getQueryCoverageMask();
     int getQueryIdentityPath();
 }

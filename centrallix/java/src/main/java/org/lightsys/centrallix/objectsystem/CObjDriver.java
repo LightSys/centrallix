@@ -65,7 +65,7 @@ public class CObjDriver extends Structure implements ObjDriver {
     }
 
     @Override
-    public void open(ObjectInstance obj, int mask, ContentType systype, String usrtype, ObjTrxTree oxt) {
+    public ObjectInstance open(ObjectInstance obj, int mask, ContentType systype, String usrtype, ObjTrxTree oxt) {
         Pointer p = (Pointer) Open.invoke(Pointer.class, new Object[]{
                 CObjectInstance.fromJava(obj),
                 mask, systype,
@@ -74,6 +74,7 @@ public class CObjDriver extends Structure implements ObjDriver {
         if(p == Pointer.NULL){
             throw new CentrallixException();
         }
+        return new CObjectInstance(p);
     }
 
     @Override
@@ -82,11 +83,10 @@ public class CObjDriver extends Structure implements ObjDriver {
     }
 
     @Override
-    public void close(Object infV, ObjTrxTree oxt) {
-        // TODO not sure how to handle infV - in C it's a void* to a different structure type
-        //      per Object Driver - not sure what we would pass in when calling from Java
+    public void close(ObjectInstance obj, ObjTrxTree oxt) {
+        // TODO I think inf_v (void*) is a pointer to an Object struct (ObjectInstance), but not 100% sure
         Pointer p = (Pointer) Open.invoke(Pointer.class, new Object[]{
-                infV,
+                CObjectInstance.fromJava(obj),
                 CObjTrxTree.fromJava(oxt),
                 oxt});
         if(p == Pointer.NULL){
