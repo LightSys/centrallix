@@ -1,0 +1,163 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'chart.html' -->
+<h2 class="widgetname"><a name="chart">chart</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/chart</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>A chart widget is used to display charts and graphs of data. It uses the Chart.js library. </p>
+</span>
+<h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">chart_type</td>
+<td class="type">string</td>
+<td class="description">Currently supported types are "bar", "line", "scatter", and "pie". Defaults to "bar". Chart.js supports much more than this, so new types could be added with relative ease.</td>
+</tr>
+<tr>
+<td class="name">legend_position</td>
+<td class="type">string</td>
+<td class="description">The position of the legend on the chart. May be "top", "botton", "left", or "right"</td>
+</tr>
+<tr>
+<td class="name">objectsource</td>
+<td class="type">string</td>
+<td class="description">The name of the ObjectSource widget which will supply data for the chart. We recommend that you do not specify this directly but instead give the chart widget a parent ObjectSource. If not specified, the chart will look for an ObjectSource in its parents.</td>
+</tr>
+<tr>
+<td class="name">start_at_zero</td>
+<td class="type">boolean</td>
+<td class="description">Set to false if you want the y axis to start at the lowest data value. Default is true</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The title of the chart. Default is none.</td>
+</tr>
+<tr>
+<td class="name">titlecolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, of the chart title.</td>
+</tr>
+<tr>
+<td class="name">title_size</td>
+<td class="type">integer</td>
+<td class="description">The size, in pixels, of the title font</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the chart. The height is determined dynamically.</td>
+</tr>
+<tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the chart. Default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the chart. Default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">chart-series</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">chart_type</td>
+<td class="type">string</td>
+<td class="description">Chart.js has limited support for having multiple chart types on the same axes. The outer chart type must still be specified if this is set.</td>
+</tr>
+<tr>
+<td class="name">color</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the chart element (ex: line) which represents this series.</td>
+</tr>
+<tr>
+<td class="name">fill</td>
+<td class="type">boolean</td>
+<td class="description">Set to false to remove the color fill beneath a line chart. Default is true.</td>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">A label for the data series.</td>
+</tr>
+<tr>
+<td class="name">x_column</td>
+<td class="type">string</td>
+<td class="description">Which column in the data should be used for the x axis? By default, the chart will pick one for you.</td>
+</tr>
+<tr>
+<td class="name">y_column</td>
+<td class="type">string</td>
+<td class="description">Which column in the data should be used for the y axis? By default, the chart will pick one for you.</td>
+</tr>
+</table>
+<p class="childname">chart-axis</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">axis</td>
+<td class="type">string</td>
+<td class="description">Which axis is this? Possible values are "x" and "y". Default is "x".</td>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">A label for the axis. Default is none.</td>
+</tr>
+
+<tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// Here is a simple chart.
+chart "widget/chart"
+    {
+    x=0; y=0;
+    width=483;
+    height=650;
+    chart_type="bar";
+    title="Sample Chart";
+    titlecolor="black";
+    legend_position="right";
+
+    series1 "widget/chart-series" {color="blue";}
+
+    series2 "widget/chart-series"
+    {
+        fill=no;
+        chart_type="line";
+        x_column="name";
+        y_column="permissions";
+    }
+    x_axis "widget/chart-axis" {axis="x"; label="X";}
+    }
+
+</pre>
+</body>
+</html>
