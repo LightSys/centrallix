@@ -44,13 +44,12 @@ Functionality that could be replaced by either built-in Java features or open so
 
 A Hybrid / Incremental Approach
 
-Given the size of the Centrallix codebase, it is desirable to be able
-to port one portion of the system at a time, while keeping the overall
-system working. This means we must find a way that Java and C can
-interact with one another, so that some modules are in C and others
-in Java.
+Given the size of the Centrallix codebase, it is desirable and necessary to be able to port one portion
+of the system at a time, while keeping the overall system working. This means we must find a way that Java
+and C can interact with one another, so that some modules are in C and others in Java. This allows small
+pieces of the codebase to be converted over time, such as during a Codeathon.
 
-The natural choice for integrating C and Java together is JNI or JNA.
+The natural choice for integrating C and Java together is either JNI or JNA.
 
 An overview of how JNI works:
 
@@ -71,19 +70,19 @@ An overview of how JNI works:
 * All data passed between C and Java code must be converted, which is typically O(n)
   with respect to the number of data elements and/or array size being converted.
 
-An alternative to JNI is JNA, built on top of JNI:
+An alternative to JNI is JNA, built on top of JNI, and is easier to use:
 
-    - https://en.wikipedia.org/wiki/Java_Native_Access
-
-* The application starts up and runs within the JVM as a Java process.
+* See https://en.wikipedia.org/wiki/Java_Native_Access
 
 * Instead of static binds and special headers, native methods are accessed through a Java
   interface whose method names match those of the native methods to be called.
 
-* The mappings between Java and C data types is customizable, and so the the mapping between
+* The mappings between Java and C data types are customizable, and so is the mapping between
   Java method names and C function names.
 
 * Java code can access pointers from C, through an abstraction.
+
+* C code can call methods on Java objects.
 
 * It appears that JNA is able to allow for less conversion between data types in C and Java,
   but this point needs further investigation.
@@ -102,16 +101,91 @@ Reference Documentation
                  (from version 4.0 onward) the Apache Software License, version 2.0.
                  Commercial license arrangements are negotiable.
 
-A general implementation approach could follow these steps:
+General Design
 
-* The main entry point of the application would be a Java main class
+* The main entry point of the application would be a Java main class. This would initialize all
+  other systems, such as registering modules.
+* Centrallix code will be compiled as one or more shared libraries, as required by JNA.
 * A series of Java interfaces would define how various parts of the system interact
     * The interface names and method names could match those already use in Centrallix,
-      such as for the Object Drivers, Widgets, and so on
+      such as for the Object Drivers, Widgets, and so on.
 * Each Object Driver, Widget, etc. would define an implementation of the interface that would
   either be implemented in Java or would be a thin wrapper that would call the C implementation
   via JNA.
     * At first, all Object drivers would simply delegate to C code.
     * Over time, each Object Driver could be reimplemented in Java directly.
+* An object driver registry will be maintained on the Java side.
+    * If an Object Driver is implemented in C code, then the pointer to the driver in OSYS.Drivers
+      will be a direct pointer to the C implementation.
+    * If a driver is implemented in Java code, then the pointer in OSYS.Drivers will be to facade
+      that delegates to the Java implementation.
+* To keep things organized, adopt the following naming convention:
+    * Java interfaces (for JNA) that directly correspond to C structs should be named like "CTheName"
+      where "TheName" is the name of the C struct.
+    * Java interfaces that Java classes will use should be named "TheName".
+    * Example:
+        * The C struct named "ObjDriver" ("_OSD") will have a corresponding JNA Java interface
+          named "CObjDriver" that extends "com.sun.jna.Structure"
+        * The Java interface that represents object drivers in Java will be named "ObjDriver".
+    * This separation between Java and C structs/interfaces allows for slight differences between the
+      two, and for more natural Java conventions to be used on the Java side. It also will allow the
+      C interfaces to be removed when/if all implementations are ported to Java.
 
-So it will take a fair amount of work to just get things initially set up as described above.
+Implementation Phases
+
+The following phases could be followed to incrementally port Centrallix to Java:
+
+* Phase 1 - Java wrappers for C Object Drivers
+    * At the end of this phase, you will have a Java application that delegates pretty much all functionality
+      to the C code.
+    * Build all of Centrallix as a shared library, if this is not already part of the Makefile process.
+    * Create the initial Java class that starts the whole application.
+        * Call the main application entry point for Centrallix, via JNA.
+    * Allow Java to know about all of the C object drivers.
+        * Create a Java interface "CObjectDriver" that extends from JNA Structure and matches the ObjDriver C struct.
+        * Create an ObjectDriverRegistry Java class that is capable of keeping track of all the registered
+          object drivers. It should have a method like "register(CObjectDriver objectDriver)".
+        * Create a C function like "setObjectRegistry" that accepts a function pointer to a callback function
+          and stores this pointer into a global variable like "ObjectRegistry".
+        * In the main java startup class, instantiate the object driver registry and pass a reference to it
+          to the setObjectRegistry C function above via JNA. This should happen BEFORE calling the main
+          Centrallix entry point.
+        * In obj_main.c/objRegisterDriver, call the register() via the function pointer from above. JNA
+          will route this to the Java ObjectRegistry.
+    * Create a generic implementation of the ObjDriver interface that simply delegates to the function pointers
+      on a CObjDriver object. This implementation of ObjDriver would be returned to any calling Java code when
+      an Object Driver being referenced has a C implementation.
+    * Change the main startup script that starts Centrallix to instead call Java with the appropriate command
+      line options and classpath.
+
+* Phase 2 - Object Drivers in Java
+    * At the end of this phase, you will have one or more Java implementations of Object Drivers, which can be
+      called from both C and Java.
+    * Choose one or more Object Drivers to be reimplemented in Java. A good choice may be to create a generic
+      JDBC Object Driver that can replace the existing MySQL and Sybase implementations.
+    * Modify the dynamic module loading mechanism on the C side to know that a given module has already been
+      loaded from the Java side, so that it doesn't try to load it from the C side.
+    * Add a register(ObjDriver)
+    * For each Object Driver chosen above:
+        * Create a Java class that implements ObjDriver. The methods can all the no-op for now.
+        * Instantiate and register the Java object driver with the ObjectRegistry during the Java main startup process
+        * Remove call to initialize the C module from centrallix.c
+        *
+
+* Phase 4 - Multithreading, HTTP server and security system
+    * At the end of this phase, all incoming HTTP and HTTPS requests will be handled by a Java HTTP server, and
+      multi-threading of incoming requests will be handled by Java threads, allowing multiple CPUs to be used.
+    * Prepare code for being multi-threaded
+        * When working on this phase, care should be taken to investigate whether there are any parts of any of the
+          object driver implementations that are not thread-safe - i.e. that do any of the following:
+            * return or pass references to shared buffers in static storage
+            * modify global variable values
+            * call other code that does any of the above
+        * For any cases where the above occurs, it is necessary to either refactor the C code to not use static
+          storage, use an appropriate locking or semaphore mechanism, or add appropriate locking within the Java
+          code that wraps the C code, and ensure that all C code that calls this code goes through the Java code
+          first as a facade to take advantage of the Java-side locking.
+    * Embed a webserver (Jetty or Tomcat) into the Java process and initialize it from the main java startup class
+    * Configure
+
+* Phase 3 - Widgets
