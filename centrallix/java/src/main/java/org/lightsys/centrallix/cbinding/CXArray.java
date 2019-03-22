@@ -1,4 +1,4 @@
-package org.lightsys.centrallix.objectsystem;
+package org.lightsys.centrallix.cbinding;
 
 import java.util.List;
 

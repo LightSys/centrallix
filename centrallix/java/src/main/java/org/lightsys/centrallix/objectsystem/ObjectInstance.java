@@ -2,12 +2,19 @@ package org.lightsys.centrallix.objectsystem;
 
 import java.util.List;
 
+/**
+ * Equivalent to "Object" struct in C.
+ */
 public interface ObjectInstance {
     int getMagic();
     ObjDriver getDriver();
     ObjDriver getTLowLevelDriver();
     ObjDriver getILowLevelDriver();
     Object getData();
+
+    /**
+     * If this is an attribute, this is the object it belongs to.
+     */
     ObjectInstance Obj();
     List getAttrs();
     Pathname getPathname();

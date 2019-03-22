@@ -1,4 +1,6 @@
-package org.lightsys.centrallix.objectsystem;
+package org.lightsys.centrallix.cbinding;
+
+import org.lightsys.centrallix.objectsystem.ObjectInstance;
 
 public class CObjectInstance {
 

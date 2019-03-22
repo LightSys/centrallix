@@ -1,10 +1,14 @@
-package org.lightsys.centrallix.objectsystem;
+package org.lightsys.centrallix.cbinding;
 
 import com.sun.jna.Callback;
 import com.sun.jna.Function;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import org.lightsys.centrallix.CentrallixException;
+import org.lightsys.centrallix.objectsystem.ContentType;
+import org.lightsys.centrallix.objectsystem.ObjDriver;
+import org.lightsys.centrallix.objectsystem.ObjTrxTree;
+import org.lightsys.centrallix.objectsystem.ObjectInstance;
 
 import java.util.List;
 
