@@ -114,7 +114,7 @@ General Design
   via JNA.
     * At first, all Object drivers would simply delegate to C code.
     * Over time, each Object Driver could be reimplemented in Java directly.
-* An object driver registry will be maintained on the Java side.
+* An Object Driver registry will be maintained on the Java side.
     * If an Object Driver is implemented in C code, then the pointer to the driver in OSYS.Drivers
       will be a direct pointer to the C implementation.
     * If a driver is implemented in Java code, then the pointer in OSYS.Drivers will be to facade
@@ -126,7 +126,7 @@ General Design
     * Example:
         * The C struct named "ObjDriver" ("_OSD") will have a corresponding JNA Java interface
           named "CObjDriver" that extends "com.sun.jna.Structure"
-        * The Java interface that represents object drivers in Java will be named "ObjDriver".
+        * The Java interface that represents Object Drivers in Java will be named "ObjDriver".
     * This separation between Java and C structs/interfaces allows for slight differences between the
       two, and for more natural Java conventions to be used on the Java side. It also will allow the
       C interfaces to be removed when/if all implementations are ported to Java.
@@ -141,13 +141,13 @@ The following phases could be followed to incrementally port Centrallix to Java:
     * Build all of Centrallix as a shared library, if this is not already part of the Makefile process.
     * Create the initial Java class that starts the whole application.
         * Call the main application entry point for Centrallix, via JNA.
-    * Allow Java to know about all of the C object drivers.
+    * Allow Java to know about all of the C Object Drivers.
         * Create a Java interface "CObjectDriver" that extends from JNA Structure and matches the ObjDriver C struct.
         * Create an ObjectDriverRegistry Java class that is capable of keeping track of all the registered
-          object drivers. It should have a method like "register(CObjectDriver objectDriver)".
+          Object Drivers. It should have a method like "register(CObjectDriver objectDriver)".
         * Create a C function like "setObjectRegistry" that accepts a function pointer to a callback function
           and stores this pointer into a global variable like "ObjectRegistry".
-        * In the main java startup class, instantiate the object driver registry and pass a reference to it
+        * In the main java startup class, instantiate the Object Driver registry and pass a reference to it
           to the setObjectRegistry C function above via JNA. This should happen BEFORE calling the main
           Centrallix entry point.
         * In obj_main.c/objRegisterDriver, call the register() via the function pointer from above. JNA
@@ -161,23 +161,30 @@ The following phases could be followed to incrementally port Centrallix to Java:
 * Phase 2 - Object Drivers in Java
     * At the end of this phase, you will have one or more Java implementations of Object Drivers, which can be
       called from both C and Java.
-    * Choose one or more Object Drivers to be reimplemented in Java. A good choice may be to create a generic
-      JDBC Object Driver that can replace the existing MySQL and Sybase implementations.
     * Modify the dynamic module loading mechanism on the C side to know that a given module has already been
       loaded from the Java side, so that it doesn't try to load it from the C side.
-    * Add a register(ObjDriver)
+    * Create another function like obj_main.c/objRegisterDriver, named objRegisterDriverExternal. This should
+      do the same thing as objRegisterDriver but without registering the driver with the Java ObjectRegistry.
+      You could refactor these two methods to reduce duplicate code.
+    * Add a register(ObjDriver) method to ObjectRegistry (there is already a register(CObjDriver) from Phase 1).
+        * This will be used to register an Object Driver from the java side.
+        * After adding the driver to the registry, call the obj_main.c/objRegisterDriverExternal function via
+          JNA to register the Java Object Driver on the C side.
+    * Choose one or more Object Drivers to be reimplemented in Java. A good choice may be to create a generic
+      JDBC Object Driver that can replace the existing MySQL and Sybase implementations.
     * For each Object Driver chosen above:
-        * Create a Java class that implements ObjDriver. The methods can all the no-op for now.
-        * Instantiate and register the Java object driver with the ObjectRegistry during the Java main startup process
+        * Create a Java class that implements ObjDriver. The methods can all be no-op for now.
+        * Instantiate and register the Java Object Driver with the ObjectRegistry during the main startup process.
         * Remove call to initialize the C module from centrallix.c
-        *
+        * Implement the module in Java. This is where most of your work will be.
+        * Add some unit tests (using JUnit, TestNG or Spock) to test your Object Driver.
 
-* Phase 4 - Multithreading, HTTP server and security system
+* Phase 3 - Multithreading, HTTP server and security system
     * At the end of this phase, all incoming HTTP and HTTPS requests will be handled by a Java HTTP server, and
       multi-threading of incoming requests will be handled by Java threads, allowing multiple CPUs to be used.
     * Prepare code for being multi-threaded
         * When working on this phase, care should be taken to investigate whether there are any parts of any of the
-          object driver implementations that are not thread-safe - i.e. that do any of the following:
+          Object Driver implementations that are not thread-safe - i.e. that do any of the following:
             * return or pass references to shared buffers in static storage
             * modify global variable values
             * call other code that does any of the above
@@ -186,6 +193,12 @@ The following phases could be followed to incrementally port Centrallix to Java:
           code that wraps the C code, and ensure that all C code that calls this code goes through the Java code
           first as a facade to take advantage of the Java-side locking.
     * Embed a webserver (Jetty or Tomcat) into the Java process and initialize it from the main java startup class
-    * Configure
+    * Create a Java Servlet class to handle each of type of HTTP or REST request
+    * Configure the webserver to pass calls from the outside world to the appropriate Servlets created above
+    * TODO figure out how the security system works and how it would need to be implemented here
+    * TODO figure out what needs to be done to make TLS work on the webserver
 
-* Phase 3 - Widgets
+* Phase 4 - Widgets
+    * At the end of this phase, you will have one or more Java implementations of Widgets, which can be
+      called from both C and Java.
+    * TODO consider whether it makes sense to look into other technologies for rendering HTML, such as JSP or JSF
