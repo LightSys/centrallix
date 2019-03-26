@@ -35,10 +35,21 @@ public interface ObjDriver {
     Object queryCreate();
     void queryClose();
 
+    /**
+     * Read data from an object.
+     *
+     * @param obj
+     * @param buffer buffer into which the data should be read
+     * @param maxcnt maximum number of bytes to read
+     * @param flags
+     * @param oxt
+     * @return number of bytes read
+     */
     // named readData instead of read due to clash with JNA Structure class
-    void readData(Object infV, String buffer, int maxcnt, int flags, ObjTrxTree oxt);
-    // named readData instead of read due to clash with JNA Structure class
-    void writeData();
+    int readData(ObjectContext obj, byte[] buffer, int maxcnt, int flags, ObjTrxTree oxt);
+    // named writeData instead of write due to clash with JNA Structure class
+    void writeData(
+            ObjectContext obj, byte[] buffer, int cnt, int offset, int flags, ObjTrxTree otx);
 
     int getAttrType();
     int getAttrValue();
