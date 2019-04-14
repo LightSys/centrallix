@@ -138,6 +138,7 @@ typedef struct _POS
     unsigned char*	Content;		/* Text content or image bitmap */
     int			ContentSize;		/* total memory allocated for the content */
     char		DataType;		/* type of data displayed in this object (Hints) */
+    int                 (*Finalize)();          /* cleanup when destroying object */
     }
     PrtObjStream, *pPrtObjStream;
 
