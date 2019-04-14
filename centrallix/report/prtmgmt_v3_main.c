@@ -485,7 +485,13 @@ prtInitialize()
 	strcpy(ot->TypeName,"image");
 	ot->PrefLayoutMgr = NULL;
 	prtRegisterType(ot);
-	
+        
+        ot = prtAllocType();
+        ot->TypeID = PRT_OBJ_T_SVG;
+        strcpy(ot->TypeName,"svg");
+        ot->PrefLayoutMgr = NULL;
+        prtRegisterType(ot);
+
 	ot = prtAllocType();
 	ot->TypeID = PRT_OBJ_T_RECT;
 	strcpy(ot->TypeName,"rect");
