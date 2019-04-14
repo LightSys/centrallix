@@ -378,13 +378,14 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_T_PAGE		    2		/* one page of the document */
 #define PRT_OBJ_T_AREA		    3		/* a textflow-managed area */
 #define PRT_OBJ_T_STRING	    4		/* a string of text content */
-#define PRT_OBJ_T_IMAGE		    5		/* an image/picture */
+#define PRT_OBJ_T_IMAGE		    5		/* a raster image/picture */
 #define PRT_OBJ_T_RECT		    6		/* rectangle, solid color */
 #define PRT_OBJ_T_TABLE		    7		/* tabular-data */
 #define PRT_OBJ_T_TABLEROW	    8		/* table row */
 #define PRT_OBJ_T_TABLECELL	    9		/* table cell */
 #define PRT_OBJ_T_SECTION	    10		/* columnar section */
 #define PRT_OBJ_T_SECTCOL	    11		/* one column in a section. */
+#define PRT_OBJ_T_SVG               12          /* an SVG image/picture */
 
 #define PRT_COLOR_T_MONO	    1		/* black/white only image, 1 bit per pixel */
 #define PRT_COLOR_T_GREY	    2		/* greyscale image, 1 byte per pixel */
