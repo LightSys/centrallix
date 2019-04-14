@@ -284,7 +284,7 @@ typedef struct _PBD
     PrtBorder, *pPrtBorder;
 
 
-/*** image data header structure ***/
+/*** raster image data structure ***/
 typedef struct _PIH
     {
     int			Width;		    /* raster data width in pixels */
@@ -306,6 +306,14 @@ typedef struct _PIM
 	Data;
     }
     PrtImage, *pPrtImage;
+
+
+/*** svg image data structure ***/
+typedef struct _PSVG
+    {
+    pXString SvgData;                   /* SVG data stored as an XString */
+    }
+    PrtSvg, *pPrtSvg;
 
 
 /*** Print management global structure ***/
