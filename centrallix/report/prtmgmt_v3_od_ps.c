@@ -932,6 +932,50 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     }
 
 
+/*** prt_psod_WriteSvgData() - outputs an svg image at the current
+ *** printing position on the page, given the selected pixel and 
+ *** color resolution. 
+ ***/
+double
+prt_psod_WriteSvgData(void* context_v, pPrtSvg svg, double width, double height, double next_y)
+    {
+    pXString epsXString;
+    pPrtPsodInf context;
+    double dx, dy;    
+
+    context = (pPrtPsodInf)context_v;
+    if (context->PageNum >= context->MaxPages) {
+        return 0;
+    }
+
+    /* x and y distance from lower-left corner */ 
+    dx = context->CurHPos * 7.2 + 0.000001;
+    dy = context->PageHeight - (context->CurVPos * 12.0 +
+                               height * 12.0 + 0.000001);
+
+    /* width and height in pt (1/72th of an inch) */
+    width = width/10.0 * 72;
+    height = height/6.0 * 72;
+
+    /* convert svg data to postscript */
+    epsXString = prtConvertSvgToEps(svg, width, height);
+
+    /** save state and embed EPS **/
+    prt_psod_Output_va(context, "save\n"
+                                "%.1f %.1f translate\n"
+                                "/showpage {} def\n",
+                                dx, dy);
+
+    prt_psod_Output_va(context, "%s", epsXString->String);   
+
+    /** Restore graphics context and free xstring **/
+    prt_psod_Output_va(context, "restore\n");
+    xsFree(epsXString);
+        
+    return context->CurVPos + height;
+    }
+
+
 /*** prt_psod_WriteFF() - sends a form feed to end the page.
  ***/
 int
@@ -1036,7 +1080,8 @@ prt_psod_Initialize()
 	    drv->SetVPos = prt_psod_SetVPos;
 	    drv->WriteText = prt_psod_WriteText;
 	    drv->WriteRasterData = prt_psod_WriteRasterData;
-	    drv->WriteFF = prt_psod_WriteFF;
+	    drv->WriteSvgData = prt_psod_WriteSvgData;
+            drv->WriteFF = prt_psod_WriteFF;
 	    drv->WriteRect = prt_psod_WriteRect;
 	    prt_strictfm_RegisterDriver(drv);
 	    }
