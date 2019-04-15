@@ -986,7 +986,8 @@ pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h)
 
     /* resize image */
     cr = cairo_create(surface);
-    cairo_scale(cr, (double)w / (double)dimensions.width, (double)h / (double)dimensions.height); 
+    cairo_scale(cr, (double)w / dimensions.width, 
+                    (double)h / dimensions.height); 
 
     /* render */
     if (!rsvg_handle_render_cairo(rsvg, cr)) {
