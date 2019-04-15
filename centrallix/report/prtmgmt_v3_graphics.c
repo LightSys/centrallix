@@ -24,6 +24,7 @@
 #include "cxlib/mtsession.h"
 #include "librsvg/rsvg.h"
 #include "cairo-svg.h"
+#include "cairo-ps.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -733,19 +734,32 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
  */
 
 
-/*** prt_svg_Write() - this function gets passed to CAIRO
- ***
+/*** prt_svg_Write() - this function gets passed to CAIRO when
+ *** outputting to a file.
  ***/
 static cairo_status_t
 prt_svg_Write(void *write_info, const unsigned char *data, unsigned int length)
     {
-    if (((PrtIOInfo *)write_info)->io_fn(((PrtIOInfo *)write_info)->io_arg, data, length, 0, FD_U_PACKET) < 0) {
-	return CAIRO_STATUS_WRITE_ERROR;
-    }
+    if (((PrtIOInfo *)write_info)->io_fn(((PrtIOInfo *)write_info)->io_arg,
+                                           data, length, 0, FD_U_PACKET) < 0)
+        return CAIRO_STATUS_WRITE_ERROR;
 
     return CAIRO_STATUS_SUCCESS;
     }
 
+
+/*** prt_svg_WriteXS() - this function gets passed to CAIRO when
+ *** outputting to an XString.
+ ***/
+static cairo_status_t
+prt_svg_WriteXS(void *xs, const unsigned char *data, unsigned int length)
+    {
+    if (xsConcatenate((pXString)xs, data, length) < 0)
+        return CAIRO_STATUS_WRITE_ERROR;
+    
+    return CAIRO_STATUS_SUCCESS;
+    }
+    
 
 /*** prtReadSvg() - reads an svg image from an arbitrary
  *** location (pObject, pFile, XString, etc) into Centrallix.
@@ -879,7 +893,8 @@ prtWriteSvgToContainer(int handle_id, pPrtSvg svg, double x, double y,
     }
 
 
-/*** prt_internal_WriteSvgToFile() - write svg image to a file, with             *** given dimensions (scale to a given width and height).
+/*** prt_internal_WriteSvgToFile() - write svg image to a file, with
+ *** given dimensions (scale to a given width and height).
  ***/
 int
 prt_internal_WriteSvgToFile(int (*write_fn)(), void *write_arg, pPrtSvg svg,
@@ -907,8 +922,9 @@ prt_internal_WriteSvgToFile(int (*write_fn)(), void *write_arg, pPrtSvg svg,
     write_info.io_arg = write_arg;
     surface = cairo_svg_surface_create_for_stream(prt_svg_Write, &write_info,
                                                   w, h);
+    cairo_svg_surface_set_document_unit(surface, CAIRO_SVG_UNIT_PX);
 
-    /* resize svg */
+    /* resize image */
     cr = cairo_create(surface);
     cairo_scale(cr, ((double)w) / dimensions.width, 
                     ((double)h) / dimensions.height); 
@@ -929,5 +945,65 @@ error:
     cairo_surface_destroy(surface);
     g_object_unref(rsvg);
     return -1;
+    }
+
+
+/*** prtConvertSvgToEps() - convert an svg image (pPrtSvg) to encapsulated
+ *** postscript. Returns an xstring with the eps data.     
+ ***/
+pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h)
+    {
+    RsvgHandle *rsvg;
+    RsvgDimensionData dimensions;    
+    pXString epsXString;
+    PrtIOInfo write_info; 
+    cairo_surface_t *surface;
+    cairo_t *cr;
+
+    /* init eps string */
+    epsXString = xsNew();
+    if (!epsXString) {
+        mssError(0, "PRT", "EPS data allocation error");
+        return NULL;
+    }
+
+    /* load svg data into rsvg handle */
+    rsvg = rsvg_handle_new_from_data(svg->SvgData->String, svg->SvgData->Length,
+                                     NULL); 
+    if (!rsvg) {
+        mssError(0, "PRT", "Error reloading SVG data");
+        xsFree(epsXString);
+        return NULL;
+    }
+
+    /* retrieve current dimensions */
+    rsvg_handle_get_dimensions(rsvg, &dimensions);
+
+    /* set up cairo context */
+    surface = cairo_ps_surface_create_for_stream(prt_svg_WriteXS, epsXString, 
+                                                 w, h);
+    cairo_ps_surface_set_eps(surface, TRUE);
+
+    /* resize image */
+    cr = cairo_create(surface);
+    cairo_scale(cr, (double)w / (double)dimensions.width, (double)h / (double)dimensions.height); 
+
+    /* render */
+    if (!rsvg_handle_render_cairo(rsvg, cr)) {
+        mssError(0, "PRT", "Error rendering EPS image");
+        goto error;
+    }
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    return epsXString;
+
+error:
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    xsFree(epsXString);
+    return NULL;
     }
 
