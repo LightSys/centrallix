@@ -209,6 +209,7 @@ typedef struct _PD
     int			(*SetVPos)();
     int			(*WriteText)();
     double		(*WriteRasterData)();
+    double              (*WriteSvgData)();
     int			(*WriteFF)();
     double		(*WriteRect)();
     }
