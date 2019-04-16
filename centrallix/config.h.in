@@ -46,6 +46,9 @@
 /* Define to 1 if you have the `png' library (-lpng). */
 #undef HAVE_LIBPNG
 
+/* Define to 1 if librsvg is present. */
+#undef HAVE_LIBRSVG
+
 /* Define to 1 if you have the `z' library (-lz). */
 #undef HAVE_LIBZ
 
@@ -72,6 +75,9 @@
 
 /* Define to 1 if you have the `rmdir' function. */
 #undef HAVE_RMDIR
+
+/* Define to 1 <rsvg.h> is present. */
+#undef HAVE_RSVG_H
 
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
@@ -137,6 +143,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
