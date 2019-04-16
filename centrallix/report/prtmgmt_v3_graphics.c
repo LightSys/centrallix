@@ -22,9 +22,11 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#ifdef HAVE_RSVG_H
 #include "librsvg/rsvg.h"
 #include "cairo-svg.h"
 #include "cairo-ps.h"
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -734,85 +736,7 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
  */
 
 
-/*** prt_svg_Write() - this function gets passed to CAIRO when
- *** outputting to a file.
- ***/
-static cairo_status_t
-prt_svg_Write(void *write_info, const unsigned char *data, unsigned int length)
-    {
-    if (((PrtIOInfo *)write_info)->io_fn(((PrtIOInfo *)write_info)->io_arg,
-                                           data, length, 0, FD_U_PACKET) < 0)
-        return CAIRO_STATUS_WRITE_ERROR;
-
-    return CAIRO_STATUS_SUCCESS;
-    }
-
-
-/*** prt_svg_WriteXS() - this function gets passed to CAIRO when
- *** outputting to an XString.
- ***/
-static cairo_status_t
-prt_svg_WriteXS(void *xs, const unsigned char *data, unsigned int length)
-    {
-    if (xsConcatenate((pXString)xs, data, length) < 0)
-        return CAIRO_STATUS_WRITE_ERROR;
-    
-    return CAIRO_STATUS_SUCCESS;
-    }
-    
-
-/*** prtReadSvg() - reads an svg image from an arbitrary
- *** location (pObject, pFile, XString, etc) into Centrallix.
- ***/
-pPrtSvg
-prtReadSvg(int (*read_fn)(), void *read_arg)
-    {
-    pPrtSvg svg;
-    pXString svgXString;
-
-    int count;
-    char buf[256];
-
-    /* init svg string */
-    svgXString = xsNew();
-    if (!svgXString) {
-	mssError(0, "PRT", "SVG data allocation error");
-	return NULL;
-    }
-
-    /* read svg data */
-    while ((count = read_fn(read_arg, buf, sizeof(buf), 0, 0))) {
-	if (count < 0) {
-	    mssError(0, "PRT", "Error while reading SVG file");
-	    goto error;
-	}
-	if (xsConcatenate(svgXString, buf, count) < 0) {
-	    mssError(0, "PRT", "Error while reading SVG file");
-	    goto error;
-	}
-    }
-
-    /* svg sanity check */
-    if (svgSanityCheck(svgXString->String, svgXString->Length) < 0) {
-	goto error;
-    }
-
-    /* allocate svg struct */
-    svg = (pPrtSvg)nmMalloc(sizeof(PrtSvg));
-    if (!svg) {
-	mssError(0, "PRT", "SVG struct allocation error");
-	goto error;
-    }
-    
-    svg->SvgData = svgXString;
-    return svg;
-
-error:
-    xsFree(svgXString);
-    return NULL;
-}
-
-
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
 /*** svgSanityCheck() - checks whether a buffer contains valid svg data.
  ***/
 int
@@ -856,12 +780,41 @@ prtFreeSvg(pPrtSvg svg)
     }
 
 
+/*** prt_svg_Write() - this function gets passed to CAIRO when
+ *** outputting to a file.
+ ***/
+static cairo_status_t
+prt_svg_Write(void *write_info, const unsigned char *data, unsigned int length)
+    {
+    if (((PrtIOInfo *)write_info)->io_fn(((PrtIOInfo *)write_info)->io_arg,
+                                           data, length, 0, FD_U_PACKET) < 0)
+        return CAIRO_STATUS_WRITE_ERROR;
+
+    return CAIRO_STATUS_SUCCESS;
+    }
+
+
+/*** prt_svg_WriteXS() - this function gets passed to CAIRO when
+ *** outputting to an XString.
+ ***/
+static cairo_status_t
+prt_svg_WriteXS(void *xs, const unsigned char *data, unsigned int length)
+    {
+    if (xsConcatenate((pXString)xs, data, length) < 0)
+        return CAIRO_STATUS_WRITE_ERROR;
+    
+    return CAIRO_STATUS_SUCCESS;
+    }
+#endif
+
+
 /*** prtWriteSvgToContainer() - add an svg image to a Centrallix container
  ***/
 int
 prtWriteSvgToContainer(int handle_id, pPrtSvg svg, double x, double y, 
 		       double width, double height, int flags)
     {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream svg_obj;
 
@@ -890,61 +843,11 @@ prtWriteSvgToContainer(int handle_id, pPrtSvg svg, double x, double y,
 
     /* add obj to layout manager */
     return obj->LayoutMgr->AddObject(obj, svg_obj);
-    }
 
-
-/*** prt_internal_WriteSvgToFile() - write svg image to a file, with
- *** given dimensions (scale to a given width and height).
- ***/
-int
-prt_internal_WriteSvgToFile(int (*write_fn)(), void *write_arg, pPrtSvg svg,
-                            int w, int h)
-    {
-    RsvgHandle *rsvg;
-    RsvgDimensionData dimensions;
-    PrtIOInfo write_info;
-    cairo_surface_t *surface;
-    cairo_t *cr;
-
-    /* load svg data into rsvg handle */
-    rsvg = rsvg_handle_new_from_data(svg->SvgData->String, svg->SvgData->Length,
-                                     NULL);
-    if (!rsvg) {
-        mssError(0, "PRT", "Error reloading SVG data");
-        return -1;
-    }
-
-    /* retrieve current dimensions */
-    rsvg_handle_get_dimensions(rsvg, &dimensions);
-
-    /* set up cairo context */
-    write_info.io_fn = write_fn;
-    write_info.io_arg = write_arg;
-    surface = cairo_svg_surface_create_for_stream(prt_svg_Write, &write_info,
-                                                  w, h);
-    cairo_svg_surface_set_document_unit(surface, CAIRO_SVG_UNIT_PX);
-
-    /* resize image */
-    cr = cairo_create(surface);
-    cairo_scale(cr, ((double)w) / dimensions.width, 
-                    ((double)h) / dimensions.height); 
-
-    /* render */
-    if (!rsvg_handle_render_cairo(rsvg, cr)) {
-        mssError(0, "PRT", "Error rendering SVG image");
-        goto error;
-    }
-
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
-    g_object_unref(rsvg);
-    return 0;
-
-error:
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
-    g_object_unref(rsvg);
+#else
+    mssError(1,"PRT","SVG image support not available");
     return -1;
+#endif 
     }
 
 
@@ -953,6 +856,7 @@ error:
  ***/
 pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h)
     {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
     RsvgHandle *rsvg;
     RsvgDimensionData dimensions;    
     pXString epsXString;
@@ -1006,5 +910,129 @@ error:
     g_object_unref(rsvg);
     xsFree(epsXString);
     return NULL;
+
+#else
+    mssError(1,"PRT","SVG image support not available");
+    return NULL;
+#endif 
+    }
+
+
+/*** prtReadSvg() - reads an svg image from an arbitrary
+ *** location (pObject, pFile, XString, etc) into Centrallix.
+ ***/
+pPrtSvg
+prtReadSvg(int (*read_fn)(), void *read_arg)
+    {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)  
+    pPrtSvg svg;
+    pXString svgXString;
+
+    int count;
+    char buf[256];
+
+    /* init svg string */
+    svgXString = xsNew();
+    if (!svgXString) {
+	mssError(0, "PRT", "SVG data allocation error");
+	return NULL;
+    }
+
+    /* read svg data */
+    while ((count = read_fn(read_arg, buf, sizeof(buf), 0, 0))) {
+	if (count < 0) {
+	    mssError(0, "PRT", "Error while reading SVG file");
+	    goto error;
+	}
+	if (xsConcatenate(svgXString, buf, count) < 0) {
+	    mssError(0, "PRT", "Error while reading SVG file");
+	    goto error;
+	}
+    }
+
+    /* svg sanity check */
+    if (svgSanityCheck(svgXString->String, svgXString->Length) < 0) {
+	goto error;
+    }
+
+    /* allocate svg struct */
+    svg = (pPrtSvg)nmMalloc(sizeof(PrtSvg));
+    if (!svg) {
+	mssError(0, "PRT", "SVG struct allocation error");
+	goto error;
+    }
+    
+    svg->SvgData = svgXString;
+    return svg;
+
+error:
+    xsFree(svgXString);
+    return NULL;
+
+#else
+    mssError(1,"PRT","SVG image support not available");
+    return NULL;
+#endif 
+}
+
+
+/*** prt_internal_WriteSvgToFile() - write svg image to a file, with
+ *** given dimensions (scale to a given width and height).
+ ***/
+int
+prt_internal_WriteSvgToFile(int (*write_fn)(), void *write_arg, pPrtSvg svg,
+                            int w, int h)
+    {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+    RsvgHandle *rsvg;
+    RsvgDimensionData dimensions;
+    PrtIOInfo write_info;
+    cairo_surface_t *surface;
+    cairo_t *cr;
+
+    /* load svg data into rsvg handle */
+    rsvg = rsvg_handle_new_from_data(svg->SvgData->String, svg->SvgData->Length,
+                                     NULL);
+    if (!rsvg) {
+        mssError(0, "PRT", "Error reloading SVG data");
+        return -1;
+    }
+
+    /* retrieve current dimensions */
+    rsvg_handle_get_dimensions(rsvg, &dimensions);
+
+    /* set up cairo context */
+    write_info.io_fn = write_fn;
+    write_info.io_arg = write_arg;
+    surface = cairo_svg_surface_create_for_stream(prt_svg_Write, &write_info,
+                                                  w, h);
+    cairo_svg_surface_set_document_unit(surface, CAIRO_SVG_UNIT_PX);
+
+    /* resize image */
+    cr = cairo_create(surface);
+    cairo_scale(cr, ((double)w) / dimensions.width, 
+                    ((double)h) / dimensions.height); 
+
+    /* render */
+    if (!rsvg_handle_render_cairo(rsvg, cr)) {
+        mssError(0, "PRT", "Error rendering SVG image");
+        goto error;
+    }
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    return 0;
+
+error:
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    return -1;
+
+#else
+    mssError(1,"PRT","SVG image support not available");
+    return -1;
+#endif
     }
 
