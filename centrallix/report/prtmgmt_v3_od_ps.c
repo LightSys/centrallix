@@ -939,8 +939,8 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 double
 prt_psod_WriteSvgData(void* context_v, pPrtSvg svg, double width, double height, double next_y)
     {
-    pXString epsXString;
     pPrtPsodInf context;
+    pXString epsXString;
     double dx, dy;    
 
     context = (pPrtPsodInf)context_v;
@@ -948,27 +948,26 @@ prt_psod_WriteSvgData(void* context_v, pPrtSvg svg, double width, double height,
         return 0;
     }
 
-    /* x and y distance from lower-left corner */ 
+    /* Distance (x, y) from lower-left corner */ 
     dx = context->CurHPos * 7.2 + 0.000001;
     dy = context->PageHeight - (context->CurVPos * 12.0 +
                                height * 12.0 + 0.000001);
 
-    /* width and height in pt (1/72th of an inch) */
+    /* Width and height in pt (1/72th of an inch) */
     width = width/10.0 * 72;
     height = height/6.0 * 72;
 
-    /* convert svg data to postscript */
+    /* Convert SVG data to postscript */
     epsXString = prtConvertSvgToEps(svg, width, height);
 
-    /** save state and embed EPS **/
+    /** Save state and embed EPS data **/
     prt_psod_Output_va(context, "save\n"
                                 "%.1f %.1f translate\n"
                                 "/showpage {} def\n",
                                 dx, dy);
+    prt_psod_Output(context, epsXString->String, epsXString->Length);   
 
-    prt_psod_Output_va(context, "%s", epsXString->String);   
-
-    /** Restore graphics context and free xstring **/
+    /** Restore state and free xstring **/
     prt_psod_Output_va(context, "restore\n");
     xsFree(epsXString);
         
