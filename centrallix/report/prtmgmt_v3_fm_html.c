@@ -627,7 +627,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			nmFree(path,256);
 			return -1;
 			}
-		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
+		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
 		    nmFree(path,256);
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
