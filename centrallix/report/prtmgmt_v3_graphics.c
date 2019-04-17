@@ -746,7 +746,7 @@ svgSanityCheck(char* svg_data, int length)
     GError *rsvg_err;
 
     /* Attempt to load SVG data into rsvg handle */
-    rsvg = rsvg_handle_new_from_data(svg_data, length, &rsvg_err);
+    rsvg = rsvg_handle_new_from_data((guint8*)svg_data, length, &rsvg_err);
 
     if (!rsvg) {
 	mssError(0, "PRT", "SVG sanity check failed: %s", rsvg_err->message);
@@ -871,7 +871,7 @@ pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h)
     }
 
     /* Load SVG data into rsvg handle */
-    rsvg = rsvg_handle_new_from_data(svg->SvgData->String, svg->SvgData->Length, NULL); 
+    rsvg = rsvg_handle_new_from_data((guint8*)svg->SvgData->String, svg->SvgData->Length, NULL); 
     if (!rsvg)
     {
         mssError(0, "PRT", "Error reloading SVG data");
@@ -993,7 +993,7 @@ prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg,
     cairo_t *cr;
 
     /* Load SVG data into rsvg handle */
-    rsvg = rsvg_handle_new_from_data(svg->SvgData->String, svg->SvgData->Length, NULL);
+    rsvg = rsvg_handle_new_from_data((guint8*)svg->SvgData->String, svg->SvgData->Length, NULL);
     if (!rsvg)
     {
         mssError(0, "PRT", "Error reloading SVG data");
