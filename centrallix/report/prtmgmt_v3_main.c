@@ -12,6 +12,8 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "librsvg/rsvg.h"
+#include "assert.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -415,6 +417,10 @@ int
 prtInitialize()
     {
     pPrtObjType ot;
+
+        /** Assert compatibility of certain datatypes
+         ** used in librsvg functions **/
+        assert(sizeof(guint8) == sizeof(char));
 
 	/** Init the globals **/
 	memset(&PRTMGMT, 0, sizeof(PRTMGMT));
