@@ -518,7 +518,7 @@ int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
-int prtWriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
+int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
 pPrtSvg prtReadSvg(int (*read_fn)(), void* read_arg);
