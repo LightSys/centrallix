@@ -248,8 +248,8 @@ typedef struct _PS
     char		ImageSysDir[256];
     void*		ImageContext;
     void*		(*ImageOpenFn)();
-    void*		(*ImageWriteFn)();
-    void*		(*ImageCloseFn)();
+    int 		(*ImageWriteFn)();
+    int 		(*ImageCloseFn)();
     XArray		SessionParams;
     }
     PrtSession, *pPrtSession;
@@ -445,7 +445,7 @@ int prtSetUnits(pPrtSession s, char* units_name);
 char* prtGetUnits(pPrtSession s);
 double prtGetUnitsRatio(pPrtSession s);
 int prtSetResolution(pPrtSession s, int dpi);
-int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)());
+int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)());
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
 

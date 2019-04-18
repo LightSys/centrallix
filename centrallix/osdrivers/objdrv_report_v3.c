@@ -3881,7 +3881,7 @@ rpt_internal_Generator(void* v)
 	    }
 
 	/** Set image store location **/
-	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, (void* (*)())objWrite, (void* (*)())objClose);
+	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, objWrite, objClose);
 
 	/** Some output specific options **/
 	if (rpt_internal_GetBool(inf->Node->Data, "text_pagebreak", 1, 0) == 0)
