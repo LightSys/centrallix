@@ -521,6 +521,11 @@ pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
 int prtWriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
+pPrtSvg prtReadSvg(int (*read_fn)(), void* read_arg);
+int prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg, int w, int h);
+int prtFreeSvg(pPrtSvg svg);
+int prtSvgSize(pPrtSvg svg);
+pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h);
 int prtSetDataHints(int handle_id, int data_type, int flags);
 
 /*** Printing content functions ***/
