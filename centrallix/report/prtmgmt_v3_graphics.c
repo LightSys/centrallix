@@ -746,6 +746,7 @@ svgSanityCheck(char* svg_data, int length)
     GError *rsvg_err;
 
     /* Attempt to load SVG data into rsvg handle */
+    rsvg_err = NULL;
     rsvg = rsvg_handle_new_from_data((guint8*)svg_data, length, &rsvg_err);
 
     if (!rsvg) {
