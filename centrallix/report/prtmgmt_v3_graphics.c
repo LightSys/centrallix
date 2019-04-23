@@ -749,7 +749,8 @@ svgSanityCheck(char* svg_data, int length)
     rsvg_err = NULL;
     rsvg = rsvg_handle_new_from_data((guint8*)svg_data, length, &rsvg_err);
 
-    if (!rsvg) {
+    if (!rsvg) 
+    {
 	mssError(1, "PRT", "SVG sanity check failed: %s", rsvg_err->message);
         g_object_unref(rsvg_err);
         return -1;    
@@ -941,11 +942,13 @@ prtReadSvg(int (*read_fn)(), void* read_arg)
     /* Read SVG data */
     while ((count = read_fn(read_arg, buf, sizeof(buf), 0, 0))) 
     {
-	if (count < 0) {
+	if (count < 0) 
+        {
 	    mssError(0, "PRT", "Error while reading SVG file");
 	    goto error;
 	}
-	if (xsConcatenate(svgXString, buf, count) < 0) {
+	if (xsConcatenate(svgXString, buf, count) < 0) 
+        {
 	    mssError(0, "PRT", "Error while reading SVG file");
 	    goto error;
 	}
