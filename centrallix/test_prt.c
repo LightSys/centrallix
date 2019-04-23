@@ -893,6 +893,9 @@ start(void* v)
     int alloc;
     int t;
 
+        /** Initialize security subsystem **/
+        cxssInitialize();
+
 	/** Load the configuration file **/
 	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
 	if (!cxconf)
