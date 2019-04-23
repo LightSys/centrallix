@@ -593,7 +593,12 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
 		    path = (char*)nmMalloc(256);
-		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
+		    if (!path) 
+                        {
+                        mssError(1, "PRT", "nmMalloc() failed\n");
+                        return -1;
+                        }
+                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
@@ -619,7 +624,12 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
 		    path = (char*)nmMalloc(256);
-		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.svg",context->Session->ImageSysDir,id);
+		    if (!path) 
+                        {
+                        mssError(1, "PRT", "nmMalloc() failed\n");
+                        return -1;
+                        }
+                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.svg",context->Session->ImageSysDir,id);
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
 		    if (!arg)
 			{
