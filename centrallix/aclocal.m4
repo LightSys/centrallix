@@ -1517,7 +1517,7 @@ AC_DEFUN(CENTRALLIX_CHECK_RSVG,
             CFLAGS="$CFLAGS $librsvg_CFLAGS"
             LIBS="$LIBS $librsvg_LIBS"
             AC_DEFINE([HAVE_LIBRSVG], [1], [Define to 1 if librsvg is present.])
-            AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 <rsvg.h> is present.])
+            AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 if <rsvg.h> is present.])
         else
             AC_MSG_WARN([librsvg was not found -- svg support will be disabled])
         fi
