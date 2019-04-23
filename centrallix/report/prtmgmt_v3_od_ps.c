@@ -959,7 +959,8 @@ prt_psod_WriteSvgData(void* context_v, pPrtSvg svg, double width, double height,
 
     /* Convert SVG data to postscript */
     epsXString = prtConvertSvgToEps(svg, width, height);
-
+    if (!epsXString) return -1;
+    
     /** Save state and embed EPS data **/
     prt_psod_Output_va(context, "save\n"
                                 "%.1f %.1f translate\n"
