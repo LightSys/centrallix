@@ -3109,7 +3109,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 	    }
 	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL)
 	    {
-	    mssError(1,"RPT","Could not open 'source' image for report/image object");
+	    mssError(0,"RPT","Could not open 'source' image for report/image object");
 	    return -1;
 	    }
 	img = prtCreateImageFromPNG(objRead, imgobj);
@@ -3166,7 +3166,7 @@ rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pQueryConn th
 	    }
 	if ((svgobj = objOpen(inf->Obj->Session, svgsrc, O_RDONLY, 0400, "image/svg+xml")) == NULL)
 	    {
-	    mssError(1,"RPT","Could not open 'source' image for report/svg object");
+	    mssError(0,"RPT","Could not open 'source' image for report/svg object");
 	    return -1;
 	    }
 	svg = prtReadSvg(objRead, svgobj);

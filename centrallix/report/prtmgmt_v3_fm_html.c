@@ -602,7 +602,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
-			mssError(1,"PRT","Failed to open new linked image '%s'",path);
+			mssError(0,"PRT","Failed to open new linked image '%s'",path);
 			nmFree(path,256);
 			return -1;
 			}
@@ -633,7 +633,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
 		    if (!arg)
 			{
-			mssError(1,"PRT","Failed to open new linked image '%s'",path);
+			mssError(0,"PRT","Failed to open new linked image '%s'",path);
 			nmFree(path,256);
 			return -1;
 			}
