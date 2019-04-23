@@ -76,7 +76,7 @@
 /* Define to 1 if you have the `rmdir' function. */
 #undef HAVE_RMDIR
 
-/* Define to 1 <rsvg.h> is present. */
+/* Define to 1 if <rsvg.h> is present. */
 #undef HAVE_RSVG_H
 
 /* Define to 1 if you have the `socket' function. */
