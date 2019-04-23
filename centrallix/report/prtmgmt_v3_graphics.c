@@ -750,7 +750,7 @@ svgSanityCheck(char* svg_data, int length)
     rsvg = rsvg_handle_new_from_data((guint8*)svg_data, length, &rsvg_err);
 
     if (!rsvg) {
-	mssError(0, "PRT", "SVG sanity check failed: %s", rsvg_err->message);
+	mssError(1, "PRT", "SVG sanity check failed: %s", rsvg_err->message);
         g_object_unref(rsvg_err);
         return -1;    
     }
@@ -875,7 +875,7 @@ pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h)
     rsvg = rsvg_handle_new_from_data((guint8*)svg->SvgData->String, svg->SvgData->Length, NULL); 
     if (!rsvg)
     {
-        mssError(0, "PRT", "Error reloading SVG data");
+        mssError(1, "PRT", "Error reloading SVG data");
         xsFree(epsXString);
         return NULL;
     }
@@ -997,7 +997,7 @@ prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg,
     rsvg = rsvg_handle_new_from_data((guint8*)svg->SvgData->String, svg->SvgData->Length, NULL);
     if (!rsvg)
     {
-        mssError(0, "PRT", "Error reloading SVG data");
+        mssError(1, "PRT", "Error reloading SVG data");
         return -1;
     }
 
