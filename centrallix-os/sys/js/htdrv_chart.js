@@ -20,9 +20,10 @@ function cht_object_available(dataobj, force_datafetch, why) {
     if(this.update_soon) {
         this.columns = this.GetColumns();
         this.chart.data = this.GetChartData();
-        this.chart.update(); // pass in 0 for no animation
         this.update_soon = false;
     }
+    this.Highlight(this.osrc.CurrentRecord - 1, this.osrc.CurrentRecord - 1);
+    this.chart.update()
     this.osrc_busy = false;
 }
 
@@ -125,6 +126,18 @@ function cht_get_categories(series_idx) {
     return this.GetColValues(this.GetXColName(series_idx));
 }
 
+function cht_highlight(index) {
+    let colorArray = this.chart.data.datasets[0].backgroundColor;
+
+    // Reset all bar colors
+    for (let i = 0; i < colorArray.length; i++) {
+        colorArray[i] = Color(colorArray[i]).alpha(0.5).rgbString();
+    }
+    
+    // Highlight selected bar
+    colorArray[index] = Color(colorArray[index]).alpha(0.95).rgbString();
+}
+
 function cht_generate_rgba(id, alpha = 1) {
     let colors = {
         blue: 'rgb(54, 162, 235)',
@@ -149,12 +162,15 @@ function cht_choose_rgba(series_idx, alpha) {
 function cht_get_datasets(){
     let datasets = [];
     for (let series_idx in this.params.series){
+        let data = this.GetLinearData(series_idx);
+        let background_color = this.ChooseRgba(series_idx);
+        let border_color = this.ChooseRgba(series_idx, (this.params.type === "line") ? 1 : 0.5);
         datasets.push({
-            data: this.GetLinearData(series_idx),
+            data: data,
             label: this.GetSeriesLabel(series_idx),
             type: this.params.series[series_idx].chart_type,
-            borderColor: this.ChooseRgba(series_idx),
-            backgroundColor: this.ChooseRgba(series_idx, (this.params.type === "line") ? 1 : 0.5),
+            borderColor: new Array(data.length).fill(background_color),
+            backgroundColor: new Array(data.length).fill(border_color),
             borderWidth: 2,
             fill: this.params.series[series_idx].fill
         });
@@ -311,6 +327,7 @@ function cht_register_helper_functions(chart_wgt){
     chart_wgt.GenerateRgba = cht_generate_rgba;
     chart_wgt.GetScales = cht_get_scales;
     chart_wgt.GetScaleLabel = cht_get_scale_label;
+    chart_wgt.Highlight = cht_highlight;
 }
 
 function cht_init(params) {
