@@ -258,7 +258,6 @@ function cht_register_helper_functions(chart_wgt){
 }
 
 function cht_init(params) {
-    console.log("params: ", params);
     let chart_wgt = params.chart;
     delete params.chart;
     chart_wgt.params = params;
