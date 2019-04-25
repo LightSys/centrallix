@@ -23,6 +23,7 @@ function cht_object_available(dataobj, force_datafetch, why) {
         this.chart.update(); // pass in 0 for no animation
         this.update_soon = false;
     }
+    this.osrc_busy = false;
 }
 
 function cht_replica_moved(dataobj, force_datafetch) {this.update_soon = true;}
@@ -194,6 +195,7 @@ function cht_get_scales() {
 }
 
 function cht_chartjs_init() {
+    let chart_wgt = this;
     let canvas = document.getElementById(this.params.canvas_id).getContext("2d");
     this.chart = new Chart(canvas, {
         type: this.params.chart_type,
@@ -208,6 +210,13 @@ function cht_chartjs_init() {
             },
             legend: {
                 position: this.params.legend_position
+            },
+            onClick: function(event, activeElements) {
+                if (activeElements.length == 1) {
+                    chart_wgt.OsrcRequest('MoveToRecord', {
+                        rownum: activeElements[0]._index + 1
+                    })
+                }
             }
         },
     });
