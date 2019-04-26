@@ -224,6 +224,51 @@ function cht_get_osrc(){
     }
 }
 
+function cht_osrc_request(request, param)
+    {
+    var item = {type: request};
+    for (var p in param)
+        item[p] = param[p];
+    this.osrc_request_queue.push(item);
+    this.OsrcDispatch();
+    }
+
+
+function cht_osrc_dispatch()
+    {
+    if (this.osrc_busy)
+	return;
+    
+    // Scan through requests
+    do  {
+	var item = this.osrc_request_queue.shift();
+	}
+	while (this.osrc_request_queue.length && this.osrc_request_queue[0].type == item.type);
+    if (!item)
+	return;
+
+    // Run the request
+    switch(item.type)
+	{
+	case 'ScrollTo':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.ScrollTo(item.start, item.end);
+	    break;
+
+	case 'MoveToRecord':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.MoveToRecord(item.rownum, this);
+	    break;
+
+	default:
+	    return;
+	}
+    }
+
 function cht_register_osrc_functions(chart_wgt){
     chart_wgt.IsDiscardReady = new Function('return true;');
     chart_wgt.DataAvailable = cht_data_available; //Called when there is new data on the way
@@ -233,6 +278,8 @@ function cht_register_osrc_functions(chart_wgt){
     chart_wgt.ObjectDeleted = cht_object_deleted;
     chart_wgt.ObjectCreated = cht_object_created;
     chart_wgt.ObjectModified = cht_object_modified;
+    chart_wgt.OsrcRequest = cht_osrc_request;
+    chart_wgt.OsrcDispatch = cht_osrc_dispatch;
     chart_wgt.osrc.Register(chart_wgt);
 }
 
@@ -265,6 +312,9 @@ function cht_init(params) {
     cht_register_helper_functions(chart_wgt);
     chart_wgt.GetOsrc();
     cht_register_osrc_functions(chart_wgt);
+    chart_wgt.osrc_request_queue = [];
+    chart_wgt.osrc_busy = false;
+    chart_wgt.osrc_last_op = null;
 
     this.update_soon = false; //see cht_object_available
 
