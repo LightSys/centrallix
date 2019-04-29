@@ -20,9 +20,11 @@ function cht_object_available(dataobj, force_datafetch, why) {
     if(this.update_soon) {
         this.columns = this.GetColumns();
         this.chart.data = this.GetChartData();
-        this.chart.update(); // pass in 0 for no animation
         this.update_soon = false;
     }
+    this.Highlight(this.osrc.CurrentRecord - 1, this.osrc.CurrentRecord - 1);
+    this.chart.update()
+    this.osrc_busy = false;
 }
 
 function cht_replica_moved(dataobj, force_datafetch) {this.update_soon = true;}
@@ -124,6 +126,18 @@ function cht_get_categories(series_idx) {
     return this.GetColValues(this.GetXColName(series_idx));
 }
 
+function cht_highlight(index) {
+    let colorArray = this.chart.data.datasets[0].backgroundColor;
+
+    // Reset all bar colors
+    for (let i = 0; i < colorArray.length; i++) {
+        colorArray[i] = Color(colorArray[i]).alpha(0.5).rgbString();
+    }
+    
+    // Highlight selected bar
+    colorArray[index] = Color(colorArray[index]).alpha(0.95).rgbString();
+}
+
 function cht_generate_rgba(id, alpha = 1) {
     let colors = {
         blue: 'rgb(54, 162, 235)',
@@ -148,12 +162,15 @@ function cht_choose_rgba(series_idx, alpha) {
 function cht_get_datasets(){
     let datasets = [];
     for (let series_idx in this.params.series){
+        let data = this.GetLinearData(series_idx);
+        let background_color = this.ChooseRgba(series_idx);
+        let border_color = this.ChooseRgba(series_idx, (this.params.type === "line") ? 1 : 0.5);
         datasets.push({
-            data: this.GetLinearData(series_idx),
+            data: data,
             label: this.GetSeriesLabel(series_idx),
             type: this.params.series[series_idx].chart_type,
-            borderColor: this.ChooseRgba(series_idx),
-            backgroundColor: this.ChooseRgba(series_idx, (this.params.type === "line") ? 1 : 0.5),
+            borderColor: new Array(data.length).fill(background_color),
+            backgroundColor: new Array(data.length).fill(border_color),
             borderWidth: 2,
             fill: this.params.series[series_idx].fill
         });
@@ -194,6 +211,7 @@ function cht_get_scales() {
 }
 
 function cht_chartjs_init() {
+    let chart_wgt = this;
     let canvas = document.getElementById(this.params.canvas_id).getContext("2d");
     this.chart = new Chart(canvas, {
         type: this.params.chart_type,
@@ -208,6 +226,13 @@ function cht_chartjs_init() {
             },
             legend: {
                 position: this.params.legend_position
+            },
+            onClick: function(event, activeElements) {
+                if (activeElements.length == 1) {
+                    chart_wgt.OsrcRequest('MoveToRecord', {
+                        rownum: activeElements[0]._index + 1
+                    })
+                }
             }
         },
     });
@@ -224,6 +249,51 @@ function cht_get_osrc(){
     }
 }
 
+function cht_osrc_request(request, param)
+    {
+    var item = {type: request};
+    for (var p in param)
+        item[p] = param[p];
+    this.osrc_request_queue.push(item);
+    this.OsrcDispatch();
+    }
+
+
+function cht_osrc_dispatch()
+    {
+    if (this.osrc_busy)
+	return;
+    
+    // Scan through requests
+    do  {
+	var item = this.osrc_request_queue.shift();
+	}
+	while (this.osrc_request_queue.length && this.osrc_request_queue[0].type == item.type);
+    if (!item)
+	return;
+
+    // Run the request
+    switch(item.type)
+	{
+	case 'ScrollTo':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.ScrollTo(item.start, item.end);
+	    break;
+
+	case 'MoveToRecord':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.MoveToRecord(item.rownum, this);
+	    break;
+
+	default:
+	    return;
+	}
+    }
+
 function cht_register_osrc_functions(chart_wgt){
     chart_wgt.IsDiscardReady = new Function('return true;');
     chart_wgt.DataAvailable = cht_data_available; //Called when there is new data on the way
@@ -233,6 +303,8 @@ function cht_register_osrc_functions(chart_wgt){
     chart_wgt.ObjectDeleted = cht_object_deleted;
     chart_wgt.ObjectCreated = cht_object_created;
     chart_wgt.ObjectModified = cht_object_modified;
+    chart_wgt.OsrcRequest = cht_osrc_request;
+    chart_wgt.OsrcDispatch = cht_osrc_dispatch;
     chart_wgt.osrc.Register(chart_wgt);
 }
 
@@ -255,10 +327,10 @@ function cht_register_helper_functions(chart_wgt){
     chart_wgt.GenerateRgba = cht_generate_rgba;
     chart_wgt.GetScales = cht_get_scales;
     chart_wgt.GetScaleLabel = cht_get_scale_label;
+    chart_wgt.Highlight = cht_highlight;
 }
 
 function cht_init(params) {
-    console.log("params: ", params);
     let chart_wgt = params.chart;
     delete params.chart;
     chart_wgt.params = params;
@@ -266,6 +338,9 @@ function cht_init(params) {
     cht_register_helper_functions(chart_wgt);
     chart_wgt.GetOsrc();
     cht_register_osrc_functions(chart_wgt);
+    chart_wgt.osrc_request_queue = [];
+    chart_wgt.osrc_busy = false;
+    chart_wgt.osrc_last_op = null;
 
     this.update_soon = false; //see cht_object_available
 
