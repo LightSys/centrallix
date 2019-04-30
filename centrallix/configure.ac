@@ -80,6 +80,9 @@ CENTRALLIX_CHECK_OPENSSL
 dnl Check for JSON-C
 CENTRALLIX_CHECK_JSONC
 
+dnl Check for SQLite
+CENTRALLIX_CHECK_SQLITE
+
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
 CHECK_CTYPE_B
