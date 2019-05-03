@@ -78,18 +78,20 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     /* Create Tables */
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserData("
-                 "UserID TEXT PRIMARY KEY,"
+                 "UserName TEXT PRIMARY KEY,"
                  "UserSalt TEXT,"
-                 "UserPublicKey TEXT,"
+                 "UserPublicKey BLOB,"
                  "DateCreated TEXT,"
                  "DateLastUpdated TEXT);",
                  (void*)NULL, NULL, &err_msg);
     
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserAuth("
+                 "PK_UserAuth INT PRIMARY KEY,"
+                 "UserName TEXT,"
                  "AuthClass TEXT,"
                  "UserSalt TEXT,"
-                 "UserPrivateKey TEXT,"
+                 "UserPrivateKey BLOB,"
                  "RemovalFlag INT,"
                  "DateCreated TEXT,"
                  "DateLastUpdated TEXT);",
@@ -101,7 +103,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                  "ResourceSalt TEXT,"
                  "ResourceUsername TEXT,"
                  "ResourcePassword BLOB,"
-                 "UserID TEXT,"
+                 "UserName TEXT,"
                  "DateCreated TEXT,"
                  "DateLastUpdated TEXT);",
                  (void*)NULL, NULL, &err_msg);
@@ -114,35 +116,35 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     /* Compile SQL statements */
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT(*) FROM UserData;",
-                    -1, &dbcontext->get_user_count, NULL);
+                    -1, &dbcontext->get_user_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT (*) FROM UserAuth"
                     "WHERE UserID=?;",
-                    -1, &dbcontext->get_user_pwd_count, NULL);
+                    -1, &dbcontext->get_user_pwd_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserData(UserID, UserSalt, UserPublicKey,"
                     "DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
-                    -1, &dbcontext->insert_user, NULL);
+                    -1, &dbcontext->insert_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT UserSalt, UserPublicKey," 
                     "DateCreated, DateLastUpdated FROM UserData"
                     "WHERE UserID=?;",
-                    -1, &dbcontext->retrieve_user, NULL);
+                    -1, &dbcontext->retrieve_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserResc (ResourceID, ResourceSalt,"
                     "ResourceUsername, ResourcePassword, UserID, DateCreated,"
                     "DateLastUpdated) VALUES (?, ?, ?, ?, ?, ?, ?);",
-                    -1, &dbcontext->insert_resc_credentials, NULL);
+                    -1, &dbcontext->insert_resc_credentials_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd,"
                     "DateCreated, DateLastUpdated FROM UserResc"
                     "WHERE UserID=? AND ResourceID=?;",
-                    -1, &dbcontext->retrieve_resc_credentials, NULL);
+                    -1, &dbcontext->retrieve_resc_credentials_stmt, NULL);
 
     return 0;
 error:
@@ -162,11 +164,11 @@ error:
 static void 
 cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
 {
-    sqlite3_finalize(dbcontext->get_user_count);
-    sqlite3_finalize(dbcontext->get_user_pwd_count);
-    sqlite3_finalize(dbcontext->insert_user);
-    sqlite3_finalize(dbcontext->retrieve_user);
-    sqlite3_finalize(dbcontext->insert_resc_credentials);
-    sqlite3_finalize(dbcontext->retrieve_resc_credentials);
+    sqlite3_finalize(dbcontext->get_user_count_stmt);
+    sqlite3_finalize(dbcontext->get_user_pwd_count_stmt);
+    sqlite3_finalize(dbcontext->insert_user_stmt);
+    sqlite3_finalize(dbcontext->retrieve_user_stmt);
+    sqlite3_finalize(dbcontext->insert_resc_credentials_stmt);
+    sqlite3_finalize(dbcontext->retrieve_resc_credentials_stmt);
 }
 
