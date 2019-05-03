@@ -183,7 +183,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
  *  @param date_created         Date first created
  *  @param date_last_updated    Date last updated 
  */
-static int
+int
 cxss_insert_userdata(DB_Context_t dbcontext, const char *cxss_userid, 
                      const char *salt, const char *date_created, 
                      const char *date_last_updated)
