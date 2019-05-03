@@ -178,15 +178,18 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
  *  Create new user entry in 'UserData' table
  *
  *  @param dbcontext            Database context handle
- *  @param username             CXSS user identity
+ *  @param cxss_userid          CXSS user identity
+ *  @param publickey            User public key
+ *  @param keylen               Length of public key
  *  @param salt                 User-specific salt
  *  @param date_created         Date first created
- *  @param date_last_updated    Date last updated 
+ *  @param date_last_updated    Date last updated
+ *  @return                     Status code 
  */
 int
-cxss_insert_userdata(DB_Context_t dbcontext, const char *cxss_userid, 
-                     const char *publickey, size_t keylen, const char *salt,
-                     const char *date_created, const char *date_last_updated)
+cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid, 
+                 const char *publickey, size_t keylen, const char *salt,
+                 const char *date_created, const char *date_last_updated)
 {
     /* Bind data with sqlite3 stmts */
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
@@ -207,7 +210,7 @@ cxss_insert_userdata(DB_Context_t dbcontext, const char *cxss_userid,
         goto bind_error;
 
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 5,
-                             date_last_updated, -1, NULL) != SQLITE_OK)
+                          date_last_updated, -1, NULL) != SQLITE_OK)
         goto bind_error;
     
     /* Execute query */
@@ -222,4 +225,5 @@ bind_error:
                     sqlite3_errmsg(dbcontext->db));
     return -1;
 }
+
 

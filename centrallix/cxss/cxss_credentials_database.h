@@ -16,7 +16,7 @@ typedef struct _DB_Context_t {
 /* Public functions */
 DB_Context_t cxss_init_credentials_database(const char *dbpath);
 int cxss_close_credentials_database(DB_Context_t dbcontext);
-int cxss_insert_userdata(DB_Context_t dbcontext, const char *cxss_userid, const char *publickey, size_t keylen, const char *salt, const char *date_created, const char *date_last_updated);
+int cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid, const char *publickey, size_t keylen, const char *salt, const char *date_created, const char *date_last_updated);
 
 
 /* Private Functions */
