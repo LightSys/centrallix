@@ -9,6 +9,7 @@ typedef struct _DB_Context_t {
     sqlite3_stmt *get_user_pwd_count_stmt;
     sqlite3_stmt *insert_user_stmt;
     sqlite3_stmt *retrieve_user_stmt;
+    sqlite3_stmt *insert_user_auth_stmt;
     sqlite3_stmt *insert_resc_credentials_stmt;
     sqlite3_stmt *retrieve_resc_credentials_stmt;
 } *DB_Context_t;
@@ -17,7 +18,7 @@ typedef struct _DB_Context_t {
 DB_Context_t cxss_init_credentials_database(const char *dbpath);
 int cxss_close_credentials_database(DB_Context_t dbcontext);
 int cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid, const char *publickey, size_t keylen, const char *salt, const char *date_created, const char *date_last_updated);
-
+int cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid, const char *privatekey, size_t keylen, const char *salt, const char *auth_class, int removal_flag, const char *date_created, const char *date_last_updated);
 
 /* Private Functions */
 static int cxss_setup_credentials_database(DB_Context_t dbcontext);

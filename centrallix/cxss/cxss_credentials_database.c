@@ -87,7 +87,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserAuth("
-                 "PK_UserAuth INT PRIMARY KEY,"
+                 "PK_UserAuth INTEGER PRIMARY KEY,"
                  "CXSS_UserID TEXT,"
                  "AuthClass TEXT,"
                  "UserSalt TEXT,"
@@ -135,6 +135,12 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->retrieve_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
+                    "INSERT INTO UserAuth(CXSS_UserID, AuthClass, UserSalt,"
+                    "UserPrivateKey, RemovalFlag, DateCreated, DateLastUpdated)"
+                    "VALUES (?, ?, ?, ?, ?, ?, ?);",
+                    -1, &dbcontext->insert_user_auth_stmt, NULL);
+    
+    sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserResc (ResourceID, ResourceSalt,"
                     "ResourceUsername, ResourcePassword, CXSS_UserID,"
                     "DateCreated, DateLastUpdated)"
@@ -169,6 +175,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->get_user_pwd_count_stmt);
     sqlite3_finalize(dbcontext->insert_user_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
+    sqlite3_finalize(dbcontext->insert_user_auth_stmt);
     sqlite3_finalize(dbcontext->insert_resc_credentials_stmt);
     sqlite3_finalize(dbcontext->retrieve_resc_credentials_stmt);
 }
@@ -226,4 +233,73 @@ bind_error:
     return -1;
 }
 
+/** @brief Enter user auth data
+ *
+ *  Create user auth entry in 'UserAuth' table
+ *
+ *  @param dbcontext            Database context handle
+ *  @param cxss_userid          CXSS user identity
+ *  @param privatekey           User private key
+ *  @param keylen               Length of public key
+ *  @param salt                 User-specific salt
+ *  @param auth_class           Authentication class ("password", "oauth", ...)
+ *  @param removal_flag         Removal flag
+ *  @param date_created         Date first created
+ *  @param date_last_updated    Date last updated
+ *  @return                     Status code 
+ */
+int
+cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
+                      const char *privatekey, size_t keylen, const char *salt, 
+                      const char *auth_class, int removal_flag,
+                      const char *date_created, const char *date_last_updated)
+{
+    /* Bind data with sqlite3 stmts */    
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+    
+    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 2,
+                          privatekey, keylen, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
 
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 3,
+                          salt, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 4,
+                          auth_class, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 5,
+                         removal_flag) != SQLITE_OK) {
+        goto bind_error;
+    }
+    
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 6,
+                          date_created, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 7,
+                          date_last_updated, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->insert_user_auth_stmt) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to insert user auth\n");
+        return -1;
+    }
+
+    return 0;
+bind_error:
+    fprintf(stderr, "Failed to bind value with stmt: %s\n",
+                    sqlite3_errmsg(dbcontext->db));
+    return -1;
+}
+ 
