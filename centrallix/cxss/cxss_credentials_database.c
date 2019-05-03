@@ -112,32 +112,32 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     }
 
     /* Compile SQL statements */
-    sqlite3_prepare(dbcontext->db,
+    sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT(*) FROM UserData;",
                     -1, &dbcontext->get_user_count, NULL);
 
-    sqlite3_prepare(dbcontext->db,
+    sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT (*) FROM UserAuth"
                     "WHERE UserID=?;",
                     -1, &dbcontext->get_user_pwd_count, NULL);
 
-    sqlite3_prepare(dbcontext->db,
+    sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserData(UserID, UserSalt, UserPublicKey,"
                     "DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user, NULL);
 
-    sqlite3_prepare(dbcontext->db,
+    sqlite3_prepare_v2(dbcontext->db,
                     "SELECT UserSalt, UserPublicKey FROM UserData"
                     "WHERE UserID=?;",
                     -1, &dbcontext->retrieve_user, NULL);
 
-    sqlite3_prepare(dbcontext->db,
+    sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserResc (ResourceID, ResourceSalt,"
                     "ResourceUsername, ResourcePassword, UserID, DateCreated,"
                     "DateLastUpdated) VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_credentials, NULL);
 
-    sqlite3_prepare(dbcontext->db,
+    sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceUsername, ResourcePassowrd FROM UserResc"
                     "WHERE UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_credentials, NULL);
