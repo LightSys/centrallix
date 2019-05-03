@@ -78,7 +78,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     /* Create Tables */
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserData("
-                 "UserName TEXT PRIMARY KEY,"
+                 "CXSS_UserID TEXT PRIMARY KEY,"
                  "UserSalt TEXT,"
                  "UserPublicKey BLOB,"
                  "DateCreated TEXT,"
@@ -88,7 +88,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserAuth("
                  "PK_UserAuth INT PRIMARY KEY,"
-                 "UserName TEXT,"
+                 "CXSS_UserID TEXT,"
                  "AuthClass TEXT,"
                  "UserSalt TEXT,"
                  "UserPrivateKey BLOB,"
@@ -103,7 +103,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                  "ResourceSalt TEXT,"
                  "ResourceUsername TEXT,"
                  "ResourcePassword BLOB,"
-                 "UserName TEXT,"
+                 "CXSS_UserID TEXT,"
                  "DateCreated TEXT,"
                  "DateLastUpdated TEXT);",
                  (void*)NULL, NULL, &err_msg);
@@ -120,30 +120,31 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT (*) FROM UserAuth"
-                    "WHERE UserID=?;",
+                    "WHERE CXSS_UserID=?;",
                     -1, &dbcontext->get_user_pwd_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserData(UserID, UserSalt, UserPublicKey,"
+                    "INSERT INTO UserData(CXSS_UserID, UserSalt, UserPublicKey,"
                     "DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT UserSalt, UserPublicKey," 
                     "DateCreated, DateLastUpdated FROM UserData"
-                    "WHERE UserID=?;",
+                    "WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserResc (ResourceID, ResourceSalt,"
-                    "ResourceUsername, ResourcePassword, UserID, DateCreated,"
-                    "DateLastUpdated) VALUES (?, ?, ?, ?, ?, ?, ?);",
+                    "ResourceUsername, ResourcePassword, CXSS_UserID,"
+                    "DateCreated, DateLastUpdated)"
+                    "VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_resc_credentials_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd,"
                     "DateCreated, DateLastUpdated FROM UserResc"
-                    "WHERE UserID=? AND ResourceID=?;",
+                    "WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_credentials_stmt, NULL);
 
     return 0;
