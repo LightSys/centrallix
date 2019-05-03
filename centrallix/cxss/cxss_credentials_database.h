@@ -9,8 +9,8 @@ typedef struct _DB_Context_t {
     sqlite3_stmt *get_user_pwd_count;
     sqlite3_stmt *insert_user;
     sqlite3_stmt *retrieve_user;
-    sqlite3_stmt *insert_credentials;
-    sqlite3_stmt *retrieve_credentials;
+    sqlite3_stmt *insert_resc_credentials;
+    sqlite3_stmt *retrieve_resc_credentials;
 } *DB_Context_t;
 
 /* Public functions */

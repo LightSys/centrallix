@@ -127,7 +127,8 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->insert_user, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserSalt, UserPublicKey FROM UserData"
+                    "SELECT UserSalt, UserPublicKey," 
+                    "DateCreated, DateLastUpdated FROM UserData"
                     "WHERE UserID=?;",
                     -1, &dbcontext->retrieve_user, NULL);
 
@@ -135,12 +136,13 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     "INSERT INTO UserResc (ResourceID, ResourceSalt,"
                     "ResourceUsername, ResourcePassword, UserID, DateCreated,"
                     "DateLastUpdated) VALUES (?, ?, ?, ?, ?, ?, ?);",
-                    -1, &dbcontext->insert_credentials, NULL);
+                    -1, &dbcontext->insert_resc_credentials, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT ResourceUsername, ResourcePassowrd FROM UserResc"
+                    "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd,"
+                    "DateCreated, DateLastUpdated FROM UserResc"
                     "WHERE UserID=? AND ResourceID=?;",
-                    -1, &dbcontext->retrieve_credentials, NULL);
+                    -1, &dbcontext->retrieve_resc_credentials, NULL);
 
     return 0;
 error:
@@ -164,7 +166,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->get_user_pwd_count);
     sqlite3_finalize(dbcontext->insert_user);
     sqlite3_finalize(dbcontext->retrieve_user);
-    sqlite3_finalize(dbcontext->insert_credentials);
-    sqlite3_finalize(dbcontext->retrieve_credentials);
+    sqlite3_finalize(dbcontext->insert_resc_credentials);
+    sqlite3_finalize(dbcontext->retrieve_resc_credentials);
 }
 
