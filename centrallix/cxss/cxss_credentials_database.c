@@ -172,3 +172,48 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->retrieve_resc_credentials_stmt);
 }
 
+/** @brief Enter new user
+ *
+ *  Create new user entry in 'UserData' table
+ *
+ *  @param dbcontext            Database context handle
+ *  @param username             CXSS user identity
+ *  @param salt                 User-specific salt
+ *  @param date_created         Date first created
+ *  @param date_last_updated    Date last updated 
+ */
+static int
+cxss_insert_userdata(DB_Context_t dbcontext, const char *cxss_userid, 
+                     const char *salt, const char *date_created, 
+                     const char *date_last_updated)
+{
+    /* Bind data with sqlite3 stmts */
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
+                          cxss_userid, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 2, 
+                          salt, -1, NULL) != SQLITE_OK)
+        goto bind_error; 
+
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3,
+                          date_created, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
+                             date_last_updated, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    
+    /* Execute query */
+    if (sqlite3_step(dbcontext->insert_user_stmt) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to insert user\n");
+        return -1;
+    }
+
+    return 0;
+bind_error:
+    fprintf(stderr, "Failed to bind value with stmt: %s\n", 
+                    sqlite3_errmsg(dbcontext->db));
+    return -1;
+}
+
