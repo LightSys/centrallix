@@ -185,23 +185,28 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
  */
 int
 cxss_insert_userdata(DB_Context_t dbcontext, const char *cxss_userid, 
-                     const char *salt, const char *date_created, 
-                     const char *date_last_updated)
+                     const char *publickey, size_t keylen, const char *salt,
+                     const char *date_created, const char *date_last_updated)
 {
     /* Bind data with sqlite3 stmts */
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
                           cxss_userid, -1, NULL) != SQLITE_OK)
         goto bind_error;
 
-    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 2, 
+    if (sqlite3_bind_blob(dbcontext->insert_user_stmt, 2,
+                          publickey, keylen, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3, 
                           salt, -1, NULL) != SQLITE_OK)
         goto bind_error; 
 
-    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3,
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
                           date_created, -1, NULL) != SQLITE_OK)
         goto bind_error;
 
-    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 5,
                              date_last_updated, -1, NULL) != SQLITE_OK)
         goto bind_error;
     
