@@ -122,37 +122,43 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT (*) FROM UserAuth"
-                    " " "WHERE CXSS_UserID=?;",
+                    "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->get_user_pwd_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserData(CXSS_UserID, UserSalt, UserPublicKey,"
-                    " " "DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
+                    "INSERT INTO UserData(CXSS_UserID, UserSalt, UserPublicKey"
+                    ", DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserPublicKey, UserSalt," 
-                    "DateCreated, DateLastUpdated FROM UserData"
-                    " " "WHERE CXSS_UserID=?;",
+                    "SELECT UserPublicKey, UserSalt" 
+                    ", DateCreated, DateLastUpdated FROM UserData"
+                    "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserAuth(CXSS_UserID, AuthClass, UserSalt,"
-                    "UserPrivateKey, RemovalFlag, DateCreated, DateLastUpdated)"
-                    " " "VALUES (?, ?, ?, ?, ?, ?, ?);",
+                    "INSERT INTO UserAuth(CXSS_UserID, UserPrivateKey, UserSalt"
+                    ", AuthClass, RemovalFlag, DateCreated, DateLastUpdated)"
+                    "  VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_auth_stmt, NULL);
-    
+   
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserResc (ResourceID, ResourceSalt,"
-                    "ResourceUsername, ResourcePassword, CXSS_UserID,"
-                    "DateCreated, DateLastUpdated) "
-                    " " "VALUES (?, ?, ?, ?, ?, ?, ?);",
+                    "SELECT UserPrivateKey, UserSalt, AuthClass"
+                    ", DateCreated, DateLastUpdated FROM UserAuth"
+                    "  WHERE CXSS_UserID=? AND RemovalFlag=0;",
+                    -1, &dbcontext->retrieve_user_auth_stmt, NULL);
+ 
+    sqlite3_prepare_v2(dbcontext->db,
+                    "INSERT INTO UserResc (ResourceID, ResourceSalt"
+                    ", ResourceUsername, ResourcePassword, CXSS_UserID"
+                    ", DateCreated, DateLastUpdated) "
+                    "  VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_resc_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd,"
-                    "DateCreated, DateLastUpdated FROM UserResc"
-                    " " "WHERE CXSS_UserID=? AND ResourceID=?;",
+                    "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd"
+                    ", DateCreated, DateLastUpdated FROM UserResc"
+                    "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
 
     return 0;
@@ -178,6 +184,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->insert_user_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
     sqlite3_finalize(dbcontext->insert_user_auth_stmt);
+    sqlite3_finalize(dbcontext->retrieve_user_auth_stmt);
     sqlite3_finalize(dbcontext->insert_resc_stmt);
     sqlite3_finalize(dbcontext->retrieve_resc_stmt);
 }
@@ -445,4 +452,117 @@ cxss_free_userdata(CXSS_UserData *UserData)
     free(UserData->DateLastUpdated);
 }
 
+/** @brief Retrieve user authentication data
+ *
+ *  Retrieve user auth data from 'UserAuth' table
+ * 
+ *  @param dbcontext        Database context handle 
+ *  @param cxss_userid      CXSS user identity
+ *  @param UserAuth         Pointer to head of a CXSS_UserAuth linked list 
+ *  @return                 Status code
+ */
+int
+cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, 
+                        CXSS_UserAuth *UserAuth)
+{
+    const char *privatekey, *salt, *auth_class;
+    const char *date_created, *date_last_updated;
+    size_t keylength;
+
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->retrieve_user_auth_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->retrieve_user_auth_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Failed to retrieve user data\n");
+        return -1;
+    }
+
+    /* Retrieve results */
+    privatekey = sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 0);
+    keylength = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 0);
+    salt = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 1);
+    auth_class = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 2);
+    date_created = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 3);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
+     
+    /* Populate UserAuth struct */
+    UserAuth->CXSS_UserID = strdup(cxss_userid);
+    UserAuth->PrivateKey = strdup(privatekey);
+    UserAuth->KeyLength = keylength;
+    UserAuth->Salt = strdup(salt);
+    UserAuth->AuthClass = strdup(auth_class);
+    UserAuth->DateCreated = strdup(date_created);
+    UserAuth->DateLastUpdated = strdup(date_last_updated);
+
+    return 0;
+bind_error:
+    fprintf(stderr, "Failed to bind value with stmt: %s\n",
+                    sqlite3_errmsg(dbcontext->db));
+    return -1;
+}
+
+/** @brief Free CXSS_UserAuth struct members
+ *
+ *  Free struct members containing query results.
+ *
+ *  @param UserAuth     Pointer to CXSS_UserAuth struct
+ *  @return             void
+ */
+void
+cxss_free_userauth(CXSS_UserAuth *UserAuth)
+{
+    free(UserAuth->CXSS_UserID);
+    free(UserAuth->PrivateKey);
+    free(UserAuth->Salt);
+    free(UserAuth->AuthClass);
+    free(UserAuth->DateCreated);
+    free(UserAuth->DateLastUpdated);
+}
+
+/** @brief Retrieve all user authentication entries
+ *
+ *  This function retrieves all user auth entries and
+ *  returns a linked list of them.
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  CXSS user identity
+ *  @return             void
+ */
+int
+cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, 
+                         CXSS_UserAuth_LLNode **head)
+{
+    CXSS_UserAuth_LLNode *current;
+    const char *privatekey, *salt, *auth_class;
+    const char *date_created, *date_last_updated;
+    size_t keylength;
+
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->retrieve_user_auth_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->retrieve_user_auths_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Failed to retrieve user auth\n");
+        return -1;
+    }
+    while (sqlite3_step(dbcontext->retrieve_user_auths_stmt) == SQLITE_ROW) {
+        // Alloc new linked-list node
+        // Chain node to the previous one
+        // Retrieve Results
+        // Put Results into node
+    }
+
+    return 0;
+bind_error:
+    fprintf(stderr, "Failed to bind value with stmt: %s\n",
+                    sqlite3_errmsg(dbcontext->db));
+    return -1;
+}
 

@@ -11,6 +11,8 @@ typedef struct _DB_Context_t {
     sqlite3_stmt *insert_user_stmt;
     sqlite3_stmt *retrieve_user_stmt;
     sqlite3_stmt *insert_user_auth_stmt;
+    sqlite3_stmt *retrieve_user_auth_stmt;
+    sqlite3_stmt *retrieve_user_auths_stmt;
     sqlite3_stmt *insert_resc_stmt;
     sqlite3_stmt *retrieve_resc_stmt;
 } *DB_Context_t;
@@ -47,6 +49,11 @@ typedef struct {
     char *DateLastUpdated;
 } CXSS_UserResc;
 
+typedef struct _CXSS_LLNode {
+    CXSS_UserAuth UserAuth;
+    struct _CXSS_LLNode *next;
+} CXSS_UserAuth_LLNode;
+
 /* Public functions */
 DB_Context_t cxss_init_credentials_database(const char *dbpath);
 int cxss_close_credentials_database(DB_Context_t dbcontext);
@@ -55,6 +62,8 @@ int cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid, const
 int cxss_insert_user_resc(DB_Context_t dbcontext, const char *cxss_userid, const char *resourceid, const char *resource_salt, const char *resource_username, size_t encr_username_len, const char *resource_pwd, size_t encr_password_len, const char *date_created, const char *date_last_updated);
 int cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
 void cxss_free_userdata(CXSS_UserData *UserData);
+int cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
+void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 
 /* Private Functions */
 static int cxss_setup_credentials_database(DB_Context_t dbcontext);
