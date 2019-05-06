@@ -64,9 +64,14 @@ int cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, CXSS_Use
 void cxss_free_userdata(CXSS_UserData *UserData);
 int cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
+int cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
+void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start);
+void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
 
 /* Private Functions */
 static int cxss_setup_credentials_database(DB_Context_t dbcontext);
 static void cxss_finalize_sqlite3_statements(DB_Context_t dbcontext);
+static inline CXSS_UserAuth_LLNode *cxss_allocate_userauth_node(void);
+static inline char *cxss_strdup(const char *str);
 
 #endif /* CXSS_CREDENTIALS_DATABASE */

@@ -149,6 +149,12 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->retrieve_user_auth_stmt, NULL);
  
     sqlite3_prepare_v2(dbcontext->db,
+                    "SELECT UserPrivateKey, UserSalt, AuthClass, RemovalFlag"
+                    ", DateCreated, DateLastUpdated FROM UserAuth"
+                    "  WHERE CXSS_UserID=?;",
+                    -1, &dbcontext->retrieve_user_auths_stmt, NULL);
+
+    sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserResc (ResourceID, ResourceSalt"
                     ", ResourceUsername, ResourcePassword, CXSS_UserID"
                     ", DateCreated, DateLastUpdated) "
@@ -185,6 +191,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
     sqlite3_finalize(dbcontext->insert_user_auth_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_auth_stmt);
+    sqlite3_finalize(dbcontext->retrieve_user_auths_stmt);
     sqlite3_finalize(dbcontext->insert_resc_stmt);
     sqlite3_finalize(dbcontext->retrieve_resc_stmt);
 }
@@ -285,10 +292,10 @@ cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
     }
 
     if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 5,
-                         remove_flag) != SQLITE_OK) {
+                          remove_flag) != SQLITE_OK) {
         goto bind_error;
     }
-    
+
     if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 6,
                           date_created, -1, NULL) != SQLITE_OK) {
         goto bind_error;
@@ -408,11 +415,9 @@ cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid,
     }
 
     /* Execute query */
-    if (sqlite3_step(dbcontext->retrieve_user_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to retrieve user data\n");
+    if (sqlite3_step(dbcontext->retrieve_user_stmt) != SQLITE_ROW) 
         return -1;
-    }
-
+    
     /* Retrieve results */
     publickey = sqlite3_column_blob(dbcontext->retrieve_user_stmt, 0);
     keylength = sqlite3_column_bytes(dbcontext->retrieve_user_stmt, 0);
@@ -421,12 +426,12 @@ cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid,
     date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_stmt, 3);
 
     /* Populate UserData struct */
-    UserData->CXSS_UserID = strdup(cxss_userid);
-    UserData->PublicKey = strdup(publickey);
+    UserData->CXSS_UserID = cxss_strdup(cxss_userid);
+    UserData->PublicKey = cxss_strdup(publickey);
     UserData->KeyLength = keylength;
-    UserData->Salt = strdup(salt);
-    UserData->DateCreated = strdup(date_created);
-    UserData->DateLastUpdated = strdup(date_last_updated);
+    UserData->Salt = cxss_strdup(salt);
+    UserData->DateCreated = cxss_strdup(date_created);
+    UserData->DateLastUpdated = cxss_strdup(date_last_updated);
    
     return 0;
 bind_error:
@@ -477,7 +482,8 @@ cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
 
     /* Execute query */
     if (sqlite3_step(dbcontext->retrieve_user_auth_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to retrieve user data\n");
+        fprintf(stderr, "Unable to retrieve user auth info: %s\n",
+                        sqlite3_errmsg(dbcontext->db));
         return -1;
     }
 
@@ -490,13 +496,14 @@ cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
     date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
      
     /* Populate UserAuth struct */
-    UserAuth->CXSS_UserID = strdup(cxss_userid);
-    UserAuth->PrivateKey = strdup(privatekey);
+    UserAuth->CXSS_UserID = cxss_strdup(cxss_userid);
+    UserAuth->PrivateKey = cxss_strdup(privatekey);
     UserAuth->KeyLength = keylength;
-    UserAuth->Salt = strdup(salt);
-    UserAuth->AuthClass = strdup(auth_class);
-    UserAuth->DateCreated = strdup(date_created);
-    UserAuth->DateLastUpdated = strdup(date_last_updated);
+    UserAuth->Salt = cxss_strdup(salt);
+    UserAuth->AuthClass = cxss_strdup(auth_class);
+    UserAuth->RemovalFlag = 0;
+    UserAuth->DateCreated = cxss_strdup(date_created);
+    UserAuth->DateLastUpdated = cxss_strdup(date_last_updated);
 
     return 0;
 bind_error:
@@ -534,35 +541,154 @@ cxss_free_userauth(CXSS_UserAuth *UserAuth)
  */
 int
 cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, 
-                         CXSS_UserAuth_LLNode **head)
+                         CXSS_UserAuth_LLNode **node)
 {
-    CXSS_UserAuth_LLNode *current;
+    CXSS_UserAuth_LLNode *head, *prev, *current;
     const char *privatekey, *salt, *auth_class;
     const char *date_created, *date_last_updated;
     size_t keylength;
+    int removal_flag;
 
     /* Bind data with sqlite3 stmt */
-    if (sqlite3_bind_text(dbcontext->retrieve_user_auth_stmt, 1,
+    if (sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1,
                           cxss_userid, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
+    /* Allocate head (dummy node) */
+    head = cxss_allocate_userauth_node();
+    prev = head;
+
     /* Execute query */
-    if (sqlite3_step(dbcontext->retrieve_user_auths_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to retrieve user auth\n");
-        return -1;
-    }
-    while (sqlite3_step(dbcontext->retrieve_user_auths_stmt) == SQLITE_ROW) {
-        // Alloc new linked-list node
-        // Chain node to the previous one
-        // Retrieve Results
-        // Put Results into node
+    while (sqlite3_step(dbcontext->retrieve_user_auths_stmt) == SQLITE_ROW) { 
+        
+        /* Allocate and chain new node */
+        current = cxss_allocate_userauth_node();       
+        prev->next = current;
+        
+        /* Retrieve results */
+        privatekey = sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 0);
+        keylength = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 0);
+        salt = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 1);
+        auth_class = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 2);
+        removal_flag = sqlite3_column_int(dbcontext->retrieve_user_auths_stmt, 3); 
+        date_created = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 4);
+        date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 5);
+     
+        /* Populate node */
+        current->UserAuth.CXSS_UserID = cxss_strdup(cxss_userid);
+        current->UserAuth.PrivateKey = cxss_strdup(privatekey);
+        current->UserAuth.KeyLength = keylength;
+        current->UserAuth.Salt = cxss_strdup(salt);
+        current->UserAuth.AuthClass = cxss_strdup(auth_class);
+        current->UserAuth.RemovalFlag = removal_flag;
+        current->UserAuth.DateCreated = cxss_strdup(date_created);
+        current->UserAuth.DateLastUpdated = cxss_strdup(date_last_updated);
+        
+        /* Advance */ 
+        prev = current;
     }
 
+    current->next = NULL;
+    *(node) = head;
+    
     return 0;
 bind_error:
     fprintf(stderr, "Failed to bind value with stmt: %s\n",
                     sqlite3_errmsg(dbcontext->db));
     return -1;
+}
+
+
+static inline CXSS_UserAuth_LLNode* 
+cxss_allocate_userauth_node(void)
+{
+    CXSS_UserAuth_LLNode *new_node;
+
+    new_node = malloc(sizeof(CXSS_UserAuth_LLNode));
+    if (!new_node) {
+        fprintf(stderr, "Memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    //memset(new_node, 0, sizeof(CXSS_UserAuth_LLNode));
+    return new_node;
+}
+
+/** @brief Print linked list
+ *
+ */
+void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
+{
+    static unsigned int count = 0;
+
+    /* Skip head (dummy node) */
+    if (start != NULL)
+        start = start->next;
+
+    while (start != NULL) {
+        printf("COUNT IS: %d\n", count++);
+        if (start->UserAuth.CXSS_UserID)
+            printf("UserID:             %s\n", start->UserAuth.CXSS_UserID);
+        if (start->UserAuth.PrivateKey)
+            printf("PrivateKey:         %s\n", start->UserAuth.PrivateKey);
+        
+        printf("KeyLength:          %ld\n", start->UserAuth.KeyLength);
+        
+        if (start->UserAuth.AuthClass)
+            printf("AuthClass:          %s\n", start->UserAuth.AuthClass);
+        
+        printf("RemovalFlag:        %d\n", start->UserAuth.RemovalFlag);
+        
+        if (start->UserAuth.DateCreated)
+            printf("DateCreated:        %s\n", start->UserAuth.DateCreated);
+        if (start->UserAuth.DateLastUpdated)
+            printf("DateLastUpdated:    %s\n", start->UserAuth.DateLastUpdated);
+        
+        start = start->next;
+    }
+}
+
+
+/** @brief Free linked list
+ *  
+ *  Free user_auth linked list
+ *
+ *  @param start        Pointer to head of linked list
+ *  @return             void
+ */
+void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start)
+{
+    CXSS_UserAuth_LLNode *next;
+
+    /* Free head (dummy node) */
+    next = start->next;
+    free(start);
+    start = next;
+
+    while (start != NULL) {
+        next = start->next;
+        cxss_free_userauth(&start->UserAuth);
+        free(start);
+        start = next;
+    }
+}
+
+/** @brief Duplicate a string
+ *
+ *  This is just a strdup wrapper function
+ *  to nicely handle cases in which the SQL 
+ *  query returns NULL.
+ *
+ *  @param str   String to dup.
+ *  @return      Dupped string
+ */
+static inline char *
+cxss_strdup(const char *str)
+{
+    if (!str)
+        return NULL;
+    
+    return strdup(str);
 }
 
