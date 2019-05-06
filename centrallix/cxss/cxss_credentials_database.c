@@ -1,6 +1,8 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <sqlite3.h>
+#include <string.h>
 #include "cxss_credentials_database.h"
 
 
@@ -120,37 +122,37 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT (*) FROM UserAuth"
-                    "WHERE CXSS_UserID=?;",
+                    " " "WHERE CXSS_UserID=?;",
                     -1, &dbcontext->get_user_pwd_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserData(CXSS_UserID, UserSalt, UserPublicKey,"
-                    "DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
+                    " " "DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserSalt, UserPublicKey," 
+                    "SELECT UserPublicKey, UserSalt," 
                     "DateCreated, DateLastUpdated FROM UserData"
-                    "WHERE CXSS_UserID=?;",
+                    " " "WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserAuth(CXSS_UserID, AuthClass, UserSalt,"
                     "UserPrivateKey, RemovalFlag, DateCreated, DateLastUpdated)"
-                    "VALUES (?, ?, ?, ?, ?, ?, ?);",
+                    " " "VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_auth_stmt, NULL);
     
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserResc (ResourceID, ResourceSalt,"
                     "ResourceUsername, ResourcePassword, CXSS_UserID,"
-                    "DateCreated, DateLastUpdated)"
-                    "VALUES (?, ?, ?, ?, ?, ?, ?);",
+                    "DateCreated, DateLastUpdated) "
+                    " " "VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_resc_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd,"
                     "DateCreated, DateLastUpdated FROM UserResc"
-                    "WHERE CXSS_UserID=? AND ResourceID=?;",
+                    " " "WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
 
     return 0;
@@ -374,4 +376,73 @@ bind_error:
                     sqlite3_errmsg(dbcontext->db));
     return -1;
 }
- 
+
+/** @brief Retrieve user data
+ *
+ *  Retrieve user data from 'UserData' table
+ * 
+ *  @param dbcontext        Database context handle 
+ *  @param cxss_userid      CXSS user identity
+ *  @param UserData         Pointer to CXSS_UserData struct
+ *  @return                 Status code
+ */
+int 
+cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, 
+                   CXSS_UserData *UserData)
+{
+    const char *publickey, *salt;
+    const char *date_created, *date_last_updated;
+    size_t keylength;
+
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->retrieve_user_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->retrieve_user_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Failed to retrieve user data\n");
+        return -1;
+    }
+
+    /* Retrieve results */
+    publickey = sqlite3_column_blob(dbcontext->retrieve_user_stmt, 0);
+    keylength = sqlite3_column_bytes(dbcontext->retrieve_user_stmt, 0);
+    salt = sqlite3_column_text(dbcontext->retrieve_user_stmt, 1);    
+    date_created = sqlite3_column_text(dbcontext->retrieve_user_stmt, 2);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_stmt, 3);
+
+    /* Populate UserData struct */
+    UserData->CXSS_UserID = strdup(cxss_userid);
+    UserData->PublicKey = strdup(publickey);
+    UserData->KeyLength = keylength;
+    UserData->Salt = strdup(salt);
+    UserData->DateCreated = strdup(date_created);
+    UserData->DateLastUpdated = strdup(date_last_updated);
+   
+    return 0;
+bind_error:
+    fprintf(stderr, "Failed to bind value with stmt: %s\n",
+                    sqlite3_errmsg(dbcontext->db));
+    return -1;
+}
+
+/** @brief Free CXSS_UserData struct members
+ *
+ *  Free struct members containing query results.
+ *
+ *  @param UserData     Pointer to CXSS_UserData struct
+ *  @return             void
+ */
+void
+cxss_free_userdata(CXSS_UserData *UserData)
+{
+    free(UserData->CXSS_UserID);
+    free(UserData->PublicKey);
+    free(UserData->Salt);
+    free(UserData->DateCreated);
+    free(UserData->DateLastUpdated);
+}
+
+
