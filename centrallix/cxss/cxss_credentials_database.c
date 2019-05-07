@@ -601,7 +601,13 @@ bind_error:
     return -1;
 }
 
-
+/** @brief Allocate a CXSS_UserAuth_LLNode
+ *
+ *  Allocate a node for a linked list of 
+ *  CXSS_UserAuth structs.
+ *
+ *  @return     Pointer to allocated node
+ */  
 static inline CXSS_UserAuth_LLNode* 
 cxss_allocate_userauth_node(void)
 {
@@ -694,6 +700,14 @@ cxss_strdup(const char *str)
     return strdup(str);
 }
 
+/** @brief Get user count
+ *
+ *  Returns the number of users
+ *  registerd in the CXSS database.
+ *
+ *  @param dbcontext    Database context handle
+ *  @return             User count
+ */
 int
 cxss_get_user_count(DB_Context_t dbcontext)
 {
