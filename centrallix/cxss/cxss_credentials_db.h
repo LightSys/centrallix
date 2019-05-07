@@ -1,5 +1,5 @@
-#ifndef CXSS_CREDENTIALS_DATABASE
-#define CXSS_CREDENTIALS_DATABASE
+#ifndef CXSS_CREDENTIALS_DB
+#define CXSS_CREDENTIALS_DB
 
 #include <sqlite3.h>
 
@@ -76,4 +76,4 @@ static void cxss_finalize_sqlite3_statements(DB_Context_t dbcontext);
 static inline CXSS_UserAuth_LLNode *cxss_allocate_userauth_node(void);
 static inline char *cxss_strdup(const char *str);
 
-#endif /* CXSS_CREDENTIALS_DATABASE */
+#endif /* CXSS_CREDENTIALS_DB */

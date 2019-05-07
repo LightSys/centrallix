@@ -323,7 +323,7 @@ XCXSSMODS=cxss_main.o \
 	  cxss_tlshelper.o \
 	  cxss_policy.o \
 	  cxss_keystream.o \
-	  cxss_credentials_database.o
+	  cxss_credentials_db.o
 
 CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
 

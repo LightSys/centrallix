@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <sqlite3.h>
 #include <string.h>
-#include "cxss_credentials_database.h"
+#include "cxss_credentials_db.h"
 
 
 /** @brief Initialize cxss credentials database
