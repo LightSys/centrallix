@@ -29,17 +29,25 @@ cxss_initialize_csprng(void)
 }        
 
 int 
+cxss_decrypt_aes256(unsigned char *ciphertext, int ciphertext_len, 
+                    unsigned char *key, unsigned char *plaintext)
+{
+}
+
+
+
+int 
 cxss_encrypt_aes256(unsigned char *plaintext, int plaintext_len, 
                     unsigned char *key, unsigned char *ciphertext)
 {
     EVP_CIPHER_CTX *ctx;
-    char init_vector[128];
+    char init_vector[16];
     int len, ciphertext_len;
     
     assert(CSPRNG_Initialized == 1);
 
     /* Generate random initialization vector */
-    if (RAND_bytes(init_vector, 128) != 1) {
+    if (RAND_bytes(init_vector, 16) != 1) {
         fprintf(stderr, "Failed to generate initialization vector!\n");
         return -1;
     }
@@ -87,7 +95,7 @@ cxss_generate_32bit_salt(char *salt)
 {
     assert(CSPRNG_Initialized == 1);
 
-    if (RAND_bytes(salt, 32) < 0) {
+    if (RAND_bytes(salt, 4) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
         return -1;
     }
@@ -115,8 +123,8 @@ cxss_generate_256bit_key(const char *password, const char *salt, char *key)
     #define PBKDF2_ITER_NO      100
     
     if (PKCS5_PBKDF2_HMAC(password, strlen(password),
-                          salt, 32, PBKDF2_ITER_NO, 
-                          EVP_sha256(), 256, key) != 1) {
+                          salt, 4, PBKDF2_ITER_NO, 
+                          EVP_sha256(), 32, key) != 1) {
         fprintf(stderr, "Failed to generate 256-bit key\n");
         return -1;
     }
