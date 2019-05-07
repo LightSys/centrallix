@@ -81,7 +81,6 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserData("
                  "CXSS_UserID TEXT PRIMARY KEY,"
-                 "UserSalt TEXT,"
                  "UserPublicKey BLOB,"
                  "DateCreated TEXT,"
                  "DateLastUpdated TEXT);",
@@ -126,13 +125,13 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->get_user_resc_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserData(CXSS_UserID, UserSalt, UserPublicKey"
-                    ", DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?, ?);",
+                    "INSERT INTO UserData(CXSS_UserID, UserPublicKey"
+                    ", DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserPublicKey, UserSalt" 
-                    ", DateCreated, DateLastUpdated FROM UserData"
+                    "SELECT UserPublicKey, DateCreated"
+                    ", DateLastUpdated FROM UserData"
                     "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_stmt, NULL);
 
@@ -162,7 +161,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->insert_resc_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT ResourceSalt, ResourceUsername, ResourcePassowrd"
+                    "SELECT ResourceSalt, ResourceUsername, ResourcePassword"
                     ", DateCreated, DateLastUpdated FROM UserResc"
                     "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
@@ -211,8 +210,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
  */
 int
 cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid, 
-                 const char *publickey, size_t keylen, const char *salt,
-                 const char *date_created, const char *date_last_updated)
+                 const char *publickey, size_t keylen, const char *date_created,                 const char *date_last_updated)
 {
     sqlite3_reset(dbcontext->insert_user_stmt);
 
@@ -226,15 +224,11 @@ cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid,
         goto bind_error;
     }
 
-    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3, 
-                          salt, -1, NULL) != SQLITE_OK)
-        goto bind_error; 
-
-    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3,
                           date_created, -1, NULL) != SQLITE_OK)
         goto bind_error;
 
-    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 5,
+    if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
                           date_last_updated, -1, NULL) != SQLITE_OK)
         goto bind_error;
     
@@ -406,7 +400,7 @@ int
 cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, 
                    CXSS_UserData *UserData)
 {
-    const char *publickey, *salt;
+    const char *publickey;
     const char *date_created, *date_last_updated;
     size_t keylength;
 
@@ -423,15 +417,13 @@ cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid,
     /* Retrieve results */
     publickey = sqlite3_column_blob(dbcontext->retrieve_user_stmt, 0);
     keylength = sqlite3_column_bytes(dbcontext->retrieve_user_stmt, 0);
-    salt = sqlite3_column_text(dbcontext->retrieve_user_stmt, 1);    
-    date_created = sqlite3_column_text(dbcontext->retrieve_user_stmt, 2);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_stmt, 3);
+    date_created = sqlite3_column_text(dbcontext->retrieve_user_stmt, 1);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_stmt, 2);
 
     /* Populate UserData struct */
     UserData->CXSS_UserID = cxss_strdup(cxss_userid);
     UserData->PublicKey = cxss_strdup(publickey);
     UserData->KeyLength = keylength;
-    UserData->Salt = cxss_strdup(salt);
     UserData->DateCreated = cxss_strdup(date_created);
     UserData->DateLastUpdated = cxss_strdup(date_last_updated);
    
@@ -454,7 +446,6 @@ cxss_free_userdata(CXSS_UserData *UserData)
 {
     free(UserData->CXSS_UserID);
     free(UserData->PublicKey);
-    free(UserData->Salt);
     free(UserData->DateCreated);
     free(UserData->DateLastUpdated);
 }
