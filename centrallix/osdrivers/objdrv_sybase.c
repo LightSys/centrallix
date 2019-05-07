@@ -87,7 +87,7 @@ const unsigned short int* __ctype_b;
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
 
 /*** compiled in limit - max total syb connections per CX server ***/
-#define SYBD_MAX_CONNECTIONS	256	/* per CX instance, not per db node! */
+#define SYBD_MAX_CONNECTIONS	1024	/* per CX instance, not per db node! */
 
 
 /*** This is a hack.  Couldn't get -D__USE_GNU to work.  ***/
@@ -523,6 +523,8 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    if (ct_connect(conn->SessionID, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
 		{
 		mssError(0,"SYBD","Could not connect to database!");
+		ct_con_drop(conn->SessionID);
+		nmFree(conn,sizeof(SybdConn));
 		return NULL;
 		}
 
@@ -530,7 +532,13 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    if ((db_node->Flags & SYBD_NODE_F_USECXAUTH) && (db_node->Flags & SYBD_NODE_F_SETCXAUTH))
 		{
 		if (strchr(pwd, '"') || strchr(db_node->DefaultPassword, '"'))
+		    {
+		    mssError(1,"SYBD","Warning: could not update password for user '%s': password contains invalid character(s).", user);
+		    ct_close(conn->SessionID, CS_FORCE_CLOSE);
+		    ct_con_drop(conn->SessionID);
+		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
+		    }
 		snprintf(sbuf,sizeof(sbuf),"sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
 		cmd = sybd_internal_Exec(conn->SessionID, sbuf);
 		while((rval=ct_results(cmd, (CS_INT*)&i)))
@@ -568,6 +576,9 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    if (strpbrk(db_node->Database," \t\r\n"))
 		{
 		mssError(1,"SYBD","Invalid database name '%s'",db_node->Database);
+		ct_close(conn->SessionID, CS_FORCE_CLOSE);
+		ct_con_drop(conn->SessionID);
+		nmFree(conn,sizeof(SybdConn));
 		return NULL;
 		}
 	    snprintf(sbuf,64,"use %s",db_node->Database);
@@ -578,6 +589,9 @@ sybd_internal_GetConn(pSybdNode db_node)
 	            {
 		    mssError(0,"SYBD","Could not 'use' database '%s'!", db_node->Database);
 		    sybd_internal_Close(cmd);
+		    ct_close(conn->SessionID, CS_FORCE_CLOSE);
+		    ct_con_drop(conn->SessionID);
+		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
 		    }
 	        if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
@@ -5007,7 +5021,15 @@ sybdInitialize()
 	maxconn = SYBD_MAX_CONNECTIONS;
 	if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
 	    {
-	    mssError(1, "SYBD", "Warning: could not increase connection limit to %d", maxconn);
+	    maxconn = 256;
+	    if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
+		{
+		mssError(1, "SYBD", "Warning: could not increase connection limit to %d", SYBD_MAX_CONNECTIONS);
+		}
+	    else
+		{
+		mssError(1, "SYBD", "Warning: could only increase connection limit to %d instead of %d", maxconn, SYBD_MAX_CONNECTIONS);
+		}
 	    }
 
 	nmRegister(sizeof(SybdTableInf),"SybdTableInf");
