@@ -123,7 +123,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT COUNT (*) FROM UserAuth"
                     "  WHERE CXSS_UserID=?;",
-                    -1, &dbcontext->get_user_pwd_count_stmt, NULL);
+                    -1, &dbcontext->get_user_resc_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserData(CXSS_UserID, UserSalt, UserPublicKey"
@@ -186,7 +186,7 @@ static void
 cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
 {
     sqlite3_finalize(dbcontext->get_user_count_stmt);
-    sqlite3_finalize(dbcontext->get_user_pwd_count_stmt);
+    sqlite3_finalize(dbcontext->get_user_resc_count_stmt);
     sqlite3_finalize(dbcontext->insert_user_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
     sqlite3_finalize(dbcontext->insert_user_auth_stmt);
@@ -697,6 +697,7 @@ cxss_strdup(const char *str)
 int
 cxss_get_user_count(DB_Context_t dbcontext)
 {
+    /* Execute query */
     if (sqlite3_step(dbcontext->get_user_count_stmt) != SQLITE_ROW) {
         fprintf(stderr, "Could not get count!\n");
         return -1;
@@ -705,4 +706,35 @@ cxss_get_user_count(DB_Context_t dbcontext)
     return sqlite3_column_int(dbcontext->get_user_count_stmt, 0);
 }
 
+
+/** @brief Get resource count per user
+ *
+ *  Returns the number of resources registered
+ *  for a given Centrallix user.
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  Centrallix user identity
+ *  @return             Resource count
+ */
+int
+cxss_get_user_resc_count(DB_Context_t dbcontext, const char *cxss_userid)
+{
+    sqlite3_reset(dbcontext->get_user_resc_count_stmt);
+
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->get_user_resc_count_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to bind stmt with value: %s\n",
+                        sqlite3_errmsg(dbcontext->db));
+        return -1;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->get_user_resc_count_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Could not get count!\n");
+        return -1;
+    }
+
+    return sqlite3_column_int(dbcontext->get_user_resc_count_stmt, 0);
+}
 
