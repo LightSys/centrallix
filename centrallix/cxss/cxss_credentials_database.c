@@ -214,6 +214,8 @@ cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid,
                  const char *publickey, size_t keylen, const char *salt,
                  const char *date_created, const char *date_last_updated)
 {
+    sqlite3_reset(dbcontext->insert_user_stmt);
+
     /* Bind data with sqlite3 stmts */
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
                           cxss_userid, -1, NULL) != SQLITE_OK)
@@ -691,4 +693,16 @@ cxss_strdup(const char *str)
     
     return strdup(str);
 }
+
+int
+cxss_get_user_count(DB_Context_t dbcontext)
+{
+    if (sqlite3_step(dbcontext->get_user_count_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Could not get count!\n");
+        return -1;
+    }
+    
+    return sqlite3_column_int(dbcontext->get_user_count_stmt, 0);
+}
+
 

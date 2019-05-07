@@ -67,6 +67,7 @@ void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 int cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
 void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start);
 void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
+size_t cxss_get_user_count(DB_Context_t dbcontext);
 
 /* Private Functions */
 static int cxss_setup_credentials_database(DB_Context_t dbcontext);
