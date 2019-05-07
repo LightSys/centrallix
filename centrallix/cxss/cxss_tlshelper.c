@@ -388,11 +388,14 @@ cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream)
     int rval;
     int interval;
 
-	/** Close up the streams. **/
+	/** Close up the streams.  The ext_conn is almost certainly an AF_UNIX
+	 ** socket, not an AF_INET socket, but netCloseTCP does a graceful
+	 ** shutdown which is appropriate for the socketpair.
+	 **/
 	if (ext_conn)
-	    fdClose(ext_conn, 0);
+	    netCloseTCP(ext_conn, 10000, 0);
 	if (reporting_stream)
-	    fdClose(reporting_stream, 0);
+	    netCloseTCP(reporting_stream, 10000, 0);
 
 	/** Shutdown and/or wait for the TLS helper process **/
 	interval = 1;

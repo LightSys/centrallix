@@ -159,7 +159,7 @@ function eb_settext(l,txt)
     var vistxt = txt;
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
-    l.ContentLayer.value = vistxt;
+    l.ContentLayer.value = htutil_obscure(vistxt);
     }
 
 

@@ -46,8 +46,14 @@ function tx_action_insert_text(ap)
 	    {
 	    var k = txt.charCodeAt(i);
 	    if (k >= 32 && k < 127)
-		this.keyhandler(this, null, k);
+		this.keyhandler(this, txt.substr(i,1), k);
 	    }
+	var cp = this.txa.selectionStart;
+	var curtxt = this.txa.value;
+	this.txa.value = curtxt.substring(0, cp) + txt + curtxt.substring(cp, curtxt.length);
+	this.txa.selectionStart = this.txa.selectionEnd = cp + txt.length;
+	if (this.has_focus)
+	    pg_addsched_fn(this.txa, function() { this.focus() }, {}, 200);
 	}
     else
 	{

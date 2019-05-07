@@ -125,6 +125,7 @@ int cxssInitialize();
 
 /*** Utility functions ***/
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
+int cxssGenerateHexKey(char* hexkey, size_t len);
 int cxssShred(unsigned char* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 

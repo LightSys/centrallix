@@ -29,6 +29,10 @@
 #include "qprintf.h"
 #include "util.h"
 
+#if HAVE_SIOCOUTQ
+#include <linux/sockios.h>
+#endif
+
 #ifdef USING_VALGRIND
 #include "valgrind/valgrind.h"
 #endif
@@ -1671,12 +1675,17 @@ thMultiWait(int event_cnt, pEventReq event_req[])
     register int i;
     int code = 0;
     int sched_called = 0;
+    int will_block;
+    int err;
 
     	/** Check the thing first to see if we need to block **/
+	will_block = 1;
+	err = 0;
 	for(i=0;i<event_cnt;i++)
 	    {
 	    if (event_req[i]->EventType == EV_T_MT_TIMER)
 	        {
+	        event_req[i]->Status = EV_S_INPROC;
 		code = (event_req[i]->ReqLen == 0)?1:0;
 		}
 	    else
@@ -1684,20 +1693,30 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 	        event_req[i]->Status = EV_S_INPROC;
 	        code = PMTOBJECT(event_req[i]->Object)->EventCkFn(event_req[i]->EventType,event_req[i]->Object);
 		}
-	    if (code == -1) event_req[i]->Status = EV_S_ERROR;
-	    if (code == 1) event_req[i]->Status = EV_S_COMPLETE;
-	    if (code == -1 || code == 1) break;
+	    if (code == -1)
+		{
+		event_req[i]->Status = EV_S_ERROR;
+		err = 1;
+		}
+	    if (code == 1)
+		{
+		event_req[i]->Status = EV_S_COMPLETE;
+		will_block = 0;
+		}
+	    //if (code == -1 || code == 1) break;
 	    }
 
 	/** Loop until we get proper yield/event **/
 	while(1)
 	    {
 	    /** Invalid event wait? **/
-	    if (code == -1) return -1;
+	    if (err) return -1;
 
 	    /** If MTASK is set to always-yield then do that now. **/
-	    if (code == 1 && !(MTASK.MTFlags & MT_F_NOYIELD) && !sched_called)
+	    if (!will_block && !(MTASK.MTFlags & MT_F_NOYIELD) && !sched_called)
 	        {
+		will_block = 1;
+		err = 0;
 	        if (mtSched() != 0)
 	            {
 		    sched_called = 1;
@@ -1706,22 +1725,37 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 			if (event_req[i]->ObjType == OBJ_T_THREAD)
 			    {
 			    code = 1;
+			    will_block = 0;
 			    break;
 			    }
 			if (event_req[i]->ObjType == OBJ_T_SEM) break;
 	    		if (event_req[i]->EventType == EV_T_MT_TIMER) break;
 			code = PMTOBJECT(event_req[i]->Object)->EventCkFn(event_req[i]->EventType,event_req[i]->Object);
-			if (code == 1) event_req[i]->Status = EV_S_COMPLETE;
-			else if (code == -1) event_req[i]->Status = EV_S_ERROR;
-			else event_req[i]->Status = EV_S_INPROC;
-	    		if (code == -1 || code == 1) break;
+			if (code == 1)
+			    {
+			    event_req[i]->Status = EV_S_COMPLETE;
+			    will_block = 0;
+			    }
+			else if (code == -1)
+			    {
+			    event_req[i]->Status = EV_S_ERROR;
+			    err = 1;
+			    }
+			else
+			    {
+			    event_req[i]->Status = EV_S_INPROC;
+			    }
+	    		//if (code == -1 || code == 1) break;
 	    		}
 		    }
 		}
-	    if (code == 1) break;
+
+	    /** Not going to block **/
+	    if (!will_block && !err)
+		break;
 
 	    /** If this is going to block, set up an event structure **/
-	    if (code == 0)
+	    if (will_block && !err)
 	        {
 		for(i=0;i<event_cnt;i++)
 		    {
@@ -1750,8 +1784,10 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 		for(i=0;i<event_cnt;i++) 
 		    {
 		    evRemoveIdx(event_req[i]->TableIdx);
-		    if (event_req[i]->Status == EV_S_ERROR) code = -1;
-		    if (event_req[i]->Status == EV_S_COMPLETE) code = 1;
+		    if (event_req[i]->Status == EV_S_ERROR)
+			err = 1;
+		    if (event_req[i]->Status == EV_S_COMPLETE) 
+			will_block = 0;
 		    }
 		sched_called = 1;
 		}
@@ -3574,13 +3610,28 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 #endif
 
     	/** Close the file descriptor normally first. **/
-	t = mtTicks();
+	t = mtRealTicks();
 	fdClose(net_filedesc, (flags & (FD_U_IMMEDIATE)) | FD_XU_NODST);
 
 	/** Now we set linger on the fd. **/
-	l.l_onoff = 1;
-	l.l_linger = (linger_msec) / 1000;
-	setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+#if HAVE_SIOCOUTQ && defined(SIOCOUTQ)
+	t2 = t;
+	while((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec)
+	    {
+	    if (ioctl(net_filedesc->FD, SIOCOUTQ, &arg) < 0 || arg == 0)
+		break;
+	    thSleep(100);
+	    t2 = mtRealTicks();
+	    }
+	linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
+#endif
+
+	if (linger_msec > 0)
+	    {
+	    l.l_onoff = 1;
+	    l.l_linger = (linger_msec) / 1000;
+	    setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+	    }
 
 	/** Shutdown read and write sides of the connection. **/
 	shutdown(net_filedesc->FD, 2);
@@ -3589,7 +3640,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	rval = -1;
 	while(linger_msec > 0)
 	    {
-	    t2 = mtTicks();
+	    t2 = mtRealTicks();
 	    linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
 	    t = t2;
 	    rval=close(net_filedesc->FD);

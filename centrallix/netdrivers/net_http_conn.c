@@ -79,7 +79,7 @@ nht_i_FreeConn(pNhtConn conn)
 	nht_i_Log(conn);
 
 	/** Close the connection **/
-	if (conn->SSLpid)
+	if (conn->SSLpid > 0 && conn->UsingTLS)
 	    cxssFinishTLS(conn->SSLpid, conn->ConnFD, conn->ReportingFD);
 	else
 	    netCloseTCP(conn->ConnFD, 1000, 0);
@@ -164,6 +164,7 @@ nht_i_ConnHandler(void* conn_v)
     pNhtApp app;
     pNhtAppGroup group;
     int context_started = 0;
+    pApplication tmp_app = NULL;
     unsigned char* keydata;
     char* nonce;
     unsigned char noncelen;
@@ -409,6 +410,14 @@ nht_i_ConnHandler(void* conn_v)
 		{
 		appResume(app->Application);
 		}
+	    else
+		{
+		tmp_app = appCreate(NULL);
+		}
+	    }
+	else
+	    {
+	    tmp_app = appCreate(NULL);
 	    }
 
 	/** Bump last activity dates. **/
@@ -590,6 +599,7 @@ nht_i_ConnHandler(void* conn_v)
     out:
 	if (url_inf && !conn) stFreeInf_ne(url_inf);
 	if (conn) nht_i_FreeConn(conn);
+	if (tmp_app) appDestroy(tmp_app);
 	if (context_started) cxssPopContext();
 	thExit();
     }
@@ -754,6 +764,7 @@ nht_i_TLSHandler(void* v)
 		{
 		nht_i_FreeConn(conn);
 		mssError(1,"NHT","Could not start TLS on the connection!");
+		continue;
 		}
 
 	    /** Start the request handler thread **/

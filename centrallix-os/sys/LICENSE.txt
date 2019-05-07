@@ -20,3 +20,7 @@ License for /sys/js/crypto-js:
 
 (c) 2009-2011 by Jeff Mott, using a 3-Clause BSD license, compatible with
 GPL.  See LICENSE in the crypto-js directory for details.
+
+License for /sys/js/chartjs:
+
+(c) 2015 by Joe Haddad, using the MIT License.  See LICENSE in the chartjs directory for details.

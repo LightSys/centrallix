@@ -519,6 +519,7 @@ cxHtInit()
 	httabInitialize();			/* tab control / tab page module */
 	htpnInitialize();			/* pane module */
 	httblInitialize();			/* tabular data module */
+	htchtInitialize();			/* chart module */
 	htwinInitialize();			/* draggable window module */
 	htcbInitialize();			/* checkbox module */
 	htrbInitialize();			/* radiobutton module */

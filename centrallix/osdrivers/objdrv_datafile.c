@@ -3835,7 +3835,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     withinQuote = 0;
     tdata->Cols[colsSoFar] = tdata->ColBuf;
     colsSoFar++;
-    for (i = 0; i < len && text[i] != '\n'; i++)
+    for (i = 0; i < len && text[i] != '\n' && text[i] != '\r'; i++)
 	{
 	if (!withinQuote)
 	    {
@@ -3843,14 +3843,14 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 		{
 		withinQuote = 1;
 		}
-	    else if (text[i] != ',' && text[i] != '\n')
+	    else if (text[i] != ',' && text[i] != '\n' && text[i] != '\r')
 		{
 		tdata->ColBuf[tdata->ColBufLen] = text[i];
 		tdata->ColBufLen++;
 		}
-	    else if (text[i] == ',')
+	    else /*if (text[i] == ',')*/
 		{
-		/** NULL terminate **/
+		/** NULL terminate - end of column name in header row **/
 		tdata->ColBuf[tdata->ColBufLen] = '\0';
 		tdata->ColBufLen++;
 

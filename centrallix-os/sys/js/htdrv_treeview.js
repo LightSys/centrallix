@@ -470,7 +470,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	    {
 	    link_txt = cx_info_extract_str(links[i].text);
 	    link_href = links[i].href;
-	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
+	    //one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
+	    one_link = links[i].target;
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
 	    one_layer.objn = one_link;
 	    im = l.root.imgnames.ico_file;

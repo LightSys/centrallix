@@ -983,6 +983,7 @@ function osrc_refresh_object_handler(aparam)
     var row = this.replica[this.CurrentRecord];
     var keys = {};
     var keycnt = 0;
+    var namecol = null;
     for(var c in row)
 	{
 	if (c == 'oid') continue;
@@ -993,8 +994,16 @@ function osrc_refresh_object_handler(aparam)
 	    keys[col.oid] = col;
 	    keycnt ++;
 	    }
+	if (col.oid == 'name')
+	    {
+	    namecol = col;
+	    }
 	}
-    if (!keycnt) return false;
+    if (!keycnt)
+	{
+	keys['name'] = namecol;
+	keycnt ++;
+	}
 
     // Start with the lastquery SQL.
     var sql = this.lastquery;
@@ -1632,6 +1641,11 @@ function osrc_end_query()
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
 	{
 	this.replica[this.LastRecord].__osrc_is_last = true;
+	this.FinalRecord = this.LastRecord;
+	}
+    else if (this.LastRecord < this.FirstRecord)
+	{
+	// No data returned at all
 	this.FinalRecord = this.LastRecord;
 	}
     this.query_ended = true;
@@ -2601,6 +2615,15 @@ function osrc_action_double_sync_cb()
     
     this.doublesync=false;
     this.childosrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly});
+    }
+
+
+// for each row in the replica, call an action on another widget
+function osrc_action_for_each(aparam)
+    {
+    // Find target of the foreach operation
+    var foreach_target = wgtrGetNode(this, aparam.ForEachTarget);
+    var foreach_action = aparam.ForEachAction;
     }
 
 
@@ -3768,6 +3791,64 @@ function osrc_set_master_pending(master, p)
     }
 
 
+function osrc_api_get_object(id)
+    {
+    if (id == null || id == undefined)
+	id = this.osrcCurrentObjectID;
+    if (!id || !this.replica[id])
+	return null;
+    var obj = this.replica[id];
+    var jobj = {__cx_handle:obj.oid, id:id};
+    for(var i=0; i<obj.length; i++)
+	{
+	var attr = obj[i];
+	jobj[attr.oid] =
+	    {
+	    a: attr.oid,
+	    t: attr.type,
+	    h: attr.hints,
+	    v: attr.value,
+	    s: attr.system
+	    };
+	}
+    return jobj;
+    }
+
+
+function osrc_api_get_object_attribute(id, attrname)
+    {
+    if (id == null || id == undefined)
+	id = this.osrcCurrentObjectID;
+    if (!id || !this.replica[id])
+	return null;
+    var obj = this.replica[id];
+    for(var i=0; i<obj.length; i++)
+	{
+	if (obj[i].oid == attrname)
+	    {
+	    var attr = obj[i];
+	    var jobj = 
+		{
+		a: attr.oid,
+		t: attr.type,
+		h: attr.hints,
+		v: attr.value,
+		s: attr.system
+		};
+	    return jobj;
+	    }
+	}
+    return null;
+    }
+
+
+function osrc_api_get_object_attribute_value(id, attrname)
+    {
+    var attr = this.osrcGetObjectAttr(id, attrname);
+    return attr?attr.v:null;
+    }
+
+
 function osrc_destroy()
     {
     pg_set(this, "src", "about:blank");
@@ -3892,6 +3973,27 @@ function osrc_init(param)
     loader.QueryHandler = osrc_query_handler;
     loader.RefreshObjectHandler = osrc_refresh_object_handler;
     loader.FindObjectHandler = osrc_find_object_handler;
+
+    // Replica access API
+    loader.osrcGetObject = osrc_api_get_object;
+    loader.osrcGetObjectAttr = osrc_api_get_object_attribute;
+    loader.osrcGetObjectAttrValue = osrc_api_get_object_attribute_value;
+    Object.defineProperty(loader, 'osrcFirstObjectID',
+	{
+	get: function() { return this.FirstRecord; }
+	});
+    Object.defineProperty(loader, 'osrcLastObjectID',
+	{
+	get: function() { return this.LastRecord; }
+	});
+    Object.defineProperty(loader, 'osrcCurrentObjectID',
+	{
+	get: function() { return this.CurrentRecord; }
+	});
+    Object.defineProperty(loader, 'osrcFinalObjectID',
+	{
+	get: function() { return this.FinalRecord; }
+	});
    
     // Zero out the replica
     loader.ClearReplica();
@@ -3925,6 +4027,7 @@ function osrc_init(param)
     ia.Add("CancelCreateObject", osrc_action_cancelcreate);
     ia.Add("SeqBackward", osrc_seq_backward);
     ia.Add("SeqForward", osrc_seq_forward);
+    ia.Add("ForEach", osrc_action_for_each);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);

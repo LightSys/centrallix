@@ -1,0 +1,85 @@
+$Version=2$
+///////////////////////////////////////////////////////////////////////////////
+// Sample report, which lists all the sample files in a report table.
+///////////////////////////////////////////////////////////////////////////////
+
+Samples "system/report"
+    {
+    // Some report parameters
+    title = "List of Sample Files in the /sample Directory";
+    annotation = "List of Sample Files in the /sample Directory";
+    document_format = "application/pdf";
+    resolution = 300;
+
+    // The first thing we'll do here is declare a query.  This gives a SQL
+    // statement which is used to access the data, as well as some aggregate
+    // counters which provide summary information while the query runs.
+    samples_query "report/query"
+        {
+	sql = "select :name, :size, :last_modification from /samples order by :name";
+	sizetotal "report/aggregate" { compute = "sum(:size)"; }
+	filecount "report/aggregate" { compute = "count(:name)"; }
+	}
+
+    cxhdr "report/svg"
+	{
+	height=8; width=80;
+	source = "/sys/images/centrallix_374x66.svg";
+	}
+
+    cxrptname "report/area"
+	{
+	height=7; width=80;
+	align=center;
+	fontsize=24;
+	font = times;
+	rpttext "report/data" { value="\nReport Writer PDF Document\nList of Sample Files in /samples"; }
+	}
+
+    // Now for the report body.  We'll just use a simple report table.
+    samples_table "report/table"
+        {
+	width = 79; height = 0;
+	outerborder = 0.1;
+	innerborder = 0.1;
+	allowbreak = yes;
+	fixedsize = no;
+	dateformat = "MMMM ddd, yyyy";
+	widths = 42,24,10;
+	columns = 3;
+	shadow = 0.4;
+	source = samples_query;
+	font = helvetica;
+
+	hdrrow "report/table-row"
+	    {
+	    margintop = 0.1;
+	    header = yes;
+	    bottomborder = 0.1;
+	    h_name "report/table-cell" { marginleft = 0.1; value = "Name"; align=center;}
+	    h_mod "report/table-cell" { value = "Last Modified"; align=center; }
+	    h_size "report/table-cell" { value = "Size"; align=center; }
+	    }
+
+	datarows "report/table-row"
+	    {
+	    margintop = 0.1;
+	    d_name "report/table-cell" { marginleft = 0.1; value = runserver(:samples_query:name); }
+	    d_mod "report/table-cell" { value = runserver(:samples_query:last_modification); }
+	    d_size "report/table-cell" { value = runserver(:samples_query:size); align=right; }
+	    }
+
+	summaryrow "report/table-row"
+	    {
+	    margintop = 0.1;
+	    summary = yes;
+	    topborder = 0.1;
+	    summaryarea "report/area"
+		{
+		marginleft = 0.1;
+		report_total2 "report/data" { value=runserver("TOTAL BYTES = " + ralign(convert(string,:samples_query:sizetotal),9) + "\n"); }
+		report_total4 "report/data" { value=runserver("TOTAL FILES = " + ralign(convert(string,:samples_query:filecount),9)); }
+		}
+	    }
+	}
+    }

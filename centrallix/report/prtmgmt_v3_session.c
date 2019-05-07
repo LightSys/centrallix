@@ -285,7 +285,7 @@ prtSetResolution(pPrtSession s, int dpi)
  *** of these (perhaps somewhat temporary) images.
  ***/
 int
-prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)())
+prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)())
     {
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);

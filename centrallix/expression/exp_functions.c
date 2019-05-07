@@ -1642,7 +1642,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	    break;
 
 	case DATA_T_MONEY:
-	    mt = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+	    mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -1916,7 +1916,7 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	    break;
 
 	case DATA_T_MONEY:
-	    mt = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+	    mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 	    if (dec < 4)
 		{
 		mv = 1;
