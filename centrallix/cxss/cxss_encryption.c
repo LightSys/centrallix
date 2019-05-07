@@ -29,21 +29,13 @@ cxss_initialize_csprng(void)
 }        
 
 int 
-cxss_encrypt_aes256(unsigned char *plaintext, int plaintext_len, 
-                    unsigned char *key, unsigned char *ciphertext)
+cxss_encrypt_aes256(const char *plaintext, int plaintext_len, 
+                    const char *key, const char *init_vector,
+                    char *ciphertext)
 {
     EVP_CIPHER_CTX *ctx;
-    char init_vector[16];
     int len, ciphertext_len;
     
-    assert(CSPRNG_Initialized == 1);
-
-    /* Generate random initialization vector */
-    if (RAND_bytes(init_vector, 16) != 1) {
-        fprintf(stderr, "Failed to generate initialization vector!\n");
-        return -1;
-    }
-
     /* Create new openssl cipher context */
     if (!(ctx = EVP_CIPHER_CTX_new())) {
         fprintf(stderr, "Failed to create new openssl cipher context\n");
@@ -89,6 +81,29 @@ cxss_generate_64bit_salt(char *salt)
 
     if (RAND_bytes(salt, 8) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/** @brief Generate 128-bit random initialization vector
+ *
+ *  Generate a 128-bit random initialization vector,
+ *  suitable for AES, using openssl's cryptographically-secure
+ *  random number generator.
+ *
+ *  @param      Pointer to 128-bit buffer to store the iv
+ *  @return     Status code
+ */
+int
+cxss_generate_128bit_iv(char *init_vector)
+{
+    assert(CSPRNG_Initialized == 1);
+
+    /* Generate random initialization vector */
+    if (RAND_bytes(init_vector, 16) != 1) {
+        fprintf(stderr, "Failed to generate initialization vector!\n");
         return -1;
     }
 
