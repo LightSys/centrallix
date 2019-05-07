@@ -29,14 +29,6 @@ cxss_initialize_csprng(void)
 }        
 
 int 
-cxss_decrypt_aes256(unsigned char *ciphertext, int ciphertext_len, 
-                    unsigned char *key, unsigned char *plaintext)
-{
-}
-
-
-
-int 
 cxss_encrypt_aes256(unsigned char *plaintext, int plaintext_len, 
                     unsigned char *key, unsigned char *ciphertext)
 {
@@ -81,21 +73,21 @@ cxss_encrypt_aes256(unsigned char *plaintext, int plaintext_len,
     return ciphertext_len;
 }
 
-/** @brief Generate 32-bit random salt
+/** @brief Generate 64-bit random salt
  *
- *  Generate a 32-bit random salt using
+ *  Generate a 64-bit random salt using
  *  openssl's cryptographically-secure 
  *  random number generator.
  *
- *  @param      Pointer to 32-bit buffer to store the salt
+ *  @param      Pointer to 64-bit buffer to store the salt
  *  @return     Status code
  */
 int
-cxss_generate_32bit_salt(char *salt)
+cxss_generate_64bit_salt(char *salt)
 {
     assert(CSPRNG_Initialized == 1);
 
-    if (RAND_bytes(salt, 4) < 0) {
+    if (RAND_bytes(salt, 8) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
         return -1;
     }
@@ -123,7 +115,7 @@ cxss_generate_256bit_key(const char *password, const char *salt, char *key)
     #define PBKDF2_ITER_NO      100
     
     if (PKCS5_PBKDF2_HMAC(password, strlen(password),
-                          salt, 4, PBKDF2_ITER_NO, 
+                          salt, 8, PBKDF2_ITER_NO, 
                           EVP_sha256(), 32, key) != 1) {
         fprintf(stderr, "Failed to generate 256-bit key\n");
         return -1;
