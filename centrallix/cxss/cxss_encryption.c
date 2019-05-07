@@ -65,6 +65,42 @@ cxss_encrypt_aes256(const char *plaintext, int plaintext_len,
     return ciphertext_len;
 }
 
+int
+cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
+                    const char *key, const char *init_vector,
+                    char *plaintext)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len, plaintext_len;
+    
+    /* Create new openssl cipher context */
+    if (!(ctx = EVP_CIPHER_CTX_new())) {
+        fprintf(stderr, "Failed to create new openssl cipher context\n");
+        return -1;
+    }
+
+    /* Initiate decryption */
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1)
+        return -1;
+
+    /* Decrypt data */
+    if (EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) != 1)
+        return -1;
+    plaintext_len = len;
+
+    /* Finalize decryption */
+    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
+        fprintf(stderr, "Error while finalizing decryption!\n");
+        return -1;
+    }
+    plaintext_len += len;   
+        
+    /* Cleanup */
+    EVP_CIPHER_CTX_free(ctx);
+    
+    return plaintext_len;
+}            
+
 /** @brief Generate 64-bit random salt
  *
  *  Generate a 64-bit random salt using
