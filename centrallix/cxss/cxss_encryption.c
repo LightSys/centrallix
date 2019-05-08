@@ -175,3 +175,17 @@ cxss_generate_256bit_key(const char *password, const char *salt, char *key)
     return 0;
 }
 
+/** @brief Compute length of AES ciphertext
+ *
+ *  This function computes the length of the output
+ *  ciphertext of an AES (128-bit block) cipher.
+ *
+ *  @param plaintext_len        Length of plaintext
+ *  @return                     Ciphertext length
+ */
+size_t
+cxss_aes256_ciphertext_length(size_t plaintext_len)
+{
+    return (plaintext_len + (16 - plaintext_len%16)); 
+}
+
