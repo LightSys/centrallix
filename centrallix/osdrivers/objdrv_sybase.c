@@ -417,7 +417,7 @@ sybd_internal_GetConn(pSybdNode db_node)
     int i,found_one,rval;
     pSybdConn conn;
     CS_COMMAND* cmd;
-    CS_INT restype;
+    CS_INT restype = 0;
     char sbuf[64];
     char* user;
     char* pwd;
@@ -545,14 +545,14 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    }
 		snprintf(sbuf,sizeof(sbuf),"sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
 		cmd = sybd_internal_Exec(conn, sbuf);
-		while((rval=ct_results(cmd, (CS_INT*)&i)))
+		while((rval=ct_results(cmd, (CS_INT*)&restype)))
 		    {
 		    if (rval == CS_FAIL)
 			{
 			mssError(0,"SYBD","Warning: could not change default password for user '%s'", user);
 			break;
 			}
-		    if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
+		    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
 		    }
 		sybd_internal_Close(cmd);
 		}
@@ -561,14 +561,14 @@ sybd_internal_GetConn(pSybdNode db_node)
 #if 00 /* locking */
 	/** Set lock wait to 1 second so we can retry on our side and avoid deadlocks **/
 	cmd = sybd_internal_Exec(conn, "set lock wait 1");
-	while((rval=ct_results(cmd, (CS_INT*)&i)))
+	while((rval=ct_results(cmd, (CS_INT*)&restype)))
 	    {
 	    if (rval == CS_FAIL)
 		{
 		mssError(1,"SYBD","Warning: could not set lock wait timer; deadlock protection will be disabled", db_node->Database);
 		break;
 		}
-	    if (rval == CS_END_RESULTS || i == CS_CMD_DONE)
+	    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE)
 		break;
 	    }
 	sybd_internal_Close(cmd);
@@ -587,7 +587,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		}
 	    snprintf(sbuf,64,"use %s",db_node->Database);
 	    cmd = sybd_internal_Exec(conn, sbuf);
-	    while((rval=ct_results(cmd, (CS_INT*)&i)))
+	    while((rval=ct_results(cmd, (CS_INT*)&restype)))
 	        {
 	        if (rval == CS_FAIL)
 	            {
@@ -598,14 +598,14 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
 		    }
-	        if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
+	        if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
 	        }
 	    sybd_internal_Close(cmd);
 	    }
 
 	/** Get the spid **/
 	conn->SPID = 0;
-	if ((cmd = sybd_internal_Exec(conn, "select @@spid")) != NULL)
+	if ((cmd = sybd_internal_Exec(conn, "select convert(integer,@@spid)")) != NULL)
 	    {
 	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
@@ -1043,7 +1043,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
     int* TypeNum;
     pSybdConn conn;
     CS_COMMAND* cmd;
-    CS_INT restype;
+    CS_INT restype = 0;
     char* ptr,* TypeName;
     pSnNode snnode;
     pObjPresentationHints hints;
@@ -1254,7 +1254,8 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
     char sbuf[480];
     char* ptr;
     char* tmpptr;
-    int l,i,col,find_col,restype;
+    int l,i,col,find_col;
+    CS_INT restype = 0;
     int n, t;
     CS_COMMAND* cmd;
 
@@ -2432,7 +2433,8 @@ sybd_internal_LookupRow(pSybdConn conn, pSybdData inf)
     int cnt;
     char sbuf[256];
     CS_COMMAND* cmd;
-    int ncols, i, n, restype;
+    int ncols, i, n;
+    CS_INT restype = 0;
     CS_USHORT msgid;
 
 	/** Find a WHERE clause that will retrieve this row, given the row name **/
@@ -2723,7 +2725,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
     int first_clause = 1;
     int t;
     CS_COMMAND* cmd = NULL;
-    int restype;
+    CS_INT restype = 0;
     int intval;
     int len;
 
@@ -2892,7 +2894,8 @@ sybd_internal_InsertRow(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
     {
     char* kptr;
     char* kendptr;
-    int i,j,len,ctype,restype;
+    int i,j,len,ctype;
+    CS_INT restype = 0;
     pObjTrxTree attr_oxt, find_oxt;
     CS_COMMAND* cmd;
     pXString insbuf;
@@ -3054,6 +3057,7 @@ sybdCommit(void* inf_v, pObjTrxTree* oxt)
     pSybdData inf = SYBD(inf_v);
     struct stat fileinfo;
     int i;
+    CS_INT restype = 0;
     char sbuf[160];
 
 	/** Write session is a bit complex.  IF needed, complete the write. **/
@@ -3083,7 +3087,7 @@ sybdCommit(void* inf_v, pObjTrxTree* oxt)
 		    fdClose(inf->TmpFD,0);
 		    unlink(inf->TmpFile);
 		    }
-		while(ct_results(inf->RWCmd, (CS_INT*)&i) == CS_SUCCEED);
+		while(ct_results(inf->RWCmd, (CS_INT*)&restype) == CS_SUCCEED);
 		sybd_internal_Close(inf->RWCmd);
 		}
 	    inf->RWCmd = NULL;
@@ -3201,6 +3205,7 @@ sybdDeleteObj(void* inf_v, pObjTrxTree* oxt)
     pSybdData inf = SYBD(inf_v);
     CS_COMMAND* cmd;
     int rval;
+    CS_INT restype = 0;
     char* ptr;
 
 	/** Grab a database connection **/
@@ -3230,7 +3235,7 @@ sybdDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    nmFree(inf,sizeof(SybdData));
 	    return -1;
 	    }
-	while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+	while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 	sybd_internal_Close(cmd);
 	sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
 
@@ -3296,7 +3301,8 @@ sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
     int i;
     char buffer[1];
     char sbuf[160];
-    int rcnt,rval;
+    int rcnt;
+    CS_INT restype = 0;
     char* ptr;
 
 	/** Determine column to use. **/
@@ -3328,7 +3334,7 @@ sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
 		mssError(0,"SYBD","Could not run update to initialize textptr for content BLOB");
 		return NULL;
 		}
-	    while (ct_results(inf->RWCmd,(CS_INT*)&rval)==CS_SUCCEED);
+	    while (ct_results(inf->RWCmd,(CS_INT*)&restype)==CS_SUCCEED);
 	    sybd_internal_Close(inf->RWCmd);
 	    }
 
@@ -3347,8 +3353,8 @@ sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
 	    }
 
 	/** Wait for the actual result row to come back. **/
-	while (ct_results(inf->RWCmd,(CS_INT*)&rval)==CS_SUCCEED && rval!=CS_ROW_RESULT);
-	if (rval != CS_ROW_RESULT)
+	while (ct_results(inf->RWCmd,(CS_INT*)&restype)==CS_SUCCEED && restype!=CS_ROW_RESULT);
+	if (restype != CS_ROW_RESULT)
 	    {
 	    sybd_internal_Close(inf->RWCmd);
 	    mssError(1,"SYBD","SQL query to retrieve content BLOB failed");
@@ -3617,7 +3623,8 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     pSybdQuery qy;
-    int i,restype;
+    int i;
+    CS_INT restype = 0;
     XString sql;
     pExpression exp;
 
@@ -3792,7 +3799,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     int i,cnt;
     pSybdTableInf tdata = qy->ObjInf->TData;
     pSybdConn conn2;
-    int restype;
+    CS_INT restype = 0;
 
     	/** Fetch the row. **/
 	if (qy->SessionID != NULL)
@@ -3972,7 +3979,8 @@ int
 sybdQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pSybdQuery qy = ((pSybdQuery)(qy_v));
-    int restype,rid;
+    CS_INT restype = 0;
+    int rid;
 
     	/** Release the command structure. **/
 	if (qy->Cmd) sybd_internal_Close(qy->Cmd);
@@ -4321,11 +4329,12 @@ int
 sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
-    int type,rval;
+    int type;
     CS_COMMAND* cmd;
     pSybdConn conn;
     char sbuf[320];
     char* ptr;
+    CS_INT restype = 0;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4382,7 +4391,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			cmd = sybd_internal_Exec(conn,sbuf);
 			if (cmd)
 			    {
-		    	    while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+		    	    while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 			    sybd_internal_Close(cmd);
 			    }
 		        if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node, conn);
@@ -4508,8 +4517,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			}
 
 		    /** Read the results **/
-		    rval = CS_FAIL;
-		    while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+		    while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 		    sybd_internal_Close(cmd);
 
 		    /** Re-read the row from the db since it has changed, and we
