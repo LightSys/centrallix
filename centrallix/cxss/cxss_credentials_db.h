@@ -30,6 +30,7 @@ typedef struct {
     char *PrivateKey;
     size_t KeyLength;
     char *Salt;
+    size_t SaltLength;
     char *AuthClass;
     int RemovalFlag;
     char *DateCreated;
@@ -40,6 +41,7 @@ typedef struct {
     char *CXSS_UserID;
     char *ResourceID;
     char *ResourceSalt;
+    size_t SaltLength;
     char *ResourceUsername;
     size_t UsernameLength;
     char *ResourcePwd;
@@ -57,8 +59,8 @@ typedef struct _CXSS_LLNode {
 DB_Context_t cxss_init_credentials_database(const char *dbpath);
 int cxss_close_credentials_database(DB_Context_t dbcontext);
 int cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid, const char *publickey, size_t keylen, const char *date_created, const char *date_last_updated);
-int cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid, const char *privatekey, size_t keylen, const char *salt, const char *auth_class, int removal_flag, const char *date_created, const char *date_last_updated);
-int cxss_insert_user_resc(DB_Context_t dbcontext, const char *cxss_userid, const char *resourceid, const char *resource_salt, const char *resource_username, size_t encr_username_len, const char *resource_pwd, size_t encr_password_len, const char *date_created, const char *date_last_updated);
+int cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid, const char *privatekey, size_t keylen, const char *salt, size_t salt_length, const char *auth_class, int removal_flag, const char *date_created, const char *date_last_updated);
+int cxss_insert_user_resc(DB_Context_t dbcontext, const char *cxss_userid, const char *resourceid, const char *resource_salt, size_t salt_length, const char *resource_username, size_t encr_username_len, const char *resource_pwd, size_t encr_password_len, const char *date_created, const char *date_last_updated);
 int cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
 void cxss_free_userdata(CXSS_UserData *UserData);
 int cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);

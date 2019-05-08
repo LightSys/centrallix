@@ -91,7 +91,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                  "PK_UserAuth INTEGER PRIMARY KEY,"
                  "CXSS_UserID TEXT,"
                  "AuthClass TEXT,"
-                 "UserSalt TEXT,"
+                 "UserSalt BLOB,"
                  "UserPrivateKey BLOB,"
                  "RemovalFlag INT,"
                  "DateCreated TEXT,"
@@ -101,8 +101,8 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserResc("
                  "ResourceID TEXT PRIMARY KEY,"
-                 "ResourceSalt TEXT,"
-                 "ResourceUsername TEXT,"
+                 "ResourceSalt BLOB,"
+                 "ResourceUsername BLOB,"
                  "ResourcePassword BLOB,"
                  "CXSS_UserID TEXT,"
                  "DateCreated TEXT,"
@@ -263,7 +263,8 @@ bind_error:
 int
 cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
                       const char *privatekey, size_t encr_keylen, 
-                      const char *salt, const char *auth_class, int remove_flag,
+                      const char *salt, size_t salt_len, 
+                      const char *auth_class, int remove_flag,
                       const char *date_created, const char *date_last_updated)
 {
     /* Bind data with sqlite3 stmts */    
@@ -277,8 +278,8 @@ cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
         goto bind_error;
     }
 
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 3,
-                          salt, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 3,
+                          salt, salt_len, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
@@ -330,8 +331,9 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_user_resc(DB_Context_t dbcontext, const char *cxss_userid,
-                      const char *resourceid, const char *resource_salt, 
+cxss_insert_user_resc(DB_Context_t dbcontext, 
+                      const char *cxss_userid, const char *resourceid, 
+                      const char *resource_salt, size_t salt_length, 
                       const char *resource_username, size_t encr_username_len,
                       const char *resource_pwd, size_t encr_password_len,
                       const char *date_created, const char *date_last_updated)
@@ -342,8 +344,8 @@ cxss_insert_user_resc(DB_Context_t dbcontext, const char *cxss_userid,
         goto bind_error;
     }
     
-    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 2,
-                          resource_salt, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 2,
+                          resource_salt, salt_length, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
@@ -465,7 +467,7 @@ cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
 {
     const char *privatekey, *salt, *auth_class;
     const char *date_created, *date_last_updated;
-    size_t keylength;
+    size_t keylength, salt_length;
 
     /* Bind data with sqlite3 stmt */
     if (sqlite3_bind_text(dbcontext->retrieve_user_auth_stmt, 1,
@@ -484,6 +486,7 @@ cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
     privatekey = sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 0);
     keylength = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 0);
     salt = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 1);
+    salt_length = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 1);
     auth_class = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 2);
     date_created = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 3);
     date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
@@ -493,6 +496,7 @@ cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
     UserAuth->PrivateKey = cxss_strdup(privatekey);
     UserAuth->KeyLength = keylength;
     UserAuth->Salt = cxss_strdup(salt);
+    UserAuth->SaltLength = salt_length;
     UserAuth->AuthClass = cxss_strdup(auth_class);
     UserAuth->RemovalFlag = 0;
     UserAuth->DateCreated = cxss_strdup(date_created);
@@ -539,7 +543,7 @@ cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid,
     CXSS_UserAuth_LLNode *head, *prev, *current;
     const char *privatekey, *salt, *auth_class;
     const char *date_created, *date_last_updated;
-    size_t keylength;
+    size_t keylength, salt_length;
     int removal_flag;
 
     /* Bind data with sqlite3 stmt */
@@ -563,6 +567,7 @@ cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid,
         privatekey = sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 0);
         keylength = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 0);
         salt = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 1);
+        salt_length = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 1);
         auth_class = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 2);
         removal_flag = sqlite3_column_int(dbcontext->retrieve_user_auths_stmt, 3); 
         date_created = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 4);
@@ -573,6 +578,7 @@ cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid,
         current->UserAuth.PrivateKey = cxss_strdup(privatekey);
         current->UserAuth.KeyLength = keylength;
         current->UserAuth.Salt = cxss_strdup(salt);
+        current->UserAuth.SaltLength = salt_length;
         current->UserAuth.AuthClass = cxss_strdup(auth_class);
         current->UserAuth.RemovalFlag = removal_flag;
         current->UserAuth.DateCreated = cxss_strdup(date_created);
