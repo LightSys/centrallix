@@ -206,12 +206,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
  *  Create new user entry in 'UserData' table
  *
  *  @param dbcontext            Database context handle
- *  @param cxss_userid          CXSS user identity
- *  @param publickey            User public key
- *  @param keylen               Length of public key
- *  @param salt                 User-specific salt
- *  @param date_created         Date first created
- *  @param date_last_updated    Date last updated
+ *  @param UserData             Pointer to CXSS_UserData struct
  *  @return                     Status code 
  */
 int
@@ -254,14 +249,7 @@ bind_error:
  *  Create user auth entry in 'UserAuth' table
  *
  *  @param dbcontext            Database context handle
- *  @param cxss_userid          CXSS user identity
- *  @param privatekey           User private key (encrypted)
- *  @param encr_keylen          Length of encrypted private key
- *  @param salt                 User-specific salt
- *  @param auth_class           Authentication class ("password", "oauth", ...)
- *  @param remove_flag          Removal flag
- *  @param date_created         Date first created
- *  @param date_last_updated    Date last updated
+ *  @param UserAuth             Pointer to CXSS_UserAuth struct
  *  @return                     Status code 
  */
 int
@@ -326,20 +314,14 @@ bind_error:
  *  Create resource entry in 'UserResc' table
  *
  *  @param dbcontext            Database context handle
- *  @param cxss_userid          CXSS user identity
- *  @param resourceid           Resource identification (must be unique)
- *  @param resource_salt        Resource-specific salt
- *  @param resource_username    Resource username (encrypted)
- *  @param resource_pwd         Resource password (encrypted)
- *  @param date_created         Date first created
- *  @param date_last_updated    Date last updated
+ *  @param UserResc             Pointer to CXSS_UserResc struct
  *  @return                     Status code 
  */
 int
 cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
     /* Bind data with sqlite3 stmts */    
-    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 1,
+    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 1, 
         UserResc->ResourceID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
@@ -350,14 +332,12 @@ cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 3, 
-        UserResc->ResourceUsernameIV, UserResc->ResourceUsernameIVLength, 
-        NULL) != SQLITE_OK) {
+        UserResc->UsernameIV, UserResc->UsernameIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 4,
-        UserResc->ResourcePasswordIV, UserResc->ResourcePwdIVLength, 
-        NULL) != SQLITE_OK) {
+        UserResc->PasswordIV, UserResc->PasswordIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
@@ -368,12 +348,12 @@ cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 6,
-        UserResc->ResourcePwd, UserResc->PwdLength, 
+        UserResc->ResourcePassword, UserResc->PasswordLength, 
         NULL) != SQLITE_OK) {
         goto bind_error;
     }
     
-    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 7,
+    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 7, 
         UserResc->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
