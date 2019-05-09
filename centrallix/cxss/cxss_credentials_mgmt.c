@@ -30,10 +30,20 @@ cxss_close_credentials_mgmt(void)
 int
 cxss_adduser(const char *cxss_userid, const char *publickey, size_t keylength)
 {
-    char *timestamp = get_timestamp();
+    CXSS_UserData UserData;
+    char *current_timestamp;
+
+    /* Get current timestamp */
+    current_timestamp = get_timestamp();
     
-    return cxss_insert_user(dbcontext, cxss_userid, publickey, keylength, 
-                            timestamp, timestamp);
+    /* Build struct */
+    UserData.CXSS_UserID = (char*)cxss_userid;
+    UserData.PublicKey = (char*)publickey;
+    UserData.KeyLength = keylength;
+    UserData.DateCreated = current_timestamp;
+    UserData.DateLastUpdated = current_timestamp;
+
+    return cxss_insert_user(dbcontext, &UserData);
 }
 
 int
@@ -42,6 +52,7 @@ cxss_adduser_auth(const char *cxss_userid,
                   const char *salt, size_t salt_len,
                   const char *privatekey, size_t privatekey_len)
 {
+    CXSS_UserAuth UserAuth;
     char *current_timestamp;
     char iv[16]; /* 128-bit iv */
     char *encrypted_privatekey;
@@ -70,13 +81,24 @@ cxss_adduser_auth(const char *cxss_userid,
         return -1;
     }
 
-    /* Store entry in database */
+    /* Generate timestamp */
     current_timestamp = get_timestamp();
-    cxss_insert_user_auth(dbcontext, cxss_userid, 
-                          encrypted_privatekey, encr_privatekey_len, 
-                          salt, 8, iv, 16, "privatekey", 0, 
-                          current_timestamp, current_timestamp); 
 
+    /* Build struct */
+    UserAuth.CXSS_UserID = (char*)cxss_userid;
+    UserAuth.PrivateKey = (char*)encrypted_privatekey;
+    UserAuth.KeyLength = encr_privatekey_len;
+    UserAuth.Salt = (char*)salt;
+    UserAuth.SaltLength = 8;
+    UserAuth.UserIV = iv;
+    UserAuth.IVLength = 16;
+    UserAuth.AuthClass = "privatekey"; // Arbitrary, so far
+    UserAuth.RemovalFlag = 0;
+    UserAuth.DateCreated = current_timestamp;
+    UserAuth.DateLastUpdated = current_timestamp;
+
+    /* Store entry in database */
+    cxss_insert_user_auth(dbcontext, &UserAuth); 
 
     /* Scrub password from RAM */
     memset(encrypted_privatekey, 0, encr_privatekey_len);

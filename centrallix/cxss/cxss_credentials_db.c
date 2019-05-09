@@ -215,27 +215,25 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
  *  @return                     Status code 
  */
 int
-cxss_insert_user(DB_Context_t dbcontext, const char *cxss_userid, 
-                 const char *publickey, size_t keylen, const char *date_created,                 const char *date_last_updated)
+cxss_insert_user(DB_Context_t dbcontext, CXSS_UserData *UserData)
 {
     sqlite3_reset(dbcontext->insert_user_stmt);
 
     /* Bind data with sqlite3 stmts */
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
-                          cxss_userid, -1, NULL) != SQLITE_OK)
+        UserData->CXSS_UserID, -1, NULL) != SQLITE_OK)
         goto bind_error;
 
     if (sqlite3_bind_blob(dbcontext->insert_user_stmt, 2,
-                          publickey, keylen, NULL) != SQLITE_OK) {
+        UserData->PublicKey, UserData->KeyLength, NULL) != SQLITE_OK)
         goto bind_error;
-    }
 
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3,
-                          date_created, -1, NULL) != SQLITE_OK)
+        UserData->DateCreated, -1, NULL) != SQLITE_OK)
         goto bind_error;
 
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
-                          date_last_updated, -1, NULL) != SQLITE_OK)
+        UserData->DateLastUpdated, -1, NULL) != SQLITE_OK)
         goto bind_error;
     
     /* Execute query */
@@ -267,51 +265,46 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
-                      const char *privatekey, size_t encr_keylen, 
-                      const char *salt, size_t salt_len, 
-                      const char *initialization_vector, size_t iv_len,
-                      const char *auth_class, int remove_flag,
-                      const char *date_created, const char *date_last_updated)
+cxss_insert_user_auth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
 {
     /* Bind data with sqlite3 stmts */    
     if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 1,
-                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        UserAuth->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
     
     if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 2,
-                          privatekey, encr_keylen, NULL) != SQLITE_OK) {
+        UserAuth->PrivateKey, UserAuth->KeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 3,
-                          salt, salt_len, NULL) != SQLITE_OK) {
+        UserAuth->Salt, UserAuth->SaltLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 4,
-                          initialization_vector, iv_len, NULL) != SQLITE_OK) {
+        UserAuth->UserIV, UserAuth->IVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 5,
-                          auth_class, -1, NULL) != SQLITE_OK) {
+        UserAuth->AuthClass, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 6,
-                          remove_flag) != SQLITE_OK) {
+        UserAuth->RemovalFlag) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 7,
-                          date_created, -1, NULL) != SQLITE_OK) {
+        UserAuth->DateCreated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 8,
-                          date_last_updated, -1, NULL) != SQLITE_OK) {
+        UserAuth->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
@@ -343,60 +336,55 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_user_resc(DB_Context_t dbcontext, 
-                      const char *cxss_userid, const char *resourceid, 
-                      const char *resource_salt, size_t salt_length,
-                      const char *resc_username_iv, size_t uname_iv_len,
-                      const char *resc_password_iv, size_t pwd_iv_len, 
-                      const char *resource_username, size_t encr_username_len,
-                      const char *resource_pwd, size_t encr_password_len,
-                      const char *date_created, const char *date_last_updated)
+cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
     /* Bind data with sqlite3 stmts */    
     if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 1,
-                          resourceid, -1, NULL) != SQLITE_OK) {
+        UserResc->ResourceID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
     
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 2,
-                          resource_salt, salt_length, NULL) != SQLITE_OK) {
+        UserResc->ResourceSalt, UserResc->SaltLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 3,
-                          resc_username_iv, uname_iv_len, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 3, 
+        UserResc->ResourceUsernameIV, UserResc->ResourceUsernameIVLength, 
+        NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 4,
-                          resc_password_iv, pwd_iv_len, NULL) != SQLITE_OK) {
+        UserResc->ResourcePasswordIV, UserResc->ResourcePwdIVLength, 
+        NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 5,
-                          resource_username, encr_username_len, 
-                          NULL) != SQLITE_OK) {
+        UserResc->ResourceUsername, UserResc->UsernameLength, 
+        NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 6,
-                         resource_pwd, encr_password_len, 
-                         NULL) != SQLITE_OK) {
+        UserResc->ResourcePwd, UserResc->PwdLength, 
+        NULL) != SQLITE_OK) {
         goto bind_error;
     }
     
     if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 7,
-                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        UserResc->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 8,
-                          date_created, -1, NULL) != SQLITE_OK) {
+        UserResc->DateCreated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
     if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 9,
-                          date_last_updated, -1, NULL) != SQLITE_OK) {
+        UserResc->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
