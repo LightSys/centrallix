@@ -1,8 +1,9 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <sqlite3.h>
+#include <stdbool.h>
 #include <string.h>
+#include <sqlite3.h>
 #include "cxss_credentials_db.h"
 
 
@@ -128,6 +129,11 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->get_user_resc_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
+                    "SELECT COUNT(*) From UserData"
+                    "  WHERE CXSS_UserID=?;",
+                    -1, &dbcontext->is_user_in_db_stmt, NULL);
+
+    sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserData(CXSS_UserID, UserPublicKey"
                     ", DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_stmt, NULL);
@@ -166,8 +172,8 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->insert_resc_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT ResourceSalt, ResourceUsernameIV"
-                    ", ResourcePasswordIV, ResourceUsername, ResourcePassword"
+                    "SELECT ResourceUsernameIV, ResourcePasswordIV"
+                    ", ResourceUsername, ResourcePassword"
                     ", DateCreated, DateLastUpdated FROM UserResc"
                     "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
@@ -192,6 +198,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
 {
     sqlite3_finalize(dbcontext->get_user_count_stmt);
     sqlite3_finalize(dbcontext->get_user_resc_count_stmt);
+    sqlite3_finalize(dbcontext->is_user_in_db_stmt);
     sqlite3_finalize(dbcontext->insert_user_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
     sqlite3_finalize(dbcontext->insert_user_auth_stmt);
@@ -255,6 +262,8 @@ bind_error:
 int
 cxss_insert_user_auth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
 {
+    sqlite3_reset(dbcontext->insert_user_auth_stmt);
+
     /* Bind data with sqlite3 stmts */    
     if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 1,
         UserAuth->CXSS_UserID, -1, NULL) != SQLITE_OK) {
@@ -320,6 +329,8 @@ bind_error:
 int
 cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
+    sqlite3_reset(dbcontext->insert_resc_stmt);
+
     /* Bind data with sqlite3 stmts */    
     if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 1, 
         UserResc->ResourceID, -1, NULL) != SQLITE_OK) {
@@ -398,6 +409,8 @@ cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid,
     const char *date_created, *date_last_updated;
     size_t keylength;
 
+    sqlite3_reset(dbcontext->retrieve_user_stmt);
+
     /* Bind data with sqlite3 stmt */
     if (sqlite3_bind_text(dbcontext->retrieve_user_stmt, 1,
                           cxss_userid, -1, NULL) != SQLITE_OK) {
@@ -460,6 +473,8 @@ cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid,
     const char *privatekey, *salt, *iv, *auth_class;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
+
+    sqlite3_reset(dbcontext->retrieve_user_auth_stmt);
 
     /* Bind data with sqlite3 stmt */
     if (sqlite3_bind_text(dbcontext->retrieve_user_auth_stmt, 1,
@@ -543,6 +558,8 @@ cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid,
     size_t keylength, salt_length, iv_length;
     int removal_flag;
 
+    sqlite3_reset(dbcontext->retrieve_user_auths_stmt);
+
     /* Bind data with sqlite3 stmt */
     if (sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1,
                           cxss_userid, -1, NULL) != SQLITE_OK) {
@@ -597,6 +614,87 @@ bind_error:
     fprintf(stderr, "Failed to bind value with stmt: %s\n",
                     sqlite3_errmsg(dbcontext->db));
     return -1;
+}
+
+int 
+cxss_retrieve_user_resc(DB_Context_t dbcontext, const char *cxss_userid, 
+                        const char *resource_id, CXSS_UserResc *UserResc)
+{
+    const char *resource_username, *resource_password;
+    const char *resource_salt, *username_iv, *password_iv;
+    const char  *date_created, *date_last_updated;
+    size_t salt_len, username_len, password_len;
+    size_t username_iv_len, password_iv_len;       
+
+    sqlite3_reset(dbcontext->retrieve_resc_stmt);
+
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->retrieve_resc_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    if (sqlite3_bind_text(dbcontext->retrieve_resc_stmt, 2,
+                          resource_id, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->retrieve_resc_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Unable to retrieve user resc info\n");
+        return -1;
+    }
+
+    /* Retrieve results */
+    username_iv = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 0);
+    username_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 0);
+    password_iv = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
+    password_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 1);
+    resource_username = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 2);
+    username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 2);
+    resource_password = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
+    password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
+    date_created = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 4);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 5);     
+    /* Build struct */
+    UserResc->ResourceID = cxss_strdup(resource_id);
+    UserResc->CXSS_UserID = cxss_strdup(cxss_userid);
+    UserResc->UsernameIV = cxss_blobdup(username_iv, username_iv_len);
+    UserResc->UsernameIVLength = username_iv_len;
+    UserResc->PasswordIV = cxss_blobdup(password_iv, password_iv_len);
+    UserResc->PasswordIVLength = password_iv_len;
+    UserResc->ResourceUsername = cxss_blobdup(resource_username, username_len);
+    UserResc->UsernameLength = username_len;
+    UserResc->ResourcePassword = cxss_blobdup(resource_password, password_len);
+    UserResc->PasswordLength = password_len;
+    UserResc->DateCreated = cxss_strdup(date_created);
+    UserResc->DateLastUpdated = cxss_strdup(date_last_updated);
+
+    return 0;
+bind_error:
+    fprintf(stderr, "Failed to bind value with stmt: %s\n",
+                    sqlite3_errmsg(dbcontext->db));
+    return -1;
+}
+
+/** @brief Free CXSS_UserResc struct members
+ *
+ *  Free struct members containing query results.
+ *
+ *  @param UserAuth     Pointer to CXSS_UserResc struct
+ *  @return             void
+ */
+void
+cxss_free_userresc(CXSS_UserResc *UserResc)
+{
+    free(UserResc->CXSS_UserID);
+    free(UserResc->ResourceID);
+    free(UserResc->ResourceUsername);
+    free(UserResc->ResourcePassword);
+    free(UserResc->UsernameIV);
+    free(UserResc->PasswordIV);
+    free(UserResc->DateCreated);
+    free(UserResc->DateLastUpdated);
 }
 
 /** @brief Allocate a CXSS_UserAuth_LLNode
@@ -737,6 +835,8 @@ cxss_blobdup(const char *blob, size_t len)
 int
 cxss_get_user_count(DB_Context_t dbcontext)
 {
+    sqlite3_reset(dbcontext->get_user_count_stmt);
+
     /* Execute query */
     if (sqlite3_step(dbcontext->get_user_count_stmt) != SQLITE_ROW) {
         fprintf(stderr, "Could not get count!\n");
@@ -776,5 +876,44 @@ cxss_get_user_resc_count(DB_Context_t dbcontext, const char *cxss_userid)
     }
 
     return sqlite3_column_int(dbcontext->get_user_resc_count_stmt, 0);
+}
+
+/** @brief Checks if a user is in CXSS database
+ *
+ *  This function checks if a given user is 
+ *  already present in the CXSS database.
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  Centrallix user identity
+ *  @return             True if found, false if NOT found
+ */
+bool
+cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid)
+{
+    size_t count;
+
+    sqlite3_reset(dbcontext->is_user_in_db_stmt);
+    
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->is_user_in_db_stmt, 1,
+                          cxss_userid, -1, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to bind stmt with value: %s\n", 
+                        sqlite3_errmsg(dbcontext->db));
+        return -1;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->is_user_in_db_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Failure!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Retrieve result */
+    count = sqlite3_column_int(dbcontext->is_user_in_db_stmt, 0);
+
+    if (count > 0)
+        return true;
+    else 
+        return false;
 }
 

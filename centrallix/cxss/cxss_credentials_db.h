@@ -2,12 +2,14 @@
 #define CXSS_CREDENTIALS_DB
 
 #include <sqlite3.h>
+#include <stdbool.h>
 
 /* DB Context struct */
 typedef struct _DB_Context_t {
     sqlite3 *db;
     sqlite3_stmt *get_user_count_stmt;
     sqlite3_stmt *get_user_resc_count_stmt;
+    sqlite3_stmt *is_user_in_db_stmt;
     sqlite3_stmt *insert_user_stmt;
     sqlite3_stmt *retrieve_user_stmt;
     sqlite3_stmt *insert_user_auth_stmt;
@@ -70,12 +72,15 @@ int cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
 int cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
 void cxss_free_userdata(CXSS_UserData *UserData);
 int cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
+int cxss_retrieve_user_resc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
+void cxss_free_userresc(CXSS_UserResc *UserResc);
 int cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
 void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start);
 void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
 int cxss_get_user_count(DB_Context_t dbcontext);
 int cxss_get_user_resc_count(DB_Context_t dbcontext, const char *cxss_userid);
+bool cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid);
 
 /* Private Functions */
 static int cxss_setup_credentials_database(DB_Context_t dbcontext);
