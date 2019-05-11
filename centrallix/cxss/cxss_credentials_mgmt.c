@@ -10,6 +10,13 @@
 
 static DB_Context_t dbcontext = NULL;
 
+/** @brief Initialize CXSS credentials mgmt
+ *
+ *  Initialize the CXSS credentials mgmt
+ *  system (load database, etc...).
+ *
+ *  @return     Status code
+ */
 int 
 cxss_init_credentials_mgmt(void)
 {   
@@ -21,17 +28,39 @@ cxss_init_credentials_mgmt(void)
     if (!dbcontext) return -1;
 }
 
+/** @brief Close CXSS credentials mgmt
+ *
+ *  Close the CXSS credentials mgmt
+ *  system (close database, free data structures, etc...)
+ *
+ *  @return     Status code
+ */
 int
 cxss_close_credentials_mgmt(void)
 {
     return cxss_close_credentials_database(dbcontext);
 }
 
+/** @brief Add user to CXSS
+ *
+ *  Add user to CXSS
+ *
+ *  @param cxss_userid          Centrallix user identity
+ *  @param publickey            User public key
+ *  @param keylength            Length of user public key
+ *  @return                     Status code   
+ */
 int
 cxss_adduser(const char *cxss_userid, const char *publickey, size_t keylength)
 {
     CXSS_UserData UserData;
     char *current_timestamp;
+
+    /* Check if user is already in database */
+    if (cxss_db_contains_user(dbcontext, cxss_userid)) {
+        fprintf(stderr, "User is already in database!\n");
+        return -1;
+    }
 
     /* Get current timestamp */
     current_timestamp = get_timestamp();
@@ -107,6 +136,16 @@ cxss_adduser_auth(const char *cxss_userid,
     return 0;
 }
 
+/** @brief Retrieve user private key
+ *
+ *  Retrieve and decrypt user private key
+ *
+ *  @param cxss_userid          Centrallix user identity
+ *  @param encryption_key       AES encryption key used to 
+ *                              encrypt the private key
+ *  @param encryption_key_len   Length of encryption key
+ *  @return                     Pointer to decrypted private key (must be freed)
+ */
 char *
 cxss_retrieve_user_privatekey(const char *cxss_userid, 
                               const char *encryption_key, 
@@ -128,6 +167,52 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
     cxss_free_userauth(&UserAuth);  
     return plaintext;
 }
+
+/** @brief Add resource to CXSS
+ *
+ */
+int
+cxss_add_resource(const char *cxss_userid, const char *resource_id,
+                  const char *resource_username, size_t username_len,
+                  const char *resource_password, size_t password_len)
+{
+    CXSS_UserResc UserResc;
+    
+    memset(&UserResc, 0, sizeof(CXSS_UserResc));
+
+    UserResc.CXSS_UserID = (char*)cxss_userid;
+    UserResc.ResourceID = (char*)resource_id;
+    UserResc.ResourceUsername = (char*)resource_username;
+    UserResc.UsernameLength = username_len;
+    UserResc.ResourcePassword = (char*)resource_password;
+    UserResc.PasswordLength = password_len;
+
+    /* Insert */
+    if (cxss_insert_user_resc(dbcontext, &UserResc) < 0) {
+        fprintf(stderr, "Failed to insert user resource\n");
+        return -1;
+    }
+    
+    return 0;
+}
+
+int 
+cxss_get_resource(const char *cxss_userid, const char *resource_id)
+{
+    CXSS_UserResc UserResc;
+    
+    if (cxss_retrieve_user_resc(dbcontext, cxss_userid, resource_id,
+                                &UserResc) < 0) {
+        fprintf(stderr, "Failed to retrieve resource!\n");
+        return -1;
+    }
+
+    printf("%s\n", UserResc.ResourcePassword);
+
+    cxss_free_userresc(&UserResc);
+    return 0;
+}
+
 
 /** @brief Get current timestamp
  *
