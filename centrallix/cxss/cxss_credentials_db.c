@@ -129,9 +129,14 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->get_user_resc_count_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT COUNT(*) From UserData"
+                    "SELECT COUNT(*) FROM UserData"
                     "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->is_user_in_db_stmt, NULL);
+
+    sqlite3_prepare_v2(dbcontext->db,
+                    "SELECT COUNT(*) FROM UserResc"
+                    "  WHERE ResourceID=?;",
+                    -1, &dbcontext->is_resc_in_db_stmt, NULL); 
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserData(CXSS_UserID, UserPublicKey"
@@ -199,6 +204,7 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->get_user_count_stmt);
     sqlite3_finalize(dbcontext->get_user_resc_count_stmt);
     sqlite3_finalize(dbcontext->is_user_in_db_stmt);
+    sqlite3_finalize(dbcontext->is_resc_in_db_stmt);
     sqlite3_finalize(dbcontext->insert_user_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
     sqlite3_finalize(dbcontext->insert_user_auth_stmt);
@@ -916,4 +922,44 @@ cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid)
     else 
         return false;
 }
+
+/** @brief Checks if a resource is in CXSS database
+ *
+ *  This function checks if a given resource is 
+ *  already present in the CXSS database.
+ *
+ *  @param dbcontext    Database context handle
+ *  @param resource_id  Resource ID
+ *  @return             True if found, false if NOT found
+ */
+bool
+cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id)
+{
+    size_t count;
+
+    sqlite3_reset(dbcontext->is_user_in_db_stmt);
+    
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->is_resc_in_db_stmt, 1,
+                          resource_id, -1, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to bind stmt with value: %s\n", 
+                        sqlite3_errmsg(dbcontext->db));
+        return -1;
+    }
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->is_resc_in_db_stmt) != SQLITE_ROW) {
+        fprintf(stderr, "Failure!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Retrieve result */
+    count = sqlite3_column_int(dbcontext->is_resc_in_db_stmt, 0);
+
+    if (count > 0)
+        return true;
+    else 
+        return false;
+}
+
 

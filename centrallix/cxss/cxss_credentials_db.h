@@ -10,6 +10,7 @@ typedef struct _DB_Context_t {
     sqlite3_stmt *get_user_count_stmt;
     sqlite3_stmt *get_user_resc_count_stmt;
     sqlite3_stmt *is_user_in_db_stmt;
+    sqlite3_stmt *is_resc_in_db_stmt;
     sqlite3_stmt *insert_user_stmt;
     sqlite3_stmt *retrieve_user_stmt;
     sqlite3_stmt *insert_user_auth_stmt;
@@ -81,6 +82,7 @@ void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
 int cxss_get_user_count(DB_Context_t dbcontext);
 int cxss_get_user_resc_count(DB_Context_t dbcontext, const char *cxss_userid);
 bool cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid);
+bool cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id);
 
 /* Private Functions */
 static int cxss_setup_credentials_database(DB_Context_t dbcontext);
