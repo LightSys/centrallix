@@ -251,6 +251,7 @@ typedef struct
     SybdQuery, *pSybdQuery;
 
 #define SYBD_QF_USECURSOR	1
+#define	SYBD_QF_CURSOROPEN	2
 
 
 /*** Structure for one table in a passthru query ***/
@@ -353,22 +354,35 @@ sybd_internal_AttrType(pSybdTableInf tdata, int colid)
 CS_COMMAND*
 sybd_internal_Exec(pSybdConn s, char* cmdtext)
     {
-    CS_COMMAND* cmd;
+    CS_COMMAND* cmd = NULL;
+    int rval;
 
     	/** Alloc the cmd **/
-	ct_cmd_alloc(s->CsConn, &cmd);
-	
-	/** Setup the cmd text **/
-	ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED);
-
-	/** Send it to the server. **/
-	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC (time=%ld spid=%d conn=%8.8x cmd=%8.8x): %s\n", mtRealTicks(), s->SPID, s->CsConn, cmd, cmdtext);
-	if (ct_send(cmd) != CS_SUCCEED)
+	if ((rval = ct_cmd_alloc(s->CsConn, &cmd)) != CS_SUCCEED)
 	    {
-	    ct_cmd_drop(cmd);
-	    mssError(1,"SYBD","Could not send SQL command to server");
+	    mssError(1,"SYBD","ct_cmd_alloc() failed: %d", rval);
 	    return NULL;
 	    }
+	
+	/** Setup the cmd text **/
+	if ((rval = ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED)) != CS_SUCCEED)
+	    {
+	    ct_cmd_drop(cmd);
+	    mssError(1,"SYBD","ct_cmd_alloc() failed: %d", rval);
+	    return NULL;
+	    }
+
+	/** Send it to the server. **/
+	thLock();
+	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC (time=%ld spid=%d conn=%8.8x cmd=%8.8x): %s\n", mtRealTicks(), s->SPID, s->CsConn, cmd, cmdtext);
+	if ((rval = ct_send(cmd)) != CS_SUCCEED)
+	    {
+	    thUnlock();
+	    ct_cmd_drop(cmd);
+	    mssError(1,"SYBD","Could not send SQL command to server: %d", rval);
+	    return NULL;
+	    }
+	thUnlock();
 
     return cmd;
     }
@@ -387,7 +401,9 @@ sybd_internal_Close(CS_COMMAND* cmd)
 	/** Release the memory **/
 	ct_cmd_drop(cmd);
 
+	thLock();
 	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "CLOSE (time=%ld cmd=%8.8x)\n", mtRealTicks(), cmd);
+	thUnlock();
 
     return 0;
     }
@@ -3743,7 +3759,11 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		if (strcmp(sql.String, SYBD_INF.LastSQL.String) || 1)
 		    {
 		    if (SYBD_INF.SqlLog)
+			{
+			thLock();
 			fdPrintf(SYBD_INF.SqlLog, "SQL:  %s\n",sql.String);
+			thUnlock();
+			}
 		    xsCopy(&SYBD_INF.LastSQL, sql.String, -1);
 		    }
 		if ((qy->Cmd = sybd_internal_Exec(qy->SessionID, sql.String))==NULL)
@@ -3778,11 +3798,44 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		mssError(0,"SYBD","Could not open cursor for query result set retrieval");
 		return NULL;
 		}
+	    qy->Flags |= SYBD_QF_CURSOROPEN;
 	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"FETCH _c");
 	    qy->RowsSinceFetch = 0;
 	    }
 
     return (void*)qy;
+    }
+
+
+/*** sybd_internal_CloseCursor - shut down an open cursor
+ ***/
+int
+sybd_internal_CloseCursor(pSybdQuery qy)
+    {
+    int rid;
+    CS_INT restype = 0;
+
+	/** Close any existing command **/
+	if (qy->Cmd)
+	    {
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
+
+	/** Shut down the cursor **/
+	snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"CLOSE _c DEALLOCATE CURSOR _c");
+	qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
+	if (qy->Cmd)
+	    {
+	    while((rid=ct_results(qy->Cmd,(CS_INT*)&restype))==CS_SUCCEED && restype != CS_CMD_DONE)
+		{
+		}
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
+	qy->Flags &= ~SYBD_QF_CURSOROPEN;
+
+    return 0;
     }
 
 
@@ -3792,7 +3845,7 @@ void*
 sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pSybdQuery qy = ((pSybdQuery)(qy_v));
-    pSybdData inf;
+    pSybdData inf = NULL;
     char filename[120];
     char* ptr;
     int new_type;
@@ -3800,12 +3853,13 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pSybdTableInf tdata = qy->ObjInf->TData;
     pSybdConn conn2;
     CS_INT restype = 0;
+    int rid;
 
     	/** Fetch the row. **/
 	if (qy->SessionID != NULL)
 	    {
 	    cnt=0;
-	    while(1)
+	    while(qy->Cmd != NULL)
 	        {
 	        if (qy->RowsSinceFetch == 0)
 	            {
@@ -3817,7 +3871,8 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    break;
 			    }
 		        }
-	            if (cnt == 0) return NULL;
+	            if (cnt == 0) 
+			goto end_results;
 		    }
 	        cnt = 0;
 	        while(ct_fetch(qy->Cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
@@ -3839,7 +3894,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    if (qy->Cmd) sybd_internal_Close(qy->Cmd);
 		    qy->Cmd = NULL;
 
-		    return NULL;
+		    goto end_results;
 		    }
 		else
 		    {
@@ -3849,19 +3904,21 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    	    if (!qy->Cmd)
 	        	{
 			mssError(0,"SYBD","Could not fetch next part of query results");
-			return NULL;
+			goto error;
 			}
 	    	    qy->RowsSinceFetch = 0;
 		    }
 		}
-	    if (cnt == 0) return NULL;
+	    if (cnt == 0)
+		goto end_results;
 	    }
 	qy->RowCnt++;
 	qy->RowsSinceFetch++;
 
 	/** Allocate the structure **/
 	inf = (pSybdData)nmMalloc(sizeof(SybdData));
-	if (!inf) return NULL;
+	if (!inf)
+	    goto error;
 	memset(inf,0,sizeof(SybdData));
 	inf->TData = tdata;
 
@@ -3877,8 +3934,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		if (!conn2)
 		    {
 		    mssError(0,"SYBD","Database connection failed");
-		    nmFree(inf, sizeof(SybdData));
-		    return NULL;
+		    goto error;
 		    }
 		tdata = sybd_internal_GetTableInf(qy->ObjInf->Node,conn2,filename);
 		inf->TData = tdata;
@@ -3899,9 +3955,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else 
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    /*mssError(1,"SYBD","Table object has only two subobjects: 'rows' and 'columns'");*/
-		    return NULL;
+		    goto end_results;
 		    }
 	        break;
 
@@ -3909,15 +3963,13 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	        /** Get the filename from the primary key of the row. **/
 		if (sybd_internal_GetRow(inf,qy->Cmd,qy->TableInf->nCols) < 0)
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
+		    goto error;
 		    }
 		new_type = SYBD_T_ROW;
 		ptr = sybd_internal_KeyToFilename(qy->TableInf,inf);
 		if (!ptr)
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
+		    goto error;
 		    }
 	        strcpy(filename,ptr);
 	        break;
@@ -3932,8 +3984,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
+		    goto end_results;
 		    }
 	        break;
 	    }
@@ -3943,8 +3994,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(filename) >= 255)
 	    {
 	    mssError(1,"SYBD","Pathname too long for internal representation");
-	    nmFree(inf,sizeof(SybdData));
-	    return NULL;
+	    goto error;
 	    }
 	*(ptr++) = '/';
 	strcpy(ptr,filename);
@@ -3959,7 +4009,29 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	sybd_internal_DetermineType(obj,inf);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    error:
+    end_results:
+	/** Release the new object structure **/
+	if (inf)
+	    nmFree(inf, sizeof(SybdData));
+
+	/** Close any pending command **/
+	if (qy->Cmd)
+	    {
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
+
+	/** Shutdown the cursor **/
+	if (qy->Flags & SYBD_QF_CURSOROPEN)
+	    {
+	    sybd_internal_CloseCursor(qy);
+	    }
+
+	/** No more results. **/
+	return NULL;
     }
 
 
@@ -3983,23 +4055,16 @@ sybdQueryClose(void* qy_v, pObjTrxTree* oxt)
     int rid;
 
     	/** Release the command structure. **/
-	if (qy->Cmd) sybd_internal_Close(qy->Cmd);
+	if (qy->Cmd)
+	    {
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
 
 	/** Deallocate the cursor? **/
-	if ((qy->Flags & SYBD_QF_USECURSOR) && (qy->ObjInf->Type == SYBD_T_DATABASE || qy->ObjInf->Type == SYBD_T_ROWSOBJ))
+	if (qy->Flags & SYBD_QF_CURSOROPEN)
 	    {
-	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"CLOSE _c DEALLOCATE CURSOR _c");
-	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
-	    if (qy->Cmd)
-	        {
-	        while((rid=ct_results(qy->Cmd,(CS_INT*)&restype))==CS_SUCCEED && restype != CS_CMD_DONE)
-		    {
-		    /*printf("ctr=%d, typ=%d;  ",rid,restype);*/
-		    }
-		/*printf("ctr=%d, typ=%d.\n",rid,restype);*/
-		sybd_internal_Close(qy->Cmd);
-		qy->Cmd = NULL;
-		}
+	    sybd_internal_CloseCursor(qy);
 	    }
 
 	/** Release the session id back to the object, or just release it. **/
