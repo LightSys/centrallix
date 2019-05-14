@@ -55,6 +55,11 @@ cxssInitialize()
 
 	/** Initialize the entropy pool **/
 	err = cxss_internal_InitEntropy(CXSS_ENTROPY_SIZE);
+        if (err < 0) return err;
+
+        /** Initialize credentials manager **/
+        err = cxss_credentials_mgmt_init();
+        if (err < 0) return err;
 
     return err;
     }
