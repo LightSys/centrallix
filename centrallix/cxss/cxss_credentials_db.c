@@ -721,7 +721,6 @@ cxss_allocate_userauth_node(void)
         exit(EXIT_FAILURE);
     }
 
-    //memset(new_node, 0, sizeof(CXSS_UserAuth_LLNode));
     return new_node;
 }
 
