@@ -22,7 +22,7 @@ cxss_init_credentials_mgmt(void)
 {   
     printf("%s\n", "Initializing database...");
     
-    cxss_initialize_csprng();
+    cxss_initialize_crypto();
     dbcontext = cxss_init_credentials_database("test.db");
 
     if (!dbcontext) return -1;
@@ -38,6 +38,7 @@ cxss_init_credentials_mgmt(void)
 int
 cxss_close_credentials_mgmt(void)
 {
+    cxss_cleanup_crypto();
     return cxss_close_credentials_database(dbcontext);
 }
 
@@ -46,15 +47,26 @@ cxss_close_credentials_mgmt(void)
  *  Add user to CXSS
  *
  *  @param cxss_userid          Centrallix user identity
- *  @param publickey            User public key
- *  @param keylength            Length of user public key
+ *  @param encryption_key       Password-based user encryption key
+ *  @param keylength            Length of user encryption key
+ *  @param salt                 User salt
+ *  @param salt_len             Length of user salt
  *  @return                     Status code   
  */
 int
-cxss_adduser(const char *cxss_userid, const char *publickey, size_t keylength)
+cxss_adduser(const char *cxss_userid, const char *encryption_key, 
+             size_t encryption_key_len, const char *salt, size_t salt_len)
 {
     CXSS_UserData UserData;
+    CXSS_UserAuth UserAuth;
+    char *publickey = NULL;
+    char *privatekey = NULL;
+    char *encrypted_privatekey = NULL;
+    char iv[16]; // 128-bit iv
     char *current_timestamp;
+    size_t privatekey_len, publickey_len;
+    size_t encr_privatekey_len;
+    size_t predicted_encr_len; 
 
     /* Check if user is already in database */
     if (cxss_db_contains_user(dbcontext, cxss_userid)) {
@@ -62,30 +74,12 @@ cxss_adduser(const char *cxss_userid, const char *publickey, size_t keylength)
         return -1;
     }
 
-    /* Get current timestamp */
-    current_timestamp = get_timestamp();
-    
-    /* Build struct */
-    UserData.CXSS_UserID = (char*)cxss_userid;
-    UserData.PublicKey = (char*)publickey;
-    UserData.KeyLength = keylength;
-    UserData.DateCreated = current_timestamp;
-    UserData.DateLastUpdated = current_timestamp;
-
-    return cxss_insert_user(dbcontext, &UserData);
-}
-
-int
-cxss_adduser_auth(const char *cxss_userid, 
-                  const char *encryption_key, size_t encryption_key_len,
-                  const char *salt, size_t salt_len,
-                  const char *privatekey, size_t privatekey_len)
-{
-    CXSS_UserAuth UserAuth;
-    char *current_timestamp;
-    char iv[16]; /* 128-bit iv */
-    char *encrypted_privatekey;
-    size_t encr_privatekey_len;
+    /* Generate RSA key pair */
+    if (cxss_generate_rsa_2048bit_keypair(&privatekey, &publickey,
+                                  &privatekey_len, &publickey_len) < 0) {
+        fprintf(stderr, "Failed to generate RSA keypair\n");
+        return -1;
+    }
 
     /* Generate initialization vector */
     if (cxss_generate_128bit_iv(iv) < 0) {
@@ -93,9 +87,9 @@ cxss_adduser_auth(const char *cxss_userid,
         return -1;
     }
 
-    /* Allocate buffer for encrypted password */
-    encr_privatekey_len = cxss_aes256_ciphertext_length(privatekey_len);
-    encrypted_privatekey = malloc(sizeof(char) * encr_privatekey_len);
+    /* Allocate buffer for encrypted private key */
+    predicted_encr_len = cxss_aes256_ciphertext_length(privatekey_len);
+    encrypted_privatekey = malloc(sizeof(char) * predicted_encr_len);
     if (!encrypted_privatekey) {
         fprintf(stderr, "Memory allocation error!\n");
         return -1;
@@ -105,17 +99,23 @@ cxss_adduser_auth(const char *cxss_userid,
     encr_privatekey_len = cxss_encrypt_aes256(privatekey, privatekey_len, 
                                               encryption_key, iv, 
                                               encrypted_privatekey);
-    if (encr_privatekey_len < 0) {
-        fprintf(stderr, "Error while encrypting pwd\n");
+ 
+    if (encr_privatekey_len != predicted_encr_len) {
+        fprintf(stderr, "Error while encrypting with user key\n");
+        free(encrypted_privatekey);
         return -1;
     }
 
-    /* Generate timestamp */
+    /* Get current timestamp */
     current_timestamp = get_timestamp();
-
-    /* Build struct */
+    
+    UserData.CXSS_UserID = (char*)cxss_userid;
+    UserData.PublicKey = publickey;
+    UserData.KeyLength = publickey_len;
+    UserData.DateCreated = current_timestamp;
+    UserData.DateLastUpdated = current_timestamp;
     UserAuth.CXSS_UserID = (char*)cxss_userid;
-    UserAuth.PrivateKey = (char*)encrypted_privatekey;
+    UserAuth.PrivateKey = encrypted_privatekey;
     UserAuth.KeyLength = encr_privatekey_len;
     UserAuth.Salt = (char*)salt;
     UserAuth.SaltLength = 8;
@@ -126,10 +126,20 @@ cxss_adduser_auth(const char *cxss_userid,
     UserAuth.DateCreated = current_timestamp;
     UserAuth.DateLastUpdated = current_timestamp;
 
-    /* Store entry in database */
-    cxss_insert_user_auth(dbcontext, &UserAuth); 
+    if (cxss_insert_user(dbcontext, &UserData) < 0) {
+        fprintf(stderr, "Failed to insert user into db\n");
+        free(encrypted_privatekey);
+        return -1;
+    }
+
+    if (cxss_insert_user_auth(dbcontext, &UserAuth) < 0) {
+        fprintf(stderr, "Failed to insert user into db\n");
+        free(encrypted_privatekey);    
+        return -1;
+    }
 
     /* Scrub password from RAM */
+    cxss_free_rsa_keypair(privatekey, publickey);
     memset(encrypted_privatekey, 0, encr_privatekey_len);
     free(encrypted_privatekey);
 
@@ -155,21 +165,59 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
     CXSS_UserAuth UserAuth;
     
     /* Retrieve data from db */
-    cxss_retrieve_user_auth(dbcontext, cxss_userid, &UserAuth);
+    if (cxss_retrieve_user_auth(dbcontext, cxss_userid, &UserAuth) < 0) {
+        fprintf(stderr, "Failed to retrieve user auth\n");
+        return NULL;
+    }
  
     /* Decrypt */
     plaintext = malloc(sizeof(char) * UserAuth.KeyLength);
     if (!plaintext) return NULL;
 
-    cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key,
-                        UserAuth.UserIV, plaintext);
+    if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, 
+                            encryption_key, UserAuth.UserIV, plaintext) < 0) {
+        fprintf(stderr, "Failed to decrypt private key\n");
+        cxss_free_userauth(&UserAuth);
+        free(plaintext);
+        return NULL;
+    }
                         
     cxss_free_userauth(&UserAuth);  
     return plaintext;
 }
 
-/** @brief Add resource to CXSS
+/** @brief Retrieve user public key
  *
+ *  Retrieve user public key
+ *
+ *  @param cxss_userid          Centrallix user identity
+ *  @return                     Pointer to public key (must be freed)
+ */
+char *
+cxss_retrieve_user_publickey(const char *cxss_userid)
+{
+    char *publickey;
+    CXSS_UserData UserData;
+    
+    /* Retrieve data from db */
+    cxss_retrieve_user(dbcontext, cxss_userid, &UserData);
+    publickey = strdup(UserData.PublicKey);
+
+    cxss_free_userdata(&UserData);  
+    return publickey;
+}
+
+/** @brief Add resource to CXSS
+ *  
+ *  Insert resource into CXSS credentials database
+ *
+ *  @param cxss_userid          Centrallix user identity
+ *  @param resource_id          Resource ID
+ *  @param resource_username    Resource Username
+ *  @param username_len         Length of resource username
+ *  @param resource_password    Resource Password
+ *  @param password_len         Lenght of resource password
+ *  @return                     Status code
  */
 int
 cxss_add_resource(const char *cxss_userid, const char *resource_id,
@@ -177,9 +225,59 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
                   const char *resource_password, size_t password_len)
 {
     CXSS_UserResc UserResc;
-    
-    memset(&UserResc, 0, sizeof(CXSS_UserResc));
+    char *encrypted_username = NULL;
+    char *encrypted_password = NULL;
+    char *publickey = NULL;
+    char *encrypted_rand_key = NULL;
+    size_t encrypted_rand_key_len;
+    char key[32];
+    char iv[16];
 
+    /* Check if resource is already in database */
+    if (cxss_db_contains_resc(dbcontext, resource_id)) {
+        fprintf(stderr, "Database already contains resource\n");
+        goto error;
+    }
+
+    /* Retrieve user publickey */
+    publickey = cxss_retrieve_user_publickey(cxss_userid);
+    if (!publickey) {
+        fprintf(stderr, "Failed to retrieve public key\n");
+        goto error;
+    }    
+
+    /* Generate random AES key and AES IV */
+    if (cxss_generate_256bit_rand_key(key) < 0) {
+        fprintf(stderr, "Failed to generate key\n");
+        goto error;
+    }
+    if (cxss_generate_128bit_iv(iv) < 0) {
+        fprintf(stderr, "Failed to generate iv\n");
+        goto error;
+    } 
+
+    encrypted_username = malloc(cxss_aes256_ciphertext_length(username_len));
+    encrypted_password = malloc(cxss_aes256_ciphertext_length(password_len));
+
+    /* Encrypt resource data with random key */
+    if (cxss_encrypt_aes256(resource_username, username_len, key, iv, 
+                            encrypted_username) < 0) {
+        fprintf(stderr, "Failed to encrypt resource username\n");
+        goto error;
+    }
+    if (cxss_encrypt_aes256(resource_password, password_len, key, iv,
+                            encrypted_password) < 0) {
+        fprintf(stderr, "Failed to encrypt resource password\n");
+        goto error;
+    }
+
+    /* Encrypt random key with user public key */
+    encrypted_rand_key_len = cxss_encrypt_rsa(key, 32, publickey, 
+                                              strlen(publickey),
+                                              &encrypted_rand_key);
+
+    /* Encrypt resource data */
+    memset(&UserResc, 0, sizeof(CXSS_UserResc));
     UserResc.CXSS_UserID = (char*)cxss_userid;
     UserResc.ResourceID = (char*)resource_id;
     UserResc.ResourceUsername = (char*)resource_username;
@@ -190,17 +288,38 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     /* Insert */
     if (cxss_insert_user_resc(dbcontext, &UserResc) < 0) {
         fprintf(stderr, "Failed to insert user resource\n");
-        return -1;
+        goto error;
     }
     
+    free(publickey);
+    free(encrypted_rand_key);
+    free(encrypted_username);
+    free(encrypted_password);
     return 0;
+
+error:
+    free(publickey);
+    free(encrypted_rand_key);
+    free(encrypted_username);
+    free(encrypted_password);
+    return -1;
 }
 
+/** @brief Get resource data from database
+ *
+ *  Get resource data from CXSS credentials database
+ *  given CXSS user id and resource id.
+ *
+ *  @param cxss_userid          Centrallix user identity
+ *  @param resource_id          Resource ID
+ *  @return                     Status code
+ */
 int 
 cxss_get_resource(const char *cxss_userid, const char *resource_id)
 {
     CXSS_UserResc UserResc;
-    
+
+    memset(&UserResc, 0, sizeof(CXSS_UserResc));    
     if (cxss_retrieve_user_resc(dbcontext, cxss_userid, resource_id,
                                 &UserResc) < 0) {
         fprintf(stderr, "Failed to retrieve resource!\n");
