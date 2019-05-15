@@ -593,11 +593,16 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
 		    path = (char*)nmMalloc(256);
-		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
+		    if (!path) 
+                        {
+                        mssError(1, "PRT", "nmMalloc() failed\n");
+                        return -1;
+                        }
+                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
-			mssError(1,"PRT","Failed to open new linked image '%s'",path);
+			mssError(0,"PRT","Failed to open new linked image '%s'",path);
 			nmFree(path,256);
 			return -1;
 			}
@@ -605,6 +610,37 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    context->Session->ImageCloseFn(arg);
 		    nmFree(path,256);
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
+			    context->Session->ImageExtDir, id, w, h);
+		    }
+		break;
+
+            case PRT_OBJ_T_SVG:
+		/** We need an image store location in order to handle these **/
+		if (context->Session->ImageOpenFn)
+		    {
+		    id = PRT_HTMLFM.ImageID++;
+		    w = obj->Width*PRT_HTMLFM_XPIXEL;
+		    h = obj->Height*PRT_HTMLFM_YPIXEL;
+		    if (w <= 0) w = 1;
+		    if (h <= 0) h = 1;
+		    path = (char*)nmMalloc(256);
+		    if (!path) 
+                        {
+                        mssError(1, "PRT", "nmMalloc() failed\n");
+                        return -1;
+                        }
+                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.svg",context->Session->ImageSysDir,id);
+		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
+		    if (!arg)
+			{
+			mssError(0,"PRT","Failed to open new linked image '%s'",path);
+			nmFree(path,256);
+			return -1;
+			}
+		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
+		    context->Session->ImageCloseFn(arg);
+		    nmFree(path,256);
+		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
 			    context->Session->ImageExtDir, id, w, h);
 		    }
 		break;

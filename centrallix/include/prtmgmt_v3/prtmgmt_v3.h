@@ -138,6 +138,7 @@ typedef struct _POS
     unsigned char*	Content;		/* Text content or image bitmap */
     int			ContentSize;		/* total memory allocated for the content */
     char		DataType;		/* type of data displayed in this object (Hints) */
+    int                 (*Finalize)();          /* cleanup when destroying object */
     }
     PrtObjStream, *pPrtObjStream;
 
@@ -208,6 +209,7 @@ typedef struct _PD
     int			(*SetVPos)();
     int			(*WriteText)();
     double		(*WriteRasterData)();
+    double              (*WriteSvgData)();
     int			(*WriteFF)();
     double		(*WriteRect)();
     }
@@ -246,8 +248,8 @@ typedef struct _PS
     char		ImageSysDir[256];
     void*		ImageContext;
     void*		(*ImageOpenFn)();
-    void*		(*ImageWriteFn)();
-    void*		(*ImageCloseFn)();
+    int 		(*ImageWriteFn)();
+    int 		(*ImageCloseFn)();
     XArray		SessionParams;
     }
     PrtSession, *pPrtSession;
@@ -284,7 +286,7 @@ typedef struct _PBD
     PrtBorder, *pPrtBorder;
 
 
-/*** image data header structure ***/
+/*** raster image data structure ***/
 typedef struct _PIH
     {
     int			Width;		    /* raster data width in pixels */
@@ -306,6 +308,14 @@ typedef struct _PIM
 	Data;
     }
     PrtImage, *pPrtImage;
+
+
+/*** svg image data structure ***/
+typedef struct _PSVG
+    {
+    pXString SvgData;                   /* SVG data stored as an XString */
+    }
+    PrtSvg, *pPrtSvg;
 
 
 /*** Print management global structure ***/
@@ -370,13 +380,14 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_T_PAGE		    2		/* one page of the document */
 #define PRT_OBJ_T_AREA		    3		/* a textflow-managed area */
 #define PRT_OBJ_T_STRING	    4		/* a string of text content */
-#define PRT_OBJ_T_IMAGE		    5		/* an image/picture */
+#define PRT_OBJ_T_IMAGE		    5		/* a raster image/picture */
 #define PRT_OBJ_T_RECT		    6		/* rectangle, solid color */
 #define PRT_OBJ_T_TABLE		    7		/* tabular-data */
 #define PRT_OBJ_T_TABLEROW	    8		/* table row */
 #define PRT_OBJ_T_TABLECELL	    9		/* table cell */
 #define PRT_OBJ_T_SECTION	    10		/* columnar section */
 #define PRT_OBJ_T_SECTCOL	    11		/* one column in a section. */
+#define PRT_OBJ_T_SVG               12          /* an SVG image/picture */
 
 #define PRT_COLOR_T_MONO	    1		/* black/white only image, 1 bit per pixel */
 #define PRT_COLOR_T_GREY	    2		/* greyscale image, 1 byte per pixel */
@@ -434,7 +445,7 @@ int prtSetUnits(pPrtSession s, char* units_name);
 char* prtGetUnits(pPrtSession s);
 double prtGetUnitsRatio(pPrtSession s);
 int prtSetResolution(pPrtSession s, int dpi);
-int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)());
+int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)());
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
 
@@ -507,9 +518,14 @@ int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
-int prtWriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
+int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
+pPrtSvg prtReadSvg(int (*read_fn)(), void* read_arg);
+int prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg, int w, int h);
+int prtFreeSvg(pPrtSvg svg);
+int prtSvgSize(pPrtSvg svg);
+pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h);
 int prtSetDataHints(int handle_id, int data_type, int flags);
 
 /*** Printing content functions ***/

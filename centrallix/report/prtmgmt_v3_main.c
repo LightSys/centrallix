@@ -12,6 +12,10 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#ifdef HAVE_RSVG_H
+#include "librsvg/rsvg.h"
+#include "assert.h"
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -416,6 +420,12 @@ prtInitialize()
     {
     pPrtObjType ot;
 
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+        /** Assert compatibility of certain datatypes
+         ** used in librsvg functions **/
+        assert(sizeof(guint8) == sizeof(char));
+#endif
+
 	/** Init the globals **/
 	memset(&PRTMGMT, 0, sizeof(PRTMGMT));
 	xaInit(&PRTMGMT.UnitsList, 16);
@@ -485,7 +495,13 @@ prtInitialize()
 	strcpy(ot->TypeName,"image");
 	ot->PrefLayoutMgr = NULL;
 	prtRegisterType(ot);
-	
+        
+        ot = prtAllocType();
+        ot->TypeID = PRT_OBJ_T_SVG;
+        strcpy(ot->TypeName,"svg");
+        ot->PrefLayoutMgr = NULL;
+        prtRegisterType(ot);
+
 	ot = prtAllocType();
 	ot->TypeID = PRT_OBJ_T_RECT;
 	strcpy(ot->TypeName,"rect");

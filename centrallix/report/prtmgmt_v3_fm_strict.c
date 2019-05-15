@@ -324,10 +324,13 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    break;
 
 		case PRT_OBJ_T_IMAGE:
-		case PRT_OBJ_T_RECT:
+		case PRT_OBJ_T_SVG:
+                case PRT_OBJ_T_RECT:
 		    /** Ask output driver to print as much of the rectangle/image as it can **/
 		    if (cur_obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
 			end_y = drv->WriteRasterData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
+                    else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_SVG)
+                        end_y = drv->WriteSvgData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
 		    else
 			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y);
 

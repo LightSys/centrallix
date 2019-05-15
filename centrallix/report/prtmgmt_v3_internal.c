@@ -718,8 +718,12 @@ prt_internal_FreeTree(pPrtObjStream obj)
 	    }
 
 	/** Now, free any content, if need be **/
-	if (obj->Content) nmSysFree(obj->Content);
-	obj->Content = NULL;
+	if (obj->Content)
+        {
+            if (obj->Finalize) obj->Finalize(obj->Content);
+            else nmSysFree(obj->Content);
+	}
+        obj->Content = NULL;
 
 	/** Disconnect from linknext/linkprev **/
 	if (obj->LinkNext) 
