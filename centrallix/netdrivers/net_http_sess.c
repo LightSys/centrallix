@@ -626,6 +626,9 @@ nht_i_FreeApp(pNhtApp app)
     int i;
     pObjSession one_sess;
 
+	/** Remove watchdog first to avoid further callbacks **/
+	nht_i_RemoveWatchdog(app->WatchdogTimer);
+
 	/** Disconnect from the app group **/
 	xaRemoveItem(&(app->Group->Apps), xaFindItem(&(app->Group->Apps), (void*)app));
 
@@ -648,7 +651,6 @@ nht_i_FreeApp(pNhtApp app)
 	xaDeInit(&app->AppOSMLSessions);
 
 	/** Clean up... **/
-	nht_i_RemoveWatchdog(app->WatchdogTimer);
 	/*nht_i_RemoveWatchdog(app->InactivityTimer);*/
 	objCloseSession(app->AppObjSess);
 	appDestroy(app->Application);
@@ -695,6 +697,8 @@ int
 nht_i_FreeAppGroup(pNhtAppGroup group)
     {
 
+	nht_i_RemoveWatchdog(group->WatchdogTimer);
+
 	/** Disconnect from the session **/
 	xaRemoveItem(&(group->Session->AppGroups), xaFindItem(&(group->Session->AppGroups), (void*)group));
 	
@@ -706,7 +710,6 @@ nht_i_FreeAppGroup(pNhtAppGroup group)
 
 	/** Clean up... **/
 	xaDeInit(&group->Apps);
-	nht_i_RemoveWatchdog(group->WatchdogTimer);
 	/*nht_i_RemoveWatchdog(group->InactivityTimer);*/
 	nmFree(group, sizeof(NhtAppGroup));
 
