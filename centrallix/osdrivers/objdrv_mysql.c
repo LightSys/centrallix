@@ -1646,7 +1646,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			    tree->Parent->DataType = DATA_T_STRING;
 			    }
                         else if (!strcmp(tree->String,"double")) xsConcatenate(&tmp,"double",6);
-                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",5);
+                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",13);
                         else if (!strcmp(tree->String,"datetime")) xsConcatenate(&tmp,"datetime",8);
                         }
                     else
