@@ -217,7 +217,7 @@ cxss_generate_256bit_rand_key(char *key)
  *  ciphertext of an AES (128-bit block) cipher.
  *
  *  @param plaintext_len        Length of plaintext
- *  @return                     Ciphertext length
+ *  @return                     Length of AES-encrypted ciphertext
  */
 size_t
 cxss_aes256_ciphertext_length(size_t plaintext_len)
@@ -225,25 +225,25 @@ cxss_aes256_ciphertext_length(size_t plaintext_len)
     return (plaintext_len + (16 - plaintext_len%16)); 
 }
 
-/** @brief Generate a 2048-bit RSA keypair
+/** @brief Generate a 4096-bit RSA keypair
  *
- *  This function generates a 2048-bit RSA keypair
+ *  This function generates a 4096-bit RSA keypair
  *
- *  @param privatekey           Pointer to a 2048-bit buffer to store pri_key
- *  @param publickey            Pointer to a 2048-bit buffer to store pub_key
- *  @return                     Status code
+ *  @param privatekey         Pointer to a 4096-bit buffer to store private key
+ *  @param privatekey_len     Pointer to an int to store the size of private key
+ *  @param publickey          Pointer to a 4096-bit buffer to store public key
+ *  @param publickey_len      Pointer to an int to store the size of public key
+ *  @return                   Status code
  */
 int
-cxss_generate_rsa_2048bit_keypair(char **privatekey, char **publickey,
-                                  size_t *privatekey_len, size_t *publickey_len)
+cxss_generate_rsa_4096bit_keypair(char *privatekey, int *privatekey_len,
+                                  char *publickey, int *publickey_len)
 {
     RSA *rsa_keypair = NULL;
     BIGNUM *bne = NULL;
     BIO *pri = NULL, *pub = NULL;
-    char *pri_key = NULL;
-    char *pub_key = NULL;
     unsigned long e = RSA_F4;
-    size_t pri_len, pub_len;
+    int pri_len, pub_len;
 
     /* Generate bignum */
     bne = BN_new();
@@ -254,36 +254,44 @@ cxss_generate_rsa_2048bit_keypair(char **privatekey, char **publickey,
 
     /* Generate keypair */
     rsa_keypair = RSA_new();
-    if (RSA_generate_key_ex(rsa_keypair, 2048, bne, NULL) != 1) {
+    if (RSA_generate_key_ex(rsa_keypair, 512, bne, NULL) != 1) {
         fprintf(stderr, "Failed to generate keypair\n");
         goto error;
     }
-    
+  
+    /* Write keypair to BIO */ 
     pri = BIO_new(BIO_s_mem()); 
     pub = BIO_new(BIO_s_mem());
-
-    PEM_write_bio_RSAPrivateKey(pri, rsa_keypair, NULL, NULL, 0, NULL, NULL);
-    PEM_write_bio_RSAPublicKey(pub, rsa_keypair);
-
-    pri_len = BIO_pending(pri);
-    pub_len = BIO_pending(pub);
-
-    pri_key = malloc(pri_len + 1);
-    pub_key = malloc(pub_len + 1);
-
-    if (!pri_key || !pub_key) {
-        fprintf(stderr, "Memory allocation error\n");
+    if (!pri || !pub) {
+        fprintf(stderr, "Memory allocation error!\n");
+        goto error;
+    }
+    if (PEM_write_bio_RSAPrivateKey(pri, rsa_keypair, 
+                                    NULL, NULL, 0, NULL, NULL) != 1) {
+        fprintf(stderr, "Error while writing to BIO\n");
+        goto error;
+    }
+    if (PEM_write_bio_RSAPublicKey(pub, rsa_keypair) != 1) {
+        fprintf(stderr, "Error while writing to BIO\n");
         goto error;
     }
 
-    BIO_read(pri, pri_key, pri_len);
-    BIO_read(pub, pub_key, pub_len);
-  
-    pri_key[pri_len++] = '\0';
-    pub_key[pub_len++] = '\0';
+    /* Make sure lengths are OK */
+    pri_len = BIO_pending(pri);
+    pub_len = BIO_pending(pub);
+    assert(pri_len > 0 && pub_len > 0);
+    assert(pri_len <= 512 && pub_len <= 512);
 
-    *privatekey = pri_key;
-    *publickey = pub_key;
+    /* Read from BIO and write into char buffer */
+    if (BIO_read(pri, privatekey, 512) != pri_len) {
+        fprintf(stderr, "Error while reading from BIO\n");
+        goto error;
+    }
+    if (BIO_read(pub, publickey, 512) != pub_len) {
+        fprintf(stderr, "Error while reading from BIO\n");
+        goto error;
+    }
+
     *privatekey_len = pri_len;
     *publickey_len = pub_len;
 
@@ -294,8 +302,6 @@ cxss_generate_rsa_2048bit_keypair(char **privatekey, char **publickey,
     return 0;  
 
 error:
-    free(privatekey);
-    free(publickey);
     BIO_free_all(pri);
     BIO_free_all(pub);
     RSA_free(rsa_keypair);
@@ -303,68 +309,78 @@ error:
     return -1;
 } 
 
-/** @brief Free public/private keypair
+/** @brief Encrypt data with RSA
  *
- *  Free public/private keypair
- *
- *  @param      Pointer to privatekey
- *  @param      Pointer to publickey
- *  @return     void
+ *  @param data                 Data to be encrypted
+ *  @param len                  Length of data
+ *  @param publickey            Public key
+ *  @param publickey_len        Length of public key
+ *  @param ciphertext           Pointer to char buffer (at least 4096 bytes)
+ *  @param ciphertext_len       Pointer to variable to store ciphertext len
+ *  @return                     Status code
  */
-void
-cxss_free_rsa_keypair(char *privatekey, char *publickey)
-{
-    free(privatekey);
-    free(publickey);
-}
-
-size_t
+int
 cxss_encrypt_rsa(const char *data, size_t len,
                  const char *publickey, size_t publickey_len,
-                 char **ciphertext)
+                 char *ciphertext)
 {
-    size_t ciphertext_len;
-    BIO *bio;
-    RSA *rsa;
+    int ciphertext_len;
+    RSA *rsa = NULL;
+    BIO *bio = NULL;
 
     rsa = RSA_new();
-    bio = BIO_new(BIO_s_mem());       
-    BIO_write(bio, publickey, publickey_len);
+    bio = BIO_new(BIO_s_mem());
+    if (!rsa || !bio) {
+        fprintf(stderr, "Memory allocation error!\n");
+        goto error;
+    }
+    
+    /* write key to BIO */
+    if (BIO_write(bio, publickey, publickey_len) != publickey_len) {
+        fprintf(stderr, "Error while writing to BIO\n");
+        goto error;
+    }
 
-    /* read in the key */
-    PEM_read_bio_RSAPublicKey(bio, &rsa, NULL, NULL);
-
-    /* malloc */
-    *ciphertext = malloc(4096);
+    /* read key from BIO into RSA struct */
+    if (PEM_read_bio_RSAPublicKey(bio, &rsa, NULL, NULL) == NULL) {
+        fprintf(stderr, "Error while reading from BIO\n");
+        goto error;
+    }
 
     /* encrypt */
-    ciphertext_len = RSA_public_encrypt(len, data, *ciphertext, rsa,
+    ciphertext_len = RSA_public_encrypt(len, data, ciphertext, rsa,
                                         RSA_PKCS1_OAEP_PADDING);
-
     if (ciphertext_len < 0) {
-        fprintf(stderr, "Failed to encrypt (RSA)\n");
+        goto error;
     }
 
     BIO_free(bio);
     RSA_free(rsa);
     return ciphertext_len;
+
+error:
+    BIO_free(bio);
+    RSA_free(rsa);
+    return -1;
 }
 
 char *
 cxss_decrypt_rsa(const char *data, size_t len,
-                 const char *privatekey, size_t privatekey_len)
+                 const char *privatekey, size_t privatekey_len,
+                 char *plaintext)
 {
-    char *plaintext;
+    size_t plaintext_len;
     BIO *bio;
     RSA *rsa;
 
     rsa = RSA_new();
     bio = BIO_new(BIO_s_mem());
-    BIO_write(bio, privatekey, privatekey_len);
+    if (BIO_write(bio, privatekey, privatekey_len) != privatekey_len) {
+        fprintf(stderr, "Failed to write to BIO\n");
+        goto error;
+    }
 
     PEM_read_bio_RSAPrivateKey(bio, &rsa, NULL, NULL);
-    
-    plaintext = malloc(4096);
 
     /* decrypt */
     if (RSA_private_decrypt(len, data, plaintext, rsa, 
@@ -375,5 +391,10 @@ cxss_decrypt_rsa(const char *data, size_t len,
     BIO_free(bio);
     RSA_free(rsa);
     return plaintext;
+
+error:
+    BIO_free(bio);
+    RSA_free(rsa);
+    return NULL;
 }
 

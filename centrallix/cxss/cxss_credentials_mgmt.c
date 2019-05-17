@@ -59,32 +59,32 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
 {
     CXSS_UserData UserData;
     CXSS_UserAuth UserAuth;
-    char *publickey = NULL;
-    char *privatekey = NULL;
+    char publickey[512];
+    char privatekey[512];
     char *encrypted_privatekey = NULL;
     char iv[16]; // 128-bit iv
     char *current_timestamp;
-    size_t privatekey_len, publickey_len;
-    size_t encr_privatekey_len;
-    size_t predicted_encr_len; 
+    int privatekey_len, publickey_len;
+    int encr_privatekey_len;
+    int predicted_encr_len; 
 
     /* Check if user is already in database */
     if (cxss_db_contains_user(dbcontext, cxss_userid)) {
         fprintf(stderr, "User is already in database!\n");
-        return -1;
+        goto error;
     }
 
     /* Generate RSA key pair */
-    if (cxss_generate_rsa_2048bit_keypair(&privatekey, &publickey,
-                                  &privatekey_len, &publickey_len) < 0) {
+    if (cxss_generate_rsa_4096bit_keypair(privatekey, &privatekey_len,
+                                  publickey, &publickey_len) < 0) {
         fprintf(stderr, "Failed to generate RSA keypair\n");
-        return -1;
+        goto error;
     }
 
     /* Generate initialization vector */
     if (cxss_generate_128bit_iv(iv) < 0) {
         fprintf(stderr, "Failed to generate IV\n");
-        return -1;
+        goto error;
     }
 
     /* Allocate buffer for encrypted private key */
@@ -92,18 +92,17 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
     encrypted_privatekey = malloc(sizeof(char) * predicted_encr_len);
     if (!encrypted_privatekey) {
         fprintf(stderr, "Memory allocation error!\n");
-        return -1;
+        goto error;
     }
 
-    /* Encrypt password */
+    /* Encrypt private key */
     encr_privatekey_len = cxss_encrypt_aes256(privatekey, privatekey_len, 
                                               encryption_key, iv, 
                                               encrypted_privatekey);
  
     if (encr_privatekey_len != predicted_encr_len) {
         fprintf(stderr, "Error while encrypting with user key\n");
-        free(encrypted_privatekey);
-        return -1;
+        goto error;
     }
 
     /* Get current timestamp */
@@ -128,22 +127,23 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
 
     if (cxss_insert_user(dbcontext, &UserData) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
-        free(encrypted_privatekey);
-        return -1;
+        goto error;
     }
 
     if (cxss_insert_user_auth(dbcontext, &UserAuth) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
-        free(encrypted_privatekey);    
-        return -1;
+        goto error;
     }
 
     /* Scrub password from RAM */
-    cxss_free_rsa_keypair(privatekey, publickey);
     memset(encrypted_privatekey, 0, encr_privatekey_len);
     free(encrypted_privatekey);
 
     return 0;
+
+error:
+    free(encrypted_privatekey);
+    return -1;
 }
 
 /** @brief Retrieve user private key
@@ -194,14 +194,21 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
  *  @return                     Pointer to public key (must be freed)
  */
 char *
-cxss_retrieve_user_publickey(const char *cxss_userid)
+cxss_retrieve_user_publickey(const char *cxss_userid, size_t *publickey_len)
 {
     char *publickey;
     CXSS_UserData UserData;
-    
+
     /* Retrieve data from db */
     cxss_retrieve_user(dbcontext, cxss_userid, &UserData);
-    publickey = strdup(UserData.PublicKey);
+    
+    publickey = malloc(UserData.KeyLength);
+    if (!publickey) {
+        fprintf(stderr, "Memory allocation error!\n");
+        return NULL;
+    }
+    memcpy(publickey, UserData.PublicKey, UserData.KeyLength);
+    *publickey_len = UserData.KeyLength;
 
     cxss_free_userdata(&UserData);  
     return publickey;
@@ -227,8 +234,11 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     CXSS_UserResc UserResc;
     char *encrypted_username = NULL;
     char *encrypted_password = NULL;
+    size_t encr_username_len;
+    size_t encr_password_len;
     char *publickey = NULL;
-    char *encrypted_rand_key = NULL;
+    size_t publickey_len;
+    char encrypted_rand_key[512];
     size_t encrypted_rand_key_len;
     char key[32];
     char iv[16];
@@ -240,7 +250,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     }
 
     /* Retrieve user publickey */
-    publickey = cxss_retrieve_user_publickey(cxss_userid);
+    publickey = cxss_retrieve_user_publickey(cxss_userid, &publickey_len);
     if (!publickey) {
         fprintf(stderr, "Failed to retrieve public key\n");
         goto error;
@@ -254,7 +264,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     if (cxss_generate_128bit_iv(iv) < 0) {
         fprintf(stderr, "Failed to generate iv\n");
         goto error;
-    } 
+    }
 
     encrypted_username = malloc(cxss_aes256_ciphertext_length(username_len));
     encrypted_password = malloc(cxss_aes256_ciphertext_length(password_len));
@@ -271,18 +281,20 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
         goto error;
     }
 
-    /* Encrypt random key with user public key */
-    encrypted_rand_key_len = cxss_encrypt_rsa(key, 32, publickey, 
-                                              strlen(publickey),
-                                              &encrypted_rand_key);
+    /* Encrypt random key with user's public key */
+    encrypted_rand_key_len = cxss_encrypt_rsa(key, 32, publickey, publickey_len,                                              encrypted_rand_key);
+    if (encrypted_rand_key_len < 0) {
+        fprintf(stderr, "Failed to encrypt random key\n");
+        goto error;
+    }
 
-    /* Encrypt resource data */
+    /* Build struct */
     memset(&UserResc, 0, sizeof(CXSS_UserResc));
     UserResc.CXSS_UserID = (char*)cxss_userid;
     UserResc.ResourceID = (char*)resource_id;
-    UserResc.ResourceUsername = (char*)resource_username;
+    UserResc.ResourceUsername = encrypted_username;
     UserResc.UsernameLength = username_len;
-    UserResc.ResourcePassword = (char*)resource_password;
+    UserResc.ResourcePassword = encrypted_password;
     UserResc.PasswordLength = password_len;
 
     /* Insert */
@@ -292,14 +304,12 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     }
     
     free(publickey);
-    free(encrypted_rand_key);
     free(encrypted_username);
     free(encrypted_password);
     return 0;
 
 error:
     free(publickey);
-    free(encrypted_rand_key);
     free(encrypted_username);
     free(encrypted_password);
     return -1;
