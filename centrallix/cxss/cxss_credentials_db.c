@@ -103,7 +103,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserResc("
                  "ResourceID TEXT PRIMARY KEY,"
-                 "ResourceSalt BLOB,"
+                 "ResourceAESKey BLOB,"
                  "ResourceUsernameIV BLOB,"
                  "ResourcePasswordIV BLOB,"
                  "ResourceUsername BLOB,"
@@ -169,7 +169,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->retrieve_user_auths_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserResc (ResourceID, ResourceSalt"
+                    "INSERT INTO UserResc (ResourceID, ResourceAESKey"
                     ", ResourceUsernameIV, ResourcePasswordIV"
                     ", ResourceUsername, ResourcePassword, CXSS_UserID"
                     ", DateCreated, DateLastUpdated) "
@@ -344,7 +344,7 @@ cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
     }
     
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 2,
-        UserResc->ResourceSalt, UserResc->SaltLength, NULL) != SQLITE_OK) {
+        UserResc->AESKey, UserResc->AESKeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 

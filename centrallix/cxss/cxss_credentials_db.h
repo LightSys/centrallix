@@ -45,8 +45,8 @@ typedef struct {
 typedef struct {
     char *CXSS_UserID;
     char *ResourceID;
-    char *ResourceSalt;
-    size_t SaltLength;
+    char *AESKey;
+    size_t AESKeyLength;
     char *UsernameIV;
     size_t UsernameIVLength;
     char *PasswordIV;

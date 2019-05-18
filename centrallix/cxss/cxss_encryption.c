@@ -351,6 +351,7 @@ cxss_encrypt_rsa(const char *data, size_t len,
     ciphertext_len = RSA_public_encrypt(len, data, ciphertext, rsa,
                                         RSA_PKCS1_OAEP_PADDING);
     if (ciphertext_len < 0) {
+        fprintf(stderr, "RSA encryption failed\n");    
         goto error;
     }
 
@@ -364,37 +365,49 @@ error:
     return -1;
 }
 
-char *
+int
 cxss_decrypt_rsa(const char *data, size_t len,
                  const char *privatekey, size_t privatekey_len,
                  char *plaintext)
 {
-    size_t plaintext_len;
-    BIO *bio;
-    RSA *rsa;
+    int plaintext_len;
+    BIO *bio = NULL;
+    RSA *rsa = NULL;
 
     rsa = RSA_new();
     bio = BIO_new(BIO_s_mem());
+    if (!rsa || !bio) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto error;
+    }
+
+    /* Write private key to BIO */
     if (BIO_write(bio, privatekey, privatekey_len) != privatekey_len) {
         fprintf(stderr, "Failed to write to BIO\n");
         goto error;
     }
 
-    PEM_read_bio_RSAPrivateKey(bio, &rsa, NULL, NULL);
+    /* Read private key from BIO into RSA struct */
+    if (PEM_read_bio_RSAPrivateKey(bio, &rsa, NULL, NULL) == NULL) {
+        fprintf(stderr, "Failed to read from BIO\n");
+        goto error;
+    }
 
     /* decrypt */
-    if (RSA_private_decrypt(len, data, plaintext, rsa, 
-                            RSA_PKCS1_OAEP_PADDING) < 0) {
-        fprintf(stderr, "Failed to decrypt (RSA)\n");
+    plaintext_len = RSA_private_decrypt(len, data, plaintext, rsa, 
+                                        RSA_PKCS1_OAEP_PADDING);
+    if (plaintext_len < 0) {
+        fprintf(stderr, "RSA decryption failed\n");
+        goto error;
     } 
 
     BIO_free(bio);
     RSA_free(rsa);
-    return plaintext;
+    return plaintext_len;
 
 error:
     BIO_free(bio);
     RSA_free(rsa);
-    return NULL;
+    return -1;
 }
 

@@ -7,7 +7,7 @@
 #include "cxss_credentials_mgmt.h"
 #include "cxss_credentials_db.h"
 #include "cxss_encryption.h"
-
+#include <assert.h>
 static DB_Context_t dbcontext = NULL;
 
 /** @brief Initialize CXSS credentials mgmt
@@ -135,10 +135,10 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
         goto error;
     }
 
-    /* Scrub password from RAM */
-    memset(encrypted_privatekey, 0, encr_privatekey_len);
-    free(encrypted_privatekey);
+    /* Erase private key from RAM */
+    memset(privatekey, 0, sizeof(privatekey));
 
+    free(encrypted_privatekey);
     return 0;
 
 error:
@@ -159,7 +159,8 @@ error:
 char *
 cxss_retrieve_user_privatekey(const char *cxss_userid, 
                               const char *encryption_key, 
-                              size_t ecryption_key_len)
+                              size_t ecryption_key_len,
+                              int *privatekey_len)
 {
     char *plaintext;
     CXSS_UserAuth UserAuth;
@@ -181,6 +182,7 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
         free(plaintext);
         return NULL;
     }
+    *privatekey_len = UserAuth.KeyLength;
                         
     cxss_free_userauth(&UserAuth);  
     return plaintext;
@@ -194,7 +196,7 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
  *  @return                     Pointer to public key (must be freed)
  */
 char *
-cxss_retrieve_user_publickey(const char *cxss_userid, size_t *publickey_len)
+cxss_retrieve_user_publickey(const char *cxss_userid, int *publickey_len)
 {
     char *publickey;
     CXSS_UserData UserData;
@@ -234,14 +236,15 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     CXSS_UserResc UserResc;
     char *encrypted_username = NULL;
     char *encrypted_password = NULL;
-    size_t encr_username_len;
-    size_t encr_password_len;
+    int encr_username_len;
+    int encr_password_len;
     char *publickey = NULL;
-    size_t publickey_len;
+    int publickey_len;
     char encrypted_rand_key[512];
-    size_t encrypted_rand_key_len;
+    int encrypted_rand_key_len;
     char key[32];
-    char iv[16];
+    char uname_iv[16];
+    char pwd_iv[16];
 
     /* Check if resource is already in database */
     if (cxss_db_contains_resc(dbcontext, resource_id)) {
@@ -256,33 +259,46 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
         goto error;
     }    
 
-    /* Generate random AES key and AES IV */
+    /* Generate random AES key and AES IVs */
     if (cxss_generate_256bit_rand_key(key) < 0) {
         fprintf(stderr, "Failed to generate key\n");
         goto error;
     }
-    if (cxss_generate_128bit_iv(iv) < 0) {
+    if (cxss_generate_128bit_iv(uname_iv) < 0) {
+        fprintf(stderr, "Failed to generate iv\n");
+        goto error;
+    }
+    if (cxss_generate_128bit_iv(pwd_iv) < 0) {
         fprintf(stderr, "Failed to generate iv\n");
         goto error;
     }
 
-    encrypted_username = malloc(cxss_aes256_ciphertext_length(username_len));
-    encrypted_password = malloc(cxss_aes256_ciphertext_length(password_len));
+    encr_username_len = cxss_aes256_ciphertext_length(username_len);
+    encr_password_len = cxss_aes256_ciphertext_length(password_len);
+    
+    encrypted_username = malloc(encr_username_len);
+    encrypted_password = malloc(encr_password_len);
+    if (!encrypted_username || !encrypted_password) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto error;
+    }
 
     /* Encrypt resource data with random key */
-    if (cxss_encrypt_aes256(resource_username, username_len, key, iv, 
+    if (cxss_encrypt_aes256(resource_username, username_len, key, uname_iv, 
                             encrypted_username) < 0) {
         fprintf(stderr, "Failed to encrypt resource username\n");
         goto error;
     }
-    if (cxss_encrypt_aes256(resource_password, password_len, key, iv,
+    if (cxss_encrypt_aes256(resource_password, password_len, key, pwd_iv,
                             encrypted_password) < 0) {
         fprintf(stderr, "Failed to encrypt resource password\n");
         goto error;
     }
 
     /* Encrypt random key with user's public key */
-    encrypted_rand_key_len = cxss_encrypt_rsa(key, 32, publickey, publickey_len,                                              encrypted_rand_key);
+    encrypted_rand_key_len = cxss_encrypt_rsa(key, sizeof(key),
+                                              publickey, publickey_len, 
+                                              encrypted_rand_key);
     if (encrypted_rand_key_len < 0) {
         fprintf(stderr, "Failed to encrypt random key\n");
         goto error;
@@ -292,10 +308,16 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     memset(&UserResc, 0, sizeof(CXSS_UserResc));
     UserResc.CXSS_UserID = (char*)cxss_userid;
     UserResc.ResourceID = (char*)resource_id;
+    UserResc.AESKey = encrypted_rand_key;
+    UserResc.AESKeyLength = encrypted_rand_key_len;
+    UserResc.UsernameIV = uname_iv;
+    UserResc.UsernameIVLength = sizeof(uname_iv);
+    UserResc.PasswordIV = pwd_iv;
+    UserResc.PasswordIVLength = sizeof(pwd_iv);
     UserResc.ResourceUsername = encrypted_username;
-    UserResc.UsernameLength = username_len;
+    UserResc.UsernameLength = encr_username_len;
     UserResc.ResourcePassword = encrypted_password;
-    UserResc.PasswordLength = password_len;
+    UserResc.PasswordLength = encr_password_len;
 
     /* Insert */
     if (cxss_insert_user_resc(dbcontext, &UserResc) < 0) {
@@ -325,10 +347,23 @@ error:
  *  @return                     Status code
  */
 int 
-cxss_get_resource(const char *cxss_userid, const char *resource_id)
+cxss_get_resource(const char *cxss_userid, const char *resource_id,
+                  const char *user_key, size_t user_key_len)
 {
+    CXSS_UserAuth UserAuth;
     CXSS_UserResc UserResc;
+    char privatekey[512];
+    char aeskey[32];
+    char ciphertext[512];
+    int  privatekey_len;
+    int  aeskey_len;
+    int  ciphertext_len;
 
+    memset(&UserAuth, 0, sizeof(CXSS_UserAuth));
+    if (cxss_retrieve_user_auth(dbcontext, cxss_userid, &UserAuth) < 0) {
+        fprintf(stderr, "Failed to retrieve user auth\n");
+        return -1;
+    }   
     memset(&UserResc, 0, sizeof(CXSS_UserResc));    
     if (cxss_retrieve_user_resc(dbcontext, cxss_userid, resource_id,
                                 &UserResc) < 0) {
@@ -336,8 +371,48 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id)
         return -1;
     }
 
-    printf("%s\n", UserResc.ResourcePassword);
+    /* Decrypt private key */
+    privatekey_len = cxss_decrypt_aes256(UserAuth.PrivateKey, 
+                                         UserAuth.KeyLength,
+                                         user_key, UserAuth.UserIV,
+                                         privatekey);
+    if (privatekey_len < 0) {
+        fprintf(stderr, "Failed to decrypt private key\n");
+        return -1;
+    } 
+  
+    /* Decrypt AES key */ 
+    aeskey_len = cxss_decrypt_rsa(UserResc.AESKey, 
+                                  UserResc.AESKeyLength, 
+                                  privatekey, privatekey_len, aeskey);
+    if (aeskey_len < 0) {
+        fprintf(stderr, "Failed to decrypt AES key\n");
+        return -1;
+    }
 
+    /* Decrypt username & passowrd */ 
+    ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourceUsername,
+                                          UserResc.UsernameLength,
+                                          aeskey, UserResc.UsernameIV,
+                                          ciphertext);
+    if (ciphertext_len < 0) {
+        fprintf(stderr, "Failed to decrypt resource username\n");
+        return -1;
+    }
+    printf("USERNAME: %s\n", ciphertext);
+
+    ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourcePassword,
+                                          UserResc.PasswordLength,
+                                          aeskey, UserResc.PasswordIV,
+                                          ciphertext);
+    if (ciphertext_len < 0) {
+        fprintf(stderr, "Failed to decrypt resource password\n");
+        return -1;
+    }
+    printf("PASSWORD: %s\n", ciphertext);
+
+    
+    cxss_free_userauth(&UserAuth);
     cxss_free_userresc(&UserResc);
     return 0;
 }

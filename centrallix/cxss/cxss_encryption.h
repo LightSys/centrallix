@@ -11,7 +11,7 @@ int cxss_encrypt_aes256(const char *plaintext, int plaintext_len, const char *ke
 int cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len, const char *key, const char *init_vector, char *plaintext);
 size_t cxss_aes256_ciphertext_length(size_t plaintext_len);
 int cxss_encrypt_rsa(const char *data, size_t len, const char *publickey, size_t publickey_len, char *ciphertext);
-char *cxss_decrypt_rsa(const char *data, size_t len, const char *privatekey, size_t privatekey_len);
+int cxss_decrypt_rsa(const char *data, size_t len, const char *privatekey, size_t privatekey_len, char *plaintext);
 
 /* Private functions */
 void cxss_initialize_crypto(void);
