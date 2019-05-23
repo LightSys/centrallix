@@ -59,8 +59,7 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
 {
     CXSS_UserData UserData;
     CXSS_UserAuth UserAuth;
-    char publickey[512];
-    char privatekey[512];
+    char *privatekey = NULL, *publickey = NULL;
     char *encrypted_privatekey = NULL;
     char iv[16]; // 128-bit iv
     char *current_timestamp;
@@ -75,8 +74,8 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
     }
 
     /* Generate RSA key pair */
-    if (cxss_generate_rsa_4096bit_keypair(privatekey, &privatekey_len,
-                                  publickey, &publickey_len) < 0) {
+    if (cxss_generate_rsa_4096bit_keypair(&privatekey, &privatekey_len,
+                                  &publickey, &publickey_len) < 0) {
         fprintf(stderr, "Failed to generate RSA keypair\n");
         goto error;
     }
@@ -138,10 +137,12 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
     /* Erase private key from RAM */
     memset(privatekey, 0, sizeof(privatekey));
 
+    cxss_free_rsa_keypair(privatekey, publickey);
     free(encrypted_privatekey);
     return 0;
 
 error:
+    cxss_free_rsa_keypair(privatekey, publickey);
     free(encrypted_privatekey);
     return -1;
 }
@@ -352,9 +353,9 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
 {
     CXSS_UserAuth UserAuth;
     CXSS_UserResc UserResc;
-    char privatekey[512];
     char aeskey[32];
     char ciphertext[512];
+    char *privatekey = NULL;
     int  privatekey_len;
     int  aeskey_len;
     int  ciphertext_len;
@@ -362,13 +363,20 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
     memset(&UserAuth, 0, sizeof(CXSS_UserAuth));
     if (cxss_retrieve_user_auth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
-        return -1;
+        goto free_all;
     }   
     memset(&UserResc, 0, sizeof(CXSS_UserResc));    
     if (cxss_retrieve_user_resc(dbcontext, cxss_userid, resource_id,
                                 &UserResc) < 0) {
         fprintf(stderr, "Failed to retrieve resource!\n");
-        return -1;
+        goto free_all;
+    }
+
+    /* Alloc private key buffer */
+    privatekey = malloc(cxss_aes256_ciphertext_length(UserAuth.KeyLength));
+    if (!privatekey) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto free_all;
     }
 
     /* Decrypt private key */
@@ -378,16 +386,18 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
                                          privatekey);
     if (privatekey_len < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
-        return -1;
+        goto free_all;
     } 
-  
+
+    printf("LENGTH: %ld\n", UserResc.AESKeyLength);
+     
     /* Decrypt AES key */ 
     aeskey_len = cxss_decrypt_rsa(UserResc.AESKey, 
                                   UserResc.AESKeyLength, 
                                   privatekey, privatekey_len, aeskey);
     if (aeskey_len < 0) {
         fprintf(stderr, "Failed to decrypt AES key\n");
-        return -1;
+        goto free_all;
     }
 
     /* Decrypt username & passowrd */ 
@@ -397,7 +407,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
                                           ciphertext);
     if (ciphertext_len < 0) {
         fprintf(stderr, "Failed to decrypt resource username\n");
-        return -1;
+        goto free_all;
     }
     printf("USERNAME: %s\n", ciphertext);
 
@@ -407,14 +417,20 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
                                           ciphertext);
     if (ciphertext_len < 0) {
         fprintf(stderr, "Failed to decrypt resource password\n");
-        return -1;
+        goto free_all;
     }
     printf("PASSWORD: %s\n", ciphertext);
 
-    
+    free(privatekey); 
     cxss_free_userauth(&UserAuth);
     cxss_free_userresc(&UserResc);
     return 0;
+
+free_all:
+    free(privatekey);
+    cxss_free_userauth(&UserAuth);
+    cxss_free_userresc(&UserResc);    
+    return -1;
 }
 
 

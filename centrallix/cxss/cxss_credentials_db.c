@@ -178,7 +178,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceUsernameIV, ResourcePasswordIV"
-                    ", ResourceUsername, ResourcePassword"
+                    ", ResourceAESKey, ResourceUsername, ResourcePassword"
                     ", DateCreated, DateLastUpdated FROM UserResc"
                     "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
@@ -627,9 +627,10 @@ cxss_retrieve_user_resc(DB_Context_t dbcontext, const char *cxss_userid,
                         const char *resource_id, CXSS_UserResc *UserResc)
 {
     const char *resource_username, *resource_password;
+    const char *aeskey;
     const char *resource_salt, *username_iv, *password_iv;
     const char  *date_created, *date_last_updated;
-    size_t salt_len, username_len, password_len;
+    size_t salt_len, aeskey_len, username_len, password_len;
     size_t username_iv_len, password_iv_len;       
 
     sqlite3_reset(dbcontext->retrieve_resc_stmt);
@@ -656,15 +657,19 @@ cxss_retrieve_user_resc(DB_Context_t dbcontext, const char *cxss_userid,
     username_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 0);
     password_iv = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
     password_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 1);
-    resource_username = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 2);
-    username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 2);
-    resource_password = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
-    password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
-    date_created = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 4);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 5);     
+    aeskey = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 2);
+    aeskey_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 2);
+    resource_username = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
+    username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
+    resource_password = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 4);
+    password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 4);
+    date_created = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 5);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 6);     
     /* Build struct */
     UserResc->ResourceID = cxss_strdup(resource_id);
     UserResc->CXSS_UserID = cxss_strdup(cxss_userid);
+    UserResc->AESKey = cxss_blobdup(aeskey, aeskey_len);
+    UserResc->AESKeyLength = aeskey_len; 
     UserResc->UsernameIV = cxss_blobdup(username_iv, username_iv_len);
     UserResc->UsernameIVLength = username_iv_len;
     UserResc->PasswordIV = cxss_blobdup(password_iv, password_iv_len);
@@ -695,6 +700,7 @@ cxss_free_userresc(CXSS_UserResc *UserResc)
 {
     free(UserResc->CXSS_UserID);
     free(UserResc->ResourceID);
+    free(UserResc->AESKey);
     free(UserResc->ResourceUsername);
     free(UserResc->ResourcePassword);
     free(UserResc->UsernameIV);
