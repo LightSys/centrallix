@@ -9,8 +9,8 @@
 
 /** @brief Initialize cxss credentials database
  *
- *  This function is called by the "client" in order
- *  to prepare the database environment and its related
+ *  This function is called when starting CXSS in order
+ *  to prepare the database environment and its related 
  *  data structures.
  *
  *  @param db_path      Path to database file
@@ -47,10 +47,10 @@ error:
     return (DB_Context_t)NULL;
 }
 
-/** @brief Cleanup and close credentials database
+/** @brief Cleanup and close cxss credentials database
  *
- *  This function closes the sqlite3 database and
- *  deallocates the database context struct. 
+ *  This function closes the connection to the cxss database
+ *  and performs some cleanup on its data structures.
  *
  *  @param dbcontext    Database context handle
  *  @return             Status code
@@ -64,11 +64,9 @@ int cxss_close_credentials_database(DB_Context_t dbcontext)
 
 /** @brief Setup database tables/statements
  *
- *  This function creates the required tables
- *  to store the user's credentials (if they 
- *  don't already exists in the database) and
- *  pre-compiles some SQL queries into sqlite3
- *  statements.
+ *  This function creates the required tables to store the user's 
+ *  credentials (if they don't already exists in the database file)
+ *  and pre-compiles some SQL queries into perpared statements.
  *
  *  @param dbcontext    Database context handle
  *  @return             Status code
@@ -93,7 +91,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                  "CXSS_UserID TEXT,"
                  "AuthClass TEXT,"
                  "UserSalt BLOB,"
-                 "UserIV BLOB,"
+                 "PrivateKeyIV BLOB,"
                  "UserPrivateKey BLOB,"
                  "RemovalFlag INT,"
                  "DateCreated TEXT,"
@@ -103,7 +101,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserResc("
                  "ResourceID TEXT PRIMARY KEY,"
-                 "ResourceAESKey BLOB,"
+                 "RandomAESKey BLOB,"
                  "ResourceUsernameIV BLOB,"
                  "ResourcePasswordIV BLOB,"
                  "ResourceUsername BLOB,"
@@ -151,25 +149,25 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
 
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserAuth(CXSS_UserID, UserPrivateKey"
-                    ", UserSalt, UserIV, AuthClass, RemovalFlag"
+                    ", UserSalt, PrivateKeyIV, AuthClass, RemovalFlag"
                     ", DateCreated, DateLastUpdated)"
                     "  VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_auth_stmt, NULL);
    
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserPrivateKey, UserSalt, UserIV, AuthClass"
-                    ", DateCreated, DateLastUpdated FROM UserAuth"
+                    "SELECT UserPrivateKey, UserSalt, PrivateKeyIV"
+                    ", AuthClass, DateCreated, DateLastUpdated FROM UserAuth"
                     "  WHERE CXSS_UserID=? AND RemovalFlag=0;",
                     -1, &dbcontext->retrieve_user_auth_stmt, NULL);
  
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserPrivateKey, UserSalt, UserIV, AuthClass"
+                    "SELECT UserPrivateKey, UserSalt, PrivateKeyIV, AuthClass"
                     ", RemovalFlag, DateCreated, DateLastUpdated FROM UserAuth"
                     "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_auths_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserResc (ResourceID, ResourceAESKey"
+                    "INSERT INTO UserResc (ResourceID, RandomAESKey"
                     ", ResourceUsernameIV, ResourcePasswordIV"
                     ", ResourceUsername, ResourcePassword, CXSS_UserID"
                     ", DateCreated, DateLastUpdated) "
@@ -178,7 +176,7 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceUsernameIV, ResourcePasswordIV"
-                    ", ResourceAESKey, ResourceUsername, ResourcePassword"
+                    ", RandomAESKey, ResourceUsername, ResourcePassword"
                     ", DateCreated, DateLastUpdated FROM UserResc"
                     "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
@@ -192,8 +190,8 @@ error:
 
 /** @brief Cleanup sqlite3 statements
  *
- *  The pre-compiled sqlite3 statements need
- *  to be cleaned up. This function does that.
+ *  This function is called when closing CXSS, and its job
+ *  is to de-allocate the pre-compiled sqlite3 statements.
  *
  *  @param dbcontext    Database context handle
  *  @return             void         
@@ -216,14 +214,14 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
 
 /** @brief Insert new user
  *
- *  Create new user entry in 'UserData' table
+ *  Create new user entry in 'UserData' table.
  *
  *  @param dbcontext            Database context handle
  *  @param UserData             Pointer to CXSS_UserData struct
  *  @return                     Status code 
  */
 int
-cxss_insert_user(DB_Context_t dbcontext, CXSS_UserData *UserData)
+cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
 {
     sqlite3_reset(dbcontext->insert_user_stmt);
 
@@ -266,7 +264,7 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_user_auth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
+cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
 {
     sqlite3_reset(dbcontext->insert_user_auth_stmt);
 
@@ -333,7 +331,7 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
+cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
     sqlite3_reset(dbcontext->insert_resc_stmt);
 
@@ -473,7 +471,7 @@ cxss_free_userdata(CXSS_UserData *UserData)
  *  @return                 Status code
  */
 int
-cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, 
+cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, 
                         CXSS_UserAuth *UserAuth)
 {
     const char *privatekey, *salt, *iv, *auth_class;
@@ -555,8 +553,8 @@ cxss_free_userauth(CXSS_UserAuth *UserAuth)
  *  @return             void
  */
 int
-cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, 
-                         CXSS_UserAuth_LLNode **node)
+cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid, 
+                          CXSS_UserAuth_LLNode **node)
 {
     CXSS_UserAuth_LLNode *head, *prev, *current;
     const char *privatekey, *salt, *iv, *auth_class;
@@ -623,7 +621,7 @@ bind_error:
 }
 
 int 
-cxss_retrieve_user_resc(DB_Context_t dbcontext, const char *cxss_userid, 
+cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, 
                         const char *resource_id, CXSS_UserResc *UserResc)
 {
     const char *resource_username, *resource_password;
@@ -686,27 +684,6 @@ bind_error:
     fprintf(stderr, "Failed to bind value with stmt: %s\n",
                     sqlite3_errmsg(dbcontext->db));
     return -1;
-}
-
-/** @brief Free CXSS_UserResc struct members
- *
- *  Free struct members containing query results.
- *
- *  @param UserAuth     Pointer to CXSS_UserResc struct
- *  @return             void
- */
-void
-cxss_free_userresc(CXSS_UserResc *UserResc)
-{
-    free(UserResc->CXSS_UserID);
-    free(UserResc->ResourceID);
-    free(UserResc->AESKey);
-    free(UserResc->ResourceUsername);
-    free(UserResc->ResourcePassword);
-    free(UserResc->UsernameIV);
-    free(UserResc->PasswordIV);
-    free(UserResc->DateCreated);
-    free(UserResc->DateLastUpdated);
 }
 
 /** @brief Allocate a CXSS_UserAuth_LLNode
@@ -868,7 +845,7 @@ cxss_get_user_count(DB_Context_t dbcontext)
  *  @return             Resource count
  */
 int
-cxss_get_user_resc_count(DB_Context_t dbcontext, const char *cxss_userid)
+cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid)
 {
     sqlite3_reset(dbcontext->get_user_resc_count_stmt);
 
@@ -965,6 +942,27 @@ cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id)
         return true;
     else 
         return false;
+}
+
+/** @brief Free CXSS_UserResc struct members
+ *
+ *  Free struct members containing query results.
+ *
+ *  @param UserAuth     Pointer to CXSS_UserResc struct
+ *  @return             void
+ */
+void
+cxss_free_userresc(CXSS_UserResc *UserResc)
+{
+    free(UserResc->CXSS_UserID);
+    free(UserResc->ResourceID);
+    free(UserResc->AESKey);
+    free(UserResc->ResourceUsername);
+    free(UserResc->ResourcePassword);
+    free(UserResc->UsernameIV);
+    free(UserResc->PasswordIV);
+    free(UserResc->DateCreated);
+    free(UserResc->DateLastUpdated);
 }
 
 

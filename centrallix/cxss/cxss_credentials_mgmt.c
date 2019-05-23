@@ -124,12 +124,12 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
     UserAuth.DateCreated = current_timestamp;
     UserAuth.DateLastUpdated = current_timestamp;
 
-    if (cxss_insert_user(dbcontext, &UserData) < 0) {
+    if (cxss_insert_userdata(dbcontext, &UserData) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
         goto error;
     }
 
-    if (cxss_insert_user_auth(dbcontext, &UserAuth) < 0) {
+    if (cxss_insert_userauth(dbcontext, &UserAuth) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
         goto error;
     }
@@ -167,7 +167,7 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
     CXSS_UserAuth UserAuth;
     
     /* Retrieve data from db */
-    if (cxss_retrieve_user_auth(dbcontext, cxss_userid, &UserAuth) < 0) {
+    if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
         return NULL;
     }
@@ -222,7 +222,7 @@ cxss_retrieve_user_publickey(const char *cxss_userid, int *publickey_len)
  *  Insert resource into CXSS credentials database
  *
  *  @param cxss_userid          Centrallix user identity
- *  @param resource_id          Resource ID
+ *  @param resource_id          Centrallix resource identity
  *  @param resource_username    Resource Username
  *  @param username_len         Length of resource username
  *  @param resource_password    Resource Password
@@ -321,7 +321,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     UserResc.PasswordLength = encr_password_len;
 
     /* Insert */
-    if (cxss_insert_user_resc(dbcontext, &UserResc) < 0) {
+    if (cxss_insert_userresc(dbcontext, &UserResc) < 0) {
         fprintf(stderr, "Failed to insert user resource\n");
         goto error;
     }
@@ -344,29 +344,29 @@ error:
  *  given CXSS user id and resource id.
  *
  *  @param cxss_userid          Centrallix user identity
- *  @param resource_id          Resource ID
+ *  @param resource_id          Centrallix resource identity
  *  @return                     Status code
  */
 int 
 cxss_get_resource(const char *cxss_userid, const char *resource_id,
-                  const char *user_key, size_t user_key_len)
+                  const char *user_key, size_t user_key_len,
+                  char **resource_username, char **resource_data)
 {
     CXSS_UserAuth UserAuth;
     CXSS_UserResc UserResc;
     char aeskey[32];
-    char ciphertext[512];
     char *privatekey = NULL;
     int  privatekey_len;
     int  aeskey_len;
     int  ciphertext_len;
 
     memset(&UserAuth, 0, sizeof(CXSS_UserAuth));
-    if (cxss_retrieve_user_auth(dbcontext, cxss_userid, &UserAuth) < 0) {
+    if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
         goto free_all;
     }   
     memset(&UserResc, 0, sizeof(CXSS_UserResc));    
-    if (cxss_retrieve_user_resc(dbcontext, cxss_userid, resource_id,
+    if (cxss_retrieve_userresc(dbcontext, cxss_userid, resource_id,
                                 &UserResc) < 0) {
         fprintf(stderr, "Failed to retrieve resource!\n");
         goto free_all;
@@ -389,8 +389,6 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         goto free_all;
     } 
 
-    printf("LENGTH: %ld\n", UserResc.AESKeyLength);
-     
     /* Decrypt AES key */ 
     aeskey_len = cxss_decrypt_rsa(UserResc.AESKey, 
                                   UserResc.AESKeyLength, 
@@ -400,26 +398,36 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         goto free_all;
     }
 
+    *resource_username = malloc(UserResc.UsernameLength);
+    if (!(*resource_username)) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto free_all;
+    }
+
     /* Decrypt username & passowrd */ 
     ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourceUsername,
                                           UserResc.UsernameLength,
                                           aeskey, UserResc.UsernameIV,
-                                          ciphertext);
+                                          *resource_username);
     if (ciphertext_len < 0) {
         fprintf(stderr, "Failed to decrypt resource username\n");
         goto free_all;
     }
-    printf("USERNAME: %s\n", ciphertext);
-
+    
+    *resource_data = malloc(UserResc.PasswordLength);
+    if (!(*resource_data)) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto free_all;
+    }
+    
     ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourcePassword,
                                           UserResc.PasswordLength,
                                           aeskey, UserResc.PasswordIV,
-                                          ciphertext);
+                                          *resource_data);
     if (ciphertext_len < 0) {
         fprintf(stderr, "Failed to decrypt resource password\n");
         goto free_all;
     }
-    printf("PASSWORD: %s\n", ciphertext);
 
     free(privatekey); 
     cxss_free_userauth(&UserAuth);
@@ -432,7 +440,6 @@ free_all:
     cxss_free_userresc(&UserResc);    
     return -1;
 }
-
 
 /** @brief Get current timestamp
  *

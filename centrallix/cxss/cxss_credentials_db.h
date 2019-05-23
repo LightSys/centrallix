@@ -67,20 +67,20 @@ typedef struct _CXSS_LLNode {
 /* Public functions */
 DB_Context_t cxss_init_credentials_database(const char *dbpath);
 int cxss_close_credentials_database(DB_Context_t dbcontext);
-int cxss_insert_user(DB_Context_t dbcontext, CXSS_UserData *UserData);
-int cxss_insert_user_auth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
-int cxss_insert_user_resc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
+int cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
+int cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
 int cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
 void cxss_free_userdata(CXSS_UserData *UserData);
-int cxss_retrieve_user_auth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
-int cxss_retrieve_user_resc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
+int cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
+int cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 void cxss_free_userresc(CXSS_UserResc *UserResc);
-int cxss_retrieve_user_auths(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
-void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start);
+int cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
+void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start); /* debug function */
 void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
 int cxss_get_user_count(DB_Context_t dbcontext);
-int cxss_get_user_resc_count(DB_Context_t dbcontext, const char *cxss_userid);
+int cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid);
 bool cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid);
 bool cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id);
 
