@@ -540,6 +540,14 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     	/** Check the setrowcount... **/
 	if (qe->SlaveIterCnt > 0 && qe->IterCnt >= qe->SlaveIterCnt) return 0;
 
+	/** If our constraint is false and depends only on provided objects, we're done now. **/
+	if (qe->Constraint && qe->Constraint->ObjCoverageMask == (qe->Constraint->ObjCoverageMask & stmt->Query->ProvidedObjMask))
+	    {
+	    ck = mqt_internal_CheckConstraint(qe, stmt);
+	    if (ck == 0)
+		return 0;
+	    }
+
     	/** Pass the NextItem on to the child, otherwise just 1 row. **/
 	cld = (pQueryElement)(qe->Children.Items[0]);
 	qe->IterCnt++;
