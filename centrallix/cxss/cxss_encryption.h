@@ -12,7 +12,7 @@ int cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len, const char *
 size_t cxss_aes256_ciphertext_length(size_t plaintext_len);
 int cxss_encrypt_rsa(const char *data, size_t len, const char *publickey, size_t publickey_len, char *ciphertext);
 int cxss_decrypt_rsa(const char *data, size_t len, const char *privatekey, size_t privatekey_len, char *plaintext);
-void cxss_free_rsa_keypair(char *privatekey, char *publickey);
+void cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, char *publickey, size_t publickey_len);
 
 /* Private functions */
 void cxss_initialize_crypto(void);

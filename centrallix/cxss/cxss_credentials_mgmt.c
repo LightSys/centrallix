@@ -1,13 +1,16 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <openssl/bio.h>
+#include "cxss_util.h"
 #include "cxss_credentials_mgmt.h"
 #include "cxss_credentials_db.h"
 #include "cxss_encryption.h"
 #include <assert.h>
+
 static DB_Context_t dbcontext = NULL;
 
 /** @brief Initialize CXSS credentials mgmt
@@ -54,8 +57,9 @@ cxss_close_credentials_mgmt(void)
  *  @return                     Status code   
  */
 int
-cxss_adduser(const char *cxss_userid, const char *encryption_key, 
-             size_t encryption_key_len, const char *salt, size_t salt_len)
+cxss_adduser(const char *cxss_userid, 
+             const char *encryption_key, size_t encryption_key_len, 
+             const char *salt, size_t salt_len)
 {
     CXSS_UserData UserData;
     CXSS_UserAuth UserAuth;
@@ -117,9 +121,8 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
     UserAuth.KeyLength = encr_privatekey_len;
     UserAuth.Salt = (char*)salt;
     UserAuth.SaltLength = 8;
-    UserAuth.UserIV = iv;
+    UserAuth.PrivateKeyIV = iv;
     UserAuth.IVLength = 16;
-    UserAuth.AuthClass = "privatekey"; // Arbitrary, so far
     UserAuth.RemovalFlag = 0;
     UserAuth.DateCreated = current_timestamp;
     UserAuth.DateLastUpdated = current_timestamp;
@@ -134,16 +137,15 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key,
         goto error;
     }
 
-    /* Erase private key from RAM */
-    memset(privatekey, 0, sizeof(privatekey));
-
-    cxss_free_rsa_keypair(privatekey, publickey);
     free(encrypted_privatekey);
+    cxss_destroy_rsa_keypair(privatekey, privatekey_len, 
+                             publickey, publickey_len);
     return 0;
 
 error:
-    cxss_free_rsa_keypair(privatekey, publickey);
     free(encrypted_privatekey);
+    free(privatekey);
+    free(publickey);         
     return -1;
 }
 
@@ -159,7 +161,7 @@ error:
  */
 char *
 cxss_retrieve_user_privatekey(const char *cxss_userid, 
-                              const char *encryption_key, 
+                              const char *encryption_key,
                               size_t ecryption_key_len,
                               int *privatekey_len)
 {
@@ -177,7 +179,7 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
     if (!plaintext) return NULL;
 
     if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, 
-                            encryption_key, UserAuth.UserIV, plaintext) < 0) {
+                    encryption_key, UserAuth.PrivateKeyIV, plaintext) < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
         cxss_free_userauth(&UserAuth);
         free(plaintext);
@@ -193,7 +195,7 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
  *
  *  Retrieve user public key
  *
- *  @param cxss_userid          Centrallix user identity
+ *  @param cxss_userid          CXSS user identity
  *  @return                     Pointer to public key (must be freed)
  */
 char *
@@ -231,6 +233,7 @@ cxss_retrieve_user_publickey(const char *cxss_userid, int *publickey_len)
  */
 int
 cxss_add_resource(const char *cxss_userid, const char *resource_id,
+                  const char *auth_class,
                   const char *resource_username, size_t username_len,
                   const char *resource_password, size_t password_len)
 {
@@ -309,6 +312,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     memset(&UserResc, 0, sizeof(CXSS_UserResc));
     UserResc.CXSS_UserID = (char*)cxss_userid;
     UserResc.ResourceID = (char*)resource_id;
+    UserResc.AuthClass = (char*)auth_class;
     UserResc.AESKey = encrypted_rand_key;
     UserResc.AESKeyLength = encrypted_rand_key_len;
     UserResc.UsernameIV = uname_iv;
@@ -360,19 +364,18 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
     int  aeskey_len;
     int  ciphertext_len;
 
-    memset(&UserAuth, 0, sizeof(CXSS_UserAuth));
+    /* Query CXSS database */
     if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
         goto free_all;
     }   
-    memset(&UserResc, 0, sizeof(CXSS_UserResc));    
     if (cxss_retrieve_userresc(dbcontext, cxss_userid, resource_id,
                                 &UserResc) < 0) {
         fprintf(stderr, "Failed to retrieve resource!\n");
         goto free_all;
     }
 
-    /* Alloc private key buffer */
+    /* Allocate buffer for decrypted private key */
     privatekey = malloc(cxss_aes256_ciphertext_length(UserAuth.KeyLength));
     if (!privatekey) {
         fprintf(stderr, "Memory allocation error\n");
@@ -382,14 +385,14 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
     /* Decrypt private key */
     privatekey_len = cxss_decrypt_aes256(UserAuth.PrivateKey, 
                                          UserAuth.KeyLength,
-                                         user_key, UserAuth.UserIV,
+                                         user_key, UserAuth.PrivateKeyIV,
                                          privatekey);
     if (privatekey_len < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
         goto free_all;
     } 
 
-    /* Decrypt AES key */ 
+    /* Decrypt AES key using user's private key */ 
     aeskey_len = cxss_decrypt_rsa(UserResc.AESKey, 
                                   UserResc.AESKeyLength, 
                                   privatekey, privatekey_len, aeskey);
@@ -398,13 +401,12 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         goto free_all;
     }
 
+    /* Decrypt username */
     *resource_username = malloc(UserResc.UsernameLength);
     if (!(*resource_username)) {
         fprintf(stderr, "Memory allocation error\n");
         goto free_all;
     }
-
-    /* Decrypt username & passowrd */ 
     ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourceUsername,
                                           UserResc.UsernameLength,
                                           aeskey, UserResc.UsernameIV,
@@ -413,13 +415,13 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         fprintf(stderr, "Failed to decrypt resource username\n");
         goto free_all;
     }
-    
+   
+    /* Decrypt auth data */ 
     *resource_data = malloc(UserResc.PasswordLength);
     if (!(*resource_data)) {
         fprintf(stderr, "Memory allocation error\n");
         goto free_all;
     }
-    
     ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourcePassword,
                                           UserResc.PasswordLength,
                                           aeskey, UserResc.PasswordIV,
@@ -439,42 +441,5 @@ free_all:
     cxss_free_userauth(&UserAuth);
     cxss_free_userresc(&UserResc);    
     return -1;
-}
-
-/** @brief Get current timestamp
- *
- *  This function returns the current timestamp
- *  stored in a static buffer. Hence, the buffer
- *  does not need to be freed.
- *
- *  @return     timestamp
- */    
-static char *
-get_timestamp(void)
-{
-    time_t current_time;
-    char *timestamp;
-
-    current_time = time(NULL);
-    if (current_time == (time_t)-1) {
-        fprintf(stderr, "Failed to retrieve system time\n");
-        exit(EXIT_FAILURE);
-    }
-
-    timestamp = ctime(&current_time);
-    if (!timestamp) {
-        fprintf(stderr, "Failed to generate timestamp\n");
-        exit(EXIT_FAILURE);
-    }
-
-    /* Remove pesky newline */
-    for (char *ch = timestamp; *ch != '\0'; ch++) {
-        if (*ch == '\n') {
-            *ch = '\0';
-            break;
-        }
-    }
-
-    return timestamp;
 }
 

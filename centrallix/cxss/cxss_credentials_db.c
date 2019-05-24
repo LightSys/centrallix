@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sqlite3.h>
+#include "cxss_util.h"
 #include "cxss_credentials_db.h"
 
 
@@ -49,8 +50,8 @@ error:
 
 /** @brief Cleanup and close cxss credentials database
  *
- *  This function closes the connection to the cxss database
- *  and performs some cleanup on its data structures.
+ *  This function frees some db data structures and
+ *  closes the connection to the database.
  *
  *  @param dbcontext    Database context handle
  *  @return             Status code
@@ -89,7 +90,6 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                  "CREATE TABLE IF NOT EXISTS UserAuth("
                  "PK_UserAuth INTEGER PRIMARY KEY,"
                  "CXSS_UserID TEXT,"
-                 "AuthClass TEXT,"
                  "UserSalt BLOB,"
                  "PrivateKeyIV BLOB,"
                  "UserPrivateKey BLOB,"
@@ -101,7 +101,8 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
     sqlite3_exec(dbcontext->db,
                  "CREATE TABLE IF NOT EXISTS UserResc("
                  "ResourceID TEXT PRIMARY KEY,"
-                 "RandomAESKey BLOB,"
+                 "AuthClass TEXT,"
+                 "AESKey BLOB,"
                  "ResourceUsernameIV BLOB,"
                  "ResourcePasswordIV BLOB,"
                  "ResourceUsername BLOB,"
@@ -148,35 +149,35 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     -1, &dbcontext->retrieve_user_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserAuth(CXSS_UserID, UserPrivateKey"
-                    ", UserSalt, PrivateKeyIV, AuthClass, RemovalFlag"
+                    "INSERT INTO UserAuth (CXSS_UserID"
+                    ", UserSalt, UserPrivateKey, PrivateKeyIV, RemovalFlag"
                     ", DateCreated, DateLastUpdated)"
-                    "  VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+                    "  VALUES (?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_auth_stmt, NULL);
    
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT UserPrivateKey, UserSalt, PrivateKeyIV"
-                    ", AuthClass, DateCreated, DateLastUpdated FROM UserAuth"
+                    ", DateCreated, DateLastUpdated FROM UserAuth"
                     "  WHERE CXSS_UserID=? AND RemovalFlag=0;",
                     -1, &dbcontext->retrieve_user_auth_stmt, NULL);
  
     sqlite3_prepare_v2(dbcontext->db,
-                    "SELECT UserPrivateKey, UserSalt, PrivateKeyIV, AuthClass"
+                    "SELECT UserPrivateKey, UserSalt, PrivateKeyIV"
                     ", RemovalFlag, DateCreated, DateLastUpdated FROM UserAuth"
                     "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_auths_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserResc (ResourceID, RandomAESKey"
-                    ", ResourceUsernameIV, ResourcePasswordIV"
+                    "INSERT INTO UserResc (ResourceID, AuthClass"
+                    ", AESKey, ResourceUsernameIV, ResourcePasswordIV"
                     ", ResourceUsername, ResourcePassword, CXSS_UserID"
                     ", DateCreated, DateLastUpdated) "
-                    "  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                    "  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_resc_stmt, NULL);
 
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceUsernameIV, ResourcePasswordIV"
-                    ", RandomAESKey, ResourceUsername, ResourcePassword"
+                    ", AuthClass, AESKey, ResourceUsername, ResourcePassword"
                     ", DateCreated, DateLastUpdated FROM UserResc"
                     "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
@@ -190,8 +191,8 @@ error:
 
 /** @brief Cleanup sqlite3 statements
  *
- *  This function is called when closing CXSS, and its job
- *  is to de-allocate the pre-compiled sqlite3 statements.
+ *  This function should be called when closing CXSS. 
+ *  Its job is to de-allocate the pre-compiled sqlite3 statements.
  *
  *  @param dbcontext    Database context handle
  *  @return             void         
@@ -224,7 +225,7 @@ int
 cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
 {
     sqlite3_reset(dbcontext->insert_user_stmt);
-
+    
     /* Bind data with sqlite3 stmts */
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
         UserData->CXSS_UserID, -1, NULL) != SQLITE_OK)
@@ -273,38 +274,33 @@ cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
         UserAuth->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    
+   
     if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 2,
-        UserAuth->PrivateKey, UserAuth->KeyLength, NULL) != SQLITE_OK) {
-        goto bind_error;
-    }
-
-    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 3,
         UserAuth->Salt, UserAuth->SaltLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
+    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 3,
+        UserAuth->PrivateKey, UserAuth->KeyLength, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+
     if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 4,
-        UserAuth->UserIV, UserAuth->IVLength, NULL) != SQLITE_OK) {
+        UserAuth->PrivateKeyIV, UserAuth->IVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 5,
-        UserAuth->AuthClass, -1, NULL) != SQLITE_OK) {
-        goto bind_error;
-    }
-
-    if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 6,
+    if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 5,
         UserAuth->RemovalFlag) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 7,
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 6,
         UserAuth->DateCreated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 8,
+    
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 7,
         UserAuth->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
@@ -340,45 +336,50 @@ cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
         UserResc->ResourceID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    
-    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 2,
+   
+    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 2,
+        UserResc->AuthClass, -1, NULL) != SQLITE_OK) {
+        goto bind_error;
+    }
+ 
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 3,
         UserResc->AESKey, UserResc->AESKeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 3, 
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 4, 
         UserResc->UsernameIV, UserResc->UsernameIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 4,
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 5,
         UserResc->PasswordIV, UserResc->PasswordIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 5,
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 6,
         UserResc->ResourceUsername, UserResc->UsernameLength, 
         NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 6,
+    if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 7,
         UserResc->ResourcePassword, UserResc->PasswordLength, 
         NULL) != SQLITE_OK) {
         goto bind_error;
     }
     
-    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 7, 
+    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 8, 
         UserResc->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 8,
+    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 9,
         UserResc->DateCreated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
 
-    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 9,
+    if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 10,
         UserResc->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
@@ -445,9 +446,10 @@ bind_error:
     return -1;
 }
 
-/** @brief Free CXSS_UserData struct members
+/** @brief Free dynamic CXSS_UserData struct members
  *
- *  Free struct members containing query results.
+ *  Free dynamically-allocated struct members 
+ *  containing query results.
  *
  *  @param UserData     Pointer to CXSS_UserData struct
  *  @return             void
@@ -455,10 +457,10 @@ bind_error:
 void
 cxss_free_userdata(CXSS_UserData *UserData)
 {
-    free(UserData->CXSS_UserID);
-    free(UserData->PublicKey);
-    free(UserData->DateCreated);
-    free(UserData->DateLastUpdated);
+    free((void*)UserData->CXSS_UserID);
+    free((void*)UserData->PublicKey);
+    free((void*)UserData->DateCreated);
+    free((void*)UserData->DateLastUpdated);
 }
 
 /** @brief Retrieve user authentication data
@@ -474,7 +476,7 @@ int
 cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, 
                         CXSS_UserAuth *UserAuth)
 {
-    const char *privatekey, *salt, *iv, *auth_class;
+    const char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
 
@@ -500,19 +502,17 @@ cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid,
     salt_length = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 1);
     iv = sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 2);
     iv_length = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 2);
-    auth_class = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 3);
-    date_created = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 5);
+    date_created = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 3);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
      
     /* Populate UserAuth struct */
     UserAuth->CXSS_UserID = cxss_strdup(cxss_userid);
     UserAuth->PrivateKey = cxss_blobdup(privatekey, keylength);
     UserAuth->KeyLength = keylength;
     UserAuth->Salt = cxss_blobdup(salt, salt_length);
-    UserAuth->UserIV = cxss_blobdup(iv, iv_length);
+    UserAuth->PrivateKeyIV = cxss_blobdup(iv, iv_length);
     UserAuth->IVLength = iv_length;
     UserAuth->SaltLength = salt_length;
-    UserAuth->AuthClass = cxss_strdup(auth_class);
     UserAuth->RemovalFlag = 0;
     UserAuth->DateCreated = cxss_strdup(date_created);
     UserAuth->DateLastUpdated = cxss_strdup(date_last_updated);
@@ -524,9 +524,10 @@ bind_error:
     return -1;
 }
 
-/** @brief Free CXSS_UserAuth struct members
+/** @brief Free dynamic CXSS_UserAuth struct members
  *
- *  Free struct members containing query results.
+ *  Free dynamically-allocated struct members 
+ *  containing query results.
  *
  *  @param UserAuth     Pointer to CXSS_UserAuth struct
  *  @return             void
@@ -534,13 +535,12 @@ bind_error:
 void
 cxss_free_userauth(CXSS_UserAuth *UserAuth)
 {
-    free(UserAuth->CXSS_UserID);
-    free(UserAuth->PrivateKey);
-    free(UserAuth->Salt);
-    free(UserAuth->UserIV);
-    free(UserAuth->AuthClass);
-    free(UserAuth->DateCreated);
-    free(UserAuth->DateLastUpdated);
+    free((void*)UserAuth->CXSS_UserID);
+    free((void*)UserAuth->PrivateKey);
+    free((void*)UserAuth->Salt);
+    free((void*)UserAuth->PrivateKeyIV);
+    free((void*)UserAuth->DateCreated);
+    free((void*)UserAuth->DateLastUpdated);
 }
 
 /** @brief Retrieve all user authentication entries
@@ -557,7 +557,7 @@ cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid,
                           CXSS_UserAuth_LLNode **node)
 {
     CXSS_UserAuth_LLNode *head, *prev, *current;
-    const char *privatekey, *salt, *iv, *auth_class;
+    const char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
     int removal_flag;
@@ -588,7 +588,6 @@ cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid,
         salt_length = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 1);
         iv = sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 2);
         iv_length = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 2); 
-        auth_class = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 3);
         removal_flag = sqlite3_column_int(dbcontext->retrieve_user_auths_stmt, 4); 
         date_created = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 5);
         date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 6);
@@ -599,9 +598,8 @@ cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid,
         current->UserAuth.KeyLength = keylength;
         current->UserAuth.Salt = cxss_blobdup(salt, salt_length);
         current->UserAuth.SaltLength = salt_length;
-        current->UserAuth.UserIV = cxss_blobdup(iv, iv_length);
+        current->UserAuth.PrivateKeyIV = cxss_blobdup(iv, iv_length);
         current->UserAuth.IVLength = iv_length;
-        current->UserAuth.AuthClass = cxss_strdup(auth_class);
         current->UserAuth.RemovalFlag = removal_flag;
         current->UserAuth.DateCreated = cxss_strdup(date_created);
         current->UserAuth.DateLastUpdated = cxss_strdup(date_last_updated);
@@ -624,6 +622,7 @@ int
 cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, 
                         const char *resource_id, CXSS_UserResc *UserResc)
 {
+    const char *auth_class;
     const char *resource_username, *resource_password;
     const char *aeskey;
     const char *resource_salt, *username_iv, *password_iv;
@@ -655,16 +654,18 @@ cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid,
     username_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 0);
     password_iv = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
     password_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 1);
-    aeskey = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 2);
-    aeskey_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 2);
-    resource_username = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
-    username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
-    resource_password = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 4);
-    password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 4);
-    date_created = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 5);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 6);     
+    auth_class = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 2);
+    aeskey = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
+    aeskey_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
+    resource_username = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 4);
+    username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 4);
+    resource_password = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 5);
+    password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 5);
+    date_created = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 6);
+    date_last_updated = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 7);     
     /* Build struct */
     UserResc->ResourceID = cxss_strdup(resource_id);
+    UserResc->AuthClass = cxss_strdup(auth_class);
     UserResc->CXSS_UserID = cxss_strdup(cxss_userid);
     UserResc->AESKey = cxss_blobdup(aeskey, aeskey_len);
     UserResc->AESKeyLength = aeskey_len; 
@@ -727,9 +728,6 @@ void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
         
         printf("KeyLength:          %ld\n", start->UserAuth.KeyLength);
  
-        if (start->UserAuth.AuthClass)
-            printf("AuthClass:          %s\n", start->UserAuth.AuthClass);
-        
         printf("RemovalFlag:        %d\n", start->UserAuth.RemovalFlag);
         
         if (start->UserAuth.DateCreated)
@@ -766,56 +764,9 @@ void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start)
     }
 }
 
-/** @brief Duplicate a string
- *
- *  This is just a strdup wrapper function
- *  to nicely handle cases in which the SQL 
- *  query returns NULL.
- *
- *  @param str   String to dup.
- *  @return      Dupped string
- */
-static inline char *
-cxss_strdup(const char *str)
-{
-    if (!str)
-        return NULL;
-    
-    return strdup(str);
-}
-
-/** @brief Duplicate an array of bytes
- *
- *  This function returns a pointer to
- *  a dynamic array containing a copy of 
- *  the dupped data.
- *
- *  @param blob         Blob to dup
- *  @param len          Length of blob
- *  @return             Dupped blob
- */
-static inline char *
-cxss_blobdup(const char *blob, size_t len)
-{
-    char *copy;
-
-    if (!blob)
-        return NULL;
-
-    copy = malloc(sizeof(char) * len);
-    if (!copy) {
-        fprintf(stderr, "Memory allocation error!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    memcpy(copy, blob, len);
-    return copy;
-}
-
 /** @brief Get user count
  *
- *  Returns the number of users
- *  registerd in the CXSS database.
+ *  Returns the number of users registerd in CXSS database.
  *
  *  @param dbcontext    Database context handle
  *  @return             User count
@@ -841,7 +792,7 @@ cxss_get_user_count(DB_Context_t dbcontext)
  *  for a given Centrallix user.
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  Centrallix user identity
+ *  @param cxss_userid  CXSS user identity
  *  @return             Resource count
  */
 int
@@ -872,7 +823,7 @@ cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid)
  *  already present in the CXSS database.
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  Centrallix user identity
+ *  @param cxss_userid  CXSS user identity
  *  @return             True if found, false if NOT found
  */
 bool
@@ -944,9 +895,10 @@ cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id)
         return false;
 }
 
-/** @brief Free CXSS_UserResc struct members
+/** @brief Free dynamic CXSS_UserResc struct members
  *
- *  Free struct members containing query results.
+ *  Free dynamically-allocated struct members 
+ *  containing query results.
  *
  *  @param UserAuth     Pointer to CXSS_UserResc struct
  *  @return             void
@@ -954,15 +906,16 @@ cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id)
 void
 cxss_free_userresc(CXSS_UserResc *UserResc)
 {
-    free(UserResc->CXSS_UserID);
-    free(UserResc->ResourceID);
-    free(UserResc->AESKey);
-    free(UserResc->ResourceUsername);
-    free(UserResc->ResourcePassword);
-    free(UserResc->UsernameIV);
-    free(UserResc->PasswordIV);
-    free(UserResc->DateCreated);
-    free(UserResc->DateLastUpdated);
+    free((void*)UserResc->CXSS_UserID);
+    free((void*)UserResc->ResourceID);
+    free((void*)UserResc->AuthClass);
+    free((void*)UserResc->AESKey);
+    free((void*)UserResc->ResourceUsername);
+    free((void*)UserResc->ResourcePassword);
+    free((void*)UserResc->UsernameIV);
+    free((void*)UserResc->PasswordIV);
+    free((void*)UserResc->DateCreated);
+    free((void*)UserResc->DateLastUpdated);
 }
 
 

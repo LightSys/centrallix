@@ -178,7 +178,7 @@ cxss_generate_128bit_iv(char *init_vector)
 int
 cxss_generate_256bit_key(const char *password, const char *salt, char *key)
 {
-    #define PBKDF2_ITER_NO      100
+    #define PBKDF2_ITER_NO      5000
     
     if (PKCS5_PBKDF2_HMAC(password, strlen(password),
                           salt, 8, PBKDF2_ITER_NO, 
@@ -291,7 +291,7 @@ cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
         goto error;
     } 
 
-    /* Read from BIO and write into char buffer */
+    /* Read keys from BIO into char buffer */
     if (BIO_read(pri, *privatekey, pri_len) < 0) {
         fprintf(stderr, "Error while reading from BIO\n");
         goto error;
@@ -327,8 +327,11 @@ error:
  *  @return             void
  */
 void
-cxss_free_rsa_keypair(char *privatekey, char *publickey)
+cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, 
+                         char *publickey, size_t publickey_len)
 {
+    memset(privatekey, 0, privatekey_len);
+    memset(publickey, 0, publickey_len);
     free(privatekey);
     free(publickey);
 }
