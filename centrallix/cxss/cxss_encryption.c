@@ -12,8 +12,6 @@
 
 static int CSPRNG_Initialized = 0;
 
-#define DEBUG(x) fprintf(stderr, (x));
-
 void
 cxss_initialize_crypto(void)
 {
@@ -36,11 +34,10 @@ cxss_initialize_crypto(void)
 
 void cxss_cleanup_crypto(void)
 {
-    /* clear any error */
-    CRYPTO_cleanup_all_ex_data();
-    ERR_free_strings();
-    ERR_remove_state(0);
     EVP_cleanup();
+    ERR_remove_state(0);
+    ERR_free_strings();
+    CRYPTO_cleanup_all_ex_data();
 }
 
 int 

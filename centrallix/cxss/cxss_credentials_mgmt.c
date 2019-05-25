@@ -14,10 +14,9 @@
 
 static DB_Context_t dbcontext = NULL;
 
-/** @brief Initialize CXSS credentials mgmt
+/** @brief Init CXSS credentials mgr
  *
- *  Initialize the CXSS credentials mgmt
- *  system (load database, etc...).
+ *  Initialize CXSS credentials manager.
  *
  *  @return     Status code
  */
@@ -32,10 +31,10 @@ cxss_init_credentials_mgmt(void)
     if (!dbcontext) return -1;
 }
 
-/** @brief Close CXSS credentials mgmt
+/** @brief Close CXSS credentials mgr
  *
- *  Close the CXSS credentials mgmt
- *  system (close database, free data structures, etc...)
+ *  Close the CXSS credentials manager
+ *  (close database, free data structures, etc...)
  *
  *  @return     Status code
  */
@@ -281,9 +280,9 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
         goto error;
     }
 
+    /* Allocate buffer for encrypted username and password */
     encr_username_len = cxss_aes256_ciphertext_length(username_len);
-    encr_password_len = cxss_aes256_ciphertext_length(password_len);
-    
+    encr_password_len = cxss_aes256_ciphertext_length(password_len); 
     encrypted_username = malloc(encr_username_len);
     encrypted_password = malloc(encr_password_len);
     if (!encrypted_username || !encrypted_password) {
