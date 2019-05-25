@@ -70,7 +70,7 @@ int cxss_close_credentials_database(DB_Context_t dbcontext);
 int cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData);
 int cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
 int cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
-int cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
+int cxss_retrieve_userdata(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
 void cxss_free_userdata(CXSS_UserData *UserData);
 int cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
 int cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);

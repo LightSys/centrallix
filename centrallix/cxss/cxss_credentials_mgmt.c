@@ -209,7 +209,7 @@ cxss_retrieve_user_publickey(const char *cxss_userid, int *publickey_len)
     CXSS_UserData UserData;
 
     /* Retrieve data from db */
-    cxss_retrieve_user(dbcontext, cxss_userid, &UserData);
+    cxss_retrieve_userdata(dbcontext, cxss_userid, &UserData);
     
     publickey = malloc(UserData.KeyLength);
     if (!publickey) {
