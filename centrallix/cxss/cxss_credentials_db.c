@@ -435,10 +435,10 @@ cxss_retrieve_user(DB_Context_t dbcontext, const char *cxss_userid,
     /* Populate UserData struct */
     UserData->CXSS_UserID = cxss_strdup(cxss_userid);
     UserData->PublicKey = cxss_strdup(publickey);
-    UserData->KeyLength = keylength;
     UserData->DateCreated = cxss_strdup(date_created);
     UserData->DateLastUpdated = cxss_strdup(date_last_updated);
-   
+    UserData->KeyLength = keylength;
+ 
     return 0;
 bind_error:
     fprintf(stderr, "Failed to bind value with stmt: %s\n",
@@ -508,14 +508,14 @@ cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid,
     /* Populate UserAuth struct */
     UserAuth->CXSS_UserID = cxss_strdup(cxss_userid);
     UserAuth->PrivateKey = cxss_blobdup(privatekey, keylength);
-    UserAuth->KeyLength = keylength;
-    UserAuth->Salt = cxss_blobdup(salt, salt_length);
     UserAuth->PrivateKeyIV = cxss_blobdup(iv, iv_length);
-    UserAuth->IVLength = iv_length;
-    UserAuth->SaltLength = salt_length;
-    UserAuth->RemovalFlag = 0;
+    UserAuth->Salt = cxss_blobdup(salt, salt_length);
     UserAuth->DateCreated = cxss_strdup(date_created);
     UserAuth->DateLastUpdated = cxss_strdup(date_last_updated);
+    UserAuth->RemovalFlag = false;
+    UserAuth->KeyLength = keylength;
+    UserAuth->IVLength = iv_length;
+    UserAuth->SaltLength = salt_length;
 
     return 0;
 bind_error:
@@ -595,14 +595,14 @@ cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid,
         /* Populate node */
         current->UserAuth.CXSS_UserID = cxss_strdup(cxss_userid);
         current->UserAuth.PrivateKey = cxss_blobdup(privatekey, keylength);
-        current->UserAuth.KeyLength = keylength;
         current->UserAuth.Salt = cxss_blobdup(salt, salt_length);
-        current->UserAuth.SaltLength = salt_length;
         current->UserAuth.PrivateKeyIV = cxss_blobdup(iv, iv_length);
-        current->UserAuth.IVLength = iv_length;
-        current->UserAuth.RemovalFlag = removal_flag;
         current->UserAuth.DateCreated = cxss_strdup(date_created);
         current->UserAuth.DateLastUpdated = cxss_strdup(date_last_updated);
+        current->UserAuth.RemovalFlag = removal_flag;
+        current->UserAuth.KeyLength = keylength;
+        current->UserAuth.SaltLength = salt_length;
+        current->UserAuth.IVLength = iv_length;
         
         /* Advance */ 
         prev = current;
@@ -668,17 +668,17 @@ cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid,
     UserResc->AuthClass = cxss_strdup(auth_class);
     UserResc->CXSS_UserID = cxss_strdup(cxss_userid);
     UserResc->AESKey = cxss_blobdup(aeskey, aeskey_len);
-    UserResc->AESKeyLength = aeskey_len; 
-    UserResc->UsernameIV = cxss_blobdup(username_iv, username_iv_len);
-    UserResc->UsernameIVLength = username_iv_len;
-    UserResc->PasswordIV = cxss_blobdup(password_iv, password_iv_len);
-    UserResc->PasswordIVLength = password_iv_len;
     UserResc->ResourceUsername = cxss_blobdup(resource_username, username_len);
-    UserResc->UsernameLength = username_len;
     UserResc->ResourcePassword = cxss_blobdup(resource_password, password_len);
-    UserResc->PasswordLength = password_len;
+    UserResc->UsernameIV = cxss_blobdup(username_iv, username_iv_len);
+    UserResc->PasswordIV = cxss_blobdup(password_iv, password_iv_len);
     UserResc->DateCreated = cxss_strdup(date_created);
     UserResc->DateLastUpdated = cxss_strdup(date_last_updated);
+    UserResc->AESKeyLength = aeskey_len; 
+    UserResc->UsernameLength = username_len;
+    UserResc->PasswordLength = password_len;
+    UserResc->UsernameIVLength = username_iv_len;
+    UserResc->PasswordIVLength = password_iv_len;
 
     return 0;
 bind_error:

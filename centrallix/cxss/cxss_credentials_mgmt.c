@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <time.h>
 #include <openssl/bio.h>
@@ -110,22 +111,25 @@ cxss_adduser(const char *cxss_userid,
 
     /* Get current timestamp */
     current_timestamp = get_timestamp();
-    
-    UserData.CXSS_UserID = (char*)cxss_userid;
+   
+    /* Build UserData struct */ 
+    UserData.CXSS_UserID = cxss_userid;
     UserData.PublicKey = publickey;
-    UserData.KeyLength = publickey_len;
     UserData.DateCreated = current_timestamp;
     UserData.DateLastUpdated = current_timestamp;
-    UserAuth.CXSS_UserID = (char*)cxss_userid;
+    UserData.KeyLength = publickey_len;
+
+    /* Build UserAuth struct */
+    UserAuth.CXSS_UserID = cxss_userid;
     UserAuth.PrivateKey = encrypted_privatekey;
-    UserAuth.KeyLength = encr_privatekey_len;
-    UserAuth.Salt = (char*)salt;
-    UserAuth.SaltLength = 8;
     UserAuth.PrivateKeyIV = iv;
-    UserAuth.IVLength = 16;
-    UserAuth.RemovalFlag = 0;
+    UserAuth.Salt = salt;
     UserAuth.DateCreated = current_timestamp;
     UserAuth.DateLastUpdated = current_timestamp;
+    UserAuth.RemovalFlag = false;
+    UserAuth.SaltLength = salt_len;
+    UserAuth.KeyLength = encr_privatekey_len;
+    UserAuth.IVLength = sizeof(iv);
 
     if (cxss_insert_userdata(dbcontext, &UserData) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
@@ -310,18 +314,18 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
 
     /* Build struct */
     memset(&UserResc, 0, sizeof(CXSS_UserResc));
-    UserResc.CXSS_UserID = (char*)cxss_userid;
-    UserResc.ResourceID = (char*)resource_id;
-    UserResc.AuthClass = (char*)auth_class;
+    UserResc.CXSS_UserID = cxss_userid;
+    UserResc.ResourceID = resource_id;
+    UserResc.AuthClass = auth_class;
     UserResc.AESKey = encrypted_rand_key;
-    UserResc.AESKeyLength = encrypted_rand_key_len;
-    UserResc.UsernameIV = uname_iv;
-    UserResc.UsernameIVLength = sizeof(uname_iv);
-    UserResc.PasswordIV = pwd_iv;
-    UserResc.PasswordIVLength = sizeof(pwd_iv);
     UserResc.ResourceUsername = encrypted_username;
-    UserResc.UsernameLength = encr_username_len;
     UserResc.ResourcePassword = encrypted_password;
+    UserResc.UsernameIV = uname_iv;
+    UserResc.PasswordIV = pwd_iv;
+    UserResc.AESKeyLength = encrypted_rand_key_len;
+    UserResc.UsernameIVLength = sizeof(uname_iv);
+    UserResc.PasswordIVLength = sizeof(pwd_iv);
+    UserResc.UsernameLength = encr_username_len;
     UserResc.PasswordLength = encr_password_len;
 
     /* Insert */

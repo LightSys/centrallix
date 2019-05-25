@@ -35,10 +35,10 @@ typedef struct {
     const char *PrivateKeyIV;
     const char *DateCreated;
     const char *DateLastUpdated;
+    bool RemovalFlag;
     size_t KeyLength;
     size_t SaltLength;
     size_t IVLength;
-    int RemovalFlag;
 } CXSS_UserAuth;
 
 typedef struct {
