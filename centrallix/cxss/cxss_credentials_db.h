@@ -64,6 +64,11 @@ typedef struct _CXSS_LLNode {
     struct _CXSS_LLNode *next;
 } CXSS_UserAuth_LLNode;
 
+typedef enum {
+    CXSSDB_BIND_ERROR = -1,
+    CXSSDB_SUCCESS = 0
+} DB_Status_e;
+
 /* Public functions */
 DB_Context_t cxss_init_credentials_database(const char *dbpath);
 int cxss_close_credentials_database(DB_Context_t dbcontext);

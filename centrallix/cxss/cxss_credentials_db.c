@@ -43,7 +43,7 @@ cxss_init_credentials_database(const char *db_path)
 
 error:
     free(dbcontext);
-    return (DB_Context_t)NULL;
+    return NULL;
 }
 
 /** @brief Cleanup and close cxss credentials database
@@ -208,11 +208,11 @@ cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
         return -1;
     }
 
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 /** @brief Insert user auth data
@@ -263,11 +263,11 @@ cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
         return -1;
     }
 
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 /** @brief Insert user resource
@@ -332,11 +332,11 @@ cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
         return -1;
     }
 
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 /** @brief Retrieve user data
@@ -379,11 +379,11 @@ cxss_retrieve_userdata(DB_Context_t dbcontext, const char *cxss_userid,
     UserData->DateLastUpdated = cxss_strdup(date_last_updated);
     UserData->KeyLength = keylength;
  
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 /** @brief Retrieve user authentication data
@@ -437,11 +437,11 @@ cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid,
     UserAuth->IVLength = iv_length;
     UserAuth->SaltLength = salt_length;
 
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 /** @brief Retrieve all user authentication entries
@@ -510,11 +510,11 @@ cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid,
     current->next = NULL;
     *(node) = head;
     
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 int 
@@ -577,12 +577,12 @@ cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid,
     UserResc->UsernameIVLength = username_iv_len;
     UserResc->PasswordIVLength = password_iv_len;
 
-    return 0;
+    return CXSSDB_SUCCESS;
 
 bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n",
                     sqlite3_errmsg(dbcontext->db));
-    return -1;
+    return CXSSDB_BIND_ERROR;
 }
 
 /** @brief Allocate a CXSS_UserAuth_LLNode
