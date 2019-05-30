@@ -129,6 +129,7 @@ typedef struct
     int allow_selection;
     int show_selection;
     int initial_selection;
+    int allow_deselection;
     int reverse_order;
     int overlap_scrollbar;	/* scrollbar overlaps with table */
     int hide_scrollbar;		/* don't show scrollbar at all */
@@ -174,7 +175,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSpane",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, allow_deselection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->min_rowheight, t->max_rowheight,
@@ -182,7 +183,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
 		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
 		t->colsep,t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
-		t->allow_selection, t->show_selection, t->initial_selection,
+		t->allow_selection, t->show_selection, t->initial_selection, t->allow_deselection,
 		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
 		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
 		t->data_mode, t->has_header,
@@ -349,6 +350,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    t->initial_selection = 2;
 	else
 	    t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
+	t->allow_deselection = htrGetBoolean(tree, "allow_deselection", t->initial_selection?0:1);
 	t->reverse_order = htrGetBoolean(tree, "reverse_order", 0);
 
 	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);
