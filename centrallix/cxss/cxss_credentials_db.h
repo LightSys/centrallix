@@ -13,11 +13,15 @@ typedef struct _DB_Context_t {
     sqlite3_stmt *is_resc_in_db_stmt;
     sqlite3_stmt *insert_user_stmt;
     sqlite3_stmt *retrieve_user_stmt;
+    sqlite3_stmt *update_user_stmt;
+    sqlite3_stmt *delete_user_stmt;
     sqlite3_stmt *insert_user_auth_stmt;
     sqlite3_stmt *retrieve_user_auth_stmt;
     sqlite3_stmt *retrieve_user_auths_stmt;
     sqlite3_stmt *insert_resc_stmt;
     sqlite3_stmt *retrieve_resc_stmt;
+    sqlite3_stmt *update_resc_stmt;
+    sqlite3_stmt *delete_resc_stmt;
 } *DB_Context_t;
 
 typedef struct {
@@ -81,6 +85,7 @@ int cxss_retrieve_userdata(DB_Context_t dbcontext, const char *cxss_userid, CXSS
 void cxss_free_userdata(CXSS_UserData *UserData);
 int cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
 int cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
+int cxss_update_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData);
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 void cxss_free_userresc(CXSS_UserResc *UserResc);
 int cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);

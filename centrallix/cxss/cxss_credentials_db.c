@@ -132,10 +132,17 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     ", DateCreated, DateLastUpdated) VALUES(?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
+                    "UPDATE UserData SET UserPublicKey=?, DateLastUpdated=?"
+                    "  WHERE CXSS_UserID=?;",
+                    -1, &dbcontext->update_user_stmt, NULL);
+    sqlite3_prepare_v2(dbcontext->db,
                     "SELECT UserPublicKey, DateCreated"
                     ", DateLastUpdated FROM UserData"
                     "  WHERE CXSS_UserID=?;",
                     -1, &dbcontext->retrieve_user_stmt, NULL);
+    sqlite3_prepare_v2(dbcontext->db,
+                    "DELETE FROM UserData WHERE CXSS_UserID=?;",
+                    -1, &dbcontext->delete_user_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
                     "INSERT INTO UserAuth (CXSS_UserID"
                     ", UserSalt, UserPrivateKey, PrivateKeyIV, RemovalFlag"
@@ -160,11 +167,20 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     "  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_resc_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
+                    "UPDATE UserResc SET AESKey=?"
+                    ", ResourceUsernameIV=?, ResourceAuthDataIV=?"
+                    ", ResourceUsrename=?, ResourceAuthData=?"
+                    ", DateLastUpdated=? WHERE CXSS_UserID=?;",
+                    -1, &dbcontext->update_resc_stmt, NULL);
+    sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceUsernameIV, ResourceAuthDataIV"
                     ", AuthClass, AESKey, ResourceUsername, ResourceAuthData"
                     ", DateCreated, DateLastUpdated FROM UserResc"
                     "  WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->retrieve_resc_stmt, NULL);
+    sqlite3_prepare_v2(dbcontext->db,
+                    "DELETE FROM UserResc WHERE CXSS_UserID=? AND ResourceID=?;",
+                    -1, &dbcontext->delete_resc_stmt, NULL);
     return CXSS_DB_SUCCESS;
 
 error:
@@ -573,6 +589,33 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
+int
+cxss_update_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
+{
+    /* Bind data with sqlite3 stmts */
+    sqlite3_reset(dbcontext->update_user_stmt); 
+    if (sqlite3_bind_text(dbcontext->update_user_stmt, 1, 
+        UserData->PublicKey, UserData->KeyLength, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_blob(dbcontext->update_user_stmt, 2,
+        UserData->DateLastUpdated, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_text(dbcontext->update_user_stmt, 3,
+        UserData->CXSS_UserID, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    
+    /* Execute query */
+    if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to update user\n");
+        return CXSS_DB_QUERY_ERROR;
+    }
+    return CXSS_DB_SUCCESS;
+
+bind_error:
+    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    return CXSS_DB_BIND_ERROR;
+}                                
+
 /** @brief Allocate a CXSS_UserAuth_LLNode
  *
  *  Allocate a node for a linked list of 
@@ -615,7 +658,6 @@ void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
         start = start->next;
     }
 }
-
 
 /** @brief Free linked list
  *  
@@ -818,11 +860,15 @@ cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->is_resc_in_db_stmt);
     sqlite3_finalize(dbcontext->insert_user_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_stmt);
+    sqlite3_finalize(dbcontext->update_user_stmt);
+    sqlite3_finalize(dbcontext->delete_user_stmt);
     sqlite3_finalize(dbcontext->insert_user_auth_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_auth_stmt);
     sqlite3_finalize(dbcontext->retrieve_user_auths_stmt);
     sqlite3_finalize(dbcontext->insert_resc_stmt);
     sqlite3_finalize(dbcontext->retrieve_resc_stmt);
+    sqlite3_finalize(dbcontext->update_resc_stmt);
+    sqlite3_finalize(dbcontext->delete_resc_stmt);
 }
 
 

@@ -28,7 +28,8 @@ cxss_init_credentials_mgmt(void)
     cxss_initialize_crypto();
     dbcontext = cxss_init_credentials_database("test.db");
 
-    if (!dbcontext) return -1;
+    if (!dbcontext)
+        return -1;
 }
 
 /** @brief Close CXSS credentials mgr
@@ -209,7 +210,7 @@ cxss_retrieve_user_publickey(const char *cxss_userid, int *publickey_len)
 
     /* Retrieve data from db */
     cxss_retrieve_userdata(dbcontext, cxss_userid, &UserData);
-    
+   
     publickey = malloc(UserData.KeyLength);
     if (!publickey) {
         fprintf(stderr, "Memory allocation error!\n");
