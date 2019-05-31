@@ -59,6 +59,7 @@ typedef struct
     pObject		SavedObjList[MQT_MAX_OBJECTS];
     int			nObjects;
     int			IsLastRow;
+    int			BypassChecked;
     int			AggLevel;
     pExpression		ListItems[MQT_MAX_OBJECTS];
     int			ListCount[MQT_MAX_OBJECTS];
@@ -436,6 +437,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i;
     pQueryElement cld;
+    pMQTData md = (pMQTData)(qe->PrivateData);
 
     	/** First, evaluate all of the attributes that we 'own' **/
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && qe->AttrCompiledExpr.Items[i] && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
@@ -463,6 +465,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	/** Set iteration cnt to 0 **/
 	qe->IterCnt = 0;
+	md->BypassChecked = 0;
 
     return 0;
     }
@@ -521,6 +524,31 @@ mqt_internal_SwapObjList(pMQTData md, pQueryStatement stmt, int do_close)
     }
 
 
+/*** mqt_internal_NextChildItem - retrieve the next child item underlying
+ *** this query.
+ ***/
+int
+mqt_internal_NextChildItem(pQueryElement parent, pQueryElement child, pQueryStatement stmt)
+    {
+    int rval;
+    int ck;
+    pMQTData md = (pMQTData)(parent->PrivateData);
+
+	/** If our constraint is false and depends only on provided objects, we're done now. **/
+	if (md->BypassChecked == 0 && parent->Constraint && parent->Constraint->ObjCoverageMask == (parent->Constraint->ObjCoverageMask & stmt->Query->ProvidedObjMask))
+	    {
+	    md->BypassChecked = 1;
+	    ck = mqt_internal_CheckConstraint(parent, stmt);
+	    if (ck == 0)
+		return 0;
+	    }
+
+	rval = child->Driver->NextItem(child, stmt);
+
+    return rval;
+    }
+
+
 /*** mqtNextItem - retrieves the first/next item in the result set for the
  *** tablular query.  This driver only runs its own loop once through, but
  *** within that one iteration may be multiple row result sets handled by
@@ -540,14 +568,6 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     	/** Check the setrowcount... **/
 	if (qe->SlaveIterCnt > 0 && qe->IterCnt >= qe->SlaveIterCnt) return 0;
 
-	/** If our constraint is false and depends only on provided objects, we're done now. **/
-	if (qe->Constraint && qe->Constraint->ObjCoverageMask == (qe->Constraint->ObjCoverageMask & stmt->Query->ProvidedObjMask))
-	    {
-	    ck = mqt_internal_CheckConstraint(qe, stmt);
-	    if (ck == 0)
-		return 0;
-	    }
-
     	/** Pass the NextItem on to the child, otherwise just 1 row. **/
 	cld = (pQueryElement)(qe->Children.Items[0]);
 	qe->IterCnt++;
@@ -560,7 +580,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	        {
 	        while(1)
 	            {
-	            rval = cld->Driver->NextItem(cld, stmt);
+		    rval = mqt_internal_NextChildItem(qe, cld, stmt);
 		    if (rval <= 0) break;
 		    ck = mqt_internal_CheckConstraint(qe, stmt);
 		    if (ck < 0) return ck;
@@ -602,7 +622,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    {
 	            while(1)
 	                {
-	                rval = cld->Driver->NextItem(cld, stmt);
+			rval = mqt_internal_NextChildItem(qe, cld, stmt);
 			if (rval <= 0) break;
 		        ck = mqt_internal_CheckConstraint(qe, stmt);
 		        if (ck < 0) return ck;
@@ -652,7 +672,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			{
 			while(1)
 			    {
-			    rval = cld->Driver->NextItem(cld, stmt);
+			    rval = mqt_internal_NextChildItem(qe, cld, stmt);
 			    if (rval <= 0) break;
 			    ck = mqt_internal_CheckConstraint(qe, stmt);
 			    if (ck < 0) return ck;
