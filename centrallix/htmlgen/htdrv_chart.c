@@ -7,6 +7,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
@@ -73,7 +74,7 @@ htchtGetIntValue(pWgtrNode tree, char* prop_name, int default_val)
 
 
 int
-htchtGetStrValue(pWgtrNode tree, char* prop_name, char* default_val, char* buf, int buf_len)
+htchtGetStrValue(pWgtrNode tree, char* prop_name, char* default_val, char* buf, size_t buf_len)
     {
     int rval;
     char* ptr;
@@ -95,7 +96,7 @@ htchtGetStrValue(pWgtrNode tree, char* prop_name, char* default_val, char* buf, 
 
 
 int
-htchtGetWidth(pWgtrNode tree){return htchtGetIntValue(tree, "w", -1);}
+htchtGetWidth(pWgtrNode tree){return htchtGetIntValue(tree, "width", -1);}
 
 int
 htchtGetX(pWgtrNode tree){return htchtGetIntValue(tree, "x", -1);}
@@ -118,106 +119,94 @@ htchtGetHeight(pWgtrNode tree)
     }
 
 int
-htchtGetName(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "name", "", buf, 64);}
+htchtGetName(pWgtrNode tree, char* buf, size_t buflen) {return htchtGetStrValue(tree, "name", "", buf, buflen);}
 
 int
-htchtGetTitle(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "title", "", buf, 64);}
+htchtGetTitle(pWgtrNode tree, char* buf, size_t buflen) {return htchtGetStrValue(tree, "title", "", buf, buflen);}
 
 int
-htchtGetType(pWgtrNode tree, char* buf)
+htchtGetType(pWgtrNode tree, char* buf, size_t buflen)
     {
-    char chart_types[16][16] = {"line", "bar", "scatter", "pie"};
-    int rval;
+    char* chart_types[16] = {"line", "bar", "scatter", "pie", NULL};
     char err_msg[256];
+    int rval;
     int found = 0;
     int type_idx;
 
-        rval = htchtGetStrValue(tree, "chart_type", "bar", buf, 64);
+        rval = htchtGetStrValue(tree, "chart_type", "bar", buf, buflen);
 
-        if (rval != 0)
-            return rval;
-
-        sprintf(err_msg, "%s is not a valid chart type. Supported types are: ", buf);
-
-        for (type_idx = 0; type_idx < 16; type_idx++)
+	/** Verify we have a valid chart type **/
+        for (type_idx = 0; chart_types[type_idx]; type_idx++)
             {
             if (strcmp(buf, chart_types[type_idx]) == 0)
+		{
                 found = 1;
+		break;
+		}
+	    }
 
-            strcat(err_msg, chart_types[type_idx]);
-            strcat(err_msg, ", ");
-            }
+	if (found)
+	    return 0;
 
-        if (found) return 0;
-        else
+	err_msg[0] = '\0';
+        for (type_idx = 0; chart_types[type_idx]; type_idx++)
             {
-            mssError(1, "HTCHT", err_msg);
-            strcpy(buf, "");
-            return -1;
+            strcat(err_msg, chart_types[type_idx]);
+            strcat(err_msg, " ");
             }
+
+	mssError(1, "HTCHT", "%s is not a valid chart type. Supported types are: %s", buf, err_msg);
+
+    return -1;
     }
 
 int
-htchtGetTitleColor(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "titlecolor", "", buf, 32);}
+htchtGetTitleColor(pWgtrNode tree, char* buf, size_t buflen) {return htchtGetStrValue(tree, "titlecolor", "", buf, buflen);}
 
 int
-htchtGetLegendPosition(pWgtrNode tree, char* buf) {return htchtGetStrValue(tree, "legend_position", "", buf, 32);}
+htchtGetLegendPosition(pWgtrNode tree, char* buf, size_t buflen) {return htchtGetStrValue(tree, "legend_position", "", buf, buflen);}
 
 int
-htchtGetObjectSource(pWgtrNode tree, char* buf)
+htchtGetObjectSource(pWgtrNode tree, char* buf, size_t buflen)
     {
         /**  The ObjectSource can be provided in the configuration for this widget,
          **  but it is usually determined by the javascript driver.
          **  Setting ObjectSource to an empty string indicates that the javascript should determine the ObjectSource.
          **/
-        return htchtGetStrValue(tree, "objectsource", "", buf, 64);
+        return htchtGetStrValue(tree, "objectsource", "", buf, buflen);
     }
 
 void
-htchtGetCanvasId(pWgtrNode tree, char* buf){sprintf(buf, "cht%dcanvas", HTCHT.idcnt);}
+htchtGetCanvasId(pWgtrNode tree, char* buf, size_t buflen) { snprintf(buf, buflen, "cht%dcanvas", HTCHT.idcnt); }
 
 void
-htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
+htchtAddSeriesProperties(pHtSession session, pWgtrNode tree)
     {
     int num_series;
     int series_idx;
     pWgtrNode series[32];
     pWgtrNode sub_tree;
-    char series_object[256];
-
     char label[32];
     char color[32];
     char x_column[32];
     char y_column[32];
     char chart_type[32];
 
-        buf[0] = '\0';
-        strcat(buf, "[");
-
         num_series = wgtrGetMatchingChildList(tree, "widget/chart-series", series, sizeof(series)/sizeof(pWgtrNode));
         for (series_idx = 0; series_idx < num_series; series_idx++)
             {
-           sub_tree = series[series_idx];
+	    sub_tree = series[series_idx];
 
             /** It is actually possible for the subwidgets to be in another namespace, so we check that **/
             htrCheckNSTransition(session, tree, sub_tree);
 
-            htchtGetStrValue(sub_tree, "label", "", label, 32);
-            htchtGetStrValue(sub_tree, "color", "", color, 32);
-            htchtGetStrValue(sub_tree, "x_column", "", x_column, 32);
-            htchtGetStrValue(sub_tree, "y_column", "", y_column, 32);
-            htchtGetStrValue(sub_tree, "chart_type", "", chart_type, 32);
+            htchtGetStrValue(sub_tree, "label", "", label, sizeof(label));
+            htchtGetStrValue(sub_tree, "color", "", color, sizeof(color));
+            htchtGetStrValue(sub_tree, "x_column", "", x_column, sizeof(x_column));
+            htchtGetStrValue(sub_tree, "y_column", "", y_column, sizeof(y_column));
+            htchtGetStrValue(sub_tree, "chart_type", "", chart_type, sizeof(chart_type));
 
-            htrCheckNSTransitionReturn(session, tree, sub_tree);
-
-            sprintf(series_object, "{"
-                                       "label: \"%s\", "
-                                       "color: \"%s\","
-                                       "fill: %d,"
-                                       "x_column: \"%s\","
-                                       "y_column: \"%s\","
-                                       "chart_type: \"%s\""
-                                   "},",
+            htrAddScriptInit_va(session, "    chartobj.series.push({ label: \"%STR&JSSTR\", color: \"%STR&JSSTR\", fill: %INT, x_column: \"%STR&JSSTR\", y_column: \"%STR&JSSTR\", chart_type: \"%STR&JSSTR\" });\n",
                                    label,
                                    color,
                                    htrGetBoolean(tree, "fill", 1),
@@ -225,58 +214,44 @@ htchtGetSeriesProperties(pHtSession session, pWgtrNode tree, char* buf)
                                    y_column,
                                    chart_type);
 
-            strcat(buf, series_object);
+            htrCheckNSTransitionReturn(session, tree, sub_tree);
             }
-        strcat(buf, "]");
 
-        return;
+    return;
     }
 
 
 void
-htchtGetAxesProperties(pHtSession session, pWgtrNode tree, char* buf)
+htchtAddAxesProperties(pHtSession session, pWgtrNode tree)
     {
     int num_axes;
     int axes_idx;
     pWgtrNode axes[32];
     pWgtrNode sub_tree;
-    char axis_object[256];
-
     char label[32];
     char axis[8];
-
-        buf[0] = '\0';
-        strcat(buf, "[");
 
         num_axes = wgtrGetMatchingChildList(tree, "widget/chart-axis", axes, sizeof(axes)/sizeof(pWgtrNode));
         for (axes_idx = 0; axes_idx < num_axes; axes_idx++)
             {
-                sub_tree = axes[axes_idx];
+	    sub_tree = axes[axes_idx];
 
-                /** It is actually possible for the subwidgets to be in another namespace, so we check that **/
-                htrCheckNSTransition(session, tree, sub_tree);
+	    /** It is actually possible for the subwidgets to be in another namespace, so we check that **/
+	    htrCheckNSTransition(session, tree, sub_tree);
 
-                htchtGetStrValue(sub_tree, "label", "", label, 32);
-                htchtGetStrValue(sub_tree, "axis", "x", axis, 8);
+	    htchtGetStrValue(sub_tree, "label", "", label, sizeof(label));
+	    htchtGetStrValue(sub_tree, "axis", "x", axis, sizeof(axis));
 
-                htrCheckNSTransitionReturn(session, tree, sub_tree);
+	    htrAddScriptInit_va(session, "    chartobj.axes.push({ label: \"%STR&JSSTR\", axis: \"%STR&JSSTR\", });\n", label, axis);
 
-                sprintf(axis_object, "{"
-                                         "label: \"%s\", "
-                                         "axis: \"%s\", "
-                                      "},",
-                        label,
-                        axis);
-
-                strcat(buf, axis_object);
+	    htrCheckNSTransitionReturn(session, tree, sub_tree);
             }
-        strcat(buf, "]");
 
         return;
     }
 
 
-void
+int
 htchtInitCall(pHtSession session, pWgtrNode tree)
     {
     char object_source[64];
@@ -286,37 +261,32 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
     char canvas_id[32];
     char title_color[32];
     char legend_position[32];
-    char axes_properties[2048];
-    char series_properties[2048];
 
-        htchtGetObjectSource(tree, object_source);
-        htchtGetName(tree, name);
-        htchtGetTitle(tree, title);
-        htchtGetType(tree, chart_type);
-        htchtGetCanvasId(tree, canvas_id);
-        htchtGetTitleColor(tree, title_color);
-        htchtGetLegendPosition(tree, legend_position);
-        htchtGetAxesProperties(session, tree, axes_properties);
-        htchtGetSeriesProperties(session, tree, series_properties);
+        htchtGetObjectSource(tree, object_source, sizeof(object_source));
+        htchtGetName(tree, name, sizeof(name));
+        htchtGetTitle(tree, title, sizeof(title));
+        htchtGetType(tree, chart_type, sizeof(chart_type));
+        htchtGetCanvasId(tree, canvas_id, sizeof(canvas_id));
+        htchtGetTitleColor(tree, title_color, sizeof(title_color));
+        htchtGetLegendPosition(tree, legend_position, sizeof(legend_position));
 
-        htrAddScriptInit_va(session, "    "
-                "cht_init({"
-                    "x_pos: %INT,"
-                    "y_pos: %INT,"
-                    "width: %INT,"
-                    "height: %INT,"
-                    "title_size: %INT,"
+        htrAddScriptInit_va(session, "    var chartobj = {"
+                    "x_pos: %INT, "
+                    "y_pos: %INT, "
+                    "width: %INT, "
+                    "height: %INT, "
+                    "title_size: %INT, "
                     "start_at_zero: %INT,"
-                    "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"),"
-                    "chart_type: '%STR',"
-                    "canvas_id: '%STR&SYM',"
-                    "osrc: '%STR',"
-                    "title: '%STR',"
-                    "title_color: '%STR',"
-                    "legend_position: '%STR',"
-                    "axes: %STR,"
-                    "series: %STR"
-                "});\n",
+                    "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"), "
+                    "chart_type: '%STR&JSSTR', "
+                    "canvas_id: '%STR&SYM', "
+                    "osrc: '%STR&JSSTR', "
+                    "title: '%STR&JSSTR', "
+                    "title_color: '%STR&JSSTR', "
+                    "legend_position: '%STR&JSSTR', "
+		    "axes: [], "
+		    "series: [], "
+		    "};\n",
                     htchtGetX(tree),
                     htchtGetY(tree),
                     htchtGetWidth(tree),
@@ -329,10 +299,14 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     object_source,
                     title,
                     title_color,
-                    legend_position,
-                    axes_properties,
-                    series_properties
+                    legend_position
         );
+
+        htchtAddAxesProperties(session, tree);
+        htchtAddSeriesProperties(session, tree);
+	htrAddScriptInit_va(session, "    cht_init(chartobj);\n");
+
+    return 0;
     }
 
 
@@ -346,14 +320,30 @@ htchtScriptInclude(pHtSession session)
 
 
 void
-htchtGenHTML(pHtSession session, pWgtrNode tree)
+htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
     {
     char buf[32];
-        htchtGetCanvasId(tree, buf);
 
-        htrAddBodyItem_va(session,"<DIV> <CANVAS ID=\"%STR&SYM\">\n", buf);
+        htchtGetCanvasId(tree, buf, sizeof(buf));
+
+        htrAddBodyItem_va(session,"<DIV ID=\"%STR&SYMdiv\"><CANVAS ID=\"%STR&SYM\" width=\"%POS\" height=\"%POS\">\n",
+		buf,
+		buf,
+		htchtGetWidth(tree),
+		htchtGetHeight(tree)
+	);
+
         htrAddBodyItem(session,"<P>CHART HERE</P>\n");
-        htrAddBodyItem(session,"</CANVAS> </DIV>\n");
+        htrAddBodyItem(session,"</CANVAS></DIV>\n");
+
+	htrAddStylesheetItem_va(session, "\t#%STR&SYMdiv { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
+		buf,
+		htchtGetX(tree),
+		htchtGetY(tree),
+		htchtGetWidth(tree),
+		htchtGetHeight(tree),
+		z
+	);
     }
 
 int
@@ -370,11 +360,12 @@ htchtRender(pHtSession session, pWgtrNode tree, int z)
 
         /** Verify that certain parameters are provided **/
         if (htchtGetHeight(tree) == -1) return -1;
-        if (htchtGetName(tree, buf) != 0) return -1;
+        if (htchtGetName(tree, buf, sizeof(buf)) != 0) return -1;
 
-        htchtGenHTML(session, tree);
+        htchtGenHTML(session, tree, z);
         htchtScriptInclude(session);
-        htchtInitCall(session, tree);
+        if (htchtInitCall(session, tree) < 0)
+	    return -1;
 
         /** Set the ID for the next chart **/
         HTCHT.idcnt++;
@@ -395,14 +386,14 @@ htchtInitialize()
         if (!drv) return -1;
 
         /** Fill in the structure. **/
-        strcpy(drv->Name,"DHTML Chart Driver");
-        strcpy(drv->WidgetName,"chart");
+        strcpy(drv->Name, "DHTML Chart Driver");
+        strcpy(drv->WidgetName, "chart");
         drv->Render = htchtRender;
         xaAddItem(&(drv->PseudoTypes), "chart-axis");
         xaAddItem(&(drv->PseudoTypes), "chart-series");
 
-        htrAddEvent(drv,"Click");
-        htrAddEvent(drv,"DblClick");
+        htrAddEvent(drv, "Click");
+        htrAddEvent(drv, "DblClick");
 
         /** Register. **/
         htrRegisterDriver(drv);
@@ -411,5 +402,6 @@ htchtInitialize()
 
         HTCHT.idcnt = 0;
 
-        return 0;
-}
+    return 0;
+    }
+

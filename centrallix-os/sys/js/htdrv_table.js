@@ -1628,6 +1628,7 @@ function tbld_init(param)
     t.showselect = param.show_selection;
     t.initselect = param.initial_selection;
     t.initselect_orig = param.initial_selection;
+    t.allowdeselect = param.allow_deselection;
     t.datamode = param.dm;
     t.has_header = param.hdr;
     t.demand_scrollbar = param.demand_sb;
@@ -2272,7 +2273,8 @@ function tbld_mousedown(e)
 		    }
 		else if (ly.table.initselect !== ly.table.initselect_orig)
 		    {
-		    ly.table.initselect = ly.table.initselect_orig;
+		    if (ly.table.allowdeselect)
+			ly.table.initselect = ly.table.initselect_orig;
 		    ly.table.RedrawAll(null, true);
 		    }
 		}

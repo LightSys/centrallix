@@ -139,6 +139,8 @@ function cht_highlight(index) {
 }
 
 function cht_generate_rgba(id, alpha = 1) {
+    if (id.charAt(0) == '#')
+	return Color(id).alpha(alpha).rgbString();
     let colors = {
         blue: 'rgb(54, 162, 235)',
         purple: 'rgb(153, 102, 255)',
@@ -189,7 +191,8 @@ function cht_get_scale_label(x_y) {
     let axes = this.params.axes.filter(function (elem) {return elem.axis === x_y});
     if (axes.length === 0) return {};
     return {
-        display: (axes[0].label !== ""),
+        //display: (axes[0].label !== ""),
+        display: axes[0].label?true:false,
         labelString: axes[0].label,
     }
 }
@@ -219,7 +222,7 @@ function cht_chartjs_init() {
         options: {
             scales: this.GetScales(),
             title: {
-                display: true,
+                display: this.params.title?true:false,
                 text: this.params.title,
                 fontColor: this.params.title_color,
                 fontSize: this.params.title_size
@@ -240,7 +243,7 @@ function cht_chartjs_init() {
 
 function cht_get_osrc(){
     if (this.params.osrc)
-        this.osrc = wgtrGetNode(this, params.osrc, "widget/osrc");
+        this.osrc = wgtrGetNode(this, this.params.osrc, "widget/osrc");
     else
         this.osrc = wgtrFindContainer(this, "widget/osrc");
 
@@ -294,6 +297,26 @@ function cht_osrc_dispatch()
 	}
     }
 
+// Called when the chart's layer is revealed/shown to the user
+function cht_cb_reveal(event)
+    {
+    switch(event.eventName)
+	{
+	case 'Reveal':
+	    if (this.osrc) this.osrc.Reveal(this);
+	    break;
+	case 'Obscure':
+	    if (this.osrc) this.osrc.Obscure(this);
+	    break;
+	case 'RevealCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	case 'ObscureCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	}
+    }
+
 function cht_register_osrc_functions(chart_wgt){
     chart_wgt.IsDiscardReady = new Function('return true;');
     chart_wgt.DataAvailable = cht_data_available; //Called when there is new data on the way
@@ -341,6 +364,10 @@ function cht_init(params) {
     chart_wgt.osrc_request_queue = [];
     chart_wgt.osrc_busy = false;
     chart_wgt.osrc_last_op = null;
+
+    // Request reveal/obscure notifications
+    chart_wgt.Reveal = cht_cb_reveal;
+    pg_reveal_register_listener(chart_wgt);
 
     this.update_soon = false; //see cht_object_available
 
