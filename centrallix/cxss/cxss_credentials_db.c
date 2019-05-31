@@ -658,6 +658,50 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
+int
+cxss_delete_userdata(DB_Context_t dbcontext, const char *cxss_userid)
+{
+    /* Bind data with sqlite3 stmt */
+    if (sqlite3_bind_text(dbcontext->delete_user_stmt, 1,
+        cxss_userid, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    
+    /* Execute query */
+    if (sqlite3_step(dbcontext->delete_user_stmt) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to delete user\n");
+        return CXSS_DB_QUERY_ERROR;
+    }
+    return CXSS_DB_SUCCESS;
+
+bind_error:
+    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    return CXSS_DB_BIND_ERROR;
+}
+
+int
+cxss_delete_userresc(DB_Context_t dbcontext, const char *cxss_userid,
+                     const char *resource_id)
+{
+    /* Bind data with sqlite3 stmts */
+    if (sqlite3_bind_text(dbcontext->delete_resc_stmt, 1,
+        cxss_userid, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_text(dbcontext->delete_resc_stmt, 2,
+        resource_id, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    
+    /* Execute query */
+    if (sqlite3_step(dbcontext->delete_resc_stmt) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to delete resource\n");
+        return CXSS_DB_QUERY_ERROR;
+    }
+    return CXSS_DB_SUCCESS;
+    
+bind_error:
+    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    return CXSS_DB_BIND_ERROR;
+}
+
 /** @brief Allocate a CXSS_UserAuth_LLNode
  *
  *  Allocate a node for a linked list of 
