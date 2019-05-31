@@ -163,36 +163,36 @@ error:
  *  @param encryption_key_len   Length of encryption key
  *  @return                     Pointer to decrypted private key (must be freed)
  */
-char *
+int
 cxss_retrieve_user_privatekey(const char *cxss_userid, 
                               const char *encryption_key,
                               size_t ecryption_key_len,
+                              char **privatekey,
                               int *privatekey_len)
 {
-    char *plaintext;
     CXSS_UserAuth UserAuth;
     
     /* Retrieve data from db */
     if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
-        return NULL;
+        return -1;
     }
  
     /* Decrypt */
-    plaintext = malloc(sizeof(char) * UserAuth.KeyLength);
-    if (!plaintext) return NULL;
+    *privatekey = malloc(sizeof(char) * UserAuth.KeyLength);
+    if (!(*privatekey)) return -1;
 
     if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, 
-                    encryption_key, UserAuth.PrivateKeyIV, plaintext) < 0) {
+                    encryption_key, UserAuth.PrivateKeyIV, *privatekey) < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
         cxss_free_userauth(&UserAuth);
-        free(plaintext);
-        return NULL;
+        free(*privatekey);
+        return -1;
     }
     *privatekey_len = UserAuth.KeyLength;
                         
     cxss_free_userauth(&UserAuth);  
-    return plaintext;
+    return 0;
 }
 
 /** @brief Retrieve user public key
@@ -202,25 +202,28 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
  *  @param cxss_userid          CXSS user identity
  *  @return                     Pointer to public key (must be freed)
  */
-char *
-cxss_retrieve_user_publickey(const char *cxss_userid, int *publickey_len)
+int
+cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey,
+                             int *publickey_len)
 {
-    char *publickey;
     CXSS_UserData UserData;
 
     /* Retrieve data from db */
-    cxss_retrieve_userdata(dbcontext, cxss_userid, &UserData);
-   
-    publickey = malloc(UserData.KeyLength);
-    if (!publickey) {
-        fprintf(stderr, "Memory allocation error!\n");
-        return NULL;
+    if (cxss_retrieve_userdata(dbcontext, cxss_userid, &UserData) < 0) {
+        return -1;
     }
-    memcpy(publickey, UserData.PublicKey, UserData.KeyLength);
+   
+    *publickey = malloc(UserData.KeyLength);
+    if (!(*publickey)) {
+        fprintf(stderr, "Memory allocation error!\n");
+        cxss_free_userdata(&UserData);
+        return -1;
+    }
+    memcpy(*publickey, UserData.PublicKey, UserData.KeyLength);
     *publickey_len = UserData.KeyLength;
 
     cxss_free_userdata(&UserData);  
-    return publickey;
+    return 0;
 }
 
 /** @brief Add resource to CXSS
@@ -262,7 +265,11 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     }
 
     /* Retrieve user publickey */
-    publickey = cxss_retrieve_user_publickey(cxss_userid, &publickey_len);
+    if (cxss_retrieve_user_publickey(cxss_userid, &publickey, &publickey_len) < 0) {
+        fprintf(stderr, "Failed to retrieve user public key\n");
+        goto error;
+    }
+
     if (!publickey) {
         fprintf(stderr, "Failed to retrieve public key\n");
         goto error;
@@ -374,13 +381,15 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
     int  aeskey_len;
     int  ciphertext_len;
 
+    memset(&UserAuth, 0, sizeof(CXSS_UserAuth));
+    memset(&UserResc, 0, sizeof(CXSS_UserResc));
+
     /* Query CXSS database */
     if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
         goto free_all;
     }   
-    if (cxss_retrieve_userresc(dbcontext, cxss_userid, resource_id,
-                                &UserResc) < 0) {
+    if (cxss_retrieve_userresc(dbcontext, cxss_userid, resource_id, &UserResc) < 0) {
         fprintf(stderr, "Failed to retrieve resource!\n");
         goto free_all;
     }    
