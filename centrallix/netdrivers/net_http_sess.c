@@ -172,10 +172,6 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    {
 	    printf("NHT: releasing session for username [%s], cookie [%s]\n", sess->Username, sess->Cookie);
 
-	    /** Kill the inactivity timers first so we don't get re-entered **/
-	    nht_i_RemoveWatchdog(sess->WatchdogTimer);
-	    nht_i_RemoveWatchdog(sess->InactivityTimer);
-
 	    /** Decrement user session count **/
 	    sess->User->SessionCnt--;
 	    xaRemoveItem(&(sess->User->Sessions), xaFindItem(&(sess->User->Sessions), (void*)sess));
@@ -184,6 +180,10 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    xhRemove(&(NHT.CookieSessions), sess->Cookie);
 	    xhRemove(&(NHT.SessionsByID), sess->S_ID_Text);
 	    xaRemoveItem(&(NHT.Sessions), xaFindItem(&(NHT.Sessions), (void*)sess));
+
+	    /** Kill the inactivity timers now so we don't get re-entered **/
+	    nht_i_RemoveWatchdog(sess->WatchdogTimer);
+	    nht_i_RemoveWatchdog(sess->InactivityTimer);
 
 	    /** Destroy any active app groups. **/
 	    while(sess->AppGroups.nItems)
@@ -626,11 +626,11 @@ nht_i_FreeApp(pNhtApp app)
     int i;
     pObjSession one_sess;
 
-	/** Remove watchdog first to avoid further callbacks **/
-	nht_i_RemoveWatchdog(app->WatchdogTimer);
-
 	/** Disconnect from the app group **/
 	xaRemoveItem(&(app->Group->Apps), xaFindItem(&(app->Group->Apps), (void*)app));
+
+	/** Remove watchdog to avoid further callbacks **/
+	nht_i_RemoveWatchdog(app->WatchdogTimer);
 
 	/** Free the endorsement/context info **/
 	for(i=0;i<app->Endorsements.nItems;i++)
@@ -651,7 +651,6 @@ nht_i_FreeApp(pNhtApp app)
 	xaDeInit(&app->AppOSMLSessions);
 
 	/** Clean up... **/
-	/*nht_i_RemoveWatchdog(app->InactivityTimer);*/
 	objCloseSession(app->AppObjSess);
 	appDestroy(app->Application);
 	nmFree(app, sizeof(NhtApp));
@@ -697,11 +696,11 @@ int
 nht_i_FreeAppGroup(pNhtAppGroup group)
     {
 
-	nht_i_RemoveWatchdog(group->WatchdogTimer);
-
 	/** Disconnect from the session **/
 	xaRemoveItem(&(group->Session->AppGroups), xaFindItem(&(group->Session->AppGroups), (void*)group));
 	
+	nht_i_RemoveWatchdog(group->WatchdogTimer);
+
 	/** Destroy any apps still active **/
 	while(group->Apps.nItems)
 	    {
@@ -710,7 +709,6 @@ nht_i_FreeAppGroup(pNhtAppGroup group)
 
 	/** Clean up... **/
 	xaDeInit(&group->Apps);
-	/*nht_i_RemoveWatchdog(group->InactivityTimer);*/
 	nmFree(group, sizeof(NhtAppGroup));
 
     return 0;
