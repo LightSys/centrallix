@@ -453,3 +453,39 @@ free_all:
     return -1;
 }
 
+/** Delete a user from CXSS
+ *
+ *  Remove user with associated data and
+ *  resources from CXSS.
+ *
+ *  @param cxss_userid  Centrallix user identity
+ *  @return             Status code
+ */
+int
+cxss_delete_user(const char *cxss_userid)
+{
+    if (cxss_delete_userdata(dbcontext, cxss_userid) < 0) {
+        fprintf(stderr, "Failed to delete user data\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/** Delete a user's resource from CXSS
+ *
+ *  @param cxss_userid  Centrallix user identity
+ *  @param resource_id  Resource identity
+ *  @return             Status code
+ */
+int
+cxss_delete_resource(const char *cxss_userid, const char *resource_id)
+{
+    if (cxss_delete_userresc(dbcontext, cxss_userid, resource_id) < 0) {
+        fprintf(stderr, "Failed to delete resource\n");
+        return -1;
+    }
+
+    return 0;
+}
+
