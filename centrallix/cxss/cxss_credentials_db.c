@@ -167,10 +167,10 @@ cxss_setup_credentials_database(DB_Context_t dbcontext)
                     "  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_resc_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
-                    "UPDATE UserResc SET AESKey=?"
-                    ", ResourceUsernameIV=?, ResourceAuthDataIV=?"
-                    ", ResourceUsrename=?, ResourceAuthData=?"
-                    ", DateLastUpdated=? WHERE CXSS_UserID=?;",
+                    "UPDATE UserResc SET AESKey=?, ResourceUsername=?"
+                    ", ResourceAuthData=?, ResourceUsernameIV=?"
+                    ", ResourceAuthDataIV=?, DateLastUpdated=?"
+                    "  WHERE CXSS_UserID=? AND ResourceID=?;", 
                     -1, &dbcontext->update_resc_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
                     "SELECT ResourceUsernameIV, ResourceAuthDataIV"
@@ -615,6 +615,48 @@ bind_error:
     fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }                                
+
+int
+cxss_update_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
+{
+    /* Bind data with sqlite3 stmts */
+    sqlite3_reset(dbcontext->update_resc_stmt); 
+    if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 1,
+        UserResc->AESKey, UserResc->AESKeyLength, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 2,
+        UserResc->ResourceUsername, UserResc->UsernameLength, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 3,
+        UserResc->ResourcePassword, UserResc->PasswordLength, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 4,
+        UserResc->UsernameIV, UserResc->UsernameIVLength, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 5,
+        UserResc->PasswordIV, UserResc->PasswordIVLength, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_text(dbcontext->update_resc_stmt, 6,
+        UserResc->DateLastUpdated, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_text(dbcontext->update_resc_stmt, 7,
+        UserResc->CXSS_UserID, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    if (sqlite3_bind_text(dbcontext->update_resc_stmt, 8,
+        UserResc->ResourceID, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+
+    /* Execute query */
+    if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to update resource\n");
+        return CXSS_DB_QUERY_ERROR;
+    }
+    return CXSS_DB_SUCCESS;
+
+bind_error:
+    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    return CXSS_DB_BIND_ERROR;
+}
 
 /** @brief Allocate a CXSS_UserAuth_LLNode
  *

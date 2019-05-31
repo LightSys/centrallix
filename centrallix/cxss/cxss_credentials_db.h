@@ -86,6 +86,7 @@ void cxss_free_userdata(CXSS_UserData *UserData);
 int cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
 int cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
 int cxss_update_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxss_update_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 void cxss_free_userresc(CXSS_UserResc *UserResc);
 int cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
