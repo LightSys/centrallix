@@ -524,6 +524,17 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
+/** @brief Retrieve user resource
+ *
+ *  Retrieve a given user's resource
+ *  from the CXSS database.
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  Centrallix user identity
+ *  @param resource_id  Resource identity
+ *  @param UserResc     Pointer to a CXSS_UserResc struct
+ *  @return             Status code
+ */
 int 
 cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, 
                         const char *resource_id, CXSS_UserResc *UserResc)
@@ -589,6 +600,14 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
+/** @brief Update user data
+ *
+ *  Update user data in CXSS
+ *
+ *  @param dbcontext    Database context handle
+ *  @param UserData     Pointer to a CXSS_UserData struct
+ *  @return             Status code
+ */
 int
 cxss_update_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
 {
@@ -616,6 +635,14 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }                                
 
+/** @brief Update user resource
+ *
+ *  Update a given user's resource in CXSS
+ *
+ *  @param dbcontext    Database context handle
+ *  @param UserResc     Pointer to a CXSS_UserResc struct
+ *  @return             Status code
+ */
 int
 cxss_update_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
@@ -658,6 +685,14 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
+/** @brief Delete user data
+ *
+ *  Delete user data from CXSS
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  Centrallix user identity
+ *  @return             Status code
+ */
 int
 cxss_delete_userdata(DB_Context_t dbcontext, const char *cxss_userid)
 {
@@ -678,6 +713,15 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
+/** @brief Delete user resource
+ *
+ *  Delete a given user's resource from CXSS
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  Centrallix user identity
+ *  @param resource_id  Resource identity
+ *  @return             Status code
+ */
 int
 cxss_delete_userresc(DB_Context_t dbcontext, const char *cxss_userid,
                      const char *resource_id)
