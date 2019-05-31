@@ -253,6 +253,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     char key[32];
     char uname_iv[16];
     char pwd_iv[16];
+    char *current_timestamp = NULL;
 
     /* Check if resource is already in database */
     if (cxss_db_contains_resc(dbcontext, resource_id)) {
@@ -312,6 +313,9 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
         goto error;
     }
 
+    /* Get current timestamp */
+    current_timestamp = get_timestamp();
+
     /* Build struct */
     memset(&UserResc, 0, sizeof(CXSS_UserResc));
     UserResc.CXSS_UserID = cxss_userid;
@@ -327,6 +331,8 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     UserResc.PasswordIVLength = sizeof(pwd_iv);
     UserResc.UsernameLength = encr_username_len;
     UserResc.PasswordLength = encr_password_len;
+    UserResc.DateCreated = current_timestamp;
+    UserResc.DateLastUpdated = current_timestamp;
 
     /* Insert */
     if (cxss_insert_userresc(dbcontext, &UserResc) < 0) {
@@ -377,7 +383,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
                                 &UserResc) < 0) {
         fprintf(stderr, "Failed to retrieve resource!\n");
         goto free_all;
-    }
+    }    
 
     /* Allocate buffer for decrypted private key */
     privatekey = malloc(cxss_aes256_ciphertext_length(UserAuth.KeyLength));
