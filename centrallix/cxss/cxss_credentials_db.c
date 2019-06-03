@@ -20,10 +20,8 @@
 DB_Context_t
 cxss_init_credentials_database(const char *db_path)
 {
-    struct _DB_Context_t *dbcontext = NULL;
-
     /* Allocate context struct */
-    dbcontext = malloc(sizeof(struct _DB_Context_t));
+    DB_Context_t dbcontext = malloc(sizeof(struct _DB_Context_t));
     if (!dbcontext) {
         fprintf(stderr, "Memory allocation error!\n");
         goto error;
@@ -479,14 +477,14 @@ cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid,
     }
 
     /* Allocate head (dummy node) */
-    head = cxss_allocate_userauth_node();
+    head = malloc(sizeof(CXSS_UserAuth_LLNode));
     prev = head;
 
     /* Execute query */
     while (sqlite3_step(dbcontext->retrieve_user_auths_stmt) == SQLITE_ROW) { 
         
         /* Allocate and chain new node */
-        current = cxss_allocate_userauth_node();       
+        current = malloc(sizeof(CXSS_UserAuth_LLNode));       
         prev->next = current;
         
         /* Retrieve results */
@@ -747,27 +745,7 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
-/** @brief Allocate a CXSS_UserAuth_LLNode
- *
- *  Allocate a node for a linked list of 
- *  CXSS_UserAuth structs.
- *
- *  @return     Pointer to allocated node
- */  
-static inline CXSS_UserAuth_LLNode* 
-cxss_allocate_userauth_node(void)
-{
-    CXSS_UserAuth_LLNode *new_node;
-
-    new_node = malloc(sizeof(CXSS_UserAuth_LLNode));
-    if (!new_node) {
-        fprintf(stderr, "Memory allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-    return new_node;
-}
-
-/** @brief Print linked list
+/** @brief Print linked list (debug function)
  *
  */
 void
@@ -801,10 +779,8 @@ cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
 void
 cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start)
 {
-    CXSS_UserAuth_LLNode *next;
-
     /* Free head (dummy node) */
-    next = start->next;
+    CXSS_UserAuth_LLNode *next = start->next;
     free(start);
     start = next;
 
