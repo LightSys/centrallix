@@ -16,8 +16,6 @@ static DB_Context_t dbcontext = NULL;
 
 /** @brief Init CXSS credentials mgr
  *
- *  Initialize CXSS credentials manager.
- *
  *  @return     Status code
  */
 int 
@@ -140,7 +138,7 @@ cxss_adduser(const char *cxss_userid,
     }
 
     if (cxss_insert_userauth(dbcontext, &UserAuth) < 0) {
-        fprintf(stderr, "Failed to insert user into db\n");
+        fprintf(stderr, "Failed to insert user auth into db\n");
         goto free_all;
     }
 
@@ -178,13 +176,14 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
     /* Retrieve data from db */
     if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
-        return -1;
+        return CXSS_MGR_RETRIEVE_ERROR;
     }
  
-    /* Decrypt */
+    /* Allocate buffer for decrypted private key */
     *privatekey = malloc(sizeof(char) * UserAuth.KeyLength);
     if (!(*privatekey)) return CXSS_MGR_RETRIEVE_ERROR;
 
+    /* Decrypt private key */
     if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, 
                     encryption_key, UserAuth.PrivateKeyIV, *privatekey) < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
