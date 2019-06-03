@@ -1,6 +1,16 @@
 #ifndef CXSS_CREDENTIALS_MGMT
 #define CXSS_CREDENTIALS_MGMT
 
+typedef enum {
+    CXSS_MGR_INIT_ERROR = -6,
+    CXSS_MGR_CLOSE_ERROR = -5,
+    CXSS_MGR_INSERT_ERROR = -4,
+    CXSS_MGR_RETRIEVE_ERROR = -3,
+    CXSS_MGR_UPDATE_ERROR = -2,
+    CXSS_MGR_DELETE_ERROR = -1,
+    CXSS_MGR_SUCCESS = 0
+} CXSS_MGR_Status_e; 
+
 int cxss_init_credentials_mgmt(void);
 int cxss_close_credentials_mgmt(void);
 int cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_length, const char *salt, size_t salt_len);

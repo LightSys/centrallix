@@ -29,7 +29,7 @@ cxss_init_credentials_mgmt(void)
     dbcontext = cxss_init_credentials_database("test.db");
 
     if (!dbcontext)
-        return -1;
+        return CXSS_MGR_INIT_ERROR;
 }
 
 /** @brief Close CXSS credentials mgr
@@ -43,7 +43,10 @@ int
 cxss_close_credentials_mgmt(void)
 {
     cxss_cleanup_crypto();
-    return cxss_close_credentials_database(dbcontext);
+    if (cxss_close_credentials_database(dbcontext) < 0) {
+        return CXSS_MGR_CLOSE_ERROR;
+    }
+    return CXSS_MGR_SUCCESS;
 }
 
 /** @brief Add user to CXSS
@@ -75,20 +78,20 @@ cxss_adduser(const char *cxss_userid,
     /* Check if user is already in database */
     if (cxss_db_contains_user(dbcontext, cxss_userid)) {
         fprintf(stderr, "User is already in database!\n");
-        goto error;
+        goto free_all;
     }
 
     /* Generate RSA key pair */
     if (cxss_generate_rsa_4096bit_keypair(&privatekey, &privatekey_len,
                                   &publickey, &publickey_len) < 0) {
         fprintf(stderr, "Failed to generate RSA keypair\n");
-        goto error;
+        goto free_all;
     }
 
     /* Generate initialization vector */
     if (cxss_generate_128bit_iv(iv) < 0) {
         fprintf(stderr, "Failed to generate IV\n");
-        goto error;
+        goto free_all;
     }
 
     /* Allocate buffer for encrypted private key */
@@ -96,7 +99,7 @@ cxss_adduser(const char *cxss_userid,
     encrypted_privatekey = malloc(sizeof(char) * predicted_encr_len);
     if (!encrypted_privatekey) {
         fprintf(stderr, "Memory allocation error!\n");
-        goto error;
+        goto free_all;
     }
 
     /* Encrypt private key */
@@ -106,7 +109,7 @@ cxss_adduser(const char *cxss_userid,
  
     if (encr_privatekey_len != predicted_encr_len) {
         fprintf(stderr, "Error while encrypting with user key\n");
-        goto error;
+        goto free_all;
     }
 
     /* Get current timestamp */
@@ -133,24 +136,24 @@ cxss_adduser(const char *cxss_userid,
 
     if (cxss_insert_userdata(dbcontext, &UserData) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
-        goto error;
+        goto free_all;
     }
 
     if (cxss_insert_userauth(dbcontext, &UserAuth) < 0) {
         fprintf(stderr, "Failed to insert user into db\n");
-        goto error;
+        goto free_all;
     }
 
     free(encrypted_privatekey);
     cxss_destroy_rsa_keypair(privatekey, privatekey_len, 
                              publickey, publickey_len);
-    return 0;
+    return CXSS_MGR_SUCCESS;
 
-error:
+free_all:
     free(encrypted_privatekey);
     free(privatekey);
     free(publickey);         
-    return -1;
+    return CXSS_MGR_INSERT_ERROR;
 }
 
 /** @brief Retrieve user private key
@@ -180,19 +183,19 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
  
     /* Decrypt */
     *privatekey = malloc(sizeof(char) * UserAuth.KeyLength);
-    if (!(*privatekey)) return -1;
+    if (!(*privatekey)) return CXSS_MGR_RETRIEVE_ERROR;
 
     if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, 
                     encryption_key, UserAuth.PrivateKeyIV, *privatekey) < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
         cxss_free_userauth(&UserAuth);
         free(*privatekey);
-        return -1;
+        return CXSS_MGR_RETRIEVE_ERROR;
     }
     *privatekey_len = UserAuth.KeyLength;
                         
     cxss_free_userauth(&UserAuth);  
-    return 0;
+    return CXSS_MGR_SUCCESS;
 }
 
 /** @brief Retrieve user public key
@@ -210,20 +213,20 @@ cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey,
 
     /* Retrieve data from db */
     if (cxss_retrieve_userdata(dbcontext, cxss_userid, &UserData) < 0) {
-        return -1;
+        return CXSS_MGR_RETRIEVE_ERROR;
     }
    
     *publickey = malloc(UserData.KeyLength);
     if (!(*publickey)) {
         fprintf(stderr, "Memory allocation error!\n");
         cxss_free_userdata(&UserData);
-        return -1;
+        return CXSS_MGR_RETRIEVE_ERROR;
     }
     memcpy(*publickey, UserData.PublicKey, UserData.KeyLength);
     *publickey_len = UserData.KeyLength;
 
     cxss_free_userdata(&UserData);  
-    return 0;
+    return CXSS_MGR_SUCCESS;
 }
 
 /** @brief Add resource to CXSS
@@ -350,13 +353,13 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     free(publickey);
     free(encrypted_username);
     free(encrypted_password);
-    return 0;
+    return CXSS_MGR_SUCCESS;
 
 error:
     free(publickey);
     free(encrypted_username);
     free(encrypted_password);
-    return -1;
+    return CXSS_MGR_INSERT_ERROR;
 }
 
 /** @brief Get resource data from database
@@ -453,13 +456,13 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
     free(privatekey); 
     cxss_free_userauth(&UserAuth);
     cxss_free_userresc(&UserResc);
-    return 0;
+    return CXSS_MGR_SUCCESS;
 
 free_all:
     free(privatekey);
     cxss_free_userauth(&UserAuth);
     cxss_free_userresc(&UserResc);    
-    return -1;
+    return CXSS_MGR_RETRIEVE_ERROR;
 }
 
 /** Delete a user from CXSS
@@ -475,10 +478,9 @@ cxss_delete_user(const char *cxss_userid)
 {
     if (cxss_delete_userdata(dbcontext, cxss_userid) < 0) {
         fprintf(stderr, "Failed to delete user data\n");
-        return -1;
+        return CXSS_MGR_DELETE_ERROR;
     }
-
-    return 0;
+    return CXSS_MGR_SUCCESS;
 }
 
 /** Delete a user's resource from CXSS
@@ -492,9 +494,8 @@ cxss_delete_resource(const char *cxss_userid, const char *resource_id)
 {
     if (cxss_delete_userresc(dbcontext, cxss_userid, resource_id) < 0) {
         fprintf(stderr, "Failed to delete resource\n");
-        return -1;
+        return CXSS_MGR_DELETE_ERROR;
     }
-
-    return 0;
+    return CXSS_MGR_SUCCESS;
 }
 
