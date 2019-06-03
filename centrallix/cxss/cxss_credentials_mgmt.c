@@ -1,5 +1,4 @@
 #define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -21,13 +20,12 @@ static DB_Context_t dbcontext = NULL;
 int 
 cxss_init_credentials_mgmt(void)
 {   
-    printf("%s\n", "Initializing database...");
-    
     cxss_initialize_crypto();
     dbcontext = cxss_init_credentials_database("test.db");
-
-    if (!dbcontext)
+    if (!dbcontext) {
         return CXSS_MGR_INIT_ERROR;
+    }
+    return CXSS_MGR_SUCCESS;
 }
 
 /** @brief Close CXSS credentials mgr
@@ -48,8 +46,6 @@ cxss_close_credentials_mgmt(void)
 }
 
 /** @brief Add user to CXSS
- *
- *  Add user to CXSS
  *
  *  @param cxss_userid          Centrallix user identity
  *  @param encryption_key       Password-based user encryption key
@@ -145,22 +141,17 @@ free_all:
     return CXSS_MGR_INSERT_ERROR;
 }
 
-/** @brief Retrieve user private key
- *
- *  Retrieve and decrypt user private key
+/** @brief Retrieve and decrypt user private key
  *
  *  @param cxss_userid          Centrallix user identity
- *  @param encryption_key       AES encryption key used to 
- *                              encrypt the private key
+ *  @param encryption_key       AES encryption key used to encrypt private key
  *  @param encryption_key_len   Length of encryption key
  *  @return                     Pointer to decrypted private key (must be freed)
  */
 int
 cxss_retrieve_user_privatekey(const char *cxss_userid, 
-                              const char *encryption_key,
-                              size_t ecryption_key_len,
-                              char **privatekey,
-                              int *privatekey_len)
+                              const char *encryption_key, size_t ecryption_key_len,
+                              char **privatekey, int *privatekey_len)
 {
     CXSS_UserAuth UserAuth;
     
@@ -189,8 +180,6 @@ cxss_retrieve_user_privatekey(const char *cxss_userid,
 }
 
 /** @brief Retrieve user public key
- *
- *  Retrieve user public key
  *
  *  @param cxss_userid          CXSS user identity
  *  @return                     Pointer to public key (must be freed)
@@ -221,8 +210,6 @@ cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey,
 
 /** @brief Add resource to CXSS
  *  
- *  Insert resource into CXSS credentials database
- *
  *  @param cxss_userid          Centrallix user identity
  *  @param resource_id          Centrallix resource identity
  *  @param resource_username    Resource Username
@@ -337,7 +324,7 @@ error:
     return CXSS_MGR_INSERT_ERROR;
 }
 
-/** @brief Get resource data from database
+/** @brief Get resource username/authdata from database
  *
  *  Get resource data from CXSS credentials database
  *  given CXSS user id and resource id.
@@ -362,7 +349,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
     memset(&UserAuth, 0, sizeof(CXSS_UserAuth));
     memset(&UserResc, 0, sizeof(CXSS_UserResc));
 
-    /* Query CXSS database */
+    /* Retrieve auth and resource data from database */
     if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
         fprintf(stderr, "Failed to retrieve user auth\n");
         goto free_all;
@@ -379,7 +366,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         goto free_all;
     }
 
-    /* Decrypt private key */
+    /* Decrypt user's private key using user's password-based key */
     privatekey_len = cxss_decrypt_aes256(UserAuth.PrivateKey, 
                                          UserAuth.KeyLength,
                                          user_key, UserAuth.PrivateKeyIV,
@@ -398,7 +385,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         goto free_all;
     }
 
-    /* Decrypt username */
+    /* Decrypt resource username/authdata using AES key */
     *resource_username = malloc(UserResc.UsernameLength);
     if (!(*resource_username)) {
         fprintf(stderr, "Memory allocation error\n");
@@ -413,7 +400,6 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id,
         goto free_all;
     }
    
-    /* Decrypt auth data */ 
     *resource_data = malloc(UserResc.PasswordLength);
     if (!(*resource_data)) {
         fprintf(stderr, "Memory allocation error\n");
@@ -440,10 +426,7 @@ free_all:
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
-/** Delete a user from CXSS
- *
- *  Remove user with associated data and
- *  resources from CXSS.
+/** Remove user from CXSS
  *
  *  @param cxss_userid  Centrallix user identity
  *  @return             Status code
