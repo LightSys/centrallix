@@ -139,7 +139,7 @@ function cht_highlight(index) {
 }
 
 function cht_generate_rgba(id, alpha = 1) {
-    if (id.charAt(0) == '#')
+    if (id.toString().charAt(0) == '#')
 	return Color(id).alpha(alpha).rgbString();
     let colors = {
         blue: 'rgb(54, 162, 235)',
@@ -157,22 +157,33 @@ function cht_generate_rgba(id, alpha = 1) {
 }
 
 function cht_choose_rgba(series_idx, alpha) {
-    if (this.params.series[series_idx].color) return this.GenerateRgba(this.params.series[series_idx].color, alpha);
+    if (this.params.series[series_idx] && this.params.series[series_idx].color) return this.GenerateRgba(this.params.series[series_idx].color, alpha);
     else return this.GenerateRgba(Number.parseInt(series_idx), alpha);
 }
 
 function cht_get_datasets(){
     let datasets = [];
     for (let series_idx in this.params.series){
+	let background_color = [];
+	let border_color = [];
         let data = this.GetLinearData(series_idx);
-        let background_color = this.ChooseRgba(series_idx);
-        let border_color = this.ChooseRgba(series_idx, (this.params.type === "line") ? 1 : 0.5);
+	if (this.params.chart_type === "pie" || this.params.chart_type === "doughnut") {
+	    for(let i=0; i<data.length; i++)
+		background_color[i] = this.ChooseRgba(i, 0.5);
+	    for(let i=0; i<data.length; i++)
+		border_color[i] = this.ChooseRgba(i);
+	} else {
+	    background_color = this.ChooseRgba(series_idx, (this.params.chart_type === "line") ? 1 : 0.5);
+	    border_color = this.ChooseRgba(series_idx);
+	    background_color = new Array(data.length).fill(background_color);
+	    border_color = new Array(data.length).fill(border_color);
+	}
         datasets.push({
             data: data,
             label: this.GetSeriesLabel(series_idx),
             type: this.params.series[series_idx].chart_type,
-            borderColor: new Array(data.length).fill(background_color),
-            backgroundColor: new Array(data.length).fill(border_color),
+            borderColor: border_color,
+            backgroundColor: background_color,
             borderWidth: 2,
             fill: this.params.series[series_idx].fill
         });
@@ -198,17 +209,19 @@ function cht_get_scale_label(x_y) {
 }
 
 function cht_get_scales() {
-    if (this.params.chart_type === "pie") return {};
+    if (this.params.chart_type === "pie" || this.params.chart_type === "doughnut") return {};
     return {
         xAxes: [{
             type: this.LinearXAxis() ? "linear" : "category",
-            scaleLabel: this.GetScaleLabel('x')
+            scaleLabel: this.GetScaleLabel('x'),
+	    stacked: this.params.stacked?true:false,
         }],
         yAxes: [{
             ticks: {
                 beginAtZero: this.params.start_at_zero,
             },
             scaleLabel: this.GetScaleLabel('y'),
+	    stacked: this.params.stacked?true:false,
         }]
     };
 }

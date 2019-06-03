@@ -127,7 +127,7 @@ htchtGetTitle(pWgtrNode tree, char* buf, size_t buflen) {return htchtGetStrValue
 int
 htchtGetType(pWgtrNode tree, char* buf, size_t buflen)
     {
-    char* chart_types[16] = {"line", "bar", "scatter", "pie", NULL};
+    char* chart_types[16] = {"line", "bar", "scatter", "pie", "doughnut", NULL};
     char err_msg[256];
     int rval;
     int found = 0;
@@ -277,6 +277,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     "height: %INT, "
                     "title_size: %INT, "
                     "start_at_zero: %INT,"
+                    "stacked: %INT,"
                     "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"), "
                     "chart_type: '%STR&JSSTR', "
                     "canvas_id: '%STR&SYM', "
@@ -293,6 +294,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
                     htchtGetHeight(tree),
                     htchtGetIntValue(tree, "title_size", 12),
                     htrGetBoolean(tree, "start_at_zero", 1),
+                    htrGetBoolean(tree, "stacked", 0),
                     name,
                     chart_type,
                     canvas_id,
