@@ -68,16 +68,10 @@ cxss_adduser(const char *cxss_userid,
     char *privatekey = NULL, *publickey = NULL;
     char *encrypted_privatekey = NULL;
     char iv[16]; // 128-bit iv
-    char *current_timestamp;
+    char *current_timestamp = get_timestamp();
     int privatekey_len, publickey_len;
     int encr_privatekey_len;
     int predicted_encr_len; 
-
-    /* Check if user is already in database */
-    if (cxss_db_contains_user(dbcontext, cxss_userid)) {
-        fprintf(stderr, "User is already in database!\n");
-        goto free_all;
-    }
 
     /* Generate RSA key pair */
     if (cxss_generate_rsa_4096bit_keypair(&privatekey, &privatekey_len,
@@ -110,9 +104,6 @@ cxss_adduser(const char *cxss_userid,
         goto free_all;
     }
 
-    /* Get current timestamp */
-    current_timestamp = get_timestamp();
-   
     /* Build UserData struct */ 
     UserData.CXSS_UserID = cxss_userid;
     UserData.PublicKey = publickey;
@@ -258,24 +249,13 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
     char key[32];
     char uname_iv[16];
     char pwd_iv[16];
-    char *current_timestamp = NULL;
-
-    /* Check if resource is already in database */
-    if (cxss_db_contains_resc(dbcontext, resource_id)) {
-        fprintf(stderr, "Database already contains resource\n");
-        goto error;
-    }
+    char *current_timestamp = get_timestamp();
 
     /* Retrieve user publickey */
     if (cxss_retrieve_user_publickey(cxss_userid, &publickey, &publickey_len) < 0) {
         fprintf(stderr, "Failed to retrieve user public key\n");
         goto error;
     }
-
-    if (!publickey) {
-        fprintf(stderr, "Failed to retrieve public key\n");
-        goto error;
-    }    
 
     /* Generate random AES key and AES IVs */
     if (cxss_generate_256bit_rand_key(key) < 0) {
@@ -322,11 +302,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id,
         goto error;
     }
 
-    /* Get current timestamp */
-    current_timestamp = get_timestamp();
-
     /* Build struct */
-    memset(&UserResc, 0, sizeof(CXSS_UserResc));
     UserResc.CXSS_UserID = cxss_userid;
     UserResc.ResourceID = resource_id;
     UserResc.AuthClass = auth_class;
