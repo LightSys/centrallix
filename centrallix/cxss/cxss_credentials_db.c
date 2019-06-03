@@ -53,7 +53,8 @@ error:
  *  @param dbcontext    Database context handle
  *  @return             Status code
  */
-int cxss_close_credentials_database(DB_Context_t dbcontext)
+int
+cxss_close_credentials_database(DB_Context_t dbcontext)
 {
     cxss_finalize_sqlite3_statements(dbcontext);
     sqlite3_close(dbcontext->db);
@@ -769,7 +770,8 @@ cxss_allocate_userauth_node(void)
 /** @brief Print linked list
  *
  */
-void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
+void
+cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
 {
     /* Skip head (dummy node) */
     if (start != NULL)
@@ -796,7 +798,8 @@ void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
  *  @param start        Pointer to head of linked list
  *  @return             void
  */
-void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start)
+void
+cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start)
 {
     CXSS_UserAuth_LLNode *next;
 
