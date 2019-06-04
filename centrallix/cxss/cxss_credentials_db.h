@@ -92,7 +92,6 @@ int cxss_delete_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, c
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 void cxss_free_userresc(CXSS_UserResc *UserResc);
 int cxss_retrieve_userauth_ll(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
-void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start); /* debug function */
 void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
 int cxss_get_user_count(CXSS_DB_Context_t dbcontext);
 int cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
