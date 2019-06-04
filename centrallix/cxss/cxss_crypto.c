@@ -61,7 +61,7 @@ cxss_encrypt_aes256(const char *plaintext, int plaintext_len,
     }
 
     /* Encrypt data */
-    if (EVP_EncryptUpdate(ctx, *ciphertext, &len, plaintext, plaintext_len) != 1) {
+    if (EVP_EncryptUpdate(ctx, *ciphertext, &len, (unsigned char *)plaintext, plaintext_len) != 1) {
         fprintf(stderr, "Error while encrypting with AES\n");
         goto error;
     }
@@ -111,14 +111,14 @@ cxss_decrypt_aes256(const unsigned char *ciphertext, int ciphertext_len,
     }
 
     /* Decrypt data */
-    if (EVP_DecryptUpdate(ctx, *plaintext, &len, ciphertext, ciphertext_len) != 1) {
+    if (EVP_DecryptUpdate(ctx, *(unsigned char **)plaintext, &len, ciphertext, ciphertext_len) != 1) {
         fprintf(stderr, "Error while decrypting with AES\n");
         goto error;
     }
     *plaintext_len = len;
 
     /* Finalize decryption */
-    if (EVP_DecryptFinal_ex(ctx, *plaintext + len, &len) != 1) {
+    if (EVP_DecryptFinal_ex(ctx, *(unsigned char **)plaintext + len, &len) != 1) {
         fprintf(stderr, "Error while finalizing AES decryption!\n");
         goto error;
     }
@@ -150,7 +150,7 @@ cxss_generate_64bit_salt(unsigned char *salt)
 
     if (RAND_bytes(salt, 8) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
-        return CXSS_CRYPTO_BYTES_ERROR;
+        return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
 }
@@ -172,7 +172,7 @@ cxss_generate_128bit_iv(unsigned char *init_vector)
     /* Generate random initialization vector */
     if (RAND_bytes(init_vector, 16) != 1) {
         fprintf(stderr, "Failed to generate initialization vector!\n");
-        return CXSS_CRYPTO_BYTES_ERROR;
+        return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
 }
@@ -194,11 +194,10 @@ cxss_generate_256bit_key(const char *password, const unsigned char *salt,
 {
     #define PBKDF2_ITER_NO      5000
     
-    if (PKCS5_PBKDF2_HMAC(password, strlen(password),
-                          salt, 8, PBKDF2_ITER_NO, 
+    if (PKCS5_PBKDF2_HMAC(password, strlen(password), salt, 8, PBKDF2_ITER_NO, 
                           EVP_sha256(), 32, key) != 1) {
         fprintf(stderr, "Failed to generate 256-bit key\n");
-        return CXSS_CRYPTO_BYTES_ERROR;
+        return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
 }
@@ -218,7 +217,7 @@ cxss_generate_256bit_rand_key(unsigned char *key)
     /* Generate random initialization vector */
     if (RAND_bytes(key, 32) != 1) {
         fprintf(stderr, "Failed to generate key!\n");
-        return CXSS_CRYPTO_BYTES_ERROR;
+        return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
 }
@@ -248,8 +247,8 @@ cxss_aes256_ciphertext_length(size_t plaintext_len)
  *  @return                   Status code
  */
 int
-cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
-                                  char **publickey, int *publickey_len)
+cxss_generate_rsa_4096bit_keypair(unsigned char **privatekey, int *privatekey_len,
+                                  unsigned char **publickey, int *publickey_len)
 {
     RSA *rsa_keypair = NULL;
     BIGNUM *bne = NULL;
@@ -327,7 +326,7 @@ error:
     BIO_free_all(pub);
     RSA_free(rsa_keypair);
     BN_free(bne);
-    return CXSS_CRYPTO_BYTES_ERROR;
+    return CXSS_CRYPTO_KEYGEN_ERROR;
 } 
 
 /** @brief Free rsa keypair
@@ -339,8 +338,8 @@ error:
  *  @return             void
  */
 void
-cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, 
-                         char *publickey, size_t publickey_len)
+cxss_destroy_rsa_keypair(unsigned char *privatekey, size_t privatekey_len, 
+                         unsigned char *publickey, size_t publickey_len)
 {
     memset(privatekey, 0, privatekey_len);
     memset(publickey, 0, publickey_len);
@@ -360,7 +359,7 @@ cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len,
  */
 int
 cxss_encrypt_rsa(const unsigned char *data, size_t len,
-                 const char *publickey, size_t publickey_len,
+                 const unsigned char *publickey, size_t publickey_len,
                  unsigned char *ciphertext, int *ciphertext_len)
 {
     RSA *rsa = NULL;
@@ -405,7 +404,7 @@ error:
 
 int
 cxss_decrypt_rsa(const unsigned char *data, size_t len,
-                 const char *privatekey, size_t privatekey_len,
+                 const unsigned char *privatekey, size_t privatekey_len,
                  char *plaintext, int *plaintext_len)
 {
     BIO *bio = NULL;
@@ -431,7 +430,7 @@ cxss_decrypt_rsa(const unsigned char *data, size_t len,
     }
 
     /* decrypt */
-    *plaintext_len = RSA_private_decrypt(len, data, plaintext, rsa, 
+    *plaintext_len = RSA_private_decrypt(len, data, (unsigned char *)plaintext, rsa, 
                                          RSA_PKCS1_OAEP_PADDING);
     if (*plaintext_len < 0) {
         fprintf(stderr, "RSA decryption failed\n");

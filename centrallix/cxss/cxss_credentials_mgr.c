@@ -13,10 +13,6 @@
 
 static CXSS_DB_Context_t dbcontext = NULL;
 
-/** @brief Init CXSS credentials mgr
- *
- *  @return     Status code
- */
 int 
 cxss_init_credentials_mgmt(void)
 {   
@@ -28,13 +24,6 @@ cxss_init_credentials_mgmt(void)
     return CXSS_MGR_SUCCESS;
 }
 
-/** @brief Close CXSS credentials mgr
- *
- *  Close the CXSS credentials manager
- *  (close database, free data structures, etc...)
- *
- *  @return     Status code
- */
 void
 cxss_close_credentials_mgmt(void)
 {
@@ -57,7 +46,8 @@ cxss_adduser(const char *cxss_userid, const unsigned char *encryption_key, size_
 {
     CXSS_UserData UserData = {};
     CXSS_UserAuth UserAuth = {};
-    char *privatekey = NULL, *publickey = NULL;
+    unsigned char *privatekey = NULL;
+    unsigned char *publickey = NULL;
     unsigned char *encrypted_privatekey = NULL;
     unsigned char iv[16]; // 128-bit iv
     char *current_timestamp = get_timestamp();
@@ -131,7 +121,7 @@ error:
  */
 int
 cxss_retrieve_user_privatekey(const char *cxss_userid, const char *encryption_key, size_t ecryption_key_len,
-                              char **privatekey, int *privatekey_len)
+                              unsigned char **privatekey, int *privatekey_len)
 {
     CXSS_UserAuth UserAuth = {};
     
@@ -164,7 +154,7 @@ error:
  *  @return                     Pointer to public key (must be freed)
  */
 int
-cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey, int *publickey_len)
+cxss_retrieve_user_publickey(const char *cxss_userid, unsigned char **publickey, int *publickey_len)
 {
     CXSS_UserData UserData = {};
 
@@ -213,7 +203,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
     unsigned char *encrypted_password = NULL;
     int encr_username_len;
     int encr_password_len;
-    char *publickey = NULL;
+    unsigned char *publickey = NULL;
     int publickey_len;
     unsigned char encrypted_rand_key[512];
     int encrypted_rand_key_len;
@@ -312,7 +302,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const unsign
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};
     unsigned char aeskey[32];
-    char *privatekey = NULL;
+    unsigned char *privatekey = NULL;
     int  privatekey_len;
     int  aeskey_len;
     int  ciphertext_len;

@@ -338,7 +338,7 @@ cxss_insert_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 
     /* Execute query */
     if (sqlite3_step(dbcontext->insert_resc_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to insert user auth\n");
+        fprintf(stderr, "Failed to insert user resc\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
@@ -361,7 +361,7 @@ int
 cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserData *UserData)
 {
-    const char *publickey;
+    const unsigned char *publickey;
     const char *date_created, *date_last_updated;
     size_t keylength;
 
@@ -407,7 +407,7 @@ int
 cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserAuth *UserAuth)
 {
-    const char *privatekey, *salt, *iv;
+    const unsigned char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
 
@@ -539,9 +539,9 @@ cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
                        const char *resource_id, CXSS_UserResc *UserResc)
 {
     const char *auth_class;
-    const char *resource_username, *resource_password;
-    const char *aeskey;
-    const char *resource_salt, *username_iv, *password_iv;
+    const unsigned char *resource_username, *resource_password;
+    const unsigned char *aeskey;
+    const unsigned char *resource_salt, *username_iv, *password_iv;
     const char  *date_created, *date_last_updated;
     size_t salt_len, aeskey_len, username_len, password_len;
     size_t username_iv_len, password_iv_len;       
