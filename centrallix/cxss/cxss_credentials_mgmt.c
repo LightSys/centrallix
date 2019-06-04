@@ -382,8 +382,8 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *
 
     /* Decrypt resource username/authdata using AES key */
     *resource_username = malloc(UserResc.UsernameLength);
-    *resource_data = malloc(UserResc.PasswordLength);
-    if (!(*resource_username) || !(*resource_data)) {
+    *resource_authdata = malloc(UserResc.PasswordLength);
+    if (!(*resource_username) || !(*resource_authdata)) {
         fprintf(stderr, "Memory allocation error\n");
         goto error;
     }
@@ -394,7 +394,7 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *
         goto error;
     }
     ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourcePassword, UserResc.PasswordLength,
-                                          aeskey, UserResc.PasswordIV, *resource_data);
+                                          aeskey, UserResc.PasswordIV, *resource_authdata);
     if (ciphertext_len < 0) {
         fprintf(stderr, "Failed to decrypt resource password\n");
         goto error;
