@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <assert.h>
 #include <openssl/evp.h>
@@ -10,7 +11,7 @@
 #include "cxss_encryption.h"
 #include "cxss_credentials_db.h"
 
-static int CSPRNG_Initialized = 0;
+static bool CSPRNG_Initialized = false;
 
 void
 cxss_initialize_crypto(void)
@@ -18,11 +19,9 @@ cxss_initialize_crypto(void)
     char seed[256];
     memset(seed, 0, 256); // TODO: Random seed    
 
-    /* Seed RNG */
+    /* Initialize OpenSSL RNG */
     RAND_seed(seed, 256);
-
-    /* Mark RNG as initialized */
-    CSPRNG_Initialized = 1;
+    CSPRNG_Initialized = true;
 }        
 
 void
@@ -147,7 +146,7 @@ error:
 int
 cxss_generate_64bit_salt(char *salt)
 {
-    assert(CSPRNG_Initialized == 1);
+    assert(CSPRNG_Initialized);
 
     if (RAND_bytes(salt, 8) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
@@ -169,7 +168,7 @@ cxss_generate_64bit_salt(char *salt)
 int
 cxss_generate_128bit_iv(char *init_vector)
 {
-    assert(CSPRNG_Initialized == 1);
+    assert(CSPRNG_Initialized);
 
     /* Generate random initialization vector */
     if (RAND_bytes(init_vector, 16) != 1) {
@@ -216,7 +215,7 @@ cxss_generate_256bit_key(const char *password, const char *salt, char *key)
 int
 cxss_generate_256bit_rand_key(char *key)
 {
-    assert(CSPRNG_Initialized == 1);
+    assert(CSPRNG_Initialized);
 
     /* Generate random initialization vector */
     if (RAND_bytes(key, 32) != 1) {
