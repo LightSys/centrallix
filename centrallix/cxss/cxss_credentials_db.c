@@ -805,7 +805,7 @@ cxss_get_user_count(DB_Context_t dbcontext)
     /* Execute query */
     sqlite3_reset(dbcontext->get_user_count_stmt);
     if (sqlite3_step(dbcontext->get_user_count_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Could not get count!\n");
+        fprintf(stderr, "Failed to retrieve user count\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->get_user_count_stmt, 0);
@@ -828,13 +828,13 @@ cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid)
     sqlite3_reset(dbcontext->get_user_resc_count_stmt);
     if (sqlite3_bind_text(dbcontext->get_user_resc_count_stmt, 1, cxss_userid, -1, NULL) != SQLITE_OK) {
         fprintf(stderr, "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
-        return -1;
+        return CXSS_DB_BIND_ERROR;
     }
 
     /* Execute query */
     if (sqlite3_step(dbcontext->get_user_resc_count_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to retrieve user count\n");
-        return -1;
+        fprintf(stderr, "Failed to retrieve resource count\n");
+        return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->get_user_resc_count_stmt, 0);
 }
