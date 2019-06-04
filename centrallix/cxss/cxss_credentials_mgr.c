@@ -11,7 +11,7 @@
 #include "cxss_encryption.h"
 #include <assert.h>
 
-static DB_Context_t dbcontext = NULL;
+static CXSS_DB_Context_t dbcontext = NULL;
 
 /** @brief Init CXSS credentials mgr
  *

@@ -17,11 +17,11 @@
  *  @param db_path      Path to database file
  *  @return             Database context handle
  */
-DB_Context_t
+CXSS_DB_Context_t
 cxss_init_credentials_database(const char *db_path)
 {
     /* Allocate context struct */
-    DB_Context_t dbcontext = malloc(sizeof(struct _DB_Context_t));
+    CXSS_DB_Context_t dbcontext = malloc(sizeof(struct _CXSS_DB_Context_t));
     if (!dbcontext) {
         fprintf(stderr, "Memory allocation error!\n");
         goto error;
@@ -52,7 +52,7 @@ error:
  *  @return             Status code
  */
 int
-cxss_close_credentials_database(DB_Context_t dbcontext)
+cxss_close_credentials_database(CXSS_DB_Context_t dbcontext)
 {
     cxss_finalize_sqlite3_statements(dbcontext);
     sqlite3_close(dbcontext->db);
@@ -69,7 +69,7 @@ cxss_close_credentials_database(DB_Context_t dbcontext)
  *  @return             Status code
  */
 static int
-cxss_setup_credentials_database(DB_Context_t dbcontext)
+cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext)
 {   
     char *err_msg = NULL;
 
@@ -197,7 +197,7 @@ error:
  *  @return                     Status code 
  */
 int
-cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
+cxss_insert_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
 {
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->insert_user_stmt); 
@@ -235,7 +235,7 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
+cxss_insert_userauth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
 {
     /* Bind data with sqlite3 stmts */    
     sqlite3_reset(dbcontext->insert_user_auth_stmt);
@@ -289,7 +289,7 @@ bind_error:
  *  @return                     Status code 
  */
 int
-cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
+cxss_insert_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
     /* Bind data with sqlite3 stmts */    
     sqlite3_reset(dbcontext->insert_resc_stmt);
@@ -358,7 +358,7 @@ bind_error:
  *  @return                 Status code
  */
 int 
-cxss_retrieve_userdata(DB_Context_t dbcontext, const char *cxss_userid, 
+cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserData *UserData)
 {
     const char *publickey;
@@ -404,8 +404,8 @@ bind_error:
  *  @return                 Status code
  */
 int
-cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, 
-                        CXSS_UserAuth *UserAuth)
+cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
+                       CXSS_UserAuth *UserAuth)
 {
     const char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
@@ -461,7 +461,7 @@ bind_error:
  *  @return             void
  */
 int
-cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid, 
+cxss_retrieve_userauth_ll(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                           CXSS_UserAuth_LLNode **node)
 {
     CXSS_UserAuth_LLNode *head, *prev, *current;
@@ -535,8 +535,8 @@ bind_error:
  *  @return             Status code
  */
 int 
-cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, 
-                        const char *resource_id, CXSS_UserResc *UserResc)
+cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
+                       const char *resource_id, CXSS_UserResc *UserResc)
 {
     const char *auth_class;
     const char *resource_username, *resource_password;
@@ -608,7 +608,7 @@ bind_error:
  *  @return             Status code
  */
 int
-cxss_update_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData)
+cxss_update_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
 {
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->update_user_stmt); 
@@ -643,7 +643,7 @@ bind_error:
  *  @return             Status code
  */
 int
-cxss_update_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc)
+cxss_update_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 {
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->update_resc_stmt); 
@@ -693,7 +693,7 @@ bind_error:
  *  @return             Status code
  */
 int
-cxss_delete_userdata(DB_Context_t dbcontext, const char *cxss_userid)
+cxss_delete_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
 {
     /* Bind data with sqlite3 stmt */
     if (sqlite3_bind_text(dbcontext->delete_user_stmt, 1,
@@ -722,7 +722,7 @@ bind_error:
  *  @return             Status code
  */
 int
-cxss_delete_userresc(DB_Context_t dbcontext, const char *cxss_userid,
+cxss_delete_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
                      const char *resource_id)
 {
     /* Bind data with sqlite3 stmts */
@@ -776,7 +776,7 @@ cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start)
  *  @return             User count
  */
 int
-cxss_get_user_count(DB_Context_t dbcontext)
+cxss_get_user_count(CXSS_DB_Context_t dbcontext)
 {
     /* Execute query */
     sqlite3_reset(dbcontext->get_user_count_stmt);
@@ -798,7 +798,7 @@ cxss_get_user_count(DB_Context_t dbcontext)
  *  @return             Resource count
  */
 int
-cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid)
+cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
 {
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->get_user_resc_count_stmt);
@@ -825,7 +825,7 @@ cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid)
  *  @return             True if found, false if NOT found
  */
 bool
-cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid)
+cxss_db_contains_user(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
 {
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->is_user_in_db_stmt);
@@ -852,7 +852,7 @@ cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid)
  *  @return             True if found, false if NOT found
  */
 bool
-cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id)
+cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id)
 {
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->is_resc_in_db_stmt);
@@ -937,7 +937,7 @@ cxss_free_userresc(CXSS_UserResc *UserResc)
  *  @return             void         
  */
 static void 
-cxss_finalize_sqlite3_statements(DB_Context_t dbcontext)
+cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext)
 {
     sqlite3_finalize(dbcontext->get_user_count_stmt);
     sqlite3_finalize(dbcontext->get_user_resc_count_stmt);

@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 /* DB Context struct */
-typedef struct _DB_Context_t {
+typedef struct _CXSS_DB_Context_t {
     sqlite3 *db;
     sqlite3_stmt *get_user_count_stmt;
     sqlite3_stmt *get_user_resc_count_stmt;
@@ -22,7 +22,7 @@ typedef struct _DB_Context_t {
     sqlite3_stmt *retrieve_resc_stmt;
     sqlite3_stmt *update_resc_stmt;
     sqlite3_stmt *delete_resc_stmt;
-} *DB_Context_t;
+} *CXSS_DB_Context_t;
 
 typedef struct {
     const char *CXSS_UserID;
@@ -76,31 +76,31 @@ typedef enum {
 } DB_Status_e;
 
 /* Public functions */
-DB_Context_t cxss_init_credentials_database(const char *dbpath);
-int cxss_close_credentials_database(DB_Context_t dbcontext);
-int cxss_insert_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData);
-int cxss_insert_userauth(DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
-int cxss_insert_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
-int cxss_retrieve_userdata(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
+CXSS_DB_Context_t cxss_init_credentials_database(const char *dbpath);
+int cxss_close_credentials_database(CXSS_DB_Context_t dbcontext);
+int cxss_insert_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxss_insert_userauth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
+int cxss_insert_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
+int cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
 void cxss_free_userdata(CXSS_UserData *UserData);
-int cxss_retrieve_userauth(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
-int cxss_retrieve_userresc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
-int cxss_update_userdata(DB_Context_t dbcontext, CXSS_UserData *UserData);
-int cxss_update_userresc(DB_Context_t dbcontext, CXSS_UserResc *UserResc);
-int cxss_delete_userdata(DB_Context_t dbcontext, const char *cxss_userid);
-int cxss_delete_userresc(DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id);
+int cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
+int cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
+int cxss_update_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxss_update_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
+int cxss_delete_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+int cxss_delete_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id);
 void cxss_free_userauth(CXSS_UserAuth *UserAuth);
 void cxss_free_userresc(CXSS_UserResc *UserResc);
-int cxss_retrieve_userauth_ll(DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
+int cxss_retrieve_userauth_ll(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
 void cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start); /* debug function */
 void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
-int cxss_get_user_count(DB_Context_t dbcontext);
-int cxss_get_userresc_count(DB_Context_t dbcontext, const char *cxss_userid);
-bool cxss_db_contains_user(DB_Context_t dbcontext, const char *cxss_userid);
-bool cxss_db_contains_resc(DB_Context_t dbcontext, const char *resource_id);
+int cxss_get_user_count(CXSS_DB_Context_t dbcontext);
+int cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+bool cxss_db_contains_user(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+bool cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id);
 
 /* Private Functions */
-static int cxss_setup_credentials_database(DB_Context_t dbcontext);
-static void cxss_finalize_sqlite3_statements(DB_Context_t dbcontext);
+static int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
+static void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
 
 #endif /* CXSS_CREDENTIALS_DB */
