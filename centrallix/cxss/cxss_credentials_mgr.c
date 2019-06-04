@@ -144,16 +144,9 @@ cxss_retrieve_user_privatekey(const char *cxss_userid, const char *encryption_ke
         goto error;
     }
  
-    /* Allocate buffer for decrypted private key */
-    *privatekey = malloc(sizeof(char) * UserAuth.KeyLength);
-    if (!(*privatekey)) {
-        fprintf(stderr, "Memory allocation error\n");
-        goto error;
-    }
-
     /* Decrypt private key */
     if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key, 
-                            UserAuth.PrivateKeyIV, *privatekey) < 0) {
+                            UserAuth.PrivateKeyIV, privatekey, privatekey_len) < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
         goto error;
     }
@@ -338,17 +331,9 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *
         goto error;
     }    
 
-    /* Allocate buffer for decrypted private key */
-    privatekey = malloc(cxss_aes256_ciphertext_length(UserAuth.KeyLength));
-    if (!privatekey) {
-        fprintf(stderr, "Memory allocation error\n");
-        goto error;
-    }
-
     /* Decrypt user's private key using user's password-based key */
-    privatekey_len = cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength,
-                                         user_key, UserAuth.PrivateKeyIV, privatekey);
-    if (privatekey_len < 0) {
+    if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength,
+                            user_key, UserAuth.PrivateKeyIV, &privatekey, &privatekey_len) < 0) {
         fprintf(stderr, "Failed to decrypt private key\n");
         goto error;
     } 
@@ -362,22 +347,14 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *
     }
 
     /* Decrypt resource username/authdata using AES key */
-    *resource_username = malloc(UserResc.UsernameLength);
-    *resource_authdata = malloc(UserResc.PasswordLength);
-    if (!(*resource_username) || !(*resource_authdata)) {
-        fprintf(stderr, "Memory allocation error\n");
+    if (cxss_decrypt_aes256(UserResc.ResourceUsername, UserResc.UsernameLength,
+                            aeskey, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
+        fprintf(stderr, "Error while decrypting username\n");
         goto error;
     }
-    ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourceUsername, UserResc.UsernameLength,
-                                          aeskey, UserResc.UsernameIV, *resource_username);
-    if (ciphertext_len < 0) {
-        fprintf(stderr, "Failed to decrypt resource username\n");
-        goto error;
-    }
-    ciphertext_len =  cxss_decrypt_aes256(UserResc.ResourcePassword, UserResc.PasswordLength,
-                                          aeskey, UserResc.PasswordIV, *resource_authdata);
-    if (ciphertext_len < 0) {
-        fprintf(stderr, "Failed to decrypt resource password\n");
+    if (cxss_decrypt_aes256(UserResc.ResourcePassword, UserResc.PasswordLength,
+                            aeskey, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
+        fprintf(stderr, "Error while decrypting auth data\n");
         goto error;
     }
 
@@ -388,6 +365,8 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *
 
 error:
     free(privatekey);
+    free(*resource_username);
+    free(*resource_authdata);
     cxss_free_userauth(&UserAuth);
     cxss_free_userresc(&UserResc);    
     return CXSS_MGR_RETRIEVE_ERROR;

@@ -87,39 +87,51 @@ error:
 int
 cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
                     const char *key, const char *init_vector,
-                    char *plaintext)
+                    char **plaintext, int *plaintext_len)
 {
     EVP_CIPHER_CTX *ctx = NULL;
-    int len, plaintext_len;
+    int len;
     
+    /* Allocate buffer to store plaintext */
+    *plaintext = malloc(cxss_aes256_ciphertext_length(ciphertext_len));
+    if (!(*plaintext)) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto error;
+    }
+
     /* Create new openssl cipher context */
     if (!(ctx = EVP_CIPHER_CTX_new())) {
         fprintf(stderr, "Failed to create new openssl cipher context\n");
-        return CXSS_CRYPTO_ENCR_ERROR;
+        goto error;
     }
 
     /* Initiate decryption */
-    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1)
-        goto error;
-
-    /* Decrypt data */
-    if (EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) != 1)
-        goto error;
-    plaintext_len = len;
-
-    /* Finalize decryption */
-    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
-        fprintf(stderr, "Error while finalizing decryption!\n");
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1) {
+        fprintf(stderr, "Error while initiating AES decryption\n");
         goto error;
     }
-    plaintext_len += len;   
+
+    /* Decrypt data */
+    if (EVP_DecryptUpdate(ctx, *plaintext, &len, ciphertext, ciphertext_len) != 1) {
+        fprintf(stderr, "Error while decrypting with AES\n");
+        goto error;
+    }
+    *plaintext_len = len;
+
+    /* Finalize decryption */
+    if (EVP_DecryptFinal_ex(ctx, *plaintext + len, &len) != 1) {
+        fprintf(stderr, "Error while finalizing AES decryption!\n");
+        goto error;
+    }
+    *plaintext_len += len;   
         
     /* Cleanup */
     EVP_CIPHER_CTX_free(ctx);
-    return plaintext_len;
+    return CXSS_CRYPTO_SUCCESS;
 
 error:
     EVP_CIPHER_CTX_free(ctx);
+    free(*plaintext);
     return CXSS_CRYPTO_DECR_ERROR;
 }            
 
