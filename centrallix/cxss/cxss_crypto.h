@@ -18,8 +18,8 @@ int cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len, ch
 int cxss_encrypt_aes256(const char *plaintext, int plaintext_len, const unsigned char *key, const unsigned char *init_vector, unsigned char **ciphertext, int *ciphertext_len);
 int cxss_decrypt_aes256(const unsigned char *ciphertext, int ciphertext_len, const unsigned char *key, const unsigned char *init_vector, char **plaintext, int *plaintext_len);
 size_t cxss_aes256_ciphertext_length(size_t plaintext_len);
-int cxss_encrypt_rsa(const unsigned char *data, size_t len, const char *publickey, size_t publickey_len, unsigned char *ciphertext);
-int cxss_decrypt_rsa(const unsigned char *data, size_t len, const char *privatekey, size_t privatekey_len, char *plaintext);
+int cxss_encrypt_rsa(const unsigned char *data, size_t len, const char *publickey, size_t publickey_len, unsigned char *ciphertext, int *ciphertext_len);
+int cxss_decrypt_rsa(const unsigned char *data, size_t len, const char *privatekey, size_t privatekey_len, char *plaintext, int *plaintext_len);
 void cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, char *publickey, size_t publickey_len);
 
 #endif /* CXSS_CRYPTO_H */

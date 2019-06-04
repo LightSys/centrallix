@@ -73,7 +73,7 @@ typedef enum {
     CXSS_DB_BIND_ERROR = -2,
     CXSS_DB_QUERY_ERROR = -1,
     CXSS_DB_SUCCESS = 0
-} DB_Status_e;
+} CXSS_DB_Status_e;
 
 /* Public functions */
 CXSS_DB_Context_t cxss_init_credentials_database(const char *dbpath);

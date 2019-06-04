@@ -361,9 +361,8 @@ cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len,
 int
 cxss_encrypt_rsa(const unsigned char *data, size_t len,
                  const char *publickey, size_t publickey_len,
-                 unsigned char *ciphertext)
+                 unsigned char *ciphertext, int *ciphertext_len)
 {
-    int ciphertext_len;
     RSA *rsa = NULL;
     BIO *bio = NULL;
 
@@ -387,16 +386,16 @@ cxss_encrypt_rsa(const unsigned char *data, size_t len,
     }
 
     /* encrypt */
-    ciphertext_len = RSA_public_encrypt(len, data, ciphertext, rsa,
-                                        RSA_PKCS1_OAEP_PADDING);
-    if (ciphertext_len < 0) {
+    *ciphertext_len = RSA_public_encrypt(len, data, ciphertext, rsa,
+                                         RSA_PKCS1_OAEP_PADDING);
+    if (*ciphertext_len < 0) {
         fprintf(stderr, "RSA encryption failed\n");    
         goto error;
     }
 
     BIO_free(bio);
     RSA_free(rsa);
-    return ciphertext_len;
+    return CXSS_CRYPTO_SUCCESS;
 
 error:
     BIO_free(bio);
@@ -407,9 +406,8 @@ error:
 int
 cxss_decrypt_rsa(const unsigned char *data, size_t len,
                  const char *privatekey, size_t privatekey_len,
-                 char *plaintext)
+                 char *plaintext, int *plaintext_len)
 {
-    int plaintext_len;
     BIO *bio = NULL;
     RSA *rsa = NULL;
 
@@ -433,16 +431,16 @@ cxss_decrypt_rsa(const unsigned char *data, size_t len,
     }
 
     /* decrypt */
-    plaintext_len = RSA_private_decrypt(len, data, plaintext, rsa, 
-                                        RSA_PKCS1_OAEP_PADDING);
-    if (plaintext_len < 0) {
+    *plaintext_len = RSA_private_decrypt(len, data, plaintext, rsa, 
+                                         RSA_PKCS1_OAEP_PADDING);
+    if (*plaintext_len < 0) {
         fprintf(stderr, "RSA decryption failed\n");
         goto error;
     } 
 
     BIO_free(bio);
     RSA_free(rsa);
-    return plaintext_len;
+    return CXSS_CRYPTO_SUCCESS;
 
 error:
     BIO_free(bio);

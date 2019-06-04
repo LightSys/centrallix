@@ -255,9 +255,8 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
     }
 
     /* Encrypt random key with user's public key */
-    encrypted_rand_key_len = cxss_encrypt_rsa(key, sizeof(key), publickey, publickey_len, 
-                                              encrypted_rand_key);
-    if (encrypted_rand_key_len < 0) {
+    if (cxss_encrypt_rsa(key, sizeof(key), publickey, publickey_len, 
+                         encrypted_rand_key, &encrypted_rand_key_len) < 0) {
         fprintf(stderr, "Failed to encrypt random key\n");
         goto error;
     }
@@ -336,9 +335,8 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const unsign
     } 
 
     /* Decrypt AES key using user's private key */ 
-    aeskey_len = cxss_decrypt_rsa(UserResc.AESKey, UserResc.AESKeyLength, 
-                                  privatekey, privatekey_len, aeskey);
-    if (aeskey_len < 0) {
+    if (cxss_decrypt_rsa(UserResc.AESKey, UserResc.AESKeyLength,
+                         privatekey, privatekey_len, aeskey, &aeskey_len) < 0) {
         fprintf(stderr, "Failed to decrypt AES key\n");
         goto error;
     }
