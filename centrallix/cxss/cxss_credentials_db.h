@@ -1,5 +1,5 @@
-#ifndef CXSS_CREDENTIALS_DB
-#define CXSS_CREDENTIALS_DB
+#ifndef CXSS_CREDENTIALS_DB_H
+#define CXSS_CREDENTIALS_DB_H
 
 #include <sqlite3.h>
 #include <stdbool.h>
@@ -102,4 +102,4 @@ bool cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id)
 static int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
 static void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
 
-#endif /* CXSS_CREDENTIALS_DB */
+#endif /* CXSS_CREDENTIALS_DB_H */
