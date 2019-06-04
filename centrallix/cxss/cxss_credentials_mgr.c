@@ -81,19 +81,10 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encrypt
         goto error;
     }
 
-    /* Allocate buffer for encrypted private key */
-    predicted_encr_len = cxss_aes256_ciphertext_length(privatekey_len);
-    encrypted_privatekey = malloc(sizeof(char) * predicted_encr_len);
-    if (!encrypted_privatekey) {
-        fprintf(stderr, "Memory allocation error!\n");
-        goto error;
-    }
-
     /* Encrypt private key */
-    encr_privatekey_len = cxss_encrypt_aes256(privatekey, privatekey_len, encryption_key, 
-                                              iv, encrypted_privatekey);
-    if (encr_privatekey_len != predicted_encr_len) {
-        fprintf(stderr, "Error while encrypting with user key\n");
+    if (cxss_encrypt_aes256(privatekey, privatekey_len, encryption_key, 
+                            iv, &encrypted_privatekey, &encr_privatekey_len) < 0) {
+        fprintf(stderr, "Error while encrypting private key\n");        
         goto error;
     }
 
@@ -261,24 +252,14 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
         goto error;
     }
 
-    /* Allocate buffer for encrypted username and password */
-    encr_username_len = cxss_aes256_ciphertext_length(username_len);
-    encr_password_len = cxss_aes256_ciphertext_length(password_len); 
-    encrypted_username = malloc(encr_username_len);
-    encrypted_password = malloc(encr_password_len);
-    if (!encrypted_username || !encrypted_password) {
-        fprintf(stderr, "Memory allocation error\n");
-        goto error;
-    }
-
     /* Encrypt resource data with random key */
     if (cxss_encrypt_aes256(resource_username, username_len, key, uname_iv, 
-                            encrypted_username) < 0) {
+                            &encrypted_username, &encr_username_len) < 0) {
         fprintf(stderr, "Failed to encrypt resource username\n");
         goto error;
     }
     if (cxss_encrypt_aes256(resource_password, password_len, key, pwd_iv,
-                            encrypted_password) < 0) {
+                            &encrypted_password, &encr_password_len) < 0) {
         fprintf(stderr, "Failed to encrypt resource password\n");
         goto error;
     }

@@ -7,7 +7,7 @@
 #include <openssl/crypto.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-//#include "cxss/cxss.h"
+#include "cxss_encryption.h"
 #include "cxss_credentials_db.h"
 
 static int CSPRNG_Initialized = 0;
@@ -16,14 +16,7 @@ void
 cxss_initialize_crypto(void)
 {
     char seed[256];
-    memset(seed, 0, 256);    
-
-    /*
-    if (cxss_internal_GetBytes(seed, 256) != 0) {
-        fprintf(stderr, "Failed to seed random number generator\n");
-        return -1;
-    }
-    */
+    memset(seed, 0, 256); // TODO: Random seed    
 
     /* Seed RNG */
     RAND_seed(seed, 256);
@@ -32,7 +25,8 @@ cxss_initialize_crypto(void)
     CSPRNG_Initialized = 1;
 }        
 
-void cxss_cleanup_crypto(void)
+void
+cxss_cleanup_crypto(void)
 {
     EVP_cleanup();
     ERR_remove_state(0);
@@ -43,38 +37,51 @@ void cxss_cleanup_crypto(void)
 int 
 cxss_encrypt_aes256(const char *plaintext, int plaintext_len, 
                     const char *key, const char *init_vector,
-                    char *ciphertext)
+                    char **ciphertext, int *ciphertext_len)
 {
-    EVP_CIPHER_CTX *ctx;
-    int len, ciphertext_len;
+    EVP_CIPHER_CTX *ctx = NULL;
+    int len;
+
+    /* Allocate buffer to store ciphertext */
+    *ciphertext = malloc(cxss_aes256_ciphertext_length(plaintext_len));
+    if (!(*ciphertext)) {
+        fprintf(stderr, "Memory allocation error\n");
+        goto error;
+    }
     
-    /* Create new openssl cipher context */
+    /* Create openssl cipher context */
     if (!(ctx = EVP_CIPHER_CTX_new())) {
         fprintf(stderr, "Failed to create new openssl cipher context\n");
-        return -1;
+        goto error;
     }
 
     /* Initiate encryption */
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1)        return -1;
-
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1) {
+        fprintf(stderr, "Error while initiating AES encryption\n");
+        goto error;
+    }
 
     /* Encrypt data */
-    if (EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len) != 1)
-        return -1;
-    ciphertext_len = len;
-
+    if (EVP_EncryptUpdate(ctx, *ciphertext, &len, plaintext, plaintext_len) != 1) {
+        fprintf(stderr, "Error while encrypting with AES\n");
+        goto error;
+    }
+    *ciphertext_len = len;
 
     /* Finalize encryption */
-    if (EVP_EncryptFinal_ex(ctx, ciphertext + len, &len) != 1) {
-        fprintf(stderr, "Error while finalizing encryption\n");
-        return -1;
+    if (EVP_EncryptFinal_ex(ctx, *ciphertext + len, &len) != 1) {
+        fprintf(stderr, "Error while finalizing AES encryption\n");
+        goto error;
     }
-    ciphertext_len += len;
+    *ciphertext_len += len;
 
-    /* Close openssl cipher context */
     EVP_CIPHER_CTX_free(ctx);
+    return CXSS_CRYPTO_SUCCESS;
 
-    return ciphertext_len;
+error:
+    EVP_CIPHER_CTX_free(ctx);
+    free(*ciphertext);
+    return CXSS_CRYPTO_ENCR_ERROR;
 }
 
 int
@@ -82,13 +89,13 @@ cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
                     const char *key, const char *init_vector,
                     char *plaintext)
 {
-    EVP_CIPHER_CTX *ctx;
+    EVP_CIPHER_CTX *ctx = NULL;
     int len, plaintext_len;
     
     /* Create new openssl cipher context */
     if (!(ctx = EVP_CIPHER_CTX_new())) {
         fprintf(stderr, "Failed to create new openssl cipher context\n");
-        return -1;
+        return CXSS_CRYPTO_ENCR_ERROR;
     }
 
     /* Initiate decryption */
@@ -109,11 +116,11 @@ cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
         
     /* Cleanup */
     EVP_CIPHER_CTX_free(ctx);
-    
     return plaintext_len;
+
 error:
     EVP_CIPHER_CTX_free(ctx);
-    return -1;
+    return CXSS_CRYPTO_DECR_ERROR;
 }            
 
 /** @brief Generate 64-bit random salt
