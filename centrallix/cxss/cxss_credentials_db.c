@@ -745,30 +745,6 @@ bind_error:
     return CXSS_DB_BIND_ERROR;
 }
 
-/** @brief Print linked list (debug function)
- *
- */
-void
-cxss_print_userauth_ll(CXSS_UserAuth_LLNode *start)
-{
-    /* Skip head (dummy node) */
-    if (start != NULL)
-        start = start->next;
-    while (start != NULL) {
-        if (start->UserAuth.CXSS_UserID)
-            printf("UserID:             %s\n", start->UserAuth.CXSS_UserID);
-        if (start->UserAuth.PrivateKey)
-            printf("PrivateKey:         %s\n", start->UserAuth.PrivateKey);
-        printf("KeyLength:          %ld\n", start->UserAuth.KeyLength);
-        printf("RemovalFlag:        %d\n", start->UserAuth.RemovalFlag);
-        if (start->UserAuth.DateCreated)
-            printf("DateCreated:        %s\n", start->UserAuth.DateCreated);
-        if (start->UserAuth.DateLastUpdated)
-            printf("DateLastUpdated:    %s\n", start->UserAuth.DateLastUpdated);
-        start = start->next;
-    }
-}
-
 /** @brief Free linked list
  *  
  *  Free user_auth linked list
