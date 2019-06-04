@@ -51,7 +51,7 @@ error:
  *  @param dbcontext    Database context handle
  *  @return             Status code
  */
-int
+void
 cxss_close_credentials_database(CXSS_DB_Context_t dbcontext)
 {
     cxss_finalize_sqlite3_statements(dbcontext);
@@ -68,7 +68,7 @@ cxss_close_credentials_database(CXSS_DB_Context_t dbcontext)
  *  @param dbcontext    Database context handle
  *  @return             Status code
  */
-static int
+int
 cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext)
 {   
     char *err_msg = NULL;
@@ -936,7 +936,7 @@ cxss_free_userresc(CXSS_UserResc *UserResc)
  *  @param dbcontext    Database context handle
  *  @return             void         
  */
-static void 
+void 
 cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext)
 {
     sqlite3_finalize(dbcontext->get_user_count_stmt);

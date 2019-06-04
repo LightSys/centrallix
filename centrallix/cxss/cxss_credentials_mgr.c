@@ -35,14 +35,11 @@ cxss_init_credentials_mgmt(void)
  *
  *  @return     Status code
  */
-int
+void
 cxss_close_credentials_mgmt(void)
 {
     cxss_cleanup_crypto();
-    if (cxss_close_credentials_database(dbcontext) < 0) {
-        return CXSS_MGR_CLOSE_ERROR;
-    }
-    return CXSS_MGR_SUCCESS;
+    cxss_close_credentials_database(dbcontext);
 }
 
 /** @brief Add user to CXSS
@@ -55,14 +52,14 @@ cxss_close_credentials_mgmt(void)
  *  @return                     Status code   
  */
 int
-cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
-             const char *salt, size_t salt_len)
+cxss_adduser(const char *cxss_userid, const unsigned char *encryption_key, size_t encryption_key_len, 
+             const unsigned char *salt, size_t salt_len)
 {
     CXSS_UserData UserData = {};
     CXSS_UserAuth UserAuth = {};
     char *privatekey = NULL, *publickey = NULL;
-    char *encrypted_privatekey = NULL;
-    char iv[16]; // 128-bit iv
+    unsigned char *encrypted_privatekey = NULL;
+    unsigned char iv[16]; // 128-bit iv
     char *current_timestamp = get_timestamp();
     int privatekey_len, publickey_len;
     int encr_privatekey_len;
@@ -212,17 +209,17 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
                   const char *resource_password, size_t password_len)
 {
     CXSS_UserResc UserResc = {};
-    char *encrypted_username = NULL;
-    char *encrypted_password = NULL;
+    unsigned char *encrypted_username = NULL;
+    unsigned char *encrypted_password = NULL;
     int encr_username_len;
     int encr_password_len;
     char *publickey = NULL;
     int publickey_len;
-    char encrypted_rand_key[512];
+    unsigned char encrypted_rand_key[512];
     int encrypted_rand_key_len;
-    char key[32];
-    char uname_iv[16];
-    char pwd_iv[16];
+    unsigned char key[32];
+    unsigned char uname_iv[16];
+    unsigned char pwd_iv[16];
     char *current_timestamp = get_timestamp();
 
     /* Retrieve user publickey */
@@ -310,12 +307,12 @@ error:
  *  @return                     Status code
  */
 int 
-cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *user_key, 
+cxss_get_resource(const char *cxss_userid, const char *resource_id, const unsigned char *user_key, 
                   size_t user_key_len, char **resource_username, char **resource_authdata)
 {
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};
-    char aeskey[32];
+    unsigned char aeskey[32];
     char *privatekey = NULL;
     int  privatekey_len;
     int  aeskey_len;

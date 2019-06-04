@@ -35,8 +35,8 @@ cxss_cleanup_crypto(void)
 
 int 
 cxss_encrypt_aes256(const char *plaintext, int plaintext_len, 
-                    const char *key, const char *init_vector,
-                    char **ciphertext, int *ciphertext_len)
+                    const unsigned char *key, const unsigned char *init_vector,
+                    unsigned char **ciphertext, int *ciphertext_len)
 {
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
@@ -84,8 +84,8 @@ error:
 }
 
 int
-cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
-                    const char *key, const char *init_vector,
+cxss_decrypt_aes256(const unsigned char *ciphertext, int ciphertext_len,
+                    const unsigned char *key, const unsigned char *init_vector,
                     char **plaintext, int *plaintext_len)
 {
     EVP_CIPHER_CTX *ctx = NULL;
@@ -144,7 +144,7 @@ error:
  *  @return     Status code
  */
 int
-cxss_generate_64bit_salt(char *salt)
+cxss_generate_64bit_salt(unsigned char *salt)
 {
     assert(CSPRNG_Initialized);
 
@@ -165,7 +165,7 @@ cxss_generate_64bit_salt(char *salt)
  *  @return     Status code
  */
 int
-cxss_generate_128bit_iv(char *init_vector)
+cxss_generate_128bit_iv(unsigned char *init_vector)
 {
     assert(CSPRNG_Initialized);
 
@@ -189,7 +189,8 @@ cxss_generate_128bit_iv(char *init_vector)
  *  @return             Status code
  */
 int
-cxss_generate_256bit_key(const char *password, const char *salt, char *key)
+cxss_generate_256bit_key(const char *password, const unsigned char *salt, 
+                         unsigned char *key)
 {
     #define PBKDF2_ITER_NO      5000
     
@@ -210,7 +211,7 @@ cxss_generate_256bit_key(const char *password, const char *salt, char *key)
  *  @return             Status code
  */
 int
-cxss_generate_256bit_rand_key(char *key)
+cxss_generate_256bit_rand_key(unsigned char *key)
 {
     assert(CSPRNG_Initialized);
 
@@ -358,9 +359,9 @@ cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len,
  *  @return                     Status code
  */
 int
-cxss_encrypt_rsa(const char *data, size_t len,
+cxss_encrypt_rsa(const unsigned char *data, size_t len,
                  const char *publickey, size_t publickey_len,
-                 char *ciphertext)
+                 unsigned char *ciphertext)
 {
     int ciphertext_len;
     RSA *rsa = NULL;
@@ -404,7 +405,7 @@ error:
 }
 
 int
-cxss_decrypt_rsa(const char *data, size_t len,
+cxss_decrypt_rsa(const unsigned char *data, size_t len,
                  const char *privatekey, size_t privatekey_len,
                  char *plaintext)
 {

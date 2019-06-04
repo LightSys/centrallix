@@ -35,8 +35,8 @@ typedef struct {
 typedef struct {
     const char *CXSS_UserID;
     const char *PrivateKey;
-    const char *Salt;
-    const char *PrivateKeyIV;
+    const unsigned char *Salt;
+    const unsigned char *PrivateKeyIV;
     const char *DateCreated;
     const char *DateLastUpdated;
     bool RemovalFlag;
@@ -49,11 +49,11 @@ typedef struct {
     const char *CXSS_UserID;
     const char *ResourceID;
     const char *AuthClass;
-    const char *AESKey;
-    const char *UsernameIV;
-    const char *PasswordIV;
-    const char *ResourceUsername;
-    const char *ResourcePassword;
+    const unsigned char *AESKey;
+    const unsigned char *UsernameIV;
+    const unsigned char *PasswordIV;
+    const unsigned char *ResourceUsername;
+    const unsigned char *ResourcePassword;
     const char *DateCreated;
     const char *DateLastUpdated;
     size_t AESKeyLength;
@@ -77,7 +77,7 @@ typedef enum {
 
 /* Public functions */
 CXSS_DB_Context_t cxss_init_credentials_database(const char *dbpath);
-int cxss_close_credentials_database(CXSS_DB_Context_t dbcontext);
+void cxss_close_credentials_database(CXSS_DB_Context_t dbcontext);
 int cxss_insert_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
 int cxss_insert_userauth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
 int cxss_insert_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
@@ -99,7 +99,7 @@ bool cxss_db_contains_user(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
 bool cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id);
 
 /* Private Functions */
-static int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
-static void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
+int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
+void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
 
 #endif /* CXSS_CREDENTIALS_DB_H */
