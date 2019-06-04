@@ -1,5 +1,5 @@
-#ifndef CXSS_ENCRYPTION
-#define CXSS_ENCRYPTION
+#ifndef CXSS_CRYPTO
+#define CXSS_CRYPTO
 
 typedef enum {
     CXSS_CRYPTO_BYTES_ERROR = -3,
@@ -22,4 +22,4 @@ int cxss_encrypt_rsa(const char *data, size_t len, const char *publickey, size_t
 int cxss_decrypt_rsa(const char *data, size_t len, const char *privatekey, size_t privatekey_len, char *plaintext);
 void cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, char *publickey, size_t publickey_len);
 
-#endif /* CXSS_ENCRYPTION */
+#endif /* CXSS_CRYPTO */

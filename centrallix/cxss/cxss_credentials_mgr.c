@@ -8,7 +8,7 @@
 #include "cxss_util.h"
 #include "cxss_credentials_mgr.h"
 #include "cxss_credentials_db.h"
-#include "cxss_encryption.h"
+#include "cxss_crypto.h"
 #include <assert.h>
 
 static CXSS_DB_Context_t dbcontext = NULL;

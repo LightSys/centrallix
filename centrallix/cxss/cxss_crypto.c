@@ -8,7 +8,7 @@
 #include <openssl/crypto.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-#include "cxss_encryption.h"
+#include "cxss_crypto.h"
 #include "cxss_credentials_db.h"
 
 static bool CSPRNG_Initialized = false;
