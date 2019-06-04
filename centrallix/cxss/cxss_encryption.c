@@ -150,10 +150,9 @@ cxss_generate_64bit_salt(char *salt)
 
     if (RAND_bytes(salt, 8) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
-        return -1;
+        return CXSS_CRYPTO_BYTES_ERROR;
     }
-
-    return 0;
+    return CXSS_CRYPTO_SUCCESS;
 }
 
 /** @brief Generate 128-bit random initialization vector
@@ -173,10 +172,9 @@ cxss_generate_128bit_iv(char *init_vector)
     /* Generate random initialization vector */
     if (RAND_bytes(init_vector, 16) != 1) {
         fprintf(stderr, "Failed to generate initialization vector!\n");
-        return -1;
+        return CXSS_CRYPTO_BYTES_ERROR;
     }
-
-    return 0;
+    return CXSS_CRYPTO_SUCCESS;
 }
 
 /** @brief Generate 256-bit key from password+salt
@@ -199,10 +197,9 @@ cxss_generate_256bit_key(const char *password, const char *salt, char *key)
                           salt, 8, PBKDF2_ITER_NO, 
                           EVP_sha256(), 32, key) != 1) {
         fprintf(stderr, "Failed to generate 256-bit key\n");
-        return -1;
+        return CXSS_CRYPTO_BYTES_ERROR;
     }
-
-    return 0;
+    return CXSS_CRYPTO_SUCCESS;
 }
 
 /** @brief Generate 256-bit random key 
@@ -220,10 +217,9 @@ cxss_generate_256bit_rand_key(char *key)
     /* Generate random initialization vector */
     if (RAND_bytes(key, 32) != 1) {
         fprintf(stderr, "Failed to generate key!\n");
-        return -1;
+        return CXSS_CRYPTO_BYTES_ERROR;
     }
-
-    return 0;
+    return CXSS_CRYPTO_SUCCESS;
 }
 
 /** @brief Compute length of AES ciphertext
@@ -323,14 +319,14 @@ cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
     BIO_free_all(pub);
     RSA_free(rsa_keypair);    
     BN_free(bne);
-    return 0;  
+    return CXSS_CRYPTO_SUCCESS;  
 
 error:
     BIO_free_all(pri);
     BIO_free_all(pub);
     RSA_free(rsa_keypair);
     BN_free(bne);
-    return -1;
+    return CXSS_CRYPTO_BYTES_ERROR;
 } 
 
 /** @brief Free rsa keypair
@@ -404,7 +400,7 @@ cxss_encrypt_rsa(const char *data, size_t len,
 error:
     BIO_free(bio);
     RSA_free(rsa);
-    return -1;
+    return CXSS_CRYPTO_ENCR_ERROR;
 }
 
 int
@@ -450,6 +446,6 @@ cxss_decrypt_rsa(const char *data, size_t len,
 error:
     BIO_free(bio);
     RSA_free(rsa);
-    return -1;
+    return CXSS_CRYPTO_DECR_ERROR;
 }
 
