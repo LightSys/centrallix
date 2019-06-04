@@ -6,7 +6,7 @@
 #include <time.h>
 #include <openssl/bio.h>
 #include "cxss_util.h"
-#include "cxss_credentials_mgmt.h"
+#include "cxss_credentials_mgr.h"
 #include "cxss_credentials_db.h"
 #include "cxss_encryption.h"
 #include <assert.h>
@@ -337,7 +337,7 @@ error:
  */
 int 
 cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *user_key, 
-                  size_t user_key_len, char **resource_username, char **resource_data)
+                  size_t user_key_len, char **resource_username, char **resource_authdata)
 {
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};

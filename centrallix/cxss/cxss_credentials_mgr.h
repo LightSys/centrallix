@@ -1,5 +1,5 @@
-#ifndef CXSS_CREDENTIALS_MGMT
-#define CXSS_CREDENTIALS_MGMT
+#ifndef CXSS_CREDENTIALS_MGR
+#define CXSS_CREDENTIALS_MGR
 
 typedef enum {
     CXSS_MGR_INIT_ERROR = -6,
@@ -21,4 +21,4 @@ int cxss_add_resource(const char *cxss_userid, const char *resource_id, const ch
 int cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *user_key, size_t user_key_len, char **resource_username, char **resource_data);
 int cxss_delete_resource(const char *cxss_userid, const char *resource_id);
 
-#endif /* CXSS_CREDENTIALS_MGMT */
+#endif /* CXSS_CREDENTIALS_MGR */
