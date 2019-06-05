@@ -695,6 +695,7 @@ int
 cxss_delete_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
 {
     /* Bind data with sqlite3 stmt */
+    sqlite3_reset(dbcontext->delete_user_stmt);
     if (sqlite3_bind_text(dbcontext->delete_user_stmt, 1,
         cxss_userid, -1, NULL) != SQLITE_OK)
         goto bind_error;
@@ -725,6 +726,7 @@ cxss_delete_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
                      const char *resource_id)
 {
     /* Bind data with sqlite3 stmts */
+    sqlite3_reset(dbcontext->delete_resc_stmt);
     if (sqlite3_bind_text(dbcontext->delete_resc_stmt, 1,
         cxss_userid, -1, NULL) != SQLITE_OK)
         goto bind_error;
