@@ -5,19 +5,19 @@
 #include <string.h>
 #include <time.h>
 #include <openssl/bio.h>
-#include "cxss_util.h"
-#include "cxss_credentials_mgr.h"
-#include "cxss_credentials_db.h"
-#include "cxss_crypto.h"
+#include "cxss/util.h"
+#include "cxss/credentials_mgr.h"
+#include "cxss/credentials_db.h"
+#include "cxss/crypto.h"
 #include <assert.h>
 
 static CXSS_DB_Context_t dbcontext = NULL;
 
 int 
-cxss_init_credentials_mgmt(void)
+cxss_init_credentials_mgr(void)
 {   
     cxss_initialize_crypto();
-    dbcontext = cxss_init_credentials_database("test.db");
+    dbcontext = cxss_init_credentials_db("test.db");
     if (!dbcontext) {
         return CXSS_MGR_INIT_ERROR;
     }
@@ -25,10 +25,10 @@ cxss_init_credentials_mgmt(void)
 }
 
 void
-cxss_close_credentials_mgmt(void)
+cxss_close_credentials_mgr(void)
 {
     cxss_cleanup_crypto();
-    cxss_close_credentials_database(dbcontext);
+    cxss_close_credentials_db(dbcontext);
 }
 
 /** @brief Add user to CXSS

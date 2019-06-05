@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxss/credentials_mgr.h"
 #include "cxss/cxss.h"
 
 /************************************************************************/
@@ -58,7 +59,7 @@ cxssInitialize()
         if (err < 0) return err;
 
         /** Initialize credentials manager **/
-        err = cxss_credentials_mgmt_init();
+        err = cxss_init_credentials_mgr();
         if (err < 0) return err;
 
     return err;

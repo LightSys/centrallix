@@ -8,8 +8,8 @@
 #include <openssl/crypto.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-#include "cxss_crypto.h"
-#include "cxss_credentials_db.h"
+#include "cxss/crypto.h"
+#include "cxss/credentials_db.h"
 
 static bool CSPRNG_Initialized = false;
 
@@ -55,13 +55,15 @@ cxss_encrypt_aes256(const char *plaintext, int plaintext_len,
     }
 
     /* Initiate encryption */
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key, (unsigned char *)init_vector) != 1) {
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key, 
+                           (unsigned char *)init_vector) != 1) {
         fprintf(stderr, "Error while initiating AES encryption\n");
         goto error;
     }
 
     /* Encrypt data */
-    if (EVP_EncryptUpdate(ctx, *(unsigned char **)ciphertext, &len, (unsigned char *)plaintext, plaintext_len) != 1) {
+    if (EVP_EncryptUpdate(ctx, *(unsigned char **)ciphertext, &len, 
+                          (unsigned char *)plaintext, plaintext_len) != 1) {
         fprintf(stderr, "Error while encrypting with AES\n");
         goto error;
     }
@@ -105,13 +107,15 @@ cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
     }
 
     /* Initiate decryption */
-    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key, (unsigned char *)init_vector) != 1) {
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key,
+                           (unsigned char *)init_vector) != 1) {
         fprintf(stderr, "Error while initiating AES decryption\n");
         goto error;
     }
 
     /* Decrypt data */
-    if (EVP_DecryptUpdate(ctx, *(unsigned char **)plaintext, &len, (unsigned char *)ciphertext, ciphertext_len) != 1) {
+    if (EVP_DecryptUpdate(ctx, *(unsigned char **)plaintext, &len, 
+                          (unsigned char *)ciphertext, ciphertext_len) != 1) {
         fprintf(stderr, "Error while decrypting with AES\n");
         goto error;
     }

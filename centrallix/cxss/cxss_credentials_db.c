@@ -4,9 +4,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sqlite3.h>
-#include "cxss_util.h"
-#include "cxss_credentials_db.h"
-
+#include "cxss/credentials_db.h"
+#include "cxss/util.h"
 
 /** @brief Initialize cxss credentials database
  *
@@ -18,7 +17,7 @@
  *  @return             Database context handle
  */
 CXSS_DB_Context_t
-cxss_init_credentials_database(const char *db_path)
+cxss_init_credentials_db(const char *db_path)
 {
     /* Allocate context struct */
     CXSS_DB_Context_t dbcontext = malloc(sizeof(struct _CXSS_DB_Context_t));
@@ -52,7 +51,7 @@ error:
  *  @return             Status code
  */
 void
-cxss_close_credentials_database(CXSS_DB_Context_t dbcontext)
+cxss_close_credentials_db(CXSS_DB_Context_t dbcontext)
 {
     cxss_finalize_sqlite3_statements(dbcontext);
     sqlite3_close(dbcontext->db);
