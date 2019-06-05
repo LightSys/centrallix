@@ -352,7 +352,7 @@ bind_error:
  *  Retrieve user data from 'UserData' table
  * 
  *  @param dbcontext        Database context handle 
- *  @param cxss_userid      CXSS user identity
+ *  @param cxss_userid      CXSS User ID
  *  @param UserData         Pointer to CXSS_UserData struct
  *  @return                 Status code
  */
@@ -398,7 +398,7 @@ bind_error:
  *  Retrieve user auth data from 'UserAuth' table
  * 
  *  @param dbcontext        Database context handle 
- *  @param cxss_userid      CXSS user identity
+ *  @param cxss_userid      CXSS User ID
  *  @param UserAuth         Pointer to head of a CXSS_UserAuth linked list 
  *  @return                 Status code
  */
@@ -456,7 +456,7 @@ bind_error:
  *  returns a linked list of them.
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  CXSS user identity
+ *  @param cxss_userid  CXSS User ID
  *  @return             void
  */
 int
@@ -528,8 +528,8 @@ bind_error:
  *  from the CXSS database.
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  Centrallix user identity
- *  @param resource_id  Resource identity
+ *  @param cxss_userid  Centrallix User ID
+ *  @param resource_id  Resource ID
  *  @param UserResc     Pointer to a CXSS_UserResc struct
  *  @return             Status code
  */
@@ -688,7 +688,7 @@ bind_error:
  *  Delete user data from CXSS
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  Centrallix user identity
+ *  @param cxss_userid  Centrallix User ID
  *  @return             Status code
  */
 int
@@ -716,8 +716,8 @@ bind_error:
  *  Delete a given user's resource from CXSS
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  Centrallix user identity
- *  @param resource_id  Resource identity
+ *  @param cxss_userid  Centrallix User ID
+ *  @param resource_id  Resource ID
  *  @return             Status code
  */
 int
@@ -793,7 +793,7 @@ cxss_get_user_count(CXSS_DB_Context_t dbcontext)
  *  for a given Centrallix user.
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  CXSS user identity
+ *  @param cxss_userid  CXSS User ID
  *  @return             Resource count
  */
 int
@@ -820,7 +820,7 @@ cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
  *  already present in the CXSS database.
  *
  *  @param dbcontext    Database context handle
- *  @param cxss_userid  CXSS user identity
+ *  @param cxss_userid  CXSS User ID
  *  @return             True if found, false if NOT found
  */
 bool

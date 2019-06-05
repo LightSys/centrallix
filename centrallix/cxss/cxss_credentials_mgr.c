@@ -33,7 +33,7 @@ cxss_close_credentials_mgr(void)
 
 /** @brief Add user to CXSS
  *
- *  @param cxss_userid          Centrallix user identity
+ *  @param cxss_userid          Centrallix User ID
  *  @param encryption_key       Password-based user encryption key
  *  @param keylength            Length of user encryption key
  *  @param salt                 User salt
@@ -113,7 +113,7 @@ error:
 
 /** @brief Retrieve and decrypt user private key
  *
- *  @param cxss_userid          Centrallix user identity
+ *  @param cxss_userid          Centrallix user ID
  *  @param encryption_key       AES encryption key used to encrypt private key
  *  @param encryption_key_len   Length of encryption key
  *  @return                     Pointer to decrypted private key (must be freed)
@@ -149,7 +149,7 @@ error:
 
 /** @brief Retrieve user public key
  *
- *  @param cxss_userid          CXSS user identity
+ *  @param cxss_userid          CXSS User ID
  *  @return                     Pointer to public key (must be freed)
  */
 int
@@ -184,8 +184,8 @@ error:
 
 /** @brief Add resource to CXSS
  *  
- *  @param cxss_userid          Centrallix user identity
- *  @param resource_id          Centrallix resource identity
+ *  @param cxss_userid          Centrallix User ID
+ *  @param resource_id          Resource ID
  *  @param resource_username    Resource Username
  *  @param username_len         Length of resource username
  *  @param resource_password    Resource Password
@@ -290,8 +290,8 @@ error:
  *  Get resource data from CXSS credentials database
  *  given CXSS user id and resource id.
  *
- *  @param cxss_userid          Centrallix user identity
- *  @param resource_id          Centrallix resource identity
+ *  @param cxss_userid          Centrallix User ID
+ *  @param resource_id          Resource ID
  *  @return                     Status code
  */
 int 
@@ -358,7 +358,7 @@ error:
 
 /** Remove user from CXSS
  *
- *  @param cxss_userid  Centrallix user identity
+ *  @param cxss_userid  Centrallix User ID
  *  @return             Status code
  */
 int
@@ -373,8 +373,8 @@ cxss_delete_user(const char *cxss_userid)
 
 /** Delete a user's resource from CXSS
  *
- *  @param cxss_userid  Centrallix user identity
- *  @param resource_id  Resource identity
+ *  @param cxss_userid  Centrallix User ID
+ *  @param resource_id  Resource ID
  *  @return             Status code
  */
 int
