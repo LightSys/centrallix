@@ -361,7 +361,7 @@ int
 cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserData *UserData)
 {
-    const unsigned char *publickey;
+    const char *publickey;
     const char *date_created, *date_last_updated;
     size_t keylength;
 
@@ -376,10 +376,10 @@ cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         return CXSS_DB_QUERY_ERROR;
     
     /* Retrieve results */
-    publickey = sqlite3_column_blob(dbcontext->retrieve_user_stmt, 0);
+    publickey = (char*)sqlite3_column_blob(dbcontext->retrieve_user_stmt, 0);
     keylength = sqlite3_column_bytes(dbcontext->retrieve_user_stmt, 0);
-    date_created = sqlite3_column_text(dbcontext->retrieve_user_stmt, 1);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_stmt, 2);
+    date_created = (char*)sqlite3_column_text(dbcontext->retrieve_user_stmt, 1);
+    date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_user_stmt, 2);
 
     /* Populate UserData struct */
     UserData->CXSS_UserID = cxss_strdup(cxss_userid);
@@ -407,7 +407,7 @@ int
 cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserAuth *UserAuth)
 {
-    const unsigned char *privatekey, *salt, *iv;
+    const char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
 
@@ -424,14 +424,14 @@ cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     }
 
     /* Retrieve results */
-    privatekey = sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 0);
+    privatekey = (char*)sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 0);
     keylength = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 0);
-    salt = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 1);
+    salt = (char*)sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 1);
     salt_length = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 1);
-    iv = sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 2);
+    iv = (char*)sqlite3_column_blob(dbcontext->retrieve_user_auth_stmt, 2);
     iv_length = sqlite3_column_bytes(dbcontext->retrieve_user_auth_stmt, 2);
-    date_created = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 3);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
+    date_created = (char*)sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 3);
+    date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
      
     /* Populate UserAuth struct */
     UserAuth->CXSS_UserID = cxss_strdup(cxss_userid);
@@ -488,15 +488,15 @@ cxss_retrieve_userauth_ll(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         prev->next = current;
         
         /* Retrieve results */
-        privatekey = sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 0);
+        privatekey = (char*)sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 0);
         keylength = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 0);
-        salt = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 1);
+        salt = (char*)sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 1);
         salt_length = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 1);
-        iv = sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 2);
+        iv = (char*)sqlite3_column_blob(dbcontext->retrieve_user_auths_stmt, 2);
         iv_length = sqlite3_column_bytes(dbcontext->retrieve_user_auths_stmt, 2); 
         removal_flag = sqlite3_column_int(dbcontext->retrieve_user_auths_stmt, 4); 
-        date_created = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 5);
-        date_last_updated = sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 6);
+        date_created = (char*)sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 5);
+        date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 6);
      
         /* Populate node */
         current->UserAuth.CXSS_UserID = cxss_strdup(cxss_userid);
@@ -539,11 +539,11 @@ cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
                        const char *resource_id, CXSS_UserResc *UserResc)
 {
     const char *auth_class;
-    const unsigned char *resource_username, *resource_password;
-    const unsigned char *aeskey;
-    const unsigned char *resource_salt, *username_iv, *password_iv;
+    const char *resource_username, *resource_password;
+    const char *aeskey;
+    const char *username_iv, *password_iv;
     const char  *date_created, *date_last_updated;
-    size_t salt_len, aeskey_len, username_len, password_len;
+    size_t aeskey_len, username_len, password_len;
     size_t username_iv_len, password_iv_len;       
 
     /* Bind data with sqlite3 stmt */
@@ -562,19 +562,19 @@ cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     }
 
     /* Retrieve results */
-    username_iv = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 0);
+    username_iv = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 0);
     username_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 0);
-    password_iv = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
+    password_iv = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
     password_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 1);
-    auth_class = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 2);
-    aeskey = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
+    auth_class = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 2);
+    aeskey = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
     aeskey_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
-    resource_username = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 4);
+    resource_username = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 4);
     username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 4);
-    resource_password = sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 5);
+    resource_password = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 5);
     password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 5);
-    date_created = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 6);
-    date_last_updated = sqlite3_column_text(dbcontext->retrieve_resc_stmt, 7);
+    date_created = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 6);
+    date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 7);
 
     /* Build struct */
     UserResc->ResourceID = cxss_strdup(resource_id);

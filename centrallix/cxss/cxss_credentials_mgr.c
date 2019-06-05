@@ -41,19 +41,18 @@ cxss_close_credentials_mgmt(void)
  *  @return                     Status code   
  */
 int
-cxss_adduser(const char *cxss_userid, const unsigned char *encryption_key, size_t encryption_key_len, 
-             const unsigned char *salt, size_t salt_len)
+cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
+             const char *salt, size_t salt_len)
 {
     CXSS_UserData UserData = {};
     CXSS_UserAuth UserAuth = {};
-    unsigned char *privatekey = NULL;
-    unsigned char *publickey = NULL;
-    unsigned char *encrypted_privatekey = NULL;
-    unsigned char iv[16]; // 128-bit iv
+    char *privatekey = NULL;
+    char *publickey = NULL;
+    char *encrypted_privatekey = NULL;
+    char iv[16]; // 128-bit iv
     char *current_timestamp = get_timestamp();
     int privatekey_len, publickey_len;
     int encr_privatekey_len;
-    int predicted_encr_len; 
 
     /* Generate RSA key pair */
     if (cxss_generate_rsa_4096bit_keypair(&privatekey, &privatekey_len, 
@@ -121,7 +120,7 @@ error:
  */
 int
 cxss_retrieve_user_privatekey(const char *cxss_userid, const char *encryption_key, size_t ecryption_key_len,
-                              unsigned char **privatekey, int *privatekey_len)
+                              char **privatekey, int *privatekey_len)
 {
     CXSS_UserAuth UserAuth = {};
     
@@ -154,7 +153,7 @@ error:
  *  @return                     Pointer to public key (must be freed)
  */
 int
-cxss_retrieve_user_publickey(const char *cxss_userid, unsigned char **publickey, int *publickey_len)
+cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey, int *publickey_len)
 {
     CXSS_UserData UserData = {};
 
@@ -199,17 +198,17 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
                   const char *resource_password, size_t password_len)
 {
     CXSS_UserResc UserResc = {};
-    unsigned char *encrypted_username = NULL;
-    unsigned char *encrypted_password = NULL;
+    char *encrypted_username = NULL;
+    char *encrypted_password = NULL;
     int encr_username_len;
     int encr_password_len;
-    unsigned char *publickey = NULL;
+    char *publickey = NULL;
     int publickey_len;
-    unsigned char encrypted_rand_key[512];
+    char encrypted_rand_key[512];
     int encrypted_rand_key_len;
-    unsigned char key[32];
-    unsigned char uname_iv[16];
-    unsigned char pwd_iv[16];
+    char key[32];
+    char uname_iv[16];
+    char pwd_iv[16];
     char *current_timestamp = get_timestamp();
 
     /* Retrieve user publickey */
@@ -296,13 +295,13 @@ error:
  *  @return                     Status code
  */
 int 
-cxss_get_resource(const char *cxss_userid, const char *resource_id, const unsigned char *user_key, 
+cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *user_key, 
                   size_t user_key_len, char **resource_username, char **resource_authdata)
 {
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};
-    unsigned char aeskey[32];
-    unsigned char *privatekey = NULL;
+    char aeskey[32];
+    char *privatekey = NULL;
     int  privatekey_len;
     int  aeskey_len;
     int  ciphertext_len;

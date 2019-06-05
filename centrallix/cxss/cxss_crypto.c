@@ -35,8 +35,8 @@ cxss_cleanup_crypto(void)
 
 int 
 cxss_encrypt_aes256(const char *plaintext, int plaintext_len, 
-                    const unsigned char *key, const unsigned char *init_vector,
-                    unsigned char **ciphertext, int *ciphertext_len)
+                    const char *key, const char *init_vector,
+                    char **ciphertext, int *ciphertext_len)
 {
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
@@ -55,20 +55,20 @@ cxss_encrypt_aes256(const char *plaintext, int plaintext_len,
     }
 
     /* Initiate encryption */
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1) {
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key, (unsigned char *)init_vector) != 1) {
         fprintf(stderr, "Error while initiating AES encryption\n");
         goto error;
     }
 
     /* Encrypt data */
-    if (EVP_EncryptUpdate(ctx, *ciphertext, &len, (unsigned char *)plaintext, plaintext_len) != 1) {
+    if (EVP_EncryptUpdate(ctx, *(unsigned char **)ciphertext, &len, (unsigned char *)plaintext, plaintext_len) != 1) {
         fprintf(stderr, "Error while encrypting with AES\n");
         goto error;
     }
     *ciphertext_len = len;
 
     /* Finalize encryption */
-    if (EVP_EncryptFinal_ex(ctx, *ciphertext + len, &len) != 1) {
+    if (EVP_EncryptFinal_ex(ctx, *(unsigned char **)ciphertext + len, &len) != 1) {
         fprintf(stderr, "Error while finalizing AES encryption\n");
         goto error;
     }
@@ -84,8 +84,8 @@ error:
 }
 
 int
-cxss_decrypt_aes256(const unsigned char *ciphertext, int ciphertext_len,
-                    const unsigned char *key, const unsigned char *init_vector,
+cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
+                    const char *key, const char *init_vector,
                     char **plaintext, int *plaintext_len)
 {
     EVP_CIPHER_CTX *ctx = NULL;
@@ -105,13 +105,13 @@ cxss_decrypt_aes256(const unsigned char *ciphertext, int ciphertext_len,
     }
 
     /* Initiate decryption */
-    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, init_vector) != 1) {
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key, (unsigned char *)init_vector) != 1) {
         fprintf(stderr, "Error while initiating AES decryption\n");
         goto error;
     }
 
     /* Decrypt data */
-    if (EVP_DecryptUpdate(ctx, *(unsigned char **)plaintext, &len, ciphertext, ciphertext_len) != 1) {
+    if (EVP_DecryptUpdate(ctx, *(unsigned char **)plaintext, &len, (unsigned char *)ciphertext, ciphertext_len) != 1) {
         fprintf(stderr, "Error while decrypting with AES\n");
         goto error;
     }
@@ -144,11 +144,11 @@ error:
  *  @return     Status code
  */
 int
-cxss_generate_64bit_salt(unsigned char *salt)
+cxss_generate_64bit_salt(char *salt)
 {
     assert(CSPRNG_Initialized);
 
-    if (RAND_bytes(salt, 8) < 0) {
+    if (RAND_bytes((unsigned char *)salt, 8) < 0) {
         fprintf(stderr, "Failed to generate salt!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
@@ -165,12 +165,12 @@ cxss_generate_64bit_salt(unsigned char *salt)
  *  @return     Status code
  */
 int
-cxss_generate_128bit_iv(unsigned char *init_vector)
+cxss_generate_128bit_iv(char *init_vector)
 {
     assert(CSPRNG_Initialized);
 
     /* Generate random initialization vector */
-    if (RAND_bytes(init_vector, 16) != 1) {
+    if (RAND_bytes((unsigned char *)init_vector, 16) != 1) {
         fprintf(stderr, "Failed to generate initialization vector!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
@@ -189,13 +189,13 @@ cxss_generate_128bit_iv(unsigned char *init_vector)
  *  @return             Status code
  */
 int
-cxss_generate_256bit_key(const char *password, const unsigned char *salt, 
-                         unsigned char *key)
+cxss_generate_256bit_key(const char *password, const char *salt, 
+                         char *key)
 {
     #define PBKDF2_ITER_NO      5000
     
-    if (PKCS5_PBKDF2_HMAC(password, strlen(password), salt, 8, PBKDF2_ITER_NO, 
-                          EVP_sha256(), 32, key) != 1) {
+    if (PKCS5_PBKDF2_HMAC(password, strlen(password), (unsigned char *)salt, 8, PBKDF2_ITER_NO, 
+                          EVP_sha256(), 32, (unsigned char *)key) != 1) {
         fprintf(stderr, "Failed to generate 256-bit key\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
@@ -210,12 +210,12 @@ cxss_generate_256bit_key(const char *password, const unsigned char *salt,
  *  @return             Status code
  */
 int
-cxss_generate_256bit_rand_key(unsigned char *key)
+cxss_generate_256bit_rand_key(char *key)
 {
     assert(CSPRNG_Initialized);
 
     /* Generate random initialization vector */
-    if (RAND_bytes(key, 32) != 1) {
+    if (RAND_bytes((unsigned char *)key, 32) != 1) {
         fprintf(stderr, "Failed to generate key!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
@@ -247,14 +247,14 @@ cxss_aes256_ciphertext_length(size_t plaintext_len)
  *  @return                   Status code
  */
 int
-cxss_generate_rsa_4096bit_keypair(unsigned char **privatekey, int *privatekey_len,
-                                  unsigned char **publickey, int *publickey_len)
+cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
+                                  char **publickey, int *publickey_len)
 {
     RSA *rsa_keypair = NULL;
     BIGNUM *bne = NULL;
     BIO *pri = NULL;
     BIO *pub = NULL;
-    unsigned long e = RSA_F4;
+    long e = RSA_F4;
     int pri_len, pub_len;
 
     /* Generate bignum */
@@ -338,8 +338,8 @@ error:
  *  @return             void
  */
 void
-cxss_destroy_rsa_keypair(unsigned char *privatekey, size_t privatekey_len, 
-                         unsigned char *publickey, size_t publickey_len)
+cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, 
+                         char *publickey, size_t publickey_len)
 {
     memset(privatekey, 0, privatekey_len);
     memset(publickey, 0, publickey_len);
@@ -358,9 +358,9 @@ cxss_destroy_rsa_keypair(unsigned char *privatekey, size_t privatekey_len,
  *  @return                     Status code
  */
 int
-cxss_encrypt_rsa(const unsigned char *data, size_t len,
-                 const unsigned char *publickey, size_t publickey_len,
-                 unsigned char *ciphertext, int *ciphertext_len)
+cxss_encrypt_rsa(const char *data, size_t len,
+                 const char *publickey, size_t publickey_len,
+                 char *ciphertext, int *ciphertext_len)
 {
     RSA *rsa = NULL;
     BIO *bio = NULL;
@@ -385,7 +385,7 @@ cxss_encrypt_rsa(const unsigned char *data, size_t len,
     }
 
     /* encrypt */
-    *ciphertext_len = RSA_public_encrypt(len, data, ciphertext, rsa,
+    *ciphertext_len = RSA_public_encrypt(len, (unsigned char *)data, (unsigned char *)ciphertext, rsa,
                                          RSA_PKCS1_OAEP_PADDING);
     if (*ciphertext_len < 0) {
         fprintf(stderr, "RSA encryption failed\n");    
@@ -403,8 +403,8 @@ error:
 }
 
 int
-cxss_decrypt_rsa(const unsigned char *data, size_t len,
-                 const unsigned char *privatekey, size_t privatekey_len,
+cxss_decrypt_rsa(const char *data, size_t len,
+                 const char *privatekey, size_t privatekey_len,
                  char *plaintext, int *plaintext_len)
 {
     BIO *bio = NULL;
@@ -430,7 +430,7 @@ cxss_decrypt_rsa(const unsigned char *data, size_t len,
     }
 
     /* decrypt */
-    *plaintext_len = RSA_private_decrypt(len, data, (unsigned char *)plaintext, rsa, 
+    *plaintext_len = RSA_private_decrypt(len, (unsigned char *)data, (unsigned char *)plaintext, rsa, 
                                          RSA_PKCS1_OAEP_PADDING);
     if (*plaintext_len < 0) {
         fprintf(stderr, "RSA decryption failed\n");

@@ -34,9 +34,9 @@ typedef struct {
 
 typedef struct {
     const char *CXSS_UserID;
+    const char *Salt;
     const char *PrivateKey;
-    const unsigned char *Salt;
-    const unsigned char *PrivateKeyIV;
+    const char *PrivateKeyIV;
     const char *DateCreated;
     const char *DateLastUpdated;
     bool RemovalFlag;
@@ -49,11 +49,11 @@ typedef struct {
     const char *CXSS_UserID;
     const char *ResourceID;
     const char *AuthClass;
-    const unsigned char *AESKey;
-    const unsigned char *UsernameIV;
-    const unsigned char *PasswordIV;
-    const unsigned char *ResourceUsername;
-    const unsigned char *ResourcePassword;
+    const char *AESKey;
+    const char *UsernameIV;
+    const char *PasswordIV;
+    const char *ResourceUsername;
+    const char *ResourcePassword;
     const char *DateCreated;
     const char *DateLastUpdated;
     size_t AESKeyLength;
