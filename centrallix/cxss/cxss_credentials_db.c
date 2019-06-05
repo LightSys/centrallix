@@ -7,6 +7,9 @@
 #include "cxss/credentials_db.h"
 #include "cxss/util.h"
 
+static int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
+static void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
+
 /** @brief Initialize cxss credentials database
  *
  *  This function takes care of initializing this module (cxss_credentials_db.c), 
@@ -68,7 +71,7 @@ cxss_close_credentials_db(CXSS_DB_Context_t dbcontext)
  *  @param dbcontext    Database context handle
  *  @return             Status code
  */
-int
+static int
 cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext)
 {   
     char *err_msg = NULL;
@@ -938,7 +941,7 @@ cxss_free_userresc(CXSS_UserResc *UserResc)
  *  @param dbcontext    Database context handle
  *  @return             void         
  */
-void 
+static void 
 cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext)
 {
     sqlite3_finalize(dbcontext->get_user_count_stmt);

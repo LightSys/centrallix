@@ -98,8 +98,4 @@ int cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid
 bool cxss_db_contains_user(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
 bool cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id);
 
-/* Private Functions */
-int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
-void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
-
 #endif /* CXSS_CREDENTIALS_DB_H */
