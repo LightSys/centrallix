@@ -13,6 +13,15 @@
 
 static CXSS_DB_Context_t dbcontext = NULL;
 
+/** @brief Initialize credentials manager
+ *
+ *  This function should be called before making any other function 
+ *  calls via the credentials manager API. It takes care of connecting 
+ *  to and setting up the credentials database (cxss_credentials_db.c)
+ *  and initializing the cryptography module (cxss_crypto.c).
+ *
+ *  @return     Status code
+ */ 
 int 
 cxss_init_credentials_mgr(void)
 {   
@@ -24,6 +33,9 @@ cxss_init_credentials_mgr(void)
     return CXSS_MGR_SUCCESS;
 }
 
+/** @brief Close credentials manager
+ *
+ *  This function should be called when closing the credentials manager 
 void
 cxss_close_credentials_mgr(void)
 {

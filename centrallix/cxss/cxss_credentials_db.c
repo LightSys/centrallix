@@ -9,9 +9,9 @@
 
 /** @brief Initialize cxss credentials database
  *
- *  This function is called when starting CXSS in order
- *  to prepare the database environment and its related 
- *  data structures.
+ *  This function takes care of initializing this module (cxss_credentials_db.c), 
+ *  and should be called before using any of the other functions below. It establishes
+ *  a connection to the SQLite database file, and sets up the database context.
  *
  *  @param db_path      Path to database file
  *  @return             Database context handle
@@ -44,8 +44,9 @@ error:
 
 /** @brief Cleanup and close cxss credentials database
  *
- *  This function frees some db data structures and
- *  closes the connection to the database.
+ *  This function closes the connection to the SQLite
+ *  credentials database and deallocates the database
+ *  context.
  *
  *  @param dbcontext    Database context handle
  *  @return             Status code
