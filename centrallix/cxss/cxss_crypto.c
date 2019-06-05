@@ -199,7 +199,7 @@ cxss_generate_64bit_salt(char *salt)
 
     if (RAND_bytes((unsigned char *)salt, 8) < 0) {
         mssError(0, "CXSS", "Failed to generate salt!\n");
-        return CXSS_CRYPTO_KEYGEN_ERROR;
+        return CXSS_CRYPTO_SALTGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
 }
@@ -221,7 +221,7 @@ cxss_generate_128bit_iv(char *init_vector)
     /* Generate random initialization vector */
     if (RAND_bytes((unsigned char *)init_vector, 16) != 1) {
         mssError(0, "CXSS", "Failed to generate initialization vector!\n");
-        return CXSS_CRYPTO_KEYGEN_ERROR;
+        return CXSS_CRYPTO_IVGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
 }
