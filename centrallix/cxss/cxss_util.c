@@ -20,7 +20,6 @@ cxss_strdup(const char *str)
 {
     if (!str)
         return NULL;
-    
     return strdup(str);
 }
 
@@ -39,6 +38,7 @@ cxss_blobdup(const char *blob, size_t len)
 {
     char *copy;
 
+    /* Check for NULL */
     if (!blob)
         return NULL;
 
@@ -47,8 +47,8 @@ cxss_blobdup(const char *blob, size_t len)
         mssError(0, "CXSS", "Memory allocation error\n");
         exit(EXIT_FAILURE);
     }
-
     memcpy(copy, blob, len);
+    
     return copy;
 }
 
@@ -66,12 +66,12 @@ get_timestamp(void)
     time_t current_time;
     char *timestamp;
 
+    /* Generate timestamp from current time */
     current_time = time(NULL);
     if (current_time == (time_t)-1) {
         mssError(0, "CXSS", "Failed to retrieve system time\n");
         exit(EXIT_FAILURE);
     }
-
     timestamp = ctime(&current_time);
     if (!timestamp) {
         mssError(0, "CXSS", "Failed to generate timestamp\n");

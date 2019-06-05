@@ -13,17 +13,34 @@
 
 static bool CSPRNG_Initialized = false;
 
+/** @brief Initialize crypto module
+ *
+ *  This function should be called before any of the 
+ *  other functions below. It takes care of initializing
+ *  and seeding OpenSSL's random number generator, 
+ *  which is required to perform most crypto operations.
+ *
+ *  @return     void
+ */
 void
 cxss_initialize_crypto(void)
 {
     char seed[256];
-    memset(seed, 0, 256); // TODO: Random seed    
 
-    /* Initialize OpenSSL RNG */
+    /* Generate seed and init OpenSSL RNG */
+    cxss_internal_GetBytes(seed, 256); 
     RAND_seed(seed, 256);
     CSPRNG_Initialized = true;
 }        
 
+/** @brief Cleanup crypto module
+ *
+ *  This function should be called after all
+ *  crypto operations are done (when functions
+ *  from this module are no longer needed).
+ *
+ *  @return     void
+ */
 void
 cxss_cleanup_crypto(void)
 {
@@ -33,11 +50,25 @@ cxss_cleanup_crypto(void)
     CRYPTO_cleanup_all_ex_data();
 }
 
+/** @brief Encrypt data using AES256
+ *
+ *  This function is used to encrypt data using the AES symmetric block cipher
+ *  with a 256-bit key. The current mode of operation is CBC (Cipher Block Chaining).
+ *
+ *  @param plaintext            Pointer to a buffer containing the data to encrypt
+ *  @param plaintext_len        Length of the data to encrypt
+ *  @param key                  256-bit AES key
+ *  @param init_vector          128-bit initialization vector
+ *  @param ciphertext           Pointer to pointer to a buffer to store encrypted data
+ *  @param ciphertext_len       Pointer to a variable to store length of encrypted data
+ *  @return                     Status code
+ */
 int 
 cxss_encrypt_aes256(const char *plaintext, int plaintext_len, 
                     const char *key, const char *init_vector,
                     char **ciphertext, int *ciphertext_len)
 {
+    assert(CSPRNG_Initialized);
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
 
@@ -85,14 +116,29 @@ error:
     return CXSS_CRYPTO_ENCR_ERROR;
 }
 
+/** @brief Decrypt data using AES256
+ *
+ *  This function is used to decrypt data that has been encrypted using
+ *  the AES symmetric block cipher with a 256-bit key. The current mode 
+ *  of operation is CBC (Cipher Block Chaining).
+ *
+ *  @param ciphertext           Pointer to a buffer containing the data to decrypt
+ *  @param ciphertext_len       Length of the data to decrypt
+ *  @param key                  256-bit AES key
+ *  @param init_vector          128-bit initialization vector
+ *  @param plaintext            Pointer to pointer to a buffer to store the decrypted data
+ *  @param plaintext_len        Pointer to a variable to store the length of the decrypted data
+ *  @return                     Status code
+ */
 int
 cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
                     const char *key, const char *init_vector,
                     char **plaintext, int *plaintext_len)
 {
+    assert(CSPRNG_Initialized);
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
-    
+ 
     /* Allocate buffer to store plaintext */
     *plaintext = malloc(cxss_aes256_ciphertext_length(ciphertext_len));
     if (!(*plaintext)) {
@@ -140,9 +186,8 @@ error:
 
 /** @brief Generate 64-bit random salt
  *
- *  Generate a 64-bit random salt using
- *  openssl's cryptographically-secure 
- *  random number generator.
+ *  Generate a 64-bit random salt using OpenSSL's 
+ *  cryptographically-secure random number generator.
  *
  *  @param      Pointer to 64-bit buffer to store the salt
  *  @return     Status code
@@ -162,7 +207,7 @@ cxss_generate_64bit_salt(char *salt)
 /** @brief Generate 128-bit random initialization vector
  *
  *  Generate a 128-bit random initialization vector,
- *  suitable for AES, using openssl's cryptographically-secure
+ *  suitable for AES, using OpenSSL's cryptographically-secure
  *  random number generator.
  *
  *  @param      Pointer to 128-bit buffer to store the iv
@@ -193,11 +238,12 @@ cxss_generate_128bit_iv(char *init_vector)
  *  @return             Status code
  */
 int
-cxss_generate_256bit_key(const char *password, const char *salt, 
-                         char *key)
+cxss_generate_256bit_pb_key(const char *password, const char *salt, 
+                            char *key)
 {
     #define PBKDF2_ITER_NO      5000
-    
+    assert(CSPRNG_Initialized);   
+ 
     if (PKCS5_PBKDF2_HMAC(password, strlen(password), (unsigned char *)salt, 8, PBKDF2_ITER_NO, 
                           EVP_sha256(), 32, (unsigned char *)key) != 1) {
         mssError(0, "CXSS", "Failed to generate 256-bit key\n");
@@ -254,8 +300,9 @@ int
 cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
                                   char **publickey, int *publickey_len)
 {
-    RSA *rsa_keypair = NULL;
+    assert(CSPRNG_Initialized);
     BIGNUM *bne = NULL;
+    RSA *rsa_keypair = NULL;
     BIO *pri = NULL;
     BIO *pub = NULL;
     long e = RSA_F4;
@@ -366,6 +413,7 @@ cxss_encrypt_rsa(const char *data, size_t len,
                  const char *publickey, size_t publickey_len,
                  char *ciphertext, int *ciphertext_len)
 {
+    assert(CSPRNG_Initialized);
     RSA *rsa = NULL;
     BIO *bio = NULL;
 
@@ -411,6 +459,7 @@ cxss_decrypt_rsa(const char *data, size_t len,
                  const char *privatekey, size_t privatekey_len,
                  char *plaintext, int *plaintext_len)
 {
+    assert(CSPRNG_Initialized);
     BIO *bio = NULL;
     RSA *rsa = NULL;
 
