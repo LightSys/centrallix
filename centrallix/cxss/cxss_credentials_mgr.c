@@ -11,6 +11,7 @@
 #include "cxss/crypto.h"
 #include <assert.h>
 
+/* Database context */
 static CXSS_DB_Context_t dbcontext = NULL;
 
 /** @brief Initialize credentials manager
@@ -35,7 +36,12 @@ cxss_init_credentials_mgr(void)
 
 /** @brief Close credentials manager
  *
- *  This function should be called when closing the credentials manager 
+ *  This function should be called when closing the credentials manager.
+ *  It takes care of closing the connection to the credentials database,
+ *  deallocating the database context and any crypto data structures.
+ *
+ *  @return     void
+ */
 void
 cxss_close_credentials_mgr(void)
 {

@@ -7,6 +7,7 @@
 #include "cxss/credentials_db.h"
 #include "cxss/util.h"
 
+/* Private functions (credentials_db) */
 static int cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext);
 static void cxss_finalize_sqlite3_statements(CXSS_DB_Context_t dbcontext);
 
