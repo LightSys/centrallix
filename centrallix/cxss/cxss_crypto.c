@@ -23,7 +23,7 @@ static bool CSPRNG_Initialized = false;
  *  @return     void
  */
 void
-cxss_initialize_crypto(void)
+cxss_initializeCrypto(void)
 {
     char seed[256];
 
@@ -42,7 +42,7 @@ cxss_initialize_crypto(void)
  *  @return     void
  */
 void
-cxss_cleanup_crypto(void)
+cxss_cleanupCrypto(void)
 {
     EVP_cleanup();
     ERR_remove_state(0);
@@ -64,16 +64,16 @@ cxss_cleanup_crypto(void)
  *  @return                     Status code
  */
 int 
-cxss_encrypt_aes256(const char *plaintext, int plaintext_len, 
-                    const char *key, const char *init_vector,
-                    char **ciphertext, int *ciphertext_len)
+cxss_encryptAes256(const char *plaintext, int plaintext_len, 
+                   const char *key, const char *init_vector,
+                   char **ciphertext, int *ciphertext_len)
 {
     assert(CSPRNG_Initialized);
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
 
     /* Allocate buffer to store ciphertext */
-    *ciphertext = malloc(cxss_aes256_ciphertext_length(plaintext_len));
+    *ciphertext = malloc(cxss_aes256CiphertextLength(plaintext_len));
     if (!(*ciphertext)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -131,16 +131,16 @@ error:
  *  @return                     Status code
  */
 int
-cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
-                    const char *key, const char *init_vector,
-                    char **plaintext, int *plaintext_len)
+cxss_decryptAes256(const char *ciphertext, int ciphertext_len,
+                   const char *key, const char *init_vector,
+                   char **plaintext, int *plaintext_len)
 {
     assert(CSPRNG_Initialized);
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
  
     /* Allocate buffer to store plaintext */
-    *plaintext = malloc(cxss_aes256_ciphertext_length(ciphertext_len));
+    *plaintext = malloc(cxss_aes256CiphertextLength(ciphertext_len));
     if (!(*plaintext)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -193,7 +193,7 @@ error:
  *  @return     Status code
  */
 int
-cxss_generate_64bit_salt(char *salt)
+cxss_generate64bitSalt(char *salt)
 {
     assert(CSPRNG_Initialized);
 
@@ -214,7 +214,7 @@ cxss_generate_64bit_salt(char *salt)
  *  @return     Status code
  */
 int
-cxss_generate_128bit_iv(char *init_vector)
+cxss_generate128bitIV(char *init_vector)
 {
     assert(CSPRNG_Initialized);
 
@@ -238,8 +238,8 @@ cxss_generate_128bit_iv(char *init_vector)
  *  @return             Status code
  */
 int
-cxss_generate_256bit_pb_key(const char *password, const char *salt, 
-                            char *key)
+cxss_generate256bitPasswordBasedKey(const char *password, const char *salt, 
+                                    char *key)
 {
     #define PBKDF2_ITER_NO      5000
     assert(CSPRNG_Initialized);   
@@ -260,7 +260,7 @@ cxss_generate_256bit_pb_key(const char *password, const char *salt,
  *  @return             Status code
  */
 int
-cxss_generate_256bit_rand_key(char *key)
+cxss_generate256bitRandomKey(char *key)
 {
     assert(CSPRNG_Initialized);
 
@@ -281,7 +281,7 @@ cxss_generate_256bit_rand_key(char *key)
  *  @return                     Length of AES-encrypted ciphertext
  */
 size_t
-cxss_aes256_ciphertext_length(size_t plaintext_len)
+cxss_aes256CiphertextLength(size_t plaintext_len)
 {
     return (plaintext_len + (16 - plaintext_len%16)); 
 }
@@ -297,7 +297,7 @@ cxss_aes256_ciphertext_length(size_t plaintext_len)
  *  @return                   Status code
  */
 int
-cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
+cxss_generateRSA4096bitKeypair(char **privatekey, int *privatekey_len,
                                   char **publickey, int *publickey_len)
 {
     assert(CSPRNG_Initialized);
@@ -389,7 +389,7 @@ error:
  *  @return             void
  */
 void
-cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len, 
+cxss_destroyRSAKeypair(char *privatekey, size_t privatekey_len, 
                          char *publickey, size_t publickey_len)
 {
     memset(privatekey, 0, privatekey_len);
@@ -409,9 +409,9 @@ cxss_destroy_rsa_keypair(char *privatekey, size_t privatekey_len,
  *  @return                     Status code
  */
 int
-cxss_encrypt_rsa(const char *data, size_t len,
-                 const char *publickey, size_t publickey_len,
-                 char *ciphertext, int *ciphertext_len)
+cxss_encryptRSA(const char *data, size_t len,
+                const char *publickey, size_t publickey_len,
+                char *ciphertext, int *ciphertext_len)
 {
     assert(CSPRNG_Initialized);
     RSA *rsa = NULL;
@@ -455,9 +455,9 @@ error:
 }
 
 int
-cxss_decrypt_rsa(const char *data, size_t len,
-                 const char *privatekey, size_t privatekey_len,
-                 char *plaintext, int *plaintext_len)
+cxss_decryptRSA(const char *data, size_t len,
+                const char *privatekey, size_t privatekey_len,
+                char *plaintext, int *plaintext_len)
 {
     assert(CSPRNG_Initialized);
     BIO *bio = NULL;

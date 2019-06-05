@@ -76,26 +76,26 @@ typedef enum {
 } CXSS_DB_Status_e;
 
 /* Public functions */
-CXSS_DB_Context_t cxss_init_credentials_db(const char *dbpath);
-void cxss_close_credentials_db(CXSS_DB_Context_t dbcontext);
-int cxss_insert_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
-int cxss_insert_userauth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
-int cxss_insert_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
-int cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
-void cxss_free_userdata(CXSS_UserData *UserData);
-int cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
-int cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
-int cxss_update_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
-int cxss_update_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
-int cxss_delete_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
-int cxss_delete_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id);
-void cxss_free_userauth(CXSS_UserAuth *UserAuth);
-void cxss_free_userresc(CXSS_UserResc *UserResc);
-int cxss_retrieve_userauth_ll(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
-void cxss_free_userauth_ll(CXSS_UserAuth_LLNode *start);
-int cxss_get_user_count(CXSS_DB_Context_t dbcontext);
-int cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
-bool cxss_db_contains_user(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
-bool cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id);
+CXSS_DB_Context_t cxss_initCredentialsDatabase(const char *dbpath);
+void cxss_closeCredentialsDatabase(CXSS_DB_Context_t dbcontext);
+int cxss_insertUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxss_insertUserAuth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
+int cxss_insertUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
+int cxss_retrieveUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
+int cxss_retrieveUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
+int cxss_retrieveUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
+int cxss_updateUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxss_updateUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
+int cxss_deleteUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+int cxss_deleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id);
+void cxss_freeUserData(CXSS_UserData *UserData);
+void cxss_freeUserAuth(CXSS_UserAuth *UserAuth);
+void cxss_freeUserResc(CXSS_UserResc *UserResc);
+int cxss_retrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth_LLNode **node);
+void cxss_freeUserAuthLL(CXSS_UserAuth_LLNode *start);
+int cxss_getUserCount(CXSS_DB_Context_t dbcontext);
+int cxss_getUserRescCount(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+bool cxss_dbContainsUser(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+bool cxss_dbContainsResc(CXSS_DB_Context_t dbcontext, const char *resource_id);
 
 #endif /* CXSS_CREDENTIALS_DB_H */

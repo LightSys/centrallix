@@ -24,10 +24,10 @@ static CXSS_DB_Context_t dbcontext = NULL;
  *  @return     Status code
  */ 
 int 
-cxss_init_credentials_mgr(void)
+cxss_initCredentialsManager(void)
 {   
-    cxss_initialize_crypto();
-    dbcontext = cxss_init_credentials_db("test.db");
+    cxss_initializeCrypto();
+    dbcontext = cxss_initCredentialsDatabase("test.db");
     if (!dbcontext) {
         return CXSS_MGR_INIT_ERROR;
     }
@@ -43,10 +43,10 @@ cxss_init_credentials_mgr(void)
  *  @return     void
  */
 void
-cxss_close_credentials_mgr(void)
+cxss_closeCredentialsManager(void)
 {
-    cxss_cleanup_crypto();
-    cxss_close_credentials_db(dbcontext);
+    cxss_cleanupCrypto();
+    cxss_closeCredentialsDatabase(dbcontext);
 }
 
 /** @brief Add user to CXSS
@@ -59,7 +59,7 @@ cxss_close_credentials_mgr(void)
  *  @return                     Status code   
  */
 int
-cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
+cxss_AddUser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
              const char *salt, size_t salt_len)
 {
     CXSS_UserData UserData = {};
@@ -73,21 +73,21 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     int encr_privatekey_len;
 
     /* Generate RSA key pair */
-    if (cxss_generate_rsa_4096bit_keypair(&privatekey, &privatekey_len, 
-                                          &publickey, &publickey_len) < 0) {
+    if (cxss_generateRSA4096bitKeypair(&privatekey, &privatekey_len, 
+                                       &publickey, &publickey_len) < 0) {
         mssError(0, "CXSS", "Failed to generate RSA keypair\n");
         goto error;
     }
 
     /* Generate initialization vector */
-    if (cxss_generate_128bit_iv(iv) < 0) {
+    if (cxss_generate128bitIV(iv) < 0) {
         mssError(0, "CXSS", "Failed to generate IV\n");
         goto error;
     }
 
     /* Encrypt private key */
-    if (cxss_encrypt_aes256(privatekey, privatekey_len, encryption_key, 
-                            iv, &encrypted_privatekey, &encr_privatekey_len) < 0) {
+    if (cxss_encryptAes256(privatekey, privatekey_len, encryption_key, 
+                           iv, &encrypted_privatekey, &encr_privatekey_len) < 0) {
         mssError(0, "CXSS", "Error while encrypting private key\n");        
         goto error;
     }
@@ -109,17 +109,17 @@ cxss_adduser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     UserAuth.KeyLength = encr_privatekey_len;
     UserAuth.IVLength = sizeof(iv);
 
-    if (cxss_insert_userdata(dbcontext, &UserData) < 0) {
+    if (cxss_insertUserData(dbcontext, &UserData) < 0) {
         mssError(0, "CXSS", "Failed to insert user into db\n");
         goto error;
     }
-    if (cxss_insert_userauth(dbcontext, &UserAuth) < 0) {
+    if (cxss_insertUserAuth(dbcontext, &UserAuth) < 0) {
         mssError(0, "CXSS", "Failed to insert user auth into db\n");
         goto error;
     }
 
     free(encrypted_privatekey);
-    cxss_destroy_rsa_keypair(privatekey, privatekey_len, publickey, publickey_len);
+    cxss_destroyRSAKeypair(privatekey, privatekey_len, publickey, publickey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
@@ -137,31 +137,31 @@ error:
  *  @return                     Pointer to decrypted private key (must be freed)
  */
 int
-cxss_retrieve_user_privatekey(const char *cxss_userid, const char *encryption_key, size_t ecryption_key_len,
-                              char **privatekey, int *privatekey_len)
+cxss_retrieveUserPrivateKey(const char *cxss_userid, const char *encryption_key, size_t ecryption_key_len,
+                            char **privatekey, int *privatekey_len)
 {
     CXSS_UserAuth UserAuth = {};
     
     /* Retrieve data from db */
-    if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
+    if (cxss_retrieveUserAuth(dbcontext, cxss_userid, &UserAuth) < 0) {
         mssError(0, "CXSS", "Failed to retrieve user auth\n");
         goto error;
     }
  
     /* Decrypt private key */
-    if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key, 
-                            UserAuth.PrivateKeyIV, privatekey, privatekey_len) < 0) {
+    if (cxss_decryptAes256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key, 
+                           UserAuth.PrivateKeyIV, privatekey, privatekey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
     }
 
     *privatekey_len = UserAuth.KeyLength;                        
-    cxss_free_userauth(&UserAuth);  
+    cxss_freeUserAuth(&UserAuth);  
     return CXSS_MGR_SUCCESS;
 
 error:
     free(*privatekey);
-    cxss_free_userauth(&UserAuth);
+    cxss_freeUserAuth(&UserAuth);
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
@@ -171,12 +171,12 @@ error:
  *  @return                     Pointer to public key (must be freed)
  */
 int
-cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey, int *publickey_len)
+cxss_retrieveUserPublicKey(const char *cxss_userid, char **publickey, int *publickey_len)
 {
     CXSS_UserData UserData = {};
 
     /* Retrieve data from db */
-    if (cxss_retrieve_userdata(dbcontext, cxss_userid, &UserData) < 0) {
+    if (cxss_retrieveUserData(dbcontext, cxss_userid, &UserData) < 0) {
         mssError(0, "CXSS", "Failed to retrieve user data from db\n");
         goto error;    
     }
@@ -192,11 +192,11 @@ cxss_retrieve_user_publickey(const char *cxss_userid, char **publickey, int *pub
     memcpy(*publickey, UserData.PublicKey, UserData.KeyLength);
     *publickey_len = UserData.KeyLength;
 
-    cxss_free_userdata(&UserData);  
+    cxss_freeUserData(&UserData);  
     return CXSS_MGR_SUCCESS;
 
 error:
-    cxss_free_userdata(&UserData);
+    cxss_freeUserData(&UserData);
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
@@ -211,9 +211,9 @@ error:
  *  @return                     Status code
  */
 int
-cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *auth_class,
-                  const char *resource_username, size_t username_len,
-                  const char *resource_password, size_t password_len)
+cxss_addResource(const char *cxss_userid, const char *resource_id, const char *auth_class,
+                 const char *resource_username, size_t username_len,
+                 const char *resource_password, size_t password_len)
 {
     CXSS_UserResc UserResc = {};
     char *encrypted_username = NULL;
@@ -230,40 +230,40 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
     char *current_timestamp = get_timestamp();
 
     /* Retrieve user publickey */
-    if (cxss_retrieve_user_publickey(cxss_userid, &publickey, &publickey_len) < 0) {
+    if (cxss_retrieveUserPublicKey(cxss_userid, &publickey, &publickey_len) < 0) {
         mssError(0, "CXSS", "Failed to retrieve user public key\n");
         goto error;
     }
 
     /* Generate random AES key and AES IVs */
-    if (cxss_generate_256bit_rand_key(key) < 0) {
+    if (cxss_generate256bitRandomKey(key) < 0) {
         mssError(0, "CXSS", "Failed to generate key\n");
         goto error;
     }
-    if (cxss_generate_128bit_iv(uname_iv) < 0) {
+    if (cxss_generate128bitIV(uname_iv) < 0) {
         mssError(0, "CXSS", "Failed to generate iv\n");
         goto error;
     }
-    if (cxss_generate_128bit_iv(pwd_iv) < 0) {
+    if (cxss_generate128bitIV(pwd_iv) < 0) {
         mssError(0, "CXSS", "Failed to generate iv\n");
         goto error;
     }
 
     /* Encrypt resource data with random key */
-    if (cxss_encrypt_aes256(resource_username, username_len, key, uname_iv, 
-                            &encrypted_username, &encr_username_len) < 0) {
+    if (cxss_encryptAes256(resource_username, username_len, key, uname_iv, 
+                           &encrypted_username, &encr_username_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource username\n");
         goto error;
     }
-    if (cxss_encrypt_aes256(resource_password, password_len, key, pwd_iv,
-                            &encrypted_password, &encr_password_len) < 0) {
+    if (cxss_encryptAes256(resource_password, password_len, key, pwd_iv,
+                           &encrypted_password, &encr_password_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource password\n");
         goto error;
     }
 
     /* Encrypt random key with user's public key */
-    if (cxss_encrypt_rsa(key, sizeof(key), publickey, publickey_len, 
-                         encrypted_rand_key, &encrypted_rand_key_len) < 0) {
+    if (cxss_encryptRSA(key, sizeof(key), publickey, publickey_len, 
+                        encrypted_rand_key, &encrypted_rand_key_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt random key\n");
         goto error;
     }
@@ -286,7 +286,7 @@ cxss_add_resource(const char *cxss_userid, const char *resource_id, const char *
     UserResc.DateLastUpdated = current_timestamp;
 
     /* Insert */
-    if (cxss_insert_userresc(dbcontext, &UserResc) < 0) {
+    if (cxss_insertUserResc(dbcontext, &UserResc) < 0) {
         mssError(0, "CXSS", "Failed to insert user resource\n");
         goto error;
     }
@@ -313,8 +313,8 @@ error:
  *  @return                     Status code
  */
 int 
-cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *user_key, 
-                  size_t user_key_len, char **resource_username, char **resource_authdata)
+cxss_getResource(const char *cxss_userid, const char *resource_id, const char *user_key, 
+                 size_t user_key_len, char **resource_username, char **resource_authdata)
 {
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};
@@ -325,52 +325,52 @@ cxss_get_resource(const char *cxss_userid, const char *resource_id, const char *
     int  ciphertext_len;
 
     /* Retrieve auth and resource data from database */
-    if (cxss_retrieve_userauth(dbcontext, cxss_userid, &UserAuth) < 0) {
+    if (cxss_retrieveUserAuth(dbcontext, cxss_userid, &UserAuth) < 0) {
         mssError(0, "CXSS", "Failed to retrieve user auth\n");
         goto error;
     }   
-    if (cxss_retrieve_userresc(dbcontext, cxss_userid, resource_id, &UserResc) < 0) {
+    if (cxss_retrieveUserResc(dbcontext, cxss_userid, resource_id, &UserResc) < 0) {
         mssError(0, "CXSS", "Failed to retrieve resource!\n");
         goto error;
     }    
 
     /* Decrypt user's private key using user's password-based key */
-    if (cxss_decrypt_aes256(UserAuth.PrivateKey, UserAuth.KeyLength,
-                            user_key, UserAuth.PrivateKeyIV, &privatekey, &privatekey_len) < 0) {
+    if (cxss_decryptAes256(UserAuth.PrivateKey, UserAuth.KeyLength,
+                           user_key, UserAuth.PrivateKeyIV, &privatekey, &privatekey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
     } 
 
     /* Decrypt AES key using user's private key */ 
-    if (cxss_decrypt_rsa(UserResc.AESKey, UserResc.AESKeyLength,
-                         privatekey, privatekey_len, aeskey, &aeskey_len) < 0) {
+    if (cxss_decryptRSA(UserResc.AESKey, UserResc.AESKeyLength,
+                        privatekey, privatekey_len, aeskey, &aeskey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt AES key\n");
         goto error;
     }
 
     /* Decrypt resource username/authdata using AES key */
-    if (cxss_decrypt_aes256(UserResc.ResourceUsername, UserResc.UsernameLength,
-                            aeskey, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
+    if (cxss_decryptAes256(UserResc.ResourceUsername, UserResc.UsernameLength,
+                           aeskey, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting username\n");
         goto error;
     }
-    if (cxss_decrypt_aes256(UserResc.ResourcePassword, UserResc.PasswordLength,
-                            aeskey, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
+    if (cxss_decryptAes256(UserResc.ResourcePassword, UserResc.PasswordLength,
+                           aeskey, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting auth data\n");
         goto error;
     }
 
     free(privatekey); 
-    cxss_free_userauth(&UserAuth);
-    cxss_free_userresc(&UserResc);
+    cxss_freeUserAuth(&UserAuth);
+    cxss_freeUserResc(&UserResc);
     return CXSS_MGR_SUCCESS;
 
 error:
     free(privatekey);
     free(*resource_username);
     free(*resource_authdata);
-    cxss_free_userauth(&UserAuth);
-    cxss_free_userresc(&UserResc);    
+    cxss_freeUserAuth(&UserAuth);
+    cxss_freeUserResc(&UserResc);    
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
@@ -380,9 +380,9 @@ error:
  *  @return             Status code
  */
 int
-cxss_delete_user(const char *cxss_userid)
+cxss_deleteUser(const char *cxss_userid)
 {
-    if (cxss_delete_userdata(dbcontext, cxss_userid) < 0) {
+    if (cxss_deleteUserData(dbcontext, cxss_userid) < 0) {
         mssError(0, "CXSS", "Failed to delete user data\n");
         return CXSS_MGR_DELETE_ERROR;
     }
@@ -396,9 +396,9 @@ cxss_delete_user(const char *cxss_userid)
  *  @return             Status code
  */
 int
-cxss_delete_resource(const char *cxss_userid, const char *resource_id)
+cxss_deleteResource(const char *cxss_userid, const char *resource_id)
 {
-    if (cxss_delete_userresc(dbcontext, cxss_userid, resource_id) < 0) {
+    if (cxss_deleteUserResc(dbcontext, cxss_userid, resource_id) < 0) {
         mssError(0, "CXSS", "Failed to delete resource\n");
         return CXSS_MGR_DELETE_ERROR;
     }
