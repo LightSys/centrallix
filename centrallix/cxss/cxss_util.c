@@ -44,7 +44,7 @@ cxss_blobdup(const char *blob, size_t len)
 
     copy = malloc(sizeof(char) * len);
     if (!copy) {
-        fprintf(stderr, "Memory allocation error!\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         exit(EXIT_FAILURE);
     }
 
@@ -68,13 +68,13 @@ get_timestamp(void)
 
     current_time = time(NULL);
     if (current_time == (time_t)-1) {
-        fprintf(stderr, "Failed to retrieve system time\n");
+        mssError(0, "CXSS", "Failed to retrieve system time\n");
         exit(EXIT_FAILURE);
     }
 
     timestamp = ctime(&current_time);
     if (!timestamp) {
-        fprintf(stderr, "Failed to generate timestamp\n");
+        mssError(0, "CXSS", "Failed to generate timestamp\n");
         exit(EXIT_FAILURE);
     }
 

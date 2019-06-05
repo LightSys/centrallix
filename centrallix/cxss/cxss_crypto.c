@@ -44,34 +44,34 @@ cxss_encrypt_aes256(const char *plaintext, int plaintext_len,
     /* Allocate buffer to store ciphertext */
     *ciphertext = malloc(cxss_aes256_ciphertext_length(plaintext_len));
     if (!(*ciphertext)) {
-        fprintf(stderr, "Memory allocation error\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     }
     
     /* Create openssl cipher context */
     if (!(ctx = EVP_CIPHER_CTX_new())) {
-        fprintf(stderr, "Failed to create new openssl cipher context\n");
+        mssError(0, "CXSS", "Failed to create new openssl cipher context\n");
         goto error;
     }
 
     /* Initiate encryption */
     if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key, 
                            (unsigned char *)init_vector) != 1) {
-        fprintf(stderr, "Error while initiating AES encryption\n");
+        mssError(0, "CXSS", "Error while initiating AES encryption\n");
         goto error;
     }
 
     /* Encrypt data */
     if (EVP_EncryptUpdate(ctx, *(unsigned char **)ciphertext, &len, 
                           (unsigned char *)plaintext, plaintext_len) != 1) {
-        fprintf(stderr, "Error while encrypting with AES\n");
+        mssError(0, "CXSS", "Error while encrypting with AES\n");
         goto error;
     }
     *ciphertext_len = len;
 
     /* Finalize encryption */
     if (EVP_EncryptFinal_ex(ctx, *(unsigned char **)ciphertext + len, &len) != 1) {
-        fprintf(stderr, "Error while finalizing AES encryption\n");
+        mssError(0, "CXSS", "Error while finalizing AES encryption\n");
         goto error;
     }
     *ciphertext_len += len;
@@ -96,34 +96,34 @@ cxss_decrypt_aes256(const char *ciphertext, int ciphertext_len,
     /* Allocate buffer to store plaintext */
     *plaintext = malloc(cxss_aes256_ciphertext_length(ciphertext_len));
     if (!(*plaintext)) {
-        fprintf(stderr, "Memory allocation error\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     }
 
     /* Create new openssl cipher context */
     if (!(ctx = EVP_CIPHER_CTX_new())) {
-        fprintf(stderr, "Failed to create new openssl cipher context\n");
+        mssError(0, "CXSS", "Failed to create new openssl cipher context\n");
         goto error;
     }
 
     /* Initiate decryption */
     if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char *)key,
                            (unsigned char *)init_vector) != 1) {
-        fprintf(stderr, "Error while initiating AES decryption\n");
+        mssError(0, "CXSS", "Error while initiating AES decryption\n");
         goto error;
     }
 
     /* Decrypt data */
     if (EVP_DecryptUpdate(ctx, *(unsigned char **)plaintext, &len, 
                           (unsigned char *)ciphertext, ciphertext_len) != 1) {
-        fprintf(stderr, "Error while decrypting with AES\n");
+        mssError(0, "CXSS", "Error while decrypting with AES\n");
         goto error;
     }
     *plaintext_len = len;
 
     /* Finalize decryption */
     if (EVP_DecryptFinal_ex(ctx, *(unsigned char **)plaintext + len, &len) != 1) {
-        fprintf(stderr, "Error while finalizing AES decryption!\n");
+        mssError(0, "CXSS", "Error while finalizing AES decryption!\n");
         goto error;
     }
     *plaintext_len += len;   
@@ -153,7 +153,7 @@ cxss_generate_64bit_salt(char *salt)
     assert(CSPRNG_Initialized);
 
     if (RAND_bytes((unsigned char *)salt, 8) < 0) {
-        fprintf(stderr, "Failed to generate salt!\n");
+        mssError(0, "CXSS", "Failed to generate salt!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
@@ -175,7 +175,7 @@ cxss_generate_128bit_iv(char *init_vector)
 
     /* Generate random initialization vector */
     if (RAND_bytes((unsigned char *)init_vector, 16) != 1) {
-        fprintf(stderr, "Failed to generate initialization vector!\n");
+        mssError(0, "CXSS", "Failed to generate initialization vector!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
@@ -200,7 +200,7 @@ cxss_generate_256bit_key(const char *password, const char *salt,
     
     if (PKCS5_PBKDF2_HMAC(password, strlen(password), (unsigned char *)salt, 8, PBKDF2_ITER_NO, 
                           EVP_sha256(), 32, (unsigned char *)key) != 1) {
-        fprintf(stderr, "Failed to generate 256-bit key\n");
+        mssError(0, "CXSS", "Failed to generate 256-bit key\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
@@ -220,7 +220,7 @@ cxss_generate_256bit_rand_key(char *key)
 
     /* Generate random initialization vector */
     if (RAND_bytes((unsigned char *)key, 32) != 1) {
-        fprintf(stderr, "Failed to generate key!\n");
+        mssError(0, "CXSS", "Failed to generate key!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;
     }
     return CXSS_CRYPTO_SUCCESS;
@@ -264,14 +264,14 @@ cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
     /* Generate bignum */
     bne = BN_new();
     if (BN_set_word(bne, e) != 1) {
-        fprintf(stderr, "Failed to generate bignum\n");
+        mssError(0, "CXSS", "Failed to generate bignum\n");
         goto error;
     }
 
     /* Generate keypair */
     rsa_keypair = RSA_new();
     if (RSA_generate_key_ex(rsa_keypair, 4096, bne, NULL) != 1) {
-        fprintf(stderr, "Failed to generate keypair\n");
+        mssError(0, "CXSS", "Failed to generate keypair\n");
         goto error;
     }
   
@@ -279,40 +279,40 @@ cxss_generate_rsa_4096bit_keypair(char **privatekey, int *privatekey_len,
     pri = BIO_new(BIO_s_mem()); 
     pub = BIO_new(BIO_s_mem());
     if (!pri || !pub) {
-        fprintf(stderr, "Memory allocation error!\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     }
     if (PEM_write_bio_RSAPrivateKey(pri, rsa_keypair, 
                                     NULL, NULL, 0, NULL, NULL) != 1) {
-        fprintf(stderr, "Error while writing to BIO\n");
+        mssError(0, "CXSS", "Error while writing to BIO\n");
         goto error;
     }
     if (PEM_write_bio_RSAPublicKey(pub, rsa_keypair) != 1) {
-        fprintf(stderr, "Error while writing to BIO\n");
+        mssError(0, "CXSS", "Error while writing to BIO\n");
         goto error;
     }
 
     pri_len = BIO_pending(pri);
     pub_len = BIO_pending(pub);
     if (pri_len < 0 || pub_len < 0) {
-        fprintf(stderr, "BIO error\n");
+        mssError(0, "CXSS", "BIO error\n");
         goto error;
     }
     
     *privatekey = malloc(pri_len + 1);
     *publickey = malloc(pub_len + 1);
     if (!(*publickey) || !(*privatekey)) {
-        fprintf(stderr, "Memory allocation error\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     } 
 
     /* Read keys from BIO into char buffer */
     if (BIO_read(pri, *privatekey, pri_len) < 0) {
-        fprintf(stderr, "Error while reading from BIO\n");
+        mssError(0, "CXSS", "Error while reading from BIO\n");
         goto error;
     }
     if (BIO_read(pub, *publickey, pub_len) < 0) {
-        fprintf(stderr, "Error while reading from BIO\n");
+        mssError(0, "CXSS", "Error while reading from BIO\n");
         goto error;
     }
  
@@ -372,19 +372,19 @@ cxss_encrypt_rsa(const char *data, size_t len,
     rsa = RSA_new();
     bio = BIO_new(BIO_s_mem());
     if (!rsa || !bio) {
-        fprintf(stderr, "Memory allocation error!\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     }
     
     /* write key to BIO */
     if (BIO_write(bio, publickey, publickey_len) != publickey_len) {
-        fprintf(stderr, "Error while writing to BIO\n");
+        mssError(0, "CXSS", "Error while writing to BIO\n");
         goto error;
     }
 
     /* read key from BIO into RSA struct */
     if (PEM_read_bio_RSAPublicKey(bio, &rsa, NULL, NULL) == NULL) {
-        fprintf(stderr, "RSA encrypt: error while reading from BIO\n");
+        mssError(0, "CXSS", "RSA encrypt: error while reading from BIO\n");
         goto error;
     }
 
@@ -392,7 +392,7 @@ cxss_encrypt_rsa(const char *data, size_t len,
     *ciphertext_len = RSA_public_encrypt(len, (unsigned char *)data, (unsigned char *)ciphertext, rsa,
                                          RSA_PKCS1_OAEP_PADDING);
     if (*ciphertext_len < 0) {
-        fprintf(stderr, "RSA encryption failed\n");    
+        mssError(0, "CXSS", "RSA encryption failed\n");    
         goto error;
     }
 
@@ -417,19 +417,19 @@ cxss_decrypt_rsa(const char *data, size_t len,
     rsa = RSA_new();
     bio = BIO_new(BIO_s_mem());
     if (!rsa || !bio) {
-        fprintf(stderr, "Memory allocation error\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     }
 
     /* Write private key to BIO */
     if (BIO_write(bio, privatekey, privatekey_len) != privatekey_len) {
-        fprintf(stderr, "Failed to write to BIO\n");
+        mssError(0, "CXSS", "Failed to write to BIO\n");
         goto error;
     }
 
     /* Read private key from BIO into RSA struct */
     if (PEM_read_bio_RSAPrivateKey(bio, &rsa, NULL, NULL) == NULL) {
-        fprintf(stderr, "RSA decrypt: failed to read from BIO\n");
+        mssError(0, "CXSS", "RSA decrypt: failed to read from BIO\n");
         goto error;
     }
 
@@ -437,7 +437,7 @@ cxss_decrypt_rsa(const char *data, size_t len,
     *plaintext_len = RSA_private_decrypt(len, (unsigned char *)data, (unsigned char *)plaintext, rsa, 
                                          RSA_PKCS1_OAEP_PADDING);
     if (*plaintext_len < 0) {
-        fprintf(stderr, "RSA decryption failed\n");
+        mssError(0, "CXSS", "RSA decryption failed\n");
         goto error;
     } 
 

@@ -22,17 +22,17 @@ cxss_init_credentials_db(const char *db_path)
     /* Allocate context struct */
     CXSS_DB_Context_t dbcontext = malloc(sizeof(struct _CXSS_DB_Context_t));
     if (!dbcontext) {
-        fprintf(stderr, "Memory allocation error!\n");
+        mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
     }
 
     /* Open database file and set up tables/stmts */
     if (sqlite3_open(db_path, &dbcontext->db) != SQLITE_OK) {
-        fprintf(stderr, "Failed to open database file: %s\n", sqlite3_errmsg(dbcontext->db));
+        mssError(0, "CXSS", "Failed to open database file: %s\n", sqlite3_errmsg(dbcontext->db));
         goto error;
     }
     if (cxss_setup_credentials_database(dbcontext) < 0) {
-        fprintf(stderr, "Failed to prepare database tables/stmts\n");
+        mssError(0, "CXSS", "Failed to prepare database tables/stmts\n");
         goto error;
     }
     return dbcontext;
@@ -105,7 +105,7 @@ cxss_setup_credentials_database(CXSS_DB_Context_t dbcontext)
                  "DateLastUpdated TEXT);",
                  (void*)NULL, NULL, &err_msg);
     if (err_msg) {
-        fprintf(stderr, "SQL Error: %s\n", err_msg);
+        mssError(0, "CXSS", "SQL Error: %s\n", err_msg);
         goto error;
     }
 
@@ -215,13 +215,13 @@ cxss_insert_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
     
     /* Execute query */
     if (sqlite3_step(dbcontext->insert_user_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to insert user\n");
+        mssError(0, "CXSS", "Failed to insert user\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -269,13 +269,13 @@ cxss_insert_userauth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
 
     /* Execute query */
     if (sqlite3_step(dbcontext->insert_user_auth_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to insert user auth\n");
+        mssError(0, "CXSS", "Failed to insert user auth\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -337,13 +337,13 @@ cxss_insert_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 
     /* Execute query */
     if (sqlite3_step(dbcontext->insert_resc_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to insert user resc\n");
+        mssError(0, "CXSS", "Failed to insert user resc\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -389,7 +389,7 @@ cxss_retrieve_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -418,7 +418,7 @@ cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
 
     /* Execute query */
     if (sqlite3_step(dbcontext->retrieve_user_auth_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Unable to retrieve user auth info: %s\n", sqlite3_errmsg(dbcontext->db));
+        mssError(0, "CXSS", "Unable to retrieve user auth info: %s\n", sqlite3_errmsg(dbcontext->db));
         return CXSS_DB_QUERY_ERROR;
     }
 
@@ -446,7 +446,7 @@ cxss_retrieve_userauth(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -518,7 +518,7 @@ cxss_retrieve_userauth_ll(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -556,7 +556,7 @@ cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
 
     /* Execute query */
     if (sqlite3_step(dbcontext->retrieve_resc_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Unable to retrieve user resc info\n");
+        mssError(0, "CXSS", "Unable to retrieve user resc info\n");
         return CXSS_DB_QUERY_ERROR;
     }
 
@@ -594,7 +594,7 @@ cxss_retrieve_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -623,13 +623,13 @@ cxss_update_userdata(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
     
     /* Execute query */
     if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to update user\n");
+        mssError(0, "CXSS", "Failed to update user\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }                                
 
@@ -673,13 +673,13 @@ cxss_update_userresc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
 
     /* Execute query */
     if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to update resource\n");
+        mssError(0, "CXSS", "Failed to update resource\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -701,13 +701,13 @@ cxss_delete_userdata(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_user_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to delete user\n");
+        mssError(0, "CXSS", "Failed to delete user\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -734,13 +734,13 @@ cxss_delete_userresc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_resc_stmt) != SQLITE_DONE) {
-        fprintf(stderr, "Failed to delete resource\n");
+        mssError(0, "CXSS", "Failed to delete resource\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
     
 bind_error:
-    fprintf(stderr, "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -780,7 +780,7 @@ cxss_get_user_count(CXSS_DB_Context_t dbcontext)
     /* Execute query */
     sqlite3_reset(dbcontext->get_user_count_stmt);
     if (sqlite3_step(dbcontext->get_user_count_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to retrieve user count\n");
+        mssError(0, "CXSS", "Failed to retrieve user count\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->get_user_count_stmt, 0);
@@ -802,13 +802,13 @@ cxss_get_userresc_count(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->get_user_resc_count_stmt);
     if (sqlite3_bind_text(dbcontext->get_user_resc_count_stmt, 1, cxss_userid, -1, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
+        mssError(0, "CXSS", "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
         return CXSS_DB_BIND_ERROR;
     }
 
     /* Execute query */
     if (sqlite3_step(dbcontext->get_user_resc_count_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to retrieve resource count\n");
+        mssError(0, "CXSS", "Failed to retrieve resource count\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->get_user_resc_count_stmt, 0);
@@ -829,13 +829,13 @@ cxss_db_contains_user(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->is_user_in_db_stmt);
     if (sqlite3_bind_text(dbcontext->is_user_in_db_stmt, 1, cxss_userid, -1, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
+        mssError(0, "CXSS", "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
         return CXSS_DB_BIND_ERROR;
     }
 
     /* Execute query */
     if (sqlite3_step(dbcontext->is_user_in_db_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to verify user existence in database\n");
+        mssError(0, "CXSS", "Failed to verify user existence in database\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->is_user_in_db_stmt, 0);
@@ -856,13 +856,13 @@ cxss_db_contains_resc(CXSS_DB_Context_t dbcontext, const char *resource_id)
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->is_resc_in_db_stmt);
     if (sqlite3_bind_text(dbcontext->is_resc_in_db_stmt, 1, resource_id, -1, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
+        mssError(0, "CXSS", "Failed to bind stmt with value: %s\n", sqlite3_errmsg(dbcontext->db));
         return CXSS_DB_BIND_ERROR;
     }
 
     /* Execute query */
     if (sqlite3_step(dbcontext->is_resc_in_db_stmt) != SQLITE_ROW) {
-        fprintf(stderr, "Failed to verify user existence in database\n");
+        mssError(0, "CXSS", "Failed to verify user existence in database\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->is_resc_in_db_stmt, 0);
