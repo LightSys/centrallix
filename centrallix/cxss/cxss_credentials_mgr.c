@@ -86,7 +86,7 @@ cxss_AddUser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     }
 
     /* Encrypt private key */
-    if (cxss_encryptAes256(privatekey, privatekey_len, encryption_key, 
+    if (cxss_encryptAES256(privatekey, privatekey_len, encryption_key, 
                            iv, &encrypted_privatekey, &encr_privatekey_len) < 0) {
         mssError(0, "CXSS", "Error while encrypting private key\n");        
         goto error;
@@ -149,7 +149,7 @@ cxss_retrieveUserPrivateKey(const char *cxss_userid, const char *encryption_key,
     }
  
     /* Decrypt private key */
-    if (cxss_decryptAes256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key, 
+    if (cxss_decryptAES256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key, 
                            UserAuth.PrivateKeyIV, privatekey, privatekey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
@@ -250,12 +250,12 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
     }
 
     /* Encrypt resource data with random key */
-    if (cxss_encryptAes256(resource_username, username_len, key, uname_iv, 
+    if (cxss_encryptAES256(resource_username, username_len, key, uname_iv, 
                            &encrypted_username, &encr_username_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource username\n");
         goto error;
     }
-    if (cxss_encryptAes256(resource_password, password_len, key, pwd_iv,
+    if (cxss_encryptAES256(resource_password, password_len, key, pwd_iv,
                            &encrypted_password, &encr_password_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource password\n");
         goto error;
@@ -335,7 +335,7 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
     }    
 
     /* Decrypt user's private key using user's password-based key */
-    if (cxss_decryptAes256(UserAuth.PrivateKey, UserAuth.KeyLength,
+    if (cxss_decryptAES256(UserAuth.PrivateKey, UserAuth.KeyLength,
                            user_key, UserAuth.PrivateKeyIV, &privatekey, &privatekey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
@@ -349,12 +349,12 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
     }
 
     /* Decrypt resource username/authdata using AES key */
-    if (cxss_decryptAes256(UserResc.ResourceUsername, UserResc.UsernameLength,
+    if (cxss_decryptAES256(UserResc.ResourceUsername, UserResc.UsernameLength,
                            aeskey, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting username\n");
         goto error;
     }
-    if (cxss_decryptAes256(UserResc.ResourcePassword, UserResc.PasswordLength,
+    if (cxss_decryptAES256(UserResc.ResourcePassword, UserResc.PasswordLength,
                            aeskey, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting auth data\n");
         goto error;

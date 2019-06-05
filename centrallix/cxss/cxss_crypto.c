@@ -64,7 +64,7 @@ cxss_cleanupCrypto(void)
  *  @return                     Status code
  */
 int 
-cxss_encryptAes256(const char *plaintext, int plaintext_len, 
+cxss_encryptAES256(const char *plaintext, int plaintext_len, 
                    const char *key, const char *init_vector,
                    char **ciphertext, int *ciphertext_len)
 {
@@ -131,7 +131,7 @@ error:
  *  @return                     Status code
  */
 int
-cxss_decryptAes256(const char *ciphertext, int ciphertext_len,
+cxss_decryptAES256(const char *ciphertext, int ciphertext_len,
                    const char *key, const char *init_vector,
                    char **plaintext, int *plaintext_len)
 {
