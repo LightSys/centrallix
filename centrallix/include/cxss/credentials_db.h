@@ -77,7 +77,6 @@ typedef enum {
     CXSS_DB_SUCCESS = 0
 } CXSS_DB_Status_e;
 
-/* Public functions */
 CXSS_DB_Context_t cxss_initCredentialsDatabase(const char *dbpath);
 void cxss_closeCredentialsDatabase(CXSS_DB_Context_t dbcontext);
 int cxss_insertUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
