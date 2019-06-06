@@ -18,6 +18,7 @@ typedef struct _CXSS_DB_Context_t {
     sqlite3_stmt *insert_user_auth_stmt;
     sqlite3_stmt *retrieve_user_auth_stmt;
     sqlite3_stmt *retrieve_user_auths_stmt;
+    sqlite3_stmt *delete_user_auths_stmt;
     sqlite3_stmt *insert_resc_stmt;
     sqlite3_stmt *retrieve_resc_stmt;
     sqlite3_stmt *update_resc_stmt;
@@ -89,6 +90,7 @@ int cxss_updateUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
 int cxss_updateUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
 int cxss_deleteUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
 int cxss_deleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id);
+int cxss_deleteAllUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
 int cxss_deleteAllUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
 void cxss_freeUserData(CXSS_UserData *UserData);
 void cxss_freeUserAuth(CXSS_UserAuth *UserAuth);

@@ -131,7 +131,7 @@ error:
 
 /** @brief Retrieve and decrypt user private key
  *
- *  @param cxss_userid          Centrallix user ID
+ *  @param cxss_userid          Centrallix User ID
  *  @param encryption_key       AES encryption key used to encrypt private key
  *  @param encryption_key_len   Length of encryption key
  *  @return                     Pointer to decrypted private key (must be freed)
@@ -384,6 +384,14 @@ cxss_deleteUser(const char *cxss_userid)
 {
     if (cxss_deleteUserData(dbcontext, cxss_userid) < 0) {
         mssError(0, "CXSS", "Failed to delete user data\n");
+        return CXSS_MGR_DELETE_ERROR;
+    }
+    if (cxss_deleteAllUserAuth(dbcontext, cxss_userid) < 0) {
+        mssError(0, "CXSS", "Failed to delete user auth data\n");
+        return CXSS_MGR_DELETE_ERROR;
+    }
+    if (cxss_deleteAllUserResc(dbcontext, cxss_userid) < 0) {
+        mssError(0, "CXSS", "Failed to delete user resources\n");
         return CXSS_MGR_DELETE_ERROR;
     }
     return CXSS_MGR_SUCCESS;
