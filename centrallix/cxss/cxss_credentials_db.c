@@ -184,6 +184,9 @@ cxss_i_setupCredentialsDatabase(CXSS_DB_Context_t dbcontext)
     sqlite3_prepare_v2(dbcontext->db,
                     "DELETE FROM UserResc WHERE CXSS_UserID=? AND ResourceID=?;",
                     -1, &dbcontext->delete_resc_stmt, NULL);
+    sqlite3_prepare_v2(dbcontext->db,
+                    "DELETE FROM UserResc WHERE CXSS_UserID=?",
+                    -1, &dbcontext->delete_rescs_stmt, NULL);
     return CXSS_DB_SUCCESS;
 
 error:
@@ -728,7 +731,7 @@ bind_error:
  */
 int
 cxss_deleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
-                     const char *resource_id)
+                    const char *resource_id)
 {
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->delete_resc_stmt);
@@ -741,6 +744,35 @@ cxss_deleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_resc_stmt) != SQLITE_DONE) {
+        mssError(0, "CXSS", "Failed to delete resource\n");
+        return CXSS_DB_QUERY_ERROR;
+    }
+    return CXSS_DB_SUCCESS;
+    
+bind_error:
+    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    return CXSS_DB_BIND_ERROR;
+}
+
+/** @brief Delete all user resources
+ *
+ *  Delete all user resources registered under a given CXSS User ID
+ *
+ *  @param dbcontext    Database context handle
+ *  @param cxss_userid  Centrallix User ID
+ *  @return             Status code
+ */
+int
+cxss_deleteAllUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
+{
+    /* Bind data with sqlite3 stmts */
+    sqlite3_reset(dbcontext->delete_rescs_stmt);
+    if (sqlite3_bind_text(dbcontext->delete_rescs_stmt, 1,
+        cxss_userid, -1, NULL) != SQLITE_OK)
+        goto bind_error;
+    
+    /* Execute query */
+    if (sqlite3_step(dbcontext->delete_rescs_stmt) != SQLITE_DONE) {
         mssError(0, "CXSS", "Failed to delete resource\n");
         return CXSS_DB_QUERY_ERROR;
     }
