@@ -8,9 +8,8 @@
 
 /** @brief Duplicate a string
  *
- *  This is just a strdup wrapper function
- *  to nicely handle cases in which the SQL 
- *  query returns NULL.
+ *  This is just a strdup wrapper function to nicely 
+ *  handle cases in which the SQL query returns NULL.
  *
  *  @param str   String to dup.
  *  @return      Dupped string
@@ -25,9 +24,8 @@ cxss_strdup(const char *str)
 
 /** @brief Duplicate an array of bytes
  *
- *  This function returns a pointer to
- *  a dynamic array containing a copy of 
- *  the dupped data.
+ *  This function returns a pointer to a dynamic array 
+ *  containing a copy of the dupped data.
  *
  *  @param blob         Blob to dup
  *  @param len          Length of blob
@@ -54,9 +52,8 @@ cxss_blobdup(const char *blob, size_t len)
 
 /** @brief Get current timestamp
  *
- *  This function returns the current timestamp
- *  stored in a static buffer. Hence, the buffer
- *  does not need to be freed.
+ *  This function returns the current timestamp stored in a 
+ *  static buffer. Hence, the buffer does not need to be freed.
  *
  *  @return     timestamp
  */    
@@ -86,7 +83,6 @@ get_timestamp(void)
             break;
         }
     }
-
     return timestamp;
 }
 
