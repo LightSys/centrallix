@@ -134,7 +134,9 @@ error:
  *  @param cxss_userid          Centrallix User ID
  *  @param encryption_key       AES encryption key used to encrypt private key
  *  @param encryption_key_len   Length of encryption key
- *  @return                     Pointer to decrypted private key (must be freed)
+ *  @param privatekey           Pointer to pointer to a buffer to store the retrieved private key
+ *  @param privatekey_len       Pointer to a variable to store the length of the retrieved private key
+ *  @return                     Status code
  */
 int
 cxss_retrieveUserPrivateKey(const char *cxss_userid, const char *encryption_key, size_t ecryption_key_len,
@@ -168,7 +170,9 @@ error:
 /** @brief Retrieve user public key
  *
  *  @param cxss_userid          CXSS User ID
- *  @return                     Pointer to public key (must be freed)
+ *  @param publickey            Pointer to pointer to a buffer to store the retrieved publickey
+ *  @param publickey_len        Pointer to a variable to store the length of the retrieved publickey
+ *  @return                     Status code
  */
 int
 cxss_retrieveUserPublicKey(const char *cxss_userid, char **publickey, int *publickey_len)
