@@ -278,14 +278,14 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
     UserResc.AuthClass = auth_class;
     UserResc.AESKey = encrypted_rand_key;
     UserResc.ResourceUsername = encrypted_username;
-    UserResc.ResourcePassword = encrypted_password;
+    UserResc.ResourceAuthData = encrypted_password;
     UserResc.UsernameIV = username_iv;
-    UserResc.PasswordIV = authdata_iv;
+    UserResc.AuthDataIV = authdata_iv;
     UserResc.AESKeyLength = encrypted_rand_key_len;
     UserResc.UsernameIVLength = sizeof(username_iv);
-    UserResc.PasswordIVLength = sizeof(authdata_iv);
+    UserResc.AuthDataIVLength = sizeof(authdata_iv);
     UserResc.UsernameLength = encr_username_len;
-    UserResc.PasswordLength = encr_password_len;
+    UserResc.AuthDataLength = encr_password_len;
     UserResc.DateCreated = current_timestamp;
     UserResc.DateLastUpdated = current_timestamp;
 
@@ -358,8 +358,8 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
         mssError(0, "CXSS", "Error while decrypting username\n");
         goto error;
     }
-    if (cxss_decryptAES256(UserResc.ResourcePassword, UserResc.PasswordLength,
-                           rand_key, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
+    if (cxss_decryptAES256(UserResc.ResourceAuthData, UserResc.AuthDataLength,
+                           rand_key, UserResc.AuthDataIV, resource_authdata, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting auth data\n");
         goto error;
     }

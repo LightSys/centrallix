@@ -53,16 +53,16 @@ typedef struct {
     const char *AuthClass;
     const char *AESKey;
     const char *UsernameIV;
-    const char *PasswordIV;
+    const char *AuthDataIV;
     const char *ResourceUsername;
-    const char *ResourcePassword;
+    const char *ResourceAuthData;
     const char *DateCreated;
     const char *DateLastUpdated;
     size_t AESKeyLength;
     size_t UsernameIVLength;
-    size_t PasswordIVLength;
+    size_t AuthDataIVLength;
     size_t UsernameLength;
-    size_t PasswordLength;
+    size_t AuthDataLength;
 } CXSS_UserResc;
 
 typedef struct _CXSS_LLNode {

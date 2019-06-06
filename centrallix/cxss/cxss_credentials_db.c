@@ -320,7 +320,7 @@ cxss_insertUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
         goto bind_error;
     }
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 5,
-        UserResc->PasswordIV, UserResc->PasswordIVLength, NULL) != SQLITE_OK) {
+        UserResc->AuthDataIV, UserResc->AuthDataIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 6,
@@ -329,7 +329,7 @@ cxss_insertUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
         goto bind_error;
     }
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 7,
-        UserResc->ResourcePassword, UserResc->PasswordLength, 
+        UserResc->ResourceAuthData, UserResc->AuthDataLength, 
         NULL) != SQLITE_OK) {
         goto bind_error;
     }
@@ -549,12 +549,12 @@ cxss_retrieveUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
                       const char *resource_id, CXSS_UserResc *UserResc)
 {
     const char *auth_class;
-    const char *resource_username, *resource_password;
+    const char *resource_username, *resource_authdata;
     const char *aeskey;
-    const char *username_iv, *password_iv;
+    const char *username_iv, *authdata_iv;
     const char  *date_created, *date_last_updated;
-    size_t aeskey_len, username_len, password_len;
-    size_t username_iv_len, password_iv_len;       
+    size_t aeskey_len, username_len, authdata_len;
+    size_t username_iv_len, authdata_iv_len;       
 
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->retrieve_resc_stmt);
@@ -574,15 +574,15 @@ cxss_retrieveUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     /* Retrieve results */
     username_iv = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 0);
     username_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 0);
-    password_iv = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
-    password_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 1);
+    authdata_iv = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 1);
+    authdata_iv_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 1);
     auth_class = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 2);
     aeskey = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 3);
     aeskey_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 3);
     resource_username = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 4);
     username_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 4);
-    resource_password = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 5);
-    password_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 5);
+    resource_authdata = (char*)sqlite3_column_blob(dbcontext->retrieve_resc_stmt, 5);
+    authdata_len = sqlite3_column_bytes(dbcontext->retrieve_resc_stmt, 5);
     date_created = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 6);
     date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 7);
 
@@ -592,16 +592,16 @@ cxss_retrieveUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     UserResc->CXSS_UserID = cxss_strdup(cxss_userid);
     UserResc->AESKey = cxss_blobdup(aeskey, aeskey_len);
     UserResc->ResourceUsername = cxss_blobdup(resource_username, username_len);
-    UserResc->ResourcePassword = cxss_blobdup(resource_password, password_len);
+    UserResc->ResourceAuthData = cxss_blobdup(resource_authdata, authdata_len);
     UserResc->UsernameIV = cxss_blobdup(username_iv, username_iv_len);
-    UserResc->PasswordIV = cxss_blobdup(password_iv, password_iv_len);
+    UserResc->AuthDataIV = cxss_blobdup(authdata_iv, authdata_iv_len);
     UserResc->DateCreated = cxss_strdup(date_created);
     UserResc->DateLastUpdated = cxss_strdup(date_last_updated);
     UserResc->AESKeyLength = aeskey_len; 
     UserResc->UsernameLength = username_len;
-    UserResc->PasswordLength = password_len;
+    UserResc->AuthDataLength = authdata_len;
     UserResc->UsernameIVLength = username_iv_len;
-    UserResc->PasswordIVLength = password_iv_len;
+    UserResc->AuthDataIVLength = authdata_iv_len;
     return CXSS_DB_SUCCESS;
 
 bind_error:
@@ -664,13 +664,13 @@ cxss_updateUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
         UserResc->ResourceUsername, UserResc->UsernameLength, NULL) != SQLITE_OK)
         goto bind_error;
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 3,
-        UserResc->ResourcePassword, UserResc->PasswordLength, NULL) != SQLITE_OK)
+        UserResc->ResourceAuthData, UserResc->AuthDataLength, NULL) != SQLITE_OK)
         goto bind_error;
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 4,
         UserResc->UsernameIV, UserResc->UsernameIVLength, NULL) != SQLITE_OK)
         goto bind_error;
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 5,
-        UserResc->PasswordIV, UserResc->PasswordIVLength, NULL) != SQLITE_OK)
+        UserResc->AuthDataIV, UserResc->AuthDataIVLength, NULL) != SQLITE_OK)
         goto bind_error;
     if (sqlite3_bind_text(dbcontext->update_resc_stmt, 6,
         UserResc->DateLastUpdated, -1, NULL) != SQLITE_OK)
@@ -991,9 +991,9 @@ cxss_freeUserResc(CXSS_UserResc *UserResc)
     free((void*)UserResc->AuthClass);
     free((void*)UserResc->AESKey);
     free((void*)UserResc->ResourceUsername);
-    free((void*)UserResc->ResourcePassword);
+    free((void*)UserResc->ResourceAuthData);
     free((void*)UserResc->UsernameIV);
-    free((void*)UserResc->PasswordIV);
+    free((void*)UserResc->AuthDataIV);
     free((void*)UserResc->DateCreated);
     free((void*)UserResc->DateLastUpdated);
 }
