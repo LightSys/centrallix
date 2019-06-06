@@ -67,8 +67,8 @@ cxss_AddUser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     char *privatekey = NULL;
     char *publickey = NULL;
     char *encrypted_privatekey = NULL;
-    char iv[16]; // 128-bit iv
     char *current_timestamp = get_timestamp();
+    char iv[16]; // 128-bit iv
     int privatekey_len, publickey_len;
     int encr_privatekey_len;
 
@@ -218,16 +218,16 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
     CXSS_UserResc UserResc = {};
     char *encrypted_username = NULL;
     char *encrypted_password = NULL;
+    char *publickey = NULL;
+    char *current_timestamp = get_timestamp();
+    char encrypted_rand_key[512];
+    char rand_key[32];
+    char username_iv[16];
+    char authdata_iv[16];
     int encr_username_len;
     int encr_password_len;
-    char *publickey = NULL;
     int publickey_len;
-    char encrypted_rand_key[512];
     int encrypted_rand_key_len;
-    char key[32];
-    char uname_iv[16];
-    char pwd_iv[16];
-    char *current_timestamp = get_timestamp();
 
     /* Retrieve user publickey */
     if (cxss_retrieveUserPublicKey(cxss_userid, &publickey, &publickey_len) < 0) {
@@ -236,33 +236,33 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
     }
 
     /* Generate random AES key and AES IVs */
-    if (cxss_generate256bitRandomKey(key) < 0) {
+    if (cxss_generate256bitRandomKey(rand_key) < 0) {
         mssError(0, "CXSS", "Failed to generate key\n");
         goto error;
     }
-    if (cxss_generate128bitIV(uname_iv) < 0) {
+    if (cxss_generate128bitIV(username_iv) < 0) {
         mssError(0, "CXSS", "Failed to generate iv\n");
         goto error;
     }
-    if (cxss_generate128bitIV(pwd_iv) < 0) {
+    if (cxss_generate128bitIV(authdata_iv) < 0) {
         mssError(0, "CXSS", "Failed to generate iv\n");
         goto error;
     }
 
     /* Encrypt resource data with random key */
-    if (cxss_encryptAES256(resource_username, username_len, key, uname_iv, 
+    if (cxss_encryptAES256(resource_username, username_len, rand_key, username_iv, 
                            &encrypted_username, &encr_username_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource username\n");
         goto error;
     }
-    if (cxss_encryptAES256(resource_password, password_len, key, pwd_iv,
+    if (cxss_encryptAES256(resource_password, password_len, rand_key, authdata_iv,
                            &encrypted_password, &encr_password_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource password\n");
         goto error;
     }
 
     /* Encrypt random key with user's public key */
-    if (cxss_encryptRSA(key, sizeof(key), publickey, publickey_len, 
+    if (cxss_encryptRSA(rand_key, sizeof(rand_key), publickey, publickey_len, 
                         encrypted_rand_key, &encrypted_rand_key_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt random key\n");
         goto error;
@@ -275,11 +275,11 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
     UserResc.AESKey = encrypted_rand_key;
     UserResc.ResourceUsername = encrypted_username;
     UserResc.ResourcePassword = encrypted_password;
-    UserResc.UsernameIV = uname_iv;
-    UserResc.PasswordIV = pwd_iv;
+    UserResc.UsernameIV = username_iv;
+    UserResc.PasswordIV = authdata_iv;
     UserResc.AESKeyLength = encrypted_rand_key_len;
-    UserResc.UsernameIVLength = sizeof(uname_iv);
-    UserResc.PasswordIVLength = sizeof(pwd_iv);
+    UserResc.UsernameIVLength = sizeof(username_iv);
+    UserResc.PasswordIVLength = sizeof(authdata_iv);
     UserResc.UsernameLength = encr_username_len;
     UserResc.PasswordLength = encr_password_len;
     UserResc.DateCreated = current_timestamp;
@@ -318,10 +318,10 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
 {
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};
-    char aeskey[32];
     char *privatekey = NULL;
+    char rand_key[32];
     int  privatekey_len;
-    int  aeskey_len;
+    int  rand_key_len;
     int  ciphertext_len;
 
     /* Retrieve auth and resource data from database */
@@ -343,19 +343,19 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
 
     /* Decrypt AES key using user's private key */ 
     if (cxss_decryptRSA(UserResc.AESKey, UserResc.AESKeyLength,
-                        privatekey, privatekey_len, aeskey, &aeskey_len) < 0) {
+                        privatekey, privatekey_len, rand_key, &rand_key_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt AES key\n");
         goto error;
     }
 
     /* Decrypt resource username/authdata using AES key */
     if (cxss_decryptAES256(UserResc.ResourceUsername, UserResc.UsernameLength,
-                           aeskey, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
+                           rand_key, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting username\n");
         goto error;
     }
     if (cxss_decryptAES256(UserResc.ResourcePassword, UserResc.PasswordLength,
-                           aeskey, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
+                           rand_key, UserResc.PasswordIV, resource_authdata, &ciphertext_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting auth data\n");
         goto error;
     }
