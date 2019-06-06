@@ -1513,11 +1513,18 @@ AC_DEFUN(CENTRALLIX_CHECK_RSVG,
                           WITH_RSVG="yes",
                           WITH_RSVG="no")
 
+	AC_CHECK_LIB(cairo, cairo_svg_surface_set_document_unit, HAVE_CAIRO="yes", HAVE_CAIRO="no")
+
         if test "$WITH_RSVG" = "yes"; then
-            CFLAGS="$CFLAGS $librsvg_CFLAGS"
-            LIBS="$LIBS $librsvg_LIBS"
-            AC_DEFINE([HAVE_LIBRSVG], [1], [Define to 1 if librsvg is present.])
-            AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 if <rsvg.h> is present.])
+	    if test "$HAVE_CAIRO" = "yes"; then
+		CFLAGS="$CFLAGS $librsvg_CFLAGS"
+		LIBS="$LIBS $librsvg_LIBS"
+		AC_DEFINE([HAVE_LIBRSVG], [1], [Define to 1 if librsvg is present.])
+		AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 if <rsvg.h> is present.])
+	    else
+		AC_MSG_WARN([recent Cairo was not found -- svg support will be disabled])
+		WITH_RSVG="no"
+	    fi
         else
             AC_MSG_WARN([librsvg was not found -- svg support will be disabled])
         fi
