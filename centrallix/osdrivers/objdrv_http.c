@@ -1341,7 +1341,7 @@ http_internal_FreeParams(pHttpData inf)
 	    nmFree(one_http_param, sizeof(HttpParam));
 	    paramFree(one_param);
 	    }
-	xaClear(&inf->Params);
+	xaClear(&inf->Params, NULL, NULL);
 
     return 0;
     }

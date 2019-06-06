@@ -2148,8 +2148,8 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			nmSysFree(app->Endorsements.Items[i]);
 			nmSysFree(app->Contexts.Items[i]);
 			}
-		    xaClear(&app->Endorsements);
-		    xaClear(&app->Contexts);
+		    xaClear(&app->Endorsements, NULL, NULL);
+		    xaClear(&app->Contexts, NULL, NULL);
 		    cxssGetEndorsementList(&app->Endorsements, &app->Contexts);
 		    }
 

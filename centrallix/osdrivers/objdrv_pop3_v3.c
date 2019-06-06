@@ -255,7 +255,7 @@ pop_internal_FreeMaildrop(pPopMaildrop drop)
 		{
 		if ( (uid = xaGetItem(drop->uids, i)) != NULL) nmSysFree (uid);
 		}
-	    xaClear(drop->uids);
+	    xaClear(drop->uids, NULL, NULL);
 	    xaDeInit(drop->uids);
 	    nmFree(drop->uids, sizeof(PopMaildrop));
 	    }
@@ -328,7 +328,7 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
 		{
 		if ( (uid = xaGetItem(drop->uids, i)) != NULL) nmSysFree (uid);
 		}
-	    xaClear(drop->uids);
+	    xaClear(drop->uids, NULL, NULL);
 
 	    /** Tell the server we want the uids **/
 	    fdWrite(drop->Session, "UIDL\r\n", 6, 0, FD_U_PACKET);
