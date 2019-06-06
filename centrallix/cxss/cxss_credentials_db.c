@@ -1026,4 +1026,3 @@ cxss_i_finalizeSqliteStatements(CXSS_DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->delete_resc_stmt);
 }
 
-

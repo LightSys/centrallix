@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,7 +57,7 @@ cxss_blobdup(const char *blob, size_t len)
  *  @return     timestamp
  */    
 char *
-get_timestamp(void)
+cxss_getTimestamp(void)
 {
     time_t current_time;
     char *timestamp;

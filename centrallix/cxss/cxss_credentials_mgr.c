@@ -67,7 +67,7 @@ cxss_addUser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     char *privatekey = NULL;
     char *publickey = NULL;
     char *encrypted_privatekey = NULL;
-    char *current_timestamp = get_timestamp();
+    char *current_timestamp = cxss_getTimestamp();
     char iv[16]; // 128-bit iv
     int privatekey_len, publickey_len;
     int encr_privatekey_len;
@@ -223,7 +223,7 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
     char *encrypted_username = NULL;
     char *encrypted_password = NULL;
     char *publickey = NULL;
-    char *current_timestamp = get_timestamp();
+    char *current_timestamp = cxss_getTimestamp();
     char encrypted_rand_key[512];
     char rand_key[32];
     char username_iv[16];
