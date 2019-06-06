@@ -1255,7 +1255,7 @@ objClose(pObject this)
 
 	    /** Remove from open objects this session. **/
 	    xaRemoveItem(&(this->Session->OpenObjects),
-	        xaFindItem(&(this->Session->OpenObjects),(void*)this));
+	        xaFindItemR(&(this->Session->OpenObjects),(void*)this));
 
 	    /** Any notify requests open on this? **/
 	    while (this->NotifyItem)
@@ -1280,6 +1280,7 @@ objClose(pObject this)
 	    this->VAttrs = NULL;
 	    }
 	obj_internal_FreeObj(this);
+
 
     return 0;
     }
