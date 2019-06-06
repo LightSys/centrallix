@@ -424,13 +424,13 @@ cxss_encryptRSA(const char *data, size_t len,
         goto error;
     }
     
-    /* write key to BIO */
+    /* Write key to BIO */
     if (BIO_write(bio, publickey, publickey_len) != publickey_len) {
         mssError(0, "CXSS", "Error while writing to BIO\n");
         goto error;
     }
 
-    /* read key from BIO into RSA struct */
+    /* Read key from BIO into RSA struct */
     if (PEM_read_bio_RSAPublicKey(bio, &rsa, NULL, NULL) == NULL) {
         mssError(0, "CXSS", "RSA encrypt: error while reading from BIO\n");
         goto error;

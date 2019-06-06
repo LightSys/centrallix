@@ -59,7 +59,7 @@ cxss_closeCredentialsManager(void)
  *  @return                     Status code   
  */
 int
-cxss_AddUser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
+cxss_addUser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
              const char *salt, size_t salt_len)
 {
     CXSS_UserData UserData = {};
