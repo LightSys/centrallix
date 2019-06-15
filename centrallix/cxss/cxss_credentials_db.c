@@ -15,7 +15,7 @@ static void cxss_i_finalizeSqliteStatements(CXSS_DB_Context_t dbcontext);
  *
  *  This function takes care of initializing this module (cxss_credentials_db.c), 
  *  and should be called before using any of the other functions below. It establishes
- *  a connection to the SQLite database file, and sets up the database context.
+ *  a connection to the SQLite database file and sets up the database context.
  *
  *  @param db_path      Path to database file
  *  @return             Database context handle

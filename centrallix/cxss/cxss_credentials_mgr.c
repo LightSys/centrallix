@@ -272,6 +272,9 @@ cxss_addResource(const char *cxss_userid, const char *resource_id, const char *a
         goto error;
     }
 
+    /* Erase plaintext random key from memory */
+    memset(rand_key, 0, sizeof(rand_key));
+
     /* Build struct */
     UserResc.CXSS_UserID = cxss_userid;
     UserResc.ResourceID = resource_id;
