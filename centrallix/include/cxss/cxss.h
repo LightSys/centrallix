@@ -155,7 +155,7 @@ int cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int d
 int cxssKeystreamFree(pCxssKeystreamState kstate);
 
 /*** Credentials Manager API ***/
-#include "credentials_mgr.h"
+#include "cxss/credentials_mgr.h"
 
 /*** Security Policy - Authorization API ***/
 int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
