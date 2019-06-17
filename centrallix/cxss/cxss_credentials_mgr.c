@@ -27,7 +27,7 @@ int
 cxss_initCredentialsManager(void)
 {   
     cxss_initializeCrypto();
-    dbcontext = cxss_initCredentialsDatabase("test.db");
+    dbcontext = cxss_initCredentialsDatabase("cxss.db");
     if (!dbcontext) {
         return CXSS_MGR_INIT_ERROR;
     }
