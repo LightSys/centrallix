@@ -69,7 +69,8 @@ cxss_addUser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     char *encrypted_privatekey = NULL;
     char *current_timestamp = cxss_getTimestamp();
     char iv[16]; // 128-bit iv
-    int privatekey_len, publickey_len;
+    int privatekey_len = 0;
+    int publickey_len = 0;
     int encr_privatekey_len;
 
     /* Generate RSA key pair */
@@ -119,13 +120,14 @@ cxss_addUser(const char *cxss_userid, const char *encryption_key, size_t encrypt
     }
 
     free(encrypted_privatekey);
-    cxss_destroyRSAKeypair(privatekey, privatekey_len, publickey, publickey_len);
+    cxss_destroy(privatekey, privatekey_len);
+    cxss_destroy(publickey, publickey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
     free(encrypted_privatekey);
-    free(privatekey);
-    free(publickey);         
+    cxss_destroy(privatekey, privatekey_len);
+    cxss_destroy(publickey, publickey_len);
     return CXSS_MGR_INSERT_ERROR;
 }
 
@@ -327,9 +329,10 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
     CXSS_UserResc UserResc = {};
     char *privatekey = NULL;
     char rand_key[32];
-    int  privatekey_len;
-    int  rand_key_len;
-    int  ciphertext_len;
+    int rand_key_len;
+    int privatekey_len = 0;
+    int username_len = 0;
+    int authdata_len = 0;
 
     /* Retrieve auth and resource data from database */
     if (cxss_retrieveUserAuth(dbcontext, cxss_userid, &UserAuth) < 0) {
@@ -357,27 +360,27 @@ cxss_getResource(const char *cxss_userid, const char *resource_id, const char *u
 
     /* Decrypt resource username/authdata using AES key */
     if (cxss_decryptAES256(UserResc.ResourceUsername, UserResc.UsernameLength,
-                           rand_key, UserResc.UsernameIV, resource_username, &ciphertext_len) < 0) {
+                           rand_key, UserResc.UsernameIV, resource_username, &username_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting username\n");
         goto error;
     }
     if (cxss_decryptAES256(UserResc.ResourceAuthData, UserResc.AuthDataLength,
-                           rand_key, UserResc.AuthDataIV, resource_authdata, &ciphertext_len) < 0) {
+                           rand_key, UserResc.AuthDataIV, resource_authdata, &authdata_len) < 0) {
         mssError(0, "CXSS", "Error while decrypting auth data\n");
         goto error;
     }
 
-    free(privatekey); 
     cxss_freeUserAuth(&UserAuth);
     cxss_freeUserResc(&UserResc);
+    cxss_destroy(privatekey, privatekey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(privatekey);
-    free(*resource_username);
-    free(*resource_authdata);
     cxss_freeUserAuth(&UserAuth);
-    cxss_freeUserResc(&UserResc);    
+    cxss_freeUserResc(&UserResc);
+    cxss_destroy(privatekey, privatekey_len);
+    cxss_destroy(*resource_username, username_len);
+    cxss_destroy(*resource_authdata, authdata_len);    
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 

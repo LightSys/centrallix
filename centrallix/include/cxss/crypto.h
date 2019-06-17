@@ -22,6 +22,6 @@ int cxss_decryptAES256(const char *ciphertext, int ciphertext_len, const char *k
 size_t cxss_aes256CiphertextLength(size_t plaintext_len);
 int cxss_encryptRSA(const char *data, size_t len, const char *publickey, size_t publickey_len, char *ciphertext, int *ciphertext_len);
 int cxss_decryptRSA(const char *data, size_t len, const char *privatekey, size_t privatekey_len, char *plaintext, int *plaintext_len);
-void cxss_destroyRSAKeypair(char *privatekey, size_t privatekey_len, char *publickey, size_t publickey_len);
+void cxss_destroy(char *key, size_t keylength);
 
 #endif /* CXSS_CRYPTO_H */

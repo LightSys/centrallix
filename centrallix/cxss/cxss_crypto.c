@@ -380,22 +380,22 @@ error:
     return CXSS_CRYPTO_KEYGEN_ERROR;
 } 
 
-/** @brief Free rsa keypair
+/** @brief Erase and deallocate cryptographic key 
  *      
- *  Free dynamically-allocated key pair
+ *  This function is called in the credentials manager to safely destroy a
+ *  dynamically-allocated cryptographic key after it has been used.
  *
- *  @param privatekey   Privatekey
- *  @param publickey    Publickey
+ *  @param key          Key to destroy
+ *  @param keylength    Length of the key
  *  @return             void
  */
 void
-cxss_destroyRSAKeypair(char *privatekey, size_t privatekey_len, 
-                         char *publickey, size_t publickey_len)
+cxss_destroy(char *key, size_t keylength)
 {
-    memset(privatekey, 0, privatekey_len);
-    memset(publickey, 0, publickey_len);
-    free(privatekey);
-    free(publickey);
+    if (key && keylength >= 0) {
+        memset(key, 0, keylength);
+        free(key);
+    }
 }
 
 /** @brief Encrypt data with RSA
