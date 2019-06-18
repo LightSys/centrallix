@@ -52,14 +52,14 @@ cxssCredentialsManagerClose(void)
 /** @brief Add user to CXSS
  *
  *  @param cxss_userid          Centrallix User ID
- *  @param encryption_key       Password-based user encryption key
- *  @param keylength            Length of user encryption key
+ *  @param pb_userk ey          Password-based user encryption key (used to encrypt private key)
+ *  @param keylength            Length of password-based user encryption key
  *  @param salt                 User salt
  *  @param salt_len             Length of user salt
  *  @return                     Status code   
  */
 int
-cxssAddUser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_len, 
+cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_len, 
             const char *salt, size_t salt_len)
 {
     CXSS_UserData UserData = {};
@@ -87,7 +87,7 @@ cxssAddUser(const char *cxss_userid, const char *encryption_key, size_t encrypti
     }
 
     /* Encrypt private key */
-    if (cxssEncryptAES256(privatekey, privatekey_len, encryption_key, 
+    if (cxssEncryptAES256(privatekey, privatekey_len, pb_userkey, 
                           iv, &encrypted_privatekey, &encr_privatekey_len) < 0) {
         mssError(0, "CXSS", "Error while encrypting private key\n");        
         goto error;
@@ -134,14 +134,14 @@ error:
 /** @brief Retrieve and decrypt user private key
  *
  *  @param cxss_userid          Centrallix User ID
- *  @param encryption_key       AES encryption key used to encrypt private key
- *  @param encryption_key_len   Length of encryption key
+ *  @param pb_userkey           Password-based user key used to encrypt private key
+ *  @param pb_userkey_len       Length of password-based user encryption key
  *  @param privatekey           Pointer to pointer to a buffer to store the retrieved private key
  *  @param privatekey_len       Pointer to a variable to store the length of the retrieved private key
  *  @return                     Status code
  */
 int
-cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *encryption_key, size_t ecryption_key_len,
+cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_len,
                            char **privatekey, int *privatekey_len)
 {
     CXSS_UserAuth UserAuth = {};
@@ -153,13 +153,13 @@ cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *encryption_key, 
     }
  
     /* Decrypt private key */
-    if (cxssDecryptAES256(UserAuth.PrivateKey, UserAuth.KeyLength, encryption_key, 
+    if (cxssDecryptAES256(UserAuth.PrivateKey, UserAuth.KeyLength, pb_userkey, 
                           UserAuth.PrivateKeyIV, privatekey, privatekey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
     }
 
-    *privatekey_len = UserAuth.KeyLength;                        
+    *privatekey_len = UserAuth.KeyLength;
     cxssFreeUserAuth(&UserAuth);  
     return CXSS_MGR_SUCCESS;
 
@@ -319,11 +319,15 @@ error:
  *
  *  @param cxss_userid          Centrallix User ID
  *  @param resource_id          Resource ID
+ *  @param pb_userkey           Password-based user key used to encrypt private key
+ *  @param pb_userkey_len       Length of password-based user encryption key
+ *  @param resource_username    Pointer to pointer to a buffer used to store the decrypted resource username
+ *  @param resource_authdata    Pointer to pointer to a buffer used to store the decrypted resource auth data
  *  @return                     Status code
  */
 int 
-cxssGetResource(const char *cxss_userid, const char *resource_id, const char *user_key, 
-                size_t user_key_len, char **resource_username, char **resource_authdata)
+cxssGetResource(const char *cxss_userid, const char *resource_id, const char *pb_userkey, 
+                size_t pb_userkey_len, char **resource_username, char **resource_authdata)
 {
     CXSS_UserAuth UserAuth = {};
     CXSS_UserResc UserResc = {};
@@ -346,7 +350,7 @@ cxssGetResource(const char *cxss_userid, const char *resource_id, const char *us
 
     /* Decrypt user's private key using user's password-based key */
     if (cxssDecryptAES256(UserAuth.PrivateKey, UserAuth.KeyLength,
-                          user_key, UserAuth.PrivateKeyIV, &privatekey, &privatekey_len) < 0) {
+                          pb_userkey, UserAuth.PrivateKeyIV, &privatekey, &privatekey_len) < 0) {
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
     } 
