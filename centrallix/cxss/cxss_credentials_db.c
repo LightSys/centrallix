@@ -392,10 +392,10 @@ cxssRetrieveUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_user_stmt, 2);
 
     /* Populate UserData struct */
-    UserData->CXSS_UserID = cxss_strdup(cxss_userid);
-    UserData->PublicKey = cxss_strdup(publickey);
-    UserData->DateCreated = cxss_strdup(date_created);
-    UserData->DateLastUpdated = cxss_strdup(date_last_updated);
+    UserData->CXSS_UserID = cxssStrdup(cxss_userid);
+    UserData->PublicKey = cxssStrdup(publickey);
+    UserData->DateCreated = cxssStrdup(date_created);
+    UserData->DateLastUpdated = cxssStrdup(date_last_updated);
     UserData->KeyLength = keylength;
     return CXSS_DB_SUCCESS;
 
@@ -444,12 +444,12 @@ cxssRetrieveUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_user_auth_stmt, 4);
      
     /* Populate UserAuth struct */
-    UserAuth->CXSS_UserID = cxss_strdup(cxss_userid);
-    UserAuth->PrivateKey = cxss_blobdup(privatekey, keylength);
-    UserAuth->PrivateKeyIV = cxss_blobdup(iv, iv_length);
-    UserAuth->Salt = cxss_blobdup(salt, salt_length);
-    UserAuth->DateCreated = cxss_strdup(date_created);
-    UserAuth->DateLastUpdated = cxss_strdup(date_last_updated);
+    UserAuth->CXSS_UserID = cxssStrdup(cxss_userid);
+    UserAuth->PrivateKey = cxssBlobdup(privatekey, keylength);
+    UserAuth->PrivateKeyIV = cxssBlobdup(iv, iv_length);
+    UserAuth->Salt = cxssBlobdup(salt, salt_length);
+    UserAuth->DateCreated = cxssStrdup(date_created);
+    UserAuth->DateLastUpdated = cxssStrdup(date_last_updated);
     UserAuth->RemovalFlag = false;
     UserAuth->KeyLength = keylength;
     UserAuth->IVLength = iv_length;
@@ -509,12 +509,12 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_user_auths_stmt, 6);
      
         /* Populate node */
-        current->UserAuth.CXSS_UserID = cxss_strdup(cxss_userid);
-        current->UserAuth.PrivateKey = cxss_blobdup(privatekey, keylength);
-        current->UserAuth.Salt = cxss_blobdup(salt, salt_length);
-        current->UserAuth.PrivateKeyIV = cxss_blobdup(iv, iv_length);
-        current->UserAuth.DateCreated = cxss_strdup(date_created);
-        current->UserAuth.DateLastUpdated = cxss_strdup(date_last_updated);
+        current->UserAuth.CXSS_UserID = cxssStrdup(cxss_userid);
+        current->UserAuth.PrivateKey = cxssBlobdup(privatekey, keylength);
+        current->UserAuth.Salt = cxssBlobdup(salt, salt_length);
+        current->UserAuth.PrivateKeyIV = cxssBlobdup(iv, iv_length);
+        current->UserAuth.DateCreated = cxssStrdup(date_created);
+        current->UserAuth.DateLastUpdated = cxssStrdup(date_last_updated);
         current->UserAuth.RemovalFlag = removal_flag;
         current->UserAuth.KeyLength = keylength;
         current->UserAuth.SaltLength = salt_length;
@@ -587,16 +587,16 @@ cxssRetrieveUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     date_last_updated = (char*)sqlite3_column_text(dbcontext->retrieve_resc_stmt, 7);
 
     /* Build struct */
-    UserResc->ResourceID = cxss_strdup(resource_id);
-    UserResc->AuthClass = cxss_strdup(auth_class);
-    UserResc->CXSS_UserID = cxss_strdup(cxss_userid);
-    UserResc->AESKey = cxss_blobdup(aeskey, aeskey_len);
-    UserResc->ResourceUsername = cxss_blobdup(resource_username, username_len);
-    UserResc->ResourceAuthData = cxss_blobdup(resource_authdata, authdata_len);
-    UserResc->UsernameIV = cxss_blobdup(username_iv, username_iv_len);
-    UserResc->AuthDataIV = cxss_blobdup(authdata_iv, authdata_iv_len);
-    UserResc->DateCreated = cxss_strdup(date_created);
-    UserResc->DateLastUpdated = cxss_strdup(date_last_updated);
+    UserResc->ResourceID = cxssStrdup(resource_id);
+    UserResc->AuthClass = cxssStrdup(auth_class);
+    UserResc->CXSS_UserID = cxssStrdup(cxss_userid);
+    UserResc->AESKey = cxssBlobdup(aeskey, aeskey_len);
+    UserResc->ResourceUsername = cxssBlobdup(resource_username, username_len);
+    UserResc->ResourceAuthData = cxssBlobdup(resource_authdata, authdata_len);
+    UserResc->UsernameIV = cxssBlobdup(username_iv, username_iv_len);
+    UserResc->AuthDataIV = cxssBlobdup(authdata_iv, authdata_iv_len);
+    UserResc->DateCreated = cxssStrdup(date_created);
+    UserResc->DateLastUpdated = cxssStrdup(date_last_updated);
     UserResc->AESKeyLength = aeskey_len; 
     UserResc->UsernameLength = username_len;
     UserResc->AuthDataLength = authdata_len;

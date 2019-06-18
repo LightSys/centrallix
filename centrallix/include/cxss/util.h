@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 char *cxssGetTimestamp(void);
-char *cxss_strdup(const char *str);
-char *cxss_blobdup(const char *buf, size_t bufsize);
+char *cxssStrdup(const char *str);
+char *cxssBlobdup(const char *buf, size_t bufsize);
 
 #endif /* CXSS_UTIL_H */

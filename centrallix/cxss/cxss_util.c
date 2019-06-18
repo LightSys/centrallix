@@ -14,7 +14,7 @@
  *  @return      Dupped string
  */
 char *
-cxss_strdup(const char *str)
+cxssStrdup(const char *str)
 {
     if (!str)
         return NULL;
@@ -31,7 +31,7 @@ cxss_strdup(const char *str)
  *  @return             Dupped blob
  */
 char *
-cxss_blobdup(const char *blob, size_t len)
+cxssBlobdup(const char *blob, size_t len)
 {
     char *copy;
 
