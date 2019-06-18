@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-char *cxss_getTimestamp(void);
+char *cxssGetTimestamp(void);
 char *cxss_strdup(const char *str);
 char *cxss_blobdup(const char *buf, size_t bufsize);
 

@@ -57,7 +57,7 @@ cxss_blobdup(const char *blob, size_t len)
  *  @return     timestamp
  */    
 char *
-cxss_getTimestamp(void)
+cxssGetTimestamp(void)
 {
     time_t current_time;
     char *timestamp;

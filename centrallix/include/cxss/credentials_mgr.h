@@ -11,14 +11,14 @@ typedef enum {
     CXSS_MGR_SUCCESS = 0
 } CXSS_MGR_Status_e; 
 
-int cxss_initCredentialsManager(void);
-void cxss_closeCredentialsManager(void);
-int cxss_addUser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_length, const char *salt, size_t salt_len);
-int cxss_retrieveUserPrivateKey(const char *cxss_userid, const char *user_key, size_t user_key_len, char **privatekey, int *privatekey_len);
-int cxss_retrieveUserPublicKey(const char *cxss_userid, char **publickey, int *publickey_len);
-int cxss_deleteUser(const char *cxss_userid);
-int cxss_addResource(const char *cxss_userid, const char *resource_id, const char *auth_class, const char *resource_username, size_t username_len, const char *resource_password, size_t password_len);
-int cxss_getResource(const char *cxss_userid, const char *resource_id, const char *user_key, size_t user_key_len, char **resource_username, char **resource_data);
-int cxss_deleteResource(const char *cxss_userid, const char *resource_id);
+int cxssCredentialsManagerInit(void);
+void cxssCredentialsManagerClose(void);
+int cxssAddUser(const char *cxss_userid, const char *encryption_key, size_t encryption_key_length, const char *salt, size_t salt_len);
+int cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *user_key, size_t user_key_len, char **privatekey, int *privatekey_len);
+int cxssRetrieveUserPublicKey(const char *cxss_userid, char **publickey, int *publickey_len);
+int cxssDeleteUser(const char *cxss_userid);
+int cxssAddResource(const char *cxss_userid, const char *resource_id, const char *auth_class, const char *resource_username, size_t username_len, const char *resource_password, size_t password_len);
+int cxssGetResource(const char *cxss_userid, const char *resource_id, const char *user_key, size_t user_key_len, char **resource_username, char **resource_data);
+int cxssDeleteResource(const char *cxss_userid, const char *resource_id);
 
 #endif /* CXSS_CREDENTIALS_MGR_H */

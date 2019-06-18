@@ -23,7 +23,7 @@ static bool CSPRNG_Initialized = false;
  *  @return     void
  */
 void
-cxss_initializeCrypto(void)
+cxssCryptoInit(void)
 {
     char seed[256];
 
@@ -42,7 +42,7 @@ cxss_initializeCrypto(void)
  *  @return     void
  */
 void
-cxss_cleanupCrypto(void)
+cxssCryptoCleanup(void)
 {
     EVP_cleanup();
     ERR_remove_state(0);
@@ -64,16 +64,16 @@ cxss_cleanupCrypto(void)
  *  @return                     Status code
  */
 int 
-cxss_encryptAES256(const char *plaintext, int plaintext_len, 
-                   const char *key, const char *init_vector,
-                   char **ciphertext, int *ciphertext_len)
+cxssEncryptAES256(const char *plaintext, int plaintext_len, 
+                  const char *key, const char *init_vector,
+                  char **ciphertext, int *ciphertext_len)
 {
     assert(CSPRNG_Initialized);
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
 
     /* Allocate buffer to store ciphertext */
-    *ciphertext = malloc(cxss_aes256CiphertextLength(plaintext_len));
+    *ciphertext = malloc(cxssAES256CiphertextLength(plaintext_len));
     if (!(*ciphertext)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -131,16 +131,16 @@ error:
  *  @return                     Status code
  */
 int
-cxss_decryptAES256(const char *ciphertext, int ciphertext_len,
-                   const char *key, const char *init_vector,
-                   char **plaintext, int *plaintext_len)
+cxssDecryptAES256(const char *ciphertext, int ciphertext_len,
+                  const char *key, const char *init_vector,
+                  char **plaintext, int *plaintext_len)
 {
     assert(CSPRNG_Initialized);
     EVP_CIPHER_CTX *ctx = NULL;
     int len;
  
     /* Allocate buffer to store plaintext */
-    *plaintext = malloc(cxss_aes256CiphertextLength(ciphertext_len));
+    *plaintext = malloc(cxssAES256CiphertextLength(ciphertext_len));
     if (!(*plaintext)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -193,7 +193,7 @@ error:
  *  @return     Status code
  */
 int
-cxss_generate64bitSalt(char *salt)
+cxssGenerate64bitSalt(char *salt)
 {
     assert(CSPRNG_Initialized);
 
@@ -214,7 +214,7 @@ cxss_generate64bitSalt(char *salt)
  *  @return     Status code
  */
 int
-cxss_generate128bitIV(char *init_vector)
+cxssGenerate128bitIV(char *init_vector)
 {
     assert(CSPRNG_Initialized);
 
@@ -238,8 +238,8 @@ cxss_generate128bitIV(char *init_vector)
  *  @return             Status code
  */
 int
-cxss_generate256bitPasswordBasedKey(const char *password, const char *salt, 
-                                    char *key)
+cxssGenerate256bitPasswordBasedKey(const char *password, const char *salt, 
+                                   char *key)
 {
     #define PBKDF2_ITER_NO      5000
     assert(CSPRNG_Initialized);   
@@ -260,7 +260,7 @@ cxss_generate256bitPasswordBasedKey(const char *password, const char *salt,
  *  @return             Status code
  */
 int
-cxss_generate256bitRandomKey(char *key)
+cxssGenerate256bitRandomKey(char *key)
 {
     assert(CSPRNG_Initialized);
 
@@ -281,7 +281,7 @@ cxss_generate256bitRandomKey(char *key)
  *  @return                     Length of AES-encrypted ciphertext
  */
 size_t
-cxss_aes256CiphertextLength(size_t plaintext_len)
+cxssAES256CiphertextLength(size_t plaintext_len)
 {
     return (plaintext_len + (16 - plaintext_len%16)); 
 }
@@ -297,8 +297,8 @@ cxss_aes256CiphertextLength(size_t plaintext_len)
  *  @return                   Status code
  */
 int
-cxss_generateRSA4096bitKeypair(char **privatekey, int *privatekey_len,
-                                  char **publickey, int *publickey_len)
+cxssGenerateRSA4096bitKeypair(char **privatekey, int *privatekey_len,
+                              char **publickey, int *publickey_len)
 {
     assert(CSPRNG_Initialized);
     BIGNUM *bne = NULL;
@@ -380,24 +380,6 @@ error:
     return CXSS_CRYPTO_KEYGEN_ERROR;
 } 
 
-/** @brief Erase and deallocate cryptographic key 
- *      
- *  This function is called in the credentials manager to safely destroy a
- *  dynamically-allocated cryptographic key after it has been used.
- *
- *  @param key          Key to destroy
- *  @param keylength    Length of the key
- *  @return             void
- */
-void
-cxss_destroy(char *key, size_t keylength)
-{
-    if (key && keylength >= 0) {
-        memset(key, 0, keylength);
-        free(key);
-    }
-}
-
 /** @brief Encrypt data with RSA
  *
  *  @param data                 Data to be encrypted
@@ -409,9 +391,9 @@ cxss_destroy(char *key, size_t keylength)
  *  @return                     Status code
  */
 int
-cxss_encryptRSA(const char *data, size_t len,
-                const char *publickey, size_t publickey_len,
-                char *ciphertext, int *ciphertext_len)
+cxssEncryptRSA(const char *data, size_t len,
+               const char *publickey, size_t publickey_len,
+               char *ciphertext, int *ciphertext_len)
 {
     assert(CSPRNG_Initialized);
     RSA *rsa = NULL;
@@ -455,9 +437,9 @@ error:
 }
 
 int
-cxss_decryptRSA(const char *data, size_t len,
-                const char *privatekey, size_t privatekey_len,
-                char *plaintext, int *plaintext_len)
+cxssDecryptRSA(const char *data, size_t len,
+               const char *privatekey, size_t privatekey_len,
+               char *plaintext, int *plaintext_len)
 {
     assert(CSPRNG_Initialized);
     BIO *bio = NULL;
@@ -498,5 +480,23 @@ error:
     BIO_free(bio);
     RSA_free(rsa);
     return CXSS_CRYPTO_DECR_ERROR;
+}
+
+/** @brief Erase and deallocate cryptographic key 
+ *      
+ *  This function is called in the credentials manager to safely destroy a
+ *  dynamically-allocated cryptographic key after it has been used.
+ *
+ *  @param key          Key to destroy
+ *  @param keylength    Length of the key
+ *  @return             void
+ */
+void
+cxssDestroyKey(char *key, size_t keylength)
+{
+    if (key && keylength >= 0) {
+        memset(key, 0, keylength);
+        free(key);
+    }
 }
 

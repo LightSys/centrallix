@@ -59,7 +59,7 @@ cxssInitialize()
         if (err < 0) return err;
 
         /** Initialize credentials manager **/
-        err = cxss_initCredentialsManager();
+        err = cxssCredentialsManagerInit();
         if (err < 0) return err;
 
     return err;
