@@ -122,12 +122,14 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
     free(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssDestroyKey(publickey, publickey_len);
+    cxssShred(pb_userkey, pb_userkey_len);    
     return CXSS_MGR_SUCCESS;
 
 error:
     free(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssDestroyKey(publickey, publickey_len);
+    cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_INSERT_ERROR;
 }
 
@@ -158,14 +160,16 @@ cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *pb_userkey, size
         mssError(0, "CXSS", "Failed to decrypt private key\n");
         goto error;
     }
-
     *privatekey_len = UserAuth.KeyLength;
+    
     cxssFreeUserAuth(&UserAuth);  
+    cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
     free(*privatekey);
     cxssFreeUserAuth(&UserAuth);
+    cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
