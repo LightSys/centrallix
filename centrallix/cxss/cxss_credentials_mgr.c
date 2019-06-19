@@ -121,14 +121,12 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
 
     free(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
-    cxssDestroyKey(publickey, publickey_len);
     cxssShred(pb_userkey, pb_userkey_len);    
     return CXSS_MGR_SUCCESS;
 
 error:
     free(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
-    cxssDestroyKey(publickey, publickey_len);
     cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_INSERT_ERROR;
 }
@@ -223,7 +221,7 @@ error:
 int
 cxssAddResource(const char *cxss_userid, const char *resource_id, const char *auth_class,
                 const char *resource_username, size_t username_len,
-                const char *resource_password, size_t password_len)
+                const char *resource_authdata, size_t authdata_len)
 {
     CXSS_UserResc UserResc = {};
     char *encrypted_username = NULL;
@@ -265,7 +263,7 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
         mssError(0, "CXSS", "Failed to encrypt resource username\n");
         goto error;
     }
-    if (cxssEncryptAES256(resource_password, password_len, rand_key, authdata_iv,
+    if (cxssEncryptAES256(resource_authdata, authdata_len, rand_key, authdata_iv,
                           &encrypted_password, &encr_password_len) < 0) {
         mssError(0, "CXSS", "Failed to encrypt resource password\n");
         goto error;
@@ -307,12 +305,16 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
     free(publickey);
     free(encrypted_username);
     free(encrypted_password);
+    cxssShred(resource_username, username_len);
+    cxssShred(resource_authdata, authdata_len);
     return CXSS_MGR_SUCCESS;
 
 error:
     free(publickey);
     free(encrypted_username);
     free(encrypted_password);
+    cxssShred(resource_username, username_len);
+    cxssShred(resource_authdata, authdata_len);
     return CXSS_MGR_INSERT_ERROR;
 }
 
@@ -381,6 +383,7 @@ cxssGetResource(const char *cxss_userid, const char *resource_id, const char *pb
     cxssFreeUserAuth(&UserAuth);
     cxssFreeUserResc(&UserResc);
     cxssDestroyKey(privatekey, privatekey_len);
+    cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
@@ -388,7 +391,8 @@ error:
     cxssFreeUserResc(&UserResc);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssDestroyKey(*resource_username, username_len);
-    cxssDestroyKey(*resource_authdata, authdata_len);    
+    cxssDestroyKey(*resource_authdata, authdata_len);  
+    cxssShred(pb_userkey, pb_userkey_len);  
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
