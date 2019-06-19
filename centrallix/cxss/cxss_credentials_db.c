@@ -212,17 +212,21 @@ cxssInsertUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->insert_user_stmt); 
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 1, 
-        UserData->CXSS_UserID, -1, NULL) != SQLITE_OK)
+        UserData->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_blob(dbcontext->insert_user_stmt, 2,
-        UserData->PublicKey, UserData->KeyLength, NULL) != SQLITE_OK)
+        UserData->PublicKey, UserData->KeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 3,
-        UserData->DateCreated, -1, NULL) != SQLITE_OK)
+        UserData->DateCreated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->insert_user_stmt, 4,
-        UserData->DateLastUpdated, -1, NULL) != SQLITE_OK)
+        UserData->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     
     /* Execute query */
     if (sqlite3_step(dbcontext->insert_user_stmt) != SQLITE_DONE) {
@@ -623,14 +627,17 @@ cxssUpdateUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->update_user_stmt); 
     if (sqlite3_bind_text(dbcontext->update_user_stmt, 1, 
-        UserData->PublicKey, UserData->KeyLength, NULL) != SQLITE_OK)
+        UserData->PublicKey, UserData->KeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_blob(dbcontext->update_user_stmt, 2,
-        UserData->DateLastUpdated, -1, NULL) != SQLITE_OK)
+        UserData->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->update_user_stmt, 3,
-        UserData->CXSS_UserID, -1, NULL) != SQLITE_OK)
+        UserData->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     
     /* Execute query */
     if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
@@ -658,29 +665,37 @@ cxssUpdateUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->update_resc_stmt); 
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 1,
-        UserResc->AESKey, UserResc->AESKeyLength, NULL) != SQLITE_OK)
+        UserResc->AESKey, UserResc->AESKeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 2,
-        UserResc->ResourceUsername, UserResc->UsernameLength, NULL) != SQLITE_OK)
+        UserResc->ResourceUsername, UserResc->UsernameLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 3,
-        UserResc->ResourceAuthData, UserResc->AuthDataLength, NULL) != SQLITE_OK)
+        UserResc->ResourceAuthData, UserResc->AuthDataLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 4,
-        UserResc->UsernameIV, UserResc->UsernameIVLength, NULL) != SQLITE_OK)
+        UserResc->UsernameIV, UserResc->UsernameIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_blob(dbcontext->update_resc_stmt, 5,
-        UserResc->AuthDataIV, UserResc->AuthDataIVLength, NULL) != SQLITE_OK)
+        UserResc->AuthDataIV, UserResc->AuthDataIVLength, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->update_resc_stmt, 6,
-        UserResc->DateLastUpdated, -1, NULL) != SQLITE_OK)
+        UserResc->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->update_resc_stmt, 7,
-        UserResc->CXSS_UserID, -1, NULL) != SQLITE_OK)
+        UserResc->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->update_resc_stmt, 8,
-        UserResc->ResourceID, -1, NULL) != SQLITE_OK)
+        UserResc->ResourceID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
 
     /* Execute query */
     if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
@@ -708,8 +723,9 @@ cxssDeleteUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->delete_user_stmt);
     if (sqlite3_bind_text(dbcontext->delete_user_stmt, 1,
-        cxss_userid, -1, NULL) != SQLITE_OK)
+        cxss_userid, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_user_stmt) != SQLITE_DONE) {
@@ -739,11 +755,13 @@ cxssDeleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->delete_resc_stmt);
     if (sqlite3_bind_text(dbcontext->delete_resc_stmt, 1,
-        cxss_userid, -1, NULL) != SQLITE_OK)
+        cxss_userid, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     if (sqlite3_bind_text(dbcontext->delete_resc_stmt, 2,
-        resource_id, -1, NULL) != SQLITE_OK)
+        resource_id, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_resc_stmt) != SQLITE_DONE) {
@@ -771,8 +789,9 @@ cxssDeleteAllUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->delete_user_auths_stmt);
     if (sqlite3_bind_text(dbcontext->delete_user_auths_stmt, 1,
-        cxss_userid, -1, NULL) != SQLITE_OK)
+        cxss_userid, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_user_auths_stmt) != SQLITE_DONE) {
@@ -800,8 +819,9 @@ cxssDeleteAllUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     /* Bind data with sqlite3 stmts */
     sqlite3_reset(dbcontext->delete_rescs_stmt);
     if (sqlite3_bind_text(dbcontext->delete_rescs_stmt, 1,
-        cxss_userid, -1, NULL) != SQLITE_OK)
+        cxss_userid, -1, NULL) != SQLITE_OK) {
         goto bind_error;
+    }
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_rescs_stmt) != SQLITE_DONE) {
