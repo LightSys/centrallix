@@ -328,13 +328,11 @@ cxssInsertUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
         goto bind_error;
     }
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 6,
-        UserResc->ResourceUsername, UserResc->UsernameLength, 
-        NULL) != SQLITE_OK) {
+        UserResc->ResourceUsername, UserResc->UsernameLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
     if (sqlite3_bind_blob(dbcontext->insert_resc_stmt, 7,
-        UserResc->ResourceAuthData, UserResc->AuthDataLength, 
-        NULL) != SQLITE_OK) {
+        UserResc->ResourceAuthData, UserResc->AuthDataLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
     if (sqlite3_bind_text(dbcontext->insert_resc_stmt, 8, 
