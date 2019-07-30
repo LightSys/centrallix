@@ -74,7 +74,7 @@ function cht_get_col_values(col_name) {
 
 function cht_find_col_with_type(type) {
     let a_col = this.columns.filter(function (column) {return column.type === type})[0];
-    return a_col.name;
+    return a_col?(a_col.name):null;
 }
 
 function cht_get_linear_data(series_idx) {
