@@ -777,6 +777,7 @@ qyp_internal_Update(pQypData inf)
 		{
 		objCurrentDate(&datum->ModifyDate);
 		strtcpy(datum->ModifyBy, mssUserName(), sizeof(datum->ModifyBy));
+
 		if (datum->Flags & QYP_DATUM_F_NEW)
 		    {
 		    /** new datum - do a Create **/
@@ -784,6 +785,8 @@ qyp_internal_Update(pQypData inf)
 		    strtcpy(datum->CreateBy, mssUserName(), sizeof(datum->CreateBy));
 		    snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
 		    source_obj = objOpen(inf->Obj->Session, source_path, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		    if (!source_obj)
+			goto error;
 
 		    /** Set entity fields **/
 		    for(j=0;j<inf->PivotData.nItems;j++)
