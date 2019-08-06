@@ -248,7 +248,7 @@ function osrc_query_text_handler(aparam)
 
     // add any relationships
     var rel = [];
-    this.ApplyRelationships(rel, false);
+    this.ApplyRelationships(rel, false, false);
     if (rel[0])
 	{
 	/*if (!firstone)
@@ -316,7 +316,7 @@ function osrc_query_object_handler(aparam)
 
     this.move_target = aparam.targetrec;
 
-    if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false);
+    if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false, false);
 
     for(var i in q)
 	{
@@ -869,7 +869,7 @@ function osrc_action_create_cb2()
     //Create an object through OSML
     if(!this.sid) this.sid=pg_links(this)[0].target;
     //var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
-    this.ApplyRelationships(this.createddata, true);
+    this.ApplyRelationships(this.createddata, true, false);
     this.ApplySequence(this.createddata);
     //htr_alert(this.createddata, 2);
     /*for(var i in this.createddata) if(i!='oid')
@@ -1109,7 +1109,7 @@ function osrc_action_modify(aparam) //up,initiating_client)
     if (this.use_having) reqparam.ls__reopen_having = 1;
 
     //var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
-    this.ApplyRelationships(this.modifieddata, false);
+    this.ApplyRelationships(this.modifieddata, false, true);
     for(var i in this.modifieddata) if(i!='oid')
 	{
 	if (this.modifieddata[i]['value'] == null)
@@ -1346,6 +1346,11 @@ function osrc_cb_register(client)
 	{
 	this.is_client_discardable = true;
 	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
+	}
+
+    if (this.replica && this.CurrentRecord > 0)
+	{
+	pg_addsched_fn(this,'GiveAllCurrentRecord', ['change'], 0);
 	}
     }
 
@@ -2715,7 +2720,7 @@ function osrc_cb_new_object_template()
     var obj = this.NewReplicaObj(0, 0);
 
     // Apply relationships and keys
-    this.ApplyRelationships(obj, false);
+    this.ApplyRelationships(obj, false, false);
     this.ApplyKeys(obj);
     this.ApplySequence(obj);
 
@@ -2953,7 +2958,7 @@ function osrc_apply_keys(obj)
     return;
     }
 
-function osrc_apply_rel(obj, in_create)
+function osrc_apply_rel(obj, in_create, in_modify)
     {
     var cnt = 0;
     while(typeof obj[cnt] != 'undefined') cnt++;
@@ -2980,8 +2985,17 @@ function osrc_apply_rel(obj, in_create)
 			    obj_index = l;
 			}
 		    }
+
+		// If not already in the obj, we add it unless we're modifying
+		// an already existing object, in which case tagging relationship
+		// data causes unnecessary fields to be set.
 		if (!found)
-		    obj_index = cnt++;
+		    {
+		    if (in_modify)
+			continue;
+		    else
+			obj_index = cnt++;
+		    }
 
 		if (obj_index != null)
 		    {
