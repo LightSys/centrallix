@@ -1348,9 +1348,9 @@ function osrc_cb_register(client)
 	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
 	}
 
-    if (this.replica && this.CurrentRecord > 0)
+    if (this.replica && this.replica.length != 0)
 	{
-	pg_addsched_fn(this,'GiveAllCurrentRecord', ['change'], 0);
+	pg_addsched_fn(this,'GiveOneCurrentRecord', [this.child.length - 1, 'change'], 0);
 	}
     }
 
@@ -2017,6 +2017,10 @@ function osrc_change_current_record()
     this.prevcurrent = newprevcurrent;
     }
 
+function osrc_give_one_current_record(id, why)
+    {
+    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+    }
 
 function osrc_give_all_current_record(why)
     {
@@ -2034,7 +2038,7 @@ function osrc_give_all_current_record(why)
 	this.FinalRecord = this.LastRecord;
 	}
     for(var i in this.child)
-	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+	this.GiveOneCurrentRecord(i, why);
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
     this.doing_refresh = false;
     //confirm('give_all_current_record done');
@@ -3960,6 +3964,7 @@ function osrc_init(param)
     loader.EncodeParams = osrc_encode_params;
     loader.Encode = osrc_encode;
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
+    loader.GiveOneCurrentRecord=osrc_give_one_current_record;
     loader.ChangeCurrentRecord=osrc_change_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
