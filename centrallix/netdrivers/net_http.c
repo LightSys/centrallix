@@ -1563,6 +1563,7 @@ nht_i_NextLine(char * token, pNhtConn conn, int size)
      ** the terminating \0 character.
      **/
     if(size > (end - start + 1)) size = (end-start + 1);
+    if(size < (end - start + 1)) end -= ((end-start + 1) - size);
     memcpy(token, buffer + start , size-1); /* Copy relevant data into token. */
     token[size-1] = '\0';
     fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread extra data.
