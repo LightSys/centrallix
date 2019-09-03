@@ -77,6 +77,13 @@ AC_DEFUN(CENTRALLIX_CHECK_OPENSSL,
     ]
 )
 
+dnl Test for SQLite
+AC_DEFUN(CENTRALLIX_CHECK_SQLITE,
+    [
+	AC_CHECK_LIB(sqlite3, sqlite3_open, [LIBS="$LIBS -lsqlite3"], AC_MSG_ERROR([Centrallix requires SQLite3 to be installed.]))
+	AC_CHECK_HEADER([sqlite3.h], [], AC_MSG_ERROR([Centrallix requires SQLite3 development header files to be installed.]))
+    ]
+)
 
 dnl Test for JSON-C
 AC_DEFUN(CENTRALLIX_CHECK_JSONC,
@@ -1513,11 +1520,18 @@ AC_DEFUN(CENTRALLIX_CHECK_RSVG,
                           WITH_RSVG="yes",
                           WITH_RSVG="no")
 
+	AC_CHECK_LIB(cairo, cairo_svg_surface_set_document_unit, HAVE_CAIRO="yes", HAVE_CAIRO="no")
+
         if test "$WITH_RSVG" = "yes"; then
-            CFLAGS="$CFLAGS $librsvg_CFLAGS"
-            LIBS="$LIBS $librsvg_LIBS"
-            AC_DEFINE([HAVE_LIBRSVG], [1], [Define to 1 if librsvg is present.])
-            AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 if <rsvg.h> is present.])
+	    if test "$HAVE_CAIRO" = "yes"; then
+		CFLAGS="$CFLAGS $librsvg_CFLAGS"
+		LIBS="$LIBS $librsvg_LIBS"
+		AC_DEFINE([HAVE_LIBRSVG], [1], [Define to 1 if librsvg is present.])
+		AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 if <rsvg.h> is present.])
+	    else
+		AC_MSG_WARN([recent Cairo was not found -- svg support will be disabled])
+		WITH_RSVG="no"
+	    fi
         else
             AC_MSG_WARN([librsvg was not found -- svg support will be disabled])
         fi

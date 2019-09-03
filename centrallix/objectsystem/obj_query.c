@@ -490,6 +490,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    if (this->SortInf->IsTemp)
 		{
 		obj = (pObject)this->SortInf->SortNames[0].Items[this->RowID++];
+		this->SortInf->SortNames[0].Items[this->RowID - 1] = NULL;
 		}
 	    else
 		{
@@ -690,6 +691,8 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 int 
 objQueryClose(pObjQuery this)
     {
+    int i;
+    pObject obj;
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
@@ -698,6 +701,15 @@ objQueryClose(pObjQuery this)
     	/** Release sort information? **/
 	if (this->SortInf)
 	    {
+	    /** Close temp objects? **/
+	    if (this->SortInf->IsTemp)
+		{
+		for(i = this->SortInf->SortNames[0].nItems - 1; i >= this->RowID; i--)
+		    {
+		    obj = (pObject)this->SortInf->SortNames[0].Items[i];
+		    if (obj) objClose(obj);
+		    }
+		}
 	    xaDeInit(this->SortInf->SortPtr+0);
 	    xaDeInit(this->SortInf->SortPtrLen+0);
 	    xaDeInit(this->SortInf->SortNames+0);

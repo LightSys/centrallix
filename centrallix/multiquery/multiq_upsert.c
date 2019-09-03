@@ -405,7 +405,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		expFreeParamList(objlist);
 		}
 	    }
-	xaClear(&pdata->ToBeUpdated);
+	xaClear(&pdata->ToBeUpdated, NULL, NULL);
 	return -1;
     }
 

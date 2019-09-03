@@ -13,6 +13,8 @@ generic_form "widget/component-decl"
 	default=310;
 	}
 
+    cols "widget/parameter" { type=integer; default=3; }
+
     osrc "widget/osrc"
 	{
 	sql = runserver("select * from " + :this:table + "/rows");
@@ -31,7 +33,7 @@ generic_form "widget/component-decl"
 		}
 	    vbox "widget/vbox"
 		{
-		x=10;y=40;column_width=200;cellsize=20; spacing=5; width=620;
+		x=10;y=40;column_width=runserver(625 / :this:cols - 5);cellsize=20; spacing=5; width=620;
 
 		rpt "widget/repeat"
 		    {
@@ -42,6 +44,11 @@ generic_form "widget/component-decl"
 			field=runserver(:rpt:name);
 			text=runserver(:rpt:name);
 			ctl_type=runserver(condition(:rpt:datatype == 'datetime', 'datetime', condition(:rpt:name == 'comments', 'textarea', 'editbox')));
+
+			h1 "widget/hints" { condition=runserver(:rpt:name == 's_date_created'); default=runclient(getdate()); }
+			h2 "widget/hints" { condition=runserver(:rpt:name == 's_date_modified'); default=runclient(getdate()); style=alwaysdef; }
+			h3 "widget/hints" { condition=runserver(:rpt:name == 's_created_by'); default=runclient(user_name()); }
+			h4 "widget/hints" { condition=runserver(:rpt:name == 's_modified_by'); default=runclient(user_name()); style=alwaysdef; }
 			}
 		    }
 		}

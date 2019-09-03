@@ -1404,20 +1404,25 @@ function form_cb_reveal(element,event)
 	{
 	case 'Reveal':
 	    this.revealed_elements++;
+	    if (this.checked_elements < this.revealed_elements)
+		this.checked_elements = this.revealed_elements;
 	    if (this.revealed_elements != 1) return 0;
 	    if (this.osrc) this.osrc.Reveal(this);
 	    break;
 	case 'Obscure':
 	    this.revealed_elements--;
+	    if (this.checked_elements > this.revealed_elements)
+		this.checked_elements = this.revealed_elements;
 	    if (this.revealed_elements != 0) return 0;
 	    if (this.osrc) this.osrc.Obscure(this);
 	    break;
 	case 'RevealCheck':
 	    pg_reveal_check_ok(event);
+	    this.checked_elements++;
 	    break;
 	case 'ObscureCheck':
 	    // unsaved data?
-	    if (!this.allowobscure && this.revealed_elements == 1)
+	    if (!this.allowobscure && this.checked_elements == 1)
 		{
 		if (this.IsUnsaved)
 		    {
@@ -1425,7 +1430,7 @@ function form_cb_reveal(element,event)
 		    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\", {});");
 		    this.cb['_3bConfirmSave'].add(this,savefunc);
 		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});pg_reveal_check_ok(this._orsevent);'));
-		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
+		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent); this.checked_elements = this.revealed_elements;'));
 		    this.show3bconfirm();
 		    }
 		else
@@ -1438,6 +1443,7 @@ function form_cb_reveal(element,event)
 		{
 		pg_reveal_check_ok(event);
 		}
+	    this.checked_elements--;
 	    break;
 	}
     return 0;
@@ -1506,6 +1512,7 @@ function form_init(form,param)
     form.didsearchlast = false;
     form.didsearch = false;
     form.revealed_elements = 0;
+    form.checked_elements = 0;
     form.is_multienter = false;
     form.valuelist = [];
     if (param.osrc)

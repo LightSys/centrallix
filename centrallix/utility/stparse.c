@@ -79,7 +79,9 @@ stFreeInf(pStructInf this)
 	ASSERTMAGIC(this,MGK_STRUCTINF);
 
 	/** Free any subinfs first **/
-	for(i=0;i<this->nSubInf;i++) if (this->SubInf[i]) stFreeInf(this->SubInf[i]);
+	for(i=this->nSubInf-1; i>=0; i--)
+	    if (this->SubInf[i])
+		stFreeInf(this->SubInf[i]);
 
 	/** Free the subinf array **/
 	if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
@@ -95,7 +97,7 @@ stFreeInf(pStructInf this)
 	if (this->Parent)
 	    {
 	    ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
-	    for(i=0;i<this->Parent->nSubInf;i++)
+	    for(i=this->Parent->nSubInf-1; i>=0; i--)
 	        {
 		if (this == this->Parent->SubInf[i])
 		    {
@@ -105,6 +107,7 @@ stFreeInf(pStructInf this)
 			this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
 			}
 		    this->Parent->SubInf[this->Parent->nSubInf] = NULL;
+		    break;
 		    }
 		}
 	    }

@@ -188,6 +188,26 @@ xaFindItem(pXArray this, void* item)
     }
 
 
+/*** xaFindItemR - lookup an item by its value, and return the index if
+ *** found, or -1 if not found.  Optimized to find an item closer to the
+ *** end of the array.
+ ***/
+int 
+xaFindItemR(pXArray this, void* item)
+    {
+    int i,k=-1;
+
+	/** Search for it **/
+	for(i=this->nItems-1;i>=0;i--) if (item==this->Items[i])
+	    {
+	    k=i;
+	    break;
+	    }
+
+    return k;
+    }
+
+
 /*** xaRemoveItem - removes an item at a specific index from the array.
  *** To remove an item of a specific value, use this function in 
  *** conjunction with xaFindItem.
@@ -213,9 +233,40 @@ xaRemoveItem(pXArray this, int index)
 /*** xaClear - remove all items from the array.
  ***/
 int 
-xaClear(pXArray this)
+xaClear(pXArray this, int (*free_fn)(), void* free_arg)
     {
-    this->nItems=0;
+    int i;
+
+	if (free_fn)
+	    {
+	    for(i=0; i<this->nItems; i++)
+		{
+		free_fn((void*)this->Items[i], free_arg);
+		}
+	    }
+	this->nItems=0;
+
+    return 0;
+    }
+
+
+/*** xaClearR - remove all items from the array.  Optimized to remove them
+ *** in reverse order.
+ ***/
+int 
+xaClearR(pXArray this, int (*free_fn)(), void* free_arg)
+    {
+    int i;
+
+	if (free_fn)
+	    {
+	    for(i=this->nItems-1; i>=0; i--)
+		{
+		free_fn((void*)this->Items[i], free_arg);
+		}
+	    }
+	this->nItems=0;
+
     return 0;
     }
 

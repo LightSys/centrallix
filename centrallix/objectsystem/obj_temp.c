@@ -215,7 +215,10 @@ tmpOpenChild(void* inf_v, pObject obj, char* childname, int mask, pContentType s
     pStructInf find_inf;
 
 	/** Find it **/
-	find_inf = stLookup(inf->Data, childname);
+	if (!strcmp(childname, "*") && (obj->Mode & OBJ_O_AUTONAME) && (obj->Mode & OBJ_O_CREAT))
+	    find_inf = NULL;
+	else
+	    find_inf = stLookup(inf->Data, childname);
 
 	/** Exists, but it is not a child object? **/
 	if (find_inf && stStructType(find_inf) != ST_T_SUBGROUP)

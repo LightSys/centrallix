@@ -905,7 +905,7 @@ idx_internal_FlushCache(pIdxTableData tdata)
 			}
 		    syPostSem(search_pg->Lock, 1, 0);
 		    }
-		xaClear(&sorted_pages);
+		xaClear(&sorted_pages, NULL, NULL);
 		}
 
 	    /** Ok, add the current page to the list. **/

@@ -823,7 +823,7 @@ function tbld_select()
 	    if (!found)
 		{
 		// already a part of another row?
-		if ($(dw).css("visibility") == 'inherit')
+		if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		    {
 		    pg_reveal_event(dw, dw, 'Obscure');
 		    dw.is_visible = 0;
