@@ -794,6 +794,7 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     /** Now do the string replace **/
     srcptr = i0->String;
     dstptr = tree->String;
+    *dstptr = '\0';
     while (*srcptr)
 	{
 	searchptr = strstr(srcptr, i1->String);
@@ -808,6 +809,7 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    /** copy stuff in between matches **/
 	    memcpy(dstptr, srcptr, searchptr - srcptr);
 	    dstptr += (searchptr - srcptr);
+	    *dstptr = '\0';
 	    srcptr = searchptr;
 	    }
 	/** do the replace **/
