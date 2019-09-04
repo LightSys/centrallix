@@ -2067,7 +2067,8 @@ function tbld_mouseover(e)
 	    var t = ly.table;
 	    if (ly.firstChild && ly.firstChild.firstChild)
 		{
-		var cell_width = getdocWidth(ly.firstChild.firstChild);
+		//var cell_width = getdocWidth(ly.firstChild.firstChild);
+		var cell_width = $(ly.firstChild.firstChild).width();
 		if (t.colsep > 0 || t.dragcols)
 		    cell_width += (t.bdr_width*2 + t.colsep);
 		if (t.cols[ly.colnum].width < cell_width && ly.data)
