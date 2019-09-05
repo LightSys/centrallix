@@ -68,7 +68,8 @@ typedef struct _SI
 #define	ST_USRTYPE_STRLEN   64	/* if group, alloc bytes for type name */
 #define ST_NAME_STRLEN	    64	/* alloc size for group/attrib name */
 
-#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))
+/*#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))*/
+#define ST_ALLOCSIZ(x)	(ST_SUBALLOC_BLKSIZ<<((x)->nSubAlloc))
 
 #define ST_SUBINF_LIMIT	    (2 * 1024 * 1024 - 1)
 
