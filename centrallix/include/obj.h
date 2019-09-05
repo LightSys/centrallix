@@ -350,6 +350,7 @@ typedef struct _OF
     void*	AttrExp;	/* an expression used for the above */
     char*	AttrExpName;	/* Name of attr for above expression */
     DateTime	CacheExpire;	/* Date/time after which cached data is no longer valid */
+    int		RowID;
     }
     Object, *pObject;
 

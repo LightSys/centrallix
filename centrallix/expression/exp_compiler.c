@@ -806,7 +806,7 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    }
 
 	/** Coverage mask for direct references (incl getdate() and user_name()) **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number")))
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
 	    }
@@ -1050,7 +1050,7 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 	    }
 
 	/** Check for absolute references in functions **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"row_number")))
 	    {
 	    cm |= EXPR_MASK_EXTREF;
 	    }
