@@ -140,6 +140,9 @@ objGetAttrType(pObject this, char* attrname)
 	    return DATA_T_STRING;
 	    }
 
+	/*if (!strcmp(attrname, "cx__rowid"))
+	    return DATA_T_INTEGER;*/
+
 	/** download-as attribute **/
 	if (!strcmp(attrname, "cx__download_as"))
 	    {
@@ -240,6 +243,24 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		return -1;
 		}
 	    }
+
+	/*if (!strcmp(attrname, "cx__rowid"))
+	    {
+	    if (data_type != DATA_T_INTEGER)
+		{
+		mssError(1,"OSML","Type mismatch in accessing 'cx__rowid' attribute");
+		return -1;
+		}
+	    if (this->RowID >= 0)
+		{
+		val->Integer = this->RowID;
+		return 0;
+		}
+	    else
+		{
+		return 1;
+		}
+	    }*/
 
 	/** Full pathname **/
 	if (!strcmp(attrname,"cx__pathname"))

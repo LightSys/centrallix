@@ -294,6 +294,7 @@ obj_internal_AllocObj()
 	this->AttrExp = NULL;
 	this->AttrExpName = NULL;
 	this->LinkCnt = 1;
+	this->RowID = -1;
 	xaInit(&(this->Attrs),16);
 
     return this;

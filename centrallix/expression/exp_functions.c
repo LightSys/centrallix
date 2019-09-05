@@ -2565,6 +2565,86 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     }
 
 
+/** pbkdf2('algo', passwd, salt, iterations) **/
+int exp_fn_pbkdf2(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression i3 = (tree->Children.nItems >= 4)?(tree->Children.Items[3]):NULL;
+    const EVP_MD *hashtype = NULL;
+    unsigned char hashvalue[EVP_MAX_MD_SIZE];
+    unsigned int hashlen;
+
+	/** Validate parameters **/
+	if (!i0 || !i1 || !i2 || !i3)
+	    {
+	    mssError(1, "EXP", "function usage: pbkdf2('algo', password, salt, iterations)");
+	    goto error;
+	    }
+	tree->DataType = DATA_T_STRING;
+
+	/** Nulls? **/
+	if ((i0->Flags | i1->Flags | i2->Flags | i3->Flags) & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	/** Wrong data types? **/
+	if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING || i2->DataType != DATA_T_STRING || i3->DataType != DATA_T_INTEGER)
+	    {
+	    mssError(1, "EXP", "function usage: pbkdf2('algo', password, salt, iterations)");
+	    goto error;
+	    }
+
+	/** Select a hash algorithm **/
+	if (!strcmp(i0->String, "md5"))
+	    hashtype = EVP_md5();
+	else if (!strcmp(i0->String, "sha1"))
+	    hashtype = EVP_sha1();
+	else if (!strcmp(i0->String, "sha256"))
+	    hashtype = EVP_sha256();
+	else if (!strcmp(i0->String, "sha384"))
+	    hashtype = EVP_sha384();
+	else if (!strcmp(i0->String, "sha512"))
+	    hashtype = EVP_sha512();
+	if (!hashtype)
+	    {
+	    mssError(1, "EXP", "pbkdf2(): invalid or unsupported hash type %s", i0->String);
+	    goto error;
+	    }
+	hashlen = EVP_MD_size(hashtype);
+
+	/** Compute it **/
+	if (PKCS5_PBKDF2_HMAC(i1->String, strlen(i1->String), (unsigned char*)i2->String, strlen(i2->String), i3->Integer, hashtype, hashlen, hashvalue) == 0)
+	    {
+	    mssError(1, "EXP", "pbkdf2(): operation failed");
+	    goto error;
+	    }
+
+	/** Generate output **/
+	if (hashlen*2+1 > 63)
+	    {
+	    tree->Alloc = 1;
+	    tree->String = nmSysMalloc(hashlen*2+1);
+	    if (!tree->String)
+		{
+		mssError(1, "EXP", "pbkdf2(): out of memory");
+		goto error;
+		}
+	    }
+	else
+	    {
+	    tree->Alloc = 0;
+	    tree->String = tree->Types.StringBuf;
+	    }
+	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
+
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
 int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     double n;
@@ -2659,6 +2739,70 @@ int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	return -1;
     }
 
+
+/*** Windowing Functions ***/
+
+int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression new_exp;
+    char newbuf[512];
+
+    /** Init the Aggregate computation expression? **/
+    if (!tree->AggExp)
+        {
+	tree->PrivateData = nmSysMalloc(512);
+	if (!tree->PrivateData)
+	    return -ENOMEM;
+	memset(tree->PrivateData, 0, 512);
+	tree->AggExp = expAllocExpression();
+	tree->AggExp->NodeType = EXPR_N_PLUS;
+	tree->AggExp->DataType = DATA_T_INTEGER;
+	tree->AggExp->Integer = -1;
+	tree->AggExp->AggLevel = 1;
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->DataType = DATA_T_INTEGER;
+	new_exp->Integer = 1;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	}
+
+    if (tree->Flags & EXPR_F_AGGLOCKED) return 0;
+
+    /** Changed? **/
+    if (tree->Children.nItems > 0)
+	{
+	memset(newbuf, 0, sizeof(newbuf));
+	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist) < 0)
+	    return -1;
+	if (memcmp(newbuf, tree->PrivateData, 512))
+	    {
+	    /** Reset count **/
+	    memcpy(tree->PrivateData, newbuf, 512);
+	    tree->AggExp->Integer = 0;
+	    tree->AggCount = 0;
+	    tree->AggValue = 0;
+	    }
+	}
+
+    /** Compute the possibly incremented value **/
+    //if (!(i0->Flags & EXPR_F_NULL))
+    //    {
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	//}
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
+/*** Aggregate Functions ***/
 
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -3140,7 +3284,12 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
 	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
+	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 
+	/** Windowing **/
+	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+
+	/** Aggregate **/
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
 	xhAdd(&EXP.Functions, "sum", (char*)exp_fn_sum);

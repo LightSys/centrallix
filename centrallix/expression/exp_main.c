@@ -84,6 +84,7 @@ expAllocExpression()
 	expr->Magic = MGK_EXPRESSION;
 	expr->LinkCnt = 1;
 	expr->DataType = DATA_T_UNAVAILABLE;
+	expr->PrivateData = NULL;
 
     return expr;
     }
@@ -122,6 +123,7 @@ expFreeExpression(pExpression this)
 
 	/** Free this itself. **/
 	xaDeInit(&(this->Children));
+	if (this->PrivateData) nmSysFree(this->PrivateData);
 	if (this->Alloc && this->String) nmSysFree(this->String);
 	if (this->NameAlloc && this->Name) nmSysFree(this->Name);
 	if (this->AggExp) expFreeExpression(this->AggExp);

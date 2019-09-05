@@ -113,6 +113,7 @@ typedef struct _ET
     unsigned int	LinkCnt;
     unsigned int	LxFlags;
     unsigned int	CmpFlags;
+    void*		PrivateData;		/* allocated with nmSysMalloc() */
     }
     Expression, *pExpression;
 
