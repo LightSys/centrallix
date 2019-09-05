@@ -251,7 +251,7 @@ cxss_internal_CompareContexts(char* ctx1, char* ctx2)
 	    ptr2 = strsep(&end2, ":");
 	    if (!ptr1) ptr1="";
 	    if (!ptr2) ptr2="";
-	    if (strcmp(ptr1, ptr2) != 0 && *ptr2)
+	    if (strcmp(ptr1, ptr2) != 0 && *ptr2 && strcmp(ptr1, "*"))
 		return -1;
 	    }
 
