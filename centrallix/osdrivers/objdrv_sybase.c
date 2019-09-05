@@ -2246,13 +2246,20 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, pSybdConn conn, pSy
 	        /** Special case 'condition()' and 'ralign()' which Sybase doesn't have. **/
 		if (!strcmp(tree->Name,"condition") && tree->Children.nItems == 3)
 		    {
-		    xsConcatenate(where_clause, " isnull((select substring(", -1);
+		    /*xsConcatenate(where_clause, " isnull((select substring(", -1);
 		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ",max(1),255) where ", -1);
 		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, "), ", 3);
 		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,conn,tdata, n_tdata, where_clause);
-		    xsConcatenate(where_clause, ") ", 2);
+		    xsConcatenate(where_clause, ") ", 2);*/
+		    xsConcatenate(where_clause, " (case when (", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") then (", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") else (", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") end) ", -1);
 		    }
 		else if (!strcmp(tree->Name,"atan2") && tree->Children.nItems == 2)
 		    {
