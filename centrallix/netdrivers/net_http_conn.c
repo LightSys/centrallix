@@ -706,7 +706,7 @@ nht_i_TLSHandler(void* v)
 	    {
 	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
 	    }
-	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) != 0)
+	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) == 0)
 	    {
 	    /** Load certificate chain also **/
 	    fp = fopen(strval, "r");
