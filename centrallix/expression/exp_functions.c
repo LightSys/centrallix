@@ -335,8 +335,11 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
         {
 	tree->DataType = DATA_T_INTEGER;
 	tree->Flags |= EXPR_F_NULL;
-	i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
-	i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
+	if (objlist)
+	    {
+	    i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
+	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
+	    }
 	return 0;
 	}
     if (i0->Integer != 0)
@@ -353,7 +356,8 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    }
 	else
 	    {
-	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
+	    if (objlist)
+		i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	    }
 	tree->DataType = i1->DataType;
 	if (i1->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
@@ -374,7 +378,8 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    }
 	else
 	    {
-	    i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
+	    if (objlist)
+		i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
 	    }
 	if (exp_internal_EvalTree(i2,objlist) < 0)
 	    {
@@ -1256,7 +1261,7 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
     tree->DataType = DATA_T_STRING;
 
     /** Validate the params **/
-    if (i0 && !i2 && i0->Flags & EXPR_F_NULL)
+    if (!objlist || (i0 && !i2 && i0->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	fn_rval = 0;
@@ -1566,7 +1571,7 @@ int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     {
     pExpression eval_exp, parent;
     int rval;
-    if (i0 && !i1 && i0->Flags & EXPR_F_NULL)
+    if (!objlist || (i0 && !i1 && i0->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
@@ -2341,6 +2346,11 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     SHA256_CTX hashctx;
     unsigned char tmpseed[SHA256_DIGEST_LENGTH];
     unsigned long long val;
+	
+	if (!objlist)
+	    {
+	    return 0;
+	    }
 
 	/** Seed provided? **/
 	if (i0 && !(i0->Flags & EXPR_F_NULL))
