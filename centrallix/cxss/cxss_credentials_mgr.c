@@ -5,6 +5,8 @@
 #include <string.h>
 #include <time.h>
 #include <openssl/bio.h>
+#include "centrallix.h"
+#include "stparse.h"
 #include "cxss/util.h"
 #include "cxss/credentials_mgr.h"
 #include "cxss/credentials_db.h"
@@ -25,9 +27,15 @@ static CXSS_DB_Context_t dbcontext = NULL;
  */ 
 int 
 cxssCredentialsManagerInit(void)
-{   
+{
+    char* db_path;
+
+    if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "credentials_db"), NULL, &db_path, 0) != 0) {
+	db_path = "/usr/local/etc/centrallix/cxss.db";
+    }
+
     cxssCryptoInit();
-    dbcontext = cxssCredentialsDatabaseInit("cxss.db");
+    dbcontext = cxssCredentialsDatabaseInit(db_path);
     if (!dbcontext) {
         return CXSS_MGR_INIT_ERROR;
     }

@@ -416,8 +416,8 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	#@rm centrallix.o
 	@echo ''
 
-cxpasswd: cxpasswd.o $(STATIC_LIBS) $(CXSSMODS)
-	$(CC) cxpasswd.o $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+cxpasswd: cxpasswd.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
+	$(CC) cxpasswd.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
 
 install: all config_install modules_install manpages_install test_install
 	@mkdir -p "$(sbindir)"

@@ -11,6 +11,7 @@ centrallix "system/config"
     useragent_config = "##SYSCONFDIR##/centrallix/useragent.cfg";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
+    credentials_db = "##SYSCONFDIR##/centrallix/cxss.db";
     cache_dir = "/var/cache/centrallix";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
