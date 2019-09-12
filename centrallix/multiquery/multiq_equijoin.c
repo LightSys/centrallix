@@ -621,7 +621,7 @@ mqjAnalyze(pQueryStatement stmt)
 		    for(j=0; j<where_qs->Children.nItems; j++)
 			{
 			where_item = (pQueryStructure)(where_qs->Children.Items[j]);
-			if (where_item->Expr && (where_item->Expr->ObjCoverageMask & used_sourcemask) == where_item->Expr->ObjCoverageMask)
+			if (where_item->Expr && (where_item->Expr->ObjCoverageMask & used_sourcemask) != 0 && (where_item->Expr->ObjCoverageMask & (stmt->Query->ProvidedObjMask | used_sourcemask /*| provided_mask*/)) == where_item->Expr->ObjCoverageMask)
 			    {
 			    if (qe->Constraint)
 				{
