@@ -12,6 +12,7 @@
 #include "cxlib/mtsession.h"
 #include "application.h"
 #include "cxlib/xhandle.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -58,6 +59,31 @@ int mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pO
 int mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTree* oxt);
 int mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
 int mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt);
+
+
+/*** mq_internal_CheckYield() - see if we need to do a thYield() to other
+ *** threads due to a long-running query.
+ ***/
+void
+mq_internal_CheckYield(pMultiQuery mq)
+    {
+    unsigned int ms;
+
+	ms = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	if (ms - mq->StartMsec > 1000 && mq->YieldMsec == 0)
+	    {
+	    thYield();
+	    mq->YieldMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	    }
+	else if (ms - mq->YieldMsec > 100)
+	    {
+	    thYield();
+	    mq->YieldMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	    }
+
+    return;
+    }
+
 
 /*** mq_internal_FreeQS - releases memory used by the query syntax tree.
  ***/
@@ -2937,6 +2963,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->QueryText = nmSysStrdup(query_text);
 	this->RowCnt = 0;
 	this->QueryCnt = 0;
+	this->YieldMsec = 0;
+	this->StartMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
 	xaInit(&this->DeclaredObjects, 8);
 	xaInit(&this->DeclaredCollections, 8);
 	if (flags & OBJ_MQ_F_ONESTATEMENT)

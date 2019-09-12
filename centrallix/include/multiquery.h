@@ -244,6 +244,8 @@ struct _MQ /* MultiQuery */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
     int			ThisObj;		/* a self-reference to a select statement's items */
+    unsigned int	StartMsec;		/* msec value at start of query */
+    unsigned int	YieldMsec;		/* msec value at last thYield() */
 
     /*** the following are for declared objects and
      *** collections with scope "query", the default
@@ -295,5 +297,6 @@ pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
 handle_t mq_internal_FindCollection(pMultiQuery mq, char* collection);
+void mq_internal_CheckYield(pMultiQuery mq);
 
 #endif  /* not defined _MULTIQUERY_H */

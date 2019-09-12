@@ -266,6 +266,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    /** Close up and go on to next object to be inserted. **/
 	    objClose(new_obj);
 	    new_obj = NULL;
+
+	    /** Yield, if necessary **/
+	    mq_internal_CheckYield(stmt->Query);
 	    }
 
 	if (sel_rval < 0)
