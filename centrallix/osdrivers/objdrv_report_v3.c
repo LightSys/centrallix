@@ -3499,6 +3499,44 @@ rpt_internal_FreeQC(pQueryConn qc)
     }
 
 
+/*** rpt_internal_LoadEndorsements - look for security endorsements
+ ***/
+int
+rpt_internal_LoadEndorsements(pRptData inf, pStructInf req)
+    {
+    char* endorsement_sql = NULL;
+    pObjQuery eqy;
+    pObject eobj;
+    char* one_endorsement;
+    char* one_context;
+
+	/** Check for endorsements to load **/
+	if (stAttrValue(stLookup(req, "add_endorsements_sql"), NULL, &endorsement_sql, 0) == 0 && endorsement_sql)
+	    {
+	    /** Run the SQL to fetch the endorsements **/
+	    eqy = objMultiQuery(inf->Obj->Session, endorsement_sql, NULL, 0);
+	    if (eqy)
+		{
+		/** Loop through returned rows **/
+		while ((eobj = objQueryFetch(eqy, O_RDONLY)) != NULL)
+		    {
+		    if (objGetAttrValue(eobj, "endorsement", DATA_T_STRING, POD(&one_endorsement)) == 0)
+			{
+			if (objGetAttrValue(eobj, "context", DATA_T_STRING, POD(&one_context)) == 0)
+			    {
+			    cxssAddEndorsement(one_endorsement, one_context);
+			    }
+			}
+		    objClose(eobj);
+		    }
+		objQueryClose(eqy);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** rpt_internal_Run - execute an immediate adhoc report with complete
  *** information listed in the req structure.
  ***/
@@ -3551,6 +3589,9 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		err = 1;
 		}
 	    }
+
+	/** Security endorsements? **/
+	rpt_internal_LoadEndorsements(inf, req);
 
 	/** Page geometry? **/
 	prtGetPageGeometry(ps, &pagewidth, &pageheight);
