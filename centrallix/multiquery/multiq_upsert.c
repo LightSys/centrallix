@@ -343,9 +343,14 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		/** Copy the value **/
 		expCopyValue(pdata->Criteria[i].Exp, pdata->Criteria[i].Value, 1);
 		if (pdata->Criteria[i].Exp->Flags & EXPR_F_NULL || pdata->Criteria[i].Exp->DataType == 0)
+		    {
 		    pdata->Criteria[i].Value->NodeType = EXPR_N_INTEGER;
+		    pdata->Criteria[i].Value->DataType = DATA_T_INTEGER;
+		    }
 		else
+		    {
 		    pdata->Criteria[i].Value->NodeType = expDataTypeToNodeType(pdata->Criteria[i].Exp->DataType);
+		    }
 		}
 
 	    /** Rebind the criteria so current = object zero **/
