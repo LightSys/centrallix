@@ -33,6 +33,8 @@ typedef struct
     XArray, *pXArray;
 
 /** Functions **/
+pXArray xaNew(int init_size);
+int xaFree(pXArray this);
 int xaInit(pXArray this, int init_size);
 int xaDeInit(pXArray this);
 int xaAddItem(pXArray this, void* item);
