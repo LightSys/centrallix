@@ -74,7 +74,7 @@ stAllocInf()
 int
 stFreeInf(pStructInf this)
     {
-    int i,j;
+    int i /*,j*/;
 
 	ASSERTMAGIC(this,MGK_STRUCTINF);
 
@@ -102,10 +102,11 @@ stFreeInf(pStructInf this)
 		if (this == this->Parent->SubInf[i])
 		    {
 		    this->Parent->nSubInf--;
-		    for(j=i;j<this->Parent->nSubInf;j++)
+		    memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
+		    /*for(j=i;j<this->Parent->nSubInf;j++)
 		        {
 			this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
-			}
+			}*/
 		    this->Parent->SubInf[this->Parent->nSubInf] = NULL;
 		    break;
 		    }
