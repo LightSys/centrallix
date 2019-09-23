@@ -58,6 +58,17 @@ typedef struct
 extern EXP_Globals EXP;
 
 
+/** description of a property that is in a tree **/
+typedef struct
+    {
+    char*		ObjName;	/* null if unknown or unavailable */
+    int			ObjID;
+    char*		PropName;
+    int			Flags;		/* such as EXPR_F_FREEZEEVAL */
+    }
+    ExpProperty, *pExpProperty;
+
+
 /** expression tree control structure **/
 typedef struct _EC
     {
@@ -250,6 +261,9 @@ int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
+int expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa);
+pXArray expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist); /* call with proplist = NULL */
+void expFreeProps(pXArray proplist);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);

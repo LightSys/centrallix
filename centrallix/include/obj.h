@@ -363,6 +363,17 @@ typedef struct _OF
 #define OBJ_F_TEMPORARY		64	/* created by objCreateTempObject() */
 
 
+/** temporary collection indexes **/
+typedef struct _TI
+    {
+    XArray	Fields;		/* List of fields in this index */
+    XHashTable	Index;		/* FIXME: replace with B+ tree in the future */
+    void*	OneObjList;	/* pParamObjects; for convenience */
+    int		IsUnique:1;
+    }
+    ObjTempIndex, *pObjTempIndex;
+
+
 /** structure for temporary objects **/
 typedef struct _TO
     {
@@ -370,6 +381,7 @@ typedef struct _TO
     int		LinkCnt;
     void*	Data;		/* pStructInf */
     long long	CreateCnt;
+    XArray	Indexes;	/* of pObjTempIndex */
     }
     ObjTemp, *pObjTemp;
 

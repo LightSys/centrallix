@@ -42,7 +42,9 @@
 #include "cxlib/xhandle.h"
 
 
-#define MQ_MAX_ORDERBY	25
+#define MQ_MAX_ORDERBY		(25)
+
+#define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+1024)
 
 
 /*** Structure for a query driver.  A query driver basically manages a type
@@ -111,7 +113,7 @@ typedef struct _QS
     XArray		Children;
     int			ObjID;
     char		Presentation[32];
-    char		Source[OBJSYS_MAX_PATH+1];
+    char		Source[MQ_MAX_SOURCELEN];
     char		Name[32];
     int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;

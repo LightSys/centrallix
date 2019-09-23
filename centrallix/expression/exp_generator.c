@@ -858,3 +858,108 @@ expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
     return objs_xa->nItems;
     }
 
+
+int
+exp_internal_AddPropForIDToList(pXArray proplist, int obj_id, char* propname, int flags)
+    {
+    pExpProperty prop;
+
+	prop = (pExpProperty)nmMalloc(sizeof(ExpProperty));
+	if (!prop)
+	    return -1;
+	prop->ObjName = NULL;
+	prop->ObjID = obj_id;
+	prop->PropName = nmSysStrdup(propname);
+	prop->Flags = flags;
+
+	xaAddItem(proplist, prop);
+
+    return 0;
+    }
+
+
+int
+expGetPropsForObject_r(pExpression root, pExpression exp, int obj_id, pXArray proplist)
+    {
+    pExpression subexp;
+    char* propn;
+    int i, exp_objid;;
+
+	/** Check this node **/
+	if (exp->NodeType == EXPR_N_OBJECT)
+	    {
+	    subexp = (pExpression)(exp->Children.Items[0]);
+	    if (subexp && subexp->NodeType == EXPR_N_PROPERTY)
+		propn = subexp->Name;
+	    else
+		propn = NULL;
+	    exp_objid = expObjID(subexp, NULL);
+	    if (root->Control && root->Control->Remapped) 
+		exp_objid = root->Control->ObjMap[exp_objid];
+	    if (obj_id == -1 || exp_objid == obj_id)
+		exp_internal_AddPropForIDToList(proplist, exp_objid, propn, subexp->Flags & (EXPR_F_FREEZEEVAL));
+	    }
+	else if (exp->NodeType == EXPR_N_FUNCTION && !strcmp(exp->Name, "substitute"))
+	    {
+	    /** This one could reference almost anything in the namespace **/
+	    exp_internal_AddPropForIDToList(proplist, -1, "*", 0);
+	    }
+	else if (exp->NodeType == EXPR_N_PROPERTY)
+	    {
+	    exp_objid = expObjID(exp, NULL);
+	    if (root->Control && root->Control->Remapped) 
+		exp_objid = root->Control->ObjMap[exp_objid];
+	    if (obj_id == -1 || exp_objid == obj_id)
+		exp_internal_AddPropForIDToList(proplist, exp_objid, exp->Name, exp->Flags & (EXPR_F_FREEZEEVAL));
+	    }
+	else
+	    {
+	    for(i=0;i<exp->Children.nItems;i++) expGetPropsForObject_r(root, (pExpression)(exp->Children.Items[i]), obj_id, proplist);
+	    }
+
+    return 0;
+    }
+
+
+/*** expGetPropsForObject - get the property list from an expression tree for
+ *** just one specific object ID.  Returns an XArray of ExpProperty.
+ ***/
+pXArray
+expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist)
+    {
+
+	/** Allocate the new property list **/
+	if (!proplist)
+	    {
+	    proplist = xaNew(16);
+	    if (!proplist)
+		return NULL;
+	    }
+
+	if (expGetPropsForObject_r(exp, exp, obj_id, proplist) == 0)
+	    return proplist;
+
+    return NULL;
+    }
+
+
+void
+expFreeProps(pXArray proplist)
+    {
+    int i;
+    pExpProperty prop;
+
+	for(i=0; i<proplist->nItems; i++)
+	    {
+	    prop = (pExpProperty)xaGetItem(proplist, i);
+	    if (prop->ObjName)
+		nmSysFree(prop->ObjName);
+	    if (prop->PropName)
+		nmSysFree(prop->PropName);
+	    nmFree(prop, sizeof(ExpProperty));
+	    }
+
+	xaFree(proplist);
+
+    return;
+    }

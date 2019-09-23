@@ -103,7 +103,7 @@ typedef struct _MPI
     pMqpSubtrees    Subtrees;
     pMqpRowCache    RowCache;
     int		    ObjMode;	/* O_xxx mode to open objects with */
-    char	    CurrentSource[OBJSYS_MAX_PATH];
+    char	    CurrentSource[OBJSYS_MAX_PATH+1+1024];
     XArray	    SourceList;
     int		    SourceIndex;
     pExpression	    AddlExp;
