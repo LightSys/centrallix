@@ -2787,7 +2787,7 @@ int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, p
     if (tree->Children.nItems > 0)
 	{
 	memset(newbuf, 0, sizeof(newbuf));
-	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist) < 0)
+	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
 	    return -1;
 	if (memcmp(newbuf, tree->PrivateData, 512))
 	    {

@@ -377,7 +377,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xsInit(&item->OrderBuf);
 		xaAddItem(&context->Objects, item);
-		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList) < 0)
+		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList, 0) < 0)
 		    goto error;
 		item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
 		if (!item->SavedValues)

@@ -155,7 +155,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 	/** Ok, figure out if the group by columns changed **/
 	oldlen = md->GroupByLen;
 	/*md->GroupByLen = (ptr - new_buf);*/
-	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList);
+	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList, 0);
 	if (md->GroupByLen < 0) return -1;
 	*new_ptr = new_buf;
 	if (md->GroupByPtr == NULL) return 1;
