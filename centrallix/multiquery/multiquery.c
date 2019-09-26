@@ -368,7 +368,7 @@ mq_internal_AddDeclaredObject(pMultiQuery query, pQueryDeclaredObject qdo)
     {
 
 	/** Add to master object list too **/
-	if (expLookupParam(query->ObjList, qdo->Name) >= 0)
+	if (expLookupParam(query->ObjList, qdo->Name, 0) >= 0)
 	    return -1;
 	if (expAddParamToList(query->ObjList, qdo->Name, (void*)qdo, 0) >= 0)
 	    {
@@ -482,7 +482,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    ptr = subtree->Source;
 		if (subtree->Flags & MQ_SF_IDENTITY)
 		    has_identity = 1;
-		if (expLookupParam(stmt->Query->ObjList, ptr) >= 0)
+		if (expLookupParam(stmt->Query->ObjList, ptr, 0) >= 0)
 		    {
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
@@ -3005,7 +3005,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    }
 
 	/** Add the __inserted object **/
-	if (expLookupParam(this->ObjList, "__inserted") < 0 && expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
+	if (expLookupParam(this->ObjList, "__inserted", 0) < 0 && expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
 	    this->nProvidedObjects++;
 	else
 	    this->Flags |= MQ_F_NOINSERTED;
@@ -3569,7 +3569,7 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	    mq_internal_CloseStatement(qy->CurStmt);
 
 	/** Close an __inserted object **/
-	if (qy->ObjList && !(qy->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(qy->ObjList, "__inserted")) >= 0)
+	if (qy->ObjList && !(qy->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(qy->ObjList, "__inserted", 0)) >= 0)
 	    {
 	    if (qy->ObjList->Objects[id])
 		{
@@ -4365,6 +4365,7 @@ mqInitialize()
 	nmRegister(sizeof(QueryDriver),"QueryDriver");
 	nmRegister(sizeof(PseudoObject),"PseudoObject");
 	nmRegister(sizeof(Expression),"Expression");
+	nmRegister(sizeof(ExpControl),"ExpControl");
 	nmRegister(sizeof(ParamObjects),"ParamObjects");
 
 	/** Register the module with the OSML. **/

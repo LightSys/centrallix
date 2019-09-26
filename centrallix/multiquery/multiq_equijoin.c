@@ -434,7 +434,7 @@ mqjAnalyze(pQueryStatement stmt)
 
 	    /** Only one source? **/
 	    if (n_sources <= min_objlist + 1)
-		return 0;
+		goto cleanup;
 
 	    /** Determine inner/outer relationships query-wide **/
 	    for(i=n_joins-1; i>=0; i--)
@@ -665,6 +665,7 @@ mqjAnalyze(pQueryStatement stmt)
 		}
 	    }
 
+    cleanup:
 	/** Clean up **/
 	for(i=0;i<n_joins;i++)
 	    nmFree(joins[i], sizeof(MqjJoin));
@@ -930,6 +931,10 @@ mqjInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqjJoin), "MqjJoin");
+	nmRegister(sizeof(MqjSource), "MqjSource");
+	nmRegister(sizeof(MqjJoinData), "MqjJoinData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQJ - MultiQuery Join Module");

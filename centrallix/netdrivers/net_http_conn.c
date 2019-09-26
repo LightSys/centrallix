@@ -743,6 +743,8 @@ nht_i_TLSHandler(void* v)
 		continue;
 		}
 
+	    //cxDebugLog("new TLS connection");
+
 	    /** Check reopen **/
 	    nht_i_CheckAccessLog();
 
@@ -832,6 +834,8 @@ nht_i_Handler(void* v)
 		thSleep(10);
 		continue;
 		}
+
+	    //cxDebugLog("new HTTP connection");
 
 	    /** Check reopen **/
 	    nht_i_CheckAccessLog();

@@ -44,6 +44,7 @@
 typedef struct _SI
     {
     int		    Magic;
+    int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
     char*	    UsrType;	/* type of group, null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
@@ -118,6 +119,9 @@ int stFreeInf(pStructInf inf);
 int stAddInf(pStructInf main_inf, pStructInf sub_inf);
 
 /*** new functions ***/
+pStructInf stLinkInf(pStructInf inf);
+int stPrintInf(pStructInf this);
+int stRemoveInf(pStructInf inf);
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
 int stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value);
 int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);

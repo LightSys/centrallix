@@ -417,7 +417,7 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	if (stmt->HavingClause)
 	    {
 	    id = -1;
-	    if (expLookupParam(objlist, "this") < 0)
+	    if (expLookupParam(objlist, "this", 0) < 0)
 		id = expAddParamToList(objlist, "this", NULL, 0);
 	    expUnlockAggregates(stmt->HavingClause, level);
 	    expEvalTree(stmt->HavingClause, objlist);
@@ -826,6 +826,8 @@ mqtInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MQTData), "MQTData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQT - MultiQuery Tabular Data Module");

@@ -1797,6 +1797,8 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
+	    if (objlist->CurControl)
+		exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 

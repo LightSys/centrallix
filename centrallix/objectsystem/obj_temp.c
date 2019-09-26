@@ -168,6 +168,7 @@ tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[])
 
 	/** Look it up **/
 	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
+	nmSysFree(key);
 
     return node;
     }
@@ -188,6 +189,7 @@ tmp_internal_IndexLookupFromInf(pObjTempIndex idx, pStructInf values)
 
 	/** Look it up **/
 	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
+	nmSysFree(key);
 
     return node;
     }
@@ -209,7 +211,10 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	/** Look it up **/
 	node = xhLookup(&idx->Index, key);
 	if (!node)
+	    {
+	    nmSysFree(key);
 	    return -1;
+	    }
 
 	/** Remove it **/
 	xhRemove(&idx->Index,  key);
@@ -217,6 +222,7 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	/** Free the node **/
 	nmSysFree(node->Key);
 	nmFree(node, sizeof(ObjTempIdxNode));
+	nmSysFree(key);
 
     return 0;
     }
@@ -229,6 +235,10 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
     {
     pObjTempIdxNode node;
     char* key;
+
+	/** Not unique? **/
+	if (!idx->IsUnique)
+	    return -1;
 
 	/** Determine the lookup key **/
 	key = tmp_internal_GenerateKeyFromInf(idx, tuple);
@@ -643,7 +653,7 @@ objOpenTempObject(pObjSession session, handle_t tempobj, int mode)
 	    goto error;
 	memset(inf, 0, sizeof(ObjTempData));
 	inf->TempObj = tmp;
-	inf->Data = (pStructInf)tmp->Data;
+	inf->Data = stLinkInf((pStructInf)tmp->Data);
 	inf->IsNew = 0;
 
 	/** Allocate an open object **/
@@ -731,7 +741,7 @@ tmpOpenChild(void* inf_v, pObject obj, char* childname, int mask, pContentType s
 	    child_inf = (pObjTempData)nmMalloc(sizeof(ObjTempData));
 	    if (!child_inf) return NULL;
 	    memset(child_inf, 0, sizeof(ObjTempData));
-	    child_inf->Data = find_inf;
+	    child_inf->Data = stLinkInf(find_inf);
 	    child_inf->TempObj = inf->TempObj;
 	    child_inf->TempObj->LinkCnt++;
 	    child_inf->IsNew = is_new;
@@ -751,6 +761,7 @@ tmpClose(void* inf_v, pObjTrxTree* oxt)
 
 	/** Release the memory **/
 	obj_internal_CloseTempObj(inf->TempObj);
+	stFreeInf(inf->Data);
 	nmFree(inf, sizeof(ObjTempData));
 
     return 0;
@@ -784,13 +795,10 @@ tmpDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    return -1;
 	    }
 
-	/** Delete it.  FIXME - BUG - there is a reference counting issue here,
-	 ** we will need ref counting on the entire StructInf structure in order
-	 ** to properly delete a subpart of a structinf tree that may have
-	 ** multiple references open to it.
-	 **/
+	/** Delete it. **/
 	tmp_internal_RemoveFromMatchingIndexes(inf->TempObj, inf->Data, "*");
-	stFreeInf(inf->Data);
+	stRemoveInf(inf->Data);
+	//stFreeInf(inf->Data);
 	 
 	/** Release the inf structure **/
 	tmpClose(inf_v, oxt);
@@ -851,7 +859,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	if (!qy)
 	    goto error;
 	memset(qy, 0, sizeof(ObjTempQuery));
-	qy->Data = inf->Data;
+	qy->Data = stLinkInf(inf->Data);
 	qy->ItemCnt = 0;
 	qy->TempObj = inf->TempObj;
 	qy->UsingIndex = NULL;
@@ -915,6 +923,8 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			//printf(" - got values");
 			/** Ok, it is usable.  Do the lookup. **/
 			qy->IndexNode = tmp_internal_IndexLookup(qy->UsingIndex, values);
+			nmFree(values, sizeof(pExpression) * qy->UsingIndex->Fields.nItems);
+			values = NULL;
 			//if (qy->IndexNode) printf(" - got node");
 			}
 		    else
@@ -990,7 +1000,7 @@ tmpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf = (pObjTempData)nmMalloc(sizeof(ObjTempData));
 	if (!inf) return NULL;
 	memset(inf, 0, sizeof(ObjTempData));
-	inf->Data = qy->CurInf;
+	inf->Data = stLinkInf(qy->CurInf);
 	inf->TempObj = qy->TempObj;
 	inf->TempObj->LinkCnt++;
 	inf->IsNew = 0;
@@ -1009,6 +1019,7 @@ tmpQueryClose(void* qy_v, pObjTrxTree* oxt)
 
 	/** Free the structure **/
 	obj_internal_CloseTempObj(qy->TempObj);
+	stFreeInf(qy->Data);
 	nmFree(qy, sizeof(ObjTempQuery));
 
     return 0;
@@ -1428,6 +1439,12 @@ tmpInitialize()
 	drv->Capabilities = OBJDRV_C_FULLQUERY;
 	xaInit(&(drv->RootContentTypes),16);
 	xaAddItem(&(drv->RootContentTypes),"system/tempobj");
+
+	nmRegister(sizeof(ObjTempData), "ObjTempData");
+	nmRegister(sizeof(ObjTempIdxNode), "ObjTempIdxNode");
+	nmRegister(sizeof(ObjTempQuery), "ObjTempQuery");
+	nmRegister(sizeof(ObjTempIndex), "ObjTempIndex");
+	nmRegister(sizeof(ObjTemp), "ObjTemp");
 
 	/** Setup the function references. **/
 	drv->Open = tmpOpen;

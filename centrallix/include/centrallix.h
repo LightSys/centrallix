@@ -53,6 +53,7 @@ typedef struct _CXG
     XArray	ShutdownHandlers;
     int		Flags;
     int		ClkTck;
+    pFile	DebugFile;
     }
     CxGlobals_t, *pCxGlobals_t;
 
@@ -98,6 +99,9 @@ int cxAddShutdownHandler(ShutdownHandlerFunc);
 int cxInitialize();
 int cxHtInit();
 int cxNetworkInit();
+
+/*** Debugging ***/
+int cxDebugLog(char* fmt, ...);
 
 
 /*** Sys Info data structure for object/tree additions ***/

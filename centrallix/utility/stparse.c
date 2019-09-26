@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <assert.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/exception.h"
@@ -51,6 +52,24 @@
 int st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObjects objlist);
 /*int st_internal_FLStruct(pLxSession s, pStructInf info);*/
 
+
+/*** stPrintInf - print a struct inf tree
+ ***/
+int
+stPrintInf(pStructInf this)
+    {
+    pFile fd;
+
+	fd = fdOpen("/dev/stdout", O_WRONLY, 0600);
+	if (!fd)
+	    return -1;
+	stGenerateMsg(fd, this, 0);
+	fdClose(fd, 0);
+
+    return 0;
+    }
+
+
 /*** stAllocInf - allocate a new StructInf structure.
  ***/
 pStructInf
@@ -64,6 +83,22 @@ stAllocInf()
 	SETMAGIC(this,MGK_STRUCTINF);
 	this->Name = nmMalloc(ST_NAME_STRLEN);
 	this->UserData = NULL;
+	this->LinkCnt = 1;
+
+    return this;
+    }
+
+
+/*** stLinkInf - add a reference count to a structinf
+ ***/
+pStructInf
+stLinkInf(pStructInf this)
+    {
+
+	ASSERTMAGIC(this,MGK_STRUCTINF);
+
+	/** Link to this node **/
+	this->LinkCnt++;
 
     return this;
     }
@@ -72,55 +107,135 @@ stAllocInf()
 /*** stFreeInf - release an existing StructInf, and any sub infs
  ***/
 int
-stFreeInf(pStructInf this)
+stFreeInf_r(pStructInf this, int parentcnt)
     {
     int i /*,j*/;
 
 	ASSERTMAGIC(this,MGK_STRUCTINF);
 
-	/** Free any subinfs first **/
-	for(i=this->nSubInf-1; i>=0; i--)
-	    if (this->SubInf[i])
-		stFreeInf(this->SubInf[i]);
-
-	/** Free the subinf array **/
-	if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
-
-	/** String need to be deallocated? **/
-	if (this->Name) nmFree(this->Name,ST_NAME_STRLEN);
-	if (this->UsrType) nmFree(this->UsrType,ST_USRTYPE_STRLEN);
-
-	/** Release the expression, if any. **/
-	if (this->Value) expFreeExpression(this->Value);
-
-	/** Disconnect from parent if there is one. **/
-	if (this->Parent)
+	/** Actually release it if the link count goes to zero **/
+	if (parentcnt + this->LinkCnt == 0)
 	    {
-	    ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
-	    for(i=this->Parent->nSubInf-1; i>=0; i--)
-	        {
-		if (this == this->Parent->SubInf[i])
-		    {
-		    this->Parent->nSubInf--;
-		    memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
-		    /*for(j=i;j<this->Parent->nSubInf;j++)
-		        {
-			this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
-			}*/
-		    this->Parent->SubInf[this->Parent->nSubInf] = NULL;
-		    break;
-		    }
-		}
-	    }
+	    /** Free any subinfs first **/
+	    for(i=this->nSubInf-1; i>=0; i--)
+		if (this->SubInf[i])
+		    stFreeInf_r(this->SubInf[i], parentcnt + this->LinkCnt);
 
-	/** Free the current one. **/
-	nmFree(this,sizeof(StructInf));
+	    /** Free the subinf array **/
+	    if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
+
+	    /** String need to be deallocated? **/
+	    if (this->Name) nmFree(this->Name,ST_NAME_STRLEN);
+	    if (this->UsrType) nmFree(this->UsrType,ST_USRTYPE_STRLEN);
+
+	    /** Release the expression, if any. **/
+	    if (this->Value) expFreeExpression(this->Value);
+
+	    /** Disconnect from parent if there is one. **/
+	    if (this->Parent)
+		{
+		ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
+		for(i=this->Parent->nSubInf-1; i>=0; i--)
+		    {
+		    if (this == this->Parent->SubInf[i])
+			{
+			this->Parent->nSubInf--;
+			memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
+			/*for(j=i;j<this->Parent->nSubInf;j++)
+			    {
+			    this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
+			    }*/
+			this->Parent->SubInf[this->Parent->nSubInf] = NULL;
+			break;
+			}
+		    }
+		this->Parent = NULL;
+		}
+
+	    /** Disconnect from any remaining children **/
+	    for(i=0; i<this->nSubInf; i++)
+		if (this->SubInf[i])
+		    this->SubInf[i]->Parent = NULL;
+
+	    /** Free the current one. **/
+	    nmFree(this,sizeof(StructInf));
+	    }
 
     return 0;
     }
 
 
-/*** stAddInf - add a subinf to the main inf structure
+int
+stTestAndFreeInf(pStructInf this)
+    {
+    int cnt;
+    pStructInf trace;
+
+	/** Find the inherited ref count **/
+	for(trace=this->Parent,cnt=0; trace; trace=trace->Parent)
+	    {
+	    cnt += trace->LinkCnt;
+	    }
+
+	/** Free/Unlink it **/
+	stFreeInf_r(this, cnt);
+
+    return 0;
+    }
+
+
+int
+stFreeInf(pStructInf this)
+    {
+
+	ASSERTMAGIC(this,MGK_STRUCTINF);
+
+	this->LinkCnt--;
+	assert(this->LinkCnt >= 0);
+
+	stTestAndFreeInf(this);
+
+    return 0;
+    }
+
+
+/*** stRemoveInf - removes a node from its parent, freeing it if that causes it
+ *** to have a zero reference count.
+ ***/
+int
+stRemoveInf(pStructInf this)
+    {
+    int i;
+
+	/** Disconnect from parent inf **/
+	if (this->Parent)
+	    {
+	    ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
+	    for(i=this->Parent->nSubInf-1; i>=0; i--)
+		{
+		if (this == this->Parent->SubInf[i])
+		    {
+		    this->Parent->nSubInf--;
+		    memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
+		    this->Parent->SubInf[this->Parent->nSubInf] = NULL;
+		    break;
+		    }
+		}
+	    this->Parent = NULL;
+	    }
+
+	/** See if this needs to be freed **/
+	stFreeInf_r(this, 0);
+
+    return 0;
+    }
+
+
+/*** stAddInf - add a subinf to the main inf structure.  Reference counting note:
+ *** since subinf's "automatically" inherit their parent's reference count, we
+ *** subtract one when adding it to the parent.  The assumption is that the caller
+ *** holds a ref to both the inf and subinf, and so we combine those into one once
+ *** the subinf is added.
  ***/
 int
 stAddInf(pStructInf main_inf, pStructInf sub_inf)
@@ -151,12 +266,15 @@ stAddInf(pStructInf main_inf, pStructInf sub_inf)
 	/** Add it. **/
 	main_inf->SubInf[main_inf->nSubInf++] = sub_inf;
 	sub_inf->Parent = main_inf;
+	sub_inf->LinkCnt--;
 
     return 0;
     }
 
 
-/*** stAddAttr - adds an attribute to the existing inf.
+/*** stAddAttr - adds an attribute to the existing inf.  Reference counting
+ *** note: the new attribute by default will have the same reference count as
+ *** the node it was added to.
  ***/
 pStructInf
 stAddAttr(pStructInf inf, char* name)

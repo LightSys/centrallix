@@ -517,6 +517,9 @@ mqobInitialize()
 	drv->Finish = mqobFinish;
 	drv->Release = mqobRelease;
 
+	nmRegister(sizeof(MQOData), "MQOData");
+	nmRegister(sizeof(MqobOrderable), "MqobOrderable");
+
 	/** Register with the multiquery system. **/
 	if (mqRegisterQueryDriver(drv) < 0) return -1;
 	MQOBINF.BeforeGroupDriver = drv;

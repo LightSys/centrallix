@@ -384,7 +384,7 @@ mqpAnalyze(pQueryStatement stmt)
 	     ** If this is an expression, Presentation has a forced value
 	     ** if not otherwise supplied by the SQL coder.
 	     **/
-	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
+	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source), 0);
 	    if (src_idx == -1)
 	        {
 		mq_internal_FreeQE(qe);
@@ -1415,6 +1415,12 @@ mqpInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqpSbtInf), "MqpSbtInf");
+	nmRegister(sizeof(MqpSubtrees), "MqpSubtrees");
+	nmRegister(sizeof(MqpOneRow), "MqpOneRow");
+	nmRegister(sizeof(MqpRowCache), "MqpRowCache");
+	nmRegister(sizeof(MqpInf), "MqpInf");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQP - MultiQuery Projection Module");

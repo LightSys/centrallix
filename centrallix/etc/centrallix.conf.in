@@ -12,6 +12,7 @@ centrallix "system/config"
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
     credentials_db = "##SYSCONFDIR##/centrallix/cxss.db";
+    debug_log_file = "/var/log/cx_debug_log";
     cache_dir = "/var/cache/centrallix";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path

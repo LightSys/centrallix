@@ -3258,8 +3258,8 @@ nhtInitialize()
 	thCreate(nht_i_Watchdog, 0, NULL);
 
 	/** Start the network listeners. **/
-	thCreate(nht_i_Handler, 0, NULL);
 	thCreate(nht_i_TLSHandler, 0, NULL);
+	thCreate(nht_i_Handler, 0, NULL);
 
     return 0;
     }
