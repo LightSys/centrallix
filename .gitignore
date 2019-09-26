@@ -54,3 +54,5 @@ centrallix/test-driver
 *.gcno
 *.gcov
 *.gcda
+perf.data
+perf.data.old
