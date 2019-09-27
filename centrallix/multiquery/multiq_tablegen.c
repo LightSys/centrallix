@@ -392,8 +392,8 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
 	    {
 	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	    //if (exp /* && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL) */ )
-	    if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+	    if (exp /* && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL) */ )
+	    //if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
 		{
 		expUnlockAggregates(exp, level);
 		expEvalTree(exp, objlist);
@@ -546,7 +546,7 @@ mqt_internal_NextChildItem(pQueryElement parent, pQueryElement child, pQueryStat
 
 	rval = child->Driver->NextItem(child, stmt);
 
-	//mqt_internal_UpdateAggregates(stmt, parent, 0, stmt->Query->ObjList);
+	mqt_internal_UpdateAggregates(stmt, parent, 0, stmt->Query->ObjList);
 
     return rval;
     }
