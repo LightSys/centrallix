@@ -2235,7 +2235,7 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
  *** ordering comparisons.
  ***/
 int
-objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* objlist_v)
+objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* objlist_v, int asciz)
     {
     pExpression* fields = (pExpression*)fields_v;
     pParamObjects objlist = (pParamObjects)objlist_v;
@@ -2247,6 +2247,16 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
     char* fieldstart;
     int clen;
     unsigned char tmp_data[12];
+    char hex[] = "0123456789abcdef";
+    char val;
+
+	if (asciz)
+	    {
+	    if (buflen < 1)
+		return -1;
+	    else
+		buflen--;
+	    }
 
 	ptr = buf;
 	for(i=0;i<n_fields;i++)
@@ -2255,7 +2265,10 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 
 	    /** Evaluate the item **/
 	    exp = fields[i];
-	    rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
+	    if (!exp)
+		rval = 1;
+	    else
+		rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
 	    if (rval < 0) return -1;
 
 	    /** NULL indication **/
@@ -2269,20 +2282,49 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 		/** Not null.  Copy null indication and data **/
 		*(ptr++) = '1';
 
-		/** Won't fit in buffer? **/
-		if (ptr+clen >= buf+buflen) return -1;
-
 		/** Copy the data to the binary image buffer **/
-		memcpy(ptr, cptr, clen);
-		ptr += clen;
-
-		/** If sorting in DESC order for this item... **/
-		if (exp->Flags & EXPR_F_DESC)
+		if (asciz)
 		    {
-		    /** Start at the null ind. to pick up the null value flag too **/
-		    for(j=0;j<(ptr - fieldstart);j++) fieldstart[j] = ~fieldstart[j];
+		    /** Won't fit in buffer? **/
+		    if (ptr+clen*2 >= buf+buflen) return -1;
+
+		    /** Swap the null indication **/
+		    if (exp->Flags & EXPR_F_DESC)
+			ptr[-1] = ('1' + '0') - ptr[-1];
+
+		    /** Copy it, transforming it to a hex string */
+		    for(j=0; j<clen; j++)
+			{
+			val = cptr[j];
+			if (exp->Flags & EXPR_F_DESC)
+			    val = ~val;
+			ptr[j*2] = hex[(cptr[j]>>4)&0xf];
+			ptr[j*2+1] = hex[cptr[j]&0xf];
+			}
+		    ptr += clen*2;
 		    }
+		else
+		    {
+		    /** Won't fit in buffer? **/
+		    if (ptr+clen >= buf+buflen) return -1;
+
+		    memcpy(ptr, cptr, clen);
+		    ptr += clen;
+
+		    /** If sorting in DESC order for this item... **/
+		    if (exp->Flags & EXPR_F_DESC)
+			{
+			/** Start at the null ind. to pick up the null value flag too **/
+			for(j=0;j<(ptr - fieldstart);j++) fieldstart[j] = ~fieldstart[j];
+			}
+		    }
+
 		}
+	    }
+
+	if (asciz)
+	    {
+	    *(ptr++) = '\0';
 	    }
 
     return (ptr - buf);
@@ -2292,7 +2334,7 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 /*** Same as above, just to an xstring instead of a c-string
  ***/
 int
-objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* objlist_v)
+objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* objlist_v, int asciz)
     {
     pExpression* fields = (pExpression*)fields_v;
     pParamObjects objlist = (pParamObjects)objlist_v;
@@ -2304,6 +2346,8 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
     unsigned char tmp_data[12];
     int rval;
     pExpression exp;
+    char hex[] = "0123456789abcdef";
+    char val, hval;
 
 	startoffset = str->Length;
 	for(i=0;i<n_fields;i++)
@@ -2312,7 +2356,10 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 
 	    /** Evaluate the item **/
 	    exp = fields[i];
-	    rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
+	    if (!exp)
+		rval = 1;
+	    else
+		rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
 	    if (rval < 0) return -1;
 
 	    if (rval == 1)
@@ -2322,13 +2369,35 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 	    else
 		{
 		xsConcatenate(str, "1", 1);
-		xsConcatenate(str, cptr, clen);
 
-		/** If sorting in DESC order for this item... **/
-		if (exp->Flags & EXPR_F_DESC)
+		if (asciz)
 		    {
-		    /** Start at null ind. to pick up the null value flag too **/
-		    for(j=fieldoffset;j<str->Length;j++) str->String[j] = ~str->String[j];
+		    /** Swap the null indication **/
+		    if (exp->Flags & EXPR_F_DESC)
+			str->String[str->Length-1] = ('1' + '0') - str->String[str->Length-1];
+
+		    /** Copy it, transforming it to a hex string */
+		    for(j=0; j<clen; j++)
+			{
+			val = cptr[j];
+			if (exp->Flags & EXPR_F_DESC)
+			    val = ~val;
+			hval = hex[(cptr[j]>>4)&0xf];
+			xsConcatenate(str, &hval, 1);
+			hval = hex[cptr[j]&0xf];
+			xsConcatenate(str, &hval, 1);
+			}
+		    }
+		else
+		    {
+		    xsConcatenate(str, cptr, clen);
+
+		    /** If sorting in DESC order for this item... **/
+		    if (exp->Flags & EXPR_F_DESC)
+			{
+			/** Start at null ind. to pick up the null value flag too **/
+			for(j=fieldoffset;j<str->Length;j++) str->String[j] = ~str->String[j];
+			}
 		    }
 		}
 	    }

@@ -79,7 +79,7 @@ function osrc_refresh_timer()
     {
     this.refresh_schedid = null;
     this.req_ind_act = false;
-    if (this.revealed_children > 0)
+    if (!this.qy_reveal_only || this.revealed_children > 0)
 	this.ifcProbe(ifAction).Invoke('Refresh', {});
     else
 	this.refresh_schedid = pg_addsched_fn(this, 'RefreshTimer', [], this.refresh_interval);
@@ -1689,6 +1689,7 @@ function osrc_found_record()
     /*this.pending=false;*/
     this.SetPending(false);
     this.osrc_oldoid_cleanup();
+    this.ifcProbe(ifEvent).Activate("Results", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
     if (this.query_delay)
 	{
 	if (this.query_delay_schedid)
@@ -4052,6 +4053,7 @@ function osrc_init(param)
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
     ie.Add("EndQuery");
+    ie.Add("Results");
     ie.Add("BeginQuery");
     ie.Add("Created");
     ie.Add("Modified");

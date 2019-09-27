@@ -81,7 +81,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
     int rval;
 
 	/** Can't eval? **/
-	if (!objlist->Session)
+	if (!objlist || !objlist->Session)
 	    {
 	    /** Null if no context to eval a filename obj yet **/
 	    tree->Flags |= EXPR_F_NULL;
@@ -942,7 +942,8 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 		    }
 		else
 		    {
-		    child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
 		    }
 		}
 	    else
@@ -994,7 +995,8 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 		    }
 		else
 		    {
-		    child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
 		    }
 		}
 	    else
@@ -1286,6 +1288,14 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
     char* ptr;
     void* vptr;
     int (*getfn)();
+
+	/** If no object list, set result to NULL. **/
+	if (!objlist)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
 
     	/** Which object are we getting at? **/
 	if (tree->ObjID == -1)
@@ -1787,6 +1797,8 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
+	    if (objlist->CurControl)
+		exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 
@@ -1924,7 +1936,8 @@ exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
 	    }
 	else
 	    {
-	    tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
+	    if (objlist)
+		tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
 	    for(i=0; i<tree->Children.nItems; i++)
 		{
 		child = (pExpression)tree->Children.Items[i];

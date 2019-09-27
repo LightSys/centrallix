@@ -363,6 +363,17 @@ typedef struct _OF
 #define OBJ_F_TEMPORARY		64	/* created by objCreateTempObject() */
 
 
+/** temporary collection indexes **/
+typedef struct _TI
+    {
+    XArray	Fields;		/* List of fields in this index */
+    XHashTable	Index;		/* FIXME: replace with B+ tree in the future */
+    void*	OneObjList;	/* pParamObjects; for convenience */
+    int		IsUnique:1;
+    }
+    ObjTempIndex, *pObjTempIndex;
+
+
 /** structure for temporary objects **/
 typedef struct _TO
     {
@@ -370,6 +381,7 @@ typedef struct _TO
     int		LinkCnt;
     void*	Data;		/* pStructInf */
     long long	CreateCnt;
+    XArray	Indexes;	/* of pObjTempIndex */
     }
     ObjTemp, *pObjTemp;
 
@@ -721,8 +733,8 @@ int objDataFromStringAlloc(pObjData pod, int type, char* str);
 char* objFormatMoneyTmp(pMoneyType m, char* format);
 char* objFormatDateTmp(pDateTime dt, char* format);
 int objCurrentDate(pDateTime dt);
-int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
-int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
+int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
+int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
 int objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr);
 
 

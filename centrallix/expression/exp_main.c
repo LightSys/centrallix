@@ -266,7 +266,11 @@ exp_internal_CopyTreeReduced(pExpression orig_exp)
 	    {
 	    /** convert to a constant **/
 	    t = expDataTypeToNodeType(new_exp->DataType);
-	    if (t > 0) new_exp->NodeType = t;
+	    if (t > 0)
+		{
+		new_exp->NodeType = t;
+		new_exp->ObjCoverageMask = 0;
+		}
 	    }
 	else
 	    {
@@ -280,31 +284,121 @@ exp_internal_CopyTreeReduced(pExpression orig_exp)
 		}
 	    }
 
-	/** Optimize NULL IS NULL **/
+	/** Optimize AND expressions **/
+	if (new_exp->NodeType == EXPR_N_AND && new_exp->ObjCoverageMask != 0)
+	    {
+	    for(i=0; i<new_exp->Children.nItems; i++)
+		{
+		subexp = (pExpression)(new_exp->Children.Items[i]);
+		if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer != 0)
+		    {
+		    /** True item in AND expression, remove it **/
+		    expFreeExpression(subexp);
+		    xaRemoveItem(&new_exp->Children, i);
+		    i--;
+		    continue;
+		    }
+		else if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer == 0)
+		    {
+		    /** False item in AND expression, force entire expression false **/
+		    xaRemoveItem(&new_exp->Children, i);
+		    expFreeExpression(new_exp);
+		    new_exp = subexp;
+		    break;
+		    }
+		}
+	    
+	    /** Anything left? **/
+	    if (new_exp->Children.nItems == 0 && new_exp->NodeType == EXPR_N_AND)
+		{
+		/** Nothing left -- convert to true **/
+		new_exp->NodeType = EXPR_N_INTEGER;
+		new_exp->DataType = DATA_T_INTEGER;
+		new_exp->Flags &= ~EXPR_F_NULL;
+		new_exp->Integer = 1;
+		new_exp->ObjCoverageMask = 0;
+		}
+	    else if (new_exp->Children.nItems == 1 && new_exp->NodeType == EXPR_N_AND)
+		{
+		/** One item left -- use it instead of AND clause **/
+		subexp = (pExpression)(new_exp->Children.Items[0]);
+		xaRemoveItem(&new_exp->Children, 0);
+		expFreeExpression(new_exp);
+		new_exp = subexp;
+		}
+	    }
+
+	/** Optimize OR expressions **/
+	if (new_exp->NodeType == EXPR_N_OR && new_exp->ObjCoverageMask != 0)
+	    {
+	    for(i=0; i<new_exp->Children.nItems; i++)
+		{
+		subexp = (pExpression)(new_exp->Children.Items[i]);
+		if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer == 0)
+		    {
+		    /** False item in OR expression, remove it **/
+		    expFreeExpression(subexp);
+		    xaRemoveItem(&new_exp->Children, i);
+		    i--;
+		    continue;
+		    }
+		else if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer != 0)
+		    {
+		    /** True item in OR expression, force entire expression true **/
+		    xaRemoveItem(&new_exp->Children, i);
+		    expFreeExpression(new_exp);
+		    new_exp = subexp;
+		    break;
+		    }
+		}
+	    
+	    /** Anything left? **/
+	    if (new_exp->Children.nItems == 0 && new_exp->NodeType == EXPR_N_OR)
+		{
+		/** Nothing left -- convert to false **/
+		new_exp->NodeType = EXPR_N_INTEGER;
+		new_exp->DataType = DATA_T_INTEGER;
+		new_exp->Flags &= ~EXPR_F_NULL;
+		new_exp->Integer = 0;
+		new_exp->ObjCoverageMask = 0;
+		}
+	    else if (new_exp->Children.nItems == 1 && new_exp->NodeType == EXPR_N_OR)
+		{
+		/** One item left -- use it instead of OR clause **/
+		subexp = (pExpression)(new_exp->Children.Items[0]);
+		xaRemoveItem(&new_exp->Children, 0);
+		expFreeExpression(new_exp);
+		new_exp = subexp;
+		}
+	    }
+
+	/** Optimize NULL IS (not) NULL and {constant} IS (not) NULL **/
 	if (new_exp->NodeType == EXPR_N_ISNOTNULL)
 	    {
 	    subexp = (pExpression)(new_exp->Children.Items[0]);
-	    if (subexp && expIsConstant(subexp) && !(subexp->Flags & EXPR_F_NULL))
+	    if (subexp && expIsConstant(subexp))
 		{
 		expFreeExpression(subexp);
 		xaRemoveItem(&new_exp->Children, 0);
 		new_exp->NodeType = EXPR_N_INTEGER;
 		new_exp->DataType = DATA_T_INTEGER;
 		new_exp->Flags &= EXPR_F_NULL;
-		new_exp->Integer = 1;
+		new_exp->ObjCoverageMask = 0;
+		new_exp->Integer = !(subexp->Flags & EXPR_F_NULL);
 		}
 	    }
 	if (new_exp->NodeType == EXPR_N_ISNULL)
 	    {
 	    subexp = (pExpression)(new_exp->Children.Items[0]);
-	    if (subexp && expIsConstant(subexp) && (subexp->Flags & EXPR_F_NULL))
+	    if (subexp && expIsConstant(subexp))
 		{
 		expFreeExpression(subexp);
 		xaRemoveItem(&new_exp->Children, 0);
 		new_exp->NodeType = EXPR_N_INTEGER;
 		new_exp->DataType = DATA_T_INTEGER;
 		new_exp->Flags &= EXPR_F_NULL;
-		new_exp->Integer = 1;
+		new_exp->ObjCoverageMask = 0;
+		new_exp->Integer = (subexp->Flags & EXPR_F_NULL);
 		}
 	    }
 
@@ -322,6 +416,7 @@ expReducedDuplicate(pExpression orig_exp)
     {
     pExpression new_exp;
 
+	expEvalTree(orig_exp, NULL);
 	new_exp = exp_internal_CopyTreeReduced(orig_exp);
 
     return new_exp;

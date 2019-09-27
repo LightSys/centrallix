@@ -4405,6 +4405,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     CS_COMMAND* cmd;
     pSybdConn conn;
     char sbuf[320];
+    pXString xs;
     char* ptr;
     CS_INT restype = 0;
 
@@ -4458,15 +4459,22 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		        if (!conn) return -1;
 
 			/** Build the SQL to update the annotation table **/
-			snprintf(sbuf, sizeof(sbuf), "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
+			xs = xsNew();
+			if (!xs)
+			    {
+			    sybd_internal_ReleaseConn(inf->Node, conn);
+			    return -1;
+			    }
+			xsPrintf(xs, "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
 				inf->TData->Annotation, inf->TData->Table);
-			cmd = sybd_internal_Exec(conn,sbuf);
+			cmd = sybd_internal_Exec(conn, xs->String);
 			if (cmd)
 			    {
 		    	    while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 			    sybd_internal_Close(cmd);
 			    }
 		        if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node, conn);
+			xsFree(xs);
 			}
 		    break;
 
@@ -4553,36 +4561,43 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
 			return -1;
 			}
+		    xs = xsNew();
+		    if (!xs)
+			{
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
+			return -1;
+			}
 		    if (!val)
 			{
 			/** Handle NULLs **/
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=NULL WHERE %s",inf->TablePtr, attrname, ptr);
+	                xsPrintf(xs,"UPDATE %s SET %s=NULL WHERE %s",inf->TablePtr, attrname, ptr);
 			}
 		    else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
 		        {
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
+	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_STRING)
 		        {   /** objDataToString quotes strings **/
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_MONEY)
 		        {
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objFormatMoneyTmp(*(void**)val, "0.0000"), ptr);
 			}
 		    else if (type == DATA_T_DATETIME)
 			{
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=\"%s\" WHERE %s",inf->TablePtr, attrname,
+	                xsPrintf(xs,"UPDATE %s SET %s=\"%s\" WHERE %s",inf->TablePtr, attrname,
 			    objFormatDateTmp(*(void**)val, obj_default_date_fmt), ptr);
 			}
 
 		    /** Start the update. **/
-		    cmd = sybd_internal_Exec(conn,sbuf);
+		    cmd = sybd_internal_Exec(conn, xs->String);
 		    if (!cmd) 
 		        {
+			xsFree(xs);
 			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
 			mssError(1,"SYBD","Could not execute SQL to update attribute value");
 			return -1;
@@ -4591,6 +4606,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    /** Read the results **/
 		    while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 		    sybd_internal_Close(cmd);
+		    xsFree(xs);
 
 		    /** Re-read the row from the db since it has changed, and we
 		     ** need to give feedback to the user on what other effects
