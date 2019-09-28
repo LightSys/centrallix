@@ -3319,7 +3319,7 @@ mq_internal_HandleAssignments(pMultiQuery qy, pPseudoObject p)
 				if (attr && rval == 0)
 				    stSetAttrValue(attr, t, &val, 0);
 				else if (attr && rval == 1)
-				    stFreeInf(attr);
+				    stRemoveInf(attr);
 				}
 			    else
 				{
