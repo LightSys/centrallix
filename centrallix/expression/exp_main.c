@@ -708,10 +708,12 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 	/** Null value **/
 	if (!pod)
 	    {
-	    exp->Flags |= EXPR_F_NULL;
+	    exp->Flags |= (EXPR_F_NULL | EXPR_F_PERMNULL);
 	    }
 	else
 	    {
+	    exp->Flags &= ~(EXPR_F_NULL | EXPR_F_PERMNULL);
+
 	    /** Based on type. **/
 	    switch(type)
 		{

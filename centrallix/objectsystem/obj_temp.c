@@ -1224,6 +1224,7 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pStructInf find_inf;
     int t;
     int removed_indexes = 0;
+    int added_attr = 0;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1266,6 +1267,7 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"OSML","Could not add attribute '%s' to object", attrname);
 		goto error;
 		}
+	    added_attr = 1;
 	    }
 	if (stStructType(find_inf) != ST_T_ATTRIB)
 	    goto error;
@@ -1291,6 +1293,8 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	return 0;
 
     error:
+	if (added_attr)
+	    stRemoveInf(find_inf);
 	if (removed_indexes)
 	    tmp_internal_AddToMatchingIndexes(inf->TempObj, inf->Data, attrname);
 	return -1;
