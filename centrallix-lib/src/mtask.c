@@ -93,6 +93,7 @@ typedef struct _MTS
     int		nEvents;
     int		MTFlags;
     pThread	CurrentThread;
+    pThread	LockedThread;
     int		TickCnt;
     int		FirstTick;
     int		TicksPerSec;
@@ -642,6 +643,7 @@ mtInitialize(int flags, void (*start_fn)())
 
 	/** Now start the real start function. **/
 	MTASK.CurrentThread = NULL;
+	MTASK.LockedThread = NULL;
 	mtSched();
 
     return OK;
@@ -827,7 +829,7 @@ mtSched()
     int rval;
     int n_runnable, lowest_cntdn, highest_cntdn, lowest_runnable;
     int n_timerblock;
-    pThread lowest_run_thr, locked_thr = NULL;
+    pThread lowest_run_thr;
     int ticks_used;
     pEventReq event;
     int k = 0;
@@ -836,9 +838,6 @@ mtSched()
     int x[1];
 
     	dbg_write(0,"x",1);
-
-	/** Is scheduler locked? **/
-	if (MTASK.MTFlags & MT_F_LOCKED) locked_thr = MTASK.CurrentThread;
 
     	/** If the current thread is valid, do processing for it **/
 	ticks_used = (t=mtTicks()) - MTASK.TickCnt;
@@ -888,7 +887,7 @@ mtSched()
 	    if (MTASK.EventWaitTable[i])
 	        {
 	        cnt++;
-		if (locked_thr && locked_thr != MTASK.EventWaitTable[i]->Thr) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.EventWaitTable[i]->Thr) continue;
 	        if (MTASK.EventWaitTable[i]->ObjType == OBJ_T_FD && MTASK.EventWaitTable[i]->Status == EV_S_INPROC)
 	            {
 		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FINISH &&
@@ -943,7 +942,7 @@ mtSched()
 	    if (MTASK.ThreadTable[i])
 	        {
 		cnt++;
-		if (locked_thr && locked_thr != MTASK.ThreadTable[i]) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.ThreadTable[i]) continue;
 		if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE)
 		    {
 		    n_runnable++;
@@ -1047,7 +1046,7 @@ mtSched()
 	        {
 		event = MTASK.EventWaitTable[i];
 	        cnt++;
-		if (locked_thr && locked_thr != event->Thr) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != event->Thr) continue;
 	        if (event->ObjType == OBJ_T_FD)
 	            {
 		    /** File descriptor become readable? **/
@@ -1200,7 +1199,7 @@ mtSched()
 	    }
 
 	/** If locked, we need to continue with that thread. **/
-	if (locked_thr) lowest_run_thr = locked_thr;
+	if (MTASK.LockedThread) lowest_run_thr = MTASK.LockedThread;
 
 #if 0
 	if (k==0) dbg_write(0,"0",1);
@@ -1428,6 +1427,7 @@ thExit()
 
 	/** Call scheduler - scheduler will never return. **/
 	MTASK.MTFlags &= ~MT_F_LOCKED;
+	MTASK.LockedThread = NULL;
 	mtSched();
 
     abort(); /* this suppresses the 'noreturn function does return' warning */
@@ -1871,6 +1871,7 @@ int
 thLock()
     {
     MTASK.MTFlags |= MT_F_LOCKED;
+    MTASK.LockedThread = MTASK.CurrentThread;
     return 0;
     }
 
@@ -1882,6 +1883,7 @@ int
 thUnlock()
     {
     MTASK.MTFlags &= ~MT_F_LOCKED;
+    MTASK.LockedThread = NULL;
     return 0;
     }
 
