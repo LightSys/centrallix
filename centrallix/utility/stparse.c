@@ -121,9 +121,6 @@ stFreeInf_r(pStructInf this, int parentcnt)
 		if (this->SubInf[i])
 		    stFreeInf_r(this->SubInf[i], parentcnt + this->LinkCnt);
 
-	    /** Free the subinf array **/
-	    if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
-
 	    /** String need to be deallocated? **/
 	    if (this->Name) nmFree(this->Name,ST_NAME_STRLEN);
 	    if (this->UsrType) nmFree(this->UsrType,ST_USRTYPE_STRLEN);
@@ -156,6 +153,9 @@ stFreeInf_r(pStructInf this, int parentcnt)
 	    for(i=0; i<this->nSubInf; i++)
 		if (this->SubInf[i])
 		    this->SubInf[i]->Parent = NULL;
+
+	    /** Free the subinf array **/
+	    if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
 
 	    /** Free the current one. **/
 	    nmFree(this,sizeof(StructInf));
