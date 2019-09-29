@@ -330,6 +330,7 @@ typedef struct
     char	ServerString[80];
     char	Realm[80];
     char	SessionCookie[32];
+    char	TlsSessionCookie[32];
     pSemaphore	TimerUpdateSem;
     pSemaphore	TimerDataMutex;
     XArray	Timers;
@@ -379,7 +380,7 @@ typedef struct
 pCachedApp CachedAppConstructor();
 int CachedAppInit(pCachedApp this);
 
-pNhtSessionData nht_i_AllocSession(char* usrname);
+pNhtSessionData nht_i_AllocSession(char* usrname, int using_tls);
 handle_t nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
 int nht_i_RemoveWatchdog(handle_t th);
 void nht_i_Watchdog(void* v);
