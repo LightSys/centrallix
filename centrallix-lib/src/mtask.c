@@ -1425,9 +1425,16 @@ thExit()
 		exit(0);
 	    }
 
+	/** Thread exited while scheduler was locked?  If so, we exit the
+	 ** process.
+	 **/
+	if (MTASK.LockedThread)
+	    {
+	    printf("Warning: thExit() called with scheduler locked; exiting process now.\n");
+	    exit(0);
+	    }
+
 	/** Call scheduler - scheduler will never return. **/
-	MTASK.MTFlags &= ~MT_F_LOCKED;
-	MTASK.LockedThread = NULL;
 	mtSched();
 
     abort(); /* this suppresses the 'noreturn function does return' warning */
