@@ -45,6 +45,7 @@ centrallix "system/config"
 	server_string = "Centrallix/0.9.1";
 	auth_realm = "Centrallix";
 	session_cookie = "CXID";
+	ssl_session_cookie = "SCXID";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
 	enable_gzip = 0; // false - NS4 fails on this

@@ -2930,7 +2930,11 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
 		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
-		    if (toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+		    if (!conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+			{
+			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			}
+		    else if (conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.TlsSessionCookie,strlen(NHT.TlsSessionCookie)) || conn->Cookie[strlen(NHT.TlsSessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
 			}
@@ -3233,6 +3237,11 @@ nhtInitialize()
 		strval = "CXID";
 		}
 	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
+	    if (stAttrValue(stLookup(my_config, "ssl_session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = NHT.SessionCookie;
+		}
+	    strtcpy(NHT.TlsSessionCookie, strval, sizeof(NHT.TlsSessionCookie));
 
 	    /** Access log file **/
 	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
