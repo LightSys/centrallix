@@ -10,6 +10,7 @@
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxlib/xarray.h"
 
 
 /************************************************************************/
