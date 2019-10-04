@@ -326,6 +326,7 @@ int expResetAggregates(pExpression tree, int reset_id, int level);
 int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
 int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
+int expRemoveParamFromListById(pParamObjects this, int i);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);

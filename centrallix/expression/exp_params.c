@@ -370,6 +370,14 @@ expRemoveParamFromList(pParamObjects this, char* name)
 	i = expLookupParam(this, name, 0);
 	if (i < 0) return -1;
 
+    return expRemoveParamFromListById(this, i);
+    }
+
+int
+expRemoveParamFromListById(pParamObjects this, int i)
+    {
+
+	/** Remove it **/
 	if (this->Flags[i] & EXPR_O_ALLOCNAME) nmSysFree(this->Names[i]);
 	this->Flags[i] = 0;
 	this->Objects[i] = NULL;

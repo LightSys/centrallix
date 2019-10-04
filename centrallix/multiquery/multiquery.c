@@ -2646,7 +2646,7 @@ mq_internal_FinishStatement(pQueryStatement stmt)
 	    n = stmt->Query->ObjList->nObjects;
 	    for(i=stmt->Query->nProvidedObjects; i<n; i++)
 		{
-		expRemoveParamFromList(stmt->Query->ObjList, stmt->Query->ObjList->Names[i]);
+		expRemoveParamFromListById(stmt->Query->ObjList, i);
 		}
 	    }
 
