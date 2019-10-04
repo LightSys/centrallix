@@ -869,7 +869,7 @@ exp_internal_AddPropForIDToList(pXArray proplist, int obj_id, char* propname, in
 	    return -1;
 	prop->ObjName = NULL;
 	prop->ObjID = obj_id;
-	prop->PropName = nmSysStrdup(propname);
+	prop->PropName = propname?nmSysStrdup(propname):NULL;
 	prop->Flags = flags;
 
 	xaAddItem(proplist, prop);
@@ -894,7 +894,7 @@ expGetPropsForObject_r(pExpression root, pExpression exp, int obj_id, pXArray pr
 	    else
 		propn = NULL;
 	    exp_objid = expObjID(subexp, NULL);
-	    if (root->Control && root->Control->Remapped) 
+	    if (root->Control && root->Control->Remapped && exp_objid >= 0)
 		exp_objid = root->Control->ObjMap[exp_objid];
 	    if (obj_id == -1 || exp_objid == obj_id)
 		exp_internal_AddPropForIDToList(proplist, exp_objid, propn, subexp->Flags & (EXPR_F_FREEZEEVAL));
@@ -907,14 +907,15 @@ expGetPropsForObject_r(pExpression root, pExpression exp, int obj_id, pXArray pr
 	else if (exp->NodeType == EXPR_N_PROPERTY)
 	    {
 	    exp_objid = expObjID(exp, NULL);
-	    if (root->Control && root->Control->Remapped) 
+	    if (root->Control && root->Control->Remapped && exp_objid >= 0)
 		exp_objid = root->Control->ObjMap[exp_objid];
 	    if (obj_id == -1 || exp_objid == obj_id)
 		exp_internal_AddPropForIDToList(proplist, exp_objid, exp->Name, exp->Flags & (EXPR_F_FREEZEEVAL));
 	    }
 	else
 	    {
-	    for(i=0;i<exp->Children.nItems;i++) expGetPropsForObject_r(root, (pExpression)(exp->Children.Items[i]), obj_id, proplist);
+	    for(i=0;i<exp->Children.nItems;i++)
+		expGetPropsForObject_r(root, (pExpression)(exp->Children.Items[i]), obj_id, proplist);
 	    }
 
     return 0;
