@@ -10,6 +10,7 @@
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxlib/xarray.h"
 
 
 /************************************************************************/
@@ -93,7 +94,8 @@ mquAnalyze(pQueryStatement stmt)
 		    if (from_qs->Children.nItems == 1 || (item->Flags & MQ_SF_IDENTITY))
 			{
 			src_idx = expLookupParam(stmt->Query->ObjList, 
-					item->Presentation[0]?(item->Presentation):(item->Source));
+					item->Presentation[0]?(item->Presentation):(item->Source),
+					0);
 			}
 		    }
 		}
@@ -233,9 +235,8 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	/** Set iteration cnt to 0 **/
 	qe->IterCnt = 0;
 
-	objects_to_update = (pXArray)nmMalloc(sizeof(XArray));
+	objects_to_update = xaNew(16);
 	if (!objects_to_update) goto error;
-	xaInit(objects_to_update, 16);
 
 	/** Retrieve matching records **/
 	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, stmt)) == 1)
@@ -321,8 +322,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    expFreeParamList(objlist);
 		    }
 		}
-	    xaDeInit(objects_to_update);
-	    nmFree(objects_to_update, sizeof(XArray));
+	    xaFree(objects_to_update);
 	    }
 
 	/** Close the SELECT **/

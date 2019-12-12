@@ -74,7 +74,7 @@ function cht_get_col_values(col_name) {
 
 function cht_find_col_with_type(type) {
     let a_col = this.columns.filter(function (column) {return column.type === type})[0];
-    return a_col.name;
+    return a_col?(a_col.name):null;
 }
 
 function cht_get_linear_data(series_idx) {
@@ -127,15 +127,17 @@ function cht_get_categories(series_idx) {
 }
 
 function cht_highlight(index) {
-    let colorArray = this.chart.data.datasets[0].backgroundColor;
+    if (this.chart.data.datasets[0]) {
+	let colorArray = this.chart.data.datasets[0].backgroundColor;
 
-    // Reset all bar colors
-    for (let i = 0; i < colorArray.length; i++) {
-        colorArray[i] = Color(colorArray[i]).alpha(0.5).rgbString();
+	// Reset all bar colors
+	for (let i = 0; i < colorArray.length; i++) {
+	    colorArray[i] = Color(colorArray[i]).alpha(0.5).rgbString();
+	}
+	
+	// Highlight selected bar
+	colorArray[index] = Color(colorArray[index]).alpha(0.95).rgbString();
     }
-    
-    // Highlight selected bar
-    colorArray[index] = Color(colorArray[index]).alpha(0.95).rgbString();
 }
 
 function cht_generate_rgba(id, alpha = 1) {

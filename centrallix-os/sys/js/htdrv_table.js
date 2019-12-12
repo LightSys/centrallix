@@ -823,7 +823,7 @@ function tbld_select()
 	    if (!found)
 		{
 		// already a part of another row?
-		if ($(dw).css("visibility") == 'inherit')
+		if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		    {
 		    pg_reveal_event(dw, dw, 'Obscure');
 		    dw.is_visible = 0;
@@ -2067,7 +2067,8 @@ function tbld_mouseover(e)
 	    var t = ly.table;
 	    if (ly.firstChild && ly.firstChild.firstChild)
 		{
-		var cell_width = getdocWidth(ly.firstChild.firstChild);
+		//var cell_width = getdocWidth(ly.firstChild.firstChild);
+		var cell_width = $(ly.firstChild.firstChild).width();
 		if (t.colsep > 0 || t.dragcols)
 		    cell_width += (t.bdr_width*2 + t.colsep);
 		if (t.cols[ly.colnum].width < cell_width && ly.data)

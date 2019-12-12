@@ -302,6 +302,7 @@ cxInitialize(void* v)
     time_t tm;
     int pid;
     char rbuf[16];
+    char* debugfile;
 
 	xaInit(&CxGlobals.ShutdownHandlers,4);
 
@@ -344,6 +345,14 @@ cxInitialize(void* v)
 	    thExit();
 	    }
 	fdClose(cxconf, 0);
+
+	/** Debug log **/
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "debug_log_file"), NULL, &debugfile, 0) < 0)
+	    debugfile = "/var/log/cx_debug_log";
+	CxGlobals.DebugFile = fdOpen(debugfile, O_WRONLY | O_APPEND | O_CREAT, 0600);
+	if (!CxGlobals.DebugFile)
+	    perror("centrallix: warning: could not open debug log file");
+	cxDebugLog("centrallix initializing...", getpid());
 
 	/** This setting can be dangerous apart from the RBAC security subsystem.
 	 ** We default to Enabled here, but this is turned off in the default config.
@@ -590,3 +599,41 @@ cxNetworkInit()
     return 0;
     }
 #endif
+
+int
+cxDebugLog(char* fmt, ...)
+    {
+    va_list va;
+    int rval;
+    long long msec;
+    char* our_fmt;
+
+	if (!CxGlobals.DebugFile)
+	    return -1;
+
+	msec = mtRealTicks() * 1000LL / CxGlobals.ClkTck;
+
+	our_fmt = nmSysMalloc(strlen(fmt) + 256);
+	if (!our_fmt)
+	    return -ENOMEM;
+	sprintf(our_fmt, "T%lld.%3.3lld P%5.5d %s\n", msec/1000, msec%1000, getpid(), fmt);
+
+	/** Alloc a printf buf? **/
+	if (!CxGlobals.DebugFile->PrintfBuf)
+	    {
+	    CxGlobals.DebugFile->PrintfBufSize = FD_PRINTF_BUFSIZ;
+	    CxGlobals.DebugFile->PrintfBuf = (char*)nmSysMalloc(CxGlobals.DebugFile->PrintfBufSize);
+	    if (!CxGlobals.DebugFile->PrintfBuf)
+		return -ENOMEM;
+	    }
+
+	/** Print it. **/
+	va_start(va,fmt);
+	rval=xsGenPrintf_va(fdWrite, CxGlobals.DebugFile, &(CxGlobals.DebugFile->PrintfBuf), &(CxGlobals.DebugFile->PrintfBufSize), our_fmt, va);
+	va_end(va);
+
+	nmSysFree(our_fmt);
+
+    return rval;
+    }
+

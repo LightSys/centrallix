@@ -1563,6 +1563,7 @@ nht_i_NextLine(char * token, pNhtConn conn, int size)
      ** the terminating \0 character.
      **/
     if(size > (end - start + 1)) size = (end-start + 1);
+    if(size < (end - start + 1)) end -= ((end-start + 1) - size);
     memcpy(token, buffer + start , size-1); /* Copy relevant data into token. */
     token[size-1] = '\0';
     fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread extra data.
@@ -2929,7 +2930,11 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
 		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
-		    if (toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+		    if (!conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+			{
+			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			}
+		    else if (conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.TlsSessionCookie,strlen(NHT.TlsSessionCookie)) || conn->Cookie[strlen(NHT.TlsSessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
 			}
@@ -3232,6 +3237,11 @@ nhtInitialize()
 		strval = "CXID";
 		}
 	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
+	    if (stAttrValue(stLookup(my_config, "ssl_session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = NHT.SessionCookie;
+		}
+	    strtcpy(NHT.TlsSessionCookie, strval, sizeof(NHT.TlsSessionCookie));
 
 	    /** Access log file **/
 	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
@@ -3257,8 +3267,8 @@ nhtInitialize()
 	thCreate(nht_i_Watchdog, 0, NULL);
 
 	/** Start the network listeners. **/
-	thCreate(nht_i_Handler, 0, NULL);
 	thCreate(nht_i_TLSHandler, 0, NULL);
+	thCreate(nht_i_Handler, 0, NULL);
 
     return 0;
     }

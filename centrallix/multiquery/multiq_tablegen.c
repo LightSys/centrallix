@@ -155,7 +155,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 	/** Ok, figure out if the group by columns changed **/
 	oldlen = md->GroupByLen;
 	/*md->GroupByLen = (ptr - new_buf);*/
-	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList);
+	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList, 0);
 	if (md->GroupByLen < 0) return -1;
 	*new_ptr = new_buf;
 	if (md->GroupByPtr == NULL) return 1;
@@ -392,7 +392,8 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
 	    {
 	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	    if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+	    if (exp /* && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL) */ )
+	    //if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
 		{
 		expUnlockAggregates(exp, level);
 		expEvalTree(exp, objlist);
@@ -416,7 +417,7 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	if (stmt->HavingClause)
 	    {
 	    id = -1;
-	    if (expLookupParam(objlist, "this") < 0)
+	    if (expLookupParam(objlist, "this", 0) < 0)
 		id = expAddParamToList(objlist, "this", NULL, 0);
 	    expUnlockAggregates(stmt->HavingClause, level);
 	    expEvalTree(stmt->HavingClause, objlist);
@@ -544,6 +545,8 @@ mqt_internal_NextChildItem(pQueryElement parent, pQueryElement child, pQueryStat
 	    }
 
 	rval = child->Driver->NextItem(child, stmt);
+
+	mqt_internal_UpdateAggregates(stmt, parent, 0, stmt->Query->ObjList);
 
     return rval;
     }
@@ -823,6 +826,8 @@ mqtInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MQTData), "MQTData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQT - MultiQuery Tabular Data Module");

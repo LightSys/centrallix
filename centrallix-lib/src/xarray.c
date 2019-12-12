@@ -32,6 +32,39 @@
 #define BLK_INCR	16
 
 
+/*** xaNew - allocate a new xarray and init it.
+ ***/
+pXArray
+xaNew(int init_size)
+    {
+    pXArray this;
+
+	this = (pXArray)nmMalloc(sizeof(XArray));
+	if (!this)
+	    return NULL;
+	if (xaInit(this, init_size) < 0)
+	    {
+	    nmFree(this, sizeof(XArray));
+	    return NULL;
+	    }
+
+    return this;
+    }
+
+
+/*** xaFree - deinits and frees an xarray
+ ***/
+int
+xaFree(pXArray this)
+    {
+
+	xaDeInit(this);
+	nmFree(this, sizeof(XArray));
+
+    return 0;
+    }
+
+
 /*** xaInit - initialize an xarray structure
  ***/
 int 
@@ -42,6 +75,8 @@ xaInit(pXArray this, int init_size)
 	this->nAlloc = BLK_INCR;
 	if (this->nAlloc < init_size) this->nAlloc = init_size;
 	this->Items = (void**)nmSysMalloc(this->nAlloc*sizeof(void*));
+	if (!this->Items)
+	    return -1;
 	this->nItems = 0;
 
     return 0;
@@ -215,16 +250,17 @@ xaFindItemR(pXArray this, void* item)
 int 
 xaRemoveItem(pXArray this, int index)
     {
-    int i;
+    /*int i;*/
 
 	if (index>=this->nItems || index==-1) return -1;
 
 	/** Move everything back to remove it **/
 	this->nItems--;
-	for(i=index;i<this->nItems;i++)
+	memmove(this->Items+index, this->Items+index+1, (this->nItems - index) * sizeof(void*));
+	/*for(i=index;i<this->nItems;i++)
 	    {
 	    this->Items[i] = this->Items[i+1];
-	    }
+	    }*/
 
     return 0;
     }

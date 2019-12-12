@@ -377,7 +377,7 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xsInit(&item->OrderBuf);
 		xaAddItem(&context->Objects, item);
-		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList) < 0)
+		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList, 0) < 0)
 		    goto error;
 		item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
 		if (!item->SavedValues)
@@ -516,6 +516,9 @@ mqobInitialize()
 	drv->NextItem = mqobNextItem;
 	drv->Finish = mqobFinish;
 	drv->Release = mqobRelease;
+
+	nmRegister(sizeof(MQOData), "MQOData");
+	nmRegister(sizeof(MqobOrderable), "MqobOrderable");
 
 	/** Register with the multiquery system. **/
 	if (mqRegisterQueryDriver(drv) < 0) return -1;

@@ -393,7 +393,7 @@ nht_i_ConnHandler(void* conn_v)
 		}
 
 	    /** Authentication succeeded - start a new session **/
-	    conn->NhtSession = nht_i_AllocSession(usrname);
+	    conn->NhtSession = nht_i_AllocSession(usrname, conn->UsingTLS);
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
 	    nht_i_LinkSess(conn->NhtSession);
 	    }
@@ -706,7 +706,7 @@ nht_i_TLSHandler(void* v)
 	    {
 	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
 	    }
-	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) != 0)
+	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) == 0)
 	    {
 	    /** Load certificate chain also **/
 	    fp = fopen(strval, "r");
@@ -742,6 +742,8 @@ nht_i_TLSHandler(void* v)
 		thSleep(10);
 		continue;
 		}
+
+	    //cxDebugLog("new TLS connection");
 
 	    /** Check reopen **/
 	    nht_i_CheckAccessLog();
@@ -832,6 +834,8 @@ nht_i_Handler(void* v)
 		thSleep(10);
 		continue;
 		}
+
+	    //cxDebugLog("new HTTP connection");
 
 	    /** Check reopen **/
 	    nht_i_CheckAccessLog();

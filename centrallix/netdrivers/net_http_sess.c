@@ -39,13 +39,13 @@
  *** be used as an HTTP cookie.
  ***/
 int
-nht_i_CreateCookie(char* ck, int cksize)
+nht_i_CreateCookie(char* ck, int cksize, int using_tls)
     {
     int key[4];
 
 	cxssGenerateKey((unsigned char*)key, sizeof(key));
 	snprintf(ck,cksize,"%s=%8.8x%8.8x%8.8x%8.8x",
-		NHT.SessionCookie,
+		using_tls?NHT.TlsSessionCookie:NHT.SessionCookie,
 		key[0], key[1], key[2], key[3]);
 
     return 0;
@@ -83,7 +83,7 @@ nht_i_UnlinkSess_r(void* v)
 /*** nht_i_AllocSession() - create a new session.
  ***/
 pNhtSessionData
-nht_i_AllocSession(char* usrname)
+nht_i_AllocSession(char* usrname, int using_tls)
     {
     pNhtUser usr;
     pNhtSessionData nsess;
@@ -140,7 +140,7 @@ nht_i_AllocSession(char* usrname)
 	objCurrentDate(&(nsess->LastActivity));
 
 	/** Create the cookie and the CSRF token (akey) **/
-	nht_i_CreateCookie(nsess->Cookie, sizeof(nsess->Cookie));
+	nht_i_CreateCookie(nsess->Cookie, sizeof(nsess->Cookie), using_tls);
 	cxssGenerateKey((unsigned char*)akey, sizeof(akey));
 	sprintf(nsess->SKey, "%8.8x%8.8x%8.8x%8.8x", akey[0], akey[1], akey[2], akey[3]);
 

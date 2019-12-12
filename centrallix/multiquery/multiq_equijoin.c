@@ -434,7 +434,7 @@ mqjAnalyze(pQueryStatement stmt)
 
 	    /** Only one source? **/
 	    if (n_sources <= min_objlist + 1)
-		return 0;
+		goto cleanup;
 
 	    /** Determine inner/outer relationships query-wide **/
 	    for(i=n_joins-1; i>=0; i--)
@@ -621,7 +621,7 @@ mqjAnalyze(pQueryStatement stmt)
 		    for(j=0; j<where_qs->Children.nItems; j++)
 			{
 			where_item = (pQueryStructure)(where_qs->Children.Items[j]);
-			if (where_item->Expr && (where_item->Expr->ObjCoverageMask & used_sourcemask) == where_item->Expr->ObjCoverageMask)
+			if (where_item->Expr && (where_item->Expr->ObjCoverageMask & used_sourcemask) != 0 && (where_item->Expr->ObjCoverageMask & (stmt->Query->ProvidedObjMask | used_sourcemask /*| provided_mask*/)) == where_item->Expr->ObjCoverageMask)
 			    {
 			    if (qe->Constraint)
 				{
@@ -665,6 +665,7 @@ mqjAnalyze(pQueryStatement stmt)
 		}
 	    }
 
+    cleanup:
 	/** Clean up **/
 	for(i=0;i<n_joins;i++)
 	    nmFree(joins[i], sizeof(MqjJoin));
@@ -930,6 +931,10 @@ mqjInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqjJoin), "MqjJoin");
+	nmRegister(sizeof(MqjSource), "MqjSource");
+	nmRegister(sizeof(MqjJoinData), "MqjJoinData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQJ - MultiQuery Join Module");

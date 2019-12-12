@@ -276,7 +276,7 @@ stxDelete(pObject obj, pObjTrxTree* oxt)
 		mssError(1,"STX","Cannot delete structure file subgroup: not empty");
 		return -1;
 		}
-	    stFreeInf(inf->Data);
+	    stRemoveInf(inf->Data);
 	    inf->Node->Status = SN_NS_DIRTY;
 	    snWriteNode(inf->Obj->Prev,inf->Node);
 	    inf->Node->OpenCnt--;

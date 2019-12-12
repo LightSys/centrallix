@@ -343,9 +343,14 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		/** Copy the value **/
 		expCopyValue(pdata->Criteria[i].Exp, pdata->Criteria[i].Value, 1);
 		if (pdata->Criteria[i].Exp->Flags & EXPR_F_NULL || pdata->Criteria[i].Exp->DataType == 0)
+		    {
 		    pdata->Criteria[i].Value->NodeType = EXPR_N_INTEGER;
+		    pdata->Criteria[i].Value->DataType = DATA_T_INTEGER;
+		    }
 		else
+		    {
 		    pdata->Criteria[i].Value->NodeType = expDataTypeToNodeType(pdata->Criteria[i].Exp->DataType);
+		    }
 		}
 
 	    /** Rebind the criteria so current = object zero **/
@@ -370,13 +375,14 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		objlist = expCreateParamList();
 		if (!objlist)
 		    {
+		    objClose(one_dup);
 		    objQueryClose(find_dups_qy);
 		    goto error;
 		    }
 		expCopyList(stmt->Query->ObjList, objlist, -1);
 		//objlist->PSeqID = stmt->Query->ObjList->PSeqID;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_REPLACE);
+		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
 		xaAddItem(&pdata->ToBeUpdated, (void*)objlist);
 		dup_cnt++;
 		}
@@ -442,7 +448,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 	    if (objlist)
 		{
 		/** Reopen the object to be updated, in case it has changed. **/
-		id = expLookupParam(objlist, "this");
+		id = expLookupParam(objlist, "this", EXPR_F_REVERSE);
 		if (id >= 0)
 		    {
 		    upd_obj = objlist->Objects[id];
@@ -464,7 +470,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 
 		/** Update object list, but preserve the __inserted object **/
 		ins_obj = NULL;
-		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted")) >= 0)
+		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted", 0)) >= 0)
 		    ins_obj = stmt->Query->ObjList->Objects[id];
 		expCopyList(objlist, stmt->Query->ObjList, -1);
 		if (ins_obj)
@@ -488,8 +494,8 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 		    assign_exp = update_qs->AssignExpr;
 
 		    /** Get the value to be assigned **/
-		    expBindExpression(exp, stmt->Query->ObjList, 0);
-		    if (expEvalTree(exp, stmt->Query->ObjList) < 0) 
+		    expBindExpression(exp, stmt->Query->ObjList, EXPR_CMP_REVERSE);
+		    if (expEvalTree(exp, stmt->Query->ObjList) < 0)
 			{
 			mssError(0,"MQUS","Could not evaluate UPDATE SET expression's value");
 			goto error;
@@ -503,7 +509,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 
 		    /** See if the value is already correct - avoid a needless update op **/
 		    need_update = 1;
-		    expBindExpression(assign_exp, stmt->Query->ObjList, 0);
+		    expBindExpression(assign_exp, stmt->Query->ObjList, EXPR_CMP_REVERSE);
 		    if (expEvalTree(assign_exp, stmt->Query->ObjList) >= 0)
 			{
 			if (expCompareExpressionValues(assign_exp, exp) == 1)
@@ -597,6 +603,8 @@ mqusInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqusData), "MqusData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQUS - MultiQuery ON DUPLICATE...UPDATE SET Statement Module");

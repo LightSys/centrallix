@@ -314,9 +314,16 @@ prt_psod_WriteTrans(pPrtPsodInf context, char* buf, int buflen, int offset, int 
     int rval;
 
 	/** try to send it to the subprocess **/
-	rval = fdWrite(context->TransWPipe, buf, buflen, offset, flags);
-	if (rval <= 0)
-	    mssError(1, "PRT", "Translator subprocess died unexpectedly!");
+	if (context->TransWPipe)
+	    {
+	    rval = fdWrite(context->TransWPipe, buf, buflen, offset, flags);
+	    if (rval <= 0)
+		mssError(1, "PRT", "Translator subprocess died unexpectedly!");
+	    }
+	else
+	    {
+	    return -1;
+	    }
 
     return rval;
     }

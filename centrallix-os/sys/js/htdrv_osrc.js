@@ -79,7 +79,7 @@ function osrc_refresh_timer()
     {
     this.refresh_schedid = null;
     this.req_ind_act = false;
-    if (this.revealed_children > 0)
+    if (!this.qy_reveal_only || this.revealed_children > 0)
 	this.ifcProbe(ifAction).Invoke('Refresh', {});
     else
 	this.refresh_schedid = pg_addsched_fn(this, 'RefreshTimer', [], this.refresh_interval);
@@ -248,7 +248,7 @@ function osrc_query_text_handler(aparam)
 
     // add any relationships
     var rel = [];
-    this.ApplyRelationships(rel, false);
+    this.ApplyRelationships(rel, false, false);
     if (rel[0])
 	{
 	/*if (!firstone)
@@ -316,7 +316,7 @@ function osrc_query_object_handler(aparam)
 
     this.move_target = aparam.targetrec;
 
-    if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false);
+    if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false, false);
 
     for(var i in q)
 	{
@@ -869,7 +869,7 @@ function osrc_action_create_cb2()
     //Create an object through OSML
     if(!this.sid) this.sid=pg_links(this)[0].target;
     //var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
-    this.ApplyRelationships(this.createddata, true);
+    this.ApplyRelationships(this.createddata, true, false);
     this.ApplySequence(this.createddata);
     //htr_alert(this.createddata, 2);
     /*for(var i in this.createddata) if(i!='oid')
@@ -1109,7 +1109,7 @@ function osrc_action_modify(aparam) //up,initiating_client)
     if (this.use_having) reqparam.ls__reopen_having = 1;
 
     //var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
-    this.ApplyRelationships(this.modifieddata, false);
+    this.ApplyRelationships(this.modifieddata, false, true);
     for(var i in this.modifieddata) if(i!='oid')
 	{
 	if (this.modifieddata[i]['value'] == null)
@@ -1346,6 +1346,11 @@ function osrc_cb_register(client)
 	{
 	this.is_client_discardable = true;
 	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
+	}
+
+    if (this.replica && this.replica.length != 0)
+	{
+	pg_addsched_fn(this,'GiveOneCurrentRecord', [this.child.length - 1, 'change'], 0);
 	}
     }
 
@@ -1684,6 +1689,7 @@ function osrc_found_record()
     /*this.pending=false;*/
     this.SetPending(false);
     this.osrc_oldoid_cleanup();
+    this.ifcProbe(ifEvent).Activate("Results", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
     if (this.query_delay)
 	{
 	if (this.query_delay_schedid)
@@ -2012,6 +2018,10 @@ function osrc_change_current_record()
     this.prevcurrent = newprevcurrent;
     }
 
+function osrc_give_one_current_record(id, why)
+    {
+    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+    }
 
 function osrc_give_all_current_record(why)
     {
@@ -2029,7 +2039,7 @@ function osrc_give_all_current_record(why)
 	this.FinalRecord = this.LastRecord;
 	}
     for(var i in this.child)
-	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+	this.GiveOneCurrentRecord(i, why);
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
     this.doing_refresh = false;
     //confirm('give_all_current_record done');
@@ -2715,7 +2725,7 @@ function osrc_cb_new_object_template()
     var obj = this.NewReplicaObj(0, 0);
 
     // Apply relationships and keys
-    this.ApplyRelationships(obj, false);
+    this.ApplyRelationships(obj, false, false);
     this.ApplyKeys(obj);
     this.ApplySequence(obj);
 
@@ -2953,7 +2963,7 @@ function osrc_apply_keys(obj)
     return;
     }
 
-function osrc_apply_rel(obj, in_create)
+function osrc_apply_rel(obj, in_create, in_modify)
     {
     var cnt = 0;
     while(typeof obj[cnt] != 'undefined') cnt++;
@@ -2980,8 +2990,17 @@ function osrc_apply_rel(obj, in_create)
 			    obj_index = l;
 			}
 		    }
+
+		// If not already in the obj, we add it unless we're modifying
+		// an already existing object, in which case tagging relationship
+		// data causes unnecessary fields to be set.
 		if (!found)
-		    obj_index = cnt++;
+		    {
+		    if (in_modify)
+			continue;
+		    else
+			obj_index = cnt++;
+		    }
 
 		if (obj_index != null)
 		    {
@@ -3946,6 +3965,7 @@ function osrc_init(param)
     loader.EncodeParams = osrc_encode_params;
     loader.Encode = osrc_encode;
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
+    loader.GiveOneCurrentRecord=osrc_give_one_current_record;
     loader.ChangeCurrentRecord=osrc_change_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
@@ -4033,6 +4053,7 @@ function osrc_init(param)
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
     ie.Add("EndQuery");
+    ie.Add("Results");
     ie.Add("BeginQuery");
     ie.Add("Created");
     ie.Add("Modified");

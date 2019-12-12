@@ -44,6 +44,7 @@
 typedef struct _SI
     {
     int		    Magic;
+    int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
     char*	    UsrType;	/* type of group, null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
@@ -68,7 +69,8 @@ typedef struct _SI
 #define	ST_USRTYPE_STRLEN   64	/* if group, alloc bytes for type name */
 #define ST_NAME_STRLEN	    64	/* alloc size for group/attrib name */
 
-#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))
+/*#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))*/
+#define ST_ALLOCSIZ(x)	(ST_SUBALLOC_BLKSIZ<<((x)->nSubAlloc))
 
 #define ST_SUBINF_LIMIT	    (2 * 1024 * 1024 - 1)
 
@@ -117,6 +119,9 @@ int stFreeInf(pStructInf inf);
 int stAddInf(pStructInf main_inf, pStructInf sub_inf);
 
 /*** new functions ***/
+pStructInf stLinkInf(pStructInf inf);
+int stPrintInf(pStructInf this);
+int stRemoveInf(pStructInf inf);
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
 int stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value);
 int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);

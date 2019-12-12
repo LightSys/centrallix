@@ -58,6 +58,17 @@ typedef struct
 extern EXP_Globals EXP;
 
 
+/** description of a property that is in a tree **/
+typedef struct
+    {
+    char*		ObjName;	/* null if unknown or unavailable */
+    int			ObjID;
+    char*		PropName;
+    int			Flags;		/* such as EXPR_F_FREEZEEVAL */
+    }
+    ExpProperty, *pExpProperty;
+
+
 /** expression tree control structure **/
 typedef struct _EC
     {
@@ -113,6 +124,7 @@ typedef struct _ET
     unsigned int	LinkCnt;
     unsigned int	LxFlags;
     unsigned int	CmpFlags;
+    void*		PrivateData;		/* allocated with nmSysMalloc() */
     }
     Expression, *pExpression;
 
@@ -208,6 +220,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_RUNCLIENT	4096	/* Run expression on client */
 #define EXPR_F_RUNSERVER	8192	/* Run expression on server */
 #define EXPR_F_RUNSTATIC	16384	/* Run expression as static on server */
+#define EXPR_F_REVERSE		32768	/* Lookup param name in reverse order */
 
 #define EXPR_F_DOMAINMASK	(EXPR_F_RUNSTATIC | EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)
 #define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
@@ -230,6 +243,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_CMP_LATEBIND	8	/* allow late object name binding */
 #define EXPR_CMP_RUNSERVER	16	/* compile as a 'runserver' expression */
 #define EXPR_CMP_RUNCLIENT	32	/* compile as a 'runclient' expression */
+#define EXPR_CMP_REVERSE	32768	/* Lookup param names in reverse order */
 
 
 /*** Functions ***/
@@ -249,6 +263,9 @@ int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
+int expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa);
+pXArray expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist); /* call with proplist = NULL */
+void expFreeProps(pXArray proplist);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);
@@ -299,7 +316,7 @@ int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());
 int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
 int expModifyParam(pParamObjects this, char* name, pObject replace_obj);
 int expModifyParamByID(pParamObjects this, int id, pObject replace_obj);
-int expLookupParam(pParamObjects this, char* name);
+int expLookupParam(pParamObjects this, char* name, int flags);
 int expSyncModify(pExpression tree, pParamObjects objlist);
 int expReplaceID(pExpression tree, int oldid, int newid);
 int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
@@ -309,6 +326,7 @@ int expResetAggregates(pExpression tree, int reset_id, int level);
 int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
 int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
+int expRemoveParamFromListById(pParamObjects this, int i);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);

@@ -62,6 +62,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     char* sptr;
     int alloc;
     pXString subqy;
+    int idx;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -399,7 +400,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				{
 				for(i=0;i<objlist->nObjects;i++) 
 				    {
-				    if (objlist->Names[i] && !strcmp(etmp->Name,objlist->Names[i]))
+				    if (cmpflags & EXPR_CMP_REVERSE)
+					idx = (objlist->nObjects-1) - i;
+				    else
+					idx = i;
+				    if (objlist->Names[idx] && !strcmp(etmp->Name,objlist->Names[idx]))
 					{
 					if (etmp->NameAlloc)
 					    {
@@ -407,7 +412,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 					    etmp->NameAlloc = 0;
 					    }
 					etmp->Name = NULL;
-					etmp->ObjID = i;
+					etmp->ObjID = idx;
 					break;
 					}
 				    }
@@ -806,7 +811,7 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    }
 
 	/** Coverage mask for direct references (incl getdate() and user_name()) **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number")))
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
 	    }
@@ -1015,9 +1020,11 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
  *** a domainless expression.
  ***/
 int
-expBindExpression(pExpression exp, pParamObjects objlist, int domain)
+expBindExpression(pExpression exp, pParamObjects objlist, int flags)
     {
     int i,cm=0;
+    int idx;
+    int domain = flags & EXPR_F_DOMAINMASK;
 
 	/** For a property node, check if the object should be set. **/
 	if (exp->NodeType == EXPR_N_PROPERTY && ((exp->Flags & domain) || !domain))
@@ -1026,10 +1033,14 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 		{
 		for(i=0;i<objlist->nObjects;i++)
 		    {
-		    if (objlist->Names[i] && !strcmp(exp->Parent->Name, objlist->Names[i]))
+		    if (flags & EXPR_F_REVERSE)
+			idx = (objlist->nObjects-1) - i;
+		    else
+			idx = i;
+		    if (objlist->Names[idx] && !strcmp(exp->Parent->Name, objlist->Names[idx]))
 			{
-			cm |= (1<<i);
-			exp->ObjID = i;
+			cm |= (1<<idx);
+			exp->ObjID = idx;
 			break;
 			}
 		    }
@@ -1050,7 +1061,7 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 	    }
 
 	/** Check for absolute references in functions **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"row_number")))
 	    {
 	    cm |= EXPR_MASK_EXTREF;
 	    }

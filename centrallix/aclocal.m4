@@ -77,6 +77,13 @@ AC_DEFUN(CENTRALLIX_CHECK_OPENSSL,
     ]
 )
 
+dnl Test for SQLite
+AC_DEFUN(CENTRALLIX_CHECK_SQLITE,
+    [
+	AC_CHECK_LIB(sqlite3, sqlite3_open, [LIBS="$LIBS -lsqlite3"], AC_MSG_ERROR([Centrallix requires SQLite3 to be installed.]))
+	AC_CHECK_HEADER([sqlite3.h], [], AC_MSG_ERROR([Centrallix requires SQLite3 development header files to be installed.]))
+    ]
+)
 
 dnl Test for JSON-C
 AC_DEFUN(CENTRALLIX_CHECK_JSONC,

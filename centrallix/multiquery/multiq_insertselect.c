@@ -253,7 +253,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    }
 
 		/** Replace the previous __inserted object with our newly created one **/
-		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
+		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
 		if (old_newobj_id >= 0)
 		    {
 		    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
@@ -266,6 +266,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    /** Close up and go on to next object to be inserted. **/
 	    objClose(new_obj);
 	    new_obj = NULL;
+
+	    /** Yield, if necessary **/
+	    mq_internal_CheckYield(stmt->Query);
 	    }
 
 	if (sel_rval < 0)

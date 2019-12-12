@@ -348,7 +348,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		start_ptr = xsStringEnd(&this->SortInf->SortDataBuf);
 		xaAddItem(this->SortInf->SortPtr+0, (void*)(start_ptr - this->SortInf->SortDataBuf.String));
 
-		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList);
+		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList, 0);
 		if (len < 0)
 		    {
 		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
@@ -377,9 +377,10 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    xaInit(this->SortInf->SortNames+1, n);
 	    memcpy(this->SortInf->SortNames[1].Items, this->SortInf->SortNames[0].Items, n*sizeof(void *));
 	    obj_internal_MergeSort(this->SortInf, 1, 0, n - 1);
-	    this->RowID = 0;
 	    this->Flags |= OBJ_QY_F_FROMSORT;
 	    }
+
+	this->RowID = 0;
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8lX\n", (long)this);
 
@@ -498,6 +499,8 @@ objQueryFetch(pObjQuery this, int mode)
 		snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
 		obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
 		}
+	    if (obj)
+		obj->RowID = this->RowID;
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
@@ -576,6 +579,12 @@ objQueryFetch(pObjQuery this, int mode)
 	    /** Ok, add item to opens and return to caller **/
             xaAddItem(&(this->Obj->Session->OpenObjects),(void*)obj);
 	    break;
+	    }
+    
+	if (obj)
+	    {
+	    this->RowID++;
+	    obj->RowID = this->RowID;
 	    }
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);

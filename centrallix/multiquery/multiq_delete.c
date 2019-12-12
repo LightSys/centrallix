@@ -102,7 +102,8 @@ mqdAnalyze(pQueryStatement stmt)
 		    if (from_qs->Children.nItems == 1 || (item->Flags & MQ_SF_IDENTITY))
 			{
 			src_idx = expLookupParam(stmt->Query->ObjList, 
-					item->Presentation[0]?(item->Presentation):(item->Source));
+					item->Presentation[0]?(item->Presentation):(item->Source),
+					0);
 			}
 		    }
 		}
@@ -210,9 +211,9 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int cld_rval;
     int is_started = 0;
     pXArray objects_to_delete = NULL;
+    pXHashTable objects_hash = NULL;
     pMqdDeletable del;
     char* name;
-    int already_exists;
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
 	cld = (pQueryElement)(qe->Children.Items[0]);
@@ -229,6 +230,10 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	objects_to_delete = (pXArray)nmMalloc(sizeof(XArray));
 	if (!objects_to_delete) goto error;
 	xaInit(objects_to_delete, 16);
+	objects_hash = (pXHashTable)nmMalloc(sizeof(XHashTable));
+	if (!objects_hash)
+	    goto error;
+	xhInit(objects_hash, 257, 0);
 
 	/** Retrieve matching records **/
 	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, stmt)) == 1)
@@ -241,21 +246,15 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 		/** Save it for later deleting, if not already seen... **/
 		objGetAttrValue(stmt->Query->ObjList->Objects[qe->SrcIndex], "name", DATA_T_STRING, POD(&name));
-		already_exists = 0;
-		for(i=0;i<objects_to_delete->nItems;i++)
+		del = (pMqdDeletable)nmMalloc(sizeof(MqdDeletable));
+		if (!del) goto error;
+		strtcpy(del->Name, name, sizeof(del->Name));
+		if (xhAdd(objects_hash, del->Name, (void*)del) < 0)
 		    {
-		    del = (pMqdDeletable)xaGetItem(objects_to_delete, i);
-		    if (!strcmp(del->Name, name))
-			{
-			already_exists = 1;
-			break;
-			}
+		    nmFree(del, sizeof(MqdDeletable));
 		    }
-		if (!already_exists)
+		else
 		    {
-		    del = (pMqdDeletable)nmMalloc(sizeof(MqdDeletable));
-		    if (!del) goto error;
-		    strtcpy(del->Name, name, sizeof(del->Name));
 		    del->Obj = objLinkTo(stmt->Query->ObjList->Objects[qe->SrcIndex]);
 		    xaAddItem(objects_to_delete, (void*)del);
 		    }
@@ -271,7 +270,7 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	/** Delete the retrieved records **/
 	expUnlinkParams(stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
-	for(j=0;j<objects_to_delete->nItems;j++)
+	for(j=objects_to_delete->nItems-1; j>=0; j--)
 	    {
 	    del = (pMqdDeletable)xaGetItem(objects_to_delete, j);
 
@@ -292,7 +291,7 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     error:
 	if (objects_to_delete)
 	    {
-	    for(i=0;i<objects_to_delete->nItems;i++)
+	    for(i=0; i<objects_to_delete->nItems; i++)
 		{
 		del = (pMqdDeletable)xaGetItem(objects_to_delete, i);
 		if (del)
@@ -307,6 +306,15 @@ mqdStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		}
 	    xaDeInit(objects_to_delete);
 	    nmFree(objects_to_delete, sizeof(XArray));
+	    objects_to_delete = NULL;
+	    }
+
+	if (objects_hash)
+	    {
+	    xhClear(objects_hash, NULL, NULL);
+	    xhDeInit(objects_hash);
+	    nmFree(objects_hash, sizeof(XHashTable));
+	    objects_hash = NULL;
 	    }
 
 	/** Close the SELECT **/
@@ -357,6 +365,8 @@ mqdInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqdDeletable), "MqdDeletable");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQD - MultiQuery DELETE Statement Module");

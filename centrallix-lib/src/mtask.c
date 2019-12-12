@@ -93,6 +93,7 @@ typedef struct _MTS
     int		nEvents;
     int		MTFlags;
     pThread	CurrentThread;
+    pThread	LockedThread;
     int		TickCnt;
     int		FirstTick;
     int		TicksPerSec;
@@ -642,6 +643,7 @@ mtInitialize(int flags, void (*start_fn)())
 
 	/** Now start the real start function. **/
 	MTASK.CurrentThread = NULL;
+	MTASK.LockedThread = NULL;
 	mtSched();
 
     return OK;
@@ -827,9 +829,8 @@ mtSched()
     int rval;
     int n_runnable, lowest_cntdn, highest_cntdn, lowest_runnable;
     int n_timerblock;
-    pThread lowest_run_thr, locked_thr = NULL;
+    pThread lowest_run_thr;
     int ticks_used;
-    pThread thr_sleep_init = NULL; /* if thread just did a thSleep */
     pEventReq event;
     int k = 0;
     int arg;
@@ -837,9 +838,6 @@ mtSched()
     int x[1];
 
     	dbg_write(0,"x",1);
-
-	/** Is scheduler locked? **/
-	if (MTASK.MTFlags & MT_F_LOCKED) locked_thr = MTASK.CurrentThread;
 
     	/** If the current thread is valid, do processing for it **/
 	ticks_used = (t=mtTicks()) - MTASK.TickCnt;
@@ -858,21 +856,10 @@ mtSched()
 
 	    /** Bump up the cntdown if thread used time **/
 	    /** Don't bump if this thread is sleeping because we'll do that later. **/
-	    if (ticks_used > 0 && MTASK.CurrentThread->CntDown >= 0) 
+	    if (ticks_used > 0) 
 	        {
 		MTASK.CurrentThread->CntDown += ticks_used*(MTASK.CurrentThread->CurPrio)/MT_TICK_MAX;
-		//if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
-		/*
-		if (MTASK.ThreadTable[i]->CntDown > 0)
-		    printf("UHH OHHH!!!! -- %i (%s) CntDown == %i\n",i,
-			    MTASK.ThreadTable[i]->Name,MTASK.ThreadTable[i]->CntDown);
-		*/
-		MTASK.TickCnt = t;
 		}
-
-	    /** Remember if this thread just init'd a sleep, because if it did, we don't want **/
-	    /** to credit time it used before sleeping against its sleep time. **/
-	    if (MTASK.CurrentThread->CntDown < 0) thr_sleep_init = MTASK.CurrentThread;
 
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
@@ -900,7 +887,7 @@ mtSched()
 	    if (MTASK.EventWaitTable[i])
 	        {
 	        cnt++;
-		if (locked_thr && locked_thr != MTASK.EventWaitTable[i]->Thr) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.EventWaitTable[i]->Thr) continue;
 	        if (MTASK.EventWaitTable[i]->ObjType == OBJ_T_FD && MTASK.EventWaitTable[i]->Status == EV_S_INPROC)
 	            {
 		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FINISH &&
@@ -950,33 +937,16 @@ mtSched()
 	    }
 
 	/** Determine how to issue the select() by scanning the thread tbl **/
-	/** We also credit time used by last thread to any sleeping threads **/
 	for(i=cnt=0; cnt<MTASK.nThreads; i++)
 	    {
 	    if (MTASK.ThreadTable[i])
 	        {
 		cnt++;
-		if (locked_thr && locked_thr != MTASK.ThreadTable[i]) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.ThreadTable[i]) continue;
 		if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE)
 		    {
 		    n_runnable++;
-		    if (MTASK.ThreadTable[i]->CntDown < 0) /* thread is sleeping... counting "up" to zero */
-		        {
-			if (MTASK.ThreadTable[i] != thr_sleep_init)
-			    {
-			    MTASK.ThreadTable[i]->CntDown += ticks_used*MTASK.ThreadTable[i]->CurPrio;
-			    if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
-			    }
-			if (MTASK.ThreadTable[i]->CntDown > highest_cntdn)
-		            {
-			    highest_cntdn = (MTASK.ThreadTable[i]->CntDown)*64/(MTASK.ThreadTable[i]->CurPrio);
-			    }
-			}
-		    else
-		        {
-			/** If threads are runnable and not sleeping, then we select() below with delay=0. **/
-			highest_cntdn = 0;
-			}
+		    highest_cntdn = 0;
 		    }
 		}
 	    }
@@ -984,7 +954,7 @@ mtSched()
 	/** Issue the select.  If threads are runnable, delay is 0.  If none runnable (all **/
 	/** normally runnable are blocked on i/o or otherwise), delay is either infinite or **/
 	/** the correct value to sleep() based on previous thSleep calls made by threads. **/
-	if (n_runnable+n_timerblock == 0)
+	if (n_runnable == 0 && n_timerblock == 0)
 	    {
           REISSUE_SELECT:
 	    if(mtProcessSignals()>0)
@@ -995,6 +965,10 @@ mtSched()
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
 		printf("IO select (no timeout)\n");
 #endif
+
+	    /** We can wait indefinitely (NULL timeout) because there are no sleep timers
+	     ** and there are no runnable threads.
+	     **/
 	    rval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
 #ifdef MTASK_DEBUG
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
@@ -1051,7 +1025,7 @@ mtSched()
 		}
 	    }
 
-	/** Did the select() delay?  If so, add to sleeping threads. **/
+	/** Did the select() delay? **/
 	tx2 = mtRealTicks();
 	MTASK.LastTick = tx2;
 
@@ -1063,26 +1037,6 @@ mtSched()
 	    }
 
 	if (n_runnable == 0 && highest_cntdn > 0) t = mtTicks();
-	if (tx2 - tx > 0)
-	    {
-	    if (n_timerblock && highest_cntdn > 0)
-	        {
-		cnt=i=0;
-		while(cnt<n_runnable)
-		    {
-		    if (MTASK.ThreadTable[i] && MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE)
-		        {
-			cnt++;
-			if (MTASK.ThreadTable[i]->CntDown < 0)
-			    {
-			    MTASK.ThreadTable[i]->CntDown += (MTASK.ThreadTable[i]->CurPrio*(tx2-tx));
-			    if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
-			    }
-			}
-		    i++;
-		    }
-		}
-	    }
 	MTASK.TickCnt = t;
 
 	/** Did any file descriptors "complete"?  If so, pull the event(s) **/
@@ -1092,7 +1046,7 @@ mtSched()
 	        {
 		event = MTASK.EventWaitTable[i];
 	        cnt++;
-		if (locked_thr && locked_thr != event->Thr) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != event->Thr) continue;
 	        if (event->ObjType == OBJ_T_FD)
 	            {
 		    /** File descriptor become readable? **/
@@ -1196,32 +1150,34 @@ mtSched()
 	    if (MTASK.ThreadTable[i])
 	        {
 		cnt++;
-		if (MTASK.ThreadTable[i]->CntDown >= 0)
+		if (MTASK.ThreadTable[i]->CntDown < lowest_cntdn)
 		    {
-		    if (MTASK.ThreadTable[i]->CntDown < lowest_cntdn)
-		        {
-			lowest_cntdn = MTASK.ThreadTable[i]->CntDown;
-			}
-		    if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE &&
-		        MTASK.ThreadTable[i]->CntDown < lowest_runnable)
-			{
-			lowest_runnable = MTASK.ThreadTable[i]->CntDown;
-			lowest_run_thr = MTASK.ThreadTable[i];
-			k = i;
-			}
+		    lowest_cntdn = MTASK.ThreadTable[i]->CntDown;
+		    }
+		if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE &&
+		    MTASK.ThreadTable[i]->CntDown < lowest_runnable)
+		    {
+		    lowest_runnable = MTASK.ThreadTable[i]->CntDown;
+		    lowest_run_thr = MTASK.ThreadTable[i];
+		    k = i;
 		    }
 		}
 	    }
 
-	/** Ok, now subtract the smallest cntdn from all positive threads. **/
-	if (lowest_cntdn > 0 && lowest_cntdn != 0x7FFFFFFF)
+	/** Ok, now subtract the smallest cntdn from all positive threads, and
+	 ** reduce all nonzero threads by the amount of time that was used
+	 ** sleeping during select().
+	 **/
+	if (lowest_cntdn + (tx2-tx) > 0 && lowest_cntdn != 0x7FFFFFFF)
 	    {
 	    for(i=cnt=0;cnt<MTASK.nThreads;i++)
 	        {
 		if (MTASK.ThreadTable[i])
 		    {
 		    cnt++;
-		    if (MTASK.ThreadTable[i]->CntDown >=0) MTASK.ThreadTable[i]->CntDown -= lowest_cntdn;
+		    MTASK.ThreadTable[i]->CntDown -= (lowest_cntdn + (tx2-tx)*(MTASK.ThreadTable[i]->CurPrio)/MT_TICK_MAX);
+		    if (MTASK.ThreadTable[i]->CntDown < 0)
+			MTASK.ThreadTable[i]->CntDown = 0;
 		    }
 		}
 	    }
@@ -1243,7 +1199,7 @@ mtSched()
 	    }
 
 	/** If locked, we need to continue with that thread. **/
-	if (locked_thr) lowest_run_thr = locked_thr;
+	if (MTASK.LockedThread) lowest_run_thr = MTASK.LockedThread;
 
 #if 0
 	if (k==0) dbg_write(0,"0",1);
@@ -1469,8 +1425,16 @@ thExit()
 		exit(0);
 	    }
 
+	/** Thread exited while scheduler was locked?  If so, we exit the
+	 ** process.
+	 **/
+	if (MTASK.LockedThread)
+	    {
+	    printf("Warning: thExit() called with scheduler locked; exiting process now.\n");
+	    exit(0);
+	    }
+
 	/** Call scheduler - scheduler will never return. **/
-	MTASK.MTFlags &= ~MT_F_LOCKED;
 	mtSched();
 
     abort(); /* this suppresses the 'noreturn function does return' warning */
@@ -1914,6 +1878,7 @@ int
 thLock()
     {
     MTASK.MTFlags |= MT_F_LOCKED;
+    MTASK.LockedThread = MTASK.CurrentThread;
     return 0;
     }
 
@@ -1925,6 +1890,7 @@ int
 thUnlock()
     {
     MTASK.MTFlags &= ~MT_F_LOCKED;
+    MTASK.LockedThread = NULL;
     return 0;
     }
 
