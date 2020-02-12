@@ -82,14 +82,14 @@ function dt_resetvalue() {
 function dt_enable() {
 	this.enabled = 'full';
 	//this.bgColor = this.bg;
-	pg_images(this)[4].src = '/sys/images/ico17.gif';
+	pg_images(this)[0].src = '/sys/images/ico17.gif';
 	if (this.bg) htr_setbgcolor(this, this.bg);
 	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
 
 function dt_readonly() {
 	this.enabled = 'readonly';
-	pg_images(this)[4].src = '/sys/images/ico17.gif';
+	pg_images(this)[0].src = '/sys/images/ico17.gif';
 	if (this.bg) htr_setbgcolor(this, this.bg);
 	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
@@ -97,7 +97,7 @@ function dt_readonly() {
 function dt_disable() {
 	this.enabled = 'disabled';
 	//this.bgColor = '#e0e0e0';
-	pg_images(this)[4].src = '/sys/images/ico17d.gif';
+	pg_images(this)[0].src = '/sys/images/ico17d.gif';
 	if (this.bg) htr_setbgcolor(this, '#e0e0e0');
 }
 
@@ -200,7 +200,7 @@ function dt_init(param){
 	else
 	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
-	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dt', 'dt', 3);
+	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'dt', 'dt', 3);
 
 	// Events
 	ifc_init_widget(l);
@@ -502,7 +502,7 @@ function dt_toggle(l) {
 	var imgs = pg_images(l);
 	//for (i=0; i<l.document.images.length;i++) {
 	for (var i=0; i<imgs.length;i++) {
-		if (i == 4)
+		if (i == 0)
 			continue;
 		//else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
 		else if (imgs[i].src.substr(-14, 6) == 'dkgrey')
@@ -721,7 +721,7 @@ function dt_update_typed(l) {
 
 // dt_getfocus is called when the user selects or tabs to the control
 function dt_getfocus(x,y,l) {
-	if (this.enabled != 'full') return 0;
+	if (this.enabled != 'full' || (this.form && !this.form.is_focusable)) return 0;
 	if(l.form) l.form.FocusNotify(l);
 	cn_activate(l, 'GetFocus');
 	return 1;
@@ -995,7 +995,7 @@ function dt_domousedown(l) {
 			if (p.mainlayer.typed_content)
 				dt_parse_date(p.mainlayer,p.mainlayer.typed_content,true);
 			p.mainlayer.typed_content = '';
-		} else if (p.mainlayer.enabled == 'full') {
+		} else if (p.mainlayer.enabled == 'full' && (!p.mainlayer.form || p.mainlayer.form.is_focusable)) {
 			dt_current = p.mainlayer;
 			dt_expand(p.mainlayer);
 		}

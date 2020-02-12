@@ -73,7 +73,7 @@ function dd_resetvalue()
 
 function dd_enable()
     {
-    pg_images(this)[4].src = '/sys/images/ico15b.gif';
+    pg_images(this)[0].src = '/sys/images/ico15b.gif';
     htr_setbgcolor(this, this.bg);
     this.keyhandler = dd_keyhandler;
     this.enabled = 'full';
@@ -81,7 +81,7 @@ function dd_enable()
 
 function dd_readonly()
     {
-    pg_images(this)[4].src = '/sys/images/ico15b.gif';
+    pg_images(this)[0].src = '/sys/images/ico15b.gif';
     htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
     this.enabled = 'readonly';
@@ -94,7 +94,7 @@ function dd_disable()
 	htr_setvisibility(dd_current.PaneLayer, 'hidden');
 	dd_current = null;
 	}
-    pg_images(this)[4].src = '/sys/images/ico15a.gif';
+    pg_images(this)[0].src = '/sys/images/ico15a.gif';
     htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
     this.enabled = 'disabled';
@@ -1253,8 +1253,8 @@ function dd_init(param)
 	else if (imgs[i].src.substr(-13,5) == 'white')
 	    imgs[i].upimg = true;
 	}
-    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, 
-	    getClipHeight(l)+1, 'dd', 'dd', 3);
+    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+3, 
+	    getClipHeight(l)+3, 'dd', 'dd', 3);
     if (l.form) l.form.Register(l);
     l.init_items = false;
 
