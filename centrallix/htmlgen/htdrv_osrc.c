@@ -223,8 +223,13 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       }
    else
       {
-      mssError(1,"HTOSRC","You must give a sql parameter");
-      return -1;
+      if (wgtrGetPropertyType(tree,"sql") != DATA_T_CODE)
+         {
+         mssError(1,"HTOSRC","'sql' parameter required for objectsource '%s'", name);
+         return -1;
+	 }
+      else
+         sql = nmSysStrdup("");
       }
 
    if (wgtrGetPropertyValue(tree,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
