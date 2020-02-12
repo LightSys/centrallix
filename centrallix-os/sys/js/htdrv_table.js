@@ -81,9 +81,11 @@ function tbld_format_cell(cell, color)
     if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle)
 	{
 	// Build the paragraph elements of the cell
+	var t_p = null;
+	var c_p = null;
 	if (titletxt)
 	    {
-	    var t_p = document.createElement('p');
+	    t_p = document.createElement('p');
 	    $(t_p).attr("style", titlestyle);
 	    $(t_p).css({'margin':'0px'});
 	    $(t_p).append(titletxt);
@@ -94,7 +96,7 @@ function tbld_format_cell(cell, color)
 	$(p).append(txt);
 	if (captxt)
 	    {
-	    var c_p = document.createElement('p');
+	    c_p = document.createElement('p');
 	    $(c_p).attr("style", capstyle);
 	    $(c_p).css({'margin':'0px'});
 	    $(c_p).append(captxt);
@@ -115,6 +117,9 @@ function tbld_format_cell(cell, color)
 	cell.cxstyle = style;
 	cell.cxcapstyle = capstyle;
 	cell.cxtitlestyle = titlestyle;
+	cell.el_title = t_p;
+	cell.el_text = p;
+	cell.el_caption = c_p;
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
@@ -967,7 +972,7 @@ function tbld_sched_scroll(y)
 	pg_delsched(this.scroll_timeout);
     $(this.scrolldiv).stop(false, true);
     $(this.box).stop(false, true);
-    pg_addsched_fn(this, "Scroll", [y], 0);
+    this.scroll_timeout = pg_addsched_fn(this, "Scroll", [y], 0);
     }
 
 
@@ -1671,6 +1676,7 @@ function tbld_init(param)
     t.osrc_busy = false;
     t.osrc_last_op = null;
     //t.log = [];
+    t.ttf_string = '';
     
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
@@ -1730,6 +1736,8 @@ function tbld_init(param)
     t.InitBH = tbld_init_bh;
     t.OsrcDispatch = tbld_osrc_dispatch;
     t.OsrcRequest = tbld_osrc_request;
+    t.EndTTF = tbld_end_ttf;
+    t.CheckHighlight = tbld_check_highlight;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -2137,6 +2145,51 @@ function tbld_wheel(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function tbld_end_ttf()
+    {
+    this.ttf_timeout = null;
+    this.ttf_string = '';
+    }
+
+function tbld_check_highlight(cell, str)
+    {
+    // Title data
+    if (cell.titledata)
+	{
+	var pos = cell.titledata.toLowerCase().indexOf(this.ttf_string.toLowerCase());
+	if (pos >= 0)
+	    {
+	    var sel = window.getSelection();
+	    var r = document.createRange();
+	    r.selectNodeContents(cell.el_title);
+	    r.setStart(cell.el_title.firstChild.firstChild, pos);
+	    r.setEnd(cell.el_title.firstChild.firstChild, pos + this.ttf_string.length);
+	    sel.removeAllRanges();
+	    sel.addRange(r);
+	    return true;
+	    }
+	}
+
+    // Main data
+    if (cell.data)
+	{
+	var pos = cell.data.toLowerCase().indexOf(this.ttf_string.toLowerCase());
+	if (pos >= 0)
+	    {
+	    var sel = window.getSelection();
+	    var r = document.createRange();
+	    r.selectNodeContents(cell.el_text);
+	    r.setStart(cell.el_text.firstChild.firstChild, pos);
+	    r.setEnd(cell.el_text.firstChild.firstChild, pos + this.ttf_string.length);
+	    sel.removeAllRanges();
+	    sel.addRange(r);
+	    return true;
+	    }
+	}
+
+    return false;
+    }
+
 function tbld_keydown(e)
     {
     e = e.Dom2Event;
@@ -2166,7 +2219,7 @@ function tbld_keydown(e)
 	    var target_y = t.vis_height - getRelativeY(target_row);
 	    t.Scroll(target_y, true);
 	    }
-	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || e.key == ' ')
+	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || (e.key == ' ' && !t.ttf_string))
 	    {
 	    var target_row = t.rows[t.rows.lastvis];
 	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
@@ -2179,6 +2232,46 @@ function tbld_keydown(e)
 	else if (e.keyCode == e.DOM_VK_DOWN || e.key == 'ArrowDown')
 	    {
 	    t.BringIntoView(t.rows.lastvis+1);
+	    }
+	else if (ttf && e.which)
+	    {
+	    if (t.ttf_timeout)
+		pg_delsched(t.ttf_timeout);
+	    t.ttf_timeout = pg_addsched_fn(t, "EndTTF", [], 800);
+	    var old_str = t.ttf_string;
+	    if (e.which == 8)
+		t.ttf_string = t.ttf_string.substring(0, t.ttf_string.length-1);
+	    else
+		t.ttf_string += String.fromCharCode(e.which);
+	    var found = false;
+	    if (t.ttf_string)
+		{
+		for(var i = t.rows.first; i<= t.rows.last && !found; i++)
+		    {
+		    var row = t.rows[i];
+		    for(var c in row.cols)
+			{
+			var col = row.cols[c];
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image')
+			    {
+			    if (t.CheckHighlight(col, t.ttf_string))
+				{
+				t.BringIntoView(i);
+				found = true;
+				break;
+				}
+			    }
+			}
+		    }
+		if (!found)
+		    {
+		    t.ttf_string = old_str;
+		    }
+		}
+	    else
+		{
+		window.getSelection().removeAllRanges();
+		}
 	    }
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
