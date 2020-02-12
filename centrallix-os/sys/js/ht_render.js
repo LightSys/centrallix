@@ -346,7 +346,7 @@ function cxjs_minus(a, b)
 	a = String(a);
 	b = String(b);
 	if (a.lastIndexOf(b) == a.length - b.length)
-	    return a.substr(a.length - b.length);
+	    return a.substr(0, a.length - b.length);
 	else
 	    return a;
 	}
