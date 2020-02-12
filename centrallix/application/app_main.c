@@ -63,6 +63,7 @@ app_i_DestroyAppData(void* appdata_v, void* context)
 		appdata->Finalize(appdata->Data);
 
 	    /** Release the memory **/
+	    nmSysFree(appdata->Key);
 	    nmFree(appdata, sizeof(AppData));
 	    }
 

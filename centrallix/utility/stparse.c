@@ -1285,8 +1285,8 @@ stProbeTypeGeneric(void* read_src, int (*read_fn)(), char* type, int type_maxlen
 	    goto error;
 
 	/** Return the type **/
-	mlxCloseSession(s);
 	strtcpy(type, str, type_maxlen);
+	mlxCloseSession(s);
 	return 0;
 
     error:

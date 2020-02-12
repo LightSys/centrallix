@@ -89,6 +89,8 @@ struct
 
 #define BUFF_SIZE 1024
 
+#define CSV_MAX_ATTRS	640
+
 typedef struct
     {
     char *buffer;
@@ -551,8 +553,8 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     int t,i;
     pObjectInfo info;
     pFile try_file;
-    char* attrnames[640];
-    int attrtypes[640];
+    char* attrnames[CSV_MAX_ATTRS];
+    int attrtypes[CSV_MAX_ATTRS];
     int n_attrs;
     int name_was_null;
     XString xs;
@@ -664,9 +666,14 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			    }
+
 			}
 		    fdPrintf(TESTOBJ.Output, "\n");
 		    objClose(obj);
+		    }
+		for(i=0;i<n_attrs;i++)
+		    {
+		    nmSysFree(attrnames[i]);
 		    }
 		objQueryClose(qy);
 		}

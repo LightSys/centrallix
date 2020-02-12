@@ -152,6 +152,7 @@
 /** the element used in the document cache **/
 typedef struct
     {
+    char	Pathname[OBJSYS_MAX_PATH];
     xmlDocPtr	document;
     DateTime	lastmod;
     int		LinkCnt;
@@ -213,6 +214,7 @@ typedef struct
 struct
     {
     XHashTable	cache;
+    regex_t namematch;
     }
     XML_INF;
 
@@ -303,17 +305,10 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	int target=-1; /* the element number we're looking for */
 	int flag=0; /* did we find the target? */
 	char searchElement[XML_ELEMENT_SIZE];
-	regex_t namematch;
 	regmatch_t pmatch[3];
 
 	ptr=obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1);
-	if((i=regcomp(&namematch,"^([^|]*)\\|*([0123456789]*)$",REG_EXTENDED)))
-	    {
-	    /** this is a critical failure -- this regex should compile just fine **/
-	    mssError(0,"XML","Error while building namematch");
-	    return -1;
-	    }
-	if(regexec(&namematch,ptr,3,pmatch,0)!=0)
+	if(regexec(&XML_INF.namematch,ptr,3,pmatch,0)!=0)
 	    {
 	    /** be optimistic: maybe this is for another driver **/
 	    mssError(0,"XML","Warning: pattern didn't match!");
@@ -478,9 +473,10 @@ xml_internal_ReadDoc(pObject obj)
 	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
-	    ptr=(char*)malloc(strlen(path)+1);
-	    strcpy(ptr,path);
-	    xhAdd(&XML_INF.cache,ptr,(char*)pCache);
+	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT)) == 0)
+		pCache->lastmod.Value = pDT->Value;
+	    strtcpy(pCache->Pathname, path, sizeof(pCache->Pathname));
+	    xhAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache);
 	    pCache->LinkCnt = 1;
 	    }
 
@@ -496,13 +492,14 @@ xml_internal_ReadDoc(pObject obj)
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
 	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
-	    {
+		{
 		if(XML_DEBUG) printf("giving parser a chunk\n");
 		xmlParseChunk(ctxt,ptr,bytes,0);
 		if(XML_DEBUG) printf("parser done with the chunk\n");
-	    }
+		}
 	    free(ptr);
 	    xmlParseChunk(ctxt,NULL,0,1);
+
 	    /** get the document reference **/
 	    if(!ctxt->myDoc)
 		{
@@ -512,7 +509,7 @@ xml_internal_ReadDoc(pObject obj)
 		}
 	    pCache->document=ctxt->myDoc;
 	    xmlFreeParserCtxt(ctxt);
-	}
+	    }
 
     return pCache;
     }
@@ -593,7 +590,7 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	/** free any memory used to return an attribute **/
 	if(inf->AttrValue)
 	    {
-	    free(inf->AttrValue);
+	    xmlFree(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
 
@@ -714,7 +711,7 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 
     inf->Offset+=i;
 
-    free(buf);
+    xmlFree(buf);
 
     return i;
     }
@@ -930,6 +927,12 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strncmp(attrname, "__cx_literal_", 13))
 	    attrname += 13;
 
+	if(inf->AttrValue)
+	    {
+	    xmlFree(inf->AttrValue);
+	    inf->AttrValue=NULL;
+	    }
+
 	/** needed in case this isn't a GetFirstAttribute-style request **/
 	xml_internal_BuildAttributeHashTable(inf);
 
@@ -961,11 +964,11 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		(void)strtoi(inf->AttrValue,&ptr,10);
 		if(ptr && !*ptr)
 		    {
-		    free(inf->AttrValue);
+		    xmlFree(inf->AttrValue);
 		    inf->AttrValue=NULL;
 		    return DATA_T_INTEGER;
 		    }
-		free(inf->AttrValue);
+		xmlFree(inf->AttrValue);
 		inf->AttrValue=NULL;
 		return DATA_T_STRING;
 		}
@@ -1001,7 +1004,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 	if(XML_DEBUG) printf("walking attributes to set up hash table\n");
 	while(ap)
 	    {
-	    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+	    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 	    if(!pHE)
 		{
 		mssError(0,"XML","nmMalloc failed!");
@@ -1034,14 +1037,14 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 		    }
 		else
 		    {
-		    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+		    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 		    pHE->type=XML_SUBOBJ;
 		    pHE->count=1;
 		    pHE->ptr=np;
 		    xhAdd(inf->Attributes,(char*)np->name,(char*)pHE);
 		    }
 		}
-	    if(p) free(p);
+	    if(p) xmlFree(p);
 	    np=np->next;
 	    }
 	}
@@ -1070,7 +1073,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	if(inf->AttrValue)
 	    {
-	    free(inf->AttrValue);
+	    xmlFree(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
 
@@ -1162,11 +1165,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    val->Integer=strtoi(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
-			free(inf->AttrValue);
+			xmlFree(inf->AttrValue);
 			inf->AttrValue=NULL;
 			return 0;
 			}
-		    free(inf->AttrValue);
+		    xmlFree(inf->AttrValue);
 		    inf->AttrValue=NULL;
 		    mssError(0,"XML","%s is not an integer",attrname);
 		    return -1;
@@ -1185,8 +1188,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    else
 		{
 		/** if there's no text, we're going to return the empty string **/
-		inf->AttrValue=(char*)malloc(1);
-		inf->AttrValue[0]='\0';
+		inf->AttrValue = (char*)xmlStrdup((unsigned char*)"");
 		val->String = inf->AttrValue;
 		return -0;
 		}
@@ -1428,6 +1430,12 @@ xmlInitialize()
 	/** Initialize globals **/
 	memset(&XML_INF,0,sizeof(XML_INF));
 	xhInit(&XML_INF.cache,17,0);
+	if ((regcomp(&XML_INF.namematch, "^([^|]*)\\|*([0123456789]*)$", REG_EXTENDED)) != 0)
+	    {
+	    /** this is a critical failure -- this regex should compile just fine **/
+	    mssError(1,"XML","Error while building name match regex");
+	    return -1;
+	    }
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"XML - XML OS Driver");

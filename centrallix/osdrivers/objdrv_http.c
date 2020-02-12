@@ -427,9 +427,9 @@ http_internal_Cleanup(pHttpData inf)
 	    xaDeInit(&inf->RequestHeaders);
 	    http_internal_FreeHeaders(&inf->ResponseHeaders);
 	    xaDeInit(&inf->ResponseHeaders);
-	    xaDeInit(&inf->Params);
 
 	    http_internal_FreeParams(inf);
+	    xaDeInit(&inf->Params);
 
 	    /** Free connection data **/
 	    if (inf->Server) nmSysFree(inf->Server);
@@ -459,6 +459,9 @@ http_internal_Cleanup(pHttpData inf)
 
 	    if (inf->ContentCache)
 		xsFree(inf->ContentCache);
+
+	    if (inf->Annotation)
+		nmSysFree(inf->Annotation);
 
 	    nmFree(inf,sizeof(HttpData));
 	    }
@@ -936,7 +939,7 @@ http_internal_GetPageStream(pHttpData inf)
     int toktype;
 #define BUF_SIZE 256
     char buf[BUF_SIZE];
-    char *fullpath; // the path to be send to the server
+    char *fullpath = NULL; // the path to be send to the server
     char *ptr;
     char *ptr2;
     int alloc = 0;
@@ -1034,6 +1037,8 @@ http_internal_GetPageStream(pHttpData inf)
 	/** Send the request **/
 	if (http_internal_SendRequest(inf, fullpath) < 0)
 	    goto error;
+	nmSysFree(fullpath);
+	fullpath = NULL;
 
 	/** Set up connection **/
 #if 00
@@ -1295,6 +1300,7 @@ http_internal_GetPageStream(pHttpData inf)
 	/** Error exit **/
 	if (alloc) nmSysFree(ptr);
 	if (lex) mlxCloseSession(lex);
+	if (fullpath) nmSysFree(fullpath);
 	return -1;
 
     try_up:

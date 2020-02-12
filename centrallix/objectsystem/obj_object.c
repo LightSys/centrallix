@@ -1094,11 +1094,14 @@ int
 obj_internal_CopyPath(pPathname dest, pPathname src)
     {
     int i,j;
+    int old_linkcnt;
     pStruct new_inf;
 
     	/** Copy the raw data. **/
 	if (dest->OpenCtlBuf) nmSysFree(dest->OpenCtlBuf);
+	old_linkcnt = dest->LinkCnt;
 	memcpy(dest,src,sizeof(Pathname));
+	dest->LinkCnt = old_linkcnt;
 
 	/** Alloc a new ctlbuf **/
 	if (src->OpenCtlBuf)
