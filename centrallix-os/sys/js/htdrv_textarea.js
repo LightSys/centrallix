@@ -103,6 +103,17 @@ function tx_paste(e)
     {
     }
 
+function tx_checkfocus(e)
+    {
+    var form = this.mainlayer.form;
+    if (form && !form.is_focusable)
+	{
+	e.preventDefault();
+	e.currentTarget.blur();
+	}
+    return;
+    }
+
 function tx_receiving_input(e)
     {
     var tx=this.mainlayer;
@@ -294,6 +305,7 @@ function tx_init(param)
     $(l.txa).on("keydown", tx_keydown);
     $(l.txa).on("keyup", tx_keyup);
     $(l.txa).on("keypress", tx_keypress);
+    $(l.txa).on("focus", tx_checkfocus);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

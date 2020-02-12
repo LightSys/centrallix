@@ -78,6 +78,7 @@ function form_cb_getvalue(v)
     else if (v == 'is_discardable') return this.is_discardable;
     else if (v == 'is_queryable') return this.is_queryable;
     else if (v == 'is_queryexecutable') return this.is_queryexecutable;
+    else if (v == 'is_focusable') return this.is_focusable;
     var dv = null;
     var found = false;
     if (this.data)
@@ -858,6 +859,7 @@ function form_change_mode(newmode, reason)
     this.is_queryable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_query',1));
     this.is_queryexecutable = (newmode == 'Query');
     this.is_multienter = (this.is_multienter && (newmode == 'New'));
+    this.is_focusable = this.is_newable || this.is_editable || this.is_queryable || newmode == 'New' || newmode == 'Modify' || newmode == 'Query';
 
     // Confirm if transitioning out of Modify with unsaved data
     if(this.mode=='Modify' && this.IsUnsaved)
@@ -1568,6 +1570,7 @@ function form_init(form,param)
     form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
+    form.is_focusable = form.is_newable || form.is_editable || form.is_queryable;
     form.is_enabled = true;
     form.recid = 1;
     form.lastrecid = null;
@@ -1676,6 +1679,7 @@ function form_init(form,param)
     iv.Add("is_editable","is_editable");
     iv.Add("is_queryable","is_queryable");
     iv.Add("is_queryexecutable","is_queryexecutable");
+    iv.Add("is_focusable","is_focusable");
     iv.Add("is_multienter","is_multienter");
     iv.Add("is_enabled","is_enabled");
     iv.Add("confirm_delete","confirm_delete");

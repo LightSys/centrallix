@@ -461,6 +461,16 @@ function eb_action_set_focus(aparam)
     pg_setkbdfocus(this, null, x, y);
     }
 
+function eb_checkfocus(e)
+    {
+    var form = this.mainlayer.form;
+    if (form && !form.is_focusable)
+	{
+	e.preventDefault();
+	e.currentTarget.blur();
+	}
+    return;
+    }
 
 function eb_browserfocus(e)
     {
@@ -691,6 +701,7 @@ function eb_init(param)
     $(l.ContentLayer).on("keydown", eb_keydown);
     $(l.ContentLayer).on("keyup", eb_keyup);
     $(l.ContentLayer).on("keypress", eb_keypress);
+    $(l.ContentLayer).on("focus", eb_checkfocus);
     $(l.ContentLayer).css({"outline":"none", "border":"1px transparent", "background-color":"transparent"});
 
     // Callbacks for internal management of 'content' value
