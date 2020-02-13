@@ -961,7 +961,7 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	    if(inf->AttrValue)
 		{
-		(void)strtoi(inf->AttrValue,&ptr,10);
+		/*(void)strtoi(inf->AttrValue,&ptr,10);
 		if(ptr && !*ptr)
 		    {
 		    xmlFree(inf->AttrValue);
@@ -969,7 +969,7 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    return DATA_T_INTEGER;
 		    }
 		xmlFree(inf->AttrValue);
-		inf->AttrValue=NULL;
+		inf->AttrValue=NULL;*/
 		return DATA_T_STRING;
 		}
 	    else
