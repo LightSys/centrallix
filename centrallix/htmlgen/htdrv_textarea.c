@@ -169,7 +169,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    name, fieldname, form, is_readonly, mode);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none;\">\n",id);
+	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none; font-family:inherit;\">\n",id);
 
 	/** Use CSS border or table for drawing? **/
 	/*if (is_raised)
