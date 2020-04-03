@@ -134,7 +134,17 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    goto error;
 	    }
 	snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
-	    
+    
+	/** Replace the previous __inserted object with NULL, in case insert fails **/
+	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
+	if (old_newobj_id >= 0)
+	    {
+	    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+	    if (old_newobj)
+		objClose(old_newobj);
+	    expModifyParam(stmt->Query->ObjList, "__inserted", NULL);
+	    }
+
 	/** Start the SELECT query **/
 	sel = (pQueryElement)(qe->Children.Items[0]);
 	if (sel->Driver->Start(sel, stmt, NULL) < 0)
