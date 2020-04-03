@@ -541,7 +541,7 @@ function dd_select_item(l,i,from)
 function dd_datachange(l)
     {
     if (l.form) l.form.DataNotify(l);
-    l.ifcProbe(ifEvent).Activate('DataModify', {Value:l.Values[l.VisLayer.index].value});
+    l.ifcProbe(ifEvent).Activate('DataModify', {Value:(l.Values.length && l.VisLayer.index !== null && l.Values[l.VisLayer.index])?(l.Values[l.VisLayer.index].value):null});
     }
 
 function dd_getfocus()
