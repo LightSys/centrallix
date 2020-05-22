@@ -52,6 +52,10 @@ bptNew()
 int
 bptInit(pBPTree this)
     {
+	
+	/** Return -1 if passed NULL **/
+	if (!this)
+		return -1;
 
 	/** Clear out the data structure **/
 	this->Parent = this->Next = this->Prev = NULL;
@@ -67,7 +71,6 @@ bptInit(pBPTree this)
 void
 bptFree(pBPTree this)
     {
-
 	bptDeInit(this);
 	nmFree(this, sizeof(BPTree));
 
@@ -80,15 +83,20 @@ bptFree(pBPTree this)
 int
 bptDeInit(pBPTree this)
     {
+	
+	/** Return -1 if passed NULL **/
+	if (!this)
+		return -1;
+
     int i;
 
 	/** Deallocate children **/
 	if (!this->IsLeaf)
 	    {
 	    for(i=0; i<this->nKeys+1; i++)
-		{
-		bptFree(this->Children[i].Child);
-		}
+			{
+			bptFree(this->Children[i].Child);
+			}
 	    }
 
 	/** Deallocate key values **/
