@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <assert.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
@@ -58,6 +59,10 @@ bptNew()
 int
 bptInit(pBPTree this)
     {
+	
+	/** Should not be passed NULL **/
+	assert (this != NULL);
+
 	/** Clear out the data structure **/
 	this->Parent = this->Next = this->Prev = NULL;
 	this->nKeys = 0;
@@ -72,7 +77,6 @@ bptInit(pBPTree this)
 void
 bptFree(pBPTree this)
     {
-
 	bptDeInit(this);
 	nmFree(this, sizeof(BPTree));
 
@@ -85,15 +89,19 @@ bptFree(pBPTree this)
 int
 bptDeInit(pBPTree this)
     {
+	
+	/** Should not be passed NULL **/
+	assert (this != NULL);
+
     int i;
 
 	/** Deallocate children **/
 	if (!this->IsLeaf)
 	    {
 	    for(i=0; i<this->nKeys+1; i++)
-		{
-		bptFree(this->Children[i].Child);
-		}
+			{
+			bptFree(this->Children[i].Child);
+			}
 	    }
 
 	/** Deallocate key values **/

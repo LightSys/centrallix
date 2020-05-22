@@ -44,7 +44,7 @@ struct _BPT
     pBPTree	Parent;
     pBPTree	Next;
     pBPTree	Prev;
-    int		IsLeaf:1;
+    unsigned int		IsLeaf:1;
     };
 
 /** Functions **/
