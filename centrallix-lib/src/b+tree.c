@@ -23,13 +23,19 @@
 /* Creation:	September 11, 2019					*/
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
+pBPTree queue = NULL;
+
+int bpt_i_Fake()
+{
+	return 0;
+}
 
 /*** bptNew() - allocate and initialize a new B+ Tree
  ***/
 pBPTree
 bptNew()
     {
-    pBPTree this;
+	pBPTree this;
 
 	/** Allocate **/
 	this = (pBPTree)nmMalloc(sizeof(BPTree));
@@ -52,7 +58,6 @@ bptNew()
 int
 bptInit(pBPTree this)
     {
-
 	/** Clear out the data structure **/
 	this->Parent = this->Next = this->Prev = NULL;
 	this->nKeys = 0;
@@ -137,7 +142,6 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
 pBPTree
 bpt_i_Split(pBPTree this)
 {
-    
 	return NULL;
 }
 
@@ -156,7 +160,7 @@ bpt_i_Push(pBPTree this)
 int bpt_i_get_left(BPTree * parent, BPTree *l){
 
     int dx = -1;
-    while(dx <= parent.nKeys && parent.Children[dx] != l){
+    while(dx <= parent->nKeys && parent->Children[dx].Child != l){
         dx++;
     }
     return dx;
@@ -223,13 +227,16 @@ bpt_i_LeafInsert(pBPTree this, char* key, int key_len, void* data, int idx)
 	    return -1;
 	memcpy(copy, key, key_len);
 
+
 	/** Make room for the key and value **/
+
 	if (idx != this->nKeys)
-	    {
+	{
 	    memmove(this->Keys+idx+1, this->Keys+idx, sizeof(BPTreeKey) * (this->nKeys - idx));
 	    memmove(this->Children+idx+1, this->Children+idx, sizeof(BPTreeVal) * (this->nKeys - idx));
 	    this->nKeys++;
-	    }
+	}
+
 
 	/** Set it **/
 	this->Keys[idx].Length = key_len;
@@ -237,7 +244,63 @@ bpt_i_LeafInsert(pBPTree this, char* key, int key_len, void* data, int idx)
 	this->Children[idx].Ref = data;
 
     return 0;
-    }
+}
+
+void
+bpt_i_Enqueue(pBPTree this)//global var or does this method work
+        {
+        pBPTree curr;
+        if (queue == NULL)
+                {
+                queue = this;
+                queue->Next = NULL;
+		}
+        else
+                {
+                curr = queue;
+                while (curr->Next != NULL)
+                        curr = curr->Next;
+                curr->Next = this;
+                this->Next = NULL;
+                }
+	return;
+        }
+
+pBPTree
+bpt_i_Dequeue()
+        {
+        pBPTree head = queue;
+        queue = queue->Next;
+	head->Next = NULL;
+        return head;
+        }
+
+int
+bpt_i_height(pBPTree root)
+        {
+        int h = 0;
+        pBPTree curr = root;
+        while (!curr->IsLeaf)
+                {
+                curr = curr->Children[0].Child;
+                h++;
+                }
+        return h;
+        }
+
+int
+bpt_i_PathToRoot(pBPTree this, pBPTree root)
+        {
+        int len = 0;
+        pBPTree curr = this;
+        while (curr != root)
+                {
+                curr = curr->Parent;
+                len++;
+                }
+        return len;
+        }
+
 
 
 /*** bptAdd() - add a key/value pair to the tree.  Returns 1 if the
@@ -245,12 +308,13 @@ bpt_i_LeafInsert(pBPTree this, char* key, int key_len, void* data, int idx)
  ***/
 int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
-    {
+{
     pBPTree node, new_node = NULL;
-    int idx;
+    int dx;
 
 	/** See if it is there. **/
-	if (bpt_i_Find(this, key, key_len, &node, &idx) == 0)
+
+	if (bpt_i_Find(this, key, key_len, &node, &dx) == 0)
 	    {
 	    /** Already exists.  Don't add. **/
 	    return 1;
@@ -267,18 +331,17 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
 	    }
 
 	/** Which node are we adding to? **/
-	if (new_node)
-	    {
-	    if (idx > BPT_SLOTS / 2)
-		{
-		node = new_node;
-		idx -= (BPT_SLOTS / 2);
+	if (new_node){
+    	if (dx > BPT_SLOTS / 2){
+			node = new_node;
+			dx -= (BPT_SLOTS / 2);
 		}
-	    }
+	}
 
 	/** Insert the item **/
-	if (bpt_i_LeafInsert(node, key, key_len, data, idx) < 0)
-	    return -1;
+	if (bpt_i_LeafInsert(node, key, key_len, data, dx) < 0){
+		return -1;
+	}
 
     return 0;
     }
@@ -353,4 +416,42 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
 	    bptInit(this);
 
     return 0;
+    }
+
+int
+bpt_PrintTree(pBPTree root)
+        {
+        pBPTree curr = NULL;
+        int i = 0;
+        int rank = 0;
+        int new_rank = 0;
+
+        if (root == NULL)
+                {
+                printf("Empty tree\n");
+                return 1;
+                }
+
+        bpt_i_Enqueue(root);
+        while (queue != NULL)
+                {
+                curr = bpt_i_Dequeue();
+                if (curr->Parent != NULL && curr == curr->Parent->Children[0].Child)
+                        {
+                        new_rank = bpt_i_PathToRoot(curr, root);
+                        if (new_rank != rank)
+                                {
+                                rank = new_rank;
+                                printf("\n");
+                                }
+                        }
+                for (i=0; i<curr->nKeys; i++)
+                        printf("%s ", curr->Keys[i].Value);
+                if (!curr->IsLeaf)
+                        for (i=0; i<=curr->nKeys; i++)
+                                bpt_i_Enqueue(curr->Children[i].Child);
+                printf("| ");
+                }
+        printf("\n");
+	return 0;
     }
