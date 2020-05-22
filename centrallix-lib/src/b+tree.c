@@ -24,7 +24,6 @@
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
 
-
 /*** bptNew() - allocate and initialize a new B+ Tree
  ***/
 pBPTree
@@ -138,6 +137,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
 pBPTree
 bpt_i_Split(pBPTree this)
     {
+	return NULL;
     }
 
 
@@ -146,6 +146,7 @@ bpt_i_Split(pBPTree this)
 int
 bpt_i_Push(pBPTree this)
     {
+	return 0;
     }
 
 
@@ -295,6 +296,7 @@ bptLookup(pBPTree this, char* key, int key_len)
 int
 bptRemove(pBPTree this, char* key, int key_len)
     {
+	return -1;
     }
 
 
@@ -329,7 +331,7 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
 	for(i=0; i<this->nKeys; i++)
 	    {
 	    nmSysFree(this->Keys[i].Value);
-	    free_fn(free_arg, this->Keys[i].Key);
+	    free_fn(free_arg, this->Keys[i].Value);
 	    }
 
 	/** Reset the root node **/

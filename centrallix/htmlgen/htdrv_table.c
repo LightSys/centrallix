@@ -468,7 +468,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->wrap, ptr, sizeof(col->wrap));
 		else
 		    strcpy(col->wrap, "no");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link") || !strcmp(ptr,"progress")))
 		    strtcpy(col->type, ptr, sizeof(col->type));
 		else
 		    strcpy(col->type, "text");

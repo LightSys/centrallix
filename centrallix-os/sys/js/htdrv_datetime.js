@@ -235,6 +235,10 @@ function dt_init(param){
 function dt_prepare(l) {
 	// Create the pane if needed.
 	if((!l.form || l.form.mode != 'Query' || !l.sbr) && l.PaneLayer2){
+	    if (l.PaneLayer && l.PaneLayer.parentNode)
+		l.PaneLayer.parentNode.removeChild(l.PaneLayer);
+	    if (l.PaneLayer2 && l.PaneLayer2.parentNode)
+		l.PaneLayer2.parentNode.removeChild(l.PaneLayer2);
 	    l.PaneLayer = null;
 	    l.PaneLayer2 = null;
 	}
@@ -962,11 +966,13 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 function dt_expand(l) {
 	dt_prepare(l);
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
+	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, l.w);
+	//pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	if(l.form && l.form.mode == 'Query' && l.sbr){
 	    pg_stackpopup(l.PaneLayer2, l);
-	    pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
+	    pg_positionpopup(l.PaneLayer2, $(l).offset().left + getClipWidth(l.PaneLayer) + 5, $(l).offset().top, l.h, l.w);
+	    //pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
 	    htr_setvisibility(l.PaneLayer2, 'inherit');
 	}
 	l.typed_content = '';
@@ -974,7 +980,8 @@ function dt_expand(l) {
 
 // collapse the date/time control
 function dt_collapse(l) {
-	htr_setvisibility(l.PaneLayer, 'hidden');
+	if (l.PaneLayer)
+	    htr_setvisibility(l.PaneLayer, 'hidden');
 	if(l.PaneLayer2)
 	    htr_setvisibility(l.PaneLayer2, 'hidden');
 }

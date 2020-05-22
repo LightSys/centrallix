@@ -49,6 +49,8 @@ function pn_getval(attr)
 	return this.enabled;
     else if (attr == 'background')
 	return htr_getbgimage(this);
+    else if (attr == 'bgcolor')
+	return htr_getbgcolor(this);
     }
 
 function pn_setval(attr, val)
@@ -64,6 +66,8 @@ function pn_setval(attr, val)
 	}
     else if (attr == 'background')
 	htr_setbgimage(this, val);
+    else if (attr == 'bgcolor')
+	htr_setbgcolor(this, val);
     }
 
 function pn_setbackground(aparam)
@@ -123,6 +127,7 @@ function pn_init(param)
     var iv = ml.ifcProbeAdd(ifValue);
     iv.Add("enabled", pn_getval, pn_setval);
     iv.Add("background", pn_getval, pn_setval);
+    iv.Add("bgcolor", pn_getval, pn_setval);
     ml.enabled = param.enabled;
     if (param.enabled != null)
 	iv.Changing("enabled", ml.enabled, true, null, true);
