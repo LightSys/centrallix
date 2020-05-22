@@ -805,7 +805,7 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
                 if (m->FractionPart==0 || m->WholePart>=0)
 		    v = m->WholePart;
 		else
-		    v = m->WholePart - 1;
+		    v = m->WholePart + 1;
 		break;
 
 	    case DATA_T_INTVEC:
