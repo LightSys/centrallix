@@ -136,9 +136,10 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
  ***/
 pBPTree
 bpt_i_Split(pBPTree this)
-    {
+{
+    
 	return NULL;
-    }
+}
 
 
 /*** bpt_i_Push() - push a value to the left or right sibling
@@ -149,6 +150,19 @@ bpt_i_Push(pBPTree this)
 	return 0;
     }
 
+/*** bpt_i_get_left() - finds the index of the parent's pointer
+     that is for the node to the left of the key to be intserted
+***/
+int bpt_i_get_left(BPTree * parent, BPTree *l){
+
+    int dx = -1;
+    while(dx <= parent.nKeys && parent.Children[dx] != l){
+        dx++;
+    }
+    return dx;
+
+
+}
 
 /*** bpt_i_Scan() - scan a node's keys looking for a key
  ***/
@@ -192,7 +206,7 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 	rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
 
     return rval;
-    }
+}
 
 
 /*** bpt_i_LeafInsert() - insert a key/value pair into a leaf node.  Does NOT check
@@ -340,4 +354,3 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
 
     return 0;
     }
-
