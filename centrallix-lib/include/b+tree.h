@@ -56,6 +56,8 @@ int bptAdd(pBPTree this, char* key, int key_len, void* data);
 void* bptLookup(pBPTree this, char* key, int key_len);
 int bptRemove(pBPTree this, char* key, int key_len);
 int bptClear(pBPTree this, int (*free_fn)(), void* free_arg);
-
+int bpt_i_Push(pBPTree this);
+int bpt_i_Fake();
+int bpt_PrintTree(pBPTree root);
 #endif /* _BPTREE_H */
 

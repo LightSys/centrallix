@@ -10,10 +10,10 @@ test(char** tname)
 	int tmp;
 
 	*tname = "b+tree-00 CURRENTLY A DUMMY TEST";
-	iter = 800000;
+	iter = 8000000;
 	for(i=0;i<iter;i++)
 	    {
-		tmp = bpt_i_Push(NULL);
+		tmp = bpt_i_Fake();
 		assert (tmp == 0);
 	    }
 
