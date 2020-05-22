@@ -23,13 +23,19 @@
 /* Creation:	September 11, 2019					*/
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
+pBPTree queue = NULL;
+
+int bpt_i_Fake()
+{
+	return 0;
+}
 
 /*** bptNew() - allocate and initialize a new B+ Tree
  ***/
 pBPTree
 bptNew()
     {
-    pBPTree this;
+	pBPTree this;
 
 	/** Allocate **/
 	this = (pBPTree)nmMalloc(sizeof(BPTree));
@@ -233,6 +239,62 @@ bpt_i_LeafInsert(pBPTree this, char* key, int key_len, void* data, int idx)
     return 0;
     }
 
+void
+bpt_i_Enqueue(pBPTree this)//global var or does this method work
+        {
+        pBPTree curr;
+        if (queue == NULL)
+                {
+                queue = this;
+                queue->Next = NULL;             
+		}
+        else
+                {
+                curr = queue;
+                while (curr->Next != NULL)
+                        curr = curr->Next;
+                curr->Next = this;
+                this->Next = NULL;
+                }
+	return;
+        }
+
+pBPTree
+bpt_i_Dequeue()
+        {
+        pBPTree head = queue;
+        queue = queue->Next;
+	head->Next = NULL;
+        return head;
+        }
+
+int
+bpt_i_height(pBPTree root)
+        {
+        int h = 0;
+        pBPTree curr = root;
+        while (!curr->IsLeaf)
+                {
+                curr = curr->Children[0].Child;
+                h++;
+                }
+        return h;
+        }
+
+int
+bpt_i_PathToRoot(pBPTree this, pBPTree root)
+        {
+        int len = 0;
+        pBPTree curr = this;
+        while (curr != root)
+                {
+                curr = curr->Parent;
+                len++;
+                }
+        return len;
+        }
+
+
 
 /*** bptAdd() - add a key/value pair to the tree.  Returns 1 if the
  *** key/value pair already exists, 0 on success, or -1 on error.
@@ -348,4 +410,43 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
 
     return 0;
     }
+
+int
+bpt_PrintTree(pBPTree root)
+        {
+        pBPTree curr = NULL;
+        int i = 0;
+        int rank = 0;
+        int new_rank = 0;
+
+        if (root == NULL)
+                {
+                printf("Empty tree\n");
+                return 1;
+                }
+
+        bpt_i_Enqueue(root);
+        while (queue != NULL)
+                {
+                curr = bpt_i_Dequeue();
+                if (curr->Parent != NULL && curr == curr->Parent->Children[0].Child)
+                        {
+                        new_rank = bpt_i_PathToRoot(curr, root);
+                        if (new_rank != rank)
+                                {
+                                rank = new_rank;
+                                printf("\n");
+                                }
+                        }
+                for (i=0; i<curr->nKeys; i++)
+                        printf("%s ", curr->Keys[i].Value);
+                if (!curr->IsLeaf)
+                        for (i=0; i<=curr->nKeys; i++)
+                                bpt_i_Enqueue(curr->Children[i].Child);
+                printf("| ");
+                }
+        printf("\n");
+	return 0;
+        }
+
 
