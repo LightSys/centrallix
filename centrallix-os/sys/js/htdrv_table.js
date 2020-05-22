@@ -656,6 +656,16 @@ function tbld_bring_into_view(rownum)
     }
 
 
+function tbld_update_scrollbar()
+    {
+    $(this.scrollbar).stop(false, true);
+    if (this.thumb_height != this.thumb_avail)
+	htr_setvisibility(this.scrollbar, "inherit");
+    $(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear",
+	() => { if (this.thumb_height == this.thumb_avail) htr_setvisibility(this.scrollbar, "hidden"); } );
+    }
+
+
 function tbld_update_thumb(anim)
     {
     // Current offset of scroll area
@@ -704,8 +714,7 @@ function tbld_update_thumb(anim)
     // Set scrollbar visibility
     if (this.demand_scrollbar)
 	{
-	$(this.scrollbar).stop(false, true);
-	$(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear", null);
+	this.UpdateScrollbar();
 	}
 	//$(this.scrollbar).css({"opacity": (this.thumb_height == this.thumb_avail)?0.0:1.0});
 	//htr_setvisibility(this.scrollbar, (this.thumb_height == this.thumb_avail)?"hidden":"inherit");
@@ -810,10 +819,15 @@ function tbld_select()
 	{
 	this.mouseover();
 	}
+    this.showdetail(false);
+    }
+
+function tbld_showdetail(on_new)
+    {
     for(var i=0; i<this.table.detail_widgets.length; i++)
 	{
 	var dw = this.table.detail_widgets[i];
-	if (wgtrGetServerProperty(dw, 'display_for', 1) && this.table.initselect !== 2 /* 2 = noexpand */ )
+	if (wgtrGetServerProperty(dw, 'display_for', 1) && (this.table.initselect !== 2 || (this.table.initselect == 2 && on_new)) /* 2 = noexpand */ && (!on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
 	    {
 	    var found=false;
 	    for(var j=0; j<this.detail.length; j++)
@@ -886,6 +900,11 @@ function tbld_deselect()
 	this.removeChild(this.ctr);
 	this.ctr = null;
 	}
+    this.hidedetail();
+    }
+
+function tbld_hidedetail()
+    {
     for(var i=0; i<this.detail.length; i++)
 	{
 	var dw = this.detail[i];
@@ -920,6 +939,7 @@ function tbld_newselect()
 	{
 	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolornew', this.table.textcolornew));
 	}
+    this.showdetail(true);
     }
 
 function tbld_setbackground(obj, widget, prefix)
@@ -1503,6 +1523,8 @@ function tbld_instantiate_row(parentDiv, x, y)
     row.newselect=tbld_newselect;
     row.mouseover=tbld_domouseover;
     row.mouseout=tbld_domouseout;
+    row.showdetail=tbld_showdetail;
+    row.hidedetail=tbld_hidedetail;
     row.needs_redraw = false;
     row.detail = [];
 
@@ -1722,6 +1744,7 @@ function tbld_init(param)
     t.RescanRowVisibility = tbld_rescan_row_visibility;
     t.RefreshRowVisibility = tbld_refresh_row_visibility;
     t.UpdateThumb = tbld_update_thumb;
+    t.UpdateScrollbar = tbld_update_scrollbar;
     t.FormatRow = tbld_format_row;
     t.FormatCell = tbld_format_cell;
     t.UpdateHeight = tbld_update_height;
@@ -1905,7 +1928,7 @@ function tbld_init(param)
     // Scrollbar styling
     //$(t.scrollbar).find('td:has(img),div').css({'background-color':'rgba(128,128,128,0.2)'});
     if (t.demand_scrollbar)
-	$(t.scrollbar).css({"opacity": 0.0, "visibility": "inherit"});
+	$(t.scrollbar).css({"opacity": 0.0, "visibility": "hidden"});
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
     $(t.scrollbar).css(
@@ -2055,15 +2078,13 @@ function tbld_mouseover(e)
 		tbld_mcurrent.has_mouse = false;
 		if (tbld_mcurrent.demand_scrollbar)
 		    {
-		    $(tbld_mcurrent.scrollbar).stop(false, true);
-		    $(tbld_mcurrent.scrollbar).animate({"opacity": (tbld_mcurrent.thumb_height == tbld_mcurrent.thumb_avail)?0.0:(tbld_mcurrent.has_mouse?1.0:0.33)}, 150, "linear", null);
+		    tbld_mcurrent.UpdateScrollbar();
 		    }
 		}
 	    tbld_mcurrent = t;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
         if(ly.subkind=='cellborder')
@@ -2439,8 +2460,10 @@ function tbld_mousedown(e)
             for(var i in ly.row.table.osrc.orderobject)
                 neworder[i]=ly.row.table.osrc.orderobject[i];
             
-            var colname=ly.row.table.cols[ly.colnum].fieldname;
-                /** check for the this field already in the sort criteria **/
+            var colname=ly.row.table.cols[ly.colnum].sort_fieldname;
+	    if (!colname)
+		colname=ly.row.table.cols[ly.colnum].fieldname;
+	    /** check for the this field already in the sort criteria **/
             if(':"'+colname+'" asc'==neworder[0])
                 neworder[0]=':"'+colname+'" desc';
             else if (':"'+colname+'" desc'==neworder[0])
@@ -2474,8 +2497,7 @@ function tbld_mousemove(e)
 	    t.has_mouse = false;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
 	}

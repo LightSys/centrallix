@@ -75,6 +75,7 @@ typedef struct
     char wnamespace[32];
     char title[64];
     char fieldname[64];
+    char sort_fieldname[64];
     char caption_fieldname[64];
     char caption_textcolor[64];
     char wrap[16];
@@ -193,10 +194,11 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	for(colid=0;colid<t->ncols;colid++)
 	    {
 	    col = t->col_infs[colid];
-	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS},",
+	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS},",
 		    col->wname,
 		    col->wnamespace,
 		    col->fieldname,
+		    col->sort_fieldname,
 		    col->title,
 		    col->width,
 		    col->type,
@@ -445,6 +447,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		/** Get column properties **/
 		if (wgtrGetPropertyValue(sub_tree, "fieldname", DATA_T_STRING, POD(&ptr)) == 0)
 		    strtcpy(col->fieldname, ptr, sizeof(col->fieldname));
+		if (wgtrGetPropertyValue(sub_tree, "sort_fieldname", DATA_T_STRING, POD(&ptr)) == 0)
+		    strtcpy(col->sort_fieldname, ptr, sizeof(col->sort_fieldname));
 		if (wgtrGetPropertyValue(sub_tree, "caption_fieldname", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->caption_fieldname, ptr, sizeof(col->caption_fieldname));
 		if (wgtrGetPropertyValue(sub_tree, "caption_textcolor", DATA_T_STRING,POD(&ptr)) == 0)
