@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <assert.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
@@ -59,9 +60,8 @@ int
 bptInit(pBPTree this)
     {
 	
-	/** Return -1 if passed NULL **/
-	if (!this)
-		return -1;
+	/** Should not be passed NULL **/
+	assert (this != NULL);
 
 	/** Clear out the data structure **/
 	this->Parent = this->Next = this->Prev = NULL;
@@ -90,9 +90,8 @@ int
 bptDeInit(pBPTree this)
     {
 	
-	/** Return -1 if passed NULL **/
-	if (!this)
-		return -1;
+	/** Should not be passed NULL **/
+	assert (this != NULL);
 
     int i;
 
