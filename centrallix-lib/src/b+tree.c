@@ -144,7 +144,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
     }
 
 
-/*** bpt_i_Split() - split a node. 
+ /*** bpt_i_Split() - split a node. 
  *** Returns the new right node or NULL if the split location is invalid
  *** or the new node cannot be created.
  *** A new node is created and linked to the right of the input node.
@@ -154,6 +154,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
  ***/
 pBPTree bpt_i_Split(pBPTree node, int split_loc)
     {
+   	int i;
     pBPTree right_node = NULL;
 
     if(node == NULL
@@ -181,7 +182,7 @@ pBPTree bpt_i_Split(pBPTree node, int split_loc)
     right_node->IsLeaf = node->IsLeaf;
     if(!right_node->IsLeaf)
         {
-        for(int i = 1; i <= right_node->nKeys; i++)
+        for(i = 1; i <= right_node->nKeys; i++)
             {
             right_node->Children[ i ].Child->Parent = right_node;
             }
@@ -198,7 +199,6 @@ pBPTree bpt_i_Split(pBPTree node, int split_loc)
 
     return right_node;
     }
-
 
 /*** bpt_i_get_left() - finds the index of the parent's pointer
      that is for the node to the left of the key to be intserted
@@ -639,7 +639,7 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
 
 	/** See if it is there. **/
 
-	if (bpt_i_Find(this, key, key_len, &node, &dx) == 0)
+	if (bpt_i_Find(this, key, key_len, node, &dx) == 0) //removed & from node - Tommy
 	    {
 	    /** Already exists.  Don't add. **/
 	    return 1;
@@ -682,7 +682,7 @@ bptLookup(pBPTree this, char* key, int key_len)
     int idx;
 
 	/** Look it up **/
-	if (bpt_i_Find(this, key, key_len, &node, &idx) == 0)
+	if (bpt_i_Find(this, key, key_len, node, &idx) == 0)//removed & from node - Tommy
 	    {
 	    /** Found **/
 	    return node->Children[idx].Ref;
@@ -780,3 +780,25 @@ bpt_PrintTree(pBPTree root)
         printf("\n");
 	return 0;
     }
+/*
+
+pBPTree
+bptBulkLoad(char* fname)
+	{
+	pBPTree root;
+	root = bptNew();
+	
+	FILE* data = NULL;
+	data = fopen(fname, "r");
+	char key[20], name[50];
+	while(!feof(data))
+		{
+		//removed & from node - Tommy
+
+/*
+
+
+
+
+
+
