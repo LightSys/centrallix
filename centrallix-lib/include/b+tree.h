@@ -18,6 +18,9 @@
 /************************************************************************/
 
 #define BPT_SLOTS	(16)
+#define CEIL_HALF_OF_LEAF_SLOTS ( ( BPT_SLOTS + 1 ) / 2 )
+#define IDX_SLOTS ( ( BPT_SLOTS ) - 1 )
+#define CEIL_HALF_OF_IDX_SLOTS	( ( ( IDX_SLOTS ) + 1 ) / 2 )
 
 /** Structures **/
 typedef struct _BPK BPTreeKey, *pBPTreeKey;
