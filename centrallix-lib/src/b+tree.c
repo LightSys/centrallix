@@ -143,15 +143,60 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
     }
 
 
-/*** bpt_i_Split() - split a node.  Returns the new node.  The new node is
- *** always to the right of the current node (the second half of the keys/values
- *** are moved from the current node to the new node).
+/*** bpt_i_Split() - split a node. 
+ *** Returns the new right node or NULL if the split location is invalid
+ *** or the new node cannot be created.
+ *** A new node is created and linked to the right of the input node.
+ *** After the split, the input node contains [0, split_loc) and the new
+ *** right node contains [split_loc, nkeys). A split location input of
+ *** nKeys causes an empty node to be created and linked.
  ***/
-pBPTree
-bpt_i_Split(pBPTree this)
-{
-	return NULL;
-}
+pBPTree bpt_i_Split(pBPTree node, int split_loc)
+    {
+    pBPTree right_node = NULL;
+
+    if(node == NULL
+    || split_loc < 0
+    || split_loc > node->nKeys)
+        {
+        return NULL;
+        }
+
+    right_node = bptNew();
+
+    if(!right_node)
+        {
+        return NULL;
+        }
+
+    memmove(right_node->Keys, &node->Keys[ split_loc ], sizeof(BPTreeKey) * (node->nKeys - split_loc));
+
+    /** For index nodes, the right node left child is set elsewhere, so children are offset by 1 **/
+    memmove(&right_node->Children[ 1 ], &node->Children[ split_loc + 1 ], sizeof(BPTreeVal) * (node->nKeys - split_loc));
+
+    right_node->nKeys = node->nKeys - split_loc;
+    node->nKeys = split_loc;
+
+    right_node->IsLeaf = node->IsLeaf;
+    if(!right_node->IsLeaf)
+        {
+        for(int i = 1; i <= right_node->nKeys; i++)
+            {
+            right_node->Children[ i ].Child->Parent = right_node;
+            }
+        }
+
+    /** Link the node to the right of the current node **/
+    right_node->Next = node->Next;
+    if(right_node->Next != NULL)
+        {
+        right_node->Next->Prev = right_node;
+        }
+    node->Next = right_node;
+    right_node->Prev = node;
+
+    return right_node;
+    }
 
 
 /*** bpt_i_Push() - push a value to the left or right sibling
@@ -196,7 +241,6 @@ bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index)
     return rval;
     }
 
-
 /*** bpt_i_Find() - locate a key/value pair in the tree.  If not
  *** found, determine the location where it should be inserted.  Returns
  *** 0 if found, -1 if not found.
@@ -221,13 +265,30 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 }
 
 
-/*** bpt_i_LeafInsert() - insert a key/value pair into a leaf node.  Does NOT check
+/*** bpt_i_Insert() - insert a key/value pair into a node. Does NOT check
  *** to see if there is room - the caller must do that first.
+ *** Returns 0 if successful and an error code otherwise.
+ ***
+ *** NOTE: This insert uses the convention that the value pointer of a leaf
+ *** key is at node->Children[ key_index + 1 ], since this simplifies the insert
+ *** the insert and seems consistent with how the last layer of index nodes are
+ *** treated (in that the leaf child of an index key that contains the index
+ *** key is at Children[ key_index + 1 ])
  ***/
 int
-bpt_i_LeafInsert(pBPTree this, char* key, int key_len, void* data, int idx)
+bpt_i_Insert(pBPTree this, char* key, int key_len, void* data, int idx)
     {
     void* copy;
+
+    if(this == NULL
+    || key == NULL
+    || key_len <= 0 
+    || data == NULL
+    || idx < 0
+    || idx > this->nKeys)
+        {
+        return -1;
+        }
 
 	/** Make a copy of the key **/
 	copy = nmSysMalloc(key_len);
@@ -235,24 +296,29 @@ bpt_i_LeafInsert(pBPTree this, char* key, int key_len, void* data, int idx)
 	    return -1;
 	memcpy(copy, key, key_len);
 
-
 	/** Make room for the key and value **/
-
 	if (idx != this->nKeys)
-	{
-	    memmove(this->Keys+idx+1, this->Keys+idx, sizeof(BPTreeKey) * (this->nKeys - idx));
-	    memmove(this->Children+idx+1, this->Children+idx, sizeof(BPTreeVal) * (this->nKeys - idx));
-	    this->nKeys++;
-	}
+	    {
+	    memmove(this->Keys+(idx + 1), this->Keys+idx, sizeof(BPTreeKey) * (this->nKeys - idx));
+	    memmove(this->Children + (idx + 1) +1, this->Children + idx + 1, sizeof(BPTreeVal) * (this->nKeys - idx));
+	    }
 
-
-	/** Set it **/
-	this->Keys[idx].Length = key_len;
-	this->Keys[idx].Value = copy;
-	this->Children[idx].Ref = data;
+    /** Set it **/
+    this->nKeys++;
+    this->Keys[ idx ].Length = key_len;
+    this->Keys[ idx ].Value = copy;
+    if(this->IsLeaf)
+        {
+        this->Children[ idx + 1 ].Ref = data;
+        }
+    else
+        {
+        this->Children[ idx + 1 ].Child = data;
+        this->Children[ idx + 1 ].Child->Parent = this;
+        }
 
     return 0;
-}
+    }
 
 void
 bpt_i_Enqueue(pBPTree this)//global var or does this method work
@@ -331,7 +397,7 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
 	/** Not enough room? **/
 	if (node->nKeys == BPT_SLOTS)
 	    {
-	    new_node = bpt_i_Split(node);
+	    new_node = bpt_i_Split(node, CEIL_HALF_OF_LEAF_SLOTS);
 
 	    /** Error condition if new_node is NULL. **/
 	    if (!new_node)
@@ -347,7 +413,7 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
 	}
 
 	/** Insert the item **/
-	if (bpt_i_LeafInsert(node, key, key_len, data, dx) < 0){
+	if (bpt_i_Insert(node, key, key_len, data, dx) < 0){
 		return -1;
 	}
 
