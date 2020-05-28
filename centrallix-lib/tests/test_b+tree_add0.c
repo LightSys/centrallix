@@ -13,16 +13,17 @@ test(char **tname){
 
 	pBPTree root = bptNew();
 
-	char* key = 'hello\0';
-	char* val = 'hopeful\0';
+	char key[] = "hello\0";
+	char val[] = "hopeful\0";
 
-	int t = bpt_i_LeafInsert(root, key, 1, val, 0);
+	int t = bpt_i_LeafInsert(root, key, 5, val, 0);
 	int iter = 9000000, i;
 	for(i = 0; i < iter; i++){
 
 		assert(t==0);
 	}
 	
+	printf("\n");
 	bpt_PrintTree(root);
 	printf("\n");
 	return iter*4;

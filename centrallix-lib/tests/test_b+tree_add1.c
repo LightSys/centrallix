@@ -13,8 +13,8 @@ test(char **tname){
 
 	pBPTree root = bptNew();
 
-	char* key = '2\0';
-	char* val = 'second one\0';
+	char* key = "2\0";
+	char* val = "second one\0";
 
 	int t = bpt_i_LeafInsert(root, key, 1, val, 0);
 	int iter = 9000000, i;
