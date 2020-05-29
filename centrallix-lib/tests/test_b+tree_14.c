@@ -4,13 +4,6 @@
 #include "b+tree.h"
 #include "newmalloc.h"
 
-#define NOPRINT
-#ifdef PRINT
-	#define PRINTF(f_, ...) printf((f_), ##__VA_ARGS__)
-#else
-	#define PRINTF(f_, ...) ;
-#endif
-
 long long
 test(char** tname)
     {
@@ -45,7 +38,6 @@ test(char** tname)
 				bptInit(nodes[nodeIndex]);
 				nodes[nodeIndex]->nKeys = LEVELNKEYS[j];
 				nodes[nodeIndex]->IsLeaf = (j==NUMLEVELS-1);
-				PRINTF("%d:#%d", nodeIndex, nodes[nodeIndex]->nKeys);				
 				for (m=0; m<LEVELNKEYS[j]; m++)
 					{
 					nodes[nodeIndex]->Keys[m].Length = KEYLEN;
@@ -54,15 +46,12 @@ test(char** tname)
 				
 				if (j!=0)
 					{
-					PRINTF(":p%d", parentIndex);
 					nodes[nodeIndex]->Parent = nodes[parentIndex];
 					if ((k+1)%(LEVELNKEYS[j-1]+1)==0) parentIndex++;
 					}
-				PRINTF("\t");
 			
 				nodeIndex++;
 				}
-				PRINTF("\n");
 			}
 
 		int childIndex = 1;
