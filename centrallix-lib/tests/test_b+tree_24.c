@@ -8,7 +8,7 @@ test(char** tname)
    	{
 	int i, iter, tmp;
 	*tname = "b+tree-24 full test of bpt_i_Compare";
-	iter = 8000000;
+	iter = 800000;
 
 	for(i=0;i<iter;i++)
 	 	{

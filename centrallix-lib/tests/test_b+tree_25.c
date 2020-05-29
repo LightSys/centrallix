@@ -9,7 +9,7 @@ test(char** tname)
 	int i, iter, tmp, idx;
 
 	*tname = "b+tree-25 full test of bpt_i_Scan";
-	iter = 8000000;
+	iter = 50000;
 	
 	//cant recieve null ptr right?
 
