@@ -68,7 +68,7 @@ test(char** tname)
 	pBPTree leaf_node, right_node;
 	int max_key_len = 2;
 
-	*tname = "b+tree-09 bptSplit returns 0";
+	*tname = "b+tree-09: Test bptSplit";
 
 	iter = 1000;
 	for(i=0;i<iter;i++)

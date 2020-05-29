@@ -795,7 +795,7 @@ bptBulkLoad(char* fname)
 		{
 		//removed & from node - Tommy
 
-/*
+*/
 
 
 
