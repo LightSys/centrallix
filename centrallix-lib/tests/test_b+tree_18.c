@@ -17,7 +17,6 @@ test(char** tname)
 	int TOTNODES = 0;
 	for (i=0; i<NUMLEVELS; i++) TOTNODES += LEVELNNODES[i];
 	int KEYLEN = 5;
-	int val;
 
 	*tname = "b+tree-18 bptFree deinits large tree (configurable)";
 
