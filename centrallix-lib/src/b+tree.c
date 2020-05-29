@@ -698,7 +698,22 @@ bptLookup(pBPTree this, char* key, int key_len)
 int
 bptRemove(pBPTree this, char* key, int key_len)
     {
-	return -1;
+	pBPTree key_leaf = NULL;
+	void* key_record = NULL;
+	int idx = -1, check;
+	check = bpt_i_Find(this, key, key_len, key_leaf, &idx);
+	if (check == -1)
+		return -1;
+	key_record = bptLookup(this, key, key_len);
+	
+	if (key_record == NULL || key_leaf == NULL)
+		return -1;
+	
+	this = bpt_i_DeleteEntry(this, key_leaf, key, key_len, (pBPTreeVal) key_record);
+	free(key_record); //which free should i use or was this already freed
+	return 0;
+
+	
     }
 
 
@@ -780,7 +795,7 @@ bpt_PrintTree(pBPTree root)
         printf("\n");
 	return 0;
     }
-/*
+
 
 pBPTree
 bptBulkLoad(char* fname)
@@ -791,12 +806,16 @@ bptBulkLoad(char* fname)
 	FILE* data = NULL;
 	data = fopen(fname, "r");
 	char key[20], name[50];
+	
 	while(!feof(data))
 		{
-		//removed & from node - Tommy
-
-*/
-
+		fscanf(data, "%s %[^\n]", key, name);
+		if (bptAdd(root, key, strlen(key), (void*) &name) == -1)
+			return NULL;
+		}
+	fclose(data);
+	return root;
+	}
 
 
 

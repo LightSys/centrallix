@@ -10,7 +10,7 @@ test(char** tname)
 	pBPTree locate;
 	
 	*tname = "b+tree-26 full test of bpt_i_Find";
-	iter = 8000000;
+	iter = 800000;
 	printf("\n");
 
 	pBPTree root = bptNew();

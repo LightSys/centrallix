@@ -10,26 +10,18 @@ test(char** tname)
 	int a, i;
     	int iter;
 
-	*tname = "b+tree-27 Bulk Loading: Size = 10";
+	*tname = "b+tree-31 Bulk Loading: Size = 100,000";
 	iter = 8000000;
 	
 	
-	char* fname = "tests/bpt_bl_10e1.dat";
+	char* fname = "tests/bpt_bl_10e5.dat";
 	FILE* tree = NULL;
-	FILE* dict = NULL;
 	tree = fopen(fname, "w");
-	dict = fopen("tests/dictionary.txt", "r");
-	if (dict == NULL)
-		perror("dict is null");
-	char str[50];
 
-	for (a=1; a<=10; a++)
+	for (a=1; a<=100000; a++)
 		{
-		fscanf(dict, "%s\n", str);
-		printf("%s\n", str);
-		fprintf(tree, "%08d %s\n", a, str);
+			fprintf(tree, "%08d %d\n", a, a);
 		}
-	fclose(dict);
 	fclose(tree);
 
 
