@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "b+tree.h"
+#include "newmalloc.h"
 
 long long
 test(char** tname)
