@@ -9,14 +9,13 @@ test(char **tname){
 
 
 	*tname = "b+tree add test 1 - insert from main function";
-	printf("\n Adding Test #3\n");
 
 	pBPTree root = bptNew();
 
-	char* key = "hello\0";
+	char* key = "hi\0";
 	char* val = "hopeful\0";
 
-	int t = bptAdd(root, key, 5, val);
+	int t = bptAdd(root, key, 2, val);
 	int iter = 9000000, i;
 	for(i = 0; i < iter; i++){
 

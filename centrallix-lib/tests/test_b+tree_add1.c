@@ -16,7 +16,7 @@ test(char **tname){
 	char* key = "2\0";
 	char* val = "second one\0";
 
-	int t = bpt_i_LeafInsert(root, key, 1, val, 0);
+	int t = bpt_i_Insert(root, key, 1, val, 0);
 	int iter = 9000000, i;
 	for(i = 0; i < iter; i++){
 

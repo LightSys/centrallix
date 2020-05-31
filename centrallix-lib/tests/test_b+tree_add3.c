@@ -9,7 +9,6 @@ test(char **tname){
 
 
 	*tname = "b+tree add test 2 - insert duplicate";
-	printf("\n Adding Test #3\n");
 
 	pBPTree root = bptNew();
 
