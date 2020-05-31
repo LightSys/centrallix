@@ -10,20 +10,22 @@ test(char **tname){
 
 	*tname = "b+tree add test 2 - insert duplicate";
 
-	pBPTree root = bptNew();
+	BPTreeRoot root;
+	bptInitRoot(&root);
 
 	char* key = "hello\0";
 	char* val = "hopeful\0";
 
-	int t = bptAdd(root, key, 5, val);
-	t = bptAdd(root, key, 5, val);
+	int t = bptAdd(&root, key, 5, val);
+	t = bptAdd(&root, key, 5, val);
 	int iter = 9000000, i;
-	for(i = 0; i < iter; i++){
+	printf("%s%d\n", "t: ", t);
+	//for(i = 0; i < iter; i++){
 
 		assert(t==1);
-	}
+	//}
 	
-	bpt_PrintTree(root);
+	//bpt_PrintTree(root);
 	printf("\n");
 	return iter*4;
 
