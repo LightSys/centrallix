@@ -62,5 +62,14 @@ int bptClear(pBPTree this, int (*free_fn)(), void* free_arg);
 int bpt_i_Push(pBPTree this);
 int bpt_i_Fake();
 int bpt_PrintTree(pBPTree root);
+void bpt_i_CopyKey(pBPTree tree1, int idx1, pBPTree tree2, int idx2);
+int bpt_i_GetNeighborIndex(pBPTree this);
+pBPTree bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal);
+pBPTree bpt_i_AdjustRoot(pBPTree this);
+pBPTree bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal);
+int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);
+int bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index);
+int bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree locate, int *locate_index);
+
 #endif /* _BPTREE_H */
 

@@ -10,7 +10,8 @@ pBPTree bpt_i_Split(pBPTree node, int split_loc);
 static void create_leaf_node(pBPTree leaf_node, int nKeys, int max_key_len)
 	{
 	int * new_val;
-	for(int j = 0; j < nKeys; j++)
+	int j;
+	for(j = 0; j < nKeys; j++)
 		{
 		leaf_node->Keys[ j ].Length = max_key_len;
 		leaf_node->Keys[ j ].Value = nmMalloc(sizeof(char) * max_key_len);
@@ -35,8 +36,8 @@ static void validate_split(int split_loc, pBPTree leaf_node, pBPTree right_node,
 	char expected_key[ max_key_len ];
 	int * expected_value;
 	int adjusted_index;
-
-	for(int j = 0; j < total_nkeys; j++)
+	int j;
+	for(j = 0; j < total_nkeys; j++)
 		{
 		snprintf(expected_key, max_key_len, "%d", j);
 		if(j < split_loc)
@@ -67,7 +68,7 @@ test(char** tname)
 	pBPTree leaf_node, right_node;
 	int max_key_len = 2;
 
-	*tname = "b+tree-09 bptSplit returns 0";
+	*tname = "b+tree-09: Test bptSplit";
 
 	iter = 1000;
 	for(i=0;i<iter;i++)

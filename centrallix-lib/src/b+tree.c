@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
@@ -143,7 +144,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
     }
 
 
-/*** bpt_i_Split() - split a node. 
+ /*** bpt_i_Split() - split a node. 
  *** Returns the new right node or NULL if the split location is invalid
  *** or the new node cannot be created.
  *** A new node is created and linked to the right of the input node.
@@ -153,6 +154,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
  ***/
 pBPTree bpt_i_Split(pBPTree node, int split_loc)
     {
+   	int i;
     pBPTree right_node = NULL;
 
     if(node == NULL
@@ -180,7 +182,7 @@ pBPTree bpt_i_Split(pBPTree node, int split_loc)
     right_node->IsLeaf = node->IsLeaf;
     if(!right_node->IsLeaf)
         {
-        for(int i = 1; i <= right_node->nKeys; i++)
+        for(i = 1; i <= right_node->nKeys; i++)
             {
             right_node->Children[ i ].Child->Parent = right_node;
             }
@@ -196,15 +198,6 @@ pBPTree bpt_i_Split(pBPTree node, int split_loc)
     right_node->Prev = node;
 
     return right_node;
-    }
-
-
-/*** bpt_i_Push() - push a value to the left or right sibling
- ***/
-int
-bpt_i_Push(pBPTree this)
-    {
-	return 0;
     }
 
 /*** bpt_i_get_left() - finds the index of the parent's pointer
@@ -246,17 +239,19 @@ bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index)
  *** 0 if found, -1 if not found.
  ***/
 int
-bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index)
+bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree locate, int *locate_index)
     {
     int rval;
 
 	/** Scan this node **/
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)
-	    {
-	    *locate = this;
-	    return rval;
-	    }
+	    	{
+	    	locate = this;
+	    	if (rval != 0)
+			rval = -1;
+		return rval;
+	    	}
 
 	/** Scan the selected child node **/
 	rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
@@ -376,6 +371,262 @@ bpt_i_PathToRoot(pBPTree this, pBPTree root)
         }
 
 
+void
+bpt_i_CopyKey(pBPTree tree1, int idx1, pBPTree tree2, int idx2)
+        {
+        tree1->Keys[idx1].Value = tree2->Keys[idx2].Value;
+        tree1->Keys[idx1].Length = tree2->Keys[idx2].Length;
+        }
+
+int
+bpt_i_GetNeighborIndex(pBPTree this)
+        {
+        int i;
+
+        if (this == NULL)
+                return -2;
+        else if (this->Parent == NULL)
+                return -3;
+
+        for (i=0; i<=this->Parent->nKeys; i++)
+                if (this->Parent->Children[i].Child == this)
+                        return i-1;
+        return -4;
+        }
+
+pBPTree
+bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
+        {
+        int i, num_pointers;
+
+        i = 0;
+        while (bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) != 0)
+                i++;
+        for (++i; i<this->nKeys; i++)
+                bpt_i_CopyKey(this, i-1, this, i);
+	num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
+        i = 0;
+        if (this->IsLeaf)
+                {
+                while (this->Children[i].Ref != (void*)ptr)
+                        i++;
+                for (++i; i<num_pointers; i++)
+                        this->Children[i-1].Ref = this->Children[i].Ref;
+                }
+        else
+                {
+                while (this->Children[i].Child != (pBPTree)ptr)
+                        i++;
+                for (++i; i<num_pointers; i++)
+                        this->Children[i-1].Child = this->Children[i].Child;
+                }
+
+        this->nKeys--;
+
+        if (this->IsLeaf)
+                for (i=num_pointers; i<BPT_SLOTS; i++)
+                        this->Children[i].Ref = NULL;
+        else
+                for (i=num_pointers; i<BPT_SLOTS+1; i++)
+                        this->Children[i].Child = NULL;
+
+        return this;
+        }
+
+pBPTree
+bpt_i_AdjustRoot(pBPTree this)
+        {
+        pBPTree new_root;
+
+        if (this->nKeys > 0)
+                return this;
+
+        if (!this->IsLeaf)//why guaranteeing only one child
+                {
+                new_root = this->Children[0].Child;
+                new_root->Parent = NULL;
+                }
+        else
+                new_root = NULL;
+
+        bptFree(this);
+
+        return new_root;
+	}
+
+pBPTree
+bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_index, pBPTree k_prime, int k_prime_index)
+        {
+        int i, j, neighbor_insertion_index, this_end;
+        pBPTree temp;
+	
+        if (neighbor_index == -1)
+                {
+                temp = this;
+                this = neighbor;
+                neighbor = temp;
+                }
+
+        neighbor_insertion_index = neighbor->nKeys;
+
+        if (!this->IsLeaf)
+                {
+                bpt_i_CopyKey(neighbor, neighbor_insertion_index, k_prime, k_prime_index);
+                neighbor->nKeys++;
+
+                this_end = this->nKeys;
+                i = neighbor_insertion_index + 1;
+                for (j=0; j<this_end; j++)
+                        {
+                        bpt_i_CopyKey(neighbor, i, this, j);
+                        neighbor->Children[i].Child = this->Children[j].Child;
+                        neighbor->nKeys++;
+                        this->nKeys--;
+                        i++;
+                        }
+                neighbor->Children[i].Child = this->Children[j].Child;
+
+                for (i=0; i<neighbor->nKeys+1; i++)
+                        {
+                        temp = neighbor->Children[i].Child;
+                        temp->Parent = neighbor;
+                        }
+                }
+        else
+                {
+                i = neighbor_insertion_index;
+                for (j=0; j<this->nKeys; j++)
+                        {
+                        bpt_i_CopyKey(neighbor, i, this, j);
+                        neighbor->Children[i].Ref = this->Children[j].Ref;
+			neighbor->nKeys++;
+                        i++;
+                        }
+                neighbor->Children[BPT_SLOTS-1].Ref = this->Children[BPT_SLOTS-1].Ref;
+                }                                                                                       
+        root = bpt_i_DeleteEntry(root, this->Parent, k_prime->Keys[k_prime_index].Value, k_prime->Keys[k_prime_index].Length, (pBPTreeVal) this);
+        bptFree(this);
+        return root;
+        }
+
+pBPTree
+bpt_i_RedistributeNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_index, pBPTree k_prime, int k_prime_index)
+        {
+        int i;
+        pBPTree temp;
+
+        if (neighbor_index != -1)
+                {
+                if (!this->IsLeaf)
+                        this->Children[this->nKeys+1].Child = this->Children[this->nKeys].Child;
+                /*for (i=this->nKeys; i>0; i--)
+ *                         {
+ *                                                 bpt_i_CopyKey(this, i, this, i-1);
+ *                                                                         this->Children[i] = this->Children[i-1];
+ *                                                                                                 }*/
+                if (!this->IsLeaf)
+                        {
+                        for (i=this->nKeys; i>0; i--)
+                                {
+                                bpt_i_CopyKey(this, i, this, i-1);
+                                this->Children[i].Child = this->Children[i-1].Child;
+                                }
+
+                        this->Children[0].Child = neighbor->Children[neighbor->nKeys].Child;
+                        temp = this->Children[0].Child;
+                        temp->Parent = this;
+                        neighbor->Children[neighbor->nKeys].Child = NULL;
+                        bpt_i_CopyKey(this, 0, k_prime, k_prime_index);
+                        bpt_i_CopyKey(this->Parent, k_prime_index, neighbor, neighbor->nKeys-1);
+                        }
+                else
+                        {
+                        for (i=this->nKeys; i>0; i--)
+                                {
+                                bpt_i_CopyKey(this, i, this, i-1);
+				this->Children[i].Ref = this->Children[i-1].Ref;
+                                }
+
+                        this->Children[0].Ref = neighbor->Children[neighbor->nKeys-1].Ref;
+                        neighbor->Children[neighbor->nKeys-1].Ref = NULL;
+                        bpt_i_CopyKey(this, 0, neighbor, neighbor->nKeys-1);
+                        bpt_i_CopyKey(this->Parent, k_prime_index, this, 0);
+                        }       
+	}
+
+        else
+                {
+                if (this->IsLeaf)
+                        {
+                        bpt_i_CopyKey(this, this->nKeys, neighbor, 0);
+                        this->Children[this->nKeys].Ref = neighbor->Children[0].Ref;
+                        bpt_i_CopyKey(this->Parent, k_prime_index, neighbor, 1);
+
+                        for (i=0; i<neighbor->nKeys-1; i++)
+				{
+                                bpt_i_CopyKey(neighbor, i, neighbor, i+1);
+                                neighbor->Children[i].Ref = neighbor->Children[i+1].Ref;
+                                }
+                        }
+                else
+                        {
+                        bpt_i_CopyKey(this, this->nKeys, k_prime, k_prime_index);
+                        this->Children[this->nKeys+1].Child = neighbor->Children[0].Child;
+                        temp = this->Children[this->nKeys+1].Child;
+                        temp->Parent = this;
+                        bpt_i_CopyKey(this->Parent, k_prime_index, neighbor, 0);
+
+                        for (i=0; i<neighbor->nKeys-1; i++)
+                                {
+                                bpt_i_CopyKey(neighbor, i, neighbor, i+1);
+                                neighbor->Children[i].Child = neighbor->Children[i+1].Child;
+                                }
+                        }
+                if (!this->IsLeaf)
+                        neighbor->Children[i].Child = neighbor->Children[i+1].Child;
+
+                }
+
+        this->nKeys++;
+        neighbor->nKeys--;
+
+        return root;
+        }
+
+pBPTree
+bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal ptr)
+        {
+        int min_keys, neighbor_index, k_prime_index, capacity;
+        pBPTree neighbor, k_prime;
+
+        this = bpt_i_RemoveEntryFromNode(this, key, key_len, ptr);
+
+        if (this == root)
+                return bpt_i_AdjustRoot(root);
+
+        min_keys = ceil((BPT_SLOTS + 1) / 2.0) - 1; //might want to follow their conditional assignment suggestion with cut fcn?
+
+        if (this->nKeys >= min_keys)
+                return root;
+
+        neighbor_index = bpt_i_GetNeighborIndex(this);
+        k_prime_index = neighbor_index == -1 ? 0 : neighbor_index;
+        k_prime = this->Parent;
+        neighbor = neighbor_index == -1 ? this->Parent->Children[1].Child : this->Parent->Children[neighbor_index].Child;
+
+        capacity = this->IsLeaf ? BPT_SLOTS + 1 : BPT_SLOTS; //math correct for this implementation?
+
+        if ((neighbor->nKeys + this->nKeys) < capacity)
+                return bpt_i_CoalesceNodes(root, this, neighbor, neighbor_index, k_prime, k_prime_index);
+        else
+                return bpt_i_RedistributeNodes(root, this, neighbor, neighbor_index, k_prime, k_prime_index);
+        }
+
+
+
+
+
+
 
 /*** bptAdd() - add a key/value pair to the tree.  Returns 1 if the
  *** key/value pair already exists, 0 on success, or -1 on error.
@@ -388,7 +639,7 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
 
 	/** See if it is there. **/
 
-	if (bpt_i_Find(this, key, key_len, &node, &dx) == 0)
+	if (bpt_i_Find(this, key, key_len, node, &dx) == 0) //removed & from node - Tommy
 	    {
 	    /** Already exists.  Don't add. **/
 	    return 1;
@@ -431,7 +682,7 @@ bptLookup(pBPTree this, char* key, int key_len)
     int idx;
 
 	/** Look it up **/
-	if (bpt_i_Find(this, key, key_len, &node, &idx) == 0)
+	if (bpt_i_Find(this, key, key_len, node, &idx) == 0)//removed & from node - Tommy
 	    {
 	    /** Found **/
 	    return node->Children[idx].Ref;
@@ -529,3 +780,25 @@ bpt_PrintTree(pBPTree root)
         printf("\n");
 	return 0;
     }
+/*
+
+pBPTree
+bptBulkLoad(char* fname)
+	{
+	pBPTree root;
+	root = bptNew();
+	
+	FILE* data = NULL;
+	data = fopen(fname, "r");
+	char key[20], name[50];
+	while(!feof(data))
+		{
+		//removed & from node - Tommy
+
+*/
+
+
+
+
+
+
