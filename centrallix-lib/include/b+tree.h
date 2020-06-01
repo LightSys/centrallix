@@ -27,6 +27,11 @@ typedef struct _BPK BPTreeKey, *pBPTreeKey;
 typedef union _BPV BPTreeVal, *pBPTreeVal;
 typedef struct _BPT BPTree, *pBPTree;
 
+typedef struct BPTreeRoot BPTreeRoot;
+struct BPTreeRoot{
+	pBPTree root;
+};
+
 struct _BPK
     {
     char*	Value;
@@ -55,7 +60,7 @@ pBPTree bptNew();
 int bptInit(pBPTree this);
 void bptFree(pBPTree this);
 int bptDeInit(pBPTree this);
-int bptAdd(pBPTree this, char* key, int key_len, void* data);
+int bptAdd(BPTreeRoot *this, char* key, int key_len, void* data);
 void* bptLookup(pBPTree this, char* key, int key_len);
 int bptRemove(pBPTree this, char* key, int key_len);
 int bptClear(pBPTree this, int (*free_fn)(), void* free_arg);
