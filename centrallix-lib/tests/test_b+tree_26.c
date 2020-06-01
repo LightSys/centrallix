@@ -8,7 +8,8 @@ test(char** tname)
    	{
 	int i, iter, tmp, idx;
 	pBPTree locate;
-	
+	char* hold;
+
 	*tname = "b+tree-26 full test of bpt_i_Find";
 	iter = 800000;
 	printf("\n");
@@ -53,6 +54,12 @@ test(char** tname)
 	left->Next = right;
 	root->IsLeaf = 0;
 	
+	pBPTree root2 = bptNew();
+	root2->nKeys++;
+	root2->Keys[0].Value = "Only\n";
+	root2->Keys[0].Length = 4;
+	root2->Children[0].Ref = (void*) "data";
+
 	for(i=0;i<iter;i++)
 	 	{
 		tmp = bpt_i_Find(root, "Az", 2, &locate, &idx);
@@ -87,6 +94,15 @@ test(char** tname)
                 //assert (locate == mid);
                 assert (tmp == -1);
 		assert(idx == 2);
+		
+		tmp = bpt_i_Find(NULL, "Az", 2, &locate, &idx);
+		assert (tmp == -1);
+			
+		tmp = bpt_i_Find(root2, "Only", 4, &locate, &idx);
+		assert (tmp == 0);
+                assert(idx == 0);
+		hold = (char*) locate->Children[idx].Ref;
+		assert (strcmp("data", hold) == 0);
 		}
 
 	printf("\n");

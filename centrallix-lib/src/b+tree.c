@@ -254,7 +254,8 @@ int
 bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index)
     {
     int rval;
-
+	if (this == NULL)
+		return -1;
 	/** Scan this node **/
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)
@@ -655,7 +656,7 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
     if(this == NULL || key == NULL || key_len == 0 || data == NULL){
 	return -1;
     }
-
+	printf("A\n");
 	/** See if it is there. **/
 
 	if (bpt_i_Find(this->root, key, key_len, &node, &dx) == 0)
@@ -663,7 +664,7 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
 	    /** Already exists.  Don't add. **/
 	    return 1;
 	    }
-
+	printf("Find\n");
 	/** Not enough room? **/
 	insertNode = node;
 	if (node->nKeys == BPT_SLOTS)
@@ -683,12 +684,12 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
 			dx -= CEIL_HALF_OF_LEAF_SLOTS;
 		}
 	}
-
+	printf("B\n");
 	/** Insert the item **/
 	if (bpt_i_Insert(node, key, key_len, data, dx) < 0){
 		return -1;
 	}
-
+	printf("C\n");
 	if(!rightNode){
 		return 0;
 		// because no split -- done
@@ -780,12 +781,7 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
 
 		}
 
-	}
-
-
-	
-
-			
+	}	
 
     return 0;
 }
