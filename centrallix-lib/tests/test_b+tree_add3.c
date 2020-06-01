@@ -8,20 +8,21 @@ long long
 test(char **tname){
 
 
-	*tname = "b+tree add test 2 - insert duplicate";
+	*tname = "b+tree add test 4 - insert duplicate";
 
 	pBPTree root = bptNew();
 
 	char* key = "hello\0";
 	char* val = "hopeful\0";
+	int iter = 9000000, i, t;
 
-	int t = bptAdd(root, key, 5, val);
 	t = bptAdd(root, key, 5, val);
-	int iter = 9000000, i;
-	printf("%s%d\n", "t: ", t);
+	assert (t == 0);
+        t = bptAdd(root, key, 5, val);
+        assert (t == 1);
+	
 	for(i = 0; i < iter; i++){
-
-		assert(t==1);
+		assert (1 == 1);
 	}
 	
 	bpt_PrintTree(root);

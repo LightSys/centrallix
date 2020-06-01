@@ -646,25 +646,25 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
  *** key/value pair already exists, 0 on success, or -1 on error.
  ***/
 int
-bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
+bptAdd(pBPTree this, char* key, int key_len, void* data)
 {
     pBPTree node, new_node = NULL;
     pBPTree parent = NULL, leftNode = NULL, rightNode = NULL, insertNode = NULL, node_to_prop = NULL;
     BPTreeKey value;
     int dx, rval, insertIdx;
-
+	printf("A\n");
     if(this == NULL || key == NULL || key_len == 0 || data == NULL){
 	return -1;
     }
-	printf("A\n");
+	printf("B\n");
 	/** See if it is there. **/
 
-	if (bpt_i_Find(this->root, key, key_len, &node, &dx) == 0)
+	if (bpt_i_Find(this, key, key_len, &node, &dx) == 0)
 	    {
 	    /** Already exists.  Don't add. **/
 	    return 1;
 	    }
-	printf("Find\n");
+	printf("C\n");
 	/** Not enough room? **/
 	insertNode = node;
 	if (node->nKeys == BPT_SLOTS)
@@ -684,20 +684,20 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
 			dx -= CEIL_HALF_OF_LEAF_SLOTS;
 		}
 	}
-	printf("B\n");
+	printf("D\n");
 	/** Insert the item **/
 	if (bpt_i_Insert(node, key, key_len, data, dx) < 0){
 		return -1;
 	}
-	printf("C\n");
+	printf("E\n");
 	if(!rightNode){
 		return 0;
 		// because no split -- done
 	}
-
+	printf("F\n");
 	node_to_prop = rightNode;
 	value = rightNode->Keys[0];
-
+	printf("G\n");
 	// go up the tree, as needed
 	
 	parent = node->Parent;
@@ -715,7 +715,7 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
 
 			newRoot->Children[1].Child = rightNode;
 			rightNode->Parent = newRoot;
-			this->root = newRoot;
+			this = newRoot;
 			break;
 		}
 		else if(parent->nKeys == IDX_SLOTS){

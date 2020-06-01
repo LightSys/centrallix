@@ -8,7 +8,7 @@ long long
 test(char **tname){
 
 
-	*tname = "b+tree add test 1 - insert from main function";
+	*tname = "b+tree add test 3 - insert with bptAdd";
 
 	pBPTree root = bptNew();
 
@@ -17,9 +17,10 @@ test(char **tname){
 
 	int t = bptAdd(root, key, 2, val);
 	int iter = 9000000, i;
-	printf("%s%d\n", "t: ", t);
+	
+
 	for (i=0; i<iter; i++)
-		assert(t==1);
+		assert (t == 0);
 	bpt_PrintTree(root);
 	printf("\n");
 	return iter*4;

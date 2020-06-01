@@ -60,7 +60,7 @@ pBPTree bptNew();
 int bptInit(pBPTree this);
 void bptFree(pBPTree this);
 int bptDeInit(pBPTree this);
-int bptAdd(BPTreeRoot *this, char* key, int key_len, void* data);
+int bptAdd(pBPTree this, char* key, int key_len, void* data);
 void* bptLookup(pBPTree this, char* key, int key_len);
 int bptRemove(pBPTree this, char* key, int key_len);
 int bptClear(pBPTree this, int (*free_fn)(), void* free_arg);
