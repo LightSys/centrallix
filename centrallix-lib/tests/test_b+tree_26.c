@@ -55,35 +55,35 @@ test(char** tname)
 	
 	for(i=0;i<iter;i++)
 	 	{
-		tmp = bpt_i_Find(root, "Az", 2, locate, &idx);
+		tmp = bpt_i_Find(root, "Az", 2, &locate, &idx);
 		//assert (locate == left);
 		assert (tmp == 0);
 		assert(idx == 1);
-		tmp = bpt_i_Find(root, "Do", 2, locate, &idx);
+		tmp = bpt_i_Find(root, "Do", 2, &locate, &idx);
                 //assert (locate == left);
                 assert (tmp == 0);
                 assert(idx == 3);
-		tmp = bpt_i_Find(root, "Happier", 7, locate, &idx);
+		tmp = bpt_i_Find(root, "Happier", 7, &locate, &idx);
                 //assert (locate == mid);
                 assert (tmp == 0);
                 assert(idx == 0);
-		tmp = bpt_i_Find(root, "Zebra", 5, locate, &idx);
+		tmp = bpt_i_Find(root, "Zebra", 5, &locate, &idx);
                 //assert (locate == right);
                 assert (tmp == 0);
                 assert(idx == 1);
-		tmp = bpt_i_Find(root, "Zebras", 6, locate, &idx);
+		tmp = bpt_i_Find(root, "Zebras", 6, &locate, &idx);
                 //assert (locate == right);
                 assert (tmp == -1);
                 assert(idx == 2);
-		tmp = bpt_i_Find(root, "AAAAAAA", 7, locate, &idx);
+		tmp = bpt_i_Find(root, "AAAAAAA", 7, &locate, &idx);
                 //assert (locate == left);
                 assert (tmp == -1);
                 assert(idx == 0);
-		tmp = bpt_i_Find(root, "Heat", 4, locate, &idx);
+		tmp = bpt_i_Find(root, "Heat", 4, &locate, &idx);
                 //assert (locate == mid);
                 assert (tmp == -1);
                 assert(idx == 1);
-		tmp = bpt_i_Find(root, "Bad", 3, locate, &idx);
+		tmp = bpt_i_Find(root, "Bad", 3, &locate, &idx);
                 //assert (locate == mid);
                 assert (tmp == -1);
 		assert(idx == 2);

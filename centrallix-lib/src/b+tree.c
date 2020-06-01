@@ -251,7 +251,7 @@ bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index)
  *** 0 if found, -1 if not found.
  ***/
 int
-bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree locate, int *locate_index)
+bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index)
     {
     int rval;
 
@@ -259,15 +259,16 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree locate, int *locate_ind
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)
 	    	{
-	    	locate = this;
+		//printf("LEAF\n");
+		*locate = this;
 	    	if (rval != 0)
 			rval = -1;
 		return rval;
 	    	}
-
 	/** Scan the selected child node **/
-	rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
-
+	else
+		rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
+	//printf("RETURNING\n");
     return rval;
 }
 
@@ -657,7 +658,7 @@ bptAdd(BPTreeRoot *this, char* key, int key_len, void* data)
 
 	/** See if it is there. **/
 
-	if (bpt_i_Find(this->root, key, key_len, node, &dx) == 0) //removed & from node - Tommy
+	if (bpt_i_Find(this->root, key, key_len, &node, &dx) == 0)
 	    {
 	    /** Already exists.  Don't add. **/
 	    return 1;
@@ -800,12 +801,13 @@ bptLookup(pBPTree this, char* key, int key_len)
     int idx;
 
 	/** Look it up **/
-	if (bpt_i_Find(this, key, key_len, node, &idx) == 0)//removed & from node - Tommy
+	int check = bpt_i_Find(this, key, key_len, &node, &idx);
+	
+	if (check == 0)
 	    {
 	    /** Found **/
 	    return node->Children[idx].Ref;
 	    }
-
     return NULL;
     }
 
@@ -819,7 +821,7 @@ bptRemove(pBPTree this, char* key, int key_len)
 	pBPTree key_leaf = NULL;
 	void* key_record = NULL;
 	int idx = -1, check;
-	check = bpt_i_Find(this, key, key_len, key_leaf, &idx);
+	check = bpt_i_Find(this, key, key_len, &key_leaf, &idx);
 	if (check == -1)
 		return -1;
 	key_record = bptLookup(this, key, key_len);

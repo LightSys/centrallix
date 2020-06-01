@@ -74,7 +74,7 @@ pBPTree bpt_i_AdjustRoot(pBPTree this);
 pBPTree bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal);
 int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);
 int bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index);
-int bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree locate, int *locate_index);
+int bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index);
 
 #endif /* _BPTREE_H */
 
