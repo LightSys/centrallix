@@ -10,22 +10,30 @@ test(char** tname)
 	int a, i;
     	int iter;
 
-	*tname = "b+tree-31 Bulk Loading: Size = 100,000";
+	*tname = "b+tree-31 Bulk Loading: Size = 10,000";
 	iter = 8000000;
 	
-	
-	char* fname = "tests/bpt_bl_10e5.dat";
+	pBPTree this;
+	char* fname = "tests/bpt_bl_10e4.dat";
 	FILE* tree = NULL;
+	FILE* dict = NULL;
 	tree = fopen(fname, "w");
-
-	for (a=1; a<=100000; a++)
+	dict = fopen("tests/dictionary.txt", "r");
+	if (dict == NULL)
+		perror("dict is null");
+	char str[50];
+	
+	for (a=1; a<=10000; a++)
 		{
-			fprintf(tree, "%08d %d\n", a, a);
+		fscanf(dict, "%s\n", str);
+		fprintf(tree, "%08d %s\n", a, str);
 		}
+	fclose(dict);
 	fclose(tree);
 
+	this = bptBulkLoad(fname, --a);
+	//bpt_PrintTree(this);
 
-	//bpt_PrintTree(root);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (5 == 5);

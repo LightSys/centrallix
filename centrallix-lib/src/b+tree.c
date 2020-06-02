@@ -651,7 +651,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 		    pBPTree node;
 		    pBPTree parent = NULL, leftNode = NULL, rightNode = NULL, insertNode = NULL, node_to_prop = NULL;
 		    BPTreeKey value;
-		    int dx, rval, insertIdx;
+		    int dx, insertIdx;
 
 
 		    if(this == NULL || key == NULL || key_len == 0 || data == NULL){
@@ -828,7 +828,7 @@ bptRemove(pBPTree this, char* key, int key_len)
 		return -1;
 
 	this = bpt_i_DeleteEntry(this, key_leaf, key, key_len, (pBPTreeVal) key_record);
-	free(key_record); //which free should i use or was this already freed
+//	free(key_record); //which free should i use or was this already freed
 	return 0;
 
 
@@ -916,21 +916,29 @@ bpt_PrintTree(pBPTree root)
 
 
 pBPTree
-bptBulkLoad(char* fname)
+bptBulkLoad(char* fname, int num)
 	{
 	pBPTree root;
-	root = bptNew();
-
+	int i;
 	FILE* data = NULL;
 	data = fopen(fname, "r");
-	char key[20], name[50];
-
-	while(!feof(data))
+	char key[10], leaf[50];
+	char* info;
+	char* key_val;
+	
+	for (i=0; i<num; i++)
 		{
-		fscanf(data, "%s %[^\n]", key, name);
-		if (bptAdd(root, key, strlen(key), (void*) &name) == -1)
+		fscanf(data, "%s %[^\n]", key, leaf);
+	
+		info = leaf;
+		key_val = key;
+		if (bptAdd(&root, key_val, strlen(key_val), info) != 0)
+			{
+			printf("NOT ADDED\n");
 			return NULL;
+			}
 		}
 	fclose(data);
+
 	return root;
 	}

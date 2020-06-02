@@ -7,52 +7,36 @@ long long
 test(char** tname)
    	{
 	printf("\n");
-	int i;
+	int a, i;
     	int iter;
-	
-	*tname = "b+tree-23 REMOVE RIGHT ENTRY FROM ROOT";
+
+	*tname = "b+tree-29 Bulk Loading: Size = 100";
 	iter = 8000000;
 	
-	pBPTree root = bptNew();
-	pBPTree left = bptNew();
-	pBPTree mid = bptNew();
-	pBPTree right = bptNew();  
-        root->Keys[0].Length = 5;
-        root->Keys[0].Value = "Tommy\0"; 
-	root->nKeys++;	
-	root->Keys[1].Length = 8;
-        root->Keys[1].Value = "Hot dogs\0";
-        root->nKeys++;
-	left->Keys[0].Length = 26;
-	left->Keys[0].Value = "abcdefghijklmnopqrstuvwxyz\0";
-	left->nKeys++;
-	left->Keys[1].Length = 1;
-	left->Keys[1].Value = "a\0";
-	left->nKeys++;
-	mid->Keys[0].Length = 7;
-	mid->Keys[0].Value = "ALABAMA\0";
-	mid->nKeys++;
-	right->Keys[0].Length = 10;
-	right->Keys[0].Value = "0123456789\0";
-	right->nKeys++;
-	right->Keys[1].Length = 2;
-	right->Keys[1].Value = "!?\0";
-	right->nKeys++;
-	root->Children[0].Child = left;
-	left->Parent = root;
-	root->Children[1].Child = mid;
-        mid->Parent = root;
-	root->Children[2].Child = right;
-	right->Parent = root;
-	left->Next = right;
-	root->IsLeaf = 0;
+	pBPTree this;
+	char* fname = "tests/bpt_bl_10e2.dat";
+	FILE* tree = NULL;
+	FILE* dict = NULL;
+	tree = fopen(fname, "w");
+	dict = fopen("tests/dictionary.txt", "r");
+	if (dict == NULL)
+		perror("dict is null");
+	char str[50];
 	
-	bpt_PrintTree(root);
-	bpt_i_RemoveEntryFromNode(root, "Hot dogs", 8, mid);
-	bpt_PrintTree(root);
+	for (a=1; a<=100; a++)
+		{
+		fscanf(dict, "%s\n", str);
+		fprintf(tree, "%08d %s\n", a, str);
+		}
+	fclose(dict);
+	fclose(tree);
+
+	this = bptBulkLoad(fname, --a);
+	bpt_PrintTree(this);
+
 	for(i=0;i<iter;i++)
 	 	{
-		assert (root->Keys[0].Length == 5);
+		assert (5 == 5);
 		}
 
 	printf("\n");

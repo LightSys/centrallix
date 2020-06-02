@@ -17,15 +17,15 @@ test(char **tname){
 
 	t = bptAdd(&root, "a", 1, data);
 		assert (t == 0);
-		t = bptAdd(root, "b", 1, data);
+		t = bptAdd(&root, "b", 1, data);
                 assert (t == 0);
-		t = bptAdd(root, "c", 1, data);
+		t = bptAdd(&root, "c", 1, data);
                 assert (t == 0);
-		t = bptAdd(root, "d", 1, data);
+		t = bptAdd(&root, "d", 1, data);
                 assert (t == 0);
-		t = bptAdd(root, "e", 1, data);
+		t = bptAdd(&root, "e", 1, data);
                 assert (t == 0);
-		t = bptAdd(root, "f", 1, data);
+		t = bptAdd(&root, "f", 1, data);
                 assert (t == 0);
 	
 	for(i = 0; i < iter; i++)
