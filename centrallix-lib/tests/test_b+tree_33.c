@@ -9,7 +9,7 @@ test(char** tname)
 	printf("\n");
 	int a, i, iter;
 
-	*tname = "b+tree-32 Bulk Loading: Size = 1,000,000";
+	*tname = "b+tree-33 Bulk Loading: Size = 1,000,000";
 	iter = 8000000;
 	
 	pBPTree this;

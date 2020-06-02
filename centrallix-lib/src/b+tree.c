@@ -27,11 +27,6 @@
 /************************************************************************/
 pBPTree queue = NULL;
 
-int bpt_i_Fake()
-{
-	return 0;
-}
-
 /*** bptNew() - allocate and initialize a new B+ Tree
  ***/
 pBPTree
@@ -450,21 +445,24 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
 pBPTree
 bpt_i_AdjustRoot(pBPTree this)
         {
+	if (this == NULL)
+		return NULL;
+	
         pBPTree new_root;
-
+	
         if (this->nKeys > 0)
                 return this;
-
-        if (!this->IsLeaf)//why guaranteeing only one child
+	
+        if (!this->IsLeaf)
                 {
                 new_root = this->Children[0].Child;
                 new_root->Parent = NULL;
                 }
         else
                 new_root = NULL;
-
-        bptFree(this);
-
+	
+        nmFree(this, sizeof(BPTree));
+	
         return new_root;
 	}
 
