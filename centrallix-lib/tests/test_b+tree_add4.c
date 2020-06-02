@@ -64,7 +64,7 @@ test(char **tname){
 		assert (0 == 0);
 		}
 
-	bpt_PrintTree(tree);
+	bpt_PrintTree(&tree);
 	printf("\n");
 	return iter*4;
 

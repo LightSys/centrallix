@@ -21,7 +21,7 @@ test(char **tname){
 
 	for (i=0; i<iter; i++)
 		assert (t == 0);
-	bpt_PrintTree(tree);
+	bpt_PrintTree(&tree);
 	printf("\n");
 	return iter*4;
 

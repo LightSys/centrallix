@@ -33,7 +33,7 @@ test(char **tname){
 		assert (0 == 0);
 		}
 		
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	printf("\n");
 	return iter*4;
 

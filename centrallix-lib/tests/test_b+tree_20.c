@@ -58,11 +58,11 @@ test(char** tname)
 	rightL->Parent = rightMid;
 	rightR->Parent = rightMid;
 
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	bpt_i_CopyKey(rightMid, 0, leftMid, 0);
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	bpt_i_CopyKey(leftMid, 0, rightR, 0);
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	
 	tmp = 0;
 	for(i=0;i<iter;i++)

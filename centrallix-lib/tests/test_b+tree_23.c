@@ -48,9 +48,9 @@ test(char** tname)
 	left->Next = right;
 	root->IsLeaf = 0;
 	
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	bpt_i_RemoveEntryFromNode(root, "Hot dogs", 8, mid);
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (root->Keys[0].Length == 5);

@@ -877,7 +877,88 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
     }
 
 int
-bpt_PrintTree(pBPTree root)
+bpt_PrintTree(pBPTree *tree)
+        {
+					#define VAL_WIDTH ( 3 + 1 )
+			    #define MIN_SPACING 2 //this isn't the only place to change things
+			    #define NODE_PRINT_WIDTH ( ORDER * VAL_WIDTH )
+
+		            if(*tree == NULL) { return 1; }
+
+			    pBPTree leftmost = *tree;
+
+
+			    pBPTree curr_node = leftmost;
+			    int level = 0;
+			    while( leftmost )
+			    {
+			        level++;
+			        printf( "LEVEL %d: ", level );
+			        while( curr_node )
+			        {
+			            if( curr_node->Parent != NULL
+			            && (pBPTree)curr_node->Parent->Children[ 0 ].Child == curr_node
+			            && curr_node != leftmost)
+			            {
+			            printf( "     ");
+			            }
+
+			            int limit = curr_node->IsLeaf ? BPT_SLOTS : IDX_SLOTS;
+				    int i;
+			            for(i = 0; i < limit; i++)
+			            {
+			                if( i == 0 )
+			                {
+			                    printf("|");
+			                }
+			                if( i < curr_node->nKeys)
+			                {
+			                    if( curr_node->IsLeaf )
+			                    {
+			                        //for the test, every key I put in was null terminated so assuming that here.
+			                       // printf( "%s-%d|", curr_node->Keys[ i ].Value, *((int*)curr_node->Children[ i + 1 ].Ref ) );
+			                       printf("%s - * |", curr_node->Keys[i].Value);
+			                    }
+			                    else
+			                    {
+			                        //for the test, every key I put in was null terminated so assuming that here.
+			                        printf( "%s|", curr_node->Keys[ i ].Value);
+			                    }
+
+			                }
+			                else
+			                {
+			                    printf( "__|" );
+			                }
+			            }
+			            if( curr_node->Next != NULL )
+			            {
+			                printf("--->");
+			            }
+
+			            curr_node = curr_node->Next;
+			        }
+
+			        if( curr_node == NULL )
+			        {
+			            if( leftmost->IsLeaf == 1 )
+			            {
+			                break;
+			            }
+			            else
+			            {
+			                leftmost = leftmost->Children[ 0 ].Child;
+			            }
+			        curr_node = leftmost;
+			        }
+			        printf( "\n" );
+			    }
+			    printf("\n");
+					return 0;
+    }
+
+int
+bpt_PrintTreeSmall(pBPTree root)
         {
         pBPTree curr = NULL;
         int i = 0;
@@ -925,11 +1006,11 @@ bptBulkLoad(char* fname, int num)
 	char key[10], leaf[50];
 	char* info;
 	char* key_val;
-	
+
 	for (i=0; i<num; i++)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
-	
+
 		info = leaf;
 		key_val = key;
 		if (bptAdd(&root, key_val, strlen(key_val), info) != 0)

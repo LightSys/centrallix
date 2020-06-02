@@ -45,7 +45,7 @@ test(char** tname)
 	//strcpy(root->Keys[0].Value, "Tommy");
 	//printf("B\n");
 	tmp = 0;
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	for(i=0;i<iter;i++)
 	 	{
 		//tmp = bpt_PrintTree(NULL);

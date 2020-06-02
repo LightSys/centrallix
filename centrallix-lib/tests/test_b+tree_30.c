@@ -32,7 +32,7 @@ test(char** tname)
 	fclose(tree);
 
 	this = bptBulkLoad(fname, --a);
-	bpt_PrintTree(this);
+	bpt_PrintTreeSmall(this);
 
 	for(i=0;i<iter;i++)
 	 	{

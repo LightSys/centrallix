@@ -70,9 +70,9 @@ test(char** tname)
 	rightL->Parent = rightMid;
 	rightR->Parent = rightMid;
 	
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	bpt_i_RemoveEntryFromNode(leftL, "b", 1, 1);
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	
 	for(i=0;i<iter;i++)
 	 	{

@@ -60,7 +60,7 @@ test(char** tname)
 
 
 	tmp = 0;
-	bpt_PrintTree(root);
+	bpt_PrintTree(&root);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (tmp == 0);
