@@ -60,7 +60,7 @@ bptNew()
 int
 bptInit(pBPTree this)
     {
-	
+
 	/** Should not be passed NULL **/
 	assert (this != NULL);
 
@@ -102,7 +102,7 @@ bptFree(pBPTree this)
 int
 bptDeInit(pBPTree this)
     {
-	
+
 	/** Should not be passed NULL **/
 	assert (this != NULL);
 
@@ -156,7 +156,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
     }
 
 
- /*** bpt_i_Split() - split a node. 
+ /*** bpt_i_Split() - split a node.
  *** Returns the new right node or NULL if the split location is invalid
  *** or the new node cannot be created.
  *** A new node is created and linked to the right of the input node.
@@ -291,7 +291,7 @@ bpt_i_Insert(pBPTree this, char* key, int key_len, void* data, int idx)
 
     if(this == NULL
     || key == NULL
-    || key_len <= 0 
+    || key_len <= 0
     || data == NULL
     || idx < 0
     || idx > this->nKeys)
@@ -473,7 +473,7 @@ bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_i
         {
         int i, j, neighbor_insertion_index, this_end;
         pBPTree temp;
-	
+
         if (neighbor_index == -1)
                 {
                 temp = this;
@@ -517,7 +517,7 @@ bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_i
                         i++;
                         }
                 neighbor->Children[BPT_SLOTS-1].Ref = this->Children[BPT_SLOTS-1].Ref;
-                }                                                                                       
+                }
         root = bpt_i_DeleteEntry(root, this->Parent, k_prime->Keys[k_prime_index].Value, k_prime->Keys[k_prime_index].Length, (pBPTreeVal) this);
         bptFree(this);
         return root;
@@ -565,7 +565,7 @@ bpt_i_RedistributeNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighb
                         neighbor->Children[neighbor->nKeys-1].Ref = NULL;
                         bpt_i_CopyKey(this, 0, neighbor, neighbor->nKeys-1);
                         bpt_i_CopyKey(this->Parent, k_prime_index, this, 0);
-                        }       
+                        }
 	}
 
         else
@@ -642,149 +642,151 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 
 
 
-/*** bptAdd() - add a key/value pair to the tree.  Returns 1 if the
- *** key/value pair already exists, 0 on success, or -1 on error.
- ***/
-int
-bptAdd(pBPTree this, char* key, int key_len, void* data)
-{
-    pBPTree node, new_node = NULL;
-    pBPTree parent = NULL, leftNode = NULL, rightNode = NULL, insertNode = NULL, node_to_prop = NULL;
-    BPTreeKey value;
-    int dx, rval, insertIdx;
-	printf("A\n");
-    if(this == NULL || key == NULL || key_len == 0 || data == NULL){
-	return -1;
-    }
-	printf("B\n");
-	/** See if it is there. **/
+		/*** bptAdd() - add a key/value pair to the tree.  Returns 1 if the
+		 *** key/value pair already exists, 0 on success, or -1 on error.
+		 ***/
+		int
+		bptAdd(pBPTree *this, char* key, int key_len, void* data)
+		{
+		    pBPTree node;
+		    pBPTree parent = NULL, leftNode = NULL, rightNode = NULL, insertNode = NULL, node_to_prop = NULL;
+		    BPTreeKey value;
+		    int dx, rval, insertIdx;
 
-	if (bpt_i_Find(this, key, key_len, &node, &dx) == 0)
-	    {
-	    /** Already exists.  Don't add. **/
-	    return 1;
-	    }
-	printf("C\n");
-	/** Not enough room? **/
-	insertNode = node;
-	if (node->nKeys == BPT_SLOTS)
-	    {
-		leftNode = node;
-		rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_LEAF_SLOTS);
 
-	    /** Error condition if new_node is NULL. **/
-	    if (!rightNode)
-		return -1;
-	    }
+		    if(this == NULL || key == NULL || key_len == 0 || data == NULL){
+			return -1;
+		    }
 
-	/** Which node are we adding to? **/
-	if (rightNode){
-	    	if (dx > CEIL_HALF_OF_LEAF_SLOTS){
-			insertNode = rightNode;
-			dx -= CEIL_HALF_OF_LEAF_SLOTS;
-		}
-	}
-	printf("D\n");
-	/** Insert the item **/
-	if (bpt_i_Insert(node, key, key_len, data, dx) < 0){
-		return -1;
-	}
-	printf("E\n");
-	if(!rightNode){
-		return 0;
-		// because no split -- done
-	}
-	printf("F\n");
-	node_to_prop = rightNode;
-	value = rightNode->Keys[0];
-	printf("G\n");
-	// go up the tree, as needed
-	
-	parent = node->Parent;
-	while(1){
-		if(parent == NULL){
-			// add new root
-			pBPTree newRoot = bptNew();
-			newRoot->IsLeaf = 0;
-			newRoot->nKeys = 0;
+		    if( *this == NULL ) {
+		        *this = bptNew();
+		    }
+			/** See if it is there. **/
 
-			bpt_i_Insert(newRoot, value.Value, value.Length, node_to_prop, 0);
+			if (bpt_i_Find(*this, key, key_len, &node, &dx) == 0)
+			    {
+			    /** Already exists.  Don't add. **/
+			    return 1;
+			    }
 
-			newRoot->Children[0].Child = leftNode;
-			leftNode->Parent = newRoot;
+			/** Not enough room? **/
+			insertNode = node;
+			if (node->nKeys == BPT_SLOTS)
+			    {
+				leftNode = node;
+				rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_LEAF_SLOTS);
 
-			newRoot->Children[1].Child = rightNode;
-			rightNode->Parent = newRoot;
-			this = newRoot;
-			break;
-		}
-		else if(parent->nKeys == IDX_SLOTS){
-			leftNode = parent;
-			bpt_i_Scan(leftNode, key, key_len, &dx);
-			if(rval < 0){
+			    /** Error condition if new_node is NULL. **/
+			    if (!rightNode)
+				return -1;
+			    }
+
+			/** Which node are we adding to? **/
+			if (rightNode){
+			    	if (dx > CEIL_HALF_OF_LEAF_SLOTS){
+					insertNode = rightNode;
+					dx -= CEIL_HALF_OF_LEAF_SLOTS;
+				}
+			}
+
+			/** Insert the item **/
+			if (bpt_i_Insert(insertNode, key, key_len, data, dx) < 0){
 				return -1;
 			}
-			BPTreeKey val = value;
 
-			BPTree *rightNodeLeftChild;
-
-			if(dx == CEIL_HALF_OF_IDX_SLOTS){
-				value.Value = key;
-				value.Length = key_len;
-				rightNodeLeftChild = (BPTree*)node_to_prop;
-				rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_IDX_SLOTS);
-
-				
-
-			}
-			else if(dx < CEIL_HALF_OF_IDX_SLOTS){
-				value = leftNode->Keys[CEIL_HALF_OF_IDX_SLOTS - 1];
-				rightNodeLeftChild = leftNode->Children[CEIL_HALF_OF_IDX_SLOTS].Child;
-				rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_IDX_SLOTS);
-					
-				leftNode->nKeys--;
+			if(!rightNode){
+				return 0;
+				// because no split -- done
 			}
 
-			else{
-				value = leftNode->Keys[CEIL_HALF_OF_IDX_SLOTS];
-				rightNodeLeftChild = leftNode->Children[CEIL_HALF_OF_IDX_SLOTS + 1].Child;
-				rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_IDX_SLOTS + 1);
-				leftNode->nKeys--;
-			
-			}
-
-			rightNode->Children[0].Child = rightNodeLeftChild;
-			rightNodeLeftChild->Parent = rightNode;
-
-			if(dx != CEIL_HALF_OF_IDX_SLOTS){
-				
-				insertNode = leftNode;
-				if(rightNode){
-					if(dx > CEIL_HALF_OF_IDX_SLOTS){
-						insertNode = rightNode;
-						dx-= (CEIL_HALF_OF_IDX_SLOTS+1);
-					}
-					
-							
-
-				}				
-			bpt_i_Insert(insertNode, val.Value, val.Length, node_to_prop, dx);								
-
-			}
 			node_to_prop = rightNode;
-			parent = parent->Parent;
+			value = rightNode->Keys[0];
+
+			// go up the tree, as needed
+
+			parent = node->Parent;
+			while(1){
+				if(parent == NULL){
+					// add new root
+					pBPTree newRoot = bptNew();
+					newRoot->IsLeaf = 0;
+					newRoot->nKeys = 0;
+
+					bpt_i_Insert(newRoot, value.Value, value.Length, node_to_prop, 0);
+
+					newRoot->Children[0].Child = leftNode;
+					leftNode->Parent = newRoot;
+
+					newRoot->Children[1].Child = rightNode;
+					rightNode->Parent = newRoot;
+
+					*this = newRoot;
+
+					break;
+				}
+				else if(parent->nKeys == IDX_SLOTS){
+					leftNode = parent;
+					bpt_i_Scan(leftNode, key, key_len, &dx);
+					BPTreeKey val = value;
+
+					BPTree *rightNodeLeftChild;
+
+					if(dx == CEIL_HALF_OF_IDX_SLOTS){
+						value.Value = key;
+						value.Length = key_len;
+						rightNodeLeftChild = (BPTree*)node_to_prop;
+						rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_IDX_SLOTS);
+
+
+
+					}
+					else if(dx < CEIL_HALF_OF_IDX_SLOTS){
+						value = leftNode->Keys[CEIL_HALF_OF_IDX_SLOTS - 1];
+						rightNodeLeftChild = leftNode->Children[CEIL_HALF_OF_IDX_SLOTS].Child;
+						rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_IDX_SLOTS);
+
+						leftNode->nKeys--;
+					}
+
+					else{
+						value = leftNode->Keys[CEIL_HALF_OF_IDX_SLOTS];
+						rightNodeLeftChild = leftNode->Children[CEIL_HALF_OF_IDX_SLOTS + 1].Child;
+						rightNode = bpt_i_Split(leftNode, CEIL_HALF_OF_IDX_SLOTS + 1);
+						leftNode->nKeys--;
+
+					}
+
+					rightNode->Children[0].Child = rightNodeLeftChild;
+					rightNodeLeftChild->Parent = rightNode;
+
+					if(dx != CEIL_HALF_OF_IDX_SLOTS){
+
+						insertNode = leftNode;
+						if(rightNode){
+							if(dx > CEIL_HALF_OF_IDX_SLOTS){
+								insertNode = rightNode;
+								dx-= (CEIL_HALF_OF_IDX_SLOTS+1);
+							}
+
+						}
+		                bpt_i_Insert(insertNode, val.Value, val.Length, node_to_prop, dx);
+
+					}
+					node_to_prop = rightNode;
+					parent = parent->Parent;
+				}
+				else {
+					bpt_i_Scan(parent, value.Value, value.Length, &insertIdx);
+					bpt_i_Insert(parent, value.Value, value.Length, node_to_prop, insertIdx);
+					break;
+
+				}
+
+			}
+
+		    return 0;
 		}
-		else {
-			bpt_i_Scan(parent, value.Value, value.Length, &insertIdx);
-			bpt_i_Insert(parent, value.Value, value.Length, node_to_prop, insertIdx);	
-			break;
 
-		}
-
-	}	
-
-    return 0;
-}
 
 
 /*** bptLookup() - find a value for a given key.  Returns NULL if the
@@ -798,7 +800,7 @@ bptLookup(pBPTree this, char* key, int key_len)
 
 	/** Look it up **/
 	int check = bpt_i_Find(this, key, key_len, &node, &idx);
-	
+
 	if (check == 0)
 	    {
 	    /** Found **/
@@ -821,15 +823,15 @@ bptRemove(pBPTree this, char* key, int key_len)
 	if (check == -1)
 		return -1;
 	key_record = bptLookup(this, key, key_len);
-	
+
 	if (key_record == NULL || key_leaf == NULL)
 		return -1;
-	
+
 	this = bpt_i_DeleteEntry(this, key_leaf, key, key_len, (pBPTreeVal) key_record);
 	free(key_record); //which free should i use or was this already freed
 	return 0;
 
-	
+
     }
 
 
@@ -918,11 +920,11 @@ bptBulkLoad(char* fname)
 	{
 	pBPTree root;
 	root = bptNew();
-	
+
 	FILE* data = NULL;
 	data = fopen(fname, "r");
 	char key[20], name[50];
-	
+
 	while(!feof(data))
 		{
 		fscanf(data, "%s %[^\n]", key, name);
@@ -932,8 +934,3 @@ bptBulkLoad(char* fname)
 	fclose(data);
 	return root;
 	}
-
-
-
-
-

@@ -10,12 +10,12 @@ test(char **tname){
 
 	*tname = "b+tree add test 6 - insert partial (a-f) alphabet in order ";
 
-	pBPTree root = bptNew();
+	pBPTree root = NULL;
 	int t, i, iter = 9000000;
 	
 	char* data = "data";
 
-	t = bptAdd(root, "a", 1, data);
+	t = bptAdd(&root, "a", 1, data);
 		assert (t == 0);
 		t = bptAdd(root, "b", 1, data);
                 assert (t == 0);
