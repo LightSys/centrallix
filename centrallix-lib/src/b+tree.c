@@ -710,7 +710,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 		    if(this == NULL || key == NULL || key_len == 0 || data == NULL){
 			return -1;
 		    }
-			bpt_PrintTreeSmall(*this);
+			//bpt_PrintTreeSmall(*this);
 		    			
 			/** See if it is there. **/
 		//	printf("3\n");
@@ -1076,14 +1076,16 @@ bptBulkLoad(char* fname, int num)
 	char key[10], leaf[50];
 	char* info;
 	char* key_val;
+	int leaf_sz;
 
 	for (i=0; i<num; i++)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
 		printf("%s\t%s\n", key, leaf);
-		info = leaf;
-		key_val = key;
-		if (bptAdd(&root, key_val, strlen(key_val), info) != 0)
+		leaf_sz = strlen( leaf ) + 1; 
+		info = malloc( sizeof( char ) * leaf_sz );
+		strncpy( info, leaf, leaf_sz );
+		if (bptAdd(&root, key, strlen(key), info) != 0)
 			{
 			printf("NOT ADDED\n");
 			return NULL;
