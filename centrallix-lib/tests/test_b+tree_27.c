@@ -59,7 +59,7 @@ test(char** tname)
 	
 	pBPTree this;
 	this = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
-	char* hold = (char*) this->Children[0].Child->Children[0].Ref;
+	char* hold = (char*) this->Children[0].Ref;
 	printf("MANUAL: %s\n", hold);
 	bpt_PrintTreeSmall(this);
 	printf("1\n");

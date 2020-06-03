@@ -56,7 +56,7 @@ test(char** tname)
 	root->IsLeaf = 0;
 	
 	rval1 = (char*) bptLookup(root, "Zebra", 5);
-	
+/*	
 	pBPTree this;
 	this = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
 	char* hold = (char*) this->Children[0].Child->Children[0].Ref;
@@ -67,7 +67,7 @@ test(char** tname)
 	printf("%s\n", rval2);
 	//rval3 = (char*) bptLookup(this, "00000057", 8);
 	//printf("%s\n", rval3);	
-
+*/
 	for(i=0;i<iter;i++)
 	 	{
 //		assert (strcmp("REF VAL", rval1) == 0);

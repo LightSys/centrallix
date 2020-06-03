@@ -162,6 +162,7 @@ bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len)
  ***/
 pBPTree bpt_i_Split(pBPTree node, int split_loc)
     {
+
    	int i;
     pBPTree right_node = NULL;
 
@@ -285,7 +286,7 @@ int
 bpt_i_Insert(pBPTree this, char* key, int key_len, pBPTreeVal data, int idx)
     {
     void* copy;
-	printf("Recieved data - %s\n", (char*)data);
+	
     if(this == NULL
     || key == NULL
     || key_len <= 0
@@ -296,27 +297,34 @@ bpt_i_Insert(pBPTree this, char* key, int key_len, pBPTreeVal data, int idx)
         return -1;
         }
 
-	/** Make a copy of the key **/
+	/** Make a copy of the key**/ 
 	copy = nmSysMalloc(key_len);
 	if (!copy)
 	    return -1;
 	memcpy(copy, key, key_len);
 
-	/** Make room for the key and value **/
+	/** Make room for the key and value**/
 	if (idx != this->nKeys)
 	    {
 	    memmove(this->Keys+(idx + 1), this->Keys+idx, sizeof(BPTreeKey) * (this->nKeys - idx));
 	    memmove(this->Children + (idx + 1) +1, this->Children + idx + 1, sizeof(BPTreeVal) * (this->nKeys - idx));
 	    }
-
+	/*if (idx != this->nKeys)	
+		for (i=idx; i<this->nKeys; i++)
+			{
+			bpt_i_CopyKey(this, idx+1, this, idx);
+			if (this->IsLeaf)
+				this->Children[idx+1].Ref = this->Children[idx].Ref;
+			else
+				this->Children[idx+2].Child = this->Children[idx+1].Child;
+			}*/
     /** Set it **/
     this->nKeys++;
     this->Keys[ idx ].Length = key_len;
     this->Keys[ idx ].Value = copy;
     if(this->IsLeaf)
         {
-	printf("Giving data - %s\n", (char*)data);
-        this->Children[ idx ].Ref = (void*)data;
+	this->Children[ idx ].Ref = (void*)data;
 	printf("Leaf pair(%s,%s)\n", this->Keys[idx].Value, (char*) this->Children[idx].Ref);
         }
     else
@@ -329,7 +337,7 @@ bpt_i_Insert(pBPTree this, char* key, int key_len, pBPTreeVal data, int idx)
     }
 
 void
-bpt_i_Enqueue(pBPTree this)//global var or does this method work
+bpt_i_Enqueue(pBPTree this)
         {
         pBPTree curr;
         if (queue == NULL)
@@ -702,7 +710,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 		    if(this == NULL || key == NULL || key_len == 0 || data == NULL){
 			return -1;
 		    }
-		
+			bpt_PrintTreeSmall(*this);
 		    			
 			/** See if it is there. **/
 		//	printf("3\n");
@@ -834,7 +842,6 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 				}
 
 			}
-
 		    return 0;
 		}
 
@@ -1044,8 +1051,8 @@ bpt_PrintTreeSmall(pBPTree root)
                 for (i=0; i<curr->nKeys; i++)
 			{
                         printf("%s ", curr->Keys[i].Value);
-			//if (curr->IsLeaf)
-				//printf("(%s)", (char*)curr->Children[i].Ref);
+			if (curr->IsLeaf)
+				printf("(%s)", (char*)curr->Children[i].Ref);
 			}
                 if (!curr->IsLeaf)
                         for (i=0; i<=curr->nKeys; i++)
