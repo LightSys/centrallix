@@ -18,8 +18,9 @@ test(char **tname){
 
 	int t = bpt_i_Insert(root, key, 5, val, 0);
 	int iter = 9000000, i;
+	char* str = (char*)root->Children[0].Ref;
 	for(i = 0; i < iter; i++){
-
+		assert (str == val);
 		assert(t==0);
 	}
 	

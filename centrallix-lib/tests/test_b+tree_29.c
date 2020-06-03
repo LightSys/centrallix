@@ -33,7 +33,8 @@ test(char** tname)
 
 	this = bptBulkLoad(fname, --a);
 	bpt_PrintTreeSmall(this);
-
+	bptRemove(this, "00000001\0", 8);
+	bpt_PrintTreeSmall(this);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (5 == 5);

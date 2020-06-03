@@ -64,18 +64,22 @@ test(char** tname)
 	 	{
 		tmp = bpt_i_Find(root, "Az", 2, &locate, &idx);
 		//assert (locate == left);
+		assert (strcmp(locate->Keys[idx].Value, "Az") == 0);
 		assert (tmp == 0);
 		assert(idx == 1);
 		tmp = bpt_i_Find(root, "Do", 2, &locate, &idx);
                 //assert (locate == left);
+		assert (strcmp(locate->Keys[idx].Value, "Do") == 0);
                 assert (tmp == 0);
                 assert(idx == 3);
 		tmp = bpt_i_Find(root, "Happier", 7, &locate, &idx);
                 //assert (locate == mid);
+		assert (strcmp(locate->Keys[idx].Value, "Happier") == 0);
                 assert (tmp == 0);
                 assert(idx == 0);
 		tmp = bpt_i_Find(root, "Zebra", 5, &locate, &idx);
                 //assert (locate == right);
+                assert (strcmp(locate->Keys[idx].Value, "Zebra") == 0);
                 assert (tmp == 0);
                 assert(idx == 1);
 		tmp = bpt_i_Find(root, "Zebras", 6, &locate, &idx);

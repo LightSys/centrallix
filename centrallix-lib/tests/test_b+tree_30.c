@@ -31,8 +31,7 @@ test(char** tname)
 	fclose(dict);
 	fclose(tree);
 
-	this = bptBulkLoad(fname, --a);
-	bpt_PrintTreeSmall(this);
+//	this = bptBulkLoad(fname, --a);
 
 	for(i=0;i<iter;i++)
 	 	{

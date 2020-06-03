@@ -61,7 +61,8 @@ test(char **tname){
 
 	for(i = 0; i < iter; i++)
 		{
-		assert (0 == 0);
+		assert (strcmp(tree->Children[0].Child->Keys[0].Value, "a") == 0);
+		assert (strcmp((char*)tree->Children[0].Child->Children[0].Ref, "data") == 0);
 		}
 
 	bpt_PrintTree(&tree);

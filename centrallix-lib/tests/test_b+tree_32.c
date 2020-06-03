@@ -22,7 +22,7 @@ test(char** tname)
 		}
 	fclose(tree);
 
-	this = bptBulkLoad(fname, --a);
+//	this = bptBulkLoad(fname, --a);
 	//bpt_PrintTree(this);
 
 	for(i=0;i<iter;i++)

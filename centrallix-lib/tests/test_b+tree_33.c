@@ -10,7 +10,7 @@ test(char** tname)
 	int a, i, iter;
 
 	*tname = "b+tree-33 Bulk Loading: Size = 1,000,000";
-	iter = 8000000;
+	iter = 400000;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e6.dat";
@@ -22,7 +22,7 @@ test(char** tname)
 		}
 	fclose(tree);
 
-	this = bptBulkLoad(fname, --a);
+	//this = bptBulkLoad(fname, --a);
 	//bpt_PrintTree(this);
 
 	for(i=0;i<iter;i++)
