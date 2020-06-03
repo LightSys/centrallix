@@ -2,6 +2,7 @@
 #include "cxlibconfig-internal.h"
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -249,8 +250,12 @@ int
 bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index)
     {
     int rval;
+	
 	if (this == NULL)
+	{
+		printf("ret -1 bc NULL");
 		return -1;
+	}
 	/** Scan this node **/
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)
@@ -266,7 +271,7 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 		rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
 	//printf("RETURNING\n");
     return rval;
-}
+	}
 
 
 /*** bpt_i_Insert() - insert a key/value pair into a node. Does NOT check
@@ -680,29 +685,41 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 		 *** key/value pair already exists, 0 on success, or -1 on error.
 		 ***/
 		int
-		bptAdd(pBPTree *this, char* key, int key_len, void* data)
+		bptAdd(pBPTree this, char* key, int key_len, void* data)
 		{
 		    pBPTree node;
 		    pBPTree parent = NULL, leftNode = NULL, rightNode = NULL, insertNode = NULL, node_to_prop = NULL;
 		    BPTreeKey value;
 		    int dx, insertIdx;
-
+			printf("1\n");
 
 		    if(this == NULL || key == NULL || key_len == 0 || data == NULL){
 			return -1;
 		    }
-
-		    if( *this == NULL ) {
-		        *this = bptNew();
+			printf("2\n");
+		    if( this == NULL ) {
+		        this = bptNew();
+			if (this == NULL)
+				{
+				printf("new is null\n");
+				exit(1);
+				}
 		    }
+			
 			/** See if it is there. **/
-
-			if (bpt_i_Find(*this, key, key_len, &node, &dx) == 0)
+			printf("3\n");
+			int tmp = bpt_i_Find(this, key, key_len, &node, &dx); 
+			if (tmp == 0)
 			    {
 			    /** Already exists.  Don't add. **/
 			    return 1;
 			    }
-
+			else if(tmp == -1)
+				{
+				printf("bad\n");
+				exit(1);
+				}
+			printf("4\n");
 			/** Not enough room? **/
 			insertNode = node;
 			if (node->nKeys == BPT_SLOTS)
@@ -714,7 +731,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 			    if (!rightNode)
 				return -1;
 			    }
-
+			printf("5\n");
 			/** Which node are we adding to? **/
 			if (rightNode){
 			    	if (dx > CEIL_HALF_OF_LEAF_SLOTS){
@@ -722,17 +739,17 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 					dx -= CEIL_HALF_OF_LEAF_SLOTS;
 				}
 			}
-
+			printf("6\n");
 			/** Insert the item **/
 			if (bpt_i_Insert(insertNode, key, key_len, data, dx) < 0){
 				return -1;
 			}
-
+			printf("7\n");
 			if(!rightNode){
 				return 0;
 				// because no split -- done
 			}
-
+			printf("8\n");
 			node_to_prop = rightNode;
 			value = rightNode->Keys[0];
 
@@ -754,7 +771,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 					newRoot->Children[1].Child = rightNode;
 					rightNode->Parent = newRoot;
 
-					*this = newRoot;
+					this = newRoot;
 
 					break;
 				}
@@ -1059,7 +1076,7 @@ bptBulkLoad(char* fname, int num)
 		printf("%s\n", key);
 		info = leaf;
 		key_val = key;
-		if (bptAdd(&root, key_val, strlen(key_val), info) != 0)
+		if (bptAdd(root, key_val, strlen(key_val), info) != 0)
 			{
 			printf("NOT ADDED\n");
 			return NULL;
