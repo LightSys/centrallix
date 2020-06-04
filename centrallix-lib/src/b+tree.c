@@ -861,12 +861,12 @@ bptRemove(pBPTree this, char* key, int key_len)
 	pBPTree key_leaf = NULL;
 	void* key_record = NULL;
 	int idx = -1, check;
-	printf("A\n");
+	//printf("A\n");
 	check = bpt_i_Find(this, key, key_len, &key_leaf, &idx);
-	printf("B\n");
+	//printf("B\n");
 	if (check == -1)
 		return -1;
-	printf("C\n");
+	//printf("C\n");
 	//key_record = bptLookup(this, key, key_len);
 	//printf("D\n");
 	//if (key_record == NULL)
@@ -875,10 +875,10 @@ bptRemove(pBPTree this, char* key, int key_len)
                 printf("NULL2\n");
 	//if (key_record == NULL || key_leaf == NULL)
 	//	return -1;
-	printf("E\n");
+	//printf("E\n");
 	this = bpt_i_DeleteEntry(this, key_leaf, key, key_len, (pBPTreeVal) key_record);
 //	free(key_record); //which free should i use or was this already freed
-	printf("F\n");
+	//printf("F\n");
 	return 0;
     }
 
