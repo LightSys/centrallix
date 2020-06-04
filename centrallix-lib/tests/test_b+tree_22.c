@@ -86,9 +86,9 @@ test(char** tname)
 	
 	for(i=0;i<iter;i++)
 	 	{
-		assert (leftL->Children[0].Ref == 0);
-		assert (leftL->Children[1].Ref == 2);
-		assert (leftL->Children[2].Ref == 3);
+		assert (strcmp((char*)leftL->Children[0].Ref, "0") == 0);
+		assert (strcmp((char*)leftL->Children[1].Ref, "2") == 0);
+		assert (strcmp((char*)leftL->Children[2].Ref, "3") == 0);
 		}
 
 	printf("\n");

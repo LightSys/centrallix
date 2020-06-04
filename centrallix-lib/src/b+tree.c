@@ -1069,11 +1069,12 @@ bptBulkLoad(char* fname, int num)
 		leaf_sz = strlen( leaf ) + 1; 
 		info = malloc( sizeof( char ) * leaf_sz );
 		strncpy( info, leaf, leaf_sz );
-		if (bptAdd(&root, key, strlen(key), info) != 0)
+		bptAdd(&root, key, strlen(key), info);
+		/*if (bptAdd(&root, key, strlen(key), info) != 0)
 			{
 			printf("NOT ADDED\n");
 			return NULL;
-			}
+			}*/
 		}
 	fclose(data);
 	//printf("RETURNING\n");
