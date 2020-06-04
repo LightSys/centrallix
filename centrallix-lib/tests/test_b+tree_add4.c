@@ -13,7 +13,7 @@ test(char **tname){
 	pBPTree tree = NULL;
 	int t, i, iter = 9000000;
 	char* data = "data";
-/*
+
 	t = bptAdd(&tree, "a", 1, data);
 		assert (t == 0);
 		t = bptAdd(&tree, "b", 1, data);
@@ -58,7 +58,7 @@ test(char **tname){
                 t = bptAdd(&tree, "x", 1, data);                                                                                                                                                                              assert (t == 0);
                 t = bptAdd(&tree, "y", 1, data);                                                                                                                                                                              assert (t == 0);
                 t = bptAdd(&tree, "z", 1, data);                                                                                                                                                                              assert (t == 0);
-*/
+
 	for(i = 0; i < iter; i++)
 		{
 		assert (strcmp(tree->Children[0].Child->Keys[0].Value, "a") == 0);

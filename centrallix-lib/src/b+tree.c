@@ -325,7 +325,7 @@ bpt_i_Insert(pBPTree this, char* key, int key_len, pBPTreeVal data, int idx)
     if(this->IsLeaf)
         {
 	this->Children[ idx ].Ref = (void*)data;
-	printf("Leaf pair(%s,%s)\n", this->Keys[idx].Value, (char*) this->Children[idx].Ref);
+	//printf("Leaf pair(%s,%s)\n", this->Keys[idx].Value, (char*) this->Children[idx].Ref);
         }
     else
         {
@@ -420,7 +420,7 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
         {
         int i, num_pointers;
 
-	num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
+/*	num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
         i = 0;
 
         if (this->IsLeaf)                                                                                                                                                                                                          {
@@ -438,7 +438,7 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
                	for (i=num_pointers; i<BPT_SLOTS+1; i++)
                         this->Children[i].Child = NULL;
 		}
-
+*/
 
 	i = 0;
 	while (bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) != 0)
@@ -446,14 +446,10 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
         for (++i; i<this->nKeys; i++)
                 bpt_i_CopyKey(this, i-1, this, i);
 
-	this->nKeys--;
+	num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
+        i = 0;
 
-	//num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
-        //i = 0;
-
-
-
-        /*if (this->IsLeaf)
+	if (this->IsLeaf)
                 {
                 while (this->Children[i].Ref != (void*)ptr)
                         i++;
@@ -466,21 +462,9 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
                         i++;
                 for (++i; i<num_pointers; i++)
                         this->Children[i-1].Child = this->Children[i].Child;
-                }*/
-	
-/*	if (this->IsLeaf)
-                {
-                while (this->Keys[i].Value != key)
-                        i++;                                                                                                                                                                                                       for (++i; i<num_pointers; i++)
-                        this->Children[i-1].Ref = this->Children[i].Ref;
-                }                                                                                                                                                                                                          else                                                                                                                                                                                                                       {
-                while (this->Children[i].Child != (pBPTree) ptr)
-			i++; 
-		for (++i; i<num_pointers; i++)
-                        this->Children[i-1].Child = this->Children[i].Child;
                 }
-
-        this->nKeys--;
+	
+	this->nKeys--;
 
         if (this->IsLeaf)
                 for (i=num_pointers; i<BPT_SLOTS; i++)
@@ -488,7 +472,7 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
         else
                 for (i=num_pointers; i<BPT_SLOTS+1; i++)
                         this->Children[i].Child = NULL;
-*/
+
         return this;
         }
 
@@ -748,7 +732,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
 			}
 		//	printf("6\n");
 			/** Insert the item **/
-			printf("About to insert data - %s\n", (char*) data);	
+		//	printf("About to insert data - %s\n", (char*) data);	
 			if (bpt_i_Insert(insertNode, key, key_len, (pBPTreeVal)data, dx) < 0){
 				return -1;
 			}
@@ -861,7 +845,7 @@ bptLookup(pBPTree this, char* key, int key_len)
 	    {
 	    /** Found **/
 		char* str = (char*) node->Children[idx].Ref;
-		printf("FOUND: %s\n", str);
+		//printf("FOUND: %s\n", str);
 	    return node->Children[idx].Ref;
 	    }
     return NULL;
@@ -1050,9 +1034,9 @@ bpt_PrintTreeSmall(pBPTree root)
                         }
                 for (i=0; i<curr->nKeys; i++)
 			{
-                        printf("%s ", curr->Keys[i].Value);
+                        printf("%s~", curr->Keys[i].Value);
 			if (curr->IsLeaf)
-				printf("(%s)", (char*)curr->Children[i].Ref);
+				printf("(%s) ", (char*)curr->Children[i].Ref);
 			}
                 if (!curr->IsLeaf)
                         for (i=0; i<=curr->nKeys; i++)
@@ -1067,12 +1051,12 @@ bpt_PrintTreeSmall(pBPTree root)
 pBPTree
 bptBulkLoad(char* fname, int num)
 	{
-	printf("STARTING\n");
+	//printf("STARTING\n");
 	pBPTree root = NULL;
 	int i;
 	FILE* data = NULL;
 	data = fopen(fname, "r");
-	printf("OPENED\n");
+	//printf("OPENED\n");
 	char key[10], leaf[50];
 	char* info;
 	char* key_val;
@@ -1081,7 +1065,7 @@ bptBulkLoad(char* fname, int num)
 	for (i=0; i<num; i++)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
-		printf("%s\t%s\n", key, leaf);
+		//printf("%s\t%s\n", key, leaf);
 		leaf_sz = strlen( leaf ) + 1; 
 		info = malloc( sizeof( char ) * leaf_sz );
 		strncpy( info, leaf, leaf_sz );
@@ -1092,6 +1076,6 @@ bptBulkLoad(char* fname, int num)
 			}
 		}
 	fclose(data);
-	printf("RETURNING\n");
+	//printf("RETURNING\n");
 	return root;
 	}

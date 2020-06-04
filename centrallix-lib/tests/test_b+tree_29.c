@@ -34,10 +34,8 @@ test(char** tname)
 	printf("4\n");
 	this = bptBulkLoad(fname, --a);
 	printf("after bulk\n");
-//	bpt_PrintTreeSmall(this);
-	bptRemove(this, "00000001\0", 8);
-	printf("after rem\n");
-//	bpt_PrintTreeSmall(this);
+	bpt_PrintTreeSmall(this);
+
 	for(i=0;i<iter;i++)
 	 	{
 		assert (5 == 5);

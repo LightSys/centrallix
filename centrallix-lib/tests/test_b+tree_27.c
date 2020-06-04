@@ -9,7 +9,13 @@ test(char** tname)
 	int i, iter;
 	char* rval1;
 	char* rval2;
-	char* rval3;	
+	char* rval3;
+	char* rval4;
+	char* rval5;
+	char* rval6;
+	char* rval7;
+	pBPTree this;
+
 	*tname = "b+tree-27 test of bptLookup";
 	iter = 800000;
 	printf("\n");
@@ -55,24 +61,24 @@ test(char** tname)
 	left->Next = right;
 	root->IsLeaf = 0;
 	
-	rval1 = (char*) bptLookup(root, "Zebra", 5);
-	
-	pBPTree this;
-	this = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
-	char* hold = (char*) this->Children[0].Ref;
-	printf("MANUAL: %s\n", hold);
-	bpt_PrintTreeSmall(this);
-	printf("1\n");
-	rval2 = (char*) bptLookup(this, "00000001", 8);
-	printf("%s\n", rval2);
-	//rval3 = (char*) bptLookup(this, "00000057", 8);
-	//printf("%s\n", rval3);	
+	this = bptBulkLoad("tests/bpt_bl_10e2.dat", 100);
 
-	for(i=0;i<iter;i++)
-	 	{
-//		assert (strcmp("REF VAL", rval1) == 0);
+	for (i=0; i<iter; i++)
+		{
+		rval1 = (char*) bptLookup(root, "Zebra", 5);
+		rval2 = (char*) bptLookup(this, "00000001", 8);
+		//rval3 = (char*) bptLookup(this, "00000057", 8);
+		rval4 =	(char*) bptLookup(this, "00000100", 8);
+		rval5 = (char*) bptLookup(this, "00000000", 8);
+		rval6 = (char*) bptLookup(this, "00000037", 8);
+		rval7 = (char*) bptLookup(this, "00000072", 8);
+		assert (strcmp("REF VAL", rval1) == 0);
 		assert (strcmp("A", rval2) == 0);
 //		assert (strcmp("Abashing", rval3) == 0);
+		assert (strcmp("ABC", rval4) == 0);
+		assert (rval5 == NULL);
+		assert (strcmp("Abandoned", rval6) == 0);
+		assert (strcmp("Abattoir", rval7) == 0);
 		}
 
 	printf("\n");
