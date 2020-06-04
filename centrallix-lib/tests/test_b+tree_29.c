@@ -12,17 +12,18 @@ test(char** tname)
 
 	*tname = "b+tree-29 Bulk Loading: Size = 100";
 	iter = 8000000;
-	
+	printf("1\n");	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e2.dat";
 	FILE* tree = NULL;
 	FILE* dict = NULL;
 	tree = fopen(fname, "w");
 	dict = fopen("tests/dictionary.txt", "r");
+	printf("2\n");
 	if (dict == NULL)
 		perror("dict is null");
 	char str[50];
-	
+	printf("3\n");
 	for (a=1; a<=100; a++)
 		{
 		fscanf(dict, "%s\n", str);
@@ -30,11 +31,13 @@ test(char** tname)
 		}
 	fclose(dict);
 	fclose(tree);
-
+	printf("4\n");
 	this = bptBulkLoad(fname, --a);
-	bpt_PrintTreeSmall(this);
+	printf("after bulk\n");
+//	bpt_PrintTreeSmall(this);
 	bptRemove(this, "00000001\0", 8);
-	bpt_PrintTreeSmall(this);
+	printf("after rem\n");
+//	bpt_PrintTreeSmall(this);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (5 == 5);
