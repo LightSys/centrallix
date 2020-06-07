@@ -1138,3 +1138,217 @@ bptBulkLoad(char* fname, int num)
 	//printf("RETURNING\n");
 	return root;
 	}
+
+void bpt_i_GetSortedPtrs(BPTData * entries, int num_entries, BPTData ** sorted_ptrs)
+	{
+    int i;
+    BPTData * temp;
+
+    for (i = 0; i < num_entries; i++)
+        {
+        sorted_ptrs[ i ] = &entries[ i ];
+        }
+
+    //This is all temporary--a better sort (randomized qsort/median of 3?)
+    //should be added later. The only purpose of the below code is to sort
+    //data as expected by bptCreateTreeFromData
+    int idx_of_smallest;
+    for (int i = 0; i < num_entries; i++)
+		{
+        idx_of_smallest = i;
+        for (int j = i + 1; j < num_entries; j++)
+			{
+			if (bpt_i_Compare(sorted_ptrs[ j ]->Key, sorted_ptrs[ j ]->KeyLength,
+							sorted_ptrs[ idx_of_smallest ]->Key, sorted_ptrs[ idx_of_smallest ]->KeyLength)< 0)
+				{
+				idx_of_smallest = j;
+				}
+			}
+        temp = sorted_ptrs[ i ];
+        sorted_ptrs[ i ] = sorted_ptrs[ idx_of_smallest ];
+        sorted_ptrs[ idx_of_smallest ] = temp;
+		}
+	}
+
+int
+bptCreateTreeFromData(pBPTree * root, BPTData * entries, int num_entries)
+{
+    //TODO: Find out what format data will be added in.
+    int i;
+    int j;
+    int key_idx;
+    int entry_idx;
+    int num_leaf_nodes;
+    int nodes_in_current_lvl;
+    int nodes_in_last_lvl;
+    int current_child_index;
+    int num_nodes_left_last_lvl;
+    int curr_div;
+
+    pBPTree   * nodes_fast_access;
+    pBPTree     node = NULL, prev_node = NULL;
+    BPTData   * entry;
+    BPTData  ** sorted_ptrs;
+    BPTree    * curr_child;
+    BPTreeKey * node_keys;
+    BPTreeKey   leftmost_key_right_child;
+    BPTreeVal * node_vals;
+
+    if (root == NULL
+     || entries == NULL
+     || num_entries == 0)
+        {
+        return -1;
+        }
+
+    /** sort pointers to data so don't have to memcpy key data  **/
+    sorted_ptrs = malloc(num_entries * sizeof(int*));
+    bpt_i_GetSortedPtrs(entries, num_entries, sorted_ptrs);
+
+    num_leaf_nodes = (num_entries + (BPT_SLOTS - 1))/ BPT_SLOTS;
+
+    /** Allocate temp space used while building the tree        **/
+    nodes_fast_access = malloc(num_leaf_nodes * sizeof(pBPTree));
+
+    /** Create/fill leaf nodes with data **/
+    entry_idx = 0;
+    for (i = 0; i < num_leaf_nodes; i++)
+        {
+        node = bptNew();
+        node_keys = node->Keys;
+        node_vals = node->Children;
+
+        for (key_idx = 0; key_idx < BPT_SLOTS && entry_idx < num_entries; key_idx++, entry_idx++)
+            {
+            entry = sorted_ptrs[ entry_idx ];
+            node_keys[ key_idx ].Length = entry->KeyLength;
+            node_keys[ key_idx ].Value = malloc(entry->KeyLength);
+            if (!node_keys[ key_idx ].Value)
+                {
+                return -1;
+                }
+
+            memcpy(node_keys[ key_idx ].Value, entry->Key, entry->KeyLength);
+            node_vals[ key_idx + 1 ].Ref = entry->Value;
+            }
+
+        node->nKeys = key_idx;
+        nodes_fast_access[ i ] = node;
+
+        if (prev_node != NULL)
+            {
+            prev_node->Next = node;
+            }
+        node->Prev = prev_node;
+
+        prev_node = node;
+        }
+    
+    if (num_entries <= BPT_SLOTS)
+        {
+        /** root node has enough space, so done **/
+        *root = node;
+        return 0;
+        }
+
+    /** NOTE: nodes_fast_access initially contains the nodes at the previous    **/
+    /** tree level (initially leaf nodes). As these previous level nodes are    **/
+    /** processed, the new nodes are written into nodes_fast_access as the     **/
+    /** current level will become the next loop iteration's previous level      **/
+    nodes_in_last_lvl = num_leaf_nodes;
+    curr_div = BPT_SLOTS;
+
+    /** Get number of nodes needed for next level   **/
+    nodes_in_current_lvl = 1 + (num_leaf_nodes - 1) / curr_div;
+    while (nodes_in_current_lvl >= 1)
+        {
+        current_child_index = 0;
+        prev_node = NULL;
+        for (i = 0; i < nodes_in_current_lvl; i++)
+            {
+            node = bptNew();
+            node->IsLeaf = 0;
+            num_nodes_left_last_lvl = nodes_in_last_lvl - (IDX_CHILDREN * i);
+
+            if (num_nodes_left_last_lvl == 1)
+                {
+                /** Case where need to split prev node  **/
+                node->nKeys = 1;
+                }
+            else
+                {
+                node->nKeys = (num_nodes_left_last_lvl >= IDX_CHILDREN) ? IDX_SLOTS : num_nodes_left_last_lvl - 1;
+                }
+
+            /** Fill in all the children for the new node   **/
+            for (j = 0; j < node->nKeys + 1; j++)
+                {
+                if (j == 0 && num_nodes_left_last_lvl == 1)
+                    {
+                    /** Case where need to split prev node  **/
+                    node->Children[ 0 ].Child = prev_node->Children[ prev_node->nKeys ].Child;
+                    node->Children[ 0 ].Child->Parent = node;
+                    prev_node->nKeys--;
+                    continue;
+                    }
+                else
+                    {
+                    node->Children[ j ].Child = nodes_fast_access[ current_child_index ];
+                    node->Children[ j ].Child->Parent = node;
+                    current_child_index++;
+                    }
+                
+                if (j > 0)
+                    {
+                    /** Find current key: for every child other than leftmost,  **/
+                    /** walk the tree to get leftmost key in subtree            **/
+                    curr_child = node->Children[ j ].Child;
+                    while (curr_child->Children[ 0 ].Child != NULL)
+                        {
+                        curr_child = curr_child->Children[ 0 ].Child;
+                        }
+                    leftmost_key_right_child = curr_child->Keys[ 0 ];
+
+                    /** Fill in the key for the node                       **/
+                    node->Keys[ j - 1 ].Value = malloc(leftmost_key_right_child.Length);
+                    if (!node->Keys[ j - 1 ].Value)
+                        {
+                        return -1;
+                        }
+                    memcpy(node->Keys[ j - 1 ].Value, leftmost_key_right_child.Value, leftmost_key_right_child.Length);
+                    node->Keys[ j - 1 ].Length = leftmost_key_right_child.Length;
+                    }
+                }
+
+            /** Attach node to previous node **/
+            if (prev_node != NULL)
+                {
+                prev_node->Next = node;
+                }
+            node->Prev = prev_node;
+
+            prev_node = node;
+            nodes_fast_access[ i ] = node;
+            }
+        
+        /** nodes_in_current_lvl calculation never goes to 0, so terminate  **/
+        /** if we just processed the case of nodes_in_current_lvl == 1      **/
+        if (nodes_in_current_lvl == 1)
+            {
+            break;
+            }
+
+        nodes_in_last_lvl = nodes_in_current_lvl;
+        curr_div *= BPT_SLOTS;
+
+        /** Get number of nodes needed for next level   **/
+        nodes_in_current_lvl = 1 + (num_leaf_nodes - 1) / curr_div;
+        }
+
+    *root = node;
+    
+    free(sorted_ptrs);
+    free(nodes_fast_access);
+
+    return 0;
+}
