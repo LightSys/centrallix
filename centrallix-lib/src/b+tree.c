@@ -420,31 +420,43 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
         {
         int i, num_pointers;
 
-/*	num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
         i = 0;
 
         if (this->IsLeaf)                                                                                                                                                                                                          {
-                while (this->Keys[i].Value != key)
-                        i++;                                                                                                                                                                                                       for (++i; i<num_pointers; i++)
-                        this->Children[i-1].Ref = this->Children[i].Ref;
-                for (i=num_pointers; i<BPT_SLOTS; i++)                                                                                                                                                                                     this->Children[i].Ref = NULL;
-                        this->Children[i-1].Ref = this->Children[i].Ref;
-                for (i=num_pointers; i<BPT_SLOTS; i++)                                                                                                                                                                                     this->Children[i].Ref = NULL;
+                while (bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) != 0)
+                        i++;        
+		free(this->Children[i].Ref);
+		for (++i; i<this->nKeys; i++)
+                	{
+		        this->Children[i-1].Ref = this->Children[i].Ref;
+			bpt_i_CopyKey(this, i-1, this, i);
+			}
+		for (i=this->nKeys; i<BPT_SLOTS; i++) //nKeys-1?
+			this->Children[i].Ref = NULL;
 		}                                                                                                                                                                                                          else                                                                                                                                                                                                                       {
-                while (this->Children[i].Child != (pBPTree) ptr)
+                while (bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) != 0)
                         i++;
-                for (++i; i<num_pointers; i++)
+                for (++i; i<this->nKeys; i++)
+			{
                         this->Children[i-1].Child = this->Children[i].Child;
-               	for (i=num_pointers; i<BPT_SLOTS+1; i++)
+               		bpt_i_CopyKey(this, i-1, this, i);
+			}
+		this->Children[this->nKeys-1].Child = this->Children[this->nKeys].Child;
+		for (i=this->nKeys+1; i<BPT_SLOTS+1; i++)
                         this->Children[i].Child = NULL;
 		}
-*/
+	this->nKeys--;
+
+/*
 
 	i = 0;
 	while (bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) != 0)
                 i++;
+	//free(this->Children[i].Ref);
         for (++i; i<this->nKeys; i++)
+		{
                 bpt_i_CopyKey(this, i-1, this, i);
+		}
 
 	num_pointers = this->IsLeaf ? this->nKeys : this->nKeys + 1;
         i = 0;
@@ -453,6 +465,7 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
                 {
                 while (this->Children[i].Ref != (void*)ptr)
                         i++;
+		//free(this->Children[i].Ref);
                 for (++i; i<num_pointers; i++)
                         this->Children[i-1].Ref = this->Children[i].Ref;
                 }
@@ -472,7 +485,7 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
         else
                 for (i=num_pointers; i<BPT_SLOTS+1; i++)
                         this->Children[i].Child = NULL;
-
+*/
         return this;
         }
 
@@ -1033,7 +1046,7 @@ bpt_PrintTreeSmall(pBPTree root)
                         }
                 for (i=0; i<curr->nKeys; i++)
 			{
-                        printf("%s~", curr->Keys[i].Value);
+                        printf("%s ", curr->Keys[i].Value);
 			if (curr->IsLeaf)
 				printf("(%s) ", (char*)curr->Children[i].Ref);
 			}

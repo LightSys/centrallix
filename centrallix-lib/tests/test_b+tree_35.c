@@ -9,7 +9,7 @@ test(char** tname)
 	printf("\n");
 	int i, iter, a, tmp;
 
-	*tname = "b+tree-35 Remove smallest node";
+	*tname = "b+tree-35 Remove smallest key and a nonexistant key";
 	iter = 8000;
 	
 	pBPTree this;
@@ -24,6 +24,7 @@ test(char** tname)
 		tmp = bptRemove(this, "00000001\0", 8);
 		assert (tmp == 0);
 		assert (bptLookup(this, "00000001", 8) == NULL);
+		assert (strcmp(this->Children[0].Child->Keys[0].Value, "00000002") == 0);
 		tmp = bptRemove(this, "00000001\0", 8);
 		assert (tmp == -1);
 		}
