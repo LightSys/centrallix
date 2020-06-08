@@ -9,15 +9,15 @@ test(char** tname)
 	printf("\n");
 	int i, iter, tmp;
 
-	*tname = "b+tree-36 Coalesce left leaf twice";
-	iter = 0;
+	*tname = "b+tree-36 Coalesce inodes";
+	iter = 800;
 	
 	pBPTree this;
-	char* fname = "tests/bpt_bl_10e2.dat";
+	char* fname = "tests/bpt_bl_10e3.dat";
 
 	for(i=0;i<iter;i++)
 		{
-		this = bptBulkLoad(fname, 100);
+		this = bptBulkLoad(fname, 1000);
 		tmp = bptRemove(this, "00000001\0", 8);
 		assert (tmp == 0);
 		tmp = bptRemove(this, "00000002\0", 8);

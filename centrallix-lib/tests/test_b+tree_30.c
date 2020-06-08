@@ -11,7 +11,7 @@ test(char** tname)
     	int iter;
 
 	*tname = "b+tree-30 Bulk Loading: Size = 1,000";
-	iter = 8000000;
+	iter = 8000;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e3.dat";
@@ -31,8 +31,9 @@ test(char** tname)
 	fclose(dict);
 	fclose(tree);
 
-//	this = bptBulkLoad(fname, --a);
-
+	this = bptBulkLoad(fname, 1000);
+	bpt_PrintTreeSmall(this);
+	
 	for(i=0;i<iter;i++)
 	 	{
 		assert (5 == 5);
