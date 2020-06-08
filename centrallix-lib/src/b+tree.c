@@ -895,14 +895,14 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
 	for(i=0; i<this->nKeys; i++)
 	    {
 	    if (this->IsLeaf)
-		{
-		free_fn(free_arg, this->Children[i].Ref);
-		}
+			{
+			free_fn(free_arg, this->Children[i].Ref);
+			}
 	    else
-		{
-		bptClear(this->Children[i].Child, free_fn, free_arg);
-		nmFree(this->Children[i].Child, sizeof(BPTree));
-		}
+			{
+			bptClear(this->Children[i].Child, free_fn, free_arg);
+			nmFree(this->Children[i].Child, sizeof(BPTree));
+			}
 	    }
 	if (!this->IsLeaf)
 	    {
@@ -914,7 +914,6 @@ bptClear(pBPTree this, int (*free_fn)(), void* free_arg)
 	for(i=0; i<this->nKeys; i++)
 	    {
 	    nmSysFree(this->Keys[i].Value);
-	    free_fn(free_arg, this->Keys[i].Value);
 	    }
 
 	/** Reset the root node **/
