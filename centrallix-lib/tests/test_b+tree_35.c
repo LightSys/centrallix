@@ -15,8 +15,6 @@ test(char** tname)
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e2.dat";
 
-	bptRemove(this, "00000001\0", 8);
-
 	for(i=0;i<iter;i++)
 	 	{
 		this = bptBulkLoad(fname, 100);

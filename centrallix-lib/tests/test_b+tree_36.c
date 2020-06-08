@@ -16,21 +16,27 @@ test(char** tname)
 	char* fname = "tests/bpt_bl_10e2.dat";
 
 	for(i=0;i<1;i++)
-	 	{
+		{
 		this = bptBulkLoad(fname, 100);
+		bpt_PrintTreeSmall(this);
 		tmp = bptRemove(this, "00000001\0", 8);
+		bpt_PrintTree(&this);
 		//assert (tmp == 0);
-		tmp = bptRemove(this, "00000002\0", 8);
+		//tmp = bptRemove(this, "00000002\0", 8);
 		//assert (tmp == 0);
-		tmp = bptRemove(this, "00000003\0", 8);
+		//bpt_PrintTreeSmall(this);
+		//tmp = bptRemove(this, "00000003\0", 8);
+		//bpt_PrintTreeSmall(this);
 		//assert (tmp == 0);
-		tmp = bptRemove(this, "00000004\0", 8);
+		//tmp = bptRemove(this, "00000004\0", 8);
 		//assert (tmp == 0);
-		tmp = bptRemove(this, "00000005\0", 8);
+		//bpt_PrintTreeSmall(this);
+		//tmp = bptRemove(this, "00000005\0", 8);
 		//assert (tmp == 0);
+		//bpt_PrintTreeSmall(this);
 		assert (0 == 0);
 		}
-	bpt_PrintTreeSmall(this);
+	//bpt_PrintTree(&this);
 	
 	for(i=0;i<iter;i++) assert (0==0);
 	printf("\n");

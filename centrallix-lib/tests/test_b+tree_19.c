@@ -35,7 +35,7 @@ test(char** tname)
 
 	*tname = "b+tree-19 bptClear works on large tree (configurable)";
 
-	iter = 80000;
+	iter = 8000;
 	for(i=0;i<iter;i++)
 	 	{
 		pBPTree nodes[TOTNODES];
