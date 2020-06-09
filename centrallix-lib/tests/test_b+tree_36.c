@@ -10,7 +10,7 @@ test(char** tname)
 	int i, iter, tmp;
 
 	*tname = "b+tree-36 Coalesce left leaf twice";
-	iter = 0;
+	iter = 1000;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e2.dat";
@@ -43,7 +43,7 @@ test(char** tname)
 		tmp = bptRemove(this, "00000012\0", 8);
 		assert (tmp == 0);
 		}
-	bpt_PrintTreeSmall(this);
+	//bpt_PrintTreeSmall(this);
 	printf("\n");
 	
     	return iter*4;

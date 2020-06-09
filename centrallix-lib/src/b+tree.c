@@ -257,7 +257,12 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)
 	    	{
-		//printf("LEAF\n");
+		/*if (strcmp(key, "00000057\0") == 0)
+			{
+			printf("A\n");
+			printf("%s\n", (char*)this->Children[*locate_index].Ref);
+			printf("B\n");
+			}*/
 		*locate = this;
 	    	if (rval != 0)
 			rval = -1;
@@ -266,7 +271,7 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 	/** Scan the selected child node **/
 	else
 		rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
-	//printf("RETURNING\n");
+
     return rval;
 	}
 
@@ -623,7 +628,8 @@ bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_i
 pBPTree
 bpt_i_RedistributeNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_index, pBPTree k_prime, int k_prime_index)
         {
-        int i;
+        printf("Redistributing\n");
+	int i;
         pBPTree temp;
 	if (neighbor_index != -1)
                 {
@@ -896,8 +902,6 @@ bptLookup(pBPTree this, char* key, int key_len)
 	if (bpt_i_Find(this, key, key_len, &node, &idx) == 0)
 	    {
 	    /** Found **/
-	//	char* str = (char*) node->Children[idx].Ref;
-		//printf("FOUND: %s\n", str);
 	    return node->Children[idx].Ref;
 	    }
     return NULL;

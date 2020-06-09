@@ -9,12 +9,15 @@ test(char** tname)
 	printf("\n");
 	int i, iter, tmp;
 
-	*tname = "b+tree-36 Coalesce inodes";
-	iter = 800;
+	*tname = "b+tree-38 Coalesce inodes";
+	iter = 100;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e3.dat";
-
+	
+	this = bptBulkLoad(fname, 1000);
+	bpt_PrintTreeSmall(this);
+	
 	for(i=0;i<iter;i++)
 		{
 		this = bptBulkLoad(fname, 1000);
@@ -42,6 +45,8 @@ test(char** tname)
 		assert (tmp == 0);
 		tmp = bptRemove(this, "00000012\0", 8);
 		assert (tmp == 0);
+		tmp = bptRemove(this, "00000586\0", 8);
+                assert (tmp == 0);
 		}
 	bpt_PrintTreeSmall(this);
 	printf("\n");

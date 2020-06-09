@@ -10,7 +10,7 @@ test(char** tname)
 	int i, iter, a, tmp;
 
 	*tname = "b+tree-37 Redistribution in leaves";
-	iter = 1;
+	iter = 1000;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e2.dat";
@@ -33,7 +33,7 @@ test(char** tname)
 		tmp = bptRemove(this, "00000098\0", 8);
                 assert (tmp == 0);
 		}
-	bpt_PrintTreeSmall(this);
+	//bpt_PrintTreeSmall(this);
 	
 	printf("\n");
 	

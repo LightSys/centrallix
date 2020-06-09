@@ -10,7 +10,7 @@ test(char** tname)
 	int i, iter, a, tmp;
 
 	*tname = "b+tree-35 Remove smallest key and a nonexistant key";
-	iter = 0;
+	iter = 8000;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e2.dat";

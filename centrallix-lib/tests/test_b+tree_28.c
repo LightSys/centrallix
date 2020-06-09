@@ -9,9 +9,13 @@ test(char** tname)
 	printf("\n");
 	int a, i;
     	int iter;
+	char* rval1;
+	char* rval2;
+	char* rval3;
+	char* rval4;	
 
 	*tname = "b+tree-28 Bulk Loading: Size = 10";
-	iter = 8000000;
+	iter = 8000;
 	
 	pBPTree this;
 	char* fname = "tests/bpt_bl_10e1.dat";
@@ -36,7 +40,16 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	 	{
-		assert (5 == 5);
+		this = bptBulkLoad(fname, 10);
+		assert (this != NULL);
+		rval1 = (char*) bptLookup(this, "00000001", 8);
+		assert (strcmp("A", rval1) == 0);
+                rval2 = (char*) bptLookup(this, "00000009", 8);
+                assert (strcmp("Aaron'srod", rval2) == 0);
+		rval3 = (char*) bptLookup(this, "00000010", 8);
+                assert (strcmp("Ab", rval3) == 0);
+		rval4 = (char*) bptLookup(this, "00000011", 8);
+                assert (rval4 == NULL);
 		}
 
 	printf("\n");
