@@ -534,6 +534,7 @@ bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal ptr)
 pBPTree
 bpt_i_AdjustRoot(pBPTree this)
         {
+	//printf("ADJUSTING\n");
 	if (this == NULL)
 		return NULL;
 	
@@ -572,6 +573,7 @@ bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_i
 
         if (!this->IsLeaf)
                 {
+		 printf("Coalescing inode\n");
 		//printf("NOT LEAF\n");
                 bpt_i_CopyKey(neighbor, neighbor_insertion_index, k_prime, k_prime_index);
                 neighbor->nKeys++;
@@ -628,13 +630,14 @@ bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_i
 pBPTree
 bpt_i_RedistributeNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_index, pBPTree k_prime, int k_prime_index)
         {
-        printf("Redistributing\n");
+        //printf("Redistributing\n");
 	int i;
         pBPTree temp;
 	if (neighbor_index != -1)
                 {
              	if (!this->IsLeaf)
                         {
+			printf("Redistributing inode\n");
                         memmove(&this->Children[this->nKeys+1], &this->Children[this->nKeys], sizeof(BPTreeVal));
 			for (i=this->nKeys; i>0; i--)
                                 {
@@ -724,7 +727,7 @@ bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal
         k_prime = this->Parent;
         neighbor = neighbor_index == -1 ? this->Parent->Children[1].Child : this->Parent->Children[neighbor_index].Child;
 
-        capacity = this->IsLeaf ? BPT_SLOTS + 1 : BPT_SLOTS; //math correct for this implementation?
+        capacity = BPT_SLOTS;//this->IsLeaf ? BPT_SLOTS + 1 : BPT_SLOTS; //math correct for this implementation?
 
         if ((neighbor->nKeys + this->nKeys) < capacity)
                 return bpt_i_CoalesceNodes(root, this, neighbor, neighbor_index, k_prime, k_prime_index);
