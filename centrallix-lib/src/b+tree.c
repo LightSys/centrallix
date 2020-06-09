@@ -919,7 +919,7 @@ bptLookup(pBPTree this, char* key, int key_len)
 	if (bpt_i_Find(this, key, key_len, &node, &idx) == 0)
 	    {
 	    /** Found **/
-		char* str = (char*) node->Children[idx].Ref;
+	//	char* str = (char*) node->Children[idx].Ref;
 		//printf("FOUND: %s\n", str);
 	    return node->Children[idx].Ref;
 	    }
@@ -1134,7 +1134,6 @@ bptBulkLoad(char* fname, int num)
 	//printf("OPENED\n");
 	char key[10], leaf[50];
 	char* info;
-	char* key_val;
 	int leaf_sz;
 
 	for (i=0; i<num; i++)
