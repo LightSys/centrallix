@@ -229,7 +229,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tc%POSbase { background-position: 0%% -24%%; %STR }\n", id, main_bg);
+	htrAddStylesheetItem_va(s,"\t#tc%POSbase { background-position: 0px -24px; %STR }\n", id, main_bg);
 
 	/** DOM Linkages **/
 	htrAddWgtrObjLinkage_va(s, tree, "tc%POSbase",id);
@@ -286,7 +286,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			tab_txt, bg
 			);
 
-		htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\"><p style=\"white-space:nowrap; margin:0px; padding:0px;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]<img src=\"/sys/images/tab_lft%POS.gif\" style=\"width:5%%; height:24%%; vertical-align:middle;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]</p></div>\n",
+		htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\"><p style=\"white-space:nowrap; margin:0px; padding:0px;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]<img src=\"/sys/images/tab_lft%POS.gif\" style=\"width:5px; height:24px; vertical-align:middle;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]</p></div>\n",
 			id, i+1,
 			tloc == Right, tabname,
 			is_selected?2:3,
