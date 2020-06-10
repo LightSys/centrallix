@@ -308,18 +308,18 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    if(h >=0 )
 			{
 			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT%%; TOP:%INT%%; WIDTH:%POS%%; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INT%% %INT%% %INT%% %INT%%)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,h-1-2*box_offset+2*clip_offset,0);
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane2, #gb%POSpane3 { height: %POSpx;}\n",id,id,h-3);
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { height: %POSpx;}\n",id,h-1-2*box_offset);
+			htrAddStylesheetItem_va(s,"\t#gb%POSpane2, #gb%POSpane3 { height: %POS%%;}\n",id,id,h-3);
+			htrAddStylesheetItem_va(s,"\t#gb%POSpane { height: %POS%%;}\n",id,h-1-2*box_offset);
 			}
 		    else
 			{
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx auto %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,0);
+			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT%%; TOP:%INT%%; WIDTH:%POS%%; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INT%% %INT%% auto %INT%%)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,0);
 			}
 		    htrAddStylesheetItem_va(s,"\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { cursor:default; text-align: center; }\n",id,id,id);
 		    htrAddStylesheetItem_va(s,"\t#gb%POSpane { %STR border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
 		    /*htrAddStylesheetItem_va(s,"\t#gb%dpane { color: %s; }\n",id,fgcolor2);*/
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:-1px; top: -1px; width:%POSpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane3 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:0px; top: 0px; width:%POSpx; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);
+		    htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:-1px; top: -1px; width:%POS%%; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
+		    htrAddStylesheetItem_va(s,"\t#gb%POSpane3 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:0px; top: 0px; width:%POS%%; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);
 
 		    if(!strcmp(type,"text"))
 			{
