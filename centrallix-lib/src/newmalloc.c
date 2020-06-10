@@ -271,6 +271,14 @@ nmMalloc(size)
     int i;
 #endif
 
+#ifdef TEST_CAUSE_MALLOC_FAIL
+	extern int fail_malloc;
+	if (fail_malloc)
+		{
+		if (err_fn) err_fn("Insufficient system memory for operation.");
+		return NULL;
+		}
+#endif
     	if (!isinit) nmInitialize();
 
 #ifdef GLOBAL_BLK_COUNTING

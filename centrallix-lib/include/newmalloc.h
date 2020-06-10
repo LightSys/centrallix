@@ -54,6 +54,13 @@ typedef struct _ov
 #undef NM_USE_SYSMALLOC
 #endif
 
+#ifndef USES_MALLOC_FAIL
+#ifndef DUMMY_FAIL_MALLOC_CREATED
+#define DUMMY_FAIL_MALLOC_CREATED
+int fail_malloc;
+#endif
+#endif
+
 #define OVERLAY(x)	((pOverlay)(x))
 #define MAX_SIZE	(8192)
 #define MIN_SIZE	(sizeof(Overlay))

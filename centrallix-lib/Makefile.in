@@ -81,6 +81,11 @@ TESTPROGS:=$(patsubst %.c,%.bin,$(TESTFILES))
 FINAL_TARGETS = @FINAL_TARGETS@
 all:	${FINAL_TARGETS}
 
+.PHONY: memfail
+FINAL_TARGETS = @FINAL_TARGETS@
+memfail:	CFLAGS += -DTEST_CAUSE_MALLOC_FAIL
+memfail:	${FINAL_TARGETS}
+
 ## By default highly optimize cxsec; it is the optimization of
 ## things that use cxsec that will degrade its usefulness a lot,
 ## but it is good for cxsec itself to be optimized.
