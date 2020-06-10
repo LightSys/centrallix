@@ -150,7 +150,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	if (!strcmp(type,"image") || !strcmp(type,"textoverimage"))
 		{
-		htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+		htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT%%; TOP:%INT%%; WIDTH:%POS%%; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 		htrAddScriptGlobal(s, "gb_cur_img", "null", 0);
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
@@ -192,7 +192,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		/* text over image */
 		if(!strcmp(type,"textoverimage"))
 		    	{
-		    	htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+1);
+		    	htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT%%; TOP:%INT%%; WIDTH:%POS%%; Z-INDEX:%POS; }\n",id,0,0,w,z+1);
 		    	htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellpadding=0 height=%INT><tr><td valign=\"center\" align=\"center\"><font color='%STR&HTE'><b>%STR&HTE</b></font></td></tr></table></center></DIV></DIV>\n",id,h,fgcolor1,text);
 		    	}
 		else
@@ -307,7 +307,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    {
 		    if(h >=0 )
 			{
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx %INTpx %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,h-1-2*box_offset+2*clip_offset,0);
+			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT%%; TOP:%INT%%; WIDTH:%POS%%; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INT%% %INT%% %INT%% %INT%%)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,h-1-2*box_offset+2*clip_offset,0);
 			htrAddStylesheetItem_va(s,"\t#gb%POSpane2, #gb%POSpane3 { height: %POSpx;}\n",id,id,h-3);
 			htrAddStylesheetItem_va(s,"\t#gb%POSpane { height: %POSpx;}\n",id,h-1-2*box_offset);
 			}
