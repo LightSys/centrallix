@@ -1141,7 +1141,7 @@ bptBulkLoad(char* fname, int num)
 
 void bpt_i_GetSortedPtrs(BPTData * entries, int num_entries, BPTData ** sorted_ptrs)
 	{
-    int i;
+    int i, j;
     BPTData * temp;
     int idx_of_smallest;
 
@@ -1156,7 +1156,7 @@ void bpt_i_GetSortedPtrs(BPTData * entries, int num_entries, BPTData ** sorted_p
     for (i = 0; i < num_entries; i++)
 		{
         idx_of_smallest = i;
-        for (int j = i + 1; j < num_entries; j++)
+        for (j = i + 1; j < num_entries; j++)
 			{
 			if (bpt_i_Compare(sorted_ptrs[ j ]->Key, sorted_ptrs[ j ]->KeyLength,
 							sorted_ptrs[ idx_of_smallest ]->Key, sorted_ptrs[ idx_of_smallest ]->KeyLength)< 0)
