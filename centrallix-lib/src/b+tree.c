@@ -1139,40 +1139,29 @@ bptBulkLoad(char* fname, int num)
 	return root;
 	}
 
+int bpt_i_SortCompare(const void * d1, const void * d2) {
+    BPTData * const * v1;
+    BPTData * const * v2;
+    v1 = d1;
+    v2 = d2;
+    return bpt_i_Compare( (*v1)->Key, (*v1)->KeyLength, (*v2)->Key, (*v2)->KeyLength );
+}
+
 void bpt_i_GetSortedPtrs(BPTData * entries, int num_entries, BPTData ** sorted_ptrs)
 	{
-    int i, j;
-    BPTData * temp;
-    int idx_of_smallest;
+    int i;
 
     for (i = 0; i < num_entries; i++)
         {
         sorted_ptrs[ i ] = &entries[ i ];
         }
 
-    //This is all temporary--a better sort (randomized qsort/median of 3?)
-    //should be added later. The only purpose of the below code is to sort
-    //data as expected by bptCreateTreeFromData
-    for (i = 0; i < num_entries; i++)
-		{
-        idx_of_smallest = i;
-        for (j = i + 1; j < num_entries; j++)
-			{
-			if (bpt_i_Compare(sorted_ptrs[ j ]->Key, sorted_ptrs[ j ]->KeyLength,
-							sorted_ptrs[ idx_of_smallest ]->Key, sorted_ptrs[ idx_of_smallest ]->KeyLength)< 0)
-				{
-				idx_of_smallest = j;
-				}
-			}
-        temp = sorted_ptrs[ i ];
-        sorted_ptrs[ i ] = sorted_ptrs[ idx_of_smallest ];
-        sorted_ptrs[ idx_of_smallest ] = temp;
-		}
+    qsort( sorted_ptrs, num_entries, sizeof(BPTData*), bpt_i_SortCompare);
 	}
 
 int
 bptCreateTreeFromData(pBPTree * root, BPTData * entries, int num_entries)
-{
+    {
     //TODO: Find out what format data will be added in.
     int i;
     int j;
@@ -1351,4 +1340,4 @@ bptCreateTreeFromData(pBPTree * root, BPTData * entries, int num_entries)
     free(nodes_fast_access);
 
     return 0;
-}
+    }
