@@ -16,7 +16,7 @@ test(char** tname)
 	char* fname = "tests/bpt_bl_10e3.dat";
 	
 	this = bptBulkLoad(fname, 1000);
-	bpt_PrintTreeSmall(this);
+	//bpt_PrintTreeSmall(this);
 	
 	for(i=0;i<iter;i++)
 		{
@@ -48,7 +48,7 @@ test(char** tname)
 		tmp = bptRemove(this, "00000586\0", 8);
                 assert (tmp == 0);
 		}
-	bpt_PrintTreeSmall(this);
+	//bpt_PrintTreeSmall(this);
 	printf("\n");
 	
     	return iter*4;

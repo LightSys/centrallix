@@ -573,7 +573,7 @@ bpt_i_CoalesceNodes(pBPTree root, pBPTree this, pBPTree neighbor, int neighbor_i
 
         if (!this->IsLeaf)
                 {
-		 printf("Coalescing inode\n");
+		//printf("Coalescing inode\n");
 		//printf("NOT LEAF\n");
                 bpt_i_CopyKey(neighbor, neighbor_insertion_index, k_prime, k_prime_index);
                 neighbor->nKeys++;
