@@ -1143,6 +1143,7 @@ void bpt_i_GetSortedPtrs(BPTData * entries, int num_entries, BPTData ** sorted_p
 	{
     int i;
     BPTData * temp;
+    int idx_of_smallest;
 
     for (i = 0; i < num_entries; i++)
         {
@@ -1152,8 +1153,7 @@ void bpt_i_GetSortedPtrs(BPTData * entries, int num_entries, BPTData ** sorted_p
     //This is all temporary--a better sort (randomized qsort/median of 3?)
     //should be added later. The only purpose of the below code is to sort
     //data as expected by bptCreateTreeFromData
-    int idx_of_smallest;
-    for (int i = 0; i < num_entries; i++)
+    for (i = 0; i < num_entries; i++)
 		{
         idx_of_smallest = i;
         for (int j = i + 1; j < num_entries; j++)
