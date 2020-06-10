@@ -7,7 +7,7 @@ long long
 test(char** tname)
    	{
 	printf("\n");
-	int i, iter, a, tmp;
+	int i, iter, tmp;
 
 	*tname = "b+tree-35 Remove smallest key and a nonexistant key";
 	iter = 8000;

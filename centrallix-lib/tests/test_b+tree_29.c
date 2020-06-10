@@ -10,9 +10,6 @@ test(char** tname)
 	int a, i;
     	int iter;
 	char* rval1;
-        char* rval2;
-        char* rval3;
-        char* rval4;
 	char* rval5;
         char* rval6;
         char* rval7;

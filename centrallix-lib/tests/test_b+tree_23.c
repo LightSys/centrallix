@@ -9,7 +9,6 @@ test(char** tname)
 	printf("\n");
 	int i;
     	int iter;
-	int tmp;
 
 	*tname = "b+tree-23 REMOVE RIGHT ENTRY FROM ROOT";
 	iter = 8000000;
@@ -47,9 +46,9 @@ test(char** tname)
 	right->Parent = root;
 	left->Next = right;
 	root->IsLeaf = 0;
-	
+	char * msg = "Hot dogs";	
 	bpt_PrintTree(&root);
-	bpt_i_RemoveEntryFromNode(root, "Hot dogs", 8, mid);
+	bpt_i_RemoveEntryFromNode(root, msg, 8, mid);
 	bpt_PrintTree(&root);
 	for(i=0;i<iter;i++)
 	 	{

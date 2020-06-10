@@ -7,7 +7,7 @@ long long
 test(char** tname)
    	{
 	printf("\n");
-	int i, iter, a, tmp;
+	int i, iter, tmp;
 
 	*tname = "b+tree-37 Redistribution in leaves";
 	iter = 1000;

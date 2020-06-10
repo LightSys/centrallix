@@ -10,12 +10,6 @@ test(char** tname)
 	int a, i, tmp;
     	int iter;
 	char* rval1;
-        char* rval2;
-        char* rval3;
-        char* rval4;
-        char* rval5;
-        char* rval6;
-        char* rval7;
         char* rval8;
 	
 	*tname = "b+tree-30 Bulk Loading: Size = 1,000";

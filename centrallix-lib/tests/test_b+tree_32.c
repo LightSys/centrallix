@@ -12,7 +12,6 @@ test(char** tname)
 	*tname = "b+tree-32 Bulk Loading: Size = 100,000";
 	iter = 8000000;
 	
-	pBPTree this;
 	char* fname = "tests/bpt_bl_10e5.dat";
 	FILE* tree = NULL;
 	tree = fopen(fname, "w");
