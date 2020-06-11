@@ -22,6 +22,10 @@
 #define IDX_SLOTS ( ( BPT_SLOTS ) - 1 )
 #define CEIL_HALF_OF_IDX_SLOTS	( ( ( IDX_SLOTS ) + 1 ) / 2 )
 
+/** Global Variables **/
+int depth = 0;
+pBPTree queue = NULL;
+
 /** Structures **/
 typedef struct _BPK BPTreeKey, *pBPTreeKey;
 typedef union _BPV BPTreeVal, *pBPTreeVal;

@@ -26,7 +26,6 @@
 /* Creation:	September 11, 2019					*/
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
-pBPTree queue = NULL;
 
 /*** bptNew() - allocate and initialize a new B+ Tree
  ***/
@@ -248,11 +247,14 @@ bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index)
  ***/
 int
 bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index)
-    {
-    int rval;
-	
+    	{
+    	int rval;
+		
 	if (this == NULL)
 		return -1;
+	
+	depth++;
+
 	/** Scan this node **/
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)

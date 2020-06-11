@@ -15,7 +15,8 @@ test(char** tname)
 	pBPTree this = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
 	pBPTree dummy = NULL;
 	int idx = 0;
-
+	
+	
 	for(i=0;i<iter;i++)
 	 	{
 		tmp = bpt_i_Find(this, "00000001", 8, &dummy, &idx);
