@@ -69,7 +69,7 @@ test(char** tname)
 		assert(ret_val == 0);
 		assert(leaf_node->nKeys == 1);
 		assert(0 == memcmp(key, leaf_node->Keys[ 0 ].Value, sizeof(key)));
-		assert(leaf_node->Children[ 1 ].Ref == &key_1_value);
+		assert(leaf_node->Children[ 0 ].Ref == &key_1_value);
 
 		/** Test a successful insertion at end **/
 		char second_key[] = "second_key";
@@ -79,7 +79,7 @@ test(char** tname)
 		assert(ret_val == 0);
 		assert(leaf_node->nKeys == 2);
 		assert(0 == memcmp(second_key, leaf_node->Keys[ 1 ].Value, sizeof(second_key)));
-		assert(leaf_node->Children[ 2 ].Ref == &key_2_value);
+		assert(leaf_node->Children[ 1 ].Ref == &key_2_value);
 
 		/** Test a successful insertion at in between two keys **/
 		char mid_key[] = "mid_key";
@@ -89,7 +89,7 @@ test(char** tname)
 		assert(ret_val == 0);
 		assert(leaf_node->nKeys == 3);
 		assert(0 == memcmp(mid_key, leaf_node->Keys[ 1 ].Value, sizeof(mid_key)));
-		assert(leaf_node->Children[ 2 ].Ref == &mid_key_value);
+		assert(leaf_node->Children[ 1 ].Ref == &mid_key_value);
 
 		/** Test a successful insertion into an index node **/
 		pBPTree index_node = bptNew();

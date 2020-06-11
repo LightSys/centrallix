@@ -17,7 +17,7 @@ static void create_leaf_node(pBPTree leaf_node, int nKeys, int max_key_len)
 		leaf_node->Keys[ j ].Value = nmMalloc(sizeof(char) * max_key_len);
 		new_val = nmMalloc(sizeof(*new_val));
 		*new_val = j;
-		leaf_node->Children[ j + 1 ].Ref = new_val;
+		leaf_node->Children[ j ].Ref = new_val;
 		snprintf(leaf_node->Keys[ j ].Value, max_key_len, "%d", j);
 		}
 	leaf_node->nKeys = BPT_SLOTS;
@@ -42,20 +42,20 @@ static void validate_split(int split_loc, pBPTree leaf_node, pBPTree right_node,
 		snprintf(expected_key, max_key_len, "%d", j);
 		if(j < split_loc)
 			{
-			expected_value = leaf_node->Children[ j + 1 ].Ref;
+			expected_value = leaf_node->Children[ j ].Ref;
 			assert(*expected_value == j);
 			assert(0 == strncmp( leaf_node->Keys[ j ].Value, expected_key, max_key_len));
 			nmFree(leaf_node->Keys[ j ].Value, sizeof(char) * max_key_len);
-			nmFree(leaf_node->Children[ j + 1 ].Ref, sizeof(int));
+			nmFree(leaf_node->Children[ j ].Ref, sizeof(int));
 			}
 		else
 			{
 			adjusted_index = j - split_loc;
-			expected_value = right_node->Children[ adjusted_index + 1 ].Ref;
+			expected_value = right_node->Children[ adjusted_index ].Ref;
 			assert(*expected_value == j);
 			assert(0 == strncmp(right_node->Keys[ adjusted_index ].Value, expected_key, max_key_len));
 			nmFree(right_node->Keys[ adjusted_index ].Value, sizeof(char) * max_key_len);
-			nmFree(right_node->Children[ adjusted_index + 1 ].Ref, sizeof(int));
+			nmFree(right_node->Children[ adjusted_index ].Ref, sizeof(int));
 			}
 		}
 	}

@@ -20,6 +20,7 @@
 #define BPT_SLOTS	(16)
 #define CEIL_HALF_OF_LEAF_SLOTS ( ( BPT_SLOTS + 1 ) / 2 )
 #define IDX_SLOTS ( ( BPT_SLOTS ) - 1 )
+#define IDX_CHILDREN ( BPT_SLOTS )
 #define CEIL_HALF_OF_IDX_SLOTS	( ( ( IDX_SLOTS ) + 1 ) / 2 )
 
 /** Global Variables **/
@@ -30,6 +31,14 @@ pBPTree queue = NULL;
 typedef struct _BPK BPTreeKey, *pBPTreeKey;
 typedef union _BPV BPTreeVal, *pBPTreeVal;
 typedef struct _BPT BPTree, *pBPTree;
+
+//IMT: Temporary until we know data structure that will be passed to bulk load
+typedef struct BPTData
+    {
+    char * Key;
+    int    KeyLength;
+    void * Value;
+    } BPTData;
 
 typedef struct BPTreeRoot BPTreeRoot;
 struct BPTreeRoot{
@@ -81,5 +90,6 @@ int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);
 int bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index);
 int bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index);
 pBPTree bptBulkLoad(char* fname, int num);
+int bptCreateTreeFromData(pBPTree * root, BPTData * entries, int num_entries );
 #endif /* _BPTREE_H */
 
