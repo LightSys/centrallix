@@ -27,6 +27,9 @@
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
 
+int depthG = 0;
+pBPTree queue = NULL;
+
 /*** bptNew() - allocate and initialize a new B+ Tree
  ***/
 pBPTree
@@ -253,7 +256,7 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 	if (this == NULL)
 		return -1;
 	
-	depth++;
+	depthG++;
 
 	/** Scan this node **/
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
