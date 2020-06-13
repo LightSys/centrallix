@@ -252,6 +252,7 @@ int
 bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index)
     	{
     	int rval;
+        int offset;
 		
 	if (this == NULL)
 		return -1;
@@ -261,21 +262,18 @@ bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_in
 	/** Scan this node **/
 	rval = bpt_i_Scan(this, key, key_len, locate_index);
 	if (this->IsLeaf)
-	    	{
-		/*if (strcmp(key, "00000057\0") == 0)
-			{
-			printf("A\n");
-			printf("%s\n", (char*)this->Children[*locate_index].Ref);
-			printf("B\n");
-			}*/
+        {
 		*locate = this;
 	    	if (rval != 0)
 			rval = -1;
 		return rval;
-	    	}
+        }
 	/** Scan the selected child node **/
 	else
-		rval = bpt_i_Find(this->Children[*locate_index].Child, key, key_len, locate, locate_index);
+        {
+        offset = ( rval == 0 ) ? 1 : 0;
+        rval = bpt_i_Find(this->Children[*locate_index + offset ].Child, key, key_len, locate, locate_index);
+        }
 
     return rval;
 	}
