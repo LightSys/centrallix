@@ -42,6 +42,7 @@ function tv_new_layer(width,pdoc,l)
 	    nl.className = l.divclass;
 	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
+	    pg_set_style(nl, 'overflow','visible');
 	    pdoc.appendChild(nl);
 	    }
 	else
@@ -261,6 +262,9 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
     else if(cx__capabilities.Dom1HTML)
 	{
 	var c;
+
+	$(l).css({'white-space': 'nowrap'});
+
 	/** remove all current children of this node **/
 	while(c = l.firstChild)
 	    {
@@ -408,8 +412,10 @@ function tv_BuildNewLayers(l, linkcnt)
 	var link_bold = 0;
 	var one_link;
 	//var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
-	var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
-	setClipWidth(one_layer, tgtClipWidth);
+	//var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
+	var one_layer = tv_new_layer(l.mainlayer.setwidth,l.pdoc,l.mainlayer);
+	//setClipWidth(one_layer, tgtClipWidth);
+	setClipWidth(one_layer, l.mainlayer.setwidth);
 	setClipHeight(one_layer, l.root.rowheight);
 	var im;
 	can_expand = null;
@@ -464,7 +470,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	    {
 	    link_txt = cx_info_extract_str(links[i].text);
 	    link_href = links[i].href;
-	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
+	    //one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
+	    one_link = links[i].target;
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
 	    one_layer.objn = one_link;
 	    im = l.root.imgnames.ico_file;
@@ -795,7 +802,7 @@ function tv_init(param)
 	l.img.layer = l;
 	l.img.kind = 'tv';
 	}
-    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    l.pdoc = wgtrGetParentContainer(l);
     //l.pdoc = pdoc;
     l.ld = param.loader;
     l.ld.mainlayer = l;
@@ -1128,7 +1135,7 @@ function tv_collapse()
     for(var i=len-1;i>=0;i--)
 	{
 	sl = lyrs[i];
-	if (sl.fname!=null && sl!=l && l.fname==sl.fname.substring(0,l.fname.length))
+	if (sl.fname!=null && sl!=l && sl.fname != l.fname && l.fname==sl.fname.substring(0,l.fname.length))
 	    {
 	    //pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);

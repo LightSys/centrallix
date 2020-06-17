@@ -1,0 +1,234 @@
+Test            Group              Color              Sheen
+================================================================================
+0 Nested        Monochrome         Black              Flat
+0 Nested        Monochrome         Black              Eggshell
+0 Nested        Monochrome         Black              Satin
+0 Nested        Monochrome         Black              Semi-Gloss
+0 Nested        Monochrome         Black              Gloss
+0 Nested        Monochrome         White              Flat
+0 Nested        Monochrome         White              Eggshell
+0 Nested        Monochrome         White              Satin
+0 Nested        Monochrome         White              Semi-Gloss
+0 Nested        Monochrome         White              Gloss
+0 Nested        Monochrome         Grey               Flat
+0 Nested        Monochrome         Grey               Eggshell
+0 Nested        Monochrome         Grey               Satin
+0 Nested        Monochrome         Grey               Semi-Gloss
+0 Nested        Monochrome         Grey               Gloss
+0 Nested        Monochrome         Charcoal           Flat
+0 Nested        Monochrome         Charcoal           Eggshell
+0 Nested        Monochrome         Charcoal           Satin
+0 Nested        Monochrome         Charcoal           Semi-Gloss
+0 Nested        Monochrome         Charcoal           Gloss
+0 Nested        Color              Green              Flat
+0 Nested        Color              Green              Eggshell
+0 Nested        Color              Green              Satin
+0 Nested        Color              Green              Semi-Gloss
+0 Nested        Color              Green              Gloss
+0 Nested        Color              Yellow             Flat
+0 Nested        Color              Yellow             Eggshell
+0 Nested        Color              Yellow             Satin
+0 Nested        Color              Yellow             Semi-Gloss
+0 Nested        Color              Yellow             Gloss
+0 Nested        Color              Red                Flat
+0 Nested        Color              Red                Eggshell
+0 Nested        Color              Red                Satin
+0 Nested        Color              Red                Semi-Gloss
+0 Nested        Color              Red                Gloss
+0 Nested        Color              Blue               Flat
+0 Nested        Color              Blue               Eggshell
+0 Nested        Color              Blue               Satin
+0 Nested        Color              Blue               Semi-Gloss
+0 Nested        Color              Blue               Gloss
+0 Nested        Color              Purple             Flat
+0 Nested        Color              Purple             Eggshell
+0 Nested        Color              Purple             Satin
+0 Nested        Color              Purple             Semi-Gloss
+0 Nested        Color              Purple             Gloss
+0 Nested        Color              Orange             Flat
+0 Nested        Color              Orange             Eggshell
+0 Nested        Color              Orange             Satin
+0 Nested        Color              Orange             Semi-Gloss
+0 Nested        Color              Orange             Gloss
+0 Nested        Color              Violet             Flat
+0 Nested        Color              Violet             Eggshell
+0 Nested        Color              Violet             Satin
+0 Nested        Color              Violet             Semi-Gloss
+0 Nested        Color              Violet             Gloss
+Test            Group              Color              Sheen
+================================================================================
+1 MultiNested   Monochrome         NULL               NULL
+1 MultiNested   Monochrome         Black              NULL
+1 MultiNested   Monochrome         Black              Flat
+1 MultiNested   Monochrome         Black              Eggshell
+1 MultiNested   Monochrome         Black              Satin
+1 MultiNested   Monochrome         Black              Semi-Gloss
+1 MultiNested   Monochrome         Black              Gloss
+1 MultiNested   Monochrome         White              NULL
+1 MultiNested   Monochrome         White              Flat
+1 MultiNested   Monochrome         White              Eggshell
+1 MultiNested   Monochrome         White              Satin
+1 MultiNested   Monochrome         White              Semi-Gloss
+1 MultiNested   Monochrome         White              Gloss
+1 MultiNested   Monochrome         Grey               NULL
+1 MultiNested   Monochrome         Grey               Flat
+1 MultiNested   Monochrome         Grey               Eggshell
+1 MultiNested   Monochrome         Grey               Satin
+1 MultiNested   Monochrome         Grey               Semi-Gloss
+1 MultiNested   Monochrome         Grey               Gloss
+1 MultiNested   Monochrome         Charcoal           NULL
+1 MultiNested   Monochrome         Charcoal           Flat
+1 MultiNested   Monochrome         Charcoal           Eggshell
+1 MultiNested   Monochrome         Charcoal           Satin
+1 MultiNested   Monochrome         Charcoal           Semi-Gloss
+1 MultiNested   Monochrome         Charcoal           Gloss
+1 MultiNested   Color              NULL               NULL
+1 MultiNested   Color              Green              NULL
+1 MultiNested   Color              Green              Flat
+1 MultiNested   Color              Green              Eggshell
+1 MultiNested   Color              Green              Satin
+1 MultiNested   Color              Green              Semi-Gloss
+1 MultiNested   Color              Green              Gloss
+1 MultiNested   Color              Yellow             NULL
+1 MultiNested   Color              Yellow             Flat
+1 MultiNested   Color              Yellow             Eggshell
+1 MultiNested   Color              Yellow             Satin
+1 MultiNested   Color              Yellow             Semi-Gloss
+1 MultiNested   Color              Yellow             Gloss
+1 MultiNested   Color              Red                NULL
+1 MultiNested   Color              Red                Flat
+1 MultiNested   Color              Red                Eggshell
+1 MultiNested   Color              Red                Satin
+1 MultiNested   Color              Red                Semi-Gloss
+1 MultiNested   Color              Red                Gloss
+1 MultiNested   Color              Blue               NULL
+1 MultiNested   Color              Blue               Flat
+1 MultiNested   Color              Blue               Eggshell
+1 MultiNested   Color              Blue               Satin
+1 MultiNested   Color              Blue               Semi-Gloss
+1 MultiNested   Color              Blue               Gloss
+1 MultiNested   Color              Purple             NULL
+1 MultiNested   Color              Purple             Flat
+1 MultiNested   Color              Purple             Eggshell
+1 MultiNested   Color              Purple             Satin
+1 MultiNested   Color              Purple             Semi-Gloss
+1 MultiNested   Color              Purple             Gloss
+1 MultiNested   Color              Orange             NULL
+1 MultiNested   Color              Orange             Flat
+1 MultiNested   Color              Orange             Eggshell
+1 MultiNested   Color              Orange             Satin
+1 MultiNested   Color              Orange             Semi-Gloss
+1 MultiNested   Color              Orange             Gloss
+1 MultiNested   Color              Violet             NULL
+1 MultiNested   Color              Violet             Flat
+1 MultiNested   Color              Violet             Eggshell
+1 MultiNested   Color              Violet             Satin
+1 MultiNested   Color              Violet             Semi-Gloss
+1 MultiNested   Color              Violet             Gloss
+-------- Inner/Outer Iteration --------
+
+Test            Group              Color              Sheen
+================================================================================
+2 Inner/Outer   Monochrome         Black              Flat
+2 Inner/Outer   Monochrome         Black              Eggshell
+2 Inner/Outer   Monochrome         Black              Satin
+2 Inner/Outer   Monochrome         Black              Semi-Gloss
+2 Inner/Outer   Monochrome         Black              Gloss
+Test            Group              Color              Sheen
+================================================================================
+2 Inner/Outer   Monochrome         White              Flat
+2 Inner/Outer   Monochrome         White              Eggshell
+2 Inner/Outer   Monochrome         White              Satin
+2 Inner/Outer   Monochrome         White              Semi-Gloss
+2 Inner/Outer   Monochrome         White              Gloss
+Test            Group              Color              Sheen
+================================================================================
+2 Inner/Outer   Monochrome         Grey               Flat
+2 Inner/Outer   Monochrome         Grey               Eggshell
+2 Inner/Outer   Monochrome         Grey               Satin
+2 Inner/Outer   Monochrome         Grey               Semi-Gloss
+2 Inner/Outer   Monochrome         Grey               Gloss
+-------- Inner/Outer Iteration --------
+
+Test            Group              Color              Sheen
+================================================================================
+2 Inner/Outer   Monochrome         Charcoal           Flat
+2 Inner/Outer   Monochrome         Charcoal           Eggshell
+2 Inner/Outer   Monochrome         Charcoal           Satin
+2 Inner/Outer   Monochrome         Charcoal           Semi-Gloss
+2 Inner/Outer   Monochrome         Charcoal           Gloss
+-------- Inner/Outer Iteration --------
+
+Test            Group              Color              Sheen
+================================================================================
+3 Inner/Outer   Monochrome         Black              Flat
+3 Inner/Outer   Monochrome         White              Flat
+3 Inner/Outer   Monochrome         Grey               Flat
+3 Inner/Outer   Monochrome         Charcoal           Flat
+3 Inner/Outer   Color              Green              Flat
+3 Inner/Outer   Color              Yellow             Flat
+3 Inner/Outer   Color              Red                Flat
+3 Inner/Outer   Color              Blue               Flat
+3 Inner/Outer   Color              Purple             Flat
+3 Inner/Outer   Color              Orange             Flat
+3 Inner/Outer   Color              Violet             Flat
+Test            Group              Color              Sheen
+================================================================================
+3 Inner/Outer   Monochrome         Black              Eggshell
+3 Inner/Outer   Monochrome         White              Eggshell
+3 Inner/Outer   Monochrome         Grey               Eggshell
+3 Inner/Outer   Monochrome         Charcoal           Eggshell
+3 Inner/Outer   Color              Green              Eggshell
+3 Inner/Outer   Color              Yellow             Eggshell
+3 Inner/Outer   Color              Red                Eggshell
+3 Inner/Outer   Color              Blue               Eggshell
+3 Inner/Outer   Color              Purple             Eggshell
+3 Inner/Outer   Color              Orange             Eggshell
+3 Inner/Outer   Color              Violet             Eggshell
+Test            Group              Color              Sheen
+================================================================================
+3 Inner/Outer   Monochrome         Black              Satin
+3 Inner/Outer   Monochrome         White              Satin
+3 Inner/Outer   Monochrome         Grey               Satin
+3 Inner/Outer   Monochrome         Charcoal           Satin
+3 Inner/Outer   Color              Green              Satin
+3 Inner/Outer   Color              Yellow             Satin
+3 Inner/Outer   Color              Red                Satin
+3 Inner/Outer   Color              Blue               Satin
+3 Inner/Outer   Color              Purple             Satin
+3 Inner/Outer   Color              Orange             Satin
+3 Inner/Outer   Color              Violet             Satin
+-------- Inner/Outer Iteration --------
+
+Test            Group              Color              Sheen
+================================================================================
+3 Inner/Outer   Monochrome         Black              Semi-Gloss
+3 Inner/Outer   Monochrome         White              Semi-Gloss
+3 Inner/Outer   Monochrome         Grey               Semi-Gloss
+3 Inner/Outer   Monochrome         Charcoal           Semi-Gloss
+3 Inner/Outer   Color              Green              Semi-Gloss
+3 Inner/Outer   Color              Yellow             Semi-Gloss
+3 Inner/Outer   Color              Red                Semi-Gloss
+3 Inner/Outer   Color              Blue               Semi-Gloss
+3 Inner/Outer   Color              Purple             Semi-Gloss
+3 Inner/Outer   Color              Orange             Semi-Gloss
+3 Inner/Outer   Color              Violet             Semi-Gloss
+Test            Group              Color              Sheen
+================================================================================
+3 Inner/Outer   Monochrome         Black              Gloss
+3 Inner/Outer   Monochrome         White              Gloss
+3 Inner/Outer   Monochrome         Grey               Gloss
+3 Inner/Outer   Monochrome         Charcoal           Gloss
+3 Inner/Outer   Color              Green              Gloss
+3 Inner/Outer   Color              Yellow             Gloss
+3 Inner/Outer   Color              Red                Gloss
+3 Inner/Outer   Color              Blue               Gloss
+3 Inner/Outer   Color              Purple             Gloss
+3 Inner/Outer   Color              Orange             Gloss
+3 Inner/Outer   Color              Violet             Gloss
+>>>at <<<
+>>>gshell <<<
+>>>tin <<<
+>>>mi-Gloss <<<
+>>>oss <<<
+

@@ -55,203 +55,6 @@
 /*		files, DBF files, and DBL files.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_datafile.c,v 1.28 2010/09/10 00:46:31 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
-
-    $Log: objdrv_datafile.c,v $
-    Revision 1.28  2010/09/10 00:46:31  gbeeley
-    - (bugfix) Fix a data corruption bug in the flat datafile driver (for
-      csv files and such) that could cause cross-contamination between two
-      data files.
-
-    Revision 1.27  2010/09/09 01:43:22  gbeeley
-    - (feature) stubed out functionality for fixed-field flat files
-
-    Revision 1.26  2008/04/06 20:43:52  gbeeley
-    - (bugfix) all three rdbms-style objectsystem drivers had memory leak
-      issues relating to pathname structures.  The corrected interface in
-      obj.h allows us to fix this.
-
-    Revision 1.25  2008/04/06 09:08:56  gbeeley
-    - (bugfix) CSV / flat file driver was corrupting data fields during
-      updates under certain conditions.
-
-    Revision 1.24  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.23  2008/03/14 18:20:45  gbeeley
-    - (bugfix) Due to initial miscounting of rows, inserts into a completely
-      empty file were failing
-    - (bugfix) Two type mismatch error messages had incorrect parameters
-
-    Revision 1.22  2008/02/17 07:45:58  gbeeley
-    - (bugfix) data corruption caused when a deleted row spanned a page
-      boundary
-
-    Revision 1.21  2007/09/18 18:08:20  gbeeley
-    - (bugfix) incorrect page flush logic was leaving pages unwritten to the
-      file under certain circumstances.
-
-    Revision 1.20  2007/07/31 18:07:53  gbeeley
-    - (bugfix) something's fishy here.  Not sure why ParseRow was being
-      called when a colsobj was being opened.  Sigh...
-
-    Revision 1.19  2007/06/02 16:29:27  gbeeley
-    - (bugfix) crash occurred when an update to a CSV file crossed a 4K page
-      boundary, and only when the boundary was within the end-of-row padding
-      rather than in the data part of the row.
-
-    Revision 1.18  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.17  2007/03/01 21:57:26  gbeeley
-    - (bugfix) allow trailing spaces on a row to be used (properly) as space
-      for the row to grow instead of being absorbed into the last field in
-      the row.
-
-    Revision 1.16  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.15  2004/06/23 21:33:55  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.14  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.13  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.12  2003/06/03 20:29:12  gbeeley
-    Fix to CSV driver due to uninitialized memory causing a segfault when
-    opening CSV files from time to time.
-
-    Revision 1.11  2003/05/30 17:39:52  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.10  2003/04/25 05:06:58  gbeeley
-    Added insert support to OSML-over-HTTP, and very remedial Trx support
-    with the objCommit API method and Commit osdriver method.  CSV datafile
-    driver is the only driver supporting it at present.
-
-    Revision 1.9  2003/04/25 04:31:22  gbeeley
-    When creating new row with autokey, release the insert semaphore as
-    soon as row has been inserted.
-
-    Revision 1.8  2003/04/25 04:09:29  gbeeley
-    Adding insert and autokeying support to OSML and to CSV datafile
-    driver on a limited basis (in rowidkey mode only, which is the only
-    mode currently supported by the csv driver).
-
-    Revision 1.7  2003/03/10 15:41:42  lkehresman
-    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
-    hints to the OSML.  To do this I had to:
-      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
-        is now located in utility/hints.c and the include is in include/hints.h.
-      * Added the presentation hints function to the CSV driver and called it
-        datPresentationHints() which returns a valid objPresentationHints object.
-      * Modified test_obj.c to fix a crash bug and reformatted the output to be
-        a little bit easier to read.
-      * Added utility/hints.c to Makefile.in (somebody please check and make sure
-        that I did this correctly).  Note that you will have to reconfigure
-        centrallix for this change to take effect.
-
-    Revision 1.6  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.5  2002/06/19 23:29:34  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.4  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.3  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.2  2001/09/25 18:04:22  gbeeley
-    Fixed quote escaping problem in the CSV driver.
-
-    Revision 1.1.1.1  2001/08/13 18:01:01  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:03  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 /*** tuning and constants ***/
 #define DAT_CACHE_MAXPAGES	64
@@ -288,7 +91,6 @@ typedef struct
     char		    Annotation[256];
     }
     DatTableInf, *pDatTableInf;
-
 
 #define DAT_CF_ALLOWNULL	1
 #define DAT_CF_FOUND		2
@@ -334,6 +136,7 @@ typedef struct
     DatTableInf		HeaderCols;
     int			nRows;		/* number of rows in table, or -1 if not yet determined */
     pSemaphore		InsertSem;	/* controls inserts at end of file */
+    DateTime		LastModification;
     }
     DatNode, *pDatNode;
 
@@ -611,6 +414,65 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	syPostSem(this->Node->FlushSem, 1, 0);
 
     return rval;
+    }
+
+
+/*** dat_internal_ClearPages - clears the page cache of all pages for a node (file)
+ ***/
+int
+dat_internal_ClearPages(pDatNode node)
+    {
+    pDatPage* tmp;
+    pDatPage del;
+
+    	/** Get the page flush semaphore **/
+	syGetSem(node->FlushSem, 1, 0);
+
+	/** Scan the page cache **/
+	tmp = &(DAT_INF.PageList.Next);
+	while(*tmp)
+	    {
+	    if ((*tmp)->Node == node)
+		{
+		/** Got a page in this node (file) - unlink it **/
+		del = (*tmp);
+		(*tmp) = del->Next;
+		if (del->Next) del->Next->Prev = del->Prev;
+		
+		/** BUG - we don't free the page if it is locked, thus it leaks... **/
+		if (!(del->Flags & DAT_CACHE_F_LOCKED))
+		    nmFree(del,sizeof(DatPage));
+		}
+	    else
+		{
+		tmp = &((*tmp)->Next);
+		}
+	    }
+
+	/** Release the flush semaphore **/
+	syPostSem(node->FlushSem, 1, 0);
+
+    return 0;
+    }
+
+
+/*** dat_internal_ClearRowIDs - clear the cache of Row ID pointers
+ ***/
+int
+dat_internal_ClearRowIDs(pDatNode node)
+    {
+    int i;
+
+	/** Set each row id ptr to EMPTY status **/
+	for(i=0;i<DAT_NODE_ROWIDPTRS;i++)
+	    {
+	    if (!(node->RowIDPtrCache[i].Flags & DAT_RI_F_EMPTY))
+		{
+		node->RowIDPtrCache[i].Flags = DAT_RI_F_EMPTY;
+		}
+	    }
+
+    return 0;
     }
 
 
@@ -1273,7 +1135,6 @@ char*
 dat_internal_KeyToFilename(pDatTableInf tdata, pDatData inf)
     {
     static char fbuf[80];
-    char* keyptrs[8];
     int i,col=0;
     char* ptr;
 
@@ -1290,7 +1151,6 @@ dat_internal_KeyToFilename(pDatTableInf tdata, pDatData inf)
 	    {
 	    if (i>0) *(ptr++)='|';
 	    col = 0;
-	    keyptrs[i] = NULL;
 	    switch(tdata->ColTypes[tdata->KeyCols[i]])
 	        {
 		case DATA_T_INTEGER: /** INT **/
@@ -1512,7 +1372,6 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
     char* ptr;
     int i,n;
     pStructInf col_inf;
-    int use_mode;
     int new_node = 0;
     pDatTableInf tdata = NULL;
 
@@ -1544,6 +1403,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    {
 	    /** Not found... Allocate a new one **/
 	    dn = (pDatNode)nmMalloc(sizeof(DatNode));
+	    memset(dn, 0, sizeof(DatNode));
 	    new_node = 1;
 	    if (!dn) return NULL;
 	    strcpy(dn->SpecPath, nodefile);
@@ -1569,13 +1429,28 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		context->SpecObj = objOpen(obj->Session, dn->SpecPath+1, O_RDWR, 0600, "system/filespec");
 		if (!context->SpecObj)
 		    {
-		    mssError(0,"DAT","Could not access .spec file for datafile");
-		    nmFree(dn,sizeof(DatNode));
-		    return NULL;
+		    int tdataFilled = 0;
+		    /** Can't find a spec file, attempt to parse header without **/
+		    tdataFilled = dat_internal_FillTdata(dn, obj, filename);
+
+		    if (!tdataFilled)
+			{
+			mssError(0,"DAT","Could not access .spec file for datafile");
+			nmFree(dn,sizeof(DatNode));
+			return NULL;
+			}
+		    dn->Flags |= DAT_NODE_F_HDRROW | DAT_NODE_F_ROWIDKEY;
+		    dn->Type = DAT_NODE_T_CSV;
+		    dat_csv_OpenNode(dn);
+		    context->DataObj = obj->Prev;
+		    objLinkTo(context->DataObj);
 		    }
-		objUnmanageObject(obj->Session, context->SpecObj);
-		context->DataObj = obj->Prev;
-		objLinkTo(context->DataObj);
+		else
+		    {
+		    objUnmanageObject(obj->Session, context->SpecObj);
+		    context->DataObj = obj->Prev;
+		    objLinkTo(context->DataObj);
+		    }
 		}
 	    else
 	        {
@@ -1583,72 +1458,76 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		objLinkTo(context->SpecObj);
 		context->DataObj = NULL;
 		}
-	    dn->Node = snReadNode(context->SpecObj);
-	    if (!dn->Node)
-	        {
-		mssError(0,"DAT","Could not process .spec file");
-		nmFree(dn,sizeof(DatNode));
-		return NULL;
-		}
+	    /** Checks to make sure that there is a Spec file **/
+	    if (context->SpecObj)
+		{
+		dn->Node = snReadNode(context->SpecObj);
+		if (!dn->Node)
+		    {
+		    mssError(0,"DAT","Could not process .spec file");
+		    nmFree(dn,sizeof(DatNode));
+		    return NULL;
+		    }
 
-	    /** Determine type of the datafile **/
-	    ptr = NULL;
-	    stAttrValue(stLookup(dn->Node->Data,"filetype"),NULL,&ptr,0);
-	    if (!ptr && (!is_datafile || !dot_pos || (slash_pos && slash_pos > dot_pos)))
-	        {
-		mssError(1,"DAT","Could not determine filetype for datafile");
-		nmFree(dn,sizeof(DatNode));
-		return NULL;
-		}
-	    else if (!ptr && is_datafile)
-	        {
-		ptr = dot_pos+1;
-		}
-	    if (strlen(ptr) > 7)
-	        {
-		mssError(1,"DAT","Extension type '%s' too long",ptr);
-		nmFree(dn,sizeof(DatNode));
-		return NULL;
-		}
-	    for(i=0;i<=strlen(ptr);i++) dn->Ext[i] = toupper(ptr[i]);
-	    dn->Type = (intptr_t)xhLookup(&DAT_INF.TypesByExt, (void*)(dn->Ext));
-	    if (!dn->Type)
-	        {
-		mssError(1,"DAT","Unknown datafile type '%s'",ptr);
-		nmFree(dn,sizeof(DatNode));
-		return NULL;
-		}
+		/** Determine type of the datafile **/
+		ptr = NULL;
+		stAttrValue(stLookup(dn->Node->Data,"filetype"),NULL,&ptr,0);
+		if (!ptr && (!is_datafile || !dot_pos || (slash_pos && slash_pos > dot_pos)))
+		    {
+		    mssError(1,"DAT","Could not determine filetype for datafile");
+		    nmFree(dn,sizeof(DatNode));
+		    return NULL;
+		    }
+		else if (!ptr && is_datafile)
+		    {
+		    ptr = dot_pos+1;
+		    }
+		if (strlen(ptr) > 7)
+		    {
+		    mssError(1,"DAT","Extension type '%s' too long",ptr);
+		    nmFree(dn,sizeof(DatNode));
+		    return NULL;
+		    }
+		for(i=0;i<=strlen(ptr);i++) dn->Ext[i] = toupper(ptr[i]);
+		dn->Type = (intptr_t)xhLookup(&DAT_INF.TypesByExt, (void*)(dn->Ext));
+		if (!dn->Type)
+		    {
+		    mssError(1,"DAT","Unknown datafile type '%s'",ptr);
+		    nmFree(dn,sizeof(DatNode));
+		    return NULL;
+		    }
 
-	    /** Filetype-specific load stuff **/
-	    switch(dn->Type)
-	        {
-		case DAT_NODE_T_CSV:	dat_csv_OpenNode(dn); break;
-		case DAT_NODE_T_BCP:	dat_bcp_OpenNode(dn); break;
-		case DAT_NODE_T_FIXED:	dat_fixed_OpenNode(dn); break;
-		}
+		/** Filetype-specific load stuff **/
+		switch(dn->Type)
+		    {
+		    case DAT_NODE_T_CSV:	dat_csv_OpenNode(dn); break;
+		    case DAT_NODE_T_BCP:	dat_bcp_OpenNode(dn); break;
+		    case DAT_NODE_T_FIXED:	dat_fixed_OpenNode(dn); break;
+		    }
 
-	    /** Need to set the datafile path as well as .spec file path **/
-	    if (is_datafile)
-	        {
-		strcpy(dn->DataPath, filename);
-		}
-	    else
-	        {
-		strcpy(dn->DataPath, dn->SpecPath);
-		sprintf(strstr(dn->DataPath,".spec"),".%s",ptr);
-		}
-	    dn->EndDataPath = strchr(dn->DataPath, '\0');
-	    strcpy(dn->EndDataPath, "?ls__type=application%2foctet-stream");
+		/** Need to set the datafile path as well as .spec file path **/
+		if (is_datafile)
+		    {
+		    strcpy(dn->DataPath, filename);
+		    }
+		else
+		    {
+		    strcpy(dn->DataPath, dn->SpecPath);
+		    sprintf(strstr(dn->DataPath,".spec"),".%s",ptr);
+		    }
+		dn->EndDataPath = strchr(dn->DataPath, '\0');
+		strcpy(dn->EndDataPath, "?ls__type=application%2foctet-stream");
 
-	    /** Attempt to open the datafile **/
-	    if (is_toplevel) use_mode = mode; else use_mode = O_RDWR;
-	    /* dn->DataFD = fdOpen(dn->DataPath,use_mode,create_mask);
-	    if (!dn->DataFD)
-	        {
-		mssErrorErrno(1,"DAT","Could not open datafile '%s'",dn->DataPath);
-		nmFree(dn,sizeof(DatNode));
-		return NULL;
-		}*/
+		/** Attempt to open the datafile **/
+		/*if (is_toplevel) use_mode = mode; else use_mode = O_RDWR;
+		dn->DataFD = fdOpen(dn->DataPath,use_mode,create_mask);
+		if (!dn->DataFD)
+		    {
+		    mssErrorErrno(1,"DAT","Could not open datafile '%s'",dn->DataPath);
+		    nmFree(dn,sizeof(DatNode));
+		    return NULL;
+		    }*/
+		}// End of dn->Node check
 	    }
 	else
 	    {
@@ -1661,178 +1540,115 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    }
 
 	/** Need to reload some of the changeable data information? **/
-	if (snGetSerial(dn->Node) != dn->NodeSerial)
+	if (context->SpecObj)
 	    {
-	    if (dn->NodeSerial != -1)
-	        {
-		strcpy(nodefile, obj_internal_PathPart(context->DataObj->Pathname, 0,0));
-		/*objClose(dn->DataObj);*/
-	        dn->NodeSerial = snGetSerial(dn->Node);
-		if (is_datafile)
+	    if (snGetSerial(dn->Node) != dn->NodeSerial)
+		{
+		if (dn->NodeSerial != -1)
 		    {
-		    /*objLinkTo(obj);
-		    dn->DataObj = obj;*/
+		    strcpy(nodefile, obj_internal_PathPart(context->DataObj->Pathname, 0,0));
+		    /*objClose(dn->DataObj);*/
+		    dn->NodeSerial = snGetSerial(dn->Node);
+		    if (is_datafile)
+			{
+			/*objLinkTo(obj);
+			dn->DataObj = obj;*/
+			}
+		    else
+			{
+			/** We can close the obj right away because the invocation of this routine **/
+			/** during the open() call will objLinkTo() the datafile object. **/
+			/*dn->DataObj = NULL;
+			dn->DataObj = objOpen(obj->Session, nodefile, O_RDWR, 0600, "system/datafile");
+			objClose(dn->DataObj);*/
+			}
+		    if (!context->DataObj)
+			{
+			/*mssErrorErrno(1,"DAT","Could not re-open modified datafile '%s'",dn->DataPath);
+			nmFree(dn,sizeof(DatNode));
+			return NULL;*/
+			}
+		    }
+		dn->NodeSerial = snGetSerial(dn->Node);
+
+		/** Need to allocate the tableinf structure? **/
+		if (!dn->TableInf)
+		    {
+		    dn->TableInf = (pDatTableInf)nmMalloc(sizeof(DatTableInf));
+		    memset(dn->TableInf, 0, sizeof(DatTableInf));
+		    dn->TableInf->ColBuf = NULL;
+		    dn->HeaderCols.ColBuf = NULL;
+		    }
+		if (dn->TableInf->ColBuf) nmSysFree(dn->TableInf->ColBuf);
+		dn->TableInf->ColBuf = (char*)nmSysMalloc(1024);
+		dn->TableInf->ColBufSize = 1024;
+		dn->TableInf->ColBufLen = 0;
+		if (dn->HeaderCols.ColBuf) nmSysFree(dn->HeaderCols.ColBuf);
+		dn->HeaderCols.ColBuf = (char*)nmSysMalloc(1024);
+		dn->HeaderCols.ColBufSize = 1024;
+		dn->HeaderCols.ColBufLen = 0;
+
+		/** Determine various flag information **/
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"header_row"),NULL,&ptr,0);
+		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_HDRROW;
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"header_has_titles"),NULL,&ptr,0);
+		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_HDRTITLE;
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"key_is_rowid"),NULL,&ptr,0);
+		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_ROWIDKEY;
+		n = -1;
+		stAttrValue(stLookup(dn->Node->Data,"new_row_padding"),&n,NULL,0);
+		if (n > DAT_CACHE_PAGESIZE) n = DAT_CACHE_PAGESIZE;
+		if (n >= 0)
+		    dn->NewRowPadding = n;
+		else
+		    dn->NewRowPadding = 0;
+
+		/** Load other information, such as annotation info **/
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"annotation"),NULL,&ptr,0);
+		if (ptr)
+		    {
+		    strtcpy(dn->TableInf->Annotation, ptr, sizeof(dn->TableInf->Annotation));
 		    }
 		else
 		    {
-		    /** We can close the obj right away because the invocation of this routine **/
-		    /** during the open() call will objLinkTo() the datafile object. **/
-		    /*dn->DataObj = NULL;
-		    dn->DataObj = objOpen(obj->Session, nodefile, O_RDWR, 0600, "system/datafile");
-		    objClose(dn->DataObj);*/
+		    dn->TableInf->Annotation[0] = 0;
 		    }
-	        if (!context->DataObj)
-	            {
-		    /*mssErrorErrno(1,"DAT","Could not re-open modified datafile '%s'",dn->DataPath);
-		    nmFree(dn,sizeof(DatNode));
-		    return NULL;*/
-		    }
-		}
-	    dn->NodeSerial = snGetSerial(dn->Node);
-
-	    /** Need to allocate the tableinf structure? **/
-	    if (!dn->TableInf)
-	        {
-		dn->TableInf = (pDatTableInf)nmMalloc(sizeof(DatTableInf));
-		memset(dn->TableInf, 0, sizeof(DatTableInf));
-		dn->TableInf->ColBuf = NULL;
-		dn->HeaderCols.ColBuf = NULL;
-		}
-	    if (dn->TableInf->ColBuf) nmSysFree(dn->TableInf->ColBuf);
-	    dn->TableInf->ColBuf = (char*)nmSysMalloc(1024);
-	    dn->TableInf->ColBufSize = 1024;
-	    dn->TableInf->ColBufLen = 0;
-	    if (dn->HeaderCols.ColBuf) nmSysFree(dn->HeaderCols.ColBuf);
-	    dn->HeaderCols.ColBuf = (char*)nmSysMalloc(1024);
-	    dn->HeaderCols.ColBufSize = 1024;
-	    dn->HeaderCols.ColBufLen = 0;
-
-	    /** Determine various flag information **/
-	    ptr=NULL;
-	    stAttrValue(stLookup(dn->Node->Data,"header_row"),NULL,&ptr,0);
-	    if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_HDRROW;
-	    ptr=NULL;
-	    stAttrValue(stLookup(dn->Node->Data,"header_has_titles"),NULL,&ptr,0);
-	    if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_HDRTITLE;
-	    ptr=NULL;
-	    stAttrValue(stLookup(dn->Node->Data,"key_is_rowid"),NULL,&ptr,0);
-	    if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_ROWIDKEY;
-	    n = -1;
-	    stAttrValue(stLookup(dn->Node->Data,"new_row_padding"),&n,NULL,0);
-	    if (n > DAT_CACHE_PAGESIZE) n = DAT_CACHE_PAGESIZE;
-	    if (n >= 0)
-		dn->NewRowPadding = n;
-	    else
-		dn->NewRowPadding = 0;
-
-	    /** Load other information, such as annotation info **/
-	    ptr=NULL;
-	    stAttrValue(stLookup(dn->Node->Data,"annotation"),NULL,&ptr,0);
-	    if (ptr)
-	        {
-	        strtcpy(dn->TableInf->Annotation, ptr, sizeof(dn->TableInf->Annotation));
-		}
-	    else
-	        {
-		dn->TableInf->Annotation[0] = 0;
-		}
-	    ptr=NULL;
-	    stAttrValue(stLookup(dn->Node->Data,"row_annot_exp"),NULL,&ptr,0);
-	    if (ptr)
-	        {
-		if (!dn->TableInf->ObjList)
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"row_annot_exp"),NULL,&ptr,0);
+		if (ptr)
 		    {
-		    dn->TableInf->ObjList = expCreateParamList();
-		    expAddParamToList(dn->TableInf->ObjList, "this", NULL, 0);
-		    }
-		dn->TableInf->RowAnnotExpr = expCompileExpression(ptr, dn->TableInf->ObjList, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		}
-	    else
-	        {
-		dn->TableInf->RowAnnotExpr = NULL;
-		}
-
-
-	    /** Load the column and key information, including header cols. **/
-	    dn->HeaderCols.nCols = 0;
-	    dn->TableInf->nCols = 0;
-	    dn->TableInf->nKeys = 0;
-	    for(i=0;i<dn->Node->Data->nSubInf;i++)
-	        {
-		col_inf = dn->Node->Data->SubInf[i];
-		if (stStructType(col_inf) == ST_T_SUBGROUP)
-		    {
-		    /** Column or header column? **/
-		    if (!strcmp(col_inf->UsrType, "filespec/column")) tdata = dn->TableInf;
-		    else if (!strcmp(col_inf->UsrType, "filespec/hdrcolumn")) tdata = &(dn->HeaderCols);
-
-		    /** Enter the name... **/
-		    n = strlen(col_inf->Name)+1;
-		    if (tdata->ColBufSize <= tdata->ColBufLen + n)
-		        {
-			/*ptr = (char*)nmSysRealloc(tdata->ColBuf, tdata->ColBufSize+1024);
-			tdata->ColBuf = ptr;
-			tdata->ColBufSize += 1024;*/
-			break;
-			}
-		    memcpy(tdata->ColBuf + tdata->ColBufLen, col_inf->Name, n);
-		    tdata->Cols[tdata->nCols] = tdata->ColBuf + tdata->ColBufLen;
-		    tdata->ColBufLen += n;
-
-		    /** Retrieve column type. **/
-		    ptr=NULL;
-		    stAttrValue(stLookup(col_inf,"type"),NULL,&ptr,0);
-		    if (!ptr)
-		        {
-			mssError(1,"DAT","Type not specified for column '%s'",col_inf->Name);
-			return NULL;
-			}
-		    if (!strcmp(ptr,"integer")) tdata->ColTypes[tdata->nCols] = DATA_T_INTEGER;
-		    else if (!strcmp(ptr,"string")) tdata->ColTypes[tdata->nCols] = DATA_T_STRING;
-		    else if (!strcmp(ptr,"datetime")) tdata->ColTypes[tdata->nCols] = DATA_T_DATETIME;
-		    else if (!strcmp(ptr,"double")) tdata->ColTypes[tdata->nCols] = DATA_T_DOUBLE;
-		    else if (!strcmp(ptr,"money")) tdata->ColTypes[tdata->nCols] = DATA_T_MONEY;
-		    else
-		        {
-			mssError(1,"DAT","Invalid type specified for column '%s'",col_inf->Name);
-			return NULL;
-			}
-
-		    /** Column flags **/
-		    tdata->ColFlags[tdata->nCols] = DAT_CF_ALLOWNULL;
-		    if (stAttrValue(stLookup(col_inf,"quoted"),NULL,&ptr,0) >= 0)
-		        {
-			if (!strcasecmp(ptr,"yes")) tdata->ColFlags[tdata->nCols] |= DAT_CF_QUOTED;
-			if (!strcasecmp(ptr,"no")) tdata->ColFlags[tdata->nCols] |= DAT_CF_NONQUOTED;
-			}
-
-		    /** Column physical length **/
-		    if (stAttrValue(stLookup(col_inf,"length"),&n,NULL,0) >= 0)
-			tdata->ColLength[tdata->nCols] = n;
-		    else
-			tdata->ColLength[tdata->nCols] = 0;
-
-		    /** Now for column id **/
-		    if (stAttrValue(stLookup(col_inf,"id"),&n,NULL,0) >= 0)
-		        tdata->ColIDs[tdata->nCols] = n;
-		    else
-		        tdata->ColIDs[tdata->nCols] = 0;
-
-		    /** Is this a key? **/
-		    if (stAttrValue(stLookup(col_inf,"key"),NULL,&ptr,0) >= 0 && !strcmp(ptr,"yes"))
-		        {
-			tdata->ColKeys[tdata->nCols] = 0xFF;
-			}
-		    else
-		        {
-			tdata->ColKeys[tdata->nCols] = 0x00;
-			}
-
-		    /** Check format. **/
-		    tdata->ColFmt[tdata->nCols] = NULL;
-		    if (stAttrValue(stLookup(col_inf,"format"),NULL,&ptr,0) >= 0)
+		    if (!dn->TableInf->ObjList)
 			{
-			n = strlen(ptr)+1;
+			dn->TableInf->ObjList = expCreateParamList();
+			expAddParamToList(dn->TableInf->ObjList, "this", NULL, 0);
+			}
+		    dn->TableInf->RowAnnotExpr = expCompileExpression(ptr, dn->TableInf->ObjList, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    }
+		else
+		    {
+		    dn->TableInf->RowAnnotExpr = NULL;
+		    }
+
+
+		/** Load the column and key information, including header cols. **/
+		dn->HeaderCols.nCols = 0;
+		dn->TableInf->nCols = 0;
+		dn->TableInf->nKeys = 0;
+		for(i=0;i<dn->Node->Data->nSubInf;i++)
+		    {
+		    col_inf = dn->Node->Data->SubInf[i];
+		    if (stStructType(col_inf) == ST_T_SUBGROUP)
+			{
+			/** Column or header column? **/
+			if (!strcmp(col_inf->UsrType, "filespec/column")) tdata = dn->TableInf;
+			else if (!strcmp(col_inf->UsrType, "filespec/hdrcolumn")) tdata = &(dn->HeaderCols);
+
+			/** Enter the name... **/
+			n = strlen(col_inf->Name)+1;
 			if (tdata->ColBufSize <= tdata->ColBufLen + n)
 			    {
 			    /*ptr = (char*)nmSysRealloc(tdata->ColBuf, tdata->ColBufSize+1024);
@@ -1840,33 +1656,99 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 			    tdata->ColBufSize += 1024;*/
 			    break;
 			    }
-			memcpy(tdata->ColBuf + tdata->ColBufLen, ptr, n);
-			tdata->ColFmt[tdata->nCols] = tdata->ColBuf + tdata->ColBufLen;
+			memcpy(tdata->ColBuf + tdata->ColBufLen, col_inf->Name, n);
+			tdata->Cols[tdata->nCols] = tdata->ColBuf + tdata->ColBufLen;
 			tdata->ColBufLen += n;
+
+			/** Retrieve column type. **/
+			ptr=NULL;
+			stAttrValue(stLookup(col_inf,"type"),NULL,&ptr,0);
+			if (!ptr)
+			    {
+			    mssError(1,"DAT","Type not specified for column '%s'",col_inf->Name);
+			    return NULL;
+			    }
+			if (!strcmp(ptr,"integer")) tdata->ColTypes[tdata->nCols] = DATA_T_INTEGER;
+			else if (!strcmp(ptr,"string")) tdata->ColTypes[tdata->nCols] = DATA_T_STRING;
+			else if (!strcmp(ptr,"datetime")) tdata->ColTypes[tdata->nCols] = DATA_T_DATETIME;
+			else if (!strcmp(ptr,"double")) tdata->ColTypes[tdata->nCols] = DATA_T_DOUBLE;
+			else if (!strcmp(ptr,"money")) tdata->ColTypes[tdata->nCols] = DATA_T_MONEY;
+			else
+			    {
+			    mssError(1,"DAT","Invalid type specified for column '%s'",col_inf->Name);
+			    return NULL;
+			    }
+
+			/** Column flags **/
+			tdata->ColFlags[tdata->nCols] = DAT_CF_ALLOWNULL;
+			if (stAttrValue(stLookup(col_inf,"quoted"),NULL,&ptr,0) >= 0)
+			    {
+			    if (!strcasecmp(ptr,"yes")) tdata->ColFlags[tdata->nCols] |= DAT_CF_QUOTED;
+			    if (!strcasecmp(ptr,"no")) tdata->ColFlags[tdata->nCols] |= DAT_CF_NONQUOTED;
+			    }
+
+			/** Column physical length **/
+			if (stAttrValue(stLookup(col_inf,"length"),&n,NULL,0) >= 0)
+			    tdata->ColLength[tdata->nCols] = n;
+			else
+			    tdata->ColLength[tdata->nCols] = 0;
+
+			/** Now for column id **/
+			if (stAttrValue(stLookup(col_inf,"id"),&n,NULL,0) >= 0)
+			    tdata->ColIDs[tdata->nCols] = n;
+			else
+			    tdata->ColIDs[tdata->nCols] = 0;
+
+			/** Is this a key? **/
+			if (stAttrValue(stLookup(col_inf,"key"),NULL,&ptr,0) >= 0 && !strcmp(ptr,"yes"))
+			    {
+			    tdata->ColKeys[tdata->nCols] = 0xFF;
+			    }
+			else
+			    {
+			    tdata->ColKeys[tdata->nCols] = 0x00;
+			    }
+
+			/** Check format. **/
+			tdata->ColFmt[tdata->nCols] = NULL;
+			if (stAttrValue(stLookup(col_inf,"format"),NULL,&ptr,0) >= 0)
+			    {
+			    n = strlen(ptr)+1;
+			    if (tdata->ColBufSize <= tdata->ColBufLen + n)
+				{
+				/*ptr = (char*)nmSysRealloc(tdata->ColBuf, tdata->ColBufSize+1024);
+				tdata->ColBuf = ptr;
+				tdata->ColBufSize += 1024;*/
+				break;
+				}
+			    memcpy(tdata->ColBuf + tdata->ColBufLen, ptr, n);
+			    tdata->ColFmt[tdata->nCols] = tdata->ColBuf + tdata->ColBufLen;
+			    tdata->ColBufLen += n;
+			    }
+
+			/** Next column... **/
+			tdata->nCols++;
 			}
-
-		    /** Next column... **/
-		    tdata->nCols++;
 		    }
-		}
 
-	    /** Ok, loaded the columns.  Now sort 'em **/
-	    dat_internal_SortCols(dn->TableInf);
-	    dat_internal_SortCols(&(dn->HeaderCols));
+		/** Ok, loaded the columns.  Now sort 'em **/
+		dat_internal_SortCols(dn->TableInf);
+		dat_internal_SortCols(&(dn->HeaderCols));
 
-	    /** Renumber the column id's **/
-	    for(i=0;i<dn->TableInf->nCols;i++) dn->TableInf->ColIDs[i] = i;
+		/** Renumber the column id's **/
+		for(i=0;i<dn->TableInf->nCols;i++) dn->TableInf->ColIDs[i] = i;
 
-	    /** Got sorted columns.  Now process the keys **/
-	    for(i=0;i<dn->TableInf->nCols;i++)
-	        {
-		if (dn->TableInf->ColKeys[i])
+		/** Got sorted columns.  Now process the keys **/
+		for(i=0;i<dn->TableInf->nCols;i++)
 		    {
-		    dn->TableInf->KeyCols[dn->TableInf->nKeys] = i;
-		    dn->TableInf->Keys[dn->TableInf->nKeys] = dn->TableInf->Cols[i];
-		    dn->TableInf->ColKeys[i] = dn->TableInf->nKeys + 1;
-		    dn->TableInf->ColFlags[i] |= DAT_CF_PRIKEY;
-		    dn->TableInf->nKeys++;
+		    if (dn->TableInf->ColKeys[i])
+			{
+			dn->TableInf->KeyCols[dn->TableInf->nKeys] = i;
+			dn->TableInf->Keys[dn->TableInf->nKeys] = dn->TableInf->Cols[i];
+			dn->TableInf->ColKeys[i] = dn->TableInf->nKeys + 1;
+			dn->TableInf->ColFlags[i] |= DAT_CF_PRIKEY;
+			dn->TableInf->nKeys++;
+			}
 		    }
 		}
 	    }
@@ -1896,7 +1778,7 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
     char* tmpptr;
     int type = node->TableInf->ColTypes[colid];
     int quote_cnt;
-    char* savedfmt = NULL;
+    /*char* savedfmt = NULL;*/
 
     	/** Do we need to quote the thing?  If so, which quote is best? **/
 	if ((node->Flags & DAT_NODE_F_QUOTEALL) || (type == DATA_T_STRING && strchr(val->String, node->FieldSep)) ||
@@ -1931,17 +1813,20 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
 	    }
 
 	/** Need to set a date or money format? **/
+	cxssPushContext();
 	if (type == DATA_T_DATETIME && node->TableInf->ColFmt[colid])
 	    {
-	    savedfmt = mssGetParam("dfmt");
+	    /*savedfmt = mssGetParam("dfmt");
 	    if (!savedfmt) savedfmt = obj_default_date_fmt;
-	    mssSetParam("dfmt",node->TableInf->ColFmt[colid]);
+	    mssSetParam("dfmt",node->TableInf->ColFmt[colid]);*/
+	    cxssSetVariable("dfmt", node->TableInf->ColFmt[colid], 0);
 	    }
 	else if (type == DATA_T_MONEY && node->TableInf->ColFmt[colid])
 	    {
-	    savedfmt = mssGetParam("mfmt");
+	    /*savedfmt = mssGetParam("mfmt");
 	    if (!savedfmt) savedfmt = obj_default_money_fmt;
-	    mssSetParam("mfmt",node->TableInf->ColFmt[colid]);
+	    mssSetParam("mfmt",node->TableInf->ColFmt[colid]);*/
+	    cxssSetVariable("mfmt", node->TableInf->ColFmt[colid], 0);
 	    }
 
 	/** Get a string representation of the value. **/
@@ -1951,13 +1836,14 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
 	    ptr = objDataToStringTmp(type, *(void**)val, 0);
 
 	/** Need to put back a date or money format? **/
-	if (savedfmt)
+	cxssPopContext();
+	/*if (savedfmt)
 	    {
 	    if (type == DATA_T_DATETIME)
 	        mssSetParam("dfmt",savedfmt);
 	    else
 	        mssSetParam("mfmt",savedfmt);
-	    }
+	    }*/
 
 	/** Count the number of quote marks in it that will be escaped. **/
 	quote_cnt = 0;
@@ -2026,6 +1912,7 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
     int maxlen;
     pObjData val;
     pObjData oldval;
+    int found;
 
     	/** Allocate a buffer **/
 	maxlen = DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1);
@@ -2036,11 +1923,14 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 	for(i=0;i<inf->TData->nCols;i++)
 	    {
 	    val = NULL;
+	    found = 0;
+
 	    /** What's the source of this data? **/
 	    if (update_colid == i)
 	        {
 		/** Source: from UPDATE (SetAttrValue) command. **/
 		val = update_val;
+		found = 1;
 		}
 	    else if (oxt)
 	        {
@@ -2050,15 +1940,19 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 		    sub_oxt = (pObjTrxTree)(oxt->Children.Items[j]);
 		    if (sub_oxt->OpType == OXT_OP_SETATTR && !strcmp(sub_oxt->AttrName,inf->TData->Cols[i]))
 		        {
-			if (sub_oxt->AttrType == DATA_T_INTEGER || sub_oxt->AttrType == DATA_T_DOUBLE)
+			if (sub_oxt->AttrValue == NULL)
+			    val = NULL;
+			else if (sub_oxt->AttrType == DATA_T_INTEGER || sub_oxt->AttrType == DATA_T_DOUBLE)
 			    val = POD(sub_oxt->AttrValue);
 			else
 			    val = POD(&(sub_oxt->AttrValue));
+			found = 1;
 			break;
 			}
 		    }
 		}
-	    if (!val)
+
+	    if (!found)
 	        {
 		/** Source: from EXISTING ROW DATA **/
 		if (inf->ColPtrs[i] == NULL)
@@ -2148,6 +2042,44 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 				}
 			    break;
 			}
+		    }
+
+		/** Old value is set, but new value is NULL? **/
+		if (oldval && !val)
+		    {
+		    /** What size was the data item? **/
+		    switch(inf->TData->ColTypes[i])
+			{
+			case DATA_T_INTEGER:
+			    s = sizeof(int);
+			    break;
+			case DATA_T_DOUBLE:
+			    s = sizeof(double);
+			    break;
+			case DATA_T_MONEY:
+			    s = sizeof(MoneyType);
+			    break;
+			case DATA_T_DATETIME:
+			    s = sizeof(DateTime);
+			    break;
+			case DATA_T_STRING:
+			    s = strlen((char*)(inf->ColPtrs[i])) + 1;
+			    break;
+			default:
+			    s = 0;
+			    break;
+			}
+
+		    /** Adjust existing row data, to reclaim the space. **/
+		    for(j=0;j<inf->TData->nCols;j++)
+			{
+			if (inf->ColPtrs[j] && inf->ColPtrs[j] > inf->ColPtrs[i]) inf->ColPtrs[j] -= s;
+			}
+		    memmove(inf->ColPtrs[i], inf->ColPtrs[i]+s, inf->RowBufSize - (inf->ColPtrs[i] - inf->RowBuf) - s);
+		    inf->RowBufSize -= s;
+
+		    /** Set it to NULL. **/
+		    inf->ColPtrs[i] = NULL;
 		    }
 		}
 
@@ -2854,7 +2786,7 @@ void*
 datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pDatQuery qy = ((pDatQuery)(qy_v));
-    pDatData inf;
+    pDatData inf = NULL;
     char filename[80];
     unsigned char* ptr;
     int new_type;
@@ -2867,7 +2799,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Allocate the structure **/
 	inf = (pDatData)nmMalloc(sizeof(DatData));
-	if (!inf) return NULL;
+	if (!inf)
+	    goto done;
 	memset(inf,0,sizeof(DatData));
 	inf->TData = tdata;
 	inf->Node = qy->ObjInf->Node;
@@ -2900,11 +2833,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else 
 		    {
-        	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	    inf->Pathname.OpenCtlBuf = NULL;
-		    nmFree(inf,sizeof(DatData));
-		    /*mssError(1,"DAT","Table object has only two subobjects: 'rows' and 'columns'");*/
-		    return NULL;
+		    goto done;
 		    }
 	        break;
 
@@ -2912,10 +2841,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	        /** No rows at all? **/
 		if (qy->Row.StartPageID == 0xFFFFFFFF)
 		    {
-        	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	    inf->Pathname.OpenCtlBuf = NULL;
-		    nmFree(inf,sizeof(DatData));
-		    return NULL;
+		    goto done;
 		    }
 
 	        /** Scan for a row if need be. **/
@@ -2931,10 +2857,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    qy->Row.Pages[0] = dat_internal_ReadPage(qy->ObjInf, qy->ObjInf->Node, page);
 		    if (!qy->Row.Pages[0]) 
 		        {
-        	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	        inf->Pathname.OpenCtlBuf = NULL;
-			nmFree(inf,sizeof(DatData));
-			return NULL;
+			goto done;
 			}
 		    qy->Row.StartPageID = page;
 		    page = 0;
@@ -3009,11 +2932,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    if (page >= DAT_ROW_MAXPAGESPAN)
 			        {
 				mssError(1,"DAT","Row length exceeds max page span");
-        	        	if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        	        	inf->Pathname.OpenCtlBuf = NULL;
-				nmFree(inf,sizeof(DatData));
 				for(i=0;i<page;i++) dat_internal_UnlockPage(qy->Row.Pages[i]);
-				return NULL;
+				goto done;
 				}
 			    new_offset = 0;
 			    qy->Row.Pages[page] = dat_internal_ReadPage(qy->ObjInf, qy->ObjInf->Node, qy->Row.StartPageID + page);
@@ -3030,11 +2950,8 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    /** Didn't find nothin' ? **/
 		    if (len == 0 || page < 0)
 		        {
-       	        	if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-       	        	inf->Pathname.OpenCtlBuf = NULL;
-			nmFree(inf,sizeof(DatData));
 			for(i=0;i<=page;i++) dat_internal_UnlockPage(qy->Row.Pages[i]);
-			return NULL;
+			goto done;
 			}
 
 		    /** Parse the row and release the pages. **/
@@ -3072,19 +2989,13 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-       	            if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-       	            inf->Pathname.OpenCtlBuf = NULL;
-		    nmFree(inf,sizeof(DatData));
-		    return NULL;
+		    goto done;
 		    }
 	        break;
 
 	    default:
-		if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-		inf->Pathname.OpenCtlBuf = NULL;
-		nmFree(inf,sizeof(DatData));
 		mssError(1,"DAT","Bark!  Internal object type not allowed (%d)", qy->ObjInf->Type);
-		return NULL;
+		goto done;
 	    }
 
 	/** Build the filename. **/
@@ -3102,7 +3013,20 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	dat_internal_DetermineType(obj,inf);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    done:
+	if (inf)
+	    {
+	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
+	    inf->Pathname.OpenCtlBuf = NULL;
+	    if (inf->SpecObj)
+		objClose(inf->SpecObj);
+	    if (inf->DataObj)
+		objClose(inf->DataObj);
+	    nmFree(inf,sizeof(DatData));
+	    }
+	return NULL;
     }
 
 
@@ -3460,7 +3384,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    switch(inf->Type)
 	        {
 		case DAT_T_TABLE:
-		    ptr = (unsigned char*)nmSysStrdup(val->String);
+		    /*ptr = (unsigned char*)nmSysStrdup(val->String);*/
 		    node_inf = stLookup(inf->Node->Node->Data,"annotation");
 		    if (!node_inf) node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
 		    stSetAttrValue(node_inf, DATA_T_STRING, val, 0);
@@ -3676,6 +3600,10 @@ datPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pDatTableInf tdata = NULL;
     int i, j;
 
+    /* No spec file? */
+    if (!inf->Node->Node)
+	return NULL;
+
     tdata = inf->Node->TableInf;
     for (i=0; i < tdata->nCols; i++)
 	{
@@ -3801,4 +3729,187 @@ datInitialize()
 	if (objRegisterDriver(drv) < 0) return -1;
 
     return 0;
+    }
+
+/*** datFillTdata - Attemtps to fill in Tdata without  
+ *** a spec file to tell it how to do so
+ ***/
+int
+dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
+    {
+    /** Alloocate a new Table **/
+    if (!dn->TableInf)
+	{
+	dn->TableInf = (pDatTableInf)nmMalloc(sizeof(DatTableInf));
+	memset(dn->TableInf, 0, sizeof(DatTableInf));
+	dn->TableInf->ColBuf = NULL;
+	dn->HeaderCols.ColBuf = NULL;
+	}
+
+    /** Declarations - TableInf had to be initiallized first **/
+    pDatTableInf tdata = dn->TableInf;
+    tdata->ColBufSize = 0;
+    int success = 1;
+    int i;
+    int columns = 0;
+    unsigned char text[DAT_CACHE_PAGESIZE];
+    /** Read in the first line of the csv file **/
+    int len = objRead(obj->Prev, (char*)text, DAT_CACHE_PAGESIZE, 0, 0);
+    if (len < 1)
+	{
+	success = 0;
+	}
+    char* ptr;
+    int colsSoFar = 0;
+    unsigned int withinQuote = 0;
+
+
+    /** Copy the filename over excluding the extension **/
+    ptr = strrchr(filename, '/');
+
+    if (!ptr) 
+	{
+	/** If there are no slashes, just start at the beginning **/
+	ptr = filename;
+	}
+    else
+	{
+	/** Starts AFTER the last slash **/
+	ptr++;
+	}
+    for (i = 0; i < 256; i++)
+	{
+	if (ptr[i] != '.' && ptr[i] != '\0')
+	    {
+	    tdata->Table[i] = ptr[i];
+	    }
+	else
+	    {
+	    /** We've found the end. Append a null and stop copying **/
+	    tdata->Table[i] = '\0';
+	    break;
+	    }
+	}
+    /** Goes for string length or until newline - Finds the number of columns **/
+    /** Assumes that the csv file has a header row **/
+    for (i = 0; i < len; i++)
+	{
+	if (!withinQuote)
+	    {
+	    tdata->ColBufSize++;
+	    if (text[i] == ',')
+		{
+		tdata->ColIDs[columns] = columns + 1;
+		columns++;
+		}
+	    else if (text[i] == '\n')
+		{
+		tdata->ColIDs[columns] = columns + 1;
+		columns++;
+		break;
+		}
+	    else if (text[i] == '"')
+		{
+		withinQuote = 1;
+		}
+	    }
+	else
+	    /** If within a quote ignore commas **/
+	    {
+	    if (text[i] == '\n')
+		{
+		tdata->ColIDs[columns] = columns + 1;
+		columns++;
+		break;
+		}
+	    else if (text[i] == '"')
+		{
+		withinQuote = 0;
+		}
+	    }
+	}
+    tdata->nCols = columns;
+
+    /** Allocate a buffer big enough to contain all columns **/
+    tdata->ColBuf = (char*)nmSysMalloc(1024);
+    withinQuote = 0;
+    tdata->Cols[colsSoFar] = tdata->ColBuf;
+    colsSoFar++;
+    for (i = 0; i < len && text[i] != '\n' && text[i] != '\r'; i++)
+	{
+	if (!withinQuote)
+	    {
+	    if (text[i] == '"')
+		{
+		withinQuote = 1;
+		}
+	    else if (text[i] != ',' && text[i] != '\n' && text[i] != '\r')
+		{
+		tdata->ColBuf[tdata->ColBufLen] = text[i];
+		tdata->ColBufLen++;
+		}
+	    else /*if (text[i] == ',')*/
+		{
+		/** NULL terminate - end of column name in header row **/
+		tdata->ColBuf[tdata->ColBufLen] = '\0';
+		tdata->ColBufLen++;
+
+		tdata->Cols[colsSoFar] = tdata->ColBuf + tdata->ColBufLen;
+		colsSoFar++;
+		}
+	    }
+	else
+	    /** If within a quote ignore commas **/
+	    {
+	    if (text[i] == '"' && withinQuote == 1)
+		{
+		tdata->ColBuf[tdata->ColBufLen] = text[i];
+		tdata->ColBufLen++;
+
+		withinQuote = 0;
+		}
+	    else if (text[i] == '"')
+		{
+		withinQuote = 0;
+		}
+	    else
+		{
+		tdata->ColBuf[tdata->ColBufLen] = text[i];
+		tdata->ColBufLen++;
+		withinQuote++;
+		}
+	    }
+	}
+    tdata->ColBuf[tdata->ColBufLen] = '\0';
+    for (i = 0; i < tdata->nCols; i++)
+	{
+	/** This is some intelligence to make a guess at the proper type for the column. (Currently Disabled)
+	char* text = tdata->Cols[i];
+	if (strcasestr(text, "num") != NULL)
+	    {
+	    tdata->ColTypes[i] = DATA_T_INTEGER;
+	    }
+	else if (strcasestr(text, "$") != NULL || 
+		 strcasestr(text, "cost") != NULL)
+	    {
+	    tdata->ColTypes[i] = DATA_T_MONEY;
+	    }
+	else if (strcasestr(text, "date") != NULL)
+	    {
+	    tdata->ColTypes[i] = DATA_T_DATETIME;
+	    }
+	else
+	    {
+	    **/
+	    tdata->ColTypes[i] = DATA_T_STRING;
+	    /**}**/
+	}
+
+    for (i = 0; i < 256; i++)
+	{
+	/** Just Blank out the annoation **/
+	tdata->Annotation[i] = '\0';
+	}
+
+    return success;
     }

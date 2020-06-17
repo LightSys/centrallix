@@ -10,6 +10,9 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "application.h"
+#include "cxlib/xhandle.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,297 +46,6 @@
 /*		the objMultiQuery routine (obj_query.c).		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiquery.c,v 1.41 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
-
-    $Log: multiquery.c,v $
-    Revision 1.41  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.40  2010/09/08 22:22:43  gbeeley
-    - (bugfix) DELETE should only mark non-provided objects as null.
-    - (bugfix) much more intelligent join dependency checking, as well as
-      fix for queries containing mixed outer and non-outer joins
-    - (feature) support for two-level aggregates, as in select max(sum(...))
-    - (change) make use of expModifyParamByID()
-    - (change) disable RequestNotify mechanism as it needs to be reworked.
-
-    Revision 1.39  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.38  2009/06/26 16:04:26  gbeeley
-    - (feature) adding DELETE support
-    - (change) HAVING clause now honored in INSERT ... SELECT
-    - (bugfix) some join order issues resolved
-    - (performance) cache 0 or 1 row result sets during a join
-    - (feature) adding INCLUSIVE option to SUBTREE selects
-    - (bugfix) switch to qprintf for building RawData sql data
-    - (change) some minor refactoring
-
-    Revision 1.37  2008/03/20 00:46:36  gbeeley
-    - (bugfix) Fixing a bug introduced in revision 1.11 which caused
-      reopen_sql to fail on record creation.
-
-    Revision 1.36  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-    Revision 1.35  2008/03/14 18:25:44  gbeeley
-    - (feature) adding INSERT INTO ... SELECT support, for creating new data
-      using SQL as well as using SQL to copy rows around between different
-      objects.
-
-    Revision 1.34  2008/03/09 08:00:10  gbeeley
-    - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
-      close (wait until all objects are closed too), we should shutdown the
-      query execution, thus closing the underlying queries; this prevents
-      some deadlocking issues at the remote RDBMS.
-
-    Revision 1.33  2008/03/06 01:16:34  gbeeley
-    - (bugfix) Use qprintf to fix the way that parsed FROM and WHERE items
-      in a query are encoded.
-    - (bugfix) Enforce having only one SELECT clause per query.
-
-    Revision 1.32  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.31  2008/02/17 07:43:25  gbeeley
-    - (change) handle system attrbutes (name, inner_type, etc.) automatically
-      on queries, even if query has a join.
-
-    Revision 1.30  2007/12/13 23:28:52  gbeeley
-    - (bugfix) when determining to which FROM source to attach an unqualified
-      WHERE item, and the item is mentioned twice in the SELECT clause since
-      it appears from more than one FROM source, give precedence to earlier
-      FROM sources, not earlier SELECT items.
-
-    Revision 1.29  2007/12/06 01:02:02  gbeeley
-    - (bugfix) partial correction for an issue where unqualified WHERE items
-      were not being attached to the correct FROM source.  This can only be
-      fully corrected once we have a way to determine subobject attributes
-      without actually querying for those subobjects.  Was an issue when
-      searching (via osrc) through a SQL join.
-
-    Revision 1.28  2007/12/05 18:57:17  gbeeley
-    - (bugfix) request-notify was causing trouble when a "select *" was being
-      done, causing updates through a select * query to cause a crash.
-
-    Revision 1.27  2007/09/18 17:59:07  gbeeley
-    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
-      combined using AND.  This permits more flexible building of dynamic SQL
-      (no need to do fancy text processing in order to add another WHERE
-      constraint to the query).
-    - (bugfix) fix for crash when using "SELECT *" with a join.
-    - (change) permit the specification of one FROM source to be an "IDENTITY"
-      data source for the query.  That data source will be the one affected by
-      any inserting and deleting through the query.
-
-    Revision 1.26  2007/07/31 17:39:59  gbeeley
-    - (feature) adding "SELECT *" capability, rather than having to name each
-      attribute in every query.  Note - "select *" does result in a query
-      result set in which each row may differ in what attributes it has,
-      depending on the data source(s) used.
-
-    Revision 1.25  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.24  2007/03/15 17:39:59  gbeeley
-    - (bugfix) reset the NULL flag on mqSetAttrValue
-
-    Revision 1.23  2007/03/10 17:57:48  gbeeley
-    - minor tweaks to INSERT function in multiquery; needed to commit in order
-      to transfer work to a different location...
-
-    Revision 1.22  2007/03/04 05:04:47  gbeeley
-    - (change) This is a change to the way that expressions track which
-      objects they were last evaluated against.  The old method was causing
-      some trouble with stale data in some expressions.
-
-    Revision 1.21  2007/01/31 22:32:19  gbeeley
-    - (bugfix) Return error instead of data type when expression evaluation
-      fails on error (not on NULL however).
-
-    Revision 1.20  2006/07/07 22:09:04  gbeeley
-    - patched up some 'unused variable' compile errors
-    - (bugfix) double objClose() caught by ASSERTMAGIC when the last object
-      in a query result set is modified after the query is closed, and then
-      that last object is closed.
-
-    Revision 1.19  2005/10/18 22:50:33  gbeeley
-    - (bugfix) properly detect which object to go to for presentation hints,
-      and if it is a composite property (computed), just return default hints
-      for now since we'd have to do some fancy stuff with the hints values.
-
-    Revision 1.18  2005/09/24 20:19:18  gbeeley
-    - Adding "select ... from subtree /path" support to the SQL engine,
-      allowing the retrieval of an entire subtree with one query.  Uses
-      the new virtual attr support to supply the relative path of each
-      retrieved object.  Much the reverse of what a querytree object can
-      do.
-    - Memory leak fixes in multiquery.c
-    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
-
-    Revision 1.17  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.16  2004/06/12 04:02:28  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.15  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.14  2003/08/03 01:00:53  gbeeley
-    Suppress attr-not-found warnings for certain attrs in mq.
-
-    Revision 1.13  2003/05/30 17:39:50  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.12  2003/03/12 03:19:08  lkehresman
-    * Added basic presentation hint support to multiquery.  It only returns
-      hints for the first result set, which is the wrong way to do it.  I went
-      ahead and committed this so that peter and rupp can start working on the
-      other stuff while I work on implementing this correctly.
-
-    * Hints are now presented to the client in the form:
-      <a target=XHANDLE HREF='http://ATTRIBUTE/?HINTS#TYPE'>
-      where HINTS = hintname=value&hintname=value
-
-    Revision 1.11  2002/11/14 03:46:39  gbeeley
-    Updated some files that were depending on the old xaAddItemSorted() to
-    use xaAddItemSortedInt32() because these uses depend on sorting on a
-    binary integer field, which changes its physical byte ordering based
-    on the architecture of the machine's CPU.
-
-    Revision 1.10  2002/08/10 02:09:44  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.9  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.8  2002/04/30 23:27:45  gbeeley
-    Fixed a bug which caused a segfault on update of the last record if
-    the query had already been closed.
-
-    Revision 1.7  2002/04/05 06:10:11  gbeeley
-    Updating works through a multiquery when "FOR UPDATE" is specified at
-    the end of the query.  Fixed a reverse-eval bug in the expression
-    subsystem.  Updated form so queries are not terminated by a semicolon.
-    The DAT module was accepting it as a part of the pathname, but that was
-    a fluke :)  After "for update" the semicolon caused all sorts of
-    squawkage...
-
-    Revision 1.6  2002/04/05 04:42:43  gbeeley
-    Fixed a bug involving inconsistent serial numbers and objlist states
-    for a multiquery if the user skips back to a previous fetched object
-    context and then continues on with the fetching.  Problem also did
-    surface if user switched to last-fetched-object after switching to
-    a previously fetched one.
-
-    Revision 1.5  2002/03/23 01:30:44  gbeeley
-    Added ls__startat option to the osml "queryfetch" mechanism, in the
-    net_http.c driver.  Set ls__startat to the number of the first object
-    you want returned, where 1 is the first object (in other words,
-    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
-    clause to the multiquery module, but thought this would be easier and
-    just as effective for now.
-
-    Revision 1.4  2002/03/16 04:26:25  gbeeley
-    Added functionality in net_http's object access routines so that it,
-    when appropriate, sends the metadata attributes also, including the
-    following:  "name", "inner_type", "outer_type", and "annotation".
-
-    Revision 1.3  2001/09/28 20:04:50  gbeeley
-    Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
-    are now self-contained and require no redundant OBJECT nodes as parent
-    nodes.  Substantial reduction in expression node allocation and
-    evaluation.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:00:55  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:58  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Globals ***/
@@ -347,6 +59,31 @@ int mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pO
 int mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTree* oxt);
 int mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
 int mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt);
+
+
+/*** mq_internal_CheckYield() - see if we need to do a thYield() to other
+ *** threads due to a long-running query.
+ ***/
+void
+mq_internal_CheckYield(pMultiQuery mq)
+    {
+    unsigned int ms;
+
+	ms = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	if (ms - mq->StartMsec > 1000 && mq->YieldMsec == 0)
+	    {
+	    thYield();
+	    mq->YieldMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	    }
+	else if (ms - mq->YieldMsec > 100)
+	    {
+	    thYield();
+	    mq->YieldMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	    }
+
+    return;
+    }
+
 
 /*** mq_internal_FreeQS - releases memory used by the query syntax tree.
  ***/
@@ -450,6 +187,8 @@ typedef enum
     GroupByItem,
     HavingItem,
     UpdateItem,
+    OnDupItem,
+    OnDupUpdateItem,
 
     /** Misc **/
     ParseDone,
@@ -468,6 +207,7 @@ mq_internal_AllocQS(int type)
     	/** Allocate **/
 	this = (pQueryStructure)nmMalloc(sizeof(QueryStructure));
 	if (!this) return NULL;
+	memset(this, 0, sizeof(QueryStructure));
 
 	/** Fill in the structure **/
 	this->NodeType = type;
@@ -556,6 +296,8 @@ mq_internal_SetDependencies(pQueryStatement stmt, pQueryElement tree, pQueryElem
     int i;
     pQueryElement subtree;
 
+	return 0; /* now done by join analysis */
+
 	/** Parent's dependency mask applies to this too **/
 	if (parent)
 	    tree->DependencyMask = parent->DependencyMask;
@@ -580,18 +322,148 @@ mq_internal_SetDependencies(pQueryStatement stmt, pQueryElement tree, pQueryElem
     }
 
 
+/*** mq_qdo_GetAttrType() - get the type of a declared object's attribute.
+ ***/
+int
+mq_qdo_GetAttrType(pQueryDeclaredObject qdo, char* attrname)
+    {
+    pStructInf attr;
+
+	attr = stLookup(qdo->Data, attrname);
+	if (!attr)
+	    return DATA_T_UNAVAILABLE; /* null / unset */
+
+    return stGetAttrType(attr, 0);
+    }
+
+
+/*** mq_qdo_GetAttrValue() - get the value of a declared object's attribute.
+ ***/
+int
+mq_qdo_GetAttrValue(pQueryDeclaredObject qdo, char* attrname, int data_type, pObjData val)
+    {
+    pStructInf attr;
+
+	attr = stLookup(qdo->Data, attrname);
+	if (!attr)
+	    return 1; /* null / unset */
+
+    return stGetAttrValue(attr, data_type, val, 0);
+    }
+
+
+/*** mq_qdo_SetAttrValue() - does nothing at present.
+ ***/
+int
+mq_qdo_SetAttrValue(pQueryDeclaredObject qdo, char* attrname, int data_type, pObjData val)
+    {
+    return -1;
+    }
+
+
+/*** mq_internal_AddDeclaredObject() - make a declared object available in the object list
+ ***/
+int
+mq_internal_AddDeclaredObject(pMultiQuery query, pQueryDeclaredObject qdo)
+    {
+
+	/** Add to master object list too **/
+	if (expLookupParam(query->ObjList, qdo->Name, 0) >= 0)
+	    return -1;
+	if (expAddParamToList(query->ObjList, qdo->Name, (void*)qdo, 0) >= 0)
+	    {
+	    expSetParamFunctions(query->ObjList, qdo->Name, mq_qdo_GetAttrType, mq_qdo_GetAttrValue, mq_qdo_SetAttrValue);
+	    query->nProvidedObjects++;
+	    query->ProvidedObjMask = (1<<(query->nProvidedObjects)) - 1;
+	    }
+
+    return 0;
+    }
+
+
 /*** mq_internal_PostProcess - performs some additional processing on the
  *** SELECT, FROM, ORDER-BY, and WHERE clauses after the initial parse has been
  *** completed.
  ***/
 int
 mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructure sel, pQueryStructure from, pQueryStructure where, 
-		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc)
+		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc,
+			pQueryStructure odc, pQueryStructure dec)
     {
-    int i,j,cnt;
+    int i,j,cnt,n_assign,exists;
     pQueryStructure subtree;
+    pQueryStructure having;
     char* ptr;
     int has_identity;
+    pQueryDeclaredObject qdo;
+    pQueryDeclaredCollection qdc;
+    pQueryAppData appdata;
+
+	/** Set up a declared object or collection? **/
+	if (dec)
+	    {
+	    /** Lookup application scope data **/
+	    appdata = appLookupAppData("MQ:appdata");
+
+	    /** Object vs Collection **/
+	    if (dec->Flags & MQ_SF_COLLECTION)
+		{
+		/** Check to see if it already exists **/
+		exists = 0;
+		for(i=0; i<appdata->DeclaredCollections.nItems; i++)
+		    {
+		    qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
+		    if (!strcmp(qdc->Name, dec->Name))
+			exists = 1;
+		    }
+
+		if (!exists)
+		    {
+		    /** New Collection **/
+		    qdc = (pQueryDeclaredCollection)nmMalloc(sizeof(QueryDeclaredCollection));
+		    if (qdc)
+			{
+			/** Create it **/
+			strtcpy(qdc->Name, dec->Name, sizeof(qdc->Name));
+			qdc->Collection = objCreateTempObject(stmt->Query->SessionID);
+			if (qdc->Collection == XHN_INVALID_HANDLE)
+			    {
+			    mssError(1, "MQ", "DECLARE COLLECTION: could not allocate temporary collection '%s'", qdc->Name);
+			    nmFree(qdc, sizeof(QueryDeclaredCollection));
+			    return -1;
+			    }
+
+			/** Query vs Application scope **/
+			if (dec->Flags & MQ_SF_APPSCOPE)
+			    xaAddItem(&appdata->DeclaredCollections, (void*)qdc);
+			else
+			    xaAddItem(&stmt->Query->DeclaredCollections, (void*)qdc);
+			}
+		    }
+		}
+	    else
+		{
+		/** Object **/
+		qdo = (pQueryDeclaredObject)nmMalloc(sizeof(QueryDeclaredObject));
+		if (qdo)
+		    {
+		    /** Create it **/
+		    strtcpy(qdo->Name, dec->Name, sizeof(qdo->Name));
+		    qdo->Data = stAllocInf();
+		    if (mq_internal_AddDeclaredObject(stmt->Query, qdo) < 0)
+			{
+			mssError(1, "MQ", "DECLARE OBJECT: '%s' already exists in query or query parameter", qdo->Name);
+			return -1;
+			}
+
+		    /** Query vs App scope **/
+		    if (appdata && (dec->Flags & MQ_SF_APPSCOPE))
+			xaAddItem(&appdata->DeclaredObjects, (void*)qdo);
+		    else
+			xaAddItem(&stmt->Query->DeclaredObjects, (void*)qdo);
+		    }
+		}
+	    }
 
     	/** First, build the object list from the FROM clause **/
 	has_identity = 0;
@@ -600,18 +472,33 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    for(i=0;i<from->Children.nItems;i++)
 		{
 		subtree = (pQueryStructure)(from->Children.Items[i]);
+		if (subtree->Flags & MQ_SF_EXPRESSION && !subtree->Presentation[0])
+		    snprintf(subtree->Presentation, sizeof(subtree->Presentation), "from_%d", i);
+		if (subtree->Flags & MQ_SF_COLLECTION && !subtree->Presentation[0])
+		    strtcpy(subtree->Presentation, subtree->Source, sizeof(subtree->Presentation));
 		if (subtree->Presentation[0])
 		    ptr = subtree->Presentation;
 		else
 		    ptr = subtree->Source;
 		if (subtree->Flags & MQ_SF_IDENTITY)
 		    has_identity = 1;
-		if (expLookupParam(stmt->Query->ObjList, ptr) >= 0)
+		if (expLookupParam(stmt->Query->ObjList, ptr, 0) >= 0)
 		    {
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
 		    }
-		expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
+		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
+
+		/** Compile FROM clause expression if needed **/
+		if (subtree->Flags & MQ_SF_EXPRESSION)
+		    {
+		    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+		    if (!subtree->Expr) 
+			{
+			mssError(0,"MQ","Error in FROM list expression <%s>", subtree->RawData.String);
+			return -1;
+			}
+		    }
 		}
 	    if (from->Children.nItems > 1 && !has_identity && up)
 		{
@@ -633,10 +520,20 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    }
 
 	/** Ok, got object list.  Now compile the SELECT expressions **/
+	n_assign = 0;
 	if (sel) for(i=0;i<sel->Children.nItems;i++)
 	    {
 	    /** Compile the expression **/
 	    subtree = (pQueryStructure)(sel->Children.Items[i]);
+	    if (subtree->Flags & MQ_SF_ASSIGNMENT)
+		{
+		if (stmt->Query->Flags & MQ_F_NOUPDATE)
+		    {
+		    mssError(1, "MQ", "SELECT assignments cannot be used in this query context");
+		    return -1;
+		    }
+		n_assign++;
+		}
 	    for(j=stmt->Query->nProvidedObjects;j<stmt->Query->ObjList->nObjects;j++) stmt->Query->ObjList->Flags[j] &= ~EXPR_O_REFERENCED;
 	    if (!strcmp(subtree->RawData.String,"*") || !strcmp(subtree->RawData.String,"* "))
 		{
@@ -679,6 +576,25 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 			snprintf(subtree->Presentation, sizeof(subtree->Presentation), "column_%3.3d", i);
 			}
 		    }
+		}
+	    }
+	if (n_assign && sel && n_assign == sel->Children.nItems)
+	    stmt->Flags |= MQ_TF_ALLASSIGN;
+	if (n_assign)
+	    stmt->Flags |= MQ_TF_ONEASSIGN;
+
+	/** The on-duplicate clause items **/
+	if (odc) for(i=0;i<odc->Children.nItems;i++)
+	    {
+	    /** Compile the on-duplicate clause expression **/
+	    subtree = (pQueryStructure)(odc->Children.Items[i]);
+	    if (subtree->NodeType != MQ_T_ONDUPITEM)
+		continue;
+	    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->OneObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->Expr) 
+		{
+		mssError(0,"MQ","Error in ON DUPLICATE expression <%s>", subtree->RawData.String);
+		return -1;
 		}
 	    }
 
@@ -752,6 +668,26 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    subtree->ObjCnt = cnt;
 	    }
 
+	/** Compile the on-duplicate update expressions **/
+	if (odc) for(i=0;i<odc->Children.nItems;i++)
+	    {
+	    subtree = (pQueryStructure)(odc->Children.Items[i]);
+	    if (subtree->NodeType != MQ_T_ONDUPUPDATEITEM)
+		continue;
+	    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->Expr)
+	        {
+		mssError(0,"MQ","Error in UPDATE SET expression <%s>", subtree->RawData.String);
+		return -1;
+		}
+	    subtree->AssignExpr = expCompileExpression(subtree->AssignRawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!subtree->AssignExpr)
+	        {
+		mssError(0,"MQ","Error in UPDATE SET assignment expression <%s>", subtree->AssignRawData.String);
+		return -1;
+		}
+	    }
+
 	/** Merge WHERE clauses if there are more than one **/
 	cnt = xaCount(&qs->Children);
 	where = NULL;
@@ -769,8 +705,37 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    /** merge **/
 		    ptr = nmSysStrdup(where->RawData.String);
 		    xsQPrintf(&where->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+		    nmSysFree(ptr);
 
 		    /** remove the extra where clause **/
+		    xaRemoveItem(&qs->Children,i);
+		    i--;
+		    cnt--;
+		    mq_internal_FreeQS(subtree);
+		    }
+		}
+	    }
+
+	/** Merge HAVING clauses if there are more than one **/
+	cnt = xaCount(&qs->Children);
+	having = NULL;
+	for(i=0;i<cnt;i++)
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    if (subtree->NodeType == MQ_T_HAVINGCLAUSE)
+		{
+		if (!having)
+		    {
+		    having = subtree;
+		    }
+		else
+		    {
+		    /** merge **/
+		    ptr = nmSysStrdup(having->RawData.String);
+		    xsQPrintf(&having->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+		    nmSysFree(ptr);
+
+		    /** remove the extra having clause **/
 		    xaRemoveItem(&qs->Children,i);
 		    i--;
 		    cnt--;
@@ -910,6 +875,7 @@ mq_internal_DetermineCoverage(pQueryStatement stmt, pExpression where_clause, pQ
 
 	    /** Convert the AND clause to an INTEGER node with value 1 **/
 	    where_clause->NodeType = EXPR_N_INTEGER;
+	    where_clause->DataType = DATA_T_INTEGER;
 	    where_clause->ObjCoverageMask = 0;
 	    where_clause->ObjOuterMask = 0;
 	    where_clause->Integer = 1;
@@ -1014,6 +980,220 @@ mq_internal_ProcessWhere(pExpression where_clause, pExpression search_at, pQuery
     }
 
 
+/*** mq_internal_ParseSelectItem - create a single SELECT item.  This is also
+ *** used by the Upsert logic to create ON DUPLICATE items, which have an
+ *** identical syntax.
+ ***/
+int
+mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
+    {
+    int t;
+    int parenlevel;
+    int n_tok;
+    char* ptr;
+    int col_alias_state = 0;
+    int col_assign_state = 0;
+
+	/** Copy the entire item literally to the RawData for later compilation **/
+	item_qs->Presentation[0] = 0;
+	item_qs->Name[0] = 0;
+	parenlevel = 0;
+	n_tok = 0;
+	while(1)
+	    {
+	    t = mlxNextToken(lxs);
+	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+		break;
+	    n_tok++;
+	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+		break;
+	    if (t == MLX_TOK_OPENPAREN) 
+		parenlevel++;
+	    if (t == MLX_TOK_CLOSEPAREN)
+		parenlevel--;
+
+	    /** Copy it to the raw data **/
+	    ptr = mlxStringVal(lxs,NULL);
+	    if (!ptr) break;
+	    if (t == MLX_TOK_STRING)
+		xsConcatQPrintf(&item_qs->RawData, "%STR&DQUOT", ptr);
+	    else
+		xsConcatenate(&item_qs->RawData,ptr,-1);
+	    xsConcatenate(&item_qs->RawData," ",1);
+
+	    /** Handle column aliases (SELECT a = :obj:attr) **/
+	    if (col_alias_state == 1 && n_tok == 2)
+		{
+		if (t == MLX_TOK_EQUALS)
+		    {
+		    col_alias_state++;
+		    xsCopy(&item_qs->RawData,"",-1);
+		    }
+		else
+		    col_alias_state = -1;
+		}
+	    else if (col_alias_state == 0 && n_tok == 1)
+		{
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    col_alias_state++;
+		    strtcpy(item_qs->Presentation, ptr, sizeof(item_qs->Presentation));
+		    }
+		else
+		    col_alias_state = -1;
+		}
+
+	    /** Handle column assignments (SELECT :obj:attr = :obj2:attr2) **/
+	    if (col_assign_state == 0 && n_tok == 1)
+		{
+		if (t == MLX_TOK_COLON)
+		    col_assign_state++;
+		else
+		    col_assign_state = -1;
+		}
+	    else if (col_assign_state == 1 && n_tok == 2)
+		{
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    col_assign_state++;
+		    strtcpy(item_qs->Name, ptr, sizeof(item_qs->Name));
+		    }
+		else
+		    col_assign_state = -1;
+		}
+	    else if (col_assign_state == 2 && n_tok == 3)
+		{
+		if (t == MLX_TOK_COLON)
+		    col_assign_state++;
+		else
+		    col_assign_state = -1;
+		}
+	    else if (col_assign_state == 3 && n_tok == 4)
+		{
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    col_assign_state++;
+		    strtcpy(item_qs->Presentation, ptr, sizeof(item_qs->Presentation));
+		    }
+		else
+		    col_assign_state = -1;
+		}
+	    else if (col_assign_state == 4 && n_tok == 5)
+		{
+		if (t == MLX_TOK_EQUALS)
+		    {
+		    col_assign_state++;
+		    xsCopy(&item_qs->RawData,"",-1);
+		    item_qs->Flags |= MQ_SF_ASSIGNMENT;
+		    }
+		else
+		    col_assign_state = -1;
+		}
+	    }
+
+	/** Clean up presentation/name stuff if unneeded **/
+	if (col_assign_state != 5)
+	    item_qs->Name[0] = '\0';
+	if (col_assign_state != 5 && col_alias_state != 2)
+	    item_qs->Presentation[0] = '\0';
+
+    return t;
+    }
+
+
+/*** mq_internal_ParseUpdateItem - parse one assignment in an UPDATE ... SET
+ *** clause.  This is used both by traditional UPDATE ... SET statements as
+ *** well as by ON DUPLICATE ... UPDATE SET ... statements.
+ ***/
+int
+mq_internal_ParseUpdateItem(pQueryStructure item_qs, pLxSession lxs)
+    {
+    int t, prev_t;
+    int parenlevel;
+    int in_assign;
+    char* ptr;
+
+	/** Copy the entire item literally to the RawData for later compilation **/
+	item_qs->Presentation[0] = 0;
+	item_qs->Name[0] = 0;
+	parenlevel = 0;
+	in_assign = 1;
+	while(1)
+	    {
+	    t = mlxNextToken(lxs);
+	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+		break;
+	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+		break;
+	    if (t == MLX_TOK_OPENPAREN) 
+		parenlevel++;
+	    if (t == MLX_TOK_CLOSEPAREN)
+		parenlevel--;
+	    if (t == MLX_TOK_EQUALS && parenlevel == 0 && in_assign)
+		{
+		in_assign = 0;
+		continue;
+		}
+	    ptr = mlxStringVal(lxs,NULL);
+	    if (!ptr) break;
+	    if (t == MLX_TOK_STRING)
+		{
+		if (in_assign)
+		    xsConcatQPrintf(&item_qs->AssignRawData, "%STR&DQUOT", ptr);
+		else
+		    xsConcatQPrintf(&item_qs->RawData, "%STR&DQUOT", ptr);
+		}
+	    else
+		{
+		if (in_assign)
+		    xsConcatenate(&item_qs->AssignRawData,ptr,-1);
+		else
+		    xsConcatenate(&item_qs->RawData,ptr,-1);
+		}
+	    xsConcatenate(&item_qs->RawData," ",1);
+	    }
+
+	/** Check for IF MODIFIED modifier **/
+	if (t == MLX_TOK_RESERVEDWD)
+	    {
+	    ptr = mlxStringVal(lxs, NULL);
+	    if (!strcasecmp(ptr, "if"))
+		{
+		prev_t = t;
+		t = mlxNextToken(lxs);
+		if (t == MLX_TOK_RESERVEDWD)
+		    {
+		    ptr = mlxStringVal(lxs, NULL);
+		    if (!strcasecmp(ptr, "modified"))
+			{
+			item_qs->Flags |= MQ_SF_IFMODIFIED;
+			t = mlxNextToken(lxs);
+			}
+		    else
+			{
+			mlxHoldToken(lxs);
+			t = prev_t;
+			}
+		    }
+		else
+		    {
+		    mlxHoldToken(lxs);
+		    t = prev_t;
+		    }
+		}
+	    }
+
+	if (!item_qs->RawData.String[0] || !item_qs->AssignRawData.String[0])
+	    {
+	    mssError(1, "MQ", "UPDATE assignment must have form '{assign-expr} = {value-expr}'");
+	    mlxNotePosition(lxs);
+	    return -1;
+	    }
+
+    return t;
+    }
+
+
 /*** mq_internal_SyntaxParse - parse the syntax of the SQL used for this
  *** query.
  ***/
@@ -1024,14 +1204,17 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     pQueryStructure insert_cls=NULL, update_cls=NULL, delete_cls=NULL;
     /* pQueryStructure delete_cls=NULL, update_cls=NULL;*/
     pQueryStructure limit_cls = NULL;
+    pQueryStructure ondup_cls = NULL;
+    pQueryStructure declare_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject;
+    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom;
+    int is_object;
     char* ptr;
-    int in_assign;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
-				   "values","with","limit","for", NULL};
+				   "values","with","limit","for","on","duplicate", "declare",
+				   "showplan", "multistatement", "if", "modified", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -1053,7 +1236,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 	        case LookForClause:
 		    if ((t=mlxNextToken(lxs)) != MLX_TOK_RESERVEDWD)
 		        {
-			if ((t == MLX_TOK_EOF || t == MLX_TOK_SEMICOLON) && (select_cls || update_cls || delete_cls))
+			if ((t == MLX_TOK_EOF || t == MLX_TOK_SEMICOLON) && (select_cls || update_cls || delete_cls || declare_cls))
 			    {
 			    mlxHoldToken(lxs);
 			    next_state = ParseDone;
@@ -1266,6 +1449,77 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				next_state = ParseError;
 				}
 			    }
+			else if (!strcmp("declare",ptr))
+			    {
+			    if (declare_cls)
+				{
+				mssError(1,"MQ","Only one DECLARE clause allowed per statement");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    if (select_cls || insert_cls || delete_cls || update_cls)
+				{
+				mssError(1,"MQ","DECLARE cannot be used with any other clause");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    t = mlxNextToken(lxs);
+			    if (t != MLX_TOK_KEYWORD || (ptr = mlxStringVal(lxs,NULL)) == NULL || (strcasecmp(ptr, "object") != 0 && strcasecmp(ptr, "collection") != 0))
+				{
+				mssError(1,"MQ","Expected keyword OBJECT or COLLECTION after DECLARE");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    if (!strcasecmp(ptr, "object"))
+				is_object = 1;
+			    else
+				is_object = 0;
+			    t = mlxNextToken(lxs);
+			    if (t != MLX_TOK_KEYWORD && t != MLX_TOK_RESERVEDWD && t != MLX_TOK_STRING)
+				{
+				mssError(1,"MQ","Expected object name after DECLARE OBJECT/COLLECTION");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    declare_cls = mq_internal_AllocQS(MQ_T_DECLARECLAUSE);
+			    xaAddItem(&qs->Children, (void*)declare_cls);
+			    declare_cls->Parent = qs;
+			    mlxCopyToken(lxs, declare_cls->Name, sizeof(declare_cls->Name));
+			    if (!is_object)
+				declare_cls->Flags |= MQ_SF_COLLECTION;
+			    if (!strcmp(declare_cls->Name, "") || !strcasecmp(declare_cls->Name, "this") || strlen(declare_cls->Name) >= 31)
+				{
+				mssError(1,"MQ","Invalid object name after DECLARE OBJECT/COLLECTION");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    else
+				{
+				/** Look for scope indication **/
+				t = mlxNextToken(lxs);
+				if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs, NULL)) != NULL && !strcasecmp(ptr, "scope"))
+				    {
+				    /** Valid scopes are QUERY and APPLICATION **/
+				    t = mlxNextToken(lxs);
+				    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs, NULL)) != NULL && (!strcasecmp(ptr, "application") || !strcasecmp(ptr, "query")))
+					{
+					if (!strcasecmp(ptr, "application"))
+					    declare_cls->Flags |= MQ_SF_APPSCOPE;
+					}
+				    else
+					{
+					mssError(1,"MQ","Invalid scope type for DECLARE OBJECT/COLLECTION ... SCOPE ...");
+					mlxNoteError(lxs);
+					next_state = ParseError;
+					}
+				    }
+				else
+				    {
+				    mlxHoldToken(lxs);
+				    }
+				next_state = LookForClause;
+				}
+			    }
 			else if (!strcmp("set",ptr))
 			    {
 			    if (update_cls)
@@ -1277,6 +1531,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
 			        {
 				next_state = ParseError;
+				mssError(1,"MQ","SET requires one of rowcount, multistatement, or showplan");
+				mlxNoteError(lxs);
 				}
 			    else
 			        {
@@ -1312,6 +1568,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 					if (mlxIntVal(lxs))
 					    {
 					    stmt->Query->Flags |= MQ_F_MULTISTATEMENT;
+					    next_state = LookForClause;
 					    }
 					else
 					    {
@@ -1324,6 +1581,38 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 					    else
 						{
 						stmt->Query->Flags &= ~MQ_F_MULTISTATEMENT;
+						next_state = LookForClause;
+						}
+					    }
+					}
+				    }
+				else if (!strcmp(ptr,"showplan"))
+				    {
+				    if (mlxNextToken(lxs) != MLX_TOK_INTEGER)
+				        {
+					next_state = ParseError;
+			                mssError(1,"MQ","SET SHOWPLAN expects 0 or 1 following");
+					mlxNoteError(lxs);
+					}
+				    else
+				        {
+					if (!mlxIntVal(lxs))
+					    {
+					    stmt->Query->Flags &= ~MQ_F_SHOWPLAN;
+					    next_state = LookForClause;
+					    }
+					else
+					    {
+					    if (stmt->Query->Flags & MQ_F_ONESTATEMENT)
+						{
+						next_state = ParseError;
+						mssError(1,"MQ","SET SHOWPLAN disabled in this context");
+						mlxNoteError(lxs);
+						}
+					    else
+						{
+						stmt->Query->Flags |= MQ_F_SHOWPLAN;
+						next_state = LookForClause;
 						}
 					    }
 					}
@@ -1345,6 +1634,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("delete",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","DELETE statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || insert_cls || update_cls)
 				{
 				next_state = ParseError;
@@ -1377,6 +1673,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("insert",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","INSERT statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || update_cls || delete_cls)
 				{
 				next_state = ParseError;
@@ -1391,39 +1694,38 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    insert_cls->Parent = qs;
 
 			    /** Check for optional "INTO" and then table name **/
-		    	    if ((t=mlxNextToken(lxs)) == MLX_TOK_RESERVEDWD)
+			    collfrom = 0;
+			    t = mlxNextToken(lxs);
+		    	    if (t == MLX_TOK_RESERVEDWD && (ptr = mlxStringVal(lxs,NULL)) != NULL && !strcasecmp(ptr, "into"))
 			        {
-				ptr = mlxStringVal(lxs,NULL);
-				if (!strcasecmp(ptr,"into"))
-				    {
-				    t = mlxNextToken(lxs);
-				    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
-				        {
-				    	next_state = ParseError;
-				    	mssError(1,"MQ","Expected pathname after INSERT INTO");
-				    	mlxNoteError(lxs);
-				    	break;
-					}
-				    }
-				else
-				    {
-				    next_state = ParseError;
-				    mssError(1,"MQ","Expected pathname or INTO after INSERT, got <%s>",ptr);
-				    mlxNoteError(lxs);
-				    break;
-				    }
+				t = mlxNextToken(lxs);
 				}
-			    else if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
+			    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs, NULL)) != NULL && !strcasecmp(ptr, "collection"))
+				{
+				insert_cls->Flags |= MQ_SF_COLLECTION;
+				t = mlxNextToken(lxs);
+				}
+			    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING && (!(insert_cls->Flags & MQ_SF_COLLECTION) || t != MLX_TOK_KEYWORD))
 			        {
 				next_state = ParseError;
-				mssError(1,"MQ","Expected pathname or INTO after INSERT");
+				mssError(1,"MQ","Expected pathname after INSERT [INTO]");
 				mlxNoteError(lxs);
 				break;
 				}
-		    	    mlxCopyToken(lxs,insert_cls->Source,256);
+		    	    mlxCopyToken(lxs, insert_cls->Source, 256);
+
+			    t = mlxNextToken(lxs);
+
+			    /** Check for a keyword, which provides an identifier for the insert path **/
+			    if (t == MLX_TOK_KEYWORD || t == MLX_TOK_STRING)
+				{
+				ptr = mlxStringVal(lxs,NULL);
+				if (ptr)
+				    strtcpy(insert_cls->Presentation, ptr, sizeof(insert_cls->Presentation));
+				t = mlxNextToken(lxs);
+				}
 
 			    /** Ok, either a paren (for column list), VALUES, or SELECT is next. **/
-			    t = mlxNextToken(lxs);
 			    if (t == MLX_TOK_RESERVEDWD)
 			        {
 				/** VALUES or SELECT **/
@@ -1450,6 +1752,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    }
 			else if (!strcmp("update",ptr))
 			    {
+			    if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","UPDATE statement disallowed because data changes are forbidden");
+				mlxNoteError(lxs);
+				break;
+				}
 			    if (select_cls || insert_cls || delete_cls)
 				{
 				next_state = ParseError;
@@ -1495,6 +1804,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				    mlxNoteError(lxs);
 				    break;
 				    }
+				if (stmt->Query->Flags & MQ_F_NOUPDATE)
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","SELECT ... FOR UPDATE disallowed because data changes are forbidden");
+				    mlxNoteError(lxs);
+				    break;
+				    }
 				select_cls->Flags |= MQ_SF_FORUPDATE;
 				next_state = LookForClause;
 				}
@@ -1506,12 +1822,119 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				break;
 				}
 			    }
+			else if (!strcmp("on",ptr))
+			    {
+			    /** Various sorts of ON clauses go here **/
+			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected DUPLICATE after ON");
+				mlxNoteError(lxs);
+				break;
+				}
+			    ptr = mlxStringVal(lxs,NULL);
+			    if (ptr && strcmp(ptr,"duplicate") != 0)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected DUPLICATE after ON");
+				mlxNoteError(lxs);
+				break;
+				}
+			    if (insert_cls == NULL)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","ON DUPLICATE...UPDATE is only valid with an INSERT statement");
+				mlxNoteError(lxs);
+				break;
+				}
+			    ondup_cls = mq_internal_AllocQS(MQ_T_ONDUPCLAUSE);
+			    xaAddItem(&qs->Children, (void*)ondup_cls);
+			    ondup_cls->Parent = qs;
+			    next_state = OnDupItem;
+			    }
 			else
 			    {
 			    next_state = ParseError;
 			    mssError(1,"MQ","Unknown reserved word or clause name <%s>", ptr);
 			    mlxNoteError(lxs);
 			    }
+			}
+		    break;
+
+		case OnDupItem:
+		    new_qs = mq_internal_AllocQS(MQ_T_ONDUPITEM);
+		    xaAddItem(&ondup_cls->Children, (void*)new_qs);
+		    new_qs->Parent = ondup_cls;
+
+		    t = mq_internal_ParseSelectItem(new_qs, lxs);
+
+		    /** Where to from here? **/
+		    if (t == MLX_TOK_COMMA)
+		        {
+			next_state = state;
+			break;
+			}
+		    else if (t == MLX_TOK_RESERVEDWD && (ptr = mlxStringVal(lxs, NULL)) && !strcmp(ptr,"update"))
+		        {
+			t = mlxNextToken(lxs);
+			if (t == MLX_TOK_RESERVEDWD && (ptr = mlxStringVal(lxs, NULL)) && !strcmp(ptr,"set"))
+			    {
+			    next_state = OnDupUpdateItem;
+			    break;
+			    }
+			else
+			    {
+			    next_state = ParseError;
+			    mssError(1,"MQ","Expected on-duplicate item or UPDATE SET clause after ON DUPLICATE");
+			    mlxNoteError(lxs);
+			    break;
+			    }
+			}
+		    else
+		        {
+			next_state = ParseError;
+			mssError(1,"MQ","Expected on-duplicate item or UPDATE SET clause after ON DUPLICATE");
+			mlxNoteError(lxs);
+			break;
+			}
+		    break;
+
+		case OnDupUpdateItem:
+		    new_qs = mq_internal_AllocQS(MQ_T_ONDUPUPDATEITEM);
+		    xaAddItem(&ondup_cls->Children, (void*)new_qs);
+		    new_qs->Parent = ondup_cls;
+
+		    t = mq_internal_ParseUpdateItem(new_qs, lxs);
+		    if (t < 0)
+			{
+			next_state = ParseError;
+			break;
+			}
+
+		    /** Where to from here? **/
+		    if (t == MLX_TOK_COMMA)
+		        {
+			next_state = state;
+			break;
+			}
+		    else if (t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON)
+		        {
+			mlxHoldToken(lxs);
+			next_state = LookForClause;
+			break;
+			}
+		    else if (t == MLX_TOK_EOF)
+		        {
+			mlxHoldToken(lxs);
+			next_state = ParseDone;
+			break;
+			}
+		    else
+		        {
+			next_state = ParseError;
+			mssError(1,"MQ","Expected update item or end-of-query after UPDATE SET");
+			mlxNoteError(lxs);
+			break;
 			}
 		    break;
 
@@ -1527,11 +1950,10 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    while(1)
 		        {
 			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON)
-			    {
+			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 			    break;
-			    }
-			if (t == MLX_TOK_COMMA && parenlevel == 0) break;
+			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON || t == MLX_TOK_COMMA) && parenlevel == 0)
+			    break;
 			if (t == MLX_TOK_OPENPAREN) parenlevel++;
 			if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
 			ptr = mlxStringVal(lxs,NULL);
@@ -1636,44 +2058,10 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		case SelectItem:
 		    new_qs = mq_internal_AllocQS(MQ_T_SELECTITEM);
-		    new_qs->Presentation[0] = 0;
-		    new_qs->Name[0] = 0;
 		    xaAddItem(&select_cls->Children, (void*)new_qs);
 		    new_qs->Parent = select_cls;
 
-		    /** Copy the entire item literally to the RawData for later compilation **/
-		    parenlevel = 0;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-			    break;
-			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
-			    break;
-			if (t == MLX_TOK_OPENPAREN) 
-			    parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN)
-			    parenlevel--;
-			if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0 && parenlevel == 0)
-			    {
-			    strtcpy(new_qs->Presentation, new_qs->RawData.String, sizeof(new_qs->Presentation));
-			    if (strrchr(new_qs->Presentation,' '))
-			        *(strrchr(new_qs->Presentation,' ')) = '\0';
-			    xsCopy(&new_qs->RawData,"",-1);
-			    continue;
-			    }
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
-			xsConcatenate(&new_qs->RawData," ",1);
-			}
+		    t = mq_internal_ParseSelectItem(new_qs, lxs);
 
 		    /** Where to from here? **/
 		    if (t == MLX_TOK_COMMA)
@@ -1707,8 +2095,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    subtr = 0;
 		    identity = 0;
 		    inclsubtr = 0;
+		    prunesubtr = 0;
 		    wildcard = 0;
 		    fromobject = 0;
+		    expfrom = 0;
+		    collfrom = 0;
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
 			{
 			t = mlxNextToken(lxs);
@@ -1718,6 +2109,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			{
 			t = mlxNextToken(lxs);
 			fromobject = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("pruned", ptr))
+			{
+			t = mlxNextToken(lxs);
+			prunesubtr = 1;
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("inclusive", ptr))
 			{
@@ -1734,6 +2130,23 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			t = mlxNextToken(lxs);
 			wildcard = 1;
 			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("expression", ptr))
+			{
+			t = mlxNextToken(lxs);
+			expfrom = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("collection", ptr))
+			{
+			t = mlxNextToken(lxs);
+			collfrom = 1;
+			}
+		    if (prunesubtr && !subtr)
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","In FROM clause: PRUNED keyword is invalid without SUBTREE keyword");
+			mlxNoteError(lxs);
+			break;
+			}
 		    if (inclsubtr && !subtr)
 			{
 			next_state = ParseError;
@@ -1748,7 +2161,28 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			mlxNoteError(lxs);
 			break;
 			}
-		    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
+		    if (collfrom && (expfrom | wildcard | fromobject))
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","In FROM clause: COLLECTION keyword cannot be used with EXPRESSION, WILDCARD, or OBJECT");
+			mlxNoteError(lxs);
+			break;
+			}
+		    if (expfrom && t != MLX_TOK_OPENPAREN)
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","Expected open parenthesis after EXPRESSION keyword in FROM clause");
+			mlxNoteError(lxs);
+			break;
+			}
+		    else if (collfrom && t != MLX_TOK_STRING && t != MLX_TOK_KEYWORD)
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","Expected collection name after COLLECTION keyword in FROM clause");
+			mlxNoteError(lxs);
+			break;
+			}
+		    else if (!collfrom && !expfrom && (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING))
 		        {
 			next_state = ParseError;
 			mssError(1,"MQ","Expected data source filename in FROM clause");
@@ -1758,15 +2192,44 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    new_qs = mq_internal_AllocQS(MQ_T_FROMSOURCE);
 		    new_qs->Presentation[0] = 0;
 		    new_qs->Name[0] = 0;
+		    new_qs->Source[0] = 0;
 		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
 		    if (inclsubtr) new_qs->Flags |= MQ_SF_INCLSUBTREE;
+		    if (prunesubtr) new_qs->Flags |= MQ_SF_PRUNESUBTREE;
 		    if (identity) new_qs->Flags |= MQ_SF_IDENTITY;
 		    if (wildcard) new_qs->Flags |= MQ_SF_WILDCARD;
 		    if (fromobject) new_qs->Flags |= MQ_SF_FROMOBJECT;
+		    if (expfrom) new_qs->Flags |= MQ_SF_EXPRESSION;
+		    if (collfrom) new_qs->Flags |= MQ_SF_COLLECTION;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
-		    mlxCopyToken(lxs,new_qs->Source,256);
-		    t = mlxNextToken(lxs);
+		    parenlevel = 0;
+		    if (expfrom)
+			{
+			do /* while (parenlevel > 0) */
+			    {
+			    if (t == MLX_TOK_OPENPAREN) parenlevel++;
+			    if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
+			    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+				break;
+			    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+				break;
+			    ptr = mlxStringVal(lxs, NULL);
+			    if (!ptr) break;
+			    if (t == MLX_TOK_STRING)
+				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
+			    else
+				xsConcatenate(&new_qs->RawData, ptr, -1);
+			    xsConcatenate(&new_qs->RawData," ",1);
+			    t = mlxNextToken(lxs);
+			    }
+			    while (parenlevel > 0);
+			}
+		    else
+			{
+			mlxCopyToken(lxs,new_qs->Source,256);
+			t = mlxNextToken(lxs);
+			}
 		    if (t == MLX_TOK_KEYWORD)
 		        {
 			mlxCopyToken(lxs,new_qs->Presentation,32);
@@ -1888,7 +2351,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			xsConcatenate(&having_cls->RawData," ",1);
 			}
 
-		    /** We'll break the having clause out later.  Now should be end of SQL. **/
+		    /** We'll break the having clause out later. **/
 		    if (t == MLX_TOK_EOF)
 		        {
 			mlxHoldToken(lxs);
@@ -1909,54 +2372,13 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		case UpdateItem:
 		    new_qs = mq_internal_AllocQS(MQ_T_UPDATEITEM);
-		    new_qs->Presentation[0] = 0;
-		    new_qs->Name[0] = 0;
 		    xaAddItem(&update_cls->Children, (void*)new_qs);
 		    new_qs->Parent = update_cls;
 
-		    /** Copy the entire item literally to the RawData for later compilation **/
-		    parenlevel = 0;
-		    in_assign = 1;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-			    break;
-			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
-			    break;
-			if (t == MLX_TOK_OPENPAREN) 
-			    parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN)
-			    parenlevel--;
-			if (t == MLX_TOK_EQUALS && parenlevel == 0 && in_assign)
-			    {
-			    in_assign = 0;
-			    continue;
-			    }
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    if (in_assign)
-				xsConcatQPrintf(&new_qs->AssignRawData, "%STR&DQUOT", ptr);
-			    else
-				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    if (in_assign)
-				xsConcatenate(&new_qs->AssignRawData,ptr,-1);
-			    else
-				xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
-			xsConcatenate(&new_qs->RawData," ",1);
-			}
-
-		    if (!new_qs->RawData.String[0] || !new_qs->AssignRawData.String[0])
+		    t = mq_internal_ParseUpdateItem(new_qs, lxs);
+		    if (t < 0)
 			{
-			mssError(1, "MQ", "UPDATE assignment must have form '{assign-expr} = {value-expr}'");
 			next_state = ParseError;
-			mlxNotePosition(lxs);
 			break;
 			}
 
@@ -2007,7 +2429,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 	    }
 
 	/** Ok, postprocess the expression trees, etc. **/
-	if (mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls) < 0)
+	if (mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls, ondup_cls, declare_cls) < 0)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not postprocess multiquery");
@@ -2055,11 +2477,12 @@ mq_internal_DumpQE(pQueryElement tree, int level)
     int i;
 
     	/** print the driver type handling this tree **/
-	printf("%*.*sDRIVER=%s, CPTR=%8.8lx, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X",level*4,level*4,"",tree->Driver->Name,
-	    (unsigned long)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask);
+	printf("%*.*sDRIVER=%s, CPTR=%8.8lx, NC=%d, FLAG=%d, COV=0x%X, DEP=0x%X, CCOV=0x%X",level*4,level*4,"",tree->Driver->Name,
+	    (unsigned long)(tree->Children.Items),tree->Children.nItems,tree->Flags, tree->CoverageMask, tree->DependencyMask,
+	    tree->Constraint?tree->Constraint->ObjCoverageMask:0);
 
 	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
-	    printf(", IDX=%d, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Source);
+	    printf(", IDX=%d, REF=%s, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Presentation, ((pQueryStructure)tree->QSLinkage)->Source);
 
 	printf("\n");
 
@@ -2223,7 +2646,7 @@ mq_internal_FinishStatement(pQueryStatement stmt)
 	    n = stmt->Query->ObjList->nObjects;
 	    for(i=stmt->Query->nProvidedObjects; i<n; i++)
 		{
-		expRemoveParamFromList(stmt->Query->ObjList, stmt->Query->ObjList->Names[i]);
+		expRemoveParamFromListById(stmt->Query->ObjList, i);
 		}
 	    }
 
@@ -2314,6 +2737,13 @@ mq_internal_NextStatement(pMultiQuery this)
 
 	this->QueryCnt++;
 
+	/** Build the one-object list for evaluating the Having clause, etc. **/
+	stmt->OneObjList = expCreateParamList();
+	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
+	stmt->OneObjList->Session = stmt->Query->SessionID;
+	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
+
 	/** Parse the query **/
 	stmt->QTree = mq_internal_SyntaxParse(this->LexerSession, stmt);
 	if (!stmt->QTree)
@@ -2374,18 +2804,12 @@ mq_internal_NextStatement(pMultiQuery this)
 		}
 	    }
 
-	/** Build the one-object list for evaluating the Having clause, etc. **/
-	stmt->OneObjList = expCreateParamList();
-	stmt->OneObjList->Session = stmt->Query->SessionID;
-	expAddParamToList(stmt->OneObjList, "this", NULL, 0);
-	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
-
 	/** Compile the having expression, if one. **/
 	stmt->HavingClause = NULL;
 	qs = mq_internal_FindItem(stmt->QTree, MQ_T_HAVINGCLAUSE, NULL);
 	if (qs)
 	    {
-	    qs->Expr = expCompileExpression(qs->RawData.String, stmt->OneObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    qs->Expr = expCompileExpression(qs->RawData.String, this->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, EXPR_CMP_LATEBIND);
 	    if (!qs->Expr)
 	        {
 		mssError(0,"MQ","Error in query's HAVING clause");
@@ -2418,9 +2842,30 @@ mq_internal_NextStatement(pMultiQuery this)
 		}
 	    }
 
+	/** Just did a declaration? **/
+	if (!stmt->Tree && mq_internal_FindItem(stmt->QTree, MQ_T_DECLARECLAUSE, NULL))
+	    {
+	    mq_internal_CloseStatement(stmt);
+	    this->CurStmt = NULL;
+	    return mq_internal_NextStatement(this);
+	    }
+
+	/** General failure to parse... **/
+	if (!stmt->Tree)
+	    {
+	    mssError(0,"MQ","Error in SQL statement syntax");
+	    goto error;
+	    }
+
 	/** Build dependency mask **/
 	mq_internal_SetCoverage(stmt, stmt->Tree);
 	mq_internal_SetDependencies(stmt, stmt->Tree, NULL);
+
+	/** Query plan diagnostics? **/
+	if (stmt->Query->Flags & MQ_F_SHOWPLAN)
+	    {
+	    mq_internal_DumpQE(stmt->Tree, 0);
+	    }
 
 	/** Have the MQ drivers start the query. **/
 	if (stmt->Tree->Driver->Start(stmt->Tree, stmt, NULL) < 0)
@@ -2441,7 +2886,44 @@ mq_internal_NextStatement(pMultiQuery this)
 	return 1;
 
     error:
+	this->CurStmt = NULL;
 	return -1;
+    }
+
+
+/*** mq_internal_FinalizeAppData - this is called when the application context
+ *** closes and we need to release any application-scope objects or collections.
+ ***/
+int
+mq_internal_FinalizeAppData(void* appdata_v)
+    {
+    pQueryAppData appdata = (pQueryAppData)appdata_v;
+    int i;
+    pQueryDeclaredObject qdo;
+    pQueryDeclaredCollection qdc;
+
+	/** Free the objects **/
+	for(i=0; i<appdata->DeclaredObjects.nItems; i++)
+	    {
+	    qdo = (pQueryDeclaredObject)appdata->DeclaredObjects.Items[i];
+	    stFreeInf(qdo->Data);
+	    nmFree(qdo, sizeof(QueryDeclaredObject));
+	    }
+	xaDeInit(&appdata->DeclaredObjects);
+
+	/** Free collections **/
+	for(i=0; i<appdata->DeclaredCollections.nItems; i++)
+	    {
+	    qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
+	    objDeleteTempObject(qdc->Collection);
+	    nmFree(qdc, sizeof(QueryDeclaredCollection));
+	    }
+	xaDeInit(&appdata->DeclaredCollections);
+
+	/** Free the appdata structure itself **/
+	nmFree(appdata, sizeof(QueryAppData));
+
+    return 0;
     }
 
 
@@ -2454,9 +2936,24 @@ void*
 mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int flags)
     {
     pMultiQuery this;
+    pQueryAppData appdata;
+    int i;
+
+	/** Ensure the application-scope data is initialized **/
+	appdata = appLookupAppData("MQ:appdata");
+	if (!appdata)
+	    {
+	    appdata = (pQueryAppData)nmMalloc(sizeof(QueryAppData));
+	    if (!appdata)
+		goto error;
+	    xaInit(&appdata->DeclaredObjects, 8);
+	    xaInit(&appdata->DeclaredCollections, 8);
+	    appRegisterAppData("MQ:appdata", appdata, mq_internal_FinalizeAppData);
+	    }
 
     	/** Allocate the multiquery structure itself. **/
 	this = (pMultiQuery)nmMalloc(sizeof(MultiQuery));
+	/*printf("ALLOC %s\n", query_text);*/
 	if (!this) return NULL;
 	memset(this,0,sizeof(MultiQuery));
 	this->CntSerial = 0;
@@ -2468,6 +2965,10 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->QueryText = nmSysStrdup(query_text);
 	this->RowCnt = 0;
 	this->QueryCnt = 0;
+	this->YieldMsec = 0;
+	this->StartMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
+	xaInit(&this->DeclaredObjects, 8);
+	xaInit(&this->DeclaredCollections, 8);
 	if (flags & OBJ_MQ_F_ONESTATEMENT)
 	    {
 	    this->Flags = MQ_F_ONESTATEMENT; /* multi statements disabled, cannot be enabled */
@@ -2476,6 +2977,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    {
 	    this->Flags = MQ_F_MULTISTATEMENT; /* on by default, can be turned on/off */
 	    }
+	if (flags & OBJ_MQ_F_NOUPDATE)
+	    this->Flags |= MQ_F_NOUPDATE;
 
 	/** Parse the text of the query, building the syntax structure **/
 	this->LexerSession = mlxStringSession(this->QueryText, 
@@ -2490,12 +2993,26 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->ObjList = expCreateParamList();
 	if (objlist)
 	    {
-	    expCopyList(objlist, this->ObjList);
+	    expCopyList(objlist, this->ObjList, -1);
 	    /*expLinkParams(this->ObjList, 0, -1);*/
 	    this->nProvidedObjects = this->ObjList->nObjects;
-	    this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 	    }
 	this->ObjList->Session = this->SessionID;
+
+	/** Import any declared objects at the application scope **/
+	for(i=0; i<appdata->DeclaredObjects.nItems; i++)
+	    {
+	    /** Ignore failure to import (return == -1) due to scope shadowing **/
+	    mq_internal_AddDeclaredObject(this, (pQueryDeclaredObject)appdata->DeclaredObjects.Items[i]);
+	    }
+
+	/** Add the __inserted object **/
+	if (expLookupParam(this->ObjList, "__inserted", 0) < 0 && expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
+	    this->nProvidedObjects++;
+	else
+	    this->Flags |= MQ_F_NOINSERTED;
+
+	this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 
 	/** Parse one SQL statement **/
 	if (mq_internal_NextStatement(this) != 1)
@@ -2545,32 +3062,30 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
     }
 
 
-/*** mqDeleteObj - delete an open query result item.  This only
- *** works on queries off of a single source.
+/*** Return the object id of the IDENTITY object or assumed IDENTITY object
+ *** Or, return -1 if not found.
  ***/
 int
-mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
+mq_internal_GetIdentObjId(pPseudoObject p)
     {
-    pPseudoObject inf = (pPseudoObject)inf_v;
-    int rval;
     int objid = 0;
     pQueryStructure from_qs;
     int n;
 
-	/** Do a 'delete obj' operation on the source object **/
 	objid = -1;
-	n = inf->ObjList->nObjects - inf->Stmt->Query->nProvidedObjects;
+	n = p->ObjList->nObjects - p->Stmt->Query->nProvidedObjects;
+
+	/** No objects?  Then no identity object. **/
 	if (n == 0)
 	    {
-	    mssError(1,"MQ","Could not delete - query must have at least one FROM source");
 	    return -1;
 	    }
 	else if (n > 1)
 	    {
 	    from_qs = NULL;
-	    while((from_qs = mq_internal_FindItem(inf->Stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+	    while((from_qs = mq_internal_FindItem(p->Stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
 		{
-		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && inf->ObjList->Objects[from_qs->QELinkage->SrcIndex])
+		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && p->ObjList->Objects[from_qs->QELinkage->SrcIndex])
 		    {
 		    objid = from_qs->QELinkage->SrcIndex;
 		    break;
@@ -2579,11 +3094,28 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    }
 	else if (n == 1)
 	    {
-	    objid = inf->Stmt->Query->nProvidedObjects;
+	    objid = p->Stmt->Query->nProvidedObjects;
 	    }
+
+    return objid;
+    }
+
+
+/*** mqDeleteObj - delete an open query result item.  This only
+ *** works on queries off of a single source.
+ ***/
+int
+mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    pPseudoObject inf = (pPseudoObject)inf_v;
+    int rval;
+    int objid;
+
+	/** Do a 'delete obj' operation on the source object **/
+	objid = mq_internal_GetIdentObjId(inf);
 	if (objid < 0)
 	    {
-	    mssError(1,"MQ","Could not delete - multi-source query must have one valid FROM source labled as the query IDENTITY source");
+	    mssError(1,"MQ","Could not delete - the query must have one valid FROM source labled as the query IDENTITY source");
 	    return -1;
 	    }
 	rval = objDeleteObj((pObject)(inf->ObjList->Objects[objid]));
@@ -2627,7 +3159,7 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	    obj = (pObject)(p->ObjList.Objects[i]);
 	    if (obj) objLinkTo(obj);
 	    }*/
-	expCopyList(qy->ObjList, p->ObjList);
+	expCopyList(qy->ObjList, p->ObjList, -1);
 	expLinkParams(p->ObjList, p->Stmt->Query->nProvidedObjects, -1);
 
 	p->Serial = qy->CurSerial;
@@ -2668,10 +3200,39 @@ mq_internal_EvalLimitClause(pQueryStatement stmt, pPseudoObject p)
 int
 mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
     {
+    pPseudoObject our_p = p;
+    int rval;
+    pParamObjects having_objlist;
 
-	if (!stmt->HavingClause) return 1;
-	expModifyParam(stmt->OneObjList, "this", (void*)p);
-	if (expEvalTree(stmt->HavingClause, stmt->OneObjList) < 0)
+	/** No having clause? **/
+	if (!stmt->HavingClause)
+	    return 1;
+
+	/** Caller does not have a pseudo-object context?  If not,
+	 ** just use the current values.
+	 **/
+	if (!our_p)
+	    our_p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
+
+	/** Create our param list for having clause evaluation **/
+	having_objlist = expCreateParamList();
+	expCopyList(stmt->Query->ObjList, having_objlist, -1);
+	having_objlist->Session = stmt->Query->SessionID;
+	expAddParamToList(having_objlist, "this", (void*)our_p, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expSetParamFunctions(having_objlist, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
+
+	/** Do late binding, and evaluate it **/
+	/*expModifyParam(having_objlist, "this", (void*)our_p);*/
+	expBindExpression(stmt->HavingClause, having_objlist, 0);
+	rval = expEvalTree(stmt->HavingClause, having_objlist);
+
+	/** Release the parameter list **/
+	expFreeParamList(having_objlist);
+
+	/** Determine our results **/
+	if (p != our_p)
+	    mq_internal_FreePseudoObject(our_p);
+	if (rval < 0)
 	    {
 	    mssError(1,"MQ","Could not evaluate HAVING clause");
 	    return -1;
@@ -2684,6 +3245,93 @@ mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
 	if (!(stmt->HavingClause->Flags & EXPR_F_NULL) && stmt->HavingClause->Integer != 0) 
 	    {
 	    return 1;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_HandleAssignments - perform SELECT item assignments.
+ ***/
+int
+mq_internal_HandleAssignments(pMultiQuery qy, pPseudoObject p)
+    {
+    pQueryStructure select_qs, item_qs;
+    int i,j;
+    int t;
+    ObjData val;
+    pQueryDeclaredObject qdo;
+    pQueryDeclaredObject found_qdo;
+    pStructInf attr;
+    int rval;
+    pQueryAppData appdata;
+
+	/** Find the select items **/
+	select_qs = mq_internal_FindItem(qy->CurStmt->QTree, MQ_T_SELECTCLAUSE, NULL);
+	if (select_qs)
+	    {
+	    for(i=0;i<select_qs->Children.nItems;i++)
+		{
+		item_qs = (pQueryStructure)select_qs->Children.Items[i];
+		if (item_qs->Flags & MQ_SF_ASSIGNMENT)
+		    {
+		    /** Get the type and value **/
+		    t = mqGetAttrType(p, item_qs->Presentation, NULL);
+		    if (t > 0)
+			{
+			rval = mqGetAttrValue(p, item_qs->Presentation, t, &val, NULL);
+			if (rval >= 0)
+			    {
+			    /** Got type and value, now find it in the StructInf **/
+			    found_qdo = NULL;
+			    for(j=0;j<qy->DeclaredObjects.nItems;j++)
+				{
+				qdo = (pQueryDeclaredObject)qy->DeclaredObjects.Items[j];
+				if (!strcmp(item_qs->Name, qdo->Name))
+				    {
+				    found_qdo = qdo;
+				    break;
+				    }
+				}
+			    if (!found_qdo)
+				{
+				appdata = appLookupAppData("MQ:appdata");
+				if (appdata)
+				    {
+				    for(j=0;j<appdata->DeclaredObjects.nItems;j++)
+					{
+					qdo = (pQueryDeclaredObject)appdata->DeclaredObjects.Items[j];
+					if (!strcmp(item_qs->Name, qdo->Name))
+					    {
+					    found_qdo = qdo;
+					    break;
+					    }
+					}
+				    }
+				}
+
+			    if (found_qdo)
+				{
+				/** Existing or created attribute? **/
+				attr = stLookup(found_qdo->Data, item_qs->Presentation);
+				if (!attr && rval == 0)
+				    attr = stAddAttr(found_qdo->Data, item_qs->Presentation);
+
+				/** set it or delete it **/
+				if (attr && rval == 0)
+				    stSetAttrValue(attr, t, &val, 0);
+				else if (attr && rval == 1)
+				    stRemoveInf(attr);
+				}
+			    else
+				{
+				mssError(1, "MQ", "Undeclared object '%s'", item_qs->Name);
+				return -1;
+				}
+			    }
+			}
+		    }
+		}
 	    }
 
     return 0;
@@ -2745,6 +3393,11 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 		    continue;
 		    /*rval = qy->CurStmt->Tree->Driver->NextItem(qy->CurStmt->Tree, qy->CurStmt);*/
 		    }
+
+		if (rval == -1)
+		    {
+		    return NULL;
+		    }
 		/*if (rval != 1)
 		    {
 		    memcpy(&qy->CurObjList, qy->ObjList, sizeof(ParamObjects));
@@ -2787,7 +3440,6 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	    if (rval == 1)
 		{
 		/** matched **/
-		break;
 		}
 	    else if (rval == -1)
 		{
@@ -2801,7 +3453,33 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 		/** no match, go get another row **/
 		mq_internal_FreePseudoObject(p);
 		p = NULL;
+		continue;
 		}
+
+	    /** Check assignments **/
+	    if (qy->CurStmt->Flags & MQ_TF_ONEASSIGN)
+		{
+		/** Do any needed assignments **/
+		if (mq_internal_HandleAssignments(qy, p) < 0)
+		    {
+		    mq_internal_FreePseudoObject(p);
+		    p = NULL;
+		    return NULL;
+		    }
+
+		/** If all select items are assignments, don't return the row at all,
+		 ** but still include it in the LIMIT iteration count.
+		 **/
+		if (qy->CurStmt->Flags & MQ_TF_ALLASSIGN)
+		    {
+		    qy->CurStmt->UserIterCnt++;
+		    mq_internal_FreePseudoObject(p);
+		    p = NULL;
+		    continue;
+		    }
+		}
+
+	    break;
 	    }
 
 	/** If we have a pseudo-object, request update-notifies on its parts **/
@@ -2881,6 +3559,9 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     {
+    int i, id;
+    pQueryDeclaredObject qdo;
+    pQueryDeclaredCollection qdc;
 
     	/** Check the link cnt **/
 	if ((--qy->LinkCnt) > 0) return 0;
@@ -2889,6 +3570,16 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	if (qy->CurStmt)
 	    mq_internal_CloseStatement(qy->CurStmt);
 
+	/** Close an __inserted object **/
+	if (qy->ObjList && !(qy->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(qy->ObjList, "__inserted", 0)) >= 0)
+	    {
+	    if (qy->ObjList->Objects[id])
+		{
+		objClose(qy->ObjList->Objects[id]);
+		qy->ObjList->Objects[id] = NULL;
+		}
+	    }
+
 	/** Release the object list for the main query **/
 	if (qy->ObjList)
 	    {
@@ -2896,11 +3587,28 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	    expFreeParamList(qy->ObjList);
 	    }
 
+	/*printf("CLOSE %s\n", qy->QueryText);*/
 	if (qy->QueryText)
 	    nmSysFree(qy->QueryText);
 
 	if (qy->LexerSession)
 	    mlxCloseSession(qy->LexerSession);
+
+	/** Declared objects and collections **/
+	for(i=0;i<qy->DeclaredObjects.nItems;i++)
+	    {
+	    qdo = (pQueryDeclaredObject)(qy->DeclaredObjects.Items[i]);
+	    stFreeInf(qdo->Data);
+	    nmFree(qdo, sizeof(QueryDeclaredObject));
+	    }
+	xaDeInit(&qy->DeclaredObjects);
+	for(i=0;i<qy->DeclaredCollections.nItems;i++)
+	    {
+	    qdc = (pQueryDeclaredCollection)(qy->DeclaredCollections.Items[i]);
+	    objDeleteTempObject(qdc->Collection);
+	    nmFree(qdc, sizeof(QueryDeclaredCollection));
+	    }
+	xaDeInit(&qy->DeclaredCollections);
 
 	/** Free the qy itself **/
 	nmFree(qy,sizeof(MultiQuery));
@@ -2918,8 +3626,23 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 int
 mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    /*pPseudoObject p = (pPseudoObject)inf_v;*/
-    return -1; /* nyi - not yet implemented */
+    pPseudoObject p = (pPseudoObject)inf_v;
+    int objid;
+
+	objid = mq_internal_GetIdentObjId(p);
+	if (objid < 0)
+	    {
+	    mssError(1,"MQ","Could not read - the query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+	if (!p->ObjList->Objects[objid])
+	    {
+	    /** Underlying object isn't currently valid **/
+	    mssError(1,"MQ","Could not read - underlying data source not available");
+	    return -1;
+	    }
+
+    return objRead((pObject)(p->ObjList->Objects[objid]), buffer, maxcnt, offset, flags);
     }
 
 
@@ -2929,8 +3652,23 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
 int
 mqWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    /*pPseudoObject p = (pPseudoObject)inf_v;*/
-    return -1; /* nyi - not yet implemented */
+    pPseudoObject p = (pPseudoObject)inf_v;
+    int objid;
+
+	objid = mq_internal_GetIdentObjId(p);
+	if (objid < 0)
+	    {
+	    mssError(1,"MQ","Could not write - the query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+	if (!p->ObjList->Objects[objid])
+	    {
+	    /** Object isn't currently valid - return empty. **/
+	    mssError(1,"MQ","Could not write - underlying data source not available");
+	    return -1;
+	    }
+
+    return objWrite((pObject)(p->ObjList->Objects[objid]), buffer, cnt, offset, flags);
     }
 
 
@@ -2942,6 +3680,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
     int id=-1,i,dt;
+    int any_dt;
 
     	/** Request for ls__rowid? **/
 	if (!strcmp(attrname,"ls__rowid") || !strcmp(attrname,"cx__rowid") ||
@@ -2962,6 +3701,7 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 
 	/** If select *, then loop through FROM objects **/
+	any_dt = 0;
 	if (id == -1 && (p->Stmt->Flags & MQ_TF_ASTERISK))
 	    {
 	    for(i=p->Stmt->Query->nProvidedObjects;i<p->ObjList->nObjects;i++)
@@ -2971,12 +3711,25 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
 		    if (dt > 0)
 			return dt;
+
+		    /** source doesn't know the attribute, but might accept
+		     ** a setattr on it?
+		     **/
+		    if (dt == DATA_T_UNAVAILABLE)
+			any_dt = 1;
 		    }
 		}
 	    }
-	    
+
+	/** Didn't find it? **/
 	if (id == -1) 
 	    {
+	    /** Return 'unavailable' if a source indicated that it might
+	     ** accept a new/non-null attribute.
+	     **/
+	    if (any_dt)
+		return DATA_T_UNAVAILABLE;
+
 	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
 	        return -1;
 	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
@@ -3208,6 +3961,13 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
     	/** Check to see whether we're on current object. **/
 	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
+	/** Updates not permitted? **/
+	if (p->Stmt->Query->Flags & MQ_F_NOUPDATE)
+	    {
+	    mssError(1,"MQ","setattr '%s' disallowed because data changes are forbidden", attrname);
+	    return -1;
+	    }
+
 	/** Figure out which attribute needs updating... **/
 	id = -1;
 	for(i=0;i<p->Stmt->Tree->AttrNames.nItems;i++)
@@ -3227,7 +3987,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 		if (p->ObjList->Objects[i])
 		    {
 		    dt = objGetAttrType(p->ObjList->Objects[i], attrname);
-		    if (dt > 0)
+		    if (dt >= 0)
 			{
 			rval = objSetAttrValue(p->ObjList->Objects[i], attrname, datatype, value);
 			return rval;
@@ -3258,38 +4018,45 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	    }
 
 	/** Set the expression result to the given value. **/
-	exp->Flags &= ~(EXPR_F_NULL);
-	switch(exp->DataType)
+	if (value)
 	    {
-	    case DATA_T_INTEGER: 
-		exp->Integer = value->Integer; 
-		break;
-	    case DATA_T_STRING: 
-		if (exp->Alloc && exp->String)
-		    {
-		    nmSysFree(exp->String);
-		    exp->Alloc = 0;
-		    }
-		if (strlen(value->String) > 63)
-		    {
-		    exp->Alloc = 1;
-		    exp->String = nmSysMalloc(strlen(value->String)+1);
-		    }
-		else
-		    {
-		    exp->String = exp->Types.StringBuf;
-		    }
-		strcpy(exp->String, value->String);
-		break;
-	    case DATA_T_DOUBLE: 
-		exp->Types.Double = value->Double; 
-		break;
-	    case DATA_T_MONEY: 
-		memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
-		break;
-	    case DATA_T_DATETIME: 
-		memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
-		break;
+	    exp->Flags &= ~(EXPR_F_NULL);
+	    switch(exp->DataType)
+		{
+		case DATA_T_INTEGER: 
+		    exp->Integer = value->Integer; 
+		    break;
+		case DATA_T_STRING: 
+		    if (exp->Alloc && exp->String)
+			{
+			nmSysFree(exp->String);
+			exp->Alloc = 0;
+			}
+		    if (strlen(value->String) > 63)
+			{
+			exp->Alloc = 1;
+			exp->String = nmSysMalloc(strlen(value->String)+1);
+			}
+		    else
+			{
+			exp->String = exp->Types.StringBuf;
+			}
+		    strcpy(exp->String, value->String);
+		    break;
+		case DATA_T_DOUBLE: 
+		    exp->Types.Double = value->Double; 
+		    break;
+		case DATA_T_MONEY: 
+		    memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME: 
+		    memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
+		    break;
+		}
+	    }
+	else
+	    {
+	    exp->Flags |= EXPR_F_NULL;
 	    }
 
 	/** Evaluate the expression in reverse to set the value!! **/
@@ -3361,13 +4128,18 @@ int
 mqCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    /*int i;*/
+    int i;
 
     	/** Check to see whether we're on current object. **/
 	/*mq_internal_CkSetObjList(p->Stmt->Query, p);*/
 
 	/** Commit each underlying object **/
-	objCommit(p->Stmt->Query->SessionID);
+	//objCommit(p->Stmt->Query->SessionID);
+	for(i=p->Stmt->Query->nProvidedObjects; i<p->ObjList->nObjects; i++)
+	    {
+	    if (p->ObjList->Objects[i])
+		objCommitObject(p->ObjList->Objects[i]);
+	    }
 
     return 0;
     }
@@ -3401,7 +4173,7 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
     pPseudoObject p = (pPseudoObject)inf_v;
     pObjPresentationHints ph;
     pObject obj;
-    int i, id;
+    int i, id, objid;
     pExpression e;
 
     	/** Request for ls__rowid? **/
@@ -3443,15 +4215,16 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    return NULL;
 	    }
 
-	/** Evaluate the expression to get the data type **/
+	/** Can we figure out what object this expression is referencing? **/
 	p->ObjList->Session = p->Stmt->Query->SessionID;
 	e = (pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id];
 	if (e->NodeType == EXPR_N_PROPERTY || e->NodeType == EXPR_N_OBJECT)
 	    {
-	    if (e->ObjID >= 0)
+	    objid = expObjID(e,p->ObjList);
+	    if (objid >= 0)
 		{
-		obj = p->ObjList->Objects[(int)e->ObjID];
-		if (obj && p->ObjList->GetTypeFn[(int)e->ObjID] == objGetAttrType)
+		obj = p->ObjList->Objects[objid];
+		if (obj && p->ObjList->GetTypeFn[objid] == objGetAttrType)
 		    {
 		    ph = objPresentationHints(obj, attrname);
 		    return ph;
@@ -3460,6 +4233,85 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    }
 
     return NULL;
+    }
+
+
+/*** mqGetQueryIdentityPath() - return the pathname to the identity source
+ *** in the currently active statement.
+ ***/
+int
+mqGetQueryIdentityPath(void* qy_v, char* pathbuf, int maxlen)
+    {
+    pMultiQuery qy = (pMultiQuery)qy_v;
+    pQueryStructure from_qs, identity_qs;
+    int n_sources;
+
+	/** No current statement? **/
+	if (!qy->CurStmt)
+	    {
+	    mssError(1,"MQ","Cannot determine identity path: no statement active");
+	    return -1;
+	    }
+
+	/** Search for the IDENTITY source **/
+	identity_qs = from_qs = NULL;
+	n_sources = 0;
+	while((from_qs = mq_internal_FindItem(qy->CurStmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+	    {
+	    n_sources++;
+	    identity_qs = from_qs;
+	    if (from_qs->Flags & MQ_SF_IDENTITY)
+		break;
+	    }
+
+	/** Not found? **/
+	if (!identity_qs || (n_sources != 1 && !(identity_qs->Flags & MQ_SF_IDENTITY)))
+	    {
+	    mssError(1,"MQ","Cannot determine identity path: no identity FROM source");
+	    return -1;
+	    }
+
+	/** Copy it **/
+	strtcpy(pathbuf, identity_qs->Source, maxlen);
+
+    return 0;
+    }
+
+
+/*** mq_internal_FindCollection() - search both the query scope and app scope
+ *** collections lists to find a collection by name.  Returns the handle to the
+ *** OSML temporary object containing the collection.
+ ***/
+handle_t
+mq_internal_FindCollection(pMultiQuery mq, char* collection)
+    {
+    pQueryAppData appdata;
+    pQueryDeclaredCollection qdc;
+    int i;
+
+	/** First, search the query scope collection list **/
+	for(i=0; i<mq->DeclaredCollections.nItems; i++)
+	    {
+	    qdc = (pQueryDeclaredCollection)mq->DeclaredCollections.Items[i];
+	    if (!strcmp(qdc->Name, collection))
+		return qdc->Collection;
+	    }
+
+	/** Lookup the application scope data **/
+	appdata = appLookupAppData("MQ:appdata");
+
+	/** Next, search the query scope collection list **/
+	if (appdata)
+	    {
+	    for(i=0; i<appdata->DeclaredCollections.nItems; i++)
+		{
+		qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
+		if (!strcmp(qdc->Name, collection))
+		    return qdc->Collection;
+		}
+	    }
+
+    return XHN_INVALID_HANDLE;
     }
 
 
@@ -3507,6 +4359,7 @@ mqInitialize()
 	drv->ExecuteMethod = mqExecuteMethod;
 	drv->PresentationHints = mqPresentationHints;
 	drv->Commit = mqCommit;
+	drv->GetQueryIdentityPath = mqGetQueryIdentityPath;
 
 	nmRegister(sizeof(QueryElement),"QueryElement");
 	nmRegister(sizeof(QueryStructure),"QueryStructure");
@@ -3514,6 +4367,7 @@ mqInitialize()
 	nmRegister(sizeof(QueryDriver),"QueryDriver");
 	nmRegister(sizeof(PseudoObject),"PseudoObject");
 	nmRegister(sizeof(Expression),"Expression");
+	nmRegister(sizeof(ExpControl),"ExpControl");
 	nmRegister(sizeof(ParamObjects),"ParamObjects");
 
 	/** Register the module with the OSML. **/

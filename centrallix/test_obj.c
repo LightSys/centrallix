@@ -26,6 +26,8 @@
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
+#include "obfuscate.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -65,273 +67,6 @@
 /*		ALL ASPECTS OF INPUTS AND DATA BEING HANDLED.  FIXME ;)	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: test_obj.c,v 1.46 2010/09/08 21:40:41 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
-
-    $Log: test_obj.c,v $
-    Revision 1.46  2010/09/08 21:40:41  gbeeley
-    - (bugfix) when outputting text/csv data, change any newlines to spaces
-
-    Revision 1.45  2009/06/24 15:58:12  gbeeley
-    - (feature) comments (beginning with #) now allowed in test obj scripts
-    - (bugfix) really long lines were messing up the test_obj saved command
-      history
-
-    Revision 1.44  2008/09/14 05:12:31  gbeeley
-    - (bugfix) csv output was failing if the attribute type for a column changed
-      midway through the query (this can sometimes happen with NULL values).
-    - (feature) test_obj now keeps a persistent command history.
-
-    Revision 1.43  2008/08/13 21:20:24  jncraton
-    - (bugfix) Presentation hints are now freed properly
-
-    Revision 1.42  2008/04/06 20:34:31  gbeeley
-    - (bugfix) "csv" command was outputting CSV strings encoded improperly.
-    - (cleanup) use rl_insert instead of rl_insert_text for rl_bind_key when
-      disabling tabbing.
-
-    Revision 1.41  2008/03/09 07:55:43  gbeeley
-    - Grrr.  Can you imagine that one of the tables we're dealing with here
-      has over 500 columns in it?  Like I said, Grrrrr.
-
-    Revision 1.40  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.39  2007/12/13 23:23:04  gbeeley
-    - (bugfix) test_obj should behave itself when inserting a new record /
-      object and the name isn't immediately available at the beginning of
-      the insert operation.
-
-    Revision 1.38  2007/11/16 21:39:30  gbeeley
-    - (feature) added 'csv' command to generate CSV output from a query in
-      the test_obj command-line interface
-    - (feature) added capability to redirect output from test_obj to places
-      other than standard output, via commands entered at the prompt
-
-    Revision 1.37  2007/03/05 20:02:44  gbeeley
-    - (bugfix) make tab completion use a looser check for the possibility of
-      subobjects.
-
-    Revision 1.36  2007/02/17 04:34:51  gbeeley
-    - (bugfix) test_obj should open destination objects with O_TRUNC
-    - (bugfix) prtmgmt should remember 'configured' line height, so it can
-      auto-adjust height only if the line height is not explicitly set.
-    - (change) report writer should assume some default margin settings on
-      tables/table cells, so that tables aren't by default ugly :)
-    - (bugfix) various floating point comparison fixes
-    - (feature) allow top/bottom/left/right border options on the entire table
-      itself in a report.
-    - (feature) allow setting of text line height with "lineheight" attribute
-    - (change) allow table to auto-scale columns should the total of column
-      widths and separations exceed the available inner width of the table.
-    - (feature) full justification of text.
-
-    Revision 1.35  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.34  2004/12/31 04:18:17  gbeeley
-    - bug fix for printing Binary type attributes
-    - bug fix for memory leaks due to open LxSession's
-
-    Revision 1.33  2004/08/30 03:20:41  gbeeley
-    - objInfo() can return NULL if it is not supported for an object.
-
-    Revision 1.32  2004/07/02 00:23:24  mmcgill
-    Changes include, but are not necessarily limitted to:
-        - fixed test_obj hints printing, added printing of hints to show command
-        to make them easier to read.
-        - added objDuplicateHints, for making deep copies of hints structures.
-        - made sure GroupID and VisualLength2 were set to their proper defualts
-          inf objPresentationHints() [obj_attr.c]
-        - did a bit of restructuring in the sybase OS driver:
-    	* moved the type conversion stuff in sybdGetAttrValue into a seperate
-    	  function (sybd_internal_GetCxValue, sybd_internal_GetCxType). In
-    	* Got rid of the Types union, made it an ObjData struct instead
-    	* Stored column lengths in ColLengths
-    	* Fixed a couple minor bugs
-        - Roughed out a preliminary hints implementation for the sybase driver,
-          in such a way that it shouldn't be *too* big a deal to add support for
-          user-defined types.
-
-    Revision 1.31  2004/05/04 18:22:59  gbeeley
-    - Adding DATA_T_BINARY data type for counted (non-zero-terminated)
-      strings of data.
-
-    Revision 1.30  2004/02/24 20:25:40  gbeeley
-    - misc changes: runclient check in evaltree in stparse, eval() function
-      rejected in sybase driver, update version in centrallix.conf, .cmp
-      extension added for component-decl in types.cfg
-
-    Revision 1.29  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.28  2003/05/30 17:39:47  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.27  2003/04/25 04:09:29  gbeeley
-    Adding insert and autokeying support to OSML and to CSV datafile
-    driver on a limited basis (in rowidkey mode only, which is the only
-    mode currently supported by the csv driver).
-
-    Revision 1.26  2003/04/04 05:02:44  gbeeley
-    Added more flags to objInfo dealing with content and seekability.
-    Added objInfo capability to objdrv_struct.
-
-    Revision 1.25  2003/04/03 21:41:07  gbeeley
-    Fixed xstring modification problem in test_obj as well as const path
-    modification problem in the objOpen process.  Both were causing the
-    cxsec stuff in xstring to squawk.
-
-    Revision 1.24  2003/03/31 23:23:39  gbeeley
-    Added facility to get additional data about an object, particularly
-    with regard to its ability to have subobjects.  Added the feature at
-    the driver level to objdrv_ux, and to the "show" command in test_obj.
-
-    Revision 1.23  2003/03/30 22:49:24  jorupp
-     * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
-
-    Revision 1.22  2003/03/10 15:41:39  lkehresman
-    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
-    hints to the OSML.  To do this I had to:
-      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
-        is now located in utility/hints.c and the include is in include/hints.h.
-      * Added the presentation hints function to the CSV driver and called it
-        datPresentationHints() which returns a valid objPresentationHints object.
-      * Modified test_obj.c to fix a crash bug and reformatted the output to be
-        a little bit easier to read.
-      * Added utility/hints.c to Makefile.in (somebody please check and make sure
-        that I did this correctly).  Note that you will have to reconfigure
-        centrallix for this change to take effect.
-
-    Revision 1.21  2003/03/03 21:33:31  lkehresman
-    Fixed a bug in test_obj that would segfault if no attributes were returned
-    from an object.
-
-    Revision 1.20  2003/02/26 01:32:59  jorupp
-     * added presentation hints support to test_obj
-    	one little problem -- for some reason, asking about just one attribute doesn't work
-
-    Revision 1.19  2003/02/25 03:31:39  gbeeley
-    Completed the 'help' message in test_obj.
-
-    Revision 1.18  2002/09/28 01:05:30  jorupp
-     * added tab completion
-     * fixed bug where list/ls was relying on the pointers returned by getAttrValue being valid after another getAttrValue
-
-    Revision 1.17  2002/09/27 22:26:03  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.16  2002/09/06 02:47:30  jorupp
-     * removed luke's username and password hack
-
-    Revision 1.15  2002/09/06 02:43:35  lkehresman
-    Hmm.. probably shouldn't have committed my username and password with
-    test_obj.
-
-    See: http://dman.ddts.net/~dman/humorous/shooting.html
-    Add:
-      Centrallix:
-        % cd /usr/src/centrallix
-        % cvs commit
-
-    Revision 1.14  2002/09/06 02:39:11  lkehresman
-    Got OSML interaction to work with the MIME libraries thanks to
-    jorupp magic.
-
-    Revision 1.13  2002/08/13 14:22:50  lkehresman
-    * removed unused variables in test_obj
-    * added an incomplete "help" command to test_obj
-
-    Revision 1.12  2002/08/10 02:43:19  gbeeley
-    Test-obj now automatically displays 'system' attributes on a show
-    command.  This includes inner_type, outer_type, name, and annotation,
-    all of which are not supposed to be returned by the attribute enum
-    functions.  FYI inner_type and content_type are synonyms (neither
-    should be returned by GetFirst/Next Attr).
-
-    Revision 1.11  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.10  2002/06/13 15:21:04  mattphillips
-    Adding autoconf support to centrallix
-
-    Revision 1.9  2002/06/09 23:44:45  nehresma
-    This is the initial cut of the browser detection code.  Note that each widget
-    needs to register which browser and style is supported.  The GNU regular
-    expression library is also needed (comes with GLIBC).
-
-    Revision 1.8  2002/06/01 19:08:46  mattphillips
-    A littl ebit of code cleanup...  getting rid of some compiler warnings.
-
-    Revision 1.7  2002/05/02 01:14:56  gbeeley
-    Added dynamic module loading support in Centrallix, starting with the
-    Sybase driver, using libdl.
-
-    Revision 1.6  2002/02/14 01:05:07  gbeeley
-    Fixed test_obj so that it works with the new config file stuff.
-
-    Revision 1.5  2001/11/12 20:43:43  gbeeley
-    Added execmethod nonvisual widget and the audio /dev/dsp device obj
-    driver.  Added "execmethod" ls__mode in the HTTP network driver.
-
-    Revision 1.4  2001/10/02 16:24:24  gbeeley
-    Changed %f printf conversion to more intuitive %g.
-
-    Revision 1.3  2001/09/28 19:06:18  gbeeley
-    Fixed EOF handling on readline()==NULL; fixed "query" command to use inbuf
-    instead of sbuf.
-
-    Revision 1.2  2001/09/18 15:39:23  mattphillips
-    Added GNU Readline support.  This adds full commandline editting support, and
-    scrollback support.  No tab completion yet, though.
-
-    NOTE: The readline and readline-devel packages (for RPM based distributions)
-    are required for building now.
-
-    Revision 1.1.1.1  2001/08/13 18:00:46  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:30:51  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 void* my_ptr;
 unsigned long ticks_last_tab=0;
@@ -339,17 +74,22 @@ pObjSession s;
 
 struct
     {
-    char    UserName[32];
-    char    Password[32];
-    char    CmdFile[256];
-    pFile   Output;
-    char    OutputFilename[256];
-    char    Command[1024];
-    unsigned int WaitSecs;
+    char		UserName[32];
+    char		Password[32];
+    char		CmdFile[256];
+    pFile		Output;
+    char		OutputFilename[256];
+    char		Command[1024];
+    unsigned int	WaitSecs;
+    pObfSession		ObfuscationSession;
+    char		ObfRuleFile[256];
+    char		ObfKey[256];
     }
     TESTOBJ;
 
 #define BUFF_SIZE 1024
+
+#define CSV_MAX_ATTRS	640
 
 typedef struct
     {
@@ -779,7 +519,7 @@ int handle_tab(int unused_1, int unused_2)
 
 
 int
-testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
+testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     {
     char sbuf[BUFF_SIZE];
     char* ptr;
@@ -805,19 +545,21 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     pMoneyType m;
     MoneyType mval;
     pObjData pod;
-    ObjData od;
+    ObjData od, od2;
     int use_srctype;
     char mname[64];
     char mparam[256];
     char* mptr;
     int t,i;
     pObjectInfo info;
-    Binary bn;
     pFile try_file;
-    char* attrnames[640];
-    int attrtypes[640];
+    char* attrnames[CSV_MAX_ATTRS];
+    int attrtypes[CSV_MAX_ATTRS];
     int n_attrs;
     int name_was_null;
+    XString xs;
+    int did_alloc;
+    int rval;
 
 	    /** Just a comment? **/
 	    if (cmd[0] == '#')
@@ -898,9 +640,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    for(i=0;i<n_attrs;i++)
 			{
 			attrtypes[i] = objGetAttrType(obj,attrnames[i]);
-			if (objGetAttrValue(obj, attrnames[i], attrtypes[i], &od) == 0)
+			if (attrtypes[i] >= 0 && objGetAttrValue(obj, attrnames[i], attrtypes[i], &od2) == 0)
 			    {
-			    if (attrtypes [i] == DATA_T_CODE)
+			    if (TESTOBJ.ObfuscationSession)
+				obfObfuscateDataSess(TESTOBJ.ObfuscationSession, &od2, &od, attrtypes[i], attrnames[i], NULL, NULL);
+			    else
+				memcpy(&od, &od2, sizeof(ObjData));
+			    if (attrtypes[i] == DATA_T_CODE)
 				ptr = NULL;
 			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE)
 				ptr = objDataToStringTmp(attrtypes[i], &od, 0);
@@ -920,21 +666,67 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			    }
+
 			}
 		    fdPrintf(TESTOBJ.Output, "\n");
 		    objClose(obj);
 		    }
+		for(i=0;i<n_attrs;i++)
+		    {
+		    nmSysFree(attrnames[i]);
+		    }
 		objQueryClose(qy);
 		}
-	    else if (!strcmp(cmdname,"query"))
+	    else if (!strcmp(cmdname,"query") || !strcmp(cmdname,"mlquery"))
 	        {
-		if (!ptr)
+		if (!strcmp(cmdname, "query"))
 		    {
-		    printf("Usage: query <query-text>\n");
-		    mlxCloseSession(ls);
-		    return -1;
+		    if (!ptr)
+			{
+			printf("Usage: query <query-text>\n");
+			mlxCloseSession(ls);
+			return -1;
+			}
+		    qy = objMultiQuery(s, cmd + 6, NULL, 0);
 		    }
-		qy = objMultiQuery(s, cmd + 6, NULL, 0);
+		else
+		    {
+		    /** multiline query **/
+		    if (!ptr)
+			{
+			printf("Usage: mlquery <query-text>\n");
+			mlxCloseSession(ls);
+			return -1;
+			}
+		    xsInit(&xs);
+		    xsCopy(&xs, cmd + 8, -1);
+		    if (inp_lx)
+			{
+			while((t = mlxNextToken(inp_lx)) > 0)
+			    {
+			    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;
+			    did_alloc = 1;
+			    ptr = mlxStringVal(inp_lx, &did_alloc);
+			    if (!ptr || strlen(ptr) == strspn(ptr, "\r\n\t "))
+				break;
+			    xsConcatenate(&xs, " ", 1);
+			    xsConcatenate(&xs, ptr, -1);
+			    }
+			}
+		    else
+			{
+			while(1)
+			    {
+			    char* slbuf = readline("");
+			    if (!slbuf || strlen(slbuf) == strspn(slbuf, "\r\n\t "))
+				break;
+			    xsConcatenate(&xs, " ", 1);
+			    xsConcatenate(&xs, slbuf, -1);
+			    }
+			}
+		    qy = objMultiQuery(s, xs.String, NULL, 0);
+		    xsDeInit(&xs);
+		    }
 		if (!qy)
 		    {
 		    printf("query: could not open query!\n");
@@ -946,6 +738,49 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    for(attrname=objGetFirstAttr(obj);attrname;attrname=objGetNextAttr(obj))
 		        {
 			type = objGetAttrType(obj,attrname);
+			if (type > 0)
+			    {
+			    rval = objGetAttrValue(obj, attrname, type, &od2);
+			    if (TESTOBJ.ObfuscationSession)
+				obfObfuscateDataSess(TESTOBJ.ObfuscationSession, &od2, &od, type, attrname, NULL, NULL);
+			    else
+				memcpy(&od, &od2, sizeof(ObjData));
+			    fdPrintf(TESTOBJ.Output, "Attribute [%s]: %8.8s  ", attrname, obj_type_names[type]);
+			    if (rval == 1)
+				{
+				fdPrintf(TESTOBJ.Output, "NULL");
+				}
+			    else
+				{
+				switch(type)
+				    {
+				    case DATA_T_INTEGER:
+				    case DATA_T_DOUBLE:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, &od, 0));
+					break;
+
+				    case DATA_T_STRING:
+				    case DATA_T_DATETIME:
+				    case DATA_T_MONEY:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.Generic, DATA_F_QUOTED));
+					break;
+
+				    case DATA_T_BINARY:
+					fdPrintf(TESTOBJ.Output,"%d bytes: ", od.Binary.Size);
+					for(i=0;i<od.Binary.Size;i++)
+					    {
+					    fdPrintf(TESTOBJ.Output,"%2.2x  ", od.Binary.Data[i]);
+					    }
+					break;
+
+				    default:
+					fdPrintf(TESTOBJ.Output, "<unsupported type>");
+					break;
+				    }
+				}
+			    fdPrintf(TESTOBJ.Output, "\n");
+			    }
+#if 00
 			switch(type)
 			    {
 			    case DATA_T_INTEGER:
@@ -992,6 +827,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  MONEY  %s\n", attrname, objDataToStringTmp(type, m, 0));
 				break;
 			    }
+#endif
 			}
 		    objClose(obj);
 		    }
@@ -1451,6 +1287,26 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
 		    }
 		}
+	    else if (!strcmp(cmdname,"obfuscate"))
+		{
+		if (!ptr) ptr = "";
+		if (TESTOBJ.ObfuscationSession)
+		    {
+		    obfCloseSession(TESTOBJ.ObfuscationSession);
+		    TESTOBJ.ObfuscationSession = NULL;
+		    }
+		strtcpy(TESTOBJ.ObfKey, ptr, sizeof(TESTOBJ.ObfKey));
+		ptr = strchr(TESTOBJ.ObfKey, ',');
+		if (ptr)
+		    {
+		    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
+		    *ptr = '\0';
+		    }
+		if (*TESTOBJ.ObfKey)
+		    {
+		    TESTOBJ.ObfuscationSession = obfOpenSession(s, TESTOBJ.ObfRuleFile, TESTOBJ.ObfKey);
+		    }
+		}
 	    else if (!strcmp(cmdname,"crash"))
 		{
 		raise(SIGSEGV);
@@ -1467,24 +1323,53 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    sleep(intval);
 		    }
 		}
+	    else if (!strcmp(cmdname,"trunc"))
+		{
+		if (!ptr)
+		    {
+		    mssError(1,"CX","Usage: trunc <filename> <offset>");
+		    }
+		else
+		    {
+		    obj = objOpen(s, ptr, O_RDWR, 0600, "system/object");
+		    if (obj)
+			{
+			if (mlxNextToken(ls) != MLX_TOK_INTEGER)
+			    {
+			    mssError(1,"CX","Usage: trunc <filename> <offset>");
+			    }
+			else
+			    {
+			    if (objWrite(obj, sbuf, 0, mlxIntVal(ls), OBJ_U_SEEK | OBJ_U_TRUNCATE) < 0)
+				{
+				mssError(0,"CX","Could not write/truncate object");
+				}
+			    }
+			objClose(obj);
+			}
+		    }
+		}
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
-		printf("  annot    - Add or change the annotation on an object.\n");
-		printf("  cd       - Change the current working \"directory\" in the objectsystem.\n");
-		printf("  copy     - Copy one object's content to another.\n");
-		printf("  create   - Create a new object.\n");
-		printf("  csv      - Run a SQL query and print the results in CSV format.\n");
-		printf("  delete   - Delete an object.\n");
-		printf("  exec     - Call a method on an object.\n");
-		printf("  hints    - Show the presentation hints of an attribute (or object)\n");
-		printf("  help     - Displays this help screen.\n");
-		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
-		printf("  output   - Change where output goes.\n");
-		printf("  print    - Displays an object's content.\n");
-		printf("  query    - Runs a SQL query.\n");
-		printf("  quit     - Exits this application.\n");
-		printf("  show     - Displays an object's attributes and methods.\n");
+		printf("  annot     - Add or change the annotation on an object.\n");
+		printf("  cd        - Change the current working \"directory\" in the objectsystem.\n");
+		printf("  copy      - Copy one object's content to another.\n");
+		printf("  create    - Create a new object.\n");
+		printf("  csv       - Run a SQL query and print the results in CSV format.\n");
+		printf("  delete    - Delete an object.\n");
+		printf("  exec      - Call a method on an object.\n");
+		printf("  hints     - Show the presentation hints of an attribute (or object)\n");
+		printf("  help      - Displays this help screen.\n");
+		printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
+		printf("  mlquery   - Runs a SQL query, reading in multiple lines until a blank line.\n");
+		printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
+		printf("  output    - Change where output goes.\n");
+		printf("  print     - Displays an object's content.\n");
+		printf("  query     - Runs a SQL query.\n");
+		printf("  quit      - Exits this application.\n");
+		printf("  show      - Displays an object's attributes and methods.\n");
+		printf("  trunc     - Truncates an object's content to a given point.\n");
 		}
 	    else
 		{
@@ -1513,6 +1398,7 @@ start(void* v)
     pLxSession input_lx;
     char* ptr;
     int alloc;
+    pApplication app;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -1565,13 +1451,17 @@ start(void* v)
 	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	    }
 
+	/** Application context **/
+	cxssPushContext();
+	app = appCreate("test_obj");
+
 	/** Open a session **/
 	s = objOpenSession("/");
 
 	/** -C cmd provided on command line? **/
 	if (TESTOBJ.Command[0])
 	    {
-	    rval = testobj_do_cmd(s, TESTOBJ.Command, 1);
+	    rval = testobj_do_cmd(s, TESTOBJ.Command, 1, NULL);
 	    }
 
 	/** Command file provided? **/
@@ -1592,7 +1482,7 @@ start(void* v)
 		    ptr = mlxStringVal(input_lx, &alloc);
 		    if (ptr) 
 			{
-			rval = testobj_do_cmd(s, ptr, 1);
+			rval = testobj_do_cmd(s, ptr, 1, input_lx);
 			nmSysFree(ptr);
 			if (rval == 1) break;
 			}
@@ -1630,13 +1520,18 @@ start(void* v)
 	    if (!inbuf)
 	        {
 		printf("quit\n");
+		appDestroy(app);
+		cxssPopContext();
+		objCloseSession(s);
 		thExit();
 		}
 
-	    rval = testobj_do_cmd(s, inbuf, 0);
+	    rval = testobj_do_cmd(s, inbuf, 0, NULL);
 	    if (rval == 1) break;
 	    }
 
+	appDestroy(app);
+	cxssPopContext();
 	objCloseSession(s);
 
     thExit();
@@ -1648,16 +1543,18 @@ show_usage()
     {
     printf("Usage:  test_obj [-c <config-file>] [-f <command-file>] [-C <command>]\n"
 	   "                 [-u <user>] [-p <password>] [-q] [-o <output file>] \n"
+	   "                 [-O obfkey[,obfrulefile] ]\n"
 	   "                 [-i <wait-seconds>] [-h]\n"
-	   "        -h         Show this message\n"
-	   "        -q         Initialize quietly\n"
-	   "        -c file    Specify configuration file\n"
-	   "        -C command Run a single command\n"
-	   "        -f file    Run commands from a file\n"
-	   "        -u user    Login as user\n"
-	   "        -p pass    Specify password\n"
-	   "        -o file    Send output to specified file\n"
-	   "        -i secs    Terminate test_obj after secs with SIGALRM\n"
+	   "        -h            Show this message\n"
+	   "        -q            Initialize quietly\n"
+	   "        -c file       Specify configuration file\n"
+	   "        -C command    Run a single command\n"
+	   "        -f file       Run commands from a file\n"
+	   "        -u user       Login as user\n"
+	   "        -p pass       Specify password\n"
+	   "        -o file       Send output to specified file\n"
+	   "        -i secs       Terminate test_obj after secs with SIGALRM\n"
+	   "	    -O key[,file] Obfuscate CSV and query output data with a given key and optional rule file\n"
 	   "\n");
     return;
     }
@@ -1667,18 +1564,21 @@ int
 main(int argc, char* argv[])
     {
     int ch;
+    char* ptr;
 
 	/** Default global values **/
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
+	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
 	TESTOBJ.WaitSecs = 0;
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:")) > 0)
+	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:O:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -1704,6 +1604,15 @@ main(int argc, char* argv[])
 				break;
 
 		case 'o':	strtcpy(TESTOBJ.OutputFilename, optarg, sizeof(TESTOBJ.OutputFilename));
+				break;
+
+		case 'O':	strtcpy(TESTOBJ.ObfKey, optarg, sizeof(TESTOBJ.ObfKey));
+				ptr = strchr(TESTOBJ.ObfKey, ',');
+				if (ptr)
+				    {
+				    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
+				    *ptr = '\0';
+				    }
 				break;
 
 		case 'h':	show_usage();

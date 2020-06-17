@@ -12,6 +12,10 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#ifdef HAVE_RSVG_H
+#include "librsvg/rsvg.h"
+#include "assert.h"
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,56 +49,6 @@
 /*		subsystem functionality.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_main.c,v 1.8 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_main.c,v $
-
-    $Log: prtmgmt_v3_main.c,v $
-    Revision 1.8  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.7  2003/04/21 21:00:47  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
-    Revision 1.6  2003/03/02 04:17:35  gbeeley
-    Adding skeleton tabular layout manager, for table/row/cell formatted
-    data.
-
-    Revision 1.5  2003/02/27 05:21:19  gbeeley
-    Added multi-column layout manager functionality to support multi-column
-    sections (this is newspaper-style multicolumn formatting).  Tested in
-    test_prt "columns" command with various numbers of columns.  Balanced
-    mode not yet working.
-
-    Revision 1.4  2003/02/25 03:57:50  gbeeley
-    Added incremental reflow capability and test in test_prt.  Added stub
-    multi-column layout manager.  Reflow is horribly inefficient, but not
-    worried about that at this point.
-
-    Revision 1.3  2003/02/19 22:53:54  gbeeley
-    Page break now somewhat operational, both with hard breaks (form feeds)
-    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
-    places the text on pages after a soft break (but the PCL seems to look
-    correct), and in how word wrapping is done just after a page break has
-    occurred.  Use "printfile" command in test_prt to test this.
-
-    Revision 1.2  2002/04/25 04:30:14  gbeeley
-    More work on the v3 print formatting subsystem.  Subsystem compiles,
-    but report and uxprint have not been converted yet, thus problems.
-
-    Revision 1.1  2002/01/27 22:50:06  gbeeley
-    Untested and incomplete print formatter version 3 files.
-    Initial checkin.
-
-
- **END-CVSDATA***********************************************************/
 
 /*** GLOBAL Stuff... ***/
 PrtGlobals PRTMGMT;
@@ -466,6 +420,12 @@ prtInitialize()
     {
     pPrtObjType ot;
 
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+        /** Assert compatibility of certain datatypes
+         ** used in librsvg functions **/
+        assert(sizeof(guint8) == sizeof(char));
+#endif
+
 	/** Init the globals **/
 	memset(&PRTMGMT, 0, sizeof(PRTMGMT));
 	xaInit(&PRTMGMT.UnitsList, 16);
@@ -535,7 +495,13 @@ prtInitialize()
 	strcpy(ot->TypeName,"image");
 	ot->PrefLayoutMgr = NULL;
 	prtRegisterType(ot);
-	
+        
+        ot = prtAllocType();
+        ot->TypeID = PRT_OBJ_T_SVG;
+        strcpy(ot->TypeName,"svg");
+        ot->PrefLayoutMgr = NULL;
+        prtRegisterType(ot);
+
 	ot = prtAllocType();
 	ot->TypeID = PRT_OBJ_T_RECT;
 	strcpy(ot->TypeName,"rect");

@@ -48,60 +48,6 @@
 /*		querytree object driver for config information.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: st_node.c,v 1.6 2005/02/26 06:42:41 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/utility/st_node.c,v $
-
-    $Log: st_node.c,v $
-    Revision 1.6  2005/02/26 06:42:41  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.5  2004/09/01 02:36:27  gbeeley
-    - get rid of last_modification warnings on qyt static elements by setting
-      static element last_modification to that of the node itself.
-
-    Revision 1.4  2004/08/30 03:15:03  gbeeley
-    - adding magic number support to SnNode.  there is a BUG in this module
-      regarding a rewritten file and existing references in osdrivers to the
-      now-released Node and StructInf tree.  Need to do reference counting
-      and double-check intelligence in drivers re. a modified Node.
-
-    Revision 1.3  2002/09/27 22:26:06  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.2  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:01:17  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:19  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Globals.  Node cache. ***/
@@ -263,7 +209,6 @@ snNewNode(pObject obj, char* content_type)
     pSnNode new_node;
     char* ptr;
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
-    pExpression exp;
 
     	/** Allocate the node. **/
 	new_node = (pSnNode)nmMalloc(sizeof(SnNode));
@@ -281,10 +226,7 @@ snNewNode(pObject obj, char* content_type)
 	obj_internal_PathPart(obj->Pathname,0,0);
 
 	/** Set the initial modification time **/
-	exp = expCompileExpression("getdate()", NULL, 0, 0);
-	expEvalTree(exp, NULL);
-	memcpy(&(new_node->LastModification), &(exp->Types.Date), sizeof(DateTime));
-	expFreeExpression(exp);
+	objCurrentDate(&(new_node->LastModification));
 
     return new_node;
     }

@@ -1,0 +1,12 @@
+##NAME SQL Temp Collections
+
+query declare collection c scope application; select 1 where 0=1
+query insert into collection c select a=1, b=2, c=3
+query insert into collection c select a=4, b=5, c=6
+query select :name, * from collection c
+query insert into collection c select a=1, b=3, c=4 on duplicate :a update set :c = :c + 1
+query select :name, * from collection c
+query update collection c set :b = :b + 1
+query select :name, * from collection c
+query delete from collection c where :a = 1
+query select :name, * from collection c

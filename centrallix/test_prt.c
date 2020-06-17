@@ -56,163 +56,6 @@
 /*		formatting subsystem.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: test_prt.c,v 1.24 2009/06/24 16:00:02 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
-
-    $Log: test_prt.c,v $
-    Revision 1.24  2009/06/24 16:00:02  gbeeley
-    - (feature) adding print test suite item to display print styles
-    - (bugfix) test output was mis-formatting chars >= 0x80
-
-    Revision 1.23  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.22  2005/02/24 05:44:32  gbeeley
-    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
-    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
-      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
-      PostScript support!!  See http://www.codn.net/
-    - More formats (maybe PNG?) should be easy to add.
-    - TODO: read the *real* font metric files to get font geometries!
-    - TODO: compress the images written into the .ps file!
-
-    Revision 1.21  2003/08/05 16:45:12  affert
-    Initial Berkeley DB support.
-
-    Revision 1.20  2003/06/27 21:19:47  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.19  2003/04/21 21:03:02  gbeeley
-    Updating Makefile for new files in prtmgmt_v3; updating test_prt to
-    reference new prtmgmt header file(s).
-
-    Revision 1.18  2003/04/04 22:38:26  gbeeley
-    Added HTML formatter for new print subsystem, with just basic output
-    capabilities at present.
-
-    Revision 1.17  2003/03/18 04:06:22  gbeeley
-    Added basic image (picture/bitmap) support; only PNG images supported
-    at present.  Moved image and border (rectangles) functionality into a
-    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
-    present and work only under PCL (not plain text!!!).  PNG support is
-    via libpng, so libpng was added to configure/autoconf.
-
-    Revision 1.16  2003/03/15 04:45:58  gbeeley
-    Added borders to tables.  Not fully tested yet.  Added a new component
-    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
-    the border.  The reporting objdriver is going to have to really
-    simplify the margins/borders stuff on tables because there are so many
-    params that can be set - it can be confusing and hard to get right.
-
-    Revision 1.15  2003/03/12 20:51:35  gbeeley
-    Tables now working, but borders on tables not implemented yet.
-    Completed the prt_internal_Duplicate routine and reworked the
-    API interface to InitContainer on the layout managers.  Not all
-    features/combinations on tables have been tested.  Footers on
-    tables not working but (repeating) headers are.  Added a new
-    prt obj stream field called "ContentSize" which provides the
-    allocated memory size of the "Content" field.
-
-    Revision 1.14  2003/03/07 06:16:12  gbeeley
-    Added border-drawing functionality, and converted the multi-column
-    layout manager to use that for column separators.  Added border
-    capability to textareas.  Reworked the deinit/init kludge in the
-    Reflow logic.
-
-    Revision 1.13  2003/03/06 02:52:32  gbeeley
-    Added basic rectangular-area support (example - border lines for tables
-    and separator lines for multicolumn areas).  Works on both PCL and
-    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
-    to work consistently on my system, however.  Warning: using large
-    dimensions for the 'rectangle' command in test_prt may consume much
-    printer ink!!  Now it's time to go watch the thunderstorms....
-
-    Revision 1.12  2003/03/03 23:45:19  gbeeley
-    Added support for multi-column formatting where columns are not equal
-    in width.  Specifying width/height as negative when adding one object
-    to another causes that object to fill its container in the respective
-    dimension(s).  Fixed a bug in the Justification logic.
-
-    Revision 1.11  2003/02/27 22:02:15  gbeeley
-    Some improvements in the balanced multi-column output.  A lot of fixes
-    in the multi-column output and in the text layout manager.  Added a
-    facility to "schedule" reflows rather than having them take place
-    immediately.
-
-    Revision 1.10  2003/02/27 05:21:19  gbeeley
-    Added multi-column layout manager functionality to support multi-column
-    sections (this is newspaper-style multicolumn formatting).  Tested in
-    test_prt "columns" command with various numbers of columns.  Balanced
-    mode not yet working.
-
-    Revision 1.9  2003/02/25 03:57:50  gbeeley
-    Added incremental reflow capability and test in test_prt.  Added stub
-    multi-column layout manager.  Reflow is horribly inefficient, but not
-    worried about that at this point.
-
-    Revision 1.8  2003/02/19 22:53:52  gbeeley
-    Page break now somewhat operational, both with hard breaks (form feeds)
-    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
-    places the text on pages after a soft break (but the PCL seems to look
-    correct), and in how word wrapping is done just after a page break has
-    occurred.  Use "printfile" command in test_prt to test this.
-
-    Revision 1.7  2002/10/22 04:12:55  gbeeley
-    Added justification (left/center/right) support.  Full justification
-    does not yet work.  Also, attempted a screen-based color text output
-    mechanism which needs to be refined but unfortunately will not work
-    on some/most/any pcl inkjets (tested: 870C) but may eventually work
-    on lasers (tested: hp4550).  I will probably force the use of a
-    postscript output driver if the user wants better color support; no
-    real need to spend more time on it in the pcl output driver.  Reverted
-    to palette-based color text support.
-
-    Revision 1.6  2002/10/21 22:55:11  gbeeley
-    Added font/size test in test_prt to test the alignment of different fonts
-    and sizes on one line or on separate lines.  Fixed lots of bugs in the
-    font baseline alignment logic.  Added prt_internal_Dump() to debug the
-    document's structure.  Fixed a YSort bug where it was not sorting the
-    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
-    condition problem causing infinite looping as well.  Fixed some problems
-    when adding an empty obj to a stream of objects and then modifying
-    attributes which would change the object's geometry.
-
-    There are still some glitches in the line spacing when different font
-    sizes are used, however.
-
-    Revision 1.5  2002/10/21 20:22:11  gbeeley
-    Text foreground color attribute now basically operational.  Range of
-    colors is limited however.  Tested on PCL output driver, on hp870c
-    and hp4550 printers.  Also tested on an hp3si (black&white) to make
-    sure the color pcl commands didn't garble things up there.  Use the
-    "colors" test_prt command to test color output (and "output" to
-    "/dev/lp0" if desired).
-
-    Revision 1.4  2002/10/18 22:01:37  gbeeley
-    Printing of text into an area embedded within a page now works.  Two
-    testing options added to test_prt: text and printfile.  Use the "output"
-    option to redirect output to a file or device instead of to the screen.
-    Word wrapping has also been tested/debugged and is functional.  Added
-    font baseline logic to the design.
-
-    Revision 1.3  2002/10/17 20:23:17  gbeeley
-    Got printing v3 subsystem open/close session working (basically)...
-
-    Revision 1.2  2002/06/13 15:21:04  mattphillips
-    Adding autoconf support to centrallix
-
-    Revision 1.1  2002/04/25 04:30:13  gbeeley
-    More work on the v3 print formatting subsystem.  Subsystem compiles,
-    but report and uxprint have not been converted yet, thus problems.
-
-
- **END-CVSDATA***********************************************************/
 
 void* my_ptr;
 
@@ -285,6 +128,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
     int color;
     pPrtBorder bdr,bdr2;
     pPrtImage img;
+    pPrtSvg svg;
     char sbuf[256];
     pFile fd;
 
@@ -308,7 +152,8 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		   "  fonts       - writes text in three fonts and five sizes\n"
 		   "  help        - show this help message\n"
 		   "  image       - tests a bitmap image\n"
-		   "  justify     - writes text in each of four justification modes\n"
+		   "  svg         - tests an SVG image\n"
+                   "  justify     - writes text in each of four justification modes\n"
 		   "  output      - redirects output to a file/device instead of screen\n"
 		   "  printfile   - output contents of a file into a whole-page area\n"
 		   "  rectangle   - draws a rectangle\n"
@@ -416,6 +261,105 @@ testprt_process_cmd(pObjSession s, char* cmd)
 	    printf("image: prtWriteImage() returned %d\n", rval);
 	    rval = prtCloseSession(prtsession);
 	    printf("image: prtCloseSession returned %d\n", rval);
+	    }
+        else if (!strcmp(cmdname,"svg"))
+	    {
+	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		mlxCloseSession(ls);
+		return;
+		}
+	    ptr = mlxStringVal(ls,NULL);
+	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
+	    printf("svg: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    rval = prtSetImageStore(prtsession, "/tmp/", "/tmp/", (void*)s, objOpen, objWrite, objClose);
+	    printf("svg: prtSetImageStore returned %d\n", rval);
+	    rval = prtSetResolution(prtsession, 300);
+	    printf("svg: prtSetResolution(300) returned %d\n", rval);
+	    pagehandle = prtGetPageRef(prtsession);
+	    printf("svg: prtGetPageRef returned page handle %d\n", pagehandle);
+	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    ptr = mlxStringVal(ls,NULL);
+	    fd = fdOpen(ptr, O_RDONLY, 0600);
+	    if (!fd)
+		{
+		printf("svg: %s: could not access file\n", ptr);
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    svg = prtReadSvg(fdRead, fd);
+	    if (!svg)
+		{
+		printf("svg: %s: could not read SVG data\n", ptr);
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    x = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    y = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    w = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    h = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) == MLX_TOK_STRING)
+		{
+		ptr = nmSysStrdup(mlxStringVal(ls,NULL));
+		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
+		    {
+		    bdr = prtAllocBorder(2,0.2,0.0, 0.2,0x0000FF, 0.05,0x00FFFF);
+		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, x+w+10, y, 80-(x+w+10), h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, "border", bdr, NULL);
+		    prtSetMargins(areahandle,1.0,1.0,1.0,1.0);
+		    prtFreeBorder(bdr);
+		    }
+		else
+		    {
+		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, x+w+10, y, 80-(x+w+10), h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, NULL);
+		    }
+		printf("text: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		rval = prtWriteString(areahandle, ptr);
+		printf("text: prtWriteString returned %d\n", rval);
+		rval = prtEndObject(areahandle);
+		printf("text: prtEndObject(area) returned %d\n", rval);
+		}
+	    rval = prtWriteSvgToContainer(pagehandle, svg, x,y,w,h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET);
+	    printf("svg: prtWriteSvgToContainer() returned %d\n", rval);
+	    rval = prtCloseSession(prtsession);
+	    printf("svg: prtCloseSession returned %d\n", rval);
 	    }
 	else if (!strcmp(cmdname,"table"))
 	    {
@@ -1050,6 +994,9 @@ start(void* v)
     int alloc;
     int t;
 
+        /** Initialize security subsystem **/
+        cxssInitialize();
+
 	/** Load the configuration file **/
 	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
 	if (!cxconf)
@@ -1214,6 +1161,7 @@ main(int argc, char* argv[])
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.Flags = 0;
 	TESTPRT.OutputFile[0] = 0;
 	TESTPRT.CmdFile[0] = 0;
     

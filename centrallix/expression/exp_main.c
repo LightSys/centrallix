@@ -12,6 +12,8 @@
 #include "expression.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/magic.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,162 +46,6 @@
 /*		routines.  Formerly a part of obj_query.c.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: exp_main.c,v 1.16 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
-
-    $Log: exp_main.c,v $
-    Revision 1.16  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.15  2010/09/08 21:55:09  gbeeley
-    - (bugfix) allow /file/name:"attribute" to be quoted.
-    - (bugfix) order by ... asc/desc keywords are now case insenstive
-    - (bugfix) short-circuit eval was not resulting in aggregates properly
-      evaluating
-    - (change) new API function expModifyParamByID - use this for efficiency
-    - (feature) multi-level aggregate functions now supported, for use when
-      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
-    - (feature) added mathematical and trig functions radians, degrees, sin,
-      cos, tan, asin, acos, atan, atan2, sqrt, square
-
-    Revision 1.14  2009/06/24 17:33:19  gbeeley
-    - (change) adding domain param to expGenerateText, so it can be used to
-      generate an expression string with lower domains converted to constants
-    - (bugfix) better handling of runserver() embedded within runclient(), etc
-    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
-    - (bugfix) after a property has been set using reverse evaluation, tag it
-      as modified so it shows up as changed in other expressions using that
-      same object param list
-    - (change) condition() function now uses short-circuit evaluation
-      semantics, so parameters are only evaluated as they are needed... e.g.
-      condition(a,b,c) if a is true, b is returned and c is never evaluated,
-      and vice versa.
-    - (feature) add structure for reverse-evaluation of functions.  The
-      isnull() function now supports this feature.
-    - (bugfix) save/restore the coverage mask before/after evaluation, so that
-      a nested subexpression (eval or subquery) using the same object list
-      will not cause an inconsistency.  Basically a reentrancy bug.
-    - (bugfix) some functions were erroneously depending on the data type of
-      a NULL value to be correct.
-    - (feature) adding truncate() function which is similar to round().
-    - (feature) adding constrain() function which limits a value to be
-      between a given minimum and maximum value.
-    - (bugfix) first() and last() functions were not properly resetting the
-      value to NULL between GROUP BY groups
-    - (bugfix) some expression-to-JS fixes
-
-    Revision 1.13  2008/09/14 05:17:27  gbeeley
-    - (bugfix) subquery evaluator was leaking query handles if subquery did
-      not return any rows.
-    - (change) add ability to generate expression text based on the domain of
-      evaluation (client, server, etc.)
-
-    Revision 1.12  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-    Revision 1.11  2008/03/08 00:41:59  gbeeley
-    - (bugfix) a double-free was being triggered on Subquery nodes as a
-      result of an obscure glitch in expCopyNode.  The string value should
-      be handled regardless of the DataType, as temporary data type changes
-      are possible.  Also cleaned up a number of other expression string
-      Alloc issues, many just for clarity.
-
-    Revision 1.10  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.9  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.8  2007/03/04 05:04:47  gbeeley
-    - (change) This is a change to the way that expressions track which
-      objects they were last evaluated against.  The old method was causing
-      some trouble with stale data in some expressions.
-
-    Revision 1.7  2007/02/17 04:18:14  gbeeley
-    - (bugfix) SQL engine was not properly setting ObjCoverageMask on
-      expression trees built from components of the where clause, thus
-      expressions tended to not get re-evaluated when new values were
-      available.
-
-    Revision 1.6  2005/09/30 04:37:10  gbeeley
-    - (change) modified expExpressionToPod to take the type.
-    - (feature) got eval() working
-    - (addition) added expReplaceString() to search-and-replace in an
-      expression tree.
-
-    Revision 1.5  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.4  2003/06/27 21:19:47  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.3  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/28 20:03:13  gbeeley
-    Updated magic number system syntax to remove the semicolons from within
-    the macro expansions.  Semicolons now are (more naturally) placed after
-    the macro calls.
-
-    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:52  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:53  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** EXP system globals ***/
@@ -226,6 +72,7 @@ expAllocExpression()
 	expr->Parent = NULL;
 	expr->Flags = EXPR_F_NEW;
 	expr->ObjCoverageMask = 0;
+	expr->ObjOuterMask = 0;
 	expr->ObjDelayChangeMask = 0;
 	expr->ObjID = -1;
 	expr->AggExp = NULL;
@@ -237,6 +84,7 @@ expAllocExpression()
 	expr->Magic = MGK_EXPRESSION;
 	expr->LinkCnt = 1;
 	expr->DataType = DATA_T_UNAVAILABLE;
+	expr->PrivateData = NULL;
 
     return expr;
     }
@@ -271,10 +119,11 @@ expFreeExpression(pExpression this)
 	    }
 
 	/** Check to free control block **/
-	if (!this->Parent && this->Control) nmFree(this->Control,sizeof(ExpControl));
+	exp_internal_UnlinkControl(this->Control);
 
 	/** Free this itself. **/
 	xaDeInit(&(this->Children));
+	if (this->PrivateData) nmSysFree(this->PrivateData);
 	if (this->Alloc && this->String) nmSysFree(this->String);
 	if (this->NameAlloc && this->Name) nmSysFree(this->Name);
 	if (this->AggExp) expFreeExpression(this->AggExp);
@@ -293,7 +142,7 @@ expObjID(pExpression exp, pParamObjects objlist)
     if (exp->ObjID == EXPR_OBJID_CURRENT && objlist) id = objlist->CurrentID;
     else if (exp->ObjID == EXPR_OBJID_PARENT && objlist) id = objlist->ParentID;
     else id = exp->ObjID;
-    if ((!objlist->CurControl && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
+    if (((!objlist || !objlist->CurControl) && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
     if (exp->Control && exp->Control->Remapped) 
         id = exp->Control->ObjMap[id];
     else if (objlist && objlist->CurControl && objlist->CurControl->Remapped)
@@ -329,6 +178,8 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
 	new_tree->ObjOuterMask = src->ObjOuterMask;
 	new_tree->ObjDelayChangeMask = src->ObjDelayChangeMask;
 	new_tree->AggLevel = src->AggLevel;
+	new_tree->CmpFlags = src->CmpFlags;
+	new_tree->LxFlags = src->LxFlags;
 	memcpy(&(new_tree->Types), &(src->Types), sizeof(src->Types));
 
 	/** String fields may need to be allocated.. **/
@@ -415,7 +266,11 @@ exp_internal_CopyTreeReduced(pExpression orig_exp)
 	    {
 	    /** convert to a constant **/
 	    t = expDataTypeToNodeType(new_exp->DataType);
-	    if (t > 0) new_exp->NodeType = t;
+	    if (t > 0)
+		{
+		new_exp->NodeType = t;
+		new_exp->ObjCoverageMask = 0;
+		}
 	    }
 	else
 	    {
@@ -429,31 +284,121 @@ exp_internal_CopyTreeReduced(pExpression orig_exp)
 		}
 	    }
 
-	/** Optimize NULL IS NULL **/
+	/** Optimize AND expressions **/
+	if (new_exp->NodeType == EXPR_N_AND && new_exp->ObjCoverageMask != 0)
+	    {
+	    for(i=0; i<new_exp->Children.nItems; i++)
+		{
+		subexp = (pExpression)(new_exp->Children.Items[i]);
+		if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer != 0)
+		    {
+		    /** True item in AND expression, remove it **/
+		    expFreeExpression(subexp);
+		    xaRemoveItem(&new_exp->Children, i);
+		    i--;
+		    continue;
+		    }
+		else if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer == 0)
+		    {
+		    /** False item in AND expression, force entire expression false **/
+		    xaRemoveItem(&new_exp->Children, i);
+		    expFreeExpression(new_exp);
+		    new_exp = subexp;
+		    break;
+		    }
+		}
+	    
+	    /** Anything left? **/
+	    if (new_exp->Children.nItems == 0 && new_exp->NodeType == EXPR_N_AND)
+		{
+		/** Nothing left -- convert to true **/
+		new_exp->NodeType = EXPR_N_INTEGER;
+		new_exp->DataType = DATA_T_INTEGER;
+		new_exp->Flags &= ~EXPR_F_NULL;
+		new_exp->Integer = 1;
+		new_exp->ObjCoverageMask = 0;
+		}
+	    else if (new_exp->Children.nItems == 1 && new_exp->NodeType == EXPR_N_AND)
+		{
+		/** One item left -- use it instead of AND clause **/
+		subexp = (pExpression)(new_exp->Children.Items[0]);
+		xaRemoveItem(&new_exp->Children, 0);
+		expFreeExpression(new_exp);
+		new_exp = subexp;
+		}
+	    }
+
+	/** Optimize OR expressions **/
+	if (new_exp->NodeType == EXPR_N_OR && new_exp->ObjCoverageMask != 0)
+	    {
+	    for(i=0; i<new_exp->Children.nItems; i++)
+		{
+		subexp = (pExpression)(new_exp->Children.Items[i]);
+		if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer == 0)
+		    {
+		    /** False item in OR expression, remove it **/
+		    expFreeExpression(subexp);
+		    xaRemoveItem(&new_exp->Children, i);
+		    i--;
+		    continue;
+		    }
+		else if (subexp->ObjCoverageMask == 0 && subexp->DataType == DATA_T_INTEGER && !(subexp->Flags & EXPR_F_NULL) && subexp->Integer != 0)
+		    {
+		    /** True item in OR expression, force entire expression true **/
+		    xaRemoveItem(&new_exp->Children, i);
+		    expFreeExpression(new_exp);
+		    new_exp = subexp;
+		    break;
+		    }
+		}
+	    
+	    /** Anything left? **/
+	    if (new_exp->Children.nItems == 0 && new_exp->NodeType == EXPR_N_OR)
+		{
+		/** Nothing left -- convert to false **/
+		new_exp->NodeType = EXPR_N_INTEGER;
+		new_exp->DataType = DATA_T_INTEGER;
+		new_exp->Flags &= ~EXPR_F_NULL;
+		new_exp->Integer = 0;
+		new_exp->ObjCoverageMask = 0;
+		}
+	    else if (new_exp->Children.nItems == 1 && new_exp->NodeType == EXPR_N_OR)
+		{
+		/** One item left -- use it instead of OR clause **/
+		subexp = (pExpression)(new_exp->Children.Items[0]);
+		xaRemoveItem(&new_exp->Children, 0);
+		expFreeExpression(new_exp);
+		new_exp = subexp;
+		}
+	    }
+
+	/** Optimize NULL IS (not) NULL and {constant} IS (not) NULL **/
 	if (new_exp->NodeType == EXPR_N_ISNOTNULL)
 	    {
 	    subexp = (pExpression)(new_exp->Children.Items[0]);
-	    if (subexp && expIsConstant(subexp) && !(subexp->Flags & EXPR_F_NULL))
+	    if (subexp && expIsConstant(subexp))
 		{
 		expFreeExpression(subexp);
 		xaRemoveItem(&new_exp->Children, 0);
 		new_exp->NodeType = EXPR_N_INTEGER;
 		new_exp->DataType = DATA_T_INTEGER;
 		new_exp->Flags &= EXPR_F_NULL;
-		new_exp->Integer = 1;
+		new_exp->ObjCoverageMask = 0;
+		new_exp->Integer = !(subexp->Flags & EXPR_F_NULL);
 		}
 	    }
 	if (new_exp->NodeType == EXPR_N_ISNULL)
 	    {
 	    subexp = (pExpression)(new_exp->Children.Items[0]);
-	    if (subexp && expIsConstant(subexp) && (subexp->Flags & EXPR_F_NULL))
+	    if (subexp && expIsConstant(subexp))
 		{
 		expFreeExpression(subexp);
 		xaRemoveItem(&new_exp->Children, 0);
 		new_exp->NodeType = EXPR_N_INTEGER;
 		new_exp->DataType = DATA_T_INTEGER;
 		new_exp->Flags &= EXPR_F_NULL;
-		new_exp->Integer = 1;
+		new_exp->ObjCoverageMask = 0;
+		new_exp->Integer = (subexp->Flags & EXPR_F_NULL);
 		}
 	    }
 
@@ -471,6 +416,7 @@ expReducedDuplicate(pExpression orig_exp)
     {
     pExpression new_exp;
 
+	expEvalTree(orig_exp, NULL);
 	new_exp = exp_internal_CopyTreeReduced(orig_exp);
 
     return new_exp;
@@ -608,6 +554,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 		case DATA_T_STRING: printf(", string='%s'",this->String); break;
 		case DATA_T_DOUBLE: printf(", double=%f",this->Types.Double); break;
 		case DATA_T_MONEY: ptr = objDataToStringTmp(DATA_T_MONEY, &(this->Types.Money), 0); printf(", money=%s", ptr); break;
+		case DATA_T_DATETIME: ptr = objDataToStringTmp(DATA_T_DATETIME, &(this->Types.Date), 0); printf(", datetime=%s", ptr); break;
 		}
 	    }
 	if (this->Flags & EXPR_F_NEW) printf(", NEW");
@@ -758,42 +705,53 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 	    exp = expAllocExpression();
 	exp->NodeType = expDataTypeToNodeType(type);
 
-	/** Based on type. **/
-	switch(type)
+	/** Null value **/
+	if (!pod)
 	    {
-	    case DATA_T_INTEGER:
-		exp->Integer = pod->Integer;
-		break;
-	    case DATA_T_STRING:
-		if (exp->Alloc)
-		    nmSysFree(exp->String);
-		n = strlen(pod->String);
-		if (n < sizeof(exp->Types.StringBuf))
-		    {
-		    exp->String = exp->Types.StringBuf;
-		    exp->Alloc = 0;
-		    }
-		else
-		    {
-		    exp->String = nmSysMalloc(n+1);
-		    exp->Alloc = 1;
-		    }
-		strcpy(exp->String, pod->String);
-		break;
-	    case DATA_T_DOUBLE:
-		exp->Types.Double = pod->Double;
-		break;
-	    case DATA_T_MONEY:
-		memcpy(&(exp->Types.Money), pod->Money, sizeof(MoneyType));
-		break;
-	    case DATA_T_DATETIME:
-		memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
-		break;
-	    default:
-		if (!provided_exp)
-		    expFreeExpression(exp);
-		return NULL;
+	    exp->Flags |= (EXPR_F_NULL | EXPR_F_PERMNULL);
 	    }
+	else
+	    {
+	    exp->Flags &= ~(EXPR_F_NULL | EXPR_F_PERMNULL);
+
+	    /** Based on type. **/
+	    switch(type)
+		{
+		case DATA_T_INTEGER:
+		    exp->Integer = pod->Integer;
+		    break;
+		case DATA_T_STRING:
+		    if (exp->Alloc)
+			nmSysFree(exp->String);
+		    n = strlen(pod->String);
+		    if (n < sizeof(exp->Types.StringBuf))
+			{
+			exp->String = exp->Types.StringBuf;
+			exp->Alloc = 0;
+			}
+		    else
+			{
+			exp->String = nmSysMalloc(n+1);
+			exp->Alloc = 1;
+			}
+		    strcpy(exp->String, pod->String);
+		    break;
+		case DATA_T_DOUBLE:
+		    exp->Types.Double = pod->Double;
+		    break;
+		case DATA_T_MONEY:
+		    memcpy(&(exp->Types.Money), pod->Money, sizeof(MoneyType));
+		    break;
+		case DATA_T_DATETIME:
+		    memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
+		    break;
+		default:
+		    if (!provided_exp)
+			expFreeExpression(exp);
+		    return NULL;
+		}
+	    }
+
 	exp->DataType = type;
 	/*expEvalTree(exp,expNullObjlist);*/
 
@@ -879,6 +837,91 @@ expReplaceString(pExpression tree, char* oldstr, char* newstr)
     }
 
 
+/*** expCompareExpressionValues -- see if two expressions have the same value
+ *** Returns: 1 on true, 0 on false
+ ***/
+int
+expCompareExpressionValues(pExpression exp1, pExpression exp2)
+    {
+
+	/** two nulls are equal even if types mismatch **/
+	if ((exp1->Flags & EXPR_F_NULL) && (exp2->Flags & EXPR_F_NULL))
+	    return 1;
+
+	/** otherwise, data type must match **/
+	if (exp1->DataType != exp2->DataType)
+	    return 0;
+
+	/** One is null and the other isn't **/
+	if ((exp1->Flags & EXPR_F_NULL) != (exp2->Flags & EXPR_F_NULL))
+	    return 0;
+
+	/** Supported data types differ. **/
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_STRING && exp1->String && exp2->String && strcmp(exp1->String, exp2->String) != 0)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_INTEGER && exp1->Integer != exp2->Integer)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DOUBLE && exp1->Types.Double != exp2->Types.Double)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && (exp1->Types.Money.WholePart != exp2->Types.Money.WholePart || exp1->Types.Money.FractionPart != exp2->Types.Money.FractionPart))
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && (exp1->Types.Date.Part.Second != exp2->Types.Date.Part.Second || exp1->Types.Date.Part.Minute != exp2->Types.Date.Part.Minute || exp1->Types.Date.Part.Hour != exp2->Types.Date.Part.Hour || exp1->Types.Date.Part.Day != exp2->Types.Date.Part.Day || exp1->Types.Date.Part.Month != exp2->Types.Date.Part.Month || exp1->Types.Date.Part.Year != exp2->Types.Date.Part.Year))
+	    return 0;
+
+	/** Unsupported data types **/
+	if (exp1->DataType != DATA_T_STRING && exp1->DataType != DATA_T_INTEGER && exp1->DataType != DATA_T_DOUBLE && exp1->DataType != DATA_T_MONEY && exp1->DataType != DATA_T_DATETIME)
+	    return -1;
+
+    return 1;
+    }
+
+
+/*** expCompareExpressions - see if two expressions are equivalent, and
+ *** if so, return 1.  Otherwise return 0 if they are different.
+ ***/
+int
+expCompareExpressions(pExpression exp1, pExpression exp2)
+    {
+    int i;
+    pExpression subexp1, subexp2;
+
+	/** Compare current node first **/
+	if (exp1->NodeType != exp2->NodeType)
+	    return 0;
+	if (exp1->NodeType == EXPR_N_STRING || exp1->NodeType == EXPR_N_INTEGER || exp1->NodeType == EXPR_N_DOUBLE || exp1->NodeType == EXPR_N_MONEY || exp1->NodeType == EXPR_N_DATETIME)
+	    {
+	    if (expCompareExpressionValues(exp1, exp2) <= 0)
+		return 0;
+	    }
+	if (exp1->NodeType == EXPR_N_FUNCTION || exp1->NodeType == EXPR_N_SUBQUERY)
+	    {
+	    if (strcmp(exp1->Name, exp2->Name) != 0)
+		return 0;
+	    }
+	if (exp1->NodeType == EXPR_N_OBJECT || exp1->NodeType == EXPR_N_PROPERTY)
+	    {
+	    if (exp1->ObjID != exp2->ObjID)
+		return 0;
+	    if (exp1->ObjID >= 0 && exp1->Name && exp2->Name && strcmp(exp1->Name, exp2->Name) != 0)
+		return 0;
+	    }
+	
+	/** Compare children **/
+	if (exp1->Children.nItems != exp2->Children.nItems)
+	    return 0;
+	for(i=0;i<exp1->Children.nItems;i++)
+	    {
+	    subexp1 = (pExpression)(exp1->Children.Items[i]);
+	    subexp2 = (pExpression)(exp2->Children.Items[i]);
+	    if (!expCompareExpressions(subexp1, subexp2))
+		return 0;
+	    }
+
+    return 1;
+    }
+
+
+
 /*** exp_internal_SetupControl() - setup the expression evaluation
  *** control structure that is normally present on the head node of
  *** an expression tree.
@@ -886,11 +929,47 @@ expReplaceString(pExpression tree, char* oldstr, char* newstr)
 int
 exp_internal_SetupControl(pExpression exp)
     {
+    pExpControl old_control;
 
+	old_control = exp->Control;
 	exp->Control = (pExpControl)nmMalloc(sizeof(ExpControl));
 	if (!exp->Control) return -ENOMEM;
 	memset(exp->Control, 0, sizeof(ExpControl));
+	exp->Control->LinkCnt = 1;
+	exp->Control->PSeqID = (EXP.PSeqID++);
 
+	if (old_control)
+	    exp_internal_UnlinkControl(old_control);
+
+    return 0;
+    }
+
+
+/*** exp_internal_LinkControl() - link to a expression eval control
+ *** structure.
+ ***/
+pExpControl
+exp_internal_LinkControl(pExpControl ctl)
+    {
+    if (ctl)
+	ctl->LinkCnt++;
+    return ctl;
+    }
+
+
+/*** exp_internal_UnlinkContrl() - unlink from an exp eval ctl struct
+ ***/
+int
+exp_internal_UnlinkControl(pExpControl ctl)
+    {
+    if (ctl)
+	{
+	ctl->LinkCnt--;
+	if (ctl->LinkCnt <= 0)
+	    {
+	    nmFree(ctl,sizeof(ExpControl));
+	    }
+	}
     return 0;
     }
 
@@ -916,6 +995,9 @@ expInitialize()
 
 	/** Define the null objectlist **/
 	expNullObjlist = expCreateParamList();
+
+	/** Initialize random number generator seed **/
+	cxssGenerateKey(EXP.Random, sizeof(EXP.Random));
 
     return 0;
     }

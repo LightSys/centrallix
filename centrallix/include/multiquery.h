@@ -33,152 +33,18 @@
 /*		the objMultiQuery routine (obj_query.c).		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiquery.h,v 1.17 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
-
-    $Log: multiquery.h,v $
-    Revision 1.17  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.16  2010/09/08 22:22:43  gbeeley
-    - (bugfix) DELETE should only mark non-provided objects as null.
-    - (bugfix) much more intelligent join dependency checking, as well as
-      fix for queries containing mixed outer and non-outer joins
-    - (feature) support for two-level aggregates, as in select max(sum(...))
-    - (change) make use of expModifyParamByID()
-    - (change) disable RequestNotify mechanism as it needs to be reworked.
-
-    Revision 1.15  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.14  2009/06/26 16:04:26  gbeeley
-    - (feature) adding DELETE support
-    - (change) HAVING clause now honored in INSERT ... SELECT
-    - (bugfix) some join order issues resolved
-    - (performance) cache 0 or 1 row result sets during a join
-    - (feature) adding INCLUSIVE option to SUBTREE selects
-    - (bugfix) switch to qprintf for building RawData sql data
-    - (change) some minor refactoring
-
-    Revision 1.13  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-    Revision 1.12  2008/03/14 18:25:44  gbeeley
-    - (feature) adding INSERT INTO ... SELECT support, for creating new data
-      using SQL as well as using SQL to copy rows around between different
-      objects.
-
-    Revision 1.11  2008/03/09 08:00:10  gbeeley
-    - (bugfix) even though we shouldn't deallocate the pMultiQuery on query
-      close (wait until all objects are closed too), we should shutdown the
-      query execution, thus closing the underlying queries; this prevents
-      some deadlocking issues at the remote RDBMS.
-
-    Revision 1.10  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.9  2007/09/18 17:59:07  gbeeley
-    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
-      combined using AND.  This permits more flexible building of dynamic SQL
-      (no need to do fancy text processing in order to add another WHERE
-      constraint to the query).
-    - (bugfix) fix for crash when using "SELECT *" with a join.
-    - (change) permit the specification of one FROM source to be an "IDENTITY"
-      data source for the query.  That data source will be the one affected by
-      any inserting and deleting through the query.
-
-    Revision 1.8  2007/07/31 17:39:59  gbeeley
-    - (feature) adding "SELECT *" capability, rather than having to name each
-      attribute in every query.  Note - "select *" does result in a query
-      result set in which each row may differ in what attributes it has,
-      depending on the data source(s) used.
-
-    Revision 1.7  2005/09/24 20:19:18  gbeeley
-    - Adding "select ... from subtree /path" support to the SQL engine,
-      allowing the retrieval of an entire subtree with one query.  Uses
-      the new virtual attr support to supply the relative path of each
-      retrieved object.  Much the reverse of what a querytree object can
-      do.
-    - Memory leak fixes in multiquery.c
-    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
-
-    Revision 1.6  2005/02/26 06:42:38  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.5  2004/06/12 04:02:27  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.4  2002/04/05 06:10:11  gbeeley
-    Updating works through a multiquery when "FOR UPDATE" is specified at
-    the end of the query.  Fixed a reverse-eval bug in the expression
-    subsystem.  Updated form so queries are not terminated by a semicolon.
-    The DAT module was accepting it as a part of the pathname, but that was
-    a fluke :)  After "for update" the semicolon caused all sorts of
-    squawkage...
-
-    Revision 1.3  2002/04/05 04:42:42  gbeeley
-    Fixed a bug involving inconsistent serial numbers and objlist states
-    for a multiquery if the user skips back to a previous fetched object
-    context and then continues on with the fetching.  Problem also did
-    surface if user switched to last-fetched-object after switching to
-    a previously fetched one.
-
-    Revision 1.2  2002/03/23 01:30:44  gbeeley
-    Added ls__startat option to the osml "queryfetch" mechanism, in the
-    net_http.c driver.  Set ls__startat to the number of the first object
-    you want returned, where 1 is the first object (in other words,
-    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
-    clause to the multiquery module, but thought this would be easier and
-    just as effective for now.
-
-    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "stparse.h"
+#include "cxlib/xhandle.h"
+
+
+#define MQ_MAX_ORDERBY		(25)
+
+#define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+1024)
 
 
 /*** Structure for a query driver.  A query driver basically manages a type
@@ -222,7 +88,7 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[25];
+    pExpression		OrderBy[MQ_MAX_ORDERBY];
     int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
@@ -236,6 +102,7 @@ typedef struct _QE
 #define MQ_EF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
 #define MQ_EF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
+#define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -244,8 +111,9 @@ typedef struct _QS
     struct _QS*		Parent;
     int			NodeType;		/* one-of MQ_T_xxx */
     XArray		Children;
+    int			ObjID;
     char		Presentation[32];
-    char		Source[256];
+    char		Source[MQ_MAX_SOURCELEN];
     char		Name[32];
     int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;
@@ -268,6 +136,12 @@ typedef struct _QS
 #define MQ_SF_INCLSUBTREE	32		/* SELECT ... FROM INCLUSIVE SUBTREE */
 #define MQ_SF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_SF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
+#define MQ_SF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
+#define MQ_SF_ASSIGNMENT	512		/* SELECT :obj:attr = ... */
+#define MQ_SF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
+#define MQ_SF_IFMODIFIED	2048		/* UPDATE ... SET ... IF MODIFIED */
+#define MQ_SF_APPSCOPE		4096		/* DECLARE ... SCOPE APPLICATION */
+#define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -291,12 +165,46 @@ typedef struct _QS
 #define MQ_T_UPDATEITEM		19
 #define MQ_T_WITHCLAUSE		20
 #define MQ_T_LIMITCLAUSE	21
+#define MQ_T_ONDUPCLAUSE	22
+#define MQ_T_ONDUPITEM		23
+#define MQ_T_ONDUPUPDATEITEM	24
+#define MQ_T_DECLARECLAUSE	25
+
+
+/*** Structure for a declared object ***/
+typedef struct _QDO
+    {
+    char		Name[32];		/* Name of the object */
+    pStructInf		Data;			/* Object data */
+    }
+    QueryDeclaredObject, *pQueryDeclaredObject;
+
+
+/*** Similarly, this is for a declared collection (i.e. table). ***/
+typedef struct _QDC
+    {
+    char		Name[32];		/* Name of the collection */
+    handle_t		Collection;		/* Collection data */
+    }
+    QueryDeclaredCollection, *pQueryDeclaredCollection;
+
+
+/*** Data from end-user session/group/app.  This is for declared
+ *** items with scope "application".
+ ***/
+typedef struct _QAD
+    {
+    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
+    }
+    QueryAppData, *pQueryAppData;
+
 
 typedef struct _QST QueryStatement, *pQueryStatement;
 typedef struct _MQ MultiQuery, *pMultiQuery;
 
 /*** Structure for a multiquery Statement - one sql statement ***/
-struct _QST
+struct _QST /* QueryStatement */
     {
     int			LinkCnt;
     int			Flags;			/* bitmask MQ_TF_xxx */
@@ -317,9 +225,11 @@ struct _QST
 #define MQ_TF_NOMOREREC		2
 #define MQ_TF_ASTERISK		4		/* "select *" */
 #define MQ_TF_FINISHED		8		/* Finish() called on this statement */
+#define MQ_TF_ALLASSIGN		16		/* All select items are assignments */
+#define MQ_TF_ONEASSIGN		32		/* At least one select item assigns */
 
 /*** Structure for managing the multiquery. ***/
-struct _MQ
+struct _MQ /* MultiQuery */
     {
     int			Flags;			/* bitmask MQ_F_xxx */
     int			LinkCnt;		/* number of opens on this */
@@ -335,11 +245,24 @@ struct _MQ
     pLxSession		LexerSession;		/* tokenized query string */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
+    int			ThisObj;		/* a self-reference to a select statement's items */
+    unsigned int	StartMsec;		/* msec value at start of query */
+    unsigned int	YieldMsec;		/* msec value at last thYield() */
+
+    /*** the following are for declared objects and
+     *** collections with scope "query", the default
+     *** scope.
+     ***/
+    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
 #define MQ_F_MULTISTATEMENT	2		/* allow multiple statements separated by semicolons */
 #define MQ_F_ONESTATEMENT	4		/* disable use of multiple statements (such as in subquery) */
+#define MQ_F_NOUPDATE		8		/* disallow changes to any data with this query. */
+#define MQ_F_NOINSERTED		16		/* did not create __inserted object. **/
+#define MQ_F_SHOWPLAN		32		/* print diagnostics for SQL statement **/
 
 
 /*** Pseudo-object structure. ***/
@@ -375,5 +298,7 @@ int mq_internal_FreeQE(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
+handle_t mq_internal_FindCollection(pMultiQuery mq, char* collection);
+void mq_internal_CheckYield(pMultiQuery mq);
 
 #endif  /* not defined _MULTIQUERY_H */

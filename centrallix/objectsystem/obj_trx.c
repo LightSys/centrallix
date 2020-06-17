@@ -44,121 +44,6 @@
 /*		to make possible some grouped operations.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_trx.c,v 1.15 2008/06/25 01:02:41 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
-
-    $Log: obj_trx.c,v $
-    Revision 1.15  2008/06/25 01:02:41  gbeeley
-    - (bugfix) Handle situation where DeleteObj() is not supported by the
-      underlying objectsystem driver
-
-    Revision 1.14  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.13  2007/12/05 18:58:29  gbeeley
-    - (bugfix) Failure to attach a QueryFetch()ed object to the right point in
-      an existing transaction (or, rather, attaching it to the wrong point) was
-      causing data corruption.
-
-    Revision 1.12  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.11  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.10  2004/06/23 21:33:54  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.9  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.8  2003/07/15 19:42:34  gbeeley
-    Don't try calling driver PresentationHints function if the driver
-    does not implement that function.
-
-    Revision 1.7  2003/05/30 17:39:52  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.6  2003/04/25 05:06:58  gbeeley
-    Added insert support to OSML-over-HTTP, and very remedial Trx support
-    with the objCommit API method and Commit osdriver method.  CSV datafile
-    driver is the only driver supporting it at present.
-
-    Revision 1.5  2002/11/22 19:29:37  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2002/06/19 23:29:34  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:00  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:01  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** Data structures for handling the call indirection **/
@@ -192,7 +77,9 @@ obj_internal_AllocTree()
     memset(this,0,sizeof(ObjTrxTree));
     this->Status = OXT_S_PENDING;
     this->AllocObj = 0;
+    this->AttrValue = NULL;
     xaInit(&(this->Children),16);
+    SETMAGIC(this, MGK_OXT);
     return this;
     }
 
@@ -206,11 +93,15 @@ obj_internal_FindTree(pObjTrxTree oxt, char* path)
     pObjTrxTree search,tmp,find;
     int i;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** Start at tree root **/
 	if (strncmp(path,oxt->PathPtr,strlen(oxt->PathPtr))) return NULL;
 	search = oxt;
 	while(search)
 	    {
+	    ASSERTMAGIC(search, MGK_OXT);
+
 	    /** Found the node? **/
 	    if (!strcmp(path,search->PathPtr)) break;
 
@@ -219,6 +110,7 @@ obj_internal_FindTree(pObjTrxTree oxt, char* path)
 	    for(i=0;i<search->Children.nItems;i++)
 	        {
 		tmp = (pObjTrxTree)(search->Children.Items[i]);
+		ASSERTMAGIC(tmp, MGK_OXT);
 		if (!strncmp(path,tmp->PathPtr,strlen(tmp->PathPtr)))
 		    {
 		    find = tmp;
@@ -240,9 +132,12 @@ obj_internal_FreeTree(pObjTrxTree oxt)
     int i;
     pObjTrxTree tmp;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** If it has a parent, remove from that child list. **/
 	if (oxt->Parent) 
 	    {
+	    ASSERTMAGIC(oxt->Parent, MGK_OXT);
 	    xaRemoveItem(&(oxt->Parent->Children),xaFindItem(&(oxt->Parent->Children),oxt));
 	    oxt->Parent = NULL;
 	    }
@@ -267,6 +162,7 @@ obj_internal_FreeTree(pObjTrxTree oxt)
 	    nmFree(oxt->Object,sizeof(Object));*/
 	    obj_internal_FreeObj(oxt->Object);
 	    }
+	ASSERTMAGIC(oxt, MGK_OXT);
 	nmFree(oxt,sizeof(ObjTrxTree));
     
     return 0;
@@ -279,6 +175,8 @@ obj_internal_FreeTree(pObjTrxTree oxt)
 int
 obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt)
     {
+    ASSERTMAGIC(parent_oxt, MGK_OXT);
+    ASSERTMAGIC(child_oxt, MGK_OXT);
     child_oxt->Parent = parent_oxt;
     xaAddItem(&(parent_oxt->Children), (void*)child_oxt);
     return 0;
@@ -294,8 +192,20 @@ obj_internal_SetTreeAttr(pObjTrxTree oxt, int type, pObjData val)
     void* valcpy;
     int len;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** Set type **/
 	oxt->AttrType = type;
+
+	/** Already set?  Unset it if so. **/
+	if (oxt->AttrValue)
+	    {
+	    nmSysFree(oxt->AttrValue);
+	    oxt->AttrValue = NULL;
+	    }
+
+	/** NULL?  Return and leave value unset. **/
+	if (!val) return 0;
 
 	/** Figure length of allocated value space **/
 	switch(type)
@@ -329,6 +239,8 @@ oxt_internal_FindAttrOxt(pObjTrxTree oxt, char* attrname)
     pObjTrxTree search_oxt;
     int i;
 
+	ASSERTMAGIC(oxt, MGK_OXT);
+
     	/** Search the transaction tree for the oxt structure **/
 	for(i=0;i<oxt->Children.nItems;i++)
 	    {
@@ -358,6 +270,8 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	if (*oxt)
 	    {
+	    ASSERTMAGIC(*oxt, MGK_OXT);
+
 	    prefix_cnt = obj_internal_PathPrefixCnt(obj->Pathname, 
 	        ((pObject)((*oxt)->Object))->Pathname);
 	    if (prefix_cnt == 0)
@@ -411,6 +325,8 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
 	    pass_oxt = oxt;
 	    }
 
+	ASSERTMAGIC(*pass_oxt, MGK_OXT);
+
     return pass_oxt;
     }
 
@@ -422,10 +338,14 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
 void*
 oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    pObjTrxTree object_oxt = NULL;
     pObjTrxPtr inf;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt = NULL;
     int was_null=0;
+
+	oxt = &object_oxt;
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Allocate the inf and the tree. **/
 	inf = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
@@ -434,6 +354,8 @@ oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	pass_oxt = oxt_internal_FindOxt(obj,oxt,&new_oxt);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+	if (new_oxt) ASSERTMAGIC(new_oxt, MGK_OXT);
 	if (new_oxt == NULL) was_null = 1;
 	if (new_oxt) new_oxt->OpType = OXT_OP_NONE;
 
@@ -469,7 +391,7 @@ oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
 	/** Set the trx pointer for later use. **/
@@ -488,9 +410,13 @@ oxtClose(void* this_v, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     int rval;
     
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Call the driver to make the close operation. **/
     	pass_oxt = &(this->Trx);
 	rval = this->Obj->TLowLevelDriver->Close(this->LLParam, pass_oxt);
+
+	if (*pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
 
 	/** Completed or error? **/
 	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -524,8 +450,11 @@ oxtDeleteObj(void* this_v, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     int rval;
 
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Call the driver to make the delete operation. **/
     	pass_oxt = &(this->Trx);
+	if (*pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
 	if (this->Obj->TLowLevelDriver->DeleteObj == NULL)
 	    {
 	    mssError(1,"OXT","oxtDeleteObj: [%s] objects do not support deletion",this->Obj->TLowLevelDriver->Name);
@@ -564,9 +493,12 @@ oxtCommit(void* this_v, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     int rval;
 
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Call the driver to make the close operation. **/
 	if (!this->Obj->TLowLevelDriver->Commit) return 0;
     	pass_oxt = &(this->Trx);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
 	rval = this->Obj->TLowLevelDriver->Commit(this->LLParam, pass_oxt);
 
 	/** Completed or error? **/
@@ -594,13 +526,19 @@ oxtCommit(void* this_v, pObjTrxTree* oxt)
 int
 oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    pObjTrxTree object_oxt = NULL;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     int was_null = 0;
     int rval;
 
+	oxt = &object_oxt;
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	pass_oxt = oxt_internal_FindOxt(obj,oxt,&new_oxt);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
+	if (new_oxt) ASSERTMAGIC(new_oxt, MGK_OXT);
 	if (new_oxt == NULL) was_null = 1;
 	if (new_oxt) new_oxt->OpType = OXT_OP_CREATE;
 
@@ -636,7 +574,7 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
     return 0;
@@ -649,13 +587,19 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 oxtDelete(pObject obj, pObjTrxTree* oxt)
     {
+    pObjTrxTree object_oxt = NULL;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     int was_null = 0;
     int rval;
 
+	oxt = &object_oxt;
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	pass_oxt = oxt_internal_FindOxt(obj,oxt,&new_oxt);
+	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);
+	if (new_oxt) ASSERTMAGIC(new_oxt, MGK_OXT);
 	if (new_oxt == NULL) was_null = 1;
 	if (new_oxt) new_oxt->OpType = OXT_OP_DELETE;
 
@@ -691,7 +635,7 @@ oxtDelete(pObject obj, pObjTrxTree* oxt)
 	    {
 	    /** Ha.  We don't handle this yet.  FIXME. **/
 	    printf("Illegal transaction linkage.\n");
-	    exit(1);
+	    abort();
 	    }
 
     return 0;
@@ -708,6 +652,8 @@ oxtSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTr
     pObjTrxTree new_oxt = NULL;
     pObjTrxTree* pass_oxt;
     int rval;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Are we in a transaction? **/
 	if (this->Trx)
@@ -764,6 +710,8 @@ oxtOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     void* rval;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
 	/** GRB This interface is a kludge.  We'll probably be removing this
 	 ** in the future.  for now, just error out.
@@ -827,6 +775,7 @@ int
 oxtGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetAttrValue(this->LLParam, attrname, datatype, val, oxt);
     }
 
@@ -838,6 +787,8 @@ oxtOpenQuery(void* this_v, char* query, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
     pObjTrxQuery qy;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Allocate the query **/
 	qy = (pObjTrxQuery)nmMalloc(sizeof(ObjTrxQuery));
@@ -863,6 +814,7 @@ int
 oxtQueryDelete(void* qy_v, pObjTrxTree* oxt)
     {
     pObjTrxQuery qy = (pObjTrxQuery)(qy_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return qy->Obj->TLowLevelDriver->QueryDelete(qy->LLParam, oxt);
     }
 
@@ -876,6 +828,8 @@ oxtQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pObjTrxQuery qy = (pObjTrxQuery)qy_v;
     pObjTrxTree new_oxt = NULL;
     pObjTrxTree* pass_oxt = &new_oxt;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
     	/** Allocate the subobject **/
 	subobj = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
@@ -911,6 +865,8 @@ oxtQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pObjTrxQuery qy = (pObjTrxQuery)qy_v;
 
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
     	/** Free the object and call the lowlevel. **/
 	qy->Obj->TLowLevelDriver->QueryClose(qy->LLParam,oxt);
 	nmFree(qy,sizeof(ObjTrxQuery));
@@ -926,6 +882,7 @@ int
 oxtWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->Write(this->LLParam,buffer,cnt,offset,flags,(this->Trx)?&(this->Trx):oxt);
     }
 
@@ -937,6 +894,7 @@ int
 oxtRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->Read(this->LLParam,buffer,maxcnt,offset,flags,oxt);
     }
 
@@ -947,6 +905,7 @@ int
 oxtGetAttrType(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetAttrType(this->LLParam,attrname,oxt);
     }
 
@@ -958,6 +917,7 @@ int
 oxtAddAttr(void* this_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->AddAttr(this->LLParam, oxt);
     }
 
@@ -968,6 +928,7 @@ char*
 oxtGetFirstAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetFirstAttr(this->LLParam,oxt);
     }
 
@@ -978,6 +939,7 @@ char*
 oxtGetNextAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetNextAttr(this->LLParam,oxt);
     }
 
@@ -988,6 +950,7 @@ char*
 oxtGetFirstMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetFirstMethod(this->LLParam,oxt);
     }
 
@@ -998,6 +961,7 @@ char*
 oxtGetNextMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->GetNextMethod(this->LLParam,oxt);
     }
 
@@ -1008,6 +972,7 @@ int
 oxtExecuteMethod(void* this_v, char* methodname, void* param, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     return this->Obj->TLowLevelDriver->ExecuteMethod(this->LLParam,methodname,param,oxt);
     }
 
@@ -1018,6 +983,7 @@ pObjPresentationHints
 oxtPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
     if (!(this->Obj->TLowLevelDriver->PresentationHints)) return NULL;
     return this->Obj->TLowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
     }

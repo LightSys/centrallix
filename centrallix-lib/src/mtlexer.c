@@ -32,84 +32,6 @@
 /*		processing of most data files and data streams.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mtlexer.c,v 1.13 2010/09/09 01:58:35 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
-
-    $Log: mtlexer.c,v $
-    Revision 1.13  2010/09/09 01:58:35  gbeeley
-    - (security) the mtlexer massive rewrite left mtlexer 8-bit clean, which
-      is *too* clean for some purposes.  This change causes a \0 byte in the
-      data stream to flag an error, unless ALLOWNUL is turned on.
-
-    Revision 1.12  2010/05/12 18:21:21  gbeeley
-    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
-      and for security.  Adding many test suite items for mtlexer, a good
-      fraction of which fail on the old mtlexer module.  The new module is
-      currently mildly slower than the old one, but is more correct.
-
-    Revision 1.11  2009/06/19 21:29:44  gbeeley
-    - (bugfix) Permit lines returned from mlxNextToken() to span blocks of
-      data that were read in using the ReadFn().
-    - BUGBUG - The mtlexer needs an overhaul ASAP.  There are parts of this
-      code that have problems.
-
-    Revision 1.10  2007/12/05 22:10:15  gbeeley
-    - (bugfix) fixing problem regarding quoting of chars in a string under
-      some circumstances
-
-    Revision 1.9  2007/10/29 20:42:43  gbeeley
-    - (bugfix) new changes to mtlexer had some problems dealing with special
-      and/or escaped characters.
-
-    Revision 1.8  2007/09/21 23:13:03  gbeeley
-    - (bugfix) handle NL's inside a quoted string when not using a user-
-      managed buffer.
-
-    Revision 1.7  2004/07/22 00:20:52  mmcgill
-    Added a magic number define for WgtrNode, and added xaInsertBefore and
-    xaInsertAfter functions to the XArray module.
-
-    Revision 1.6  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.5  2002/08/05 20:54:29  gbeeley
-    This fix should allow multiple mlxCopyToken()s if the string size is
-    larger than the buffer, to allow incremental retrievals of parts of the
-    string.
-
-    Revision 1.4  2002/08/05 19:51:23  gbeeley
-    Adding only "mildly tested" support for getting/setting the seek offset
-    while in a lexer session.  The lexer does blocked/buffered I/O, so it
-    is otherwise difficult to know 'where' in the document one is at.  Note
-    that the offsets returned from mlxGetOffset and mlxGetCurOffset are
-    relative to the *start* of the lexer processing.  If data was read from
-    the file/object *before* processing with the lexer, that data is *not*
-    included in the seek counts/offsets.
-
-    Revision 1.3  2002/06/20 15:57:05  gbeeley
-    Fixed some compiler warnings.  Repaired improper buffer handling in
-    mtlexer's mlxReadLine() function.
-
-    Revision 1.2  2001/09/28 20:00:21  gbeeley
-    Modified magic number system syntax slightly to eliminate semicolon
-    from within the macro expansions of the ASSERT macros.
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:02:52  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 #define MLX_EOF		(-1)
@@ -246,6 +168,9 @@ mlxCloseSession(pLxSession this)
     	/** Need to do an 'unread' on the buffer? **/
 	if (this->Flags & MLX_F_NODISCARD && this->InpCnt > 0)
 	    {
+	    /** Incomplete processing on a line that needs to be wrapped up? **/
+	    if ((this->Flags & MLX_F_PROCLINE) && !(this->Flags & MLX_F_EOL) && mlxPeekChar(this,0) == '\n')
+		mlxSkipChars(this,1);
 	    fdUnRead((pFile)(this->ReadArg), this->InpPtr, this->InpCnt, 0,0);
 	    }
 
@@ -1337,7 +1262,7 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	/** Ok, if this is a string session, just reset the bufptr. **/
 	if (!this->ReadFn)
 	    {
-	    if (new_offset < 0 || new_offset > strlen(this->InpStartPtr)) return -1;
+	    if (new_offset > strlen(this->InpStartPtr)) return -1;
 
 	    /** Set up the session structure **/
 	    this->TokType = MLX_TOK_BEGIN;
@@ -1356,10 +1281,8 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    }
 	else
 	    {
-	    /** Ok, either fd or generic session.  Seek and you shall find :) **/
-	    if (new_offset < 0) return -1;
-
-	    /** Do an empty read to force the seek offset to what we need. 
+	    /** Ok, either fd or generic session.  Seek and you shall find :)
+	     ** Do an empty read to force the seek offset to what we need. 
 	     ** We use FD_U_SEEK here, but OBJ_U_SEEK is the same thing.
 	     **/
 	    if (this->ReadFn(this->ReadArg, nullbuf, 0, new_offset, FD_U_SEEK) < 0) return -1;

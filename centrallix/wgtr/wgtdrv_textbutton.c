@@ -36,10 +36,6 @@
 /* Description:								*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgttbtnVerify - allows the driver to check elsewhere in the tree
@@ -51,7 +47,7 @@ int
 wgttbtnVerify(pWgtrVerifySession s)
     {
     pWgtrNode this = s->CurrWidget;
-    int min_height = s->ClientInfo->ParagraphHeight + 7;
+    int min_height = s->ClientInfo->ParagraphHeight + 4;
 
 	if (this->min_height < min_height) this->min_height = min_height;
 

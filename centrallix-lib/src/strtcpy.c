@@ -1,3 +1,4 @@
+#include <string.h>
 #include "strtcpy.h"
 
 /************************************************************************/
@@ -19,22 +20,35 @@
 /*		sure the result is null-terminated.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: strtcpy.c,v 1.1 2006/06/21 21:22:44 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/strtcpy.c,v $
-
-    $Log: strtcpy.c,v $
-    Revision 1.1  2006/06/21 21:22:44  gbeeley
-    - Preliminary versions of strtcpy() and qpfPrintf() calls, which can be
-      used for better safety in handling string data.
-
- **END-CVSDATA***********************************************************/
 
 /** branch prediction pseudo-macro - define if compiler doesn't support it **/
 #ifndef __builtin_expect
 #define __builtin_expect(e,c) (e)
 #endif
+
+/*** strtcat() - truncating string concatenation
+ ***
+ *** Appends to dst, being sure to not overflow the given dstlen size.
+ *** Returns number of bytes actually copied, including null terminator.
+ *** If truncated, returns -(bytes copied).
+ ***/
+int
+strtcat(char* dst, const char* src, size_t dstlen)
+    {
+    if (__builtin_expect((!dstlen), 0)) 
+	return 0;
+
+    /** Find end of current string **/
+    char* endptr = memchr(dst, '\0', dstlen);
+    if (__builtin_expect((!endptr), 0)) 
+	return 0;
+    if (__builtin_expect((endptr == dst+dstlen), 0)) 
+	return 0;
+
+    /** Call strtcpy to copy the bytes and null-terminate it. **/
+    return strtcpy(endptr, src, dstlen - (endptr - dst));
+    }
+
 
 /*** strtcpy() - truncating string copy
  ***

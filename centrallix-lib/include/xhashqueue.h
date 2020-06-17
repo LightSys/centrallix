@@ -80,24 +80,6 @@
 /*		called with the queue locked.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xhashqueue.h,v 1.2 2005/02/26 04:32:02 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhashqueue.h,v $
-
-    $Log: xhashqueue.h,v $
-    Revision 1.2  2005/02/26 04:32:02  gbeeley
-    - moving include file install directory to include a "cxlib/" prefix
-      instead of just putting 'em all in /usr/include with everything else.
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 #ifdef CXLIB_INTERNAL
@@ -120,6 +102,7 @@ typedef struct _HE
     void*	KeyPtr;		/* pointer to key value for hash */
     int		LinkCnt;	/* references to this element */
     int		Locked;
+    int		Weight;
     }
     XHQElement, *pXHQElement;
 
@@ -144,7 +127,7 @@ typedef struct _HQ
 /*** Functions used to access the hashqueue ***/
 int xhqInit(pXHashQueue this, int maxcnt, int keylen, int hashtablesize, int (*discard_fn)(), int (*full_fn)());
 int xhqDeInit(pXHashQueue this);
-pXHQElement xhqAdd(pXHashQueue this, void* key, void* data);
+pXHQElement xhqAdd(pXHashQueue this, void* key, void* data, int weight);
 pXHQElement xhqLookup(pXHashQueue this, void* key);
 void* xhqGetData(pXHashQueue this, pXHQElement item, int flags);
 int xhqRemove(pXHashQueue this, pXHQElement item, int flags);

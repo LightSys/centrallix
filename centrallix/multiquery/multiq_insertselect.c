@@ -41,56 +41,6 @@
 /* Description:	Provides support for a INSERT INTO ... SELECT construct	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiq_insertselect.c,v 1.5 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_insertselect.c,v $
-
-    $Log: multiq_insertselect.c,v $
-    Revision 1.5  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.4  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.3  2009/06/26 16:04:26  gbeeley
-    - (feature) adding DELETE support
-    - (change) HAVING clause now honored in INSERT ... SELECT
-    - (bugfix) some join order issues resolved
-    - (performance) cache 0 or 1 row result sets during a join
-    - (feature) adding INCLUSIVE option to SUBTREE selects
-    - (bugfix) switch to qprintf for building RawData sql data
-    - (change) some minor refactoring
-
-    Revision 1.2  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-    Revision 1.1  2008/03/14 18:25:44  gbeeley
-    - (feature) adding INSERT INTO ... SELECT support, for creating new data
-      using SQL as well as using SQL to copy rows around between different
-      objects.
-
-
- **END-CVSDATA***********************************************************/
 
 
 struct
@@ -109,7 +59,6 @@ mqisAnalyze(pQueryStatement stmt)
     {
     pQueryStructure select_qs, insert_qs;
     pQueryElement qe;
-    int n;
     int i;
 
     	/** Search for an INSERT and a SELECT statement... **/
@@ -141,7 +90,6 @@ mqisAnalyze(pQueryStatement stmt)
 	    }
 
 	/** Link the qe into the multiquery **/
-	n=0;
 	xaAddItem(&stmt->Trees, qe);
 	xaAddItem(&qe->Children, stmt->Tree);
 	stmt->Tree->Parent = qe;
@@ -163,46 +111,87 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int exp_rval;
     int sel_rval = 0;
     char pathname[OBJSYS_MAX_PATH];
+    char new_pathname[OBJSYS_MAX_PATH];
+    char* new_objname;
     pObject new_obj = NULL;
+    pObject reopen_obj;
+    pObject old_newobj;
+    pObject parent_obj = NULL;
+    int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
     char* attrname;
     ObjData od;
     int t;
     int use_attrid;
-    pPseudoObject p;
     int hc_rval;
+    handle_t collection;
 
 	/** Prepare for the inserts **/
-	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 >= sizeof(pathname))
+	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
 	    {
 	    mssError(1, "MQIS", "Pathname too long for INSERT destination");
 	    goto error;
 	    }
 	snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
-	    
+    
+	/** Replace the previous __inserted object with NULL, in case insert fails **/
+	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
+	if (old_newobj_id >= 0)
+	    {
+	    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+	    if (old_newobj)
+		objClose(old_newobj);
+	    expModifyParam(stmt->Query->ObjList, "__inserted", NULL);
+	    }
+
 	/** Start the SELECT query **/
 	sel = (pQueryElement)(qe->Children.Items[0]);
 	if (sel->Driver->Start(sel, stmt, NULL) < 0)
 	    goto error;
 	is_started = 1;
 
+	/** If we're working with a collection, open its parent so we can
+	 ** later do objOpenChild() calls to create the child objects.
+	 **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (collection == XHN_INVALID_HANDLE)
+		{
+		mssError(1,"MQIS","Could not find destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    parent_obj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    if (!parent_obj)
+		{
+		mssError(1,"MQIS","Could not open destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    }
+
 	/** Select all items in the result set **/
 	while((sel_rval = sel->Driver->NextItem(sel, stmt)) == 1)
 	    {
 	    /** check HAVING clause **/
-	    p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
-	    hc_rval = mq_internal_EvalHavingClause(stmt, p);
-	    mq_internal_FreePseudoObject(p);
+	    hc_rval = mq_internal_EvalHavingClause(stmt, NULL);
 	    if (hc_rval < 0)
 		goto error;
 	    else if (hc_rval == 0)
 		continue;
 
 	    /** open a new object **/
-	    new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		}
+	    else
+		{
+		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		}
 	    if (!new_obj)
 		goto error;
+	    objUnmanageObject(stmt->Query->SessionID, new_obj);
 	   
 	    /** Set all of the SELECTed attributes **/
 	    attrid = 0;
@@ -240,8 +229,56 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		if (objSetAttrValue(new_obj, attrname, t, &od) < 0)
 		    goto error;
 		}
+
+	    /** Commit and get new object name **/
+	    objCommitObject(new_obj);
+	    new_objname = NULL;
+	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
+	    if (!new_objname)
+		{
+		mssError(0, "MQIS", "Could not INSERT new object");
+		goto error;
+		}
+	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+		{
+		mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+		goto error;
+		}
+	    snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+
+	    /** Link the new object as the __inserted object in the object list.**/
+	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
+		{
+		/** Don't reopen for inserts into collections (won't find it) **/
+		if (!(((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION))
+		    {
+		    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+		    if (reopen_obj)
+			{
+			objUnmanageObject(stmt->Query->SessionID, reopen_obj);
+			objClose(new_obj);
+			new_obj = reopen_obj;
+			ASSERTMAGIC(new_obj, MGK_OBJECT);
+			}
+		    }
+
+		/** Replace the previous __inserted object with our newly created one **/
+		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
+		if (old_newobj_id >= 0)
+		    {
+		    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+		    if (old_newobj)
+			objClose(old_newobj);
+		    expModifyParam(stmt->Query->ObjList, "__inserted", objLinkTo(new_obj));
+		    }
+		}
+
+	    /** Close up and go on to next object to be inserted. **/
 	    objClose(new_obj);
 	    new_obj = NULL;
+
+	    /** Yield, if necessary **/
+	    mq_internal_CheckYield(stmt->Query);
 	    }
 
 	if (sel_rval < 0)
@@ -250,6 +287,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	rval = 0;
 
     error:
+	if (parent_obj)
+	    objClose(parent_obj);
+
 	/** Close the SELECT **/
 	if (is_started)
 	    if (sel->Driver->Finish(sel, stmt) < 0)

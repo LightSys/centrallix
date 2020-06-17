@@ -27,41 +27,6 @@
 /*		of the value by the key.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xhash.c,v 1.4 2003/04/03 04:32:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhash.c,v $
-
-    $Log: xhash.c,v $
-    Revision 1.4  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.3  2002/08/03 02:35:33  gbeeley
-    Attempt to improve the hash function's speed and distribution
-    characteristics by using a lookup table of random primes instead
-    of the old way.  It didn't help a whole lot...
-
-    Revision 1.2  2002/05/03 03:46:29  gbeeley
-    Modifications to xhandle to support clearing the handle list.  Added
-    a param to xhClear to provide support for xhnClearHandles.  Added a
-    function in mtask.c to allow the retrieval of ticks-since-boot without
-    making a syscall.  Fixed an MTASK bug in the scheduler relating to
-    waiting on timers and some modulus arithmetic.
-
-    Revision 1.1.1.1  2001/08/13 18:04:23  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:02:57  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 #if 0
 int n_hash_adds = 0;
@@ -105,6 +70,16 @@ unsigned int xh_random[256] =
     336263, 305839, 11173, 44909, 61543, 340979, 95881, 143947, 
     60217, 133351, 141761, 225221, 250993, 167593, 317431, 52697, 
     };
+
+
+/*** xhInitialize() - rebuild the random number table used for the
+ *** hash computation.
+ ***/
+int
+xhInitialize()
+    {
+    return 0;
+    }
 
 
 /*** xh_internal_ComputeHash - calculates the hash value relative to the

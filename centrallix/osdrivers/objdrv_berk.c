@@ -45,45 +45,6 @@
 /************************************************************************/
 
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_berk.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_berk.c,v $
-
-    $Log: objdrv_berk.c,v $
-    Revision 1.4  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2004/06/11 21:06:57  mmcgill
-    Did some code tree scrubbing.
-
-    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
-    xxxExecuteMethod() to use pObjData as the type for val (or param in
-    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
-    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
-    overflow in objdrv_shell.c (line 1046).
-
-    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
-    broken as of right now.
-
-    It should be noted that I haven't actually built the audio or Berkeley
-    drivers, so I *could* have messed up, but they look ok. The others
-    compiled, and passed a cursory testing.
-
-    Revision 1.2  2003/08/13 14:45:55  affert
-    Added a new attribute ('transdata') to allow data to be entered in hex
-    translated form.  This is a temporary solution to the problem of allowing
-    null bytes in a string attribute.
-    Also fixed a few small bugs and updated some comments.
-
-    Revision 1.1  2003/08/05 16:45:12  affert
-    Initial Berkeley DB support.
-
-
- **END-CVSDATA***********************************************************/
 
 
 #define	    BERK_TYPE_FILE	0
@@ -1551,8 +1512,13 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    mssError(0, "BERK", "Trying to set 'annotation' attribute, datatype needs to be DATA_T_STRING");
 	    return -1;
 	    }
-	memccpy(inf->Annotation, val->String, '\0', 255);
-	inf->Annotation[255] = 0;
+	if (val)
+	    {
+	    memccpy(inf->Annotation, val->String, '\0', 255);
+	    inf->Annotation[255] = 0;
+	    }
+	else
+	    inf->Annotation[0] = '\0';
 	return 0;
 	}
     /* all other attributes are unique to there inf->Type */
@@ -1595,9 +1561,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if(!strcmp(attrname, "data"))
 		{
-		if(datatype != DATA_T_STRING)
+		if(datatype != DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "Trying to set 'data' attribute, datatype needs to be string");
+		    mssError(0, "BERK", "Trying to set 'data' attribute, datatype needs to be non-null string");
 		    return -1;
 		    }
 		/* make sure it has writing allowed */
@@ -1613,9 +1579,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    if(!strcmp(attrname, "transdata"))
 		{
-		if(datatype!= DATA_T_STRING)
+		if(datatype!= DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "Trying to set 'transdata' attribute, datatype needs to be string");
+		    mssError(0, "BERK", "Trying to set 'transdata' attribute, datatype needs to be non-null string");
 		    return -1;
 		    }
 		//i = strlen(*(const char**)val);
@@ -1661,9 +1627,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if(!strcmp(attrname, "key"))
 		{
 		/* grrr, you're making me support renaming of objects */
-		if(datatype != DATA_T_STRING)
+		if(datatype != DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "Ha! You can't rename this key because datatype != DATA_T_STRING");
+		    mssError(0, "BERK", "Key can only be renamed to a non-null string");
 		    return -1;
 		    }
 		/* the name has finally arrived */
@@ -1705,9 +1671,9 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if(!strcmp(attrname, "access_method"))
 		{
 		/* make sure all our ducks are in a row */
-		if(datatype != DATA_T_STRING)
+		if(datatype != DATA_T_STRING || !val)
 		    {
-		    mssError(0, "BERK", "datatype must be DATA_T_STRING for you to set the access_method");
+		    mssError(0, "BERK", "datatype must be non-null DATA_T_STRING for you to set the access_method");
 		    return -1;
 		    }
 		if(inf->pMyEnvNode->TheDatabaseIni)
@@ -1729,7 +1695,7 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    if(r == EINVAL)
 			mssError(0, "BERK", "Yeah, dang (IE something went wrong: Tried to create the database, which isn't supported yet");
 		    mssError(0, "BERK", "SetAttrValue: Setting access_method.  open failed: (cont. in next error message)");
-		    mssError(0, "BERK", "	Filename = '%s' and access_method = '%s'", inf->Filename, val->String);
+		    mssError(0, "BERK", "	Filename = '%s' and access_method = '%s'", inf->Filename, val);
 		    berkInternalDestructor(inf);
 		    }
 		inf->pMyEnvNode->TheDatabaseIni = 1;

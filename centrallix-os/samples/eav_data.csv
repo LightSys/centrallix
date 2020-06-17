@@ -1,0 +1,14 @@
+ID,ATTR_NAME,ATTR_INT_VAL,ATTR_STRING_VAL                               
+0,firstname,,John                               
+0,lastname,,Smith                               
+0,phone,,555-1212                               
+1,firstname,,Jane                               
+1,lastname,,Doe                               
+1,phone,,555-1234                               
+1,age,33,""                             
+1,numkids,4,                               
+0,age,34,""                             
+0,newage,44, 
+1,newage,43, 
+0,fullname,,John Smith 
+1,fullname,,Jane Doe 

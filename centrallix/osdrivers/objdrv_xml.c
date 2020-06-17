@@ -56,152 +56,6 @@
 /*									*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_xml.c,v 1.26 2008/03/29 02:26:15 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
-
-    $Log: objdrv_xml.c,v $
-    Revision 1.26  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.25  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.24  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.23  2004/06/23 21:33:56  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.22  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.21  2003/06/04 08:55:14  jorupp
-     * a number of smaller osdriver patches that have been sitting in my copy for a while....
-       * couple better comments in http
-       * better file naming in mbox
-       * (slightly) better memory management in mime
-       * xml should actually work :) (no xmlGetAttrValue with a null pointer)
-
-    Revision 1.20  2002/11/22 19:29:37  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.19  2002/09/27 22:26:06  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.18  2002/08/24 00:44:18  jorupp
-     * incorporated changes that dman sent me to fix the bad typing problems with passing free() to xhClear
-
-    Revision 1.17  2002/08/21 02:11:56  jorupp
-     * will return the empty string for an attribute value if it is using a node for the value,
-     	and there is no text or children in that node
-     * will, under no condition, return the centrallix implied attributes (or the internal only internal_type)
-     	from the GetNextAttr iterator, even if they are overridden in the document (this was breaking the connector)
-
-    Revision 1.16  2002/08/17 20:01:17  jorupp
-     * fixed up some stuff with the new OSML API
-     * removed the returing of the implict attributes from GetNextAttr()
-
-    Revision 1.15  2002/08/13 15:52:45  jorupp
-     * fixed a bug Michelle found -- I put pXMLCacheObj where it should have been pXmlCacheObj
-
-    Revision 1.14  2002/08/13 14:45:51  jorupp
-     * the header files for libxml2 include stdlib, but apparently the libxml1 ones don't -- added the #include
-     * fixed a couple of missed casts that caused compile warnings
-
-    Revision 1.13  2002/08/13 14:07:02  lkehresman
-    fixed warning messages when copiling the xml driver
-
-    Revision 1.12  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.11  2002/08/07 14:52:14  cwtryon
-    replace naked reference to children structure member with accessor function (for XML1/2 differences)
-
-    Revision 1.10  2002/08/06 05:27:06  jorupp
-     * added basic caching mechanism (no expiration -- couldn't figure that out)
-     * attributes are returned as pointers to malloc()ed memory -- this breaks test_obj's ls function
-
-    Revision 1.9  2002/08/04 20:38:24  jorupp
-     * fixed a bug that caused a segfault when running a query on an object with no subnodes
-     * fixed a compile warning about a cast
-
-    Revision 1.8  2002/08/04 20:25:16  jorupp
-     * fixed a bug with the retrieving of the value of the attribute for the purpose of determining the type
-        -- was causing the type to be returned as integer when it should have string
-
-    Revision 1.7  2002/08/04 20:16:13  jorupp
-     * changed from name/0, name/1 style naming to name|0, name|1 -- hopefully the documentation explains it
-     * removed the code that makes outer_type return content_type
-
-    Revision 1.6  2002/08/01 08:52:59  mattphillips
-    This needs to include config.h in order to know if USE_LIBXML1 is defined.
-
-    Revision 1.5  2002/08/01 08:47:28  mattphillips
-    Compile against libxml2 or libxml.  This expects to find xml2-config or
-    xml-config in the PATH.  Also defines USE_LIBXML1 to tell the xml os driver to
-    be compatible with libxml1.
-
-    Revision 1.4  2002/08/01 05:10:48  jorupp
-     * XML driver maps outer_type to content_type (outer type is what seems to
-         need to be set for acting like a structure file)
-     * XML attributes are always strings (as near as I can tell) -- added
-         automatic type casting to integer when the cast works -- this means an XML file
-         can _almost_ completely emulate a .app file....
-
-    Revision 1.3  2002/08/01 00:32:01  jorupp
-     * fixed a memory leak.  Had forgotten to free() the memory allocated when retrieving the text of the node
-     * added checking for a valid name before adding a subnode to the hash table of child nodes
-
-    Revision 1.2  2002/07/31 16:20:44  gbeeley
-    Added libxml 1.x compatibility.  Define USE_LIBXML1 in order to make it
-    work.  This involved primarily changing the way that children were
-    referenced from an XML node.  See http://xmlsoft.org/upgrade.html for
-    details on the differences between libxml 1.x and 2.x.  XML driver now
-    works on legacy RH 6.2 systems.
-
-    Revision 1.1  2002/07/29 01:34:52  jorupp
-     * initial commit of XML support
-
-
- **END-CVSDATA***********************************************************/
 
 #if 0
 /**
@@ -298,6 +152,7 @@
 /** the element used in the document cache **/
 typedef struct
     {
+    char	Pathname[OBJSYS_MAX_PATH];
     xmlDocPtr	document;
     DateTime	lastmod;
     int		LinkCnt;
@@ -359,6 +214,7 @@ typedef struct
 struct
     {
     XHashTable	cache;
+    regex_t namematch;
     }
     XML_INF;
 
@@ -449,17 +305,10 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	int target=-1; /* the element number we're looking for */
 	int flag=0; /* did we find the target? */
 	char searchElement[XML_ELEMENT_SIZE];
-	regex_t namematch;
 	regmatch_t pmatch[3];
 
 	ptr=obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1);
-	if((i=regcomp(&namematch,"^([^|]*)\\|*([0123456789]*)$",REG_EXTENDED)))
-	    {
-	    /** this is a critical failure -- this regex should compile just fine **/
-	    mssError(0,"XML","Error while building namematch");
-	    return -1;
-	    }
-	if(regexec(&namematch,ptr,3,pmatch,0)!=0)
+	if(regexec(&XML_INF.namematch,ptr,3,pmatch,0)!=0)
 	    {
 	    /** be optimistic: maybe this is for another driver **/
 	    mssError(0,"XML","Warning: pattern didn't match!");
@@ -570,6 +419,22 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
     return -1;
     }
 
+
+int
+xml_internal_CloseCachedDocument(pXmlCacheObj document)
+    {
+
+	document->LinkCnt--;
+	if (document->LinkCnt > 0)
+	    return 0;
+
+	xmlFreeDoc(document->document);
+	nmFree(document, sizeof(XmlCacheObj));
+
+    return 0;
+    }
+
+
 pXmlCacheObj
 xml_internal_ReadDoc(pObject obj)
     {
@@ -580,30 +445,42 @@ xml_internal_ReadDoc(pObject obj)
     pXmlCacheObj pCache;
     pDateTime pDT=0;
 
-	path=obj_internal_PathPart(obj->Pathname,0,3);
-	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache,path)))
+	/** Determine path of just the XML file itself **/
+	path=obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
+
+	/** Check cache for an existing copy already **/
+	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, path)))
 	    {
-	    if(XML_DEBUG) printf("found %s in cache\n",path);
+	    if(XML_DEBUG) printf("found %s in cache\n", path);
+
 	    /** found match in cache -- check modification time **/
-	    if(objGetAttrValue(obj->Prev,"last_modification",DATA_T_DATETIME,POD(&pDT))==0)
-	    if(pDT && pDT->Value!=pCache->lastmod.Value)
+	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
 		{
-		/** modification time changed -- update **/
-		xmlFreeDoc(pCache->document);
-		pCache->document=NULL;
+		if(pDT && pDT->Value!=pCache->lastmod.Value)
+		    {
+		    /** modification time changed -- update **/
+		    xhRemove(&XML_INF.cache, path);
+		    xml_internal_CloseCachedDocument(pCache);
+		    pCache = NULL;
+		    }
 		}
 	    }
-	else
+
+	/** Not in cache, or cache was stale **/
+	if (!pCache)	
 	    {
 	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
 	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
-	    ptr=(char*)malloc(strlen(path)+1);
-	    strcpy(ptr,path);
-	    xhAdd(&XML_INF.cache,ptr,(char*)pCache);
+	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT)) == 0)
+		pCache->lastmod.Value = pDT->Value;
+	    strtcpy(pCache->Pathname, path, sizeof(pCache->Pathname));
+	    xhAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache);
+	    pCache->LinkCnt = 1;
 	    }
 
+	/** Need to load the content itself **/
 	if(!pCache->document)
 	    {
 #ifndef USE_LIBXML1
@@ -615,13 +492,14 @@ xml_internal_ReadDoc(pObject obj)
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
 	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
-	    {
+		{
 		if(XML_DEBUG) printf("giving parser a chunk\n");
 		xmlParseChunk(ctxt,ptr,bytes,0);
 		if(XML_DEBUG) printf("parser done with the chunk\n");
-	    }
+		}
 	    free(ptr);
 	    xmlParseChunk(ctxt,NULL,0,1);
+
 	    /** get the document reference **/
 	    if(!ctxt->myDoc)
 		{
@@ -631,7 +509,8 @@ xml_internal_ReadDoc(pObject obj)
 		}
 	    pCache->document=ctxt->myDoc;
 	    xmlFreeParserCtxt(ctxt);
-	}
+	    }
+
     return pCache;
     }
 
@@ -711,11 +590,12 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	/** free any memory used to return an attribute **/
 	if(inf->AttrValue)
 	    {
-	    free(inf->AttrValue);
+	    xmlFree(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
+
 	/** Release the memory **/
-	inf->CacheObj->LinkCnt--;
+	xml_internal_CloseCachedDocument(inf->CacheObj);
 	nmFree(inf,sizeof(XmlData));
 
     return 0;
@@ -831,7 +711,7 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 
     inf->Offset+=i;
 
-    free(buf);
+    xmlFree(buf);
 
     return i;
     }
@@ -959,8 +839,8 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		/** the structure file driver will return the node's literal name, even if it isn't unique
 		 **   -- for now, we'll follow suit -- should we not do this?
 		 **/
-		//cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
-		cnt = snprintf(name,256,"%s",qy->NextNode->name);
+		cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
+		//cnt = snprintf(name,256,"%s",qy->NextNode->name);
 		}
 
 	    }
@@ -974,18 +854,13 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    return NULL;
 	    }
 
-
 	/** Shamelessly stolen from objdrv_sybase.c :) **/
-	ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
-	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(name) >= 255)
+	if (obj_internal_AddToPath(obj->Pathname, name) < 0)
 	    {
-	    mssError(1,"XML","Pathname too long for internal representation");
+	    mssError(1,"XML","Query result pathname exceeds internal limits");
 	    nmFree(inf,sizeof(XmlData));
 	    return NULL;
 	    }
-	*(ptr++) = '/';
-	strcpy(ptr,name);
-	obj->Pathname->Elements[obj->Pathname->nElements++] = ptr;
 	obj->SubCnt++;
 
 	if(XML_DEBUG) printf("QueryFetch gave back: (%i,%i,%i) %s\n",obj->SubPtr,
@@ -995,6 +870,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	qy->ItemCnt++;
 
 	inf->CacheObj->LinkCnt++;
+
     return (void*)inf;
     }
 
@@ -1047,6 +923,16 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"last_modification")) return DATA_T_DATETIME;
 
+	/** literal escape? **/
+	if (!strncmp(attrname, "__cx_literal_", 13))
+	    attrname += 13;
+
+	if(inf->AttrValue)
+	    {
+	    xmlFree(inf->AttrValue);
+	    inf->AttrValue=NULL;
+	    }
+
 	/** needed in case this isn't a GetFirstAttribute-style request **/
 	xml_internal_BuildAttributeHashTable(inf);
 
@@ -1075,15 +961,15 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	    if(inf->AttrValue)
 		{
-		(void)strtoi(inf->AttrValue,&ptr,10);
+		/*(void)strtoi(inf->AttrValue,&ptr,10);
 		if(ptr && !*ptr)
 		    {
-		    free(inf->AttrValue);
+		    xmlFree(inf->AttrValue);
 		    inf->AttrValue=NULL;
 		    return DATA_T_INTEGER;
 		    }
-		free(inf->AttrValue);
-		inf->AttrValue=NULL;
+		xmlFree(inf->AttrValue);
+		inf->AttrValue=NULL;*/
 		return DATA_T_STRING;
 		}
 	    else
@@ -1118,7 +1004,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 	if(XML_DEBUG) printf("walking attributes to set up hash table\n");
 	while(ap)
 	    {
-	    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+	    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 	    if(!pHE)
 		{
 		mssError(0,"XML","nmMalloc failed!");
@@ -1151,14 +1037,14 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 		    }
 		else
 		    {
-		    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+		    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 		    pHE->type=XML_SUBOBJ;
 		    pHE->count=1;
 		    pHE->ptr=np;
 		    xhAdd(inf->Attributes,(char*)np->name,(char*)pHE);
 		    }
 		}
-	    if(p) free(p);
+	    if(p) xmlFree(p);
 	    np=np->next;
 	    }
 	}
@@ -1187,7 +1073,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	if(inf->AttrValue)
 	    {
-	    free(inf->AttrValue);
+	    xmlFree(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
 
@@ -1223,6 +1109,29 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
+	/** If content-type, and it wasn't specified in the XML **/
+	if (!strcmp(attrname,"content_type"))
+	    {
+	    val->String = "text/plain";
+	    return 0;
+	    }
+
+	/** If outer type, and it wasn't specified in the XML **/
+	if (!strcmp(attrname,"outer_type"))
+	    {
+	    val->String = "text/xml-node";
+	    return 0;
+	    }
+
+	/** take last_modification from underlying object if it has one **/
+	if(!strcmp(attrname,"last_modification"))
+	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,val)==0)
+		return 0;
+
+	/** literal escape? **/
+	if (!strncmp(attrname, "__cx_literal_", 13))
+	    attrname += 13;
+
 	/** needed in case this isn't a GetFirstAttribute-style request **/
 	xml_internal_BuildAttributeHashTable(inf);
 
@@ -1256,11 +1165,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    val->Integer=strtoi(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
-			free(inf->AttrValue);
+			xmlFree(inf->AttrValue);
 			inf->AttrValue=NULL;
 			return 0;
 			}
-		    free(inf->AttrValue);
+		    xmlFree(inf->AttrValue);
 		    inf->AttrValue=NULL;
 		    mssError(0,"XML","%s is not an integer",attrname);
 		    return -1;
@@ -1279,31 +1188,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    else
 		{
 		/** if there's no text, we're going to return the empty string **/
-		inf->AttrValue=(char*)malloc(1);
-		inf->AttrValue[0]='\0';
+		inf->AttrValue = (char*)xmlStrdup((unsigned char*)"");
 		val->String = inf->AttrValue;
 		return -0;
 		}
 	    }
-
-	/** If content-type, and it wasn't specified in the XML **/
-	if (!strcmp(attrname,"content_type"))
-	    {
-	    val->String = "text/plain";
-	    return 0;
-	    }
-
-	/** If outer type, and it wasn't specified in the XML **/
-	if (!strcmp(attrname,"outer_type"))
-	    {
-	    val->String = "text/xml-node";
-	    return 0;
-	    }
-
-	/** take last_modification from underlying object if it has one **/
-	if(!strcmp(attrname,"last_modification"))
-	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,val)==0)
-		return 0;
 
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
@@ -1312,9 +1201,9 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	if(XML_DEBUG) mssError(1,"XML","Could not locate requested attribute: %s",attrname);
+	/*if(XML_DEBUG) mssError(1,"XML","Could not locate requested attribute: %s",attrname);*/
 
-    return -1;
+    return 1; /* null if not there presently */
     }
 
 
@@ -1541,12 +1430,19 @@ xmlInitialize()
 	/** Initialize globals **/
 	memset(&XML_INF,0,sizeof(XML_INF));
 	xhInit(&XML_INF.cache,17,0);
+	if ((regcomp(&XML_INF.namematch, "^([^|]*)\\|*([0123456789]*)$", REG_EXTENDED)) != 0)
+	    {
+	    /** this is a critical failure -- this regex should compile just fine **/
+	    mssError(1,"XML","Error while building name match regex");
+	    return -1;
+	    }
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"XML - XML OS Driver");
 	drv->Capabilities = 0;
 	xaInit(&(drv->RootContentTypes),1);
 	xaAddItem(&(drv->RootContentTypes),"text/xml");
+	xaAddItem(&(drv->RootContentTypes),"application/xml");
 
 	/** Setup the function references. **/
 	drv->Open = xmlOpen;

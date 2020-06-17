@@ -59,6 +59,9 @@ CHECK_OPTIMIZE
 dnl Check for Valgrind integration
 CHECK_VALGRIND
 
+dnl Check for Linux SIOCOUTQ
+CHECK_SIOCOUTQ
+
 dnl Build shared libCentrallix
 SHARED_LIBCENTRALLIX
 

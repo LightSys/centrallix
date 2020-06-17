@@ -49,121 +49,6 @@
 /*		application structure information.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_struct.c,v 1.13 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
-
-    $Log: objdrv_struct.c,v $
-    Revision 1.13  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.12  2007/06/06 15:16:36  gbeeley
-    - (change) getting the obj_inherit module into the build
-
-    Revision 1.11  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.10  2007/03/02 22:30:39  gbeeley
-    - (bugfix) problem with the setting up of the Pathname structure in this
-      driver was causing subtree select to crash on structure file items.
-
-    Revision 1.9  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.8  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.7  2003/05/30 17:39:53  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.6  2003/04/04 05:02:44  gbeeley
-    Added more flags to objInfo dealing with content and seekability.
-    Added objInfo capability to objdrv_struct.
-
-    Revision 1.5  2002/08/13 01:51:13  gbeeley
-    Added mssError warning/error message if the attribute could not be found
-    or a type mismatch occurred.
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:09  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:08  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -209,7 +94,6 @@ void*
 stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pStxData inf;
-    char* node_path;
     char* endptr;
     pSnNode node = NULL;
     pStruct open_inf;
@@ -223,9 +107,6 @@ stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(StxData));
 	inf->Obj = obj;
 	inf->Mask = mask;
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** Check node access.  IF newly created node object, handle differently. **/
 	if ((obj->Prev->Flags & OBJ_F_CREATED) && (obj->Mode & O_CREAT))
@@ -395,7 +276,7 @@ stxDelete(pObject obj, pObjTrxTree* oxt)
 		mssError(1,"STX","Cannot delete structure file subgroup: not empty");
 		return -1;
 		}
-	    stFreeInf(inf->Data);
+	    stRemoveInf(inf->Data);
 	    inf->Node->Status = SN_NS_DIRTY;
 	    snWriteNode(inf->Obj->Prev,inf->Node);
 	    inf->Node->OpenCnt--;
@@ -546,8 +427,9 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	find_inf = stLookup(inf->Data, attrname);
 	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
 	    {
+	    /** For unset attributes on a structure file, we default to a NULL integer **/
 	    /*mssError(1,"STX","Could not locate requested structure file attribute");*/
-	    return -1;
+	    return (find_inf)?(-1):DATA_T_INTEGER;
 	    }
 
 	/** Examine the expr to determine the type **/
@@ -561,6 +443,7 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    {
 	    return t;
 	    }
+
 
     return -1;
     }
@@ -628,13 +511,18 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	/** Not found? **/
-	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) return -1;
+	/** Not found, or not an attribute? **/
+	if (!find_inf) return 1;
+	if (stStructType(find_inf) != ST_T_ATTRIB) return -1;
 
 	/** Vector or scalar? **/
 	if (find_inf->Value->NodeType == EXPR_N_LIST)
 	    {
-	    if (inf->VecData) nmSysFree(inf->VecData);
+	    if (inf->VecData)
+		{
+		nmSysFree(inf->VecData);
+		inf->VecData = NULL;
+		}
 	    if (stGetAttrType(find_inf, 0) == DATA_T_INTEGER)
 		{
 		if (datatype != DATA_T_INTVEC)

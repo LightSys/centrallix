@@ -41,335 +41,6 @@
 /* Description:	HTML Widget driver for a single-line label.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Log: htdrv_label.c,v $
-    Revision 1.39  2010/09/13 23:30:29  gbeeley
-    - (admin) prepping for 0.9.1 release, update text files, etc.
-    - (change) removing some 'unused local variables'
-
-    Revision 1.38  2009/06/25 17:51:14  gbeeley
-    - (feature) labels can now be clickable, as if they were links
-    - (feature) allow labels to be vertically aligned as well as horizontally
-      aligned.
-
-    Revision 1.37  2008/06/25 18:14:17  gbeeley
-    - (feature) label's value can now be a runclient() expression, dynamically
-      maintained on the client.
-
-    Revision 1.36  2008/03/04 01:10:57  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.35  2007/12/05 18:53:40  gbeeley
-    - (change) Set cursor to 'default' (just a plain old pointer) when pointing
-      at text that should not normally be "selectable"
-
-    Revision 1.34  2007/09/18 17:42:54  gbeeley
-    - (change) allow font size to be specified on page and label, and do font
-      sizing in CSS px instead of using the old 1...7 HTML approach.
-
-    Revision 1.33  2007/06/06 15:21:58  gbeeley
-    - (feature) allow label, textarea, datetime to specify the form directly,
-      for use inside a component
-
-    Revision 1.32  2007/04/19 21:26:49  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.31  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.30  2007/04/03 15:50:04  gbeeley
-    - (feature) adding capability to pass a widget to a component as a
-      parameter (by reference).
-    - (bugfix) changed the layout logic slightly in the apos module to better
-      handle ratios of flexibility and size when resizing.
-
-    Revision 1.29  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.28  2007/03/06 16:11:39  gbeeley
-    - (bugfix) properly escape quote marks.  This instance was particularly
-      pesky, but other instances of needing to escape will be dealt with when
-      the qprintf formatting is integrated into the ht_render functions.
-
-    Revision 1.27  2007/03/01 21:53:25  gbeeley
-    - (feature) Allow label to be a form element.
-
-    Revision 1.26  2006/10/27 05:57:23  gbeeley
-    - (change) All widgets switched over to use event handler functions instead
-      of inline event scripts in the main .app generated DHTML file.
-    - (change) Reworked the way event capture is done to allow dynamically
-      loaded components to hook in with the existing event handling mechanisms
-      in the already-generated page.
-    - (feature) Dynamic-loading of components now works.  Multiple instancing
-      does not yet work.  Components need not be "rectangular", but all pieces
-      of the component must share a common container.
-
-    Revision 1.25  2006/10/16 18:34:34  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.24  2005/02/26 06:42:37  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.23  2004/08/04 20:03:09  mmcgill
-    Major change in the way the client-side widget tree works/is built.
-    Instead of overlaying a tree structure on top of the global widget objects,
-    the tree is built *out of* those objects.
-    *   Removed the now-unnecessary tree-building code in the ht drivers
-    *   added htr_internal_BuildClientTree(), which keeps just about all the
-        client-side tree-building code in one spot
-    *   Added RenderFlags to the WgtrNode struct, for use by any rendering
-        module in whatever way that module sees fit
-    *   Added the HT_WGTF_NOOBJECT flag in ht_render, which is set by ht
-        drivers that deal with widgets for which a corresponding DHTML object
-        is not created - for example, a radiobuttonpanel widget has
-        radiobutton child widgets - but in the client-side code there are no
-        corresponding DHTML objects for those child widgets. So the
-        radiobuttonpanel ht driver sets the HT_WGTF_NOOBJECT RenderFlag on
-        each of those child nodes, and when the client-side widget tree is
-        being built, no attempt is made to add them to the client-side tree.
-    *   Tweaked the connector widget a bit - it doesn't appear that the Add
-        member function needs to take an object as a parameter, since each
-        connector is associated with its parent object in cn_init.
-    *   *cough* Er, fixed the, um....giant unclosable unmovable textarea that
-        I had been using for debug messages, so that it doesn't appear unless
-        WGTR_DBG_WINDOW is defined in ht_render.c. Heh heh. Sorry about that.
-
-    Revision 1.22  2004/08/04 01:58:57  mmcgill
-    Added code to ht_render and the ht drivers to build a representation of
-    the widget tree on the client-side, linking each node to its corresponding
-    widget object or layer. Also fixed a couple bugs that were introduced
-    by switching to rendering off the widget tree.
-
-    Revision 1.21  2004/08/02 14:09:34  mmcgill
-    Restructured the rendering process, in anticipation of new deployment methods
-    being added in the future. The wgtr module is now the main widget-related
-    module, responsible for all non-deployment-specific widget functionality.
-    For example, Verifying a widget tree is non-deployment-specific, so the verify
-    functions have been moved out of htmlgen and into the wgtr module.
-    Changes include:
-    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
-        wgtr drivers.
-    *   Adding wgtr drivers to the widget tree module.
-    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
-    *   Requiring all deployment methods (currently only DHTML) to register a
-        Render() function with the wgtr module.
-    *   Adding wgtrRender(), to abstract the details of the rendering process
-        from the caller. Given a widget tree, a string representing the deployment
-        method to use ("DHTML" for now), and the additional args for the rendering
-        function, wgtrRender() looks up the appropriate function for the specified
-        deployment method and calls it.
-    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
-        is being created. This is primarily to allow widget drivers to declare
-        the interfaces their widgets support when they are instantiated, but other
-        initialization tasks can go there as well.
-
-    Also in this commit:
-    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
-    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
-        other stack variables.
-    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
-        can now be completely insulated from the deployment method by the wgtr
-        module.
-
-    Revision 1.20  2004/07/19 15:30:40  mmcgill
-    The DHTML generation system has been updated from the 2-step process to
-    a three-step process:
-        1)	Upon request for an application, a widget-tree is built from the
-    	app file requested.
-        2)	The tree is Verified (not actually implemented yet, since none of
-    	the widget drivers have proper Verify() functions - but it's only
-    	a matter of a function call in net_http.c)
-        3)	The widget drivers are called on their respective parts of the
-    	tree structure to generate the DHTML code, which is then sent to
-    	the user.
-
-    To support widget tree generation the WGTR module has been added. This
-    module allows OSML objects to be parsed into widget-trees. The module
-    also provides an API for building widget-trees from scratch, and for
-    manipulating existing widget-trees.
-
-    The Render functions of all widget drivers have been updated to make their
-    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
-    instead of a pObject as a parameter.
-
-    net_internal_GET() in net_http.c has been updated to call
-    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
-    then free it.
-
-    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
-    a pObject parameter, and to make calls through the WGTR module instead of
-    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
-    htrGetBoolean(), etc. have also been modified appropriately.
-
-    I have assumed in each widget driver that w_obj->Session is equivelent to
-    s->ObjSession; in other words, that the object being passed in to the
-    Render() function was opened via the session being passed in with the
-    HtSession parameter. To my understanding this is a valid assumption.
-
-    While I did run through the test apps and all appears to be well, it is
-    possible that some bugs were introduced as a result of the modifications to
-    all 30 widget drivers. If you find at any point that things are acting
-    funny, that would be a good place to check.
-
-    Revision 1.19  2004/02/24 20:04:06  gbeeley
-    - adding fgcolor support to label.
-
-    Revision 1.18  2003/11/12 22:15:27  gbeeley
-    Added font size to label
-
-    Revision 1.17  2003/07/20 03:41:17  jorupp
-     * got window mostly working in Mozilla
-
-    Revision 1.16  2003/06/21 23:07:26  jorupp
-     * added framework for capability-based multi-browser support.
-     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
-     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
-     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
-     	capability check before in their Render() function (maybe this should be in Verify()?)
-
-    Revision 1.15  2003/05/30 17:39:49  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.14  2002/12/04 00:19:11  gbeeley
-    Did some cleanup on the user agent selection mechanism, moving to a
-    bitmask so that drivers don't have to register twice.  Theme will be
-    handled differently, but provision is made for 'classes' of widgets
-    such as dhtml vs. xul.  Started work on some utility functions to
-    resolve some ns47 vs. w3c issues.
-
-    Revision 1.13  2002/09/27 22:26:05  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.12  2002/07/26 16:12:04  pfinley
-    Standardized event connectors for editbox widget.  It now has:
-      Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
-
-    Revision 1.11  2002/07/25 18:08:36  mcancel
-    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
-
-    Revision 1.10  2002/07/16 18:23:20  lkehresman
-    Added htrAddStylesheetItem() function to help consolidate the output of
-    the html generator.  Now, all stylesheet definitions are included in the
-    same <style></style> tags rather than each widget having their own.  I
-    have modified the current widgets to take advantage of this.  In the
-    future, do not use htrAddHeaderItem(), but use this new function.
-
-    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
-
-    Revision 1.9  2002/07/07 00:23:12  jorupp
-     * fixed a bug with the table tag not being closed (why did this work before?
-     * added px qualifiers on CSS definitions for HTML 4.0 Strict
-
-    Revision 1.8  2002/06/09 23:44:46  nehresma
-    This is the initial cut of the browser detection code.  Note that each widget
-    needs to register which browser and style is supported.  The GNU regular
-    expression library is also needed (comes with GLIBC).
-
-    Revision 1.7  2002/05/31 05:03:32  jorupp
-     * OSRC now can do a DoubleSync -- check kardia for an example
-
-    Revision 1.6  2002/04/27 06:37:45  jorupp
-     * some bug fixes in the form
-     * cleaned up some debugging output in the label
-     * added a dynamic table widget
-
-    Revision 1.5  2002/04/26 15:00:53  jorupp
-     * fixing yet another mistake I made yesterday merging my changes with Greg's
-     * the align attribute of a label now works
-
-    Revision 1.4  2002/04/25 23:05:09  jorupp
-     * fixed bug I introduced when I didn't fix a collision with Greg's code right...
-
-    Revision 1.3  2002/04/25 23:02:52  jorupp
-     * added alternate alignment for labels (right or center should work)
-     * fixed osrc/form bug
-
-    Revision 1.2  2002/04/25 22:51:29  gbeeley
-    Added vararg versions of some key htrAddThingyItem() type of routines
-    so that all of this sbuf stuff doesn't have to be done, as we have
-    been bumping up against the limits on the local sbuf's due to very
-    long object names.  Modified label, editbox, and treeview to test
-    out (and make kardia.app work).
-
-    Revision 1.1  2002/04/25 03:13:50  jorupp
-     * added label widget
-     * bug fixes in form and osrc
-
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
@@ -403,7 +74,12 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char stylestr[128];
     int is_bold = 0;
     int is_link = 0;
+    int is_italic = 0;
+    int allow_break = 0;
+    int overflow_ellipsis = 0;
     pExpression code;
+    int n;
+    int auto_height=0;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -431,6 +107,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTLBL","Label widget must have a 'height' property");
 	    return -1;
 	    }
+
+	/** auto height? **/
+	if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&n)) == 0 && n == -1)
+	    auto_height = 1;
 
 	if (wgtrGetPropertyType(tree,"value") == DATA_T_CODE)
 	    {
@@ -483,6 +163,15 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "style", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"bold"))
 	    is_bold = 1;
 
+	/** Italic? **/
+	if (wgtrGetPropertyValue(tree, "style", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"italic"))
+	    is_italic = 1;
+
+	/** Allow text break/wrap? **/
+	allow_break = htrGetBoolean(tree, "allow_break", 1);
+	overflow_ellipsis = htrGetBoolean(tree, "overflow_ellipsis", 0);
+
+	/** alignment **/
 	align[0]='\0';
 	if(wgtrGetPropertyValue(tree,"align",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(align,ptr,sizeof(align));
@@ -508,26 +197,21 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; display:table-cell; }\n",
-		id,x,y,h,w,z, 
-		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign);
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
+		id,x,y,
+		!auto_height, h,
+		w,z, 
+		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign,
+		!allow_break, overflow_ellipsis, is_italic);
 	if (is_link)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
 	if (is_link && *cfgcolor)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
-	if (strcmp(valign,"top") != 0)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS table { padding:0px; margin:0px; border-spacing:0px; height:%POSpx; width:%POSpx; }\n", id, h, w);
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS table td { vertical-align:%STR&CSSVAL; text-align:%STR&CSSVAL; }\n", id, valign, align);
-	    }
+	htrAddStylesheetItem_va(s,"\t#lbl%POS p { text-align:%STR&CSSVAL; %[position:relative; top:50%%; transform:translateY(-50%%); %]padding:0px; margin:0px; border-spacing:0px; width:%POSpx; }\n", id, align, !strcmp(valign, "middle"), w);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
+	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
 	stylestr[0] = '\0';
-	/*qpfPrintf(NULL, stylestr,sizeof(stylestr),
-		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
-		w,align,is_bold,font_size > 0,font_size,fgcolor);*/
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
+	htrAddScriptInit_va(s, "    lbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
 		name, fieldname, form, text, stylestr, tooltip, is_link, pfgcolor);
 
 	/** Script include to get functions **/
@@ -541,10 +225,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	if (strcmp(valign,"top") != 0)
-	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "<table><tr><td>%STR&HTENLBR</td></tr></table>", text);
-	else
-	    htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "%STR&HTENLBR", text);
+	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, NULL, "<p><span>%STR&HTENLBR</span></p>", text);
 
 	/** Check for more sub-widgets **/
 	htrRenderSubwidgets(s, tree, z+1);

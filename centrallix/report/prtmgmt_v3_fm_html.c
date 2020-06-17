@@ -51,65 +51,6 @@
 /*		a html formatting language.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_fm_html.c,v 1.10 2009/06/26 16:18:59 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
-
-    $Log: prtmgmt_v3_fm_html.c,v $
-    Revision 1.10  2009/06/26 16:18:59  gbeeley
-    - (change) GetCharacterMetric now returns both height and width
-    - (performance) change from bubble sort to merge sort for page generation
-      and output sequencing (this made a BIG difference)
-    - (bugfix) attempted fix of text output overlapping problems, but there
-      are still trouble points here.
-
-    Revision 1.9  2008/03/29 02:26:16  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.8  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.7  2007/03/21 04:42:02  gbeeley
-    - (bugfix) various fixes in the HTML formatter for the report writer.
-
-    Revision 1.6  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.5  2005/09/17 01:23:51  gbeeley
-    - Adding sysinfo objectsystem driver, which is roughly analogous to
-      the /proc filesystem in Linux.
-
-    Revision 1.4  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.3  2003/06/27 21:19:48  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.2  2003/04/21 21:00:43  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
-    Revision 1.1  2003/04/04 22:38:27  gbeeley
-    Added HTML formatter for new print subsystem, with just basic output
-    capabilities at present.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** The following are for layout purposes at the page level, not for
@@ -659,11 +600,16 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
 		    path = (char*)nmMalloc(256);
-		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
+		    if (!path) 
+                        {
+                        mssError(1, "PRT", "nmMalloc() failed\n");
+                        return -1;
+                        }
+                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
-			mssError(1,"PRT","Failed to open new linked image '%s'",path);
+			mssError(0,"PRT","Failed to open new linked image '%s'",path);
 			nmFree(path,256);
 			return -1;
 			}
@@ -671,6 +617,37 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    context->Session->ImageCloseFn(arg);
 		    nmFree(path,256);
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
+			    context->Session->ImageExtDir, id, w, h);
+		    }
+		break;
+
+            case PRT_OBJ_T_SVG:
+		/** We need an image store location in order to handle these **/
+		if (context->Session->ImageOpenFn)
+		    {
+		    id = PRT_HTMLFM.ImageID++;
+		    w = obj->Width*PRT_HTMLFM_XPIXEL;
+		    h = obj->Height*PRT_HTMLFM_YPIXEL;
+		    if (w <= 0) w = 1;
+		    if (h <= 0) h = 1;
+		    path = (char*)nmMalloc(256);
+		    if (!path) 
+                        {
+                        mssError(1, "PRT", "nmMalloc() failed\n");
+                        return -1;
+                        }
+                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.svg",context->Session->ImageSysDir,id);
+		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
+		    if (!arg)
+			{
+			mssError(0,"PRT","Failed to open new linked image '%s'",path);
+			nmFree(path,256);
+			return -1;
+			}
+		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
+		    context->Session->ImageCloseFn(arg);
+		    nmFree(path,256);
+		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
 			    context->Session->ImageExtDir, id, w, h);
 		    }
 		break;

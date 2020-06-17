@@ -26,39 +26,6 @@
 /*		facilities for effective memory management.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: newmalloc.h,v 1.5 2008/04/06 21:34:36 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/newmalloc.h,v $
-
-    $Log: newmalloc.h,v $
-    Revision 1.5  2008/04/06 21:34:36  gbeeley
-    - (bugfix) nmSysStrdup() should use const qualifier.
-
-    Revision 1.4  2007/12/13 23:10:25  gbeeley
-    - (change) adding --enable-debugging to the configure script, and without
-      debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
-      ation that was using at least 95% of the cpu time in Centrallix.
-    - (bugfix) fixed a few int vs. size_t warnings in MTASK.
-
-    Revision 1.3  2007/04/08 03:43:06  gbeeley
-    - (bugfix) some code quality fixes
-    - (feature) MTASK integration with the Valgrind debugger.  Still some
-      problems to be sorted out, but this does help.  Left to themselves,
-      MTASK and Valgrind do not get along, due to the approach to threading.
-
-    Revision 1.2  2003/03/04 06:28:22  jorupp
-     * added buffer overflow checking to newmalloc
-    	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 typedef struct _ov
     {
@@ -79,10 +46,12 @@ typedef struct _ov
 
 /** nmMalloc block caching causes Valgrind to lose track of what call
  ** stack actually allocated the block to begin with.  So if we're using
- ** valgrind, turn off block caching altogether.
+ ** valgrind, turn off block caching altogether, and make the nmSysXyz() calls
+ ** just pass-throughs.
  **/
 #ifdef USING_VALGRIND
 #define NO_BLK_CACHE	1
+#undef NM_USE_SYSMALLOC
 #endif
 
 #define OVERLAY(x)	((pOverlay)(x))

@@ -63,55 +63,6 @@
 /*		available.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_fp.c,v 1.10 2010/09/09 01:44:36 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
-
-    $Log: objdrv_fp.c,v $
-    Revision 1.10  2010/09/09 01:44:36  gbeeley
-    - (bugfix) fixed memory/resource leak in filepro driver
-
-    Revision 1.9  2008/04/06 20:43:52  gbeeley
-    - (bugfix) all three rdbms-style objectsystem drivers had memory leak
-      issues relating to pathname structures.  The corrected interface in
-      obj.h allows us to fix this.
-
-    Revision 1.8  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.7  2008/03/09 08:01:02  gbeeley
-    - (bugfix) the open files hashtable was initialized for variable length
-      string keys rather than for a 4-byte session ptr.
-
-    Revision 1.6  2008/02/23 03:12:10  gbeeley
-    - (bugfix) various open file handle leak issues corrected.
-
-    Revision 1.5  2008/02/22 23:42:40  gbeeley
-    - (feature) adding support for "qualifiers" on filepro tables.
-
-    Revision 1.4  2008/02/19 07:56:40  gbeeley
-    - (change) increase max cols from 256 to 640.  Believe it or not.
-    - (bugfix) column limit was not being honored, resulting in an array
-      overflow and subsequent crash.
-
-    Revision 1.3  2007/11/16 21:48:52  gbeeley
-    - (feature) adding support for the builtin filepro control fields for
-      create and modify uid and timestamp.
-
-    Revision 1.2  2007/09/18 18:10:32  gbeeley
-    - (bugfix) filepro driver needs to objUnmanageObject() for objects opened
-      internally.
-    - (bugfix) filepro driver was not handling the enumeration of tables
-      correctly if a non-table file were present in the tables directory
-
-    Revision 1.1  2006/09/15 20:43:46  gbeeley
-    - (feature) Adding FilePro ObjectSystem driver.  This initial version is
-      limited to readonly queries, and does not leverage indexes.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Module controls ***/
@@ -2440,11 +2391,11 @@ fpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	    switch(inf->Type)
 	        {
 		case FP_T_DATABASE:
-		    strtcpy(inf->Node->Description, val->String, 256);
+		    strtcpy(inf->Node->Description, val?(val->String):"", 256);
 		    break;
 		    
 		case FP_T_TABLE:
-		    strtcpy(inf->TData->Annotation, val->String, sizeof(inf->TData->Annotation));
+		    strtcpy(inf->TData->Annotation, val?(val->String):"", sizeof(inf->TData->Annotation));
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    break;
 

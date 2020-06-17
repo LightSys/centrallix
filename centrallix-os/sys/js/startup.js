@@ -25,7 +25,10 @@ function tohex16(n)
 function startup()
     {
     var loc = window.location.href;
-    var metrics = new Object();
+    var metrics = {};
+
+    // are we mobile?
+    var is_mobile = (window.navigator.userAgent.indexOf('Mobile') >= 0);
 
     loc = loc.replace(new RegExp('([?&])cx__geom[^&]*([&]?)'),
 	    function (str,p1,p2) { return p2?p1:''; });
@@ -43,30 +46,23 @@ function startup()
 	metrics.page_w = window.document.body.clientWidth;
 	metrics.page_h = window.document.body.clientHeight;
         }
-    if (document.getElementById)
+
+    // make the app big enough to get rid of the address bar on mobile platforms
+    if (is_mobile)
 	{
-	// IE, Moz
-	metrics.char_h = document.getElementById("l1").offsetHeight - document.getElementById("l2").offsetHeight;
-	metrics.char_w = document.getElementById("l2").offsetWidth - document.getElementById("l1").offsetWidth;
-	metrics.para_h = document.getElementById("l2").offsetHeight;
-	/*if (metrics.char_w == 0)
-	    {
-	    // browser sized widths to whole screen width?
-	    re = /rect\((.*), (.*), (.*), (.*)\)/;
-	    c1 = getComputedStyle(document.getElementById("l2"), null).getPropertyCSSValue('clip').cssText;
-	    c2 = getComputedStyle(document.getElementById("l1"), null).getPropertyCSSValue('clip').cssText;
-	    metrics.char_w = (re.exec(c1))[2] - (re.exec(c2))[2];
-	    }
-	confirm(metrics.char_w);*/
+	if (screen.width == window.outerWidth)
+	    // Firefox Mobile
+	    metrics.page_h = parseInt(window.outerHeight*window.innerWidth/window.outerWidth + 0.5);
+	else
+	    // Chrome Mobile
+	    metrics.page_h = parseInt(screen.height*window.document.body.clientWidth/screen.width + 0.5);
 	}
-    else
-	{
-	// NS4
-	metrics.char_h = document.layers["l1"].clip.height - document.layers["l2"].clip.height;
-	metrics.char_w = document.layers["l2"].clip.width - document.layers["l1"].clip.width;
-	metrics.para_h = document.layers["l2"].clip.height;
-	}
-    //loc += 'cx__geom=' + metrics.page_w + 'x' + metrics.page_h;
+
+    // Character width/height
+    metrics.char_h = document.getElementById("l1").offsetHeight - document.getElementById("l2").offsetHeight;
+    metrics.char_w = document.getElementById("l2").offsetWidth - document.getElementById("l1").offsetWidth;
+    metrics.para_h = document.getElementById("l2").offsetHeight;
+
     loc += 'cx__geom=' + tohex16(metrics.page_w) + tohex16(metrics.page_h) + tohex16(metrics.char_w) + tohex16(metrics.char_h) + tohex16(metrics.para_h);
     window.location.replace(loc);
     }

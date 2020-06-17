@@ -1,0 +1,6 @@
+##NAME ON DUP clause, all rows updated
+##UNDO /tests/Testdata1.csv
+
+csv select * from /tests/Testdata1.csv/rows
+query insert into /tests/Testdata1.csv/rows select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows t1 where :f_id < 8 on duplicate :f_id update set :f_count = :f_count + :t1:f_count
+csv select * from /tests/Testdata1.csv/rows

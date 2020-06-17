@@ -5,6 +5,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -27,6 +28,10 @@
 #include <sys/stat.h>
 #include "qprintf.h"
 #include "util.h"
+
+#if HAVE_SIOCOUTQ
+#include <linux/sockios.h>
+#endif
 
 #ifdef USING_VALGRIND
 #include "valgrind/valgrind.h"
@@ -55,249 +60,6 @@
 /* kernel threads or for preemptive threading.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mtask.c,v 1.45 2010/05/12 18:18:19 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
-
-    $Log: mtask.c,v $
-    Revision 1.45  2010/05/12 18:18:19  gbeeley
-    - (change) increasing per-thread stack size, as well as changing some of
-      the memory layout of the thread stacks in hopes of making valgrind happy,
-      though without success so far
-
-    Revision 1.44  2008/04/06 20:57:21  gbeeley
-    - (security) More fixes for handling of supplemental groups
-
-    Revision 1.43  2008/04/01 03:19:00  gbeeley
-    - (change) Handle supplementary group id's instead of just blanking out
-      the supplementary group list.
-    - (security) The use of setreuid() was causing the saved user id to be
-      set, which would allow an unprivileged user to kill the centrallix
-      server process under some circumstances.  See kill(2) and setreuid(2).
-    - (security) There were potentially some logic errors in the way that
-      uid/gid switching was being handled.
-    - (WARNING) The current implementation of fdAccess() is not optimal.  The
-      solution appears to be to use faccessat() with AT_EACCESS, but that
-      system call is apparently not yet standardized nor is it widespread.
-      Better yet, the one usage of fdAccess() might be best rewritten to not
-      use it, allowing us to rid ourselves of this problematic function
-      altogether.
-
-    Revision 1.42  2008/03/29 01:03:36  gbeeley
-    - (change) changing integer type in IntVec to a signed integer
-    - (security) switching to size_t in qprintf where needed instead of using
-      bare integers.  Also putting in some checks for insanely huge amounts
-      of data in qprintf that would overflow many of the integer counters.
-    - (bugfix) several fixes to make the code compile cleanly at the newer
-      warning levels on newer compilers.
-
-    Revision 1.41  2007/12/13 23:10:25  gbeeley
-    - (change) adding --enable-debugging to the configure script, and without
-      debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
-      ation that was using at least 95% of the cpu time in Centrallix.
-    - (bugfix) fixed a few int vs. size_t warnings in MTASK.
-
-    Revision 1.40  2007/10/19 23:26:58  gbeeley
-    - (feature) adding thWaitTimed() as a convenience API function.
-
-    Revision 1.39  2007/09/21 23:11:49  gbeeley
-    - (change) adhere to new grow_fn interface in qprintf
-    - (bugfix) incorrect logic in the Grow() function et al
-
-    Revision 1.38  2007/04/18 18:42:07  gbeeley
-    - (feature) hex encoding in qprintf (&HEX filter).
-    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
-    - (bugfix) %[ %] conditional formatting didn't exclude everything.
-    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
-    - (performance) significant performance improvements in HEX, ESCQ, HTE.
-    - (change) qprintf API change - optional session, cumulative errors/flags
-    - (testsuite) lots of added testsuite entries.
-
-    Revision 1.37  2007/04/08 03:43:06  gbeeley
-    - (bugfix) some code quality fixes
-    - (feature) MTASK integration with the Valgrind debugger.  Still some
-      problems to be sorted out, but this does help.  Left to themselves,
-      MTASK and Valgrind do not get along, due to the approach to threading.
-
-    Revision 1.36  2007/03/06 03:51:57  gbeeley
-    - (security) Adding a function to aid in recursion depth limiting, since
-      stack space is at a premium when using MTask.
-
-    Revision 1.35  2007/02/20 19:32:16  gbeeley
-    - (bugfix #757726) Compile properly without zlib support.  This is a
-      really ancient build bug that we should have fixed eons ago...
-
-    Revision 1.34  2006/06/21 21:25:10  gbeeley
-    - Adding fdQPrintf() routines to utilize the qpfPrintf routines.
-
-    Revision 1.33  2006/04/07 06:14:21  gbeeley
-    - (bugfix) memory_leaks -= 2;
-
-    Revision 1.32  2005/10/12 03:40:16  gbeeley
-    - (bugfix) don't linger for 100 sec when asked to do so for 1 sec!
-    - (bugfix) if select()ing with no timeout, make sure it is really
-      0 seconds / 0 usec - code was wasting a tick here and there.
-
-    Revision 1.31  2005/10/09 00:01:05  gbeeley
-    - (bugfix) better protection against "deadlocks" caused by clock skew.
-
-    Revision 1.30  2005/03/14 20:33:35  gbeeley
-    - changing the interface to the get thread list function so that we can
-      better identify a specific thread from one call to another.
-
-    Revision 1.29  2005/02/06 02:35:41  gbeeley
-    - Adding 'mkrpm' script for automating the RPM build process for this
-      package (script is portable to other packages).
-    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
-      between mtask threads)
-    - added xsString(xstr) for getting the string instead of xstr->String.
-
-    Revision 1.28  2004/08/30 02:29:50  gbeeley
-    - SnNode magic number
-    - fixed that constant with an, ummm, 'ambiguous' value
-
-    Revision 1.27  2004/08/30 01:36:40  jorupp
-     * add a bit more debugging information to non-IO selects
-         this should help diagnose the current issue with cygwin
-
-    Revision 1.26  2004/08/29 05:35:21  jorupp
-     * fixed an overflow error under cygwin, where MTASK.TicksPerSec is 1000
-
-    Revision 1.25  2004/06/12 04:09:37  gbeeley
-    - supporting logic to allow saving of an MTask security context for later
-      use in a new thread.  This is needed for the asynchronous event delivery
-      mechanism for object-updates being sent to the client.
-
-    Revision 1.24  2004/05/04 18:18:59  gbeeley
-    - Adding fdAccess() wrapper for access(2).
-    - Moving PTOD definition to module in centrallix core.
-
-    Revision 1.23  2004/02/24 05:09:10  gbeeley
-    - fixed error in mtask's handling of group id.
-    - renamed WRCACHE/RDCACHE to WRBUF/RDBUF.
-
-    Revision 1.22  2003/06/05 04:22:54  jorupp
-     * added support for mTask-based signal handlers
-       - go ahead greg -- pick apart my implimentation.....
-
-    Revision 1.21  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.20  2003/03/29 08:32:47  jorupp
-     * fixed a bug regarding possibly not delaying long enough in a select() call
-     * redid some of the actual values for debugging -- the bit groups make a bit more sense now
-     * added debugging code for the checking of timers
-
-    Revision 1.19  2003/03/09 18:58:45  jorupp
-     * change to allow the scheduler (or the interrupt handler interupting the
-    	 scheduler) to spawn new threads
-
-    Revision 1.18  2003/03/07 19:30:57  gbeeley
-    Fixed some retry problems with read/write/recvfrom/sendto dealing
-    with the EINTR error condition which should be considered a retryable
-    error in most cases, so we do a retry.  Was having trouble with
-    MTask writes to parallel port causing EINTR under nonblocking I/O,
-    corrupting the data sent to the printer.
-
-    Revision 1.17  2003/03/03 02:12:03  jorupp
-     * it always helps when you put the brace on the correct side.... :)
-
-    Revision 1.16  2003/02/20 23:16:44  jorupp
-     * mtask debugging is not enabled by default
-     * added configure option to turn it on
-
-    Revision 1.15  2003/02/20 22:57:42  jorupp
-     * added quite a bit of debugging to mTask
-     	* call mtSetDebug() to set debugging level
-     	* undefine MTASK_DEBUG to disable
-     * added UDP support (a basic echo client/server is working with it)
-     * changed pFile returned by netConnectTCP to include IP and port of remote computer
-
-    Revision 1.14  2002/11/22 20:56:58  gbeeley
-   Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
-    basically allow printf() style functionality on top of any xxxWrite()
-    type of routine (such as fdWrite, objWrite, etc).
-
-    Revision 1.13  2002/11/12 00:26:49  gbeeley
-    Updated MTASK approach to user/group security when using system auth.
-    The module now handles group ID's as well.  Changes should have no
-    effect when running as non-root with altpasswd auth.
-
-    Revision 1.12  2002/09/24 18:59:17  gbeeley
-    Fixed some problems relating to non-blocking netConnectTCP() operations
-    (where FD_U_NOBLOCK was specified).  MTask was not correctly retrieving
-    the SO_ERROR value once writability was confirmed on the socket
-    (writability is the indication of completion, whether successful or
-    not).  Note: the connect is always internally nonblocking, but if the
-    FD_U_NOBLOCK flag is given, then the call returns to the user before
-    the connect has completed.  Do a Wait or MultiWait for writability to
-    determine whether it has completed, and check the event status for
-    successful completion.
-
-    Revision 1.11  2002/09/20 20:38:08  jorupp
-     * netAcceptTCP now sets the returned pFile to non-blocking IO
-
-    Revision 1.10  2002/08/16 03:05:38  jorupp
-     * added checks for shadow passwords and endservent() to allow build under cygwin
-       -- this has been tested under cygwin, and it works pretty well
-
-    Revision 1.9  2002/08/13 02:38:24  gbeeley
-    Added "plan B" in case CLK_TCK ever becomes obsolete.  Linux man page
-    says CLK_TCK is a macro for the sysconf(_SC_CLK_TCK) call.  The sysconf
-    call will be used if CLK_TCK ever disappears.
-
-    Revision 1.8  2002/08/13 02:30:59  gbeeley
-    Made several of the changes recommended by dman.  Most places where
-    const char* would be appropriate have been updated to reflect that,
-    plus a handful of other minor changes.  gzwrite() somehow is not
-    happy with a const ____* buffer, so that is typecast to just void*.
-
-    Revision 1.7  2002/07/31 18:36:05  mattphillips
-    Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
-    to test for libz, but we didn't do anything with the results of its test.
-    This wraps all the gzip stuff in #ifdef's so we will not use it if the system
-    we built on doesn't have it.
-
-    Revision 1.6  2002/07/23 02:30:55  jorupp
-     (commiting for ctaylor)
-     * removed unnecessary field from pFile and associated enum values
-     * added a dup on the fd which eliminated a lot of checking
-       -- we can close the fd without worry about the fd used by MTASK
-
-    Revision 1.5  2002/07/21 04:52:51  jorupp
-     * support for gzip encoding added by ctaylor
-     * updated autoconf files to account for the new library (I think..)
-
-    Revision 1.4  2002/06/18 16:25:49  gbeeley
-    Fixed a couple of warnings that showed up with -O2.  Fixed an MTASK bug
-    related to thMultiWait().
-
-    Revision 1.3  2002/05/03 03:46:29  gbeeley
-    Modifications to xhandle to support clearing the handle list.  Added
-    a param to xhClear to provide support for xhnClearHandles.  Added a
-    function in mtask.c to allow the retrieval of ticks-since-boot without
-    making a syscall.  Fixed an MTASK bug in the scheduler relating to
-    waiting on timers and some modulus arithmetic.
-
-    Revision 1.2  2001/12/28 21:52:56  gbeeley
-    netCloseTCP(fd,0,0), which causes a hard close, was leaving the socket
-    fd still open after deallocating the structure.  Fixed.
-
-    Revision 1.1.1.1  2001/08/13 18:04:21  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:02:50  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 #include "newmalloc.h"
 #include "mtask.h"
@@ -310,11 +72,11 @@ int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
 
-#define MAX_EVENTS		256
-#define MAX_THREADS		256
-#define MAX_STACK		(31 * 2048)
+#define MT_MAX_THREADS		256
+#define MT_MAX_EVENTS		(MT_MAX_THREADS * 4)
+#define MT_MAX_STACK		(31 * 2048)
 #define MT_STACK_HIGHWATER	(24 * 2048)
-/*#define MAX_STACK		(31 * 1024)
+/*#define MT_MAX_STACK		(31 * 1024)
 #define MT_STACK_HIGHWATER	(24 * 1024)*/
 #define MT_TASKSEP		256
 #define MT_TICK_MAX		1
@@ -324,12 +86,14 @@ int mtSched();
 
 typedef struct _MTS
     {
-    pEventReq	EventWaitTable[MAX_EVENTS];
-    pThread	ThreadTable[MAX_THREADS];
+    pEventReq	EventWaitTable[MT_MAX_EVENTS];
+    pThread	ThreadTable[MT_MAX_THREADS];
     int 	nThreads;
+    int		MaxThreads;
     int		nEvents;
     int		MTFlags;
     pThread	CurrentThread;
+    pThread	LockedThread;
     int		TickCnt;
     int		FirstTick;
     int		TicksPerSec;
@@ -338,7 +102,7 @@ typedef struct _MTS
     int		CurGroupID;
     int		CurNGroups;
     gid_t	CurGroupList[32];
-    unsigned long LastTick;
+    unsigned int LastTick;
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
     XHashTable	SignalHandlers;
@@ -473,7 +237,7 @@ evFile(int ev_type, void* obj)
                 if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
                 if (code == 0) fd->Flags |= FD_F_RDBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_RDBLK | FD_F_RDERR);
-                if (code == -1) fd->Flags |= FD_F_RDERR;
+                if (code == -1) fd->Flags |= (FD_F_RDERR | FD_F_RDEOF);
                 break;
 
             case EV_T_FD_OPEN:
@@ -569,9 +333,9 @@ evRemove(pEventReq event)
 int
 evAdd(pEventReq event)
     {
-    if (MTASK.nEvents >= MAX_EVENTS)
+    if (MTASK.nEvents >= MT_MAX_EVENTS)
         {
-	printf("mtask: Event table exhausted (%d)\n",MAX_EVENTS);
+	printf("mtask: Event table exhausted (%d)\n",MT_MAX_EVENTS);
 	return -1;
 	}
     MTASK.EventWaitTable[MTASK.nEvents++] = event;
@@ -720,7 +484,7 @@ int mtRemoveSignalHandler(int signum, void(*start_fn)())
 /*** MTTICKS is a friendly interface to times() so we can get the clock ticks 
  *** since the program started.
  ***/
-unsigned long
+unsigned int
 mtTicks()
     {
     static struct tms t;
@@ -734,7 +498,7 @@ mtTicks()
 /*** MTREALTICKS is another friendly interface to times() so that we can get
  *** "real time" clock ticks from point a to point b.
  ***/
-unsigned long
+unsigned int
 mtRealTicks()
     {
     static struct tms t;
@@ -746,7 +510,7 @@ mtRealTicks()
  *** scheduler.  Will be always valid following the return of a command which
  *** had to wait on other processes.
  ***/
-unsigned long
+unsigned int
 mtLastTick()
     {
     return MTASK.LastTick;
@@ -772,16 +536,32 @@ pThread
 mtInitialize(int flags, void (*start_fn)())
     {
     register int i;
+    struct rlimit stacklimit;
+    int room_for_threads;
 
 	memset(&MTASK, 0, sizeof(MTASK));
 
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
-	for(i=0;i<MAX_THREADS;i++) MTASK.ThreadTable[i] = NULL;
+	MTASK.MaxThreads = MT_MAX_THREADS;
+	if (getrlimit(RLIMIT_STACK, &stacklimit) == 0 && stacklimit.rlim_cur > 0)
+	    {
+	    room_for_threads = stacklimit.rlim_cur / (MT_MAX_STACK + MT_TASKSEP) - 1;
+	    if (room_for_threads < MTASK.MaxThreads)
+		{
+		printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
+			MTASK.MaxThreads,
+			room_for_threads,
+			(long long)stacklimit.rlim_cur
+			);
+		MTASK.MaxThreads = room_for_threads;
+		}
+	    }
+	for(i=0;i<MTASK.MaxThreads;i++) MTASK.ThreadTable[i] = NULL;
 
 	/** Initialize the system-event-wait table **/
 	MTASK.nEvents = 0;
-	for(i=0;i<MAX_EVENTS;i++) MTASK.EventWaitTable[i] = NULL;
+	for(i=0;i<MT_MAX_EVENTS;i++) MTASK.EventWaitTable[i] = NULL;
 
 	/** initialize the ring buffer for pending signals **/
 	xrqInit(&MTASK.PendingSignals,4);
@@ -813,6 +593,8 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.CurrentThread->SecContext.UserID = geteuid();
 	MTASK.CurrentThread->SecContext.GroupID = getegid();
 	MTASK.CurrentThread->SecContext.ThrParam = NULL;
+	MTASK.CurrentThread->SecContext.ThrParamLink = NULL;
+	MTASK.CurrentThread->SecContext.ThrParamUnLink = NULL;
 	MTASK.CurrentThread->SecContext.nGroups = 0;
 	memset(MTASK.CurrentThread->SecContext.GroupList, 0, sizeof(MTASK.CurrentThread->SecContext.GroupList));
 	MTASK.CurrentThread->SecContext.nGroups = getgroups(sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t), MTASK.CurrentThread->SecContext.GroupList);
@@ -820,6 +602,9 @@ mtInitialize(int flags, void (*start_fn)())
 	    MTASK.CurrentThread->SecContext.nGroups = 0;
 	if (MTASK.CurrentThread->SecContext.nGroups > sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t))
 	    MTASK.CurrentThread->SecContext.nGroups = sizeof(MTASK.CurrentThread->SecContext.GroupList) / sizeof(gid_t);
+	MTASK.CurrentThread->SecContext.SecParam = NULL;
+	MTASK.CurrentThread->SecContext.SecParamCopyConstructor = NULL;
+	MTASK.CurrentThread->SecContext.SecParamDestructor = NULL;
 	MTASK.CurrentThread->Stack = NULL;
 	MTASK.CurrentThread->StackBottom = NULL;
 #ifdef USING_VALGRIND
@@ -858,6 +643,7 @@ mtInitialize(int flags, void (*start_fn)())
 
 	/** Now start the real start function. **/
 	MTASK.CurrentThread = NULL;
+	MTASK.LockedThread = NULL;
 	mtSched();
 
     return OK;
@@ -904,7 +690,7 @@ mtRunStartFn(pThread new_thr, int idx)
 int
 r_mtRun_PokeStack()
     {
-    char buf[MAX_STACK - MT_TASKSEP*2];
+    char buf[MT_MAX_STACK - MT_TASKSEP*2];
     buf[0] = buf[0];
     return 0;
     }
@@ -920,14 +706,14 @@ r_mtRun_Spacer()
     char buf[MT_TASKSEP];
     buf[MT_TASKSEP-1] = buf[MT_TASKSEP-1];
 
-    /*mprotect((char*)((int)(buf-MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
+    /*mprotect((char*)((int)(buf-MT_MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
     MTASK.CurrentThread->Stack = (unsigned char*)buf;
     r_mtRun_PokeStack();
 #ifdef USING_VALGRIND
-    /*MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);
-    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);*/
-    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
-    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MAX_STACK + MT_TASKSEP*2, buf + 20);
+    /*MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MT_MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);
+    printf("New stack %d at %8.8X - %8.8X\n", MTASK.CurrentThread->ValgrindStackID, buf - MT_MAX_STACK + MT_TASKSEP*2, buf + MT_TASKSEP + 20);*/
+    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MT_MAX_STACK + MT_TASKSEP*2, buf + 20);
+    printf("New stack %d at %p - %p\n", MTASK.CurrentThread->ValgrindStackID, buf - MT_MAX_STACK + MT_TASKSEP*2, buf + 20);
 #endif
     if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
@@ -942,8 +728,8 @@ r_mtRunStartFn()
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy.
      **/
-    char buf[MAX_STACK];
-    buf[MAX_STACK-1] = buf[MAX_STACK-1];
+    char buf[MT_MAX_STACK];
+    buf[MT_MAX_STACK-1] = buf[MT_MAX_STACK-1];
 
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
@@ -975,6 +761,7 @@ int mtProcessSignals()
 		processed++;
 		}
 	    }
+	nmFree(sig, sizeof(int));
 	}
     return processed;
     }
@@ -1042,9 +829,8 @@ mtSched()
     int rval;
     int n_runnable, lowest_cntdn, highest_cntdn, lowest_runnable;
     int n_timerblock;
-    pThread lowest_run_thr, locked_thr = NULL;
+    pThread lowest_run_thr;
     int ticks_used;
-    pThread thr_sleep_init = NULL; /* if thread just did a thSleep */
     pEventReq event;
     int k = 0;
     int arg;
@@ -1052,9 +838,6 @@ mtSched()
     int x[1];
 
     	dbg_write(0,"x",1);
-
-	/** Is scheduler locked? **/
-	if (MTASK.MTFlags & MT_F_LOCKED) locked_thr = MTASK.CurrentThread;
 
     	/** If the current thread is valid, do processing for it **/
 	ticks_used = (t=mtTicks()) - MTASK.TickCnt;
@@ -1073,21 +856,10 @@ mtSched()
 
 	    /** Bump up the cntdown if thread used time **/
 	    /** Don't bump if this thread is sleeping because we'll do that later. **/
-	    if (ticks_used > 0 && MTASK.CurrentThread->CntDown >= 0) 
+	    if (ticks_used > 0) 
 	        {
 		MTASK.CurrentThread->CntDown += ticks_used*(MTASK.CurrentThread->CurPrio)/MT_TICK_MAX;
-		//if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
-		/*
-		if (MTASK.ThreadTable[i]->CntDown > 0)
-		    printf("UHH OHHH!!!! -- %i (%s) CntDown == %i\n",i,
-			    MTASK.ThreadTable[i]->Name,MTASK.ThreadTable[i]->CntDown);
-		*/
-		MTASK.TickCnt = t;
 		}
-
-	    /** Remember if this thread just init'd a sleep, because if it did, we don't want **/
-	    /** to credit time it used before sleeping against its sleep time. **/
-	    if (MTASK.CurrentThread->CntDown < 0) thr_sleep_init = MTASK.CurrentThread;
 
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
@@ -1107,16 +879,15 @@ mtSched()
 	FD_ZERO(&exceptfds);
 	max_fd = 1;
 	num_fds = 0;
-	i = cnt = 0;
 	highest_cntdn = 0x80000000;
 	n_runnable = 0;
 	n_timerblock = 0;
-	for(i=cnt=0;cnt<MTASK.nEvents;i++)
+	for(i=cnt=0; cnt<MTASK.nEvents; i++)
 	    {
 	    if (MTASK.EventWaitTable[i])
 	        {
 	        cnt++;
-		if (locked_thr && locked_thr != MTASK.EventWaitTable[i]->Thr) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.EventWaitTable[i]->Thr) continue;
 	        if (MTASK.EventWaitTable[i]->ObjType == OBJ_T_FD && MTASK.EventWaitTable[i]->Status == EV_S_INPROC)
 	            {
 		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FINISH &&
@@ -1166,34 +937,16 @@ mtSched()
 	    }
 
 	/** Determine how to issue the select() by scanning the thread tbl **/
-	/** We also credit time used by last thread to any sleeping threads **/
-	i=cnt=0;
-	for(i=cnt=0;cnt<MTASK.nThreads;i++)
+	for(i=cnt=0; cnt<MTASK.nThreads; i++)
 	    {
 	    if (MTASK.ThreadTable[i])
 	        {
 		cnt++;
-		if (locked_thr && locked_thr != MTASK.ThreadTable[i]) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.ThreadTable[i]) continue;
 		if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE)
 		    {
 		    n_runnable++;
-		    if (MTASK.ThreadTable[i]->CntDown < 0)
-		        {
-			if (MTASK.ThreadTable[i] != thr_sleep_init)
-			    {
-			    MTASK.ThreadTable[i]->CntDown += ticks_used*MTASK.ThreadTable[i]->CurPrio;
-			    if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
-			    }
-			if (MTASK.ThreadTable[i]->CntDown > highest_cntdn)
-		            {
-			    highest_cntdn = (MTASK.ThreadTable[i]->CntDown)*64/(MTASK.ThreadTable[i]->CurPrio);
-			    }
-			}
-		    else
-		        {
-			/** If threads are runnable and not sleeping, then we select() below with delay=0. **/
-			highest_cntdn = 0;
-			}
+		    highest_cntdn = 0;
 		    }
 		}
 	    }
@@ -1201,7 +954,7 @@ mtSched()
 	/** Issue the select.  If threads are runnable, delay is 0.  If none runnable (all **/
 	/** normally runnable are blocked on i/o or otherwise), delay is either infinite or **/
 	/** the correct value to sleep() based on previous thSleep calls made by threads. **/
-	if (n_runnable+n_timerblock == 0)
+	if (n_runnable == 0 && n_timerblock == 0)
 	    {
           REISSUE_SELECT:
 	    if(mtProcessSignals()>0)
@@ -1212,6 +965,10 @@ mtSched()
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
 		printf("IO select (no timeout)\n");
 #endif
+
+	    /** We can wait indefinitely (NULL timeout) because there are no sleep timers
+	     ** and there are no runnable threads.
+	     **/
 	    rval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
 #ifdef MTASK_DEBUG
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
@@ -1268,7 +1025,7 @@ mtSched()
 		}
 	    }
 
-	/** Did the select() delay?  If so, add to sleeping threads. **/
+	/** Did the select() delay? **/
 	tx2 = mtRealTicks();
 	MTASK.LastTick = tx2;
 
@@ -1280,37 +1037,16 @@ mtSched()
 	    }
 
 	if (n_runnable == 0 && highest_cntdn > 0) t = mtTicks();
-	if (tx2 - tx > 0)
-	    {
-	    if (n_timerblock && highest_cntdn > 0)
-	        {
-		cnt=i=0;
-		while(cnt<n_runnable)
-		    {
-		    if (MTASK.ThreadTable[i] && MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE)
-		        {
-			cnt++;
-			if (MTASK.ThreadTable[i]->CntDown < 0)
-			    {
-			    MTASK.ThreadTable[i]->CntDown += (MTASK.ThreadTable[i]->CurPrio*(tx2-tx));
-			    if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
-			    }
-			}
-		    i++;
-		    }
-		}
-	    }
 	MTASK.TickCnt = t;
 
 	/** Did any file descriptors "complete"?  If so, pull the event(s) **/
-	i = cnt = 0;
-	for(i=cnt=0;cnt<MTASK.nEvents;i++)
+	for(i=cnt=0; cnt<MTASK.nEvents; i++)
 	    {
 	    if (MTASK.EventWaitTable[i])
 	        {
 		event = MTASK.EventWaitTable[i];
 	        cnt++;
-		if (locked_thr && locked_thr != event->Thr) continue;
+		if (MTASK.LockedThread && MTASK.LockedThread != event->Thr) continue;
 	        if (event->ObjType == OBJ_T_FD)
 	            {
 		    /** File descriptor become readable? **/
@@ -1414,32 +1150,34 @@ mtSched()
 	    if (MTASK.ThreadTable[i])
 	        {
 		cnt++;
-		if (MTASK.ThreadTable[i]->CntDown >= 0)
+		if (MTASK.ThreadTable[i]->CntDown < lowest_cntdn)
 		    {
-		    if (MTASK.ThreadTable[i]->CntDown < lowest_cntdn)
-		        {
-			lowest_cntdn = MTASK.ThreadTable[i]->CntDown;
-			}
-		    if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE &&
-		        MTASK.ThreadTable[i]->CntDown < lowest_runnable)
-			{
-			lowest_runnable = MTASK.ThreadTable[i]->CntDown;
-			lowest_run_thr = MTASK.ThreadTable[i];
-			k = i;
-			}
+		    lowest_cntdn = MTASK.ThreadTable[i]->CntDown;
+		    }
+		if (MTASK.ThreadTable[i]->Status == THR_S_RUNNABLE &&
+		    MTASK.ThreadTable[i]->CntDown < lowest_runnable)
+		    {
+		    lowest_runnable = MTASK.ThreadTable[i]->CntDown;
+		    lowest_run_thr = MTASK.ThreadTable[i];
+		    k = i;
 		    }
 		}
 	    }
 
-	/** Ok, now subtract the smallest cntdn from all positive threads. **/
-	if (lowest_cntdn > 0 && lowest_cntdn != 0x7FFFFFFF)
+	/** Ok, now subtract the smallest cntdn from all positive threads, and
+	 ** reduce all nonzero threads by the amount of time that was used
+	 ** sleeping during select().
+	 **/
+	if (lowest_cntdn + (tx2-tx) > 0 && lowest_cntdn != 0x7FFFFFFF)
 	    {
 	    for(i=cnt=0;cnt<MTASK.nThreads;i++)
 	        {
 		if (MTASK.ThreadTable[i])
 		    {
 		    cnt++;
-		    if (MTASK.ThreadTable[i]->CntDown >=0) MTASK.ThreadTable[i]->CntDown -= lowest_cntdn;
+		    MTASK.ThreadTable[i]->CntDown -= (lowest_cntdn + (tx2-tx)*(MTASK.ThreadTable[i]->CurPrio)/MT_TICK_MAX);
+		    if (MTASK.ThreadTable[i]->CntDown < 0)
+			MTASK.ThreadTable[i]->CntDown = 0;
 		    }
 		}
 	    }
@@ -1461,7 +1199,7 @@ mtSched()
 	    }
 
 	/** If locked, we need to continue with that thread. **/
-	if (locked_thr) lowest_run_thr = locked_thr;
+	if (MTASK.LockedThread) lowest_run_thr = MTASK.LockedThread;
 
 #if 0
 	if (k==0) dbg_write(0,"0",1);
@@ -1522,9 +1260,9 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
     pThread thr;
     int i;
 
-    	if (MTASK.nThreads >= MAX_THREADS)
+    	if (MTASK.nThreads >= MTASK.MaxThreads)
 	    {
-	    printf("mtask: Thread Table Limit (%d) exceeded!\n",MAX_THREADS);
+	    printf("mtask: Thread Table Limit (%d) exceeded!\n", MTASK.MaxThreads);
 	    return NULL;
 	    }
 
@@ -1555,12 +1293,41 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	      this allows the signal handler, which will sometimes get called while
 	      the scheduler is in a select() call to spawn a new thread **/
 	if(MTASK.CurrentThread)
+	    {
 	    thr->SecContext.ThrParam = MTASK.CurrentThread->SecContext.ThrParam;
+	    thr->SecContext.ThrParamLink = MTASK.CurrentThread->SecContext.ThrParamLink;
+	    thr->SecContext.ThrParamUnLink = MTASK.CurrentThread->SecContext.ThrParamUnLink;
+	    if (thr->SecContext.ThrParam && thr->SecContext.ThrParamLink)
+		thr->SecContext.ThrParamLink(thr->SecContext.ThrParam);
+	    }
 	else
+	    {
 	    thr->SecContext.ThrParam = NULL;
+	    thr->SecContext.ThrParamLink = NULL;
+	    thr->SecContext.ThrParamUnLink = NULL;
+	    }
+
+	/** Copy the security parameter.  This is an application-managed
+	 ** context that we propagate from one thread to another as new
+	 ** threads are created.
+	 **/
+	thr->SecContext.SecParam = NULL;
+	if (MTASK.CurrentThread)
+	    {
+	    thr->SecContext.SecParamCopyConstructor = MTASK.CurrentThread->SecContext.SecParamCopyConstructor;
+	    thr->SecContext.SecParamDestructor = MTASK.CurrentThread->SecContext.SecParamDestructor;
+	    if (MTASK.CurrentThread->SecContext.SecParam && MTASK.CurrentThread->SecContext.SecParamCopyConstructor)
+		{
+		MTASK.CurrentThread->SecContext.SecParamCopyConstructor(MTASK.CurrentThread->SecContext.SecParam, &(thr->SecContext.SecParam));
+		}
+	    else
+		{
+		thr->SecContext.SecParam = MTASK.CurrentThread->SecContext.SecParam;
+		}
+	    }
 
 	/** Add to the thread table. **/
-	for(i=0;i<MAX_THREADS;i++)
+	for(i=0;i<MTASK.MaxThreads;i++)
 	    {
 	    if (!MTASK.ThreadTable[i])
 	        {
@@ -1600,15 +1367,16 @@ thYield()
 /*** THEXIT exits and destroys the current thread and then calls 
  *** the scheduler to invoke the next thread.
  ***/
-int
+void
 thExit()
     {
     register int i;
+    void* old_param;
 
 	dbg_write(0,"E",1);
 
     	/** Remove thread from thread table **/
-	for(i=0;i<MAX_THREADS;i++) 
+	for(i=0;i<MTASK.MaxThreads;i++) 
 	    {
 	    if (MTASK.ThreadTable[i] == MTASK.CurrentThread)
 	        {
@@ -1632,6 +1400,14 @@ thExit()
 	    MTASK.EventWaitTable[i]->Thr->Status = THR_S_RUNNABLE;
 	    }
 
+	/** Security settings? **/
+	if (MTASK.CurrentThread->SecContext.SecParam && MTASK.CurrentThread->SecContext.SecParamDestructor)
+	    MTASK.CurrentThread->SecContext.SecParamDestructor(MTASK.CurrentThread->SecContext.SecParam);
+	old_param = MTASK.CurrentThread->SecContext.ThrParam;
+	MTASK.CurrentThread->SecContext.ThrParam = NULL;
+	if (old_param && MTASK.CurrentThread->SecContext.ThrParamUnLink)
+	    MTASK.CurrentThread->SecContext.ThrParamUnLink(old_param);
+
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
@@ -1649,11 +1425,19 @@ thExit()
 		exit(0);
 	    }
 
-	/** Call scheduler **/
-	MTASK.MTFlags &= ~MT_F_LOCKED;
+	/** Thread exited while scheduler was locked?  If so, we exit the
+	 ** process.
+	 **/
+	if (MTASK.LockedThread)
+	    {
+	    printf("Warning: thExit() called with scheduler locked; exiting process now.\n");
+	    exit(0);
+	    }
+
+	/** Call scheduler - scheduler will never return. **/
 	mtSched();
 
-    return OK; /* though we never return - mtSched doesn't do a setjmp... */
+    abort(); /* this suppresses the 'noreturn function does return' warning */
     }
 
 
@@ -1665,6 +1449,7 @@ int
 thKill(pThread thr)
     {
     register int i;
+    void* old_param;
 
     	/** Param check **/
 	if (!thr) thr = MTASK.CurrentThread;
@@ -1694,12 +1479,20 @@ thKill(pThread thr)
 	    }
 
 	/** Remove from thread table. **/
-	for(i=0;i<MAX_THREADS;i++) if (MTASK.ThreadTable[i] == thr)
+	for(i=0;i<MTASK.MaxThreads;i++) if (MTASK.ThreadTable[i] == thr)
 	    {
 	    MTASK.ThreadTable[i] = NULL;
 	    MTASK.nThreads--;
 	    break;
 	    }
+
+	/** Security settings? **/
+	if (thr->SecContext.SecParam && thr->SecContext.SecParamDestructor)
+	    thr->SecContext.SecParamDestructor(thr->SecContext.SecParam);
+	old_param = thr->SecContext.ThrParam;
+	thr->SecContext.ThrParam = NULL;
+	if (old_param && thr->SecContext.ThrParamUnLink)
+	    thr->SecContext.ThrParamUnLink(old_param);
 
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
@@ -1804,8 +1597,8 @@ thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec
     EventReq the_event, timer;
     pEventReq ev[2] = {&timer, &the_event};
     int rval;
-    unsigned long start_ticks;
-    unsigned long used_ticks;
+    unsigned int start_ticks;
+    unsigned int used_ticks;
 
 	/** set up **/
 	ev[0]->Object = NULL;
@@ -1846,12 +1639,17 @@ thMultiWait(int event_cnt, pEventReq event_req[])
     register int i;
     int code = 0;
     int sched_called = 0;
+    int will_block;
+    int err;
 
     	/** Check the thing first to see if we need to block **/
+	will_block = 1;
+	err = 0;
 	for(i=0;i<event_cnt;i++)
 	    {
 	    if (event_req[i]->EventType == EV_T_MT_TIMER)
 	        {
+	        event_req[i]->Status = EV_S_INPROC;
 		code = (event_req[i]->ReqLen == 0)?1:0;
 		}
 	    else
@@ -1859,20 +1657,30 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 	        event_req[i]->Status = EV_S_INPROC;
 	        code = PMTOBJECT(event_req[i]->Object)->EventCkFn(event_req[i]->EventType,event_req[i]->Object);
 		}
-	    if (code == -1) event_req[i]->Status = EV_S_ERROR;
-	    if (code == 1) event_req[i]->Status = EV_S_COMPLETE;
-	    if (code == -1 || code == 1) break;
+	    if (code == -1)
+		{
+		event_req[i]->Status = EV_S_ERROR;
+		err = 1;
+		}
+	    if (code == 1)
+		{
+		event_req[i]->Status = EV_S_COMPLETE;
+		will_block = 0;
+		}
+	    //if (code == -1 || code == 1) break;
 	    }
 
 	/** Loop until we get proper yield/event **/
 	while(1)
 	    {
 	    /** Invalid event wait? **/
-	    if (code == -1) return -1;
+	    if (err) return -1;
 
 	    /** If MTASK is set to always-yield then do that now. **/
-	    if (code == 1 && !(MTASK.MTFlags & MT_F_NOYIELD) && !sched_called)
+	    if (!will_block && !(MTASK.MTFlags & MT_F_NOYIELD) && !sched_called)
 	        {
+		will_block = 1;
+		err = 0;
 	        if (mtSched() != 0)
 	            {
 		    sched_called = 1;
@@ -1881,22 +1689,37 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 			if (event_req[i]->ObjType == OBJ_T_THREAD)
 			    {
 			    code = 1;
+			    will_block = 0;
 			    break;
 			    }
 			if (event_req[i]->ObjType == OBJ_T_SEM) break;
 	    		if (event_req[i]->EventType == EV_T_MT_TIMER) break;
 			code = PMTOBJECT(event_req[i]->Object)->EventCkFn(event_req[i]->EventType,event_req[i]->Object);
-			if (code == 1) event_req[i]->Status = EV_S_COMPLETE;
-			else if (code == -1) event_req[i]->Status = EV_S_ERROR;
-			else event_req[i]->Status = EV_S_INPROC;
-	    		if (code == -1 || code == 1) break;
+			if (code == 1)
+			    {
+			    event_req[i]->Status = EV_S_COMPLETE;
+			    will_block = 0;
+			    }
+			else if (code == -1)
+			    {
+			    event_req[i]->Status = EV_S_ERROR;
+			    err = 1;
+			    }
+			else
+			    {
+			    event_req[i]->Status = EV_S_INPROC;
+			    }
+	    		//if (code == -1 || code == 1) break;
 	    		}
 		    }
 		}
-	    if (code == 1) break;
+
+	    /** Not going to block **/
+	    if (!will_block && !err)
+		break;
 
 	    /** If this is going to block, set up an event structure **/
-	    if (code == 0)
+	    if (will_block && !err)
 	        {
 		for(i=0;i<event_cnt;i++)
 		    {
@@ -1917,7 +1740,6 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 		    event_req[i]->TableIdx = evAdd(event_req[i]);
 		    if (event_req[i]->TableIdx == -1)
 		        {
-		        nmFree(event_req[i], sizeof(EventReq));
 		        return -1;
 		        }
 		    }
@@ -1926,8 +1748,10 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 		for(i=0;i<event_cnt;i++) 
 		    {
 		    evRemoveIdx(event_req[i]->TableIdx);
-		    if (event_req[i]->Status == EV_S_ERROR) code = -1;
-		    if (event_req[i]->Status == EV_S_COMPLETE) code = 1;
+		    if (event_req[i]->Status == EV_S_ERROR)
+			err = 1;
+		    if (event_req[i]->Status == EV_S_COMPLETE) 
+			will_block = 0;
 		    }
 		sched_called = 1;
 		}
@@ -2054,6 +1878,7 @@ int
 thLock()
     {
     MTASK.MTFlags |= MT_F_LOCKED;
+    MTASK.LockedThread = MTASK.CurrentThread;
     return 0;
     }
 
@@ -2065,6 +1890,7 @@ int
 thUnlock()
     {
     MTASK.MTFlags &= ~MT_F_LOCKED;
+    MTASK.LockedThread = NULL;
     return 0;
     }
 
@@ -2233,36 +2059,15 @@ thSetSecContext(pThread thr, pMTSecContext context)
 	if (MTASK.CurrentThread->SecContext.UserID != 0) return -1;
 
 	/** Update thread context **/
+	if (thr->SecContext.SecParam && thr->SecContext.SecParamDestructor)
+	    thr->SecContext.SecParamDestructor(thr->SecContext.SecParam);
 	memcpy(&(thr->SecContext), context, sizeof(MTSecContext));
-	/*thr->SecContext.UserID = context->UserID;
-	thr->SecContext.GroupID = context->GroupID;
-	thr->SecContext.ThrParam = context->ThrParam;*/
+	if (context->SecParamCopyConstructor)
+	    context->SecParamCopyConstructor(context->SecParam, &(thr->SecContext.SecParam));
 
 	/** Update current run settings if thread is current thread **/
 	if (thr == MTASK.CurrentThread)
 	    mt_internal_SwitchToContext(&(thr->SecContext));
-
-	/*if (thr == MTASK.CurrentThread)
-	    {
-	    if (thr->SecContext.UserID != MTASK.CurUserID)
-		{
-		if (MTASK.CurUserID) seteuid(0);
-		if (thr->SecContext.UserID) seteuid(thr->SecContext.UserID);
-		MTASK.CurUserID = thr->SecContext.UserID;
-		}
-	    if (thr->SecContext.GroupID != MTASK.CurGroupID)
-		{
-		if (MTASK.CurGroupID) setegid(0);
-		if (thr->SecContext.GroupID) setegid(thr->SecContext.GroupID);
-		MTASK.CurGroupID = thr->SecContext.GroupID;
-		}
-	    if (MTASK.CurNGroups != thr->SecContext.nGroups || !memcmp(MTASK.CurGroupList, thr->SecContext.GroupList, thr->SecContext.nGroups * sizeof(gid_t)))
-		{
-		setgroups(thr->SecContext.nGroups, thr->SecContext.GroupList);
-		MTASK.CurNGroups = thr->SecContext.nGroups;
-		memcpy(MTASK.CurGroupList, thr->SecContext.GroupList, thr->SecContext.nGroups * sizeof(gid_t));
-		}
-	    }*/
 
     return 0;
     }
@@ -2284,6 +2089,8 @@ thGetSecContext(pThread thr, pMTSecContext context)
 
 	/** Save it **/
 	memcpy(context, &(thr->SecContext), sizeof(MTSecContext));
+	if (thr->SecContext.SecParam && thr->SecContext.SecParamCopyConstructor)
+	    thr->SecContext.SecParamCopyConstructor(thr->SecContext.SecParam, &(context->SecParam));
 	/*context->UserID = thr->SecContext.UserID;
 	context->GroupID = thr->SecContext.GroupID;
 	context->ThrParam = thr->SecContext.ThrParam;*/
@@ -2299,6 +2106,7 @@ thGetSecContext(pThread thr, pMTSecContext context)
 int
 thSetParam(pThread thr, const char* name, void* param)
     {
+    void* old_param;
 #if 0
     int i;
 #endif
@@ -2318,8 +2126,26 @@ thSetParam(pThread thr, const char* name, void* param)
 	    }
 	thr->ThrParam[i]->Param = param;
 #else
+	old_param = thr->SecContext.ThrParam;
 	thr->SecContext.ThrParam = param;
+	if (thr->SecContext.ThrParamUnLink && old_param)
+	    thr->SecContext.ThrParamUnLink(old_param);
 #endif
+
+    return 0;
+    }
+
+
+/*** THSETPARAMFUNCTIONS provides the link and unlink callback functions that
+ *** mtask will use when threads are created and destroyed.
+ ***/
+int
+thSetParamFunctions(pThread thr, int (*link_fn)(), int (*unlink_fn)())
+    {
+
+    	if (!thr) thr=MTASK.CurrentThread;
+	thr->SecContext.ThrParamLink = link_fn;
+	thr->SecContext.ThrParamUnLink = unlink_fn;
 
     return 0;
     }
@@ -2381,6 +2207,35 @@ thExcessiveRecursion()
     {
     unsigned char buf[1];
     return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    }
+
+
+/*** THSETSECPARAM - set an application-specified opaque security
+ *** parameter for the thread, as well as (optionally) a copy constructor
+ *** and destructor for that opaque object.
+ ***
+ *** Setting this parameter does NOT call a previous parameter's
+ *** destructor, nor is the copy constructor called on the new parameter
+ *** (this is for efficiency, to avoid needless copying and allocation).
+ ***/
+int
+thSetSecParam(pThread thr, void* param, int (*copy_constructor)(void* src, void** dst), int (*destructor)(void*))
+    {
+    if (!thr) thr=MTASK.CurrentThread;
+    thr->SecContext.SecParam = param;
+    thr->SecContext.SecParamCopyConstructor = copy_constructor;
+    thr->SecContext.SecParamDestructor = destructor;
+    return 0;
+    }
+
+
+/*** THGETSECPARAM - get the opaque security parameter for the thread.
+ ***/
+void*
+thGetSecParam(pThread thr)
+    {
+    if (!thr) thr=MTASK.CurrentThread;
+    return thr->SecContext.SecParam;
     }
 
 
@@ -2466,7 +2321,7 @@ fdUnSetOptions(pFile filedesc, int options)
     }
 
 
-/*** FDPIPE creates to "pFile" descriptors which are an mtask-level (not
+/*** FDPIPE creates two "pFile" descriptors which are an mtask-level (not
  *** kernel level) "pipe".  That is, what is written to one can be read from
  *** the other.  The descriptors are symmetric - no special features are
  *** present on one but not on the other.  Return: 0 on success, -1 on fail.
@@ -2479,10 +2334,12 @@ fdPipe(pFile *filedesc1, pFile *filedesc2)
 	*filedesc1 = NULL;
 	*filedesc2 = NULL;
 	*filedesc1 = (pFile)nmMalloc(sizeof(File));
-	if (!*filedesc1) goto fdpipe_error;
+	if (!*filedesc1)
+	    goto fdpipe_error;
 	memset(*filedesc1, 0, sizeof(File));
 	*filedesc2 = (pFile)nmMalloc(sizeof(File));
-	if (!*filedesc2) goto fdpipe_error;
+	if (!*filedesc2)
+	    goto fdpipe_error;
 	memset(*filedesc2, 0, sizeof(File));
 
 	(*filedesc1)->EventCkFn = (*filedesc2)->EventCkFn = evPipe;
@@ -2513,10 +2370,16 @@ fdPipe(pFile *filedesc1, pFile *filedesc2)
 	return 0;
 
     fdpipe_error:
-	if ((*filedesc1)->PipeBuf) nmSysFree((*filedesc1)->PipeBuf);
-	if ((*filedesc2)->PipeBuf) nmSysFree((*filedesc2)->PipeBuf);
-	if ((*filedesc1)) nmFree((*filedesc1), sizeof(File));
-	if ((*filedesc2)) nmFree((*filedesc2), sizeof(File));
+	if (*filedesc1)
+	    {
+	    if ((*filedesc1)->PipeBuf) nmSysFree((*filedesc1)->PipeBuf);
+	    nmFree((*filedesc1), sizeof(File));
+	    }
+	if (*filedesc2)
+	    {
+	    if ((*filedesc2)->PipeBuf) nmSysFree((*filedesc2)->PipeBuf);
+	    nmFree((*filedesc2), sizeof(File));
+	    }
 	(*filedesc1) = NULL;
 	(*filedesc2) = NULL;
 
@@ -2636,6 +2499,8 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     int rval = -1;
     int code;
     int eno;
+    int length;
+    int addl_read;
 
 	//printf("reading %i from %08x(%08x--%08x) to %08x with %08x\n",maxlen,(int)filedesc,(int)filedesc->FD,(int)filedesc->Flags,(int)buffer,flags);
     	/** If closing, cant read **/
@@ -2648,11 +2513,28 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 	/** Check the unread-buffer first. **/
 	if (filedesc->UnReadLen > 0)
 	    {
-	    if (maxlen > filedesc->UnReadLen) maxlen = filedesc->UnReadLen;
-	    memcpy(buffer, filedesc->UnReadPtr, maxlen);
-	    filedesc->UnReadLen -= maxlen;
-	    filedesc->UnReadPtr += maxlen;
-	    return maxlen;
+	    if (maxlen > filedesc->UnReadLen)
+		length = filedesc->UnReadLen;
+	    else
+		length = maxlen;
+	    memcpy(buffer, filedesc->UnReadPtr, length);
+	    filedesc->UnReadLen -= length;
+	    filedesc->UnReadPtr += length;
+        
+	    if(maxlen > length)
+		{
+		addl_read = fdRead(filedesc, buffer + length, maxlen - length, 0, FD_U_NOBLOCK);
+
+		/** fdRead() could return an error condition; since we had valid
+		 ** bytes to read out of the UnReadBuf, hide the error this time
+		 ** around, and the caller will see it on a subsequent fdRead()
+		 ** call.
+		 **/
+		if (addl_read < 0)
+		    addl_read = 0;
+		length += addl_read;
+		}
+	    return length;
 	    }
 
     	/** If filedesc not listed as blocked, try reading now. **/
@@ -2685,6 +2567,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		}
 #endif
+	    if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 	    if (rval == -1 && (errno != EWOULDBLOCK && errno != EINTR && errno != EAGAIN)) return -1;
     	    }
 
@@ -2750,6 +2633,8 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		    }
 #endif
+
+		if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
@@ -2804,7 +2689,7 @@ fd_internal_WritePkt(pFile filedesc, const char* buffer, int length, int offset,
     	/** Repeatedly try until we get it all **/
 	while(cnt < length)
 	    {
-	    wcnt = fdWrite(filedesc, buffer + cnt, length - cnt, offset, flags);
+	    wcnt = fdWrite(filedesc, buffer + cnt, length - cnt, offset, (cnt == 0)?(flags):(flags & ~FD_U_TRUNCATE));
 	    if (wcnt <= 0) return -1;
 	    cnt += wcnt;
 	    if (flags & FD_U_SEEK) offset += wcnt;
@@ -2914,6 +2799,8 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	    else
 		{
 #endif
+		if (flags & FD_U_TRUNCATE)
+		    ftruncate(filedesc->FD, lseek(filedesc->FD, 0, SEEK_CUR));
 		rval = write(filedesc->FD,buffer,length);
 #ifdef HAVE_LIBZ
 		}
@@ -2979,6 +2866,8 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 		else
 		    {
 #endif
+		    if (flags & FD_U_TRUNCATE)
+			ftruncate(filedesc->FD, lseek(filedesc->FD, 0, SEEK_CUR));
 		    rval = write(filedesc->FD,buffer,length);
 #ifdef HAVE_LIBZ
 		    }
@@ -3681,31 +3570,83 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 int
 netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
     {
-    int t,t2,rval,arg;
-    struct linger l;
+    int t,t2,rval,arg,sl;
+    //struct linger l;
+    char buf[128];
 
 #ifdef MTASK_DEBUG
 	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_CLOSE)
 	    printf("Closing FD %i\n",net_filedesc->FD);
 #endif
 
-    	/** Close the file descriptor normally first. **/
-	t = mtTicks();
+    	/** Close the file descriptor normally first.  This does not actually
+	 ** call close() since we specify FD_XU_NODST (no destroy), but instead
+	 ** just cleans up event structures associated with the file
+	 ** descriptor.
+	 **/
+	t = mtRealTicks();
 	fdClose(net_filedesc, (flags & (FD_U_IMMEDIATE)) | FD_XU_NODST);
 
-	/** Now we set linger on the fd. **/
-	l.l_onoff = 1;
-	l.l_linger = (linger_msec) / 1000;
-	setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+	/** Shutdown for writing and wait for EOF from the peer **/
+	shutdown(net_filedesc->FD, SHUT_WR);
+	sl=1;
+	if (!(net_filedesc->Flags & FD_F_RDEOF))
+	    {
+	    while(sl <= 8192) /* max approx. 16 sec sleep time waiting on EOF */
+		{
+		rval = read(net_filedesc->FD, buf, sizeof(buf));
+		t2 = mtRealTicks();
+		if ((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec && rval > 0)
+		    continue;
+		if (rval == 0 || (rval < 0 && errno != EWOULDBLOCK))
+		    break;
+		thSleep(sl);
+		sl = sl * 2;
+		}
+	    }
+
+	/** Verify that all data has been transmitted to the peer (Linux only)
+	 **/
+#if HAVE_SIOCOUTQ && defined(SIOCOUTQ)
+	t2 = t;
+	sl = 1;
+	while(sl <= 8192)
+	    {
+	    rval = ioctl(net_filedesc->FD, SIOCOUTQ, &arg);
+	    if (rval < 0 || arg == 0)
+		break;
+	    t2 = mtRealTicks();
+	    if ((t2-t)*(1000/MTASK.TicksPerSec) >= linger_msec)
+		break;
+	    thSleep(sl);
+	    sl = sl * 2;
+	    }
+	//linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
+#endif
+
+	/** No longer using SO_LINGER: we don't actually want to block on
+	 ** any of this at all, and this code had a RST bug in it too.
+	 **/
+	/*if (linger_msec > 0)
+	    {
+	    l.l_onoff = 1;
+	    l.l_linger = (linger_msec) / 1000;
+	    setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
+	    }*/
 
 	/** Shutdown read and write sides of the connection. **/
-	shutdown(net_filedesc->FD, 2);
+	shutdown(net_filedesc->FD, SHUT_RDWR);
+
+	/** Issue the close **/
+	arg=0;
+	ioctl(net_filedesc->FD, FIONBIO, &arg);
+	close(net_filedesc->FD);
 
 	/** Try to close the socket, keeping track of timeout **/
-	rval = -1;
+	/*rval = -1;
 	while(linger_msec > 0)
 	    {
-	    t2 = mtTicks();
+	    t2 = mtRealTicks();
 	    linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
 	    t = t2;
 	    rval=close(net_filedesc->FD);
@@ -3717,10 +3658,10 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	        {
 		break;
 		}
-	    }
+	    }*/
 
 	/** Did the close succeed?  If not, set for forced close. **/
-	if (rval FAIL)
+	/*if (rval FAIL)
 	    {
 	    l.l_onoff=0;
 	    l.l_linger=0;
@@ -3728,7 +3669,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    arg=0;
 	    ioctl(net_filedesc->FD, FIONBIO, &arg);
 	    close(net_filedesc->FD);
-	    }
+	    }*/
 
 #ifdef MTASK_DEBUG
 	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_CLOSE)

@@ -52,74 +52,12 @@
 /*			:1,$s/uxu/pop/g					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_unixuser.c,v 1.6 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_unixuser.c,v $
-
-    $Log: objdrv_unixuser.c,v $
-    Revision 1.6  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.5  2004/06/23 21:33:56  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.4  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.3  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:11  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:10  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure for a password file entry. **/
 typedef struct
     {
-    char	Name[16];
+    char	Name[32];
     char	Passwd[20];
     int		Uid;
     int		Gid;
@@ -211,8 +149,8 @@ uxu_internal_CopyPwEnt(struct passwd* pwent)
 	if (!this) return NULL;
 
 	/** Fill it in **/
-	memccpy(this->Name, pwent->pw_name, '\0', 15);
-	this->Name[15]=0;
+	memccpy(this->Name, pwent->pw_name, '\0', 31);
+	this->Name[31]=0;
 	memccpy(this->Passwd, pwent->pw_passwd, '\0', 19);
 	this->Passwd[19] = 0;
 	this->Uid = pwent->pw_uid;
@@ -234,7 +172,6 @@ void*
 uxuOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pUxuData inf;
-    char* node_path;
     pSnNode node = NULL;
     char* name;
     struct passwd* pwent;
@@ -245,9 +182,6 @@ uxuOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(UxuData));
 	inf->Obj = obj;
 	inf->Mask = mask;
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -477,7 +411,7 @@ uxuOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    if (!pwd_data) break;
 	    xaAddItem(&(qy->PasswdEntries), (void*)pwd_data);
 	    }
-	setpwent();
+	endpwent();
     
     return (void*)qy;
     }

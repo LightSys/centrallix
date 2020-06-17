@@ -1,4 +1,7 @@
 #include "net_http.h"
+#include "cxss/cxss.h"
+#include "cxlib/memstr.h"
+#include "json/json.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -31,625 +34,73 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
+/*** HTTP server globals instantiation ***/
+NHT_t NHT;
+
+/*** Response codes ***/
+int nht_codes[] = 
+    {
+    100,101,
+    200,201,202,203,204,205,206,
+    300,301,302,303,304,305,307,
+    400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,
+    500,501,502,503,504,505,
+    -1
+    };
+
+char* nht_texts[] = 
+    {
+    "Continue",
+    "Switching Protocols",
+
+    "OK",
+    "Created",
+    "Accepted",
+    "Non-Authoritative Information",
+    "No Content",
+    "Reset Content",
+    "Partial Content",
+
+    "Multiple Choices",
+    "Moved Permanently",
+    "Found",
+    "See Other",
+    "Not Modified",
+    "Use Proxy",
+    "Temporary Redirect",
+    
+    "Bad Request",
+    "Unauthorized",
+    "Payment Required",
+    "Forbidden",
+    "Not Found",
+    "Method Not Allowed",
+    "Not Acceptable",
+    "Proxy Authentication Required",
+    "Request Timeout",
+    "Conflict",
+    "Gone",
+    "Length Required",
+    "Precondition Failed",
+    "Request Entity Too Large",
+    "Request-URI Too Long",
+    "Unsupported Media Type",
+    "Requested Range Not Satisfiable",
+    "Expectation Failed",
+
+    "Internal Server Error",
+    "Not Implemented",
+    "Bad Gateway",
+    "Service Unavailable",
+    "Gateway Timeout",
+    "HTTP Version Not Supported",
+    NULL
+    };
 
-    $Id: net_http.c,v 1.92 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
-
-    $Log: net_http.c,v $
-    Revision 1.92  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.91  2010/09/17 15:45:29  gbeeley
-    - (security) implement X-Frame-Options anti-clickjacking countermeasure
-
-    Revision 1.90  2010/09/09 01:25:41  gbeeley
-    - (bugfix) overlay-building loop was using WGTR_MAX_TEMPLATE as its limit
-
-    Revision 1.89  2009/07/14 22:09:58  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-
-    Revision 1.88  2009/06/26 18:31:03  gbeeley
-    - (feature) enhance ls__method=copy so that it supports srctype/dsttype
-      like test_obj does
-    - (feature) add ls__rowcount row limiter to sql query mode (non-osml)
-    - (change) some refactoring of error message handlers to clean things
-      up a bit
-    - (feature) adding last_activity to session objects (for sysinfo)
-    - (feature) parameterized OSML SQL queries over the http interface
-
-    Revision 1.87  2008/08/16 00:49:27  thr4wn
-    There was one last renaming of a function I forgot about in order for
-    Centrallix to actually compile :P
-
-    Revision 1.86  2008/08/16 00:31:38  thr4wn
-    I made some more modification of documentation and begun logic for
-    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
-
-    Revision 1.85  2008/06/25 22:48:12  jncraton
-    - (change) split net_http into separate files
-    - (change) replaced nht_internal_UnConvertChar with qprintf filter
-    - (change) replaced nht_internal_escape with qprintf filter
-    - (change) replaced nht_internal_decode64 with qprintf filter
-    - (change) removed nht_internal_Encode64
-    - (change) removed nht_internal_EncodeHTML
-
-    Revision 1.84  2008/06/25 01:01:56  gbeeley
-    - (feature) adding support for sysinfo /users directory which contains a
-      list of currently logged-in users (as managed by NHT).
-    - (change) adding ls__autoclose_sr option to OSML queries, where a query
-      will automatically close if all rows in the result set were fetched.
-      Good for performance as well as for lock contention.
-    - (change) adding cx__noact option to all requests (used by the OSRC now),
-      which tells the HTTP module to not count the request as end-user-
-      initiated activity.  Useful for allowing sessions to idle out even if a
-      regular query refresh is occurring, e.g., for a chat session.
-
-    Revision 1.83  2008/04/06 20:51:30  gbeeley
-    - (change) adding config option accept_localhost_only which is enabled in
-      the default configuration file at present.  This prevents connections
-      except from 127.0.0.1 (connections from elsewhere will get an error
-      message).  If unspecified in the configuration, this option is not
-      enabled.
-    - (security) switching to MTASK mtSetSecContext interface instead of
-      mtSetUserID.  See centrallix-lib commit log for discussion on this.
-    - (change) Give an authorization error on a NULL password instead of
-      treating it as a parse error.
-
-    Revision 1.82  2008/03/28 07:00:36  gbeeley
-    - (bugfix) only set values on a new object if the values are not NULL.
-
-    Revision 1.81  2008/03/26 01:08:29  gbeeley
-    - (change) switching to fdQPrintf() for file listing output, for better
-      robustness
-
-    Revision 1.80  2008/03/08 01:45:50  gbeeley
-    - (bugfix) gracefully handle a reopen_sql situation if autoname fails.
-
-    Revision 1.79  2008/03/04 01:10:57  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.78  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.77  2008/02/17 07:45:15  gbeeley
-    - (change) removal of 'encode' argument to WriteAttrs et al.
-    - (performance) slight reduction of data xfer size when fetching data.
-    - (change) ls__reopen_sql argument to OSML "create" allows for joins and
-      computed fields to be taken into account when a new record is inserted.
-
-    Revision 1.76  2008/01/18 23:54:26  gbeeley
-    - (change) add entropy to pool from web connection timings.
-
-    Revision 1.75  2007/09/18 18:00:57  gbeeley
-    - (change) allow encoding of attribute name so that attribute names can
-      contain spaces and special characters.
-
-    Revision 1.74  2007/07/25 16:57:23  gbeeley
-    - (change) prepping codebase for addition of layered/reverse-inheritance
-      development.
-
-    Revision 1.73  2007/06/06 15:20:09  gbeeley
-    - (feature) pass templates on to components, etc.
-
-    Revision 1.72  2007/05/29 15:17:13  gbeeley
-    - CLK_TCK deprecation has finally taken form.  This was fixed in centrallix-lib
-      but not in this module.
-
-    Revision 1.71  2007/04/19 21:22:54  gbeeley
-    - (change) slightly reworked ConnHandler function, added stub for POST
-      method.
-
-    Revision 1.70  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.69  2007/03/10 05:13:03  gbeeley
-    - (change) log session starts
-
-    Revision 1.68  2007/03/05 20:04:45  gbeeley
-    - (feature) allow session cookie name to be specified in centrallix.conf.
-    - (workaround) put a <br> after each attr when sending attr-value list to
-      client, as NS4 seems to be dropping some data when all the attrs are
-      together on one "line" of html.  Symptom was "** ERROR **" on occasion
-      in form fields.
-
-    Revision 1.67  2007/03/04 03:56:49  gbeeley
-    - (feature) have server feed updated values after an update or create, so
-      client can get data that may have been changed by the server during the
-      update or insert operation, due to business rules or auto keying.
-
-    Revision 1.66  2007/03/01 21:55:13  gbeeley
-    - (change) Use CXID for cookie name instead of LSID.
-
-    Revision 1.65  2007/02/26 16:40:39  gbeeley
-    - (bugfix) adding of cx__akey threw off OSML setattrs operation.
-
-    Revision 1.64  2007/02/22 23:25:14  gbeeley
-    - (feature) adding initial framework for CXSS, the security subsystem.
-    - (feature) CXSS entropy pool and key generation, basic framework.
-    - (feature) adding xmlhttprequest capability
-    - (change) CXSS requires OpenSSL, adding that check to the build
-    - (security) Adding application key to thwart request spoofing attacks.
-      Once the AML is active, application keying will be more important and
-      will be handled there instead of in net_http.
-
-    Revision 1.63  2006/11/16 20:15:54  gbeeley
-    - (change) move away from emulation of NS4 properties in Moz; add a separate
-      dom1html geom module for Moz.
-    - (change) add wgtrRenderObject() to do the parse, verify, and render
-      stages all together.
-    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
-      same way as buttons and editboxes.
-
-    Revision 1.62  2006/10/19 21:53:23  gbeeley
-    - (feature) First cut at the component-based client side development
-      system.  Only rendering of the components works right now; interaction
-      with the components and their containers is not yet functional.  For
-      an example, see "debugwin.cmp" and "window_test.app" in the samples
-      directory of centrallix-os.
-
-    Revision 1.61  2006/10/16 18:34:34  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.60  2006/10/04 17:20:50  gbeeley
-    - (feature) allow application to adjust to user agent's configured text
-      font size.  Especially the Mozilla versions in CentOS have terrible
-      line spacing problems.
-    - (feature) to allow the above, added minimum widget height management to
-      the auto-layout module (apos)
-    - (change) allow floating windows to grow in size if more room is needed
-      inside the window.
-    - (change) for auto-layout, go with the minimum flexibility in any row or
-      column rather than the average.  Not sure of all of the impact of
-      doing this.
-
-    Revision 1.59  2006/07/19 20:43:41  gbeeley
-    - change cx__width/cx__height to just cx__geom
-    - allow cx__geom=design to render app as designed without any scaling
-    - prep work for reworking the HTTP network driver (sorry for the delay in
-      getting this committed!)
-
-    Revision 1.58  2006/04/07 06:42:30  gbeeley
-    - (bugfix) memory_leaks -= 2;
-    - (bugfix) be graceful if netAcceptTCP() returns NULL.
-
-    Revision 1.57  2005/10/18 22:49:33  gbeeley
-    - (bugfix) always attempt to use autoname; let the OSML figure out whether
-      autoname can be used for an object or not.
-
-    Revision 1.56  2005/09/26 06:24:04  gbeeley
-    - (major feature) Added templating mechanism via the wgtr module.
-      To use a widget template on an app, specify widget_template= in the
-      app.  See the objcanvas_test sample for an example of this.
-    - (bugfix) Fixed a null value issue in the sybase driver
-    - (bugfix) Fixed a wgtr issue on handling presentation hints settings.
-
-    Revision 1.55  2005/09/17 02:58:39  gbeeley
-    - change order of property detection since innerHeight seems more
-      reliable on mozilla.  document.body.clientHeight reflects actual
-      <body> tag height, not window height, evidently.  Another approach
-      would be to set css height on <body> to 100%.
-
-    Revision 1.54  2005/02/26 06:35:53  gbeeley
-    - pass URL params in the OpenCtl parameters.
-
-    Revision 1.53  2004/12/31 04:37:26  gbeeley
-    - oops - need a pragma no-cache on the execmethod call
-    - pass error and null information on attributes to the client
-
-    Revision 1.52  2004/08/30 03:18:20  gbeeley
-    - directory indexing (default document) now supported via net_http.
-    - need some way to make objOpen less noisy when we *know* that it is OK
-      for the open to fail based on file nonexistence.
-
-    Revision 1.51  2004/08/29 19:32:53  pfinley
-    fixing last commit... put the paren in the wrong place
-
-    Revision 1.50  2004/08/29 17:32:32  pfinley
-    Textarea widget crossbrowser support... I have tested on Mozilla 1.7rc1,
-    Firefox 0.9.3, and Netscape 4.79.  Also fixed a JS syntax error with
-    loading page/image.
-
-    Revision 1.49  2004/08/29 04:21:38  jorupp
-     * fix Greg's variant of this issue
-
-    Revision 1.48  2004/08/29 04:19:40  jorupp
-     * make the URL rewriting with the client dimensions a bit more robust.
-
-    Revision 1.47  2004/08/28 06:48:08  jorupp
-     * remove some unneed printfs
-     * add a check to make sure we get the right cookie, in case there is one for another application on the same server
-
-    Revision 1.46  2004/08/17 03:46:41  gbeeley
-    - ignore "null" connections from MSIE
-    - better error reporting when wgtr routines fail
-    - use location.replace to make the browser's Back button work
-
-    Revision 1.45  2004/08/15 03:10:48  gbeeley
-    - moving client canvas size detection logic from htmlgen to net_http so
-      that it can be passed to wgtrVerify(), later to be used in adjusting
-      geometry of application to fit browser window.
-
-    Revision 1.44  2004/08/13 18:46:13  mmcgill
-    *   Differentiated between non-visual widgets and widgets without associated
-        objects during the rendering process. Widgets without associated objects
-        on the client-side (no layers) have an object created for them and are
-        included in the tree. This was not previously the case (for example,
-        widget/table-columns were not previously included in the client-side tree.
-        Now, they are.)
-    *   Added code in ht_render to initiate the process of including interface
-        information on the client-side.
-    *   Modified htdrivers to flag widgets as HT_WGTF_NOOBJECT when appropriate.
-    *   Modified wgtdrivers to flag widgets as WGTR_F_NONVISUAL when appropriate.
-    *   Fixed bug in tab widget
-    *   Added 'fieldname' property to widget/table-column (SEE NOTE BELOW)
-    *   Added support for sending interface definitions to the client dynamically,
-        and for including them statically in an application at render time
-    *   Added a parameter to wgtrNewNode, and added wgtrImplementsInterface()
-    *   Unique widget names are now *required* within an application (SEE NOTE)
-
-    NOTE: THIS UPDATE WILL BREAK YOUR APPLICATIONS.
-
-    The applications in the
-    centrallix-os package have been updated to work with the noted changes. Any
-    applications you may have written that aren't in that module are probably
-    broken now for one of two reasons:
-        1) Not all widgets are uniquely named within an application
-        2) 'fieldname' is not specified for a widget/table-column
-    These are now requirements. Update your applications accordingly. Also note
-    that each widget will now receive a global variable named after that widget
-    on the client side - don't pick widget names that might collide with already-
-    existing globals.
-
-    Revision 1.43  2004/08/02 14:09:36  mmcgill
-    Restructured the rendering process, in anticipation of new deployment methods
-    being added in the future. The wgtr module is now the main widget-related
-    module, responsible for all non-deployment-specific widget functionality.
-    For example, Verifying a widget tree is non-deployment-specific, so the verify
-    functions have been moved out of htmlgen and into the wgtr module.
-    Changes include:
-    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
-        wgtr drivers.
-    *   Adding wgtr drivers to the widget tree module.
-    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
-    *   Requiring all deployment methods (currently only DHTML) to register a
-        Render() function with the wgtr module.
-    *   Adding wgtrRender(), to abstract the details of the rendering process
-        from the caller. Given a widget tree, a string representing the deployment
-        method to use ("DHTML" for now), and the additional args for the rendering
-        function, wgtrRender() looks up the appropriate function for the specified
-        deployment method and calls it.
-    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
-        is being created. This is primarily to allow widget drivers to declare
-        the interfaces their widgets support when they are instantiated, but other
-        initialization tasks can go there as well.
-
-    Also in this commit:
-    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
-    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
-        other stack variables.
-    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
-        can now be completely insulated from the deployment method by the wgtr
-        module.
-
-    Revision 1.42  2004/07/19 15:30:43  mmcgill
-    The DHTML generation system has been updated from the 2-step process to
-    a three-step process:
-        1)	Upon request for an application, a widget-tree is built from the
-    	app file requested.
-        2)	The tree is Verified (not actually implemented yet, since none of
-    	the widget drivers have proper Verify() functions - but it's only
-    	a matter of a function call in net_http.c)
-        3)	The widget drivers are called on their respective parts of the
-    	tree structure to generate the DHTML code, which is then sent to
-    	the user.
-
-    To support widget tree generation the WGTR module has been added. This
-    module allows OSML objects to be parsed into widget-trees. The module
-    also provides an API for building widget-trees from scratch, and for
-    manipulating existing widget-trees.
-
-    The Render functions of all widget drivers have been updated to make their
-    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
-    instead of a pObject as a parameter.
-
-    net_internal_GET() in net_http.c has been updated to call
-    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
-    then free it.
-
-    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
-    a pObject parameter, and to make calls through the WGTR module instead of
-    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
-    htrGetBoolean(), etc. have also been modified appropriately.
-
-    I have assumed in each widget driver that w_obj->Session is equivelent to
-    s->ObjSession; in other words, that the object being passed in to the
-    Render() function was opened via the session being passed in with the
-    HtSession parameter. To my understanding this is a valid assumption.
-
-    While I did run through the test apps and all appears to be well, it is
-    possible that some bugs were introduced as a result of the modifications to
-    all 30 widget drivers. If you find at any point that things are acting
-    funny, that would be a good place to check.
-
-    Revision 1.41  2004/06/12 04:02:28  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.40  2004/02/25 19:59:57  gbeeley
-    - fixing problem in net_http; nht_internal_GET should not open the
-      target_obj when operating in OSML-over-HTTP mode.
-    - adding OBJ_O_AUTONAME support to sybase driver.  Uses select max()+1
-      approach for integer fields which are left unspecified.
-
-    Revision 1.39  2004/02/24 20:11:00  gbeeley
-    - fixing some date/time related problems
-    - efficiency improvement for net_http allowing browser to actually
-      cache .js files and images.
-
-    Revision 1.38  2003/11/30 02:09:40  gbeeley
-    - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
-      oneachreveal)
-    - adding serialized loader queue for preventing communcations with the
-      server from interfering with each other (netscape bug)
-    - pg_debug() writes to a "debug:" dynamic html widget via AddText()
-    - obscure/reveal subsystem initial implementation
-
-    Revision 1.37  2003/11/12 22:18:42  gbeeley
-    - Begin addition of generalized server->client messages
-    - Addition of delete support for osml-over-http
-
-    Revision 1.36  2003/06/03 23:31:05  gbeeley
-    Adding pro forma netscape 4.8 support.
-
-    Revision 1.35  2003/05/30 17:58:27  gbeeley
-    - turned off OSML API debugging
-    - fixed bug in WriteOneAttr() that was truncating a string
-
-    Revision 1.34  2003/05/30 17:39:51  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.33  2003/04/25 05:06:57  gbeeley
-    Added insert support to OSML-over-HTTP, and very remedial Trx support
-    with the objCommit API method and Commit osdriver method.  CSV datafile
-    driver is the only driver supporting it at present.
-
-    Revision 1.32  2003/03/12 03:19:09  lkehresman
-    * Added basic presentation hint support to multiquery.  It only returns
-      hints for the first result set, which is the wrong way to do it.  I went
-      ahead and committed this so that peter and rupp can start working on the
-      other stuff while I work on implementing this correctly.
-
-    * Hints are now presented to the client in the form:
-      <a target=XHANDLE HREF='http://ATTRIBUTE/?HINTS#TYPE'>
-      where HINTS = hintname=value&hintname=value
-
-    Revision 1.31  2002/12/23 06:22:04  jorupp
-     * added ability to take flags (numbers only) to ls__req=read
-
-    Revision 1.30  2002/11/22 20:57:32  gbeeley
-    Converted part of net_http to use fdPrintf() as a test of the new
-    functionality.
-
-    Revision 1.29  2002/11/22 19:29:37  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.28  2002/09/27 22:26:06  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.27  2002/07/31 18:36:20  mattphillips
-    Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
-    to test for libz, but we didn't do anything with the results of its test.
-    This wraps all the gzip stuff in #ifdef's so we will not use it if the system
-    we built on doesn't have it.
-
-    Revision 1.26  2002/07/21 05:05:57  jorupp
-     * updated net_http.c to take advantage of gziped output (except for non-html docs for Netscape 4.7)
-     * modified config file with new parameter, enable_gzip (0/1)
-     * updated build scripts to reflect new dependency
-
-    Revision 1.25  2002/07/12 19:57:00  gbeeley
-    Added support for encoding of object attributes, such as those returned
-    in a query result set.  Use &ls__encode=1 on the URL line.  Use the
-    javascript function unescape() to get the original data back.
-
-    Revision 1.24  2002/07/11 21:03:28  gbeeley
-    Fixed problem with doing "setattrs" OSML operation on money and
-    datetime data types.
-
-    Revision 1.23  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.22  2002/06/14 15:13:42  jorupp
-     * store the entire User-Agent line for comparison, not just the first word
-
-    Revision 1.21  2002/06/10 00:21:00  nehresma
-    Much cleaner (and safer) way of copying multiple lexer tokens into a buffer.
-    Should have been doing this all along.  :)
-
-    Revision 1.20  2002/06/09 23:55:23  nehresma
-    sanity checking..
-
-    Revision 1.19  2002/06/09 23:44:47  nehresma
-    This is the initial cut of the browser detection code.  Note that each widget
-    needs to register which browser and style is supported.  The GNU regular
-    expression library is also needed (comes with GLIBC).
-
-    Revision 1.18  2002/05/06 22:46:55  gbeeley
-    Updating net_http a bit to properly return OK on a ping.
-
-    Revision 1.17  2002/05/03 03:52:43  gbeeley
-    Added preliminary session watchdog support to the net_http module.
-    The watchdog timer parameters are controllable via the config file.
-
-    Revision 1.16  2002/05/01 02:20:31  gbeeley
-    Modification in net_http: ls__req=close now allows multiple object
-    ids to be strung together in the ls__oid parameter.
-
-    Revision 1.15  2002/04/25 22:50:00  gbeeley
-    Added ability to reference default session in ls__mode=osml operations
-    instead of having to create a new one.  Note that the session is the
-    transaction context, so be careful just using the default (which
-    applies to all connections from the user's browser).  Set the ls__sid
-    to "XDEFAULT" to use the default.
-
-    Revision 1.14  2002/04/25 19:29:30  gbeeley
-    Added handle support to object ids and query ids in the OSML over HTTP
-    communication mechanism.
-
-    Revision 1.13  2002/04/25 18:01:15  gbeeley
-    Started adding Handle abstraction in net_http.c.  Testing first with
-    just handlized ObjSession structures.
-
-    Revision 1.12  2002/03/23 05:34:26  gbeeley
-    Added "pragma: no-cache" headers to the "osml" mode responses to help
-    avoid browser caching of that dynamic data.
-
-    Revision 1.11  2002/03/23 05:09:16  gbeeley
-    Fixed a logic error in net_http's ls__startat osml feature.  Improved
-    OSML error text.
-
-    Revision 1.10  2002/03/23 03:52:54  gbeeley
-    Fixed a potential security blooper when the cookie was copied to a tmp
-    buffer.
-
-    Revision 1.9  2002/03/23 03:41:02  gbeeley
-    Fixed the ages-old problem in net_http.c where cookies weren't anchored
-    at the / directory, so zillions of sessions might be created...
-
-    Revision 1.8  2002/03/23 01:30:44  gbeeley
-    Added ls__startat option to the osml "queryfetch" mechanism, in the
-    net_http.c driver.  Set ls__startat to the number of the first object
-    you want returned, where 1 is the first object (in other words,
-    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
-    clause to the multiquery module, but thought this would be easier and
-    just as effective for now.
-
-    Revision 1.7  2002/03/16 06:50:20  gbeeley
-    Changed some sprintfs to snprintfs, just for safety's sake.
-
-    Revision 1.6  2002/03/16 04:26:25  gbeeley
-    Added functionality in net_http's object access routines so that it,
-    when appropriate, sends the metadata attributes also, including the
-    following:  "name", "inner_type", "outer_type", and "annotation".
-
-    Revision 1.5  2002/02/14 00:55:20  gbeeley
-    Added configuration file centrallix.conf capability.  You now MUST have
-    this file installed, default is /usr/local/etc/centrallix.conf, in order
-    to use Centrallix.  A sample centrallix.conf is found in the centrallix-os
-    package in the "doc/install" directory.  Conf file allows specification of
-    file locations, TCP port, server string, auth realm, auth method, and log
-    method.  rootnode.type is now an attribute in the conf file instead of
-    being a separate file, and thus is no longer used.
-
-    Revision 1.4  2001/11/12 20:43:44  gbeeley
-    Added execmethod nonvisual widget and the audio /dev/dsp device obj
-    driver.  Added "execmethod" ls__mode in the HTTP network driver.
-
-    Revision 1.3  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:00:57  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.3  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.2  2001/08/07 02:49:25  gbeeley
-    Changed cookie from =LS-xxxx to LSID=LS-xxxx
-
-    Revision 1.1.1.1  2001/08/07 02:31:22  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 /*** Functions for enumerating users for the cx.sysinfo directory ***/
 pXArray
-nht_internal_UsersAttrList(void* ctx, char* objname)
+nht_i_UsersAttrList(void* ctx, char* objname)
     {
     pXArray xa;
 
@@ -658,11 +109,14 @@ nht_internal_UsersAttrList(void* ctx, char* objname)
 	xaInit(xa, 8);
 	xaAddItem(xa, "session_cnt");
 	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "group_cnt");
+	xaAddItem(xa, "app_cnt");
 
     return xa;
     }
 pXArray
-nht_internal_UsersObjList(void* ctx)
+nht_i_UsersObjList(void* ctx)
     {
     pXArray xa;
     int i;
@@ -680,21 +134,28 @@ nht_internal_UsersObjList(void* ctx)
     return xa;
     }
 int
-nht_internal_UsersAttrType(void *ctx, char* objname, char* attrname)
+nht_i_UsersAttrType(void *ctx, char* objname, char* attrname)
     {
 
 	if (!objname || !attrname) return -1;
 	if (!strcmp(attrname, "session_cnt")) return DATA_T_INTEGER;
 	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
 	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "group_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
 
     return -1;
     }
 int
-nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+nht_i_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
     {
     pObjData val = (pObjData)val_v;
     pNhtUser usr;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    int cnt;
+    int i,j;
 
 	if (!objname || !attrname) return -1;
 	usr = (pNhtUser)xhLookup(&(NHT.UsersByName), objname);
@@ -705,6 +166,32 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
 	    val->String = usr->Username;
 	else if (!strcmp(attrname, "last_activity"))
 	    val->DateTime = &(usr->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(usr->FirstActivity);
+	else if (!strcmp(attrname, "group_cnt"))
+	    {
+	    cnt=0;
+	    for(i=0;i<usr->Sessions.nItems;i++)
+		{
+		s = (pNhtSessionData)(usr->Sessions.Items[i]);
+		cnt += s->AppGroups.nItems;
+		}
+	    val->Integer = cnt;
+	    }
+	else if (!strcmp(attrname, "app_cnt"))
+	    {
+	    cnt=0;
+	    for(i=0;i<usr->Sessions.nItems;i++)
+		{
+		s = (pNhtSessionData)(usr->Sessions.Items[i]);
+		for(j=0;j<s->AppGroups.nItems;j++)
+		    {
+		    g = (pNhtAppGroup)(s->AppGroups.Items[j]);
+		    cnt += g->Apps.nItems;
+		    }
+		}
+	    val->Integer = cnt;
+	    }
 	else
 	    return -1;
 
@@ -712,84 +199,675 @@ nht_internal_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_
     }
 
 
-/*** nht_internal_RegisterUsers() - register a handler for listing
+/*** Functions for enumerating sessions for the cx.sysinfo directory ***/
+pXArray
+nht_i_SessionsAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "username");
+	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "group_cnt");
+	xaAddItem(xa, "app_cnt");
+	xaAddItem(xa, "last_ip");
+
+    return xa;
+    }
+
+pXArray
+nht_i_SessionsObjList(void* ctx)
+    {
+    pXArray xa;
+    int i;
+    pNhtSessionData s;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.Sessions);i++) 
+	    {
+	    s = (pNhtSessionData)xaGetItem(&NHT.Sessions, i);
+	    if (s)
+		xaAddItem(xa, s->S_ID_Text);
+	    }
+
+    return xa;
+    }
+
+int
+nht_i_SessionsAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "username")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "group_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "last_ip")) return DATA_T_STRING;
+
+    return -1;
+    }
+
+int
+nht_i_SessionsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    int cnt;
+    int i;
+
+	if (!objname || !attrname) return -1;
+	s = (pNhtSessionData)xhLookup(&(NHT.SessionsByID), objname);
+	if (!s) return -1;
+	if (!strcmp(attrname, "username"))
+	    val->String = s->User->Username;
+	else if (!strcmp(attrname, "name"))
+	    val->String = s->S_ID_Text;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(s->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(s->FirstActivity);
+	else if (!strcmp(attrname, "group_cnt"))
+	    val->Integer = s->AppGroups.nItems;
+	else if (!strcmp(attrname, "app_cnt"))
+	    {
+	    cnt=0;
+	    for(i=0;i<s->AppGroups.nItems;i++)
+		{
+		g = (pNhtAppGroup)(s->AppGroups.Items[i]);
+		cnt += g->Apps.nItems;
+		}
+	    val->Integer = cnt;
+	    }
+	else if (!strcmp(attrname, "last_ip"))
+	    val->String = s->LastIPAddr;
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** Functions for enumerating application groups for the cx.sysinfo directory ***/
+pXArray
+nht_i_GroupsAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "username");
+	xaAddItem(xa, "session_id");
+	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "start_app_path");
+	xaAddItem(xa, "app_cnt");
+
+    return xa;
+    }
+
+pXArray
+nht_i_GroupsObjList(void* ctx)
+    {
+    pXArray xa;
+    int i,j;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.Sessions);i++) 
+	    {
+	    s = (pNhtSessionData)xaGetItem(&NHT.Sessions, i);
+	    if (s)
+		{
+		for(j=0;j<xaCount(&s->AppGroups);j++)
+		    {
+		    g = (pNhtAppGroup)xaGetItem(&s->AppGroups, j);
+		    if (g)
+			xaAddItem(xa, g->G_ID_Text);
+		    }
+		}
+	    }
+
+    return xa;
+    }
+
+int
+nht_i_GroupsAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "username")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "start_app_path")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "app_cnt")) return DATA_T_INTEGER;
+	else if (!strcmp(attrname, "session_id")) return DATA_T_STRING;
+
+    return -1;
+    }
+
+int
+nht_i_GroupsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    int i;
+    char sessionid[24];
+
+	if (!objname || !attrname) return -1;
+	strtcpy(sessionid, objname, sizeof(sessionid));
+	if (!strchr(sessionid,'|')) return -1;
+	*(strchr(sessionid,'|')) = '\0';
+	s = (pNhtSessionData)xhLookup(&(NHT.SessionsByID), sessionid);
+	if (!s) return -1;
+	for(i=0;i<s->AppGroups.nItems;i++)
+	    {
+	    g = (pNhtAppGroup)(s->AppGroups.Items[i]);
+	    if (g && !strcmp(objname, g->G_ID_Text))
+		break;
+	    g = NULL;
+	    }
+	if (!g) return -1;
+	if (!strcmp(attrname, "username"))
+	    val->String = g->Session->User->Username;
+	else if (!strcmp(attrname, "start_app_path"))
+	    val->String = g->StartURL;
+	else if (!strcmp(attrname, "name"))
+	    val->String = g->G_ID_Text;
+	else if (!strcmp(attrname, "session_id"))
+	    val->String = g->Session->S_ID_Text;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(g->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(g->FirstActivity);
+	else if (!strcmp(attrname, "app_cnt"))
+	    {
+	    val->Integer = g->Apps.nItems;
+	    }
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** Functions for enumerating applications for the cx.sysinfo directory ***/
+pXArray
+nht_i_AppsAttrList(void* ctx, char* objname)
+    {
+    pXArray xa;
+
+	if (!objname) return NULL;
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 8);
+	xaAddItem(xa, "username");
+	xaAddItem(xa, "session_id");
+	xaAddItem(xa, "group_id");
+	xaAddItem(xa, "last_activity");
+	xaAddItem(xa, "first_activity");
+	xaAddItem(xa, "app_path");
+
+    return xa;
+    }
+
+pXArray
+nht_i_AppsObjList(void* ctx)
+    {
+    pXArray xa;
+    int i,j,k;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    pNhtApp a;
+
+	xa = (pXArray)nmMalloc(sizeof(XArray));
+	xaInit(xa, 64);
+	for(i=0;i<xaCount(&NHT.Sessions);i++) 
+	    {
+	    s = (pNhtSessionData)xaGetItem(&NHT.Sessions, i);
+	    if (s)
+		{
+		for(j=0;j<xaCount(&s->AppGroups);j++)
+		    {
+		    g = (pNhtAppGroup)xaGetItem(&s->AppGroups, j);
+		    if (g)
+			{
+			for(k=0;k<xaCount(&g->Apps);k++)
+			    {
+			    a = (pNhtApp)xaGetItem(&g->Apps, k);
+			    if (a)
+				xaAddItem(xa, a->A_ID_Text);
+			    }
+			}
+		    }
+		}
+	    }
+
+    return xa;
+    }
+
+int
+nht_i_AppsAttrType(void *ctx, char* objname, char* attrname)
+    {
+
+	if (!objname || !attrname) return -1;
+	if (!strcmp(attrname, "username")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "name")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "last_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "first_activity")) return DATA_T_DATETIME;
+	else if (!strcmp(attrname, "app_path")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "group_id")) return DATA_T_STRING;
+	else if (!strcmp(attrname, "session_id")) return DATA_T_STRING;
+
+    return -1;
+    }
+
+int
+nht_i_AppsAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    pObjData val = (pObjData)val_v;
+    pNhtSessionData s;
+    pNhtAppGroup g;
+    pNhtApp a;
+    int i;
+    char sessionid[24];
+    char groupid[24];
+
+	if (!objname || !attrname) return -1;
+	strtcpy(sessionid, objname, sizeof(sessionid));
+	if (!strchr(sessionid,'|')) return -1;
+	*(strchr(sessionid,'|')) = '\0';
+	s = (pNhtSessionData)xhLookup(&(NHT.SessionsByID), sessionid);
+	if (!s) return -1;
+	strtcpy(groupid, objname, sizeof(groupid));
+	*(strrchr(groupid,'|')) = '\0';
+	for(i=0;i<s->AppGroups.nItems;i++)
+	    {
+	    g = (pNhtAppGroup)(s->AppGroups.Items[i]);
+	    if (g && !strcmp(groupid, g->G_ID_Text))
+		break;
+	    g = NULL;
+	    }
+	if (!g) return -1;
+	for(i=0;i<g->Apps.nItems;i++)
+	    {
+	    a = (pNhtApp)(g->Apps.Items[i]);
+	    if (a && !strcmp(objname, a->A_ID_Text))
+		break;
+	    a = NULL;
+	    }
+	if (!a) return -1;
+	if (!strcmp(attrname, "username"))
+	    val->String = a->Group->Session->User->Username;
+	else if (!strcmp(attrname, "app_path"))
+	    val->String = a->AppPathname;
+	else if (!strcmp(attrname, "name"))
+	    val->String = a->A_ID_Text;
+	else if (!strcmp(attrname, "session_id"))
+	    val->String = a->Group->Session->S_ID_Text;
+	else if (!strcmp(attrname, "group_id"))
+	    val->String = a->Group->G_ID_Text;
+	else if (!strcmp(attrname, "last_activity"))
+	    val->DateTime = &(a->LastActivity);
+	else if (!strcmp(attrname, "first_activity"))
+	    val->DateTime = &(a->FirstActivity);
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** nht_i_RegisterSessionInfo() - register a handler for listing
  *** users logged into the server.
  ***/
 int
-nht_internal_RegisterUsers()
+nht_i_RegisterSessionInfo()
     {
     pSysInfoData si;
 
-	/** thread list **/
-	si = sysAllocData("/users", nht_internal_UsersAttrList, nht_internal_UsersObjList, NULL, nht_internal_UsersAttrType, nht_internal_UsersAttrValue, NULL, 0);
+	/** users list **/
+	si = sysAllocData("/session/users", nht_i_UsersAttrList, nht_i_UsersObjList, NULL, nht_i_UsersAttrType, nht_i_UsersAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+	/** sessions list **/
+	si = sysAllocData("/session/sessions", nht_i_SessionsAttrList, nht_i_SessionsObjList, NULL, nht_i_SessionsAttrType, nht_i_SessionsAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+	/** groups list **/
+	si = sysAllocData("/session/appgroups", nht_i_GroupsAttrList, nht_i_GroupsObjList, NULL, nht_i_GroupsAttrType, nht_i_GroupsAttrValue, NULL, 0);
+	sysRegister(si, NULL);
+
+	/** apps list **/
+	si = sysAllocData("/session/apps", nht_i_AppsAttrList, nht_i_AppsObjList, NULL, nht_i_AppsAttrType, nht_i_AppsAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
     return 0;
     }
 
 
-/*** error exit handler -- does not return
+/*** nht_i_AddRequestHeader - add a header to the HTTP request
  ***/
-void
-nht_internal_ErrorExit(pNhtConn conn, int code, char* text)
+int
+nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
     {
+    pHttpHeader hdr;
+    int i;
 
-	/** Write the standard HTTP response **/
-	nht_internal_WriteResponse(conn, code, text, -1, "text/html", NULL, NULL);
-	fdQPrintf(conn->ConnFD, "<H1>%POS %STR</H1>\r\n<hr><pre>\r\n", code, text);
+	/** Already present? **/
+	for(i=0;i<hdrlist->nItems;i++)
+	    {
+	    hdr = (pHttpHeader)hdrlist->Items[i];
+	    if (!strcasecmp(hdr->Name, hdrname))
+		{
+		if (hdr->ValueAlloc)
+		    nmSysFree(hdr->Value);
 
-	/** Display error info **/
-	mssPrintError(conn->ConnFD);
+		/** If null new header value - delete the existing one **/
+		if (!hdrvalue)
+		    {
+		    xaRemoveItem(hdrlist, i);
+		    nmFree(hdr, sizeof(HttpHeader));
+		    return 0;
+		    }
 
-	/** Shutdown the connection and free memory **/
-	nht_internal_FreeConn(conn);
+		/** Replace existing header value **/
+		hdr->Value = hdrvalue;
+		hdr->ValueAlloc = hdralloc;
+		return 0;
+		}
+	    }
 
-    thExit();
+	/** Don't add a NULL header **/
+	if (!hdrvalue) return 0;
+	
+	/** Allocate the header **/
+	hdr = (pHttpHeader)nmMalloc(sizeof(HttpHeader));
+	if (!hdr)
+	    return -1;
+
+	/** Set it up and add it **/
+	strtcpy(hdr->Name, hdrname, sizeof(hdr->Name));
+	hdr->Value = hdrvalue;
+	hdr->ValueAlloc = hdralloc;
+	xaAddItem(hdrlist, (void*)hdr);
+
+    return 0;
     }
 
 
-/*** nht_internal_WriteResponse() - write the HTTP response header,
+/*** nht_i_AddResponseHeader - add a HTTP response header
+ ***/
+int
+nht_i_AddResponseHeader(pNhtConn conn, char* hdrname, char* hdrvalue, int hdralloc)
+    {
+    return nht_i_AddHeader(&conn->ResponseHeaders, hdrname, hdrvalue, hdralloc);
+    }
+
+
+/*** nht_i_AddResponseHeaderQPrintf - add a HTTP response header
+ ***/
+int
+nht_i_AddResponseHeaderQPrintf(pNhtConn conn, char* hdrname, char* hdrfmt, ...)
+    {
+    va_list va;
+    char* hdrval;
+    pXString xs;
+
+	xs = xsNew();
+	if (!xs) return -1;
+
+	va_start(va, hdrfmt);
+	xsQPrintf_va(xs, hdrfmt, va);
+	va_end(va);
+
+	hdrval = nmSysStrdup(xsString(xs));
+	xsFree(xs);
+
+	if (!hdrval)
+	    return -1;
+
+    return nht_i_AddResponseHeader(conn, hdrname, hdrval, 1);
+    }
+
+
+/*** nht_i_FreeHeaders - release HTTP headers from an xarray
+ ***/
+int
+nht_i_FreeHeaders(pXArray xa)
+    {
+    pHttpHeader hdr;
+
+	/** Loop through, removing and freeing the headers **/
+	while (xa->nItems)
+	    {
+	    hdr = (pHttpHeader)xaGetItem(xa, xa->nItems - 1);
+	    if (hdr)
+		{
+		if (hdr->ValueAlloc)
+		    nmSysFree(hdr->Value);
+		nmFree(hdr, sizeof(HttpHeader));
+		}
+	    xaRemoveItem(xa, xa->nItems - 1);
+	    }
+
+    return 0;
+    }
+
+
+/*** nht_i_GetHeader - find a header with the given name
+ ***/
+char*
+nht_i_GetHeader(pXArray xa, char* name)
+    {
+    int i;
+    pHttpHeader hdr;
+
+	/** Loop through array **/
+	for(i=0;i<xa->nItems;i++)
+	    {
+	    hdr = (pHttpHeader)xa->Items[i];
+	    if (!strcasecmp(hdr->Name, name))
+		return hdr->Value;
+	    }
+
+    return NULL;
+    }
+
+
+/*** nht_i_WriteConn() - write data to a network connection
+ ***/
+int
+nht_i_WriteConn(pNhtConn conn, char* buf, int len, int is_hdr)
+    {
+    int wcnt, rval;
+
+	if (len == -1) len = strlen(buf);
+
+	/** Catch a type of error in our header handling **/
+	if (is_hdr && conn->InBody)
+	    {
+	    mssError(1, "NHT", "Attempt to add header information after headers have been emitted");
+	    return -1;
+	    }
+
+	/** Emit the header/body separator **/
+	if (!is_hdr && !conn->InBody)
+	    {
+	    conn->InBody = 1;
+	    fdWrite(conn->ConnFD, "\r\n", 2, 0, FD_U_PACKET);
+	    }
+
+	if (len == 0)
+	    return 0;
+
+	/** Write the data, direct or as a chunk, and count the bytes we used **/
+	wcnt = 0;
+	if (conn->UsingChunkedEncoding)
+	    {
+	    rval = fdPrintf(conn->ConnFD, "%x\r\n", len);
+	    if (rval > 0)
+		wcnt += rval;
+	    }
+	rval = fdWrite(conn->ConnFD, buf, len, 0, FD_U_PACKET);
+	if (rval > 0)
+	    wcnt += rval;
+	if (conn->UsingChunkedEncoding)
+	    {
+	    rval = fdPrintf(conn->ConnFD, "\r\n");
+	    if (rval > 0)
+		wcnt += rval;
+	    }
+	if (wcnt > 0 && !is_hdr)
+	    conn->BytesWritten += wcnt;
+
+    return wcnt;
+    }
+
+
+/*** nht_i_QPrintfConn() - write data to the network connection,
+ *** formatted.
+ ***/
+int
+nht_i_QPrintfConn(pNhtConn conn, int is_hdr, char* fmt, ...)
+    {
+    va_list va;
+    int wcnt;
+
+	if (!is_hdr && !conn->InBody)
+	    {
+	    conn->InBody = 1;
+	    fdWrite(conn->ConnFD, "\r\n", 2, 0, FD_U_PACKET);
+	    }
+
+	va_start(va, fmt);
+	wcnt = fdQPrintf_va(conn->ConnFD, fmt, va);
+	va_end(va);
+	if (wcnt > 0 && !is_hdr)
+	    conn->BytesWritten += wcnt;
+
+    return wcnt;
+    }
+
+
+/*** error exit handler -- does not return
+ ***/
+void
+nht_i_ErrorExit(pNhtConn conn, int code, char* text)
+    {
+    pXString err_message;
+
+	/** Write the standard HTTP response **/
+	nht_i_WriteResponse(conn, code, text, NULL);
+
+	/** Display error info **/
+	err_message = xsNew();
+	if (err_message)
+	    {
+	    mssStringError(err_message);
+	    fdQPrintf(conn->ConnFD, "<!doctype html>\r\n<html>\r\n<head><title>Error</title></head>\r\n<body>\r\n<h1>%POS %STR&HTE</h1>\r\n<hr>\r\n<pre>%STR&HTE</pre>\r\n</body>\r\n</html>\r\n",
+		    code,
+		    text,
+		    xsString(err_message)
+		    );
+	    xsFree(err_message);
+	    }
+
+	/** Shutdown the connection and free memory **/
+	nht_i_FreeConn(conn);
+
+    thExit(); /* no return */
+    }
+
+
+/*** nht_i_WriteResponse() - write the HTTP response header,
  *** not including content.
  ***/
 int
-nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, char* contenttype, char* pragma, char* resptxt)
+nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
     {
     int wcnt, rval;
     struct tm* thetime;
     time_t tval;
     char tbuf[40];
+    int i;
+    pHttpHeader hdr;
 
 	/** Get the current date/time **/
 	tval = time(NULL);
 	thetime = gmtime(&tval);
 	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
 
-	wcnt = fdQPrintf(conn->ConnFD, 
+	/** Record the time and response code **/
+	thetime = localtime(&tval);
+	strftime(conn->ResponseTime, sizeof(conn->ResponseTime), "%d/%b/%Y:%T %z", thetime);
+	conn->ResponseCode = code;
+	strtcpy(conn->ResponseText, text, sizeof(conn->ResponseText));
+
+	/** Send the main headers **/
+	wcnt = nht_i_QPrintfConn(conn, 1,
 		"HTTP/1.0 %INT %STR\r\n"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
-		"%[Set-Cookie: %STR\r\n%]"
+		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict%]%[\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
 		"%[Content-Type: %STR\r\n%]"
 		"%[Pragma: %STR\r\n%]"
-		"\r\n",
+		"%[Transfer-Encoding: chunked\r\n%]"
+		"Referrer-Policy: same-origin\r\n"
+		"Connection: %STR\r\n",
 		code,
 		text,
 		NHT.ServerString,
 		tbuf,
-		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie), (conn->NhtSession)?conn->NhtSession->Cookie:NULL,
-		contentlen > 0, contentlen,
-		contenttype != NULL, contenttype,
-		pragma != NULL, pragma);
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
+		(conn->NhtSession)?conn->NhtSession->Cookie:NULL,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie) && conn->UsingTLS,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie) && conn->StrictSameSite,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
+		conn->ResponseContentLength > 0, conn->ResponseContentLength,
+		conn->ResponseContentType[0] && !strpbrk(conn->ResponseContentType, "\r\n"), conn->ResponseContentType,
+		conn->NoCache, "no-cache",
+		conn->UsingChunkedEncoding,
+		(conn->Keepalive?"keep-alive":"close")
+		);
 	if (wcnt < 0) return wcnt;
 
-	if (resptxt)
+	/** Send any auxiliary headers **/
+	for(i=0;i<conn->ResponseHeaders.nItems;i++)
 	    {
-	    rval = nht_internal_WriteConn(conn, resptxt, strlen(resptxt), 0);
+	    hdr = (pHttpHeader)conn->ResponseHeaders.Items[i];
+	    if (strpbrk(hdr->Name, ": \r\n\t") || strpbrk(hdr->Value, "\r\n"))
+		continue;
+	    rval = nht_i_QPrintfConn(conn, 1, "%STR: %STR\r\n", hdr->Name, hdr->Value);
 	    if (rval < 0) return rval;
 	    wcnt += rval;
 	    }
 
+	/** End of headers **/
+	/*rval = fdPrintf(conn->ConnFD, "\r\n");
+	if (rval < 0) return rval;
+	wcnt += rval;*/
+
+	/** Send any response text **/
+	if (resptxt && *resptxt)
+	    {
+	    rval = nht_i_WriteConn(conn, resptxt, strlen(resptxt), 0);
+	    if (rval < 0) return rval;
+	    wcnt += rval;
+	    }
+
+	/** Mark the cookie as having been sent **/
 	if (conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie)
 	    conn->NhtSession->IsNewCookie = 0;
 
@@ -797,33 +875,27 @@ nht_internal_WriteResponse(pNhtConn conn, int code, char* text, int contentlen, 
     }
 
 
-/*** nht_internal_WriteErrResponse() - write an HTTP error response
+/*** nht_i_WriteErrResponse() - write an HTTP error response
  *** header without any real content.  Use the normal WriteResponse
  *** routine if you want more flexible content.
  ***/
 int
-nht_internal_WriteErrResponse(pNhtConn conn, int code, char* text, char* bodytext)
+nht_i_WriteErrResponse(pNhtConn conn, int code, char* text, char* bodytext)
     {
-    int wcnt, rval;
+    int wcnt;
 
-	wcnt = nht_internal_WriteResponse(conn, code, text, strlen(bodytext), "text/html", NULL, NULL);
-	if (wcnt < 0) return wcnt;
-	if (bodytext && *bodytext)
-	    {
-	    rval = nht_internal_WriteConn(conn, bodytext, strlen(bodytext), 0);
-	    if (rval < 0) return rval;
-	    wcnt += rval;
-	    }
+	conn->ResponseContentLength = bodytext?strlen(bodytext):0;
+	wcnt = nht_i_WriteResponse(conn, code, text, bodytext);
 
     return wcnt;
     }
 
 
-/*** nht_internal_FreeControlMsg() - release memory used by a control
+/*** nht_i_FreeControlMsg() - release memory used by a control
  *** message, its parameters, etc.
  ***/
 int
-nht_internal_FreeControlMsg(pNhtControlMsg cm)
+nht_i_FreeControlMsg(pNhtControlMsg cm)
     {
     int i;
     pNhtControlMsgParam cmp;
@@ -853,7 +925,7 @@ nht_internal_FreeControlMsg(pNhtControlMsg cm)
 
 #if 0
 int
-nht_internal_CacheHandler(pNhtConn conn)
+nht_i_CacheHandler(pNhtConn conn)
     {
 #if 0
     pWgtrNode tree = xmGet(conn->NhtSession->CachedApps2, "0");
@@ -886,12 +958,12 @@ nht_internal_CacheHandler(pNhtConn conn)
 
 
 
-/*** nht_internal_ControlMsgHandler() - the main handler for all connections
+/*** nht_i_ControlMsgHandler() - the main handler for all connections
  *** which access /INTERNAL/control, thus requesting to receive control
  *** messages from the system.
  ***/
 int
-nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
+nht_i_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
     {
     pNhtControlMsg cm, usr_cm;
     pNhtControlMsgParam cmp;
@@ -927,7 +999,8 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    /** No such id? **/
 	    if (!cm)
 		{
-		nht_internal_WriteResponse(conn, 200, "OK", -1, "text/html", "no-cache", "<A HREF=0.0 TARGET=0>NO SUCH MESSAGE</A>\r\n");
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=0.0 TARGET=0>NO SUCH MESSAGE</A>\r\n");
 		return 0;
 		}
 
@@ -951,21 +1024,22 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    else if (cm->ResponseFn)
 		cm->ResponseFn(cm);
 	    else
-		nht_internal_FreeControlMsg(cm);
+		nht_i_FreeControlMsg(cm);
 
 	    /** Tell syGetSem to return immediately, below **/
 	    wait_for_sem = 0;
 	    }
 
 	/** Send header **/
-	nht_internal_WriteResponse(conn, 200, "OK", -1, "text/html", "no-cache", NULL);
+	conn->NoCache = 1;
+	nht_i_WriteResponse(conn, 200, "OK", NULL);
 
     	/** Wait on the control msgs semaphore **/
 	while (1)
 	    {
 	    if (syGetSem(sess->ControlMsgs, 1, wait_for_sem?0:SEM_U_NOBLOCK) < 0)
 		{
-		nht_internal_WriteConn(conn, "<A HREF=0.0 TARGET=0>END OF CONTROL MESSAGES</A>\r\n", -1, 0);
+		nht_i_WriteConn(conn, "<A HREF=0.0 TARGET=0>END OF CONTROL MESSAGES</A>\r\n", -1, 0);
 		return 0;
 		}
 
@@ -982,7 +1056,7 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 
 	    /** Send ctl message header **/
             // TODO Once LONG is implemented in qprintf, use it
-	    nht_internal_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%POS>CONTROL MESSAGE</A>\r\n",
+	    nht_i_QPrintfConn(conn, 0, "<A HREF=%INT.%INT TARGET=%POS>CONTROL MESSAGE</A>\r\n",
 			    cm->MsgType,
 			    cm->Params.nItems,
 			    (unsigned int)(unsigned long)cm);
@@ -1017,7 +1091,7 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    if (!cm->ResponseSem && !cm->ResponseFn)
 		{
 		xaRemoveItem(&(sess->ControlMsgsList), xaFindItem(&(sess->ControlMsgsList), cm));
-		nht_internal_FreeControlMsg(cm);
+		nht_i_FreeControlMsg(cm);
 		}
 
 	    wait_for_sem = 0;
@@ -1028,12 +1102,12 @@ nht_internal_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 
 
 
-/*** nht_internal_ErrorHandler - handle the printing of notice and error
+/*** nht_i_ErrorHandler - handle the printing of notice and error
  *** messages to the error stream for the client, if the client has such
  *** an error stream (which is how this is called).
  ***/
 int
-nht_internal_ErrorHandler(pNhtConn net_conn)
+nht_i_ErrorHandler(pNhtConn net_conn)
     {
     pNhtSessionData nsess = net_conn->NhtSession;
     pXString errmsg;
@@ -1041,12 +1115,8 @@ nht_internal_ErrorHandler(pNhtConn net_conn)
     	/** Wait on the errors semaphore **/
 	if (syGetSem(nsess->Errors, 1, 0) < 0)
 	    {
-	    fdPrintf(net_conn->ConnFD,"HTTP/1.0 200 OK\r\n"
-			 "Server: %s\r\n"
-			 "Pragma: no-cache\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
+	    net_conn->NoCache = 1;
+	    nht_i_WriteResponse(net_conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
 	    return -1;
 	    }
 
@@ -1055,14 +1125,9 @@ nht_internal_ErrorHandler(pNhtConn net_conn)
 	xaRemoveItem(&nsess->ErrorList, 0);
 
 	/** Format the error and print it as HTML. **/
-	fdPrintf(net_conn->ConnFD,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Pragma: no-cache\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "<HTML><BODY><PRE><A NAME=\"Message\">",NHT.ServerString);
-	fdWrite(net_conn->ConnFD,errmsg->String,strlen(errmsg->String),0,0);
-	fdPrintf(net_conn->ConnFD,"</A></PRE></BODY></HTML>\r\n");
+	net_conn->NoCache = 1;
+	nht_i_WriteResponse(net_conn, 200, "OK", NULL);
+	nht_i_QPrintfConn(net_conn, 0, "<HTML><BODY><PRE><A NAME=\"Message\">%STR&HTE</A></PRE></BODY></HTML>\r\n", errmsg->String);
 
 	/** Discard the string **/
 	xsDeInit(errmsg);
@@ -1072,13 +1137,13 @@ nht_internal_ErrorHandler(pNhtConn net_conn)
     }
 
 
-/*** nht_internal_GenerateError - grab up the current error text listing
+/*** nht_i_GenerateError - grab up the current error text listing
  *** and queue it on the outbound error queue for this session, so that
  *** the error stream reader in the DHTML client can pick it up and show
  *** it to the user.
  ***/
 int
-nht_internal_GenerateError(pNhtSessionData nsess)
+nht_i_GenerateError(pNhtSessionData nsess)
     {
     pXString errmsg;
 
@@ -1095,28 +1160,11 @@ nht_internal_GenerateError(pNhtSessionData nsess)
     }
 
 
-/*** nht_internal_CreateCookie - generate a random string value that can
- *** be used as an HTTP cookie.
- ***/
-int
-nht_internal_CreateCookie(char* ck)
-    {
-    int key[4];
-
-	cxssGenerateKey((unsigned char*)key, sizeof(key));
-	sprintf(ck,"%s=%8.8x%8.8x%8.8x%8.8x",
-		NHT.SessionCookie,
-		key[0], key[1], key[2], key[3]);
-
-    return 0;
-    }
-
-
-/*** nht_internal_Hex16ToInt - convert a 16-bit hex value, in four chars, to
+/*** nht_i_Hex16ToInt - convert a 16-bit hex value, in four chars, to
  *** an unsigned integer.
  ***/
 unsigned int
-nht_internal_Hex16ToInt(char* hex)
+nht_i_Hex16ToInt(char* hex)
     {
     char hex2[5];
     memcpy(hex2, hex, 4);
@@ -1125,28 +1173,537 @@ nht_internal_Hex16ToInt(char* hex)
     }
 
 
-/*** nht_internal_POST - handle the HTTP POST method.
+/*** nht_i_ParsePostPayload - parses the payload of a post request.
+ *** The request includes one or more files.  This function needs to be
+ *** called once for each file recieved and -not- per request.  Payload
+ *** contains relevant info about the given file and a pointer to the file on disk.
+ *** Returns the payload struct.
+ ***/
+pNhtPostPayload
+nht_i_ParsePostPayload(pNhtConn conn)
+    {
+    char hex_chars[] = "0123456789abcdef";
+    char token[512];
+    char name[48];
+    char *ptr, *half;
+    int length, start;
+    int fd, i, extStart;
+    pFile file;
+    char buffer[2048];
+    int offset = 1024;
+    int rcnt;
+    int allowed;
+    int rval;
+    pNhtPostPayload payload = (pNhtPostPayload) nmMalloc(sizeof *payload);
+    pContentType ct;
+    char* apparent_type;
+
+    memset(payload, 0, sizeof(*payload));
+    
+    /* Remove the boundary line and test to see if the stream is empty */
+    length = nht_i_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+	{
+	payload->status = 1;
+	return payload; /* Signals end of stream */
+	}
+    if(strncmp(token, "--", 2) != 0 || strncmp(token + 2, conn->RequestBoundary, strlen(conn->RequestBoundary)) != 0) //Verifying data is formatted the way I hope it is :p
+	{
+	payload->status = -1;
+	mssError(1,"NHT","Malformed file upload POST request received - MIME boundary not detected");
+	return payload; //Error
+	}
+	
+    length = nht_i_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+	{
+	payload->status = -1;
+	mssError(0,"NHT","Malformed file upload POST request received - no content following boundary");
+	return payload; //Error
+	}
+	
+    /* find the filename property and copy it to payload */
+    ptr = strstr(token, "filename");
+    if(ptr == NULL)
+	{
+	mssError(1,"NHT","Malformed file upload POST request received - no filename specified");
+	payload->status = -1;
+	return payload; //Error
+	}
+    ptr = strchr(ptr, '\"');
+    if(ptr == NULL)
+	{
+	mssError(1,"NHT","Malformed file upload POST request received - start of filename not found");
+	payload->status = -1;
+	return payload; //Error
+	}
+    ptr++;
+    
+    extStart = -1;
+    for(i=0; ptr[i] != '\"' && ptr[i] != '\0'; i++)
+	{
+	if (i >= sizeof(payload->filename) - 1)
+	    {
+	    mssError(1,"NHT","Invalid filename in file upload POST request");
+	    payload->status = -1;
+	    return payload; //Error
+	    }
+	if(ptr[i] == '.') extStart = i; //Also find the file extension
+	payload->filename[i] = ptr[i];
+	}
+    payload->filename[i] = '\0';
+    
+    /* Copy the extension to payload */
+    if (extStart >= 0)
+	{
+	ptr = payload->filename + extStart;
+	for(i=0; ptr[i] != '\0'; i++)
+	    {
+	    if (i >= sizeof(payload->extension) - 1)
+		{
+		mssError(1,"NHT","Invalid filename in file upload POST request");
+		payload->status = -1;
+		return payload; //Error
+		}
+	    payload->extension[i] = ptr[i];
+	    }
+	payload->extension[i] = '\0';
+
+	/** Validate that this extension is allowed **/
+	allowed = 0;
+	for(i=0; i<NHT.AllowedUploadExts.nItems; i++)
+	    {
+	    if (!strcasecmp(payload->extension+1, NHT.AllowedUploadExts.Items[i]))
+		{
+		allowed = 1;
+		break;
+		}
+	    }
+	if (!allowed)
+	    {
+	    mssError(1,"NHT","Uploaded file extension not allowed on this server");
+	    payload->status = -1;
+	    return payload;
+	    }
+	}
+    
+    /* find the "ContentType" which seems to be the MIME type.  This may possibly be sorta useful sometime in the future.  Maybe... */
+    length = nht_i_NextLine(token, conn, sizeof token);
+    if(length <= 0)
+	{
+	payload->status = -1;
+	mssError(0,"NHT","Malformed file upload POST request received - no content-type line");
+	return payload; //Error
+	}
+    ptr = strstr(token, "Content-Type:");
+    if(!ptr)
+	{
+	payload->status = -1;
+	mssError(1,"NHT","Malformed file upload POST request received - no content-type");
+	return payload; //Error
+	}
+    ptr = strchr(ptr, ' ');
+    if(!ptr)
+	{
+	payload->status = -1;
+	mssError(1,"NHT","Malformed file upload POST request received - bad content-type");
+	return payload; //Error
+	}
+    ptr++;
+    
+    for(i=0; ptr[i] != '\r' && ptr[i] != '\n' && ptr[i] != '\0'; i++)
+	{
+	if (i >= sizeof(payload->mime_type) - 1)
+	    {
+	    mssError(1,"NHT","Invalid MIME type in file upload POST request");
+	    payload->status = -1;
+	    return payload; //Error
+	    }
+	payload->mime_type[i] = ptr[i];
+	}
+    payload->mime_type[i] = '\0';
+
+    length = nht_i_NextLine(token, conn, sizeof token);
+    if (strncasecmp(token, "Content-Length", 14) == 0)
+	{
+	length = 0;
+	start = 4;
+	}
+    else
+	{
+	start = 0;
+	}
+
+    /** some user agents use "binary/octet-stream" for some obtuse reason **/
+    if (!strcasecmp(payload->mime_type, "binary/octet-stream"))
+	strtcpy(payload->mime_type, "application/octet-stream", sizeof(payload->mime_type));
+
+    /** Verify the mime type is valid -- check is that the type is or is
+     ** a subtype of application/octet-stream (this basically makes sure we know
+     ** about the file type).
+     **/
+    rval = objIsA(payload->mime_type, "application/octet-stream");
+    if (rval == OBJSYS_NOT_ISA)
+	{
+	mssError(1,"NHT","Disallowed file MIME type for upload POST request");
+	payload->status = -1;
+	return payload;
+	}
+    if (rval < 0)
+	strcpy(payload->mime_type,"application/octet-stream");
+
+    /* Generate a random name for the file. */
+    while(1)
+	{
+	strtcpy(name, payload->filename, 33);
+	if (strrchr(name, '.'))
+	    *(strrchr(name, '.')) = '\0';
+	for(i=0;i<strlen(name);i++)
+	    {
+	    if ((name[i] >= '0' && name[i] <= '9') || (name[i] >= 'a' && name[i] <= 'z') || (name[i] >= 'A' && name[i] <= 'Z') || name[i] == '_' || name[i] == '+' || name[i] == '-')
+		continue;
+	    name[i] = '_';
+	    }
+	strtcat(name, "-", 34);
+	ptr = strchr(name, '\0');
+	cxssGenerateKey((unsigned char*)ptr, 12);
+	for(i=0; i<12; i++)
+	    {
+	    ptr[i] = hex_chars[ptr[i] & 0x0f];
+	    }
+	ptr[i] = '\0';
+	
+	/** Append the extension to the unique name and store it in payload **/
+	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
+	    {
+	    mssError(1,"NHT","Invalid filename in file upload POST request - could not generate temp file name");
+	    payload->status = -1;
+	    return payload; //Error
+	    }
+	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
+	snprintf(payload->path, sizeof (payload->path), NHT.UploadTmpDir);
+	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s/%s", payload->path, payload->newname);
+
+	/** Validate that the new file name matches the mime type **/
+	ct = objTypeFromName(payload->full_new_path);
+	if (ct)
+	    apparent_type = ct->Name;
+	else
+	    apparent_type = "application/octet-stream";
+	if (objIsA(apparent_type, payload->mime_type) == OBJSYS_NOT_ISA)
+	    {
+	    mssError(1,"NHT","Unknown or mismatched file type and file extension for POST upload request");
+	    payload->status = -1;
+	    return payload;
+	    }
+
+	/* Try to create the file.  It will fail if the file already exists. */
+	/** Actually creating the file prevents race conditions that can occur
+	 ** if we only checked for the file here. i.e. the file could otherwise
+	 ** be created between the time we check and the time we actually open
+	 ** the file.
+	 **/
+	fd = open(payload->full_new_path, O_CREAT | O_RDWR | O_EXCL, 0660);
+	if (fd>=0)
+	    {
+	    close(fd);
+	    //printf("Created new file named %s.\n", payload->full_new_path);
+	    break;
+	    }
+	else
+	    {
+	    //printf("File %s already exists.  Creating new name.\n", payload->full_new_path);
+	    }
+	}
+	
+    /* Read in the data and store into a file. */
+    file = fdOpen(payload->full_new_path, O_RDWR | O_CREAT | O_TRUNC, 0660);
+    if(!file)
+	{
+	mssErrorErrno(1,"CX","Unable to open output file '%s'",payload->full_new_path);
+	payload->status = -1;
+	return payload; //Error
+	}
+
+    /** Data transfer loop **/
+    if (length)
+	fdWrite(file, token, length, 0, 0);
+    length = fdRead(conn->ConnFD, buffer, sizeof buffer, 0, 0);
+    half = buffer + offset;
+    while(length > 0)
+	{
+	ptr = memstr(buffer, conn->RequestBoundary, length);
+	if(!ptr)
+	    {
+	    if(length < sizeof buffer)
+		{
+		rcnt = fdRead(conn->ConnFD, buffer + length, sizeof buffer - length, 0, 0);
+		if (rcnt < 0)
+		    {
+		    mssErrorErrno(1,"NHT","Interrupted upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		else if (rcnt == 0)
+		    {
+		    mssError(1,"NHT","Short upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		length += rcnt;
+		}
+	    else
+		{
+		if (fdWrite(file, buffer+start, offset-start, 0, 0) < 0)
+		    {
+		    mssErrorErrno(1,"NHT","Error writing to uploaded file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		memmove(buffer, half, offset);
+		memset(half, 0, offset);
+		rcnt = fdRead(conn->ConnFD, half, offset, 0, 0);
+		if (rcnt < 0)
+		    {
+		    mssErrorErrno(1,"NHT","Interrupted upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		else if (rcnt == 0)
+		    {
+		    mssError(1,"NHT","Short upload to file '%s'",payload->full_new_path);
+		    payload->status = -1;
+		    return payload; //Error
+		    }
+		length = offset + rcnt;
+		start = 0;
+		}
+	    }
+	else
+	    {
+	    //The 4 chars between boundary and EOF should be "\r\n--"
+	    if (fdWrite(file, buffer+start, (ptr - buffer - 4) - start, 0, 0) < 0)
+		{
+		mssErrorErrno(1,"NHT","Error writing to uploaded file '%s'",payload->full_new_path);
+		payload->status = -1;
+		return payload; //Error
+		}
+	    fdUnRead(conn->ConnFD, ptr - 4, length - (ptr - buffer - 4), 0, 0); //Unread remainder of data.
+	    start = 0;
+	    break;
+	    }
+	}
+    fdClose(file, 0);
+    //printf("\n");
+    
+    payload->status = 0;
+    return payload;
+    }
+   
+
+/*** nht_i_NextLine - fills token with the next line of data.
+ *** Ignores leading newlines.  Returns the length of data in the buffer.
+ *** Size is the size of token.  If the buffer is too small, returns -1
+ *** and leaves token empty.  Token is always null terminated.
  ***/
 int
-nht_internal_POST(pNhtConn conn, pStruct url_inf, int size)
+nht_i_NextLine(char * token, pNhtConn conn, int size)
+    {
+    char buffer[2048];
+    int length;
+    int start, end;
+    int i;
+    
+    start = -1;
+    end = -1;
+    length = fdRead(conn->ConnFD, buffer, (sizeof buffer) - 1, 0, 0);
+    if (length < 0)
+	{
+	mssErrorErrno(1,"NHT","Interrupted network connection during upload");
+	return -1;
+	}
+    
+    for(i = 0; i < length; i++)
+	{
+	if(start == -1 && !(buffer[i] == '\r' || buffer[i] == '\n')) start = i;
+	if(start != -1 &&  (buffer[i] == '\r' || buffer[i] == '\n'))
+	    {
+	    end = i;
+	    break;
+	    }
+	}
+	
+    if(start < 0) 
+	{
+	token[0] = '\0';
+	return -1; /* No relevant data in the buffer. */
+	}
+    if(start >= 0 && end < 0)
+	{
+	if(length < (sizeof buffer) - 1)
+	    {
+	    /* Max size wasn't read; means end of stream. */
+	    /** GRB: FIXME: network connections can read partial buffers
+	     ** without indicating end of stream.  End of stream is indicated
+	     ** by a zero read.  We should read further into the buffer at
+	     ** least once if we hit this here.
+	     **/
+	    end = length;
+	    }
+	else
+	    {
+	    /* No newline was read; unread buffer. */
+	    fdUnRead(conn->ConnFD, buffer, length, 0, 0);
+	    token[0] = '\0';
+	    return -1;
+	    }
+	}
+   
+    /** end-start+1 --> means the length of the token plus the length of
+     ** the terminating \0 character.
+     **/
+    if(size > (end - start + 1)) size = (end-start + 1);
+    if(size < (end - start + 1)) end -= ((end-start + 1) - size);
+    memcpy(token, buffer + start , size-1); /* Copy relevant data into token. */
+    token[size-1] = '\0';
+    fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread extra data.
+    return size-1;
+    }
+
+
+/*** nht_i_POST - handle the HTTP POST method.
+ ***/
+int
+nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
-
-	/** app key must be specified for all POST operations. **/
+    pFile file;
+    pObject obj;
+    pNhtPostPayload payload;
+    XString json;
+    char buffer[2048];
+    int length, wcnt, bytes_written;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+    int n_uploaded_files = 0;
+    int allowed, i;
+   
+	/** Validate akey and make sure app and group id's match as well.  AKey
+	 ** must be supplied with all POST requests.
+	 **/
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (!find_inf || strcmp(find_inf->StrVal, nsess->AKey) != 0)
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
+	    {
+	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
 	    return -1;
+	    }
+
+	/** REST-type request vs. standard file upload POST? **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (find_inf && !strcmp(find_inf->StrVal, "rest"))
+	    {
+	    conn->StrictSameSite = 0;
+	    return nht_i_RestPost(conn, url_inf, size, content);
+	    }
+	   
+	/** Standard file upload POST request **/
+	find_inf = NULL;
+	find_inf = stLookup_ne(url_inf,"target");
+	if(!find_inf)
+	    {
+	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
+	    return -1;
+	    }
+
+	/** Validate the target location **/
+	allowed = 0;
+	for(i=0; i<NHT.AllowedUploadDirs.nItems; i++)
+	    {
+	    if (!strcmp(NHT.AllowedUploadDirs.Items[i], find_inf->StrVal))
+		{
+		allowed = 1;
+		break;
+		}
+	    }
+	if (!allowed)
+	    {
+	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
+	    return -1;
+	    }
+	
+	/** Keep parsing files until stream is empty. **/
+	xsInit(&json);
+	while(1)
+	    {
+	    payload = nht_i_ParsePostPayload(conn);
+	    
+	    if(payload->status == 0)
+		{
+		/** Copy file into object system **/
+		file = fdOpen(payload->full_new_path, O_RDONLY, 0660);
+		if (!file)
+		    {
+		    mssErrorErrno(1, "NHT", "POST request: could not open file %s", payload->full_new_path);
+		    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", NULL);
+		    return -1;
+		    }
+		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
+		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
+		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
+		if (!obj)
+		    {
+		    mssError(0, "NHT", "POST request: could not create object %s", buffer);
+		    fdClose(file, 0);
+		    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
+		    return -1;
+		    }
+		while(1)
+		    {
+		    length = fdRead(file, buffer, sizeof buffer, 0, 0);
+		    if (length <= 0)
+			break;
+		    bytes_written = 0;
+		    while (bytes_written < length)
+			{
+			wcnt = objWrite(obj, buffer+bytes_written, length-bytes_written, 0, 0);
+			if (wcnt <= 0)
+			    break;
+			bytes_written += wcnt;
+			}
+		    }
+		objClose(obj);
+		fdClose(file, 0);
+		unlink(payload->full_new_path);
+		n_uploaded_files++;
+		}
+	    else
+		{
+		break;
+		}
+	    }
+	xsRTrim(&json);
+
+	/** Error if POST with no files **/
+	if (n_uploaded_files == 0)
+	    {
+	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
+	    return -1;
+	    }
+
+	/** Send out the response **/
+	nht_i_WriteResponse(conn, 202, "Accepted", NULL);
+	nht_i_QPrintfConn(conn, 0, "[%STR]", json.String+1);
 
     return 0;
     }
 
 
-/*** nht_internal_GET - handle the HTTP GET method, reading a document or
+/*** nht_i_GET - handle the HTTP GET method, reading a document or
  *** attribute list, etc.
  ***/
 int
-nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
+nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     {
     pNhtSessionData nsess = conn->NhtSession;
     int cnt;
@@ -1160,7 +1717,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* bufptr;
     char path[256];
     int rowid;
-    int tid = -1;
     int convert_text = 0;
     pDateTime dt = NULL;
     DateTime dtval;
@@ -1168,6 +1724,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     struct tm* thetime;
     time_t tval;
     char tbuf[32];
+    char tbuf2[32];
     int send_info = 0;
     pObjectInfo objinfo;
     char* gptr;
@@ -1185,21 +1742,27 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int rowlimit;
     int order_desc = 0;
     char* name;
+    char* slashptr;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+    int rval;
+    char* kname;
+    pXString err_xs;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
 //START INTERNAL handler -------------------------------------------------------------------
-//TODO (from Seth): should this be moved out of nht_internal_GET and back into nht_internal_ConnHandler?
+//TODO (from Seth): should this be moved out of nht_i_GET and back into nht_i_ConnHandler?
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
 	if (!strncmp(url_inf->StrVal,"/INTERNAL/errorstream",21))
 	    {
-		return nht_internal_ErrorHandler(conn);
+		return nht_i_ErrorHandler(conn);
 	    }
 	else if (!strncmp(url_inf->StrVal, "/INTERNAL/control", 17))
 	    {
-		return nht_internal_ControlMsgHandler(conn, url_inf);
+		return nht_i_ControlMsgHandler(conn, url_inf);
 	    }
 #if 0 //TODO: finish the caching ability. (this section could very well belong somewhere else)
 	else if (!strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
@@ -1212,11 +1775,41 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	/** app key specified? **/ //the app key feature is to prevent CSRFing attacks
 	find_inf = stLookup_ne(url_inf,"cx__akey");
-	if (find_inf && !strcmp(find_inf->StrVal, nsess->AKey))
-	    akey_match = 1;
+	if (find_inf)
+	    {
+	    /** VerifyAKey returns success if the session token matches.  We
+	     ** need the group and app tokens to match too for full security
+	     ** authorization.
+	     **/
+	    if (nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) == 0)
+		{
+		if (group && app) 
+		    {
+		    cxssAddEndorsement("system:from_application", "*");
+		    akey_match = 1;
+		    }
+		if (group)
+		    {
+		    cxssAddEndorsement("system:from_appgroup", "*");
+		    }
+		}
+	    }
+
+	/** Indicate activity... **/
+	if (!conn->NotActivity)
+	    {
+	    if (group) objCurrentDate(&(group->LastActivity));
+	    if (app) objCurrentDate(&(app->LastActivity));
+	    /*if (group) nht_i_ResetWatchdog(group->InactivityTimer);
+	    if (app) nht_i_ResetWatchdog(app->InactivityTimer);*/
+	    }
+	if (group) nht_i_ResetWatchdog(group->WatchdogTimer);
+	if (app) nht_i_ResetWatchdog(app->WatchdogTimer);
 
 	/** Check GET mode. **/
-	find_inf = stLookup_ne(url_inf,"ls__mode");
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf)
+	    find_inf = stLookup_ne(url_inf,"ls__mode"); /* compatibility */
 
 	/** Ok, open the object here, if not using OSML mode. **/
 	if (!find_inf || strcmp(find_inf->StrVal,"osml") != 0)
@@ -1224,16 +1817,9 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
 	    if (!target_obj)
 		{
-		nht_internal_GenerateError(nsess);
-		fdPrintf(conn->ConnFD,"HTTP/1.0 404 Not Found\r\n"
-			     "Server: %s\r\n"
-			     "Content-Type: text/html\r\n"
-			     "\r\n"
-			     "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-		mssPrintError(conn->ConnFD);
-		netCloseTCP(conn->ConnFD,1000,0);
-		nht_internal_UnlinkSess(nsess);
-		thExit();
+		nht_i_GenerateError(nsess);
+		/*if (url_inf) stFreeInf_ne(url_inf);*/
+		nht_i_ErrorExit(conn, 404, "Not Found"); /* does not return */
 		}
 
 	    /** Directory indexing? **/
@@ -1267,8 +1853,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    /** Do we need to set params as a part of the open? **/
-	    if (akey_match)
-		nht_internal_CkParams(url_inf, target_obj);
+	    if (akey_match && (!find_inf || strcmp(find_inf->StrVal, "rest") != 0))
+		nht_i_CkParams(url_inf, target_obj);
 	    }
 	else
 	    {
@@ -1276,15 +1862,15 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    }
 
 	/** WAIT TRIGGER mode. **/
-	if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
+	/*if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__waitid");
 	    if (find_inf)
 	        {
 		tid = strtoi(find_inf->StrVal,NULL,0);
-		nht_internal_WaitTrigger(nsess,tid);
+		nht_i_WaitTrigger(nsess,tid);
 		}
-	    }
+	    }*/
 
 	/** Check object's modification time **/
 	if (target_obj && objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
@@ -1317,9 +1903,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	thetime = gmtime(&tval);
 	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
 
-	/** Ok, issue the HTTP header for this one. **/
+	/** Ok, set options on the connection; header will be issued later **/
 	fdSetOptions(conn->ConnFD, FD_UF_WRBUF);
-	if (nsess->IsNewCookie)
+
+	/*if (nsess->IsNewCookie)
 	    {
 	    fdPrintf(conn->ConnFD,"HTTP/1.0 200 OK\r\n"
 		     "Date: %s GMT\r\n"
@@ -1334,15 +1921,15 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		     "Date: %s GMT\r\n"
 		     "Server: %s\r\n",
 		     tbuf, NHT.ServerString);
-	    }
+	    }*/
 
 	/** Exit now if wait trigger. **/
-	if (tid != -1)
+	/*if (tid != -1)
 	    {
 	    fdWrite(conn->ConnFD,"OK\r\n",4,0,0);
 	    objClose(target_obj);
 	    return 0;
-	    }
+	    }*/
 
 	/** Add anti-clickjacking X-Frame-Options header?
 	 ** see: https://developer.mozilla.org/en/The_X-FRAME-OPTIONS_response_header
@@ -1353,9 +1940,9 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    if (objGetAttrValue(target_obj, "http_frame_options", DATA_T_STRING, POD(&xfo_ptr)) == 0 || NHT.XFrameOptions != NHT_XFO_T_NONE)
 		{
 		if ((xfo_ptr && !strcmp(xfo_ptr,"deny")) || (!xfo_ptr && NHT.XFrameOptions == NHT_XFO_T_DENY))
-		    fdPrintf(conn->ConnFD, "X-Frame-Options: DENY\r\n");
+		    nht_i_AddResponseHeader(conn, "X-Frame-Options", "DENY", 0);
 		else if ((xfo_ptr && !strcmp(xfo_ptr,"sameorigin")) || (!xfo_ptr && NHT.XFrameOptions == NHT_XFO_T_SAMEORIGIN))
-		    fdPrintf(conn->ConnFD, "X-Frame-Options: SAMEORIGIN\r\n");
+		    nht_i_AddResponseHeader(conn, "X-Frame-Options", "SAMEORIGIN", 0);
 		}
 	    }
 
@@ -1364,7 +1951,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    find_inf2 = stLookup_ne(url_inf,"cx__forcedownload");
 	    if (!strpbrk(name, "\r\n\t"))
-		fdQPrintf(conn->ConnFD, "Content-Disposition: %STR&SYM; filename=%STR&DQUOT\r\n",
+		nht_i_AddResponseHeaderQPrintf(conn, "Content-Disposition", "%STR&SYM; filename=%STR&DQUOT", 
 			(find_inf2 && find_inf2->StrVal && *(find_inf2->StrVal))?"attachment":"inline", name);
 	    }
 
@@ -1381,7 +1968,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    tval = mktime(&systime);
 	    thetime = gmtime(&tval);
 	    strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
-	    fdPrintf(conn->ConnFD, "Last-Modified: %s GMT\r\n", tbuf);
+	    nht_i_AddResponseHeaderQPrintf(conn, "Last-Modified", "%STR GMT", tbuf);
 	    }
 
 	/** GET CONTENT mode. **/
@@ -1401,8 +1988,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (!gptr || (strlen(gptr) != 20 && strcmp(gptr,"design") != 0))
 		    {
 		    /** Deploy snippet to get geom from browser **/
-		    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-		    nht_internal_GetGeom(target_obj, conn->ConnFD);
+		    nht_i_WriteResponse(conn, 200, "OK", NULL);
+		    nht_i_GetGeom(target_obj, conn);
 		    objClose(target_obj);
 		    return 0;
 		    }
@@ -1412,6 +1999,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    client_w=0;
 		    objGetAttrValue(target_obj, "width", DATA_T_INTEGER, POD(&client_w));
 		    objGetAttrValue(target_obj, "height", DATA_T_INTEGER, POD(&client_h));
+
+		    /** These are some default values **/
+		    wgtr_params.CharWidth = 7;
+		    wgtr_params.CharHeight = 16;
+		    wgtr_params.ParagraphHeight = 16;
 		    }
 		else
 		    {
@@ -1425,11 +2017,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			if (client_h < 0) client_h = 0;
 			if (client_h > 10000) client_h = 10000;
 			}*/
-		    client_w = nht_internal_Hex16ToInt(gptr);
-		    client_h = nht_internal_Hex16ToInt(gptr+4);
-		    wgtr_params.CharWidth = nht_internal_Hex16ToInt(gptr+8);
-		    wgtr_params.CharHeight = nht_internal_Hex16ToInt(gptr+12);
-		    wgtr_params.ParagraphHeight = nht_internal_Hex16ToInt(gptr+16);
+		    client_w = nht_i_Hex16ToInt(gptr);
+		    client_h = nht_i_Hex16ToInt(gptr+4);
+		    wgtr_params.CharWidth = nht_i_Hex16ToInt(gptr+8);
+		    wgtr_params.CharHeight = nht_i_Hex16ToInt(gptr+12);
+		    wgtr_params.ParagraphHeight = nht_i_Hex16ToInt(gptr+16);
 		    }
 		wgtr_params.MaxHeight = client_h;
 		wgtr_params.MinHeight = client_h;
@@ -1439,7 +2031,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		wgtr_params.AppMinHeight = client_h;
 		wgtr_params.AppMaxWidth = client_w;
 		wgtr_params.AppMinWidth = client_w;
-		strtcpy(wgtr_params.AKey, nsess->AKey, sizeof(wgtr_params.AKey));
 
 		/** Check for gzip encoding **/
 		gzip=0;
@@ -1449,11 +2040,16 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 #endif
 		if(gzip==1)
 		    {
-		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
+		    nht_i_AddResponseHeader(conn, "Content-Encoding", "gzip", 0);
 		    }
                     
                 /** Print encoding type and content type **/
 		fdPrintf(conn->ConnFD,"Content-Type: text/html; charset=%s\r\nPragma: no-cache\r\n\r\n", chrGetEquivalentName("http"));
+
+		/** Send the response **/
+		conn->NoCache = 1;
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+
 		if(gzip==1)
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 
@@ -1502,25 +2098,69 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    wgtr_params.AppPath = pptr;
 		    }
 
+		/** Set the base directory pathname for the app -- for relative path references **/
+		wgtr_params.BaseDir = nmSysStrdup(objGetPathname(target_obj));
+		slashptr = strrchr(wgtr_params.BaseDir, '/');
+		if (slashptr && slashptr != wgtr_params.BaseDir)
+		    {
+		    *slashptr = '\0';
+		    }
+
+		/** Create a new group and app if necessary **/
+		if (!strcmp(ptr, "widget/page"))
+		    {
+		    if (!group)
+			group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
+		    if (group && !app)
+			app = nht_i_AllocApp(url_inf->StrVal, group);
+		    }
+
+		/** Build the akey - CSRF prevention **/
+		if (group && app)
+		    snprintf(wgtr_params.AKey, sizeof(wgtr_params.AKey), "%s-%s-%s", nsess->SKey, group->GKey, app->AKey);
+		else
+		    strtcpy(wgtr_params.AKey, nsess->SKey, sizeof(wgtr_params.AKey));
+
 		/** Read the app spec, verify it, and generate it to DHTML **/
 		//pWgtrNode tree;
 		//if ((tree = wgtrParseOpenObject(target_obj, url_inf, wgtr_params.Templates)) < 0
 		    //|| (objpath = objGetPathname(obj)) && wgtrMergeOverlays(tree, objpath, client_info->AppPath, client_info->Overlays, client_info->Templates) < 0 )
-		    //|| nht_internal_Parse_and_Cache_an_App(target_obj, url_inf, &wgtr_params, nsess, &tree) < 0
-		    //|| nht_internal_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
-		if (nhtRenderApp(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
+		    //|| nht_i_Parse_and_Cache_an_App(target_obj, url_inf, &wgtr_params, nsess, &tree) < 0
+		    //|| nht_i_Verify_and_Position_and_Render_an_App(conn->ConnFD, nsess, &wgtr_params, "DHTML", tree) < 0)
+		nht_i_WriteConn(conn, "", 0, 0);
+		if (nhtRenderApp(conn, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
-		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
-		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
-		    mssPrintError(conn->ConnFD);
+		    mssError(0, "HTTP", "Unable to render application %s of type %s", url_inf->StrVal, ptr);
+		    err_xs = xsNew();
+		    if (err_xs)
+			{
+			mssStringError(err_xs);
+			nht_i_QPrintfConn(conn, 0, "<h1>An error occurred while constructing the application:</h1><pre>%STR&HTE\r\n</pre>", xsString(err_xs));
+			xsFree(err_xs);
+			}
 		    objClose(target_obj);
 		    if (tptr) nmSysFree(tptr);
 		    if (lptr) nmSysFree(lptr);
 		    return -1;
 		    }
+
+		/** copy security endorsement data to app info structure **/
+		if (app)
+		    {
+		    for(i=0;i<app->Endorsements.nItems;i++)
+			{
+			nmSysFree(app->Endorsements.Items[i]);
+			nmSysFree(app->Contexts.Items[i]);
+			}
+		    xaClear(&app->Endorsements, NULL, NULL);
+		    xaClear(&app->Contexts, NULL, NULL);
+		    cxssGetEndorsementList(&app->Endorsements, &app->Contexts);
+		    }
+
 		if (tptr) nmSysFree(tptr);
 		if (lptr) nmSysFree(lptr);
 	        }
+
 	    /** a client app requested an interface definition **/ 
 	    else if (!strcmp(ptr, "iface/definition"))
 		{
@@ -1528,17 +2168,17 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		objGetAttrValue(target_obj, "type", DATA_T_STRING, POD(&ptr));
 
 		/** end the headers **/
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
 
 		/** call the html-related interface translating function **/
 		if (ifcToHtml(conn->ConnFD, nsess->ObjSess, url_inf->StrVal) < 0)
 		    {
 		    mssError(0, "NHT", "Error sending Interface info for '%s' to client", url_inf->StrVal);
-		    fdQPrintf(conn->ConnFD, "<A TARGET=\"ERR\" HREF=\"%STR&HTE\"></A>", url_inf->StrVal);
+		    nht_i_QPrintfConn(conn, 0, "<A TARGET=\"ERR\" HREF=\"%STR&HTE\"></A>", url_inf->StrVal);
 		    }
 		else
 		    {
-		    fdQPrintf(conn->ConnFD, "<A NAME=\"%s\" TARGET=\"OK\" HREF=\"%STR&HTE\"></A>", ptr, url_inf->StrVal);
+		    nht_i_QPrintfConn(conn, 0, "<A NAME=\"%s\" TARGET=\"OK\" HREF=\"%STR&HTE\"></A>", ptr, url_inf->StrVal);
 		    }
 		}
 	    /** some other sort of request **/
@@ -1558,7 +2198,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 #ifdef HAVE_LIBZ
 		if(	NHT.EnableGzip && /* global enable flag */
-			obj_internal_IsA(ptr,"text/plain")>0 /* a subtype of text/plain */
+			objIsA(ptr,"text/plain")>0 /* a subtype of text/plain */
 			&& acceptencoding && strstr(acceptencoding,"gzip") /* browser wants it gzipped */
 			&& (!strcmp(ptr,"text/html") || (browser && regexec(NHT.reNet47,browser,(size_t)0,NULL,0) != 0 ) )
 			/* only gzip text/html for Netscape 4.7, which doesn't like it if we gzip .js files */
@@ -1569,27 +2209,90 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 #endif
 		if(gzip==1)
 		    {
-		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
+		    nht_i_AddResponseHeader(conn, "Content-Encoding", "gzip", 0);
 		    }
-		fdPrintf(conn->ConnFD,"Content-Type: %s\r\n\r\n", ptr);
+		strtcpy(conn->ResponseContentType, ptr, sizeof(conn->ResponseContentType));
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
 		if(gzip==1)
 		    {
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 		    }
-		if (convert_text) fdWrite(conn->ConnFD,"<HTML><PRE>",11,0,FD_U_PACKET);
 		bufptr = (char*)nmMalloc(4096);
-	        while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
-	            {
-		    fdWrite(conn->ConnFD,bufptr,cnt,0,FD_U_PACKET);
-		    }
-		if (convert_text) fdWrite(conn->ConnFD,"</HTML></PRE>",13,0,FD_U_PACKET);
-		if (cnt < 0) 
+		if (bufptr)
 		    {
-		    mssError(0,"NHT","Incomplete read of object's content");
-		    nht_internal_GenerateError(nsess);
+		    if (convert_text) nht_i_WriteConn(conn, "<HTML><PRE>",11,0);
+		    while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
+			{
+			nht_i_WriteConn(conn,bufptr,cnt,0);
+			}
+		    if (convert_text) nht_i_WriteConn(conn,"</HTML></PRE>",13,0);
+		    if (cnt < 0) 
+			{
+			mssError(0,"NHT","Incomplete read of object's content");
+			nht_i_GenerateError(nsess);
+			}
+		    nmFree(bufptr, 4096);
 		    }
-		nmFree(bufptr, 4096);
 	        }
+	    }
+
+	/** REST mode? **/
+	else if (!strcmp(find_inf->StrVal,"rest"))
+	    {
+	    conn->StrictSameSite = 0;
+	    rval = nht_i_RestGet(conn, url_inf, target_obj);
+	    }
+
+	/** Retrieve a new session/group/app key? **/
+	else if (!strcmp(find_inf->StrVal, "appinit"))
+	    {
+	    find_inf = stLookup_ne(url_inf, "cx__groupname");
+	    if (!find_inf || find_inf->StrVal[0] == '/')
+		kname = "API Client";
+	    else
+		kname = find_inf->StrVal;
+
+	    /** Try to join an existing app group, if specified **/
+	    if (!group)
+		group = nht_i_AllocAppGroup(kname, nsess);
+	    if (group)
+		{
+		find_inf = stLookup_ne(url_inf, "cx__appname");
+		if (!find_inf || find_inf->StrVal[0] == '/')
+		    kname = "API Client";
+		else
+		    kname = find_inf->StrVal;
+
+		/** Set up a new active app **/
+		app = nht_i_AllocApp(kname, group);
+		if (app)
+		    {
+		    /** We want to give the api client information about our
+		     ** watchdog timeout (so the client can know how often to
+		     ** ping us), as well as information about our current time
+		     ** and timezone (for proper date/time data display
+		     ** synchronization).
+		     **/
+		    tval = time(NULL);
+		    thetime = localtime(&tval);
+		    tbuf[0] = '\0';
+		    tbuf2[0] = '\0';
+		    if (thetime)
+			{
+			if (strftime(tbuf, sizeof(tbuf), "%Y %m %d %T %Z", thetime) <= 0)
+			    tbuf[0] = '\0';
+			if (strftime(tbuf2, sizeof(tbuf2), "%Y %m %d %T", thetime) <= 0)
+			    tbuf2[0] = '\0';
+			}
+		    conn->NoCache = 1;
+		    strtcpy(conn->ResponseContentType, "application/json", sizeof(conn->ResponseContentType));
+		    nht_i_WriteResponse(conn, 200, "OK", NULL);
+		    nht_i_QPrintfConn(conn, 0,
+			    "{\"akey\":\"%STR&JSONSTR-%STR&JSONSTR-%STR&JSONSTR\", \"watchdogtimer\":%INT, \"servertime\":\"%STR&JSONSTR\", \"servertime_notz\":\"%STR&JSONSTR\"}\r\n",
+			    nsess->SKey, group->GKey, app->AKey, NHT.WatchdogTime, tbuf, tbuf2
+			    );
+		    }
+		}
 	    }
 
 	/** GET DIRECTORY LISTING mode. **/
@@ -1605,8 +2308,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
-		fdQPrintf(conn->ConnFD,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_QPrintfConn(conn, 0, "<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=\"%STR&HTE/..\">..</A><BR>\n",url_inf->StrVal);
 		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
@@ -1619,17 +2322,17 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
 		    if (send_info && objinfo)
 			{
-			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%INT:%INT:%STR&HTE</A><BR>\n",dptr,
 			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
 			}
 		    else if (send_info && !objinfo)
 			{
-			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>0:0:%STR&HTE</A><BR>\n",dptr,
 			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
 			}
 		    else
 			{
-			fdQPrintf(conn->ConnFD,"<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"%STR&HTE%[/%]%STR&HTE\" TARGET='%STR&HTE'>%STR&HTE</A><BR>\n",dptr,
 			    (dptr[0]!='/' || dptr[1]!='\0'),ptr,ptr,aptr);
 			}
 		    objClose(sub_obj);
@@ -1638,7 +2341,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 	    else
 	        {
-		nht_internal_GenerateError(nsess);
+		nht_i_GenerateError(nsess);
 		}
 	    }
 
@@ -1646,7 +2349,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	else if (!strcmp(find_inf->StrVal,"query") && akey_match)
 	    {
 	    /** Change directory to appropriate query root **/
-	    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+	    conn->NoCache = 1;
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	    strtcpy(path, objGetWD(nsess->ObjSess), sizeof(path));
 	    objSetWD(nsess->ObjSess, target_obj);
 
@@ -1664,7 +2368,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    rowid = 0;
 		    while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		        {
-			nht_internal_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
+			nht_i_WriteAttrs(sub_obj,conn,(handle_t)rowid,1);
 			objClose(sub_obj);
 			rowid++;
 			if (rowid == rowlimit) break;
@@ -1692,8 +2396,14 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	/** Direct OSML Access mode... **/
 	else if (!strcmp(find_inf->StrVal,"osml") && akey_match)
 	    {
+	    /** Load in security endorsements **/
+	    for(i=0;i<app->Endorsements.nItems;i++)
+		{
+		cxssAddEndorsement(app->Endorsements.Items[i], app->Contexts.Items[i]);
+		}
+
 	    find_inf = stLookup_ne(url_inf,"ls__req");
-	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
+	    nht_i_OSML(conn,target_obj, find_inf->StrVal, url_inf, app);
 	    }
 
 	/** Exec method mode **/
@@ -1701,17 +2411,18 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__methodname");
 	    find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
-	    fdPrintf(conn->ConnFD, "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
+	    conn->NoCache = 1;
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	    if (!find_inf || !find_inf2)
 	        {
 		mssError(1,"NHT","Invalid call to execmethod - requires name and param");
-		nht_internal_GenerateError(nsess);
+		nht_i_GenerateError(nsess);
 		}
 	    else
 	        {
 	    	ptr = find_inf2->StrVal;
 	    	objExecuteMethod(target_obj, find_inf->StrVal, POD(&ptr));
-		fdWrite(conn->ConnFD,"OK",2,0,0);
+		nht_i_WriteConn(conn, "OK", 2, 0);
 		}
 	    }
 
@@ -1722,12 +2433,213 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     }
 
 
-/*** nht_internal_PUT - implements the PUT HTTP method.  Set content_buf to
+/*** nht_i_DELETE - implements the HTTP DELETE method, which after
+ *** verifying credentials, deletes the referenced path.
+ ***/
+int
+nht_i_DELETE(pNhtConn conn, pStruct url_inf)
+    {
+    char* msg;
+    int code;
+    pStruct find_inf;
+    pObject target_obj = NULL;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+    int rval;
+
+	/** Check akey **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
+	    {
+	    mssError(1,"NHT","DELETE request requires akey for validation");
+	    msg = "Unauthorized";
+	    code = 401;
+	    goto error;
+	    }
+
+	/** Open the target object **/
+	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
+	if (!target_obj)
+	    {
+	    mssError(0,"NHT","Could not open requested object for DELETE request");
+	    msg = "Not Found";
+	    code = 404;
+	    goto error;
+	    }
+
+	/** Determine mode **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf || strcmp(find_inf->StrVal, "rest") != 0)
+	    {
+	    mssError(1,"NHT","DELETE: only REST mode supported");
+	    msg = "Bad Request";
+	    code = 400;
+	    goto error;
+	    }
+
+	/** Call out to REST functionality **/
+	conn->StrictSameSite = 0;
+	rval = nht_i_RestDelete(conn, url_inf, target_obj);
+	if (rval < 0)
+	    {
+	    msg = "Bad Request";
+	    code = 400;
+	    goto error;
+	    }
+	target_obj = NULL; /* deleted, handle no longer valid */
+
+	nht_i_WriteResponse(conn, 204, "No Content", NULL);
+
+	/** Cleanup and return **/
+	return 0;
+
+    error:
+	nht_i_WriteErrResponse(conn, code, msg, NULL);
+
+	if (target_obj)
+	    objClose(target_obj);
+
+	return -1;
+    }
+
+
+/*** nht_i_PATCH - implements the HTTP PATCH method, which is used for
+ *** modifying existing data without replacing the entire resource (which is
+ *** what PUT would do).
+ ***/
+int
+nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
+    {
+    pStruct find_inf;
+    struct json_tokener* jtok = NULL;
+    enum json_tokener_error jerr;
+    char rbuf[256];
+    int rcnt, rval, total_rcnt;
+    struct json_object*	j_obj = NULL;
+    char* msg;
+    int code;
+    pObject target_obj = NULL;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
+
+	/** Check akey **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) != 0 || !group || !app)
+	    {
+	    mssError(1,"NHT","PATCH request requires akey for validation");
+	    msg = "Unauthorized";
+	    code = 401;
+	    goto error;
+	    }
+
+	/** Open the target object **/
+	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
+	if (!target_obj)
+	    {
+	    mssError(0,"NHT","Could not open requested object for PATCH request");
+	    msg = "Not Found";
+	    code = 404;
+	    goto error;
+	    }
+
+	/** Initialize the JSON tokenizer **/
+	jtok = json_tokener_new();
+	if (!jtok)
+	    {
+	    mssError(1,"NHT","Could not initialize JSON parser");
+	    msg = "Internal Server Error";
+	    code = 500;
+	    goto error;
+	    }
+
+	/** Content supplied on URL line, or do we need to read it? **/
+	if (content)
+	    {
+	    /** Supplied on command line **/
+	    j_obj = json_tokener_parse_ex(jtok, content, strlen(content));
+	    jerr = json_tokener_get_error(jtok);
+	    }
+	else
+	    {
+	    /** Read it in via the network connection **/
+	    total_rcnt = 0;
+	    do  {
+		rcnt = fdRead(conn->ConnFD, rbuf, sizeof(rbuf), 0, 0);
+		if (rcnt <= 0)
+		    {
+		    mssError(1,"NHT","Could not read JSON object from HTTP connection");
+		    msg = "Bad Request";
+		    code = 400;
+		    goto error;
+		    }
+		total_rcnt += rcnt;
+		if (total_rcnt > NHT_PAYLOAD_MAX)
+		    {
+		    mssError(1,"NHT","JSON object too large");
+		    msg = "Bad Request";
+		    code = 400;
+		    goto error;
+		    }
+		j_obj = json_tokener_parse_ex(jtok, rbuf, rcnt);
+		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
+	    }
+
+	/** Success? **/
+	if (!j_obj || jerr != json_tokener_success)
+	    {
+	    mssError(1,"NHT","Invalid JSON object in PATCH request");
+	    msg = "Bad Request";
+	    code = 400;
+	    goto error;
+	    }
+	json_tokener_free(jtok);
+	jtok = NULL;
+
+	/** Determine mode **/
+	find_inf = stLookup_ne(url_inf,"cx__mode");
+	if (!find_inf || strcmp(find_inf->StrVal, "rest") != 0)
+	    {
+	    mssError(1,"NHT","PATCH: only REST mode supported");
+	    msg = "Bad Request";
+	    code = 400;
+	    goto error;
+	    }
+
+	/** Call out to REST functionality **/
+	conn->StrictSameSite = 0;
+	rval = nht_i_RestPatch(conn, url_inf, target_obj, j_obj);
+	if (rval < 0)
+	    {
+	    msg = "Bad Request";
+	    code = 400;
+	    goto error;
+	    }
+
+	/** Cleanup and return **/
+	json_object_put(j_obj);
+	objClose(target_obj);
+	return 0;
+
+    error:
+	nht_i_WriteErrResponse(conn, code, msg, NULL);
+
+	if (jtok)
+	    json_tokener_free(jtok);
+	if (j_obj)
+	    json_object_put(j_obj);
+	if (target_obj)
+	    objClose(target_obj);
+
+	return -1;
+    }
+
+
+/*** nht_i_PUT - implements the PUT HTTP method.  Set content_buf to
  *** data to write, otherwise it will be read from the connection if content_buf
  *** is NULL.
  ***/
 int
-nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
+nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pObject target_obj;
@@ -1735,7 +2647,20 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
     int rcnt;
     int type,i,v;
     pStruct sub_inf;
+    pStruct find_inf;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
     int already_exist=0;
+
+	/** Validate akey and make sure app and group id's match as well.  AKey
+	 ** must be supplied with all PUT requests.
+	 **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
+	    {
+	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
+	    return -1;
+	    }
 
     	/** See if the object already exists. **/
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
@@ -1749,16 +2674,8 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
 	if (!target_obj)
 	    {
-	    snprintf(sbuf,160,"HTTP/1.0 404 Not Found\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    mssPrintError(conn->ConnFD);
-	    netCloseTCP(conn->ConnFD,1000,0);
-	    nht_internal_UnlinkSess(nsess);
-	    thExit();
+	    if (url_inf) stFreeInf_ne(url_inf);
+	    nht_i_ErrorExit(conn, 404, "Not Found"); /* does not return */
 	    }
 
 	/** OK, we're ready.  Send the 100 Continue message. **/
@@ -1819,57 +2736,20 @@ nht_internal_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	objClose(target_obj);
 
 	/** Ok, issue the HTTP header for this one. **/
-	if (nsess->IsNewCookie)
-	    {
-	    if (already_exist)
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Set-Cookie: %s; path=/\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
-		}
-	    else
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
-		     "Server: %s\r\n"
-		     "Set-Cookie: %s; path=/\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
-		}
-	    nsess->IsNewCookie = 0;
-	    }
+	if (already_exist)
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
 	else
-	    {
-	    if (already_exist)
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
-		}
-	    else
-	        {
-	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
-		     "Server: %s\r\n"
-		     "Content-Type: text/html\r\n"
-		     "\r\n"
-		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
-		}
-	    }
-	fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+	    nht_i_WriteResponse(conn, 201, "Created", NULL);
+	nht_i_QPrintfConn(conn, 0, "%STR\r\n", url_inf->StrVal);
 
     return 0;
     }
 
 
-/*** nht_internal_COPY - implements the COPY centrallix-http method.
+/*** nht_i_COPY - implements the COPY centrallix-http method.
  ***/
 int
-nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
+nht_i_COPY(pNhtConn conn, pStruct url_inf, char* dest)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pObject source_obj = NULL;
@@ -1897,7 +2777,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, copytype?copytype:"application/octet-stream");
 	    if (!source_obj)
 		{
-		nht_internal_ErrorExit(conn, 404, "Source Not Found");
+		nht_i_ErrorExit(conn, 404, "Source Not Found");
 		}
 
 	    /** If using srctype copy mode, get the type now **/
@@ -1906,7 +2786,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    }
 
 	/** Do we need to set params as a part of the open? **/
-	nht_internal_CkParams(url_inf, source_obj);
+	nht_i_CkParams(url_inf, source_obj);
 
 	/** Try to open the new object without O_CREAT to see if it exists... **/
 	target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC, 0600, "text/html");
@@ -1920,7 +2800,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
 	    if (!target_obj)
 		{
-		nht_internal_ErrorExit(conn, 404, "Target Not Found");
+		nht_i_ErrorExit(conn, 404, "Target Not Found");
 		}
 	    }
 
@@ -1934,7 +2814,7 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, copytype?copytype:"application/octet-stream");
 	    if (!source_obj)
 		{
-		nht_internal_ErrorExit(conn, 404, "Source Not Found");
+		nht_i_ErrorExit(conn, 404, "Source Not Found");
 		}
 	    }
 
@@ -1960,18 +2840,18 @@ nht_internal_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	objClose(target_obj);
 
 	/** Ok, issue the HTTP header for this one. **/
-	nht_internal_WriteResponse(conn, already_exists?200:201, already_exists?"OK":"Created", -1, "text/html", NULL, NULL);
-	fdQPrintf(conn->ConnFD, "%STR\r\n", dest);
+	nht_i_WriteResponse(conn, already_exists?200:201, already_exists?"OK":"Created", NULL);
+	nht_i_QPrintfConn(conn, 0, "%STR\r\n", dest);
 
     return 0;
     }
 
 
-/*** nht_internal_ParseHeaders - read from the connection and parse the
+/*** nht_i_ParseHeaders - read from the connection and parse the
  *** headers into the NhtConn structure
  ***/
 int
-nht_internal_ParseHeaders(pNhtConn conn)
+nht_i_ParseHeaders(pNhtConn conn)
     {
     char* msg;
     pLxSession s = NULL;
@@ -1988,13 +2868,13 @@ nht_internal_ParseHeaders(pNhtConn conn)
 	 ** tail, as in standard goto-based error handling.
 	 **/
 	toktype = mlxNextToken(s);
-	if (toktype == MLX_TOK_EOF)
+	if (toktype == MLX_TOK_EOF || toktype == MLX_TOK_EOL)
 	    {
-	    /** MSIE likes to open connections and then close them without
+	    /** Browsers like to open connections and then close them without
 	     ** sending a request; don't print errors on this condition.
 	     **/
 	    mlxCloseSession(s);
-	    nht_internal_FreeConn(conn);
+	    nht_i_FreeConn(conn);
 	    thExit();
 	    }
 
@@ -2053,7 +2933,11 @@ nht_internal_ParseHeaders(pNhtConn conn)
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
 		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
-		    if (toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+		    if (!conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+			{
+			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			}
+		    else if (conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.TlsSessionCookie,strlen(NHT.TlsSessionCookie)) || conn->Cookie[strlen(NHT.TlsSessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
 			}
@@ -2067,6 +2951,19 @@ nht_internal_ParseHeaders(pNhtConn conn)
 		conn->Size = mlxIntVal(s);
 		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after length"; goto error; }
 		}
+	    else if (!strcmp(hdr,"referer"))
+		{
+		mlxSetOptions(s, MLX_F_LINEONLY);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Referer:"; goto error; }
+		did_alloc = 1;
+		conn->Referrer = mlxStringVal(s, &did_alloc);
+		if (conn->Referrer[0] == ' ')
+		    memmove(conn->Referrer, conn->Referrer+1, strlen(conn->Referrer));
+		if (strpbrk(conn->Referrer, "\r\n"))
+		    *(strpbrk(conn->Referrer, "\r\n")) = '\0';
+		mlxUnsetOptions(s,MLX_F_LINEONLY);
+		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after Referer: header"; goto error; }
+		}
 	    else if (!strcmp(hdr,"user-agent"))
 	        {
 		/** Copy whole User-Agent. **/
@@ -2079,6 +2976,10 @@ nht_internal_ParseHeaders(pNhtConn conn)
 		    January 6, 2002   NRE
 		 **/
 		mlxCopyToken(s,conn->UserAgent,sizeof(conn->UserAgent));
+		if (conn->UserAgent[0] == ' ')
+		    memmove(conn->UserAgent, conn->UserAgent+1, strlen(conn->UserAgent));
+		if (strpbrk(conn->UserAgent, "\r\n"))
+		    *(strpbrk(conn->UserAgent, "\r\n")) = '\0';
 		/*while((toktype=mlxNextToken(s)))
 		    {
 		    if(toktype == MLX_TOK_STRING && strlen(conn->UserAgent)<158)
@@ -2170,15 +3071,59 @@ nht_internal_ParseHeaders(pNhtConn conn)
     }
 
 
+/*** nht_i_CheckAccessLog - check to see if the access log needs to be
+ *** (re)opened.
+ ***/
+int
+nht_i_CheckAccessLog()
+    {
+    pFile test_fd;
+
+	/** Is it open yet? **/
+	if (!NHT.AccessLogFD)
+	    {
+	    NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
+	    if (!NHT.AccessLogFD)
+		{
+		mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
+		}
+	    }
+	else
+	    {
+	    /** Has file been renamed (e.g., by logrotate) **/
+	    test_fd = fdOpen(NHT.AccessLogFile, O_RDONLY, 0600);
+	    if (!test_fd)
+		{
+		test_fd = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
+		if (!test_fd)
+		    {
+		    mssErrorErrno(1,"NHT","Could not reopen access_log file '%s'", NHT.AccessLogFile);
+		    }
+		else
+		    {
+		    fdClose(NHT.AccessLogFD, 0);
+		    NHT.AccessLogFD = test_fd;
+		    }
+		}
+	    else
+		{
+		fdClose(test_fd, 0);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** nhtInitialize - initialize the HTTP network handler and start the 
  *** listener thread.
  ***/
 int
 nhtInitialize()
     {
-    /*int i;
-
-	printf("nhtInit called, stack ptr = %8.8X\n",&i);*/
+    pStructInf my_config;
+    char* strval;
+    int i;
 
     	/** Initialize the random number generator. **/
 	srand48(time(NULL));
@@ -2187,6 +3132,7 @@ nhtInitialize()
 	NHT.numbCachedApps = 0;
 	memset(&NHT, 0, sizeof(NHT));
 	xhInit(&(NHT.CookieSessions),255,0);
+	xhInit(&(NHT.SessionsByID),255,0);
 	xaInit(&(NHT.Sessions),256);
 	NHT.TimerUpdateSem = syCreateSem(0, 0);
 	NHT.TimerDataMutex = syCreateSem(1, 0);
@@ -2201,6 +3147,11 @@ nhtInitialize()
 	NHT.AccCnt = 0;
 	NHT.RestrictToLocalhost = 0;
 	NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
+	strcpy(NHT.UploadTmpDir, "/var/tmp");
+	xaInit(&NHT.AllowedUploadDirs, 16);
+	xaInit(&NHT.AllowedUploadExts, 16);
+	NHT.CollectedConns = syCreateSem(0, 0);
+	NHT.CollectedTLSConns = syCreateSem(0, 0);
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
@@ -2208,7 +3159,16 @@ nhtInitialize()
         NHT.ClkTck = CLK_TCK;
 #endif
 
-	nht_internal_RegisterUsers();
+	NHT.A_ID_Count = 0;
+	NHT.G_ID_Count = 0;
+	NHT.S_ID_Count = 0;
+
+	nht_i_RegisterSessionInfo();
+
+	/** Set up header nonce **/
+	NHT.NonceData = cxssKeystreamNew(NULL, 0);
+	if (!NHT.NonceData)
+	    mssError(1, "NHT", "Warning: X-Nonce headers will not be emitted");
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
@@ -2218,13 +3178,100 @@ nhtInitialize()
 	    return -1;
 	    }
 
+	/** Read configuration data **/
+	my_config = stLookup(CxGlobals.ParsedConfig, "net_http");
+	if (my_config)
+	    {
+	    /** Find out what server string we should use **/
+	    if (stAttrValue(stLookup(my_config, "server_string"), NULL, &strval, 0) >= 0)
+		{
+		strtcpy(NHT.ServerString, strval, sizeof(NHT.ServerString));
+		}
+	    else
+		{
+		snprintf(NHT.ServerString, 80, "Centrallix/%.16s", cx__version);
+		}
+
+	    /** Get the realm name **/
+	    if (stAttrValue(stLookup(my_config, "auth_realm"), NULL, &strval, 0) >= 0)
+		{
+		strtcpy(NHT.Realm, strval, sizeof(NHT.Realm));
+		}
+	    else
+		{
+		snprintf(NHT.Realm, 80, "Centrallix");
+		}
+
+	    /** Directory indexing? **/
+	    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
+		{
+		stAttrValue(stLookup(my_config,"dir_index"), NULL, &(NHT.DirIndex[i]), i);
+		}
+
+	    /** Should we enable gzip? **/
+#ifdef HAVE_LIBZ
+	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
+#endif
+	    stAttrValue(stLookup(my_config, "condense_js"), &(NHT.CondenseJS), NULL, 0);
+
+	    stAttrValue(stLookup(my_config, "accept_localhost_only"), &(NHT.RestrictToLocalhost), NULL, 0);
+
+	    /** X-Frame-Options anti-clickjacking header? **/
+	    if (stAttrValue(stLookup(my_config, "x_frame_options"), NULL, &strval, 0) >= 0)
+		{
+		if (!strcasecmp(strval, "none"))
+		    NHT.XFrameOptions = NHT_XFO_T_NONE;
+		else if (!strcasecmp(strval, "deny"))
+		    NHT.XFrameOptions = NHT_XFO_T_DENY;
+		else if (!strcasecmp(strval, "sameorigin")) /* default - see net_http.c */
+		    NHT.XFrameOptions = NHT_XFO_T_SAMEORIGIN;
+		}
+
+	    /** Get the timer settings **/
+	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
+	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
+
+	    /** Session limits **/
+	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
+
+	    /** Cookie name **/
+	    if (stAttrValue(stLookup(my_config, "session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = "CXID";
+		}
+	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
+	    if (stAttrValue(stLookup(my_config, "ssl_session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = NHT.SessionCookie;
+		}
+	    strtcpy(NHT.TlsSessionCookie, strval, sizeof(NHT.TlsSessionCookie));
+
+	    /** Access log file **/
+	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
+		{
+		strtcpy(NHT.AccessLogFile, strval, sizeof(NHT.AccessLogFile));
+		nht_i_CheckAccessLog();
+		}
+
+	    /** Upload temporary directory **/
+	    if (stAttrValue(stLookup(my_config, "upload_tmpdir"), NULL, &strval, 0) >= 0)
+		strtcpy(NHT.UploadTmpDir, strval, sizeof(NHT.UploadTmpDir));
+
+	    /** Allowed file upload directories **/
+	    for(i=0; stAttrValue(stLookup(my_config, "upload_dirs"), NULL, &strval, i) >= 0; i++)
+		xaAddItem(&NHT.AllowedUploadDirs, nmSysStrdup(strval));
+
+	    /** Allowed file upload extensions **/
+	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
+		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
+	    }
+
 	/** Start the watchdog timer thread **/
-	thCreate(nht_internal_Watchdog, 0, NULL);
+	thCreate(nht_i_Watchdog, 0, NULL);
 
-	/** Start the network listener. **/
-	thCreate(nht_internal_Handler, 0, NULL);
-
-	/*printf("nhtInit return from thCreate, stack ptr = %8.8X\n",&i);*/
+	/** Start the network listeners. **/
+	thCreate(nht_i_TLSHandler, 0, NULL);
+	thCreate(nht_i_Handler, 0, NULL);
 
     return 0;
     }

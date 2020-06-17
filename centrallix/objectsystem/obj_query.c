@@ -45,177 +45,6 @@
 /*		objectsystem query support.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_query.c,v 1.20 2011/02/18 03:53:33 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
-
-    $Log: obj_query.c,v $
-    Revision 1.20  2011/02/18 03:53:33  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.19  2010/09/09 01:40:58  gbeeley
-    - (feature) stubbing out objGetQueryCoverageMask, to be used to distinguish
-      between correlated and non-correlated subqueries
-
-    Revision 1.18  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.17  2008/01/06 20:17:05  gbeeley
-    - (change) reworking of part of objOpenQuery, possible bugfix here as well
-
-    Revision 1.16  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.15  2007/04/03 19:31:35  gbeeley
-    - (bugfix) memory leak in objOpenQuery as the mlx session was not closed.
-    - (security) error introduced by cut-and-paste of code in wgtr - free()
-      done in wrong place, caused assertion failure due to use of free'd object
-
-    Revision 1.14  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.13  2005/09/24 20:15:43  gbeeley
-    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
-      an attribute to an object which invokes callback functions to get the
-      attribute values, etc.
-    - Changing objLinkTo() to return the linked-to object (same thing that
-      got passed in, but good for style in reference counting).
-    - Cleanup of some memory leak issues in objOpenQuery()
-
-    Revision 1.12  2005/09/17 01:35:10  gbeeley
-    - preset default values for SubPtr and SubCnt for child objects
-      returned from objQueryFetch()
-
-    Revision 1.11  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.10  2004/08/27 01:28:32  jorupp
-     * cleaning up some compile warnings
-
-    Revision 1.9  2004/07/30 04:25:35  gbeeley
-    - need to recognize asc/desc in order by text
-
-    Revision 1.8  2004/06/12 04:02:28  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.7  2003/07/10 19:20:57  gbeeley
-    objOpenQuery now links to the parent object of the query to prevent it
-    from being pulled out from under the osdriver if the user calls objClose
-    on the parent object before calling objQueryClose on the query.
-
-    Revision 1.6  2003/07/09 18:05:59  gbeeley
-    Interim fix for 'order by' causing objects to be fetched differently
-    because of the query-sort-reopen logic.  Now uses open-as to reopen
-    objects in a way that won't cause other drivers to be invoked.
-
-    Revision 1.5  2003/05/30 17:39:52  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2002/05/03 03:51:21  gbeeley
-    Added objUnmanageObject() and objUnmanageQuery() which cause an object
-    or query to not be closed automatically on session close.  This should
-    NEVER be used with the intent of keeping an object or query open after
-    session close, but rather it is used when the object or query would be
-    closed in some other way, such as 'hidden' objects and queries that the
-    multiquery layer opens behind the scenes (closing the multiquery objects
-    and queries will cause the underlying ones to be closed).
-    Also fixed some problems in the OSML where some objects and queries
-    were not properly being added to the session's open objects and open
-    queries lists.
-
-    Revision 1.2  2002/04/25 17:59:59  gbeeley
-    Added better magic number support in the OSML API.  ObjQuery and
-    ObjSession structures are now protected with magic numbers, and
-    support for magic numbers in Object structures has been improved
-    a bit.
-
-    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:01  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** obj_internal_SortCompare - compares two items in the sorting 
@@ -401,6 +230,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     char* ptr;
     char* start_ptr;
     pObject linked_obj = NULL;
+    pObjectInfo info;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
@@ -420,7 +250,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	linked_obj = objLinkTo(obj);
 	this->Obj = linked_obj;
         this->ObjList = (void*)expCreateParamList();
-	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, 0);
+	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, EXPR_O_CURRENT);
 
 	/** Ok, first parse the query. **/
 	if (obj_internal_ParseCriteria(this, query, tree) < 0)
@@ -490,120 +320,52 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    {
 	    /** Ok, first item of business is to read entire result set.  Init the sort structure **/
 	    this->SortInf = (pObjQuerySort)nmMalloc(sizeof(ObjQuerySort));
+	    if (!this->SortInf)
+		goto error_return;
 	    xaInit(this->SortInf->SortPtr+0,4096);
 	    xaInit(this->SortInf->SortPtrLen+0,4096);
 	    xaInit(this->SortInf->SortNames+0,4096);
 	    xsInit(&this->SortInf->SortDataBuf);
 	    xsInit(&this->SortInf->SortNamesBuf);
+	    this->SortInf->IsTemp = 0;
+
+	    /** Temp object? **/
+	    info = objInfo(obj);
+	    if (info && (info->Flags & OBJ_INFO_F_TEMPORARY))
+		this->SortInf->IsTemp = 1;
 
 	    /** Read result set **/
 	    while((tmp_obj = objQueryFetch(this, 0400)))
 	        {
-		xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
+		/** We keep temp objects open, for others we squirrel away the name instead and re-open later **/
+		if (this->SortInf->IsTemp)
+		    xaAddItem(this->SortInf->SortNames+0, (void*)tmp_obj);
+		else
+		    xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
 		objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr));
 		xsConcatenate(&this->SortInf->SortNamesBuf, ptr, strlen(ptr)+1);
 		expModifyParam(this->ObjList, NULL, tmp_obj);
 		start_ptr = xsStringEnd(&this->SortInf->SortDataBuf);
 		xaAddItem(this->SortInf->SortPtr+0, (void*)(start_ptr - this->SortInf->SortDataBuf.String));
 
-		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList);
+		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList, 0);
 		if (len < 0)
 		    {
 		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
 		    goto error_return;
 		    }
-#if 00
-		len = 0;
-		for(i=0;this->SortBy[i];i++)
-		    {
-		    sort_item = this->SortBy[i];
-		    if (expEvalTree(sort_item, this->ObjList) < 0)
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "0", 1);
-			}
-		    else if (sort_item->Flags & EXPR_F_NULL)
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "0", 1);
-			}
-		    else
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "1", 1);
-			switch(sort_item->DataType)
-			    {
-			    case DATA_T_INTEGER:
-			        n = htonl(sort_item->Integer + 0x80000000);
-			        if (sort_item->Flags & EXPR_F_DESC) n = ~n;
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&n, 4);
-			        len+=4;
-				break;
 
-			    case DATA_T_DOUBLE:
-			        if (sort_item->Flags & EXPR_F_DESC) sort_item->Types.Double = -sort_item->Types.Double;
-				xsConcatenate(&this->SortInf->SortDataBuf, (char*)&(sort_item->Types.Double), 8);
-			        if (sort_item->Flags & EXPR_F_DESC) sort_item->Types.Double = -sort_item->Types.Double;
-				len+=8;
-				break;
-
-			    case DATA_T_MONEY:
-				n = htonl(sort_item->Types.Money.WholePart + 0x80000000);
-				sn = htons(sort_item->Types.Money.FractionPart);
-			        if (sort_item->Flags & EXPR_F_DESC)
-				    {
-				    n = ~n;
-				    sn = ~sn;
-				    }
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&n, 4);
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&sn, 2);
-				len+=6;
-				break;
-
-			    case DATA_T_DATETIME:
-			        if (sort_item->Flags & EXPR_F_DESC) 
-				    {
-				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
-				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
-				    }
-				dbuf[0] = sort_item->Types.Date.Part.Year>>8;
-				dbuf[1] = sort_item->Types.Date.Part.Year & 0xFF;
-				dbuf[2] = sort_item->Types.Date.Part.Month;
-				dbuf[3] = sort_item->Types.Date.Part.Day;
-				dbuf[4] = sort_item->Types.Date.Part.Hour;
-				dbuf[5] = sort_item->Types.Date.Part.Minute;
-				dbuf[6] = sort_item->Types.Date.Part.Second;
-				xsConcatenate(&this->SortInf->SortDataBuf, dbuf, 7);
-			        if (sort_item->Flags & EXPR_F_DESC) 
-				    {
-				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
-				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
-				    }
-				len+=7;
-				break;
-			    
-			    case DATA_T_STRING:
-			        n = strlen(sort_item->String);
-			        len += (n+1);
-			        if (sort_item->Flags & EXPR_F_DESC)
-			            {
-				    for(j=0;j<n;j++) sort_item->String[j] = ~(sort_item->String[j]);
-				    }
-			        xsConcatenate(&this->SortInf->SortDataBuf, sort_item->String, n+1);
-				break;
-			    }
-			}
-		    }
-#endif /* 00 */
 		xaAddItem(this->SortInf->SortPtrLen+0, (void*)(intptr_t)len);
-		objClose(tmp_obj);
+		if (!this->SortInf->IsTemp)
+		    objClose(tmp_obj);
 		}
 
 	    /** Absolute-reference the string offsets. **/
 	    n = this->SortInf->SortPtr[0].nItems;
 	    for(i=0;i<n;i++)
 	        {
-		this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
+		if (!this->SortInf->IsTemp)
+		    this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
 		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (intptr_t)(this->SortInf->SortPtr[0].Items[i]);
 		}
 
@@ -615,9 +377,10 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    xaInit(this->SortInf->SortNames+1, n);
 	    memcpy(this->SortInf->SortNames[1].Items, this->SortInf->SortNames[0].Items, n*sizeof(void *));
 	    obj_internal_MergeSort(this->SortInf, 1, 0, n - 1);
-	    this->RowID = 0;
 	    this->Flags |= OBJ_QY_F_FROMSORT;
 	    }
+
+	this->RowID = 0;
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8lX\n", (long)this);
 
@@ -628,9 +391,13 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	if (lxs) mlxCloseSession(lxs);
 	if (this && order_by && !orderbyexp) for(i=0;this->SortBy[i];i++) expFreeExpression(this->SortBy[i]);
 	if (linked_obj) objClose(linked_obj); /* unlink */
-	if (this && this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
-	if (this && this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
-	if (this) nmFree(this,sizeof(ObjQuery));
+	if (this)
+	    {
+	    xaRemoveItem(&(linked_obj->Session->OpenQueries), xaFindItem(&(linked_obj->Session->OpenQueries), (void*)this));
+	    if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
+	    if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
+	    nmFree(this,sizeof(ObjQuery));
+	    }
 
     return NULL;
     }
@@ -652,9 +419,11 @@ objQueryDelete(pObjQuery this)
 	if (this->Drv) return this->Drv->QueryDelete(this->Data);
 
 	/** Intelligent query support in driver? **/
-	if ((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
+	if (((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
 	    ((this->Obj->Driver->Capabilities & OBJDRV_C_LLQUERY) &&
-	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY)))
+	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY))) &&
+	    this->Obj->Driver->QueryDelete != NULL && 
+	    (!this->Obj->TLowLevelDriver || this->Obj->TLowLevelDriver->QueryDelete != NULL))
 	    {
 	    rval = this->Obj->Driver->QueryDelete(this->Data, &(this->Obj->Session->Trx));
 	    }
@@ -694,7 +463,6 @@ objQueryFetch(pObjQuery this, int mode)
 	    if (!obj) return NULL;
 	    if ((obj->Data = this->Drv->QueryFetch(this->Data, obj, mode, NULL)) == NULL)
 	        {
-		/*nmFree(obj,sizeof(Object));*/
 		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
@@ -718,8 +486,21 @@ objQueryFetch(pObjQuery this, int mode)
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
-	    snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
-	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+
+	    /** Temp objects we kept open; others we reopen by name **/
+	    if (this->SortInf->IsTemp)
+		{
+		obj = (pObject)this->SortInf->SortNames[0].Items[this->RowID++];
+		this->SortInf->SortNames[0].Items[this->RowID - 1] = NULL;
+		}
+	    else
+		{
+		obj_internal_PathPart(this->Obj->Pathname, 0, 0);
+		snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
+		obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+		}
+	    if (obj)
+		obj->RowID = this->RowID;
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
@@ -734,20 +515,23 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
 	obj->Mode = mode;
 	obj->Session = this->Obj->Session;
-	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
-	obj->Pathname->LinkCnt = 1;
-	obj->Pathname->OpenCtlBuf = NULL;
-	objLinkTo(this->Obj->Prev);
+	obj->Pathname = NULL;
+	if (this->Obj->Prev)
+	    objLinkTo(this->Obj->Prev);
 	obj->Prev = this->Obj->Prev;
 
 	/** Scan objects til we find one matching the query. **/
 	while(1)
 	    {
 	    /** setup the new pathname. **/
-	    obj_internal_CopyPath(obj->Pathname,this->Obj->Pathname);
+	    if (obj->Pathname)
+		obj_internal_FreePath(obj->Pathname);
+	    obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	    obj->Pathname->OpenCtlBuf = NULL;
 	    obj->Pathname->LinkCnt = 1;
-	    obj->SubPtr = this->Obj->SubPtr;
+	    obj_internal_CopyPath(obj->Pathname, this->Obj->Pathname);
 	    obj->SubCnt = this->Obj->SubCnt+1;
+	    obj->SubPtr = this->Obj->SubPtr;
 
 	    /** Fetch next from driver. **/
             obj_data = this->Obj->Driver->QueryFetch(this->Data, obj, mode, &(obj->Session->Trx));
@@ -797,6 +581,12 @@ objQueryFetch(pObjQuery this, int mode)
 	    /** Ok, add item to opens and return to caller **/
             xaAddItem(&(this->Obj->Session->OpenObjects),(void*)obj);
 	    break;
+	    }
+    
+	if (obj)
+	    {
+	    this->RowID++;
+	    obj->RowID = this->RowID;
 	    }
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
@@ -912,6 +702,8 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 int 
 objQueryClose(pObjQuery this)
     {
+    int i;
+    pObject obj;
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
@@ -920,6 +712,15 @@ objQueryClose(pObjQuery this)
     	/** Release sort information? **/
 	if (this->SortInf)
 	    {
+	    /** Close temp objects? **/
+	    if (this->SortInf->IsTemp)
+		{
+		for(i = this->SortInf->SortNames[0].nItems - 1; i >= this->RowID; i--)
+		    {
+		    obj = (pObject)this->SortInf->SortNames[0].Items[i];
+		    if (obj) objClose(obj);
+		    }
+		}
 	    xaDeInit(this->SortInf->SortPtr+0);
 	    xaDeInit(this->SortInf->SortPtrLen+0);
 	    xaDeInit(this->SortInf->SortNames+0);
@@ -973,5 +774,37 @@ objGetQueryCoverageMask(pObjQuery this)
 	return this->Obj->Driver->GetQueryCoverageMask(this->Data);
     else
 	return -1;
+    }
+
+
+/*** objGetQueryIdentityPath() - get the pathname to the "identity" object
+ *** underlying a given query.  If the query is a normal query (from the
+ *** objOpenQuery() call), this returns the path to the object that was
+ *** passed to objOpenQuery().  Otherwise, for a multiquery, this returns
+ *** the path to the "identity" query source (or to the only source, if the
+ *** query only has one source).
+ ***/
+int
+objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
+    {
+    char* ptr;
+
+	/** Driver can handle this?  (i.e., MultiQuery module) **/
+	if (this->Drv->GetQueryIdentityPath)
+	    return this->Drv->GetQueryIdentityPath(this->Data, pathbuf, maxlen);
+
+	/** Get the pathname **/
+	if (!this->Obj)
+	    return -1;
+	ptr = obj_internal_PathPart(this->Obj->Pathname, 0, 0);
+	if (!ptr)
+	    return -1;
+	if (strlen(ptr) >= maxlen-1)
+	    return -1;
+
+	/** Copy it **/
+	strtcpy(pathbuf, ptr, maxlen);
+
+    return 0;
     }
 

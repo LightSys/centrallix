@@ -1,0 +1,144 @@
+$Version=2$
+plugin_nav_logic "widget/component-decl"
+    {
+    title = "Info";
+    seq = 0;
+    height=408; width=498;
+
+    detail_osrc "widget/parameter" { type=object; find_container="widget/osrc"; }
+
+    info_vbox "widget/vbox"
+	{
+	x=0; y=0;
+	width=498; height=408;
+	spacing=4;
+
+	param_label "widget/label" { height=16; text="Parameters:"; style=bold; }
+
+	info_param_osrc "widget/osrc"
+	    {
+	    sql = " select
+			    :name,
+			    :type,
+			    isnull(:default,'(none)')
+		    from
+			    /apps/nav/index.app cmp
+		    where
+			    :outer_type = 'widget/parameter'
+		    ";
+
+	    baseobj = "/apps/nav/index.app";
+	    replicasize=35;
+	    readahead=35;
+	    autoquery = never;
+
+	    update_param_osrc "widget/connector"
+		{
+		source = detail_osrc;
+		event_condition=runclient(:detail_osrc:type == 'widget/page' or :detail_osrc:type == 'widget/component-decl');
+		event = EndQuery;
+		action = ChangeSource;
+		Source = runclient(:detail_osrc:objpath);
+		}
+
+	    param_pane "widget/pane"
+		{
+		x=0; y=0; width=498; height=150;
+		widget_class = table_bgnd;
+
+		logic_table "widget/table"
+		    {
+		    x=0; y=0; width=496; height=148;
+
+		    t_name "widget/table-column" { title="Param Name"; fieldname="name"; width=150; }
+		    t_type "widget/table-column" { title="Data Type"; fieldname="type"; width=150; }
+		    t_def "widget/table-column" { title="Default"; fieldname="default"; width=150; }
+		    }
+		}
+	    }
+
+	sep1 "widget/autolayoutspacer" { height=8; }
+
+	events_label "widget/label" { height=16; text="Events:"; style=bold; }
+
+	info_event_osrc "widget/osrc"
+	    {
+	    sql = " select
+			    :name
+		    from
+			    /apps/nav/index.app cmp
+		    where
+			    :outer_type = 'widget/component-decl-event'
+		    ";
+
+	    baseobj = "/apps/nav/index.app";
+	    replicasize=35;
+	    readahead=35;
+	    autoquery = never;
+
+	    update_event_osrc "widget/connector"
+		{
+		source = detail_osrc;
+		event_condition=runclient(:detail_osrc:type == 'widget/page' or :detail_osrc:type == 'widget/component-decl');
+		event = EndQuery;
+		action = ChangeSource;
+		Source = runclient(:detail_osrc:objpath);
+		}
+
+	    event_pane "widget/pane"
+		{
+		x=0; y=0; width=498; height=80;
+		widget_class = table_bgnd;
+
+		event_table "widget/table"
+		    {
+		    x=0; y=0; width=496; height=78;
+
+		    e_t_name "widget/table-column" { title="Event Name"; fieldname="name"; width=450; }
+		    }
+		}
+	    }
+
+	sep2 "widget/autolayoutspacer" { height=8; }
+
+	actions_label "widget/label" { height=16; text="Actions:"; style=bold; }
+
+	info_action_osrc "widget/osrc"
+	    {
+	    sql = " select
+			    :name
+		    from
+			    /apps/nav/index.app cmp
+		    where
+			    :outer_type = 'widget/component-decl-action'
+		    ";
+
+	    baseobj = "/apps/nav/index.app";
+	    replicasize=35;
+	    readahead=35;
+	    autoquery = never;
+
+	    update_action_osrc "widget/connector"
+		{
+		source = detail_osrc;
+		event_condition=runclient(:detail_osrc:type == 'widget/page' or :detail_osrc:type == 'widget/component-decl');
+		event = EndQuery;
+		action = ChangeSource;
+		Source = runclient(:detail_osrc:objpath);
+		}
+
+	    action_pane "widget/pane"
+		{
+		x=0; y=0; width=498; height=80;
+		widget_class = table_bgnd;
+
+		action_table "widget/table"
+		    {
+		    x=0; y=0; width=496; height=78;
+
+		    a_t_name "widget/table-column" { title="Action Name"; fieldname="name"; width=450; }
+		    }
+		}
+	    }
+	}
+    }

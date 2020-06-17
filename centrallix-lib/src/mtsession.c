@@ -22,6 +22,7 @@
 #include "xarray.h"
 #include "xstring.h"
 #include "xhash.h"
+#include "strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -40,109 +41,6 @@
 /*		module.  Maintains user/password authentication.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mtsession.c,v 1.14 2010/05/12 18:21:21 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
-
-    $Log: mtsession.c,v $
-    Revision 1.14  2010/05/12 18:21:21  gbeeley
-    - (rewrite) This is a mostly-rewrite of the mtlexer module for correctness
-      and for security.  Adding many test suite items for mtlexer, a good
-      fraction of which fail on the old mtlexer module.  The new module is
-      currently mildly slower than the old one, but is more correct.
-
-    Revision 1.13  2008/04/01 03:19:00  gbeeley
-    - (change) Handle supplementary group id's instead of just blanking out
-      the supplementary group list.
-    - (security) The use of setreuid() was causing the saved user id to be
-      set, which would allow an unprivileged user to kill the centrallix
-      server process under some circumstances.  See kill(2) and setreuid(2).
-    - (security) There were potentially some logic errors in the way that
-      uid/gid switching was being handled.
-    - (WARNING) The current implementation of fdAccess() is not optimal.  The
-      solution appears to be to use faccessat() with AT_EACCESS, but that
-      system call is apparently not yet standardized nor is it widespread.
-      Better yet, the one usage of fdAccess() might be best rewritten to not
-      use it, allowing us to rid ourselves of this problematic function
-      altogether.
-
-    Revision 1.12  2008/03/29 01:03:36  gbeeley
-    - (change) changing integer type in IntVec to a signed integer
-    - (security) switching to size_t in qprintf where needed instead of using
-      bare integers.  Also putting in some checks for insanely huge amounts
-      of data in qprintf that would overflow many of the integer counters.
-    - (bugfix) several fixes to make the code compile cleanly at the newer
-      warning levels on newer compilers.
-
-    Revision 1.11  2008/02/22 23:41:29  gbeeley
-    - (change) adding %c to mssError().
-
-    Revision 1.10  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.9  2002/11/12 00:26:49  gbeeley
-    Updated MTASK approach to user/group security when using system auth.
-    The module now handles group ID's as well.  Changes should have no
-    effect when running as non-root with altpasswd auth.
-
-    Revision 1.8  2002/08/16 20:01:20  gbeeley
-    Various autoconf fixes.  I hope I didn't break anything with this, being
-    an autoconf rookie ;)
-
-        * allowed config.h to really be included by adding @DEFS@ to the
-          cflags in makefile.in.
-        * moved config.h to include/cxlibconfig.h to prevent confusion
-          between the various packages' config.h files.  Also, makedepend
-          picks it up now because it is in the include directory.
-        * fixed make depend to re-run when any source files have changed,
-          just to be sure (the includes in the source files may have been
-          modified if the timestamp has changed).
-
-    Revision 1.7  2002/08/16 03:05:38  jorupp
-     * added checks for shadow passwords and endservent() to allow build under cygwin
-       -- this has been tested under cygwin, and it works pretty well
-
-    Revision 1.6  2002/06/20 15:57:05  gbeeley
-    Fixed some compiler warnings.  Repaired improper buffer handling in
-    mtlexer's mlxReadLine() function.
-
-    Revision 1.5  2002/05/03 03:46:29  gbeeley
-    Modifications to xhandle to support clearing the handle list.  Added
-    a param to xhClear to provide support for xhnClearHandles.  Added a
-    function in mtask.c to allow the retrieval of ticks-since-boot without
-    making a syscall.  Fixed an MTASK bug in the scheduler relating to
-    waiting on timers and some modulus arithmetic.
-
-    Revision 1.4  2002/03/23 06:25:10  gbeeley
-    Updated MSS to have a larger error string buffer, as a lot of errors
-    were getting chopped off.  Added BDQS protocol files with some very
-    simple initial implementation.
-
-    Revision 1.3  2002/02/14 00:51:17  gbeeley
-    Fixed a problem where if an error occurs before mssInitialize(), it
-    would default progname to "".  Now it defaults to "error", which causes
-    the error messages to look nicer.
-
-    Revision 1.2  2002/02/14 00:41:54  gbeeley
-    Added configurable logging and authentication to the mtsession module,
-    and made sure mtsession cleared MtSession data structures when it is
-    through with them since they contain sensitive data.
-
-    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:02:52  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 #ifndef crypt
 char *crypt(const char* key, const char* salt);
@@ -235,6 +133,102 @@ mssPassword()
     }
 
 
+/*** mssGenCred - generate credential used for authentication.  This can
+ *** be stored in a cxpasswd file.  The credential points to a buffer where
+ *** we can store the encrypted version of the password.  'salt' and 'salt_len'
+ *** should indicate a series of random bytes.  How many we use depends on
+ *** whether the system supports MD5 passwords or not.  cred_maxlen indicates
+ *** the size of the buffer pointed to by credential.  If there is not enough
+ *** room, then we fail (return -1).
+ ***
+ *** Optimum salt length for MD5 passwords is 4 bytes - we expand it to 8 hex
+ *** bytes.  Salt should be full-range random bytes (0x00 - 0xFF).
+ ***
+ *** Successful return is 0.
+ ***/
+int
+mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen)
+    {
+    char salt_chars[] = "0123456789abcdef";
+    char salt_buf[9];
+    char *ptr;
+    char *dstptr;
+	
+	/** Minimum salt length is 1 byte **/
+	if (salt_len < 1) return -1;
+
+	/** Expand the salt to (up to) 8 bytes **/
+	ptr = salt;
+	dstptr = salt_buf;
+	while (*ptr)
+	    {
+	    *(dstptr++) = salt_chars[ptr[0] & 0xF];
+	    *(dstptr++) = salt_chars[(ptr[0]>>4) & 0xF];
+	    ptr++;
+	    }
+	*dstptr = '\0';
+
+	/** Try MD5 style **/
+	if (cred_maxlen >= 35)
+	    {
+	    /** Create initial salt for crypt() **/
+	    snprintf(credential, 35, "$1$%s$", salt_buf);
+
+	    /** Encrypt the password **/
+	    ptr = crypt(password, credential);
+
+	    /** Success? **/
+	    if (ptr && strlen(ptr) >= 27)
+		{
+		strtcpy(credential, ptr, cred_maxlen);
+		return 0;
+		}
+	    }
+
+	/** Try DES style **/
+	if (cred_maxlen >= 14)
+	    {
+	    /** Create initial salt for crypt() **/
+	    snprintf(credential, 14, "%.2s", salt_buf);
+
+	    /** Encrypt the password **/
+	    ptr = crypt(password, credential);
+
+	    /** Success? **/
+	    if (ptr)
+		{
+		strtcpy(credential, ptr, cred_maxlen);
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** mssLinkSess -- keep track of how many threads are using this
+ *** session structure.
+ ***/
+int
+mssLinkSession(pMtSession s)
+    {
+    s->LinkCnt++;
+    return 0;
+    }
+
+
+/*** mssUnlinkSess -- on final unlink, we end the session.
+ ***/
+int
+mssUnlinkSession(pMtSession s)
+    {
+    s->LinkCnt--;
+    if (s->LinkCnt <= 0)
+	mssEndSession(s);
+    return 0;
+    }
+
+
 /*** mssAuthenticate - start a new session, overwriting previous
  *** (inherited) session information.
  ***/
@@ -260,6 +254,7 @@ mssAuthenticate(char* username, char* password)
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
 	if (!s) return -1;
+	s->LinkCnt = 1;
 	strncpy(s->UserName, username, 31);
 	s->UserName[31]=0;
 	strncpy(s->Password, password, 31);
@@ -292,7 +287,7 @@ mssAuthenticate(char* username, char* password)
 	    strncpy(salt,pwd,2);
 	    salt[2]=0;
 	    encrypted_pwd = (char*)crypt(s->Password,pwd);
-	    if (strcmp(encrypted_pwd,pwd))
+	    if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
 		{
 		memset(s, 0, sizeof(MtSession));
 		nmFree(s,sizeof(MtSession));
@@ -389,6 +384,7 @@ mssAuthenticate(char* username, char* password)
 	if (n_grps < 0 || n_grps > sizeof(grps) / sizeof(gid_t))
 	    n_grps = 0;
 	thSetParam(NULL,"mss",(void*)s);
+	thSetParamFunctions(NULL, mssLinkSession, mssUnlinkSession);
 	thSetSupplementalGroups(NULL, n_grps, grps);
 	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
@@ -407,18 +403,27 @@ mssAuthenticate(char* username, char* password)
 /*** mssEndSession - end a session and free the session information.
  ***/
 int 
-mssEndSession()
+mssEndSession(pMtSession s)
     {
-    pMtSession s;
     int i;
+    pMtSession cur_s;
 
 	/** Get session info. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	cur_s = thGetParam(NULL, "mss");
+	if (!s)
+	    {
+	    s = cur_s;
+	    if (!s) return -1;
+	    }
+
+	/** Unlink from thread if this is the current thread's session **/
+	if (s == cur_s)
+	    {
+	    thSetParam(NULL,"mss",NULL);
+	    thSetUserID(NULL,0);
+	    }
 
 	/** Free the session info and error list **/
-	thSetParam(NULL,"mss",NULL);
-	thSetUserID(NULL,0);
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
 	xhClear(&s->Params, NULL, NULL);
 	xhDeInit(&s->Params);
@@ -679,7 +684,6 @@ mssPrintError(pFile fd)
 int
 mssStringError(pXString str)
     {
-    char sbuf[200];
     int i;
     pMtSession s;
 
@@ -688,14 +692,75 @@ mssStringError(pXString str)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
-	xsConcatenate(str,sbuf,-1);
+	xsConcatPrintf(str, "ERROR - Session By Username [%s]\r\n", s->UserName);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
-	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
-	    xsConcatenate(str,sbuf, -1);
+	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
 	    }
     	
+    return 0;
+    }
+
+
+/*** mssUserError() - returns a user-friendly version of the error message
+ *** stack (i.e., without the module codes).
+ ***/
+int
+mssUserError(pXString str)
+    {
+    int i;
+    pMtSession s;
+    char* item;
+    char* colon;
+
+	/** Get session. **/
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s) return -1;
+
+	/** Create a space-separated string of the messages, without module codes **/
+	for(i=s->ErrList.nItems-1;i>=0;i--)
+	    {
+	    item = (char*)(s->ErrList.Items[i]);
+	    if (item)
+		{
+		colon = strchr(item, ':');
+		if (colon)
+		    item = colon + 2;
+		xsConcatenate(str, item, -1);
+		if (i > 0)
+		    xsConcatenate(str, " ", 1);
+		}
+	    }
+
+    return 0;
+    }
+
+
+/*** mssSetParamPtr - sets a session parameter, given an opaque
+ *** pointer.  For strings, use mssSetParam().
+ ***/
+int
+mssSetParamPtr(char* paramname, void* ptr)
+    {
+    pMtSession s;
+    pMtParam p;
+    int is_new = 0;
+
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s) return -1;
+
+    	/** Need to delete first? **/
+	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	    {
+	    p = (pMtParam)nmMalloc(sizeof(MtParam));
+	    memccpy(p->Name, paramname, 0, 31);
+	    p->Name[31] = 0;
+	    is_new = 1;
+	    }
+
+	p->Value = ptr;
+	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
+
     return 0;
     }
 
@@ -734,7 +799,7 @@ mssSetParam(char* paramname, void* value)
 	    p->Value = (char*)nmSysMalloc(strlen(value)+1);
 	    }
 	strcpy(p->Value, value);
-	if (is_new) xhAdd(&s->Params, paramname, (void*)p);
+	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
 
     return 0;
     }

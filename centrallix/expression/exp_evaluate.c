@@ -65,229 +65,6 @@
 /*		this is the Sybase objectsystem driver.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: exp_evaluate.c,v 1.27 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
-
-    $Log: exp_evaluate.c,v $
-    Revision 1.27  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.26  2010/09/08 21:55:09  gbeeley
-    - (bugfix) allow /file/name:"attribute" to be quoted.
-    - (bugfix) order by ... asc/desc keywords are now case insenstive
-    - (bugfix) short-circuit eval was not resulting in aggregates properly
-      evaluating
-    - (change) new API function expModifyParamByID - use this for efficiency
-    - (feature) multi-level aggregate functions now supported, for use when
-      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
-    - (feature) added mathematical and trig functions radians, degrees, sin,
-      cos, tan, asin, acos, atan, atan2, sqrt, square
-
-    Revision 1.25  2010/01/10 07:33:23  gbeeley
-    - (performance) reduce the number of times that subqueries are executed by
-      only re-evaluating them if one of the ObjList entries has changed
-      (instead of re-evaluating every time).  Ideally we should check for what
-      objects are referenced by the subquery, but that is for a later fix...
-
-    Revision 1.24  2009/06/24 17:33:19  gbeeley
-    - (change) adding domain param to expGenerateText, so it can be used to
-      generate an expression string with lower domains converted to constants
-    - (bugfix) better handling of runserver() embedded within runclient(), etc
-    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
-    - (bugfix) after a property has been set using reverse evaluation, tag it
-      as modified so it shows up as changed in other expressions using that
-      same object param list
-    - (change) condition() function now uses short-circuit evaluation
-      semantics, so parameters are only evaluated as they are needed... e.g.
-      condition(a,b,c) if a is true, b is returned and c is never evaluated,
-      and vice versa.
-    - (feature) add structure for reverse-evaluation of functions.  The
-      isnull() function now supports this feature.
-    - (bugfix) save/restore the coverage mask before/after evaluation, so that
-      a nested subexpression (eval or subquery) using the same object list
-      will not cause an inconsistency.  Basically a reentrancy bug.
-    - (bugfix) some functions were erroneously depending on the data type of
-      a NULL value to be correct.
-    - (feature) adding truncate() function which is similar to round().
-    - (feature) adding constrain() function which limits a value to be
-      between a given minimum and maximum value.
-    - (bugfix) first() and last() functions were not properly resetting the
-      value to NULL between GROUP BY groups
-    - (bugfix) some expression-to-JS fixes
-
-    Revision 1.23  2008/09/14 05:17:27  gbeeley
-    - (bugfix) subquery evaluator was leaking query handles if subquery did
-      not return any rows.
-    - (change) add ability to generate expression text based on the domain of
-      evaluation (client, server, etc.)
-
-    Revision 1.22  2008/04/06 20:36:16  gbeeley
-    - (feature) adding support for SQL round() function
-    - (change) adding support for division and multiplication with money
-      data types.  It is still not permitted to multiply one money type by
-      another money type, as 'money' is not a dimensionless value.
-
-    Revision 1.21  2008/03/08 00:41:59  gbeeley
-    - (bugfix) a double-free was being triggered on Subquery nodes as a
-      result of an obscure glitch in expCopyNode.  The string value should
-      be handled regardless of the DataType, as temporary data type changes
-      are possible.  Also cleaned up a number of other expression string
-      Alloc issues, many just for clarity.
-
-    Revision 1.20  2008/03/06 01:18:59  gbeeley
-    - (change) updates to centrallix.supp suppressions file for valgrind
-    - (bugfix) several issues fixed as a result of a Valgrind scan, one of
-      which has likely been causing a couple of recent crashes.
-
-    Revision 1.19  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.18  2007/09/18 17:40:32  gbeeley
-    - (feature) allow a string to be multiplied by an integer, which causes
-      the string's contents to be repeated N times.
-
-    Revision 1.17  2007/06/15 19:27:51  gbeeley
-    - (bugfix) sql query selecting properties without a from clause caused a
-      null pointer dereference, due to insufficient checking during expression
-      evaluation
-
-    Revision 1.16  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.15  2007/03/04 05:04:47  gbeeley
-    - (change) This is a change to the way that expressions track which
-      objects they were last evaluated against.  The old method was causing
-      some trouble with stale data in some expressions.
-
-    Revision 1.14  2005/09/30 04:37:10  gbeeley
-    - (change) modified expExpressionToPod to take the type.
-    - (feature) got eval() working
-    - (addition) added expReplaceString() to search-and-replace in an
-      expression tree.
-
-    Revision 1.13  2005/09/17 01:28:19  gbeeley
-    - Some fixes for handling of direct object attributes in expressions,
-      such as /path/to/object:attributename.
-
-    Revision 1.12  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.11  2004/09/01 02:36:26  gbeeley
-    - get rid of last_modification warnings on qyt static elements by setting
-      static element last_modification to that of the node itself.
-
-    Revision 1.10  2004/02/24 20:02:26  gbeeley
-    - adding proper support for external references in an expression, so
-      that they get re-evaluated each time.  Example - getdate().
-    - adding eval() function but no implementation at this time - it is
-      however supported for runclient() expressions (in javascript).
-    - fixing some quoting issues
-
-    Revision 1.9  2003/06/27 21:19:47  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.8  2002/11/22 19:29:36  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.7  2002/08/10 02:09:44  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.6  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.5  2002/04/05 06:10:11  gbeeley
-    Updating works through a multiquery when "FOR UPDATE" is specified at
-    the end of the query.  Fixed a reverse-eval bug in the expression
-    subsystem.  Updated form so queries are not terminated by a semicolon.
-    The DAT module was accepting it as a part of the pathname, but that was
-    a fluke :)  After "for update" the semicolon caused all sorts of
-    squawkage...
-
-    Revision 1.4  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.3  2001/10/02 16:23:09  gbeeley
-    Added exp_generator expressiontree-to-text generation module.  Also fixed
-    a precedence problem with EXPR_N_FUNCTION nodes; not sure why that wasn't
-    causing trouble previously.
-
-    Revision 1.2  2001/09/28 20:04:50  gbeeley
-    Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
-    are now self-contained and require no redundant OBJECT nodes as parent
-    nodes.  Substantial reduction in expression node allocation and
-    evaluation.
-
-    Revision 1.1.1.1  2001/08/13 18:00:47  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:52  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:52  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 /*** expEvalSubquery - evaluate a subquery SQL node.  This is done by
  *** running the SQL command and pulling the first field of the first
@@ -304,7 +81,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
     int rval;
 
 	/** Can't eval? **/
-	if (!objlist->Session)
+	if (!objlist || !objlist->Session)
 	    {
 	    /** Null if no context to eval a filename obj yet **/
 	    tree->Flags |= EXPR_F_NULL;
@@ -313,7 +90,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Run the query **/
-	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT);
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE);
 	if (!qy)
 	    {
 	    mssError(1,"EXP","Failed to run subselect query");
@@ -413,10 +190,9 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
     MoneyType m;
-    void* dptr;
     int i;
     int is_negative = 0;
-    long long mv;
+    long long mv, mv2;
     double md;
 
 	/** Verify item cnt **/
@@ -441,15 +217,11 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 	    return 0;
 	    }
 
-	/** Get a data ptr to the 2nd data type value **/
-	switch(i1->DataType)
+	/** Check data type **/
+	if (i1->DataType != DATA_T_INTEGER && i1->DataType != DATA_T_DOUBLE && i1->DataType != DATA_T_MONEY)
 	    {
-	    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
-	    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
-	    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
-	    default:
-	        mssError(1,"EXP","Only integer,double,money types allowed for '/'");
-		return -1;
+	    mssError(1,"EXP","Only integer,double,money types allowed for '/'");
+	    return -1;
 	    }
 
 	/** Check for divide by zero **/
@@ -548,7 +320,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			mv = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 			md = mv / i1->Types.Double;
 			if (md < 0) md -= 0.5;
 			else md += 0.5;
@@ -563,9 +335,23 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			tree->Types.Money.FractionPart = mv;
 			break;
 		    case DATA_T_MONEY:
-		        tree->DataType = DATA_T_MONEY;
-			mssError(1,"EXP","Unimplemented money <divide> x operation");
-			return -1;
+			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+			mv2 = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			if (mv2 == 0)
+			    {
+			    mssError(1,"EXP","Attempted divide by zero");
+			    return -1;
+			    }
+			if ((mv % mv2) == 0 && (mv / mv2) <= 0x7FFFFFFFLL && (mv / mv2) >= -0x80000000LL)
+			    {
+			    tree->DataType = DATA_T_INTEGER;
+			    tree->Integer = mv / mv2;
+			    }
+			else
+			    {
+			    tree->DataType = DATA_T_DOUBLE;
+			    tree->Types.Double = (double)mv / (double)mv2;
+			    }
 		        break;
 		    }
 	        break;
@@ -587,8 +373,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
     void* dptr;
-    int n, i;
+    int n, i, j;
     char* ptr;
+    char* str;
     long long mv;
     double md;
 
@@ -633,18 +420,52 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	switch(i0->DataType)
 	    {
 	    case DATA_T_INTEGER: 
-	        tree->Integer = i0->Integer * objDataToInteger(i1->DataType, dptr, NULL);
-		tree->DataType = DATA_T_INTEGER;
+		switch(i1->DataType)
+		    {
+		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i0->Integer * i1->Types.Double;
+			break;
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv *= i0->Integer;
+			break;
+		    case DATA_T_STRING:
+			tree->DataType = DATA_T_STRING;
+			if (i0->Integer < 0)
+			    {
+			    mssError(1,"EXP","Strings can only be multiplied by a non-negative integer");
+			    return -1;
+			    }
+			i = i0->Integer;
+			str = i1->String;
+			break;
+		    default:
+			tree->Integer = i0->Integer * objDataToInteger(i1->DataType, dptr, NULL);
+			tree->DataType = DATA_T_INTEGER;
+			break;
+		    }
 		break;
 
 	    case DATA_T_DOUBLE:
-	        tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
-		tree->DataType = DATA_T_DOUBLE;
+		switch(i1->DataType)
+		    {
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv *= i0->Types.Double;
+			break;
+		    default:
+			tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
+			tree->DataType = DATA_T_DOUBLE;
+			break;
+		    }
 		break;
 
 	    case DATA_T_MONEY:
 		tree->DataType = DATA_T_MONEY;
-		mv = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+		mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 		switch(i1->DataType)
 		    {
 		    case DATA_T_INTEGER:
@@ -663,14 +484,6 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 			mssError(1,"EXP","Can only multiply a money data type by an integer or double");
 			return -1;
 		    }
-		tree->Types.Money.WholePart = mv/10000;
-		mv = mv % 10000;
-		if (mv < 0)
-		    {
-		    mv += 10000;
-		    tree->Types.Money.WholePart -= 1;
-		    }
-		tree->Types.Money.FractionPart = mv;
 		break;
 
 	    case DATA_T_STRING:
@@ -680,32 +493,50 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		tree->DataType = DATA_T_STRING;
-		n = strlen(i0->String);
-	        if (tree->Alloc && tree->String)
-	            {
-		    nmSysFree(tree->String);
-		    tree->String = NULL;
-		    }
-		tree->Alloc = 0;
-		if (n*i1->Integer >= 64)
-		    {
-		    tree->String = (char*)nmSysMalloc(n*i1->Integer+1);
-		    tree->Alloc = 1;
-		    }
-		else
-		    tree->String = tree->Types.StringBuf;
-		ptr = tree->String;
-		for(i=0;i<i1->Integer;i++)
-		    {
-		    memcpy(ptr, i0->String, n);
-		    ptr += n;
-		    }
-		*ptr = '\0';
+		i = i1->Integer;
+		str = i0->String;
 		break;
 
 	    default:
 	        mssError(1,"EXP","Only integer, double, and money types supported by *");
 		return -1;
+	    }
+
+	/** Common processing **/
+	if (tree->DataType == DATA_T_MONEY)
+	    {
+	    tree->Types.Money.WholePart = mv/10000;
+	    mv = mv % 10000;
+	    if (mv < 0)
+		{
+		mv += 10000;
+		tree->Types.Money.WholePart -= 1;
+		}
+	    tree->Types.Money.FractionPart = mv;
+	    }
+	else if (tree->DataType == DATA_T_STRING)
+	    {
+	    n = strlen(str);
+	    if (tree->Alloc && tree->String)
+		{
+		nmSysFree(tree->String);
+		tree->String = NULL;
+		}
+	    tree->Alloc = 0;
+	    if (n*i >= 64)
+		{
+		tree->String = (char*)nmSysMalloc(n*i+1);
+		tree->Alloc = 1;
+		}
+	    else
+		tree->String = tree->Types.StringBuf;
+	    ptr = tree->String;
+	    for(j=0;j<i;j++)
+		{
+		memcpy(ptr, str, n);
+		ptr += n;
+		}
+	    *ptr = '\0';
 	    }
 
     return 0;
@@ -722,6 +553,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
     void* dptr;
     char* ptr;
     int n;
+    MoneyType m;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -743,6 +575,18 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
+	    }
+
+	switch(i1->DataType)
+	    {
+	    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
+	    case DATA_T_STRING: dptr = i1->String; break;
+	    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
+	    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
+	    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
+		return -1;
 	    }
 
 	/** Perform the operation depending on data type **/
@@ -772,6 +616,9 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    tree->Types.Money.FractionPart = 10000 - i1->Types.Money.FractionPart;
 			    }
 			break;
+		    default:
+			tree->Integer = i0->Integer - objDataToInteger(i1->DataType, dptr, NULL);
+			break;
 		    }
 		break;
 
@@ -789,6 +636,10 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    case DATA_T_MONEY:
 		        tree->DataType = DATA_T_DOUBLE;
 			tree->Types.Double = i0->Types.Double - (i1->Types.Money.WholePart + i1->Types.Money.FractionPart/10000.0);
+			break;
+		    default:
+		        tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i0->Types.Double - objDataToDouble(i1->DataType, dptr);
 			break;
 		    }
 		break;
@@ -818,22 +669,25 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    tree->Types.Money.WholePart--;
 			    }
 		        break;
+		    default:
+			if (objDataToMoney(i1->DataType, dptr, &m) < 0)
+			    {
+			    mssError(1,"EXP","Invalid conversion for subtraction from 'money' data type");
+			    return -1;
+			    }
+		        tree->DataType = DATA_T_MONEY;
+			tree->Types.Money.WholePart = i0->Types.Money.WholePart - m.WholePart;
+			tree->Types.Money.FractionPart = 10000 + i0->Types.Money.FractionPart - m.FractionPart;
+			if (tree->Types.Money.FractionPart >= 10000)
+			    tree->Types.Money.FractionPart -= 10000;
+			else
+			    tree->Types.Money.WholePart--;
+			break;
 		    }
 		break;
 
 	    case DATA_T_STRING:
 		/** subtracting from a string -- remove the tail -- reverse of string concat with +  **/
-		switch(i1->DataType)
-		    {
-		    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
-		    case DATA_T_STRING: dptr = i1->String; break;
-		    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
-		    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
-		    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
-		    default:
-			mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
-			return -1;
-		    }
 		ptr = objDataToStringTmp(i1->DataType, dptr, 0);
 		tree->DataType = DATA_T_STRING;
 		if (strlen(ptr) > strlen(i0->String) || strcmp(ptr, i0->String + (strlen(i0->String) - strlen(ptr))) != 0)
@@ -938,11 +792,28 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		return -1;
 	    }
 
-	/** If first is an Integer, do integer addition. **/
+	/** Select how to do this based on the data type **/
 	switch(i0->DataType)
 	    {
+	    /** Integer - promote to Double or Money if that is 2nd arg **/
 	    case DATA_T_INTEGER:
-	        tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
+		switch (i1->DataType)
+		    {
+		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i1->Types.Double + i0->Integer;
+			break;
+
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			tree->Types.Money.WholePart = i1->Types.Money.WholePart + i0->Integer;
+			tree->Types.Money.FractionPart = i1->Types.Money.FractionPart;
+			break;
+
+		    default:
+			tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
+			break;
+		    }
 		break;
 
 	    case DATA_T_STRING:
@@ -961,7 +832,9 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		    }
 		tree->String = (char*)nmSysMalloc(i + strlen(ptr) + 1);
 		tree->Alloc = 1;
-		sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);
+		strtcpy(tree->String, i0->String, i+1);
+		strcat(tree->String, ptr);
+		/*sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);*/
 		break;
 
 	    case DATA_T_DOUBLE:
@@ -1051,32 +924,46 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
     int i,t;
     int short_circuiting = 0;
     pExpression child;
+    int has_null;
 
 	/** Loop through items... **/
 	tree->DataType = DATA_T_INTEGER;
 	tree->Integer = 1;
+	has_null = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		if (child->AggLevel > 0)
+		    {
+		    if (exp_internal_EvalAggregates(child, objlist) < 0)
+			return -1;
+		    }
+		else
+		    {
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    }
 		}
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		if (t < 0 || (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)) 
 		    {
 		    mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer == 0) 
+		if (child->Flags & EXPR_F_NULL) has_null = 1;
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer == 0)
 		    {
 		    tree->Integer = 0;
 		    short_circuiting = 1;
 		    }
 		}
 	    }
+	if (tree->Integer == 1 && has_null)
+	    tree->Flags |= EXPR_F_NULL;
 
     return tree->Integer;
     }
@@ -1090,32 +977,46 @@ expEvalOr(pExpression tree, pParamObjects objlist)
     int i,t;
     int short_circuiting = 0;
     pExpression child;
+    int has_null;
 
     	/** Loop through items **/
 	tree->DataType = DATA_T_INTEGER;
 	tree->Integer = 0;
+	has_null = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		if (child->AggLevel > 0)
+		    {
+		    if (exp_internal_EvalAggregates(child, objlist) < 0)
+			return -1;
+		    }
+		else
+		    {
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    }
 		}
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		if (t < 0 || (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)) 
 		    {
 		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer == 1) 
+		if (child->Flags & EXPR_F_NULL) has_null = 1;
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer != 0)
 		    {
 		    tree->Integer = 1;
 		    short_circuiting = 1;
 		    }
 		}
 	    }
+	if (tree->Integer == 0 && has_null)
+	    tree->Flags |= EXPR_F_NULL;
 
     return tree->Integer;;
     }
@@ -1350,21 +1251,25 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 	/** Copy data to the child, then eval it. **/
 	subtree = (pExpression)(tree->Children.Items[0]);
 	if (tree->Flags & EXPR_F_NULL) 
-	    subtree->Flags |= EXPR_F_NULL;
-	else
-	    subtree->Flags &= ~EXPR_F_NULL;
-	switch(tree->DataType)
 	    {
-	    case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
-	    case DATA_T_STRING:
-	        if (subtree->Alloc && subtree->String)
-	            {
-	            nmSysFree(subtree->String);
-	            }
-	        subtree->Alloc = 0;
-	        subtree->String = tree->String;
-		break;
-	    default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+	    subtree->Flags |= EXPR_F_NULL;
+	    }
+	else
+	    {
+	    subtree->Flags &= ~EXPR_F_NULL;
+	    switch(tree->DataType)
+		{
+		case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
+		case DATA_T_STRING:
+		    if (subtree->Alloc && subtree->String)
+			{
+			nmSysFree(subtree->String);
+			}
+		    subtree->Alloc = 0;
+		    subtree->String = tree->String;
+		    break;
+		default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+		}
 	    }
 	subtree->DataType = tree->DataType;
 
@@ -1379,10 +1284,18 @@ int
 expEvalProperty(pExpression tree, pParamObjects objlist)
     {
     int t,v=-1,n, id = 0;
-    pObject obj;
+    pObject obj = NULL;
     char* ptr;
     void* vptr;
     int (*getfn)();
+
+	/** If no object list, set result to NULL. **/
+	if (!objlist)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
 
     	/** Which object are we getting at? **/
 	if (tree->ObjID == -1)
@@ -1408,7 +1321,7 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		/** if unset because unbound to a real object, evaluate to NULL **/
-		tree->Flags |= EXPR_F_NULL;
+		tree->Flags |= (EXPR_F_NULL | EXPR_F_INDETERMINATE);
 		tree->DataType = DATA_T_INTEGER;
 		return 0;
 		}
@@ -1420,8 +1333,12 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		return 0;
 	    else if (id < 0)
 		{
-		mssError(1,"EXP","Undefined object property '%s' - no such object", tree->Name);
-		return -1;
+		/*mssError(1,"EXP","Undefined object property '%s' - no such object", tree->Name);
+		return -1;*/
+		/** enable late binding **/
+		tree->Flags |= EXPR_F_NULL;
+		tree->DataType = DATA_T_INTEGER;
+		return 0;
 		}
 	    else
 		{
@@ -1502,13 +1419,19 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		v = 1;
 		break;
 
+	    case DATA_T_CODE:
+		/** treat as NULL **/
+		tree->DataType = DATA_T_INTEGER;
+		v = 1;
+		break;
+
 	    default: 
-	        if (tree->ObjID == -1) objClose(obj);
+	        if (tree->ObjID == -1 && obj) objClose(obj);
 	        return -1;
 	    }
 
 	/** Check null field **/
-        if (tree->ObjID == -1) objClose(obj);
+        if (tree->ObjID == -1 && obj) objClose(obj);
 	if (v < 0) 
 	    {
 	    mssError(1,"EXP","Error accessing object attribute in expression");
@@ -1535,6 +1458,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
     MoneyType m;
     int (*setfn)();
     int id;
+    int rval;
 
     	/** Which object are we getting at? **/
 	id = expObjID(tree,objlist);
@@ -1542,13 +1466,25 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	obj = objlist->Objects[id];
 	setfn = objlist->SetAttrFn[id];
 
+	if (!obj)
+	    {
+	    mssError(1,"EXP","Reverse eval property: no such object");
+	    return -1;
+	    }
+
 	/** Set it as modified -- so it gets a new serial # **/
 	expModifyParamByID(objlist, id, obj);
+
+	/** Setting to NULL is simple... **/
+	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
+	if (attr_type == DATA_T_UNAVAILABLE)
+	    attr_type = tree->DataType;
+	if (tree->Flags & EXPR_F_NULL)
+	    return setfn(obj, tree->Name, attr_type, NULL);
 
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
-	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)
@@ -1582,23 +1518,23 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	switch(attr_type)
 	    {
 	    case DATA_T_INTEGER:
-	        setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
+	        rval = setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
 	        break;
 
 	    case DATA_T_STRING:
-	        setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
+	        rval = setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
 	        break;
 
 	    case DATA_T_DATETIME:
-	        setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
+	        rval = setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
 		break;
 
 	    case DATA_T_MONEY:
-	        setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
+	        rval = setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
 		break;
 
 	    case DATA_T_DOUBLE:
-	        setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
+	        rval = setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
 		break;
 
 	    default:
@@ -1606,7 +1542,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 		return -1;
 	    }
 
-    return 0;
+    return rval;
     }
 
 
@@ -1861,7 +1797,9 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
-	    objlist->CurControl = tree->Control;
+	    if (objlist->CurControl)
+		exp_internal_UnlinkControl(objlist->CurControl);
+	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 
 		{
@@ -1901,9 +1839,14 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	if (objlist)
 	    {
 	    objlist->ModCoverageMask = old_cm;
-	    tree->Control->PSeqID = objlist->PSeqID;
-	    memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
-	    objlist->MainFlags &= ~EXPR_MO_RECALC;
+	    if (v >= 0)
+		{
+		/** Don't update sequence ID's if evaluation failed. **/
+		tree->Control->PSeqID = objlist->PSeqID;
+		memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
+		objlist->MainFlags &= ~EXPR_MO_RECALC;
+		}
+	    exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = NULL;
 	    }
 
@@ -1921,6 +1864,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
     int (*fn)();
     int old_objmask;
     int rval;
+    int i;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1938,59 +1882,83 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	tree->Flags &= ~EXPR_F_NEW;
 #endif
 
-	old_objmask = objlist->ModCoverageMask;
-	objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
-	
-	/** If node is NOT stale and NOT in modified cov mask, return now. **/
-	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+	/** We only check the objlist coverage and changed flags if we have an objlist **/
+	if (objlist)
 	    {
-	    /*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
-	    objlist->ModCoverageMask = old_objmask;
-	    return 0;
+	    old_objmask = objlist->ModCoverageMask;
+	    objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
+	
+	    /** If node is NOT stale and NOT in modified cov mask, return now. **/
+	    if (!(tree->Flags & (EXPR_F_NEW)) && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+		{
+		/*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
+		objlist->ModCoverageMask = old_objmask;
+		return 0;
+		}
 	    }
-	tree->Flags &= ~EXPR_F_NEW;
 
 	/** Call the appropriate evaluator fn based on type **/
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
+	tree->Flags &= ~EXPR_F_INDETERMINATE;
 	/*if (tree->NodeType == EXPR_N_LIST) return -1;*/
 	fn = EXP.EvalFunctions[tree->NodeType];
 	if (!fn)
 	    {
-	    objlist->ModCoverageMask = old_objmask;
+	    tree->Flags &= ~EXPR_F_NEW;
+	    if (objlist)
+		objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	rval = fn(tree,objlist);
-	objlist->ModCoverageMask = old_objmask;
+	if (rval >= 0)
+	    tree->Flags &= ~EXPR_F_NEW;
+	if (objlist)
+	    objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
-	return rval;
 
-#if 00
-	switch(tree->NodeType)
+	/** Indeterminate? **/
+	for(i=0; i<tree->Children.nItems; i++)
 	    {
-	    case EXPR_N_INTEGER: return 0;
-	    case EXPR_N_STRING: return 0;
-	    case EXPR_N_DOUBLE: return 0;
-	    case EXPR_N_MONEY: return 0;
-	    case EXPR_N_DATETIME: return 0;
-	    case EXPR_N_PLUS: return expEvalPlus(tree,objlist);
-	    case EXPR_N_MINUS: return expEvalMinus(tree,objlist);
-	    case EXPR_N_DIVIDE: return expEvalDivide(tree,objlist);
-	    case EXPR_N_MULTIPLY: return expEvalMultiply(tree,objlist);
-	    case EXPR_N_NOT: return expEvalNot(tree,objlist);
-	    case EXPR_N_AND: return expEvalAnd(tree,objlist);
-	    case EXPR_N_OR: return expEvalOr(tree,objlist);
-	    case EXPR_N_COMPARE: return expEvalCompare(tree,objlist);
-	    case EXPR_N_OBJECT: return expEvalObject(tree,objlist);
-	    case EXPR_N_PROPERTY: return expEvalProperty(tree,objlist);
-	    case EXPR_N_ISNULL: return expEvalIsNull(tree,objlist);
-	    case EXPR_N_FUNCTION: return expEvalFunction(tree,objlist);
-	    case EXPR_N_CONTAINS: return expEvalContains(tree,objlist);
-	    case EXPR_N_LIST: return -1;
-	    case EXPR_N_IN: return expEvalIn(tree,objlist);
-	    default: return -1;
+	    if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_INDETERMINATE)
+		{
+		tree->Flags |= EXPR_F_INDETERMINATE;
+		break;
+		}
 	    }
-#endif
 
+    return rval;
+    }
+
+
+/*** exp_internal_EvalAggregates() - scan the tree, looking for aggregate
+ *** functions, and ensure that we evaluate those aggregate functions.  This
+ *** function is needed so that short-circuit evaluation works and we can
+ *** still update aggregate subtrees that need to be updated.
+ ***/
+int
+exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
+    {
+    int i;
+    pExpression child;
+
+	/** Is this an aggregate function?  Call normal eval if so **/
+	if (tree->Flags & EXPR_F_AGGREGATEFN)
+	    {
+	    return exp_internal_EvalTree(tree, objlist);
+	    }
+	else
+	    {
+	    if (objlist)
+		tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
+	    for(i=0; i<tree->Children.nItems; i++)
+		{
+		child = (pExpression)tree->Children.Items[i];
+		if (exp_internal_EvalAggregates(child, objlist) < 0)
+		    return -1;
+		}
+	    }
+
+    return 0;
     }
 
 

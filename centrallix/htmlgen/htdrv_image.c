@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2017 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -40,152 +40,6 @@
 /* Description:	HTML Widget driver for an image.           		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Log: htdrv_image.c,v $
-    Revision 1.10  2011/02/18 03:53:34  gbeeley
-    MultiQuery one-statement security, IS NOT NULL, memory leaks
-
-    - fixed some memory leaks, notated a few others needing to be fixed
-      (thanks valgrind)
-    - "is not null" support in sybase & mysql drivers
-    - objMultiQuery now has a flags option, which can control whether MQ
-      allows multiple statements (semicolon delimited) or not.  This is for
-      security to keep subqueries to a single SELECT statement.
-
-    Revision 1.9  2008/06/25 18:11:30  gbeeley
-    - (feature) image widget can now be a form element, displaying an image
-      referred to (in the objectsystem) by a value queried via an osrc widget.
-    - (feature) image source property is now a dynamic property that can be
-      maintained on the client via a runclient() expression.
-
-    Revision 1.8  2007/04/19 21:26:49  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.7  2006/10/27 05:57:23  gbeeley
-    - (change) All widgets switched over to use event handler functions instead
-      of inline event scripts in the main .app generated DHTML file.
-    - (change) Reworked the way event capture is done to allow dynamically
-      loaded components to hook in with the existing event handling mechanisms
-      in the already-generated page.
-    - (feature) Dynamic-loading of components now works.  Multiple instancing
-      does not yet work.  Components need not be "rectangular", but all pieces
-      of the component must share a common container.
-
-    Revision 1.6  2006/10/16 18:34:33  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.5  2005/02/26 06:42:37  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.4  2004/08/30 03:20:19  gbeeley
-    - updates for widgets
-    - bugfix for htrRender() handling of event handler function return values
-
-    Revision 1.3  2004/08/02 14:09:34  mmcgill
-    Restructured the rendering process, in anticipation of new deployment methods
-    being added in the future. The wgtr module is now the main widget-related
-    module, responsible for all non-deployment-specific widget functionality.
-    For example, Verifying a widget tree is non-deployment-specific, so the verify
-    functions have been moved out of htmlgen and into the wgtr module.
-    Changes include:
-    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
-        wgtr drivers.
-    *   Adding wgtr drivers to the widget tree module.
-    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
-    *   Requiring all deployment methods (currently only DHTML) to register a
-        Render() function with the wgtr module.
-    *   Adding wgtrRender(), to abstract the details of the rendering process
-        from the caller. Given a widget tree, a string representing the deployment
-        method to use ("DHTML" for now), and the additional args for the rendering
-        function, wgtrRender() looks up the appropriate function for the specified
-        deployment method and calls it.
-    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
-        is being created. This is primarily to allow widget drivers to declare
-        the interfaces their widgets support when they are instantiated, but other
-        initialization tasks can go there as well.
-
-    Also in this commit:
-    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
-    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
-        other stack variables.
-    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
-        can now be completely insulated from the deployment method by the wgtr
-        module.
-
-    Revision 1.2  2004/07/19 15:30:40  mmcgill
-    The DHTML generation system has been updated from the 2-step process to
-    a three-step process:
-        1)	Upon request for an application, a widget-tree is built from the
-    	app file requested.
-        2)	The tree is Verified (not actually implemented yet, since none of
-    	the widget drivers have proper Verify() functions - but it's only
-    	a matter of a function call in net_http.c)
-        3)	The widget drivers are called on their respective parts of the
-    	tree structure to generate the DHTML code, which is then sent to
-    	the user.
-
-    To support widget tree generation the WGTR module has been added. This
-    module allows OSML objects to be parsed into widget-trees. The module
-    also provides an API for building widget-trees from scratch, and for
-    manipulating existing widget-trees.
-
-    The Render functions of all widget drivers have been updated to make their
-    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
-    instead of a pObject as a parameter.
-
-    net_internal_GET() in net_http.c has been updated to call
-    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
-    then free it.
-
-    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
-    a pObject parameter, and to make calls through the WGTR module instead of
-    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
-    htrGetBoolean(), etc. have also been modified appropriately.
-
-    I have assumed in each widget driver that w_obj->Session is equivelent to
-    s->ObjSession; in other words, that the object being passed in to the
-    Render() function was opened via the session being passed in with the
-    HtSession parameter. To my understanding this is a valid assumption.
-
-    While I did run through the test apps and all appears to be well, it is
-    possible that some bugs were introduced as a result of the modifications to
-    all 30 widget drivers. If you find at any point that things are acting
-    funny, that would be a good place to check.
-
-    Revision 1.1  2004/02/24 19:59:30  gbeeley
-    - adding component-declaration widget driver
-    - adding image widget driver
-    - adding app-level presentation hints pseudo-widget driver
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
@@ -195,6 +49,22 @@ static struct
     HTIMG;
 
 
+/*** htimgSetup - do overall setup work to cover all image widgets.
+ ***/
+int
+htimgSetup(pHtSession s)
+    {
+
+	/** Global style code for all image widget "img" tags **/
+	htrAddStylesheetItem(s, "    img.wimage { display:block; position:relative; left:0px; top:0px; }\n");
+
+	/** Global style code for all image widget "div" containers **/
+	htrAddStylesheetItem(s, "    div.wimage { visibility:inherit; position:absolute; overflow:hidden; }\n");
+
+    return 0;
+    }
+
+
 /*** htimgRender - generate the HTML code for the label widget.
  ***/
 int
@@ -202,12 +72,13 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char src[128];
+    char src[256];
     int x=-1,y=-1,w,h;
     int id, i;
     char *text;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
+    char* aspect;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -233,27 +104,35 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
 	    text=nmSysStrdup(ptr);
-	    }
 	else
-	    {
 	    text=nmSysStrdup("");
-	    }
+
+	/** Image aspect scaling: stretch or preserve **/
+	if(wgtrGetPropertyValue(tree,"aspect",DATA_T_STRING,POD(&ptr)) == 0)
+	    aspect=nmSysStrdup(ptr);
+	else
+	    aspect=nmSysStrdup("stretch");
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** image source **/
-	ptr = "";
-	if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
+	/*if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
 	    nmSysFree(text);
 	    return -1;
-	    }
+	    }*/
+	ptr = "";
+	htrCheckAddExpression(s, tree, name, "source");
+	wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr));
 	strtcpy(src, ptr, sizeof(src));
+
+	htrCheckAddExpression(s, tree, name, "scale");
+	htrCheckAddExpression(s, tree, name, "xoffset");
+	htrCheckAddExpression(s, tree, name, "yoffset");
 
 	/** Field name **/
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
@@ -266,12 +145,11 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#img%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#img%POS { left:%INTpx; top:%INTpx; width:%POSpx; height:%POSpx; z-index:%POS; }\n",id,x,y,w,h,z);
 
 	/** Init image widget (?) **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%POS\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	htrAddScriptInit_va(s, "    im_init(nodes['%STR&SYM'], {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
+	htrAddWgtrObjLinkage_va(s, tree, "img%POS",id);
+	htrAddScriptInit_va(s, "    im_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
 		name, fieldname, form);
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 
@@ -283,8 +161,9 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "img%POS", id, 
-	    "\n<img id=im%POS width=%POS height=%POS src=\"%STR&HTE\" style=\"display:block;\">\n",id,w,h,src);
+	htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
+	    "\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" %[height=\"%POS\" %]src=\"%STR&HTE\">\n",
+	    id, w, !strcmp(aspect,"stretch"), h, src);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -310,6 +189,7 @@ htimgInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"DHTML Image Widget");
 	strcpy(drv->WidgetName,"image");
+	drv->Setup = htimgSetup;
 	drv->Render = htimgRender;
 
 	/** Events **/ 

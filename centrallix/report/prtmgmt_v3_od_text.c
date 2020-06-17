@@ -47,74 +47,10 @@
 /*		formatter module which just outputs plain text.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_od_text.c,v 1.9 2009/06/26 16:18:59 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
-
-    $Log: prtmgmt_v3_od_text.c,v $
-    Revision 1.9  2009/06/26 16:18:59  gbeeley
-    - (change) GetCharacterMetric now returns both height and width
-    - (performance) change from bubble sort to merge sort for page generation
-      and output sequencing (this made a BIG difference)
-    - (bugfix) attempted fix of text output overlapping problems, but there
-      are still trouble points here.
-
-    Revision 1.8  2008/03/29 02:26:17  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.7  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.6  2005/02/24 05:44:32  gbeeley
-    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
-    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
-      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
-      PostScript support!!  See http://www.codn.net/
-    - More formats (maybe PNG?) should be easy to add.
-    - TODO: read the *real* font metric files to get font geometries!
-    - TODO: compress the images written into the .ps file!
-
-    Revision 1.5  2003/04/21 21:00:48  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
-    Revision 1.4  2003/03/21 22:41:21  gbeeley
-    Enhancement to text output driver to buffer entire page before writing
-    it to the output, thus allowing borders and boxes to look nicer in
-    the text only output.
-
-    Revision 1.3  2003/03/18 04:06:25  gbeeley
-    Added basic image (picture/bitmap) support; only PNG images supported
-    at present.  Moved image and border (rectangles) functionality into a
-    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
-    present and work only under PCL (not plain text!!!).  PNG support is
-    via libpng, so libpng was added to configure/autoconf.
-
-    Revision 1.2  2003/03/06 02:52:36  gbeeley
-    Added basic rectangular-area support (example - border lines for tables
-    and separator lines for multicolumn areas).  Works on both PCL and
-    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
-    to work consistently on my system, however.  Warning: using large
-    dimensions for the 'rectangle' command in test_prt may consume much
-    printer ink!!  Now it's time to go watch the thunderstorms....
-
-    Revision 1.1  2003/02/27 22:03:39  gbeeley
-    Added text/plain output driver, which will among other things allow me
-    to test this beast without wasting so much paper printing PCL stuff ;)
 
 
- **END-CVSDATA***********************************************************/
-
-
-#define PRT_TEXTOD_MAXROWS	256	/* maximum lines per page */
-#define PRT_TEXTOD_MAXCOLS	256	/* maximum columns per page */
+#define PRT_TEXTOD_MAXROWS	1024	/* maximum lines per page */
+#define PRT_TEXTOD_MAXCOLS	1024	/* maximum columns per page */
 
 /*** our list of resolutions ***/
 PrtResolution prt_text_resolutions[] =
@@ -237,7 +173,8 @@ prt_textod_OutputPage(pPrtTextodInf context)
 	    }
 
 	/** form feed **/
-	prt_textod_Output(context, "\14", 1);
+	if (!strcmp(prtGetSessionParam(context->Session, "text_pagebreak", "yes"), "yes"))
+	    prt_textod_Output(context, "\14", 1);
 
 	/** Clear the page **/
 	context->MaxLine = -1;

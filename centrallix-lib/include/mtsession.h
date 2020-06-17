@@ -18,34 +18,6 @@
 /*		module.  Maintains user/password authentication.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mtsession.h,v 1.4 2005/02/26 04:32:02 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtsession.h,v $
-
-    $Log: mtsession.h,v $
-    Revision 1.4  2005/02/26 04:32:02  gbeeley
-    - moving include file install directory to include a "cxlib/" prefix
-      instead of just putting 'em all in /usr/include with everything else.
-
-    Revision 1.3  2002/11/12 00:26:49  gbeeley
-    Updated MTASK approach to user/group security when using system auth.
-    The module now handles group ID's as well.  Changes should have no
-    effect when running as non-root with altpasswd auth.
-
-    Revision 1.2  2002/02/14 00:41:54  gbeeley
-    Added configurable logging and authentication to the mtsession module,
-    and made sure mtsession cleared MtSession data structures when it is
-    through with them since they contain sensitive data.
-
-    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 #ifdef CXLIB_INTERNAL
@@ -61,6 +33,10 @@
 #endif
 
 
+/** optimum salt size for mssGenCred() **/
+#define	MSS_SALT_SIZE	4
+
+
 /** Structure for a session. **/
 typedef struct
     {
@@ -70,6 +46,7 @@ typedef struct
     char	Password[32];
     XArray	ErrList;
     XHashTable	Params;
+    int		LinkCnt;
     }
     MtSession, *pMtSession;
 
@@ -89,8 +66,12 @@ int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall,
 char* mssUserName();
 char* mssPassword();
 int mssAuthenticate(char* username, char* password);
-int mssEndSession();
+int mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen);
+int mssEndSession(pMtSession s);
+int mssLinkSession(pMtSession s);
+int mssUnlinkSession(pMtSession s);
 int mssSetParam(char* paramname, void* param);
+int mssSetParamPtr(char* paramname, void* ptr);
 void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
@@ -99,6 +80,7 @@ int mssErrorErrno(int clr, char* module, char* message, ...);
 int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
+int mssUserError(pXString str);
 
 
 #endif

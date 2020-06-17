@@ -55,68 +55,6 @@
 /*		formatter module which outputs generic postscript       */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-    $Id: prtmgmt_v3_od_ps.c,v 1.9 2010/09/09 00:44:49 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
- 
-    $Log: prtmgmt_v3_od_ps.c,v $
-    Revision 1.9  2010/09/09 00:44:49  gbeeley
-    - (bugfix) attempted to fix profiler/fork() interaction by blocking
-      SIGPROF while fork() was running.  This is good practice, but it didn't
-      solve our problem (compiling without -pg did).
-
-    Revision 1.8  2009/06/26 16:18:59  gbeeley
-    - (change) GetCharacterMetric now returns both height and width
-    - (performance) change from bubble sort to merge sort for page generation
-      and output sequencing (this made a BIG difference)
-    - (bugfix) attempted fix of text output overlapping problems, but there
-      are still trouble points here.
-
-    Revision 1.7  2007/09/18 18:12:56  gbeeley
-    - (bugfix) clean up after yourself, you silly module!  Make sure to wait()
-      and clean up child processes so they aren't left hanging as zombies.
-
-    Revision 1.6  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.5  2007/03/10 05:14:54  gbeeley
-    - (performance) This one little fix improves report writer PDF output
-      performance by approximately 10-fold.
-
-    Revision 1.4  2007/02/28 06:07:56  gbeeley
-    - (workaround) This is a workaround for an apparent bug in Ghostscript,
-      or possibly in the way Centrallix generates the postscript data,
-      which caused successive postscript "show" operations to tend to
-      overlap each other.  This does not actually fix the problem, but it
-      does seem to for all practical purposes prevent it.
-
-    Revision 1.3  2005/03/01 07:09:55  gbeeley
-    - adding quality setting on ps2pdf conversion to gain better image
-      resolution.
-
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1  2005/02/24 05:44:32  gbeeley
-    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
-    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
-      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
-      PostScript support!!  See http://www.codn.net/
-    - More formats (maybe PNG?) should be easy to add.
-    - TODO: read the *real* font metric files to get font geometries!
-    - TODO: compress the images written into the .ps file!
-
- **END-CVSDATA***********************************************************/
 
 /* Postscript Language Reference Manual: http://partners.adobe.com/public/developer/en/ps/PLRM.pdf */
 /* PLRM quick ref: http://www.cs.indiana.edu/docproject/programming/postscript/operators.html */
@@ -125,6 +63,13 @@
 /*** our list of resolutions ***/
 PrtResolution prt_psod_resolutions[] =
     {
+    {5,5,PRT_COLOR_T_FULL},
+    {10,10,PRT_COLOR_T_FULL},
+    {20,20,PRT_COLOR_T_FULL},
+    {30,30,PRT_COLOR_T_FULL},
+    {40,40,PRT_COLOR_T_FULL},
+    {50,50,PRT_COLOR_T_FULL},
+    {60,60,PRT_COLOR_T_FULL},
     {75,75,PRT_COLOR_T_FULL},
     {100,100,PRT_COLOR_T_FULL},
     {150,150,PRT_COLOR_T_FULL},
@@ -132,6 +77,7 @@ PrtResolution prt_psod_resolutions[] =
     {600,600,PRT_COLOR_T_FULL},
     {1200,1200,PRT_COLOR_T_FULL},
     };
+#define PRT_PSOD_DEFAULT_RES	10
 
 
 /*** list of output formats ***/
@@ -140,6 +86,7 @@ typedef struct _PPSF
     char*		Name;
     char*		ContentType;
     void*		(*OpenFn)(pPrtSession);
+    int			MaxPages;
     char*		Command;
     }
     PrtPsodFormat, *pPrtPsodFormat;
@@ -148,8 +95,9 @@ void* prt_psod_OpenPDF(pPrtSession);
 
 static PrtPsodFormat PsFormats[] =
     {
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - -" },
-	{ NULL,		NULL,			NULL,			NULL }
+	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"cat | /usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress /dev/stdin - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
+	{ NULL,		NULL,			NULL,			0,	NULL }
     };
 
 
@@ -169,6 +117,7 @@ typedef struct _PPS
     int			MarginLeft;
     int			MarginRight;
     int			PageNum;
+    int			MaxPages;
     char*		Buf;
     int			BufSize;
     int			Flags;		/* PRT_PSOD_F_xxx, see below */
@@ -372,9 +321,16 @@ prt_psod_WriteTrans(pPrtPsodInf context, char* buf, int buflen, int offset, int 
     int rval;
 
 	/** try to send it to the subprocess **/
-	rval = fdWrite(context->TransWPipe, buf, buflen, offset, flags);
-	if (rval <= 0)
-	    mssError(1, "PRT", "Translator subprocess died unexpectedly!");
+	if (context->TransWPipe)
+	    {
+	    rval = fdWrite(context->TransWPipe, buf, buflen, offset, flags);
+	    if (rval <= 0)
+		mssError(1, "PRT", "Translator subprocess died unexpectedly!");
+	    }
+	else
+	    {
+	    return -1;
+	    }
 
     return rval;
     }
@@ -437,6 +393,7 @@ void*
 prt_psod_Open(pPrtSession s)
     {
     pPrtPsodInf context;
+    int i;
 
 	/** Set up the context structure for this printing session **/
 	context = (pPrtPsodInf)nmMalloc(sizeof(PrtPsodInf));
@@ -459,6 +416,7 @@ prt_psod_Open(pPrtSession s)
 	context->MarginLeft = 0;
 	context->MarginRight = 0;
 	context->PageNum = 0;
+	context->MaxPages = 999999;
 
 	/** Set up data path **/
 	context->IntWriteFn = s->WriteFn;
@@ -467,10 +425,12 @@ prt_psod_Open(pPrtSession s)
 	context->TransWPipe = NULL;
 
 	/** Right now, just support 75, 100, 150, and 300 dpi **/
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+0));
+	for(i=0;i<sizeof(prt_psod_resolutions)/sizeof(PrtResolution);i++)
+	    xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+i));
+	/*xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+0));
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+1));
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+2));
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+3));
+	xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+3));*/
 
 	/** Setup base text style **/
 	context->SelectedStyle.Attr = 0;
@@ -493,6 +453,7 @@ prt_psod_OpenPDF(pPrtSession session)
     {
     pPrtPsodInf context;
     int i;
+    int maxfiles;
     char* cmd = NULL;
     int wfds[2];
     int rfds[2];
@@ -512,9 +473,10 @@ prt_psod_OpenPDF(pPrtSession session)
 	/** Find our cmd **/
 	for(i=0;PsFormats[i].Name;i++)
 	    {
-	    if (!strcmp(PsFormats[i].Name, "pdf"))
+	    if (!strcmp(PsFormats[i].ContentType, session->OutputType))
 		{
 		cmd = PsFormats[i].Command;
+		context->MaxPages = PsFormats[i].MaxPages;
 		break;
 		}
 	    }
@@ -547,10 +509,16 @@ prt_psod_OpenPDF(pPrtSession session)
 	    dup2(wfds[1],0);
 	    dup2(rfds[1],1);
 	    dup2(rfds[1],2);
-	    for(i=3;i<2048;i++) close(i);
+	    maxfiles = sysconf(_SC_OPEN_MAX);
+	    if (maxfiles <= 0)
+		{
+		printf("Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.\n");
+		maxfiles = 2048;
+		}
+	    for(i=3;i<maxfiles;i++) close(i);
 
 	    /** Drop privs **/
-	    id = getuid();
+	    id = geteuid();
 	    setuid(0);
 	    setgroups(0, gidlist);
 	    if (setregid(getegid(), -1) < 0) _exit(1);
@@ -613,7 +581,7 @@ prt_psod_Close(void* context_v)
     }
 
 
-/*** prt_psod_GetResolutions() - return the list of supported resolutions
+/*** prt_psod_eetResolutions() - return the list of supported resolutions
  *** for this printing session.
  ***/
 pXArray
@@ -633,6 +601,8 @@ prt_psod_SetResolution(void* context_v, pPrtResolution r)
     pPrtPsodInf context = (pPrtPsodInf)context_v;
 
 	/** Set it. **/
+	if (!r)
+	    r = &(prt_psod_resolutions[PRT_PSOD_DEFAULT_RES]);
 	context->SelectedResolution = r;
 
     return 0;
@@ -867,6 +837,8 @@ prt_psod_WriteText(void* context_v, char* str)
     char* dptr;
     char* glyph;
 
+	if (context->PageNum >= context->MaxPages) return 0;
+
 	prt_psod_BeforeDraw(context);
 
 	/** Move the starting point and adjust for the baseline before outputting the text. **/
@@ -946,6 +918,11 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     int rows,cols,x,y,pix;
+    int direct_map = 0;
+    unsigned char* imgrow;
+    char* hexdigit = "0123456789abcdef";
+
+	if (context->PageNum >= context->MaxPages) return 0;
 
 	/** Determine how many actual rows/cols we are looking at for the
 	 ** target resolution.
@@ -959,16 +936,26 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	if (img->Hdr.Width <= cols/2) cols = img->Hdr.Width;
 	if (img->Hdr.Height <= rows/2) rows = img->Hdr.Height;
 
+	/** Use direct pixel mapping to speed things up? **/
+	if (cols == img->Hdr.Width && rows == img->Hdr.Height && img->Hdr.ColorMode == PRT_COLOR_T_FULL)
+	    direct_map = 1;
+
+	/** Allocate image data row **/
+	imgrow = (unsigned char*)nmSysMalloc(cols*6 + 1 + 1);
+	if (!imgrow)
+	    return -1;
+
 	/** save graphics context before beginning, 
 	 ** then emit the image header.
 	 **/
 	prt_psod_Output_va(context,	"gsave\n"
-					"/rasterdata %d string def\n"
+					"/getrasterdata %d string def\n"
 					"%.1f %.1f translate\n"
 					"%.1f %.1f scale\n"
 					"%d %d 8\n"
 					"[ %d %d %d %d %d %d ]\n"
-					"{ currentfile rasterdata readhexstring pop }\n"
+					"{ currentfile getrasterdata readhexstring pop }\n"
+					/*"{ currentfile rasterdata readhexstring pop }\n"*/
 					"false 3\n"
 					"%%%%BeginData: %d ASCII Bytes\n"
 					"colorimage\n"
@@ -980,7 +967,7 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 				height*12.0 + 0.000001,
 				cols, rows,
 				cols, 0, 0, -rows, 0, rows,
-				cols*rows*6+strlen("colorimage\n")+rows
+				((cols*6)+1)*rows+strlen("colorimage\n")
 				);
 
 	/** Output the data, in hexadecimal **/
@@ -988,16 +975,77 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    {
 	    for(x=0;x<cols;x++)
 		{
-		pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
-		prt_psod_Output_va(context, "%6.6X", pix);
+		/** We're doing the hex-number-to-ascii conversion manually because
+		 ** it is 4 times faster, and this loop is a bottleneck for reports
+		 ** with images, especially large images.
+		 **/
+		if (direct_map)
+		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
+		    /*pix = prt_internal_GetPixelDirect(img, x, y);*/
+		else
+		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
+		imgrow[x*6+0] = hexdigit[pix >> 20];
+		imgrow[x*6+1] = hexdigit[(pix >> 16) & 0xF];
+		imgrow[x*6+2] = hexdigit[(pix >> 12) & 0xF];
+		imgrow[x*6+3] = hexdigit[(pix >> 8) & 0xF];
+		imgrow[x*6+4] = hexdigit[(pix >> 4) & 0xF];
+		imgrow[x*6+5] = hexdigit[pix & 0xF];
 		}
-	    prt_psod_Output(context, "\n", 1);
+	    imgrow[cols*6] = '\n';
+	    imgrow[cols*6+1] = '\0';
+	    prt_psod_Output(context, (char*)imgrow, cols*6+1);
 	    }
 
 	/** Restore graphics context when done **/
 	prt_psod_Output_va(context,	"%%%%EndData\n"
 					"grestore\n");
 
+	nmSysFree(imgrow);
+
+    return context->CurVPos + height;
+    }
+
+
+/*** prt_psod_WriteSvgData() - outputs an svg image at the current
+ *** printing position on the page, given the selected pixel and 
+ *** color resolution. 
+ ***/
+double
+prt_psod_WriteSvgData(void* context_v, pPrtSvg svg, double width, double height, double next_y)
+    {
+    pPrtPsodInf context;
+    pXString epsXString;
+    double dx, dy;    
+
+    context = (pPrtPsodInf)context_v;
+    if (context->PageNum >= context->MaxPages) {
+        return 0;
+    }
+
+    /* Distance (x, y) from lower-left corner */ 
+    dx = context->CurHPos * 7.2 + 0.000001;
+    dy = context->PageHeight - (context->CurVPos * 12.0 +
+                               height * 12.0 + 0.000001);
+
+    /* Width and height in pt (1/72th of an inch) */
+    width = width/10.0 * 72;
+    height = height/6.0 * 72;
+
+    /* Convert SVG data to postscript */
+    epsXString = prtConvertSvgToEps(svg, width, height);
+    if (!epsXString) return -1;
+    
+    /** Save state and embed EPS data **/
+    prt_psod_Output_va(context, "save\n"
+                                "%.1f %.1f translate\n"
+                                "/showpage {} def\n",
+                                dx, dy);
+    prt_psod_Output(context, epsXString->String, epsXString->Length);   
+
+    /** Restore state and free xstring **/
+    prt_psod_Output_va(context, "restore\n");
+    xsFree(epsXString);
+        
     return context->CurVPos + height;
     }
 
@@ -1008,6 +1056,8 @@ int
 prt_psod_WriteFF(void* context_v)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
+
+	if (context->PageNum >= context->MaxPages) return 0;
 
 	/** End page if one was started **/
 	prt_psod_EndPage(context);
@@ -1030,6 +1080,8 @@ prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double x1,x2,y1,y2;
+
+	if (context->PageNum >= context->MaxPages) return 0;
 
 	/** Make sure width and height meet the minimum required by the
 	 ** currently selected resolution
@@ -1105,7 +1157,8 @@ prt_psod_Initialize()
 	    drv->SetVPos = prt_psod_SetVPos;
 	    drv->WriteText = prt_psod_WriteText;
 	    drv->WriteRasterData = prt_psod_WriteRasterData;
-	    drv->WriteFF = prt_psod_WriteFF;
+	    drv->WriteSvgData = prt_psod_WriteSvgData;
+            drv->WriteFF = prt_psod_WriteFF;
 	    drv->WriteRect = prt_psod_WriteRect;
 	    prt_strictfm_RegisterDriver(drv);
 	    }

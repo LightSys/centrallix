@@ -32,57 +32,6 @@
 /*		user.  Uses the MTLEXER module.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: stparse.h,v 1.5 2009/07/14 22:08:08 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/stparse.h,v $
-
-    $Log: stparse.h,v $
-    Revision 1.5  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.4  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.3  2005/02/26 06:42:38  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.2  2001/10/22 17:36:05  gbeeley
-    Beginning to add support for JS scripting facilities.
-
-    Revision 1.1  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 #include "cxlib/mtask.h"
@@ -95,14 +44,15 @@
 typedef struct _SI
     {
     int		    Magic;
+    int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
     char*	    UsrType;	/* type of group, null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
     struct _SI*	    Parent;	/* Parent inf, null if toplevel */
     struct _SI**    SubInf;	/* List of attrs/groups included */
-    unsigned short  nSubInf;	/* Number of attrs/groups - up to 65535 */
-    unsigned char   nSubAlloc;	/* Amount of space allocated for subinf ptrs */
-    unsigned char   Flags;	/* ST_F_xxx - either top, attrib, or group */
+    unsigned int    nSubInf:21;	/* Number of attrs/groups - up to ST_SUBINF_LIMIT */
+    unsigned char   nSubAlloc:6; /* Amount of space allocated for subinf ptrs */
+    unsigned char   Flags:5;	/* ST_F_xxx - either top, attrib, or group */
     unsigned char*  ScriptText;	/* If a ST_F_SCRIPT node, here is the script text */
     void*	    ScriptCode;	/* "compiled" script code */
     void*	    UserData;	/* Misc linkage for use by app */
@@ -119,9 +69,10 @@ typedef struct _SI
 #define	ST_USRTYPE_STRLEN   64	/* if group, alloc bytes for type name */
 #define ST_NAME_STRLEN	    64	/* alloc size for group/attrib name */
 
-#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))
+/*#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))*/
+#define ST_ALLOCSIZ(x)	(ST_SUBALLOC_BLKSIZ<<((x)->nSubAlloc))
 
-#define ST_SUBINF_LIMIT	    65535
+#define ST_SUBINF_LIMIT	    (2 * 1024 * 1024 - 1)
 
 
 #if 00 /* GRB - old version */
@@ -168,7 +119,11 @@ int stFreeInf(pStructInf inf);
 int stAddInf(pStructInf main_inf, pStructInf sub_inf);
 
 /*** new functions ***/
+pStructInf stLinkInf(pStructInf inf);
+int stPrintInf(pStructInf this);
+int stRemoveInf(pStructInf inf);
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
+int stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value);
 int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);
 int stGetAttrType(pStructInf this, int nval);
 int stStructType(pStructInf this);

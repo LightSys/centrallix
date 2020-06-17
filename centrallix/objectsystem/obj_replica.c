@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "obj.h"
+#include "centrallix.h"
 
 
 /************************************************************************/
@@ -47,30 +48,6 @@
 /*		time a new notify is registered or one is removed	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_replica.c,v 1.4 2010/09/09 01:42:02 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_replica.c,v $
-
-    $Log: obj_replica.c,v $
-    Revision 1.4  2010/09/09 01:42:02  gbeeley
-    - (disabled) turned off request-notify mechanism as it needs to be
-      re-architected.  Suspected this piece of code of causing stability
-      problems.
-
-    Revision 1.3  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.2  2004/12/31 04:20:51  gbeeley
-    - fix a couple of substantial memory leaks in obj_replica mechanism
-
-    Revision 1.1  2004/06/22 16:37:35  gbeeley
-    - adding stray file that wandered off from the tree...
-    - this provides the underlying support for some of the replication-to-the
-      client stuff that is in-progress.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** obj_internal_RnLookupByObj() - looks up a notify structure
@@ -311,8 +288,11 @@ obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, in
     int i;
     pObjReqNotifyItem one_item;
 
-	printf("RnNotifyAttrib: %s: ", attrname);
-	ptodPrint(newvalue);
+	if (!CxGlobals.QuietInit)
+	    {
+	    printf("RnNotifyAttrib: %s: ", attrname);
+	    ptodPrint(newvalue);
+	    }
 
 	/** GRB FIXME - disabling until we can make this work correctly. **/
 	return 0;

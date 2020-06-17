@@ -1,0 +1,33 @@
+##NAME Subtraction (-)
+
+query select '3 - 1' = 3 - 1
+query select '3.3 - 1' = 3.3 - 1
+query select '2 - 1.3' = 2 - 1.3
+query select '3.4 - 1.2' = 3.4 - 1.2
+query select '4 - 2 - 1' = 4 - 2 - 1
+query select '$3 - 1' = $3 - 1
+query select '3 - $1' = 3 - $1
+query select '$3.30 - 1' = $3.30 - 1
+query select '3 - $1.30' = 3 - $1.30
+query select '$3 - $1' = $3 - $1
+query select '$3 - $1.30' = $3 - $1.30
+query select '$3.50 - $1.30' = $3.50 - $1.30
+
+# The following two are a dimensional mismatch; different SQL's handle this differently.
+query select '$3 - 1.3' = $3 - 1.3
+query select '3.4 - $1.2' = 3.4 - $1.2
+
+query select '"21" - 1' = "21" - 1
+query select '21 - "1"' = 21 - "1"
+query select '"21" - "1"' = "21" - "1"
+query select '"21" - "2"' = "21" - "2"
+query select '"21" - 1.3' = "21" - 1.3
+query select '"21" - $1.3' = "21" - $1.3
+query select '3.3 - "1"' = 3.3 - "1"
+query select '$3.3 - "1"' = $3.3 - "1"
+query select '$3.3 - "1.40"' = $3.3 - "1.40"
+query select '$3.3 - "blat"' = $3.3 - "blat"
+
+query select '1 - null' = 1 - null
+query select 'null - 1' = null - 1
+query select 'null - null' = null - null

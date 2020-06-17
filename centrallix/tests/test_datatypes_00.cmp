@@ -1,80 +1,80 @@
-Attribute: [f_integer]  INTEGER  1
-Attribute: [f_string]  STRING  "test"
-Attribute: [f_money]  MONEY  $0.00
-Attribute: [f_datetime]  DATETIME  01 Jan 1970 00:00
-Attribute: [f_double]  DOUBLE  1
-Attribute: [f_integer]  INTEGER  10
-Attribute: [f_string]  STRING  ""
-Attribute: [f_money]  MONEY  -$0.01
-Attribute: [f_datetime]  DATETIME  01 Feb 2000 00:00
-Attribute: [f_double]  DOUBLE  1.01
-Attribute: [f_integer]  INTEGER  100
-Attribute: [f_string]  STRING  "this is a longer test"
-Attribute: [f_money]  MONEY  -$100.10
-Attribute: [f_datetime]  DATETIME  02 Jan 2000 00:00
-Attribute: [f_double]  DOUBLE  0
-Attribute: [f_integer]  INTEGER  -1
-Attribute: [f_string]  STRING  ""
-Attribute: [f_money]  MONEY  $0.00
-Attribute: [f_datetime]  DATETIME  01 Jan 1970 23:59
-Attribute: [f_double]  DOUBLE  0.01
-Attribute: [f_integer]  INTEGER  -10
-Attribute: [f_string]  STRING  "'"
-Attribute: [f_money]  MONEY  $0.01
-Attribute: [f_datetime]  DATETIME  01 Jan 1970 23:59
-Attribute: [f_double]  DOUBLE  -0
-Attribute: [f_integer]  INTEGER  -100
-Attribute: [f_string]  STRING  "100"
-Attribute: [f_money]  MONEY  $0.10
-Attribute: [f_datetime]  DATETIME  31 Dec 2004 00:00
-Attribute: [f_double]  DOUBLE  -0.01
-Attribute: [f_integer]  INTEGER  0
-Attribute: [f_string]  STRING  "/"
-Attribute: [f_money]  MONEY  $0.99
-Attribute: [f_datetime]  DATETIME  29 Feb 2004 00:00
-Attribute: [f_double]  DOUBLE  -0.03
-Attribute: [f_integer]  INTEGER  70000
-Attribute: [f_string]  STRING  "short test"
-Attribute: [f_money]  MONEY  $1.00
-Attribute: [f_datetime]  DATETIME  01 Feb 2000 00:00
-Attribute: [f_double]  DOUBLE  -3
-Attribute: [f_integer]  INTEGER  -70000
-Attribute: [f_string]  STRING  ""
-Attribute: [f_money]  MONEY  $1.99
-Attribute: [f_datetime]  DATETIME  01 Jan 2010 00:20
-Attribute: [f_double]  DOUBLE  -3.3
-Attribute: [f_integer]  INTEGER  700
-Attribute: [f_string]  STRING  "test"
-Attribute: [f_money]  MONEY  $2147483647.99
-Attribute: [f_datetime]  DATETIME  01 Jan 2010 20:00
-Attribute: [f_double]  DOUBLE  -50.3
-Attribute: [f_integer]  INTEGER  -700
-Attribute: [f_string]  STRING  "this is a much longer test string"
-Attribute: [f_money]  MONEY  $0.00
-Attribute: [f_datetime]  DATETIME  01 Jan 2010 00:00
-Attribute: [f_double]  DOUBLE  50.3
-Attribute: [f_integer]  INTEGER  17000000
-Attribute: [f_string]  STRING  "test"
-Attribute: [f_money]  MONEY  $0.01
-Attribute: [f_datetime]  DATETIME  31 Dec 2004 00:00
-Attribute: [f_double]  DOUBLE  -3.01
-Attribute: [f_integer]  INTEGER  -17000000
-Attribute: [f_string]  STRING  ""
-Attribute: [f_money]  MONEY  $65280.00
-Attribute: [f_datetime]  DATETIME  29 Feb 2004 00:00
-Attribute: [f_double]  DOUBLE  2000
-Attribute: [f_integer]  INTEGER  2147483647
-Attribute: [f_string]  STRING  "this is a longer test"
-Attribute: [f_money]  MONEY  -$65000.00
-Attribute: [f_datetime]  DATETIME  29 Feb 2008 00:00
-Attribute: [f_double]  DOUBLE  -2000
-Attribute: [f_integer]  INTEGER  -2147483648
-Attribute: [f_string]  STRING  "short test"
-Attribute: [f_money]  MONEY  $100.50
-Attribute: [f_datetime]  DATETIME  29 Feb 1996 00:00
-Attribute: [f_double]  DOUBLE  5000
-Attribute: [f_integer]  INTEGER  100
-Attribute: [f_string]  STRING  "a medium test"
-Attribute: [f_money]  MONEY  -$100.50
-Attribute: [f_datetime]  DATETIME  28 Feb 2000 00:00
-Attribute: [f_double]  DOUBLE  3000
+Attribute [f_integer]:  integer  1
+Attribute [f_string]:   string   "test" 
+Attribute [f_money]:    money   $0.00 
+Attribute [f_datetime]: datetime   '01 Jan 1970 00:00' 
+Attribute [f_double]:   double  1.0
+Attribute [f_integer]:  integer  10
+Attribute [f_string]:   string   "" 
+Attribute [f_money]:    money   -$0.01 
+Attribute [f_datetime]: datetime   '01 Feb 2000 00:00' 
+Attribute [f_double]:   double  1.01
+Attribute [f_integer]:  integer  100
+Attribute [f_string]:   string   "this is a longer test" 
+Attribute [f_money]:    money   -$100.10 
+Attribute [f_datetime]: datetime   '02 Jan 2000 00:00' 
+Attribute [f_double]:   double  0.0
+Attribute [f_integer]:  integer  -1
+Attribute [f_string]:   string   "" 
+Attribute [f_money]:    money   $0.00 
+Attribute [f_datetime]: datetime   '01 Jan 1970 23:59' 
+Attribute [f_double]:   double  0.01
+Attribute [f_integer]:  integer  -10
+Attribute [f_string]:   string   "'" 
+Attribute [f_money]:    money   $0.01 
+Attribute [f_datetime]: datetime   '01 Jan 1970 23:59' 
+Attribute [f_double]:   double  -0.0
+Attribute [f_integer]:  integer  -100
+Attribute [f_string]:   string   "100" 
+Attribute [f_money]:    money   $0.10 
+Attribute [f_datetime]: datetime   '31 Dec 2004 00:00' 
+Attribute [f_double]:   double  -0.01
+Attribute [f_integer]:  integer  0
+Attribute [f_string]:   string   "/" 
+Attribute [f_money]:    money   $0.99 
+Attribute [f_datetime]: datetime   '29 Feb 2004 00:00' 
+Attribute [f_double]:   double  -0.03
+Attribute [f_integer]:  integer  70000
+Attribute [f_string]:   string   "short test" 
+Attribute [f_money]:    money   $1.00 
+Attribute [f_datetime]: datetime   '01 Feb 2000 00:00' 
+Attribute [f_double]:   double  -3.0
+Attribute [f_integer]:  integer  -70000
+Attribute [f_string]:   string   "" 
+Attribute [f_money]:    money   $1.99 
+Attribute [f_datetime]: datetime   '01 Jan 2010 00:20' 
+Attribute [f_double]:   double  -3.3
+Attribute [f_integer]:  integer  700
+Attribute [f_string]:   string   "test" 
+Attribute [f_money]:    money   $2147483647.99 
+Attribute [f_datetime]: datetime   '01 Jan 2010 20:00' 
+Attribute [f_double]:   double  -50.3
+Attribute [f_integer]:  integer  -700
+Attribute [f_string]:   string   "this is a much longer test string" 
+Attribute [f_money]:    money   -$2147483647.99 
+Attribute [f_datetime]: datetime   '01 Jan 2010 00:00' 
+Attribute [f_double]:   double  50.3
+Attribute [f_integer]:  integer  17000000
+Attribute [f_string]:   string   "test" 
+Attribute [f_money]:    money   $0.01 
+Attribute [f_datetime]: datetime   '31 Dec 2004 00:00' 
+Attribute [f_double]:   double  -3.01
+Attribute [f_integer]:  integer  -17000000
+Attribute [f_string]:   string   "" 
+Attribute [f_money]:    money   $65280.00 
+Attribute [f_datetime]: datetime   '29 Feb 2004 00:00' 
+Attribute [f_double]:   double  2000.0
+Attribute [f_integer]:  integer  2147483647
+Attribute [f_string]:   string   "this is a longer test" 
+Attribute [f_money]:    money   -$65000.00 
+Attribute [f_datetime]: datetime   '29 Feb 2008 00:00' 
+Attribute [f_double]:   double  -2000.0
+Attribute [f_integer]:  integer  -2147483648
+Attribute [f_string]:   string   "short test" 
+Attribute [f_money]:    money   $100.50 
+Attribute [f_datetime]: datetime   '29 Feb 1996 00:00' 
+Attribute [f_double]:   double  5000.0
+Attribute [f_integer]:  integer  100
+Attribute [f_string]:   string   "a medium test" 
+Attribute [f_money]:    money   -$100.50 
+Attribute [f_datetime]: datetime   '28 Feb 2000 00:00' 
+Attribute [f_double]:   double  3000.0

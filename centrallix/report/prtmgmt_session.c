@@ -51,26 +51,6 @@
 /*		functionality and other session-level routines.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_session.c,v 1.2 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_session.c,v $
-
-    $Log: prtmgmt_session.c,v $
-    Revision 1.2  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1.1.1  2001/08/13 18:01:16  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:17  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** prtOpenSession - create a new printing session, with an output of a

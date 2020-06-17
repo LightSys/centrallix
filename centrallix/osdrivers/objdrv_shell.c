@@ -9,6 +9,8 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
 /** module definintions **/
 #include "centrallix.h"
 
@@ -50,12 +52,6 @@
 /*									*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_shell.c,v 1.13 2005/02/26 06:42:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -98,7 +94,7 @@ free_EnvVar(void* p, void* arg)
     pEnvVar ptr = (pEnvVar)p;
     arg = NULL ; /* avoid complaints from picky compilers */
     if(ptr->shouldfree)
-	free(ptr->value); // value was malloc()ed, not nmMalloc()ed
+	nmSysFree(ptr->value); // value was malloc()ed, not nmMalloc()ed
     nmFree(ptr,sizeof(EnvVar));
     return 0   ; /* meaningless, but is needed for type safety */
     }
@@ -153,6 +149,8 @@ shl_internal_Launch(pShlData inf)
     char tty_name[32];
     int pty;
     int i;
+    int maxfiles;
+    gid_t gidlist[1];
 
     for(i=0;i<xaCount(&inf->envList);i++)
 	{
@@ -164,7 +162,7 @@ shl_internal_Launch(pShlData inf)
 	if(pEV)
 	    {
 	    int len = strlen(name)+2+(pEV->value?strlen(pEV->value):0);
-	    p = (char*)malloc(len);
+	    p = (char*)nmSysMalloc(len);
 	    snprintf(p,len,"%s=%s",name,pEV->value?pEV->value:"");
 	    p[len-1]='\0';
 	    xaAddItem(&inf->envArray,p);
@@ -200,27 +198,46 @@ shl_internal_Launch(pShlData inf)
     pty=getpt();
     if(pty<0)
 	{
-	mssError(0,"SHL","getpy() failed");
+	mssErrorErrno(0,"SHL","getpy() failed");
 	inf->shell_pid=0;
 	return -1;
 	}
-    if(grantpt(pty)<0 || unlockpt(pty)<0)
+
+    /** grantpt() uses the effective uid for permission checks and the real
+     ** uid for what to chown the device to.  So we need to swap our
+     ** uids here, then swap em back.
+     **/
+    setreuid(geteuid(), getuid());
+    if(grantpt(pty)<0)
 	{
-	mssError(0,"SHL","granpt() or unlockpt() failed");
+        setreuid(geteuid(), getuid());
+	mssErrorErrno(0,"SHL","grantpt() failed");
+	inf->shell_pid=0;
+	return -1;
+	}
+    setreuid(geteuid(), getuid());
+
+    if (unlockpt(pty)<0)
+	{
+	mssErrorErrno(0,"SHL","unlockpt() failed");
+	inf->shell_pid=0;
+	return -1;
+	}
+
+    if (ptsname_r(pty, tty_name, sizeof(tty_name)) != 0)
+	{
+	mssErrorErrno(0,"SHL","ptsname_r() failed");
 	inf->shell_pid=0;
 	return -1;
 	}
 
     if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
-	printf("shell got tty: %s\n",(const char*)ptsname(pty));
+	printf("shell got tty: %s\n",(const char*)tty_name);
 
-    strncpy(tty_name,(const char*)ptsname(pty),32);
-    tty_name[31]='\0';
-    
     inf->shell_pid=fork();
     if(inf->shell_pid < 0)
 	{
-	mssError(0,"SHL","Unable to fork");
+	mssErrorErrno(1,"SHL","Unable to fork");
 	inf->shell_pid=0;
 	return -1;
 	}
@@ -239,6 +256,7 @@ shl_internal_Launch(pShlData inf)
 	 ** and we need to get rid of the ruid=root here so that the
 	 ** command's privs are more appropriate.  Same for group id.
 	 **/
+	setgroups(0, gidlist);
 	if (getuid() != geteuid())
 	    {
 	    if (setreuid(geteuid(),-1) < 0)
@@ -259,10 +277,17 @@ shl_internal_Launch(pShlData inf)
 	    }
 
 	/** close all open fds (except for 0-2 -- std{in,out,err}) **/
-	for(fd=3;fd<64;fd++)
+	maxfiles = sysconf(_SC_OPEN_MAX);
+	if (maxfiles <= 0)
+	    {
+	    printf("Warning: sysconf(_SC_OPEN_MAX) returned <= 0; using maxfiles=2048.\n");
+	    maxfiles = 2048;
+	    }
+	for(fd=3;fd<maxfiles;fd++)
 	    close(fd);
-	
-	/** open the terminal **/
+
+	/** start a new process session and open the terminal **/
+	setsid();
 	fd = open(tty_name,O_RDWR);
 	
 	/** switch to terminal as stdout **/
@@ -275,7 +300,7 @@ shl_internal_Launch(pShlData inf)
 	dup2(fd,2);
 
 	/** close old copy of FD **/
-	close(fd);
+	if (fd > 2) close(fd);
 
 
 	/** make the exec() call **/
@@ -319,6 +344,52 @@ shl_internal_Launch(pShlData inf)
     }
 
 
+/*** shl_internal_SetParam() - sets a parameter to pass to the system command,
+ *** via a "changeable" environment variable.
+ ***/
+int
+shl_internal_SetParam(pShlData inf, char* paramname, int type, pObjData paramvalue)
+    {
+    pEnvVar pEV;
+
+	/** only do the change if the subprocess hasn't started yet -- now these 
+	 ** will always reflect the values used to start the subprocess
+	 **/
+	if(inf->shell_pid == -1)
+	    {
+	    pEV = (pEnvVar)xhLookup(&inf->envHash,paramname);
+	    if(pEV && pEV->changeable && (type==DATA_T_STRING || type==DATA_T_INTEGER) )
+		{
+		if(pEV->shouldfree)
+		    {
+		    nmSysFree(pEV->value);
+		    }
+		if (!paramvalue)
+		    {
+		    pEV->value = nmSysStrdup("");
+		    }
+		else if (type == DATA_T_STRING)
+		    {
+		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
+		    pEV->value = (char*)nmSysMalloc(strlen(paramvalue->String)+1);
+		    strcpy(pEV->value,paramvalue->String);
+		    }
+		else if (type == DATA_T_INTEGER)
+		    {
+		    pEV->value = (char*)nmSysMalloc(20);
+		    snprintf(pEV->value,20,"%i", paramvalue->Integer);
+		    pEV->value[19]='\0';
+		    }
+		else
+		    pEV->value = nmSysStrdup("");
+		pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
     
 /*** shlOpen - open an object.
  ***/
@@ -333,6 +404,9 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pStructInf argStruct;
     pStructInf changeStruct;
     int i,j;
+    pStruct paramdata;
+    int nameindex;
+    char* endorsement_name;
 
 	/** Allocate the structure **/
 	inf = (pShlData)nmMalloc(sizeof(ShlData));
@@ -387,6 +461,15 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Node = node;
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
 	inf->Node->OpenCnt++;
+
+	/** Security check **/
+	if (endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    inf->Node->OpenCnt --;
+	    nmFree(inf,sizeof(ShlData));
+	    mssError(1,"SHL","Security check failed - endorsement '%s' required", endorsement_name);
+	    return NULL;
+	    }
 
 	/** figure out command to run **/
 	if(stAttrValue(stLookup(node->Data,"program"),NULL,&ptr,0)<0) ptr="";
@@ -453,7 +536,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		int i;
 		pXArray values;
 		pEnvVar pEV=NULL;
-		values = &argStruct->Value->Children;
+		values = &changeStruct->Value->Children;
 		for(i=0;i<values->nItems;i++)
 		    {
 		    pEV=(pEnvVar)xhLookup(&inf->envHash,((pExpression)(values->Items[i]))->String);
@@ -492,6 +575,18 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
 	    printf("SHELL: returning object: %p\n",inf);
+
+	/** Set initial param values? **/
+	nameindex = obj->SubPtr - 1 + obj->SubCnt - 1;
+	if (obj->Pathname->OpenCtl[nameindex])
+	    {
+	    paramdata = obj->Pathname->OpenCtl[nameindex];
+	    for(i=0;i<paramdata->nSubInf;i++)
+		{
+		shl_internal_SetParam(inf, paramdata->SubInf[i]->Name, DATA_T_STRING, POD(&(paramdata->SubInf[i]->StrVal)));
+		}
+	    }
+
     return (void*)inf;
     }
 
@@ -557,7 +652,8 @@ shlClose(void* inf_v, pObjTrxTree* oxt)
 	xaDeInit(&inf->argArray);
 	for(i=0;i<xaCount(&inf->envArray);i++)
 	    {
-	    free(xaGetItem(&inf->envArray,i));
+	    if (xaGetItem(&inf->envArray,i))
+		nmSysFree(xaGetItem(&inf->envArray,i));
 	    }
 	xaDeInit(&inf->envList);
 	xhClear(&inf->envHash,free_EnvVar,NULL);
@@ -691,7 +787,7 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 		    return -1;
 		inf->curRead+=i;
 		}
-	}
+	    }
 	/** this'll also catch if we scroll too far forward... **/
 	if(offset<inf->curRead)
 	    return -1;
@@ -866,7 +962,8 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    /*val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];*/
+	    val->String = inf->Node->Data->Name;
 	    return 0;
 	    }
 
@@ -997,8 +1094,6 @@ int
 shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pShlData inf = SHL(inf_v);
-    pStructInf find_inf;
-    pEnvVar pEV;
 
 	/** Choose the attr name **/
 	/** Changing name of node object? **/
@@ -1030,33 +1125,9 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	if(inf->shell_pid == -1)
-	    {
-	    /** only do the change if the subprocess hasn't started yet -- now these 
-	        will always reflect the values used to start the subprocess **/
-	    pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
-	    if(pEV && pEV->changeable && (datatype==DATA_T_STRING || datatype==DATA_T_INTEGER) )
-		{
-		if(pEV->shouldfree)
-		    {
-		    free(pEV->value);
-		    }
-		if(datatype == DATA_T_STRING)
-		    {
-		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
-		    pEV->value = (char*)malloc(strlen(val->String)+1);
-		    strcpy(pEV->value,val->String);
-		    }
-		else //datatype == DATA_T_INTEGER
-		    {
-		    pEV->value = (char*)malloc(20);
-		    snprintf(pEV->value,20,"%i",val->Integer);
-		    pEV->value[19]='\0';
-		    }
-		pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
-		return 0;
-		}
-	    }
+	/** Try to set a command parameter (env variable) **/
+	if (shl_internal_SetParam(inf, attrname, datatype, val) < 0)
+	    return -1;
 
     return -1;
     }
@@ -1115,6 +1186,20 @@ shlExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     }
 
 
+/*** shlInfo - Return the capabilities of the object.
+ ***/
+int
+shlInfo(void* inf_v, pObjectInfo info)
+    {
+
+	/** Shell objects have limited capability... **/
+	info->Flags = OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_SEEK;
+	info->nSubobjects = 0;
+
+    return 0;
+    }
+
+
 /*** shlInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -1154,6 +1239,7 @@ shlInitialize()
 	drv->GetNextMethod = shlGetNextMethod;
 	drv->ExecuteMethod = shlExecuteMethod;
 	drv->PresentationHints = NULL;
+	drv->Info = shlInfo;
 
 	nmRegister(sizeof(ShlData),"ShlData");
 

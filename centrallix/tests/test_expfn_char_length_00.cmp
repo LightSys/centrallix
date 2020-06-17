@@ -1,0 +1,4 @@
+Attribute [char_length("abc")]:  integer  3
+Attribute [char_length("a")]:  integer  1
+Attribute [char_length("")]:  integer  0
+Attribute [char_length(null)]:  integer  NULL

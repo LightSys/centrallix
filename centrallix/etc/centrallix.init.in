@@ -5,7 +5,7 @@
 # chkconfig: 345 85 15
 # processname: centrallix
 # description: Centrallix Application Server
-# pidfile: ##LOCALSTATEDIR##/run/centrallix.pid
+# pidfile: /var/run/centrallix.pid
 # config: ##SYSCONFDIR##/centrallix.conf
 
 # Source function library.
@@ -14,7 +14,7 @@
 centrallix=##SBINDIR##/centrallix
 [ -x ${centrallix} ] || exit 0
 
-ARGS="-q -d -c ##SYSCONFDIR##/centrallix.conf"
+ARGS="-q -d -c ##SYSCONFDIR##/centrallix.conf -p /var/run/centrallix.pid"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:##LIBDIR##:##CXLIBDIR##"
 
 [ -d ##LOCALSTATEDIR##/lock/subsys ] || mkdir -p ##LOCALSTATEDIR##/lock/subsys

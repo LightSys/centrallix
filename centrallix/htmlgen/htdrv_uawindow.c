@@ -40,22 +40,6 @@
 /* Description:	HTML Widget driver for a user-agent window        	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_uawindow.c,v 1.1 2010/09/09 00:39:13 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_uawindow.c,v $
-
-    $Log: htdrv_uawindow.c,v $
-    Revision 1.1  2010/09/09 00:39:13  gbeeley
-    - (change) allowing -pg (graph profiler) to be disabled by default
-      during compilation.  profile timer had some poor interaction with the
-      fork() system call, causing sporadic lockups.
-    - (feature) beginnings of "user agent window" widget
-    - (change) broke out mergesort() routine into its own independent function
-      instead of being a part of the prtmgmt module.
-
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
@@ -115,7 +99,7 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s, "    uw_init(nodes[\"%STR&SYM\"], {shared:%INT, multi:%INT, routing:%INT, path:\"%STR&JSSTR\", w:%INT, h:%INT} );\n",
+	htrAddScriptInit_va(s, "    uw_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {shared:%INT, multi:%INT, routing:%INT, path:\"%STR&JSSTR\", w:%INT, h:%INT} );\n",
 		name, is_shared, is_multi, action_routing, path, width, height
 		);
 

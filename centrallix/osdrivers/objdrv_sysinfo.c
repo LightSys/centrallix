@@ -46,31 +46,6 @@
 /*		much like the /proc or /sys filesystem on Linux does.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_sysinfo.c,v 1.3 2007/04/08 03:52:01 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sysinfo.c,v $
-
-    $Log: objdrv_sysinfo.c,v $
-    Revision 1.3  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.2  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.1  2005/09/17 01:23:51  gbeeley
-    - Adding sysinfo objectsystem driver, which is roughly analogous to
-      the /proc filesystem in Linux.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -119,7 +94,7 @@ struct
     char*		sys_thr_status_char[256];
     int			sys_thr_flags[256];
     char*		sys_thr_flags_char[256];
-    unsigned long	sys_mt_last_tick;
+    unsigned int	sys_mt_last_tick;
     int			sys_thr_cnt;
     }
     SYS_INF;
@@ -538,7 +513,6 @@ void*
 sysOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pSysData inf = NULL;
-    char* node_path;
     pSnNode node = NULL;
     char* ptr;
     pStructInf verify_inf;
@@ -550,9 +524,6 @@ sysOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(SysData));
 	inf->Obj = obj;
 	inf->Mask = mask;
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -615,9 +586,9 @@ sysOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	obj->SubCnt = len + 1;
 
 	/** Try to open next obj in the path **/
-	if (obj->SubPtr + obj->SubCnt < obj->Pathname->nElements)
+	if (obj->SubPtr + obj->SubCnt <= obj->Pathname->nElements)
 	    {
-	    if (sysFindObj(inf, obj_internal_PathPart(obj->Pathname,obj->SubPtr + obj->SubCnt,1)) == 0)
+	    if (sysFindObj(inf, obj_internal_PathPart(obj->Pathname,obj->SubPtr + obj->SubCnt - 1,1)) == 0)
 		{
 		inf->Flags |= SYS_F_SUBOBJ;
 		obj->SubCnt++;

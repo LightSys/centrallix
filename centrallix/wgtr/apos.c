@@ -28,124 +28,6 @@
 /* Description:	Applies layout logic to the widgets of an application.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: apos.c,v 1.15 2008/07/16 00:34:57 thr4wn Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
-
-    $Log: apos.c,v $
-    Revision 1.15  2008/07/16 00:34:57  thr4wn
-    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
-
-    Revision 1.14  2008/03/04 01:21:11  gbeeley
-    - (bugfix) various fixes to the auto-resizing (apos) code, related to
-      having two nonvisual containers nested directly inside each other
-      (e.g., an osrc and then a form).
-    - (bugfix) removed height-extending logic in ProcessWindows which is
-      incorrect.  However, various issues with min_height et al will need
-      to be addressed at some point.
-    - (bugfix) changes to hbox/vbox (autolayout) fix problems wrapping a
-      set of widgets around to a new row (hbox) or a new column (vbox).
-
-    Revision 1.13  2007/09/18 17:38:49  gbeeley
-    - (feature) stubbing out multiscroll widget.
-    - (change) adding capability to auto-position module to allow a container
-      to not resize its contents (horiz and/or vert) if the contents can be
-      scrolled.
-
-    Revision 1.12  2007/07/31 18:08:47  gbeeley
-    - (bugfix) when centering a childwindow (or other floating widget), do not
-      make the upper left corner go offscreen if the screen is too small.
-
-    Revision 1.11  2007/04/03 15:50:04  gbeeley
-    - (feature) adding capability to pass a widget to a component as a
-      parameter (by reference).
-    - (bugfix) changed the layout logic slightly in the apos module to better
-      handle ratios of flexibility and size when resizing.
-
-    Revision 1.10  2007/03/22 16:29:28  gbeeley
-    - (feature) Autolayout widget, better known as hbox and vbox.  Now you
-      don't have to manually compute all those X's and Y's!  Only hbox and
-      vbox supported right now; other layouts are planned (any takers?)
-    - (bugfix) cond_add_children with condition=false on conditional rendering
-      now compensates for x/y container offset of nonrendered widget.
-    - (change) allow drv->New code in wgtr to have access to the properties
-      for the given widget, by moving the ->New call later in the parse-open-
-      widget process.
-
-    Revision 1.9  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.8  2006/11/16 20:15:54  gbeeley
-    - (change) move away from emulation of NS4 properties in Moz; add a separate
-      dom1html geom module for Moz.
-    - (change) add wgtrRenderObject() to do the parse, verify, and render
-      stages all together.
-    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
-      same way as buttons and editboxes.
-
-    Revision 1.7  2006/10/16 18:34:34  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.6  2006/10/04 17:20:50  gbeeley
-    - (feature) allow application to adjust to user agent's configured text
-      font size.  Especially the Mozilla versions in CentOS have terrible
-      line spacing problems.
-    - (feature) to allow the above, added minimum widget height management to
-      the auto-layout module (apos)
-    - (change) allow floating windows to grow in size if more room is needed
-      inside the window.
-    - (change) for auto-layout, go with the minimum flexibility in any row or
-      column rather than the average.  Not sure of all of the impact of
-      doing this.
-
-    Revision 1.5  2006/04/07 06:48:34  gbeeley
-    - (feature) if a floating object (window) is centered in the original
-      layout, re-center it when resizing things.
-
-    Revision 1.4  2005/10/18 22:47:12  gbeeley
-    - (change) use r_width/r_height instead of the minimums if possible
-
-    Revision 1.3  2005/10/09 07:51:29  gbeeley
-    - (change) popup menus are floating objects like windows.
-    - (change) allow geometry values to be unset
-    - (change) add Parent property to WgtrNode
-
-    Revision 1.2  2005/10/01 00:23:46  gbeeley
-    - (change) renamed 'htmlwindow' to 'childwindow' to remove the terminology
-      dependence on the dhtml/http app delivery mechanism
-
-    Revision 1.1  2005/08/10 16:26:49  ncolson
-    Initial commit of the auto-positioning module.
-    This code is run during the verification of the widget tree in wgtr.c. It's
-    purpose is to make one final pass through the tree to assess the dimensions,
-    types, and structure of the widgets within, and adjust the size and position of
-    each of them in order to scale the layout of the application up or down as is
-    necessary to fit a desired browser window size. This process is guided by the
-    flexibility property of each widget, which specifies how much space a widget
-    can absorb or give up, as well as the size, individual properties, and
-    orientation of each widget relative to all the other widgets.
-
- **END-CVSDATA***********************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -801,22 +683,22 @@ pXArray FirstCross, LastCross;
 	{
 	    FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
 	    LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
-	    if(xaCount(FirstCross))
+	    /*if(xaCount(FirstCross))
 		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
 		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
 	    if(xaCount(LastCross))
 		mssError(1, "APOS", "%d widget(s) crossed the bottom borderline, including %s '%s'", xaCount(LastCross),
-		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);
+		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 	}
 	
     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
-    if(xaCount(FirstCross))
+    /*if(xaCount(FirstCross))
 	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
 	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
     if(xaCount(LastCross))
 	mssError(1, "APOS", "%d widget(s) crossed the right borderline, including %s '%s'", xaCount(LastCross), 
-	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);
+	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 
     return 0;
     

@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <assert.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/exception.h"
@@ -45,182 +46,29 @@
 /*		comments when generating a file.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: stparse.c,v 1.19 2009/07/14 22:08:08 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
-
-    $Log: stparse.c,v $
-    Revision 1.19  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.18  2009/06/24 17:33:19  gbeeley
-    - (change) adding domain param to expGenerateText, so it can be used to
-      generate an expression string with lower domains converted to constants
-    - (bugfix) better handling of runserver() embedded within runclient(), etc
-    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
-    - (bugfix) after a property has been set using reverse evaluation, tag it
-      as modified so it shows up as changed in other expressions using that
-      same object param list
-    - (change) condition() function now uses short-circuit evaluation
-      semantics, so parameters are only evaluated as they are needed... e.g.
-      condition(a,b,c) if a is true, b is returned and c is never evaluated,
-      and vice versa.
-    - (feature) add structure for reverse-evaluation of functions.  The
-      isnull() function now supports this feature.
-    - (bugfix) save/restore the coverage mask before/after evaluation, so that
-      a nested subexpression (eval or subquery) using the same object list
-      will not cause an inconsistency.  Basically a reentrancy bug.
-    - (bugfix) some functions were erroneously depending on the data type of
-      a NULL value to be correct.
-    - (feature) adding truncate() function which is similar to round().
-    - (feature) adding constrain() function which limits a value to be
-      between a given minimum and maximum value.
-    - (bugfix) first() and last() functions were not properly resetting the
-      value to NULL between GROUP BY groups
-    - (bugfix) some expression-to-JS fixes
-
-    Revision 1.17  2008/03/29 02:26:17  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.16  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.15  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.14  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.13  2007/02/22 23:26:44  gbeeley
-    - (debug) adding stPrint_ne() to print out a pStruct tree.
-
-    Revision 1.12  2005/09/30 04:37:10  gbeeley
-    - (change) modified expExpressionToPod to take the type.
-    - (feature) got eval() working
-    - (addition) added expReplaceString() to search-and-replace in an
-      expression tree.
-
-    Revision 1.11  2005/09/17 01:28:19  gbeeley
-    - Some fixes for handling of direct object attributes in expressions,
-      such as /path/to/object:attributename.
-
-    Revision 1.10  2005/02/26 06:42:41  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.9  2004/02/24 20:25:41  gbeeley
-    - misc changes: runclient check in evaltree in stparse, eval() function
-      rejected in sybase driver, update version in centrallix.conf, .cmp
-      extension added for component-decl in types.cfg
-
-    Revision 1.8  2003/11/12 22:21:39  gbeeley
-    - addition of delete support to osml, mq, datafile, and ux modules
-    - added objDeleteObj() API call which will replace objDelete()
-    - stparse now allows strings as well as keywords for object names
-    - sanity check - old rpt driver to make sure it isn't in the build
-
-    Revision 1.7  2003/06/27 21:19:48  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.6  2003/05/30 17:39:53  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.5  2003/03/11 02:19:06  jorupp
-     * fix stGenerateMsg so it actually _writes_ to the file instead of reads from it :)
-
-    Revision 1.4  2002/06/19 23:29:34  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.3  2001/10/22 17:36:05  gbeeley
-    Beginning to add support for JS scripting facilities.
-
-    Revision 1.2  2001/10/17 18:23:04  gbeeley
-    Fixed incorrect licensing header (was LGPL; now GPL).
-
-    Revision 1.1  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.2  2001/07/04 02:57:58  gbeeley
-    Fixed a few error checking and array-overflow problems.
-
-    Revision 1.1.1.1  2001/07/03 01:02:59  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Some function headers ***/
 int st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObjects objlist);
 /*int st_internal_FLStruct(pLxSession s, pStructInf info);*/
+
+
+/*** stPrintInf - print a struct inf tree
+ ***/
+int
+stPrintInf(pStructInf this)
+    {
+    pFile fd;
+
+	fd = fdOpen("/dev/stdout", O_WRONLY, 0600);
+	if (!fd)
+	    return -1;
+	stGenerateMsg(fd, this, 0);
+	fdClose(fd, 0);
+
+    return 0;
+    }
+
 
 /*** stAllocInf - allocate a new StructInf structure.
  ***/
@@ -235,6 +83,22 @@ stAllocInf()
 	SETMAGIC(this,MGK_STRUCTINF);
 	this->Name = nmMalloc(ST_NAME_STRLEN);
 	this->UserData = NULL;
+	this->LinkCnt = 1;
+
+    return this;
+    }
+
+
+/*** stLinkInf - add a reference count to a structinf
+ ***/
+pStructInf
+stLinkInf(pStructInf this)
+    {
+
+	ASSERTMAGIC(this,MGK_STRUCTINF);
+
+	/** Link to this node **/
+	this->LinkCnt++;
 
     return this;
     }
@@ -265,35 +129,143 @@ int stSeparate(pStructInf this){
 /*** stFreeInf - release an existing StructInf, and any sub infs
  ***/
 int
-stFreeInf(pStructInf this)
+stFreeInf_r(pStructInf this, int parentcnt)
     {
-        int i;
+    int i /*,j*/;
+
 	ASSERTMAGIC(this,MGK_STRUCTINF);
 
-	/** Free any subinfs first **/
-	for(i=0;i<this->nSubInf;i++) if (this->SubInf[i]) stFreeInf(this->SubInf[i]);
+	/** Actually release it if the link count goes to zero **/
+	if (parentcnt + this->LinkCnt == 0)
+	    {
+	    /** Free any subinfs first **/
+	    for(i=this->nSubInf-1; i>=0; i--)
+		if (this->SubInf[i])
+		    stFreeInf_r(this->SubInf[i], parentcnt + this->LinkCnt);
 
-	/** Free the subinf array **/
-	if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
+	    /** String need to be deallocated? **/
+	    if (this->Name) nmFree(this->Name,ST_NAME_STRLEN);
+	    if (this->UsrType) nmFree(this->UsrType,ST_USRTYPE_STRLEN);
 
-	/** String need to be deallocated? **/
-	if (this->Name) nmFree(this->Name,ST_NAME_STRLEN);
-	if (this->UsrType) nmFree(this->UsrType,ST_USRTYPE_STRLEN);
+	    /** Release the expression, if any. **/
+	    if (this->Value) expFreeExpression(this->Value);
 
-	/** Release the expression, if any. **/
-	if (this->Value) expFreeExpression(this->Value);
+	    /** Disconnect from parent if there is one. **/
+	    if (this->Parent)
+		{
+		ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
+		for(i=this->Parent->nSubInf-1; i>=0; i--)
+		    {
+		    if (this == this->Parent->SubInf[i])
+			{
+			this->Parent->nSubInf--;
+			memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
+			/*for(j=i;j<this->Parent->nSubInf;j++)
+			    {
+			    this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
+			    }*/
+			this->Parent->SubInf[this->Parent->nSubInf] = NULL;
+			break;
+			}
+		    }
+		this->Parent = NULL;
+		}
 
-	/** Disconnect from parent if there is one. **/
-	stSeparate(this);
-        
-	/** Free the current one. **/
-	nmFree(this,sizeof(StructInf));
+	    /** Disconnect from any remaining children **/
+	    for(i=0; i<this->nSubInf; i++)
+		if (this->SubInf[i])
+		    this->SubInf[i]->Parent = NULL;
+
+	    /** Free the subinf array **/
+	    if (this->SubInf) nmFree(this->SubInf, sizeof(pStructInf)*ST_ALLOCSIZ(this));
+
+	    /** Free the current one. **/
+	    nmFree(this,sizeof(StructInf));
+	    }
 
     return 0;
     }
 
 
-/*** stAddInf - add a subinf to the main inf structure
+int
+stTestAndFreeInf(pStructInf this)
+    {
+    int cnt;
+    pStructInf trace;
+
+	/** Find the inherited ref count **/
+	for(trace=this->Parent,cnt=0; trace; trace=trace->Parent)
+	    {
+	    cnt += trace->LinkCnt;
+	    }
+
+	/** Free/Unlink it **/
+	stFreeInf_r(this, cnt);
+
+    return 0;
+    }
+
+
+int
+stFreeInf(pStructInf this)
+    {
+//        int i;
+	ASSERTMAGIC(this,MGK_STRUCTINF);
+
+	this->LinkCnt--;
+	assert(this->LinkCnt >= 0);
+
+	stTestAndFreeInf(this);
+
+    return 0;
+    }
+
+
+
+//	/** Disconnect from parent if there is one. **/
+//	stSeparate(this);
+//       
+//	/** Free the current one. **/
+//	nmFree(this,sizeof(StructInf));
+
+
+/*** stRemoveInf - removes a node from its parent, freeing it if that causes it
+ *** to have a zero reference count.
+ ***/
+int
+stRemoveInf(pStructInf this)
+    {
+    int i;
+
+	/** Disconnect from parent inf **/
+	if (this->Parent)
+	    {
+	    ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
+	    for(i=this->Parent->nSubInf-1; i>=0; i--)
+		{
+		if (this == this->Parent->SubInf[i])
+		    {
+		    this->Parent->nSubInf--;
+		    memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
+		    this->Parent->SubInf[this->Parent->nSubInf] = NULL;
+		    break;
+		    }
+		}
+	    this->Parent = NULL;
+	    }
+
+	/** See if this needs to be freed **/
+	stFreeInf_r(this, 0);
+
+    return 0;
+    }
+
+
+/*** stAddInf - add a subinf to the main inf structure.  Reference counting note:
+ *** since subinf's "automatically" inherit their parent's reference count, we
+ *** subtract one when adding it to the parent.  The assumption is that the caller
+ *** holds a ref to both the inf and subinf, and so we combine those into one once
+ *** the subinf is added.
  ***/
 int
 stAddInf(pStructInf main_inf, pStructInf sub_inf)
@@ -324,12 +296,15 @@ stAddInf(pStructInf main_inf, pStructInf sub_inf)
 	/** Add it. **/
 	main_inf->SubInf[main_inf->nSubInf++] = sub_inf;
 	sub_inf->Parent = main_inf;
+	sub_inf->LinkCnt--;
 
     return 0;
     }
 
 
-/*** stAddAttr - adds an attribute to the existing inf.
+/*** stAddAttr - adds an attribute to the existing inf.  Reference counting
+ *** note: the new attribute by default will have the same reference count as
+ *** the node it was added to.
  ***/
 pStructInf
 stAddAttr(pStructInf inf, char* name)
@@ -543,6 +518,10 @@ stGetExpression(pStructInf this, int nval)
     {
     pExpression find_exp;
 
+	/** Do some error-cascade checking. **/
+	if (!this) return NULL;
+	if (!this->Value) return NULL;
+	
 	if (!(this->Flags & ST_F_ATTRIB)) return NULL;
 	if (nval == 0 && this->Value->NodeType != EXPR_N_LIST)
 	    {
@@ -575,6 +554,27 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     }
 
 
+/*** stGetObjAttrValue - return the value of an expression in a structure
+ *** file, given the struct node containing the attribute.  This call is
+ *** designed to have the same API as objGetAttrValue().
+ ***/
+int
+stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
+    {
+    pStructInf attr_inf;
+
+	/** Find the attribute **/
+	attr_inf = stLookup(this, attrname);
+	if (!attr_inf)
+	    {
+	    /** NULL value - attribute does not exist **/
+	    return 1;
+	    }
+
+    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL);
+    }
+
+
 /*** stGetAttrValueOSML - return the value of an expression, evaluated
  *** in the context of an OSML session.
  ***/
@@ -601,7 +601,7 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    }
 
 	/** If external ref, do eval **/
-	if ((find_exp->ObjCoverageMask & EXPR_MASK_EXTREF) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
+	if ((find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
 	    objlist = expCreateParamList();
 	    objlist->Session = sess;
@@ -1125,6 +1125,7 @@ st_internal_ParseStruct(pLxSession s, pStructInf *info)
 	if (!*info) return -1;
 	(*info)->Flags |= (ST_F_TOPLEVEL | ST_F_GROUP);
 	objlist = expCreateParamList();
+	expSetEvalDomain(objlist, EXPR_MO_RUNSTATIC);
 	/*expAddParamToList(objlist, "this", NULL, 0);*/
 
 	/** In case we get a parse error: **/
@@ -1314,8 +1315,8 @@ stProbeTypeGeneric(void* read_src, int (*read_fn)(), char* type, int type_maxlen
 	    goto error;
 
 	/** Return the type **/
-	mlxCloseSession(s);
 	strtcpy(type, str, type_maxlen);
+	mlxCloseSession(s);
 	return 0;
 
     error:
@@ -1764,4 +1765,5 @@ stPrint_ne(pStruct inf)
     {
     return stPrint_ne_r(inf, 0);
     }
+
 

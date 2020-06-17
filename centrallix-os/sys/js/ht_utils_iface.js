@@ -319,12 +319,12 @@ function isCancel(c)
 
 // the Action interface Initializer - allows outside objects to invoke
 // 'actions' on a given widget.
-function ifAction()
-    {
     function ifaction_invoke(a,ap) //ap stands for [a]ction [p]arameters (a hash of parameters)
 	{
 	if (this.Actions[a]) 
 	    return this.Actions[a].call(this.obj, ap, a);
+	else if (this.undefined_action)
+	    return this.undefined_action.call(this.obj, ap, a);
 	else if (pg_diag)
 	    alert("Invoke action: " + this.obj.id + " does not implement action " + a);
 	return null;
@@ -359,12 +359,20 @@ function ifAction()
 	    }
 	return alist;
 	}
+    function ifaction_setundefined(cb)
+	{
+	this.undefined_action = cb;
+	}
+function ifAction()
+    {
+    this.undefined_action = null;
     this.Actions = [];
     this.Add = ifaction_add;
     this.Exists = ifaction_exists;
     this.Invoke = ifaction_invoke;
     this.SchedInvoke = ifaction_schedinvoke;
     this.GetActionList = ifaction_getactionlist;
+    this.SetUndefinedAction = ifaction_setundefined;
     }
 
 
@@ -375,8 +383,6 @@ function ifAction()
 // management functions that differ from the already in-built event
 // management functions in the browser. (to allow custom events).
 //
-function ifEvent()
-    {
     function ifevent_add(e)
 	{
 	if (!this.Events[e]) this.Events[e] = [];
@@ -407,6 +413,23 @@ function ifEvent()
 	    }
 	else if (pg_diag)
 	    alert("Hook event: " + this.obj.id + " does not implement event " + e);
+	}
+    function ifevent_unhook(e,f,t)
+	{
+	if (this.Events[e])
+	    {
+	    if (!t)
+		t = this.obj;
+	    for(var i=0; i<this.Events[e].length; i++) 
+		{
+		var eo2 = this.Events[e][i];
+		if (eo2.eo == t && eo2.name == e && eo2.fn == f)
+		    {
+		    this.Events[e].splice(i,1);
+		    break;
+		    }
+		}
+	    }
 	}
     function ifevent_activate(e,ep) //e = event (a string), ep = event parameters
 	{
@@ -472,20 +495,21 @@ function ifEvent()
 		    {
 		    var _context = this.to;
 		    var _this = ep;
+		    ap[pn] = p.value(_context,_this,ep);
 		    //if (pn == 'Source') htr_alert(this, 1);
-		    if (cx__capabilities.JS15)
-			{
-			ep._context = this.to;
+		    /*if (cx__capabilities.JS15)
+			{*/
+			/*ep._context = this.to;
 			ep._this = ep;
 			//ap[pn] = eval(p.value, ep);
-			with (ep) ap[pn] = eval(p.value);
-			}
+			with (ep) ap[pn] = eval(p.value);*/
+			/*}
 		    else
 			{
 			if (typeof ep.eval != 'function')
 			    ep.eval = eval;
 			ap[pn] = ep.eval(p.value);
-			}
+			}*/
 		    }
 		// special case - don't do actions if event condition is false
 		if (pn == 'event_condition')
@@ -557,6 +581,8 @@ function ifEvent()
 	if (this.late_binding && !this.Events[e])
 	    {
 	    this.Add(e);
+	    if (this.new_event_callback)
+		this.new_event_callback.call(this.obj, e);
 	    }
 	if (this.Events[e])
 	    {
@@ -589,12 +615,21 @@ function ifEvent()
 	{
 	return this.late_binding;
 	}
+    function ifevent_set_new_callback(cb)
+	{
+	this.new_event_callback = cb;
+	}
+function ifEvent()
+    {
     this.late_binding = false;
+    this.new_event_callback = null;
     this.EnableLateConnectBinding = ifevent_enable_late;
     this.IsLateBindingEnabled = ifevent_is_late_bind;
+    this.SetNewEventCallback = ifevent_set_new_callback;
     this.Events = [];
     this.Add = ifevent_add;
     this.Hook = ifevent_hook;
+    this.UnHook = ifevent_unhook;
     this.Activate = ifevent_activate;
     this.Connect = ifevent_connect;
     this.Exists = ifevent_exists;
@@ -605,11 +640,9 @@ function ifEvent()
 
 // Value interface. A Value instance is really just a container of
 // key/value pairs.
-function ifValue()
-    {
     function ifvalue_checkexist(n)
 	{
-	if (!this._Attributes[n])
+	if (!(n in this._Attributes))
 	    this._Attributes[n] = {name:n, exists:false, obj:this.obj, instance:this, watchlist:[], get:null, set:null};
 	return this._Attributes[n];
 	}
@@ -732,6 +765,8 @@ function ifValue()
 	return value;
 	}
 
+function ifValue()
+    {
     // Internal declarations
     this._CheckExist = ifvalue_checkexist;
     this._NullNotExist = null; // if defined, this is the handler that runs whenever a value is null or does not exist (instead of an error occurring)

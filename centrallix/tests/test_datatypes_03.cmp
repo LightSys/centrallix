@@ -1,0 +1,21 @@
+Attribute [column_000]: datetime   '01 Mar 2017 12:00' 
+Attribute [column_000]: datetime   '01 Mar 2017 12:00' 
+Attribute [column_000]: datetime   '01 Mar 2017 00:00' 
+Attribute [column_000]: datetime   '01 Mar 2017 15:00' 
+Attribute [column_000]: datetime   '01 Mar 2017 03:00' 
+Attribute [column_000]: datetime   '01 Mar 2017 20:00' 
+Attribute [column_000]: datetime   '01 Mar 1999 20:00' 
+Attribute [column_000]: datetime   '01 Mar 1999 20:00' 
+Attribute [column_000]:  integer  -360
+Attribute [column_000]:  integer  360
+Attribute [column_000]:  integer  360
+Attribute [column_000]:  integer  -360
+Attribute [column_000]:  integer  360
+Attribute [column_000]:  integer  -360
+Attribute [column_000]:  integer  360
+Attribute [column_000]:  integer  -360
+Attribute [column_000]:   string   "2017-03-01 01:01PM" 
+Attribute [column_000]:   string   "17-03-01 13:01" 
+Attribute [column_000]:   string   "03/01/2017 13:02:00" 
+Attribute [column_000]:   string   "2017-Mar-01 13:01:00" 
+Attribute [column_000]:   string   "2017-Mar-01 13:01:59" 

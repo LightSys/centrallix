@@ -12,6 +12,7 @@
 #include "cxlib/cxsec.h"
 #include "stparse_ne.h"
 #include "cxlib/qprintf.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,128 +46,6 @@
 /*		component loaded dynamically.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_component.c,v 1.15 2010/09/09 01:04:17 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
-
-    $Log: htdrv_component.c,v $
-    Revision 1.15  2010/09/09 01:04:17  gbeeley
-    - (bugfix) allow client to specify what scripts (cx__scripts) have already
-      been deployed to the app, to avoid having multiple copies of JS scripts
-      loaded on the client.
-    - (feature) component parameters may contain expressions
-    - (feature) presentation hints may be placed on a component, which can
-      specify what widget in the component those apply to
-
-    Revision 1.14  2009/06/24 21:58:51  gbeeley
-    - (bugfix) properly pass positioning data to components
-    - (feature) add options to expose all actions/events/properties on a
-      widget within a component - useful for wrapping one particular widget.
-
-    Revision 1.13  2008/06/25 18:06:40  gbeeley
-    - (bugfix) use_toplevel_params is a reserved attribute.
-
-    Revision 1.12  2008/03/04 01:10:56  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.11  2007/12/13 23:24:02  gbeeley
-    - (bugfix) component widget should render subwidgets, in order to get any
-      connectors rendered.
-
-    Revision 1.10  2007/12/05 18:51:54  gbeeley
-    - (change) parameters on a static component should not be automatically
-      deployed to the client; adding deploy_to_client boolean on parameters
-      to cause the old behavior.
-
-    Revision 1.9  2007/07/25 16:53:41  gbeeley
-    - (feature) adding "toplevel" boolean property to component, so that
-      component windows can be brought into the application at the top level
-      instead of being clipped by the object that they are inside.
-
-    Revision 1.8  2007/06/06 15:20:09  gbeeley
-    - (feature) pass templates on to components, etc.
-
-    Revision 1.7  2007/04/19 21:26:49  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.6  2007/04/03 15:50:04  gbeeley
-    - (feature) adding capability to pass a widget to a component as a
-      parameter (by reference).
-    - (bugfix) changed the layout logic slightly in the apos module to better
-      handle ratios of flexibility and size when resizing.
-
-    Revision 1.5  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.4  2007/03/10 02:57:40  gbeeley
-    - (bugfix) setup graft point for static components as well as dynamically
-      loaded ones, and allow nested components by saving and restoring previous
-      graft points.
-
-    Revision 1.3  2006/11/16 20:15:53  gbeeley
-    - (change) move away from emulation of NS4 properties in Moz; add a separate
-      dom1html geom module for Moz.
-    - (change) add wgtrRenderObject() to do the parse, verify, and render
-      stages all together.
-    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
-      same way as buttons and editboxes.
-
-    Revision 1.2  2006/10/27 05:57:22  gbeeley
-    - (change) All widgets switched over to use event handler functions instead
-      of inline event scripts in the main .app generated DHTML file.
-    - (change) Reworked the way event capture is done to allow dynamically
-      loaded components to hook in with the existing event handling mechanisms
-      in the already-generated page.
-    - (feature) Dynamic-loading of components now works.  Multiple instancing
-      does not yet work.  Components need not be "rectangular", but all pieces
-      of the component must share a common container.
-
-    Revision 1.1  2006/10/19 21:53:23  gbeeley
-    - (feature) First cut at the component-based client side development
-      system.  Only rendering of the components works right now; interaction
-      with the components and their containers is not yet functional.  For
-      an example, see "debugwin.cmp" and "window_test.app" in the samples
-      directory of centrallix-os.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** globals **/
@@ -308,11 +187,12 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     pStruct old_params = NULL;
     int i;
     char* path;
-    char* templates[WGTR_MAX_TEMPLATE];
     int is_toplevel;
     int old_is_dynamic = 0;
     char* scriptslist;
     pStruct attr_inf;
+    char* slashptr;
+    int new_sec_context = 0;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -364,7 +244,15 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTCMP","Component must specify declaration location with 'path' attribute");
 	    return -1;
 	    }
-	strtcpy(cmp_path, ptr, sizeof(cmp_path));
+	if (ptr[0] != '/')
+	    {
+	    /** Relative pathname -- prepend base dir. **/
+	    snprintf(cmp_path, sizeof(cmp_path), "%s/%s", s->ClientInfo->BaseDir, ptr);
+	    }
+	else
+	    {
+	    strtcpy(cmp_path, ptr, sizeof(cmp_path));
+	    }
 
 	/** Load now, or dynamically later on? **/
 	if (wgtrGetPropertyValue(tree, "mode", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "dynamic"))
@@ -408,7 +296,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Save the current graft point and render parameters **/
 	    old_graft = s->GraftPoint;
-	    qpfPrintf(NULL, sbuf, sizeof(sbuf), "%STR&SYM:%STR&SYM", wgtrGetRootDName(tree), name);
+	    qpfPrintf(NULL, sbuf, sizeof(sbuf), "%STR&SYM:%STR&SYM", wgtrGetNamespace(tree), name);
 	    s->GraftPoint = nmSysStrdup(sbuf);
 	    old_params = s->Params;
 	    s->Params = params;
@@ -417,14 +305,25 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
+		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
 		    name, w,h,x,y);
 
 	    /** Are there any templates we should use **/
-	    memset(templates, 0, sizeof(templates));
+	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
+	    memset(wgtr_params.Templates, 0, sizeof(wgtr_params.Templates));
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    templates[i] = path;
+		    wgtr_params.Templates[i] = path;
+
+	    /** Start a new security authstack context **/
+	    cxssPushContext();
+	    new_sec_context = 1;
+
+	    /** Set up client params **/
+	    wgtr_params.MaxHeight = h;
+	    wgtr_params.MinHeight = h;
+	    wgtr_params.MaxWidth = w;
+	    wgtr_params.MinWidth = w;
 
 	    /** Open and parse the component **/
 	    cmp_obj = objOpen(s->ObjSession, cmp_path, O_RDONLY, 0600, "system/structure");
@@ -433,19 +332,20 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, &wgtr_params, 0);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto out;
 		}
 
-	    /** Set up client params **/
-	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
-	    wgtr_params.MaxHeight = h;
-	    wgtr_params.MinHeight = h;
-	    wgtr_params.MaxWidth = w;
-	    wgtr_params.MinWidth = w;
+	    /** Set base dir **/
+	    wgtr_params.BaseDir = nmSysStrdup(objGetPathname(cmp_obj));
+	    slashptr = strrchr(wgtr_params.BaseDir, '/');
+	    if (slashptr && slashptr != wgtr_params.BaseDir)
+		{
+		*slashptr = '\0';
+		}
 	    
 	    /** Do the layout for the component **/
 	    if (wgtrVerify(cmp_tree, &wgtr_params) < 0)
@@ -459,7 +359,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
 
 	    /** Switch namespaces **/
-	    htrAddNamespace(s, tree, wgtrGetRootDName(cmp_tree));
+	    htrAddNamespace(s, tree, wgtrGetRootDName(cmp_tree), 0);
 
 	    /** Generate the component **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
@@ -470,7 +370,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htrLeaveNamespace(s);
 
 	    /** End Init component **/
-	    htrAddScriptInit_va(s, "    cmp_endinit(nodes[\"%STR&SYM\"]);\n", name);
+	    htrAddScriptInit_va(s, "    cmp_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
+
+	    /** Return to previous security context **/
+	    if (new_sec_context) cxssPopContext();
+	    new_sec_context = 0;
 
 	    /** Restore original graft point and parameters **/
 	    s->Params = old_params;
@@ -485,7 +389,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
+		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
 		    name, is_toplevel, allow_multi, auto_destroy, cmp_path,
 		    name, id,
 		    w, h, x, y);
@@ -494,7 +398,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 		{
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
+		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
 			name, path);
 		}
 
@@ -503,7 +407,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		for(i=0;i<params->nSubInf;i++)
 		    {
-		    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
+		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
 			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal,
 			params->SubInf[i]->StrVal);
 		    }
@@ -511,7 +415,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Dynamic mode -- load from client **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, "");
+	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, NULL, "");
 	    htrAddStylesheetItem_va(s,"\t#cmp%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
 	    }
 
@@ -521,6 +425,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
     out:
 	/** Clean up **/
+	if (new_sec_context) cxssPopContext();
 	if (params)
 	    stFreeInf_ne(params);
 	if (s->IsDynamic == 0 && old_is_dynamic)

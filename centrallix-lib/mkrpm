@@ -23,13 +23,17 @@ fi
 tar -czhf "$PKGNAME-$VERSION.tgz" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION.tgz" --exclude CVS "$PKGNAME-$VERSION" || exit 1
 /bin/rm "$PKGNAME-$VERSION" || exit 1
 
-/bin/cp "$PKGNAME-$VERSION.tgz" "$RPMBUILDDIR"/SOURCES/ || exit 1
-/bin/cp "$PKGNAME.spec" "$RPMBUILDDIR"/SPECS/ || exit 1
+#/bin/cp "$PKGNAME-$VERSION.tgz" "$RPMBUILDDIR"/SOURCES/ || exit 1
+#/bin/cp "$PKGNAME.spec" "$RPMBUILDDIR"/SPECS/ || exit 1
 
-/bin/rm "$PKGNAME-$VERSION.tgz" || exit 1
+#/bin/rm "$PKGNAME-$VERSION.tgz" || exit 1
 
 if [ "$1" = "sign" ]; then
-    rpmbuild --sign -ba "$RPMBUILDDIR"/SPECS/"$PKGNAME.spec" || exit 1
+#    rpmbuild --sign -ba "$RPMBUILDDIR"/SPECS/"$PKGNAME.spec" || exit 1
+    rpmbuild --sign -ta "$PKGNAME-$VERSION.tgz" || exit 1
 else
-    rpmbuild -ba "$RPMBUILDDIR"/SPECS/"$PKGNAME.spec" || exit 1
+#    rpmbuild -ba "$RPMBUILDDIR"/SPECS/"$PKGNAME.spec" || exit 1
+    rpmbuild -ta "$PKGNAME-$VERSION.tgz" || exit 1
 fi
+
+/bin/rm "$PKGNAME-$VERSION.tgz" || exit 1

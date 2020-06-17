@@ -36,10 +36,6 @@
 /* Description:								*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgtlblVerify - allows the driver to check elsewhere in the tree
@@ -63,8 +59,15 @@ int
 wgtlblNew(pWgtrNode node)
     {
 
-	if(node->fl_width < 0) node->fl_width = 1;
-	if(node->fl_height < 0) node->fl_height = 0;
+	/** Default flexibilities **/
+	if (node->fl_width < 0)
+	    node->fl_width = 1;
+	if (node->fl_height < 0)
+	    node->fl_height = 0;
+
+	/** Unset height means auto-height.  Start it based on paragraph height **/
+	if (node->height < 0)
+	    node->height = node->pre_height = node->ClientInfo->ParagraphHeight;
 	
     return 0;
     }

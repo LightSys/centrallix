@@ -32,199 +32,12 @@
 /*		routines.  Formerly a part of obj_query.c.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: expression.h,v 1.21 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
-
-    $Log: expression.h,v $
-    Revision 1.21  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.20  2010/09/08 22:01:25  gbeeley
-    - (bugfix) allow /file/name:"attribute" to be quoted.
-    - (bugfix) order by ... asc/desc keywords are now case insenstive
-    - (bugfix) short-circuit eval was not resulting in aggregates properly
-      evaluating
-    - (change) new API function expModifyParamByID - use this for efficiency
-    - (feature) multi-level aggregate functions now supported, for use when
-      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
-    - (feature) added mathematical and trig functions radians, degrees, sin,
-      cos, tan, asin, acos, atan, atan2, sqrt, square
-
-    Revision 1.19  2010/01/10 07:33:23  gbeeley
-    - (performance) reduce the number of times that subqueries are executed by
-      only re-evaluating them if one of the ObjList entries has changed
-      (instead of re-evaluating every time).  Ideally we should check for what
-      objects are referenced by the subquery, but that is for a later fix...
-
-    Revision 1.18  2009/06/24 17:33:19  gbeeley
-    - (change) adding domain param to expGenerateText, so it can be used to
-      generate an expression string with lower domains converted to constants
-    - (bugfix) better handling of runserver() embedded within runclient(), etc
-    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
-    - (bugfix) after a property has been set using reverse evaluation, tag it
-      as modified so it shows up as changed in other expressions using that
-      same object param list
-    - (change) condition() function now uses short-circuit evaluation
-      semantics, so parameters are only evaluated as they are needed... e.g.
-      condition(a,b,c) if a is true, b is returned and c is never evaluated,
-      and vice versa.
-    - (feature) add structure for reverse-evaluation of functions.  The
-      isnull() function now supports this feature.
-    - (bugfix) save/restore the coverage mask before/after evaluation, so that
-      a nested subexpression (eval or subquery) using the same object list
-      will not cause an inconsistency.  Basically a reentrancy bug.
-    - (bugfix) some functions were erroneously depending on the data type of
-      a NULL value to be correct.
-    - (feature) adding truncate() function which is similar to round().
-    - (feature) adding constrain() function which limits a value to be
-      between a given minimum and maximum value.
-    - (bugfix) first() and last() functions were not properly resetting the
-      value to NULL between GROUP BY groups
-    - (bugfix) some expression-to-JS fixes
-
-    Revision 1.17  2008/09/14 05:17:26  gbeeley
-    - (bugfix) subquery evaluator was leaking query handles if subquery did
-      not return any rows.
-    - (change) add ability to generate expression text based on the domain of
-      evaluation (client, server, etc.)
-
-    Revision 1.16  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.15  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.14  2007/03/21 04:48:09  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.13  2007/03/04 05:04:47  gbeeley
-    - (change) This is a change to the way that expressions track which
-      objects they were last evaluated against.  The old method was causing
-      some trouble with stale data in some expressions.
-
-    Revision 1.12  2005/09/30 04:37:10  gbeeley
-    - (change) modified expExpressionToPod to take the type.
-    - (feature) got eval() working
-    - (addition) added expReplaceString() to search-and-replace in an
-      expression tree.
-
-    Revision 1.11  2005/02/26 06:42:38  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.10  2004/06/12 04:02:27  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.9  2004/02/24 20:28:09  gbeeley
-    - OOPS!  my commit log message messed up the comment structure in
-      this file!
-
-    Revision 1.8  2004/02/24 20:23:00  gbeeley
-    - external reference coverage-mask support to go along with changes to
-      expression/{star}.c files
-
-    Revision 1.7  2003/06/27 21:19:47  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.6  2003/05/30 17:39:50  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.5  2003/04/24 02:13:21  gbeeley
-    Added functionality to handle "domain of execution" to the expression
-    module, allowing the developer to specify the nature of an expression
-    (run on client, server, or static on server).
-
-    Revision 1.4  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.3  2001/10/16 23:53:01  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/10/02 16:23:50  gbeeley
-    Added expGenerateText().
-
-    Revision 1.1.1.1  2001/08/13 18:00:52  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:19  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/xhash.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #define EXPR_MAX_PARAMS		30
 
@@ -238,15 +51,28 @@ typedef struct
     int         Precedence[64];
     XHashTable  Functions;
     XHashTable  ReverseFunctions;
+    unsigned char Random[SHA256_DIGEST_LENGTH];
     }
     EXP_Globals;
 
 extern EXP_Globals EXP;
 
 
+/** description of a property that is in a tree **/
+typedef struct
+    {
+    char*		ObjName;	/* null if unknown or unavailable */
+    int			ObjID;
+    char*		PropName;
+    int			Flags;		/* such as EXPR_F_FREEZEEVAL */
+    }
+    ExpProperty, *pExpProperty;
+
+
 /** expression tree control structure **/
 typedef struct _EC
     {
+    int			LinkCnt;
     int			Remapped:1;
     int			PSeqID;
     int			ObjSeqID[EXPR_MAX_PARAMS];
@@ -298,6 +124,7 @@ typedef struct _ET
     unsigned int	LinkCnt;
     unsigned int	LxFlags;
     unsigned int	CmpFlags;
+    void*		PrivateData;		/* allocated with nmSysMalloc() */
     }
     Expression, *pExpression;
 
@@ -328,10 +155,12 @@ typedef struct _PO
     unsigned char	nObjects;
     char		CurrentID;
     char		ParentID;
-    unsigned char	MainFlags;		/* bitmask EXPR_MO_xxx */
+    unsigned int	MainFlags;		/* bitmask EXPR_MO_xxx */
     unsigned int 	PSeqID;
     int			ModCoverageMask;
     pExpControl		CurControl;
+    int			RandomInit;
+    unsigned char	Random[SHA256_DIGEST_LENGTH];		/* current seed for rand() */
     }
     ParamObjects, *pParamObjects;
 
@@ -343,8 +172,8 @@ typedef struct _PO
 #define EXPR_O_PARENT		8	/* object is parent of current */
 #define EXPR_O_ALLOCNAME	16
 #define EXPR_O_REFERENCED	32	/* object was referenced */
-
-#define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
+#define EXPR_O_ALLOWDUPS	64	/* allow duplicate object names */
+#define EXPR_O_REPLACE		128	/* replace entry on duplicate */
 
 extern pParamObjects expNullObjlist;
 
@@ -391,6 +220,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_RUNCLIENT	4096	/* Run expression on client */
 #define EXPR_F_RUNSERVER	8192	/* Run expression on server */
 #define EXPR_F_RUNSTATIC	16384	/* Run expression as static on server */
+#define EXPR_F_REVERSE		32768	/* Lookup param name in reverse order */
 
 #define EXPR_F_DOMAINMASK	(EXPR_F_RUNSTATIC | EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)
 #define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
@@ -399,6 +229,13 @@ extern pParamObjects expNullObjlist;
 
 #define EXPR_F_HASRUNSERVER	65536	/* Expression contains runserver() */
 
+/*** Expression objlist MainFlags ***/
+#define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
+#define EXPR_MO_RUNSTATIC	EXPR_F_RUNSTATIC
+#define EXPR_MO_RUNSERVER	EXPR_F_RUNSERVER
+#define EXPR_MO_RUNCLIENT	EXPR_F_RUNCLIENT
+#define EXPR_MO_DOMAINMASK	EXPR_F_DOMAINMASK
+
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */
 #define EXPR_CMP_OUTERJOIN	2	/* allow =* and *= for == */
@@ -406,6 +243,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_CMP_LATEBIND	8	/* allow late object name binding */
 #define EXPR_CMP_RUNSERVER	16	/* compile as a 'runserver' expression */
 #define EXPR_CMP_RUNCLIENT	32	/* compile as a 'runclient' expression */
+#define EXPR_CMP_REVERSE	32768	/* Lookup param names in reverse order */
 
 
 /*** Functions ***/
@@ -420,9 +258,14 @@ pExpression expDuplicateExpression(pExpression this);
 int expReplaceString(pExpression this, char* oldstr, char* newstr);
 int expIsConstant(pExpression this);
 pExpression expReducedDuplicate(pExpression this);
+int expCompareExpressions(pExpression exp1, pExpression exp2);
+int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
+int expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa);
+pXArray expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist); /* call with proplist = NULL */
+void expFreeProps(pXArray proplist);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);
@@ -431,12 +274,15 @@ int exp_internal_CopyNode(pExpression src, pExpression dst);
 pExpression exp_internal_CopyTree(pExpression orig_exp);
 int expSplitTree(pExpression src_tree, pExpression split_point, pExpression result_trees[]);
 int exp_internal_EvalTree(pExpression tree, pParamObjects objlist);
+int exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist);
 int exp_internal_DefineFunctions();
 int exp_internal_DefineNodeEvals();
 int expCopyValue(pExpression src, pExpression dst, int make_independent);
 int expAddNode(pExpression parent, pExpression child);
 int expDataTypeToNodeType(int data_type);
 int exp_internal_SetupControl(pExpression exp);
+pExpControl exp_internal_LinkControl(pExpControl ctl);
+int exp_internal_UnlinkControl(pExpControl ctl);
 
 
 /*** Evaluator functions ***/
@@ -461,14 +307,16 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 
 /*** Param-object functions ***/
 pParamObjects expCreateParamList();
-int expCopyList(pParamObjects src, pParamObjects dst);
+int expSetEvalDomain(pParamObjects this, int domain);
+int expCopyList(pParamObjects src, pParamObjects dst, int n_objects);
+int expCopyParams(pParamObjects src, pParamObjects dst, int start, int n_objects);
 int expBindExpression(pExpression exp, pParamObjects this, int domain);
 int expFreeParamList(pParamObjects this);
 int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());
 int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
 int expModifyParam(pParamObjects this, char* name, pObject replace_obj);
 int expModifyParamByID(pParamObjects this, int id, pObject replace_obj);
-int expLookupParam(pParamObjects this, char* name);
+int expLookupParam(pParamObjects this, char* name, int flags);
 int expSyncModify(pExpression tree, pParamObjects objlist);
 int expReplaceID(pExpression tree, int oldid, int newid);
 int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
@@ -478,6 +326,7 @@ int expResetAggregates(pExpression tree, int reset_id, int level);
 int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
 int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
+int expRemoveParamFromListById(pParamObjects this, int i);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);

@@ -52,107 +52,6 @@
 /*		and cells.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_lm_table.c,v 1.14 2007/04/08 03:52:01 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
-
-    $Log: prtmgmt_v3_lm_table.c,v $
-    Revision 1.14  2007/04/08 03:52:01  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.13  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.12  2007/02/17 04:34:51  gbeeley
-    - (bugfix) test_obj should open destination objects with O_TRUNC
-    - (bugfix) prtmgmt should remember 'configured' line height, so it can
-      auto-adjust height only if the line height is not explicitly set.
-    - (change) report writer should assume some default margin settings on
-      tables/table cells, so that tables aren't by default ugly :)
-    - (bugfix) various floating point comparison fixes
-    - (feature) allow top/bottom/left/right border options on the entire table
-      itself in a report.
-    - (feature) allow setting of text line height with "lineheight" attribute
-    - (change) allow table to auto-scale columns should the total of column
-      widths and separations exceed the available inner width of the table.
-    - (feature) full justification of text.
-
-    Revision 1.11  2005/03/01 07:13:13  gbeeley
-    - minor tweak to how breaking of tables is done when the page fills up.
-
-    Revision 1.10  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.9  2003/07/09 18:10:02  gbeeley
-    Further fixes and enhancements to prtmgmt layer, particularly regarding
-    visual layout of graphical borders around objects; border/shadow
-    thickness is now automatically computed into the total margin between
-    exterior edges and interior edges of an object.
-
-    Revision 1.8  2003/06/27 21:19:48  gbeeley
-    Okay, breaking the reporting system for the time being while I am porting
-    it to the new prtmgmt subsystem.  Some things will not work for a while...
-
-    Revision 1.7  2003/04/21 21:00:45  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
-    Revision 1.6  2003/03/15 04:46:00  gbeeley
-    Added borders to tables.  Not fully tested yet.  Added a new component
-    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
-    the border.  The reporting objdriver is going to have to really
-    simplify the margins/borders stuff on tables because there are so many
-    params that can be set - it can be confusing and hard to get right.
-
-    Revision 1.5  2003/03/12 20:51:37  gbeeley
-    Tables now working, but borders on tables not implemented yet.
-    Completed the prt_internal_Duplicate routine and reworked the
-    API interface to InitContainer on the layout managers.  Not all
-    features/combinations on tables have been tested.  Footers on
-    tables not working but (repeating) headers are.  Added a new
-    prt obj stream field called "ContentSize" which provides the
-    allocated memory size of the "Content" field.
-
-    Revision 1.4  2003/03/07 06:16:12  gbeeley
-    Added border-drawing functionality, and converted the multi-column
-    layout manager to use that for column separators.  Added border
-    capability to textareas.  Reworked the deinit/init kludge in the
-    Reflow logic.
-
-    Revision 1.3  2003/03/06 02:52:35  gbeeley
-    Added basic rectangular-area support (example - border lines for tables
-    and separator lines for multicolumn areas).  Works on both PCL and
-    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
-    to work consistently on my system, however.  Warning: using large
-    dimensions for the 'rectangle' command in test_prt may consume much
-    printer ink!!  Now it's time to go watch the thunderstorms....
-
-    Revision 1.2  2003/03/03 23:45:22  gbeeley
-    Added support for multi-column formatting where columns are not equal
-    in width.  Specifying width/height as negative when adding one object
-    to another causes that object to fill its container in the respective
-    dimension(s).  Fixed a bug in the Justification logic.
-
-    Revision 1.1  2003/03/02 04:17:35  gbeeley
-    Adding skeleton tabular layout manager, for table/row/cell formatted
-    data.
-
-
- **END-CVSDATA***********************************************************/
 
 
 
@@ -163,10 +62,14 @@
 int
 prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     {
-    pPrtObjStream new_parent, cur_parent, new_obj;
+    pPrtObjStream new_parent, cur_parent, new_obj, search_obj;
     pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
     pPrtTabLMData new_lm_inf;
+    pPrtObjStream new_cells[PRT_TABLM_MAXCOLS];
+    int n_cells = 0;
+    int err,i;
 
+	PRT_DEBUG("prt_tablm_Break() %s %8.8x\n", this->ObjType->TypeName, this);
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -186,48 +89,124 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    }
 
 	/** If this is a cell, it only breaks with its row. **/
-	if (this->ObjType->TypeID == PRT_OBJ_T_TABLECELL || this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+	switch(this->ObjType->TypeID)
 	    {
-	    new_obj = prt_internal_Duplicate(this,0);
-	    cur_parent = this->Parent;
-	    prtUpdateHandleByPtr(this, new_obj);
-	    if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
-		{
-		/** Row won't break, so neither will the cell. **/
-		prtUpdateHandleByPtr(new_obj, this);
-		new_obj->LayoutMgr->DeinitContainer(new_obj);
-		prt_internal_FreeObj(new_obj);
+	    case PRT_OBJ_T_TABLECELL:
+		/** For cells, we need to prepare to replicate all cells in the row, 
+		 ** so that our new cell is in the right position in the new row
+		 ** on the following page.
+		 **/
+		search_obj = this;
+		while (search_obj->Prev) search_obj = search_obj->Prev;
+		n_cells = 0;
+		while (search_obj)
+		    {
+		    if (n_cells >= PRT_TABLM_MAXCOLS)
+			break;
+		    new_cells[n_cells] = prt_internal_Duplicate(search_obj, 0);
+		    if (search_obj == this)
+			new_obj = new_cells[n_cells];
+		    search_obj->LinkNext = new_cells[n_cells];
+		    new_cells[n_cells]->LinkPrev = search_obj;
+		    n_cells++;
+		    search_obj = search_obj->Next;
+		    }
+		cur_parent = this->Parent;
+		prtUpdateHandleByPtr(this, new_obj);
+		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		    {
+		    /** Row won't break, so neither will this cell. **/
+		    prtUpdateHandleByPtr(new_obj, this);
+		    for(i=0;i<n_cells;i++)
+			{
+			new_cells[i]->LinkPrev->LinkNext = NULL;
+			new_obj->LayoutMgr->DeinitContainer(new_cells[i]);
+			prt_internal_FreeObj(new_cells[i]);
+			}
+		    return -1;
+		    }
+
+		/** Add our duplicated (continuation) objects to the new page **/
+		err = 0;
+		for(i=0;i<n_cells;i++)
+		    {
+		    if (new_parent->LayoutMgr->AddObject(new_parent, new_cells[i]) < 0)
+			{
+			/** Argh.  We're in a bad state if we leave new_obj
+			 ** dangling.  Lesser of evils is to force-add it.
+			 **/
+			prt_internal_Add(new_parent, new_cells[i]);
+			err = 1;
+			}
+		    }
+		if (err)
+		    {
+		    *new_this = new_obj;
+		    return -1;
+		    }
+		break;
+
+	    case PRT_OBJ_T_TABLEROW:
+		new_obj = prt_internal_Duplicate(this,0);
+		cur_parent = this->Parent;
+		prtUpdateHandleByPtr(this, new_obj);
+		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		    {
+		    /** Table won't break, so neither will this row. **/
+		    prtUpdateHandleByPtr(new_obj, this);
+		    new_obj->LayoutMgr->DeinitContainer(new_obj);
+		    prt_internal_FreeObj(new_obj);
+		    return -1;
+		    }
+
+		/** Add our duplicated (continuation) object to the new page **/
+		if (new_parent->LayoutMgr->AddObject(new_parent, new_obj) < 0)
+		    {
+		    /** Argh.  We're in a bad state if we leave new_obj
+		     ** dangling.  Lesser of evils is to force-add it.
+		     **/
+		    prt_internal_Add(new_parent, new_obj);
+		    *new_this = new_obj;
+		    return -1;
+		    }
+		break;
+
+	    case PRT_OBJ_T_TABLE:
+		/** Table.  We need to break it, but also include the header if there is one. **/
+		new_obj = prt_internal_Duplicate(this,0);
+		new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
+		cur_parent = this->Parent;
+		prtUpdateHandleByPtr(this, new_obj);
+		if (lm_inf->HeaderRow)
+		    {
+		    new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
+		    prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
+		    }
+		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		    {
+		    /** Row won't break, so neither will the cell. **/
+		    prtUpdateHandleByPtr(new_obj, this);
+		    prt_internal_FreeTree(new_obj);
+		    return -1;
+		    }
+
+		/** Add our duplicated (continuation) object to the new page **/
+		if (new_parent->LayoutMgr->AddObject(new_parent, new_obj) < 0)
+		    {
+		    /** Argh.  We're in a bad state if we leave new_obj
+		     ** dangling.  Lesser of evils is to force-add it.
+		     **/
+		    prt_internal_Add(new_parent, new_obj);
+		    *new_this = new_obj;
+		    return -1;
+		    }
+		break;
+
+	    default:
+		/** What kind of object is this? **/
 		return -1;
-		}
-	    }
-	else if (this->ObjType->TypeID == PRT_OBJ_T_TABLE)
-	    {
-	    /** Table.  We need to break it, but also include the header if there is one. **/
-	    new_obj = prt_internal_Duplicate(this,0);
-	    new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
-	    cur_parent = this->Parent;
-	    prtUpdateHandleByPtr(this, new_obj);
-	    if (lm_inf->HeaderRow)
-		{
-		new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
-		prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
-		}
-	    if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
-		{
-		/** Row won't break, so neither will the cell. **/
-		prtUpdateHandleByPtr(new_obj, this);
-		prt_internal_FreeTree(new_obj);
-		return -1;
-		}
-	    }
-	else
-	    {
-	    /** What kind of object is this? **/
-	    return -1;
 	    }
 
-	/** Add our duplicated (continuation) cell object to the row on the new page **/
-	new_parent->LayoutMgr->AddObject(new_parent, new_obj);
 	*new_this = new_obj;
 
 	/** Link to previous/next containers if the page was not ejected yet **/
@@ -247,6 +226,7 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 int
 prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
     {
+	PRT_DEBUG("prt_tablm_ChildBreakReq() %s %8.8x %s %8.8x\n", this->ObjType->TypeName, this, child->ObjType->TypeName, child);
     return this->LayoutMgr->Break(this, new_this);
     }
 
@@ -260,9 +240,10 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
 int
 prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
-    pPrtObjStream table_obj, new_parent, old_parent;
+    pPrtObjStream table_obj, new_parent, old_parent = NULL;
     double new_height;
 
+	PRT_DEBUG("prt_tablm_ChildResizeReq() %s %8.8x %s %8.8x\n", this->ObjType->TypeName, this, child->ObjType->TypeName, child);
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -303,7 +284,7 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
 		    {
 		    table_obj = this->Parent;
-		    new_parent = NULL;
+		    new_parent = old_parent;
 		    old_parent = table_obj->Parent;
 		    prt_internal_MakeOrphan(table_obj);
 
@@ -314,17 +295,27 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		    if (old_parent->LayoutMgr->Break(old_parent, &new_parent) >= 0)
 			{
 			/** break succeeded, now re-add table to new parent. **/
-			new_parent->LayoutMgr->AddObject(new_parent, table_obj);
+			if (new_parent->LayoutMgr->AddObject(new_parent, table_obj) >= 0)
+			    {
+			    /** Object added - try to resize once again. **/
+			    return this->LayoutMgr->Resize(this, this->Width, new_height);
+			    }
+			else
+			    {
+			    prt_internal_Add(new_parent, table_obj);
+			    return -1;
+			    }
+			}
 
-			/** Try to resize once again. **/
-			return this->LayoutMgr->Resize(this, this->Width, new_height);
-			}
-		    else
-			{
-			/** break failed, re-add to old container.  Bad news though. **/
-			old_parent->LayoutMgr->AddObject(old_parent, table_obj);
-			return -1;
-			}
+		    /** break failed, re-add to old container.  Bad news though.  If
+		     ** the new_parent got set to NULL, we no longer have an old_parent
+		     ** or a new_parent.  Exit without doing anything.
+		     **/
+		    if (new_parent)
+			prt_internal_Add(new_parent, table_obj);
+		    /*if (new_parent == old_parent)
+			old_parent->LayoutMgr->AddObject(old_parent, table_obj);*/
+		    return -1;
 		    }
 		}
 
@@ -335,18 +326,29 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		{
 		table_obj = this->Parent;
 		prt_internal_MakeOrphan(this);
+		new_parent = table_obj;
 		if (table_obj->LayoutMgr->Break(table_obj, &new_parent) >= 0)
 		    {
 		    /** Break worked.  Re-add row to new table and attempt to resize. **/
-		    new_parent->LayoutMgr->AddObject(new_parent, this);
-		    return this->LayoutMgr->Resize(this, this->Width, new_height);
+		    if (new_parent->LayoutMgr->AddObject(new_parent, this) >= 0)
+			{
+			return this->LayoutMgr->Resize(this, this->Width, new_height);
+			}
+		    else
+			{
+			prt_internal_Add(new_parent, this);
+			return -1;
+			}
 		    }
-		else
-		    {
-		    /** break failed, re-add to old container.  Bad news though. **/
-		    table_obj->LayoutMgr->AddObject(table_obj, this);
-		    return -1;
-		    }
+
+		/** break failed, re-add to old container.  Bad news though.  If
+		 ** the new_parent got set to NULL, we no longer have a table_obj
+		 ** or a new_parent.  Exit without doing anything.
+		 **/
+		prt_internal_Add(new_parent, this);
+		/*if (new_parent == table_obj)
+		    table_obj->LayoutMgr->AddObject(table_obj, this);*/
+		return -1;
 		}
 
 	    /** Failed **/
@@ -385,6 +387,7 @@ prt_tablm_Resize(pPrtObjStream this, double new_width, double new_height)
     double ow, oh;
     pPrtObjStream peers;
 
+	PRT_DEBUG("prt_tablm_Resize() %s %8.8x %.2lf %.2lf\n", this->ObjType->TypeName, this, new_width, new_height);
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -461,11 +464,12 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	    totalwidth += lm_inf->ColWidths[i];
 	    }
 
-	/** Check total of column widths. **/
-	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
+	/** Check total of column widths.  If too wide, we always scale it back
+	 ** to fit.  If too narrow, we only scale it to fill if AUTOWIDTH is
+	 ** enabled.
+	 **/
+	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE) || (lm_inf->Flags & PRT_TABLM_F_AUTOWIDTH))
 	    {
-	    /*mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
-	    return -EINVAL;*/
 	    for(i=0;i<lm_inf->nColumns;i++)
 		{
 		lm_inf->ColWidths[i] *= (prtInnerWidth(this)/totalwidth);
@@ -571,11 +575,18 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 		new_child_obj->X = parent_lm_inf->ColX[parent_lm_inf->CurColID];
 		new_child_obj->Width = parent_lm_inf->ColWidths[parent_lm_inf->CurColID];
+		for(i=1;i<lm_inf->ColSpan && i+parent_lm_inf->CurColID < parent_lm_inf->nColumns;i++)
+		    {
+		    new_child_obj->Width += parent_lm_inf->ColSep;
+		    new_child_obj->Width += parent_lm_inf->ColWidths[i+parent_lm_inf->CurColID];
+		    }
 		if (new_child_obj->Height < 0)
 		    new_child_obj->Height = prtInnerHeight(this);
 		new_child_obj->Y = 0.0;
 		new_child_obj->ObjID = parent_lm_inf->CurColID;
-		parent_lm_inf->CurColID++;
+		parent_lm_inf->CurColID += lm_inf->ColSpan;
+		if (parent_lm_inf->CurColID > parent_lm_inf->nColumns)
+		    parent_lm_inf->CurColID = parent_lm_inf->nColumns;
 		}
 	    else
 		{
@@ -699,6 +710,13 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		    {
 		    lm_inf->ColWidths[i] = prtUnitX(this->Session, widths[i]);
 		    }
+		}
+	    else if (!strcmp(attrname, "autowidth"))
+		{
+		if (va_arg(va, int) != 0)
+		    lm_inf->Flags |= PRT_TABLM_F_AUTOWIDTH;
+		else
+		    lm_inf->Flags &= ~PRT_TABLM_F_AUTOWIDTH;
 		}
 	    else if (!strcmp(attrname, "colsep"))
 		{
@@ -930,6 +948,7 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
     pPrtTabLMData lm_inf = (pPrtTabLMData)(cell->LMData);
     char* attrname;
     pPrtBorder b;
+    int n;
 
 	/** Info already provided? **/
 	if (old_lm_data)
@@ -941,6 +960,7 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
 	/** Set up the defaults **/
 	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
 	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
+	lm_inf->ColSpan = 1;
 
 	/** Get params from the caller **/
 	while(va && (attrname = va_arg(va, char*)) != NULL)
@@ -993,6 +1013,12 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->OuterBorder), b, sizeof(PrtBorder));
 		else memset(&(lm_inf->OuterBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "colspan"))
+		{
+		n = va_arg(va, int);
+		if (n >= 1)
+		    lm_inf->ColSpan = n;
 		}
 	    }
 

@@ -10,6 +10,7 @@
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxlib/xarray.h"
 
 
 /************************************************************************/
@@ -42,59 +43,6 @@
 /* Description:	Provides support for UPDATE statements.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: multiq_update.c,v 1.5 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_update.c,v $
-
-    $Log: multiq_update.c,v $
-    Revision 1.5  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.4  2010/09/08 22:22:43  gbeeley
-    - (bugfix) DELETE should only mark non-provided objects as null.
-    - (bugfix) much more intelligent join dependency checking, as well as
-      fix for queries containing mixed outer and non-outer joins
-    - (feature) support for two-level aggregates, as in select max(sum(...))
-    - (change) make use of expModifyParamByID()
-    - (change) disable RequestNotify mechanism as it needs to be reworked.
-
-    Revision 1.3  2010/01/10 07:51:06  gbeeley
-    - (feature) SELECT ... FROM OBJECT /path/name selects a specific object
-      rather than subobjects of the object.
-    - (feature) SELECT ... FROM WILDCARD /path/name*.ext selects from a set of
-      objects specified by the wildcard pattern.  WILDCARD and OBJECT can be
-      combined.
-    - (feature) multiple statements per SQL query now allowed, with the
-      statements terminated by semicolons.
-
-    Revision 1.2  2009/06/26 16:04:26  gbeeley
-    - (feature) adding DELETE support
-    - (change) HAVING clause now honored in INSERT ... SELECT
-    - (bugfix) some join order issues resolved
-    - (performance) cache 0 or 1 row result sets during a join
-    - (feature) adding INCLUSIVE option to SUBTREE selects
-    - (bugfix) switch to qprintf for building RawData sql data
-    - (change) some minor refactoring
-
-    Revision 1.1  2008/03/19 07:30:53  gbeeley
-    - (feature) adding UPDATE statement capability to the multiquery module.
-      Note that updating was of course done previously, but not via SQL
-      statements - it was programmatic via objSetAttrValue.
-    - (bugfix) fixes for two bugs in the expression module, one a memory leak
-      and the other relating to null values when copying expression values.
-    - (bugfix) the Trees array in the main multiquery structure could
-      overflow; changed to an xarray.
-
-
- **END-CVSDATA***********************************************************/
 
 
 struct
@@ -146,7 +94,8 @@ mquAnalyze(pQueryStatement stmt)
 		    if (from_qs->Children.nItems == 1 || (item->Flags & MQ_SF_IDENTITY))
 			{
 			src_idx = expLookupParam(stmt->Query->ObjList, 
-					item->Presentation[0]?(item->Presentation):(item->Source));
+					item->Presentation[0]?(item->Presentation):(item->Source),
+					0);
 			}
 		    }
 		}
@@ -286,9 +235,8 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	/** Set iteration cnt to 0 **/
 	qe->IterCnt = 0;
 
-	objects_to_update = (pXArray)nmMalloc(sizeof(XArray));
+	objects_to_update = xaNew(16);
 	if (!objects_to_update) goto error;
-	xaInit(objects_to_update, 16);
 
 	/** Retrieve matching records **/
 	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, stmt)) == 1)
@@ -302,7 +250,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		/** Save it for later **/
 		objlist = expCreateParamList();
 		if (!objlist) goto error;
-		expCopyList(stmt->Query->ObjList, objlist);
+		expCopyList(stmt->Query->ObjList, objlist, -1);
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xaAddItem(objects_to_update, (void*)objlist);
 		}
@@ -320,7 +268,8 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	for(j=0;j<objects_to_update->nItems;j++)
 	    {
 	    objlist = (pParamObjects)xaGetItem(objects_to_update, j);
-	    expCopyList(objlist, stmt->Query->ObjList);
+	    expCopyList(objlist, stmt->Query->ObjList, -1);
+	    //expCopyParams(objlist, stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 
 	    /** Loop through list of values to set **/
 	    for(i=0;i<qe->AttrNames.nItems;i++)
@@ -373,8 +322,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    expFreeParamList(objlist);
 		    }
 		}
-	    xaDeInit(objects_to_update);
-	    nmFree(objects_to_update, sizeof(XArray));
+	    xaFree(objects_to_update);
 	    }
 
 	/** Close the SELECT **/

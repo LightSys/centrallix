@@ -80,12 +80,22 @@ function cmpd_post_init()
 	    var elist = ewidget.ifcProbe(ifEvent).GetEventList();
 	    for(var e in elist)
 		{
-		if (!this.ifcProbe(ifAction).Exists(elist[e]))
+		var ename = elist[e];
+		if (!this.ifcProbe(ifAction).Exists(ename))
 		    {
-		    if (!this.shell.ifcProbe(ifEvent).Exists(elist[e]))
-			this.shell.ifcProbe(ifEvent).Add(elist[e]);
-		    this.ifcProbe(ifAction).Add(elist[e], new Function('aparam','return this.handleAction("' + elist[e] + '",aparam);'));
-		    ewidget.ifcProbe(ifEvent).Connect(elist[e], wgtrGetName(this), elist[e], null);
+		    if (!this.shell.ifcProbe(ifEvent).Exists(ename))
+			this.shell.ifcProbe(ifEvent).Add(ename);
+		    //this.ifcProbe(ifAction).Add(ename, new Function('aparam','return this.handleAction("' + ename + '",aparam);'));
+		    this.ifcProbe(ifAction).Add(ename,
+			    (function(e)
+				{
+				return function(aparam)
+				    {
+				    return this.handleAction(e,aparam);
+				    }
+				}
+			    )(ename) );
+		    ewidget.ifcProbe(ifEvent).Connect(ename, wgtrGetName(this), ename, null);
 		    }
 		}
 	    }
@@ -185,7 +195,8 @@ function cmpd_add_action(a)
 
 function cmpd_add_event(e)
     {
-    this.ifcProbe(ifAction).Add(e, new Function('aparam','this.handleAction("' + e + '",aparam);'));
+    //this.ifcProbe(ifAction).Add(e, new Function('aparam','this.handleAction("' + e + '",aparam);'));
+    this.ifcProbe(ifAction).Add(e, function(aparam) { this.handleAction(e,aparam); } );
     this.shell.ifcProbe(ifEvent).Add(e);
     return;
     }

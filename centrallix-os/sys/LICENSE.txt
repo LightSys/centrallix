@@ -1,16 +1,26 @@
-This is the license for the /sys directory and its contents (images
-and javascript files).  Note that the /samples directory in this
-package and other Centrallix components are under different 
-licenses.  See the LICENSE or LICENSE.txt files in each package for
-more information.
+License for /sys (except /sys/js/crypto-js):
+
+This is the license for the /sys directory and most of its contents.
+Note that the /samples directory in this package and other Centrallix
+components are under different licenses.  See the LICENSE or LICENSE.txt
+files in each package for more information.
 
 This library is made available under the GNU Lesser General Public
 License, version 2.1.  See the file "COPYING" provided with this
 library in the /sys directory for more details.
 
-Copyright (C) 1998-2010 LightSys Technology Services, Inc.
+Copyright (C) 1998-2011 LightSys Technology Services, Inc.
 
 You may download the source to this library at:
 
 http://centrallix.sourceforge.net/
 
+
+License for /sys/js/crypto-js:
+
+(c) 2009-2011 by Jeff Mott, using a 3-Clause BSD license, compatible with
+GPL.  See LICENSE in the crypto-js directory for details.
+
+License for /sys/js/chartjs:
+
+(c) 2015 by Joe Haddad, using the MIT License.  See LICENSE in the chartjs directory for details.

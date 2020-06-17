@@ -1,0 +1,57 @@
+$Version=2$
+plugin_nav_logic "widget/component-decl"
+    {
+    title = "Logic";
+    seq = 5;
+    height=408; width=498;
+
+    detail_osrc "widget/parameter" { type=object; find_container="widget/osrc"; }
+
+    logic_osrc "widget/osrc"
+	{
+	sql = "	select
+			source=isnull(:source, :__cx_parentname),
+			srctype=(select substring(:outer_type,8) from inclusive subtree /apps/nav/index.app cn where isnull(:cmp:source, :cmp:__cx_parentname) = :cn:name),
+			target=isnull(:target, :__cx_parentname),
+			tgttype=(select substring(:outer_type,8) from inclusive subtree /apps/nav/index.app cn where isnull(:cmp:target, :cmp:__cx_parentname) = :cn:name),
+			:event,
+			:action
+		from
+			inclusive subtree /apps/nav/index.app cmp
+		where
+			:outer_type = 'widget/connector'
+		";
+
+	baseobj = "/apps/nav/index.app";
+	replicasize=100;
+	readahead=100;
+	autoquery = never;
+
+	update_logic_osrc "widget/connector"
+	    {
+	    source = detail_osrc;
+	    event_condition=runclient(:detail_osrc:type == 'widget/page' or :detail_osrc:type == 'widget/component-decl');
+	    event = EndQuery;
+	    action = ChangeSource;
+	    Source = runclient(:detail_osrc:objpath);
+	    }
+
+	logic_pane "widget/pane"
+	    {
+	    x=0; y=0; width=498; height=408;
+	    widget_class = table_bgnd;
+
+	    logic_table "widget/table"
+		{
+		x=0; y=0; width=496; height=406;
+
+		t_sname "widget/table-column" { title="Event Source"; fieldname="source"; width=100; }
+		t_stype "widget/table-column" { title="Source Type"; fieldname="srctype"; width=100; }
+		t_ev "widget/table-column" { title="Event"; fieldname="event"; width=100; }
+		t_tname "widget/table-column" { title="Action Target"; fieldname="target"; width=100; }
+		t_ttype "widget/table-column" { title="Target Type"; fieldname="tgttype"; width=100; }
+		t_ac "widget/table-column" { title="Action"; fieldname="action"; width=100; }
+		}
+	    }
+	}
+    }

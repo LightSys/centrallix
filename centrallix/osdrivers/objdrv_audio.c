@@ -55,76 +55,6 @@
 /*		objectsystem.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_audio.c,v 1.6 2007/04/08 03:52:00 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_audio.c,v $
-
-    $Log: objdrv_audio.c,v $
-    Revision 1.6  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.5  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.4  2004/06/23 21:33:55  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.3  2004/06/11 21:06:57  mmcgill
-    Did some code tree scrubbing.
-
-    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
-    xxxExecuteMethod() to use pObjData as the type for val (or param in
-    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
-    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
-    overflow in objdrv_shell.c (line 1046).
-
-    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
-    broken as of right now.
-
-    It should be noted that I haven't actually built the audio or Berkeley
-    drivers, so I *could* have messed up, but they look ok. The others
-    compiled, and passed a cursory testing.
-
-    Revision 1.2  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.1  2001/11/12 20:43:44  gbeeley
-    Added execmethod nonvisual widget and the audio /dev/dsp device obj
-    driver.  Added "execmethod" ls__mode in the HTTP network driver.
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -161,7 +91,6 @@ void*
 audOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pAudData inf;
-    char* node_path;
     pSnNode node = NULL;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
@@ -169,9 +98,6 @@ audOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    return NULL;
 	    }
-
-	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** try to open it **/
 	node = snReadNode(obj->Prev);
@@ -242,7 +168,6 @@ audCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 audDelete(pObject obj, pObjTrxTree* oxt)
     {
-    char* node_path;
     pSnNode node;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
@@ -252,7 +177,6 @@ audDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	node = snReadNode(obj->Prev);
 	if (!node) 
 	    {
@@ -439,7 +363,6 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pAudData inf = AUD(inf_v);
     pStructInf find_inf;
     int type;
-    int n;
 
 	/** right now, all audio device attrs are strings **/
 	if (datatype != DATA_T_STRING)
@@ -493,7 +416,6 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	if (!find_inf)
 	    {
 	    find_inf = stAddAttr(inf->AttrOverride, attrname);
-	    n = 0;
 	    }
 
 	/** Set the value. **/

@@ -40,54 +40,6 @@
 /* Description:	HTML Widget driver for the 'object canvas'		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_objcanvas.c,v 1.4 2007/04/19 21:26:49 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_objcanvas.c,v $
-
-    $Log: htdrv_objcanvas.c,v $
-    Revision 1.4  2007/04/19 21:26:49  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.3  2006/10/16 18:34:34  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.2  2005/02/26 06:42:37  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.1  2004/12/31 04:35:17  gbeeley
-    - Adding the Object Canvas widget, an objectsource client which allows
-      data to be displayed visually on a canvas (useful with maps and diagrams
-      and such).  Link a form to the osrc as well and have some fun :)
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
@@ -138,7 +90,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 
 	/** objectsource specified? **/
 	if (wgtrGetPropertyValue(oc_node, "source", DATA_T_STRING, POD(&ptr)) != 0)
-	    strcpy(osrc, "null");
+	    strcpy(osrc, "");
 	else
 	    strtcpy(osrc, ptr, sizeof(osrc));
 
@@ -158,7 +110,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	else
 	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 
-	htrAddWgtrObjLinkage_va(s, oc_node, "htr_subel(_parentctr,\"oc%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase",id);
 
 	/** Include our necessary supporting js files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_objcanvas.js", 0);
@@ -172,8 +124,8 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "oc", "oc_mouseout");
    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    oc_init({layer:nodes[\"%STR&SYM\"], osrc:nodes[\"%STR&SYM\"], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
-		name, osrc, allow_select, show_select, name);
+	htrAddScriptInit_va(s, "    oc_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), osrc:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
+		name, *osrc, osrc, !*osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\">\n",id);

@@ -44,155 +44,6 @@
 /*		back to its textual representation.			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: exp_generator.c,v 1.15 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
-
-    $Log: exp_generator.c,v $
-    Revision 1.15  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.14  2009/06/24 17:33:19  gbeeley
-    - (change) adding domain param to expGenerateText, so it can be used to
-      generate an expression string with lower domains converted to constants
-    - (bugfix) better handling of runserver() embedded within runclient(), etc
-    - (feature) allow subtracting strings, e.g., "abcde" - "de" == "abc"
-    - (bugfix) after a property has been set using reverse evaluation, tag it
-      as modified so it shows up as changed in other expressions using that
-      same object param list
-    - (change) condition() function now uses short-circuit evaluation
-      semantics, so parameters are only evaluated as they are needed... e.g.
-      condition(a,b,c) if a is true, b is returned and c is never evaluated,
-      and vice versa.
-    - (feature) add structure for reverse-evaluation of functions.  The
-      isnull() function now supports this feature.
-    - (bugfix) save/restore the coverage mask before/after evaluation, so that
-      a nested subexpression (eval or subquery) using the same object list
-      will not cause an inconsistency.  Basically a reentrancy bug.
-    - (bugfix) some functions were erroneously depending on the data type of
-      a NULL value to be correct.
-    - (feature) adding truncate() function which is similar to round().
-    - (feature) adding constrain() function which limits a value to be
-      between a given minimum and maximum value.
-    - (bugfix) first() and last() functions were not properly resetting the
-      value to NULL between GROUP BY groups
-    - (bugfix) some expression-to-JS fixes
-
-    Revision 1.13  2008/09/14 05:17:27  gbeeley
-    - (bugfix) subquery evaluator was leaking query handles if subquery did
-      not return any rows.
-    - (change) add ability to generate expression text based on the domain of
-      evaluation (client, server, etc.)
-
-    Revision 1.12  2008/06/25 01:04:58  gbeeley
-    - (bugfix) switch to cxjs_plus instead of just the + operator when adding
-      values in cxsql expressions deployed into javascript.  The + operator in
-      cxsql has slightly different semantics than the + operator in javascript.
-
-    Revision 1.11  2007/03/21 04:48:08  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.10  2007/03/12 19:18:32  gbeeley
-    - (change) use a function to fetch a prop value in a JS expression, so we
-      can catch undefined properties and objects.
-
-    Revision 1.9  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.8  2006/10/16 18:34:33  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.7  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.6  2004/08/30 03:22:52  gbeeley
-    - use cxjs_xxxyyy() for all javascript funcs in runclient() expressions now.
-
-    Revision 1.5  2004/02/24 20:02:26  gbeeley
-    - adding proper support for external references in an expression, so
-      that they get re-evaluated each time.  Example - getdate().
-    - adding eval() function but no implementation at this time - it is
-      however supported for runclient() expressions (in javascript).
-    - fixing some quoting issues
-
-    Revision 1.4  2003/05/30 17:39:48  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.3  2003/04/24 02:13:22  gbeeley
-    Added functionality to handle "domain of execution" to the expression
-    module, allowing the developer to specify the nature of an expression
-    (run on client, server, or static on server).
-
-    Revision 1.2  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.1  2001/10/02 16:23:09  gbeeley
-    Added exp_generator expressiontree-to-text generation module.  Also fixed
-    a precedence problem with EXPR_N_FUNCTION nodes; not sure why that wasn't
-    causing trouble previously.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure for handling the expression generation. ***/
@@ -294,6 +145,7 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     {
     int i;
     int nodetype;
+    int id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -522,16 +374,17 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PROPERTY:
-	        switch(exp->ObjID)
+		id = expObjID(exp, eg->Objlist);
+	        switch(id)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
 		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, ":"); break;
 		    default: 
-		        if (exp->ObjID >= 0) 
+		        if (id >= 0) 
 			    {
 			    exp_internal_WriteText(eg, ":");
-		            exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+		            exp_internal_WriteText(eg, eg->Objlist->Names[id]);
 			    }
 			break;
 		    }
@@ -571,6 +424,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     int i;
     int prop_func;
     int nodetype;
+    int id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -597,6 +451,11 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		    return exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg);
 	        snprintf(eg->TmpBuf,sizeof(eg->TmpBuf),"cxjs_%.250s(",exp->Name);
 		exp_internal_WriteText(eg, eg->TmpBuf);
+		if (!strcmp(exp->Name, "substitute"))
+		    {
+		    /** This function requires awareness of its object/property scope **/
+		    exp_internal_WriteText(eg, "_context,_this,");
+		    }
 		for(i=0;i<exp->Children.nItems;i++)
 		    {
 		    if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[i]), eg) < 0) return -1;
@@ -657,13 +516,13 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_MINUS:
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, "(");
+		//if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		exp_internal_WriteText(eg, "cxjs_minus(");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
-		exp_internal_WriteText(eg, " - ");
+		exp_internal_WriteText(eg, ", ");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, ")");
+		//if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		exp_internal_WriteText(eg, ")");
 		break;
 
 	    case EXPR_N_COMPARE:
@@ -772,26 +631,40 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_INTEGER:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_INTEGER, &(exp->Integer), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_INTEGER, &(exp->Integer), 0));
 		break;
 
 	    case EXPR_N_STRING:
-	        if (eg->EscChar == '"')
+		if (!exp->String || exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+	        else if (eg->EscChar == '"')
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_SINGLE | DATA_F_CONVSPECIAL));
 		else
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_CONVSPECIAL));
 		break;
 
 	    case EXPR_N_DOUBLE:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DOUBLE, &(exp->Types.Double), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DOUBLE, &(exp->Types.Double), 0));
 		break;
 
 	    case EXPR_N_DATETIME:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DATETIME, &(exp->Types.Date), DATA_F_QUOTED));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DATETIME, &(exp->Types.Date), DATA_F_QUOTED));
 		break;
 
 	    case EXPR_N_MONEY:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_MONEY, &(exp->Types.Money), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_MONEY, &(exp->Types.Money), 0));
 		break;
 	    
 	    case EXPR_N_OBJECT:
@@ -817,16 +690,17 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PROPERTY:
-	        switch(exp->ObjID)
+		id = expObjID(exp,eg->Objlist);
+	        switch(id)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
 		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, "this."); break;
 		    default: 
-		        if (exp->ObjID >= 0)
+		        if (id)
 			    {
 			    if (eg->Objlist) 
-				exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+				exp_internal_WriteText(eg, eg->Objlist->Names[id]);
 			    else
 				exp_internal_WriteText(eg, exp->Name);
 			    }
@@ -889,6 +763,8 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 	eg->WriteArg = write_arg;
 	eg->EscChar = quote_char;
 	eg->Domain = domain;
+	if (objlist && !objlist->CurControl && exp->Control)
+	    objlist->CurControl = exp_internal_LinkControl(exp->Control);
 
 	/** Call the internal recursive version of this function **/
 	if (!strcasecmp(language,"cxsql"))
@@ -899,7 +775,7 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 		return -1;
 		}
 	    }
-	else if (!strcmp(language,"javascript"))
+	else if (!strcasecmp(language,"javascript"))
 	    {
 	    if (exp_internal_GenerateText_js(exp, eg) < 0)
 		{
@@ -979,6 +855,11 @@ expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
 		propn = NULL;
 	    exp_internal_AddPropToList(objs_xa, props_xa, objn, propn);
 	    }
+	else if (exp->NodeType == EXPR_N_FUNCTION && !strcmp(exp->Name, "substitute"))
+	    {
+	    /** This one could reference almost anything in the namespace **/
+	    exp_internal_AddPropToList(objs_xa, props_xa, "*", "*");
+	    }
 	else if (exp->NodeType == EXPR_N_PROPERTY)
 	    {
 	    exp_internal_AddPropToList(objs_xa, props_xa, NULL, exp->Name);
@@ -991,3 +872,109 @@ expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
     return objs_xa->nItems;
     }
 
+
+int
+exp_internal_AddPropForIDToList(pXArray proplist, int obj_id, char* propname, int flags)
+    {
+    pExpProperty prop;
+
+	prop = (pExpProperty)nmMalloc(sizeof(ExpProperty));
+	if (!prop)
+	    return -1;
+	prop->ObjName = NULL;
+	prop->ObjID = obj_id;
+	prop->PropName = propname?nmSysStrdup(propname):NULL;
+	prop->Flags = flags;
+
+	xaAddItem(proplist, prop);
+
+    return 0;
+    }
+
+
+int
+expGetPropsForObject_r(pExpression root, pExpression exp, int obj_id, pXArray proplist)
+    {
+    pExpression subexp;
+    char* propn;
+    int i, exp_objid;;
+
+	/** Check this node **/
+	if (exp->NodeType == EXPR_N_OBJECT)
+	    {
+	    subexp = (pExpression)(exp->Children.Items[0]);
+	    if (subexp && subexp->NodeType == EXPR_N_PROPERTY)
+		propn = subexp->Name;
+	    else
+		propn = NULL;
+	    exp_objid = expObjID(subexp, NULL);
+	    if (root->Control && root->Control->Remapped && exp_objid >= 0)
+		exp_objid = root->Control->ObjMap[exp_objid];
+	    if (obj_id == -1 || exp_objid == obj_id)
+		exp_internal_AddPropForIDToList(proplist, exp_objid, propn, subexp->Flags & (EXPR_F_FREEZEEVAL));
+	    }
+	else if (exp->NodeType == EXPR_N_FUNCTION && !strcmp(exp->Name, "substitute"))
+	    {
+	    /** This one could reference almost anything in the namespace **/
+	    exp_internal_AddPropForIDToList(proplist, -1, "*", 0);
+	    }
+	else if (exp->NodeType == EXPR_N_PROPERTY)
+	    {
+	    exp_objid = expObjID(exp, NULL);
+	    if (root->Control && root->Control->Remapped && exp_objid >= 0)
+		exp_objid = root->Control->ObjMap[exp_objid];
+	    if (obj_id == -1 || exp_objid == obj_id)
+		exp_internal_AddPropForIDToList(proplist, exp_objid, exp->Name, exp->Flags & (EXPR_F_FREEZEEVAL));
+	    }
+	else
+	    {
+	    for(i=0;i<exp->Children.nItems;i++)
+		expGetPropsForObject_r(root, (pExpression)(exp->Children.Items[i]), obj_id, proplist);
+	    }
+
+    return 0;
+    }
+
+
+/*** expGetPropsForObject - get the property list from an expression tree for
+ *** just one specific object ID.  Returns an XArray of ExpProperty.
+ ***/
+pXArray
+expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist)
+    {
+
+	/** Allocate the new property list **/
+	if (!proplist)
+	    {
+	    proplist = xaNew(16);
+	    if (!proplist)
+		return NULL;
+	    }
+
+	if (expGetPropsForObject_r(exp, exp, obj_id, proplist) == 0)
+	    return proplist;
+
+    return NULL;
+    }
+
+
+void
+expFreeProps(pXArray proplist)
+    {
+    int i;
+    pExpProperty prop;
+
+	for(i=0; i<proplist->nItems; i++)
+	    {
+	    prop = (pExpProperty)xaGetItem(proplist, i);
+	    if (prop->ObjName)
+		nmSysFree(prop->ObjName);
+	    if (prop->PropName)
+		nmSysFree(prop->PropName);
+	    nmFree(prop, sizeof(ExpProperty));
+	    }
+
+	xaFree(proplist);
+
+    return;
+    }

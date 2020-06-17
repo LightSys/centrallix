@@ -51,139 +51,6 @@
 /*		analogy to a database's VIEW.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: objdrv_qytree.c,v 1.19 2010/09/13 23:28:42 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
-
-    $Log: objdrv_qytree.c,v $
-    Revision 1.19  2010/09/13 23:28:42  gbeeley
-    - (bugfix) fix regression causing free memory reuse since expression
-      did not remain valid during query lifetime
-
-    Revision 1.18  2010/09/09 01:46:09  gbeeley
-    - (change) permit deleting and creating objects through a querytree
-    - (change) rework the passing through of where clauses to the underlying
-      drivers/objects
-    - (change) pass presentation hints data through
-
-    Revision 1.17  2009/06/26 16:39:00  gbeeley
-    - (feature) adding a 'known_leaf' option to querytree nodes which have
-      recursion enabled, which helps SUBTREE select efficiency among other
-      things since queries don't need to be issued to find the nonexistent
-      child nodes of a known_leaf (if leaf status can be determined by the
-      data in the object itself rather than by the existence/nonexistence of
-      other objects)
-
-    Revision 1.16  2008/03/09 08:02:43  gbeeley
-    - (bugfix) you can't objUnmanageQuery a query which is NULL...
-
-    Revision 1.15  2006/04/07 06:47:23  gbeeley
-    - (bugfix) Don't try to compile the expression if we don't have any objects
-      open in the first place.
-    - (bugfix) memory_leaks -= 5;
-
-    Revision 1.14  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.13  2004/12/31 04:25:49  gbeeley
-    - allow querytree 'text' objects to have readable content (this helps in
-      situations like the index.app sample file).
-
-    Revision 1.12  2004/09/01 02:36:27  gbeeley
-    - get rid of last_modification warnings on qyt static elements by setting
-      static element last_modification to that of the node itself.
-
-    Revision 1.11  2004/08/30 19:07:07  gbeeley
-    - add driver-opened-objects management to qytree to avoid double closes
-      on objects when the session times out.
-
-    Revision 1.10  2004/08/30 03:15:56  gbeeley
-    - various bugfixes for qytree driver.  This driver needs a security audit
-      as well.
-
-    Revision 1.9  2004/06/23 21:33:55  mmcgill
-    Implemented the ObjInfo interface for all the drivers that are currently
-    a part of the project (in the Makefile, in other words). Authors of the
-    various drivers might want to check to be sure that I didn't botch any-
-    thing, and where applicable see if there's a neat way to keep track of
-    whether or not an object actually has subobjects (I did not set this flag
-    unless it was immediately obvious how to test for the condition).
-
-    Revision 1.8  2004/06/12 00:10:15  mmcgill
-    Chalk one up under 'didn't understand the build process'. The remaining
-    os drivers have been updated, and the prototype for objExecuteMethod
-    in obj.h has been changed to match the changes made everywhere it's
-    called - param is now of type pObjData, not void*.
-
-    Revision 1.7  2004/02/24 20:11:53  gbeeley
-    - better annotation support
-    - fixed query-related pathname bug
-
-    Revision 1.6  2003/06/04 19:17:44  gbeeley
-    Fixed bug in querytree relating to the use of string query criteria.
-
-    Revision 1.5  2002/11/22 19:29:37  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.4  2002/08/10 02:09:45  gbeeley
-    Yowzers!  Implemented the first half of the conversion to the new
-    specification for the obj[GS]etAttrValue OSML API functions, which
-    causes the data type of the pObjData argument to be passed as well.
-    This should improve robustness and add some flexibilty.  The changes
-    made here include:
-
-        * loosening of the definitions of those two function calls on a
-          temporary basis,
-        * modifying all current objectsystem drivers to reflect the new
-          lower-level OSML API, including the builtin drivers obj_trx,
-          obj_rootnode, and multiquery.
-        * modification of these two functions in obj_attr.c to allow them
-          to auto-sense the use of the old or new API,
-        * Changing some dependencies on these functions, including the
-          expSetParamFunctions() calls in various modules,
-        * Adding type checking code to most objectsystem drivers.
-        * Modifying *some* upper-level OSML API calls to the two functions
-          in question.  Not all have been updated however (esp. htdrivers)!
-
-    Revision 1.3  2001/10/16 23:53:02  gbeeley
-    Added expressions-in-structure-files support, aka version 2 structure
-    files.  Moved the stparse module into the core because it now depends
-    on the expression subsystem.  Almost all osdrivers had to be modified
-    because the structure file api changed a little bit.  Also fixed some
-    bugs in the structure file generator when such an object is modified.
-    The stparse module now includes two separate tree-structured data
-    structures: StructInf and Struct.  The former is the new expression-
-    enabled one, and the latter is a much simplified version.  The latter
-    is used in the url_inf in net_http and in the OpenCtl for objects.
-    The former is used for all structure files and attribute "override"
-    entries.  The methods for the latter have an "_ne" addition on the
-    function name.  See the stparse.h and stparse_ne.h files for more
-    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
-    STRUCTURE WILL NEED TO BE MODIFIED.
-
-    Revision 1.2  2001/09/27 19:26:23  gbeeley
-    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
-    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
-    4th, and the 'flags' argument is 5th.  Before, they were reversed.
-
-    Revision 1.1.1.1  2001/08/13 18:01:07  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:53  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:31:06  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** Structure used by this driver internally. ***/
@@ -197,10 +64,13 @@ typedef struct
     pSnNode	BaseNode;
     pObject	LLObj;
     int		Offset;
+    pParamObjects ObjList;	/* contains other objects in the tree that could be referenced */
     }
     QytData, *pQytData;
 
 #define QYT_F_ISTEXT	1
+#define QYT_F_FLEAF	2
+#define QYT_F_USEHAVING	4	/* use HAVING clause when appending a lookup clause */
 
 #define QYT(x) ((pQytData)(x))
 
@@ -220,6 +90,9 @@ typedef struct
     char*	ItemText;
     char*	ItemSrc;
     char*	ItemWhere;
+    char*	ItemOrder;
+    char*	ItemSql;
+    pExpression	ItemSqlExpr;
     XHashTable	StructTable;
     pExpression	Constraint;
     }
@@ -363,111 +236,6 @@ qyt_internal_AttrValue(pQytObjAttr objattr, char* attrname)
     }
 
 
-#if 0
-/*** qyt_internal_SubstWhere - perform parameterized substitution on a WHERE 
- *** clause '::' elements (for parent references)
- ***/
-int
-qyt_internal_SubstWhere()
-    {
-
-	/** Perform any needed substitution on the parameterized where clause **/
-	if (*where_clause)
-	    {
-	    n_subst = 0;
-	    ptr = where_clause;
-	    while(ptr = strstr(ptr,"::"))
-	        {
-		ptr += 2;
-
-		/** Get the attribute name after the :: **/
-		i = 0;
-		while(((*ptr >= 'A' && *ptr <= 'Z') || (*ptr >= 'a' && *ptr <= 'z') || 
-		      (*ptr >= '0' && *ptr <= '9') || *ptr == '_') && i < 32)
-		    {
-		    attrname[i++] = *(ptr++);
-		    }
-		attrname[i] = 0;
-
-		/** Get the attr type and string -or- integer value **/
-		if (qy->ObjInf->LLObj && (subst_types[n_subst] = objGetAttrType(qy->ObjInf->LLObj, attrname)) >= 0)
-		    {
-		    if (subst_types[n_subst] == DATA_T_INTEGER) 
-		        {
-			objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER, POD(&(subst_int[n_subst])));
-			len += 12;
-			}
-		    else if (subst_types[n_subst] == DATA_T_STRING)
-		        {
-			objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER, POD(&(subst_str[n_subst])));
-			len += strlen(subst_str[n_subst]);
-			}
-		    n_subst++;
-		    }
-		else
-		    {
-		    mssError(0, "QYT", "Parent attribute in .qyt file where clause does not exist.");
-		    return NULL;
-		    }
-		}
-	    }
-
-	/** Allocate memory for the new where clause **/
-	if (len) qy->QyText = (char*)nmMalloc(len);
-	if (len && !(qy->QyText)) 
-	    {
-	    return NULL;
-	    }
-
-	/** Build the "final" where clause to use **/
-	ptr = qy->QyText;
-	if (*usr_where_clause)
-	    {
-	    ptr = memccpy(ptr, "(", '\0', len)-1;
-	    ptr = memccpy(ptr, usr_where_clause, '\0', len)-1;
-	    ptr = memccpy(ptr, ")", '\0', len)-1;
-	    }
-	if (*where_clause)
-            {
-            if (*usr_where_clause)
-	        ptr = memccpy(ptr, " AND (", '\0', len)-1;
-	    else
-	        ptr = memccpy(ptr, "(", '\0', len)-1;
-            sptr = where_clause;
-            i = 0;
-            while(*sptr)
-                {
-                if (*sptr == ':' && *(sptr+1) == ':')
-                    {
-                    if (subst_types[i] == DATA_T_INTEGER)
-                        {
-                        sprintf(nbuf,"%d",subst_int[i]);
-                        ptr = memccpy(ptr, nbuf, '\0', 16)-1;
-                        }
-                    else
-                        {
-                        *(ptr++) = '\'';
-                        ptr = memccpy(ptr, subst_str[i], '\0', len)-1;
-                        *(ptr++) = '\'';
-                        }
-                    sptr += 2;
-                    while(((*sptr >= 'A' && *sptr <= 'Z') || (*sptr >= 'a' && *sptr <= 'z') || 
-                           (*sptr >= '0' && *sptr <= '9') || *sptr == '_')) sptr++;
-                    }
-                else
-                    {
-                    *(ptr++) = *(sptr++);
-                    }
-                }
-            ptr = memccpy(ptr, ")", '\0', len)-1;
-            }
-	*ptr = '\0';
-
-    return 0;
-    }
-#endif
-
-
 /*** qyt_internal_ProcessPath - handles the lookup of the snNode from the given
  *** path in the querytree, and the optional creation of a new entity, as needed,
  *** manipulating the WHERE sql in the snNode to assign parent foreign key links
@@ -481,11 +249,14 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     char* strval;
     char* exprval;
     char* ptr;
-    int i,v;
+    int i,v,t;
     pExpression expr;
     pParamObjects objlist;
     pObject test_obj;
     XHashTable struct_table;
+    XString sql;
+    pObjQuery test_qy;
+    char createpath[OBJSYS_MAX_PATH+1];
 
     	/** Setup the pathname into its subparts **/
 	for(i=1;i<path->nElements;i++) path->Elements[i][-1] = 0;
@@ -509,7 +280,6 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    {
 	    /** Add a slot to the param object list for this tree level **/
 	    objlist->ParentID = objlist->CurrentID;
-	    expAddParamToList(objlist,"",NULL,EXPR_O_CURRENT);
 
 	    /** Look for text and source items in the querytree definition. **/
 	    next_inf = NULL;
@@ -520,18 +290,113 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                     {
 	    PROCESS_SUBGROUP:
                     inf->Pathname[0] = '\0';
+		    inf->Flags = 0;
                     if ((lookup_inf = stLookup(find_inf, "text")))
                         {
                         strval = "";
                         stAttrValue(lookup_inf,NULL,&strval,0);
                         if (!strcmp(path->Elements[subref],strval))
                             {
+			    expAddParamToList(objlist,strval,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
                             next_inf = find_inf;
                             break;
                             }
                         if (subref == path->nElements - 1)
                             inf->LLObj = NULL;
                         }
+                    else if ((lookup_inf = stLookup(find_inf, "sql")))
+			{
+			xhAdd(&struct_table, find_inf->Name, (void*)find_inf);
+
+			/** not opening objects? skip sql query if so **/
+			if (no_open)
+			    {
+			    next_inf = find_inf;
+			    break;
+			    }
+
+			/** forced leaf flag and having clause flag **/
+			strval = NULL;
+			stAttrValue(stLookup(find_inf, "force_leaf"), NULL, &strval, 0);
+			if (strval && !strcasecmp(strval,"yes"))
+			    inf->Flags |= QYT_F_FLEAF;
+			strval = NULL;
+			stAttrValue(stLookup(find_inf, "use_having"), NULL, &strval, 0);
+			if (strval && !strcasecmp(strval,"yes"))
+			    inf->Flags |= QYT_F_USEHAVING;
+
+			/** build and run the sql query to find the object **/
+			expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+			xsInit(&sql);
+			strval = "";
+			expr = NULL;
+			t = stGetAttrType(lookup_inf, 0);
+			if (t == DATA_T_STRING)
+			    {
+			    stAttrValue(lookup_inf, NULL, &strval, 0);
+			    }
+			else if (t == DATA_T_CODE)
+			    {
+			    if (stGetAttrValue(lookup_inf, DATA_T_CODE, POD(&expr), 0) == 0)
+				{
+				expr = expDuplicateExpression(expr);
+				if (expr)
+				    {
+				    objlist->Session = s;
+				    expBindExpression(expr, objlist, EXPR_F_RUNSERVER);
+				    if (expEvalTree(expr, objlist) == 0 && expr->DataType == DATA_T_STRING && !(expr->Flags & EXPR_F_NULL))
+					strval = expr->String;
+				    }
+				}
+			    }
+
+			if (!strcmp(strval, ""))
+			    {
+			    if (expr) expFreeExpression(expr);
+			    mssError(0,"QYT","Invalid SQL for '%s'",find_inf->Name);
+			    goto error;
+			    }
+
+			xsQPrintf(&sql, "%STR %STR :name = %STR&DQUOT", strval, (inf->Flags & QYT_F_USEHAVING)?"HAVING":"WHERE", path->Elements[subref]);
+			if (expr) expFreeExpression(expr);
+			expr = NULL;
+
+			test_obj = NULL;
+			test_qy = objMultiQuery(s, sql.String, objlist, 0);
+			if (test_qy)
+			    {
+			    /** sizeof(createpath)-2 to leave room for two chars **/
+			    if (objGetQueryIdentityPath(test_qy, createpath, sizeof(createpath) - 2) < 0)
+				createpath[0] = '\0';
+
+			    /** query open succeeded, try to fetch a result **/
+			    test_obj = objQueryFetch(test_qy, O_RDONLY);
+
+			    /** are we creating a new object? **/
+			    if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT) && createpath[0])
+				{
+				/** We left room for these two chars in the
+				 ** above call to objGetQueryIdentityPath().
+				 **/
+				strcat(createpath, "/*");
+				test_obj = objOpen(s, createpath, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
+				}
+			    objQueryClose(test_qy);
+			    }
+			xsDeInit(&sql);
+			if (!test_obj)
+			    continue;
+
+			/** ok, found the object **/
+			expModifyParam(objlist,NULL,test_obj);
+			objUnmanageObject(test_obj->Session, test_obj);
+                        if (subref == path->nElements - 1) 
+			    {
+                            inf->LLObj = objLinkTo(test_obj);
+			    }
+			next_inf = find_inf;
+			break;
+			}
                     else if ((lookup_inf = stLookup(find_inf, "source")))
                         {
                         strval = "";
@@ -541,13 +406,24 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         stAttrValue(stLookup(find_inf, "where"),NULL,&exprval,0);
                         if (exprval && !no_open) 
 			    {
-			    objlist->Names[(signed char)(objlist->CurrentID)] = find_inf->Name;
+			    //objlist->Names[(signed char)(objlist->CurrentID)] = find_inf->Name;
 			    expr = (pExpression)expCompileExpression(exprval, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 			    }
                         snprintf(inf->Pathname,sizeof(inf->Pathname),"%s/%s?ls__type=application%%2foctet-stream",strval,path->Elements[subref]);
 
+			/** forced leaf flag **/
+			strval = NULL;
+			stAttrValue(stLookup(find_inf, "force_leaf"), NULL, &strval, 0);
+			if (strval && !strcasecmp(strval,"yes"))
+			    inf->Flags |= QYT_F_FLEAF;
+			strval = NULL;
+			stAttrValue(stLookup(find_inf, "use_having"), NULL, &strval, 0);
+			if (strval && !strcasecmp(strval,"yes"))
+			    inf->Flags |= QYT_F_USEHAVING;
+
 			/** Setup this querytree struct entry for lookups **/
 			xhAdd(&struct_table, find_inf->Name, (void*)find_inf);
+			expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
 
 			/** Not opening any objects?  Skip open attempt if so. **/
 			if (no_open)
@@ -561,12 +437,15 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			if (test_obj) 
 			    {
 			    expModifyParam(objlist, NULL, test_obj);
+			    objUnmanageObject(test_obj->Session, test_obj);
 			    }
                         if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT))
                             {
                             test_obj = objOpen(s, inf->Pathname, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
-                            if (!test_obj) break;
+                            if (!test_obj)
+				continue;
 			    expModifyParam(objlist, NULL, test_obj);
+			    objUnmanageObject(test_obj->Session, test_obj);
 			    objlist->Flags[(signed char)(objlist->CurrentID)] |= EXPR_O_UPDATE;
                             if (expr)
                                 {
@@ -578,11 +457,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 				if (v < 0)
 				    {
 				    objClose(test_obj);
+				    expModifyParam(objlist, NULL, NULL);
 				    break;
 				    }
                                 }
                             }
-                        else if (!test_obj) break;
+                        else if (!test_obj)
+			    continue;
     
                         /** Validate the where clause expression if need be. **/
 			objlist->Session = s;
@@ -591,13 +472,12 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			expr = NULL;
                         if (subref == path->nElements - 1) 
 			    {
-			    objUnmanageObject(test_obj->Session, test_obj);
-                            inf->LLObj = test_obj;
+                            inf->LLObj = objLinkTo(test_obj);
 			    }
-                        else 
+                        /*else 
 			    {
                             if (!v) objClose(test_obj);
-			    }
+			    }*/
 			if (v)
 			    {
 			    next_inf = find_inf;
@@ -610,9 +490,9 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 		    expr = NULL;
 		    exprval = NULL;
 		    stAttrValue(stLookup(dptr, "known_leaf"),NULL,&exprval,0);
+		    expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
 		    if (exprval) 
 			{
-			objlist->Names[(signed char)(objlist->CurrentID)] = find_inf->Name;
 			expr = (pExpression)expCompileExpression(exprval, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 			if (!expr)
 			    {
@@ -627,6 +507,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    if (v) break;
 			    }
 			}
+		    expRemoveParamFromList(objlist, find_inf->Name);
 		    stGetAttrValue(find_inf, DATA_T_STRING, POD(&ptr), 0);
 		    find_inf = (pStructInf)xhLookup(&struct_table, ptr);
 		    if (find_inf) goto PROCESS_SUBGROUP;
@@ -636,28 +517,37 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    /** Didn't find? **/
 	    if (!next_inf) 
 	        {
-		/** Ok, close up the structure table. **/
-		xhClear(&struct_table, NULL, NULL);
-		xhDeInit(&struct_table);
-		nmFree(inf,sizeof(QytData));
 		inf->LLObj = NULL;
-
-		/** Close the objects and free the param list. **/
-		for(i=0;i<objlist->nObjects-1;i++) if (objlist->Objects[i]) objClose(objlist->Objects[i]);
-		expFreeParamList(objlist);
 		mssError(0,"QYT","Could not find object via access through querytree");
-		return NULL;
+		goto error;
 		}
 	    dptr = next_inf;
 	    subref++;
 	    }
-	inf->NodeData = dptr;
+
+	/** Ok, close up the structure table. **/
 	xhClear(&struct_table, NULL, NULL);
 	xhDeInit(&struct_table);
-	for(i=0;i<objlist->nObjects-1;i++) if (objlist->Objects[i]) objClose(objlist->Objects[i]);
-	expFreeParamList(objlist);
 
-    return inf;
+	inf->NodeData = dptr;
+	inf->ObjList = objlist;
+
+	return inf;
+
+    error:
+	/** Ok, close up the structure table. **/
+	xhClear(&struct_table, NULL, NULL);
+	xhDeInit(&struct_table);
+	if (objlist)
+	    {
+	    for(i=0;i<objlist->nObjects-1;i++)
+		if (objlist->Objects[i])
+		    objClose(objlist->Objects[i]);
+	    expFreeParamList(objlist);
+	    }
+	nmFree(inf,sizeof(QytData));
+
+	return NULL;
     }
 
 
@@ -667,11 +557,8 @@ void*
 qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pQytData inf;
-    char* node_path;
     pSnNode node = NULL;
-
-	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
+    char buf[1];
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -687,6 +574,7 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Otherwise, try to open it first. **/
 	if (!node)
 	    {
+	    objRead(obj->Prev, buf, 0, 0, OBJ_U_SEEK);
 	    node = snReadNode(obj->Prev);
 	    }
 
@@ -720,6 +608,29 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     }
 
 
+int
+qyt_internal_Close(pQytData inf)
+    {
+    int i;
+
+	/** Close the lowlevel-object **/
+	if (inf->LLObj) objClose(inf->LLObj);
+	
+	/** Release the memory **/
+	inf->BaseNode->OpenCnt --;
+	if (inf->ObjList)
+	    {
+	    for(i=0;i<inf->ObjList->nObjects;i++)
+		if (inf->ObjList->Objects[i])
+		    objClose(inf->ObjList->Objects[i]);
+	    expFreeParamList(inf->ObjList);
+	    }
+	nmFree(inf,sizeof(QytData));
+
+    return 0;
+    }
+
+
 /*** qytClose - close an open file or directory.
  ***/
 int
@@ -730,12 +641,7 @@ qytClose(void* inf_v, pObjTrxTree* oxt)
     	/** Write the node first **/
 	snWriteNode(inf->Obj->Prev, inf->BaseNode);
 
-	/** Close the lowlevel-object **/
-	if (inf->LLObj) objClose(inf->LLObj);
-	
-	/** Release the memory **/
-	inf->BaseNode->OpenCnt --;
-	nmFree(inf,sizeof(QytData));
+	qyt_internal_Close(inf);
 
     return 0;
     }
@@ -764,22 +670,23 @@ qytCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 int
 qytDelete(pObject obj, pObjTrxTree* oxt)
     {
-    pQytData inf;
-    char* node_path;
+    pQytData inf = NULL;
     pSnNode node;
+    int rval = 0;
 
 	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	node = snReadNode(obj->Prev);
 	if (!node) 
 	    {
 	    mssError(0,"QYT","Could not access node object for querytree");
-	    return -1;
+	    rval = -1;
+	    goto error;
 	    }
 
 	/** Process path to determine actual path of object. **/
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, 0, 0);
 	if (inf->LLObj) objClose(inf->LLObj);
+	inf->LLObj = NULL;
 	obj_internal_PathPart(obj->Pathname, 0,0);
 
 	/** Call delete on it, using the actual path determined by process_path. **/
@@ -787,22 +694,27 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
 	    {
 	    if (objDelete(obj->Session, inf->Pathname) < 0)
 	        {
-		nmFree(inf, sizeof(QytData));
 		mssError(0,"QYT","Could not delete object referenced by querytree");
-		return -1;
+		rval = -1;
+		goto error;
 		}
 	    }
 	else
 	    {
-	    nmFree(inf,sizeof(QytData));
 	    mssError(0,"QYT","Could not determine referenced querytree object");
-	    return -1;
+	    rval = -1;
+	    goto error;
 	    }
 
-	/** Release, don't call close because that might write data to a deleted object **/
-	nmFree(inf,sizeof(QytData));
+    error:
 
-    return 0;
+	/** Release, don't call close because that might write data to a deleted object **/
+	if (inf)
+	    {
+	    qyt_internal_Close(inf);
+	    }
+
+    return rval;
     }
 
 
@@ -825,10 +737,11 @@ qytDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    rval = -1;
 	    mssError(1,"QYT","Could not delete object not having an underlying data source");
 	    }
+	inf->LLObj = NULL;
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	nmFree(inf,sizeof(QytData));
+	qyt_internal_Close(inf);
 
     return rval;
     }
@@ -932,6 +845,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
     pStructInf find_inf;
     char* val;
     char* ptr;
+    int t;
 
     	/** Already hit end of query? **/
 	if (qy->NextSubInfID == -1) return -1;
@@ -950,6 +864,16 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 
     	/** Search for a SOURCE= or TEXT= subgroup inf **/
 	main_inf = qy->ObjInf->NodeData;
+
+	/** Is main_inf already a 'recurse' node? **/
+	/*if (stStructType(main_inf) == ST_T_ATTRIB && !strcmp(main_inf->Name, "recurse"))
+	    {
+	    stGetAttrValue(main_inf, DATA_T_STRING, POD(&ptr), 0);
+	    find_inf = (pStructInf)xhLookup(&qy->StructTable, ptr);
+	    if (find_inf) main_inf = find_inf;
+	    }*/
+
+	/** Do the search **/
 	while(qy->NextSubInfID < main_inf->nSubInf)
 	    {
 	    find_inf = main_inf->SubInf[qy->NextSubInfID++];
@@ -959,6 +883,14 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		find_inf = (pStructInf)xhLookup(&qy->StructTable, ptr);
 		if (!find_inf) continue;
 		}
+	    qy->ItemText = NULL;
+	    qy->ItemSrc = NULL;
+	    qy->ItemWhere = NULL;
+	    qy->ItemOrder = NULL;
+	    qy->ItemSql = NULL;
+	    if (qy->ItemSqlExpr)
+		expFreeExpression(qy->ItemSqlExpr);
+	    qy->ItemSqlExpr = NULL;
 	    if (stStructType(find_inf) == ST_T_SUBGROUP)
 	        {
 		xhAdd(&qy->StructTable, find_inf->Name, (void*)find_inf);
@@ -967,18 +899,35 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		if (val)
 		    {
 		    qy->ItemText = val;
-		    qy->ItemSrc = NULL;
-		    qy->ItemWhere = NULL;
 		    return qy->NextSubInfID - 1;
 		    }
 		stAttrValue(stLookup(find_inf,"source"),NULL,&val,0);
 		if (val)
 		    {
-		    qy->ItemText = NULL;
 		    qy->ItemSrc = val;
-		    qy->ItemWhere = NULL;
 		    stAttrValue(stLookup(find_inf,"where"),NULL,&(qy->ItemWhere),0);
+		    stAttrValue(stLookup(find_inf,"order"),NULL,&(qy->ItemOrder),0);
 		    return qy->NextSubInfID - 1;
+		    }
+		t = stGetAttrType(stLookup(find_inf,"sql"), 0);
+		if (t == DATA_T_STRING)
+		    {
+		    stAttrValue(stLookup(find_inf,"sql"),NULL,&val,0);
+		    if (val)
+			{
+			qy->ItemSql = val;
+			return qy->NextSubInfID - 1;
+			}
+		    }
+		else if (t == DATA_T_CODE)
+		    {
+		    stGetAttrValue(stLookup(find_inf,"sql"), DATA_T_CODE, POD(&qy->ItemSqlExpr), 0);
+		    if (qy->ItemSqlExpr)
+			{
+			qy->ItemSqlExpr = expDuplicateExpression(qy->ItemSqlExpr);
+			qy->ItemSql = "";
+			return qy->NextSubInfID - 1;
+			}
 		    }
 		}
 	    }
@@ -1001,21 +950,47 @@ qyt_internal_StartQuery(pQytQuery qy)
     pExpression usr_query = NULL;
     pExpression item_query = NULL;
     pExpression expr = NULL;
-    pParamObjects objlist;
+    pParamObjects objlist = NULL;
     char* where_clause;
-#if 00
-    int len;
-    void* subst_ptr[8];
-    int alloc_ptr[8];
-    int subst_int[8];
-    int subst_types[8];
-    int n_subst;
-    char* ptr;
-    char* sptr;
-    char attrname[33];
-    char nbuf[16];
-    int i;
-#endif
+    XString sql;
+
+	/** Doing a full MultiQuery? **/
+	if (qy->ItemSql || qy->ItemSqlExpr)
+	    {
+	    xsInit(&sql);
+	    objlist = expCreateParamList();
+	    expCopyList(qy->ObjInf->ObjList, objlist, -1);
+	    expAddParamToList(objlist,"this",NULL,EXPR_O_CURRENT);
+
+	    /** Expression-based sql? **/
+	    if (qy->ItemSqlExpr)
+		{
+		objlist->Session = qy->ObjInf->Obj->Session;
+		expBindExpression(qy->ItemSqlExpr, objlist, EXPR_F_RUNSERVER);
+		if (expEvalTree(qy->ItemSqlExpr, objlist) == 0 && qy->ItemSqlExpr->DataType == DATA_T_STRING && !(qy->ItemSqlExpr->Flags & EXPR_F_NULL))
+		    qy->ItemSql = qy->ItemSqlExpr->String;
+		}
+
+	    if (qy->Query->Tree)
+		{
+		/** Merging in a WHERE clause from the user... **/
+		xsPrintf(&sql, (qy->ObjInf->Flags & QYT_F_USEHAVING)?"%s HAVING ":"%s WHERE ", qy->ItemSql);
+		expGenerateText(qy->Query->Tree, objlist, xsWrite, &sql, '\0', "cxsql", 0);
+		}
+	    else
+		{
+		xsCopy(&sql, qy->ItemSql, -1);
+		}
+	    qyinf = objMultiQuery(qy->ObjInf->Obj->Session, sql.String, objlist, 0);
+	    if (qyinf)
+		objUnmanageQuery(qy->ObjInf->Obj->Session, qyinf);
+	    else
+		mssError(0,"QYT","Could not open querytree sql query");
+	    expFreeParamList(objlist);
+	    objlist = NULL;
+	    xsDeInit(&sql);
+	    return qyinf;
+	    }
 
     	/** Get the where clause restrictions **/
 	where_clause = qy->ItemWhere;
@@ -1026,12 +1001,14 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (where_clause)
 	    {
 	    objlist = expCreateParamList();
+	    expCopyList(qy->ObjInf->ObjList, objlist, -1);
 	    expAddParamToList(objlist,"this",NULL,EXPR_O_CURRENT);
-	    expAddParamToList(objlist,"parent",qy->ObjInf->LLObj,EXPR_O_PARENT);
 	    item_query = expCompileExpression(where_clause, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 	    if (!item_query)
 		goto error;
+	    expRemapID(item_query, objlist->nObjects-1, 0);
 	    expFreezeEval(item_query, objlist, EXPR_OBJID_CURRENT);
+	    /*expFreezeEval(item_query, objlist, objlist->nObjects-1);*/
 	    }
 
 	/** Combine the expressions as needed **/
@@ -1054,138 +1031,13 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    item_query = NULL;
 	    usr_query = NULL;
 	    }
-#if 00
-	/** Perform any needed substitution on the parameterized where clause **/
-	if (*where_clause)
-	    {
-	    n_subst = 0;
-	    ptr = where_clause;
-	    while((ptr = strstr(ptr,"::")))
-	        {
-		ptr += 2;
-
-		/** Get the attribute name after the :: **/
-		i = 0;
-		while(((*ptr >= 'A' && *ptr <= 'Z') || (*ptr >= 'a' && *ptr <= 'z') || 
-		      (*ptr >= '0' && *ptr <= '9') || *ptr == '_') && i < 32)
-		    {
-		    attrname[i++] = *(ptr++);
-		    }
-		attrname[i] = 0;
-
-		/** Get the attr type and string -or- integer value **/
-		if (qy->ObjInf->LLObj && (subst_types[n_subst] = objGetAttrType(qy->ObjInf->LLObj, attrname)) >= 0)
-		    {
-		    alloc_ptr[n_subst] = 0;
-		    subst_ptr[n_subst] = NULL;
-		    switch(subst_types[n_subst])
-		        {
-			case DATA_T_INTEGER:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER,POD(&(subst_int[n_subst]))) == 1)
-			        {
-			        subst_types[n_subst] = -1;
-			        len += 6;
-			        }
-			    else
-			        {
-			        len += 12;
-			        }
-			    break;
-
-			case DATA_T_STRING:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_STRING,POD(&sptr)) == 1)
-			        {
-				subst_types[n_subst] = -1;
-				len += 6;
-				}
-			    else
-			        {
-			        subst_ptr[n_subst] = (void*)nmSysStrdup(sptr);
-				alloc_ptr[n_subst] = 1;
-			        len += strlen(sptr);
-				}
-			    break;
-			}
-		    n_subst++;
-		    }
-		else
-		    {
-		    mssError(0, "QYT", "Parent attribute in .qyt file where clause does not exist.");
-		    return NULL;
-		    }
-		}
-	    }
-
-	/** Allocate memory for the new where clause **/
-	if (len) qy->QyText = (char*)nmMalloc(len);
-	if (len && !(qy->QyText)) 
-	    {
-	    return NULL;
-	    }
-
-	/** Build the "final" where clause to use **/
-	ptr = qy->QyText;
-	if (*usr_where_clause)
-	    {
-	    ptr = memccpy(ptr, "(", '\0', len)-1;
-	    ptr = memccpy(ptr, usr_where_clause, '\0', len)-1;
-	    ptr = memccpy(ptr, ")", '\0', len)-1;
-	    }
-	if (*where_clause)
-            {
-            if (*usr_where_clause)
-	        ptr = memccpy(ptr, " AND (", '\0', len)-1;
-	    else
-	        ptr = memccpy(ptr, "(", '\0', len)-1;
-            sptr = where_clause;
-            i = 0;
-            while(*sptr)
-                {
-                if (*sptr == ':' && *(sptr+1) == ':')
-                    {
-		    switch(subst_types[i])
-		        {
-			case -1: /* NULL */
-			    ptr = memccpy(ptr, "NULL", '\0', len)-1;
-			    break;
-
-			case DATA_T_INTEGER:
-                            sprintf(nbuf,"%d",subst_int[i]);
-                            ptr = memccpy(ptr, nbuf, '\0', 16)-1;
-			    break;
-
-			case DATA_T_STRING:
-                            *(ptr++) = '"';
-                            ptr = memccpy(ptr, subst_ptr[i], '\0', len)-1;
-                            *(ptr++) = '"';
-			    break;
-                        }
-		    if (alloc_ptr[i] && subst_ptr[i]) 
-		        {
-			nmSysFree(subst_ptr[i]);
-			alloc_ptr[i] = 0;
-			}
-                    sptr += 2;
-                    while(((*sptr >= 'A' && *sptr <= 'Z') || (*sptr >= 'a' && *sptr <= 'z') || 
-                           (*sptr >= '0' && *sptr <= '9') || *sptr == '_')) sptr++;
-		    i++;
-                    }
-                else
-                    {
-                    *(ptr++) = *(sptr++);
-                    }
-                }
-            ptr = memccpy(ptr, ")", '\0', len)-1;
-            }
-	*ptr = '\0';
-#endif
 
 	/** Issue the query. **/
 	qy->LLQueryObj = objOpen(qy->ObjInf->Obj->Session, qy->ItemSrc, O_RDONLY, 0600, "system/directory");
 	if (qy->LLQueryObj) 
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
-	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, NULL, expr, NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL);
 	    if (!qyinf)
 		{
 		objClose(qy->LLQueryObj);
@@ -1205,15 +1057,12 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    mssError(0,"QYT","Could not open querytree source object/query");
 	    goto error;
 	    }
-#if 00
-	/** Free the memory our where clause used. **/
-	if (len) nmFree(qy->QyText, len);
-#endif
     
     error:
 	if (usr_query) expFreeExpression(usr_query);
 	if (expr) expFreeExpression(expr);
 	if (item_query) expFreeExpression(item_query);
+	if (objlist) expFreeParamList(objlist);
 
 	return qyinf;
     }
@@ -1236,6 +1085,7 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->Query = query;
 	qy->ObjInf = inf;
 	qy->Constraint = NULL;
+	qy->ItemSqlExpr = NULL;
 	xhInit(&qy->StructTable,17,0);
 
 	/** Get the next subinf ready for retrieval. **/
@@ -1248,7 +1098,8 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 
 	/** If a source= query, start it now. **/
-	if (qy->ItemSrc != NULL) qy->LLQuery = qyt_internal_StartQuery(qy);
+	if (qy->ItemSrc != NULL || qy->ItemSql != NULL)
+	    qy->LLQuery = qyt_internal_StartQuery(qy);
 
     return (void*)qy;
     }
@@ -1262,6 +1113,8 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pQytQuery qy = ((pQytQuery)(qy_v));
     pQytData inf;
     pObject llobj = NULL;
+    pStructInf find_inf;
+    char* ptr;
     char* objname = NULL;
     int cur_id = -1;
 
@@ -1274,7 +1127,8 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		qy->LLQuery = NULL;
 	        objname = qy->ItemText;
 	        qyt_internal_GetQueryItem(qy);
-	        if (qy->NextSubInfID != -1 && qy->ItemSrc != NULL) qy->LLQuery = qyt_internal_StartQuery(qy);
+	        if (qy->NextSubInfID != -1 && (qy->ItemSrc != NULL || qy->ItemSql != NULL))
+		    qy->LLQuery = qyt_internal_StartQuery(qy);
 	        }
 	    else
 	        {
@@ -1285,19 +1139,32 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		        {
 			objQueryClose(qy->LLQuery);
 			qy->LLQuery = NULL;
-			objClose(qy->LLQueryObj);
-			qy->LLQueryObj = NULL;
+			if (qy->LLQueryObj)
+			    {
+			    objClose(qy->LLQueryObj);
+			    qy->LLQueryObj = NULL;
+			    }
 			}
 		    }
 		if (!llobj)
 		    {
 	            qyt_internal_GetQueryItem(qy);
-	            if (qy->NextSubInfID != -1 && qy->ItemSrc != NULL) qy->LLQuery = qyt_internal_StartQuery(qy);
+	            if (qy->NextSubInfID != -1 && (qy->ItemSrc != NULL || qy->ItemSql != NULL))
+			qy->LLQuery = qyt_internal_StartQuery(qy);
 		    }
 		else
 		    {
 		    objGetAttrValue(llobj, "name", DATA_T_STRING,POD(&objname));
-		    objUnmanageObject(llobj->Session, llobj);
+		    if (!objname)
+			{
+			/** Object is somehow invalid -- force a go-around to next fetch **/
+			objClose(llobj);
+			llobj = NULL;
+			}
+		    else
+			{
+			objUnmanageObject(llobj->Session, llobj);
+			}
 		    }
 	        }
 	    }
@@ -1306,28 +1173,44 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (cur_id == -1 || !objname) return NULL;
 
 	/** Build the filename. **/
-	if (strlen(objname) + 1 + strlen(qy->ObjInf->Obj->Pathname->Pathbuf) > 255) 
+	if (obj_internal_AddToPath(obj->Pathname, objname) < 0)
 	    {
-	    mssError(1,"QYT","Object pathname in query result exceeds internal representation");
+	    mssError(1,"QYT","Could not fetch object from querytree");
 	    return NULL;
 	    }
-	sprintf(obj->Pathname->Pathbuf,"%s/%s",qy->ObjInf->Obj->Pathname->Pathbuf,objname);
-	obj->Pathname->Elements[obj->Pathname->nElements++] = strrchr(obj->Pathname->Pathbuf,'/')+1;
 
 	/** Alloc the structure **/
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, qy->ObjInf->BaseNode, 
 		qy->ObjInf->Obj->SubPtr, qy->ObjInf->BaseNode->Data, 0, 1);
-	if (!inf) return NULL;
-	/*strcpy(inf->Pathname, llobj->Pathname->Pathbuf);*/
+	if (!inf)
+	    return NULL;
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname, 0, 0));
-	if (inf->LLObj) objClose(inf->LLObj);
+	if (inf->LLObj)
+	    objClose(inf->LLObj);
 	inf->LLObj = llobj;
 	inf->BaseNode = qy->ObjInf->BaseNode;
+
+	/** Point to the correct structure file subgroup **/
 	inf->NodeData = qy->ObjInf->NodeData->SubInf[cur_id];
+	if (stStructType(inf->NodeData) == ST_T_ATTRIB && !strcmp(inf->NodeData->Name, "recurse"))
+	    {
+	    stGetAttrValue(inf->NodeData, DATA_T_STRING, POD(&ptr), 0);
+	    find_inf = (pStructInf)xhLookup(&qy->StructTable, ptr);
+	    if (find_inf) inf->NodeData = find_inf;
+	    }
+
 	inf->BaseNode->OpenCnt++;
 	inf->Obj = obj;
 	inf->Offset = 0;
 	obj_internal_PathPart(obj->Pathname,0,0);
+
+	/** Set up the param objects list for this fetched object. **/
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
+	inf->ObjList = expCreateParamList();
+	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
+	expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
+	expLinkParams(inf->ObjList, 0, -1);
 
     return (void*)inf;
     }
@@ -1343,6 +1226,9 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
     	/** Close any pending low-level query **/
 	if (qy->LLQuery) objQueryClose(qy->LLQuery);
 	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
+
+	if (qy->ItemSqlExpr)
+	    expFreeExpression(qy->ItemSqlExpr);
 
 	/** Free the structure **/
 	if (qy->Constraint) expFreeExpression(qy->Constraint);
@@ -1368,6 +1254,10 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname, "inner_type") ||
 	    !strcmp(attrname,"outer_type")) return DATA_T_STRING;
 
+	/** Last modification is a datetime **/
+	if (!strcmp(attrname,"last_modification"))
+	    return DATA_T_DATETIME;
+
 	/** If there is a low-level object, lookup within it **/
 	if (inf->LLObj) return objGetAttrType(inf->LLObj, attrname);
 
@@ -1385,6 +1275,7 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     {
     pQytData inf = QYT(inf_v);
     pStructInf content_inf;
+    int rval;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1463,7 +1354,23 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    }
 
 	/** Low-level object?  Lookup the attribute in it **/
-	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, val);
+	if (inf->LLObj)
+	    {
+	    rval = objGetAttrValue(inf->LLObj, attrname, datatype, val);
+	    if (rval != 0 && (!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && datatype == DATA_T_STRING)
+		{
+		val->String = "application/octet-stream";
+		return 0;
+		}
+	    if (rval != 0 && !strcmp(attrname,"outer_type") && datatype == DATA_T_STRING)
+		{
+		val->String = "system/object";
+		return 0;
+		}
+	    if (rval < 0 && !strcmp(attrname,"last_modification"))
+		return 1;
+	    return rval;
+	    }
 
 	/** last_modification?  Lookup from node **/
 	if (!strcmp(attrname,"last_modification"))
@@ -1678,6 +1585,9 @@ qytInfo(void* inf_v, pObjectInfo info)
 	    info->Flags |= ( OBJ_INFO_F_CAN_HAVE_SUBOBJ );
 	    }
 
+	if (inf->Flags & QYT_F_FLEAF)
+	    info->Flags |= OBJ_INFO_F_FORCED_LEAF;
+
 	return 0;
 	}
     return -1;
@@ -1700,6 +1610,21 @@ qytPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
     return hints;
     }
+
+
+/*** qytCommit - commit changes to the underlying object.
+ ***/
+int
+qytCommit(void* inf_v, pObjTrxTree* oxt)
+    {
+    pQytData inf = QYT(inf_v);
+
+	if (inf->LLObj)
+	    return objCommitObject(inf->LLObj);
+    
+    return -1;
+    }
+
 
 /*** qytInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -1749,6 +1674,7 @@ qytInitialize()
 	drv->ExecuteMethod = qytExecuteMethod;
 	drv->Info = qytInfo;
 	drv->PresentationHints = qytPresentationHints;
+	drv->Commit = qytCommit;
 
 	/** Register some structures **/
 	nmRegister(sizeof(QytData),"QytData");

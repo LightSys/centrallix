@@ -12,6 +12,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,102 +46,6 @@
 /*		subsystem functionality.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_session.c,v 1.12 2007/02/17 04:34:51 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
-
-    $Log: prtmgmt_v3_session.c,v $
-    Revision 1.12  2007/02/17 04:34:51  gbeeley
-    - (bugfix) test_obj should open destination objects with O_TRUNC
-    - (bugfix) prtmgmt should remember 'configured' line height, so it can
-      auto-adjust height only if the line height is not explicitly set.
-    - (change) report writer should assume some default margin settings on
-      tables/table cells, so that tables aren't by default ugly :)
-    - (bugfix) various floating point comparison fixes
-    - (feature) allow top/bottom/left/right border options on the entire table
-      itself in a report.
-    - (feature) allow setting of text line height with "lineheight" attribute
-    - (change) allow table to auto-scale columns should the total of column
-      widths and separations exceed the available inner width of the table.
-    - (feature) full justification of text.
-
-    Revision 1.11  2005/02/26 06:42:41  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.10  2005/02/24 05:44:32  gbeeley
-    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
-    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
-      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
-      PostScript support!!  See http://www.codn.net/
-    - More formats (maybe PNG?) should be easy to add.
-    - TODO: read the *real* font metric files to get font geometries!
-    - TODO: compress the images written into the .ps file!
-
-    Revision 1.9  2003/09/02 15:37:13  gbeeley
-    - Added enhanced command line interface to test_obj.
-    - Enhancements to v3 report writer.
-    - Fix for v3 print formatter in prtSetTextStyle().
-    - Allow spec pathname to be provided in the openctl (command line) for
-      CSV files.
-    - Report writer checks for params in the openctl.
-    - Local filesystem driver fix for read-only files/directories.
-    - Race condition fix in UX printer osdriver
-    - Banding problem workaround installed for image output in PCL.
-    - OSML objOpen() read vs. read+write fix.
-
-    Revision 1.8  2003/04/21 21:00:48  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
-    Revision 1.7  2003/03/01 07:24:02  gbeeley
-    Ok.  Balanced columns now working pretty well.  Algorithm is currently
-    somewhat O(N^2) however, and is thus a bit expensive, but still not
-    bad.  Some algorithmic improvements still possible with both word-
-    wrapping and column balancing, but this is 'good enough' for the time
-    being, I think ;)
-
-    Revision 1.6  2003/02/27 22:02:25  gbeeley
-    Some improvements in the balanced multi-column output.  A lot of fixes
-    in the multi-column output and in the text layout manager.  Added a
-    facility to "schedule" reflows rather than having them take place
-    immediately.
-
-    Revision 1.5  2003/02/27 05:21:19  gbeeley
-    Added multi-column layout manager functionality to support multi-column
-    sections (this is newspaper-style multicolumn formatting).  Tested in
-    test_prt "columns" command with various numbers of columns.  Balanced
-    mode not yet working.
-
-    Revision 1.4  2003/02/19 22:53:54  gbeeley
-    Page break now somewhat operational, both with hard breaks (form feeds)
-    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
-    places the text on pages after a soft break (but the PCL seems to look
-    correct), and in how word wrapping is done just after a page break has
-    occurred.  Use "printfile" command in test_prt to test this.
-
-    Revision 1.3  2002/10/18 22:01:39  gbeeley
-    Printing of text into an area embedded within a page now works.  Two
-    testing options added to test_prt: text and printfile.  Use the "output"
-    option to redirect output to a file or device instead of to the screen.
-    Word wrapping has also been tested/debugged and is functional.  Added
-    font baseline logic to the design.
-
-    Revision 1.2  2002/04/25 04:30:14  gbeeley
-    More work on the v3 print formatting subsystem.  Subsystem compiles,
-    but report and uxprint have not been converted yet, thus problems.
-
-    Revision 1.1  2002/01/27 22:50:06  gbeeley
-    Untested and incomplete print formatter version 3 files.
-    Initial checkin.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** prtOpenSession - open a new printing session, given a target output
@@ -171,6 +76,8 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this->ImageOpenFn = NULL;
 	this->ImageWriteFn = NULL;
 	this->ImageCloseFn = NULL;
+	xaInit(&this->SessionParams, 16);
+	strtcpy(this->OutputType, output_type, sizeof(this->OutputType));
 
 	/** Search for a formatter module that will do this content type **/
 	this->Formatter = NULL;
@@ -232,6 +139,8 @@ int
 prtCloseSession(pPrtSession s)
     {
     pPrtObjStream obj;
+    int i;
+    char* p;
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
 
@@ -250,6 +159,14 @@ prtCloseSession(pPrtSession s)
 
 	/** Release the memory used by the pages **/
 	if (s->StreamHead) prt_internal_FreeTree(s->StreamHead);
+
+	/** Free up params **/
+	for(i=0;i<s->SessionParams.nItems;i++)
+	    {
+	    p = (char*)s->SessionParams.Items[i];
+	    nmSysFree(p);
+	    }
+	xaDeInit(&s->SessionParams);
 
 	/** Free the session structure and exit. **/
 	nmFree(s,sizeof(PrtSession));
@@ -368,7 +285,7 @@ prtSetResolution(pPrtSession s, int dpi)
  *** of these (perhaps somewhat temporary) images.
  ***/
 int
-prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)())
+prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)())
     {
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
@@ -386,3 +303,39 @@ prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void
     return 0;
     }
 
+
+/*** prtSetSessionParam() - set a parameter that will be used by the print
+ *** formatting subsystem as a part of the overall session.  This may be used
+ *** to control specific behavior of the output driver, for instance.
+ ***/
+int
+prtSetSessionParam(pPrtSession s, char* paramname, char* value)
+    {
+    char* str;
+
+	str = nmSysMalloc(strlen(paramname) + 1 + strlen(value) + 1);
+	sprintf(str, "%s:%s", paramname, value);
+	xaAddItem(&s->SessionParams, str);
+
+    return 0;
+    }
+
+
+/*** prtGetSessionParam() - get a session parameter.  If the parameter is not
+ *** set, then return the provided default value.
+ ***/
+char*
+prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue)
+    {
+    char* p;
+    int i;
+
+	for(i=0;i<s->SessionParams.nItems;i++)
+	    {
+	    p = (char*)s->SessionParams.Items[i];
+	    if (!strncmp(p, paramname, strlen(paramname)) && p[strlen(paramname)] == ':')
+		return strchr(p, ':')+1;
+	    }
+
+    return defaultvalue;
+    }

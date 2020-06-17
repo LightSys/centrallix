@@ -31,41 +31,6 @@
 /*		with structure pointers.				*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xhandle.c,v 1.4 2004/06/12 04:09:37 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhandle.c,v $
-
-    $Log: xhandle.c,v $
-    Revision 1.4  2004/06/12 04:09:37  gbeeley
-    - supporting logic to allow saving of an MTask security context for later
-      use in a new thread.  This is needed for the asynchronous event delivery
-      mechanism for object-updates being sent to the client.
-
-    Revision 1.3  2003/04/03 04:32:39  gbeeley
-    Added new cxsec module which implements some optional-use security
-    hardening measures designed to protect data structures and stack
-    return addresses.  Updated build process to have hardening and
-    optimization options.  Fixed some build-related dependency checking
-    problems.  Updated mtask to put some variables in registers even
-    when not optimizing with -O.  Added some security hardening features
-    to xstring as an example.
-
-    Revision 1.2  2002/05/03 03:46:29  gbeeley
-    Modifications to xhandle to support clearing the handle list.  Added
-    a param to xhClear to provide support for xhnClearHandles.  Added a
-    function in mtask.c to allow the retrieval of ticks-since-boot without
-    making a syscall.  Fixed an MTASK bug in the scheduler relating to
-    waiting on timers and some modulus arithmetic.
-
-    Revision 1.1  2002/04/25 17:56:54  gbeeley
-    Added Handle support (xhandle module, XHN).  This is used to provide a
-    more flexible abstraction between API return values (handles vs. ptrs)
-    and the underlying structures they actually reference.  Handles are
-    64bit on glibc2 ia32 platforms (unsigned long long int).
-
-
- **END-CVSDATA***********************************************************/
 
 
 

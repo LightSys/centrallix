@@ -45,17 +45,29 @@ function pn_mousemove(e)
 
 function pn_getval(attr)
     {
-    return this.enabled;
+    if (attr == 'enabled')
+	return this.enabled;
+    else if (attr == 'background')
+	return htr_getbgimage(this);
+    else if (attr == 'bgcolor')
+	return htr_getbgcolor(this);
     }
 
 function pn_setval(attr, val)
     {
-    if (val)
-	this.enabled = true;
-    else
-	this.enabled = false;
-    this.style.opacity = this.enabled?1.0:0.4;
-    return this.enabled;
+    if (attr == 'enabled')
+	{
+	if (val)
+	    this.enabled = true;
+	else
+	    this.enabled = false;
+	this.style.opacity = this.enabled?1.0:0.4;
+	return this.enabled;
+	}
+    else if (attr == 'background')
+	htr_setbgimage(this, val);
+    else if (attr == 'bgcolor')
+	htr_setbgcolor(this, val);
     }
 
 function pn_setbackground(aparam)
@@ -63,6 +75,20 @@ function pn_setbackground(aparam)
     if (aparam.Color) htr_setbgcolor(this, aparam.Color);
     else if (aparam.Image) htr_setbgimage(this, aparam.Image);
     else htr_setbackground(this, null);
+    }
+
+function pn_action_resize(aparam)
+    {
+    var w = aparam.Width?aparam.Width:pg_get_style(this, 'width');
+    var h = aparam.Height?aparam.Height:pg_get_style(this, 'height');
+    resizeTo(this, w, h);
+    }
+
+function pn_action_point(aparam)
+    {
+    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
+    this.point1 = divs.p1;
+    this.point2 = divs.p2;
     }
 
 function pn_init(param)
@@ -95,9 +121,13 @@ function pn_init(param)
     // actions
     var ia = ml.ifcProbeAdd(ifAction);
     ia.Add("SetBackground", pn_setbackground);
+    ia.Add("Resize", pn_action_resize);
+    ia.Add("Point", pn_action_point);
 
     var iv = ml.ifcProbeAdd(ifValue);
     iv.Add("enabled", pn_getval, pn_setval);
+    iv.Add("background", pn_getval, pn_setval);
+    iv.Add("bgcolor", pn_getval, pn_setval);
     ml.enabled = param.enabled;
     if (param.enabled != null)
 	iv.Changing("enabled", ml.enabled, true, null, true);

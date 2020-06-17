@@ -25,6 +25,8 @@ function lbl_mousedown(e)
     {
     if (e.kind == 'lbl')
 	{
+	if (!lb_current)
+	    lb_current = e.layer;
 	cn_activate(e.layer, 'MouseDown');
 	}
     if (e.layer.tipid) { pg_canceltip(e.layer.tipid); e.layer.tipid = null; }
@@ -100,19 +102,36 @@ function lb_update()
     var v = htutil_nlbr(htutil_encode(htutil_obscure(this.content), true));
     //var txt = this.stylestr + (v?v:"") + "</font></td></tr></table>";
     var txt = v?v:"";
-    if (cx__capabilities.Dom0NS) // only serialize this for NS4
+    $(this).find("span").html(txt).attr("style", htutil_getstyle(this, null, {}));
+    /*if (cx__capabilities.Dom0NS) // only serialize this for NS4
 	pg_serialized_write(this, txt, null);
     else
-	htr_write_content(this, txt);
+	htr_write_content(this, txt);*/
+    this.CheckSize();
     }
 
 function lb_cb_reveal(e)
     {
+    if (this.form)
+	var parents = [this.form];
+    else
+	var parents = this.precedents;
+
     switch (e.eventName) 
 	{
 	case 'Reveal':
+	    for(var i=0; i<parents.length; i++)
+		parents[i].Reveal(this,e);
+	    break;
 	case 'Obscure':
-	    if (this.form) this.form.Reveal(this,e);
+	    for(var i=0; i<parents.length; i++)
+		{
+		if (wgtrGetType(parents[i]) == 'widget/form')
+		    parents[i].Reveal(this,e);
+		else
+		    parents[i].Obscure(this);
+		}
+	    //if (this.form) this.form.Reveal(this,e);
 	    break;
 	case 'RevealCheck':
 	case 'ObscureCheck':
@@ -120,7 +139,14 @@ function lb_cb_reveal(e)
 	    else pg_reveal_check_ok(e);
 	    break;
 	}
+
     return true;
+    }
+
+function lbl_check_size()
+    {
+    // Auto height adjust?
+    pg_check_resize(this);
     }
 
 
@@ -161,6 +187,7 @@ function lbl_init(l, wparam)
     l.disable = lb_disable;
 
     l.Update = lb_update;
+    l.CheckSize = lbl_check_size;
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -206,6 +233,31 @@ function lbl_init(l, wparam)
 	    l.form.Reveal(l,{ eventName:'Reveal' });
 	    }
 	}
+    else if (wgtrIsExpressionServerProperty(l, "value"))
+	{
+	var precedents = wgtrGetServerPropertyPrecedents(l, "value");
+	l.precedents = [];
+	l.Reveal = lb_cb_reveal;
+	var is_vis = pg_reveal_register_listener(l);
+
+	for(var i=0; i<precedents.length; i++)
+	    {
+	    var precedent = wgtrGetNodeUnchecked(l, precedents[i].obj);
+	    if (precedent && (wgtrGetType(precedent) == 'widget/osrc' || wgtrGetType(precedent) == 'widget/form'))
+		{
+		l.precedents.push(precedent);
+		if (is_vis)
+		    precedent.Reveal(l, {eventName:'Reveal'} );
+		}
+	    }
+	}
+
+    $(l).find("span").attr("style", htutil_getstyle(l, null, {}));
+    $(l).find("span").on("click", function() {});
+    $(l).find("span").on("mousedown", function() {});
+    $(l).find("span").on("mouseup", function() {});
+
+    l.CheckSize();
 
     return l;
     }

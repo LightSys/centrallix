@@ -41,6 +41,7 @@ function pg_scriptavailable(s)
     {
     if (!s.src) return true;
     var s_name = s.src;
+    s_name = s_name.replace(/\/CXDC:[0-9]*$/, "");
     var pos = s_name.lastIndexOf("/");
     var file = s_name.substr(pos+1);
     return pg_scripts[file]?true:false;
@@ -66,18 +67,30 @@ function pg_get_style(element,attr)
 	    return element.clip[attr.substr(5)];
 	    }	
 	var comp_style = window.getComputedStyle(element,null);
-	var cssValue = comp_style.getPropertyCSSValue(attr);
-	if (!cssValue) alert(element.id + '.' + attr);
-	if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
+	if (comp_style.getPropertyCSSValue)
 	    {
-	    alert(attr + ': ' + cssValue.cssValueType);
-	    return null;
+	    var cssValue = comp_style.getPropertyCSSValue(attr);
+	    if (!cssValue) alert(element.id + '.' + attr);
+	    if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
+		{
+		alert(attr + ': ' + cssValue.cssValueType);
+		return null;
+		}
+	    if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
+		return cssValue.getStringValue();
+	    if (cssValue.primitiveType == CSSPrimitiveValue.CSS_NUMBER)
+		return cssValue.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
+	    return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
 	    }
-	if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
-	    return cssValue.getStringValue();
-	if (cssValue.primitiveType == CSSPrimitiveValue.CSS_NUMBER)
-	    return cssValue.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
-	return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
+	else
+	    {
+	    var val = comp_style[attr];
+	    var num = parseFloat(val);
+	    if (isNaN(num))
+		return val;
+	    else
+		return num;
+	    }
 	}
     else if(cx__capabilities.Dom0NS)
 	{
@@ -164,7 +177,7 @@ function pg_set_style(element,attr, value)
 	    element[attr] = value;
 	    return;
 	    }
-	if (isNaN(parseInt(value)))
+	if (isNaN(parseInt(value)) || (String(value)).indexOf(" ") >= 0)
 	    element.style.setProperty(attr,value,"");
 	else
 	    element.style.setProperty(attr,parseInt(value) + "px","");
@@ -505,12 +518,18 @@ function pg_ping_recieve()
 	{
 	return false;
 	}
-    if(!link || link.target!=='OK')
+    if(!link || link.target==='ERR')
 	{
 	clearInterval(this.tid);
 	if (!window.pg_disconnected)
 	    confirm('you have been disconnected from the server');
 	window.pg_disconnected = true;
+	}
+    else if (link && link.target !== 'OK')
+	{
+	pg_servertime_notz = new Date(link.target);
+	pg_clienttime = new Date();
+	pg_clockoffset = pg_clienttime - pg_servertime_notz;
 	}
     }
     
@@ -524,7 +543,7 @@ function pg_ping_send(p)
 	        
     //p.onload=pg_ping_recieve;
    
-    pg_serialized_load(p, '/INTERNAL/ping', pg_ping_recieve);
+    pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_recieve);
     /*if(cx__capabilities.Dom1HTML)
 	{
 	p.setAttribute('src','/INTERNAL/ping');
@@ -614,13 +633,37 @@ function pg_set_emulation(d)
     }
 
 /** Function to set modal mode to a layer. **/
-function pg_setmodal(l)
+function pg_setmodal(l, is_modal)
     {
-    if (pg_modallist.length && !l)
+    // Find l in the modal list
+    var pos = pg_modallist.indexOf(l);
+    if (!is_modal)
+	{
+	if (pos >= 0)
+	    {
+	    pg_modallist.splice(pos, 1);
+	    }
+	else if (l == pg_modallayer)
+	    {
+	    pg_modallayer = pg_modallist.pop();
+	    if (pg_modallayer === undefined)
+		pg_modallayer = null;
+	    }
+	}
+    else
+	{
+	if (pos === -1 && l !== pg_modallayer)
+	    {
+	    if (pg_modallayer)
+		pg_modallist.push(pg_modallayer);
+	    pg_modallayer = l;
+	    }
+	}
+    /*if (pg_modallist.length && !l)
 	l = pg_modallist.pop();
     else if (l && pg_modallayer)
 	pg_modallist.push(pg_modallayer);
-    pg_modallayer = l;
+    pg_modallayer = l;*/
     if (!window.pg_masklayer)
         {
 	pg_masklayer = htr_new_layer(pg_width, null);
@@ -632,8 +675,9 @@ function pg_setmodal(l)
 	else
 	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
 	}
-    if (l)
+    if (pg_modallayer)
 	{
+	var l = pg_modallayer;
 	if (l.mainlayer) l = l.mainlayer;
 	moveBelow(pg_masklayer, l);
 	moveTo(pg_masklayer, 0, 0);
@@ -721,7 +765,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //if (cx__capabilities.Dom1HTML && pl)
     //	pl.parentLayer.appendChild(tl);
     moveAbove(tl,pl);
-    moveToAbsolute(tl,x,y);
+    //moveToAbsolute(tl,x,y);
+    $(tl).offset({left:x, top:y});
     htr_setzindex(tl,z);
 
     resizeTo(bl,w+s-1,1);
@@ -730,7 +775,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //if (cx__capabilities.Dom1HTML && pl)
     //	pl.parentLayer.appendChild(bl);
     moveAbove(bl,pl);
-    moveToAbsolute(bl,x,y+h-s+1);
+    //moveToAbsolute(bl,x,y+h-s+1);
+    $(bl).offset({left:x, top:y+h-s+1});
     htr_setzindex(bl,z);
 
     resizeTo(ll,1,h);
@@ -739,7 +785,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //if (cx__capabilities.Dom1HTML && pl)
     //	pl.parentLayer.appendChild(ll);
     moveAbove(ll,pl);
-    moveToAbsolute(ll,x,y);
+    //moveToAbsolute(ll,x,y);
+    $(ll).offset({left:x, top:y});
     htr_setzindex(ll,z);
 
     resizeTo(rl,1,h+1);
@@ -748,7 +795,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //if (cx__capabilities.Dom1HTML && pl)
     //	pl.parentLayer.appendChild(rl);
     moveAbove(rl,pl);
-    moveToAbsolute(rl,x+w-s+1,y);
+    //moveToAbsolute(rl,x+w-s+1,y);
+    $(rl).offset({left:x+w-s+1, top:y});
     htr_setzindex(rl,z);
     
     htr_setvisibility(tl, 'inherit');
@@ -1117,6 +1165,7 @@ function pg_keytimeout()
 
 function pg_keyuphandler(k,m,e)
     {
+    return true;
     }
 
 function pg_keypresshandler(k,m,e)
@@ -1129,7 +1178,8 @@ function pg_keyhandler(k,m,e)
     //alert(this.caller);
 
     // block non-special codes for IE here - handle em in keypress, not keydown.
-    if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+    //if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+    if (cx__capabilities.Dom0IE)
 	{
 	if (k >= 32 && k != 46)
 	    return true;
@@ -1141,20 +1191,27 @@ function pg_keyhandler(k,m,e)
 	    k = 127;
 	}
 
-    return pg_keyhandler_internal(k,m,e);
+    var r = pg_keyhandler_internal(k,m,e);
+    return  r;
     }
 
 function pg_keyhandler_internal(k,m,e)
     {
+    // can't capture ctrl-V, ctrl-C, ctrl-X as keypresses.
+    //if (e.ctrlKey && (k == 118 || k == 99 || k == 120))
+    //	return true;
+
     //htr_alert_obj(e,1);
     // layer.keyhandler is a callback routine that is optional 
     // on any layer requesting focus with pg_addarea().
     // It is set up in the corresponding widget drivers.
     if (pg_curkbdlayer != null && 
-	pg_curkbdlayer.keyhandler != null && 
-	pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) 
+	pg_curkbdlayer.keyhandler != null)
 	{
-    	return false;       
+	if (pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true)
+	    return false;       
+	else
+	    return true;
 	}
       
     for(var i=0;i<pg_keylist.length;i++)
@@ -1162,11 +1219,11 @@ function pg_keyhandler_internal(k,m,e)
 	if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)
 	    {
 	    pg_keylist[i].aparam.KeyCode = k;
-	    pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam);
+	    if (pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam)) return true;
 	    return false;
 	    }
 	}
-    return false;
+    return true;
     }
  
 function pg_status_init() //SETH: ??
@@ -1213,8 +1270,14 @@ function pg_appwindowbuild(seen)
     seen[wgtrGetNamespace(this)] = this.pg_appwindows[wgtrGetNamespace(this)];
     for(var win in this.pg_appwindows)
 	{
-	if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	if (this.pg_appwindows[win].wobj != 'undefined' && wgtrGetNamespace(this.pg_appwindows[win].wobj) != win)
 	    {
+	    // has been reloaded, ignore this instance
+	    delete pg_appwindows[win];
+	    }
+	else if (typeof seen[win] == 'undefined' && typeof this.pg_appwindows[win].wobj != 'undefined' && !this.pg_appwindows[win].wobj.closed)
+	    {
+	    // good window, unseen as of yet, and it is open... query it for its list.
 	    var otherlist = this.pg_appwindows[win].wobj.AppWindowBuild(seen);
 	    for(var otherwin in otherlist)
 		{
@@ -1260,9 +1323,9 @@ function pg_init(l,a,gs,ct) //SETH: ??
     // until after everything else has had a chance to run.  pg_reveal_event
     // also does addsched(), so that means everything has a chance to
     // schedule 0-timeout events before the Reveal occurs.
-    pg_addsched("pg_reveal_event(window,null,'Reveal')", window, 0);
+    pg_addsched_fn(window, function() { pg_reveal_event(window,null,'Reveal'); }, [], 0);
 
-    pg_addsched('pg_msg_init()', window, 0);
+    pg_addsched_fn(window, function() { pg_msg_init(); }, [], 0);
     ifc_init_widget(window);
 
     l.templates = [];
@@ -1272,7 +1335,7 @@ function pg_init(l,a,gs,ct) //SETH: ??
 
     // update app window lists
     pg_appwindows[wgtrGetNamespace(window)] = {wname:wgtrGetName(window), wobj:window, opener:window.opener, namespace:wgtrGetNamespace(window)};
-    if (window.opener && typeof window.opener.akey != 'undefined' && window.opener.akey == window.akey)
+    if (window.opener && typeof window.opener.akey != 'undefined' && window.opener.akey.substr(0,49) == window.akey.substr(0,49))
 	{
 	// link with opener and propagate window lists
 	pg_appwindows[wgtrGetNamespace(window.opener)] = {wname:wgtrGetName(window.opener), wobj:window.opener, opener:window.opener.opener, namespace:wgtrGetNamespace(window.opener)};
@@ -1294,7 +1357,35 @@ function pg_init(l,a,gs,ct) //SETH: ??
     // Reveal
     l.Reveal = pg_reveal_cb;
 
-    pg_addsched('window.ifcProbe(ifEvent).Activate("Load", {})', window, 100);
+    // Check time
+    if (window.pg_servertime && window.pg_clienttime && window.pg_servertime_notz)
+	{
+	// Warn the user if their clock & server's clock are not in sync.
+	if (Math.abs(pg_servertime - pg_clienttime) > 60*10*1000)
+	    {
+	    var mins = Math.floor(Math.abs(pg_servertime - pg_clienttime) / 1000 / 60);
+	    alert("Please double-check your computer's date, time, and timezone; it is " + mins + " minutes different than the server's date & time");
+	    }
+
+	// Milliseconds our TZ is different than the server.
+	// A positive value means our TZ is further east.
+	pg_clockoffset = pg_clienttime - pg_servertime_notz;
+	}
+
+    pg_addsched_fn(window, function() { window.ifcProbe(ifEvent).Activate("Load", {}); }, [], 100);
+
+    // This input receives paste events on behalf of the entire app
+    window.paste_input = document.createElement('input');
+    $(window.paste_input).css
+	({
+	'left': '0px',
+	'top': '-30px',
+	'position': 'absolute',
+	'width': '100px',
+	'height': '20px',
+	});
+    document.body.appendChild(window.paste_input);
+    //window.paste_input.focus();
 
     return window;
     }
@@ -1302,8 +1393,14 @@ function pg_init(l,a,gs,ct) //SETH: ??
 function pg_cleanup()
     {
     // remove this window from the app window lists
-    window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
-    window.AppWindowPropagate();
+    if (window.pg_appwindows && window.pg_appwindows[wgtrGetNamespace(window)])
+	{
+	window.pg_appwindows[wgtrGetNamespace(window)].wobj = null;
+	window.AppWindowPropagate();
+	}
+
+    // Deinit the tree.
+    wgtrDeinitTree(window);
     }
 
 function pg_alert(aparam)
@@ -1348,6 +1445,17 @@ function pg_load_page(aparam) //SETH: ??
 	    newurl += '?';
 	newurl += (htutil_escape(p) + '=' + htutil_escape(v));
 	}
+
+    // session linkage
+    if (newurl.substr(0,1) == '/')
+	{
+	if (newurl.lastIndexOf('?') > newurl.lastIndexOf('/'))
+	    newurl += '&';
+	else
+	    newurl += '?';
+	newurl += "cx__akey=" + window.akey.substr(0,49);
+	}
+
     window.location.href = newurl;
     }
 
@@ -1360,33 +1468,81 @@ function pg_launch(aparam)
 	w_name = "new_window";
     else
 	w_name = aparam.Name;
+    w_name = wgtrGetNamespace(window) + '_' + w_name;
 
     // build the URL with parameters
     var url = new String(aparam.Source);
     for(var p in aparam)
 	{
+	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source' || p == 'LinkApp')
+	    continue;
 	var v = aparam[p];
+	var r = wgtrCheckReference(v);
+	if (r) v = r;
 	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
 	    url += '&';
 	else
 	    url += '?';
 	url += (htutil_escape(p) + '=' + htutil_escape(v));
 	}
-    
-    if (aparam.Multi != null && aparam.Multi == true)
+
+    if (obscure_data)
 	{
-	for(var i = 0; i < 32; i++) // 32 max multi-instanced windows
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += "cx__obscure=yes";
+	}
+
+    // session linkage
+    if (url.substr(0,1) == '/')
+	{
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    url += "cx__akey=" + window.akey;
+	else
+	    url += "cx__akey=" + window.akey.substr(0,49);
+	}
+
+    // Find a unique name for the new window.
+    if (aparam.Multi != null && (aparam.Multi == true || aparam.Multi == 1))
+	{
+	for(var i = 0; i < 64; i++) // 64 max multi-instanced windows
 	    {
-	    if (window.windowlist[w_name + '_' + i] == null || window.windowlist[w_name + '_' + i].close == null)
-		w_name = w_name + '_' + i;
+	    var w_instance_name = w_name + '_' + i;
+	    if (!window.windowlist[w_instance_name] || !window.windowlist[w_instance_name].close)
+		{
+		w_name = w_instance_name;
+		break;
+		}
 	    }
 	}
-    if (window.windowlist[w_name] != null && window.windowlist[w_name].close != null) w_exists = true;
-    if ((aparam.Multi == null || aparam.Multi == false) && w_exists) 
+
+    // Mailto?  We handle this differently if so.
+    if (url.substr(0,7) == 'mailto:')
+	{
+	$('<iframe src="' + htutil_encode(url) + '">').appendTo('body').css('display', 'none');
+	return;
+	}
+
+    // Already exists?
+    if (window.windowlist[w_name] && window.windowlist[w_name].close) w_exists = true;
+    if (!aparam.Multi && w_exists) 
 	{
 	window.windowlist[w_name].close();
 	w_exists = false;
 	}
+
+    // Compute the height
+    var h = aparam.Height;
+    if (window.devicePixelRatio)
+	h *= window.devicePixelRatio;
+
+    // Open it.
     if (!w_exists) 
 	{
 	if (aparam.UseragentMenu != null && aparam.UseragentMenu && aparam.UseragentMenu != 'no')
@@ -1397,7 +1553,11 @@ function pg_launch(aparam)
 	    var resizable = ",resizable=yes";
 	else
 	    var resizable = ",resizable=no";
-	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	if (aparam.UseragentScroll != null && aparam.UseragentScroll && aparam.UseragentScroll != 'no')
+	    var scroll = ",scrollbars=yes";
+	else
+	    var scroll = ",scrollbars=no";
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + h + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
 	}
     }
 
@@ -1542,7 +1702,10 @@ function pg_dosched(do_all)
 		var _context = null;
 		if (wgtrIsNode(sched_item.obj))
 		    _context = wgtrGetRoot(sched_item.obj);
-		sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
+		if (typeof sched_item.func == 'function')
+		    sched_item.func.apply(sched_item.obj, sched_item.param);
+		else
+		    sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
 		}
 	    }
 	}
@@ -1559,6 +1722,38 @@ function pg_timestamp()
 
 //START SECTION: 'expression' functions ----------------------------------------
 
+function pg_explisten(exp, obj, prop)
+    {
+    obj.pg_expchange = pg_expchange;
+    if (obj.ifcProbe && obj.ifcProbe(ifValue) && obj.ifcProbe(ifValue).Exists(prop))
+	obj.ifcProbe(ifValue).Watch(prop, null, pg_expchange);
+    else
+	htr_watch(obj,prop,"pg_expchange");
+    }
+
+function pg_expaddpart(exp, obj, prop)
+    {
+    var ref;
+    var objname = obj.__WgtrName;
+    if (obj.reference && (ref = obj.reference()))
+	obj = ref;
+    for(var i=0; i<exp.ParamList.length; i++)
+	{
+	var item = exp.ParamList[i];
+	if (obj == item[2] && prop == item[1]) return;
+	if (objname == item[0] && !item[2] && prop == item[1])
+	    {
+	    item[2] = obj;
+	    return;
+	    }
+	}
+    //var _context = window[exp.Context];
+    //var nodelist = wgtrNodeList(_context);
+    var item=[objname, prop, obj];
+    exp.ParamList.push(item);
+    pg_explisten(exp, obj, prop);
+    }
+
 function pg_expression(o,p,e,l,c)
     {
     var expobj = {};
@@ -1567,36 +1762,40 @@ function pg_expression(o,p,e,l,c)
     expobj.Expression = e;
     expobj.ParamList = l;
     expobj.Context = c;
-    var _context = window[c];
-    var nodelist = wgtrNodeList(_context);
+    //var _context = window[c];
+    var _context = c;
+    //var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
-    wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
+    window.__cur_exp = expobj;
+    //wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
+    wgtrSetProperty(node, expobj.Propname, expobj.Expression(_context,_this));
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
 	{
 	var item = l[i];
 	var ref;
-	item[2] = nodelist[item[0]]; // get obj reference
+	if (item[0] == "*") continue; // cannot handle global listening yet
+	//item[2] = nodelist[item[0]]; // get obj reference
+	item[2] = wgtrGetNodeUnchecked(_context, item[0]); // get obj reference
 	if (item[2])
 	    {
 	    if (item[2].reference && (ref = item[2].reference()))
-		item[2] = ref;
-	    item[2].pg_expchange = pg_expchange;
-	    if (item[2].ifcProbe && item[2].ifcProbe(ifValue) && item[2].ifcProbe(ifValue).Exists(item[1]))
-		item[2].ifcProbe(ifValue).Watch(item[1], null, pg_expchange);
-	    else
-		htr_watch(item[2],item[1],"pg_expchange");
+	    	item[2] = ref;
+	    pg_explisten(expobj, item[2], item[1]);
 	    }
 	}
     }
 
 function pg_expchange_cb(exp) //SETH: ??
     {
-    var node = wgtrGetNode(window[exp.Context], exp.Objname);
-    var _context = window[exp.Context];
+    //var _context = window[exp.Context];
+    var _context = exp.Context;
+    var node = wgtrGetNode(_context, exp.Objname);
     var _this = node;
-    var v = eval(exp.Expression);
+    window.__cur_exp = exp;
+    //var v = eval(exp.Expression);
+    var v = exp.Expression(_context,_this);
     //pg_explog.push('assign: obj ' + node.__WgtrName + ', prop ' + exp.Propname + ', nv ' + v + ', exp ' + exp.Expression);
     wgtrSetProperty(node, exp.Propname, v);
     }
@@ -1701,8 +1900,11 @@ function pg_setmousefocus(l, xo, yo)
 	    if (!pg_curarea.layer.getmousefocushandler || pg_curarea.layer.getmousefocushandler(xo, yo, a.layer, a.cls, a.name, a))
 		{
 		// wants mouse focus
-		var x = getPageX(pg_curarea.layer)+pg_curarea.x;
-		var y = getPageY(pg_curarea.layer)+pg_curarea.y;
+		var offs = $(pg_curarea.layer).offset();
+		//var x = getPageX(pg_curarea.layer)+pg_curarea.x;
+		//var y = getPageY(pg_curarea.layer)+pg_curarea.y;
+		var x = offs.left+pg_curarea.x;
+		var y = offs.top+pg_curarea.y;
 		
 		var w = pg_curarea.width;
 		var h = pg_curarea.height;
@@ -1815,8 +2017,11 @@ function pg_setkbdfocus(l, a, xo, yo)
     if (!a)
 	return false;
 
-    var x = getPageX(a.layer)+a.x;
-    var y = getPageY(a.layer)+a.y;
+    var offs=$(a.layer).offset();
+    //var x = getPageX(a.layer)+a.x;
+    //var y = getPageY(a.layer)+a.y;
+    var x = offs.left+a.x;
+    var y = offs.top+a.y;
     var w = a.width;
     var h = a.height;
     var prevLayer = pg_curkbdlayer;
@@ -1895,7 +2100,7 @@ function pg_serialized_write(l, text, cb)
     {
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
     //pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb});
+    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0});
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -1906,7 +2111,7 @@ function pg_serialized_write(l, text, cb)
 // complete (even if scheduled later) before it runs.
 function pg_serialized_func(level, obj, func, params)
     {
-    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params});
+    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0});
     //pg_serialized_load_doone();
     pg_loadqueue_check();
     }
@@ -1923,7 +2128,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 	if (!pg_waitlyr)
 	    {
 	    pg_waitlyr = htr_new_layer(96);
-	    htr_write_content(pg_waitlyr, "<table width='100' bgcolor='black' cellspacing='0' cellpadding='2' border='0'><tr><td><table width='96' bgcolor='#ffff80' cellspacing='0' cellpadding='3' border='0'><tr><td align='center'>Please Wait...</td></tr></table></td></tr></table>");
+	    htr_write_content(pg_waitlyr, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
 	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
 	    htr_setzindex(pg_waitlyr, 99999);
 	    }
@@ -1934,7 +2139,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 	htr_setvisibility(pg_waitlyr, "inherit");
 	}
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
-    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb});
+    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0});
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -1944,26 +2149,37 @@ function pg_serialized_load(l, newsrc, cb, silent)
 // actually made.
 function pg_serialized_load_doone()
     {
-    if (pg_loadqueue_busy) return;
+    if (pg_loadqueue_busy >= pg_max_requests) return;
     if (pg_loadqueue.length == 0) 
 	{
-	pg_loadqueue_busy = false;
-	if (pg_waitlyr) 
-	    {
-	    if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	    pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
-	    pg_waitlyr.vis = false;
-	    }
+	//pg_loadqueue_busy = 0;
+	pg_clear_waitlyr();
 	return;
 	}
-    pg_loadqueue_busy = true;
-    var one_item = pg_loadqueue.shift(); // remove first item
+
+    // Find an item from the load queue
+    //var one_item = pg_loadqueue.shift(); 
+    var one_item = null;
+    for(var i=0; i<pg_loadqueue.length; i++)
+	{
+	var item = pg_loadqueue[i];
+	if (!item.lyr.__load_busy)
+	    {
+	    one_item = pg_loadqueue.splice(i,1)[0];
+	    one_item.lyr.__load_busy = true;
+	    pg_loadqueue_busy++;
+	    break;
+	    }
+	}
+    if (!one_item) return; // none found
+
     if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' loads ' + one_item.src + '\n');
     one_item.lyr.__pg_onload = one_item.cb;
     switch(one_item.type)
 	{
 	case 'src':
 	    one_item.lyr.onload = pg_serialized_load_cb;
+	    one_item.lyr.onerror = pg_serialized_load_error_cb;
 	    pg_set(one_item.lyr, 'src', one_item.src);
 	    break;
 
@@ -1980,14 +2196,16 @@ function pg_serialized_load_doone()
 	    else
 		{
 		pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
-		pg_loadqueue_busy = false;
+		one_item.lyr.__load_busy = false;
+		pg_loadqueue_busy--;
 		}
 	    pg_loadqueue_check();
 	    break;
 
 	case 'func':
 	    one_item.cb.apply(one_item.lyr, one_item.params);
-	    pg_loadqueue_busy = false;
+	    one_item.lyr.__load_busy = false;
+	    pg_loadqueue_busy--;
 	    pg_loadqueue_check();
 	    break;
 	}
@@ -1996,11 +2214,24 @@ function pg_serialized_load_doone()
 // pg_serialized_load_cb() - called when a load finishes
 function pg_serialized_load_cb()
     {
-    pg_loadqueue_busy = false;
+    this.__load_busy = false;
+    pg_loadqueue_busy--;
+    if (pg_loadqueue_busy < 0)
+	pg_loadqueue_busy = 0;
 
     if (this.__pg_onload) 
 	this.__pg_onload();
 
+    pg_loadqueue_check();
+    }
+
+// need some specialized error handling here in the future.
+function pg_serialized_load_error_cb()
+    {
+    this.__load_busy = false;
+    pg_loadqueue_busy--;
+    if (pg_loadqueue_busy < 0)
+	pg_loadqueue_busy = 0;
     pg_loadqueue_check();
     }
 
@@ -2009,12 +2240,17 @@ function pg_loadqueue_check()
     if (pg_loadqueue.length > 0)
 	pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
     else
-	if (pg_waitlyr && !pg_loadqueue_busy)
-	    {
-	    if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	    pg_waitlyr_id = pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 150);
-	    pg_waitlyr.vis = false;
-	    }
+	pg_clear_waitlyr();
+    }
+
+function pg_clear_waitlyr()
+    {
+    if (pg_waitlyr && !pg_loadqueue_busy)
+	{
+	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
+	pg_waitlyr.vis = false;
+	pg_waitlyr_id = pg_addsched_fn(window, function() { pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden"); }, [], 150);
+	}
     }
 
 //END SECTION: async request handling ------------------------------------
@@ -2387,6 +2623,7 @@ function pg_tooltip(msg, x, y)
     if (!pg_tiplayer)
 	pg_tiplayer = htr_new_layer(pg_width);
     htr_setvisibility(pg_tiplayer, "hidden");
+    //pg_set_style(pg_tiplayer, "box-shadow", "2px 2px 4px black");
     pg_tipindex++;
     pg_tipinfo = {msg:msg, x:x, y:y};
     if (pg_tiptmout) pg_delsched(pg_tiptmout);
@@ -2423,12 +2660,12 @@ function pg_dotip_complete()
     if (isNaN(x1)) x1 = imgs[0].offsetLeft + imgs[0].offsetParent.offsetLeft;
     var x2 = getRelativeX(imgs[1]);
     if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
-    var tipw = (x2 - x1) + 6;
+    var tipw = (x2 - x1) + 5;
     var pgx = pg_tipinfo.x;
     var pgy = pg_tipinfo.y + 20;
     if (pgx + tipw > pg_width) pgx = pg_width - tipw;
     if (pgx < 0) pgx = 0;
-    setClipWidth(pg_tiplayer, tipw);
+    //setClipWidth(pg_tiplayer, tipw);
     pg_set_style(pg_tiplayer, "width", tipw + "px");
     moveToAbsolute(pg_tiplayer, pgx, pgy);
     htr_setzindex(pg_tiplayer, 99999);
@@ -2439,7 +2676,10 @@ function pg_dotip_complete()
 // Is the DIV or LAYER "l" restricted due to a modal dialog?
 function pg_checkmodal(l)
     {
-    return pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
+    var restricted = pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
+    if (restricted && l.kind == 'dt_pn' && ((l.ml && wgtrIsNode(l.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.ml)) || (l.parentElement && l.parentElement.ml && wgtrIsNode(l.parentElement.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.parentElement.ml))))
+	restricted = false;
+    return restricted;
     }
 
 
@@ -2460,7 +2700,9 @@ function pg_mousemove(e)
         }*/
     if (pg_curlayer != null)
         {
-        pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
+	var offs = $(pg_curlayer).offset();
+        //pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
+        pg_setmousefocus(pg_curlayer, e.pageX - offs.left, e.pageY - offs.top);
         }
     if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
         {
@@ -2553,6 +2795,7 @@ function pg_mousedown(e)
 		}
 	    }
 	}
+    //window.paste_input.focus();
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2565,6 +2808,7 @@ function pg_contextmenu(e)
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 	}
+    //window.paste_input.focus();
     }
 
 function pg_mouseup_ns4(e)
@@ -2582,6 +2826,7 @@ function pg_mouseup(e)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
         }*/
+    //window.paste_input.focus();
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2599,7 +2844,7 @@ function pg_keydown(e)
 	pg_lastmodifiers = e.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
+        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
@@ -2616,7 +2861,7 @@ function pg_keydown(e)
 	pg_lastmodifiers = e.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
+        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
@@ -2625,16 +2870,18 @@ function pg_keydown(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	var k = e.Dom2Event.which;
-        if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
+        /*if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
 	pg_lastmodifiers = e.Dom2Event.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
+        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);*/
         //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+	//if (e.ctrlKey && k == 17)
+	//    window.paste_input.focus();
         if (pg_keyhandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	}
@@ -2672,7 +2919,7 @@ function pg_keyup(e)
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
         pg_keytimeoutid = null;
         if (pg_keyuphandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	}
@@ -2697,18 +2944,53 @@ function pg_keypress(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	var k = e.Dom2Event.which;
-	if ((k == 8 || k == 13) && k == pg_lastkey) 
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	//if ((k == 8 || k == 13) && k == pg_lastkey) 
+	//    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         if (k == pg_lastkey) pg_lastkey = -1;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	pg_keytimeoutid = null;
         //if (pg_keypresshandler(k, e.Dom2Event.modifiers, e.Dom2Event))
         if (pg_keypresshandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+
+// Automatic resize utilities
+function pg_check_resize(l)
+    {
+    if (wgtrGetServerProperty(l, "r_height") == -1)
+	{
+	if (wgtrGetServerProperty(l, "height") != $(l).height())
+	    {
+	    if (wgtrGetParent(l).childresize)
+		{
+		var geom = wgtrGetParent(l).childresize(l, wgtrGetServerProperty(l, "width"), wgtrGetServerProperty(l, "height"), $(l).width(), $(l).height());
+		if (geom)
+		    {
+		    wgtrSetServerProperty(l, "height", geom.height);
+		    //$(l).height(geom.height);
+		    }
+		return geom;
+		}
+	    }
+	}
+    return null;
+    }
+
+function pg_scroll(e)
+    {
+    if (e.target == document)
+	{
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else
+	{
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+	}
     }
 
 

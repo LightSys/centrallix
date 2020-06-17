@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"
@@ -35,70 +36,6 @@
 /*		printf() library calls.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: qprintf.c,v 1.11 2008/09/21 00:32:30 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
-
-    $Log: qprintf.c,v $
-    Revision 1.11  2008/09/21 00:32:30  gbeeley
-    - (change) handle situation where 'strval' passed to qprintf is NULL
-    - (change) update .cvsignore for new object files (lib symlinks)
-
-    Revision 1.10  2008/06/26 23:36:22  jncraton
-    - DB64 filter now uses a proper grow function and is more efficient
-
-    Revision 1.9  2008/06/25 22:38:29  jncraton
-    (feature) adding URL and DB64 filters
-
-    Revision 1.8  2008/04/06 20:56:34  gbeeley
-    - (feature) adding DSYB filter in qprintf to use sybase/csv style quoting
-      of strings (by doubling the double quotes)
-
-    Revision 1.7  2008/03/29 01:03:36  gbeeley
-    - (change) changing integer type in IntVec to a signed integer
-    - (security) switching to size_t in qprintf where needed instead of using
-      bare integers.  Also putting in some checks for insanely huge amounts
-      of data in qprintf that would overflow many of the integer counters.
-    - (bugfix) several fixes to make the code compile cleanly at the newer
-      warning levels on newer compilers.
-
-    Revision 1.6  2008/03/03 09:04:31  gbeeley
-    - (feature) adding JSSTR, CSSVAL, and CSSURL filters to qprintf.  JSSTR
-      is to be used when encoding a JavaScript string in a document.  CSSVAL
-      is for ordinary CSS values in an HTML context, and CSSURL handles a
-      CSS value placed inside url().
-
-    Revision 1.5  2007/09/21 23:14:43  gbeeley
-    - (feature) adding ESCQWS and HTENLBR filters
-    - (change) the grow_fn interface needed to change in order to handle
-      sliding window buffer situations, such as those used by fdQPrintf()
-
-    Revision 1.4  2007/04/19 21:14:13  gbeeley
-    - (feature) adding &FILE and &PATH filters to qprintf.
-    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
-    - (tests) more tests cases (of course...)
-    - (feature) adding qprintf functionality to XString.
-
-    Revision 1.3  2007/04/18 18:42:07  gbeeley
-    - (feature) hex encoding in qprintf (&HEX filter).
-    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
-    - (bugfix) %[ %] conditional formatting didn't exclude everything.
-    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
-    - (performance) significant performance improvements in HEX, ESCQ, HTE.
-    - (change) qprintf API change - optional session, cumulative errors/flags
-    - (testsuite) lots of added testsuite entries.
-
-    Revision 1.2  2006/10/27 19:21:32  gbeeley
-    - (bugfix) qpfPrintf() %[ %] conditional formatting needs to still chomp
-      va_arg()'s that occur within the %[ %], to preserve the positions of
-      the supplied arguments.
-
-    Revision 1.1  2006/06/21 21:22:44  gbeeley
-    - Preliminary versions of strtcpy() and qpfPrintf() calls, which can be
-      used for better safety in handling string data.
-
- **END-CVSDATA***********************************************************/
 
 #ifndef __builtin_expect
 #define __builtin_expect(e,c) (e)
@@ -159,8 +96,9 @@
 #define QPF_SPEC_T_ESCQ		(38)
 #define QPF_SPEC_T_CSSVAL	(39)
 #define QPF_SPEC_T_CSSURL	(40)
-#define QPF_SPEC_T_ENDFILT	(40)
-#define QPF_SPEC_T_MAXSPEC	(40)
+#define QPF_SPEC_T_JSONSTR	(41)
+#define QPF_SPEC_T_ENDFILT	(41)
+#define QPF_SPEC_T_MAXSPEC	(41)
 
 /** Names for specifiers as used in format string - must match the above. **/
 const char*
@@ -207,6 +145,7 @@ qpf_spec_names[] =
     "ESCQ",	/* 38 */
     "CSSVAL",	/* 39 */
     "CSSURL",	/* 40 */
+    "JSONSTR",	/* 41 */
     NULL
     };
 
@@ -235,9 +174,11 @@ typedef struct
     QPConvTable	hex_matrix;
     QPConvTable	url_matrix;
     QPConvTable	jsstr_matrix;
+    QPConvTable	jsonstr_matrix;
     QPConvTable	cssval_matrix;
     QPConvTable	cssurl_matrix;
     QPConvTable	dsyb_matrix;
+    QPConvTable	ssyb_matrix;
     }
     QPF_t;
     
@@ -317,7 +258,35 @@ qpfInitialize()
 	QPF.jsstr_matrix.Matrix['\n'] = "\\n";
 	QPF.jsstr_matrix.Matrix['\t'] = "\\t";
 	QPF.jsstr_matrix.Matrix['\r'] = "\\r";
+	QPF.jsstr_matrix.Matrix['\b'] = "\\b";
+	QPF.jsstr_matrix.Matrix['\f'] = "\\f";
+	for(i=0;i<=31;i++)
+	    {
+	    if (!QPF.jsstr_matrix.Matrix[i])
+		{
+		QPF.jsstr_matrix.Matrix[i] = nmSysMalloc(7);
+		snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		}
+	    }
 	qpf_internal_SetupTable(&QPF.jsstr_matrix);
+
+	memset(&QPF.jsonstr_matrix, 0, sizeof(QPF.jsonstr_matrix));
+	QPF.jsonstr_matrix.Matrix['"'] = "\\\"";
+	QPF.jsonstr_matrix.Matrix['\\'] = "\\\\";
+	QPF.jsonstr_matrix.Matrix['\n'] = "\\n";
+	QPF.jsonstr_matrix.Matrix['\t'] = "\\t";
+	QPF.jsonstr_matrix.Matrix['\r'] = "\\r";
+	QPF.jsonstr_matrix.Matrix['\b'] = "\\b";
+	QPF.jsonstr_matrix.Matrix['\f'] = "\\f";
+	for(i=0;i<=31;i++)
+	    {
+	    if (!QPF.jsonstr_matrix.Matrix[i])
+		{
+		QPF.jsonstr_matrix.Matrix[i] = nmSysMalloc(7);
+		snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		}
+	    }
+	qpf_internal_SetupTable(&QPF.jsonstr_matrix);
 
 	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
 	QPF.ws_matrix.Matrix['\n'] = "\\n";
@@ -328,6 +297,10 @@ qpfInitialize()
 	memset(&QPF.dsyb_matrix, 0, sizeof(QPF.dsyb_matrix));
 	QPF.dsyb_matrix.Matrix['"'] = "\"\"";
 	qpf_internal_SetupTable(&QPF.dsyb_matrix);
+
+	memset(&QPF.ssyb_matrix, 0, sizeof(QPF.ssyb_matrix));
+	QPF.ssyb_matrix.Matrix['\''] = "''";
+	qpf_internal_SetupTable(&QPF.ssyb_matrix);
 
 	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
 	QPF.hte_matrix.Matrix['<'] = "&lt;";
@@ -393,6 +366,7 @@ qpfInitialize()
 	qpf_internal_SetupTable(&QPF.hex_matrix);
 
 	/* set up table for url encoding everything except 0-9, A-Z, and a-z */
+	memset(&QPF.url_matrix, 0, sizeof(QPF.url_matrix));
 	for(i=0;i<48;i++) /* escape until 0-9 */
 	    {
 	    buf[0] = '%';
@@ -581,7 +555,6 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    if (src[2] == '=' && src[3] == '=')
 	        {
 		cursor += 1;
-		src += 4;
 		break;
 		}
 	    ptr = strchr(b64,src[2]);
@@ -598,7 +571,6 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    if (src[3] == '=')
 	        {
 		cursor += 2;
-		src += 4;
 		break;
 		}
 	    ptr = strchr(b64,src[3]);
@@ -611,7 +583,8 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    src += 4;
 	    cursor += 3;
 	    }
-	    *dst_offset = *dst_offset + cursor - *dst;
+
+	*dst_offset = *dst_offset + cursor - *dst;
 
     return cursor - *dst;
     }
@@ -1084,6 +1057,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				case QPF_SPEC_T_ESCQ:
 				case QPF_SPEC_T_ESCQWS:
 				case QPF_SPEC_T_JSSTR:
+				case QPF_SPEC_T_JSONSTR:
 				case QPF_SPEC_T_DSYB:
 				case QPF_SPEC_T_CSSVAL:
 				case QPF_SPEC_T_CSSURL:
@@ -1114,7 +1088,15 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 									min_room = 1;
 									quote = 0;
 									break;
+					    case QPF_SPEC_T_JSONSTR:	table = &QPF.jsonstr_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
 					    case QPF_SPEC_T_DSYB:	table = &QPF.dsyb_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_SSYB:	table = &QPF.ssyb_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
@@ -1170,12 +1152,15 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 						}
 					    break;
 					    }
-					if (quote) maxdst -= 2;
-					if (maxdst < 0)
+					if (quote)
 					    {
-					    QPERR(QPF_ERR_T_BADFORMAT);
-					    rval = -EINVAL;
-					    goto error;
+					    if (maxdst < 2)
+						{
+						QPERR(QPF_ERR_T_BADFORMAT);
+						rval = -EINVAL;
+						goto error;
+						}
+					    maxdst -= 2;
 					    }
 					if (quote)
 					    {

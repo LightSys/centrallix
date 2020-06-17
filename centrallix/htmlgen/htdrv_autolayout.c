@@ -40,57 +40,6 @@
 /* Description:	HTML Widget driver for autolayout of its subwidgets.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_autolayout.c,v 1.7 2009/06/24 19:33:38 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
-
-    $Log: htdrv_autolayout.c,v $
-    Revision 1.7  2009/06/24 19:33:38  gbeeley
-    - (change) adding autolayoutspacer as officially handled by this driver
-    - (feature) adding center/right/bottom alignments within the hbox/vbox
-
-    Revision 1.6  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.5  2007/07/27 00:23:53  dkasper
-    - No longer render each subwidget of a repeat widget here.  That is handled
-      by the repeat widget driver.
-
-    Revision 1.4  2007/07/24 23:06:23  dkasper
-    - It was necessary to add a few lines that make the autolayout render all
-      of the subwidgets of a repeat widgets, while not trying to render the
-      repeat widget itself.
-
-    Revision 1.3  2007/04/19 21:26:49  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.2  2007/04/03 15:50:04  gbeeley
-    - (feature) adding capability to pass a widget to a component as a
-      parameter (by reference).
-    - (bugfix) changed the layout logic slightly in the apos module to better
-      handle ratios of flexibility and size when resizing.
-
-    Revision 1.1  2007/03/22 16:29:28  gbeeley
-    - (feature) Autolayout widget, better known as hbox and vbox.  Now you
-      don't have to manually compute all those X's and Y's!  Only hbox and
-      vbox supported right now; other layouts are planned (any takers?)
-    - (bugfix) cond_add_children with condition=false on conditional rendering
-      now compensates for x/y container offset of nonrendered widget.
-    - (change) allow drv->New code in wgtr to have access to the properties
-      for the given widget, by moving the ->New call later in the parse-open-
-      widget process.
-
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
@@ -114,7 +63,6 @@ htalRenderSpacer(pHtSession s, pWgtrNode tree, int z)
 int
 htalRender(pHtSession s, pWgtrNode tree, int z)
     {
-    char* ptr;
     char name[64];
     int x=-1,y=-1,w,h;
     int id;
@@ -148,26 +96,26 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(name,ptr,sizeof(name));
+	strtcpy(name,wgtrGetName(tree),sizeof(name));
 
 	/** Add the stylesheet for the layer **/
-	htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx); Z-INDEX:%POS; }\n",
+	htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",
+	//htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx); Z-INDEX:%POS; }\n",
 		id,x,y,w,h,
-		-1, w+1, h+1, -1,
+		//-1, w+1, h+1, -1,
 		z);
 
 	/** Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"al%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "al%POSbase",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    al_init(nodes['%STR&SYM'], {});\n", name);
+	htrAddScriptInit_va(s, "    al_init(wgtrGetNodeRef(ns,'%STR&SYM'), {});\n", name);
 
 	/** Start of container **/
-	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id);
+	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id, NULL);
 
 	/** Check for objects within this autolayout widget. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

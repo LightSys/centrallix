@@ -48,103 +48,6 @@
 /*		so forth.  This module is *not* used for HTML output.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: prtmgmt_v3_fm_strict.c,v 1.13 2009/06/26 16:18:59 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
-
-    $Log: prtmgmt_v3_fm_strict.c,v $
-    Revision 1.13  2009/06/26 16:18:59  gbeeley
-    - (change) GetCharacterMetric now returns both height and width
-    - (performance) change from bubble sort to merge sort for page generation
-      and output sequencing (this made a BIG difference)
-    - (bugfix) attempted fix of text output overlapping problems, but there
-      are still trouble points here.
-
-    Revision 1.12  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.11  2007/02/17 04:34:51  gbeeley
-    - (bugfix) test_obj should open destination objects with O_TRUNC
-    - (bugfix) prtmgmt should remember 'configured' line height, so it can
-      auto-adjust height only if the line height is not explicitly set.
-    - (change) report writer should assume some default margin settings on
-      tables/table cells, so that tables aren't by default ugly :)
-    - (bugfix) various floating point comparison fixes
-    - (feature) allow top/bottom/left/right border options on the entire table
-      itself in a report.
-    - (feature) allow setting of text line height with "lineheight" attribute
-    - (change) allow table to auto-scale columns should the total of column
-      widths and separations exceed the available inner width of the table.
-    - (feature) full justification of text.
-
-    Revision 1.10  2005/09/17 01:23:51  gbeeley
-    - Adding sysinfo objectsystem driver, which is roughly analogous to
-      the /proc filesystem in Linux.
-
-    Revision 1.9  2005/02/26 06:42:40  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.8  2005/02/24 05:44:32  gbeeley
-    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
-    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
-      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
-      PostScript support!!  See http://www.codn.net/
-    - More formats (maybe PNG?) should be easy to add.
-    - TODO: read the *real* font metric files to get font geometries!
-    - TODO: compress the images written into the .ps file!
-
-    Revision 1.7  2003/04/21 21:00:43  gbeeley
-    HTML formatter additions including image, table, rectangle, multi-col,
-    fonts and sizes, now supported.  Rearranged header files for the
-    subsystem so that LMData (layout manager specific info) can be
-    shared with HTML formatter subcomponents.
-
-    Revision 1.6  2003/03/18 04:06:25  gbeeley
-    Added basic image (picture/bitmap) support; only PNG images supported
-    at present.  Moved image and border (rectangles) functionality into a
-    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
-    present and work only under PCL (not plain text!!!).  PNG support is
-    via libpng, so libpng was added to configure/autoconf.
-
-    Revision 1.5  2003/03/06 02:52:33  gbeeley
-    Added basic rectangular-area support (example - border lines for tables
-    and separator lines for multicolumn areas).  Works on both PCL and
-    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
-    to work consistently on my system, however.  Warning: using large
-    dimensions for the 'rectangle' command in test_prt may consume much
-    printer ink!!  Now it's time to go watch the thunderstorms....
-
-    Revision 1.4  2002/10/21 20:22:12  gbeeley
-    Text foreground color attribute now basically operational.  Range of
-    colors is limited however.  Tested on PCL output driver, on hp870c
-    and hp4550 printers.  Also tested on an hp3si (black&white) to make
-    sure the color pcl commands didn't garble things up there.  Use the
-    "colors" test_prt command to test color output (and "output" to
-    "/dev/lp0" if desired).
-
-    Revision 1.3  2002/10/18 22:01:38  gbeeley
-    Printing of text into an area embedded within a page now works.  Two
-    testing options added to test_prt: text and printfile.  Use the "output"
-    option to redirect output to a file or device instead of to the screen.
-    Word wrapping has also been tested/debugged and is functional.  Added
-    font baseline logic to the design.
-
-    Revision 1.2  2002/04/25 04:30:14  gbeeley
-    More work on the v3 print formatting subsystem.  Subsystem compiles,
-    but report and uxprint have not been converted yet, thus problems.
-
-    Revision 1.1  2002/01/27 22:50:06  gbeeley
-    Untested and incomplete print formatter version 3 files.
-    Initial checkin.
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** GLOBAL DATA FOR THIS MODULE ***/
@@ -359,7 +262,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    best_dist = dist;
 		    best_res = res;
 		    }
-		if (dist > best_greater_dist && context->Session->ResolutionX < res->Xres && context->Session->ResolutionY < res->Yres)
+		if (dist > best_greater_dist && context->Session->ResolutionX <= res->Xres && context->Session->ResolutionY <= res->Yres)
 		    {
 		    best_greater_dist = dist;
 		    best_greater_res = res;
@@ -421,10 +324,13 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    break;
 
 		case PRT_OBJ_T_IMAGE:
-		case PRT_OBJ_T_RECT:
+		case PRT_OBJ_T_SVG:
+                case PRT_OBJ_T_RECT:
 		    /** Ask output driver to print as much of the rectangle/image as it can **/
 		    if (cur_obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
 			end_y = drv->WriteRasterData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
+                    else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_SVG)
+                        end_y = drv->WriteSvgData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
 		    else
 			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y);
 

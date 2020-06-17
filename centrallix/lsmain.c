@@ -17,6 +17,8 @@
 #include "cxlib/xhash.h"
 #include "stparse.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/strtcpy.h"
+#include <errno.h>
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG "/usr/local/etc/centrallix.conf"
 #endif
@@ -52,201 +54,6 @@
 /*		process waiting for network connections.		*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: lsmain.c,v 1.34 2007/04/08 03:52:00 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
-
-    $Log: lsmain.c,v $
-    Revision 1.34  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.33  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.32  2006/10/16 18:34:33  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.31  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.30  2003/06/04 00:23:13  gbeeley
-    Turned MT_F_NOYIELD back off because it was causing centrallix to hang
-    on session expire.
-
-    Revision 1.29  2003/06/03 20:29:10  gbeeley
-    Fix to CSV driver due to uninitialized memory causing a segfault when
-    opening CSV files from time to time.
-
-    Revision 1.28  2003/05/30 17:39:47  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.27  2003/04/04 05:56:53  gbeeley
-    Forgot to seed the random number generator (gulp)
-
-    Revision 1.26  2003/03/31 22:54:11  jorupp
-     * I really ought to make clean before I commit....
-
-    Revision 1.25  2003/03/10 15:41:38  lkehresman
-    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
-    hints to the OSML.  To do this I had to:
-      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
-        is now located in utility/hints.c and the include is in include/hints.h.
-      * Added the presentation hints function to the CSV driver and called it
-        datPresentationHints() which returns a valid objPresentationHints object.
-      * Modified test_obj.c to fix a crash bug and reformatted the output to be
-        a little bit easier to read.
-      * Added utility/hints.c to Makefile.in (somebody please check and make sure
-        that I did this correctly).  Note that you will have to reconfigure
-        centrallix for this change to take effect.
-
-    Revision 1.24  2002/11/22 19:29:36  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.23  2002/09/27 22:26:03  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.22  2002/08/16 03:09:44  jorupp
-     * added the ability to disable the dynamic loading modules -- needed under cygwin
-       -- centrallix now compiles and runs under cygwin (without dynamic loading modules)
-
-    Revision 1.21  2002/08/12 09:16:26  mattphillips
-    Added -V for version, and more helpful (and standard) usage message.
-
-    Revision 1.20  2002/07/23 15:57:32  mattphillips
-    - Modify the daemonizing routine based on
-      http://www.unixguide.net/unix/programming/1.7.shtml (information from David
-      Miller)
-
-    Revision 1.19  2002/07/18 04:38:13  mattphillips
-    Added '-d' option to centrallix to fork centrallix into the background on
-    startup.  Also adding final support for the centrallix init script.
-
-    Revision 1.18  2002/07/11 20:08:00  lkehresman
-    Put quotes around the default path.  Was throwing parse errors otherwise.
-
-    Revision 1.17  2002/06/13 15:21:04  mattphillips
-    Adding autoconf support to centrallix
-
-    Revision 1.16  2002/05/02 01:14:56  gbeeley
-    Added dynamic module loading support in Centrallix, starting with the
-    Sybase driver, using libdl.
-
-    Revision 1.15  2002/04/25 03:13:50  jorupp
-     * added label widget
-     * bug fixes in form and osrc
-
-    Revision 1.14  2002/03/23 06:26:49  gbeeley
-    Added BDQS network listener.  Be sure to cvs update the centrallix-os
-    module to get a fresh copy of the centrallix.conf with the net_bdqs
-    section in it, and be sure to cvs update the centrallix-lib module, as
-    this module depends on it.
-
-    Revision 1.13  2002/03/16 02:54:59  bones120
-    This might help...
-
-    Revision 1.12  2002/03/13 19:48:46  gbeeley
-    Fixed a window-dragging issue with nested html windows.  Added the
-    dropdown widget to lsmain.c.  Updated changelog.
-
-    Revision 1.11  2002/03/09 02:42:01  bones120
-    Initial commit of the spinner box.
-
-    Revision 1.10  2002/03/09 02:38:48  jheth
-    Make OSRC work with Form - Query at least
-
-    Revision 1.9  2002/03/08 02:07:13  jorupp
-    * initial commit of alerter widget
-    * build callback listing object for form
-    * form has many more of it's callbacks working
-
-    Revision 1.8  2002/03/06 23:30:35  lkehresman
-    Added form status widget.
-
-    Revision 1.7  2002/02/22 23:48:39  jorupp
-    allow editbox to work without form, form compiles, doesn't do much
-
-    Revision 1.6  2002/02/14 00:55:20  gbeeley
-    Added configuration file centrallix.conf capability.  You now MUST have
-    this file installed, default is /usr/local/etc/centrallix.conf, in order
-    to use Centrallix.  A sample centrallix.conf is found in the centrallix-os
-    package in the "doc/install" directory.  Conf file allows specification of
-    file locations, TCP port, server string, auth realm, auth method, and log
-    method.  rootnode.type is now an attribute in the conf file instead of
-    being a separate file, and thus is no longer used.
-
-    Revision 1.5  2001/11/12 20:43:43  gbeeley
-    Added execmethod nonvisual widget and the audio /dev/dsp device obj
-    driver.  Added "execmethod" ls__mode in the HTTP network driver.
-
-    Revision 1.4  2001/11/03 02:09:54  gbeeley
-    Added timer nonvisual widget.  Added support for multiple connectors on
-    one event.  Added fades to the html-area widget.  Corrected some
-    pg_resize() geometry issues.  Updated several widgets to reflect the
-    connector widget changes.
-
-    Revision 1.3  2001/10/23 00:25:09  gbeeley
-    Added rudimentary single-line editbox widget.  No data source linking
-    or anything like that yet.  Fixed a few bugs and made a few changes to
-    other controls to make this work more smoothly.  Page widget still needs
-    some key de-bounce and key repeat overhaul.  Arrow keys don't work in
-    Netscape 4.xx.
-
-    Revision 1.2  2001/10/02 20:45:03  gbeeley
-    New build/subbuild system; fixed Makefile to work better with it...
-
-    Revision 1.1.1.1  2001/08/13 18:00:46  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:52  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:50  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** start - this function is called by the MTASK module once the 
@@ -341,9 +148,10 @@ usage(char* name)
 	fprintf(stderr,
 		"Usage: %s [-Vdqh] [-c configfile]\n\n"
 		"\t-V          print version number,\n"
-		"\t-d          daemonize (fork into the background),\n"
+		"\t-d          become a service (fork into the background),\n"
 		"\t-q          initialize quietly,\n"
 		"\t-c <file>   use <file> for configuration,\n"
+		"\t-p <file>   use <file> for the PID file.\n"
 		"\t-h          this message.\n\n"
 		"E-mail bug reports to: %s\n\n",
 		name, PACKAGE_BUGREPORT);
@@ -358,6 +166,7 @@ main(int argc, char* argv[])
     char* name;
     unsigned int seed;
     int fd;
+    char pidbuf[16];
 
 	nmInitialize();				/* memory manager */
 
@@ -389,6 +198,7 @@ main(int argc, char* argv[])
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
 	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
 
 	/** Check for config file options on the command line **/
 #ifdef HAVE_BASENAME
@@ -396,7 +206,7 @@ main(int argc, char* argv[])
 #else
 	name = argv[0];
 #endif
-	while ((ch=getopt(argc,argv,"Vhdc:q")) > 0)
+	while ((ch=getopt(argc,argv,"Vhdc:qp:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -408,12 +218,11 @@ main(int argc, char* argv[])
 					PACKAGE_STRING, YEARS);
 				exit(0);
 
-		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
-				CxGlobals.ConfigFileName[255] = '\0';
+		case 'c':	strtcpy(CxGlobals.ConfigFileName, optarg, sizeof(CxGlobals.ConfigFileName));
 				break;
 
 		case 'd':	CxGlobals.QuietInit = 1;
-				go_background();
+				CxGlobals.Flags |= CX_F_SERVICE;
 				break;
 
 		case 'q':	CxGlobals.QuietInit = 1;
@@ -421,11 +230,44 @@ main(int argc, char* argv[])
 
 		case 'h':	usage(name);
 				exit(0);
+		
+		case 'p':	strtcpy(CxGlobals.PidFile, optarg, sizeof(CxGlobals.PidFile));
+				break;
 
 		case '?':
 		default:	usage(name);
 				exit(1);
 		}
+	    }
+
+	/** Become a background service? **/
+	if (CxGlobals.Flags & CX_F_SERVICE)
+	    {
+	    go_background();
+	    if (CxGlobals.PidFile[0])
+		{
+		/** Open the pid file **/
+		fd = open(CxGlobals.PidFile, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		if (fd < 0)
+		    {
+		    fprintf(stderr, "Could not open pid file '%s': %s\n", CxGlobals.PidFile, strerror(errno));
+		    return 1;
+		    }
+
+		/** Write our pid to the file **/
+		snprintf(pidbuf, sizeof(pidbuf), "%d\n", getpid());
+		if (write(fd, pidbuf, strlen(pidbuf)) < 0)
+		    {
+		    fprintf(stderr, "Unable to write to pid file '%s': %s\n", CxGlobals.PidFile, strerror(errno));
+		    return 1;
+		    }
+		close(fd);
+		}
+	    }
+	else
+	    {
+	    /** Zero it out if we didn't write to the file **/
+	    CxGlobals.PidFile[0] = '\0';
 	    }
 
 	/** Init the multithreading module to start the first thread **/

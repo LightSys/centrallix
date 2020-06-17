@@ -41,229 +41,6 @@
 /************************************************************************/
 
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_textarea.c,v 1.27 2008/03/04 01:10:57 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
-
-    $Log: htdrv_textarea.c,v $
-    Revision 1.27  2008/03/04 01:10:57  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.26  2007/06/06 15:21:57  gbeeley
-    - (feature) allow label, textarea, datetime to specify the form directly,
-      for use inside a component
-
-    Revision 1.25  2007/04/19 21:26:50  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.24  2006/10/27 05:57:23  gbeeley
-    - (change) All widgets switched over to use event handler functions instead
-      of inline event scripts in the main .app generated DHTML file.
-    - (change) Reworked the way event capture is done to allow dynamically
-      loaded components to hook in with the existing event handling mechanisms
-      in the already-generated page.
-    - (feature) Dynamic-loading of components now works.  Multiple instancing
-      does not yet work.  Components need not be "rectangular", but all pieces
-      of the component must share a common container.
-
-    Revision 1.23  2006/10/16 18:34:34  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.22  2005/06/23 22:08:01  ncolson
-    Modified *_init JavaScript function call here in the HTML generator so that
-    when it is executed in the generated page it no longer passes parameters as
-    individual variables, but as properties of a single object, which are position
-    independent. Made corresponding changes in the *.js file to pick apart the
-    object once it is passed.
-
-    Revision 1.21  2005/02/26 06:33:29  gbeeley
-    - just some brainstorming.  Thinking of multiple data formats.
-
-    Revision 1.20  2004/08/29 17:32:32  pfinley
-    Textarea widget crossbrowser support... I have tested on Mozilla 1.7rc1,
-    Firefox 0.9.3, and Netscape 4.79.  Also fixed a JS syntax error with
-    loading page/image.
-
-    Revision 1.19  2004/08/04 20:03:11  mmcgill
-    Major change in the way the client-side widget tree works/is built.
-    Instead of overlaying a tree structure on top of the global widget objects,
-    the tree is built *out of* those objects.
-    *   Removed the now-unnecessary tree-building code in the ht drivers
-    *   added htr_internal_BuildClientTree(), which keeps just about all the
-        client-side tree-building code in one spot
-    *   Added RenderFlags to the WgtrNode struct, for use by any rendering
-        module in whatever way that module sees fit
-    *   Added the HT_WGTF_NOOBJECT flag in ht_render, which is set by ht
-        drivers that deal with widgets for which a corresponding DHTML object
-        is not created - for example, a radiobuttonpanel widget has
-        radiobutton child widgets - but in the client-side code there are no
-        corresponding DHTML objects for those child widgets. So the
-        radiobuttonpanel ht driver sets the HT_WGTF_NOOBJECT RenderFlag on
-        each of those child nodes, and when the client-side widget tree is
-        being built, no attempt is made to add them to the client-side tree.
-    *   Tweaked the connector widget a bit - it doesn't appear that the Add
-        member function needs to take an object as a parameter, since each
-        connector is associated with its parent object in cn_init.
-    *   *cough* Er, fixed the, um....giant unclosable unmovable textarea that
-        I had been using for debug messages, so that it doesn't appear unless
-        WGTR_DBG_WINDOW is defined in ht_render.c. Heh heh. Sorry about that.
-
-    Revision 1.18  2004/08/04 01:58:57  mmcgill
-    Added code to ht_render and the ht drivers to build a representation of
-    the widget tree on the client-side, linking each node to its corresponding
-    widget object or layer. Also fixed a couple bugs that were introduced
-    by switching to rendering off the widget tree.
-
-    Revision 1.17  2004/08/02 14:09:35  mmcgill
-    Restructured the rendering process, in anticipation of new deployment methods
-    being added in the future. The wgtr module is now the main widget-related
-    module, responsible for all non-deployment-specific widget functionality.
-    For example, Verifying a widget tree is non-deployment-specific, so the verify
-    functions have been moved out of htmlgen and into the wgtr module.
-    Changes include:
-    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
-        wgtr drivers.
-    *   Adding wgtr drivers to the widget tree module.
-    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
-    *   Requiring all deployment methods (currently only DHTML) to register a
-        Render() function with the wgtr module.
-    *   Adding wgtrRender(), to abstract the details of the rendering process
-        from the caller. Given a widget tree, a string representing the deployment
-        method to use ("DHTML" for now), and the additional args for the rendering
-        function, wgtrRender() looks up the appropriate function for the specified
-        deployment method and calls it.
-    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
-        is being created. This is primarily to allow widget drivers to declare
-        the interfaces their widgets support when they are instantiated, but other
-        initialization tasks can go there as well.
-
-    Also in this commit:
-    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
-    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
-        other stack variables.
-    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
-        can now be completely insulated from the deployment method by the wgtr
-        module.
-
-    Revision 1.16  2004/07/19 15:30:41  mmcgill
-    The DHTML generation system has been updated from the 2-step process to
-    a three-step process:
-        1)	Upon request for an application, a widget-tree is built from the
-    	app file requested.
-        2)	The tree is Verified (not actually implemented yet, since none of
-    	the widget drivers have proper Verify() functions - but it's only
-    	a matter of a function call in net_http.c)
-        3)	The widget drivers are called on their respective parts of the
-    	tree structure to generate the DHTML code, which is then sent to
-    	the user.
-
-    To support widget tree generation the WGTR module has been added. This
-    module allows OSML objects to be parsed into widget-trees. The module
-    also provides an API for building widget-trees from scratch, and for
-    manipulating existing widget-trees.
-
-    The Render functions of all widget drivers have been updated to make their
-    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
-    instead of a pObject as a parameter.
-
-    net_internal_GET() in net_http.c has been updated to call
-    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
-    then free it.
-
-    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
-    a pObject parameter, and to make calls through the WGTR module instead of
-    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
-    htrGetBoolean(), etc. have also been modified appropriately.
-
-    I have assumed in each widget driver that w_obj->Session is equivelent to
-    s->ObjSession; in other words, that the object being passed in to the
-    Render() function was opened via the session being passed in with the
-    HtSession parameter. To my understanding this is a valid assumption.
-
-    While I did run through the test apps and all appears to be well, it is
-    possible that some bugs were introduced as a result of the modifications to
-    all 30 widget drivers. If you find at any point that things are acting
-    funny, that would be a good place to check.
-
-    Revision 1.15  2003/06/21 23:07:26  jorupp
-     * added framework for capability-based multi-browser support.
-     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
-     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
-     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
-     	capability check before in their Render() function (maybe this should be in Verify()?)
-
-    Revision 1.14  2002/12/04 00:19:11  gbeeley
-    Did some cleanup on the user agent selection mechanism, moving to a
-    bitmask so that drivers don't have to register twice.  Theme will be
-    handled differently, but provision is made for 'classes' of widgets
-    such as dhtml vs. xul.  Started work on some utility functions to
-    resolve some ns47 vs. w3c issues.
-
-    Revision 1.13  2002/09/27 22:26:05  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.12  2002/08/01 15:14:38  lkehresman
-    Tagged textarea images with .kind, .layer, and .mainlayer
-
-    Revision 1.11  2002/07/30 21:38:37  pfinley
-    Added events: MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,DataChange,
-    GetFocus,LoseFocus to textarea widget.
-
-    Revision 1.10  2002/07/19 14:54:22  pfinley
-    - Modified the page mousedown & mouseover handlers so that the cursor ibeam
-    "can't" be clicked on (only supports the global cursor).
-    - Modified the editbox & textarea files to support the new global cursor.
-
-    Revision 1.9  2002/07/16 19:24:34  pfinley
-    uses the new header stylesheet function
-
-    Revision 1.8  2002/07/16 19:16:21  pfinley
-    textarea c file with js includes
-
-    Revision 1.7  2002/07/12 20:16:13  pfinley
-    Undid previous change :)
-
-    Revision 1.6  2002/07/12 19:46:22  pfinley
-    added cvs logging to file.
-
-
- **END-CVSDATA***********************************************************/
 
 /** globals **/
 static struct 
@@ -280,14 +57,13 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char main_bg[128];
+    char elementid[16];
+    //char main_bg[128];
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
     int is_raised = 0;
     int mode = 0; /* 0=text, 1=html, 2=wiki */
-    char* c1;
-    char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
@@ -336,7 +112,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Background color/image? **/
-	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
+	//htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -344,30 +120,17 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Style of Textarea - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
-	if (is_raised)
-	    {
-	    c1 = "white_1x1.png";
-	    c2 = "dkgrey_1x1.png";
-	    }
-	else
-	    {
-	    c1 = "dkgrey_1x1.png";
-	    c2 = "white_1x1.png";
-	    }
 
+	/** Form linkage **/
 	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(form,ptr,sizeof(form));
 	else
 	    form[0]='\0';
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
-	    {
-	    strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
-	    }
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else 
-	    { 
 	    fieldname[0]='\0';
-	    } 
 
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
@@ -375,13 +138,15 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Write Style header items. **/
-	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	else if (s->Capabilities.Dom0NS)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	snprintf(elementid, sizeof(elementid), "#tx%dbase", id);
+	htrFormatElement(s, tree, elementid, 0, 
+		x, y, w-2*box_offset, h-2*box_offset, z, "",
+		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
+		"overflow:hidden; position:absolute;");
+	//htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tx%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
@@ -397,44 +162,29 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "tx","tx_mousedown");
 	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "tx", "tx_mouseover");
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
+	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&JSSTR\"});\n",
-	    name, fieldname, form, is_readonly, mode, main_bg);
+	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
+	    name, fieldname, form, is_readonly, mode);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"tx%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none; font-family:inherit;\">\n",id);
 
 	/** Use CSS border or table for drawing? **/
-	if (s->Capabilities.CSS2)
-	    {
-	    if (is_raised)
-		htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
-	    else
-		htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
-	    if (h >= 0)
-		htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
-	    }
+	/*if (is_raised)
+	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
 	else
-	    {
-	    htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w,main_bg);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem(s,    "            <TD>&nbsp;</TD>\n");
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-	    }
+	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
+	if (h >= 0)
+	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);*/
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	htrAddBodyItem(s, "</textarea></div>\n");
 
     return 0;
     }

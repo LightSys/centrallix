@@ -74,6 +74,8 @@ function pa_setvalue(v)
 	cx_hints_startnew(this);
 	this.in_startnew = false;
 	}
+
+    this.ifcProbe(ifEvent).Activate('DataChange', {Value:this.value});
     }
 
 function pa_verify()
@@ -119,6 +121,7 @@ function pa_init(l, wparam)
 	}
     l.datatype = wparam.type;
     l.findcontainer = wparam.findc;
+    l.destroy_widget = pa_deinit;
 
     if (!l.newvalue && l.findcontainer && wgtrGetType(wgtrGetParent(l)) == 'widget/component-decl')
 	{
@@ -143,6 +146,22 @@ function pa_init(l, wparam)
     ia.Add("SetValue", pa_actionsetvalue);
 
     return l;
+    }
+
+function pa_deinit()
+    {
+    // Unhook from events so we don't shoot fish in a nonexistent barrel.
+    if (this.value)
+	{
+	if (this.value.ifcProbe && this.value.ifcProbe(ifEvent))
+	    {
+	    var el = this.value.ifcProbe(ifEvent).GetEventList();
+	    for(var e in el)
+		{
+		this.value.ifcProbe(ifEvent).UnHook(el[e], pa_event, this);
+		}
+	    }
+	}
     }
 
 // Load indication

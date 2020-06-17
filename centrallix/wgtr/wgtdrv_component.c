@@ -36,10 +36,6 @@
 /* Description:								*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgtcmpVerify - allows the driver to check elsewhere in the tree
@@ -62,11 +58,21 @@ wgtcmpVerify(pWgtrVerifySession s)
 int
 wgtcmpNew(pWgtrNode node)
     {
+    int is_visual = 1;
+    char* ptr;
+    int v;
 
-	//node->Flags |= WGTR_F_NONVISUAL;
 	//node->Flags |= WGTR_F_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
+
+	// Nonvisual component
+	if (wgtrGetPropertyValue(node, "visual", DATA_T_INTEGER, POD(&v)) == 0 && v == 0)
+	    is_visual = 0;
+	else if (wgtrGetPropertyValue(node, "visual", DATA_T_STRING, POD(&ptr)) == 0 && (!strcmp(ptr,"no") || !strcmp(ptr,"false") || !strcmp(ptr,"off")))
+	    is_visual = 0;
+	if (!is_visual)
+	    node->Flags |= WGTR_F_NONVISUAL;
 
     return 0;
     }

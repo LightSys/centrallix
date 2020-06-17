@@ -31,9 +31,6 @@
 /* Description:	Applies layout logic to the widgets of an application.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
- **END-CVSDATA***********************************************************/
 
 #include "wgtr.h"
 #include "cxlib/xarray.h"

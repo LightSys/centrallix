@@ -14,7 +14,21 @@ function ht_loadpage(aparam)
     //alert(aparam.Source);
     this.transition = aparam.Transition;
     this.mode = aparam.Mode;
-    this.source = aparam.Source;
+    var url = new String(aparam.Source);
+    for(var p in aparam)
+	{
+	if (p == '_Origin' || p == '_EventName' || p == 'Mode' || p == 'Name' || p == 'Transition' || p == 'Source')
+	    continue;
+	var v = aparam[p];
+	var r = wgtrCheckReference(v);
+	if (r) v = r;
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	}
+    this.source = url;
     }
 
 function ht_setvalue(aparam)
@@ -25,6 +39,7 @@ function ht_setvalue(aparam)
     if (aparam.ContentType)
 	this.mainlayer.content_type = aparam.ContentType;
     }
+
 function ht_addtext(aparam)
     {
     this.mainlayer.content += aparam.Text;
@@ -35,42 +50,21 @@ function ht_addtext(aparam)
 	this.mainlayer.content_type = aparam.ContentType;
 	}
     }
+
 function ht_showtext(aparam)
     {
-    if (cx__capabilities.Dom0NS)
+    if (this.mainlayer.content_type == 'text/plain')
 	{
-	if (this.mainlayer.content_type == 'text/plain')
-	    {
-	    // special case for text/plain due to buggy NS4
-	    var newtxt = '<pre>';
-	    var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
-	    htmltxt = htmltxt.replace(/>/g,'&gt;');
-	    htmltxt = htmltxt.replace(/</g,'&lt;');
-	    newtxt += htmltxt;
-	    newtxt += '</pre>';
-	    this.document.open('text/html', 'replace');
-	    }
-	else
-	    {
-	    this.document.open(this.mainlayer.content_type, 'replace');
-	    var newtxt = this.mainlayer.content;
-	    }
+	var newtxt = '<pre>';
+	var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
+	htmltxt = htmltxt.replace(/>/g,'&gt;');
+	htmltxt = htmltxt.replace(/</g,'&lt;');
+	newtxt += htmltxt;
+	newtxt += '</pre>';
 	}
     else
 	{
-	if (this.mainlayer.content_type == 'text/plain')
-	    {
-	    var newtxt = '<pre>';
-	    var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
-	    htmltxt = htmltxt.replace(/>/g,'&gt;');
-	    htmltxt = htmltxt.replace(/</g,'&lt;');
-	    newtxt += htmltxt;
-	    newtxt += '</pre>';
-	    }
-	else
-	    {
-	    var newtxt = this.mainlayer.content;
-	    }
+	var newtxt = this.mainlayer.content;
 	}
     htr_write_content(this, newtxt);
     setClipHeight(this, getdocHeight(this));
@@ -229,7 +223,7 @@ function ht_init(param)
     l.loader = param.loader;
     l2.loader = param.loader;
     //l.pdoc = param.pdoc;
-    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    l.pdoc = wgtrGetParentContainer(l);
     l2.pdoc = l.pdoc;
     l.curLayer = l;
     l.altLayer = l2;

@@ -21,33 +21,6 @@
 /*		values.							*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: xarray.h,v 1.4 2004/07/22 00:20:52 mmcgill Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xarray.h,v $
-
-    $Log: xarray.h,v $
-    Revision 1.4  2004/07/22 00:20:52  mmcgill
-    Added a magic number define for WgtrNode, and added xaInsertBefore and
-    xaInsertAfter functions to the XArray module.
-
-    Revision 1.3  2003/06/27 21:18:34  gbeeley
-    Added xarray xaSetItem() method
-
-    Revision 1.2  2002/11/14 03:44:27  gbeeley
-    Added a new function to the XArray module to do sorted array adds
-    based on an integer field, which is portable between LSB and MSB
-    platforms.  Fixed the normal sorted add routine which was not
-    operating correctly anyhow.
-
-    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 
 /** Structure **/
@@ -60,6 +33,8 @@ typedef struct
     XArray, *pXArray;
 
 /** Functions **/
+pXArray xaNew(int init_size);
+int xaFree(pXArray this);
 int xaInit(pXArray this, int init_size);
 int xaDeInit(pXArray this);
 int xaAddItem(pXArray this, void* item);
@@ -67,8 +42,10 @@ int xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen);
 int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset);
 void* xaGetItem(pXArray this, int index);
 int xaFindItem(pXArray this, void* item);
+int xaFindItemR(pXArray this, void* item);
 int xaRemoveItem(pXArray this, int index);
-int xaClear(pXArray this);
+int xaClear(pXArray this, int (*free_fn)(), void* free_arg);
+int xaClearR(pXArray this, int (*free_fn)(), void* free_arg);
 int xaCount(pXArray this);
 int xaSetItem(pXArray this, int index, void* item);
 int xaInsertBefore(pXArray this, int index, void* item);

@@ -12,7 +12,7 @@
 function eb_getlist(content)
     {
     if (!content) return content;
-    var vals = content.split(/,/);
+    var vals = String(content).split(/,/);
     if(content==vals[0])
 	return content;
     else
@@ -30,12 +30,10 @@ function eb_getvalue()
 
 function eb_actionsetvalue(aparam)
     {
-    //htr_alert(aparam,1);
     var oldval = this.content;
     if ((typeof aparam.Value) != 'undefined')
 	{
 	this.internal_setvalue(aparam.Value);
-	//cn_activate(this,"DataChange", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0});
 	this.DoDataChange(0, 0);
 	if (this.form) this.form.DataNotify(this, true);
 	this.changed=true;
@@ -47,12 +45,9 @@ function eb_actionsetvaldesc(aparam)
     {
     if ((typeof aparam.Description) != 'undefined')
 	{
-	var olddesc = this.description;
-	var oldvdv = this.description_value;
-	this.description = aparam.Description;
-	this.description_value = this.content;
-	if (olddesc != this.description || oldvdv != this.description_value)
-	    this.Update(this.content, this.cursorCol);
+	this.descriptions[this.content] = aparam.Description;
+	if (this.description != aparam.Description)
+	    this.Update(this.content);
 	}
     }
 
@@ -64,7 +59,7 @@ function eb_internal_setvalue(v)
     var c = 0;
     if (eb_current == this)
 	c = eb_length(v);
-    this.Update(v, c);
+    this.Update(v);
     this.addHistory(v);
     }
 
@@ -72,34 +67,18 @@ function eb_setvalue(v,f)
     {
     this.internal_setvalue(v);
     this.DoDataChange(1, 0);
-    //cn_activate(this,"DataChange", {Value:v, FromKeyboard:0, FromOSRC:1});
     }
 
 function eb_clearvalue()
     {
     this.was_null = true;
-    // fake it by just making the content invisible - much faster :)
-    if (this != eb_current && !this.empty_desc)
-	{
-	this.set_content(null);
-	this.viscontent = null;
-	this.charOffset = 0;
-	this.cursorCol = 0;
-	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
-	eb_set_l_img(this, false);
-	eb_set_r_img(this, false);
-	}
-    else
-	{
-	this.Update(null, 0);
-	}
-    //cn_activate(this,"DataChange", {Value:null, FromKeyboard:0, FromOSRC:1});
+    this.Update(null);
     this.DoDataChange(1, 0);
     }
 
 function eb_content_changed(p,o,n)
     {
-    this.Update('' + n, 0);
+    this.Update('' + n);
     return '' + n;
     }
 
@@ -109,7 +88,10 @@ function eb_set_content(v)
     if (this.content != v)
 	{
 	htr_unwatch(this, "content", "content_changed");
-	this.content = v;
+	if (!v)
+	    this.content = v;
+	else
+	    this.content = String(v).valueOf();
 	htr_watch(this, "content", "content_changed");
 	}
     }
@@ -118,19 +100,15 @@ function eb_enable()
     {
     if (this.bg) htr_setbgcolor(this, this.bg);
     if (this.bgi) htr_setbgimage(this, this.bgi);
-    //if (cx__capabilities.Dom0IE)
-    //    pg_set_style(this,'bgColor',this.bg);
-    //else
-    //	eval('this.document.'+this.xbg);
     this.enabled='full';
+    $(this.ContentLayer).prop('disabled', false);
     }
 
 function eb_disable()
     {
     if (this.bg) htr_setbgcolor(this, '#e0e0e0');
-    //this.document.background='';
-    //pg_set_style(this.document, 'bgColor','#e0e0e0');
     this.enabled='disabled';
+    $(this.ContentLayer).prop('disabled', true);
     if (eb_current == this)
 	{
 	eb_deselect();
@@ -142,32 +120,38 @@ function eb_readonly()
     {
     if (this.bg) htr_setbgcolor(this, this.bg);
     if (this.bgi) htr_setbgimage(this, this.bgi);
-    //eval('this.document.'+this.bg);
     this.enabled='readonly';
+    $(this.ContentLayer).prop('disabled', true);
     }
 
-function eb_settext_cb()
+function eb_inputwidth()
     {
-    if (this.mainlayer.dbl_buffer)
-	{
-	htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
-	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
-	//setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
-	//setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
-	//setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
-    
-	var tmp = this.mainlayer.ContentLayer;
-	this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
-	this.mainlayer.HiddenLayer = tmp;
-	}
-    else
-	{
-	htr_setvisibility(this.mainlayer.ContentLayer, 'inherit');
-	}
+    if (!this.ContentLayer.value)
+	return 0;
+    var span = document.createElement('span');
+    $(span).text(this.ContentLayer.value);
+    $(span).css($(this.ContentLayer).css(["font-family","font-size","text-decoration","font-weight"]));
+    $(span).css({'white-space':'pre'});
+    this.appendChild(span);
+    var w = span.getBoundingClientRect().width;
+    this.removeChild(span);
+    return w;
+    }
 
-    this.mainlayer.is_busy = false;
-    if (this.mainlayer.content != this.mainlayer.viscontent)
-	eb_settext(this.mainlayer, this.mainlayer.content);
+function eb_setdesc(txt)
+    {
+    if (!this.DescLayer)
+	this.DescLayer = htr_new_layer($(this).width(), this);
+    $(this.DescLayer).text(txt?('(' + txt + ')'):'');
+    $(this.DescLayer).css
+	({
+	"z-index":"-1",
+	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
+	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
+	"left":(this.input_width() + (this.content?4:0) + 5) + "px",
+	"visibility":"inherit",
+	"white-space":"nowrap",
+	});
     }
 
 function eb_settext(l,txt)
@@ -175,44 +159,7 @@ function eb_settext(l,txt)
     var vistxt = txt;
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
-    var wl = l.dbl_buffer?l.HiddenLayer:l.ContentLayer;
-    var enctxt = '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt));
-    var descr = '';
-    if ((new String(l.content)).valueOf() == (new String(l.description_value)).valueOf() && l.description)
-	{
-	if (l != eb_current || l.content)
-	    descr = l.description;
-	}
-    if (l != eb_current && (l.content == '' || l.content == null) && l.empty_desc)
-	descr = l.empty_desc;
-    if (descr)
-	enctxt += '<span style="color:' + htutil_encode(l.desc_fgcolor) + '">' + ((l.content == '' || l.content == null)?'':' ') + '(' + htutil_encode(htutil_obscure(descr)) + ')</span>';
-    enctxt += '</pre>';
-    if (!l.is_busy)
-	{
-	l.is_busy = true;
-	l.viscontent = txt;
-	if (cx__capabilities.Dom0NS) // only serialize EB's for NS4
-	    {
-	    pg_serialized_write(wl, enctxt, eb_settext_cb);
-	    }
-	else
-	    {
-	    htr_write_content(wl, enctxt);
-	    l.eb_settext_cb();
-	    }
-	}
-    }
-
-
-// Grab the ibeam and own it
-function eb_grab_ibeam()
-    {
-    htr_setvisibility(ibeam_current, 'hidden');
-    if (cx__capabilities.Dom1HTML)
-	eb_current.appendChild(ibeam_current);
-    moveAbove(ibeam_current,eb_current);
-    htr_setzindex(ibeam_current, htr_getzindex(eb_current) + 2);
+    l.ContentLayer.value = htutil_obscure(vistxt);
     }
 
 
@@ -247,7 +194,7 @@ function eb_length(c)
 
 function eb_add_history(txt)
     {
-    if (txt == null) txt = this.content;
+    if (txt == null || txt == undefined) txt = this.content;
     this.hist_offset = -1;
     if (txt != null && txt != '')
 	{
@@ -272,99 +219,59 @@ function eb_add_history(txt)
 
 
 // Update the text, cursor, and left/right edge arrows
-function eb_update(txt, cursor)
+function eb_update(txt)
     {
-    var newx;
-    var newclipl, newclipr;
-    var wl = this.dbl_buffer?this.HiddenLayer:this.ContentLayer;
-    var diff = cursor - this.cursorCol;
-    if (txt != null)
-	txt = new String(txt);
-    var ldiff = eb_length(txt) - eb_length(this.content);
-    this.cursorCol = cursor;
-    if (this.cursorCol < 0) this.cursorCol = 0;
-    if (this.cursorCol > this.charWidth + this.charOffset)
+    // New text value
+    if (txt != this.content)
+	eb_settext(this,txt);
+
+    // Value description field
+    var descr = '';
+    if (this.descriptions[this.content] && (!this.has_focus || this.content))
+	descr = this.descriptions[this.content];
+    if (descr != this.description)
+	this.description = descr;
+    if (!this.has_focus && (this.content == '' || this.content == null) && this.empty_desc)
+	descr = this.empty_desc;
+    this.set_desc(descr);
+
+    // Left and right 'more text here' arrows
+    pg_addsched_fn(this, function()
 	{
-	this.charOffset = this.cursorCol - this.charWidth;
-	}
-    if (this.cursorCol < this.charOffset)
-	{
-	this.charOffset = this.cursorCol;
-	}
-    if (this.charOffset > 0 && this.cursorCol - this.charOffset < this.charWidth*2/3 && diff < 0)
-	{
-	this.charOffset--;
-	}
-    if (this.charOffset < eb_length(txt) - this.charWidth && this.cursorCol - this.charOffset > this.charWidth*2/3 && ldiff < 0)
-	{
-	this.charOffset = this.cursorCol - parseInt(this.charWidth*2/3);
-	}
-    /*if (this.charOffset > 0 && txt.length < this.charWidth)
-	{
-	this.charOffset = 0;
-	}*/
-    if (eb_current == this)
-	pg_set_style(ibeam_current, 'visibility', 'hidden');
-    newx = 5 - this.charOffset*text_metric.charWidth;
-    newclipl = this.charOffset*text_metric.charWidth;
-    newclipr = newclipl + this.charWidth*text_metric.charWidth;
-    if (wl._eb_x != newx)
-	{
-	setRelativeX(wl, newx);
-	wl._eb_x = newx;
-	}
-    if (wl._eb_clipl != newclipl)
-	{
-	setClipLeft(wl, newclipl);
-	wl._eb_clipl = newclipl;
-	}
-    if (wl._eb_clipr != newclipr)
-	{
-	setClipRight(wl, newclipr);
-	wl._eb_clipr = newclipr;
-	}
-    if (eb_current == this)
-	moveToAbsolute(ibeam_current, getPageX(wl) + this.cursorCol*text_metric.charWidth, getPageY(wl));
-    eb_settext(this, txt);
-    eb_set_l_img(this, this.charOffset > 0);
-    eb_set_r_img(this, this.charOffset + this.charWidth < eb_length(txt));
-    if (eb_current == this)
-	pg_set_style(ibeam_current,'visibility', 'inherit');
+	eb_set_l_img(this, this.ContentLayer.scrollLeft > 0);
+	eb_set_r_img(this, this.ContentLayer.scrollLeft < ((this.ContentLayer.scrollLeftMax === undefined)?(this.ContentLayer.scrollWidth - this.ContentLayer.clientWidth - 1):this.ContentLayer.scrollLeftMax));
+	} , [], 10);
     }
 
 
-function eb_keyhandler(l,e,k)
+function eb_paste(e)
     {
-    if (e.keyName == 'escape') window.ebesccnt=window.ebesccnt?(window.ebesccnt+1):1;
-    if(!eb_current) return;
-    if(eb_current.enabled!='full') return 1;
-    var txt = l.content;
-    var vistxt = (txt == null)?'':txt;
-    var newtxt = txt;
-    var cursoradj = 0;
-    if (isCancel(l.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:k, Name:e.keyName})))
-	return false;
-    if (k == 9 && !e.shiftKey)
+    }
+
+
+function eb_receiving_input(e)
+    {
+    var eb=this.mainlayer;
+    //var sel = document.getSelection();
+    //var range = sel.getRangeAt(0);
+    var rstart = eb.ContentLayer.selectionStart;
+    var rend = eb.ContentLayer.selectionEnd;
+    //var rstart = range.startOffset;
+    //var rend = range.endOffset;
+    //htr_alert(sel.focusNode, 1);
+    var orig_curtxt = this.value;
+    var changed = false;
+    var curtxt = orig_curtxt.replace(/\n$/,"");
+    var curlen = curtxt?curtxt.length:0;
+
+    if (curtxt != orig_curtxt)
 	{
-	if(l.form) l.form.TabNotify(this);
-	cn_activate(l,'TabPressed', {Shift:0});
+	changed = true;
 	}
-    if (k == 9 && e.shiftKey)
+    if (rend > curlen)
 	{
-	if(l.form) l.form.ShiftTabNotify(this);
-	cn_activate(l,'TabPressed', {Shift:1});
-	}
-    if (k == 10 || k == 13)
-	{
-	if (l.form)
-	    l.form.RetNotify(this);
-	l.addHistory();
-	cn_activate(l,'ReturnPressed', {});
-	}
-    if (k == 27)
-	{
-	if (l.form) l.form.EscNotify(this);
-	cn_activate(l,'EscapePressed', {});
+	changed = true;
+	rend = curlen;
 	}
     if (k >= 32 && k < 127 || k > 127)
 	{
@@ -373,97 +280,168 @@ function eb_keyhandler(l,e,k)
 	    {
 	    cursoradj = 1;
 	    }
-	}
-    else if (k == 8 && l.cursorCol > 0)
+    if (rstart > curlen)
 	{
-	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol-1) + vistxt.substr(l.cursorCol,eb_length(txt)));
-	if (newtxt != txt)
+	changed = true;
+	rstart = curlen;
+	}
+    for(var i=0; i<curlen; i++)
+	{
+	if (curtxt.charCodeAt(i) < 32 || curtxt.charCodeAt(i) == 127)
 	    {
-	    cursoradj = -1;
+	    curtxt = curtxt.substr(0,i) + ' ' + curtxt.substr(i+1);
+	    changed = true;
 	    }
 	}
-    else if (k == 21 && eb_length(txt) > 0)
+    if (changed)
 	{
-	newtxt = "";
-	cursoradj = -l.cursorCol;
+	this.value = curtxt;
+	//range.setStart(range.startContainer, rstart);
+	//range.setEnd(range.startContainer, rend);
+	eb.ContentLayer.setSelectionRange(rstart, rend);
 	}
-    else if (k == 127 && l.cursorCol < eb_length(txt))
+
+    var oldtxt = eb.content;
+    var newcurtxt = cx_hints_checkmodify(eb, oldtxt, curtxt, eb._form_type);
+    if (eb.was_null && newcurtxt == '')
+	newcurtxt = null;
+    if (newcurtxt != curtxt)
 	{
-	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + vistxt.substr(l.cursorCol+1,eb_length(txt)));
-	}
-    else if (k == 0 && e.keyName == 'home')
-	{
-	cursoradj = -l.cursorCol;
-	}
-    else if (k == 0 && e.keyName == 'end')
-	{
-	cursoradj = eb_length(txt) - l.cursorCol;
-	}
-    else if (k == 0 && e.keyName == 'left' && l.cursorCol > 0)
-	{
-	cursoradj = -1;
-	}
-    else if (k == 0 && e.keyName == 'right' && l.cursorCol < eb_length(txt))
-	{
-	cursoradj = 1;
-	}
-    else if (k == 0 && e.keyName == 'up' && l.hist_offset < l.value_history.length - 1)
-	{
-	if (l.hist_offset == -1)
+	pg_addsched_fn(eb, function()
 	    {
-	    if (l.addHistory())
-		l.hist_offset = 0;
-	    }
-	l.hist_offset++;
-	newtxt = l.value_history[l.hist_offset];
-	if (l.cursorCol > eb_length(newtxt) || l.cursorCol == eb_length(txt))
-	    cursoradj = eb_length(newtxt) - l.cursorCol;
+	    this.Update(curtxt = newcurtxt);
+	    }, [], 10);
 	}
-    else if (k == 0 && e.keyName == 'down')
+    else
+	eb.set_content(curtxt);
+    if (eb.form) eb.form.DataNotify(eb);
+    eb.changed=true;
+    cn_activate(eb,"DataModify", {Value:curtxt, FromKeyboard:1, FromOSRC:0, OldValue:oldtxt});
+    eb.Update(curtxt);
+
+    return;
+    }
+
+
+function eb_keydown(e)
+    {
+    var eb = this.mainlayer;
+
+    // check before keypress...
+    if (isCancel(eb.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode)})))
 	{
-	if (l.hist_offset == -1)
+	e.preventDefault();
+	return;
+	}
+
+    if (e.keyCode == (KeyboardEvent.DOM_VK_RETURN || 13) || e.keyCode == (KeyboardEvent.DOM_VK_ENTER || 14))
+	{
+	if (eb.form)
+	    eb.form.RetNotify(eb);
+	eb.addHistory();
+	cn_activate(eb, 'ReturnPressed', {});
+	eb.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && !e.shiftKey)
+	{
+	if (eb.form) eb.form.TabNotify(eb);
+	cn_activate(eb, 'TabPressed', {Shift:0});
+	eb.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_TAB || 9) && e.shiftKey)
+	{
+	if (eb.form) eb.form.ShiftTabNotify(eb);
+	cn_activate(eb, 'TabPressed', {Shift:1});
+	eb.DoDataChange(0, 1);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_ESCAPE || 27))
+	{
+	if (eb.form) eb.form.EscNotify(eb);
+	cn_activate(eb, 'EscapePressed', {});
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_DOWN || 40))
+	{
+	if (eb.hist_offset == -1)
 	    {
-	    l.addHistory();
-	    newtxt = "";
-	    cursoradj = -l.cursorCol;
+	    eb.addHistory();
+	    var newtxt = "";
 	    }
 	else if (l.hist_offset == 0)
 	    {
-	    l.hist_offset--;
-	    newtxt = "";
-	    cursoradj = -l.cursorCol;
+	    eb.hist_offset--;
+	    var newtxt = "";
 	    }
 	else
 	    {
-	    l.hist_offset--;
-	    newtxt = l.value_history[l.hist_offset];
-	    if (l.cursorCol > eb_length(newtxt) || l.cursorCol == eb_length(txt))
-		cursoradj = eb_length(newtxt) - l.cursorCol;
+	    eb.hist_offset--;
+	    var newtxt = eb.value_history[eb.hist_offset];
+	    }
+	if (eb.form) eb.form.DataNotify(eb);
+	eb.changed=true;
+	cn_activate(eb,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:eb.content});
+	eb.Update(newtxt);
+	pg_addsched_fn(eb, function()
+	    {
+	    this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
+	    }, [], 10);
+	}
+    else if (e.keyCode == (KeyboardEvent.DOM_VK_UP || 38))
+	{
+	if (eb.hist_offset < eb.value_history.length - 1)
+	    {
+	    if (eb.hist_offset == -1)
+		{
+		if (eb.addHistory())
+		    eb.hist_offset = 0;
+		}
+	    eb.hist_offset++;
+	    var newtxt = eb.value_history[eb.hist_offset];
+	    if (newtxt != undefined)
+		{
+		if (eb.form) eb.form.DataNotify(eb);
+		eb.changed=true;
+		cn_activate(eb,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:eb.content});
+		eb.Update(newtxt);
+		}
+	    else
+		eb.hist_offset--;
+	    pg_addsched_fn(eb, function()
+		{
+		this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
+		}, [], 10);
 	    }
 	}
     else
 	{
-	//if (k != 27 && pg_username == 'gbeeley') htr_alert(e, 1);
-	return true;
+	eb.Update(eb.content);
+	return;
 	}
-    if (newtxt != txt || cursoradj != 0)
-	{
-	if (l.was_null && newtxt == '') newtxt = null;
-	l.Update(newtxt, l.cursorCol + cursoradj);
-	}
-    if (newtxt != txt)
-	{
-	//if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) 
-	if (l.form) l.form.DataNotify(l);
-	l.changed=true;
-	cn_activate(l,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:txt});
-	}
-    if (k == 13 || k == 9 || k == 10)
-	l.DoDataChange(0, 1);
-	//cn_activate(l, "DataChange", {Value:newtxt, FromOSRC:0, FromKeyboard:1});
+
+    e.preventDefault();
+    return;
+    }
+
+
+function eb_keyup(e)
+    {
+    return;
+    }
+
+
+function eb_keypress(e)
+    {
+    return;
+    }
+
+
+function eb_keyhandler(l,e,k)
+    {
+    if(l.enabled!='full') return 1;
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
+    if (e.keyName == 'f3' && e.Dom2Event.type == 'keypress') return true;
     return false;
     }
+
 
 function eb_do_data_change(from_osrc, from_kbd)
     {
@@ -471,12 +449,10 @@ function eb_do_data_change(from_osrc, from_kbd)
     if (nv != this.content)
 	{
 	this.internal_setvalue(nv);
-	//if (from_kbd && this.form) this.form.DataNotify(this);
 	}
     if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeDataChange', {OldValue:this.value, Value:nv, FromOSRC:from_osrc, FromKeyboard:from_kbd})))
 	{
 	this.internal_setvalue(this.value);
-	//if (from_kbd && this.form) this.form.DataNotify(this);
 	return false;
 	}
     this.oldvalue = this.value;
@@ -492,62 +468,71 @@ function eb_action_set_focus(aparam)
     pg_setkbdfocus(this, null, x, y);
     }
 
+function eb_checkfocus(e)
+    {
+    var form = this.mainlayer.form;
+    if (form && !form.is_focusable)
+	{
+	e.preventDefault();
+	e.currentTarget.blur();
+	}
+    return;
+    }
+
+function eb_browserfocus(e)
+    {
+    this.mainlayer.has_focus = true;
+    }
+
 function eb_select(x,y,l,c,n,a,k)
     {
-    if(l.enabled != 'full') return 0;
-    if(l.form)
-	{
-	if (!l.form.FocusNotify(l)) return 0;
-	}
+    if(this.enabled != 'full') return 0;
+    this.ContentLayer.focus();
+    var got_focus = $(this.ContentLayer).is(':focus');
+    if (!got_focus)
+	pg_addsched_fn(this.ContentLayer, function() { this.focus() }, {}, 200);
     if (k)
-	l.cursorCol = eb_length(l.content);
-    else
-	l.cursorCol = Math.round((x + getPageX(l) - getPageX(l.ContentLayer))/text_metric.charWidth);
-    if (l.cursorCol > eb_length(l.content)) l.cursorCol = eb_length(l.content);
-    if (eb_current) eb_current.cursorlayer = null;     
-    eb_current = l;    
-    eb_current.cursorlayer = ibeam_current;    
-    eb_grab_ibeam();
-    eb_current.Update(eb_current.content, eb_current.cursorCol);
-    htr_setvisibility(ibeam_current, 'inherit');
-    cn_activate(l,"GetFocus", {});
+	pg_addsched_fn(this, function()
+	    {
+	    this.ContentLayer.setSelectionRange(eb_length(this.content), eb_length(this.content));
+	    this.Update(this.content);
+	    }, [], got_focus?10:201);
+    this.has_focus = true;
+    eb_current = this;
+    if(this.form)
+	if (!this.form.FocusNotify(this)) return 0;
+    cn_activate(this,"GetFocus", {});
     return 1;
     }
 
 function eb_deselect(p)
     {
-    htr_setvisibility(ibeam_current, 'hidden');
-    if (eb_current)
+    this.ContentLayer.blur();
+    this.has_focus = false;
+    eb_current = null;
+    if (this.changed)
 	{
-	cn_activate(eb_current,"LoseFocus", {});
-	eb_current.cursorlayer = null;
-	if (eb_current.changed)
+	if (!p || !p.nodatachange)
 	    {
-	    if (!p || !p.nodatachange)
-		{
-		eb_current.DoDataChange(0, 1);
-		//cn_activate(eb_current,"DataChange", {Value:eb_current.content, FromOSRC:0, FromKeyboard:1});
-		eb_current.changed=false;
-		}
+	    this.DoDataChange(0, 1);
+	    this.changed=false;
 	    }
-	eb_current.charOffset=0;
-	eb_current.cursorCol=0;
-	var eb = eb_current;
-	eb_current = null;
-	eb.Update(eb.content, eb.cursorCol);
-	htr_setvisibility(ibeam_current, 'hidden');
-	eb.addHistory();
 	}
+    this.ContentLayer.setSelectionRange(0,0);
+    this.Update(this.content);
+    cn_activate(this,"LoseFocus", {});
+    this.addHistory();
     return true;
     }
 
 
 function eb_mselect(x,y,l,c,n,a)
     {
-    if (this.charOffset > 0 || this.charOffset + this.charWidth < eb_length(this.content))
-	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, getPageX(this) + x, getPageY(this) + y);
+    var offs = $(this).offset();
+    if (this.ContentLayer.scrollWidth > this.ContentLayer.clientWidth)
+	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, offs.left + x, offs.top + y);
     else if (this.tooltip)
-	this.tipid = pg_tooltip(this.tooltip, getPageX(this) + x, getPageY(this) + y);
+	this.tipid = pg_tooltip(this.tooltip, offs.left + x, offs.top + y);
     return 1;
     }
 
@@ -591,10 +576,29 @@ function eb_mousemove(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function eb_cb_reveal(e)
+    {
+    switch (e.eventName) 
+	{
+	case 'Reveal':
+	    this.form.Reveal(this,e);
+	    break;
+	case 'Obscure':
+	    this.form.Reveal(this,e);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.form) this.form.Reveal(this,e);
+	    else pg_reveal_check_ok(e);
+	    break;
+	}
+
+    return true;
+    }
+
 /**
 * l - base layer
 * c1 - content layer 1
-* c2 - content layer 2 - hidden
 * is_readonly - if the editbox is read only
 * main_bg - background color
 **/
@@ -603,27 +607,9 @@ function eb_init(param)
     var l = param.layer;
     var c1 = param.c1;
 
-    if (param.c2)
-	{
-	var c2 = param.c2; 
-	l.dbl_buffer = true;
-	}
-    else
-	{
-	l.dbl_buffer = false;
-	}
-
     if (!param.mainBackground)
 	{
 	l.bg = '#c0c0c0';
-	/*if (cx__capabilities.Dom0NS)
-	    {
-	    l.bg = "bgcolor='#c0c0c0'";
-	    }
-	else if (cx__capabilities.Dom0IE)
-	    {
-	    l.bg = "backgroundColor='#c0c0c0'";
-	    }*/
 	}
     else
 	{
@@ -636,12 +622,9 @@ function eb_init(param)
 
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
-    if (l.dbl_buffer) 
-	htr_init_layer(c2,l,'eb');
     ifc_init_widget(l);
     l.fieldname = param.fieldname;
     l.tooltip = param.tooltip;
-    ibeam_init();
 
     // Left/Right arrow images
     var imgs = pg_images(l);
@@ -652,28 +635,15 @@ function eb_init(param)
 	}
     l.l_img_on = false;
     l.r_img_on = false;
+    l.has_focus = false;
 
     // Set up params for displaying the content.
     l.ContentLayer = c1;
-    if (l.dbl_buffer)
-	{
-	l.HiddenLayer = c2;
-	l.HiddenLayer._eb_x = -1;
-	l.HiddenLayer._eb_clipr = -1;
-	l.HiddenLayer._eb_clipl = -1;
-	}
-    l.ContentLayer._eb_x = -1;
-    l.ContentLayer._eb_clipr = -1;
-    l.ContentLayer._eb_clipl = -1;
-    l.is_busy = false;
-    l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
-    l.cursorCol = 0;
-    l.charOffset = 0;
     l.viscontent = '';
     l.content = '';
     l.value = '';
     l.description = '';
-    l.description_value = '';
+    l.descriptions = {};
     l.Update = eb_update;
     l.addHistory = eb_add_history;
     l.was_null = false;
@@ -695,26 +665,24 @@ function eb_init(param)
     l.enablenew = eb_enable;  // We have added enablenew and enablemodify.  See docs
     l.disable = eb_disable;
     l.readonly = eb_readonly;
-    l.eb_settext_cb = eb_settext_cb;
     l.enable = eb_enable;
     if (param.isReadOnly)
 	{
 	l.enablemodify = eb_disable;
 	l.enabled = 'disable';
+	$(l.ContentLayer).prop('disabled', true);
 	}
     else
 	{
 	l.enablemodify = eb_enable;
 	l.enabled = 'full';
+	$(l.ContentLayer).prop('disabled', false);
 	}
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', param.isReadOnly?0:3);
+	pg_addarea(l, -1,-1,$(l).width()+3,$(l).height()+3, 'ebox', 'ebox', param.isReadOnly?0:3);
     else
-	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
-    setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
-    if (l.dbl_buffer)
-	setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
+	pg_addarea(l, -1,-1,$(l).width()+1,$(l).height()+1, 'ebox', 'ebox', param.isReadOnly?0:3);
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else
@@ -725,9 +693,29 @@ function eb_init(param)
     l.value = null;
     l.DoDataChange = eb_do_data_change;
 
+    if (l.form)
+	{
+	l.Reveal = eb_cb_reveal;
+	if (pg_reveal_register_listener(l)) 
+	    {
+	    // already visible
+	    l.form.Reveal(l,{ eventName:'Reveal' });
+	    }
+	}
+
+    // Callback when user is trying to change the content.
+    $(l.ContentLayer).on("input", eb_receiving_input);
+    $(l.ContentLayer).on("keydown", eb_keydown);
+    $(l.ContentLayer).on("keyup", eb_keyup);
+    $(l.ContentLayer).on("keypress", eb_keypress);
+    $(l.ContentLayer).on("focus", eb_checkfocus);
+    $(l.ContentLayer).css({"outline":"none", "border":"1px transparent", "background-color":"transparent"});
+
     // Callbacks for internal management of 'content' value
     l.set_content = eb_set_content;
+    l.set_desc = eb_setdesc;
     l.content_changed = eb_content_changed;
+    l.input_width = eb_inputwidth;
 
     // Hot properties
     htr_watch(l,'content','content_changed');
@@ -764,7 +752,7 @@ function eb_init(param)
     ia.Add("Disable", eb_disable);
     ia.Add("SetFocus", eb_action_set_focus);
 
-    if (l.empty_desc) l.Update('', 0);
+    if (l.empty_desc) l.Update('');
 
     return l;
     }

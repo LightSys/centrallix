@@ -42,59 +42,6 @@
 /*		the objectsystem.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: obj_session.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
-
-    $Log: obj_session.c,v $
-    Revision 1.7  2005/02/26 06:42:39  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.6  2003/04/25 05:06:58  gbeeley
-    Added insert support to OSML-over-HTTP, and very remedial Trx support
-    with the objCommit API method and Commit osdriver method.  CSV datafile
-    driver is the only driver supporting it at present.
-
-    Revision 1.5  2003/04/25 02:43:28  gbeeley
-    Fixed some object open nuances with node object caching where a cached
-    object might be open readonly but we would need read/write.  Added a
-    xhandle-based session identifier for future use by objdrivers.
-
-    Revision 1.4  2003/04/24 19:28:12  gbeeley
-    Moved the OSML open node object cache to the session level rather than
-    global.  Otherwise, the open node objects could be accessed by the
-    wrong user in the wrong session context, which is, er, "bad".
-
-    Revision 1.3  2002/05/03 03:51:21  gbeeley
-    Added objUnmanageObject() and objUnmanageQuery() which cause an object
-    or query to not be closed automatically on session close.  This should
-    NEVER be used with the intent of keeping an object or query open after
-    session close, but rather it is used when the object or query would be
-    closed in some other way, such as 'hidden' objects and queries that the
-    multiquery layer opens behind the scenes (closing the multiquery objects
-    and queries will cause the underlying ones to be closed).
-    Also fixed some problems in the OSML where some objects and queries
-    were not properly being added to the session's open objects and open
-    queries lists.
-
-    Revision 1.2  2002/04/25 17:59:59  gbeeley
-    Added better magic number support in the OSML API.  ObjQuery and
-    ObjSession structures are now protected with magic numbers, and
-    support for magic numbers in Object structures has been improved
-    a bit.
-
-    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.1.1.1  2001/08/07 02:31:01  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** objOpenSession - start a new session with a specific current
@@ -133,6 +80,9 @@ objOpenSession(char* current_dir)
 int 
 objCloseSession(pObjSession this)
     {
+    int i;
+    int closed;
+    pObject obj;
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
 
@@ -150,7 +100,29 @@ objCloseSession(pObjSession this)
 	/** Close any open objects **/
 	while(this->OpenObjects.nItems)
 	    {
-	    objClose((pObject)(this->OpenObjects.Items[0]));
+	    i = 0;
+	    closed = 0;
+	    while(i < this->OpenObjects.nItems)
+		{
+		obj = (pObject)this->OpenObjects.Items[i];
+		if (obj->Flags & OBJ_F_UNMANAGED)
+		    {
+		    i++;
+		    continue;
+		    }
+		objClose(obj);
+		closed++;
+		}
+	    if (!closed)
+		{
+		mssError(1,"OSML","Bark! %d unmanaged object(s) remained unclosed at session destroy", this->OpenObjects.nItems);
+		for(i=0;i<this->OpenObjects.nItems;i++)
+		    {
+		    obj = (pObject)this->OpenObjects.Items[i];
+		    printf("Unclosed: %s\n", obj_internal_PathPart(obj->Pathname, 0, 0));
+		    }
+		break;
+		}
 	    }
 
 	/** Remove from the session list **/
@@ -199,7 +171,8 @@ objGetWD(pObjSession this)
 int
 objUnmanageObject(pObjSession this, pObject obj)
     {
-    xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));
+    /*xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));*/
+    obj->Flags |= OBJ_F_UNMANAGED;
     return 0;
     }
 
@@ -238,5 +211,41 @@ objCommit(pObjSession this)
 	    rval = open_obj->Driver->Commit(open_obj->Data, &(this->Trx));
 
     return rval;
+    }
+
+
+/*** objSuspendTransaction - take the existing transaction tree, and suspend
+ *** it temporarily.  The transaction tree is returned from this function.  It
+ *** can be resumed by calling objResumeTransaction with the returned tree. 
+ *** This is used in layered situations to prevent the creation of a tree that
+ *** contains data from more than one layer simultaneously.
+ ***/
+pObjTrxTree
+objSuspendTransaction(pObjSession this)
+    {
+    pObjTrxTree trx;
+
+	trx = this->Trx;
+	this->Trx = NULL;
+
+    return trx;
+    }
+
+
+/*** objResumeTransaction - see above.
+ ***/
+int
+objResumeTransaction(pObjSession this, pObjTrxTree trx)
+    {
+
+	if (this->Trx)
+	    {
+	    mssError(1,"OSML","Attempt to resume transaction while existing transaction is in progress");
+	    return -1;
+	    }
+
+	this->Trx = trx;
+
+    return 0;
     }
 

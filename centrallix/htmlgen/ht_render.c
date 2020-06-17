@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include <stdarg.h>
+#include <math.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -51,583 +52,6 @@
 /*		various widget drivers to produce a dynamic HTML page.	*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: ht_render.c,v 1.80 2010/09/09 01:04:17 gbeeley Exp $
-    $Source: /cvsroot/centrallix/centrallix/htmlgen/ht_render.c,v $
-
-    $Log: ht_render.c,v $
-    Revision 1.80  2010/09/09 01:04:17  gbeeley
-    - (bugfix) allow client to specify what scripts (cx__scripts) have already
-      been deployed to the app, to avoid having multiple copies of JS scripts
-      loaded on the client.
-    - (feature) component parameters may contain expressions
-    - (feature) presentation hints may be placed on a component, which can
-      specify what widget in the component those apply to
-
-    Revision 1.79  2010/01/10 07:16:47  gbeeley
-    - (bugfix) fix double-encoding of expressions deployed to Javascript
-
-    Revision 1.78  2009/12/15 22:02:13  gbeeley
-    - (feature) adding application-wide (cross-component) scope capability,
-      with ability to specify the global name of a widget.  This *could* be
-      misused.
-
-    Revision 1.77  2009/06/24 19:31:56  gbeeley
-    - (change) reduction in the size of the generated HTML file
-
-    Revision 1.76  2008/08/16 00:31:37  thr4wn
-    I made some more modification of documentation and begun logic for
-    caching generated WgtrNode instances (see centrallix-sysdoc/misc.txt)
-
-    Revision 1.75  2008/07/24 21:30:31  thr4wn
-    -(bug fix) fixed a bug I previously coded that generated a null pointer dereference
-
-    Revision 1.74  2008/07/16 00:34:57  thr4wn
-    Added a bunch of documentation in different README files. Also added documentation in certain parts of the code itself.
-
-    Revision 1.73  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.72  2008/03/06 01:18:59  gbeeley
-    - (change) updates to centrallix.supp suppressions file for valgrind
-    - (bugfix) several issues fixed as a result of a Valgrind scan, one of
-      which has likely been causing a couple of recent crashes.
-
-    Revision 1.71  2008/03/04 01:10:53  gbeeley
-    - (security) changing from ESCQ to JSSTR in numerous places where
-      building JavaScript strings, to avoid such things as </script>
-      in the string from having special meaning.  Also began using the
-      new CSSVAL and CSSURL in places (see qprintf).
-    - (performance) allow the omission of certain widgets from the rendered
-      page.  In particular, omitting most widget/parameter's significantly
-      reduces the total widget count.
-    - (performance) omit double-buffering in edit boxes for Firefox/Mozilla,
-      which reduces the <div> count for the page significantly.
-    - (bugfix) allow setting text color on tabs in mozilla/firefox.
-
-    Revision 1.70  2007/12/05 18:51:54  gbeeley
-    - (change) parameters on a static component should not be automatically
-      deployed to the client; adding deploy_to_client boolean on parameters
-      to cause the old behavior.
-
-    Revision 1.69  2007/09/18 18:16:14  gbeeley
-    - (change) interface change to the QPrintf functions, required in order to
-      properly handle certain types of realloc or sliding-window buffer types
-      of situations.
-
-    Revision 1.68  2007/04/19 21:26:49  gbeeley
-    - (change/security) Big conversion.  HTML generator now uses qprintf
-      semantics for building strings instead of sprintf.  See centrallix-lib
-      for information on qprintf (quoting printf).  Now that apps can take
-      parameters, we need to do this to help protect against "cross site
-      scripting" issues, but it in any case improves the robustness of the
-      application generation process.
-    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
-      if just a constant string was used with no %s/%d/etc conversions.
-
-    Revision 1.67  2007/04/08 03:52:00  gbeeley
-    - (bugfix) various code quality fixes, including removal of memory leaks,
-      removal of unused local variables (which create compiler warnings),
-      fixes to code that inadvertently accessed memory that had already been
-      free()ed, etc.
-    - (feature) ability to link in libCentrallix statically for debugging and
-      performance testing.
-    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
-
-    Revision 1.66  2007/03/06 16:16:55  gbeeley
-    - (security) Implementing recursion depth / stack usage checks in
-      certain critical areas.
-    - (feature) Adding ExecMethod capability to sysinfo driver.
-
-    Revision 1.65  2007/02/22 23:25:13  gbeeley
-    - (feature) adding initial framework for CXSS, the security subsystem.
-    - (feature) CXSS entropy pool and key generation, basic framework.
-    - (feature) adding xmlhttprequest capability
-    - (change) CXSS requires OpenSSL, adding that check to the build
-    - (security) Adding application key to thwart request spoofing attacks.
-      Once the AML is active, application keying will be more important and
-      will be handled there instead of in net_http.
-
-    Revision 1.64  2006/11/16 20:15:53  gbeeley
-    - (change) move away from emulation of NS4 properties in Moz; add a separate
-      dom1html geom module for Moz.
-    - (change) add wgtrRenderObject() to do the parse, verify, and render
-      stages all together.
-    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
-      same way as buttons and editboxes.
-
-    Revision 1.63  2006/10/27 19:26:00  gbeeley
-    - (bugfix) use Dom2Event for event capture, if the UA supports it.  The old
-      captureEvents/onthisorthatevent interface was far to unreliable in Gecko
-      when new events needed to be captured after the fact.
-
-    Revision 1.62  2006/10/27 05:57:22  gbeeley
-    - (change) All widgets switched over to use event handler functions instead
-      of inline event scripts in the main .app generated DHTML file.
-    - (change) Reworked the way event capture is done to allow dynamically
-      loaded components to hook in with the existing event handling mechanisms
-      in the already-generated page.
-    - (feature) Dynamic-loading of components now works.  Multiple instancing
-      does not yet work.  Components need not be "rectangular", but all pieces
-      of the component must share a common container.
-
-    Revision 1.61  2006/10/19 21:53:23  gbeeley
-    - (feature) First cut at the component-based client side development
-      system.  Only rendering of the components works right now; interaction
-      with the components and their containers is not yet functional.  For
-      an example, see "debugwin.cmp" and "window_test.app" in the samples
-      directory of centrallix-os.
-
-    Revision 1.60  2006/10/16 18:34:33  gbeeley
-    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
-      references on client side.  removed all named globals for widgets on
-      client.  This is in preparation for component widget (static and dynamic)
-      features.
-    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
-      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
-      especially strncpy(), could have caused crashes before.
-    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
-      Render functions.
-    - (change) wgtr port allowed for cleanup of some code, especially the
-      ScriptInit calls.
-    - (feature) ported scrollbar widget to Mozilla.
-    - (bugfix) fixed a couple of memory leaks in allocated data in widget
-      drivers.
-    - (change) modified deployment of widget tree to client to be more
-      declarative (the build_wgtr function).
-    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
-      not an actual module.
-
-    Revision 1.59  2006/10/04 17:33:25  gbeeley
-    - (bugfix) ht_render processing of user agents crashes if useragent.cfg
-      is not valid.
-    - (bugfix) add detection for newer versions of Gecko.  I do not know if
-      the detection draws the line at the correct place regarding versions
-      and such, but this is a starting point...
-
-    Revision 1.58  2006/10/04 17:12:54  gbeeley
-    - (bugfix) Newer versions of Gecko handle clipping regions differently than
-      anything else out there.  Created a capability flag to handle that.
-    - (bugfix) Useragent.cfg processing was sometimes ignoring sub-definitions.
-
-    Revision 1.57  2005/03/01 07:08:25  gbeeley
-    - don't activate the serialized loading until after startup() finishes
-      running.
-
-    Revision 1.56  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.55  2004/08/30 03:20:17  gbeeley
-    - updates for widgets
-    - bugfix for htrRender() handling of event handler function return values
-
-    Revision 1.54  2004/08/15 03:10:48  gbeeley
-    - moving client canvas size detection logic from htmlgen to net_http so
-      that it can be passed to wgtrVerify(), later to be used in adjusting
-      geometry of application to fit browser window.
-
-    Revision 1.53  2004/08/15 01:57:51  gbeeley
-    - adding CSSBox capability - not a standard, but IE and Moz differ in how
-      they handle the box model.  IE draws borders within the width and height,
-      but Moz draws them outside the width and height.  Neither compute borders
-      as being a part of the content area of the DIV.
-
-    Revision 1.52  2004/08/14 20:28:29  gbeeley
-    - fix for windowsize-getter script to work with IE.
-
-    Revision 1.51  2004/08/13 18:46:13  mmcgill
-    *   Differentiated between non-visual widgets and widgets without associated
-        objects during the rendering process. Widgets without associated objects
-        on the client-side (no layers) have an object created for them and are
-        included in the tree. This was not previously the case (for example,
-        widget/table-columns were not previously included in the client-side tree.
-        Now, they are.)
-    *   Added code in ht_render to initiate the process of including interface
-        information on the client-side.
-    *   Modified htdrivers to flag widgets as HT_WGTF_NOOBJECT when appropriate.
-    *   Modified wgtdrivers to flag widgets as WGTR_F_NONVISUAL when appropriate.
-    *   Fixed bug in tab widget
-    *   Added 'fieldname' property to widget/table-column (SEE NOTE BELOW)
-    *   Added support for sending interface definitions to the client dynamically,
-        and for including them statically in an application at render time
-    *   Added a parameter to wgtrNewNode, and added wgtrImplementsInterface()
-    *   Unique widget names are now *required* within an application (SEE NOTE)
-
-    NOTE: THIS UPDATE WILL BREAK YOUR APPLICATIONS.
-
-    The applications in the
-    centrallix-os package have been updated to work with the noted changes. Any
-    applications you may have written that aren't in that module are probably
-    broken now for one of two reasons:
-        1) Not all widgets are uniquely named within an application
-        2) 'fieldname' is not specified for a widget/table-column
-    These are now requirements. Update your applications accordingly. Also note
-    that each widget will now receive a global variable named after that widget
-    on the client side - don't pick widget names that might collide with already-
-    existing globals.
-
-    Revision 1.50  2004/08/04 20:03:07  mmcgill
-    Major change in the way the client-side widget tree works/is built.
-    Instead of overlaying a tree structure on top of the global widget objects,
-    the tree is built *out of* those objects.
-    *   Removed the now-unnecessary tree-building code in the ht drivers
-    *   added htr_internal_BuildClientTree(), which keeps just about all the
-        client-side tree-building code in one spot
-    *   Added RenderFlags to the WgtrNode struct, for use by any rendering
-        module in whatever way that module sees fit
-    *   Added the HT_WGTF_NOOBJECT flag in ht_render, which is set by ht
-        drivers that deal with widgets for which a corresponding DHTML object
-        is not created - for example, a radiobuttonpanel widget has
-        radiobutton child widgets - but in the client-side code there are no
-        corresponding DHTML objects for those child widgets. So the
-        radiobuttonpanel ht driver sets the HT_WGTF_NOOBJECT RenderFlag on
-        each of those child nodes, and when the client-side widget tree is
-        being built, no attempt is made to add them to the client-side tree.
-    *   Tweaked the connector widget a bit - it doesn't appear that the Add
-        member function needs to take an object as a parameter, since each
-        connector is associated with its parent object in cn_init.
-    *   *cough* Er, fixed the, um....giant unclosable unmovable textarea that
-        I had been using for debug messages, so that it doesn't appear unless
-        WGTR_DBG_WINDOW is defined in ht_render.c. Heh heh. Sorry about that.
-
-    Revision 1.49  2004/08/04 01:58:56  mmcgill
-    Added code to ht_render and the ht drivers to build a representation of
-    the widget tree on the client-side, linking each node to its corresponding
-    widget object or layer. Also fixed a couple bugs that were introduced
-    by switching to rendering off the widget tree.
-
-    Revision 1.48  2004/08/02 14:09:33  mmcgill
-    Restructured the rendering process, in anticipation of new deployment methods
-    being added in the future. The wgtr module is now the main widget-related
-    module, responsible for all non-deployment-specific widget functionality.
-    For example, Verifying a widget tree is non-deployment-specific, so the verify
-    functions have been moved out of htmlgen and into the wgtr module.
-    Changes include:
-    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
-        wgtr drivers.
-    *   Adding wgtr drivers to the widget tree module.
-    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
-    *   Requiring all deployment methods (currently only DHTML) to register a
-        Render() function with the wgtr module.
-    *   Adding wgtrRender(), to abstract the details of the rendering process
-        from the caller. Given a widget tree, a string representing the deployment
-        method to use ("DHTML" for now), and the additional args for the rendering
-        function, wgtrRender() looks up the appropriate function for the specified
-        deployment method and calls it.
-    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
-        is being created. This is primarily to allow widget drivers to declare
-        the interfaces their widgets support when they are instantiated, but other
-        initialization tasks can go there as well.
-
-    Also in this commit:
-    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
-    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
-        other stack variables.
-    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
-        can now be completely insulated from the deployment method by the wgtr
-        module.
-
-    Revision 1.47  2004/07/20 21:28:52  mmcgill
-    *   ht_render
-        -   Added code to perform verification of widget-tree prior to
-            rendering.
-        -   Added concept of 'pseudo-types' for widget-drivers, e.g. the
-            table driver getting called for 'table-column' widgets. This is
-            necessary now since the 'table-column' entry in an app file will
-            actually get put into its own widget node. Pseudo-type names
-            are stored in an XArray in the driver struct during the
-            xxxInitialize() function of the driver, and BEFORE ANY CALLS TO
-            htrAddSupport().
-        -   Added htrLookupDriver() to encapsulate the process of looking up
-            a driver given an HtSession and widget type
-        -   Added 'pWgtrVerifySession VerifySession' to HtSession.
-            WgtrVerifySession represents a 'verification context' to be used
-            by the xxxVerify functions in the widget drivers to schedule new
-            widgets for verification, and otherwise interact with the
-            verification system.
-    *   xxxVerify() functions now take a pHtSession parameter.
-    *   Updated the dropdown, tab, and table widgets to register their
-        pseudo-types
-    *   Moved the ObjProperty out of obj.h and into wgtr.c to internalize it,
-        in anticipation of converting the Wgtr module to use PTODs instead.
-    *   Fixed some Wgtr module memory-leak issues
-    *   Added functions wgtrScheduleVerify() and wgtrCancelVerify(). They are
-        to be used in the xxxVerify() functions when a node has been
-        dynamically added to the widget tree during tree verification.
-    *   Added the formbar widget driver, as a demonstration of how to modify
-        the widget-tree during the verification process. The formbar widget
-        doesn't actually do anything during the rendering process excpet
-        call htrRenderWidget on its subwidgets, but during Verify it adds
-        all the widgets necessary to reproduce the 'form control pane' from
-        ors.app. This will eventually be done even more efficiently with
-        component widgets - this serves as a tech test.
-
-    Revision 1.46  2004/07/19 15:30:39  mmcgill
-    The DHTML generation system has been updated from the 2-step process to
-    a three-step process:
-        1)	Upon request for an application, a widget-tree is built from the
-    	app file requested.
-        2)	The tree is Verified (not actually implemented yet, since none of
-    	the widget drivers have proper Verify() functions - but it's only
-    	a matter of a function call in net_http.c)
-        3)	The widget drivers are called on their respective parts of the
-    	tree structure to generate the DHTML code, which is then sent to
-    	the user.
-
-    To support widget tree generation the WGTR module has been added. This
-    module allows OSML objects to be parsed into widget-trees. The module
-    also provides an API for building widget-trees from scratch, and for
-    manipulating existing widget-trees.
-
-    The Render functions of all widget drivers have been updated to make their
-    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
-    instead of a pObject as a parameter.
-
-    net_internal_GET() in net_http.c has been updated to call
-    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
-    then free it.
-
-    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
-    a pObject parameter, and to make calls through the WGTR module instead of
-    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
-    htrGetBoolean(), etc. have also been modified appropriately.
-
-    I have assumed in each widget driver that w_obj->Session is equivelent to
-    s->ObjSession; in other words, that the object being passed in to the
-    Render() function was opened via the session being passed in with the
-    HtSession parameter. To my understanding this is a valid assumption.
-
-    While I did run through the test apps and all appears to be well, it is
-    possible that some bugs were introduced as a result of the modifications to
-    all 30 widget drivers. If you find at any point that things are acting
-    funny, that would be a good place to check.
-
-    Revision 1.45  2004/06/25 16:46:30  gbeeley
-    - Auto-detect size of user-agent's window
-
-    Revision 1.44  2004/04/29 16:26:41  gbeeley
-    - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
-    - Added inline-include feature to help with debugging in IE, which does
-      not specify the correct file in its errors.  To use it, just append
-      "?ls__collapse_includes=yes" to your .app URL.
-
-    Revision 1.43  2004/03/10 10:39:04  jasonyip
-
-    I have added a JS15 CAP for javascript 1.5 Capability.
-
-    Revision 1.42  2004/02/24 20:21:56  gbeeley
-    - hints .js file inclusion on form, osrc, and editbox
-    - htrParamValue and htrGetBoolean utility functions
-    - connector now supports runclient() expressions as a better way to
-      do things for connector action params
-    - global variable pollution problems fixed in some places
-    - show_root option on treeview
-
-    Revision 1.41  2003/11/22 16:37:18  jorupp
-     * add support for moving event handler scripts to the .js code
-     	note: the underlying implimentation in ht_render.c_will_ change, this was
-    	just to get opinions on the API and output
-     * moved event handlers for htdrv_window from the .c to the .js
-
-    Revision 1.40  2003/11/18 06:01:10  gbeeley
-    - adding utility method htrGetBackground to simplify bgcolor/image
-
-    Revision 1.39  2003/08/02 22:12:06  jorupp
-     * got treeview pretty much working (a bit slow though)
-    	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
-     * scrollpane displays, doesn't scroll
-
-    Revision 1.38  2003/07/15 01:57:51  gbeeley
-    Adding an independent DHTML scrollbar widget that will be used to
-    control scrolling/etc on other widgets.
-
-    Revision 1.37  2003/06/21 23:54:41  jorupp
-     * fixex up a few problems I found with the version I committed (like compilation...)
-     * removed some code that was commented out
-
-    Revision 1.36  2003/06/21 23:07:26  jorupp
-     * added framework for capability-based multi-browser support.
-     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
-     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
-     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
-     	capability check before in their Render() function (maybe this should be in Verify()?)
-
-    Revision 1.35  2003/06/03 23:31:04  gbeeley
-    Adding pro forma netscape 4.8 support.
-
-    Revision 1.34  2003/05/30 17:39:49  gbeeley
-    - stubbed out inheritance code
-    - bugfixes
-    - maintained dynamic runclient() expressions
-    - querytoggle on form
-    - two additional formstatus widget image sets, 'large' and 'largeflat'
-    - insert support
-    - fix for startup() not always completing because of queries
-    - multiquery module double objClose fix
-    - limited osml api debug tracing
-
-    Revision 1.33  2003/03/30 22:49:23  jorupp
-     * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
-
-    Revision 1.32  2003/01/05 04:18:08  lkehresman
-    Added detection for Mozilla 1.2.x
-
-    Revision 1.31  2002/12/24 09:41:07  jorupp
-     * move output of cn_browser to ht_render, also moving up above the first place where it is needed
-
-    Revision 1.30  2002/12/04 00:19:09  gbeeley
-    Did some cleanup on the user agent selection mechanism, moving to a
-    bitmask so that drivers don't have to register twice.  Theme will be
-    handled differently, but provision is made for 'classes' of widgets
-    such as dhtml vs. xul.  Started work on some utility functions to
-    resolve some ns47 vs. w3c issues.
-
-    Revision 1.29  2002/11/22 19:29:36  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.28  2002/09/27 22:26:04  gbeeley
-    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
-    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
-    mnodse...
-
-    Revision 1.27  2002/09/11 00:57:08  jorupp
-     * added check for Mozilla 1.1
-
-    Revision 1.26  2002/08/12 09:14:28  mattphillips
-    Use the built-in PACKAGE_VERSION instead of VERSION to get the current version
-    number to be more standard.  PACKAGE_VERSION is set by autoconf, but read from
-    .version when configure is generated.
-
-    Revision 1.25  2002/08/03 02:36:34  gbeeley
-    Made all hash tables the same size at 257 (a prime) entries.
-
-    Revision 1.24  2002/08/02 19:44:20  gbeeley
-    Have ht_render report the widget type when it complains about not knowing
-    a widget type when generating a page.
-
-    Revision 1.23  2002/07/18 20:12:40  lkehresman
-    Added support for a loadstatus icon to be displayed, hiding the drawing
-    of the visible windows.  This looks MUCH nicer when loading Kardia or
-    any other large apps.  It is completely optional part of the page widget.
-    To take advantage of it, put the parameter "loadstatus" equal to "true"
-    in the page widget.
-
-    Revision 1.22  2002/07/18 15:17:44  lkehresman
-    Ok, I got caught being lazy.  I used snprintf and the string sbuf to
-    help me count the number of characters in the string I modified.  But
-    sbuf was being used elsewhere and I messed it up.  Fixed it so it isn't
-    using sbuf any more.  I broke down and counted the characters.
-    (how many times can we modify this line in one hour?? SHEESH!
-
-    Revision 1.20  2002/07/18 14:31:05  lkehresman
-    Whoops!  I was sending the wrong string size to fdWrite.  Fixed it.
-
-    Revision 1.19  2002/07/18 14:26:13  lkehresman
-    Added a work-around for the Netscape resizing bug.  Instead of leaving
-    the page totally messed up on a resize, it will now completely reload the
-    page whenever the window is resized.
-
-    Revision 1.18  2002/07/16 18:23:20  lkehresman
-    Added htrAddStylesheetItem() function to help consolidate the output of
-    the html generator.  Now, all stylesheet definitions are included in the
-    same <style></style> tags rather than each widget having their own.  I
-    have modified the current widgets to take advantage of this.  In the
-    future, do not use htrAddHeaderItem(), but use this new function.
-
-    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
-
-    Revision 1.17  2002/07/15 21:27:02  lkehresman
-    Added copyright statement at top of generated DHTML documents.  (if the
-    wording needs to change, please do it or let me know)
-
-    Revision 1.16  2002/07/07 00:17:01  jorupp
-     * add support for Mozilla 1.1alpha (1.1a)
-
-    Revision 1.15  2002/06/24 20:07:41  lkehresman
-    Committing a fix for Jonathan (he doesn't have CVS access right now).
-    This now detects Mozilla pre-1.0 versions.
-
-    Revision 1.14  2002/06/20 16:22:08  gbeeley
-    Wrapped the nonconstant format string warning in an ifdef WITH_SECWARN
-    so it doesn't bug people other than developers.
-
-    Revision 1.13  2002/06/19 19:57:13  gbeeley
-    Added warning code if htr..._va() function is passed a format string
-    from the heap or other modifiable data segments.  Half a kludge...
-
-    Revision 1.12  2002/06/19 19:08:55  lkehresman
-    Changed all snprintf to use the *_va functions
-
-    Revision 1.11  2002/06/09 23:44:46  nehresma
-    This is the initial cut of the browser detection code.  Note that each widget
-    needs to register which browser and style is supported.  The GNU regular
-    expression library is also needed (comes with GLIBC).
-
-    Revision 1.10  2002/05/03 03:43:25  gbeeley
-    Added FD_U_PACKET to the fdWrite() calls in ht_render.  It is possible
-    that some data was getting dropped - fdWrite() makes no guarantee of
-    writing *all* the data unless you include the FD_U_PACKET flag :)
-
-    Revision 1.9  2002/05/02 01:12:43  gbeeley
-    Fixed some buggy initialization code where an XArray was not being
-    setup prior to being used.  Was causing potential bad pointers to
-    realloc() and other various problems, especially once the dynamic
-    loader was messing with things.
-
-    Revision 1.8  2002/04/28 06:00:38  jorupp
-     * added htrAddScriptCleanup* stuff
-     * added cleanup stuff to osrc
-
-    Revision 1.7  2002/04/28 03:19:53  gbeeley
-    Fixed a bit of a bug in ht_render where it did not properly set the
-    length on the StrValue structures when adding script functions.  This
-    was basically causing some substantial heap corruption.
-
-    Revision 1.6  2002/04/25 22:54:48  gbeeley
-    Set the starting tmpbuf back to 512 from the 8 bytes I was using to
-    test the auto-realloc logic... ;)
-
-    Revision 1.5  2002/04/25 22:51:29  gbeeley
-    Added vararg versions of some key htrAddThingyItem() type of routines
-    so that all of this sbuf stuff doesn't have to be done, as we have
-    been bumping up against the limits on the local sbuf's due to very
-    long object names.  Modified label, editbox, and treeview to test
-    out (and make kardia.app work).
-
-    Revision 1.4  2002/04/25 04:27:21  gbeeley
-    Added new AddInclude() functionality to the html generator, so include
-    javascript files can be added.  Untested.
-
-    Revision 1.3  2002/03/09 19:21:20  gbeeley
-    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
-    own bad sprintf habits that somehow worked their way into some other
-    folks' code as well ;)  Textbutton widget had an inadequate buffer for
-    the tb_init() call, causing various problems, including incorrect labels,
-    and more recently, javascript errors.
-
-    Revision 1.2  2001/10/22 17:19:42  gbeeley
-    Added a few utility functions in ht_render to simplify the structure and
-    authoring of widget drivers a bit.
-
-    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:52  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:53  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** GLOBALS ***/
@@ -771,14 +195,14 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
  ***     as the cx__capabilities object (for javascript)
  ***/
 void
-htr_internal_writeCxCapabilities(pHtSession s, pFile out)
+htr_internal_writeCxCapabilities(pHtSession s)
     {
-    fdWrite(out,"    cx__capabilities = new Object();\n",37,0,FD_U_PACKET);
+    htrWrite(s,"    cx__capabilities = {};\n",27);
 #define PROCESS_CAP_OUT(attr) \
-    fdWrite(out,"    cx__capabilities.",21,0,FD_U_PACKET); \
-    fdWrite(out, # attr ,strlen( # attr ),0,FD_U_PACKET); \
-    fdWrite(out," = ",3,0,FD_U_PACKET); \
-    fdWrite(out,(s->Capabilities.attr?"1;\n":"0;\n"),3,0,FD_U_PACKET);
+    htrWrite(s,"    cx__capabilities.",21); \
+    htrWrite(s, # attr ,strlen( # attr )); \
+    htrWrite(s," = ",3); \
+    htrWrite(s,(s->Capabilities.attr?"1;\n":"0;\n"),3);
 
     PROCESS_CAP_OUT(Dom0NS); //true when navigator is netscape navigator
     PROCESS_CAP_OUT(Dom0IE); //true when navigator is IE
@@ -1031,10 +455,61 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    return -1;
 	    }
 
+	/** Has this driver been used this session yet? **/
+	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
+	    {
+	    xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv);
+	    if (drv->Setup)
+		{
+		if (drv->Setup(session) < 0)
+		    return -1;
+		}
+	    }
+
+	/** Crossing a namespace boundary? **/
+	htrCheckNSTransition(session, widget->Parent, widget);
+
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
 
+	/** Going back to previous namespace? **/
+	htrCheckNSTransitionReturn(session, widget->Parent, widget);
+
     return rval;
+    }
+
+
+/*** htrCheckNSTransition -- check to see if we are transitioning between
+ *** namespaces, and if so, emit the code to switch the context.
+ ***/
+int
+htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
+    {
+
+	/** Crossing a namespace boundary? **/
+	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	    {
+	    htrAddNamespace(s, NULL, child->Namespace, 1);
+	    }
+
+    return 0;
+    }
+
+
+/*** htrCheckNSTransitionReturn -- check to see if we are transitioning between
+ *** namespaces, and if so, emit the code to switch the context.
+ ***/
+int
+htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
+    {
+
+	/** Crossing a namespace boundary? **/
+	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	    {
+	    htrLeaveNamespace(s);
+	    }
+
+    return 0;
     }
 
 
@@ -1318,12 +793,23 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     {
     va_list va;
 
+	if (!s->Namespace->HasScriptInits)
+	    {
+	    /** No script inits for this namespace yet?  Issue the context
+	     ** switch if no inits yet.
+	     **/
+	    s->Namespace->HasScriptInits = 1;
+	    /*htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n", s->Namespace->DName);*/
+	    htrAddScriptInit_va(s, "\n    ns = \"%STR&SYM\";\n", s->Namespace->DName);
+	    }
+
 	va_start(va, fmt);
 	htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
 	va_end(va);
 
     return 0;
     }
+
 
 /*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to cleanup function of the document.
@@ -1602,12 +1088,12 @@ htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
  *** in a number of different ways in the actual user agent itself.
  ***/
 int
-htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...)
+htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, const char* fmt, ...)
     {
     va_list va;
 
 	/** Add the opening tag **/
-	htrAddBodyItemLayerStart(s, flags, id, cnt);
+	htrAddBodyItemLayerStart(s, flags, id, cnt, cls);
 
 	/** Add the content **/
 	va_start(va, fmt);
@@ -1629,7 +1115,7 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* f
  *** PARAMETER WHICH IS A FORMAT STRING FOR THE LAYER'S ID!!!
  ***/
 int
-htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
+htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls)
     {
     char* starttag;
     char id_sbuf[64];
@@ -1648,7 +1134,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
 
 	/** Add it. **/
 	qpfPrintf(NULL, id_sbuf,sizeof(id_sbuf),id,cnt);
-	htrAddBodyItem_va(s, "<%STR id=\"%STR&HTE\">", starttag, id_sbuf);
+	htrAddBodyItem_va(s, "<%STR %[class=\"%STR&HTE\" %]id=\"%STR&HTE\">", starttag, cls != NULL, cls, id_sbuf);
 
     return 0;
     }
@@ -1676,6 +1162,52 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 
 	/** Add it. **/
 	htrAddBodyItem_va(s, "</%STR>", endtag);
+
+    return 0;
+    }
+
+
+/*** htrGetExpParams - retrieve the list of values used in an expression
+ *** and put them in a javascript array.
+ ***/
+int
+htrGetExpParams(pExpression exp, pXString xs)
+    {
+    int i, first;
+    XArray objs, props;
+    char* obj;
+    char* prop;
+
+	/** setup **/
+	xaInit(&objs, 16);
+	xaInit(&props, 16);
+
+	/** Find the properties accessed by the expression **/
+	expGetPropList(exp, &objs, &props);
+
+	/** Build the list **/
+	xsCopy(xs,"[",-1);
+	first=1;
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    obj = (char*)(objs.Items[i]);
+	    prop = (char*)(props.Items[i]);
+	    if (obj && prop)
+		{
+		xsConcatQPrintf(xs,"%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}", !first, obj, prop);
+		first = 0;
+		}
+	    }
+	xsConcatenate(xs,"]",1);
+
+	/** cleanup **/
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    if (objs.Items[i]) nmSysFree(objs.Items[i]);
+	    if (props.Items[i]) nmSysFree(props.Items[i]);
+	    }
+	xaDeInit(&objs);
+	xaDeInit(&props);
 
     return 0;
     }
@@ -1711,13 +1243,13 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    prop = (char*)(props.Items[i]);
 	    if (obj && prop)
 		{
-		xsConcatQPrintf(&xs,"%[,%]['%STR&SYM','%STR&JSSTR']", !first, obj, prop);
+		xsConcatQPrintf(&xs,"%[,%]['%STR&JSSTR','%STR&JSSTR']", !first, obj, prop);
 		first = 0;
 		}
 	    }
 	xsConcatenate(&xs,"]",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&JSSTR',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
+	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM',function (_context, _this) { return %STR; },%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1792,12 +1324,15 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
  *** then an include statement is generated in any event.
  ***/
 int
-htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
+htr_internal_GenInclude(pHtSession s, char* filename)
     {
     pStruct c_param;
     pObject include_file;
     char buf[256];
+    char path[256];
+    char* slash;
     int rcnt;
+    ObjData pod;
 
 	/** Insert file directly? **/
 	c_param = stLookup_ne(s->Params, "ls__collapse_includes");
@@ -1806,19 +1341,87 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	    if (include_file)
 		{
-		fdPrintf(output, "<SCRIPT language=\"javascript\">\n// Included from: %s\n\n", filename);
+		htrQPrintf(s, "<script language=\"javascript\">\n// Included from: %STR&HTE\n\n", filename);
 		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
 		    {
-		    fdWrite(output, buf, rcnt, 0, FD_U_PACKET);
+		    htrWrite(s, buf, rcnt);
 		    }
 		objClose(include_file);
-		fdPrintf(output, "\n</SCRIPT>\n");
+		htrQPrintf(s, "\n</script>\n");
 		return 0;
 		}
 	    }
 
 	/** Otherwise, just generate an include statement **/
-	fdPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%s\"></SCRIPT>\n", filename);
+	buf[0] = '\0';
+	include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
+	if (include_file)
+	    {
+	    if (objGetAttrValue(include_file, "last_modification", DATA_T_DATETIME, &pod) == 0)
+		{
+		snprintf(buf, sizeof(buf), "%lld", pod.DateTime->Value);
+		}
+	    objClose(include_file);
+	    }
+	strtcpy(path, filename, sizeof(path));
+	slash = strrchr(path, '/');
+	if (slash)
+	    {
+	    *slash = '\0';
+	    htrQPrintf(s, "\n<script language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></script>\n", path, buf[0], buf, slash+1);
+	    }
+
+    return 0;
+    }
+
+
+/*** htr_internal_WriteWgtrProperty - write one widget property in javascript
+ *** as a part of the widget tree
+ ***/
+int
+htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
+    {
+    int t;
+    ObjData od;
+    int rval;
+    pExpression code;
+    XString exptxt;
+    XString proptxt;
+
+	t = wgtrGetPropertyType(tree, propname);
+	if (t > 0)
+	    {
+	    rval = wgtrGetPropertyValue(tree, propname, t, &od);
+	    if (rval == 1)
+		{
+		/** null **/
+		htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname);
+		}
+	    else if (rval == 0)
+		{
+		switch(t)
+		    {
+		    case DATA_T_INTEGER:
+			htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer);
+			break;
+
+		    case DATA_T_STRING:
+			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
+			break;
+
+		    case DATA_T_CODE:
+			wgtrGetPropertyValue(tree,propname,DATA_T_CODE,POD(&code));
+			xsInit(&exptxt);
+			xsInit(&proptxt);
+			htrGetExpParams(code, &proptxt);
+			expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
+			htrAddScriptWgtr_va(s, "%STR&SYM:{val:null, exp:function(_this,_context){return ( %STR );}, props:%STR, revexp:null}, ", propname, exptxt.String, proptxt.String);
+			xsDeInit(&proptxt);
+			xsDeInit(&exptxt);
+			break;
+		    }
+		}
+	    }
 
     return 0;
     }
@@ -1839,6 +1442,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     int rendercnt;
     char* scope = NULL;
     char* scopename = NULL;
+    char* propname;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1859,14 +1463,39 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR, ctl:%STR%[, namespace:'%STR&SYM'%]", 
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
 		ctrinit, ctrinit,
 		scope, scope,
 		scopename, scopename,
-		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
+		tree->Type, 
+		(tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
+		(tree->Flags & WGTR_F_CONTROL)?"true":"false",
+		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
+		tree->Namespace);
+
+	/** Parameters **/
+	htrAddScriptWgtr_va(s, ", param:{");
+	if (!(tree->Flags & WGTR_F_NONVISUAL))
+	    {
+	    htr_internal_WriteWgtrProperty(s, tree, "x");
+	    htr_internal_WriteWgtrProperty(s, tree, "y");
+	    htr_internal_WriteWgtrProperty(s, tree, "width");
+	    htr_internal_WriteWgtrProperty(s, tree, "height");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_x");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_y");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_width");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_height");
+	    }
+	propname = wgtrFirstPropertyName(tree);
+	while(propname)
+	    {
+	    htr_internal_WriteWgtrProperty(s, tree, propname);
+	    propname = wgtrNextPropertyName(tree);
+	    }
+	htrAddScriptWgtr_va(s, "}");
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
 	for(rendercnt=i=0;i<childcnt;i++)
@@ -1928,14 +1557,17 @@ htr_internal_InitNamespace(pHtSession s, pHtNamespace ns)
 	 ** init by setting 'cobj', otherwise leave the parent linkage totally
 	 ** empty.
 	 **/
-	if (ns->ParentCtr[0] && ns->Parent)
-	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(%STR&SYM,\"%STR&SYM\"))});\n",
-		    ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
-	else
-	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
-		    ns->DName, ns->DName, ns->DName);
-	htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
-		ns->DName, ns->DName);
+	if (!ns->IsSubnamespace)
+	    {
+	    if (ns->ParentCtr[0] && ns->Parent)
+		htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(\"%STR&SYM\",\"%STR&SYM\"))});\n",
+			ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
+	    else
+		htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
+			ns->DName, ns->DName, ns->DName);
+	    /*htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
+		    ns->DName, ns->DName);*/
+	    }
 
 	/** Init child namespaces too **/
 	for(child = ns->FirstChild; child; child=child->NextSibling)
@@ -1970,6 +1602,40 @@ htr_internal_FreeNamespace(pHtNamespace ns)
     }
 
 
+/*** htrWrite - write data to the output stream
+ ***/
+int
+htrWrite(pHtSession s, char* buf, int len)
+    {
+    if (len < 0)
+	len = strlen(buf);
+    return s->StreamWrite(s->Stream, buf, len, 0, 0);
+    }
+
+
+/*** htrQPrintf - write formatted data to output stream
+ ***/
+int
+htrQPrintf(pHtSession s, char* fmt, ...)
+    {
+    pXString xs;
+    va_list va;
+    int rval;
+   
+	/** print to xstring first, then output via htrWrite() **/
+	xs = xsNew();
+	if (!xs)
+	    return -1;
+	va_start(va, fmt);
+	xsQPrintf_va(xs, fmt, va);
+	va_end(va);
+	rval = htrWrite(s, xsString(xs), -1);
+	xsFree(xs);
+
+    return rval;
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -1979,19 +1645,20 @@ htr_internal_FreeNamespace(pHtNamespace ns)
     understanding of returned infrastructure is needed first.
  **/
 int
-htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
+htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
     pHtSession s;
     int i,n,j,k,cnt,cnt2;
     pStrValue tmp;
     char* ptr;
     pStrValue sv;
-    char sbuf[HT_SBUF_SIZE];
+    char sbuf[HT_SBUF_SIZE*2];
     char ename[40];
     pHtDomEvent e;
     char* agent = NULL;
     char* classname = NULL;
     int rval;
+    pXString err_xs;
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
@@ -2009,8 +1676,13 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->ObjSession = obj_s;
 	s->ClientInfo = c_info;
 	s->Namespace = &(s->Page.RootNamespace);
+	s->Namespace->IsSubnamespace = 0;
+	s->Namespace->HasScriptInits = 1;
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 	s->IsDynamic = 1;
+	s->Stream = stream;
+	s->StreamWrite = stream_write;
+	xhInit(&s->UsedDrivers, 257, 0);
 
 	/** Parent container name specified? I (Seth) think that this
 	    GET parameter is only used when a component is
@@ -2116,9 +1788,10 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	/** first thing in the startup() function should be calling build_wgtr **/
 	htrAddScriptInit_va(s, "    build_wgtr_%STR&SYM();\n",
 		s->Namespace->DName);
-	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    var rootname = \"%STR&SYM\";\n",
-		s->Namespace->DName, s->Namespace->DName);
+	/*htrAddScriptInit_va(s, "\n    var nodes = wgtrNodeList(%STR&SYM);\n",*/
+	htrAddScriptInit_va(s, "\n    var ns = \"%STR&SYM\";\n",
+			       /*"    var rootname = \"%STR&SYM\";\n", */
+		s->Namespace->DName /*, s->Namespace->DName */);
 	/*htrAddStylesheetItem(s, "\tdiv {position:absolute; visibility:inherit; overflow:hidden; }\n");*/
 
 	/** Render the top-level widget -- the function that's run
@@ -2146,53 +1819,60 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 #endif
 
 
+	/** Could not render? **/
 	if (rval < 0)
 	    {
-	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
-	    mssPrintError(output);
+	    err_xs = xsNew();
+	    if (err_xs)
+		{
+		mssStringError(err_xs);
+		htrQPrintf(s, "<html><head><title>Error</title></head><body bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
+		xsFree(err_xs);
+		}
 	    }
 	
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
 	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
-	    fdWrite(output, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n",91,0,FD_U_PACKET);
+	    htrWrite(s, "<!doctype html>\n\n", -1);
 
 	/** Write the HTML out... **/
-	snprintf(sbuf, HT_SBUF_SIZE, "<!--\nGenerated by Centrallix v%s (http://www.centrallix.org)\n"
-				     "(c) 1998-2006 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "This DHTML document contains Javascript and other DHTML\n"
-				     "generated from Centrallix which is licensed under the\n"
-				     "GNU GPL (http://www.gnu.org/licenses/gpl.txt).  Any copying\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "modifying, or redistributing of this generated code falls\n"
-				     "under the restrictions of the GPL.\n"
-				     "-->\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", cx__version);
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	fdPrintf(output, "    <META NAME=\"Pragma\" CONTENT=\"no-cache\">\n");
+	htrQPrintf(s,	"<!--\n"
+			"Generated by Centrallix/%STR (http://www.centrallix.org)\n"
+			"Centrallix is (c) 1998-2017 by LightSys Technology Services, Inc.\n"
+			"and is free software, licensed under the GNU GPL version 2, or\n"
+			"at your option any later version.  This software is provided\n"
+			"with ABSOLUTELY NO WARRANTY, NOT EVEN THE IMPLIED WARRANTIES\n"
+			"OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.\n"
+			"-->\n\n"
+			, cx__version);
 
-	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
+	htrQPrintf(s,	"<html>\n"
+			"<head>\n"
+			"    <meta name=\"generator\" content=\"Centrallix/%STR\">\n"
+			"    <meta name=\"pragma\" content=\"no-cache\">\n"
+			"    <meta name=\"referrer\" content=\"same-origin\">\n"
+			, cx__version);
+
+	htrWrite(s, "    <style type=\"text/css\">\n", -1);
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlStylesheet.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output, "    </STYLE>\n", 13, 0, FD_U_PACKET);
+	htrWrite(s, "    </style>\n", -1);
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlHeader.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
 
 	/** Write the script globals **/
-	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n\n", 33,0,FD_U_PACKET);
+	htrWrite(s, "<script language=\"javascript\">\n\n\n", -1);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -2200,27 +1880,27 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"if (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n", sv->Name, sv->Name, sv->Value);
 	    else
 		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"var %STR&SYM;\n", sv->Name);
-	    fdWrite(output, sbuf, strlen(sbuf),0,FD_U_PACKET);
+	    htrWrite(s, sbuf, -1);
 	    }
 
 	/** Write the includes **/
-	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
+	htrWrite(s, "\n</script>\n\n", -1);
 
 	/** include ht_render.js **/
-	htr_internal_GenInclude(output, s, "/sys/js/ht_render.js");
+	htr_internal_GenInclude(s, "/sys/js/ht_render.js");
 
 	/** include browser-specific geometry js **/
 	if(s->Capabilities.Dom0IE)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ie.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom0ie.js");
 	    }
 	else if (s->Capabilities.Dom0NS)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ns.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom0ns.js");
 	    }
 	else if (s->Capabilities.Dom1HTML)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom1html.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom1html.js");
 	    }
 	else
 	    {
@@ -2230,20 +1910,20 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
-	    htr_internal_GenInclude(output, s, sv->Name);
+	    htr_internal_GenInclude(s, sv->Name);
 	    }
-	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n", 32,0,FD_U_PACKET);
+	htrWrite(s, "<script language=\"javascript\">\n\n", -1);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Functions.Items[i]);
-	    fdWrite(output, sv->Value, strlen(sv->Value),0,FD_U_PACKET);
+	    htrWrite(s, sv->Value, -1);
 	    }
 
 
 	/** Write the event capture lines **/
-	fdPrintf(output,"\nfunction events_%s()\n    {\n",s->Namespace->DName);
+	htrQPrintf(s,"\nfunction events_%STR()\n    {\n",s->Namespace->DName);
 	cnt = xaCount(&s->Page.EventHandlers);
 	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
 	for(i=0;i<cnt;i++)
@@ -2254,7 +1934,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    strcat(sbuf,e->DomEvent);
 	    }
 	strcat(sbuf,");\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
+	htrWrite(s, sbuf, -1);
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -2265,88 +1945,87 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    cnt2 = xaCount(&e->Handlers);
 	    for(j=0;j<cnt2;j++)
 		{
-		fdPrintf(output, "    htr_addeventhandler(\"%s\",\"%s\");\n",
+		htrQPrintf(s, "    htr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
 			ename, xaGetItem(&e->Handlers, j));
 		}
 	    if (!strcmp(ename,"mousemove"))
-		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_mousemovehandler);\n",
+		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
 			ename);
 	    else
-		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_eventhandler);\n",
+		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
 			ename);
 	    }
 
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the expression initializations **/
-	fdPrintf(output,"\nfunction expinit_%s()\n    {\n",s->Namespace->DName);
+	htrQPrintf(s,"\nfunction expinit_%STR()\n    {\n",s->Namespace->DName);
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlExpressionInit.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the wgtr declaration **/
-	fdPrintf(output, "\nfunction build_wgtr_%s()\n    {\n",
+	htrQPrintf(s, "\nfunction build_wgtr_%STR()\n    {\n",
 		s->Namespace->DName);
 	for (i=0;i<s->Page.Wgtr.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Wgtr.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n, 0, FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output, "    }\n", 6, 0, FD_U_PACKET);
+	htrWrite(s, "    }\n", -1);
 
 	/** Write the initialization lines **/
-	fdPrintf(output,"\nfunction startup_%s()\n    {\n", s->Namespace->DName);
-	htr_internal_writeCxCapabilities(s,output); //TODO: (by Seth) this really only needs to happen during first-load.
+	htrQPrintf(s,"\nfunction startup_%STR()\n    {\n", s->Namespace->DName);
+	htr_internal_writeCxCapabilities(s); //TODO: (by Seth) this really only needs to happen during first-load.
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Inits.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdPrintf(output,"    events_%s();\n", s->Namespace->DName);
-	fdPrintf(output,"    expinit_%s();\n", s->Namespace->DName);
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrQPrintf(s,"    events_%STR();\n", s->Namespace->DName);
+	htrQPrintf(s,"    expinit_%STR();\n", s->Namespace->DName);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the cleanup lines **/
-	fdWrite(output,"\nfunction cleanup()\n    {\n",26,0,FD_U_PACKET);
+	htrWrite(s,"\nfunction cleanup()\n    {\n",-1);
 	for(i=0;i<s->Page.Cleanups.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Cleanups.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    fdWrite(output, "\n</SCRIPT>\n</HEAD>",18,0,FD_U_PACKET);
-	    fdWrite(output, "\n<BODY", 6,0,FD_U_PACKET);
+	    htrWrite(s, "\n</script>\n</head>",-1);
+	    htrWrite(s, "\n<body", -1);
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
 	        n = *(int*)ptr;
-	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	        htrWrite(s, ptr+8, n);
 	        }
 	    /** work around the Netscape 4.x bug regarding page resizing **/
 	    if(s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 		{
-		fdWrite(output, " onResize=\"location.reload()\"",29,0,FD_U_PACKET);
+		htrWrite(s, " onResize=\"location.reload()\"",-1);
 		}
-	    /*fdPrintf(output, " onLoad=\"startup();\" onUnload=\"cleanup();\"");*/
-	    fdPrintf(output, ">\n");
+	    htrWrite(s, ">\n", -1);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</SCRIPT>\n",11,0,FD_U_PACKET);
+	    htrWrite(s, "\n</script>\n",-1);
 	    }
 
 	/** Write the HTML body. **/
@@ -2354,16 +2033,16 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    {
 	    ptr = (char*)(s->Page.HtmlBody.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
 
 	if (s->DisableBody == 0)
 	    {
-	    fdWrite(output, "</BODY>\n</HTML>\n",16,0,FD_U_PACKET);
+	    htrWrite(s, "</body>\n</html>\n",-1);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</HTML>\n",9,0,FD_U_PACKET);
+	    htrWrite(s, "\n</HTML>\n",-1);
 	    }
 
 	/** Deinitialize the session and page structures **/
@@ -2413,46 +2092,11 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++) nmFree(s->Page.HtmlExpressionInit.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlExpressionInit));
 
-	/** Clean up the event script structure, which is multi-level. **/
-	/*for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
-	    {
-	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    for(j=0;j<tmp_a->Array.nItems;j++)
-	        {
-	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-		for(k=0;k<tmp_a2->Array.nItems;k++)
-		    {
-		    tmp_a3 = (pHtNameArray)(tmp_a2->Array.Items[k]);
-		    for(l=0;l<tmp_a3->Array.nItems;l++)
-		        {
-			nmFree(tmp_a3->Array.Items[l],2048);
-			}
-	            xaDeInit(&(tmp_a3->Array));
-	            xhRemove(&(tmp_a2->HashTable),tmp_a3->Name);
-		    nmFree(tmp_a3,sizeof(HtNameArray));
-		    }
-	        xaDeInit(&(tmp_a2->Array));
-		xhDeInit(&(tmp_a2->HashTable));
-	        xhRemove(&(tmp_a->HashTable),tmp_a2->Name);
-	        nmFree(tmp_a2,sizeof(HtNameArray));
-		}
-	    xaDeInit(&(tmp_a->Array));
-	    xhDeInit(&(tmp_a->HashTable));
-	    xhRemove(&(s->Page.EventScripts.HashTable),tmp_a->Name);
-	    nmFree(tmp_a,sizeof(HtNameArray));
-	    }
-	xhDeInit(&(s->Page.EventScripts.HashTable));
-	xaDeInit(&(s->Page.EventScripts.Array));*/
 	cnt = xaCount(&s->Page.EventHandlers);
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
 	    /** these must all be string constants; no need to free **/
-	    /*cnt2 = xaCount(&e->Handlers);
-	    for(j=0;j<cnt2;j++)
-		{
-		nmSysFree((char*)xaGetItem(&e->Handlers, j));
-		}*/
 	    xaDeInit(&e->Handlers);
 	    nmFree(e, sizeof(HtDomEvent));
 	    }
@@ -2464,6 +2108,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	htr_internal_FreeDMPrivateData(tree);
 
+	xhDeInit(&s->UsedDrivers);
 	nmFree(s,sizeof(HtSession));
 
     return 0;
@@ -2481,6 +2126,7 @@ htrAllocDriver()
 	/** Allocate the driver structure **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
 	if (!drv) return NULL;
+	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
 	xaInit(&(drv->PosParams),16);
@@ -2488,6 +2134,7 @@ htrAllocDriver()
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
 	xaInit(&(drv->PseudoTypes), 4);
+
     return drv;
     }
 
@@ -2833,7 +2480,7 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
  *** et al.
  ***/
 int
-htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
+htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
     {
     pHtNamespace new_ns;
     char* ptr;
@@ -2843,7 +2490,12 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	if (!new_ns) return -1;
 	new_ns->Parent = s->Namespace;
 	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
-	wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
+
+	new_ns->IsSubnamespace = is_subns;
+	if (is_subns)
+	    ptr = s->Namespace->ParentCtr;
+	else
+	    wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
 	strtcpy(new_ns->ParentCtr, ptr, sizeof(new_ns->ParentCtr));
 
 	/** Link it in **/
@@ -2851,11 +2503,14 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	new_ns->NextSibling = s->Namespace->FirstChild;
 	s->Namespace->FirstChild = new_ns;
 	s->Namespace = new_ns;
+	s->Namespace->HasScriptInits = 0;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    rootname = \"%STR&SYM\";\n",
-		nspace, nspace);
+#if 00
+	htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n"
+			       /*"    rootname = \"%STR&SYM\";\n" */ ,
+		nspace /*, nspace */);
+#endif
 
     return 0;
     }
@@ -2869,12 +2524,178 @@ htrLeaveNamespace(pHtSession s)
     {
 
 	s->Namespace = s->Namespace->Parent;
+	s->Namespace->HasScriptInits = 0;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    rootname = \"%STR&SYM\";\n",
-		s->Namespace->DName, s->Namespace->DName);
+#if 00
+	htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n"
+			       /*"    rootname = \"%STR&SYM\";\n" */ ,
+		s->Namespace->DName /*, s->Namespace->DName */);
+#endif
 
     return 0;
     }
+
+
+/*** htrFormatElement() - add a CSS line to format a DIV based on some basic
+ *** style information.
+ ***
+ *** Styled properties: textcolor, style, font_size, font, bgcolor, padding,
+ ***     border_color, border_radius, border_style, align, wrap, shadow_color,
+ ***     shadow_radius, shadow_offset, shadow_location, shadow_angle
+ ***/
+int
+htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix, char* defaults[], char* addl)
+    {
+    char textcolor[32] = "";
+    char style[32] = "";
+    char font[32] = "";
+    double font_size = 0;
+    char bgcolor[32] = "";
+    char background[128] = "";
+    double padding = 0;
+    char border_color[32] = "";
+    double border_radius = 0;
+    char border_style[32] = "";
+    char align[32] = "";
+    int wrap = 0;
+    char shadow_color[32] = "";
+    double shadow_radius = 0;
+    double shadow_offset = 0;
+    char shadow_location[32] = "";
+    double shadow_angle = 135;
+    char propname[64];
+    char* propptr;
+    char* strval;
+    int i;
+
+	/** Copy in defaults **/
+	if (defaults)
+	    {
+	    for(i=0;defaults[i] && defaults[i+1];i+=2)
+		{
+		if (!strcmp(defaults[i], "textcolor"))
+		    strtcpy(textcolor, defaults[i+1], sizeof(textcolor));
+		else if (!strcmp(defaults[i], "style"))
+		    strtcpy(style, defaults[i+1], sizeof(style));
+		else if (!strcmp(defaults[i], "font"))
+		    strtcpy(font, defaults[i+1], sizeof(font));
+		else if (!strcmp(defaults[i], "font_size"))
+		    font_size = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "bgcolor"))
+		    strtcpy(bgcolor, defaults[i+1], sizeof(bgcolor));
+		else if (!strcmp(defaults[i], "background"))
+		    strtcpy(background, defaults[i+1], sizeof(background));
+		else if (!strcmp(defaults[i], "padding"))
+		    padding = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "border_color"))
+		    strtcpy(border_color, defaults[i+1], sizeof(border_color));
+		else if (!strcmp(defaults[i], "border_radius"))
+		    border_radius = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "border_style"))
+		    strtcpy(border_style, defaults[i+1], sizeof(border_style));
+		else if (!strcmp(defaults[i], "align"))
+		    strtcpy(align, defaults[i+1], sizeof(align));
+		else if (!strcmp(defaults[i], "wrap") && !strcasecmp(defaults[i+1], "yes"))
+		    wrap = 1;
+		else if (!strcmp(defaults[i], "shadow_color"))
+		    strtcpy(shadow_color, defaults[i+1], sizeof(shadow_color));
+		else if (!strcmp(defaults[i], "shadow_radius"))
+		    shadow_radius = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "shadow_offset"))
+		    shadow_offset = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "shadow_location"))
+		    strtcpy(shadow_location, defaults[i+1], sizeof(shadow_location));
+		else if (!strcmp(defaults[i], "shadow_angle"))
+		    shadow_angle = strtod(defaults[i+1], NULL);
+		}
+	    }
+
+	/** Set up property name prefixes **/
+	strtcpy(propname, style_prefix?style_prefix:"", sizeof(propname));
+	strtcat(propname, style_prefix?"_":"", sizeof(propname));
+	if (strlen(propname) >= 48)
+	    {
+	    mssError(1,"HTR","htrFormatDiv() - style prefix too long");
+	    return -1;
+	    }
+	propptr = propname + strlen(propname);
+
+	/** Get text styling information **/
+	strcpy(propptr, "textcolor");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(textcolor, strval, sizeof(textcolor));
+	strcpy(propptr, "fgcolor"); /* for legacy support -- deprecated */
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(textcolor, strval, sizeof(textcolor));
+	strcpy(propptr, "style");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(style, strval, sizeof(style));
+	strcpy(propptr, "font");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(font, strval, sizeof(font));
+	strcpy(propptr, "font_size");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    font_size = strtod(strval, NULL);
+	strcpy(propptr, "bgcolor");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(bgcolor, strval, sizeof(bgcolor));
+	strcpy(propptr, "background");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(background, strval, sizeof(background));
+	strcpy(propptr, "padding");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    padding = strtod(strval, NULL);
+	strcpy(propptr, "border_color");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(border_color, strval, sizeof(border_color));
+	strcpy(propptr, "border_radius");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    border_radius = strtod(strval, NULL);
+	strcpy(propptr, "border_style");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(border_style, strval, sizeof(border_style));
+	strcpy(propptr, "align");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(align, strval, sizeof(align));
+	strcpy(propptr, "wrap");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    {
+	    if (!strcasecmp(strval, "yes")) wrap = 1;
+	    }
+	strcpy(propptr, "shadow_color");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(shadow_color, strval, sizeof(shadow_color));
+	strcpy(propptr, "shadow_radius");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_radius = strtod(strval, NULL);
+	strcpy(propptr, "shadow_offset");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_offset = strtod(strval, NULL);
+	strcpy(propptr, "shadow_location");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(shadow_location, strval, sizeof(shadow_location));
+	strcpy(propptr, "shadow_angle");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_angle = strtod(strval, NULL);
+
+	/** Generate the style CSS **/
+	htrAddStylesheetItem_va(s, "\t%STR { left:%POSpx; top:%POSpx; %[width:%POSpx; %]%[height:%POSpx; %]%[z-index:%POS; %]%[color:%STR&CSSVAL; %]%[font-weight:bold; %]%[text-decoration:underline; %]%[font-style:italic; %]%[font:%STR&CSSVAL; %]%[font-size:%DBLpx; %]%[background-color:%STR&CSSVAL; %]%[background-image:url('%STR&CSSURL'); %]%[padding:%DBLpx; %]%[border:1px %STR&CSSVAL %STR&CSSVAL; %]%[border-radius:%DBLpx; %]%[text-align:%STR&CSSVAL; %]%[white-space:nowrap; %]%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]%[%STR %]}\n",
+		id,
+		x, y, w > 0, w, h > 0, h, z > 0, z,
+		*textcolor, textcolor,
+		!strcmp(style, "bold"), !strcmp(style, "underline"), !strcmp(style, "italic"),
+		*font, font, font_size > 0, font_size,
+		*bgcolor, bgcolor, *background, background,
+		padding > 0, padding,
+		*border_color, (*border_style)?border_style:"solid", border_color, border_radius > 0, border_radius,
+		*align, align,
+		!wrap,
+		(*shadow_color && shadow_radius > 0), sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
+		addl && *addl, addl
+		);
+
+    return 0;
+    }
+
 

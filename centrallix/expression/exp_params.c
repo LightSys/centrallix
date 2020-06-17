@@ -10,6 +10,8 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,135 +46,6 @@
 /*		mechanism.						*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: exp_params.c,v 1.15 2011/02/18 03:47:46 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
-
-    $Log: exp_params.c,v $
-    Revision 1.15  2011/02/18 03:47:46  gbeeley
-    enhanced ORDER BY, IS NOT NULL, bug fix, and MQ/EXP code simplification
-
-    - adding multiq_orderby which adds limited high-level order by support
-    - adding IS NOT NULL support
-    - bug fix for issue involving object lists (param lists) in query
-      result items (pseudo objects) getting out of sorts
-    - as a part of bug fix above, reworked some MQ/EXP code to be much
-      cleaner
-
-    Revision 1.14  2010/09/08 21:55:09  gbeeley
-    - (bugfix) allow /file/name:"attribute" to be quoted.
-    - (bugfix) order by ... asc/desc keywords are now case insenstive
-    - (bugfix) short-circuit eval was not resulting in aggregates properly
-      evaluating
-    - (change) new API function expModifyParamByID - use this for efficiency
-    - (feature) multi-level aggregate functions now supported, for use when
-      a sql query has a group by, e.g. select max(sum(...)) ... group by ...
-    - (feature) added mathematical and trig functions radians, degrees, sin,
-      cos, tan, asin, acos, atan, atan2, sqrt, square
-
-    Revision 1.13  2010/01/10 07:33:23  gbeeley
-    - (performance) reduce the number of times that subqueries are executed by
-      only re-evaluating them if one of the ObjList entries has changed
-      (instead of re-evaluating every time).  Ideally we should check for what
-      objects are referenced by the subquery, but that is for a later fix...
-
-    Revision 1.12  2009/07/14 22:08:08  gbeeley
-    - (feature) adding cx__download_as object attribute which is used by the
-      HTTP interface to set the content disposition filename.
-    - (feature) adding "filename" property to the report writer to use the
-      cx__download_as feature to specify a filename to the browser to "Save
-      As...", so reports have a more intelligent name than just "report.rpt"
-      (or whatnot) when downloaded.
-
-    Revision 1.11  2008/03/29 02:26:15  gbeeley
-    - (change) Correcting various compile time warnings such as signed vs.
-      unsigned char.
-
-    Revision 1.10  2008/02/25 23:14:33  gbeeley
-    - (feature) SQL Subquery support in all expressions (both inside and
-      outside of actual queries).  Limitations:  subqueries in an actual
-      SQL statement are not optimized; subqueries resulting in a list
-      rather than a scalar are not handled (only the first field of the
-      first row in the subquery result is actually used).
-    - (feature) Passing parameters to objMultiQuery() via an object list
-      is now supported (was needed for subquery support).  This is supported
-      in the report writer to simplify dynamic SQL query construction.
-    - (change) objMultiQuery() interface changed to accept third parameter.
-    - (change) expPodToExpression() interface changed to accept third param
-      in order to (possibly) copy to an already existing expression node.
-
-    Revision 1.9  2007/12/05 18:48:02  gbeeley
-    - (bugfix) Problem was causing several aggregate functions to not properly
-      reset to NULL on a new grouping, when used in a context where a "group"
-      may not have any rows at all.
-
-    Revision 1.8  2007/03/21 04:48:08  gbeeley
-    - (feature) component multi-instantiation.
-    - (feature) component Destroy now works correctly, and "should" free the
-      component up for the garbage collector in the browser to clean it up.
-    - (feature) application, component, and report parameters now work and
-      are normalized across those three.  Adding "widget/parameter".
-    - (feature) adding "Submit" action on the form widget - causes the form
-      to be submitted as parameters to a component, or when loading a new
-      application or report.
-    - (change) allow the label widget to receive obscure/reveal events.
-    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
-    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
-      spoken for.  This is not a good long-term solution as it will be
-      inefficient in many cases.  The AML should address this issue.
-    - (feature) add "Please Wait..." indication when there are things going
-      on in the background.  Not very polished yet, but it basically works.
-    - (change) recognize both null and NULL as a null value in the SQL parsing.
-    - (feature) adding objSetEvalContext() functionality to permit automatic
-      handling of runserver() expressions within the OSML API.  Facilitates
-      app and component parameters.
-    - (feature) allow sql= value in queries inside a report to be runserver()
-      and thus dynamically built.
-
-    Revision 1.7  2007/03/04 05:04:47  gbeeley
-    - (change) This is a change to the way that expressions track which
-      objects they were last evaluated against.  The old method was causing
-      some trouble with stale data in some expressions.
-
-    Revision 1.6  2005/09/30 04:37:10  gbeeley
-    - (change) modified expExpressionToPod to take the type.
-    - (feature) got eval() working
-    - (addition) added expReplaceString() to search-and-replace in an
-      expression tree.
-
-    Revision 1.5  2005/02/26 06:42:36  gbeeley
-    - Massive change: centrallix-lib include files moved.  Affected nearly
-      every source file in the tree.
-    - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
-
-    Revision 1.4  2004/06/12 04:02:27  gbeeley
-    - preliminary support for client notification when an object is modified.
-      This is a part of a "replication to the client" test-of-technology.
-
-    Revision 1.3  2002/11/22 19:29:36  gbeeley
-    Fixed some integer return value checking so that it checks for failure
-    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
-    will allow us to pass error codes in the return value, such as something
-    like "return -ENOMEM;" or "return -EACCESS;".
-
-    Revision 1.2  2002/06/19 23:29:33  gbeeley
-    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
-    from complaining about local variable initialization, among other
-    things.
-
-    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:52  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:53  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
 
 
 /*** expCreateParamList - sets up and initializes the object parameter list
@@ -193,8 +66,30 @@ expCreateParamList()
 	objlist->MainFlags = 0;
 	objlist->PSeqID = (EXP.PSeqID++);
 	objlist->Session = NULL;
+	objlist->CurControl = NULL;
+
+	/** Initialize the per-objlist random seed **/
+	objlist->RandomInit = 0;
 
     return objlist;
+    }
+
+
+/*** expSetEvalDomain - sets the evaluation domain for an object list -
+ *** whether static or server (client doesn't make sense here).  The
+ *** domain should be one of EXPR_MO_RUNxxxxxx.  If the domain of the
+ *** objlist is lesser than the domain of the expression, then late
+ *** binding of properties is allowed (nonexistent objects return NULL
+ *** instead of an error).
+ ***/
+int
+expSetEvalDomain(pParamObjects this, int domain)
+    {
+
+	this->MainFlags &= ~EXPR_MO_DOMAINMASK;
+	this->MainFlags |= (domain & EXPR_MO_DOMAINMASK);
+
+    return 0;
     }
 
 
@@ -212,6 +107,9 @@ expFreeParamList(pParamObjects this)
 	    nmSysFree(this->Names[i]);
 	    this->Names[i] = NULL;
 	    }
+
+	if (this->CurControl)
+	    exp_internal_UnlinkControl(this->CurControl);
 
 	/** Free the structure. **/
 	nmFree(this, sizeof(ParamObjects));
@@ -277,28 +175,88 @@ expLinkParams(pParamObjects objlist, int start, int end)
     }
 
 
-/*** expCopyList - make a copy of a param objects list
+/*** expCopyParams - copy just certain objects from one param list
+ *** to another.  This is different from expCopyList, since this function
+ *** copies just certain objects, rather than copying the entire list's metadata
+ *** like expCopyList does.
+ ***
+ *** Neither function *Links* to the copied objects.
  ***/
 int
-expCopyList(pParamObjects src, pParamObjects dst)
+expCopyParams(pParamObjects src, pParamObjects dst, int start, int n_objects)
     {
     int i;
 
+	/** Copy all? **/
+	if (n_objects == -1)
+	    n_objects = EXPR_MAX_PARAMS - start;
+
+	/** Do the copy **/
+	for(i=start; i<start+n_objects; i++)
+	    {
+	    dst->SeqIDs[i] = src->SeqIDs[i];
+	    dst->GetTypeFn[i] = src->GetTypeFn[i];
+	    dst->GetAttrFn[i] = src->GetAttrFn[i];
+	    dst->SetAttrFn[i] = src->SetAttrFn[i];
+	    if (dst->Names[i]) dst->nObjects--;
+	    if (src->Names[i]) dst->nObjects++;
+	    if (dst->Names[i] != NULL && (dst->Flags[i] & EXPR_O_ALLOCNAME))
+		nmSysFree(dst->Names[i]);
+	    dst->Flags[i] = src->Flags[i];
+	    dst->Names[i] = NULL;
+	    dst->Flags[i] &= ~EXPR_O_ALLOCNAME;
+	    if (src->Names[i])
+		{
+		dst->Names[i] = nmSysStrdup(src->Names[i]);
+		dst->Flags[i] |= EXPR_O_ALLOCNAME;
+		}
+	    dst->Objects[i] = src->Objects[i];
+	    }
+
+    return 0;
+    }
+
+
+/*** expCopyList - make a copy of a param objects list, in its entirety,
+ *** possibly only including the first N objects (set n_objects to -1 to
+ *** include all objects)
+ ***/
+int
+expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
+    {
+    int i;
+
+	/** Copy all? **/
+	if (n_objects == -1)
+	    n_objects = EXPR_MAX_PARAMS;
+
 	/** Might need to deallocate strings in dst **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
-	    if (dst->Names[i] != NULL && dst->Flags[i] & EXPR_O_ALLOCNAME)
+	    if (dst->Names[i] != NULL && (dst->Flags[i] & EXPR_O_ALLOCNAME))
 		nmSysFree(dst->Names[i]);
 
 	/** For most things, just a straight memcpy will do **/
 	memcpy(dst, src, sizeof(ParamObjects));
 
 	/** Make copies of all names **/
-	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	for(i=0;i<n_objects;i++)
 	    if (dst->Names[i] != NULL)
 		{
 		dst->Names[i] = nmSysStrdup(dst->Names[i]);
 		dst->Flags[i] |= EXPR_O_ALLOCNAME;
 		}
+
+	/** If not copying all, clear the ones we don't want **/
+	for(i=n_objects; i<EXPR_MAX_PARAMS; i++)
+	    {
+	    if (dst->Names[i] != NULL)
+		{
+		dst->Names[i] = NULL;
+		dst->Objects[i] = NULL;
+		dst->Flags[i] = 0;
+		dst->nObjects--;
+		}
+	    }
 
 	/** This is a transient property anyhow **/
 	dst->CurControl = NULL;
@@ -311,14 +269,20 @@ expCopyList(pParamObjects src, pParamObjects dst)
  *** we find it, or -1 if not found.
  ***/
 int
-expLookupParam(pParamObjects this, char* name)
+expLookupParam(pParamObjects this, char* name, int flags)
     {
-    int i;
+    int i, idx;
 
 	/** Search for it **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
-	    if (this->Names[i] != NULL && !strcmp(name, this->Names[i]))
-		return i;
+	    {
+	    if (flags & EXPR_F_REVERSE)
+		idx = (EXPR_MAX_PARAMS-1) - i;
+	    else
+		idx = i;
+	    if (this->Names[idx] != NULL && !strcmp(name, this->Names[idx]))
+		return idx;
+	    }
 
     return -1;
     }
@@ -332,7 +296,7 @@ expLookupParam(pParamObjects this, char* name)
 int 
 expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
     {
-    int i;
+    int i, exist;
 
     	/** Too many? **/
 	if (this->nObjects >= EXPR_MAX_PARAMS) 
@@ -342,25 +306,30 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    }
 
 	/** Already exists? **/
-	if (expLookupParam(this, name) >= 0)
+	exist = expLookupParam(this, name, flags);
+	if (exist >= 0 && !(flags & (EXPR_O_ALLOWDUPS | EXPR_O_REPLACE)))
 	    {
 	    mssError(1,"EXP","Parameter Object name %s already exists", name);
 	    return -1;
 	    }
+	if (!(flags & EXPR_O_REPLACE))
+	    exist = -1;
 
 	/** Ok, add parameter. **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
 	    {
-	    if (this->Names[i] == NULL)
+	    if (this->Names[i] == NULL || i == exist)
 		{
 		/** Setup the entry for this parameter. **/
 		this->SeqIDs[i] = EXP.ModSeqID++;
 		this->Objects[i] = obj;
-		this->Flags[i] = flags | EXPR_O_CHANGED;
 		this->GetTypeFn[i] = objGetAttrType;
 		this->GetAttrFn[i] = objGetAttrValue;
 		this->SetAttrFn[i] = objSetAttrValue;
-		this->nObjects++;
+		if (i != exist) this->nObjects++;
+		if (this->Names[i] && (this->Flags[i] & EXPR_O_ALLOCNAME))
+		    nmSysFree(this->Names[i]);
+		this->Flags[i] = flags | EXPR_O_CHANGED;
 		if (flags & EXPR_O_ALLOCNAME)
 		    {
 		    this->Names[i] = nmSysStrdup(name);
@@ -371,18 +340,21 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		    }
 
 		/** Check for parent id and current id **/
-		if (flags & EXPR_O_PARENT) this->ParentID = i;
+		if (flags & EXPR_O_PARENT)
+		    this->ParentID = i;
+		else if ((flags & EXPR_O_CURRENT) && this->CurrentID >= 0)
+		    this->ParentID = this->CurrentID;
 		if (flags & EXPR_O_CURRENT) this->CurrentID = i;
 		if (this->nObjects == 1) this->CurrentID = i;
 
 		/** Set modified. **/
 		this->ModCoverageMask |= (1<<i);
 
-		break;
+		return i;
 		}
 	    }
 
-    return 0;
+    return -1;
     }
 
 
@@ -395,9 +367,17 @@ expRemoveParamFromList(pParamObjects this, char* name)
     int i;
 
     	/** Find the thing and delete it **/
-	i = expLookupParam(this, name);
+	i = expLookupParam(this, name, 0);
 	if (i < 0) return -1;
 
+    return expRemoveParamFromListById(this, i);
+    }
+
+int
+expRemoveParamFromListById(pParamObjects this, int i)
+    {
+
+	/** Remove it **/
 	if (this->Flags[i] & EXPR_O_ALLOCNAME) nmSysFree(this->Names[i]);
 	this->Flags[i] = 0;
 	this->Objects[i] = NULL;
@@ -435,7 +415,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 	    }
 	else
 	    {
-	    slot_id = expLookupParam(this, name);
+	    slot_id = expLookupParam(this, name, 0);
 	    }
 	if (slot_id < 0) return -1;
 
@@ -691,7 +671,7 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 	    }
 	else
 	    {
-	    slot_id = expLookupParam(this, name);
+	    slot_id = expLookupParam(this, name, 0);
 	    }
 	if (slot_id < 0) return -1;
 

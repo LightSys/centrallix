@@ -36,10 +36,6 @@
 /* Description:								*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
- 
-
- **END-CVSDATA***********************************************************/
 
 
 /*** wgttblVerify - allows the driver to check elsewhere in the tree
@@ -54,9 +50,10 @@ wgttblVerify(pWgtrVerifySession s)
 
 	if (!strcmp(tbl->Type, "widget/table-row-detail"))
 	    {
-	    tbl->width = tbl->r_width = tbl->pre_width = tbl->Parent->r_width;
+	    //tbl->width = tbl->r_width = tbl->pre_width = tbl->Parent->r_width;
 	    tbl->x = tbl->r_x = tbl->pre_x = 0;
 	    tbl->y = tbl->r_y = tbl->pre_y = 0;
+	    //tbl->Flags |= WGTR_F_FLOATING;
 	    }
 
     return 0;
@@ -76,7 +73,7 @@ wgttblNew(pWgtrNode node)
 	    {
 	    if(node->fl_width < 0) node->fl_width = 100;
 	    if(node->fl_height < 0) node->fl_height = 100;
-	    node->Flags |= WGTR_F_CONTAINER;
+	    node->Flags |= (WGTR_F_CONTAINER | WGTR_F_VSCROLLABLE);
 	    }
 	else if (!strcmp(node->Type, "widget/table-row-detail"))
 	    {

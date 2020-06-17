@@ -72,10 +72,27 @@ AC_DEFUN(CENTRALLIX_CHECK_READLINE,
 dnl Test for OpenSSL
 AC_DEFUN(CENTRALLIX_CHECK_OPENSSL,
     [
-	AC_CHECK_LIB(ssl, MD5, [LIBS="$LIBS -lssl"], AC_MSG_ERROR([Centrallix requires OpenSSL to be installed.]))
+	AC_CHECK_LIB(ssl, SSL_CTX_new, [LIBS="$LIBS -lssl -lcrypto"], AC_MSG_ERROR([Centrallix requires OpenSSL to be installed.]))
 	AC_CHECK_HEADER([openssl/md5.h], [], AC_MSG_ERROR([Centrallix requires OpenSSL development header files to be installed.]))
     ]
 )
+
+dnl Test for SQLite
+AC_DEFUN(CENTRALLIX_CHECK_SQLITE,
+    [
+	AC_CHECK_LIB(sqlite3, sqlite3_open, [LIBS="$LIBS -lsqlite3"], AC_MSG_ERROR([Centrallix requires SQLite3 to be installed.]))
+	AC_CHECK_HEADER([sqlite3.h], [], AC_MSG_ERROR([Centrallix requires SQLite3 development header files to be installed.]))
+    ]
+)
+
+dnl Test for JSON-C
+AC_DEFUN(CENTRALLIX_CHECK_JSONC,
+    [
+	AC_CHECK_LIB(json-c, json_tokener_new, [LIBS="$LIBS -ljson-c"], AC_MSG_ERROR([Centrallix requires JSON-C to be installed.]))
+	AC_CHECK_HEADER([json/json.h], [], AC_MSG_ERROR([Centrallix requires JSON-C development header files to be installed.]))
+    ]
+)
+
 
 dnl Test for the Centrallix-LIB header and library files.
 AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
@@ -289,7 +306,11 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		    if test "$WITH_SYBASE_CT" = "no"; then
 			WITH_SYBASE="no"
 		    else
-			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
+		        if test "$PTRSIZE" = "8"; then
+			    SYBASE_LIBS="-L$sybase_libdir -lsybct64 -lsybcomn64 -lsybintl64 -lsybtcl64 -lsybcs64"
+			else
+			    SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
+			fi
 		    fi
 		else
 		    SYBASE_LIBS="-L$sybase_libdir -lct -lcomn -lintl -lsybtcl -lcs -linsck"
@@ -335,7 +356,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MYSQL,
 	)
 
 	default_mysql_incdir="/usr/include/mysql"
-	default_mysql_libdir="/usr/lib/mysql"
+	default_mysql_libdir="$LINKDIR/mysql"
 	
 	AC_ARG_WITH(mysql-inc,
 	    AC_HELP_STRING([--with-mysql-inc=PATH],
@@ -347,7 +368,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MYSQL,
  
 	AC_ARG_WITH(mysql-lib,
 	    AC_HELP_STRING([--with-mysql-lib=PATH],
-		[library path for MySQL libraries (default is /usr/lib/mysql)]
+		[library path for MySQL libraries (default is $LINKDIR/mysql)]
 	    ),
 	    mysql_libdir="$withval",
 	    mysql_libdir="$default_mysql_libdir"
@@ -419,10 +440,10 @@ AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
 
 	    AC_ARG_WITH(zlib,
 		AC_HELP_STRING([--with-zlib=PATH],
-		    [library path for zlib library (default is /usr/lib)]
+		    [library path for zlib library (default is $LINKDIR)]
 		),
 		zlib_libdir="$withval",
-		zlib_libdir="/usr/lib",
+		zlib_libdir="$LINKDIR",
 	    )
 
 	    AC_ARG_WITH(zlib-inc,
@@ -752,10 +773,10 @@ dnl 	    AC_MSG_RESULT(yes)
 dnl 	    dnl check for alternate locations for includes
 dnl 	    AC_ARG_WITH(ucd-snmp,
 dnl 		AC_HELP_STRING([--with-ucd-snmp=PATH],
-dnl 		    [library path for ucd-snmp library (default is /usr/lib)]
+dnl 		    [library path for ucd-snmp library (default is $LINKDIR)]
 dnl 		),
 dnl 		snmp_libdir="$withval",
-dnl 		snmp_libdir="/usr/lib",
+dnl 		snmp_libdir="$LINKDIR",
 dnl 	    )
 dnl 
 dnl 	    dnl check for alternate locations for libs
@@ -904,10 +925,10 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 
 		    AC_ARG_WITH(libxml,
 			AC_HELP_STRING([--with-libxml=PATH],
-			    [library path for xml library (default is /usr/lib)]
+			    [library path for xml library (default is $LINKDIR)]
 			),
 			libxml_libdir="$withval",
-			libxml_libdir="/usr/lib",
+			libxml_libdir="$LINKDIR",
 		    )
 
 		    libxml_lib="`xml2-config --libs 2>/dev/null`"
@@ -946,10 +967,10 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 		else
 		    AC_ARG_WITH(libxml,
 			AC_HELP_STRING([--with-libxml=PATH],
-			    [library path for xml library (default is /usr/lib)]
+			    [library path for xml library (default is $LINKDIR)]
 			),
 			libxml_libdir="$withval",
-			libxml_libdir="/usr/lib"
+			libxml_libdir="$LINKDIR"
 		    )
 
 		    libxml_lib="`xml-config --libs 2>/dev/null`"
@@ -1013,6 +1034,81 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
     ]
 )
 
+dnl Test for LDAP netdriver.
+AC_DEFUN(CENTRALLIX_CHECK_NET_LDAP,
+    [
+	AC_MSG_CHECKING(if LDAP netdriver support is desired)
+
+	AC_ARG_ENABLE(net-ldap,
+	    AC_HELP_STRING([--enable-net-ldap],
+		[enable LDAP netdriver support]
+	    ),
+	    WITH_NETLDAP="$enableval",
+	    WITH_NETLDAP="no"
+	)
+
+	default_lber_incdir="$prefix/include"
+	default_lber_libdir="$prefix/lib"
+	
+	AC_ARG_WITH(lber-inc,
+	    AC_HELP_STRING([--with-lber-inc=PATH],
+		[include path for OpenLDAP LBER headers (default is $default_lber_incdir)]
+	    ),
+	    lber_incdir="$withval",
+	    lber_incdir="$default_lber_incdir"
+	)
+ 
+	AC_ARG_WITH(lber-lib,
+	    AC_HELP_STRING([--with-lber-lib=PATH],
+		[library path for OpenLDAP LBER libraries (default is $default_lber_libdir)]
+	    ),
+	    lber_libdir="$withval",
+	    lber_libdir="$default_lber_libdir"
+	)
+
+	ENABLE_NETLDAP="no"
+
+	if test "$WITH_NETLDAP" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+ 
+	    temp=$CPPFLAGS
+	    CPPFLAGS="$CPPFLAGS -I$lber_incdir -L$lber_libdir -llber"
+	    AC_CHECK_HEADER(lber.h, 
+		WITH_NETLDAP="yes",
+		WITH_NETLDAP="no"
+	    )
+	    CPPFLAGS="$temp"
+	    
+	    AC_MSG_CHECKING(if LDAP netdriver support can be enabled)
+	    if test "$WITH_NETLDAP" = "yes"; then
+		AC_DEFINE(USE_NETLDAP)
+		if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		    NETDRIVERMODULES="$NETDRIVERMODULES net_ldap.so"
+		else
+		    STATIC_CFLAGS="$STATIC_CFLAGS $NETLDAP_CFLAGS"
+		    STATIC_LIBS="$STATIC_LIBS $NETLDAP_LIBS"
+		    NETDRIVERS="$NETDRIVERS net_ldap.o"
+		fi
+		ENABLE_NETLDAP="yes"
+		AC_MSG_RESULT(yes)
+		CENTRALLIX_ADD_DRIVER(ldap,ldap)
+	    else
+		AC_MSG_RESULT(no)
+	    fi
+	fi
+
+	NETLDAP_CFLAGS="-I$lber_incdir"
+	NETLDAP_LIBS="-L$lber_libdir -llber"
+	LIBS="$LIBS -L$lber_libdir"
+
+	AC_SUBST(ENABLE_NETLDAP)
+	AC_SUBST(NETLDAP_LIBS)
+	AC_SUBST(NETLDAP_CFLAGS)
+    ]
+)
+
 dnl Test for the nfs netdriver.
 AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
     [
@@ -1042,6 +1138,25 @@ AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
 	    AC_MSG_RESULT(no)
 	fi
 	AC_SUBST(ENABLE_NETNFS)
+    ]
+)
+
+dnl check if test coverage metering is desired
+AC_DEFUN(CHECK_COVERAGE,
+    [
+	AC_MSG_CHECKING(if test coverage metering is desired)
+	AC_ARG_ENABLE(coverage,
+	    AC_HELP_STRING([--enable-coverage],
+		[enable test coverage metering]
+	    ),
+	    COVERAGE="-fprofile-arcs -ftest-coverage",
+	    COVERAGE=""
+	)
+	if test "$COVERAGE" = ""; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	fi
     ]
 )
 
@@ -1218,3 +1333,208 @@ AC_DEFUN(CHECK_BUILDDIR,
 	AC_SUBST(BUILDDIR, $builddir)
     ]
 )
+
+
+dnl These are pkg-config macros (imported from /usr/share/aclocal/pkg.m4)
+# PKG_PROG_PKG_CONFIG([MIN-VERSION])
+# ----------------------------------
+AC_DEFUN([PKG_PROG_PKG_CONFIG],
+[m4_pattern_forbid([^_?PKG_[A-Z_]+$])
+m4_pattern_allow([^PKG_CONFIG(_(PATH|LIBDIR|SYSROOT_DIR|ALLOW_SYSTEM_(CFLAGS|LIBS)))?$])
+m4_pattern_allow([^PKG_CONFIG_(DISABLE_UNINSTALLED|TOP_BUILD_DIR|DEBUG_SPEW)$])
+AC_ARG_VAR([PKG_CONFIG], [path to pkg-config utility])
+AC_ARG_VAR([PKG_CONFIG_PATH], [directories to add to pkg-config's search path])
+AC_ARG_VAR([PKG_CONFIG_LIBDIR], [path overriding pkg-config's built-in search path])
+
+if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
+	AC_PATH_TOOL([PKG_CONFIG], [pkg-config])
+fi
+if test -n "$PKG_CONFIG"; then
+	_pkg_min_version=m4_default([$1], [0.9.0])
+	AC_MSG_CHECKING([pkg-config is at least version $_pkg_min_version])
+	if $PKG_CONFIG --atleast-pkgconfig-version $_pkg_min_version; then
+		AC_MSG_RESULT([yes])
+	else
+		AC_MSG_RESULT([no])
+		PKG_CONFIG=""
+	fi
+fi[]dnl
+])# PKG_PROG_PKG_CONFIG
+
+# PKG_CHECK_EXISTS(MODULES, [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+#
+# Check to see whether a particular set of modules exists.  Similar
+# to PKG_CHECK_MODULES(), but does not set variables or print errors.
+#
+# Please remember that m4 expands AC_REQUIRE([PKG_PROG_PKG_CONFIG])
+# only at the first occurence in configure.ac, so if the first place
+# it's called might be skipped (such as if it is within an "if", you
+# have to call PKG_CHECK_EXISTS manually
+# --------------------------------------------------------------
+AC_DEFUN([PKG_CHECK_EXISTS],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+if test -n "$PKG_CONFIG" && \
+    AC_RUN_LOG([$PKG_CONFIG --exists --print-errors "$1"]); then
+  m4_default([$2], [:])
+m4_ifvaln([$3], [else
+  $3])dnl
+fi])
+
+# _PKG_CONFIG([VARIABLE], [COMMAND], [MODULES])
+# ---------------------------------------------
+m4_define([_PKG_CONFIG],
+[if test -n "$$1"; then
+    pkg_cv_[]$1="$$1"
+ elif test -n "$PKG_CONFIG"; then
+    PKG_CHECK_EXISTS([$3],
+                     [pkg_cv_[]$1=`$PKG_CONFIG --[]$2 "$3" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes ],
+		     [pkg_failed=yes])
+ else
+    pkg_failed=untried
+fi[]dnl
+])# _PKG_CONFIG
+
+# _PKG_SHORT_ERRORS_SUPPORTED
+# -----------------------------
+AC_DEFUN([_PKG_SHORT_ERRORS_SUPPORTED],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi[]dnl
+])# _PKG_SHORT_ERRORS_SUPPORTED
+
+
+# PKG_CHECK_MODULES(VARIABLE-PREFIX, MODULES, [ACTION-IF-FOUND],
+# [ACTION-IF-NOT-FOUND])
+#
+#
+# Note that if there is a possibility the first call to
+# PKG_CHECK_MODULES might not happen, you should be sure to include an
+# explicit call to PKG_PROG_PKG_CONFIG in your configure.ac
+#
+#
+# --------------------------------------------------------------
+AC_DEFUN([PKG_CHECK_MODULES],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+AC_ARG_VAR([$1][_CFLAGS], [C compiler flags for $1, overriding pkg-config])dnl
+AC_ARG_VAR([$1][_LIBS], [linker flags for $1, overriding pkg-config])dnl
+
+pkg_failed=no
+AC_MSG_CHECKING([for $1])
+
+_PKG_CONFIG([$1][_CFLAGS], [cflags], [$2])
+_PKG_CONFIG([$1][_LIBS], [libs], [$2])
+
+m4_define([_PKG_TEXT], [Alternatively, you may set the environment variables $1[]_CFLAGS
+and $1[]_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.])
+
+if test $pkg_failed = yes; then
+   	AC_MSG_RESULT([no])
+        _PKG_SHORT_ERRORS_SUPPORTED
+        if test $_pkg_short_errors_supported = yes; then
+	        $1[]_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "$2" 2>&1`
+        else 
+	        $1[]_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "$2" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$$1[]_PKG_ERRORS" >&AS_MESSAGE_LOG_FD
+
+	m4_default([$4], [AC_MSG_ERROR(
+[Package requirements ($2) were not met:
+
+$$1_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+_PKG_TEXT])[]dnl
+        ])
+elif test $pkg_failed = untried; then
+     	AC_MSG_RESULT([no])
+	m4_default([$4], [AC_MSG_FAILURE(
+[The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+_PKG_TEXT
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.])[]dnl
+        ])
+else
+	$1[]_CFLAGS=$pkg_cv_[]$1[]_CFLAGS
+	$1[]_LIBS=$pkg_cv_[]$1[]_LIBS
+        AC_MSG_RESULT([yes])
+	$3
+fi[]dnl
+])# PKG_CHECK_MODULES
+
+
+# PKG_INSTALLDIR(DIRECTORY)
+# -------------------------
+# Substitutes the variable pkgconfigdir as the location where a module
+# should install pkg-config .pc files. By default the directory is
+# $libdir/pkgconfig, but the default can be changed by passing
+# DIRECTORY. The user can override through the --with-pkgconfigdir
+# parameter.
+AC_DEFUN([PKG_INSTALLDIR],
+[m4_pushdef([pkg_default], [m4_default([$1], ['${libdir}/pkgconfig'])])
+m4_pushdef([pkg_description],
+    [pkg-config installation directory @<:@]pkg_default[@:>@])
+AC_ARG_WITH([pkgconfigdir],
+    [AS_HELP_STRING([--with-pkgconfigdir], pkg_description)],,
+    [with_pkgconfigdir=]pkg_default)
+AC_SUBST([pkgconfigdir], [$with_pkgconfigdir])
+m4_popdef([pkg_default])
+m4_popdef([pkg_description])
+]) dnl PKG_INSTALLDIR
+
+
+# PKG_NOARCH_INSTALLDIR(DIRECTORY)
+# -------------------------
+# Substitutes the variable noarch_pkgconfigdir as the location where a
+# module should install arch-independent pkg-config .pc files. By
+# default the directory is $datadir/pkgconfig, but the default can be
+# changed by passing DIRECTORY. The user can override through the
+# --with-noarch-pkgconfigdir parameter.
+AC_DEFUN([PKG_NOARCH_INSTALLDIR],
+[m4_pushdef([pkg_default], [m4_default([$1], ['${datadir}/pkgconfig'])])
+m4_pushdef([pkg_description],
+    [pkg-config arch-independent installation directory @<:@]pkg_default[@:>@])
+AC_ARG_WITH([noarch-pkgconfigdir],
+    [AS_HELP_STRING([--with-noarch-pkgconfigdir], pkg_description)],,
+    [with_noarch_pkgconfigdir=]pkg_default)
+AC_SUBST([noarch_pkgconfigdir], [$with_noarch_pkgconfigdir])
+m4_popdef([pkg_default])
+m4_popdef([pkg_description])
+]) dnl PKG_NOARCH_INSTALLDIR
+
+
+dnl Check for svg image support (cairo/rsvg)
+AC_DEFUN(CENTRALLIX_CHECK_RSVG,
+    [
+        PKG_CHECK_MODULES(librsvg, librsvg-2.0, 
+                          WITH_RSVG="yes",
+                          WITH_RSVG="no")
+
+	AC_CHECK_LIB(cairo, cairo_svg_surface_set_document_unit, HAVE_CAIRO="yes", HAVE_CAIRO="no")
+
+        if test "$WITH_RSVG" = "yes"; then
+	    if test "$HAVE_CAIRO" = "yes"; then
+		CFLAGS="$CFLAGS $librsvg_CFLAGS"
+		LIBS="$LIBS $librsvg_LIBS"
+		AC_DEFINE([HAVE_LIBRSVG], [1], [Define to 1 if librsvg is present.])
+		AC_DEFINE([HAVE_RSVG_H], [1], [Define to 1 if <rsvg.h> is present.])
+	    else
+		AC_MSG_WARN([recent Cairo was not found -- svg support will be disabled])
+		WITH_RSVG="no"
+	    fi
+        else
+            AC_MSG_WARN([librsvg was not found -- svg support will be disabled])
+        fi
+    ]
+)
+

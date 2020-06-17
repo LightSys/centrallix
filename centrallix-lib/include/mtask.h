@@ -21,142 +21,6 @@
 /*		threaded application.					*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: mtask.h,v 1.22 2008/04/01 03:19:00 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
-
-    $Log: mtask.h,v $
-    Revision 1.22  2008/04/01 03:19:00  gbeeley
-    - (change) Handle supplementary group id's instead of just blanking out
-      the supplementary group list.
-    - (security) The use of setreuid() was causing the saved user id to be
-      set, which would allow an unprivileged user to kill the centrallix
-      server process under some circumstances.  See kill(2) and setreuid(2).
-    - (security) There were potentially some logic errors in the way that
-      uid/gid switching was being handled.
-    - (WARNING) The current implementation of fdAccess() is not optimal.  The
-      solution appears to be to use faccessat() with AT_EACCESS, but that
-      system call is apparently not yet standardized nor is it widespread.
-      Better yet, the one usage of fdAccess() might be best rewritten to not
-      use it, allowing us to rid ourselves of this problematic function
-      altogether.
-
-    Revision 1.21  2007/10/19 23:26:58  gbeeley
-    - (feature) adding thWaitTimed() as a convenience API function.
-
-    Revision 1.20  2007/04/08 03:43:06  gbeeley
-    - (bugfix) some code quality fixes
-    - (feature) MTASK integration with the Valgrind debugger.  Still some
-      problems to be sorted out, but this does help.  Left to themselves,
-      MTASK and Valgrind do not get along, due to the approach to threading.
-
-    Revision 1.19  2007/03/06 03:51:57  gbeeley
-    - (security) Adding a function to aid in recursion depth limiting, since
-      stack space is at a premium when using MTask.
-
-    Revision 1.18  2006/06/21 21:25:10  gbeeley
-    - Adding fdQPrintf() routines to utilize the qpfPrintf routines.
-
-    Revision 1.17  2005/03/14 20:33:36  gbeeley
-    - changing the interface to the get thread list function so that we can
-      better identify a specific thread from one call to another.
-
-    Revision 1.16  2005/02/26 04:32:02  gbeeley
-    - moving include file install directory to include a "cxlib/" prefix
-      instead of just putting 'em all in /usr/include with everything else.
-
-    Revision 1.15  2005/02/06 02:35:41  gbeeley
-    - Adding 'mkrpm' script for automating the RPM build process for this
-      package (script is portable to other packages).
-    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
-      between mtask threads)
-    - added xsString(xstr) for getting the string instead of xstr->String.
-
-    Revision 1.14  2004/06/12 04:09:37  gbeeley
-    - supporting logic to allow saving of an MTask security context for later
-      use in a new thread.  This is needed for the asynchronous event delivery
-      mechanism for object-updates being sent to the client.
-
-    Revision 1.13  2004/05/04 18:18:59  gbeeley
-    - Adding fdAccess() wrapper for access(2).
-    - Moving PTOD definition to module in centrallix core.
-
-    Revision 1.12  2004/02/24 05:09:10  gbeeley
-    - fixed error in mtask's handling of group id.
-    - renamed WRCACHE/RDCACHE to WRBUF/RDBUF.
-
-    Revision 1.11  2003/06/05 04:22:53  jorupp
-     * added support for mTask-based signal handlers
-       - go ahead greg -- pick apart my implimentation.....
-
-    Revision 1.10  2003/02/20 22:57:41  jorupp
-     * added quite a bit of debugging to mTask
-     	* call mtSetDebug() to set debugging level
-     	* undefine MTASK_DEBUG to disable
-     * added UDP support (a basic echo client/server is working with it)
-     * changed pFile returned by netConnectTCP to include IP and port of remote computer
-
-    Revision 1.9  2002/11/22 20:56:57  gbeeley
-    Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
-    basically allow printf() style functionality on top of any xxxWrite()
-    type of routine (such as fdWrite, objWrite, etc).
-
-    Revision 1.8  2002/11/12 00:26:49  gbeeley
-    Updated MTASK approach to user/group security when using system auth.
-    The module now handles group ID's as well.  Changes should have no
-    effect when running as non-root with altpasswd auth.
-
-    Revision 1.7  2002/08/16 20:01:20  gbeeley
-    Various autoconf fixes.  I hope I didn't break anything with this, being
-    an autoconf rookie ;)
-
-        * allowed config.h to really be included by adding @DEFS@ to the
-          cflags in makefile.in.
-        * moved config.h to include/cxlibconfig.h to prevent confusion
-          between the various packages' config.h files.  Also, makedepend
-          picks it up now because it is in the include directory.
-        * fixed make depend to re-run when any source files have changed,
-          just to be sure (the includes in the source files may have been
-          modified if the timestamp has changed).
-
-    Revision 1.6  2002/08/13 02:30:59  gbeeley
-    Made several of the changes recommended by dman.  Most places where
-    const char* would be appropriate have been updated to reflect that,
-    plus a handful of other minor changes.  gzwrite() somehow is not
-    happy with a const ____* buffer, so that is typecast to just void*.
-
-    Revision 1.5  2002/07/31 18:36:05  mattphillips
-    Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
-    to test for libz, but we didn't do anything with the results of its test.
-    This wraps all the gzip stuff in #ifdef's so we will not use it if the system
-    we built on doesn't have it.
-
-    Revision 1.4  2002/07/23 02:30:54  jorupp
-     (commiting for ctaylor)
-     * removed unnecessary field from pFile and associated enum values
-     * added a dup on the fd which eliminated a lot of checking
-       -- we can close the fd without worry about the fd used by MTASK
-
-    Revision 1.3  2002/07/21 04:52:51  jorupp
-     * support for gzip encoding added by ctaylor
-     * updated autoconf files to account for the new library (I think..)
-
-    Revision 1.2  2002/05/03 03:46:29  gbeeley
-    Modifications to xhandle to support clearing the handle list.  Added
-    a param to xhClear to provide support for xhnClearHandles.  Added a
-    function in mtask.c to allow the retrieval of ticks-since-boot without
-    making a syscall.  Fixed an MTASK bug in the scheduler relating to
-    waiting on timers and some modulus arithmetic.
-
-    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
-    Centrallix Library initial import
-
-    Revision 1.1.1.1  2001/07/03 01:03:00  gbeeley
-    Initial checkin of centrallix-lib
-
-
- **END-CVSDATA***********************************************************/
 
 #include <setjmp.h>
 #include <sys/types.h>
@@ -212,7 +76,12 @@ typedef struct _MSEC
     pThrExt	ThrParam[16];			/* Structure extension */
 #else
     void*	ThrParam;
+    int		(*ThrParamLink)(void* thr_param);
+    int		(*ThrParamUnLink)(void* thr_param);
 #endif
+    void*	SecParam;			/* Security data handled by application */
+    int		(*SecParamCopyConstructor)(void* src, void** dst);
+    int		(*SecParamDestructor)(void*);
     }
     MTSecContext, *pMTSecContext;
 
@@ -313,6 +182,7 @@ typedef struct _FD
 #define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
 #define FD_F_PIPE	2048		/* is a pipe */
 #define FD_UF_BLOCKINGIO 4096		/* use blocking IO only */
+#define FD_F_RDEOF	8192		/* FD cannot be read due to eof */
 
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */
@@ -326,6 +196,7 @@ typedef struct _FD
 #define FD_U_IMMEDIATE	4		/* for fdClose, error all pending */
 #define FD_XU_NODST	8		/* fdClose, INTERNAL USE ONLY! */
 #define FD_U_PACKET	16		/* r/w: do _only_whole_packet_ */
+#define FD_U_TRUNCATE	32		/* on write, truncate file to offset */
 
 #define NET_U_NOBLOCK	1		/* User: net call can't block. */
 #define NET_U_KEEPALIVE	32		/* User: keep net connection alive */
@@ -345,7 +216,7 @@ typedef struct _EV
     int		ReqLen;				/* Requested length/count */
     int		ReqSeek;			/* Requested seek offset */
     int		ReqFlags;			/* Flags for request */
-    unsigned long TargetTickCnt;		/* Sleep exit point */
+    unsigned int TargetTickCnt;			/* Sleep exit point */
     struct _EV*	NextPeer;			/* Next related event */
     int		TableIdx;			/* Index in event-wait-tbl */
     }
@@ -435,9 +306,9 @@ typedef struct _OBJ
 /** MTASK General Functions. **/
 void mtSetDebug(int debuglevel);
 pThread mtInitialize(int flags, void (*start_fn)());
-unsigned long mtRealTicks();
-unsigned long mtTicks();
-unsigned long mtLastTick();
+unsigned int mtRealTicks();
+unsigned int mtTicks();
+unsigned int mtLastTick();
 
 
 /** MTASK Signal handing functions **/
@@ -448,7 +319,7 @@ int mtRemoveSignalHandler(int signum, void(*start_fn)());
 /** MTASK Threading functions. **/
 pThread thCreate(void (*start_fn)(), int priority, void* start_param);
 int thYield();
-int thExit();
+void thExit() __attribute__ ((noreturn));
 int thKill(pThread thr);
 int thWait(pMTObject obj, int obj_type, int event_type, int arg_count);
 int thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec);
@@ -464,6 +335,7 @@ int thLock();
 int thUnlock();
 int thSleep(int msec);
 int thSetParam(pThread thr, const char* name, void* param);
+int thSetParamFunctions(pThread thr, int (*link_fn)(), int (*unlink_fn)());
 void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
 int thClearFlags(pThread thr, int flags);
@@ -478,6 +350,8 @@ int thGetGroupID(pThread thr);
 int thSetSupplementalGroups(pThread thr, int n_groups, gid_t* grouplist);
 int thGetSecContext(pThread thr, pMTSecContext context);
 int thSetSecContext(pThread thr, pMTSecContext context);
+int thSetSecParam(pThread thr, void* param, int (*copy_constructor)(void* src, void** dst), int (*destructor)(void*));
+void* thGetSecParam(pThread thr);
 
 
 /** MTASK File i/o functions **/

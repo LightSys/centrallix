@@ -1,0 +1,8 @@
+##NAME IS NULL / IS NOT NULL
+
+query select '1 is null' = 1 is null
+query select '1 is not null' = 1 is not null
+query select '"a" is null' = "a" is null
+query select '"a" is not null' = "a" is not null
+query select 'null is null' = null is null
+query select 'null is not null' = null is not null

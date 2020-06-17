@@ -1,32 +1,32 @@
-Attribute: [name]  STRING  "0"
-Attribute: [f_datetime]  DATETIME  01 Jan 1970 00:00
-Attribute: [name]  STRING  "3"
-Attribute: [f_datetime]  DATETIME  01 Jan 1970 23:59
-Attribute: [name]  STRING  "4"
-Attribute: [f_datetime]  DATETIME  01 Jan 1970 23:59
-Attribute: [name]  STRING  "14"
-Attribute: [f_datetime]  DATETIME  29 Feb 1996 00:00
-Attribute: [name]  STRING  "2"
-Attribute: [f_datetime]  DATETIME  02 Jan 2000 00:00
-Attribute: [name]  STRING  "1"
-Attribute: [f_datetime]  DATETIME  01 Feb 2000 00:00
-Attribute: [name]  STRING  "7"
-Attribute: [f_datetime]  DATETIME  01 Feb 2000 00:00
-Attribute: [name]  STRING  "15"
-Attribute: [f_datetime]  DATETIME  28 Feb 2000 00:00
-Attribute: [name]  STRING  "6"
-Attribute: [f_datetime]  DATETIME  29 Feb 2004 00:00
-Attribute: [name]  STRING  "12"
-Attribute: [f_datetime]  DATETIME  29 Feb 2004 00:00
-Attribute: [name]  STRING  "5"
-Attribute: [f_datetime]  DATETIME  31 Dec 2004 00:00
-Attribute: [name]  STRING  "11"
-Attribute: [f_datetime]  DATETIME  31 Dec 2004 00:00
-Attribute: [name]  STRING  "13"
-Attribute: [f_datetime]  DATETIME  29 Feb 2008 00:00
-Attribute: [name]  STRING  "10"
-Attribute: [f_datetime]  DATETIME  01 Jan 2010 00:00
-Attribute: [name]  STRING  "8"
-Attribute: [f_datetime]  DATETIME  01 Jan 2010 00:20
-Attribute: [name]  STRING  "9"
-Attribute: [f_datetime]  DATETIME  01 Jan 2010 20:00
+Attribute [name]:   string   "0" 
+Attribute [f_datetime]: datetime   '01 Jan 1970 00:00' 
+Attribute [name]:   string   "4" 
+Attribute [f_datetime]: datetime   '01 Jan 1970 23:59' 
+Attribute [name]:   string   "3" 
+Attribute [f_datetime]: datetime   '01 Jan 1970 23:59' 
+Attribute [name]:   string   "14" 
+Attribute [f_datetime]: datetime   '29 Feb 1996 00:00' 
+Attribute [name]:   string   "2" 
+Attribute [f_datetime]: datetime   '02 Jan 2000 00:00' 
+Attribute [name]:   string   "1" 
+Attribute [f_datetime]: datetime   '01 Feb 2000 00:00' 
+Attribute [name]:   string   "7" 
+Attribute [f_datetime]: datetime   '01 Feb 2000 00:00' 
+Attribute [name]:   string   "15" 
+Attribute [f_datetime]: datetime   '28 Feb 2000 00:00' 
+Attribute [name]:   string   "6" 
+Attribute [f_datetime]: datetime   '29 Feb 2004 00:00' 
+Attribute [name]:   string   "12" 
+Attribute [f_datetime]: datetime   '29 Feb 2004 00:00' 
+Attribute [name]:   string   "5" 
+Attribute [f_datetime]: datetime   '31 Dec 2004 00:00' 
+Attribute [name]:   string   "11" 
+Attribute [f_datetime]: datetime   '31 Dec 2004 00:00' 
+Attribute [name]:   string   "13" 
+Attribute [f_datetime]: datetime   '29 Feb 2008 00:00' 
+Attribute [name]:   string   "10" 
+Attribute [f_datetime]: datetime   '01 Jan 2010 00:00' 
+Attribute [name]:   string   "8" 
+Attribute [f_datetime]: datetime   '01 Jan 2010 00:20' 
+Attribute [name]:   string   "9" 
+Attribute [f_datetime]: datetime   '01 Jan 2010 20:00' 
