@@ -3419,7 +3419,10 @@ int exp_fn_utf8_right(pExpression tree, pParamObjects objlist, pExpression i0, p
     return 0;
     }
 
-//int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+/*int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+{
+	return 0;
+}*/
 
 int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -3448,8 +3451,8 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     }
 
 
-int
-exp_internal_DefineFunctions()
+//int exp_internal_DefineFunctions()
+int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     size_t bufferLength = 64;
     size_t initialPosition;
@@ -3668,6 +3671,8 @@ int exp_fn_utf8_escape(pExpression tree, pParamObjects objlist, pExpression i0, 
 int
 exp_internal_DefineFunctions()
     {
+
+
     /** Function list for EXPR_N_FUNCTION nodes **/
     xhAdd(&EXP.Functions, "getdate", (char*) exp_fn_getdate);
     xhAdd(&EXP.Functions, "user_name", (char*) exp_fn_user_name);
@@ -3685,6 +3690,7 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.Functions, "eval", (char*) exp_fn_eval);
     xhAdd(&EXP.Functions, "round", (char*) exp_fn_round);
     xhAdd(&EXP.Functions, "dateadd", (char*) exp_fn_dateadd);
+    xhAdd(&EXP.Functions, "datediff", (char*) exp_fn_datediff);
     xhAdd(&EXP.Functions, "truncate", (char*) exp_fn_truncate);
     xhAdd(&EXP.Functions, "constrain", (char*) exp_fn_constrain);
     xhAdd(&EXP.Functions, "sin", (char*) exp_fn_sin);
@@ -3698,7 +3704,20 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.Functions, "square", (char*) exp_fn_square);
     xhAdd(&EXP.Functions, "degrees", (char*) exp_fn_degrees);
     xhAdd(&EXP.Functions, "radians", (char*) exp_fn_radians);
-    
+    hAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
+    xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
+    xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
+    xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
+    xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
+    xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
+    xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+    xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
+    xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+
+    /** Windowing **/
+    xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+
+    /** Aggregate **/
     xhAdd(&EXP.Functions, "count", (char*) exp_fn_count);
     xhAdd(&EXP.Functions, "avg", (char*) exp_fn_avg);
     xhAdd(&EXP.Functions, "sum", (char*) exp_fn_sum);
@@ -3734,7 +3753,11 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
-        }
+        
+	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
+	xhAdd(&EXP.Functions, "replace", (char*) exp_fn_utf8_replace);
+	xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_utf8_substitute);
+	}
     
     return 0;
     }
