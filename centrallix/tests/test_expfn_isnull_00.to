@@ -1,0 +1,27 @@
+##NAME isnull(v,d) function
+
+query select isnull(:f_string, "The input string was null") from /tests/Datatypes.csv/rows 
+
+query select 'isnull("Another test","The input string was null")' = isnull("Another test",'The input string was null')
+
+query select 'isnull("1","The input string was null")' = isnull("1",'The input string was null')
+
+query select 'isnull("$50.00","The input string was null")' = isnull("$50.00",'The input string was null')
+
+query select 'isnull(null,"The input string was null")' = isnull(null,'The input string was null')
+
+# int arguments
+query select 'isnull(1, 0)' = isnull(1, 0)
+query select 'isnull(null, 0)' = isnull(null, 0)
+
+# double args
+query select 'isnull(1.5, 0.0)' = isnull(1.5, 0.0)
+query select 'isnull(null, 0.0)' = isnull(null, 0.0)
+
+# money args
+query select 'isnull($20, 0)' = isnull($20, 0)
+query select 'isnull(null, $0)' = isnull(null, $0)
+
+# datetime args
+query select 'isnull(convert(datetime, "5/31/20"), 0)' = isnull(convert(datetime, "5/31/20"), 0)
+query select 'isnull(abs(null), convert(datetime, "1/01/20"))' = isnull(abs(null), convert(datetime, "1/01/20"))

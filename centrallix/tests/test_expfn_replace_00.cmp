@@ -20,3 +20,5 @@ Attribute [column_000]:   string   "xyzbxyzbxyzb"
 Attribute [column_000]:   string   "axyzaxyzaxyz" 
 Attribute [column_000]:   string   "xyzxyzxyz" 
 Attribute [column_000]:   string   "axyzxyzb" 
+Attribute [column_000]:   string  NULL
+Attribute [column_000]:   string  NULL

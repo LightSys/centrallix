@@ -1,0 +1,44 @@
+##NAME round() function
+
+query select 'round(1234,-1)' = round(1234,-1)
+
+query select 'round(1234,0)' = round(1234,0)
+
+query select 'round(1234,1)' = round(1234,1)
+
+query select 'round(12.34,-1)' = round(12.34,-1)
+
+query select 'round(12.34,0)' = round(12.34,0)
+#Notice that it does not round up
+query select 'round(12.34,1)' = round(12.34,1)
+
+query select 'round(0.123,-1)' = round(0.1234,-1)
+
+query select 'round(0.123,0)' = round(0.1234,0)
+
+query select 'round(0.123,1)' = round(0.1234,1)
+
+query select 'round(0,-1)' = round(0,-1)
+
+query select 'round(0,0)' = round(0,0)
+
+query select 'round(0,1)' = round(0,1)
+
+query select 'round(-123,-1)' = round(-1234,-1)
+
+query select 'round(-123,0)' = round(-1234,0)
+
+query select 'round(-123,1)' = round(-1234,1)
+
+query select 'round(-12.34,-1)' = round(-12.34,-1)
+
+query select 'round(-12.34,0)' = round(-12.34,0)
+
+query select 'round(-12.34,1)' = round(-12.34,1)
+
+query select 'round(-0.123,-2)' = round(-0.1234,-1)
+
+query select 'round(-0.123,0)' = round(-0.1234,0)
+
+query select 'round(-0.123,1)' = round(-0.1234,1)
+
