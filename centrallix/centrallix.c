@@ -398,7 +398,7 @@ cxInitialize(void* v)
         thisCharsetPtr = stLookup(CxGlobals.CharsetMap, nl_langinfo(CODESET));
         if(thisCharsetPtr)
 	    {
-            stSeparate(thisCharsetPtr);
+            stLinkInf(thisCharsetPtr);
             stFreeInf(CxGlobals.CharsetMap);
             CxGlobals.CharsetMap = thisCharsetPtr;
 	    }

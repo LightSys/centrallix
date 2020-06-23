@@ -160,7 +160,7 @@ xsCheckAlloc(pXString this, int addl_needed)
 
 /*** xsConcatenate - adds text data to the end of the existing string, and
  *** allocs more memory as needed.  If 'len' is -1, then the length is 
- *** calculated using strlen(), otherwise the given length is enforced.
+ *** calculated using chrCharLength(), otherwise the given length is enforced.
  ***/
 int 
 xsConcatenate(pXString this, char* text, int len)
@@ -171,7 +171,7 @@ xsConcatenate(pXString this, char* text, int len)
 	CXSEC_VERIFY(*this);
 
     	/** Determine length. **/
-	if (len == -1) len = strlen(text);
+	if (len == -1) len = chrCharLength(text);
 
     	/** Check memory **/
 	if (xsCheckAlloc(this,len) < 0) 
@@ -320,7 +320,7 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    if (!str) str = "(null)";
 
 		  do_as_string:	    /* from int handler, below */
-		    n = strlen(str);
+		    n = chrCharLength(str);
 
 		    /** Need to pad beginning of string with spaces? **/
 		    if (field_width > precision && precision >= 0)
@@ -605,7 +605,7 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen=strlen(find);
+    if(findlen==-1) findlen = chrCharLength(find);
     for(;offset<this->Length;offset++)
 	{
 	if(this->String[offset]==find[0])
@@ -636,7 +636,7 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen=strlen(find);
+    if(findlen==-1) findlen = chrCharLength(find);
     offset=this->Length-offset-1;
     for(;offset>=0;offset--)
 	{
@@ -678,8 +678,8 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 	    CXSEC_EXIT(XS_FN_KEY);
 	    return -1;
 	    }
-	if (len == -1) len = strlen(this->String + offset);
-	if (replen == -1) replen = strlen(rep);
+	if (len == -1) len = chrCharLength(this->String + offset);
+	if (replen == -1) replen = chrCharLength(rep);
 
 	/** Make sure we have enough room **/
 	if (len < replen) xsCheckAlloc(this, replen - len);
@@ -704,8 +704,8 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen=strlen(find);
-    if(replen==-1) replen=strlen(rep);
+    if(findlen==-1) findlen = chrCharLength(find);
+    if(replen==-1) replen = chrCharLength(rep);
     offset=xsFind(this,find,findlen,offset);
     if(offset < 0) 
 	{
@@ -743,7 +743,7 @@ xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(inslen==-1) inslen=strlen(ins);
+    if(inslen==-1) inslen = chrCharLength(ins);
     if(xsCheckAlloc(this,inslen)==-1) 
 	{
 	CXSEC_EXIT(XS_FN_KEY);

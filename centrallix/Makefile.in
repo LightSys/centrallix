@@ -76,9 +76,8 @@ XSUPPORT=stparse.o \
 	 mime/mime_util.o \
 	 ptod.o	\
 	 iface.o \
-	 charsets.o
+	 charsets.o \
 	 param.o \
-	 iface.o \
 	 endorsement_utils.o \
 	 obfuscate.o \
 	 json_util.o

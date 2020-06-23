@@ -54,7 +54,7 @@ int st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObje
 
 
 /*** stPrintInf - print a struct inf tree
- ***/
+ *  ***/
 int
 stPrintInf(pStructInf this)
     {
@@ -71,7 +71,7 @@ stPrintInf(pStructInf this)
 
 
 /*** stAllocInf - allocate a new StructInf structure.
- ***/
+ *  ***/
 pStructInf
 stAllocInf()
     {
@@ -90,7 +90,7 @@ stAllocInf()
 
 
 /*** stLinkInf - add a reference count to a structinf
- ***/
+ *  ***/
 pStructInf
 stLinkInf(pStructInf this)
     {
@@ -103,31 +103,9 @@ stLinkInf(pStructInf this)
     return this;
     }
 
-int stSeparate(pStructInf this){
-    int i,j;
-    
-    /** Disconnect from parent if there is one. **/
-    if (this->Parent)
-    {
-        ASSERTMAGIC(this->Parent,MGK_STRUCTINF);
-        for(i=0;i<this->Parent->nSubInf;i++)
-        {
-            if (this == this->Parent->SubInf[i])
-            {
-                this->Parent->nSubInf--;
-                for(j=i;j<this->Parent->nSubInf;j++)
-                {
-                    this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
-                }
-                this->Parent->SubInf[this->Parent->nSubInf] = NULL;
-            }
-        }
-    }
-    return 0;
-}
 
 /*** stFreeInf - release an existing StructInf, and any sub infs
- ***/
+ *  ***/
 int
 stFreeInf_r(pStructInf this, int parentcnt)
     {
@@ -161,9 +139,9 @@ stFreeInf_r(pStructInf this, int parentcnt)
 			this->Parent->nSubInf--;
 			memmove(this->Parent->SubInf+i, this->Parent->SubInf+i+1, (this->Parent->nSubInf - i) * sizeof(pStructInf));
 			/*for(j=i;j<this->Parent->nSubInf;j++)
-			    {
-			    this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
-			    }*/
+ * 			    {
+ * 			    			    this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
+ * 			    			    			    }*/
 			this->Parent->SubInf[this->Parent->nSubInf] = NULL;
 			break;
 			}
@@ -209,7 +187,7 @@ stTestAndFreeInf(pStructInf this)
 int
 stFreeInf(pStructInf this)
     {
-//        int i;
+
 	ASSERTMAGIC(this,MGK_STRUCTINF);
 
 	this->LinkCnt--;
@@ -221,17 +199,9 @@ stFreeInf(pStructInf this)
     }
 
 
-
-//	/** Disconnect from parent if there is one. **/
-//	stSeparate(this);
-//       
-//	/** Free the current one. **/
-//	nmFree(this,sizeof(StructInf));
-
-
 /*** stRemoveInf - removes a node from its parent, freeing it if that causes it
- *** to have a zero reference count.
- ***/
+ *  *** to have a zero reference count.
+ *   ***/
 int
 stRemoveInf(pStructInf this)
     {
@@ -262,11 +232,11 @@ stRemoveInf(pStructInf this)
 
 
 /*** stAddInf - add a subinf to the main inf structure.  Reference counting note:
- *** since subinf's "automatically" inherit their parent's reference count, we
- *** subtract one when adding it to the parent.  The assumption is that the caller
- *** holds a ref to both the inf and subinf, and so we combine those into one once
- *** the subinf is added.
- ***/
+ *  *** since subinf's "automatically" inherit their parent's reference count, we
+ *   *** subtract one when adding it to the parent.  The assumption is that the caller
+ *    *** holds a ref to both the inf and subinf, and so we combine those into one once
+ *     *** the subinf is added.
+ *      ***/
 int
 stAddInf(pStructInf main_inf, pStructInf sub_inf)
     {
@@ -303,9 +273,9 @@ stAddInf(pStructInf main_inf, pStructInf sub_inf)
 
 
 /*** stAddAttr - adds an attribute to the existing inf.  Reference counting
- *** note: the new attribute by default will have the same reference count as
- *** the node it was added to.
- ***/
+ *  *** note: the new attribute by default will have the same reference count as
+ *   *** the node it was added to.
+ *    ***/
 pStructInf
 stAddAttr(pStructInf inf, char* name)
     {
@@ -328,7 +298,7 @@ stAddAttr(pStructInf inf, char* name)
 
 
 /*** stAddGroup - adds a subgroup to an existing inf.
- ***/
+ *  ***/
 pStructInf
 stAddGroup(pStructInf inf, char* name, char* type)
     {
@@ -354,7 +324,7 @@ stAddGroup(pStructInf inf, char* name, char* type)
 
 
 /*** stAddValue - adds a value to the attribute inf.
- ***/
+ *  ***/
 int
 stAddValue(pStructInf inf, char* strval, int intval)
     {
@@ -416,7 +386,7 @@ stAddValue(pStructInf inf, char* strval, int intval)
 
 
 /*** stCreateStruct - creates a new command inf.
- ***/
+ *  ***/
 pStructInf
 stCreateStruct(char* name, char* type)
     {
@@ -446,8 +416,8 @@ stCreateStruct(char* name, char* type)
 
 
 /*** stLookup - find an attribute or subgroup in the protoinf and 
- *** return the attribute inf.
- ***/
+ *  *** return the attribute inf.
+ *   ***/
 pStructInf
 stLookup(pStructInf this, char* name)
     {
@@ -472,7 +442,7 @@ stLookup(pStructInf this, char* name)
 
 
 /*** stAttrValue - return the value of an attribute inf.
- ***/
+ *  ***/
 int
 stAttrValue(pStructInf this, int* intval, char** strval, int nval)
     {
@@ -511,8 +481,8 @@ stAttrValue(pStructInf this, int* intval, char** strval, int nval)
 
 
 /*** stGetExpression - returns the appropriate expression element that
- *** represents the <n>th element.
- ***/
+ *  *** represents the <n>th element.
+ *   ***/
 pExpression
 stGetExpression(pStructInf this, int nval)
     {
@@ -545,8 +515,8 @@ stGetExpression(pStructInf this, int nval)
 
 
 /*** stGetAttrValue - returns the value of an expression in a
- *** structure file.
- ***/
+ *  *** structure file.
+ *   ***/
 int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
@@ -555,9 +525,9 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 
 
 /*** stGetObjAttrValue - return the value of an expression in a structure
- *** file, given the struct node containing the attribute.  This call is
- *** designed to have the same API as objGetAttrValue().
- ***/
+ *  *** file, given the struct node containing the attribute.  This call is
+ *   *** designed to have the same API as objGetAttrValue().
+ *    ***/
 int
 stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
     {
@@ -576,8 +546,8 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
 
 
 /*** stGetAttrValueOSML - return the value of an expression, evaluated
- *** in the context of an OSML session.
- ***/
+ *  *** in the context of an OSML session.
+ *   ***/
 int
 stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess)
     {
@@ -618,7 +588,7 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 
 
 /*** stGetAttrType - return the data type of an expression.
- ***/
+ *  ***/
 int
 stGetAttrType(pStructInf this, int nval)
     {
@@ -641,8 +611,8 @@ stGetAttrType(pStructInf this, int nval)
 
 
 /*** stStructType - return the type of structure, either attribute
- *** or group (as ST_T_xxxx).
- ***/
+ *  *** or group (as ST_T_xxxx).
+ *   ***/
 int
 stStructType(pStructInf this)
     {
@@ -654,7 +624,7 @@ stStructType(pStructInf this)
 
 
 /*** stSetAttrValue - sets the nth value of an attribute.
- ***/
+ *  ***/
 int 
 stSetAttrValue(pStructInf inf, int type, pObjData value, int nval)
     {
@@ -705,9 +675,9 @@ stSetAttrValue(pStructInf inf, int type, pObjData value, int nval)
 
 
 /*** stGetValueList - return a list of values as a nmSysMalloc'd array
- *** but only return those that match the given data type, unless the
- *** type is DATA_T_ANY.
- ***/
+ *  *** but only return those that match the given data type, unless the
+ *   *** type is DATA_T_ANY.
+ *    ***/
 void*
 stGetValueList(pStructInf this, int type, unsigned int* nval)
     {
@@ -768,8 +738,8 @@ stGetValueList(pStructInf this, int type, unsigned int* nval)
 
 
 /*** stAttrIsList - returns nonzero if the attribute inf is a EXPR_N_LIST value
- *** type, and 0 if it is a scalar.
- ***/
+ *  *** type, and 0 if it is a scalar.
+ *   ***/
 int
 stAttrIsList(pStructInf this)
     {
@@ -778,9 +748,9 @@ stAttrIsList(pStructInf this)
 
 
 /*** st_internal_ParseAttr - parse an attribute.  This routine
- *** should be called with the current token set at the equals
- *** sign.
- ***/
+ *  *** should be called with the current token set at the equals
+ *   *** sign.
+ *    ***/
 int
 st_internal_ParseAttr(pLxSession s, pStructInf inf, pParamObjects objlist)
     {
@@ -884,9 +854,9 @@ st_internal_ParseAttr(pLxSession s, pStructInf inf, pParamObjects objlist)
     
     
 /*** st_internal_ParseGroup - parse a subgroup within a command
- *** or another subgroup.  Should be called with the current
- *** token set to the open brace.
- ***/
+ *  *** or another subgroup.  Should be called with the current
+ *   *** token set to the open brace.
+ *    ***/
 int
 st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
     {
@@ -1005,8 +975,8 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
 
 
 /*** st_internal_IsDblOpen - check a string to see if it is a double-open-
- *** brace on a line by itself with only surrounding whitespace.
- ***/
+ *  *** brace on a line by itself with only surrounding whitespace.
+ *   ***/
 int
 st_internal_IsDblOpen(char* str)
     {
@@ -1028,8 +998,8 @@ st_internal_IsDblOpen(char* str)
 
 
 /*** st_internal_IsDblClose - check a string to see if it is a double-close-
- *** brace on a line by itself.
- ***/
+ *  *** brace on a line by itself.
+ *   ***/
 int
 st_internal_IsDblClose(char* str)
     {
@@ -1051,10 +1021,10 @@ st_internal_IsDblClose(char* str)
 
 
 /*** st_internal_ParseScript - parse an embedded JavaScript segment within
- *** a structure file.  This is called once a {{ has been encountered 
- *** during group processing, and this routine will continue until a
- *** matching }} is encountered.
- ***/
+ *  *** a structure file.  This is called once a {{ has been encountered 
+ *   *** during group processing, and this routine will continue until a
+ *    *** matching }} is encountered.
+ *     ***/
 int
 st_internal_ParseScript(pLxSession s, pStructInf info)
     {
@@ -1092,8 +1062,8 @@ st_internal_ParseScript(pLxSession s, pStructInf info)
 
 	    /** Breaking out of script and into structure file again? **/
 	    /*if (st_internal_IsDblOpen(str))
-	        {
-		}*/
+ * 	        {
+ * 	        		}*/
 	    }
 
 	/** build the structinf entry **/
@@ -1110,8 +1080,8 @@ st_internal_ParseScript(pLxSession s, pStructInf info)
 
 
 /*** st_internal_ParseStruct - parse a command structure from the 
- *** input stream.
- ***/
+ *  *** input stream.
+ *   ***/
 int
 st_internal_ParseStruct(pLxSession s, pStructInf *info)
     {
@@ -1181,9 +1151,9 @@ st_internal_ParseStruct(pLxSession s, pStructInf *info)
 
 	/** GRB 2/2000 - Is this a FormLayout style file? **/
 	/*if (!strcmp((*info)->Name, "BEGIN"))
-	    {
-	    return st_internal_FLStruct(s, *info);
-	    }*/
+ * 	    {
+ * 	    	    return st_internal_FLStruct(s, *info);
+ * 	    	    	    }*/
 
 	/** If a subgroup, will have a type.  Check for it. **/
 	toktype = mlxNextToken(s);
@@ -1215,8 +1185,8 @@ st_internal_ParseStruct(pLxSession s, pStructInf *info)
 
 
 /*** stParseMsg - parse an incoming message from a file or network 
- *** connection.
- ***/
+ *  *** connection.
+ *   ***/
 pStructInf
 stParseMsg(pFile inp_fd, int flags)
     {
@@ -1242,8 +1212,8 @@ stParseMsg(pFile inp_fd, int flags)
 
 
 /*** stParseMsgGeneric - parse an incoming message from a generic
- *** descriptor via a read-function.
- ***/
+ *  *** descriptor via a read-function.
+ *   ***/
 pStructInf
 stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
     {
@@ -1269,8 +1239,8 @@ stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
 
 
 /*** stProbeTypeGeneric() - read just enough of a structure file to figure
- *** out the type of the top level group.
- ***/
+ *  *** out the type of the top level group.
+ *   ***/
 int
 stProbeTypeGeneric(void* read_src, int (*read_fn)(), char* type, int type_maxlen)
     {
@@ -1327,8 +1297,8 @@ stProbeTypeGeneric(void* read_src, int (*read_fn)(), char* type, int type_maxlen
 
 
 /*** st_internal_CkAddBuf - check to see if we need to realloc on the buffer
- *** to add n characters.
- ***/
+ *  *** to add n characters.
+ *   ***/
 int
 st_internal_CkAddBuf(char** buf, int* buflen, int* datalen, int n)
     {
@@ -1349,8 +1319,8 @@ st_internal_CkAddBuf(char** buf, int* buflen, int* datalen, int n)
 
 
 /*** st_internal_GenerateGroup - output a group listing from an info
- *** structure.
- ***/
+ *  *** structure.
+ *   ***/
 int
 st_internal_GenerateGroup(pStructInf info, pXString xs, int level, pParamObjects objlist)
     {
@@ -1376,8 +1346,8 @@ st_internal_GenerateGroup(pStructInf info, pXString xs, int level, pParamObjects
 
 
 /*** st_internal_GenerateAttr - output a single attribute from an
- *** info structure.
- ***/
+ *  *** info structure.
+ *   ***/
 int
 st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObjects objlist)
     {
@@ -1413,8 +1383,8 @@ st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObjects 
 
 
 /*** stGenerateMsg - generate a message to output to a file or network
- *** connection.
- ***/
+ *  *** connection.
+ *   ***/
 int
 stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
     {
@@ -1467,7 +1437,7 @@ stGenerateMsg(pFile fd, pStructInf info, int flags)
 
 #if 00
 /*** st_internal_FLStruct - parse a FormLayout structure file.
- ***/
+ *  ***/
 int
 st_internal_FLStruct(pLxSession s, pStructInf info)
     {
@@ -1556,8 +1526,8 @@ st_internal_FLStruct(pLxSession s, pStructInf info)
 
 
 /*** stCreateStruct_ne - uses the simplified one-string-value-only
- *** ne version of the structures.  Create a new top-level structure.
- ***/
+ *  *** ne version of the structures.  Create a new top-level structure.
+ *   ***/
 pStruct
 stCreateStruct_ne(char* name)
     {
@@ -1577,7 +1547,7 @@ stCreateStruct_ne(char* name)
 
 
 /*** stAddAttr_ne - Add an attribute to a struct inf
- ***/
+ *  ***/
 pStruct
 stAddAttr_ne(pStruct this, char* name)
     {
@@ -1596,7 +1566,7 @@ stAddAttr_ne(pStruct this, char* name)
 
 
 /*** stAddGroup_ne - add a subgroup to a group.
- ***/
+ *  ***/
 pStruct
 stAddGroup_ne(pStruct this, char* name)
     {
@@ -1615,7 +1585,7 @@ stAddGroup_ne(pStruct this, char* name)
 
 
 /*** stAddValue_ne - set the string value of a group.
- ***/
+ *  ***/
 int
 stAddValue_ne(pStruct this, char* strval)
     {
@@ -1630,7 +1600,7 @@ stAddValue_ne(pStruct this, char* strval)
 
 
 /*** stLookup_ne - lookup a subinf in an inf.
- ***/
+ *  ***/
 pStruct
 stLookup_ne(pStruct this, char* name)
     {
@@ -1649,7 +1619,7 @@ stLookup_ne(pStruct this, char* name)
 
 
 /*** stAttrValue_ne - get the value of an attribute.
- ***/
+ *  ***/
 int
 stAttrValue_ne(pStruct this, char** strval)
     {
@@ -1665,7 +1635,7 @@ stAttrValue_ne(pStruct this, char** strval)
 
 
 /*** stAllocInf_ne - allocate an inf.
- ***/
+ *  ***/
 pStruct
 stAllocInf_ne()
     {
@@ -1680,7 +1650,7 @@ stAllocInf_ne()
 
 
 /*** stFreeInf_ne_r - recursively deallocate an inf tree
- ***/
+ *  ***/
 int
 stFreeInf_ne_r(pStruct this)
     {
@@ -1701,7 +1671,7 @@ stFreeInf_ne_r(pStruct this)
 
 
 /*** stFreeInf_ne - deallocate an inf.
- ***/
+ *  ***/
 int
 stFreeInf_ne(pStruct this)
     {
@@ -1732,7 +1702,7 @@ stFreeInf_ne(pStruct this)
 
 
 /*** stAddInf_ne - add a subinf to a parent inf.
- ***/
+ *  ***/
 int
 stAddInf_ne(pStruct main_inf, pStruct sub_inf)
     {
@@ -1744,7 +1714,7 @@ stAddInf_ne(pStruct main_inf, pStruct sub_inf)
 
 
 /*** stPrint_ne - format and print a pStruct tree on stdout.
- ***/
+ *  ***/
 int
 stPrint_ne_r(pStruct inf, int level)
     {
