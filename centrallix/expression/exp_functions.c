@@ -3541,76 +3541,7 @@ int exp_fn_utf8_ralign(pExpression tree, pParamObjects objlist, pExpression i0, 
         return -1; 
         }    
     }
-
-	/** Function list for EXPR_N_FUNCTION nodes **
-	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
-	xhAdd(&EXP.Functions, "user_name", (char*)exp_fn_user_name);
-	xhAdd(&EXP.Functions, "convert", (char*)exp_fn_convert);
-	xhAdd(&EXP.Functions, "wordify", (char*)exp_fn_wordify);
-	xhAdd(&EXP.Functions, "abs", (char*)exp_fn_abs);
-	xhAdd(&EXP.Functions, "ascii", (char*)exp_fn_ascii);
-	xhAdd(&EXP.Functions, "condition", (char*)exp_fn_condition);
-	xhAdd(&EXP.Functions, "charindex", (char*)exp_fn_charindex);
-	xhAdd(&EXP.Functions, "upper", (char*)exp_fn_upper);
-	xhAdd(&EXP.Functions, "lower", (char*)exp_fn_lower);
-	xhAdd(&EXP.Functions, "char_length", (char*)exp_fn_char_length);
-	xhAdd(&EXP.Functions, "datepart", (char*)exp_fn_datepart);
-	xhAdd(&EXP.Functions, "isnull", (char*)exp_fn_isnull);
-	xhAdd(&EXP.Functions, "ltrim", (char*)exp_fn_ltrim);
-	xhAdd(&EXP.Functions, "lztrim", (char*)exp_fn_lztrim);
-	xhAdd(&EXP.Functions, "rtrim", (char*)exp_fn_rtrim);
-	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
-	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
-	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
-	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
-	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
-	xhAdd(&EXP.Functions, "replace", (char*)exp_fn_replace);
-	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
-	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
-	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
-	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
-	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
-	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
-	xhAdd(&EXP.Functions, "datediff", (char*)exp_fn_datediff);
-	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
-	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
-	xhAdd(&EXP.Functions, "sin", (char*)exp_fn_sin);
-	xhAdd(&EXP.Functions, "cos", (char*)exp_fn_cos);
-	xhAdd(&EXP.Functions, "tan", (char*)exp_fn_tan);
-	xhAdd(&EXP.Functions, "asin", (char*)exp_fn_asin);
-	xhAdd(&EXP.Functions, "acos", (char*)exp_fn_acos);
-	xhAdd(&EXP.Functions, "atan", (char*)exp_fn_atan);
-	xhAdd(&EXP.Functions, "atan2", (char*)exp_fn_atan2);
-	xhAdd(&EXP.Functions, "sqrt", (char*)exp_fn_sqrt);
-	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
-	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
-	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
-	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
-	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
-	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
-	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
-	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
-	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
-	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
-	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
-	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
-
-	** Windowing **
-	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
-
-	** Aggregate **
-	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
-	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
-	xhAdd(&EXP.Functions, "sum", (char*)exp_fn_sum);
-	xhAdd(&EXP.Functions, "max", (char*)exp_fn_max);
-	xhAdd(&EXP.Functions, "min", (char*)exp_fn_min);
-	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
-	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
-	xhAdd(&EXP.Functions, "nth", (char*)exp_fn_nth);
-
-	** Reverse functions **
-	xhAdd(&EXP.ReverseFunctions, "isnull", (char*)exp_fn_reverse_isnull);*/
-
+	
 /** escape(string, escchars, badchars) **/
 int exp_fn_utf8_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -3668,7 +3599,81 @@ int exp_fn_utf8_escape(pExpression tree, pParamObjects objlist, pExpression i0, 
 
 int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 	{
-	return 0;
+	int charLen, byteLen, a, i, end;
+	char* temp;
+    	char ch1, ch2, ch3, ch4;
+    	char mask1 = 0x80, mask2 = 0xC0, mask3 = 0xE0, mask4 = 0xF0;
+	if (i0 && (i0->Flags & EXPR_F_NULL))
+        	{
+        	tree->Flags |= EXPR_F_NULL;
+        	tree->DataType = DATA_T_STRING;
+        	return 0;
+        	}
+    	if (!i0 || i0->DataType != DATA_T_STRING)
+        	{
+	        mssError(1,"EXP","reverse() expects one string parameter");
+        	return -1;
+        	}
+    	if (tree->Alloc && tree->String)
+        	nmSysFree(tree->String);
+   	tree->DataType = DATA_T_STRING;
+    	byteLen = strlen(i0->String);
+    	if (byteLen >= 64)
+        	{
+        	tree->String = nmSysMalloc(byteLen+1);
+        	tree->Alloc = 1;
+        	}
+    	else
+        	{
+        	tree->Alloc = 0;
+        	tree->String = tree->Types.StringBuf;
+        	}
+    	strcpy(tree->String, i0->String);
+    	
+	/** Reversing string **/
+	i = 0;
+	end = byteLen-1;
+	temp = (char*)nmSysMalloc(sizeof(char) * byteLen+1);
+	temp[byteLen] = '\0';
+	charLen = chrCharLength(i0->String);
+	for(a = 0; a < charLen; a++)
+        	{
+		ch1 = tree->String[i];
+		if ((ch1 & mask1) == 0x00)
+			{
+			temp[end--] = ch1;
+			i++;
+			}
+		else if ((ch1 & mask2) == 0xC0)
+			{
+			ch2 = tree->String[++i];
+			temp[end--] = ch2;
+			temp[end--] = ch1;
+        		i++;
+			}
+		else if ((ch1 & mask3) == 0xE0)
+			{
+			ch2 = tree->String[++i];
+			ch3 = tree->String[++i];
+			temp[end--] = ch3;
+			temp[end--] = ch2;
+                        temp[end--] = ch1;
+			i++;
+			}
+		else if ((ch1 & mask4) == 0xF0)
+        		{
+                        ch2 = tree->String[++i];    
+			ch3 = tree->String[++i];
+			ch4 = tree->String[++i];
+			temp[end--] = ch4;
+			temp[end--] = ch3;
+			temp[end--] = ch2;
+                        temp[end--] = ch1;
+                        i++;                                                                                                                                                                                                               }
+	       	}
+	strcpy(tree->String, temp);
+	
+    	return 0;
 	}
 
 int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)

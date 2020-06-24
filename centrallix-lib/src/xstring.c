@@ -160,7 +160,7 @@ xsCheckAlloc(pXString this, int addl_needed)
 
 /*** xsConcatenate - adds text data to the end of the existing string, and
  *** allocs more memory as needed.  If 'len' is -1, then the length is 
- *** calculated using chrCharLength(), otherwise the given length is enforced.
+ *** calculated using strlen(), otherwise the given length is enforced.
  ***/
 int 
 xsConcatenate(pXString this, char* text, int len)
@@ -171,7 +171,7 @@ xsConcatenate(pXString this, char* text, int len)
 	CXSEC_VERIFY(*this);
 
     	/** Determine length. **/
-	if (len == -1) len = chrCharLength(text);
+	if (len == -1) len = strlen(text);
 
     	/** Check memory **/
 	if (xsCheckAlloc(this,len) < 0) 
@@ -605,7 +605,7 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen = chrCharLength(find);
+    if(findlen==-1) findlen = strlen(find);
     for(;offset<this->Length;offset++)
 	{
 	if(this->String[offset]==find[0])
