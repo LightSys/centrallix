@@ -1,0 +1,19 @@
+##NAME rtrim() function
+
+query select 'rtrim("White space on the left or right side.")' = rtrim("No white space on the left or right side.")
+
+query select 'rtrim("     White space on the left side.")' = rtrim("     White space on the left side.")
+
+query select 'rtrim("White space on the right side.     ")' = rtrim("White space on the right side.     ")
+
+query select 'rtrim("     White space on the right and the left side.     ")' = rtrim("     White space on the right and the left side.     ")
+
+query select 'rtrim("With tab character\t")' = rtrim("With tab character\t")
+
+query select 'rtrim("With newline character\n")' = rtrim("With newline character\n")
+
+# query select 'rtrim("\r With carriage return character.")' = rtrim("\r With carriage return character")
+
+query select 'rtrim("")' = rtrim("")
+
+query select 'rtrim(null)' = rtrim(null)

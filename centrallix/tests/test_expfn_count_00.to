@@ -1,0 +1,28 @@
+##NAME count() function
+##UNDO /tests/Datatypes.csv
+
+query select 'integers before' = count(:f_integer) from /tests/Datatypes.csv/rows
+
+query select 'strings before' = count(:f_string) from /tests/Datatypes.csv/rows
+
+query select 'money before' = count(:f_money) from /tests/Datatypes.csv/rows
+
+query select 'datetimes before' = count(:f_datetime) from /tests/Datatypes.csv/rows
+
+query select 'doubles before' = count(:f_double) from /tests/Datatypes.csv/rows
+
+# Insert a null value into every column
+query insert into /tests/Datatypes.csv/rows select f_integer=null, f_string=null, f_money=null, f_datetime=null, f_double=null
+
+# Since count() does not include null values, the result should not change (except for the string column, because of CSV file storage)
+query select 'integers after' = count(:f_integer) from /tests/Datatypes.csv/rows
+
+query select 'strings after' = count(:f_string) from /tests/Datatypes.csv/rows
+
+query select 'money after' = count(:f_money) from /tests/Datatypes.csv/rows
+
+query select 'datetimes after' = count(:f_datetime) from /tests/Datatypes.csv/rows
+
+query select 'doubles after' = count(:f_double) from /tests/Datatypes.csv/rows
+
+query select 'incl null' = count(1) from /tests/Datatypes.csv/rows
