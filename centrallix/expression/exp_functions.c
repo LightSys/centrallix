@@ -758,7 +758,7 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
     return 0;
     }
 
-
+//i0 is haystack, i1 is needle, i2 is replacement
 int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     char* repstr;
@@ -797,7 +797,7 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     replen = strlen(repstr);
     searchlen = strlen(i1->String);
     if (replen > searchlen)
-	newsize = (newsize * replen) / searchlen + 1;
+	newsize = (newsize * replen) / searchlen + 1;//why * and / instead of + and -
     if (newsize >= 0x7FFFFFFFLL)
 	{
 	mssError(1,"EXP","replace(): out of memory");
@@ -3639,7 +3639,7 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
 	for(a = 0; a < charLen; a++)
         	{
 		ch1 = tree->String[i];
-		if ((ch1 & mask1) == 0x00)
+		if ((ch1 & mask1) == 0x00)//maybe add helper functions instead of masks and validate following continuation bytes
 			{
 			temp[end--] = ch1;
 			i++;
@@ -3677,8 +3677,32 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
 	}
 
 int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-	{
-	return 0;
+    {
+    char* repstr;
+    long long newsize;
+    char* srcptr;
+    char* searchptr;
+    char* dstptr;
+    int searchlen, replen;
+    if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
+        {                                                                                                                                                                                                                  tree->Flags |= EXPR_F_NULL;                                                                                                                                                                                        tree->DataType = DATA_T_STRING;
+        return 0;
+        }
+    if (!i0 || i0->DataType != DATA_T_STRING || !i1 || i1->DataType != DATA_T_STRING || !i2 || (!(i2->Flags & EXPR_F_NULL) && i2->DataType != DATA_T_STRING))
+        {                                                                                                                                                                                                                  mssError(1,"EXP","replace() expects three string parameters (str,search,replace)");
+        return -1;
+        }
+    if (i2->Flags & EXPR_F_NULL)
+        repstr = "";
+    else
+        repstr = i2->String;
+
+    if (tree->Alloc && tree->String)
+        nmSysFree(tree->String);
+    tree->Alloc = 0;
+    if (i1->String[0] == '\0')                                                                                                                                                                                             {                                                                                                                                                                                                                  tree->String = i0->String;
+        return 0;
+        }
 	}
 
 int exp_fn_utf8_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
@@ -3743,7 +3767,8 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.Functions, "min", (char*) exp_fn_min);
     xhAdd(&EXP.Functions, "first", (char*) exp_fn_first);
     xhAdd(&EXP.Functions, "last", (char*) exp_fn_last);
-    
+    xhAdd(&EXP.Functions, "nth", (char*) exp_fn_nth);
+ 
     /** Reverse functions **/
     xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
     

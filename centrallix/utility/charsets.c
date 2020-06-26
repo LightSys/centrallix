@@ -322,6 +322,49 @@ size_t chrCharLength(char* string)
             return length;
     }
 
+char* charNoOverlong(char* string)
+	{
+	size_t stringCharLength, newStrByteLength;
+	char* toReturn;
+	wchar_t* longBuffer;
+
+        /** Check arguments **/
+	if(!string)
+        	return CHR_INVALID_ARGUMENT;
+
+	stringCharLength = mbstowcs(NULL, string, 0);
+	if(stringCharLength == (size_t)-1)
+            	{
+        	return NULL;
+       		}	
+
+	/** Create wchar_t buffer */
+        longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
+        if(!longBuffer)
+        	return NULL;
+        mbstowcs(longBuffer, string, stringCharLength + 1);	
+		
+	/** Convert back to MBS **/
+	newStrByteLength = wcstombs(NULL, longBuffer, 0);
+        if(newStrByteLength == (size_t)-1)
+            	{
+            	nmSysFree(longBuffer);
+        	return NULL;
+            	}
+
+	toReturn = (char *)nmSysMalloc(newStrByteLength + 1);
+        if(!toReturn)
+            	{
+                nmSysFree(longBuffer);
+                return NULL;
+            	}
+            
+        wcstombs(toReturn, longBuffer, newStrByteLength + 1);
+        nmSysFree(longBuffer);
+	nmSysFree(string); //good?
+        return toReturn;
+	}
+
 char* chrRight(char* string, size_t offsetFromEnd, size_t* returnCode)
     {
     size_t currentPos = 0, numScanned = 0;
