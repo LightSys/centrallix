@@ -74,6 +74,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     XArray endorsements;
     XArray contexts;
     int max_requests = 1;
+    int pgflexw = 0; /* variable to store horizontal flexibility of page in pixels */
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -243,6 +244,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_scripts", "[]", 0);
 	htrAddScriptGlobal(s, "pg_endorsements", "[]", 0);
 	htrAddScriptGlobal(s, "pg_max_requests", "1", 0);
+	htrAddScriptGlobal(s, "pg_flex_w", "0", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -279,6 +281,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
+	wgtrGetPropertyValue(tree, "fl_width", DATA_T_INTEGER, POD(&pgflexw));
+	
 	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
 	htrAddScriptInit_va(s, "    pg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
@@ -289,6 +293,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
 	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
 	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
+	htrAddScriptInit_va(s, "    pg_flex_w = %INT;\n", pgflexw);
 
 	c_param = stLookup_ne(s->Params, "cx__obscure");
 	if (c_param && !strcasecmp(c_param->StrVal,"yes"))
