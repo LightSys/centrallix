@@ -1,4 +1,4 @@
-##NAME exp_fn_utf8_reverse() function
+##NAME utf8_reverse() function
 
 query select utf8_reverse(:f_string) from /tests/Datatypes.csv/rows 
 query select utf8_reverse(:Color) from /tests/TestLevel1.csv/rows

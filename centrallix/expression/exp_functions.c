@@ -761,6 +761,7 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
 //i0 is haystack, i1 is needle, i2 is replacement
 int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+	printf("Replacing\n");
     char* repstr;
     long long newsize;
     char* srcptr;
@@ -769,6 +770,7 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     int searchlen, replen;
     if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
 	{
+	printf("UHOH\n");
 	tree->Flags |= EXPR_F_NULL;
 	tree->DataType = DATA_T_STRING;
 	return 0;
@@ -3634,9 +3636,35 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
         	tree->String = tree->Types.StringBuf;
         	}
     	strcpy(tree->String, i0->String);
-    	
+    		
 	/** Reversing string **/
-	i = 0;
+	char    *scanl, *scanr, *scanr2, c;
+
+	/* first reverse the string */
+   	for (scanl= tree->String, scanr= tree->String + strlen(tree->String); scanl < scanr;)
+        	c= *scanl, *scanl++= *--scanr, *scanr= c;
+
+	/* then scan all bytes and reverse each multibyte character */
+    	for (scanl= scanr= tree->String; c= *scanr++;) 
+		{
+        	if ( (c & 0x80) == 0) // ASCII char
+            		scanl= scanr;
+        	else if ( (c & 0xc0) == 0xc0 ) // start of multibyte
+			{
+            		scanr2= scanr;
+            		switch (scanr - scanl) 
+				{
+                		case 4: c= *scanl, *scanl++= *--scanr, *scanr= c; // fallthrough
+                		case 3: // fallthrough
+                		case 2: c= *scanl, *scanl++= *--scanr, *scanr= c;
+            			}
+            		scanr= scanl= scanr2;
+        		}
+    		}
+
+
+
+/*	i = 0;
 	end = byteLen-1;
 	temp = (char*)nmSysMalloc(sizeof(char) * byteLen+1);
 	temp[byteLen] = '\0';
@@ -3644,19 +3672,21 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
 	for(a = 0; a < charLen; a++)
         	{
 		ch1 = tree->String[i];
-		if ((ch1 & mask1) == 0x00)//maybe add helper functions instead of masks and validate following continuation bytes
+		if (ch1 < 0xC0)//maybe add helper functions instead of masks and validate following continuation bytes
 			{
+			printf("1\n");
 			temp[end--] = ch1;
 			i++;
 			}
-		else if ((ch1 & mask2) == 0xC0)
+		else if (ch1 < 0xE0)
 			{
+			printf("2\n");
 			ch2 = tree->String[++i];
 			temp[end--] = ch2;
 			temp[end--] = ch1;
         		i++;
 			}
-		else if ((ch1 & mask3) == 0xE0)
+		else if (ch1 < 0xF0)
 			{
 			ch2 = tree->String[++i];
 			ch3 = tree->String[++i];
@@ -3665,7 +3695,7 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
                         temp[end--] = ch1;
 			i++;
 			}
-		else if ((ch1 & mask4) == 0xF0)
+		else// if ((ch1 & mask4) == 0xF0)
         		{
                         ch2 = tree->String[++i];    
 			ch3 = tree->String[++i];
@@ -3676,20 +3706,22 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
                         temp[end--] = ch1;
                         i++;                                                                                                                                                                                                               }
 	       	}
-	strcpy(tree->String, temp);
+*/
+	//strcpy(tree->String, temp);
 	
     	return 0;
 	}
 
 int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    char* repstr;
-    long long newsize;
-    char* srcptr;
-    char* searchptr;
-    char* dstptr;
-    int searchlen, replen;
-    if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
+	printf("Starting\n");
+    char *haystack, *needle, *replace;
+    long long newsize, diff;
+    char* pos;
+    char *dstptr, *oldptr;
+    size_t len_replace, len_needle, len_haystack, num_shifts;
+
+	if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
         {                                                                                                                                                                                                                  tree->Flags |= EXPR_F_NULL;                                                                                                                                                                                        tree->DataType = DATA_T_STRING;
         return 0;
         }
@@ -3698,16 +3730,53 @@ int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0,
         return -1;
         }
     if (i2->Flags & EXPR_F_NULL)
-        repstr = "";
+        replace = "";
     else
-        repstr = i2->String;
+        replace = i2->String;
 
     if (tree->Alloc && tree->String)
         nmSysFree(tree->String);
     tree->Alloc = 0;
-    if (i1->String[0] == '\0')                                                                                                                                                                                             {                                                                                                                                                                                                                  tree->String = i0->String;
-        return 0;
-        }
+    	if (i1->String[0] == '\0')   
+		{ 
+		tree->String = i0->String;
+        	return 0;
+        	}
+	printf("Passed init stuff\n");
+	fflush(stdout);
+	haystack = i0->String;
+	needle = i1->String;
+	printf("strcpy\n");
+	len_haystack = strlen(haystack);
+	len_needle = strlen(needle);
+	len_replace = strlen(replace);
+	printf("lens\n");
+	fflush(stdout);
+	dstptr = nmSysMalloc((len_haystack + 1) * sizeof(char));
+	strcpy(dstptr, haystack);
+	printf("malloc\n");
+	fflush(stdout);
+	pos = strstr(haystack, needle);
+	while(pos != NULL)
+		{
+		printf("Start while\n");
+		fflush(stdout);
+		oldptr = dstptr;
+		len_haystack = strlen(dstptr);
+		diff = (long long) (len_replace - len_needle);
+		dstptr = nmSysMalloc((len_haystack + diff + 1) * sizeof(char));
+		
+		num_shifts = pos - oldptr;
+		memcpy(dstptr, oldptr, num_shifts);
+		memcpy(dstptr + num_shifts, replace, len_replace);
+		memcpy(dstptr + num_shifts + len_replace, pos + len_needle, len_haystack + 1 - num_shifts - len_needle);
+		
+		//free(oldptr);
+		pos = strstr(haystack, needle);
+		}
+
+	strcpy(tree->String, dstptr);
+	return 0;
 	}
 
 int exp_fn_utf8_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
@@ -3779,6 +3848,7 @@ exp_internal_DefineFunctions()
     
     /** UTF-8/ASCII dependent **/
 	xhAdd(&EXP.Functions, "utf8_reverse", (char*) exp_fn_utf8_reverse);
+	xhAdd(&EXP.Functions, "utf8_replace", (char*) exp_fn_utf8_replace);
 	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
     if (CxGlobals.CharacterMode == CharModeSingleByte)
         {

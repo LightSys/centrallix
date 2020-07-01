@@ -1,0 +1,4 @@
+##NAME utf8_replace() function
+
+query select utf8_replace("abcdefg","cd","x")
+
