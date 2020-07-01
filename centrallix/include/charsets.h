@@ -167,7 +167,7 @@ size_t chrCharLength(char* string);
  \param string The string to simplify.
  \return This returns the same string but with the minimum amount of bytes used
  or NULL on error. */
-char* charNoOverlong(char* string);
+char* chrNoOverlong(char* string);
 
 /** \brief Get a specific number of the rightmost characters in the string.
  

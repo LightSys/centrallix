@@ -322,7 +322,7 @@ size_t chrCharLength(char* string)
             return length;
     }
 
-char* charNoOverlong(char* string)
+char* chrNoOverlong(char* string)
 	{
 	size_t stringCharLength, newStrByteLength;
 	char* toReturn;
@@ -361,7 +361,7 @@ char* charNoOverlong(char* string)
             
         wcstombs(toReturn, longBuffer, newStrByteLength + 1);
         nmSysFree(longBuffer);
-	nmSysFree(string); //good?
+	//nmSysFree(string); //good?
         return toReturn;
 	}
 

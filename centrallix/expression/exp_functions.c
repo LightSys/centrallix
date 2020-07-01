@@ -3229,6 +3229,11 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     return 0;
     }
 
+char* exp_fn_utf8_overlong(char* string)
+	{
+	return chrNoOverlong(string);
+	}
+
 int exp_fn_utf8_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     size_t charValue;
@@ -3773,6 +3778,8 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
     
     /** UTF-8/ASCII dependent **/
+	xhAdd(&EXP.Functions, "utf8_reverse", (char*) exp_fn_utf8_reverse);
+	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
     if (CxGlobals.CharacterMode == CharModeSingleByte)
         {
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
