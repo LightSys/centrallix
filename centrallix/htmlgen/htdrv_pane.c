@@ -59,6 +59,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1,w,h;
+    int preW, treePreW, flexW, treeFlexW;
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
