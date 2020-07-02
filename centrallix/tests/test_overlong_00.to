@@ -1,3 +1,7 @@
 ##NAME overlong function
 
 query select overlong("abc")
+query select overlong("\\x21")
+query select overlong("\\xC0\\xA1")
+query select overlong("\\xE2\\x82\\xAC")
+query select overlong("\\xF0\\x82\\x82\\xAC")

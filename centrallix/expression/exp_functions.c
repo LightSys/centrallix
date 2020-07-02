@@ -3231,9 +3231,19 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     return 0;
     }
 
-char* exp_fn_utf8_overlong(char* string)
+int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 	{
-	return chrNoOverlong(string);
+	printf("EXP\nRecieved String: %s\n", i0->String);
+	char* str = chrNoOverlong(i0->String);
+	printf("A");
+	fflush(stdout);
+	printf("Final str: %s\n", str);
+	printf("B");
+	fflush(stdout);
+	tree->String = str;
+	printf("C");
+        fflush(stdout);
+	return 0;
 	}
 
 int exp_fn_utf8_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
