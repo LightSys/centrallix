@@ -271,7 +271,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
 		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
 
-		htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { position:absolute; visibility:inherit; left:%INT%%; top:%INT%%; %[width:%POS%%; %]overflow:hidden; z-index:%POS; cursor:default; border-radius:%POSpx %POSpx %POSpx %POSpx; border-style:%STR&CSSVAL; border-width: %POSpx %POSpx %POSpx %POSpx; border-color: %STR&CSSVAL; box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; text-align:%STR&CSSVAL; color:%STR&CSSVAL; font-weight:bold; %STR }\n",
+		htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; %[width:%POSpx; %]overflow:hidden; z-index:%POS; cursor:default; border-radius:%POSpx %POSpx %POSpx %POSpx; border-style:%STR&CSSVAL; border-width: %POSpx %POSpx %POSpx %POSpx; border-color: %STR&CSSVAL; box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; text-align:%STR&CSSVAL; color:%STR&CSSVAL; font-weight:bold; %STR }\n",
 			id, i+1,
 			x+xtoffset, y+ytoffset,
 			tab_width>0, tab_width,
@@ -296,7 +296,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** h-2 and w-2 because w3c dom borders add to actual width **/
-	htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" style=\"position:absolute; overflow:hidden; height:%POS%%; width:%POS%%; left:%INT%%; top:%INT%%; z-index:%POS; border-width: 1px; border-style:%STR&CSSVAL; border-color: %STR&CSSVAL; border-radius:%POSpx %POSpx %POSpx %POSpx; box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL;\">\n",
+	htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" style=\"position:absolute; overflow:hidden; height:%POSpx; width:%POSpx; left:%INTpx; top:%INTpx; z-index:%POS; border-width: 1px; border-style:%STR&CSSVAL; border-color: %STR&CSSVAL; border-radius:%POSpx %POSpx %POSpx %POSpx; box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL;\">\n",
 		id, h-border_width*2, w-border_width*2, x+xoffset, y+yoffset, z+1,
 		border_style, border_color,
 		(tloc==Top || tloc==Left)?0:border_radius, (tloc==Right)?0:border_radius, border_radius, (tloc==Bottom)?0:border_radius,
@@ -343,7 +343,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
 
 	    /** Add DIV section for the tabpage. **/
-	    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:0%%; TOP:0%%; WIDTH:%POS%%; Z-INDEX:%POS;\">\n",
+	    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
 		    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
 
 	    /** Now look for sub-items within the tabpage. **/
