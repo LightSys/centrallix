@@ -58,8 +58,9 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char main_bg[128];
     char bdr[64];
-    int x=-1,y=-1,w,h;
-    int preW, treePreW, flexW, treeFlexW;
+    int x=-1,y=-1,h;
+	//int w;
+    int preW, treePreW, flexW, treeFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
@@ -81,7 +82,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'width' property");
 	    return -1;
@@ -91,7 +92,22 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
 	    }
+	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=0;
+	
+	//Now we've got to figure a way to get the total width and fl_width of the tree...
+	//How about this: we don't want to lose our place in the tree, so let's see if there's a way to duplicate it
+	//Then we can just pass wgtrGetRoot(dupeTree) into the wgtrGetPropertyValue() function in lieu of tree!
+	//But how do we pull off a deep copy of a pWgtrNode object? It's a pointer to a memory location, but we want
+	//to leave the memory location alone and just swipe the contents...
+	
+	pWgtrNode theWholeShebang = wgtrGetRoot(tree);
+	
 
+	if (wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&treePreW)) != 0) treePreW=0;
+	if (wgtrGetPropertyValue(theWholeShebang,"fl_width",DATA_T_INTEGER,POD(&treeFlexW)) != 0) treeFlexW=0;
+	
+	
+	
 	/** Border radius, for raised/lowered/bordered panes **/
 	if (wgtrGetPropertyValue(tree,"border_radius",DATA_T_INTEGER,POD(&border_radius)) != 0)
 	    border_radius=0;
@@ -157,17 +173,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx+(100%-%POSpx)*(%POSpx/%POSpx)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW,h,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx+(100%-%POSpx)*(%POSpx/%POSpx)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS}\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx+(100%-%POSpx)*(%POSpx/%POSpx)); HEIGHT:%POSpx; Z-INDEX:%POS}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
