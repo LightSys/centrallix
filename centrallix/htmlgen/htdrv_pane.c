@@ -79,7 +79,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTPN.idcnt++);
 
-    	/** Get x,y,w,h of this object **/
+    	/** Get x,y,preW,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
@@ -211,7 +211,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, w-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, preW-2, h-2);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, tree, z+2);
