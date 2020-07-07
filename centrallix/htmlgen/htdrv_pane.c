@@ -170,27 +170,44 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(bdr,ptr,sizeof(bdr));
 	    }
 
-	/** Ok, write the style header items. **/
-						//Hang on -- I guess this is a rather delayed revelation, but the code below only affects the pn_main pane because that's the only pane it's SUPPOSED to affect. This begs the question, then: what about all the others?
+	//Maybe it's just the calc syntax that's throwing a spanner in the works. Let us test this hypothesis:
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW+treePreW+flexW+treeFlexW,h,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW+treePreW+flexW+treeFlexW-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS}\n",id,x,y,preW+treePreW+flexW+treeFlexW-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
-	if (shadow_radius > 0)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
-	    }
+
+
+	/** Ok, write the style header items. **/
+//	if (style == 2) /* flat */
+//	    {
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW,h,z);
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
+//	    }
+//	else if (style == 0 || style == 1) /* lowered or raised */
+//	    {
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
+//	    }
+//	else if (style == 3) /* bordered */
+//	    {
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
+//	    }
+//	if (shadow_radius > 0)
+//	    {
+//	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
+//	    }
 
 	/** DOM linkages **/
 	htrAddWgtrObjLinkage_va(s, tree, "pn%POSmain",id);
