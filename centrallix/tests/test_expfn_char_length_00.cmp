@@ -3,4 +3,3 @@ Attribute [char_length("a")]:  integer  1
 Attribute [char_length("")]:  integer  0
 Attribute [char_length(null)]:  integer  NULL
 Attribute [char_length("abcde"*999999)]:  integer  4999995
-Attribute [char_length("كتاب")]:  integer  8

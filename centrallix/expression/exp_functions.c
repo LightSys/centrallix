@@ -761,7 +761,6 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
 //i0 is haystack, i1 is needle, i2 is replacement
 int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-	printf("Replacing\n");
     char* repstr;
     long long newsize;
     char* srcptr;
@@ -770,7 +769,6 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     int searchlen, replen;
     if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
 	{
-	printf("UHOH\n");
 	tree->Flags |= EXPR_F_NULL;
 	tree->DataType = DATA_T_STRING;
 	return 0;
@@ -1026,6 +1024,8 @@ int exp_fn_right(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+	printf("Substring\n");
+	fflush(stdout);
     int i,n;
     char* ptr;
 
@@ -1045,15 +1045,21 @@ int exp_fn_substring(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	mssError(1,"EXP","Invalid datatypes in substring() - takes (string,integer,[integer])");
 	return -1;
 	}
+	printf("Passed\n");
+	printf("String: %s\n", i0->String);
+	fflush(stdout);
     n = strlen(i0->String);
     i = i1->Integer-1;
     if (i<0) i = 0;
     if (i > n) i = n;
     ptr = i0->String + i;
+	printf("Indexed string: %s\n", ptr);
+	fflush(stdout);
     i = i2?(i2->Integer):(strlen(ptr));
     if (i < 0) i = 0;
     if (i > strlen(ptr)) i = strlen(ptr);
-
+	printf("Num chars: %d", i);
+	fflush(stdout);
     /** Ok, got position and length.  Now make new string in tree-> **/
     if (tree->Alloc && tree->String)
         {
@@ -3722,7 +3728,7 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
     	return 0;
 	}
 
-int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+/*int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 	printf("Starting\n");
     char *haystack, *needle, *replace;
@@ -3731,8 +3737,10 @@ int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0,
     char *dstptr, *oldptr;
     size_t len_replace, len_needle, len_haystack, num_shifts;
 
-	if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
-        {                                                                                                                                                                                                                  tree->Flags |= EXPR_F_NULL;                                                                                                                                                                                        tree->DataType = DATA_T_STRING;
+    if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
+       	{ 
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
         return 0;
         }
     if (!i0 || i0->DataType != DATA_T_STRING || !i1 || i1->DataType != DATA_T_STRING || !i2 || (!(i2->Flags & EXPR_F_NULL) && i2->DataType != DATA_T_STRING))
@@ -3793,6 +3801,7 @@ int exp_fn_utf8_substitute(pExpression tree, pParamObjects objlist, pExpression 
 	{
 	return 0;
 	}
+*/
 
 int
 exp_internal_DefineFunctions()
@@ -3839,6 +3848,8 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
     xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
     xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+    xhAdd(&EXP.Functions, "replace", (char*) exp_fn_replace);
+    xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_substitute);
 
     /** Windowing **/
     xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
@@ -3858,8 +3869,9 @@ exp_internal_DefineFunctions()
     
     /** UTF-8/ASCII dependent **/
 	xhAdd(&EXP.Functions, "utf8_reverse", (char*) exp_fn_utf8_reverse);
-	xhAdd(&EXP.Functions, "utf8_replace", (char*) exp_fn_utf8_replace);
 	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
+	xhAdd(&EXP.Functions, "utf8_charindex", (char*) exp_fn_utf8_charindex);
+	xhAdd(&EXP.Functions, "utf8_char_length", (char*) exp_fn_utf8_char_length);
     if (CxGlobals.CharacterMode == CharModeSingleByte)
         {
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
@@ -3872,8 +3884,6 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
         xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
-        xhAdd(&EXP.Functions, "replace", (char*) exp_fn_replace);
-        xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_substitute);
 	}
     else
         {
@@ -3886,10 +3896,7 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
-        
 	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
-	xhAdd(&EXP.Functions, "replace", (char*) exp_fn_utf8_replace);
-	xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_utf8_substitute);
 	}
     
     return 0;
