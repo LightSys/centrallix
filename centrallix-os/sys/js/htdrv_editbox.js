@@ -246,6 +246,7 @@ function eb_update(txt)
 
 function eb_paste(e)
     {
+	return;
     }
 
 
@@ -273,13 +274,14 @@ function eb_receiving_input(e)
 	changed = true;
 	rend = curlen;
 	}
-    if (k >= 32 && k < 127 || k > 127)
+    if ((e >= 32 && e < 127) || e > 127)
 	{
 	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + String.fromCharCode(k) + vistxt.substr(l.cursorCol,vistxt.length), l._form_type);
         if (newtxt != txt)
 	    {
 	    cursoradj = 1;
 	    }
+	}
     if (rstart > curlen)
 	{
 	changed = true;
@@ -321,6 +323,7 @@ function eb_receiving_input(e)
 
     return;
     }
+    
 
 
 function eb_keydown(e)

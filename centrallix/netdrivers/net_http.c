@@ -821,7 +821,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"Date: %STR\r\n"
 		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict%]%[\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
-		"%[Content-Type: %STR\r\n%]"
+		"%[Content-Type: text/html; charset=%STR\r\n%]"
 		"%[Pragma: %STR\r\n%]"
 		"%[Transfer-Encoding: chunked\r\n%]"
 		"Referrer-Policy: same-origin\r\n"
@@ -2044,7 +2044,8 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    }
                     
                 /** Print encoding type and content type **/
-		fdPrintf(conn->ConnFD,"Content-Type: text/html; charset=%s\r\nPragma: no-cache\r\n\r\n", chrGetEquivalentName("http"));
+		//This is causing Kardia to not load
+		//fdPrintf(conn->ConnFD,"Content-Type: text/html; charset=%s\r\nPragma: no-cache\r\n\r\n", chrGetEquivalentName("http"));
 
 		/** Send the response **/
 		conn->NoCache = 1;

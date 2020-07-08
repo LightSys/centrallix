@@ -3476,7 +3476,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     size_t bufferLength = 64;
-    size_t initialPosition;
+    size_t initialPosition, substringLength;
     char * output;
     
     if (!i0 || !i1 || i0->Flags & EXPR_F_NULL || i1->Flags & EXPR_F_NULL)
@@ -3495,17 +3495,23 @@ int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i
         mssError(1, "EXP", "Invalid datatypes in substring() - takes (string,integer,[integer])");
         return -1;
         }
-    
+    	
     /** Free any previous string in preparation for these results **/
     if (tree->Alloc && tree->String)
         {
-        nmSysFree(tree->String);
+	nmSysFree(tree->String);
         tree->Alloc = 0;
         }
-    tree->DataType = DATA_T_STRING;
+	
+    	tree->DataType = DATA_T_STRING;
     
-    initialPosition = i1->Integer < 1 ? 0 : i1->Integer - 1;
-    output = chrSubstring(i0->String, initialPosition, i2->Integer < 0 ? 0 : i2->Integer + initialPosition, tree->Types.StringBuf, &bufferLength);
+    	initialPosition = i1->Integer < 1 ? 0 : i1->Integer - 1;
+    	if (i2)
+		substringLength = i2->Integer < 0 ? 0 : i2->Integer + initialPosition;
+	else
+		substringLength = strlen(i0->String);
+		
+	output = chrSubstring(i0->String, initialPosition, substringLength, tree->Types.StringBuf, &bufferLength);
         
     if(output)
         {

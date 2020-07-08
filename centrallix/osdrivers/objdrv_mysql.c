@@ -315,7 +315,8 @@ mysd_internal_GetConn(pMysdNode node)
                 if(ret != 0){
                 	//  failure
                          perror("character set not set to utf8");
-                         err = mysql_errno();
+                        //needs an argument 
+			//err = mysql_errno();
                 }
 
 
