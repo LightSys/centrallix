@@ -246,7 +246,6 @@ function eb_update(txt)
 
 function eb_paste(e)
     {
-	return;
     }
 
 
