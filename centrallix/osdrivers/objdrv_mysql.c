@@ -308,6 +308,19 @@ mysd_internal_GetConn(pMysdNode node)
                 nmFree(conn, sizeof(MysdConn));
                 return NULL;
                 }
+
+		int ret, err;
+                char csname [] = "utf8";
+                ret = mysql_set_character_set(&conn, csname);
+                if(ret != 0){
+                	//  failure
+                         perror("character set not set to utf8");
+                         err = mysql_errno();
+                }
+
+
+
+
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)
                 {
 		if (node->Flags & MYSD_NODE_F_SETCXAUTH)
@@ -366,7 +379,28 @@ mysd_internal_GetConn(pMysdNode node)
 
     return conn;
     }
+/*
+ 
 
+size_t strlen_mb(char * st){
+
+	size_t res = 0;
+    const char * start = s;
+    const char * end = start + strlen(s);
+    mblen(NULL,0);
+    while(ptr < end){
+        int next = mblen(start, end-start);
+        if(next == -1){
+            perror("conversion error");
+        }
+        ptr += next;
+        result++;
+    }
+    return result;
+
+
+
+*/
 
 /*** mysd_internal_ReleaseConn() - release a connection back to the connection
  *** pool.  Also sets the pointer to NULL.
@@ -2097,7 +2131,10 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		     ** the first subexpression we find out that it is a string.  After all,
 		     ** this needs to work, but it doesn't need to look pretty.
 		     **/
-		    i = strlen(where_clause->String);
+
+		    // need to use a multibyte strlen
+ 		    i = strlen(where_clause->String);
+                    // i = mblen(where_clause->String, strlen(where_clause->String));
 		    xsConcatenate(where_clause, "       (", -1);
 		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
 		    if (subtree->DataType == DATA_T_STRING)
