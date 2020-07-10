@@ -170,6 +170,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(bdr,ptr,sizeof(bdr));
 	    }
 
+	if (treeFlexW == 0)
+	{
+		treeFlexW = 1;
+	}
+	
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
