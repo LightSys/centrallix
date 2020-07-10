@@ -58,8 +58,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char main_bg[128];
     char bdr[64];
-    int x=-1,y=-1,h;
-	//int w;
+    int x=-1,y=-1;
+    int preH, treePreH, flexH, treeFlexH;
     int preW, treePreW, flexW, treeFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
@@ -79,7 +79,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTPN.idcnt++);
 
-    	/** Get x,y,preW,h of this object **/
+    	/** Get x,y,preW,flexW,preH,flexW,flexH of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
@@ -93,6 +93,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
+	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
 	
 	//Now we've got to figure a way to get the total width and fl_width of the tree...
 	//How about this: we don't want to lose our place in the tree, so let's see if there's a way to duplicate it
@@ -102,7 +103,9 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	pWgtrNode theWholeShebang = wgtrGetRoot(tree);
 	
-
+	if (wgtrGetPropertyValue(theWholeShebang,"height",DATA_T_INTEGER,POD(&treePreH)) != 0) treePreH=0;
+	if (wgtrGetPropertyValue(theWholeShebang,"fl_height",DATA_T_INTEGER,POD(&treeFlexH)) != 0) treeFlexH=1;
+	
 	if (wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&treePreW)) != 0) treePreW=0;
 	if (wgtrGetPropertyValue(theWholeShebang,"fl_width",DATA_T_INTEGER,POD(&treeFlexW)) != 0) treeFlexW=1;
 	
@@ -178,17 +181,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW,preH,treePreH,flexH,treeFlexH,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,treePreW,flexW,treeFlexW,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,treePreW,flexW,treeFlexW,preH-2*box_offset,treePreH,flexH,treeFlexH,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,treePreW,flexW,treeFlexW,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,treePreW,flexW,treeFlexW,preH-2*box_offset,treePreH,flexH,treeFlexH,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
@@ -216,7 +219,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, preW-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, preW-2, preH-2);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, tree, z+2);
