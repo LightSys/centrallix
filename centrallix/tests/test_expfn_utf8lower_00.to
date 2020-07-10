@@ -1,4 +1,4 @@
-##NAME UTF-8 lower() function
+##NAME UTF-8 compatible lower() function
 
 query select lower(:f_string) from /tests/Datatypes.csv/rows
 query select lower(:Color) from /tests/TestLevel1.csv/rows 

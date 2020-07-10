@@ -1,13 +1,20 @@
-##NAME right() function
+##NAME UTF-8 compatible right() function
 
 query select 'right("abcde", 3)' = right("abcde", 3)
-
 query select 'right("abcde", 8)' = right("abcde", 8)
-
 query select 'right("abcde", 0)' = right("abcde", 0)
-
 query select 'right("abcde\"", 6)' = right("abcde\"", 6)
-
 query select 'right("", 1)' = right("", 1)
 
 query select 'right(null, null)' = right(null, null)
+query select 'right("abc", null)' = right("abc", null)
+query select 'right(null, 7)' = right(null, 7)
+
+query select 'right("баривчилж байна", -2)' = right("баривчилж байна", -2)
+query select 'right("баривчилж байна", 11)' = right("баривчилж байна", 11)
+query select 'right("日本人", 4)' = right("日本人", 4)
+query select 'right("日本人", 2)' = right("日本人", 2)
+query select 'right("Glück	", 9)' = right("Glück     ", 9) 
+query select 'right("ρά", 2)' = right("ρά", 2)
+query select 'right("Swạsdī", 4' = right("Swạsdī", 4)
+query select 'right("ROMÂNĂ                    ", 21)' = right("ROMÂNĂ                    ", 21) 

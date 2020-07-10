@@ -1,4 +1,4 @@
-##NAME substring function
+##NAME UTF-8 compatible substring() function
 
 query select substring("abcde", 3, 2)
 query select substring("abcde", 4)

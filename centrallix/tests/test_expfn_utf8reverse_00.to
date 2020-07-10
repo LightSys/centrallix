@@ -1,6 +1,6 @@
-##NAME utf8_reverse() function
+##NAME UTF-8 compatible reverse() function
 
-query select utf8_reverse(:f_string) from /tests/Datatypes.csv/rows 
-query select utf8_reverse(:Color) from /tests/TestLevel1.csv/rows
-query select utf8_reverse(:String) from /tests/Foreign.csv/rows
-query select 'utf8_reverse(null)' = utf8_reverse(null)
+query select reverse(:f_string) from /tests/Datatypes.csv/rows 
+query select reverse(:Color) from /tests/TestLevel1.csv/rows
+query select reverse(:String) from /tests/Foreign.csv/rows
+query select 'reverse(null)' = reverse(null)

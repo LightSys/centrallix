@@ -1024,8 +1024,6 @@ int exp_fn_right(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-	printf("Substring\n");
-	fflush(stdout);
     int i,n;
     char* ptr;
 
@@ -1045,21 +1043,16 @@ int exp_fn_substring(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	mssError(1,"EXP","Invalid datatypes in substring() - takes (string,integer,[integer])");
 	return -1;
 	}
-	printf("Passed\n");
-	printf("String: %s\n", i0->String);
-	fflush(stdout);
+
     n = strlen(i0->String);
     i = i1->Integer-1;
     if (i<0) i = 0;
     if (i > n) i = n;
-    ptr = i0->String + i;
-	printf("Indexed string: %s\n", ptr);
-	fflush(stdout);
+    ptr = i0->String + i;	
     i = i2?(i2->Integer):(strlen(ptr));
     if (i < 0) i = 0;
     if (i > strlen(ptr)) i = strlen(ptr);
-	printf("Num chars: %d", i);
-	fflush(stdout);
+
     /** Ok, got position and length.  Now make new string in tree-> **/
     if (tree->Alloc && tree->String)
         {
@@ -3239,16 +3232,16 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 
 int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 	{
-	printf("EXP\nRecieved String: %s\n", i0->String);
+	//printf("EXP\nRecieved String: %s\n", i0->String);
 	char* str = chrNoOverlong(i0->String);
-	printf("A");
-	fflush(stdout);
-	printf("Final str: %s\n", str);
-	printf("B");
-	fflush(stdout);
+	//printf("A");
+	//fflush(stdout);
+	//printf("Final str: %s\n", str);
+	//printf("B");
+	//fflush(stdout);
 	tree->String = str;
-	printf("C");
-        fflush(stdout);
+	//printf("C");
+        //fflush(stdout);
 	return 0;
 	}
 
@@ -3734,81 +3727,6 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
     	return 0;
 	}
 
-/*int exp_fn_utf8_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-    {
-	printf("Starting\n");
-    char *haystack, *needle, *replace;
-    long long newsize, diff;
-    char* pos;
-    char *dstptr, *oldptr;
-    size_t len_replace, len_needle, len_haystack, num_shifts;
-
-    if ((i0 && (i0->Flags & EXPR_F_NULL)) || (i1 && (i1->Flags & EXPR_F_NULL)))
-       	{ 
-	tree->Flags |= EXPR_F_NULL;
-	tree->DataType = DATA_T_STRING;
-        return 0;
-        }
-    if (!i0 || i0->DataType != DATA_T_STRING || !i1 || i1->DataType != DATA_T_STRING || !i2 || (!(i2->Flags & EXPR_F_NULL) && i2->DataType != DATA_T_STRING))
-        {                                                                                                                                                                                                                  mssError(1,"EXP","replace() expects three string parameters (str,search,replace)");
-        return -1;
-        }
-    if (i2->Flags & EXPR_F_NULL)
-        replace = "";
-    else
-        replace = i2->String;
-
-    if (tree->Alloc && tree->String)
-        nmSysFree(tree->String);
-    tree->Alloc = 0;
-    	if (i1->String[0] == '\0')   
-		{ 
-		tree->String = i0->String;
-        	return 0;
-        	}
-	printf("Passed init stuff\n");
-	fflush(stdout);
-	haystack = i0->String;
-	needle = i1->String;
-	printf("strcpy\n");
-	len_haystack = strlen(haystack);
-	len_needle = strlen(needle);
-	len_replace = strlen(replace);
-	printf("lens\n");
-	fflush(stdout);
-	dstptr = nmSysMalloc((len_haystack + 1) * sizeof(char));
-	strcpy(dstptr, haystack);
-	printf("malloc\n");
-	fflush(stdout);
-	pos = strstr(haystack, needle);
-	while(pos != NULL)
-		{
-		printf("Start while\n");
-		fflush(stdout);
-		oldptr = dstptr;
-		len_haystack = strlen(dstptr);
-		diff = (long long) (len_replace - len_needle);
-		dstptr = nmSysMalloc((len_haystack + diff + 1) * sizeof(char));
-		
-		num_shifts = pos - oldptr;
-		memcpy(dstptr, oldptr, num_shifts);
-		memcpy(dstptr + num_shifts, replace, len_replace);
-		memcpy(dstptr + num_shifts + len_replace, pos + len_needle, len_haystack + 1 - num_shifts - len_needle);
-		
-		//free(oldptr);
-		pos = strstr(haystack, needle);
-		}
-
-	strcpy(tree->String, dstptr);
-	return 0;
-	}
-
-int exp_fn_utf8_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-	{
-	return 0;
-	}
-*/
-
 int
 exp_internal_DefineFunctions()
     {
@@ -3874,10 +3792,6 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
     
     /** UTF-8/ASCII dependent **/
-	xhAdd(&EXP.Functions, "utf8_reverse", (char*) exp_fn_utf8_reverse);
-	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
-	xhAdd(&EXP.Functions, "utf8_charindex", (char*) exp_fn_utf8_charindex);
-	xhAdd(&EXP.Functions, "utf8_char_length", (char*) exp_fn_utf8_char_length);
     if (CxGlobals.CharacterMode == CharModeSingleByte)
         {
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
@@ -3903,6 +3817,7 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
 	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
+	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
 	}
     
     return 0;

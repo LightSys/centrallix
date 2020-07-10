@@ -35,4 +35,4 @@ Attribute [column_000]:   string   "молаС"
 Attribute [column_000]:   string   "άρ" 
 Attribute [column_000]:   string   "χ" 
 Attribute [column_000]:   string   "анйаб жличвираб днэт дэт" 
-Attribute [utf8_reverse(null)]:   string  NULL
+Attribute [reverse(null)]:   string  NULL

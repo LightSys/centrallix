@@ -1,4 +1,4 @@
-##NAME UTF-8 substitute function()
+##NAME UTF-8 compatible substitute() function
 
 # basic example
 query select substitute("Color: [:row:Color] | Group: [:row:ColorGroup]", "row=r") from /tests/TestLevel1.csv/rows/ r

@@ -1,16 +1,16 @@
-Attribute [utf8_char_length("abc")]:  integer  3
-Attribute [utf8_char_length("a")]:  integer  1
-Attribute [utf8_char_length("")]:  integer  0
-Attribute [utf8_char_length(null)]:  integer  NULL
-Attribute [utf8_char_length("abcde"*999999]:  integer  4999995
-Attribute [utf8_char_length("كتاب")]:  integer  4
-Attribute [utf8_char_length(:String) from ]:  integer  6
-Attribute [utf8_char_length(:String) from ]:  integer  5
-Attribute [utf8_char_length(:String) from ]:  integer  5
-Attribute [utf8_char_length(:String) from ]:  integer  4
-Attribute [utf8_char_length(:String) from ]:  integer  8
-Attribute [utf8_char_length(:String) from ]:  integer  6
-Attribute [utf8_char_length(:String) from ]:  integer  5
-Attribute [utf8_char_length(:String) from ]:  integer  2
-Attribute [utf8_char_length(:String) from ]:  integer  1
-Attribute [utf8_char_length(:String) from ]:  integer  24
+Attribute [char_length("abc")]:  integer  3
+Attribute [char_length("a")]:  integer  1
+Attribute [char_length("")]:  integer  0
+Attribute [char_length(null)]:  integer  NULL
+Attribute [char_length("abcde"*999999)]:  integer  4999995
+Attribute [char_length("كتاب")]:  integer  4
+Attribute [char_length(:String) from /test]:  integer  6
+Attribute [char_length(:String) from /test]:  integer  5
+Attribute [char_length(:String) from /test]:  integer  5
+Attribute [char_length(:String) from /test]:  integer  4
+Attribute [char_length(:String) from /test]:  integer  8
+Attribute [char_length(:String) from /test]:  integer  6
+Attribute [char_length(:String) from /test]:  integer  5
+Attribute [char_length(:String) from /test]:  integer  2
+Attribute [char_length(:String) from /test]:  integer  1
+Attribute [char_length(:String) from /test]:  integer  24
