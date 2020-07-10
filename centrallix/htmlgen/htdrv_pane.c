@@ -175,12 +175,20 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	if (treeFlexW == 0)
 	{
-		treeFlexW = 1;
+		treeFlexW = 1; //Prevent division by zero
+	}
+	else if (treeFlexW < 0)
+	{
+		treeFlexW = -1(treeFlexW); //Prevent wonky widths
 	}
 	
 	if (treeFlexH == 0)
 	{
-		treeFlexH = 1;
+		treeFlexH = 1; //Prevent division by zero
+	}
+	else if (treeFlexH < 0)
+	{
+		treeFlexH = -1(treeFlexH); //Prevent wonky widths
 	}
 	
 	/** Ok, write the style header items. **/
