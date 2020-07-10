@@ -87,7 +87,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPN","Pane widget must have a 'width' property");
 	    return -1;
 	    }
-	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&preH)) != 0)
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
