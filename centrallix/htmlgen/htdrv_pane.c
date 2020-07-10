@@ -59,8 +59,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1,h;
-	//int w;
-    int preW, treePreW, flexW, treeFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
+    int w, minW, treeMinW, flexW, treeFlexW; /* Some variables to facilitate dynamic resizing */
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
@@ -79,10 +78,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTPN.idcnt++);
 
-    	/** Get x,y,preW,h of this object **/
+    	/** Get x,y,minW,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
+	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0) minW=0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'width' property");
 	    return -1;
@@ -103,7 +103,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	pWgtrNode theWholeShebang = wgtrGetRoot(tree);
 	
 
-	if (wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&treePreW)) != 0) treePreW=0;
+	if (wgtrGetPropertyValue(theWholeShebang,"min_width",DATA_T_INTEGER,POD(&treeMinW)) != 0) treeMinW=0;
 	if (wgtrGetPropertyValue(theWholeShebang,"fl_width",DATA_T_INTEGER,POD(&treeFlexW)) != 0) treeFlexW=1;
 	
 	
@@ -173,17 +173,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,minW,treeMinW,flexW,treeFlexW,h,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,treePreW,flexW,treeFlexW,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,minW-2*box_offset,treeMinW,flexW,treeFlexW,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,treePreW,flexW,treeFlexW,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,minW-2*box_offset,treeMinW,flexW,treeFlexW,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
@@ -211,7 +211,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, preW-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, w-2, h-2);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, tree, z+2);
