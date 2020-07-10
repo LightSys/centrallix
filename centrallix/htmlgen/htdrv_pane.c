@@ -82,9 +82,16 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get x,y,preW,flexW,preH,flexW,flexH of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&preW)) != 0) preW=0;
-	if (wgtrGetPropertyValue(tree,"min_height",DATA_T_INTEGER,POD(&preH)) != 0) preH=0;
-
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
+	    {
+	    mssError(1,"HTPN","Pane widget must have a 'width' property");
+	    return -1;
+	    }
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&preH)) != 0)
+	    {
+	    mssError(1,"HTPN","Pane widget must have a 'height' property");
+	    return -1;
+	    }
 	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
 	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
 	
@@ -96,10 +103,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	pWgtrNode theWholeShebang = wgtrGetRoot(tree);
 	
-	if (wgtrGetPropertyValue(theWholeShebang,"min_height",DATA_T_INTEGER,POD(&treePreH)) != 0) treePreH=0;
+	if (wgtrGetPropertyValue(theWholeShebang,"height",DATA_T_INTEGER,POD(&treePreH)) != 0) treePreH=0;
 	if (wgtrGetPropertyValue(theWholeShebang,"fl_height",DATA_T_INTEGER,POD(&treeFlexH)) != 0) treeFlexH=1;
 	
-	if (wgtrGetPropertyValue(theWholeShebang,"min_width",DATA_T_INTEGER,POD(&treePreW)) != 0) treePreW=0;
+	if (wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&treePreW)) != 0) treePreW=0;
 	if (wgtrGetPropertyValue(theWholeShebang,"fl_width",DATA_T_INTEGER,POD(&treeFlexW)) != 0) treeFlexW=1;
 	
 	
