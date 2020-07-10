@@ -179,7 +179,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 	else if (treeFlexW < 0)
 	{
-		treeFlexW = -1(treeFlexW); //Prevent wonky widths
+		treeFlexW = -1 * treeFlexW; //Prevent wonky widths
 	}
 	
 	if (treeFlexH == 0)
@@ -188,7 +188,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 	else if (treeFlexH < 0)
 	{
-		treeFlexH = -1(treeFlexH); //Prevent wonky widths
+		treeFlexH = -1 * treeFlexH; //Prevent wonky widths
 	}
 	
 	/** Ok, write the style header items. **/
