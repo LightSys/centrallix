@@ -92,7 +92,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
 	    }
-	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=0;
+	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
 	
 	//Now we've got to figure a way to get the total width and fl_width of the tree...
 	//How about this: we don't want to lose our place in the tree, so let's see if there's a way to duplicate it
@@ -104,7 +104,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 
 	if (wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&treePreW)) != 0) treePreW=0;
-	if (wgtrGetPropertyValue(theWholeShebang,"fl_width",DATA_T_INTEGER,POD(&treeFlexW)) != 0) treeFlexW=0;
+	if (wgtrGetPropertyValue(theWholeShebang,"fl_width",DATA_T_INTEGER,POD(&treeFlexW)) != 0) treeFlexW=1;
 	
 	
 	
