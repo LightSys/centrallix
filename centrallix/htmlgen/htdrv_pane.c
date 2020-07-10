@@ -180,7 +180,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    {																	//												     This  |--------------------| is incorrect...
 																		//...yet fixing it causes compilation errors which the system traces, inexplicably, to line 45...	   |			|
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%INT / %INT)); HEIGHT:%POSpx; Z-INDEX:%POS;}\n",id,x,y,preW,treePreW,flexW,treeFlexW-2*box_offset,h-2*box_offset,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);-
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {																														// |--------------------|
