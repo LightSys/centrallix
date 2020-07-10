@@ -2133,10 +2133,8 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		     ** this needs to work, but it doesn't need to look pretty.
 		     **/
 
-		    // need to use a multibyte strlen
- 		    i = strlen(where_clause->String);
-                    // i = mblen(where_clause->String, strlen(where_clause->String));
-		    xsConcatenate(where_clause, "       (", -1);
+		    i = strlen(where_clause->String);
+                    xsConcatenate(where_clause, "       (", -1);
 		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
 		    if (subtree->DataType == DATA_T_STRING)
 			{

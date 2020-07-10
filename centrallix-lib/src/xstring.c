@@ -671,7 +671,9 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
-
+	
+	int i;
+	
 	/** Figure some default lengths **/
 	if (offset > this->Length || offset < 0) 
 	    {
@@ -680,9 +682,18 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 	    }
 	if (len == -1) len = strlen(this->String + offset);
 	if (replen == -1) replen = strlen(rep);
-
+	
 	/** Make sure we have enough room **/
 	if (len < replen) xsCheckAlloc(this, replen - len);
+	
+	/** Make sure we do not end up with a partial UTF-8 character **/
+	for (i = 0; i < 4; i++)
+		{
+		if((this->String[offset + replen + i] & 0xC0) != 0x80)
+			break;
+		}
+	len += i;
+	
 
 	/** Move the tail of the string, and plop the replacement in there **/
 	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));
