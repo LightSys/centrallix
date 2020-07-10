@@ -26,7 +26,7 @@
 /*		realloc'ing string data structure.			*/
 /************************************************************************/
 
-
+#include <stdlib.h>
 #include <stdarg.h>
 
 #define XS_BLK_SIZ	256
@@ -72,6 +72,9 @@ int xsQPrintf_va(pXString this, char* fmt, va_list va);
 int xsConcatQPrintf(pXString this, char* fmt, ...);
 pXString xsNew();
 void xsFree(pXString this);
+
+/** Needed utiliy function **/
+size_t chrCharLength(char* string);
 
 #define XS_U_SEEK	2
 

@@ -982,3 +982,14 @@ xsConcatQPrintf(pXString this, char* fmt, ...)
     return rval;
     }
 
+/*** chrCharLength - get number of characters in string
+ *** returns -1 if string is NULL or mbstowcs fails
+ ***/
+size_t chrCharLength(char* string)
+    	{
+    	size_t length; 
+        if(!string)
+        	return -1;
+        length = mbstowcs(NULL, string, 0);
+        return length;
+    	}
