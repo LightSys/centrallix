@@ -96,12 +96,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
 	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
 	
-	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)
+	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)	 //If there's no min-width value to load in...
 	{
-		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0)
+		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0) //And no r-width value to load in...
 		{
-			int dummy = wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&minW));
-			minW = minW / 2;
+			minW = preW / 2;						 //Try half the baseline width
 		}
 	}
 	
@@ -109,8 +108,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	{
 		if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&minH)) != 0)
 		{
-			int dummy = wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&minH));
-			minH = minH / 2;
+			minH = preH / 2;
 		}
 	}
 	
