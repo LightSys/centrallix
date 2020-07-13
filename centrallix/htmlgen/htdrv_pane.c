@@ -59,8 +59,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1;
-    int minW, minH, rW, rH; //Minimum width and height; requested width and height
-    int preH, treePreH, flexH, treeFlexH; //Baseline width and height; width and height flexibilities
+    int minW, minH; //Minimum width and height
+    int preH, treePreH, flexH, treeFlexH; //Widget's baseline width, tree's baseline width, widget's lateral flexibility, tree's lateral flexibility
     int preW, treePreW, flexW, treeFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
