@@ -319,7 +319,7 @@ mysd_internal_GetConn(pMysdNode node)
 			//err = mysql_errno();
                 }
 
-
+		mysql_query(conn, "ALTER DATABASE Kardia_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
 
 
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)
@@ -335,9 +335,13 @@ mysd_internal_GetConn(pMysdNode node)
 			return NULL;
 			}
 
+
 		    /** Successfully connected using user default password.
+
+
 		     ** Now try to change the password.
 		     **/
+
 		    result = mysd_internal_RunQuery_conn(conn, node, "SET PASSWORD = PASSWORD('?')", password);
 
 		    if (result == MYSD_RUNQUERY_ERROR)
@@ -380,28 +384,8 @@ mysd_internal_GetConn(pMysdNode node)
 
     return conn;
     }
-/*
  
 
-size_t strlen_mb(char * st){
-
-	size_t res = 0;
-    const char * start = s;
-    const char * end = start + strlen(s);
-    mblen(NULL,0);
-    while(ptr < end){
-        int next = mblen(start, end-start);
-        if(next == -1){
-            perror("conversion error");
-        }
-        ptr += next;
-        result++;
-    }
-    return result;
-
-
-
-*/
 
 /*** mysd_internal_ReleaseConn() - release a connection back to the connection
  *** pool.  Also sets the pointer to NULL.
