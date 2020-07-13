@@ -207,7 +207,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
 	if (is_link && *cfgcolor)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
-	htrAddStylesheetItem_va(s,"\t#lbl%POS p { text-align:%STR&CSSVAL; %[position:relative; top:50%%; transform:translateY(-50%%); %]padding:0px; margin:0px; border-spacing:0px; width:%POSpx; }\n", id, align, !strcmp(valign, "middle"), w);
+	htrAddStylesheetItem_va(s,"\t#lbl%POS p { text-align:%STR&CSSVAL; %[position:relative; top:50%%; transform:translateY(-50%%); %]padding:0px; margin:0px; border-spacing:0px; width:100%%; }\n", id, align, !strcmp(valign, "middle"), w);
 
 	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
 	stylestr[0] = '\0';
