@@ -59,8 +59,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1;
-    int minW, minH;
-    int preH, treePreH, flexH, treeFlexH;
+    int minW, minH, rW, rH; //Minimum width and height; requested width and height
+    int preH, treePreH, flexH, treeFlexH; //Baseline width and height; width and height flexibilities
     int preW, treePreW, flexW, treeFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
@@ -96,8 +96,23 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
 	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
 	
-	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0) minW=0; //Setting the default min-width to zero may cause issues;
-	if (wgtrGetPropertyValue(tree,"min_height",DATA_T_INTEGER,POD(&minH)) != 0) minH=0;//If so, try a range of moderate values and see what works best
+	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)
+	{
+		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0)
+		{
+			int dummy = wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&minW);
+			minW = minW / 2;
+		}
+	}
+	
+	if (wgtrGetPropertyValue(tree,"min_height",DATA_T_INTEGER,POD(&minH)) != 0)
+	{
+		if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&minH)) != 0)
+		{
+			int dummy = wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&minH);
+			minH = minH / 2;
+		}
+	}
 	
 	//Now we've got to figure a way to get the total width and fl_width of the tree...
 	//How about this: we don't want to lose our place in the tree, so let's see if there's a way to duplicate it
