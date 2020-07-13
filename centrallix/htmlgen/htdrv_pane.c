@@ -100,7 +100,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	{
 		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0)
 		{
-			int dummy = wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&minW);
+			int dummy = wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&minW));
 			minW = minW / 2;
 		}
 	}
@@ -109,7 +109,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	{
 		if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&minH)) != 0)
 		{
-			int dummy = wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&minH);
+			int dummy = wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&minH));
 			minH = minH / 2;
 		}
 	}
