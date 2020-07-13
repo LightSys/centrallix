@@ -319,7 +319,7 @@ mysd_internal_GetConn(pMysdNode node)
 			//err = mysql_errno();
                 }
 
-		mysql_query(conn, "ALTER DATABASE Kardia_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+		//mysql_query(conn, "ALTER DATABASE Kardia_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
 
 
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)

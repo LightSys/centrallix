@@ -182,7 +182,7 @@ smart_field "widget/component-decl"
 	tristate=no; 
 	fgcolor1=black; 
 	fgcolor2=white; 
-	text="?"; 
+	text="OH NO"; 
 	bgcolor=''; 
 	enabled=runclient(:form:is_discardable);
 

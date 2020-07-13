@@ -10,7 +10,7 @@
 long long
 test(char** tname)
     {
-    	*tname = "Test chrCharLength Function";
+    	*tname = "chrCharLength";
 	int i, iter, len;
 	setlocale(LC_ALL, "en_US.UTF-8");
 	
