@@ -212,16 +212,28 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (style == 2) /* flat */
 	    {
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW,treePreW,flexW,treeFlexW,minH,preH,treePreH,flexH,treeFlexH,z);
+		if(x > 12) 
+		{
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,treePreW,flexW,treeFlexW,minH,preH,treePreH,flexH,treeFlexH,z);
+		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW-2*box_offset,treePreW,flexW,treeFlexW,minH,preH-2*box_offset,treePreH,flexH,treeFlexH,z);
+		if(x > 12) 
+		{
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,treePreW,flexW,treeFlexW,minH,preH,treePreH,flexH,treeFlexH,z);
+		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {																													//If minW turns out to be too large, consider subtracting 2*box_offset - and of course, the same goes for minH
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW-2*box_offset,treePreW,flexW,treeFlexW,minH,preH-2*box_offset,treePreH,flexH,treeFlexH,z);
+		if(x > 12) 
+		{
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,treePreW,flexW,treeFlexW,minH,preH,treePreH,flexH,treeFlexH,z);
+		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
