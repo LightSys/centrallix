@@ -197,10 +197,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:Calc(100%% - %POSpx); Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
 		id,x,y,
 		!auto_height, h,
-		w,z, 
+		x,z, 
 		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign,
 		!allow_break, overflow_ellipsis, is_italic);
 	if (is_link)
