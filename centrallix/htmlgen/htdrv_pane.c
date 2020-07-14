@@ -201,7 +201,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW,ParentPreW,flexW,parentFlexW,minH,preH,ParentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW,parentPreW,flexW,parentFlexW,minH,preH,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
 			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,parentPreW,flexW,parentFlexW,minH,preH,parentPreH,flexH,parentFlexH,z);
