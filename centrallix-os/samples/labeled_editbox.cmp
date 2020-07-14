@@ -61,7 +61,7 @@ labeled_editbox "widget/component-decl"
 	tristate=no; 
 	fgcolor1=black; 
 	fgcolor2=white; 
-	text="OH NO"; 
+	text="?"; 
 	bgcolor=''; 
 	enabled=runclient(:form:is_discardable);
 

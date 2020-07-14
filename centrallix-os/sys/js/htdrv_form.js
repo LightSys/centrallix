@@ -1241,7 +1241,7 @@ function form_action_save_2()
     //	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ifcProbe(ifAction).Invoke(\"View\");this.cb['OperationCompleteFail'].clear();"),null,-100);
     this.cb['OperationCompleteSuccess'].add(this, new Function("this.ActionSaveSuccessCB();"), null, -100);
     this.cb['OperationCompleteFail'].add(this,
-	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Not good');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
+	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
     
     // Wait for everything to settle down in the app, then proceed with the save.  This
     // runs the bottom half of 'save' at level '2', which means that all level '1'
