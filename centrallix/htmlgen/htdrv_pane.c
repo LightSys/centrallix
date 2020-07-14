@@ -191,20 +191,31 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(bdr,ptr,sizeof(bdr));
 	    }
 
-	if (parentFlexW == 0)
+	
+	/* Some checks to prevent dodgy eventualities: */
+	
+	if (parentFlexW == 0 && parentFlexW != flexW) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
 	{
 		parentFlexW = 1; //Prevent division by zero
 	}
-	else if (parentFlexW < 0)
+	else if (parentFlexW == 0 && parentFlexW == flexW) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
+	{
+		parentFlexW = flexW = 1; //Prevent division by zero, and balance the quotient so that it evaluates to 1
+	}
+	else if (parentFlexW < 0) //We don't want negative values here; they'll make widgets expand as the window contracts and vis versa
 	{
 		parentFlexW = -1 * parentFlexW; //Prevent wonky widths
 	}
 	
-	if (parentFlexH == 0)
+	if (parentFlexH == 0 && parentFlexH != flexH)
 	{
 		parentFlexH = 1; //Prevent division by zero
 	}
-	else if (parentFlexH < 0)
+	else if (parentFlexH == 0 && parentFlexH == flexH) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
+	{
+		parentFlexH = flexH = 1; //Prevent division by zero, and balance the quotient so that it evaluates to 1
+	}
+	else if (parentFlexH < 0) //We don't want negative values here; they'll make widgets expand as the window contracts and vis versa
 	{
 		parentFlexH = -1 * parentFlexH; //Prevent wonky widths
 	}
