@@ -112,11 +112,22 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	}
 	
-	if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
-	if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
-	
-	if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
-	if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
+	if (tree->Parent)
+	{
+		if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
+		if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
+		
+		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
+		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
+	}
+	else
+	{
+		if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
+		if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
+		
+		if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
+		if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
+	}
 	
 	/** Border radius, for raised/lowered/bordered panes **/
 	if (wgtrGetPropertyValue(tree,"border_radius",DATA_T_INTEGER,POD(&border_radius)) != 0)
