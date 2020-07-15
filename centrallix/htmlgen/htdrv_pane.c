@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdbool.h> 
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -293,6 +294,7 @@ isMainContainer(pWgtrNode stranger) //Function to determine whether stranger is 
 	int strangerWidth; //Variable to store stranger's width
 	mandatoryInt = wgtrGetPropertyValue(stranger,"width",DATA_T_STRING,POD(&strangerWidth)); //Load stranger's width into strangerWidth
 	pWgtrNode strangerFirstborn = xaGetItem(&(stranger->Children), 0); //Make like Rumplestiltskin and seize the first child
+	int firstbornWidth; //Variable to store first child's width
 	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_STRING,POD(&firstbornWidth)); //Measure him side to side
 	
 	if (strangerWidth >= (shebangWidth - 29)) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
@@ -302,7 +304,7 @@ isMainContainer(pWgtrNode stranger) //Function to determine whether stranger is 
 			return 1; //We have ourselves a winner!
 		    }
 	    }
-	else return 0; //Nope.
+	return 0; //Nope.
    }
 
 /*** htpnInitialize - register with the ht_render module.
