@@ -137,22 +137,20 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 */
 
-	if (isMainContainer(tree) == 1)
-	{
-		if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
-		if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
-		
-		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
-		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
+	if (isMainContainer(tree) == 1) //Top-level widgets get special treatment
+	{	
+		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=preW;
+		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=flexW;
 	}
 	else
-	{
-		if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
-		if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
-		
+	{		
 		if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
 		if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
 	}
+	
+	//(I'm not at all sure of the two lines below)
+	if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
+	if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
 	
 	/** Border radius, for raised/lowered/bordered panes **/
 	if (wgtrGetPropertyValue(tree,"border_radius",DATA_T_INTEGER,POD(&border_radius)) != 0)
