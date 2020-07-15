@@ -118,7 +118,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#sp%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(100%%); HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h, z);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(100%%); HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	    htrAddStylesheetItem_va(s,"\t#sp%POSarea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:calc(100%% - 20px); Z-INDEX:%POS; }\n",id,w,z+1);
 	    htrAddStylesheetItem_va(s,"\t#sp%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:calc(100%% - 18px); Z-INDEX:%POS; }\n",id,w,z+1);
 	    }
@@ -155,7 +155,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    //htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	    //htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
 	    //htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(100%% - 20px); HEIGHT:%POSpx; Z-INDEX:%POS;\">\n",id,visible?"inherit":"hidden",x,y,w,h,z);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(100%% - 20px); HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSdown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
