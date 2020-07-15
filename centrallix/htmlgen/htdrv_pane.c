@@ -142,7 +142,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
 		
-		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
+		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&1)) != 0) parentPreW=0;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
 	}
 	else
@@ -219,11 +219,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/* Some checks to prevent dodgy eventualities: */
 	
-	if (parentFlexW == 0 && parentFlexW != flexW) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
+	if (parentFlexW == 0 && (isMainContainer(tree)) == 0) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
 	{
 		parentFlexW = 1; //Prevent division by zero
 	}
-	else if (parentFlexW == 0 && parentFlexW == flexW) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
+	else if (parentFlexW == 0 && (isMainContainer(tree)) == 1) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
 	{
 		parentFlexW = flexW = 1; //Prevent division by zero, and balance the quotient so that it evaluates to 1
 	}
