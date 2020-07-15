@@ -142,7 +142,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
 		
-		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&1)) != 0) parentPreW=0;
+		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
 	}
 	else
