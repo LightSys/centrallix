@@ -166,7 +166,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
 	else
-	    box_offset = 0;
+	    box_offset = 10;
 
 	/** Drop shadow **/
 	shadow_offset=0;
@@ -258,7 +258,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-4*box_offset,parentPreW,flexW,parentFlexW,preH-4*box_offset,parentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,parentPreW,flexW,parentFlexW,preH-2*box_offset,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
 			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
@@ -267,7 +267,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-4*box_offset,parentPreW,flexW,parentFlexW,preH-4*box_offset,parentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*box_offset,parentPreW,flexW,parentFlexW,preH-2*box_offset,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
 			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
