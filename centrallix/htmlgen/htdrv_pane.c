@@ -2,7 +2,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdbool.h> 
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -50,7 +49,7 @@ static struct
     HTPN;
 
 
-bool
+int
 isMainContainer(pWgtrNode stranger) //Function to determine whether stranger is a main container - a widget whose width spans the page and whose immediate children are smaller than it
    {
 	pWgtrNode theWholeShebang = wgtrGetRoot(stranger); //Lay hold of the top level of stranger's tree
@@ -138,7 +137,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 */
 
-	if (isMainContainer(tree))
+	if (isMainContainer(tree) == 1)
 	{
 		if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
@@ -166,7 +165,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
 	else
-	    box_offset = 10;
+	    box_offset = 0;
 
 	/** Drop shadow **/
 	shadow_offset=0;
