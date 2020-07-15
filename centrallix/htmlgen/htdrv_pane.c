@@ -83,7 +83,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1;
-    int minW, minH; //Minimum width and height
+    //int minW, minH; //Minimum width and height
     int preH, parentPreH, flexH, parentFlexH; //Widget's baseline width, parent node's baseline width, widget's lateral flexibility, parent node's lateral flexibility
     int preW, parentPreW, flexW, parentFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
@@ -104,7 +104,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTPN.idcnt++);
 
-    	/** Get x,y,preW,flexW,preH,flexW,flexH,minW,minH of this object **/
+    	/** Get x,y,preW,flexW,preH,flexW,flexH of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
@@ -120,7 +120,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
 	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
 	
-	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)	 //If there's no min-width value to load in...
+	//Below are the retired functions that formerly initialized min_widths and min_heights. These variables appeared to be interfering with other calculations, so they've been shelved.
+/*	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)	 //If there's no min-width value to load in...
 	{
 		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0) //And no r-width value to load in...
 		{
@@ -135,7 +136,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 			minH = preH / 2;
 		}
 	}
-	
+*/
+
 	if (isMainContainer(tree))
 	{
 		if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
@@ -247,28 +249,28 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW,parentPreW,flexW,parentFlexW,minH,preH,parentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
-			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,parentPreW,flexW,parentFlexW,minH,preH,parentPreH,flexH,parentFlexH,z);
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
 		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW-2*box_offset,parentPreW,flexW,parentFlexW,minH,preH-2*box_offset,parentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-4*box_offset,parentPreW,flexW,parentFlexW,preH-4*box_offset,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
-			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,parentPreW,flexW,parentFlexW,minH,preH,parentPreH,flexH,parentFlexH,z);
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
 		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
-	    {																													//If minW turns out to be too large, consider subtracting 2*box_offset - and of course, the same goes for minH
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,minW,preW-2*box_offset,parentPreW,flexW,parentFlexW,minH,preH-2*box_offset,parentPreH,flexH,parentFlexH,z);
+	    {
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-4*box_offset,parentPreW,flexW,parentFlexW,preH-4*box_offset,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
-			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; MIN-WIDTH:%POSpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); MIN-HEIGHT:%POSpx; HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,minW,preW,parentPreW,flexW,parentFlexW,minH,preH,parentPreH,flexH,parentFlexH,z);
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:0px; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
 		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
