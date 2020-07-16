@@ -50,7 +50,7 @@ static struct
 
 
 int
-isMainContainer(pWgtrNode stranger) //Function to determine whether stranger is a main container - a widget whose width spans the page and whose immediate children are smaller than it
+isMainContainer(pWgtrNode stranger, int latitude) //Function to determine whether stranger is a main container - a widget whose width spans the page and whose immediate children are smaller than it
    {
 	pWgtrNode theWholeShebang = wgtrGetRoot(stranger); //Lay hold of the top level of stranger's tree
 	int shebangWidth; //Variable to store top-level width
@@ -61,9 +61,9 @@ isMainContainer(pWgtrNode stranger) //Function to determine whether stranger is 
 	int firstbornWidth; //Variable to store first child's width
 	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_STRING,POD(&firstbornWidth)); //Measure him side to side
 	
-	if (strangerWidth >= (shebangWidth - 29)) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
+	if (strangerWidth >= (shebangWidth - (2 * latitude))) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
 	    {
-		if (firstbornWidth <= strangerWidth - 29)//And his first child is thinner than he... (once again, allowing for margins and/or padding)
+		if (firstbornWidth <= strangerWidth - 2*latitude)//And his first child is thinner than he... (once again, allowing for margins and/or padding)
 		    {
 			return 1; //We have ourselves a winner!
 		    }
@@ -137,7 +137,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 */
 
-	if (isMainContainer(tree) == 1) //Top-level widgets get special treatment
+	if (isMainContainer(tree, x) == 1) //Top-level widgets get special treatment
 	{	
 		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=preW;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=flexW;
