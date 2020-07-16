@@ -632,7 +632,8 @@ xsFind(pXString this,char* find,int findlen, int offset)
  *** findlen is length in bytes
  *** returns -1 if not found
  ***/
-int xsFindWithCharOffset(pXString this, char* find, int findlen, int offset)
+int 
+xsFindWithCharOffset(pXString this, char* find, int findlen, int offset)
 	{
 	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
@@ -703,6 +704,84 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     CXSEC_EXIT(XS_FN_KEY);
     return -1;
     }
+/*xsFindRev(pXString this,char* find,int findlen, int offset)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+    if(findlen==-1) findlen = strlen(find);
+    offset=this->Length-offset-1;
+    for(;offset>=0;offset--)
+	{
+	if(this->String[offset]==find[findlen-1])
+	    {
+	    int i;
+	    for(i=findlen-2;i>=0;i++)
+		{
+		if(this->String[offset+i]!=find[i])
+		    break;
+		}
+	    if(i==0)
+		{
+		CXSEC_EXIT(XS_FN_KEY);
+		return offset - (findlen - 2);
+		}
+	    }
+	}
+    CXSEC_EXIT(XS_FN_KEY);
+    return -1;
+    }*/
+
+/*** xsFindRevWithCharOffset - searches an xString for a string from a char offset (from the end) and returns the char offset it was found at
+ *  *** findlen is length in bytes
+ *   *** returns -1 if not found
+ *    ***/
+int 
+xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset)
+	{
+	CXSEC_ENTRY(XS_FN_KEY);
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+	
+	int chars, byte, i, cnt;
+	if (offset < 0) offset = 0;
+	if (findlen == -1) findlen = strlen(find);
+	byte = this->Length - 1;
+	chars = (int) chrCharLength(this->String);
+	if ((chars == -1) || (offset > chars))
+		{
+		CXSEC_EXIT(XS_FN_KEY);                                                                       return -1;
+		}
+	cnt = 0;
+	while ((cnt < offset) && (offset != 0))
+		{
+		if ((this->String[byte] & 0xC0) != 0x80)
+			{
+			chars--;
+			cnt++;
+			}
+		byte--;
+		}
+	
+	for (; byte >= 0; byte--)
+		{
+		if ((this->String[byte] & 0xC0) != 0x80) 
+			chars--; 
+		if (this->String[byte]==find[0])
+            		{
+            		for(i=1;i<findlen;i++)
+                		if(this->String[byte+i]!=find[i])
+					break;
+            		if(i==findlen)
+                		{
+				CXSEC_EXIT(XS_FN_KEY);
+				return chars;
+                		}
+            		}
+        	}
+    	CXSEC_EXIT(XS_FN_KEY);
+    	return -1;
+    	}
 
 
 /*** xsSubst - substitutes a string in a given position in an xstring.  does not
