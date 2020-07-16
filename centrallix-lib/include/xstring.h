@@ -61,6 +61,7 @@ int xsRTrim(pXString this);
 int xsLTrim(pXString this);
 int xsTrim(pXString this);
 int xsFind(pXString this,char* find,int findlen, int offset);
+int xsFindWithCharOffset(pXString this, char* find, int findlen, int offset);
 int xsFindRev(pXString this,char* find,int findlen, int offset);
 int xsSubst(pXString this, int offset, int len, char* rep, int replen);
 int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen);

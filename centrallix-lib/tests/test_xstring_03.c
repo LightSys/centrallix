@@ -10,11 +10,11 @@
 long long
 test(char** tname)
     {
-    	*tname = "xsFind";
+    	*tname = "xsFindWithCharOffset";
 	int i, iter, offset;
 
 	setlocale(LC_ALL, "en_US.UTF-8");
-	iter = 100000;
+	iter = 10000;
 
 	pXString str0 = xsNew();
 	pXString str1 = xsNew();	
@@ -34,38 +34,41 @@ test(char** tname)
 
         for(i=0;i<iter;i++)
 		{
-		offset = xsFind(str0, "o", 1, -30);
+		offset = xsFindWithCharOffset(str0, "o", 1, -30);
+		//printf("%d\n", offset);
 		assert (offset == 4);
-		offset = xsFind(str0, "o", -1, 4);
+		offset = xsFindWithCharOffset(str0, "o", -1, 4);
+		//printf("%d\n", offset);
 		assert (offset == 4);
-		offset = xsFind(str0, "o", -1, 5);  
+		offset = xsFindWithCharOffset(str0, "o", -1, 5);  
 		assert (offset == 7);
-		offset = xsFind(str0, "o", 1, 8);
+		offset = xsFindWithCharOffset(str0, "o", 1, 8);
 		assert (offset == -1);
-		offset = xsFind(str0, "o", 1, 30000);
+		offset = xsFindWithCharOffset(str0, "o", 1, 30000);
 		assert (offset == -1);
-		offset = xsFind(str0, "rld!", -1, 0);
+		offset = xsFindWithCharOffset(str0, "rld!", -1, 0);
                 assert (offset == 8);
-		offset = xsFind(str0, "rld!!!!", -1, 0);
+		offset = xsFindWithCharOffset(str0, "rld!!!!", -1, 0);
 		assert (offset == -1);
-		offset = xsFind(str1, "σειρά", -1,0);
+		offset = xsFindWithCharOffset(str1, "σειρά", -1,0);
 		assert (offset == 0);
-		offset = xsFind(str2, "д", -1, 19);
-		assert (offset == 26);
-		offset = xsFind(str2, "де знову прий", -1, -1);
-		assert (offset == 26);
-		offset = xsFind(str3, "āʻo", -1, 0);
+		offset = xsFindWithCharOffset(str2, "д", -1, 10);
+		//printf("%d\n", offset);
+		assert (offset == 14);
+		offset = xsFindWithCharOffset(str2, "де знову прий", -1, -1);
+		assert (offset == 14);
+		offset = xsFindWithCharOffset(str3, "āʻo", -1, 0);
+		assert (offset == 3);
+		offset = xsFindWithCharOffset(str4, "ee", -1, 0);
+		assert (offset == -1);
+		offset = xsFindWithCharOffset(str4, "görkem", -1, 6);
+		assert (offset == -1);
+		offset = xsFindWithCharOffset(str5, "是", -1, 2);
+		assert (offset == 2);
+		offset = xsFindWithCharOffset(str6, "し", -1, 0);
 		assert (offset == 4);
-		offset = xsFind(str4, "ee", -1, 0);
-		assert (offset == -1);
-		offset = xsFind(str4, "görkem", -1, 8);
-		assert (offset == -1);
-		offset = xsFind(str5, "是", -1, 6);
+		offset = xsFindWithCharOffset(str6, "した", -1, 0);
 		assert (offset == 6);
-		offset = xsFind(str6, "し", -1, 0);
-		assert (offset == 12);
-		offset = xsFind(str6, "した", -1, 0);
-		assert (offset == 18);
 		}
 
     return iter;

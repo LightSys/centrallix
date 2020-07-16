@@ -596,7 +596,7 @@ xsTrim(pXString this)
     return 0;
     }
 
-/*** xsFind - searches an xString for a string from an offset and returns the offset it was found at
+/*** xsFind - searches an xString for a string from a byte offset and returns the byte offset it was found at
  ***   returns -1 if not found
  ***/
 int
@@ -605,6 +605,7 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    if(offset<0) offset = 0;
     if(findlen==-1) findlen = strlen(find);
     for(;offset<this->Length;offset++)
 	{
@@ -626,6 +627,50 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_EXIT(XS_FN_KEY);
     return -1;
     }
+
+/*** xsFindWithCharOffset - searches an xString for a string from a char offset and returns the char offset it was found at
+ *** findlen is length in bytes
+ *** returns -1 if not found
+ ***/
+int xsFindWithCharOffset(pXString this, char* find, int findlen, int offset)
+	{
+	CXSEC_ENTRY(XS_FN_KEY);
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+	int chars, byte, i;
+	if (offset < 0) offset = 0;
+	if (findlen == -1) findlen = strlen(find);
+	byte = -1;
+	chars = -1;
+	while (chars < offset)
+		{
+		byte++;
+		if ((this->String[byte] & 0xC0) != 0x80)
+			chars++;
+		}
+	if (byte == -1) byte = 0;
+	if (chars == offset) chars--;
+	for (; byte < this->Length; byte ++)
+		{
+		if ((this->String[byte] & 0xC0) != 0x80) 
+			chars++; 
+		if (this->String[byte]==find[0])
+            		{
+            		for(i=1;i<findlen;i++)
+                		if(this->String[byte+i]!=find[i])
+					break;
+            		if(i==findlen)
+                		{
+				CXSEC_EXIT(XS_FN_KEY);
+				return chars;
+                		}
+            		}
+        	}
+    	CXSEC_EXIT(XS_FN_KEY);
+    	return -1;
+    	}
+
+
 
 /*** xsFindReverse - searches an xString for a string from an offset (from the end) and returns the offset it was found at
  ***   returns -1 if not found
