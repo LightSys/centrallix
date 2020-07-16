@@ -139,13 +139,13 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	if (isMainContainer(tree) == 1) //Top-level widgets get special treatment
 	{	
-		parentPreW=preW;
-		parentFlexW=flexW;
+		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=preW;
+		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=flexW;
 	}
 	else
 	{		
-		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
-		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
+		if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
+		if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
 	}
 	
 	//(I'm not at all sure of the two lines below)
