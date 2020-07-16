@@ -48,18 +48,18 @@ static struct
     }
     HTPN;
 
-
+/* Function to determine whether stranger is a main container - a widget whose width spans the page and whose immediate children are smaller than it */
 int
-isMainContainer(pWgtrNode stranger, int latitude) //Function to determine whether stranger is a main container - a widget whose width spans the page and whose immediate children are smaller than it
+isMainContainer(pWgtrNode stranger, int latitude)
    {
 	pWgtrNode theWholeShebang = wgtrGetRoot(stranger); //Lay hold of the top level of stranger's tree
 	int shebangWidth; //Variable to store top-level width
-	int mandatoryInt = wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_STRING,POD(&shebangWidth)); //Load top-level width into shebangWidth (mandatoryInt is necessary but unrelated to the logic)
+	int mandatoryInt = wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&shebangWidth)); //Load top-level width into shebangWidth (mandatoryInt is necessary but unrelated to the logic)
 	int strangerWidth; //Variable to store stranger's width
-	mandatoryInt = wgtrGetPropertyValue(stranger,"width",DATA_T_STRING,POD(&strangerWidth)); //Load stranger's width into strangerWidth
+	mandatoryInt = wgtrGetPropertyValue(stranger,"width",DATA_T_INTEGER,POD(&strangerWidth)); //Load stranger's width into strangerWidth
 	pWgtrNode strangerFirstborn = xaGetItem(&(stranger->Children), 0); //Make like Rumplestiltskin and seize the first child
 	int firstbornWidth; //Variable to store first child's width
-	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_STRING,POD(&firstbornWidth)); //Measure him side to side
+	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_INTEGER,POD(&firstbornWidth)); //Measure him side to side
 	
 	if (strangerWidth >= (shebangWidth - (2 * latitude))) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
 	    {
