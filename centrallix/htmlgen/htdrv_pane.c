@@ -63,7 +63,7 @@ isMainContainer(pWgtrNode stranger, int latitude) //Function to determine whethe
 	
 	if (strangerWidth >= (shebangWidth - (2 * latitude))) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
 	    {
-		if (firstbornWidth <= strangerWidth - 2*latitude)//And his first child is thinner than he... (once again, allowing for margins and/or padding)
+		if (firstbornWidth <= strangerWidth - (2 * latitude))//And his first child is thinner than he... (once again, allowing for margins and/or padding)
 		    {
 			return 1; //We have ourselves a winner!
 		    }
@@ -137,7 +137,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 */
 
-	if (isMainContainer(tree, x) == 1) //Top-level widgets get special treatment
+	if (isMainContainer(tree, x) != 0) //Top-level widgets get special treatment
 	{	
 		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=preW;
 		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=flexW;
