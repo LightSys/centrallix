@@ -217,11 +217,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/* Some checks to prevent dodgy eventualities: */
 	
-	if (parentFlexW == 0 && (isMainContainer(tree, x)) == 0) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
+	if (parentFlexW == 0 && (isMainContainer(tree, x)) != 1) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
 	{
 		parentFlexW = 1; //Prevent division by zero
 	}
-	else if (parentFlexW == 0 && (isMainContainer(tree, x)) == 1) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
+	else if (parentFlexW == 0 && (isMainContainer(tree, x)) != 0) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
 	{
 		parentFlexW = flexW = 1; //Prevent division by zero, and balance the quotient so that it evaluates to 1
 	}
