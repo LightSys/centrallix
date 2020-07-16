@@ -61,9 +61,9 @@ isMainContainer(pWgtrNode stranger) //Function to determine whether stranger is 
 	int firstbornWidth; //Variable to store first child's width
 	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_STRING,POD(&firstbornWidth)); //Measure him side to side
 	
-	if (strangerWidth >= (shebangWidth - 29)) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
+	if (strangerWidth >= (shebangWidth - 32)) //If stranger's width spans the whole tree... (allow for margins and/or padding)
 	    {
-		if (firstbornWidth <= strangerWidth - 29)//And his first child is thinner than he... (once again, allowing for margins and/or padding)
+		if (firstbornWidth <= strangerWidth - 32)//And his first child is thinner than he... (once again, allowing for margins and/or padding)
 		    {
 			return 1; //We have ourselves a winner!
 		    }
@@ -246,7 +246,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
 			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*y,parentPreH,flexH,parentFlexH,z);
