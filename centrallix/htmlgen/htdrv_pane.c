@@ -48,7 +48,7 @@ static struct
     }
     HTPN;
 
-/* Function to determine whether stranger is a main container - a widget whose width spans the page and whose immediate children are smaller than it */
+/* Function to determine whether stranger is a "main container" - a widget whose width spans the page and whose immediate children are smaller than it */
 int
 isMainContainer(pWgtrNode stranger, int latitude)
    {
@@ -57,13 +57,13 @@ isMainContainer(pWgtrNode stranger, int latitude)
 	int mandatoryInt = wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&shebangWidth)); //Load top-level width into shebangWidth (mandatoryInt is necessary but unrelated to the logic)
 	int strangerWidth; //Variable to store stranger's width
 	mandatoryInt = wgtrGetPropertyValue(stranger,"width",DATA_T_INTEGER,POD(&strangerWidth)); //Load stranger's width into strangerWidth
-	pWgtrNode strangerFirstborn = xaGetItem(&(stranger->Children), 0); //Make like Rumplestiltskin and seize the first child
+	pWgtrNode strangerFirstborn = xaGetItem(&(stranger->Children), 0); //Detain stranger's first child for questioning
 	int firstbornWidth; //Variable to store first child's width
-	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_INTEGER,POD(&firstbornWidth)); //Measure him side to side
+	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_INTEGER,POD(&firstbornWidth)); //Measure him width-wise
 	
-	if (strangerWidth >= (shebangWidth - (2 * latitude))) //If stranger's width spans the whole tree... (allow for margins and/or padding - the smallest possible widgets are 30px wide)
+	if (strangerWidth >= (shebangWidth - (2 * latitude))) //If stranger's width spans the whole tree... (allow for lateral spacing)
 	    {
-		if (firstbornWidth <= strangerWidth - (2 * latitude))//And his first child is thinner than he... (once again, allowing for margins and/or padding)
+		if (firstbornWidth <= strangerWidth - (2 * latitude))//And his first child is thinner than he... (once again, allowing for lateral spacing)
 		    {
 			return 1; //We have ourselves a winner!
 		    }
@@ -82,7 +82,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1;
-    //int minW, minH; //Minimum width and height
+    //int minW, minH; //Minimum width and height -- these variables were removed because they interfered with other calculations. They were introduced as a means of resolving an issue that caused widgets' widths to shrink to 0px as the window approached its minimal width.
     int preH, parentPreH, flexH, parentFlexH; //Widget's baseline width, parent node's baseline width, widget's lateral flexibility, parent node's lateral flexibility
     int preW, parentPreW, flexW, parentFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
@@ -119,7 +119,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
 	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
 	
-	//Below are the retired functions that formerly initialized min_widths and min_heights. These variables appeared to be interfering with other calculations, so they've been shelved.
+	//Below are the retired functions that formerly initialized min_width and min_height. These variables appeared to be interfering with other calculations, so they've been shelved.
 /*	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)	 //If there's no min-width value to load in...
 	{
 		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0) //And no r-width value to load in...
@@ -139,16 +139,15 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	if (isMainContainer(tree, x) != 0) //Top-level widgets get special treatment
 	{	
-		if (wgtrGetPropertyValue(tree->Parent,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=preW;
-		if (wgtrGetPropertyValue(tree->Parent,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=flexW;
+		parentPreW=preW; //A top-level widget's width equals that of the page (minus spacing, of course -- but the calc function will take care of that later)
+		parentFlexW=flexW; //A top-level widget's lateral flexibility equals that of the page
 	}
 	else
 	{		
-		if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0;
-		if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1;
+		if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0; //If the widget doesn't have a width assigned to it, assume a width of 0
+		if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1; //If the widget doesn't have a lateral flexibility assigned to it, mark it down as 1
 	}
 	
-	//(I'm not at all sure of the two lines below)
 	if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
 	if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
 	
@@ -217,6 +216,13 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/* Some checks to prevent dodgy eventualities: */
 	
+/* Important Note:
+	Thus far, the below calls to the function isMainContainer - and indeed, all other calls to that function as well - have not been returning any values.
+	The source of this problem remains a mystery, but the result is that any conditional which expects a return value from isMainContainer will evaluate to false (0),
+	and any conditional which expects no return value (like the one below) will evaluate to true (1). This doesn't cause any issues for the Centrallix main page,
+	but it probably will on any page where widgets of the pane class serve in a capacity other than that of "main container".
+*/
+	
 	if (parentFlexW == 0 && (isMainContainer(tree, x)) != 1) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
 	{
 		parentFlexW = 1; //Prevent division by zero
@@ -227,7 +233,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 	else if (parentFlexW < 0) //We don't want negative values here; they'll make widgets expand as the window contracts and vis versa
 	{
-		parentFlexW = -1 * parentFlexW; //Prevent wonky widths
+		parentFlexW = -1 * parentFlexW; //Turn that negative into a positive
 	}
 	
 	if (parentFlexH == 0 && parentFlexH != flexH)
@@ -240,7 +246,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	}
 	else if (parentFlexH < 0) //We don't want negative values here; they'll make widgets expand as the window contracts and vis versa
 	{
-		parentFlexH = -1 * parentFlexH; //Prevent wonky widths
+		parentFlexH = -1 * parentFlexH; //Turn that negative into a positive
 	}
 	
 	/** Ok, write the style header items. **/
