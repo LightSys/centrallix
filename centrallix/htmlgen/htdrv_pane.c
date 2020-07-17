@@ -217,10 +217,12 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/* Some checks to prevent dodgy eventualities: */
 	
 /* Important Note:
-	Thus far, the below calls to the function isMainContainer - and indeed, all other calls to that function as well - have not been returning any values.
-	The source of this problem remains a mystery, but the result is that any conditional which expects a return value from isMainContainer will evaluate to false (0),
-	and any conditional which expects no return value (like the one below) will evaluate to true (1). This doesn't cause any issues for the Centrallix main page,
-	but it probably will on any page where widgets of the pane class serve in a capacity other than that of "main container".
+	Thus far, the below calls to the function isMainContainer - and indeed, all other calls to that function - have not been returning any values.
+	This became apparent when I changed the conditional on line 140 from "if (isMainContainer(tree, x) == 1)" to "if (isMainContainer(tree, x) != 0)".
+	The resulting changes indicated that the expression now evaluated to true. The source of this problem remains a mystery, but the result is that
+	any conditional which expects a return value from isMainContainer will evaluate to false (0), and any conditional which expects no return value
+	(like the one below) will evaluate to true (1). This doesn't cause any issues for the Centrallix main page (or hasn't so far), but it probably will
+	on any page where one or more widgets of the pane class serve in a capacity other than that of "main container".
 */
 	
 	if (parentFlexW == 0 && (isMainContainer(tree, x)) != 1) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
