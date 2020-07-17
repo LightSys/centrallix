@@ -246,7 +246,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
 		if(x > 12) 
 		{
 			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*y,parentPreH,flexH,parentFlexH,z);
