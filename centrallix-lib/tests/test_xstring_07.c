@@ -10,7 +10,7 @@
 long long
 test(char** tname)
     {
-    	*tname = "xsSubst";
+    	*tname = "xsSubstWithCharOffset";
 	int i, iter, offset;
 
 	setlocale(LC_ALL, "en_US.UTF-8");

@@ -3624,7 +3624,7 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
 	int charLen, byteLen, a, i, end;
 	char* temp;
     	char ch1, ch2, ch3, ch4;
-    	char mask1 = 0x80, mask2 = 0xC0, mask3 = 0xE0, mask4 = 0xF0;
+    	
 	if (i0 && (i0->Flags & EXPR_F_NULL))
         	{
         	tree->Flags |= EXPR_F_NULL;
