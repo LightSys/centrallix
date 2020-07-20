@@ -807,13 +807,13 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
  *** position and length to replace.  Length of -1 indicates length is unknown.
  ***/
 int
-xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, int replenChars)
+xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, int replen)
     	{
     	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 	
-	int cnt, len, replen, offset;
+	int cnt, len, offset;
 	
 	/** Figure some default lengths **/
 	if (offsetChars > chrCharLength(this->String) || offsetChars < 0) 
@@ -821,8 +821,8 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 	    CXSEC_EXIT(XS_FN_KEY);
 	    return -1;
 	    }
-	if (lenChars == -1) lenChars = chrCharsLength(this->String + offset);
-	if (replenChars == -1) replenChars = chrCharLength(rep);
+	
+	if (replen == -1) replen = strlen(rep);
 
 	offset = 0;
 	cnt = 0;
@@ -834,7 +834,9 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 		}
 	if (offset != 0)
 		offset--;
-	
+
+	if (lenChars == -1) lenChars = chrCharLength(this->String + offset);	
+
 	len = 0;
 	cnt = 0;
         while (cnt < lenChars)
@@ -845,8 +847,6 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 		}
         if (len != 0)
                 len--;
-	
-	replen = strlen(rep);
 	
 	/** Make sure we have enough room **/
 	if (len < replen) xsCheckAlloc(this, replen - len);
@@ -980,12 +980,12 @@ xsInsertAfter(pXString this, char* ins, int inslen, int offset)
 /*** xsInsertAfterWithCharOffset - inserts the supplied string at character offset -- returns new character offset
  ***/
 int
-xsInsertAfter(pXString this, char* ins, int inslen, int offset)
+xsInsertAfterWithCharOffset(pXString this, char* ins, int inslen, int offset)
     {
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    int cnt = 0; offsetBytes = 0;
+    int cnt = 0, offsetBytes = 0;
     if(inslen==-1) inslen = strlen(ins);
     if(xsCheckAlloc(this,inslen)==-1) 
 	{

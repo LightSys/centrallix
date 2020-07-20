@@ -312,6 +312,7 @@ typedef struct
     int		UsingChunkedEncoding:1;
     int		StrictSameSite:1;
     char	ResponseContentType[128];
+    char	ResponseCharset[64];
     int		ResponseContentLength;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
