@@ -58,7 +58,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char main_bg[128];
     char bdr[64];
-    int x=-1,y=-1,w,h;
+    int x=-1,y=-1,w,h,parentW,parentH;
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
@@ -86,6 +86,19 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	    {
+	    mssError(1,"HTPN","Pane widget must have a 'height' property");
+	    return -1;
+	    }
+
+	pWgtrNode parentTree = wgtrGetRoot(tree);
+
+	if (wgtrGetPropertyValue(parentTree,"width",DATA_T_INTEGER,POD(&parentW)) != 0)
+		{
+	    mssError(1,"HTPN","Pane widget must have a 'width' property");
+	    return -1;
+	    }
+	if (wgtrGetPropertyValue(parentTree,"height",DATA_T_INTEGER,POD(&parentH)) != 0)
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
@@ -156,17 +169,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx); HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx)); HEIGHT:calc(%POSpx + (100%% - %POSpx)); Z-INDEX:%POS; }\n",id,x,y,w,parentW,h,parentH,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx); HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx)); HEIGHT:calc(%POSpx + (100%% - %POSpx)); Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,parentW,h-2*box_offset,parentH,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	   	htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx); HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx)); HEIGHT:calc(%POSpx + (100%% - %POSpx)); Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,parentW,h-2*box_offset,parentH,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
