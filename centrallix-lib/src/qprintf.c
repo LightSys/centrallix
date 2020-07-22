@@ -1279,4 +1279,56 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
     return;
     }
 
+char* chrNoOverlong(char* string)
+	{
+	size_t stringCharLength, newStrByteLength;
+	char* toReturn;
+	wchar_t* longBuffer;
 
+	/** Check arguments **/
+	if(!string)
+        	{
+		printf("Null 1\n");
+		return NULL;
+		}
+	
+	stringCharLength = mbstowcs(NULL, string, 0);
+	if(stringCharLength == (size_t)-1)
+            	{
+		printf("Null 2\n");
+        	return NULL;
+       		}
+
+	/** Create wchar_t buffer */
+        longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
+        if(!longBuffer)
+		{
+		printf("Null 3\n");
+        	return NULL;
+		}
+        mbstowcs(longBuffer, string, stringCharLength + 1);
+
+	/** Convert back to MBS **/
+	newStrByteLength = wcstombs(NULL, longBuffer, 0);
+        if(newStrByteLength == (size_t)-1)
+            	{
+		printf("Null 4\n");
+            	nmSysFree(longBuffer);
+        	return NULL;
+            	}
+
+	toReturn = (char *)nmSysMalloc(newStrByteLength + 1);
+        if(!toReturn)
+            	{
+		printf("Null 5\n");
+                nmSysFree(longBuffer);
+                return NULL;
+            	}
+            
+        wcstombs(toReturn, longBuffer, newStrByteLength + 1);
+
+	nmSysFree(longBuffer);
+	//free string if that was allocated
+	printf("NOT Null\n");
+	return toReturn;
+	}

@@ -324,7 +324,6 @@ size_t chrCharLength(char* string)
 
 char* chrNoOverlong(char* string)
 	{
-	//printf("No Overlong\nInit String: %s\n", string);
 	size_t stringCharLength, newStrByteLength;
 	char* toReturn;
 	wchar_t* longBuffer;
@@ -338,14 +337,13 @@ char* chrNoOverlong(char* string)
             	{
         	return NULL;
        		}	
-	//printf("Args checked\n");
+	
 	/** Create wchar_t buffer */
         longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
         if(!longBuffer)
         	return NULL;
         mbstowcs(longBuffer, string, stringCharLength + 1);	
-	//printf("Made wide buffer\n");
-	//wprintf(L"Wide String: %ls\n, longBuffer");
+	
 	/** Convert back to MBS **/
 	newStrByteLength = wcstombs(NULL, longBuffer, 0);
         if(newStrByteLength == (size_t)-1)
@@ -353,7 +351,7 @@ char* chrNoOverlong(char* string)
             	nmSysFree(longBuffer);
         	return NULL;
             	}
-	//printf("got size\n");
+	
 	toReturn = (char *)nmSysMalloc(newStrByteLength + 1);
         if(!toReturn)
             	{
@@ -362,11 +360,10 @@ char* chrNoOverlong(char* string)
             	}
             
         wcstombs(toReturn, longBuffer, newStrByteLength + 1);
-        //printf("String: %s\n", toReturn);
+        
 	nmSysFree(longBuffer);
-	//printf("Done\n");
-	//nmSysFree(string); //good?
-        return toReturn;
+	
+	return toReturn;
 	}
 
 char* chrRight(char* string, size_t offsetFromEnd, size_t* returnCode)
