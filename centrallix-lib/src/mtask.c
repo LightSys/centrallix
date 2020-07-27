@@ -237,7 +237,7 @@ evFile(int ev_type, void* obj)
                 if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
                 if (code == 0) fd->Flags |= FD_F_RDBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_RDBLK | FD_F_RDERR);
-                if (code == -1) fd->Flags |= FD_F_RDERR;
+                if (code == -1) fd->Flags |= (FD_F_RDERR | FD_F_RDEOF);
                 break;
 
             case EV_T_FD_OPEN:
@@ -2567,6 +2567,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		}
 #endif
+	    if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 	    if (rval == -1 && (errno != EWOULDBLOCK && errno != EINTR && errno != EAGAIN)) return -1;
     	    }
 
@@ -2632,6 +2633,8 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		    }
 #endif
+
+		if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
@@ -3587,23 +3590,27 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	/** Shutdown for writing and wait for EOF from the peer **/
 	shutdown(net_filedesc->FD, SHUT_WR);
 	sl=1;
-	while(1)
+	if (!(net_filedesc->Flags & FD_F_RDEOF))
 	    {
-	    rval = read(net_filedesc->FD, buf, sizeof(buf));
-	    t2 = mtRealTicks();
-	    if ((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec && rval > 0)
-		continue;
-	    if (rval == 0 || (rval < 0 && errno != EWOULDBLOCK))
-		break;
-	    thSleep(sl);
-	    sl = sl * 2;
+	    while(sl <= 8192) /* max approx. 16 sec sleep time waiting on EOF */
+		{
+		rval = read(net_filedesc->FD, buf, sizeof(buf));
+		t2 = mtRealTicks();
+		if ((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec && rval > 0)
+		    continue;
+		if (rval == 0 || (rval < 0 && errno != EWOULDBLOCK))
+		    break;
+		thSleep(sl);
+		sl = sl * 2;
+		}
 	    }
 
 	/** Verify that all data has been transmitted to the peer (Linux only)
 	 **/
 #if HAVE_SIOCOUTQ && defined(SIOCOUTQ)
 	t2 = t;
-	while(1)
+	sl = 1;
+	while(sl <= 8192)
 	    {
 	    rval = ioctl(net_filedesc->FD, SIOCOUTQ, &arg);
 	    if (rval < 0 || arg == 0)
