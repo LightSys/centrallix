@@ -29,7 +29,7 @@ query select 'convert(money, $0)' = convert(money, $0)
 query select 'convert(money, convert(string, $-1.50))' = convert(money, convert(string, $-1.50))
 query select 'convert(money, "7Jesus")' = convert(money, "7Jesus")
 # the following does not work for money as it does for integer and double
-#  query select 'convert("money,"Jesus7")' = convert("money,"Jesus7")
+# query select 'convert("money,"Jesus7")' = convert("money,"Jesus7")
 
 query select 'convert(datetime, "05/21/2020 15:45:00")' = convert(datetime, "05/21/2020 15:45:00")
 query select 'convert(datetime, "05/21/2020 12:00:00 +0600")' = convert(datetime, "05/21/2020 12:00:00 +0600")
