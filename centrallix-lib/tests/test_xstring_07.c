@@ -10,7 +10,7 @@
 long long
 test(char** tname)
     {
-    	*tname = "xsSubstWithCharOffset";
+    	*tname = "xsSubstWithCharOffsetWithCharOffset";
 	int i, iter, offset;
 
 	setlocale(LC_ALL, "en_US.UTF-8");
@@ -34,25 +34,26 @@ test(char** tname)
 		xsConcatenate(str5, "Absolutely not\0", -1);
 		xsConcatenate(str6, "Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test\0", -1);
 
-		offset = xsSubst(str0, 11, 1, "", 0);
+		offset = xsSubstWithCharOffset(str0, 11, 1, "", 0);
+		printf("%s\n", str0->String);
 		assert (strcmp(str0->String, "Hello World") == 0);
-		offset = xsSubst(str0, 10, 1, "d!", 2); 
+		offset = xsSubstWithCharOffset(str0, 10, 1, "d!", 2); 
 		assert (strcmp(str0->String, "Hello World!") == 0);
-		offset = xsSubst(str1, 2, 0, "", 0);  
+		offset = xsSubstWithCharOffset(str1, 2, 0, "", 0);  
 		assert (offset == -1);
-		offset = xsSubst(str1, -1, 0, "", 0);
+		offset = xsSubstWithCharOffset(str1, -1, 0, "", 0);
                 assert (offset == -1);
-		offset = xsSubst(str1, 0, 1, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", -1);  
+		offset = xsSubstWithCharOffset(str1, 0, 1, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", -1);  
 		assert (strcmp(str1->String, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") == 0);
-		offset = xsSubst(str2, 0, 0, "B", 1);
+		offset = xsSubstWithCharOffset(str2, 0, 0, "B", 1);
                 assert (strcmp(str2->String, "B") == 0);
-		offset = xsSubst(str3, 7, 12, "7", -1);
+		offset = xsSubstWithCharOffset(str3, 7, 12, "7", -1);
                 assert (strcmp(str3->String, "0123456789") == 0);
-		offset = xsSubst(str4, 0, -1, "Jesus is born!", -1);
+		offset = xsSubstWithCharOffset(str4, 0, -1, "Jesus is born!", -1);
                 assert (strcmp(str4->String, "Jesus is born!") == 0);
-		offset = xsSubst(str5, 10, -1, "!", 1);
+		offset = xsSubstWithCharOffset(str5, 10, -1, "!", 1);
                 assert (strcmp(str5->String, "Absolutely!") == 0);
-		offset = xsSubst(str6, 4, -1, "", 0);
+		offset = xsSubstWithCharOffset(str6, 4, -1, "", 0);
                 assert (strcmp(str6->String, "Test") == 0);
 		
 		xsFree(str0);

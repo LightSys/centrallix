@@ -25,7 +25,8 @@ test(char** tname)
 		pXString str4 = xsNew();
 		pXString str5 = xsNew();
 		pXString str6 = xsNew();
-	
+		pXString str7 = xsNew();	
+		
 		xsConcatenate(str0, "Hello World!", -1);
 		xsConcatenate(str1, "A\0", -1);
 		xsConcatenate(str2, "", -1);
@@ -33,6 +34,7 @@ test(char** tname)
 		xsConcatenate(str4, "Merry Christmas!!!!!!\0", -1);
 		xsConcatenate(str5, "Absolutely not\0", -1);
 		xsConcatenate(str6, "Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test\0", -1);
+		xsConcatenate(str7, "㉆㉆", -1);
 
 		offset = xsSubst(str0, 11, 1, "", 0);
 		assert (strcmp(str0->String, "Hello World") == 0);
@@ -54,7 +56,14 @@ test(char** tname)
                 assert (strcmp(str5->String, "Absolutely!") == 0);
 		offset = xsSubst(str6, 4, -1, "", 0);
                 assert (strcmp(str6->String, "Test") == 0);
-		
+		offset = xsSubst(str7, 1, 1, "AAAAAAA", -1);	
+		assert (strcmp(str7->String, "㉆AAAAAAA") == 0);
+		offset = xsSubst(str7, 6, 2, "㉆㉆㉆", -1);
+                assert (strcmp(str7->String, "㉆AAA㉆㉆㉆AA") == 0);
+		offset = xsSubst(str7, 7, 5, "ד", -1); 
+		assert (strcmp(str7->String, "㉆AAA㉆דAA") == 0);
+
+
 		xsFree(str0);
 		xsFree(str1);
 		xsFree(str2);
@@ -62,6 +71,7 @@ test(char** tname)
 		xsFree(str4);
 		xsFree(str5);
 		xsFree(str6);
+		xsFree(str7);
 
 		}
 

@@ -784,14 +784,19 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 	if (len < replen) xsCheckAlloc(this, replen - len);
 	
 	/** Make sure we do not end up with a partial UTF-8 character **/
+	for (i = 0; i < 4; i++)                                                                              {
+                if((this->String[offset + i] & 0xC0) != 0x80)
+			break;
+                }
+        offset += i;
+		
 	for (i = 0; i < 4; i++)
 		{
-		if((this->String[offset + replen + i] & 0xC0) != 0x80)
+		if((this->String[offset + len + i] & 0xC0) != 0x80)
 			break;
 		}
 	len += i;
 	
-
 	/** Move the tail of the string, and plop the replacement in there **/
 	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));
 	memcpy(this->String+offset, rep, replen);
