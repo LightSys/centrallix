@@ -14,7 +14,7 @@ test(char** tname)
 	int i, iter, offset;
 
 	setlocale(LC_ALL, "en_US.UTF-8");
-	iter = 10000;
+	iter = 5000;
 
 	pXString str0 = xsNew();
 	pXString str1 = xsNew();	
