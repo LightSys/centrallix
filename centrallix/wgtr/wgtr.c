@@ -288,6 +288,8 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	if (match->fl_y >= 0) tree->fl_y = match->fl_y;
 	if (match->fl_width >= 0) tree->fl_width = match->fl_width;
 	if (match->fl_height >= 0) tree->fl_height = match->fl_height;
+	if (match->total_flexW >= 0) tree->total_flexW = match->total_flexW;
+	if (match->total_flexH >= 0) tree->total_flexH = match->total_flexH;
 
 	/** Check for substitutions **/
 	for(prop=objGetFirstAttr(tree_obj);prop;prop=objGetNextAttr(tree_obj))
@@ -352,7 +354,8 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	    snprintf(new_name, sizeof(new_name), "%s_%s", base_name, subtree->Name);
 	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
 			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
-			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
+			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height,
+			subtree->total_flexW, subtree->total_flexH)) == NULL)
 		return -1;
 
 	    if (wgtrSetupNode(new_node) < 0)
@@ -624,8 +627,6 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
 		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
 		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
-		else if (!strcmp(prop_name,"total_flexW")) this_node->total_flexW = val.Integer;
-		else if (!strcmp(prop_name,"total_flexH")) this_node->total_flexH = val.Integer;
 		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
 	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
