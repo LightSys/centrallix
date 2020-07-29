@@ -605,6 +605,8 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    if ((this == NULL) || (find == NULL))
+	return -1; 
     if(offset<0) offset = 0;
     if(findlen==-1) findlen = strlen(find);
     for(;offset<this->Length;offset++)
@@ -638,6 +640,8 @@ xsFindWithCharOffset(pXString this, char* find, int findlen, int offset)
 	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
+	if ((this == NULL) || (find == NULL))
+        	return -1;
 	int chars, byte, i;
 	if (offset < 0) offset = 0;
 	if (findlen == -1) findlen = strlen(find);
@@ -682,6 +686,8 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    if ((this == NULL) || (find == NULL))
+        return -1;
     if(findlen==-1) findlen = strlen(find);
     offset=this->Length-offset-1;
     for(;offset>=0;offset--)
@@ -715,7 +721,8 @@ xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset)
 	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
-	
+	if ((this == NULL) || (find == NULL))
+        	return -1;
 	int chars, byte, i, cnt;
 	if (offset < 0) offset = 0;
 	if (findlen == -1) findlen = strlen(find);
@@ -763,12 +770,14 @@ xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset)
  ***/
 int
 xsSubst(pXString this, int offset, int len, char* rep, int replen)
-    {
-    CXSEC_ENTRY(XS_FN_KEY);
-
+    	{
+    	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 	
+	if ((this == NULL) || (rep == NULL))
+		return -1;
+
 	int i;
 	
 	/** Figure some default lengths **/
@@ -818,7 +827,9 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 	
-	int cnt, len, offset;
+	if ((this == NULL) || (rep == NULL))                                                                 return -1;
+
+	int i, cnt, len, offset;
 	
 	/** Figure some default lengths **/
 	if (offsetChars > chrCharLength(this->String) || offsetChars < 0) 
@@ -837,8 +848,11 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 			cnt++;
 		offset++;
 		}
-	if (offset != 0)
-		offset--;
+	for (i = 0; i < 4; i++)                                                                              {
+                if((this->String[offset + i] & 0xC0) != 0x80)
+                        break;
+                }
+        offset += i;
 
 	if (lenChars == -1) lenChars = chrCharLength(this->String + offset);	
 
@@ -850,12 +864,14 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 			cnt++;
 		len++;
 		}
-        if (len != 0)
-                len--;
+	for (i = 0; i < 4; i++)                                                                              {
+                if((this->String[offset + len + i] & 0xC0) != 0x80)
+                        break;
+                }
+        len += i;        
 	
 	/** Make sure we have enough room **/
 	if (len < replen) xsCheckAlloc(this, replen - len);
-	
 
 	/** Move the tail of the string, and plop the replacement in there **/
 	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));

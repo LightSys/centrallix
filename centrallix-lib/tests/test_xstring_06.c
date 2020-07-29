@@ -36,6 +36,10 @@ test(char** tname)
 		xsConcatenate(str6, "Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test Test\0", -1);
 		xsConcatenate(str7, "㉆㉆", -1);
 
+		offset = xsSubst(NULL, 0, 0, "A", 1);
+		assert (offset == -1);
+		offset = xsSubst(str0, 0, 1, NULL, -1);    
+		assert (offset == -1);
 		offset = xsSubst(str0, 11, 1, "", 0);
 		assert (strcmp(str0->String, "Hello World") == 0);
 		offset = xsSubst(str0, 10, 1, "d!", 2); 

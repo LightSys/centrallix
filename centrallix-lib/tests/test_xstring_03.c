@@ -23,7 +23,8 @@ test(char** tname)
 	pXString str4 = xsNew();
 	pXString str5 = xsNew();
 	pXString str6 = xsNew();
-	
+	pXString str7 = xsNew();	
+
 	xsConcatenate(str0, "Hello World!", -1);
 	xsConcatenate(str1, "σειρά\0", -1);
 	xsConcatenate(str2, "дощовий дощ піде знову прийде інший день\0", -1);
@@ -34,11 +35,13 @@ test(char** tname)
 
         for(i=0;i<iter;i++)
 		{
+		offset = xsFindWithCharOffset(NULL, "o", 1, 0);
+		assert (offset == -1);
+		offset = xsFindWithCharOffset(str0, NULL, -1, 2);
+		assert (offset == -1);
 		offset = xsFindWithCharOffset(str0, "o", 1, -30);
-		//printf("%d\n", offset);
 		assert (offset == 4);
 		offset = xsFindWithCharOffset(str0, "o", -1, 4);
-		//printf("%d\n", offset);
 		assert (offset == 4);
 		offset = xsFindWithCharOffset(str0, "o", -1, 5);  
 		assert (offset == 7);
@@ -53,7 +56,6 @@ test(char** tname)
 		offset = xsFindWithCharOffset(str1, "σειρά", -1,0);
 		assert (offset == 0);
 		offset = xsFindWithCharOffset(str2, "д", -1, 10);
-		//printf("%d\n", offset);
 		assert (offset == 14);
 		offset = xsFindWithCharOffset(str2, "де знову прий", -1, -1);
 		assert (offset == 14);
@@ -65,10 +67,14 @@ test(char** tname)
 		assert (offset == -1);
 		offset = xsFindWithCharOffset(str5, "是", -1, 2);
 		assert (offset == 2);
+		offset = xsFindWithCharOffset(str5, "", -1, 6);
+              	assert (offset == -1);
 		offset = xsFindWithCharOffset(str6, "し", -1, 0);
 		assert (offset == 4);
 		offset = xsFindWithCharOffset(str6, "した", -1, 0);
 		assert (offset == 6);
+		offset = xsFindWithCharOffset(str7, "した", -1, 0);
+		assert (offset == -1);
 		}
 
     return iter;

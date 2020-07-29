@@ -23,6 +23,7 @@ test(char** tname)
 	pXString str4 = xsNew();
 	pXString str5 = xsNew();
 	pXString str6 = xsNew();
+	pXString str7 = xsNew();
 	
 	xsConcatenate(str0, "Hello World!", -1);
 	xsConcatenate(str1, "σειρά\0", -1);
@@ -34,6 +35,10 @@ test(char** tname)
 
         for(i=0;i<iter;i++)
 		{
+		offset = xsFindRev(NULL, "o", 1, 0);
+		assert (offset == -1);
+		offset = xsFindRev(str0, NULL, -1, 2);
+		assert (offset == -1);
 		offset = xsFindRev(str0, "o", 1, -30);
 		assert (offset == 7);
 		offset = xsFindRev(str0, "o", -1, 0);
@@ -66,10 +71,14 @@ test(char** tname)
 		assert (offset == 5);
 		offset = xsFindRev(str5, "是", -1, 3);
 		assert (offset == 6);
+		offset = xsFindRev(str5, "", -1, 6);
+              	assert (offset == -1);
 		offset = xsFindRev(str6, "し", -1, 6);
 		assert (offset == 12);
 		offset = xsFindRev(str6, "した", -1, 0);
 		assert (offset == 18);
+		offset = xsFind(str7, "した", -1, 0);
+		assert (offset == -1);
 		}
 
     return iter;
