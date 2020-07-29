@@ -58,7 +58,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char main_bg[128];
     char bdr[64];
-    int x=-1,y=-1,w,h,parentW,parentH;
+    int x=-1,y=-1,w,h,totalW,totalH,flexW,totalFlexW,flexH,totalFlexH;
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
@@ -90,15 +90,35 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
 	    }
+	if (wgtrGetPropertyValue(tree, "fl_width",DATA_T_INTEGER,POD(&flexW)) != 0)
+		{
+		mssError(1,"HTPN","Pane widget must have a 'fl_width' property");
+	    return -1;
+		}
+	if (wgtrGetPropertyValue(tree, "fl_height",DATA_T_INTEGER,POD(&flexH)) != 0)
+		{
+		mssError(1,"HTPN","Pane widget must have a 'fl_height' property");
+	    return -1;
+		}
+	if (wgtrGetPropertyValue(tree, "total_flexW",DATA_T_INTEGER,POD(&totalFlexW)) != 0)
+		{
+		mssError(1,"HTPN","Pane widget must have a 'total_flexW' property");
+	    return -1;
+		}
+	if (wgtrGetPropertyValue(tree, "total_flexH",DATA_T_INTEGER,POD(&totalFlexH)) != 0)
+		{
+		mssError(1,"HTPN","Pane widget must have a 'total_flexH' property");
+	    return -1;
+		}
 
 	pWgtrNode parentTree = wgtrGetRoot(tree);
 
-	if (wgtrGetPropertyValue(parentTree,"width",DATA_T_INTEGER,POD(&parentW)) != 0)
+	if (wgtrGetPropertyValue(parentTree,"width",DATA_T_INTEGER,POD(&totalW)) != 0)
 		{
 	    mssError(1,"HTPN","Pane widget must have a 'width' property");
 	    return -1;
 	    }
-	if (wgtrGetPropertyValue(parentTree,"height",DATA_T_INTEGER,POD(&parentH)) != 0)
+	if (wgtrGetPropertyValue(parentTree,"height",DATA_T_INTEGER,POD(&totalH)) != 0)
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
@@ -169,17 +189,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx)); HEIGHT:calc(%POSpx + (100%% - %POSpx)); Z-INDEX:%POS; }\n",id,x,y,w,parentW,h,parentH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS/%POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS/%POS)); Z-INDEX:%POS; }\n",id,x,y,w,totalW,flexW,totalFlexW,h,totalH,flexH,totalFlexH,totalz);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx)); HEIGHT:calc(%POSpx + (100%% - %POSpx)); Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,parentW,h-2*box_offset,parentH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS/%POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS/%POS)); Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,totalW,flexW,totalFlexW,h-2*box_offset,totalH,flexH,totalFlexH,totalz);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx)); HEIGHT:calc(%POSpx + (100%% - %POSpx)); Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,parentW,h-2*box_offset,parentH,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS/%POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS/%POS)); Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,totalW,flexW,totalFlexW,h-2*box_offset,totalH,flexH,totalFlexH,totalz);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
