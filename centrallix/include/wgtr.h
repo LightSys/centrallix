@@ -101,6 +101,7 @@ typedef struct _WN
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
     int		fl_x, fl_y, fl_width, fl_height;/** Flexibility **/
+    int		total_flexW, total_flexH;	/** container flexibility **/
     double  	fx, fy, fw, fh;			/** internal flexibility calculations **/
     int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry **/
@@ -170,7 +171,8 @@ pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, pWgtrClientInfo c
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
-			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
+			int flx, int fly, int flwidth, int flheight
+			int flwidthTotal, int flheightTotal);   /** create a new widget node **/
 int wgtrSetupNode(pWgtrNode node);
 int wgtrMergeOverlays(pWgtrNode node, char* objpath, char* app_path, char* overlays[], char* templates[]);
 
@@ -206,6 +208,8 @@ int wgtrSetDMPrivateData(pWgtrNode tree, void* data);
 void* wgtrGetDMPrivateData(pWgtrNode tree);
 int wgtrGetContainerHeight(pWgtrNode tree);
 int wgtrGetContainerWidth(pWgtrNode tree);
+int wgtrGetContainerFlexWidth(pWgtrNode tree);		/** get widget container flexible width **/
+int wgtrGetContainerFlexHeight(pWgtrNode tree);		/** get widget container flexible height **/
 int wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset);
 
 /** misc. functions **/
