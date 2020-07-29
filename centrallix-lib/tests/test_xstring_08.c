@@ -22,11 +22,14 @@ test(char** tname)
 		pXString str2 = xsNew();
 		pXString str3 = xsNew();
 		pXString str4 = xsNew();
+		pXString strEmpt = xsNew();
+		pXString str6 = xsNew();
 
 		xsConcatenate(str1, "abc", -1);
 		xsConcatenate(str2, "bac", -1);
 		xsConcatenate(str3, "ábc", -1);
 		xsConcatenate(str4, "bác", -1);
+		xsConcatenate(str6, " ", -1);
 	
 		int ret = 0;
 		ret = xsReplaceWithCharOffset(str1, "c", findlen, 2, "œ", findlen);
@@ -48,6 +51,17 @@ test(char** tname)
 		ret = xsReplaceWithCharOffset(str3, "eñ\0", findlen+1, 2, find2, findlen);
 		assert(ret == -1); 
  
+		ret = xsReplaceWithCharOffset(strEmpt, "eñ\0", findlen+1, 2, find2, findlen);
+		assert(ret == -1); 
+		
+		ret = xsReplaceWithCharOffset(str3, "\0", findlen+1, 2, find2, findlen);
+		assert(ret == -1); 
+		
+		ret = xsReplaceWithCharOffset(str6, "പരശധനñ\0", 1, 7, find2, findlen);
+		assert(ret == -1); 
+
+		ret = xsReplaceWithCharOffset(str1, "i", 1, 90, find2, findlen);
+		assert(ret == -1); 
 
 	
 	}
