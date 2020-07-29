@@ -1515,7 +1515,8 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 pWgtrNode 
 wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
-		int flx, int fly, int flwidth, int flheight)
+		int flx, int fly, int flwidth, int flheight,
+	   	int flwidthTotal, int flheightTotal)
     {
     pWgtrNode node;
 
@@ -1538,6 +1539,8 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
+	node->total_flexW = flwidthTotal; /* added for total flexible width of container */
+	node->total_flexH = flheightTotal; /* added for total flexible height of container */
 	node->ObjSession = s;
 	node->Parent = NULL;
 	node->min_height = 0;
