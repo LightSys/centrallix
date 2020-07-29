@@ -605,6 +605,8 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    if ((this == NULL) || (find == NULL))
+	return -1; 
     if(offset<0) offset = 0;
     if(findlen==-1) findlen = strlen(find);
     for(;offset<this->Length;offset++)
@@ -638,6 +640,8 @@ xsFindWithCharOffset(pXString this, char* find, int findlen, int offset)
 	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
+	if ((this == NULL) || (find == NULL))
+        	return -1;
 	int chars, byte, i;
 	if (offset < 0) offset = 0;
 	if (findlen == -1) findlen = strlen(find);
@@ -682,6 +686,8 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    if ((this == NULL) || (find == NULL))
+        return -1;
     if(findlen==-1) findlen = strlen(find);
     offset=this->Length-offset-1;
     for(;offset>=0;offset--)
@@ -715,7 +721,8 @@ xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset)
 	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
-	
+	if ((this == NULL) || (find == NULL))
+        	return -1;
 	int chars, byte, i, cnt;
 	if (offset < 0) offset = 0;
 	if (findlen == -1) findlen = strlen(find);
