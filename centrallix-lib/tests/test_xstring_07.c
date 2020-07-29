@@ -45,6 +45,10 @@ test(char** tname)
 		xsConcatenate(str10, "耶穌是神\0", -1);
 		xsConcatenate(str11, "彼は復活しました\0", -1);
 
+		offset = xsSubstWithCharOffset(NULL, 0, 0, "A", 1); 
+		assert (offset == -1);   
+		offset = xsSubstWithCharOffset(str0, 0, 1, NULL, -1);  
+		assert (offset == -1);
 		offset = xsSubstWithCharOffset(str0, 11, 1, "", 0);
 		assert (strcmp(str0->String, "Hello World") == 0);
 		offset = xsSubstWithCharOffset(str0, 10, 1, "d!", 2); 

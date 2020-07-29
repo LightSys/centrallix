@@ -770,12 +770,14 @@ xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset)
  ***/
 int
 xsSubst(pXString this, int offset, int len, char* rep, int replen)
-    {
-    CXSEC_ENTRY(XS_FN_KEY);
-
+    	{
+    	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 	
+	if ((this == NULL) || (rep == NULL))
+		return -1;
+
 	int i;
 	
 	/** Figure some default lengths **/
@@ -825,6 +827,8 @@ xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, i
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 	
+	if ((this == NULL) || (rep == NULL))                                                                 return -1;
+
 	int i, cnt, len, offset;
 	
 	/** Figure some default lengths **/
