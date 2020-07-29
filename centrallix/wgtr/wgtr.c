@@ -624,6 +624,8 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
 		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
 		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
+		else if (!strcmp(prop_name,"total_flexW")) this_node->total_flexW = val.Integer;
+		else if (!strcmp(prop_name,"total_flexH")) this_node->total_flexH = val.Integer;
 		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
 	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
