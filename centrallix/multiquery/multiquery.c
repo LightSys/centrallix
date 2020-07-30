@@ -3344,7 +3344,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
     pPseudoObject p;
     pMultiQuery qy = (pMultiQuery)qy_v;
     int i, rval;
-    pObject obj;
+    //pObject obj;
 
 	/** Make sure the cur objlist is correct **/
 	/*if (qy->CurSerial != qy->CntSerial)
@@ -3485,7 +3485,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	    {
 	    for(i=qy->nProvidedObjects;i<p->ObjList->nObjects;i++) 
 	        {
-	        obj = (pObject)(p->ObjList->Objects[i]);
+	        //obj = (pObject)(p->ObjList->Objects[i]);
 		/*if (obj) 
 		    objRequestNotify(obj, mq_internal_UpdateNotify, p, OBJ_RN_F_ATTRIB);*/
 		}
