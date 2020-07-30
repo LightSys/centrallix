@@ -46,10 +46,12 @@ typedef struct _ov
 
 /** nmMalloc block caching causes Valgrind to lose track of what call
  ** stack actually allocated the block to begin with.  So if we're using
- ** valgrind, turn off block caching altogether.
+ ** valgrind, turn off block caching altogether, and make the nmSysXyz() calls
+ ** just pass-throughs.
  **/
 #ifdef USING_VALGRIND
 #define NO_BLK_CACHE	1
+#undef NM_USE_SYSMALLOC
 #endif
 
 #define OVERLAY(x)	((pOverlay)(x))

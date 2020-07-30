@@ -201,7 +201,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; %STR }\n",id,x,y,w,h,z, bgcolor);
+	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; border:1px outset #e0e0e0; %STR }\n",id,x,y,w,h,z, bgcolor);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 
@@ -230,8 +230,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    date_only, default_time);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n", id);
-	htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n"
+			    "<IMG SRC=\"/sys/images/ico17.gif\" style=\"float:right;\">\n", id);
+	/*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -241,7 +242,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-	htrAddBodyItem(s,   "</TABLE>\n");
+	htrAddBodyItem(s,   "</TABLE>\n");*/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\"></DIV>\n",id);
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\"></DIV>\n",id);
 	htrAddBodyItem(s,   "</DIV>\n");

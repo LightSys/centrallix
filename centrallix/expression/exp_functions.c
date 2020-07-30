@@ -349,6 +349,13 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    {
 	    return -1;
 	    }
+	if (i0->Flags & EXPR_F_INDETERMINATE)
+	    {
+	    if (exp_internal_EvalTree(i2,objlist) < 0)
+		{
+		return -1;
+		}
+	    }
 	if (i2->AggLevel > 0)
 	    {
 	    if (exp_internal_EvalAggregates(i2,objlist) < 0)
@@ -371,6 +378,13 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
     else
         {
 	/** False, return 3rd argument i2 **/
+	if (i0->Flags & EXPR_F_INDETERMINATE)
+	    {
+	    if (exp_internal_EvalTree(i1,objlist) < 0)
+		{
+		return -1;
+		}
+	    }
 	if (i1->AggLevel > 0)
 	    {
 	    if (exp_internal_EvalAggregates(i1,objlist) < 0)

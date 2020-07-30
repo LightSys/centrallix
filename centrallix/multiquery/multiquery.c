@@ -2909,6 +2909,7 @@ mq_internal_FinalizeAppData(void* appdata_v)
 	    stFreeInf(qdo->Data);
 	    nmFree(qdo, sizeof(QueryDeclaredObject));
 	    }
+	xaDeInit(&appdata->DeclaredObjects);
 
 	/** Free collections **/
 	for(i=0; i<appdata->DeclaredCollections.nItems; i++)
@@ -2917,6 +2918,7 @@ mq_internal_FinalizeAppData(void* appdata_v)
 	    objDeleteTempObject(qdc->Collection);
 	    nmFree(qdc, sizeof(QueryDeclaredCollection));
 	    }
+	xaDeInit(&appdata->DeclaredCollections);
 
 	/** Free the appdata structure itself **/
 	nmFree(appdata, sizeof(QueryAppData));

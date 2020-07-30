@@ -55,7 +55,7 @@ int
 cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pFile report_fd, int as_server, char* remotename)
     {
     int pid, tm, ret, err;
-    SSL* encrypted_conn;
+    SSL* encrypted_conn = NULL;
     EventReq event0, event1;
     pEventReq ev[2] = { &event0, &event1 };
     enum { Idle=0, Data=1, Done=2 } locstate, netstate;
@@ -76,7 +76,8 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 
 	/** get an SSL context and connection **/
 	encrypted_conn = SSL_new(context);
-	if (!encrypted_conn) return -1;
+	if (!encrypted_conn)
+	    goto error;
 	SSL_set_fd(encrypted_conn, fdFD(encrypted_fd));
 
 	/** SNI? **/
@@ -113,7 +114,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		err = ERR_get_error();
 		fdPrintf(report_fd, "!Abnormal SSL termination from network during handshake: %s\n", ERR_error_string(err, NULL));
 		cxDebugLog("TLS handshake failed: %s", ERR_error_string(err, NULL));
-		return -1;
+		goto error;
 		}
 	    }
 
@@ -364,14 +365,23 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		    continue;
 		    }
 		err = ERR_get_error();
-		if (err == 0) return 0; /* no error */
+		if (err == 0)
+		    goto done; /* no error */
 		fdPrintf(report_fd, "!Abnormal SSL termination from network during connection shutdown: %s\n", ERR_error_string(err, NULL));
-		return -1;
+		goto error;
 		}
 	    }
 	cxDebugLog("exiting");
 
-    return 0;
+    done:
+	if (encrypted_conn)
+	    SSL_free(encrypted_conn);
+	return 0;
+
+    error:
+	if (encrypted_conn)
+	    SSL_free(encrypted_conn);
+	return -1;
     }
 
 

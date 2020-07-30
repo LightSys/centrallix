@@ -103,6 +103,17 @@ function tx_paste(e)
     {
     }
 
+function tx_checkfocus(e)
+    {
+    var form = this.mainlayer.form;
+    if (form && !form.is_focusable)
+	{
+	e.preventDefault();
+	e.currentTarget.blur();
+	}
+    return;
+    }
+
 function tx_receiving_input(e)
     {
     var tx=this.mainlayer;
@@ -112,8 +123,38 @@ function tx_receiving_input(e)
     var rend = range.endOffset;
     var curtxt = this.value;
     var changed = false;
-
     var oldtxt = tx.content;
+
+    // If we're not UTF-8, scan for common incompatible characters
+    if (document.characterSet.toLowerCase() != "utf-8")
+	{
+	for(var i = 0; i<curtxt.length; i++)
+	    {
+	    var code = curtxt.codePointAt(i);
+	    if (code == 0x201c || code == 0x201d)
+		curtxt = curtxt.substr(0,i) + '"' + curtxt.substr(i+1);
+	    else if (code == 0x2018 || code == 0x2019)
+		curtxt = curtxt.substr(0,i) + "'" + curtxt.substr(i+1);
+	    else if (code == 0x2013 || code == 0x2014)
+		curtxt = curtxt.substr(0,i) + "-" + curtxt.substr(i+1);
+	    else if (code == 0x02dc)
+		curtxt = curtxt.substr(0,i) + "~" + curtxt.substr(i+1);
+	    else if (code == 0x2122)
+		curtxt = curtxt.substr(0,i) + "(TM)" + curtxt.substr(i+1);
+	    else if (code == 0x213a)
+		curtxt = curtxt.substr(0,i) + ">" + curtxt.substr(i+1);
+	    else if (code == 0x2039)
+		curtxt = curtxt.substr(0,i) + "<" + curtxt.substr(i+1);
+	    else if (code == 0x2026)
+		curtxt = curtxt.substr(0,i) + "..." + curtxt.substr(i+1);
+	    else if (code == 0x20ac)
+		curtxt = curtxt.substr(0,i) + "E" + curtxt.substr(i+1);
+	    else if (code == 0x201a || code == 0x0192 || code == 0x201e || code == 0x2020 || code == 0x2021 || code == 0x02c6 || code == 0x2030 || code == 0x0160 || code == 0x0152 || code == 0x017d || code == 0x2022 || code == 0x0161 || code == 0x0153 || code == 0x017e || code == 0x0178)
+		curtxt = curtxt.substr(0,i) + "" + curtxt.substr(i+1);
+	    }
+	}
+
+    // Check hints
     var newcurtxt = cx_hints_checkmodify(tx, oldtxt, curtxt, tx._form_type);
     if (newcurtxt != curtxt)
 	{
@@ -294,6 +335,7 @@ function tx_init(param)
     $(l.txa).on("keydown", tx_keydown);
     $(l.txa).on("keyup", tx_keyup);
     $(l.txa).on("keypress", tx_keypress);
+    $(l.txa).on("focus", tx_checkfocus);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

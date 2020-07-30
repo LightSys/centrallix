@@ -78,6 +78,7 @@ function form_cb_getvalue(v)
     else if (v == 'is_discardable') return this.is_discardable;
     else if (v == 'is_queryable') return this.is_queryable;
     else if (v == 'is_queryexecutable') return this.is_queryexecutable;
+    else if (v == 'is_focusable') return this.is_focusable;
     var dv = null;
     var found = false;
     if (this.data)
@@ -329,7 +330,7 @@ function form_load_fields(data, no_clear, modify, onefield)
     }
 
 /** Objectsource says our object is available **/
-function form_cb_object_available(data)
+function form_cb_object_available(data, osrc, why)
     {
     var go_view = false;
     if (this.mode == 'Query')
@@ -390,7 +391,7 @@ function form_cb_object_available(data)
 
 	    this.LoadFields(this.data);
 
-	    this.SendEvent('DataLoaded');
+	    this.SendEvent('DataLoaded', {why: why} );
 	    }
 	else
 	    {
@@ -709,6 +710,8 @@ function form_select_element(current, save_if_last, reverse)
     {
     var incr = reverse?(-1):1;
     var ctrlnum = (this.elements.length - incr)%this.elements.length;
+    if (!current && reverse)
+	ctrlnum = 0;
     var origctrl;
     var found_one = false;
 
@@ -753,6 +756,14 @@ function form_select_element(current, save_if_last, reverse)
 	    if (pg_removekbdfocus())
 		{
 		this.nextform.SelectElement(null);
+		return;
+		}
+	    }
+	if (reverse && origctrl == 0 && this.prevform && current && this.prevform.is_enabled)
+	    {
+	    if (pg_removekbdfocus())
+		{
+		this.prevform.SelectElement(null, false, true);
 		return;
 		}
 	    }
@@ -858,6 +869,7 @@ function form_change_mode(newmode, reason)
     this.is_queryable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_query',1));
     this.is_queryexecutable = (newmode == 'Query');
     this.is_multienter = (this.is_multienter && (newmode == 'New'));
+    this.is_focusable = this.is_newable || this.is_editable || this.is_queryable || newmode == 'New' || newmode == 'Modify' || newmode == 'Query';
 
     // Confirm if transitioning out of Modify with unsaved data
     if(this.mode=='Modify' && this.IsUnsaved)
@@ -1527,6 +1539,9 @@ function form_init(form,param)
     else if (param.nfw)
 	form.nextformwithin = wgtrGetNode(form, param.nfw);
 	//form.nextform = wgtrFindInSubtree(wgtrGetNode(form, param.nfw), form, "widget/form");
+    form.prevform = null;
+    if (param.pf)
+	form.prevform = wgtrGetNode(form, param.pf);
 
     //if (!form.osrc) alert('no osrc container!');
     form.IsUnsaved = false;
@@ -1568,6 +1583,7 @@ function form_init(form,param)
     form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
+    form.is_focusable = form.is_newable || form.is_editable || form.is_queryable;
     form.is_enabled = true;
     form.recid = 1;
     form.lastrecid = null;
@@ -1676,6 +1692,7 @@ function form_init(form,param)
     iv.Add("is_editable","is_editable");
     iv.Add("is_queryable","is_queryable");
     iv.Add("is_queryexecutable","is_queryexecutable");
+    iv.Add("is_focusable","is_focusable");
     iv.Add("is_multienter","is_multienter");
     iv.Add("is_enabled","is_enabled");
     iv.Add("confirm_delete","confirm_delete");

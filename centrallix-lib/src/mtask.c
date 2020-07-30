@@ -237,7 +237,7 @@ evFile(int ev_type, void* obj)
                 if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
                 if (code == 0) fd->Flags |= FD_F_RDBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_RDBLK | FD_F_RDERR);
-                if (code == -1) fd->Flags |= FD_F_RDERR;
+                if (code == -1) fd->Flags |= (FD_F_RDERR | FD_F_RDEOF);
                 break;
 
             case EV_T_FD_OPEN:
@@ -2567,6 +2567,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		}
 #endif
+	    if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 	    if (rval == -1 && (errno != EWOULDBLOCK && errno != EINTR && errno != EAGAIN)) return -1;
     	    }
 
@@ -2632,6 +2633,8 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		    }
 #endif
+
+		if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
@@ -3567,43 +3570,80 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 int
 netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
     {
-    int t,t2,rval,arg;
-    struct linger l;
+    int t,t2,rval,arg,sl;
+    //struct linger l;
+    char buf[128];
 
 #ifdef MTASK_DEBUG
 	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_CLOSE)
 	    printf("Closing FD %i\n",net_filedesc->FD);
 #endif
 
-    	/** Close the file descriptor normally first. **/
+    	/** Close the file descriptor normally first.  This does not actually
+	 ** call close() since we specify FD_XU_NODST (no destroy), but instead
+	 ** just cleans up event structures associated with the file
+	 ** descriptor.
+	 **/
 	t = mtRealTicks();
 	fdClose(net_filedesc, (flags & (FD_U_IMMEDIATE)) | FD_XU_NODST);
 
-	/** Now we set linger on the fd. **/
+	/** Shutdown for writing and wait for EOF from the peer **/
+	shutdown(net_filedesc->FD, SHUT_WR);
+	sl=1;
+	if (!(net_filedesc->Flags & FD_F_RDEOF))
+	    {
+	    while(sl <= 8192) /* max approx. 16 sec sleep time waiting on EOF */
+		{
+		rval = read(net_filedesc->FD, buf, sizeof(buf));
+		t2 = mtRealTicks();
+		if ((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec && rval > 0)
+		    continue;
+		if (rval == 0 || (rval < 0 && errno != EWOULDBLOCK))
+		    break;
+		thSleep(sl);
+		sl = sl * 2;
+		}
+	    }
+
+	/** Verify that all data has been transmitted to the peer (Linux only)
+	 **/
 #if HAVE_SIOCOUTQ && defined(SIOCOUTQ)
 	t2 = t;
-	while((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec)
+	sl = 1;
+	while(sl <= 8192)
 	    {
-	    if (ioctl(net_filedesc->FD, SIOCOUTQ, &arg) < 0 || arg == 0)
+	    rval = ioctl(net_filedesc->FD, SIOCOUTQ, &arg);
+	    if (rval < 0 || arg == 0)
 		break;
-	    thSleep(100);
 	    t2 = mtRealTicks();
+	    if ((t2-t)*(1000/MTASK.TicksPerSec) >= linger_msec)
+		break;
+	    thSleep(sl);
+	    sl = sl * 2;
 	    }
-	linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
+	//linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
 #endif
 
-	if (linger_msec > 0)
+	/** No longer using SO_LINGER: we don't actually want to block on
+	 ** any of this at all, and this code had a RST bug in it too.
+	 **/
+	/*if (linger_msec > 0)
 	    {
 	    l.l_onoff = 1;
 	    l.l_linger = (linger_msec) / 1000;
 	    setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
-	    }
+	    }*/
 
 	/** Shutdown read and write sides of the connection. **/
-	shutdown(net_filedesc->FD, 2);
+	shutdown(net_filedesc->FD, SHUT_RDWR);
+
+	/** Issue the close **/
+	arg=0;
+	ioctl(net_filedesc->FD, FIONBIO, &arg);
+	close(net_filedesc->FD);
 
 	/** Try to close the socket, keeping track of timeout **/
-	rval = -1;
+	/*rval = -1;
 	while(linger_msec > 0)
 	    {
 	    t2 = mtRealTicks();
@@ -3618,10 +3658,10 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	        {
 		break;
 		}
-	    }
+	    }*/
 
 	/** Did the close succeed?  If not, set for forced close. **/
-	if (rval FAIL)
+	/*if (rval FAIL)
 	    {
 	    l.l_onoff=0;
 	    l.l_linger=0;
@@ -3629,7 +3669,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    arg=0;
 	    ioctl(net_filedesc->FD, FIONBIO, &arg);
 	    close(net_filedesc->FD);
-	    }
+	    }*/
 
 #ifdef MTASK_DEBUG
 	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_CLOSE)

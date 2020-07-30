@@ -125,6 +125,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	htrCheckAddExpression(s, tree, name, "enabled");
 	htrCheckAddExpression(s, tree, name, "background");
+	htrCheckAddExpression(s, tree, name, "bgcolor");
 
 	/** Style of pane - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0)

@@ -2056,6 +2056,11 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** These functions always invariably return an integer... **/
 		    subtree->DataType = DATA_T_INTEGER;
 		    }
+		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "sin") || !strcmp(subtree->Name, "cos") || !strcmp(subtree->Name, "power") || !strcmp(subtree->Name, "sqrt") || !strcmp(subtree->Name, "atan2") || !strcmp(subtree->Name, "radians")))
+		    {
+		    /** These functions always invariably return a floating point type **/
+		    subtree->DataType = DATA_T_DOUBLE;
+		    }
 		if (subtree->DataType == DATA_T_STRING)
 		    {
 		    /** We get here if 1) op 1 is a constant STRING, 2) op 1 is one of

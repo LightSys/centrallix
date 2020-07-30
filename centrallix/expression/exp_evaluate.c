@@ -955,7 +955,7 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		if (child->Flags & EXPR_F_NULL) has_null = 1;
-		if (!(child->Flags & EXPR_F_NULL) && child->Integer == 0)
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer == 0)
 		    {
 		    tree->Integer = 0;
 		    short_circuiting = 1;
@@ -1008,7 +1008,7 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		if (child->Flags & EXPR_F_NULL) has_null = 1;
-		if (!(child->Flags & EXPR_F_NULL) && child->Integer != 0) 
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer != 0)
 		    {
 		    tree->Integer = 1;
 		    short_circuiting = 1;
@@ -1321,7 +1321,7 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		/** if unset because unbound to a real object, evaluate to NULL **/
-		tree->Flags |= EXPR_F_NULL;
+		tree->Flags |= (EXPR_F_NULL | EXPR_F_INDETERMINATE);
 		tree->DataType = DATA_T_INTEGER;
 		return 0;
 		}
@@ -1864,6 +1864,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
     int (*fn)();
     int old_objmask;
     int rval;
+    int i;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1898,6 +1899,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 
 	/** Call the appropriate evaluator fn based on type **/
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
+	tree->Flags &= ~EXPR_F_INDETERMINATE;
 	/*if (tree->NodeType == EXPR_N_LIST) return -1;*/
 	fn = EXP.EvalFunctions[tree->NodeType];
 	if (!fn)
@@ -1913,6 +1915,16 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	if (objlist)
 	    objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
+
+	/** Indeterminate? **/
+	for(i=0; i<tree->Children.nItems; i++)
+	    {
+	    if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_INDETERMINATE)
+		{
+		tree->Flags |= EXPR_F_INDETERMINATE;
+		break;
+		}
+	    }
 
     return rval;
     }

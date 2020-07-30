@@ -308,10 +308,11 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 			}
 
 		    /** break failed, re-add to old container.  Bad news though.  If
-		     ** the new_parent got set to NULL, we no longer have a old_parent
+		     ** the new_parent got set to NULL, we no longer have an old_parent
 		     ** or a new_parent.  Exit without doing anything.
 		     **/
-		    prt_internal_Add(new_parent, table_obj);
+		    if (new_parent)
+			prt_internal_Add(new_parent, table_obj);
 		    /*if (new_parent == old_parent)
 			old_parent->LayoutMgr->AddObject(old_parent, table_obj);*/
 		    return -1;

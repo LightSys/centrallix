@@ -515,9 +515,7 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
 	obj->Mode = mode;
 	obj->Session = this->Obj->Session;
-	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
-	obj->Pathname->LinkCnt = 1;
-	obj->Pathname->OpenCtlBuf = NULL;
+	obj->Pathname = NULL;
 	if (this->Obj->Prev)
 	    objLinkTo(this->Obj->Prev);
 	obj->Prev = this->Obj->Prev;
@@ -526,10 +524,14 @@ objQueryFetch(pObjQuery this, int mode)
 	while(1)
 	    {
 	    /** setup the new pathname. **/
-	    obj_internal_CopyPath(obj->Pathname,this->Obj->Pathname);
+	    if (obj->Pathname)
+		obj_internal_FreePath(obj->Pathname);
+	    obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	    obj->Pathname->OpenCtlBuf = NULL;
 	    obj->Pathname->LinkCnt = 1;
-	    obj->SubPtr = this->Obj->SubPtr;
+	    obj_internal_CopyPath(obj->Pathname, this->Obj->Pathname);
 	    obj->SubCnt = this->Obj->SubCnt+1;
+	    obj->SubPtr = this->Obj->SubPtr;
 
 	    /** Fetch next from driver. **/
             obj_data = this->Obj->Driver->QueryFetch(this->Data, obj, mode, &(obj->Session->Trx));

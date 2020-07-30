@@ -538,7 +538,7 @@ test: tests/centrallix.conf-test test_install $(TOTESTFILES)
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
 		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
 		echo -n "$$CBLUE"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
 		if [ "$$RET" -eq 142 ]; then \

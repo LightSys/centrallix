@@ -631,26 +631,40 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_INTEGER:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_INTEGER, &(exp->Integer), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_INTEGER, &(exp->Integer), 0));
 		break;
 
 	    case EXPR_N_STRING:
-	        if (eg->EscChar == '"')
+		if (!exp->String || exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+	        else if (eg->EscChar == '"')
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_SINGLE | DATA_F_CONVSPECIAL));
 		else
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_CONVSPECIAL));
 		break;
 
 	    case EXPR_N_DOUBLE:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DOUBLE, &(exp->Types.Double), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DOUBLE, &(exp->Types.Double), 0));
 		break;
 
 	    case EXPR_N_DATETIME:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DATETIME, &(exp->Types.Date), DATA_F_QUOTED));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DATETIME, &(exp->Types.Date), DATA_F_QUOTED));
 		break;
 
 	    case EXPR_N_MONEY:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_MONEY, &(exp->Types.Money), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_MONEY, &(exp->Types.Money), 0));
 		break;
 	    
 	    case EXPR_N_OBJECT:
@@ -761,7 +775,7 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 		return -1;
 		}
 	    }
-	else if (!strcmp(language,"javascript"))
+	else if (!strcasecmp(language,"javascript"))
 	    {
 	    if (exp_internal_GenerateText_js(exp, eg) < 0)
 		{

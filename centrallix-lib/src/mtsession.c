@@ -287,7 +287,7 @@ mssAuthenticate(char* username, char* password)
 	    strncpy(salt,pwd,2);
 	    salt[2]=0;
 	    encrypted_pwd = (char*)crypt(s->Password,pwd);
-	    if (strcmp(encrypted_pwd,pwd))
+	    if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
 		{
 		memset(s, 0, sizeof(MtSession));
 		nmFree(s,sizeof(MtSession));
