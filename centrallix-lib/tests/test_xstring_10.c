@@ -22,12 +22,12 @@ test(char** tname)
 		pXString str1 = xsNew();
 		pXString str2 = xsNew();
 		pXString str3 = xsNew();
-
 	
 		xsConcatenate(str, "Hello World!", -1);
 		xsConcatenate(str1, "abc", -1);
 		xsConcatenate(str2, "œbc", -1);
 		xsConcatenate(str3, "Hi œbc", -1);
+
 		int ret;
 		ret = xsInsertAfter(str, "œ", 1, 1);
 		assert(ret==2);
@@ -39,10 +39,27 @@ test(char** tname)
 		assert(ret == 4);
 
 	        ret = xsInsertAfter(str3, str2->String,6, 3);
-		assert(ret == 9);			
+		assert(ret == 9);	
+		
+
+		/*pXString str4 = xsNew();
+		xsConcatenate(str4, "oh", -1);
+		ret = xsInsertAfter(str4, "more", 4, 1);
+		assert(ret == 5);	*/	
+
 		
 	}
 
+
+/*	for(i=0;i<iter;i++){
+		int ret;
+		pXString str4 = xsNew();
+		xsConcatenate(str4, "oh", -1);
+		ret = xsInsertAfter(str4, "more", 4, 1);
+		assert(ret == 5);		
+	}
+
+*/
     return iter;
     }
 
