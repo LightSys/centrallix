@@ -80,6 +80,7 @@ int mssErrorErrno(int clr, char* module, char* message, ...);
 int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
+int mssUserError(pXString str);
 
 
 #endif

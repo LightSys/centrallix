@@ -702,6 +702,40 @@ mssStringError(pXString str)
     }
 
 
+/*** mssUserError() - returns a user-friendly version of the error message
+ *** stack (i.e., without the module codes).
+ ***/
+int
+mssUserError(pXString str)
+    {
+    int i;
+    pMtSession s;
+    char* item;
+    char* colon;
+
+	/** Get session. **/
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s) return -1;
+
+	/** Create a space-separated string of the messages, without module codes **/
+	for(i=s->ErrList.nItems-1;i>=0;i--)
+	    {
+	    item = (char*)(s->ErrList.Items[i]);
+	    if (item)
+		{
+		colon = strchr(item, ':');
+		if (colon)
+		    item = colon + 2;
+		xsConcatenate(str, item, -1);
+		if (i > 0)
+		    xsConcatenate(str, " ", 1);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** mssSetParamPtr - sets a session parameter, given an opaque
  *** pointer.  For strings, use mssSetParam().
  ***/
