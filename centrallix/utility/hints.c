@@ -281,7 +281,6 @@ pObjPresentationHints
 objInfToHints(pStructInf inf, int data_type)
     {
     pObjPresentationHints ph;
-    pParamObjects tmplist;
     char* ptr;
     char* newptr;
     int n,cnt;
@@ -300,6 +299,10 @@ objInfToHints(pStructInf inf, int data_type)
 	ph->DefaultExpr = stGetExpression(stLookup(inf,"default"), 0);
 	ph->MinValue = stGetExpression(stLookup(inf,"min"), 0);
 	ph->MaxValue = stGetExpression(stLookup(inf,"max"), 0);
+	if (ph->Constraint) ph->Constraint = expDuplicateExpression(ph->Constraint);
+	if (ph->DefaultExpr) ph->DefaultExpr = expDuplicateExpression(ph->DefaultExpr);
+	if (ph->MinValue) ph->MinValue = expDuplicateExpression(ph->MinValue);
+	if (ph->MaxValue) ph->MaxValue = expDuplicateExpression(ph->MaxValue);
 
 	/** Compile expressions, if any **/
 	/*if (ph->Constraint || ph->DefaultExpr || ph->MinValue || ph->MaxValue)

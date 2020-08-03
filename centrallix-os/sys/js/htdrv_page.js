@@ -17,6 +17,43 @@
  * mouse events.
  */
 
+// Main global context for Centrallix widgets
+var $CX =
+    {
+    Widget:
+	{
+	},
+    Globals:
+	{
+	spinnerCount: 0,
+	moneyFormat: "$0.00",
+	dateFormat: "dd MMM yyyy HH:mm"
+	},
+    Tree: null,
+    Namespaces: {},
+    Time:
+	{
+	Init:
+	    {
+	    server: null,
+	    serverTZ: null,
+	    client: null,
+	    clockOffset: 0
+	    }
+	},
+    Scripts:
+	{
+	},
+    Endorsements:
+	{
+	},
+    Apps:
+	{
+	},
+    Types:
+	{
+	}
+    };
 
 var pg_msglist = '';
 var pg_init_ts = (new Date()).valueOf();
@@ -1222,7 +1259,7 @@ function pg_keyhandler_internal(k,m,e)
 	    return false;
 	    }
 	}
-    return false;
+    return true;
     }
  
 function pg_status_init() //SETH: ??
@@ -1533,6 +1570,11 @@ function pg_launch(aparam)
 	w_exists = false;
 	}
 
+    // Compute the height
+    var h = aparam.Height;
+    if (window.devicePixelRatio)
+	h *= window.devicePixelRatio;
+
     // Open it.
     if (!w_exists) 
 	{
@@ -1548,7 +1590,7 @@ function pg_launch(aparam)
 	    var scroll = ",scrollbars=yes";
 	else
 	    var scroll = ",scrollbars=no";
-	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + h + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
 	}
     }
 
@@ -2076,6 +2118,42 @@ function pg_getrelcoord(l, sub_l)
 
 
 //START SECTION: async request handling ----------------------------------
+//
+// This function starts the busy spinner.
+//
+function pg_spinner_inc()
+    {
+    $CX.Globals.spinnerCount++;
+
+    if (!pg_waitlyr || !pg_waitlyr.vis)
+	{
+	if (!pg_waitlyr)
+	    {
+	    pg_waitlyr = htr_new_layer(96);
+	    htr_write_content(pg_waitlyr, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
+	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
+	    htr_setzindex(pg_waitlyr, 99999);
+	    }
+	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
+	pg_waitlyr_id = null;
+	pg_waitlyr.vis = true;
+
+	htr_setvisibility(pg_waitlyr, "inherit");
+	}
+    }
+
+
+// This function terminates the busy spinner if everyone is done with it.
+function pg_spinner_dec()
+    {
+    $CX.Globals.spinnerCount--;
+
+    if ($CX.Globals.spinnerCount <= 0)
+	{
+	pg_clear_waitlyr();
+	}
+    }
+
 
 // pg_loadqueue_additem() - adds an item to the load queue, sorted by 'level'
 function pg_loadqueue_additem(item)
@@ -2091,7 +2169,7 @@ function pg_serialized_write(l, text, cb)
     {
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
     //pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0});
+    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0, silent:true});
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -2102,7 +2180,7 @@ function pg_serialized_write(l, text, cb)
 // complete (even if scheduled later) before it runs.
 function pg_serialized_func(level, obj, func, params)
     {
-    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0});
+    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0, silent:true});
     //pg_serialized_load_doone();
     pg_loadqueue_check();
     }
@@ -2113,24 +2191,11 @@ function pg_serialized_func(level, obj, func, params)
 // manner that keeps things serialized so server loads don't overlap.
 function pg_serialized_load(l, newsrc, cb, silent)
     {
-    // pg_waitlyr says if the 'wait layer' should be used (the 'wait layer' is the layer that takes focus and says "please wait...")
-    if (!silent && (!pg_waitlyr || !pg_waitlyr.vis))
-	{
-	if (!pg_waitlyr)
-	    {
-	    pg_waitlyr = htr_new_layer(96);
-	    htr_write_content(pg_waitlyr, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
-	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
-	    htr_setzindex(pg_waitlyr, 99999);
-	    }
-	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	pg_waitlyr_id = null;
-	pg_waitlyr.vis = true;
+    if (!silent)
+	pg_spinner_inc();
 
-	htr_setvisibility(pg_waitlyr, "inherit");
-	}
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
-    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0});
+    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0, silent:silent});
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -2144,7 +2209,7 @@ function pg_serialized_load_doone()
     if (pg_loadqueue.length == 0) 
 	{
 	//pg_loadqueue_busy = 0;
-	pg_clear_waitlyr();
+	//pg_clear_waitlyr();
 	return;
 	}
 
@@ -2169,8 +2234,18 @@ function pg_serialized_load_doone()
     switch(one_item.type)
 	{
 	case 'src':
-	    one_item.lyr.onload = pg_serialized_load_cb;
-	    one_item.lyr.onerror = pg_serialized_load_error_cb;
+	    one_item.lyr.onload = () =>
+		{
+		if (!one_item.silent)
+		    pg_spinner_dec();
+		pg_serialized_load_cb.call(one_item.lyr);
+		};
+	    one_item.lyr.onerror = () =>
+		{
+		if (!one_item.silent)
+		    pg_spinner_dec();
+		pg_serialized_load_error_cb.call(one_item.lyr);
+		};
 	    pg_set(one_item.lyr, 'src', one_item.src);
 	    break;
 
@@ -2190,6 +2265,9 @@ function pg_serialized_load_doone()
 		one_item.lyr.__load_busy = false;
 		pg_loadqueue_busy--;
 		}
+
+	    if (!one_item.silent)
+		pg_spinner_dec();
 	    pg_loadqueue_check();
 	    break;
 
@@ -2197,6 +2275,8 @@ function pg_serialized_load_doone()
 	    one_item.cb.apply(one_item.lyr, one_item.params);
 	    one_item.lyr.__load_busy = false;
 	    pg_loadqueue_busy--;
+	    if (!one_item.silent)
+		pg_spinner_dec();
 	    pg_loadqueue_check();
 	    break;
 	}
@@ -2230,13 +2310,13 @@ function pg_loadqueue_check()
     {
     if (pg_loadqueue.length > 0)
 	pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
-    else
-	pg_clear_waitlyr();
+    //else
+//	pg_clear_waitlyr();
     }
 
 function pg_clear_waitlyr()
     {
-    if (pg_waitlyr && !pg_loadqueue_busy)
+    if (pg_waitlyr)
 	{
 	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
 	pg_waitlyr.vis = false;
@@ -2970,6 +3050,18 @@ function pg_check_resize(l)
 	    }
 	}
     return null;
+    }
+
+function pg_scroll(e)
+    {
+    if (e.target == document)
+	{
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else
+	{
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+	}
     }
 
 

@@ -365,6 +365,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
+	htrAddStylesheetItem_va(s, "\thtml { overflow:hidden; }\n");
 	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
@@ -402,6 +403,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "pg", "pg_mouseover");
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "pg", "pg_mousedown");
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "pg", "pg_mouseup");
+	htrAddEventHandlerFunction(s, "document", "SCROLL", "pg", "pg_scroll");
 	if (s->Capabilities.Dom1HTML)
 	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "pg", "pg_contextmenu");
 

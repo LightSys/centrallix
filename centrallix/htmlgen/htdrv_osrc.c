@@ -370,5 +370,12 @@ int htosrcInitialize() {
 		"fieldname",		DATA_T_STRING,
 		NULL);
 
+    htruleRegister("osrc_version",
+		"fieldname",		DATA_T_STRING,
+		"current",		DATA_T_STRING,		/* zero, one, or max */
+		"version_if",		DATA_T_CODE,		/* only do a versioned save if this is true */
+		"version_fields",	DATA_T_STRINGVEC,	/* only do a versioned save if one of these fields has changed */
+		NULL);
+
    return 0;
 }

@@ -31,13 +31,7 @@
 /************************************************************************/
 
 
-/*** Some enums to control how we're responding to the request ***/
-typedef enum { ResTypeCollection, ResTypeElement, ResTypeBoth } nhtResType_t;
-typedef enum { ResFormatAttrs, ResFormatAuto, ResFormatContent, ResFormatBoth } nhtResFormat_t;
-typedef enum { ResAttrsBasic, ResAttrsFull, ResAttrsNone } nhtResAttrs_t;
-
 int nht_i_RestGetElementContent(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
-int nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
 int nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels);
 int nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type);
 
@@ -135,7 +129,7 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
  *** entry here, res_attrs will be either ResAttrsBasic or ResAttrsFull.
  ***/
 int
-nht_i_RestWriteAttr(pNhtConn conn, pObject obj, char* attrname, nhtResAttrs_t res_attrs, int do_comma)
+nht_i_RestWriteAttr(pNhtConn conn, pObject obj, char* attrname, nhtResAttrs_t res_attrs, int do_comma, int sequence, int is_system)
     {
     int data_type;
     int err;
@@ -179,7 +173,71 @@ nht_i_RestWriteAttr(pNhtConn conn, pObject obj, char* attrname, nhtResAttrs_t re
 		xsDeInit(&hints_str);
 		objFreeHints(hints);
 		}
-	    nht_i_WriteConn(conn, " }", 2, 0);
+	    nht_i_QPrintfConn(conn, 0, ", \"y\":%STR%[, \"s\":%INT%] }", is_system?"true":"false", sequence > 0, sequence);
+	    }
+
+    return 0;
+    }
+
+
+
+/*** nht_i_RestWriteAttrSet() - send the list of attributes of an object/element
+ ***/
+int
+nht_i_RestWriteAttrSet(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs)
+    {
+    int i, seq;
+    int is_system;
+    char* attr;
+    char xfer_buf[256];
+    int rcnt;
+    char* sys_attrs[] = { "name", "annotation", "inner_type", "outer_type" };
+    char sent_sys_attrs[sizeof(sys_attrs)/sizeof(char*)];
+
+	/** Write any attrs? **/
+	if (res_attrs != ResAttrsNone)
+	    {
+	    /** Keep track of any sys attrs that were sent with the main ones **/
+	    memset(sent_sys_attrs, 0, sizeof(sent_sys_attrs));
+
+	    /** We loop through the main attributes that are iterable **/
+	    seq = 1;
+	    for(attr=objGetFirstAttr(obj); attr; attr=objGetNextAttr(obj))
+		{
+		for(i=0; i<sizeof(sent_sys_attrs); i++)
+		    {
+		    is_system = 0;
+		    if (!strcmp(attr, sys_attrs[i]))
+			{
+			is_system = 1;
+			sent_sys_attrs[i] = 1;
+			break;
+			}
+		    }
+		nht_i_RestWriteAttr(conn, obj, attr, res_attrs, (seq==1)?0:1, seq, is_system);
+		seq++;
+		}
+
+	    /** Next, we output some system (hidden) attributes **/
+	    for(i=0; i<sizeof(sent_sys_attrs); i++)
+		{
+		if (!sent_sys_attrs[i])
+		    {
+		    nht_i_RestWriteAttr(conn, obj, sys_attrs[i], res_attrs, (seq==1)?0:1, seq, 1);
+		    seq++;
+		    }
+		}
+
+	    /** Content? **/
+	    if (res_format == ResFormatBoth)
+		{
+		nht_i_WriteConn(conn, ",\r\n\"cx__objcontent\":\"", -1, 0);
+		while((rcnt = objRead(obj, xfer_buf, sizeof(xfer_buf), 0, 0)) > 0)
+		    {
+		    nht_i_QPrintfConn(conn, 0, "%*STR&JSONSTR", rcnt, xfer_buf);
+		    }
+		nht_i_WriteConn(conn, "\"", -1, 0);
+		}
 	    }
 
     return 0;
@@ -198,12 +256,6 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
     {
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
-    char* attr;
-    char xfer_buf[256];
-    int rcnt;
-    char* sys_attrs[] = { "name", "annotation", "inner_type", "outer_type" };
-    char sent_sys_attrs[sizeof(sys_attrs)/sizeof(char*)];
-    int i;
 
 	/** We begin our object with just a { **/
 	nht_i_WriteConn(conn, "{\r\n", -1, 0);
@@ -211,57 +263,19 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 	/** First thing we need to output is the URI of the element **/
 	path = objGetPathname(obj);
 	strtcpy(pathbuf, path, sizeof(pathbuf));
-	nht_i_QPrintfConn(conn, 0, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=full%]\"",
+	nht_i_QPrintfConn(conn, 0, "\"@id\":\"%STR&JSONSTR?cx__mode=rest&cx__res_format=%STR&JSONSTR%[&cx__res_attrs=full%]\",\r\n",
 		pathbuf,
 		(res_format == ResFormatAttrs)?"attrs":"both",
 		(res_attrs == ResAttrsFull)
 		);
 
-	/** Write any attrs? **/
-	if (res_attrs != ResAttrsNone)
-	    {
-	    /** Keep track of any sys attrs that were sent with the main ones **/
-	    memset(sent_sys_attrs, 0, sizeof(sent_sys_attrs));
-
-	    /** We loop through the main attributes that are iterable **/
-	    for(attr=objGetFirstAttr(obj); attr; attr=objGetNextAttr(obj))
-		{
-		for(i=0; i<sizeof(sent_sys_attrs); i++)
-		    {
-		    if (!strcmp(attr, sys_attrs[i]))
-			{
-			sent_sys_attrs[i] = 1;
-			break;
-			}
-		    }
-		nht_i_RestWriteAttr(conn, obj, attr, res_attrs, 1);
-		}
-
-	    /** Next, we output some system (hidden) attributes **/
-	    for(i=0; i<sizeof(sent_sys_attrs); i++)
-		{
-		if (!sent_sys_attrs[i])
-		    nht_i_RestWriteAttr(conn, obj, sys_attrs[i], res_attrs, 1);
-		}
-
-	    /** Content? **/
-	    if (res_format == ResFormatBoth)
-		{
-		nht_i_WriteConn(conn, ",\r\n\"cx__objcontent\":\"", -1, 0);
-		while((rcnt = objRead(obj, xfer_buf, sizeof(xfer_buf), 0, 0)) > 0)
-		    {
-		    nht_i_QPrintfConn(conn, 0, "%*STR&JSONSTR", rcnt, xfer_buf);
-		    }
-		nht_i_WriteConn(conn, "\"", -1, 0);
-		}
-	    }
+	nht_i_RestWriteAttrSet(conn, obj, res_format, res_attrs);
 
 	/** And end it with } **/
 	nht_i_WriteConn(conn, "\r\n}\r\n", -1, 0);
 
     return 0;
     }
-
 
 
 /*** nht_i_RestGetCollection() - get a REST collection, which will be

@@ -1,0 +1,53 @@
+Document:   JSON data format for OSML-over-HTTP for OSRC widget
+Author:	    Greg Beeley (GRB)
+Date:	    13-Feb-2018
+-------------------------------------------------------------------------------
+
+The new data format to be used for OSML-over-HTTP shall be identical to the
+"full" format used for JSON-REST:
+
+	Full Format
+
+	The Full Format will be used to transfer metadata about each
+	attribute in addition to the attribute's name and value:
+
+	    { "a":"age", "e":null, "v":32, "t":"integer", "h":"d=0" }
+
+	In the above representation, the property names are abbreviated for
+	space savings, and mean the following:
+
+	    a = name of attribute
+	    e = error status, null (or not present) if no error.  If set, it
+		will either be the string "error" or a string containing an
+		error message.
+	    v = attribute's value (same representation as in the Basic Format)
+	    t = data type (integer, double, string, money, datetime)
+	    h = presentation hints, as encoded by hntEncodeHints() and as
+		decoded by cx_parse_hints in JavaScript.  If no hints are
+		available, the h property may be omitted entirely.
+
+	The 'a' property above will be omitted if the name has already been
+	specified outside of the full format attribute, for instance if
+	a list of attributes is contained in a JSON Object.
+
+	Full:
+
+	    {
+		"@id":"/people/001?cx__mode=rest&cx__res_format=attrs&cx__res_attrs=full",
+		"first_name": { "v":"John", "t":"string", "h":"l=64" }
+		"last_name": { "v":"Smith", "t":"string", "h":"l=64" }
+	    }
+
+Since the ordering of the objects can be important (as with a SQL order by
+clause), the list of such objects will be numbered, rather than associative:
+
+	{
+	    "status": null,
+	    "session": "X ...",
+	    "query": "X ...",
+	    "resultset":
+		[
+		{ "@id": ... },
+		{ "@id": ... },
+		]
+	}

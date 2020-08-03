@@ -159,9 +159,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    }
 
 	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+2);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+0);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+0);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+1);
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_current","null",0);
@@ -229,9 +229,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 		if (wgtrGetPropertyValue(sub_tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = t->min_rowheight;
 		htrAddStylesheetItem_va(s,"\t#tbld%POSsub%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
-			t->id, ++subcnt, t->w-(t->demand_scrollbar?0:18), h, z+2);
+			t->id, ++subcnt, t->w-(t->demand_scrollbar?0:18), h, z+1);
 		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\">\n", t->id, subcnt);
-		htrRenderSubwidgets(s, sub_tree, z+3);
+		htrRenderSubwidgets(s, sub_tree, z+2);
 		htrAddBodyItem(s,"</DIV>\n");
 		htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, subcnt);
 		htrCheckAddExpression(s, sub_tree, nptr, "display_for");
@@ -243,7 +243,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		//htrRenderWidget(s, sub_tree, z+3);
 		//}
 	    }
-	htrRenderSubwidgets(s, tree, z+3);
+	htrRenderSubwidgets(s, tree, z+2);
 
 	htrAddBodyItem(s,"</DIV>\n");
 

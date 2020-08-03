@@ -225,6 +225,109 @@ nht_i_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrname)
     }
 
 
+/*** nht_i_JsonWriteResponse - start a JSON-formatted response.
+ ***/
+int
+nht_i_JsonWriteResponse(pNhtConn conn, handle_t h_sess, handle_t h_query, char* status)
+    {
+    char sess_str[20];
+    char query_str[20];
+    pXString err_str = NULL;
+
+	/** Mark this as a JSON response document **/
+	strtcpy(conn->ResponseContentType, "application/json", sizeof(conn->ResponseContentType));
+	nht_i_WriteResponse(conn, 200, "OK", NULL);
+
+	/** Error condition? try to get the details. **/
+	if (!strcmp(status, "ERR"))
+	    {
+	    err_str = xsNew();
+	    if (err_str)
+		{
+		mssUserError(err_str);
+		if (xsLength(err_str) > 0)
+		    status = xsString(err_str);
+		}
+	    }
+
+	/** Write the start of the JSON response **/
+	snprintf(sess_str, sizeof(sess_str), "X" XHN_HANDLE_PRT, h_sess);
+	snprintf(query_str, sizeof(query_str), "X" XHN_HANDLE_PRT, h_query);
+	nht_i_QPrintfConn(conn, 0, "{ \"status\": %[null%]\"%[%STR&JSONSTR%]\"%[, \"session\": \"%STR&JSONSTR\"%]%[, \"query\": \"%STR&JSONSTR\"%], \"resultset\": [",
+		status == NULL,
+		status != NULL,
+		status,
+		h_sess && h_sess != XHN_INVALID_HANDLE,
+		sess_str,
+		h_query && h_query != XHN_INVALID_HANDLE,
+		query_str
+		);
+	conn->nObjectsSent = 0;
+	
+	if (err_str)
+	    xsFree(err_str);
+
+    return 0;
+    }
+
+
+/*** nht_i_JsonWriteAttrs - send one attribute-value list.
+ ***/
+int
+nht_i_JsonWriteAttrs(pNhtConn conn, pObject obj, handle_t tgt)
+    {
+    char obj_str[20];
+
+	/** Output the start **/
+	if (conn->nObjectsSent > 0)
+	    nht_i_WriteConn(conn, ",\n{ ", 4, 0);
+	else
+	    nht_i_WriteConn(conn, "\n{ ", 3, 0);
+
+	/** Output the attribute set **/
+	nht_i_RestWriteAttrSet(conn, obj, ResFormatAttrs, ResAttrsFull);
+
+	/** Output the handle ID and closing.  We do this last, so that if there is
+	 ** already an attribute __cx_handle in the object, our trailing attr will
+	 ** take precedence.
+	 **/
+	snprintf(obj_str, sizeof(obj_str), "X" XHN_HANDLE_PRT, tgt);
+	nht_i_QPrintfConn(conn, 0, ", \"__cx_handle\":\"%STR&JSONSTR\" }", obj_str);
+	conn->nObjectsSent++;
+
+    return 0;
+    }
+
+
+/*** nht_i_JsonWriteResponseEnd - end the json-based response
+ ***/
+int
+nht_i_JsonWriteResponseEnd(pNhtConn conn, int is_closed, int skipped)
+    {
+
+	nht_i_QPrintfConn(conn, 0, "], \"queryclosed\": %STR, \"skipped\": %INT }\n",
+		is_closed?"true":"false",
+		skipped
+		);
+
+    return 0;
+    }
+
+
+/*** nht_i_JsonWriteEntireResponse - write a JSON-formatted response, both beginning
+ *** and ending, but without any result set.
+ ***/
+int
+nht_i_JsonWriteEntireResponse(pNhtConn conn, handle_t h_sess, handle_t h_query, char* status)
+    {
+
+	nht_i_JsonWriteResponse(conn, h_sess, h_query, status);
+	nht_i_JsonWriteResponseEnd(conn, h_query == XHN_INVALID_HANDLE, 0);
+
+    return 0;
+    }
+
+
 /*** nht_i_WriteAttrs - write an HTML-encoded attribute list for the
  *** object to the connection, given an object and a connection.
  ***/
@@ -444,11 +547,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
     pObjQuery qy = NULL;
     char* sid = NULL;
     int auto_session = 0;
-    char sbuf[256];
-    char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt,start,flags,len,rval;
+    int i,t,n,start,len,rval;
     pStruct subinf, find_inf;
     MoneyType m;
     DateTime dt;
@@ -468,11 +569,10 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
     pNhtQuery nht_query;
     char* strval;
     XArray tail_buffer;
-    int n_skipped;
-    
-    handle_t session_handle;
-    handle_t query_handle;
-    handle_t obj_handle;
+    int n_skipped = 0;
+    handle_t session_handle = XHN_INVALID_HANDLE;
+    handle_t query_handle = XHN_INVALID_HANDLE;
+    handle_t obj_handle = XHN_INVALID_HANDLE;
 
 	if (DEBUG_OSML) stPrint_ne(req_inf);
 
@@ -492,8 +592,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		if (app) xaAddItem(&app->AppOSMLSessions, objsess);
 		session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
 		}
-	    nht_i_WriteResponse(conn, 200, "OK", NULL);
-	    nht_i_WriteHandle(conn, session_handle);
+	    nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "OK");
+	    //nht_i_WriteResponse(conn, 200, "OK", NULL);
+	    //nht_i_WriteHandle(conn, session_handle);
 	    if (DEBUG_OSML) printf("ls__mode=opensession X" XHN_HANDLE_PRT "\n", session_handle);
 	    }
 	else 
@@ -508,8 +609,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		{
 		if (!auto_session) 
 		    {
-		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    //nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Session ID required for OSML request '%s'",request);
+		    nht_i_JsonWriteEntireResponse(conn, XHN_INVALID_HANDLE, XHN_INVALID_HANDLE, "ERR");
 		    return -1;
 		    }
 		else
@@ -517,10 +619,11 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    objsess = objOpenSession(req_inf->StrVal);
 		    if (!objsess) 
 			{
-			nht_i_WriteResponse(conn, 200, "OK", NULL);
 			session_handle = XHN_INVALID_HANDLE;
-			nht_i_WriteHandle(conn, session_handle);
+			//nht_i_WriteResponse(conn, 200, "OK", NULL);
+			//nht_i_WriteHandle(conn, session_handle);
 			mssError(1,"NHT","Failed to open new OSML session");
+			nht_i_JsonWriteEntireResponse(conn, XHN_INVALID_HANDLE, XHN_INVALID_HANDLE, "ERR");
 			return -1;
 			}
 		    else
@@ -547,8 +650,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 
 	    if (!objsess || !ISMAGIC(objsess, MGK_OBJSESSION))
 		{
-		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		//nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		mssError(1,"NHT","Invalid Session ID in OSML request");
+		nht_i_JsonWriteEntireResponse(conn, XHN_INVALID_HANDLE, XHN_INVALID_HANDLE, "ERR");
 		return -1;
 		}
 
@@ -565,8 +669,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
 		if (!obj || !ISMAGIC(obj, MGK_OBJECT))
 		    {
-		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    //nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Invalid Object ID in OSML request");
+		    nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "ERR");
 		    return -1;
 		    }
 		}
@@ -585,8 +690,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		qy = (pObjQuery)xhnHandlePtr(&(sess->Hctx), query_handle);
 		if (!qy || !ISMAGIC(qy, MGK_OBJQUERY))
 		    {
-		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    //nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Invalid Query ID in OSML request");
+		    nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "ERR");
 		    return -1;
 		    }
 		}
@@ -596,16 +702,18 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		!strcmp(request,"read") || !strcmp(request,"write") || !strcmp(request,"attrs") || 
 		!strcmp(request, "setattrs") || !strcmp(request,"delete")))
 		{
-		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		//nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		mssError(1,"NHT","Object ID required for OSML '%s' request", request);
+		nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "ERR");
 		return -1;
 		}
 
 	    /** Does this request require a query handle? **/
 	    if (query_handle == XHN_INVALID_HANDLE && (!strcmp(request,"queryfetch") || !strcmp(request,"queryclose")))
 		{
-		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		//nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		mssError(1,"NHT","Query ID required for OSML '%s' request", request);
+		nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "ERR");
 		return -1;
 		}
 
@@ -614,16 +722,18 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 	        {
 		if (session_handle == XHN_INVALID_HANDLE)
 		    {
-		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    //nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Illegal attempt to close the default OSML session.");
+		    nht_i_JsonWriteEntireResponse(conn, XHN_INVALID_HANDLE, XHN_INVALID_HANDLE, "ERR");
 		    return -1;
 		    }
 		xhnFreeHandle(&(sess->Hctx), session_handle);
 		if (app)
 		    xaRemoveItem(&app->AppOSMLSessions, xaFindItem(&app->AppOSMLSessions, objsess));
 	        objCloseSession(objsess);
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_WriteHandle(conn, (handle_t)0);
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteHandle(conn, (handle_t)0);
+		nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "OK");
 	        }
 	    else if (!strcmp(request,"open"))
 	        {
@@ -638,15 +748,18 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    obj_handle = XHN_INVALID_HANDLE;
 		else
 		    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_WriteHandle(conn, obj_handle);
 		if (DEBUG_OSML) printf("ls__mode=open X" XHN_HANDLE_PRT "\n", obj_handle);
 
 		if (obj && stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
 		    objRequestNotify(obj, nht_i_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
 
 		/** Include an attribute listing **/
-		nht_i_WriteAttrs(obj,conn,obj_handle,1);
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteHandle(conn, obj_handle);
+		//nht_i_WriteAttrs(obj,conn,obj_handle,1);
+		nht_i_JsonWriteResponse(conn, session_handle, XHN_INVALID_HANDLE, "OK");
+		nht_i_JsonWriteAttrs(conn, obj, obj_handle);
+		nht_i_JsonWriteResponseEnd(conn, 1, 0);
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
@@ -669,8 +782,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    xhnFreeHandle(&(sess->Hctx), obj_handle);
 		    objClose(obj);
 		    }
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_WriteHandle(conn, (handle_t)0);
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteHandle(conn, (handle_t)0);
+		nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "OK");
 	        }
 	    else if (!strcmp(request,"objquery"))
 	        {
@@ -683,19 +797,22 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    query_handle = XHN_INVALID_HANDLE;
 		else
 		    query_handle = xhnAllocHandle(&(sess->Hctx), qy);
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_WriteHandle(conn, query_handle);
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteHandle(conn, query_handle);
+		nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "OK");
 		if (DEBUG_OSML) printf("ls__mode=objquery X" XHN_HANDLE_PRT "\n", query_handle);
 		}
 	    else if (!strcmp(request,"queryfetch") || !strcmp(request,"multiquery"))
 	        {
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
 		nht_query = NULL;
+
+		/** If an initial multiquery request, set up the query. **/
 		if (!strcmp(request,"multiquery"))
 		    {
 		    if (auto_session)
 			{
-			nht_i_WriteHandle(conn, session_handle);
+			//nht_i_WriteHandle(conn, session_handle);
 			}
 		    qy = NULL;
 
@@ -722,7 +839,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			qy = NULL;
 			query_handle = XHN_INVALID_HANDLE;
 			}
-		    nht_i_WriteHandle(conn, autoclose?XHN_INVALID_HANDLE:query_handle);
+		    //nht_i_WriteHandle(conn, autoclose?XHN_INVALID_HANDLE:query_handle);
 		    if (DEBUG_OSML) printf("ls__mode=multiquery X" XHN_HANDLE_PRT "\n", query_handle);
 		    if (!qy && nht_query)
 			{
@@ -733,6 +850,13 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			xaAddItem(&sess->OsmlQueryList, nht_query);
 			}
 		    }
+
+		/** Send the response header to the client. **/
+		nht_i_JsonWriteResponse(conn, session_handle, query_handle, qy?"OK":"ERR");
+
+		/** If we're returning data -- either because of a queryfetch or because of a multiquery
+		 ** with autofetch enabled, retrieve the objects.
+		 **/
 		if (!strcmp(request,"queryfetch") || (qy && stAttrValue_ne(stLookup_ne(req_inf,"ls__autofetch"),&ptr) == 0 && strtol(ptr,NULL,0)))
 		    {
 		    if (!nht_query)
@@ -759,7 +883,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    if (start < 0) start = 0;
 		    if (!strcmp(request,"queryfetch"))
 			{
-			nht_i_WriteHandle(conn, (handle_t)0);
+			//nht_i_WriteHandle(conn, (handle_t)0);
 			}
 
 		    /** Skip over objects at the beginning? **/
@@ -776,7 +900,6 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    if (stAttrValue_ne(stLookup_ne(req_inf, "ls__tail"), &ptr) == 0 && strtol(ptr,NULL,0))
 			{
 			xaInit(&tail_buffer, n);
-			n_skipped = 0;
 
 			/** Get the object listing **/
 			while((obj = objQueryFetch(qy, mode)) != NULL)
@@ -791,7 +914,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			    }
 
 			/** Send the data to the client **/
-			nht_i_QPrintfConn(conn, 0, "<A HREF=\"/\" TARGET=\"SKIPPED\">%INT</A>\r\n", n_skipped);
+			//FIXME nht_i_QPrintfConn(conn, 0, "<A HREF=\"/\" TARGET=\"SKIPPED\">%INT</A>\r\n", n_skipped);
 			for(i=0; i<tail_buffer.nItems; i++)
 			    {
 			    obj = (pObject)tail_buffer.Items[i];
@@ -802,7 +925,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
 			    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
 				objRequestNotify(obj, nht_i_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
-			    nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			    //nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			    nht_i_JsonWriteAttrs(conn, obj, obj_handle);
 			    n--;
 			    if (autoclose) objClose(obj);
 			    }
@@ -825,7 +949,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
 			    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
 				objRequestNotify(obj, nht_i_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
-			    nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			    //nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			    nht_i_JsonWriteAttrs(conn, obj, obj_handle);
 			    n--;
 			    if (autoclose) objClose(obj);
 			    }
@@ -847,7 +972,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			    }
 			objQueryClose(qy);
 			qy = NULL;
-			nht_i_WriteConn(conn, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n", -1, 0);
+			//nht_i_WriteConn(conn, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n", -1, 0);
 			}
 		    else if (autoclose)
 			{
@@ -866,6 +991,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			qy = NULL;
 			}
 		    }
+		nht_i_JsonWriteResponseEnd(conn, qy == NULL, n_skipped);
 		}
 	    else if (!strcmp(request,"queryclose"))
 	        {
@@ -881,11 +1007,13 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			}
 		    }
 		objQueryClose(qy);
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_WriteHandle(conn, (handle_t)0);
+		nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, "OK");
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteHandle(conn, (handle_t)0);
 		}
 	    else if (!strcmp(request,"read"))
 	        {
+#if 00
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__bytecount"),&ptr) < 0)
 		    n = 0x7FFFFFFF;
 		else
@@ -899,10 +1027,12 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		else
 		    flags = strtoi(ptr,NULL,0);
 		start = 1;
+
 		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?flags|OBJ_U_SEEK:flags)) > 0)
 		    {
 		    if(start)
 			{
+			nht_i_JsonWriteResponse(conn, session_handle, XHN_INVALID_HANDLE, "OK");
 			nht_i_WriteResponse(conn, 200, "OK", NULL);
 			nht_i_WriteHandle(conn, (handle_t)0);
 			start = 0;
@@ -922,15 +1052,21 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    start = 0;
 		    }
 		nht_i_WriteConn(conn, "</A>\r\n", 6,0);
+#endif
+		nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "OSML:read() - not yet implemented");
 		}
 	    else if (!strcmp(request,"write"))
 	        {
+		nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "OSML:write() - not yet implemented");
 		}
 	    else if (!strcmp(request,"attrs"))
 	        {
-		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_WriteHandle(conn, (handle_t)0);
-		nht_i_WriteAttrs(obj,conn,obj_handle,1);
+		nht_i_JsonWriteResponse(conn, session_handle, query_handle, "OK");
+		nht_i_JsonWriteAttrs(conn, obj, obj_handle);
+		nht_i_JsonWriteResponseEnd(conn, query_handle == XHN_INVALID_HANDLE, 0);
+		//nht_i_WriteResponse(conn, 200, "OK", NULL);
+		//nht_i_WriteHandle(conn, (handle_t)0);
+		//nht_i_WriteAttrs(obj,conn,obj_handle,1);
 		}
 	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
@@ -947,8 +1083,9 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
 		    if (!obj)
 			{
-			nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-			mssError(0,"NHT","Could not create object");
+			//nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			mssError(0, "NHT", "Could not create object");
+			nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "ERR");
 			return -1;
 			}
 		    else
@@ -1054,7 +1191,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			if (retval < 0)
 			    {
 			    mssError(0, "NHT", "Failed to set attribute <%s> on object <%s>", subinf->Name, obj->Pathname->Pathbuf + 1);
-			    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			    nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "ERR");
+			    //nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 			    if (!strcmp(request, "create"))
 				{
 				xhnFreeHandle(&(sess->Hctx), obj_handle);
@@ -1070,7 +1208,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		rval = objCommitObject(obj);
 		if (rval < 0)
 		    {
-		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "ERR");
+		    //nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    objClose(obj);
 		    }
 		else
@@ -1154,25 +1293,33 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    if (!strcmp(request,"create"))
 			{
 			if (DEBUG_OSML) printf("ls__mode=create X" XHN_HANDLE_PRT "\n", obj_handle);
-			nht_i_WriteResponse(conn, 200, "OK", NULL);
+			//nht_i_WriteResponse(conn, 200, "OK", NULL);
 			if (obj)
 			    {
-			    nht_i_WriteHandle(conn, obj_handle);
+			    nht_i_JsonWriteResponse(conn, session_handle, query_handle, "OK");
+			    //nht_i_WriteHandle(conn, obj_handle);
 			    }
 			else
 			    {
-			    nht_i_WriteConn(conn, "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n", -1, 0);
+			    nht_i_JsonWriteEntireResponse(conn, session_handle, query_handle, "ERR");
+			    //nht_i_WriteConn(conn, "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n", -1, 0);
 			    }
 			}
 		    else
 			{
-			nht_i_WriteResponse(conn, 200, "OK", NULL);
-			nht_i_WriteHandle(conn, (handle_t)0);
+			nht_i_JsonWriteResponse(conn, session_handle, query_handle, "OK");
+			//nht_i_WriteResponse(conn, 200, "OK", NULL);
+			//nht_i_WriteHandle(conn, (handle_t)0);
 			}
 
 		    /** Write the (possibly updated) attrs to the connection **/
 		    if (obj)
-			nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			{
+			//nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			nht_i_JsonWriteAttrs(conn, obj, obj_handle);
+			}
+
+		    nht_i_JsonWriteResponseEnd(conn, query_handle == XHN_INVALID_HANDLE, 0);
 		    }
 
 		if (nht_query) nht_i_FreeQuery(nht_query);
@@ -1199,7 +1346,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    rval = objDeleteObj(obj);
 		    if (rval < 0) break;
 		    }
-		nht_i_WriteResponse(conn, 200, "OK", (rval==0)?"<A HREF=/ TARGET=X00000000>&nbsp;</A>\r\n":"<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		//nht_i_WriteResponse(conn, 200, "OK", (rval==0)?"<A HREF=/ TARGET=X00000000>&nbsp;</A>\r\n":"<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		nht_i_JsonWriteEntireResponse(conn, session_handle, XHN_INVALID_HANDLE, (rval == 0)?"OK":"ERR");
 		}
 	    }
 	

@@ -187,12 +187,13 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     l_page.Reveal = tc_cb_reveal;
     pg_reveal_register_triggerer(l_page);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-    l_page.is_visible = (l.tloc != 4 && htr_getvisibility(l_tab) == 'inherit');
+    //l_page.is_visible = (l.tloc != 4 && htr_getvisibility(l_tab) == 'inherit');
+    l_page.is_visible = true;
 
+    l_page.tc_visible_changed = tc_visible_changed;
+    htr_watch(l_page,"is_visible", "tc_visible_changed"); //visible property
     var iv = l_page.ifcProbeAdd(ifValue);
     iv.Add("visible", "is_visible");
-    htr_watch(l_page,"is_visible", "tc_visible_changed"); //visible property
-    l_page.tc_visible_changed = tc_visible_changed;
 
     // Show Container API
     l_page.showcontainer = tc_showcontainer;

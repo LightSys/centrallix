@@ -306,6 +306,7 @@ typedef struct
     int		NoCache:1;
     int		UsingTLS:1;
     int		UsingChunkedEncoding:1;
+    int		nObjectsSent;
     char	ResponseContentType[128];
     int		ResponseContentLength;
     XArray	RequestHeaders;		/* of pHttpHeader */
@@ -404,10 +405,18 @@ char* nht_i_GetHeader(pXArray hdrlist, char* hdrname);
 int nht_i_FreeHeaders(pXArray hdrlist);
 int nht_i_CheckAccessLog();
 
+/*** Some enums to control how we're responding to the request ***/
+typedef enum { ResTypeCollection, ResTypeElement, ResTypeBoth } nhtResType_t;
+typedef enum { ResFormatAttrs, ResFormatAuto, ResFormatContent, ResFormatBoth } nhtResFormat_t;
+typedef enum { ResAttrsBasic, ResAttrsFull, ResAttrsNone } nhtResAttrs_t;
+
 /*** REST implementation ***/
 int nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj);
 int nht_i_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*);
 int nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content);
 int nht_i_RestDelete(pNhtConn conn, pStruct url_inf, pObject obj);
+int nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
+int nht_i_RestWriteAttrSet(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs);
+
 
 #endif

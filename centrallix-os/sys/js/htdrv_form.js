@@ -263,36 +263,37 @@ function form_cb_is_discard_ready()
 
 function form_load_fields(data, no_clear, modify, onefield)
     {
-    var name_to_id = [];
-
     if (!data)
 	{
+	// No data supplied -- load hints based on previous information, if available.
 	for(var i in this.elements)
+	    {
 	    if (this.last_hints[this.elements[i].fieldname])
 		cx_set_hints(this.elements[i], this.last_hints[this.elements[i].fieldname], 'data');
 	    else
 		cx_set_hints(this.elements[i], '', 'data');
-	//return;
-	}
-    else
-	{
-	for(var j in data)
-	    {
-	    if (data[j].oid)
-		name_to_id[data[j].oid] = j;
 	    }
 	}
 
+    // Loop through the form elements to load the data.
     for(var i in this.elements)
 	{
-	if (onefield && onefield != this.elements[i].fieldname) continue;
+	var field = this.elements[i].fieldname;
 
-	if (!this.elements[i]._form_type &&
-		    (typeof name_to_id[this.elements[i].fieldname]) != 'undefined' &&
-		    (typeof data[name_to_id[this.elements[i].fieldname]].type) != 'undefined')
-	    this.elements[i]._form_type = data[name_to_id[this.elements[i].fieldname]].type;
+	// are we loading just one field instead of all of them?
+	if (onefield && onefield != field)
+	    continue;
 
-	if (this.elements[i].fieldname == '__position')
+	// Make a note of the data type.
+	if (!this.elements[i]._form_type && data)
+	    {
+	    var t = data.getAttrType(field);
+	    if (t !== null)
+		this.elements[i]._form_type = t;
+	    }
+
+	// Synthetic "position" form element?
+	if (field == '__position')
 	    {
 	    var txt = "";
 	    if (this.mode == "New")
@@ -312,18 +313,24 @@ function form_load_fields(data, no_clear, modify, onefield)
 		}
 	    this.elements[i].setvalue(txt);
 	    }
-	else if ((typeof name_to_id[this.elements[i].fieldname]) != 'undefined' && (typeof data[name_to_id[this.elements[i].fieldname]].value) != 'undefined')
+	else
 	    {
-	    var id = name_to_id[this.elements[i].fieldname];
-	    this.elements[i].setvalue(data[id].value);
-	    if (modify)
-		this.elements[i]._form_IsChanged = true;
-	    cx_set_hints(this.elements[i], data[id].hints, 'data');
-	    this.last_hints[this.elements[i].fieldname] = data[id].hints;
-	    }
-	else if (!no_clear)
-	    {
-	    this.elements[i].clearvalue();
+	    // Normal field -- check to see if it exists in the data.
+	    var attr = null;
+	    if (data && (attr = data.getAttr(field)))
+		{
+		// It does exist -- set its value and presentation hints
+		this.elements[i].setvalue(attr.get());
+		if (modify)
+		    this.elements[i]._form_IsChanged = true;
+		cx_set_hints(this.elements[i], attr.getHints(), 'data');
+		this.last_hints[field] = attr.getHints();
+		}
+	    else if (!no_clear)
+		{
+		// It does not exist - clear it.
+		this.elements[i].clearvalue();
+		}
 	    }
 	}
     }
@@ -374,19 +381,20 @@ function form_cb_object_available(data)
 	if (data)
 	    {
 	    this.ClearAll(true);
-	    for(var j in data)
+	    var alist = data.getAttrList();
+	    for(var aname in alist)
 		{
-		if (!this.ifcProbe(ifValue).Exists(data[j].oid, true))
+		if (!this.ifcProbe(ifValue).Exists(aname, true))
 		    {
-		    this.ifcProbe(ifValue).Add(data[j].oid, form_cb_getvalue);
-		    this.valuelist.push(data[j].oid);
+		    this.ifcProbe(ifValue).Add(aname, form_cb_getvalue);
+		    this.valuelist.push(aname);
 		    }
-		this.ifcProbe(ifValue).Changing(data[j].oid, data[j].value, true);
+		this.ifcProbe(ifValue).Changing(aname, data.getAttrValue(aname), true);
 		}
 	    this.data=data;
-	    if (data.__osrc_is_last || (this.didsearch && data.id == this.recid))
-		this.lastrecid = data.id;
-	    this.recid = data.id;
+	    if (data.__osrc_is_last || (this.didsearch && data.getID() == this.recid))
+		this.lastrecid = data.getID();
+	    this.recid = data.getID();
 
 	    this.LoadFields(this.data);
 
@@ -920,6 +928,7 @@ function form_change_mode(newmode, reason)
     // on New or Modify, call appropriate hints routines
     if (newmode == 'New')
 	{
+	this.BeginTransaction();
 	for(var e in this.elements)
 	    {
 	    if (this.elements[e].cx_hints) cx_hints_setup(this.elements[e]);
@@ -932,6 +941,7 @@ function form_change_mode(newmode, reason)
 	    {
 	    this.LoadFields(templ, true, true);
 	    }
+	this.CommitTransaction();
 	}
     else if (newmode == 'Modify')
 	{
@@ -970,8 +980,34 @@ function form_send_event(event, eparam)
     evobj.PrevStatus = this.oldmode;
     evobj.IsUnsaved = this.IsUnsaved;
     evobj.is_savable = this.is_savable;
-    cn_activate(this, event, evobj);
-    delete evobj;
+    if (this.in_transaction)
+	this.trx_events.push({event: event, evobj: evobj});
+    else
+	cn_activate(this, event, evobj);
+    }
+
+function form_begin_transaction()
+    {
+    this.trx_events = [];
+    this.in_transaction = true;
+    }
+
+function form_commit_transaction()
+    {
+    // scan for duplicate data change events
+    var found_datachange = false;
+    for(var i=0; i<this.trx_events.length; i++)
+	{
+	var e = this.trx_events[i];
+	if (e.event == 'DataChange')
+	    {
+	    if (found_datachange)
+		continue;
+	    found_datachange = true;
+	    }
+	cn_activate(this, e.event, e.evobj);
+	}
+    this.in_transaction = false;
     }
 
 // Disables the entire form.
@@ -1090,17 +1126,20 @@ function form_action_queryexec()
     {
     if(!htr_boolean(wgtrGetServerProperty(this,'allow_query',1))) {alert('Query not allowed');return 0;}
     if(!(this.mode=='Query')) {alert("You can't execute a query if you're not in Query mode.");return 0;}
-/** build an query object to give the osrc **/
-    var query=new Array();
-    query.oid=null;
-    query.joinstring='AND';
+
+    // build an query object to give the osrc 
+    var query = new $CX.Types.osrcObject();
+    query.setID(null);
+    query.setJoin('AND');
+
     this.recid = 1;
     this.lastrecid = null;
-    
+   
+    // Set status for user
     for(var i in this.statuswidgets)
-	{
 	this.statuswidgets[i].setvalue('QueryExec');
-	}
+
+    // Add the criteria to the query object
     for(var i in this.elements)
 	{
 	if(this.elements[i]._form_IsChanged)
@@ -1108,49 +1147,45 @@ function form_action_queryexec()
 	    var v = this.elements[i].getvalue();
 	    if (v != null && v != '')
 		{
-		var t=new Object();
-		t.oid=this.elements[i].fieldname;
-		t.value=v;
-		if (typeof this.elements[i]._form_type == 'undefined')
-		    t.type='undefined';
-		else
-		    t.type=this.elements[i]._form_type;
-		if(isArray(v))
-		    t.type+='array';
-		query.push(t);
+		// Determine data type
+		var type = 'undefined';
+		if (typeof this.elements[i]._form_type != 'undefined')
+		    type = this.elements[i]._form_type;
+		if (isArray(v))
+		    type += 'array';
+
+		// Add the criteria
+		query.newAttr(this.elements[i].fieldname, v, type);
 		}
 	    }
 	}
-/** Done with the query -- YEAH **/
-    //if(confirm('Send to "'+this.osrc.name+'"(osrc):'+query))
-	{
-	this.Pending=true;
-	this.IsUnsaved=false;
-	this.is_savable = false;
-	//this.cb['DataAvailable'].add(this,new Function('this.osrc.ifcProbe(ifAction).Invoke("First", this)'));
-	this.osrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:this, ro:this.readonly});
-	}
-    delete query;
+
+    this.Pending=true;
+    this.IsUnsaved=false;
+    this.is_savable = false;
+    this.osrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:this, ro:this.readonly});
     }
 
 function form_build_dataobj()
     {
-    var dataobj=new Array();
+    // Get a new object
+    var dataobj=new $CX.Types.osrcObject();
+
+    // For each changed element, add an attribute to the data object we're creating.
     for(var i in this.elements)
 	{
 	if(this.elements[i]._form_IsChanged)
 	    {
-	    var t=new Object();
-	    t.oid=this.elements[i].fieldname;
-	    t.value=this.elements[i].getvalue();
-	    t.type=this.elements[i]._form_type;
-	    dataobj.push(t);
+	    dataobj.newAttr(this.elements[i].fieldname, this.elements[i].getvalue(), this.elements[i]._form_type);
 	    }
 	}
+
+    // Set the record ID
     if (this.mode == "New" || !this.data)
-	dataobj.oid = 0;
+	dataobj.setID(0);
     else
-	dataobj.oid=this.data.oid;
+	dataobj.setID(this.data.getID());
+
     return dataobj;
     }
 
@@ -1537,6 +1572,8 @@ function form_init(form,param)
     form.recid = 1;
     form.lastrecid = null;
     form.data = null;
+    form.in_transaction = false;
+    form.trx_events = [];
 
 /** initialize actions and callbacks **/
     form.form_cb_getvalue = form_cb_getvalue;
@@ -1579,6 +1616,11 @@ function form_init(form,param)
     form.ActionSaveSuccessCB = form_action_save_success;
     form.ActionDeleteSuccessCB = form_action_delete_success;
     form.AddInterlock = form_add_interlock;
+
+    // Used for making a series of related changes and generating only
+    // one set of events.
+    form.BeginTransaction = form_begin_transaction;
+    form.CommitTransaction = form_commit_transaction;
 
     // Actions
     var ia = form.ifcProbeAdd(ifAction);

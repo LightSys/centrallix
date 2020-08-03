@@ -141,6 +141,10 @@ OSML JSON DATA FORMAT...
 	    h = presentation hints, as encoded by hntEncodeHints() and as
 		decoded by cx_parse_hints in JavaScript.  If no hints are
 		available, the h property may be omitted entirely.
+	    y =	whether the attribute is a "system" attribute that ordinarily
+		is hidden from the user (boolean: true/false).
+	    s =	the sequence order of the attribute, giving that natural order
+		the attributes would ordinarily be viewed in
 
 	The 'a' property above will be omitted if the name has already been
 	specified outside of the full format attribute, for instance if

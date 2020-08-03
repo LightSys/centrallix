@@ -727,13 +727,14 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        
 	    case DATA_T_STRINGVEC:
 	        sv = (pStringVec)data_ptr;
-	        if (flags & DATA_F_QUOTED) xsConcatenate(dest," (",2);
+	        if (flags & DATA_F_QUOTED) xsConcatenate(dest, (flags & DATA_F_BRACKETS)?" [":" (", 2);
 		for(i=0;i<sv->nStrings;i++)
 		    {
-		    sprintf(sbuf,"%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
-		    xsConcatenate(dest, sbuf, -1);
+		    xsConcatQPrintf(dest, (flags & DATA_F_SINGLE)?"%[,%]%STR&QUOT":"%[,%]%STR&DQUOT", i!=0, sv->Strings[i]);
+		    /*sprintf(sbuf,"%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
+		    xsConcatenate(dest, sbuf, -1);*/
 		    }
-	        if (flags & DATA_F_QUOTED) xsConcatenate(dest,") ",2);
+	        if (flags & DATA_F_QUOTED) xsConcatenate(dest, (flags & DATA_F_BRACKETS)?"] ":") ", 2);
 		break;
 	    }
 
@@ -858,7 +859,7 @@ objDataToDouble(int data_type, void* data_ptr)
 char* 
 objDataToStringTmp(int data_type, void* data_ptr, int flags)
     {
-    static char sbuf[80];
+    static char sbuf[160];
     static char* alloc_str = NULL;
     static int alloc_len = 0;
     pDateTime d;
@@ -877,9 +878,9 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	if (data_ptr == NULL)
 	    {
 	    if (flags & DATA_F_QUOTED)
-	        strcpy(sbuf, " NULL ");
+		strcpy(sbuf, " NULL ");
 	    else
-	        strcpy(sbuf, "NULL");
+		strcpy(sbuf, "NULL");
 	    return sbuf;
 	    }
 
@@ -888,9 +889,9 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	    {
 	    case DATA_T_INTEGER:
 	        if (flags & DATA_F_QUOTED)
-	            sprintf(sbuf," %d ",*(int*)data_ptr);
+		    sprintf(sbuf, " %d ", *(int*)data_ptr);
 		else
-	            sprintf(sbuf,"%d",*(int*)data_ptr);
+		    sprintf(sbuf, "%d", *(int*)data_ptr);
 		break;
 
 	    case DATA_T_BINARY:
@@ -980,7 +981,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		break;
 
 	    case DATA_T_DOUBLE:
-	        /** sbuf is 80 chars, plenty for our purposes here. **/
+	        /** sbuf is 160 chars, plenty for our purposes here. **/
 	        if (flags & DATA_F_QUOTED)
 	            sprintf(sbuf," %.15g ", *(double*)data_ptr);
 		else
@@ -1008,7 +1009,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        m = (pMoneyType)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
-		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
+		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL, sizeof(sbuf)-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
 		break;
 
@@ -1016,7 +1017,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
-		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
+		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL, sizeof(sbuf)-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
 		break;
 
@@ -1029,7 +1030,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		    }
 		for(i=0;i<iv->nIntegers;i++)
 		    {
-		    sprintf(ptr,"%s%d", (i==0)?"":",", iv->Integers[i]);
+		    snprintf(ptr, sizeof(sbuf) - (ptr - sbuf) - 2, "%s%d", (i==0)?"":",", iv->Integers[i]);
 		    ptr += strlen(ptr);
 		    }
 	        if (flags & DATA_F_QUOTED) 
@@ -1044,17 +1045,17 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        sv = (pStringVec)data_ptr;
 	        if (flags & DATA_F_QUOTED) 
 		    {
-		    strcpy(ptr," (");
+		    strcpy(ptr, (flags & DATA_F_BRACKETS)?" [":" (");
 		    ptr += 2;
 		    }
 		for(i=0;i<sv->nStrings;i++)
 		    {
-		    sprintf(ptr,"%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
+		    snprintf(ptr, sizeof(sbuf) - (ptr - sbuf) - 2, "%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
 		    ptr += strlen(ptr);
 		    }
 	        if (flags & DATA_F_QUOTED) 
 		    {
-		    strcpy(ptr,") ");
+		    strcpy(ptr, (flags & DATA_F_BRACKETS)?"] ":") ");
 		    ptr += 2;
 		    }
 		ptr = sbuf;

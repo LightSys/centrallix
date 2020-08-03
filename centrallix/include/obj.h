@@ -102,6 +102,7 @@ extern char* obj_default_null_fmt;
 #define DATA_F_SYBQUOTE		8	/* use '' to quote a ', etc */
 #define DATA_F_CONVSPECIAL	16	/* convert literal CR LF and TAB to \r \n and \t */
 #define DATA_F_DATECONV		32	/* wrap date/time values using convert() */
+#define DATA_F_BRACKETS		64	/* square brackets for intvec/stringvec */
 
 
 /** Presentation Hints structure ---

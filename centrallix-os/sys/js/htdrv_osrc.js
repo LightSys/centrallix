@@ -8,6 +8,309 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
+//
+
+// Merge in our object types
+$.extend($CX.Types,
+    {
+    DateTime: function(d)
+	{
+	if (d && d.year)
+	    {
+	    Object.assign(this, d);
+	    this.dateobj = new Date(this.year, this.month - 1, this.day, this.hour, this.minute, this.second);
+	    }
+	else if (typeof d == 'object' && Date.prototype.isPrototypeOf(d))
+	    {
+	    this.dateobj = d;
+	    this.year = d.getFullYear();
+	    this.month = d.getMonth() + 1;
+	    this.day = d.getDate();
+	    this.hour = d.getHours();
+	    this.minute = d.getMinutes();
+	    this.second = d.getSeconds();
+	    }
+	else
+	    {
+	    d = this.dateobj = new Date();
+	    this.year = d.getFullYear();
+	    this.month = d.getMonth() + 1;
+	    this.day = d.getDate();
+	    this.hour = d.getHours();
+	    this.minute = d.getMinutes();
+	    this.second = d.getSeconds();
+	    }
+	},
+    Money: function()
+	{
+	},
+    osrcObject: function(obj)
+	{
+	if (obj) this.copyFrom(obj);
+	},
+    osrcAttr: function(attr)
+	{
+	if (typeof attr == 'object' && $CX.Types.osrcAttr.prototype.isPrototypeOf(attr))
+	    {
+	    // Type osrcAttr
+	    this.v = attr.v;
+	    this.t = attr.t;
+	    this.h = attr.h;
+	    this.s = attr.s;
+	    this.y = attr.y;
+	    this.a = attr.a;
+	    this.__cx_filter = Object.assign({}, attr.__cx_filter);
+	    }
+	else
+	    {
+	    // Generic value
+	    this.v = attr;
+	    }
+	}
+    });
+
+
+// Money methods
+//   === money format: ===
+//   I = a leading 'I' is not printed but indicates the currency is in "international format" with commas and periods reversed.
+//   Z = a leading 'Z' is not printed but means zeros should be printed as "-0-"
+//   z = a leading 'z' is not printed but means zeros should be printed as "0"
+//   B = a leading 'B' is not printed but means zeros should be printed as "" (blank)
+//   # = optional digit unless after the '.' or first before '.'
+//   0 = mandatory digit, no zero suppression
+//   , = insert a comma (or a period, if in international format)
+//   . = decimal point (only one allowed) (prints a comma if in international format)
+//   $ = dollar sign
+//   + = mandatory sign, whether + or - (if 0, +)
+//   - = optional sign, space if + or 0
+//   ^ = if last digit, round it (trunc is default).  Otherwise, like '0'.  NOT YET IMPL.
+//  () = surround # with () if it is negative.
+//  [] = surround # with () if it is positive.
+//     = (space) optional digit, but put space in its place if suppressing 0's.
+//   * = (asterisk) optional digit, put asterisk in its place if suppressing 0s.
+//
+$CX.Types.Money.prototype.format = function(f)
+    {
+    var ch;
+    var is_intl=false;
+    var is_acczero=false;
+    var is_plainzero=false;
+    var is_blankzero=false;
+    var str = '';
+
+    for(var i=0; i<=f.length; i++)
+	{
+	ch = (i<f.length)?(f.charAt(i)):'';
+	switch(ch)
+	    {
+	    case '$': str += ch; break;
+	    }
+	}
+
+    return str;
+    }
+
+$CX.Types.Money.prototype.toString = function()
+    {
+    return this.format($CX.Globals.moneyFormat);
+    }
+
+// DateTime methods
+$CX.Types.DateTime.prototype.adjFromServer = function()
+    {
+    var d = this.dateobj = new Date(this.year, this.month - 1, this.day, this.hour, this.minute, this.second);
+    d.setTime(d.getTime() + pg_clockoffset);
+    this.year = d.getFullYear();
+    this.month = d.getMonth() + 1;
+    this.day = d.getDate();
+    this.hour = d.getHours();
+    this.minute = d.getMinutes();
+    this.second = d.getSeconds();
+    }
+
+$CX.Types.DateTime.prototype.format = function(f)
+    {
+    var ch;
+    var item = '';
+    var str = '';
+    for(var i=0; i<=f.length; i++)
+	{
+	ch = (i<f.length)?(f.charAt(i)):'';
+	if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z'))
+	    item += ch;
+	else
+	    {
+	    if (item.length > 0)
+		{
+		switch(item)
+		    {
+		    case 'dd': str += ((this.day < 10)?'0':'') + this.day; break;
+		    case 'MMM': str += (new Intl.DateTimeFormat([], {month: 'short'})).format(this.dateobj); break;
+		    case 'yyyy': str += this.year; break;
+		    case 'HH': str += ((this.hour < 10)?'0':'') + this.hour; break;
+		    case 'mm': str += ((this.minute < 10)?'0':'') + this.minute; break;
+		    }
+		}
+	    str += ch;
+	    item = '';
+	    }
+	}
+    return str;
+    }
+
+$CX.Types.DateTime.prototype.toString = function()
+    {
+    return this.format($CX.Globals.dateFormat);
+    }
+
+//
+// osrcObject methods
+//
+$CX.Types.osrcObject.prototype.getAttrCount = function()
+    {
+    var acnt = 0;
+    for(var aname in this)
+	if (typeof this[aname] == 'object' && $CX.Types.osrcAttr.prototype.isPrototypeOf(this[aname]))
+	    acnt++;
+    return acnt;
+    }
+
+$CX.Types.osrcObject.prototype.getAttrList = function()
+    {
+    var alist = {};
+    for(var aname in this)
+	if (typeof this[aname] == 'object' && $CX.Types.osrcAttr.prototype.isPrototypeOf(this[aname]))
+	    alist[aname] = true;
+    return alist;
+    }
+
+$CX.Types.osrcObject.prototype.getID = function()
+    {
+    return this.__cx_id;
+    }
+
+$CX.Types.osrcObject.prototype.setID = function(id)
+    {
+    return this.__cx_id = id;
+    }
+
+$CX.Types.osrcObject.prototype.setJoin = function(join)
+    {
+    return this.__cx_joinstring = join;
+    }
+
+$CX.Types.osrcObject.prototype.getJoin = function()
+    {
+    return this.__cx_joinstring;
+    }
+
+$CX.Types.osrcObject.prototype.getAttr = function(a)
+    {
+    if (a != '__cx_joinstring' && a != '__cx_id' && a != '__cx_handle' && a != '__proto__' && typeof this[a] == 'object')
+	{
+	if (!this[a].a) this[a].a = a;
+	return this[a];
+	}
+    return null;
+    }
+
+$CX.Types.osrcObject.prototype.getAttrValue = function(a)
+    {
+    var attr = this.getAttr(a);
+    return attr?attr.get():null;
+    }
+
+$CX.Types.osrcObject.prototype.getAttrType = function(a)
+    {
+    var attr = this.getAttr(a);
+    return attr?attr.getType():null;
+    }
+
+$CX.Types.osrcObject.prototype.copyFrom = function(o)
+    {
+    if (typeof o == 'object')
+	{
+	if ($CX.Types.osrcObject.prototype.isPrototypeOf(o))
+	    {
+	    // osrcObject type
+	    var attrlist = o.getAttrList();
+	    for(var a in attrlist)
+		{
+		this[a] = new $CX.Types.osrcAttr(o.getAttr(a));
+		}
+	    }
+	else
+	    {
+	    // Generic object -- just copy property names and values
+	    for(var p in o)
+		{
+		this[p] = new $CX.Types.osrcAttr(o[p]);
+		}
+	    }
+	}
+    }
+
+// Either invoke with newAttr(attrname, value, type) or as newAttr(attrname, attrobj)
+$CX.Types.osrcObject.prototype.newAttr = function(a,v,t)
+    {
+    if (a)
+	{
+	this[a] = new $CX.Types.osrcAttr(v);
+	if (t) this[a].t = t;
+	return this[a];
+	}
+    }
+
+$CX.Types.osrcObject.prototype.removeAttr = function(a)
+    {
+    var a = this.getAttr(a);
+    if (a)
+	{
+	delete this[a];
+	}
+    return a;
+    }
+
+//
+// osrcAttr methods
+//
+$CX.Types.osrcAttr.prototype.get = function()
+    {
+    return this.v;
+    }
+
+$CX.Types.osrcAttr.prototype.set = function(v)
+    {
+    return this.v = v;
+    }
+
+$CX.Types.osrcAttr.prototype.getSystem = function()
+    {
+    return this.y;
+    }
+
+$CX.Types.osrcAttr.prototype.getType = function()
+    {
+    return this.t;
+    }
+
+$CX.Types.osrcAttr.prototype.setType = function(t)
+    {
+    return this.t = t;
+    }
+
+$CX.Types.osrcAttr.prototype.getHints = function()
+    {
+    return this.h;
+    }
+
+$CX.Types.osrcAttr.prototype.getFilter = function()
+    {
+    if (!this.__cx_filter)
+	this.__cx_filter = {};
+    return this.__cx_filter;
+    }
+
 
 function osrc_init_query()
     {
@@ -27,23 +330,27 @@ function osrc_action_order_object(aparam) //order)
 	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
     }
 
+
 function osrc_criteria_from_aparam(aparam)
     {
-    var qo = [];
-    var t;
-    var v;
-    qo.joinstring = 'AND';
+    var qo = new $CX.Types.osrcObject();
+    qo.setJoin('AND');
+
+    // Add a criteria item for each aparam item
     for (var i in aparam)
 	{
-	if (i == 'cx__enable_lists') continue;
-	if (i == 'cx__case_insensitive') continue;
+	var v = aparam[i];
+	var t = 'undefined';
+
+	if (i == 'cx__enable_lists' || i == 'cx__case_insensitive' || i == '_Origin' || i == '_EventName')
+	    continue;
 	if (i == 'joinstring' && (new String(aparam[i])).toLowerCase() == 'or')
 	    {
-	    qo.joinstring = 'OR';
+	    qo.setJoin('OR');
 	    continue;
 	    }
-	v = aparam[i];
-	if (i == '_Origin' || i == '_EventName') continue;
+
+	// Determine type
 	if (typeof v == 'string' && (new String(v)).indexOf(',') > 0 && aparam.cx__enable_lists)
 	    {
 	    t = 'stringarray';
@@ -57,10 +364,14 @@ function osrc_criteria_from_aparam(aparam)
 	    t = 'integer';
 	else
 	    t = 'string';
-	qo.push({oid:i, value:v, type:t});
+
+	// Add the attribute to the query object
+	qo.newAttr(i, v, t);
 	}
+
     return qo;
     }
+
 
 function osrc_action_query_param(aparam)
     {
@@ -93,19 +404,14 @@ function osrc_action_refresh(aparam)
     this.doing_refresh = true;
 
     // Keep track of current object by name
+    this.refresh_objname = null;
     if (this.replica[this.CurrentRecord])
 	{
-	for(var j=0; j<this.replica[this.CurrentRecord].length;j++)
+	if (this.replica[this.CurrentRecord].name)
 	    {
-	    if (this.replica[this.CurrentRecord][j].oid == 'name')
-		{
-		this.refresh_objname = this.replica[this.CurrentRecord][j].value;
-		break;
-		}
+	    this.refresh_objname = this.replica[this.CurrentRecord].name.get();
 	    }
 	}
-    else
-	this.refresh_objname = null;
 
     if (this.querytext)
 	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr});
@@ -238,24 +544,18 @@ function osrc_query_text_handler(aparam)
     // add any preset filtering
     if (this.filter)
 	{
-	/*if (!firstone)
-	    filter += ' and ';
-	else*/
-	    filter += osrcsep;
+	filter += osrcsep;
 	statement += '(' + this.filter + ')';
 	firstone = false;
 	}
 
     // add any relationships
-    var rel = [];
+    var rel = new $CX.Types.osrcObject();
     this.ApplyRelationships(rel, false);
-    if (rel[0])
+    if (!$.isEmptyObject(rel))
 	{
-	/*if (!firstone)
-	    statement += ' and ';
-	else*/
-	    statement += osrcsep;
-	rel.joinstring = 'AND';
+	statement += osrcsep;
+	rel.setJoin('AND');
 	statement += '(' + this.MakeFilter(rel) + ')';
 	firstone = false;
 	}
@@ -300,13 +600,24 @@ function osrc_action_query_object(aparam) //q, initiating_client, readonly)
 function osrc_query_object_handler(aparam)
     {
     var initiating_client = aparam.client;
-    var q = aparam.query;
+    var q = aparam.query; // type $CX.Types.osrcObject
     var readonly = aparam.ro;
     var appendrows = (aparam.cx__appendrows)?true:false;
     if (typeof aparam.cx__appendrows != 'undefined')
 	delete aparam.cx__appendrows;
-    var params = [];
-    var filter = [];
+    var params = {};
+    var filter = new $CX.Types.osrcObject();
+
+    // Backwards compat API
+    if (Array.prototype.isPrototypeOf(q))
+	{
+	var new_q = new $CX.Types.osrcObject();
+	for(var i=0; i<q.length; i++)
+	    {
+	    new_q.newAttr(q[i].oid, q[i].value, q[i].type);
+	    }
+	q = new_q;
+	}
 
     if(this.pending)
 	{
@@ -316,31 +627,37 @@ function osrc_query_object_handler(aparam)
 
     this.move_target = aparam.targetrec;
 
-    if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false);
+    if (typeof q != 'undefined' && q !== null)
+	this.ApplyRelationships(q, false);
 
-    for(var i in q)
+    // Copy ID and join info to filter
+    if (q.getJoin())
+	filter.setJoin(q.getJoin());
+    else
+	filter.setJoin('AND');
+    filter.setID(q.getID());
+    
+    // Go through the query's specified criteria
+    var al = q.getAttrList();
+    for(var a in al)
 	{
-	if (i == 'joinstring')
-	    filter.joinstring = q.joinstring;
-	else if (i == 'oid')
-	    filter.oid = q.oid;
-	else if (this.params[q[i].oid])
-	    params.push(q[i]);
+	var oneattr = q.getAttr(a);
+	if (this.params[a])
+	    params[a] = oneattr;
 	else
-	    filter.push(q[i]);
+	    filter.newAttr(a, oneattr);
 	}
-    if (!filter.joinstring)
-	filter.joinstring = 'AND';
-   
+  
+    // Go through query parameters to see if we need to set any.
     for(var pn in this.params)
 	{
 	var found = false;
-	for(var i in params)
+	for(var a in params)
 	    {
-	    if (params[i].oid == pn && typeof params[i].value != 'undefined')
+	    if (a == pn && typeof params[a].get() != 'undefined')
 		{
 		found = true;
-		this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:params[i].value});
+		this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:params[a].get()});
 		break;
 		}
 	    }
@@ -366,20 +683,20 @@ function osrc_query_object_handler(aparam)
 	var sep = ' WHERE ';
     var firstone=true;
     
-    if(this.filter)
+    if (this.filter)
 	{
-	statement+= (sep + '('+this.filter+')');
+	statement += (sep + '(' + this.filter + ')');
 	firstone=false;
 	}
-    if(filter && filter.joinstring && filter[0])
+    if (filter && filter.getJoin() && filter.getAttrCount() > 0)
 	{
 	var filt = this.MakeFilter(filter);
 	if (filt)
 	    {
-	    if(firstone)
-		statement+=sep;
+	    if (firstone)
+		statement += sep;
 	    else
-		statement+=' '+q.joinstring+' ';
+		statement += ' ' + q.getJoin() + ' ';
 	    statement+=filt;
 	    }
 	}
@@ -406,17 +723,20 @@ function osrc_query_object_handler(aparam)
 
 function osrc_make_filter_colref(col)
     {
-    return (col.obj?(':"' + col.obj + '"'):'') + ':"' + col.oid + '"';
+    var filt = col.getFilter();
+    return (filt.obj?(':"' + filt.obj + '"'):'') + ':"' + col.a + '"';
     }
 
 
-function osrc_make_filter_integer(col,val)
+function osrc_make_filter_integer(col, val)
     {
-    if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
+    var filt = col.getFilter();
+
+    if (val == null && (typeof filt.nullisvalue == 'undefined' || filt.nullisvalue == true))
 	return this.MFCol(col) + ' is null ';
     else if (val == null)
 	return this.MFCol(col) + ' = null ';
-    else if (!col.plainsearch && typeof val != 'number' && (new String(val)).search(/-/)>=0)
+    else if (!filt.plainsearch && typeof val != 'number' && (new String(val)).search(/-/)>=0)
 	{
 	var parts = (new String(val)).split(/-/);
 	return '(' + this.MFCol(col) + ' >=' + parts[0] + ' AND ' + this.MFCol(col) + ' <=' + parts[1] + ')';
@@ -431,13 +751,15 @@ function osrc_make_filter_string(col, val, icase)
     var str = '';
     var ifunc = '';
     var colref = this.MFCol(col);
+    var filt = col.getFilter();
+
     if (icase)
 	ifunc = 'upper';
-    if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
+    if (val == null && (typeof filt.nullisvalue == 'undefined' || filt.nullisvalue == true))
 	str=colref + ' is null ';
     else if (val == null)
 	str=colref + ' = null ';
-    else if (col.plainsearch)
+    else if (filt.plainsearch)
 	str=ifunc + '(' + colref + ')='+ifunc+'("'+val+'")';
     else
 	if (val.search(/^\*.+\*$/)>=0)
@@ -465,6 +787,7 @@ function osrc_make_filter_string(col, val, icase)
 	    }
 	else
 	    str=ifunc + '(' + colref + ')='+ifunc+'("'+val+'")';
+
     return str;
     }
     
@@ -474,194 +797,193 @@ function osrc_make_filter(q)
     var firstone=true;
     var statement='';
     var isnot;
-    for(var i in q)
+    var al = q.getAttrList();
+    for(var a in al)
 	{
+	var col = q.getAttr(a);
+	var filt = col.getFilter();
 	isnot = false;
-	if(i!='oid' && i!='joinstring')
+	var str;
+	if (filt.force_empty)
 	    {
-	    var str;
-	    if (q[i].force_empty)
-		{
-		//str = '1 == 0';
-		str = " (" + this.MFCol(q[i]) + " = null and 1 == 0) ";
-		}
-	    else if(q[i].joinstring)
-		{
-		str=this.MakeFilter(q[i]);
-		}
-	    else
-		{
-		var val=q[i].value;
-		//if (val == null) continue;
-
-		if (typeof val == 'string')
-		    val = new String(val);
-
-		if (val && val.substring && val.substring(0,1) == '~')
-		    {
-		    val = val.substring(1);
-		    isnot = true;
-		    }
-		else if (val && val.length && val[0] && val[0].substring && val[0].substring(0,1) == '~')
-		    {
-		    val[0] = val[0].substring(1);
-		    isnot = true;
-		    }
-
-		if (typeof q[i].type == "undefined" && this.type_list[q[i].oid])
-		    q[i].type = this.type_list[q[i].oid];
-
-		var colref = this.MFCol(q[i]);
-
-		switch(q[i].type)
-		    {
-		    case 'integer':
-			str = this.MakeFilterInteger(q[i], val);
-			break;
-
-		    case 'integerarray':
-			if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
-			    str = colref + 'is null ';
-			else if (val == null)
-			    str = colref + ' = null ';
-			else if (val.length)
-			    {
-			    str = "(";
-			    for(var j=0;j<val.length;j++)
-				{
-				if (j) str += " OR ";
-				str += "(";
-				str += this.MakeFilterInteger(q[i], val[j]);
-				str += ")";
-				}
-			    str += ")";
-			    }
-			break;
-		    case 'undefinedarray':
-			if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
-			    {
-			    str=colref + ' is null ';
-			    }
-			else if (val == null)
-			    {
-			    str=colref + ' = null ';
-			    }
-			else if (val.length == 0)
-			    {
-			    continue;
-			    }
-			else
-			    {
-			    str = "(";
-			    for(var j=0;j<val.length;j++)
-				{
-				if (j) str += " OR ";
-				str += "(";
-				if ((new String(parseInt(val[j]))) == (new String(val[j])))
-				    str += this.MakeFilterInteger(q[i], val[j]);
-				else
-				    str += this.MakeFilterString(q[i], val[j]);
-				str += ")";
-				}
-			    str += ")";
-			    }
-			break;
-		    case 'stringarray':
-			if (val == null && (typeof col.nullisvalue == 'undefined' || col.nullisvalue == true))
-			    {
-			    str=colref + ' is null ';
-			    }
-			else if (val == null)
-			    {
-			    str=colref + ' = null ';
-			    }
-			else
-			    {
-			    str = "(";
-			    for(var j=0;j<val.length;j++)
-				{
-				if (j) str += " OR ";
-				str += "(";
-				str += this.MakeFilterString(q[i], val[j]);
-				str += ")";
-				}
-			    str += ")";
-			    }
-			break;
-		    case 'datetimearray':
-			str='(' + colref;
-			var dtfirst=true;
-			for(var j in val)
-			    {
-			    if(!dtfirst) str+= ' AND ' + colref;
-			    dtfirst=false;
-			    if(val[j].substring(0,2)=='>=')
-				str+=' >= \"'+val[j].substring(2)+'\"';
-			    else if(val[j].substring(0,2)=='<=')
-				str+=' <= \"'+val[j].substring(2)+'\"';
-			    else if(val[j].substring(0,2)=='=>')
-				str+=' >= \"'+val[j].substring(2)+'\"';
-			    else if(val[j].substring(0,2)=='=<')
-				str+=' <= \"'+val[j].substring(2)+'\"';
-			    else if(val[j].substring(0,1)=='>')
-				str+=' > \"'+val[j].substring(1)+'\"';
-			    else if(val[j].substring(0,1)=='<')
-				str+=' < \"'+val[j].substring(1)+'\"';
-			    else if(val[j].substring(0,1)=='=')
-				str+=' = \"'+val[j].substring(1)+'\"';
-			    }
-			str+=')';
-			break;
-
-		    case 'string':
-		    case 'istring':
-			str = this.MakeFilterString(q[i], val, q[i].type == 'istring');
-			break;
-
-		    default:
-			//htr_alert(val, 1);
-			if(!val || typeof val.substring == 'undefined') // assume integer
-			    str = this.MakeFilterInteger(q[i], val);
-			else if(val.substring(0,2)=='>=')
-			    str=colref + ' >= '+val.substring(2);
-			else if(val.substring(0,2)=='<=')
-			    str=colref + ' <= '+val.substring(2);
-			else if(val.substring(0,2)=='=>')
-			    str=colref + ' >= '+val.substring(2);
-			else if(val.substring(0,2)=='=<')
-			    str=colref + ' <= '+val.substring(2);
-			else if(val.substring(0,1)=='>')
-			    str=colref + ' > '+val.substring(1);
-			else if(val.substring(0,1)=='<')
-			    str=colref + ' < '+val.substring(1);
-			else if(val.indexOf('-')>=0)
-			    {
-			    //assume integer range in string
-			    var ind = val.indexOf('-');
-			    var val1 = val.substring(0,ind);
-			    var val2 = val.substring(ind+1);
-			    str='(' + colref + ' >='+val1+' AND ' + colref + ' <='+val2+')';
-			    }
-			else
-			    {
-			    str = this.MakeFilterString(q[i], val);
-			    }
-			break;
-		    }
-		}
-	    if (isnot)
-		str = "not (" + str + ")";
-	    if(firstone)
-		{
-		statement+=' ('+str+')';
-		}
-	    else
-		{
-		statement+=' '+q.joinstring+' ('+str+')';
-		}
-	    firstone=false;
+	    str = " (" + this.MFCol(col) + " = null and 1 == 0) ";
 	    }
+	else
+	    {
+	    var val=col.get();
+
+	    if (typeof val == 'string')
+		val = new String(val);
+
+	    if (val && val.substring && val.substring(0,1) == '~')
+		{
+		val = val.substring(1);
+		isnot = true;
+		}
+	    else if (val && val.length && val[0] && val[0].substring && val[0].substring(0,1) == '~')
+		{
+		val[0] = val[0].substring(1);
+		isnot = true;
+		}
+
+	    // Use a "remembered" type for this attribute, if not supplied?
+	    if (typeof col.getType() == "undefined" && this.type_list[a])
+		col.setType(this.type_list[a]);
+
+	    var colref = this.MFCol(col);
+
+	    switch(col.getType())
+		{
+		case 'criteria':
+		    str = this.MakeFilter(val);
+		    break;
+
+		case 'integer':
+		    str = this.MakeFilterInteger(col, val);
+		    break;
+
+		case 'integerarray':
+		    if (val == null && (typeof filt.nullisvalue == 'undefined' || filt.nullisvalue == true))
+			str = colref + 'is null ';
+		    else if (val == null)
+			str = colref + ' = null ';
+		    else if (val.length)
+			{
+			str = "(";
+			for(var j=0;j<val.length;j++)
+			    {
+			    if (j) str += " OR ";
+			    str += "(";
+			    str += this.MakeFilterInteger(col, val[j]);
+			    str += ")";
+			    }
+			str += ")";
+			}
+		    break;
+		case 'undefinedarray':
+		    if (val == null && (typeof filt.nullisvalue == 'undefined' || filt.nullisvalue == true))
+			{
+			str=colref + ' is null ';
+			}
+		    else if (val == null)
+			{
+			str=colref + ' = null ';
+			}
+		    else if (val.length == 0)
+			{
+			continue;
+			}
+		    else
+			{
+			str = "(";
+			for(var j=0;j<val.length;j++)
+			    {
+			    if (j) str += " OR ";
+			    str += "(";
+			    if ((new String(parseInt(val[j]))) == (new String(val[j])))
+				str += this.MakeFilterInteger(col, val[j]);
+			    else
+				str += this.MakeFilterString(col, val[j]);
+			    str += ")";
+			    }
+			str += ")";
+			}
+		    break;
+		case 'stringarray':
+		    if (val == null && (typeof filt.nullisvalue == 'undefined' || filt.nullisvalue == true))
+			{
+			str=colref + ' is null ';
+			}
+		    else if (val == null)
+			{
+			str=colref + ' = null ';
+			}
+		    else
+			{
+			str = "(";
+			for(var j=0;j<val.length;j++)
+			    {
+			    if (j) str += " OR ";
+			    str += "(";
+			    str += this.MakeFilterString(col, val[j]);
+			    str += ")";
+			    }
+			str += ")";
+			}
+		    break;
+		case 'datetimearray':
+		    str='(' + colref;
+		    var dtfirst=true;
+		    for(var j in val)
+			{
+			if(!dtfirst) str+= ' AND ' + colref;
+			dtfirst=false;
+			if(val[j].substring(0,2)=='>=')
+			    str+=' >= \"'+val[j].substring(2)+'\"';
+			else if(val[j].substring(0,2)=='<=')
+			    str+=' <= \"'+val[j].substring(2)+'\"';
+			else if(val[j].substring(0,2)=='=>')
+			    str+=' >= \"'+val[j].substring(2)+'\"';
+			else if(val[j].substring(0,2)=='=<')
+			    str+=' <= \"'+val[j].substring(2)+'\"';
+			else if(val[j].substring(0,1)=='>')
+			    str+=' > \"'+val[j].substring(1)+'\"';
+			else if(val[j].substring(0,1)=='<')
+			    str+=' < \"'+val[j].substring(1)+'\"';
+			else if(val[j].substring(0,1)=='=')
+			    str+=' = \"'+val[j].substring(1)+'\"';
+			}
+		    str+=')';
+		    break;
+
+		case 'string':
+		case 'istring':
+		    str = this.MakeFilterString(col, val, col.getType() == 'istring');
+		    break;
+
+		default:
+		    //htr_alert(val, 1);
+		    if(!val || typeof val.substring == 'undefined') // assume integer
+			str = this.MakeFilterInteger(col, val);
+		    else if(val.substring(0,2)=='>=')
+			str=colref + ' >= '+val.substring(2);
+		    else if(val.substring(0,2)=='<=')
+			str=colref + ' <= '+val.substring(2);
+		    else if(val.substring(0,2)=='=>')
+			str=colref + ' >= '+val.substring(2);
+		    else if(val.substring(0,2)=='=<')
+			str=colref + ' <= '+val.substring(2);
+		    else if(val.substring(0,1)=='>')
+			str=colref + ' > '+val.substring(1);
+		    else if(val.substring(0,1)=='<')
+			str=colref + ' < '+val.substring(1);
+		    else if(val.indexOf('-')>=0)
+			{
+			//assume integer range in string
+			var ind = val.indexOf('-');
+			var val1 = val.substring(0,ind);
+			var val2 = val.substring(ind+1);
+			str='(' + colref + ' >='+val1+' AND ' + colref + ' <='+val2+')';
+			}
+		    else
+			{
+			str = this.MakeFilterString(col, val);
+			}
+		    break;
+		}
+	    }
+
+	if (isnot)
+	    str = "not (" + str + ")";
+
+	if (firstone)
+	    statement += ' (' + str + ')';
+	else
+	    statement += ' ' + q.getJoin() + ' (' + str + ')';
+
+	firstone=false;
 	}
+
     return statement;
     }
 
@@ -762,13 +1084,11 @@ function osrc_action_delete(aparam) //up,initiating_client)
     var up = aparam.data;
     var initiating_client = aparam.client;
 
-    //Delete an object through OSML
-    //var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
+    // Delete an object through OSML
     this.initiating_client = initiating_client;
     this.deleteddata=up;
     this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
-    //this.initiating_client.ObjectDeleted();
-    //this.initiating_client.OperationComplete();
+
     return 0;
     }
 
@@ -789,7 +1109,7 @@ function osrc_action_delete_cb()
 	    for(var i=recnum; i<this.LastRecord; i++)
 		{
 		this.replica[i] = this.replica[i+1];
-		this.replica[i].id = i;
+		this.replica[i].__cx_id = i;
 		}
 	    delete this.replica[this.LastRecord];
 	    if (this.FinalRecord == this.LastRecord)
@@ -825,133 +1145,106 @@ function osrc_action_delete_cb()
     return 0;
     }
 
+
 function osrc_action_create(aparam)
     {
-    var newobj = [];
-    for(var p in aparam)
-	if (p != 'cx__focus')
-	    newobj.push({oid:p, value:aparam[p]});
-    this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj, focus:aparam['cx__focus']});
+    var focus = aparam.cx__focus;
+    delete aparam.cx__focus;
+    var newobj = new $CX.Types.osrcObject(aparam);
+    this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj, focus:focus});
     }
 
-function osrc_action_create_object(aparam) //up,initiating_client)
-    {
-    var up = aparam.data;
-    var initiating_client = aparam.client;
 
-    this.initiating_client=initiating_client;
+function osrc_action_create_object(aparam) //up,initiating_client
+    {
+    // Process create parameters
+    this.initiating_client = aparam.client;
     this.create_focus = aparam.focus?aparam.focus:false;
-    this.createddata=up;
-    //First close the currently open query
-    if(this.qid)
+    this.createddata = aparam.data;
+
+    // First close the currently open query, if any.
+    if (this.qid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_action_create_cb2);
 	this.qid=null;
 	return 0;
 	}
-    else if (!this.sid)
+
+    // Go get a session if we don't have one already.
+    if (!this.sid)
 	{
-	this.replica = [];
-	this.LastRecord=0;
-	this.FinalRecord=null;
-	this.FirstRecord=1;
-	this.CurrentRecord=1;
-	this.OSMLRecord=0;
+	this.ClearReplica();
 	this.OpenSession(this.CreateCB2);
 	return 0;
 	}
-    this.CreateCB2();
+
+    // Otherwise, proceed on to the create.
+    this.CreateCB2(null);
     return 0;
     }
 
-function osrc_action_create_cb2()
+
+// Create an object through OSML
+function osrc_action_create_cb2(data)
     {
-    //Create an object through OSML
-    if(!this.sid) this.sid=pg_links(this)[0].target;
-    //var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
+    // Capture the session ID if we just opened a session.
+    if (!this.sid && data && data.session)
+	this.sid = data.session;
+
+    // Apply any constraints to the data to be used in the create
     this.ApplyRelationships(this.createddata, true);
     this.ApplySequence(this.createddata);
-    //htr_alert(this.createddata, 2);
-    /*for(var i in this.createddata) if(i!='oid')
-	{
-	if (this.createddata[i]['value'] == null)
-	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'=';
-	else
-	    src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
-	}*/
+
+    // Set up the create options
     var reqparam = {ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
     if (this.use_having) reqparam.ls__reopen_having = 1;
-    for(var i in this.createddata) if(i!='oid')
+    var attrlist = this.createddata.getAttrList();
+    for(var a in attrlist)
 	{
-	if (this.createddata[i]['value'] == null)
-	    reqparam[this.createddata[i]['oid']] = 'N:';
+	var oneattr = this.createddata.getAttr(a);
+	if (oneattr.get() == null)
+	    reqparam[a] = 'N:';
 	else
-	    reqparam[this.createddata[i]['oid']] = 'V:' + this.createddata[i]['value'];
+	    reqparam[a] = 'V:' + oneattr.get();
 	}
+
+    // Issue the request
     this.DoRequest('create', this.baseobj + '/*', reqparam, osrc_action_create_cb);
     }
 
-function osrc_action_create_cb()
+
+function osrc_action_create_cb(data)
     {
-    var links = pg_links(this);
-    if(links && links[0] && links[0].target != 'ERR')
+    // Did the create succeed?
+    if (data && data.status == 'OK')
 	{
+	// Succeeded
 	if (this.FinalRecord == this.LastRecord)
 	    this.FinalRecord++;
 	this.LastRecord++;
 	this.CurrentRecord = this.LastRecord;
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
-	if(!cr) cr = [];
+	if (!cr)
+	    cr = new $CX.Types.osrcObject();
 
-	for(var i in this.createddata) // update replica
-	    {
-	    /*for(var j in cr)
-		if(cr[j].oid==this.createddata[i].oid)
-		    cr[j].value=this.createddata[i].value;*/
-	    cr[i] = [];
-	    cr[i].oid = this.createddata[i].oid;
-	    cr[i].value = this.createddata[i].value;
-	    cr[i].id = i;
-	    }
-	cr.oid = links[0].target;
+	// update replica with our data.
+	cr.copyFrom(this.createddata);
+	cr.__cx_id = this.CurrentRecord;
 	this.replica[this.CurrentRecord] = cr;
 
-	// Check new/corrected data provided by server
-	var server_rec = this.ParseOneRow(links, 1);
-	var max_j = 0;
-	for(var i in server_rec)
+	// New data from server?  Override 'createddata' if so.
+	if (data.resultset.length == 1)
 	    {
-	    found = 0;
-	    for(var j in cr)
-		{
-		if (j == 'oid') continue;
-		if (cr[j].oid == server_rec[i].oid)
-		    {
-		    cr[j].value = server_rec[i].value;
-		    cr[j].type = server_rec[i].type;
-		    cr[j].hints = server_rec[i].hints;
-		    found = 1;
-		    }
-		if (parseInt(j) > max_j) max_j = parseInt(j);
-		}
-	    if (!found)
-		{
-		max_j++;
-		cr[max_j] = {};
-		cr[max_j].oid = server_rec[i].oid;
-		cr[max_j].value = server_rec[i].value;
-		cr[max_j].type = server_rec[i].type;
-		cr[max_j].id = max_j;
-		cr[max_j].hints = server_rec[i].hints;
-		}
+	    cr.copyFrom(data.resultset[0]);
+	    cr.__cx_handle = data.resultset[0].__cx_handle;
 	    }
 
-	//alert(this.replica[this.CurrentRecord].oid);
+	// Notify clients of the newly created object.
 	this.in_create = false;
 	this.SyncID = osrc_syncid++;
-	if (this.initiating_client) this.initiating_client.OperationComplete(true, this);
-	pg_serialized_load(this, 'about:blank', null, true);
+	if (this.initiating_client)
+	    this.initiating_client.OperationComplete(true, this);
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
@@ -961,12 +1254,16 @@ function osrc_action_create_cb()
 	}
     else
 	{
+	// Did not succeed - let the calling client know.
 	this.in_create = false;
-	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
+	if (this.initiating_client)
+	    this.initiating_client.OperationComplete(false, this);
 	}
+
     this.initiating_client=null;
     delete this.createddata;
     }
+
 
 function osrc_action_refresh_object(aparam)
     {
@@ -974,47 +1271,66 @@ function osrc_action_refresh_object(aparam)
     this.Dispatch();
     }
 
+
 function osrc_refresh_object_handler(aparam)
     {
     // Need a "last query" and a valid current record to proceed
-    if (!this.lastquery || !this.CurrentRecord || !this.replica || !this.replica[this.CurrentRecord]) return false;
+    if (!this.lastquery || !this.CurrentRecord || !this.replica || !this.replica[this.CurrentRecord])
+	return false;
 
     // Build list of primary keys
     var row = this.replica[this.CurrentRecord];
-    var keys = {};
     var keycnt = 0;
-    for(var c in row)
+    var nameattr = null;
+    var filter = new $CX.Types.osrcObject();
+    var attrlist = row.getAttrList();
+    for(var a in attrlist)
 	{
-	if (c == 'oid') continue;
-	var col = row[c];
-	var ph = cx_parse_hints(col.hints);
+	var attr = row.getAttr(a);
+	var ph = cx_parse_hints(attr.getHints());
 	if (ph.Style & cx_hints_style.key)
 	    {
-	    keys[col.oid] = col;
-	    keycnt ++;
+	    filter.newAttr(a, attr);
+	    keycnt++;
 	    }
+	if (a == 'name')
+	    nameattr = attr;
 	}
-    if (!keycnt) return false;
+    if (!keycnt)
+	{
+	if (!nameattr)
+	    return false;
+	else
+	    filter.newAttr('name', nameattr);
+	}
 
     // Start with the lastquery SQL.
     var sql = this.lastquery;
 
     // Append logic to search for just this row
-    var first = true;
-    for(var k in keys)
+    if (this.use_having)
+	sql += " HAVING ";
+    else
+	sql += " WHERE ";
+    sql += this.MakeFilter(filter);
+    /*if (keycnt > 0)
 	{
-	if (first)
+	var first = true;
+	for(var k in keys)
 	    {
-	    if (this.use_having)
-		sql += " HAVING ";
-	    else
-		sql += " WHERE ";
+	    if (first)
+		{
+		if (this.use_having)
+		    sql += " HAVING ";
+		else
+		    sql += " WHERE ";
+		}
+	    else 
+		sql += " AND ";
+	    sql += this.MakeFilter([keys[k]]);
+	    first = false;
 	    }
-	else 
-	    sql += " AND ";
-	sql += this.MakeFilter([keys[k]]);
-	first = false;
-	}
+	}*/
     sql += " LIMIT 1";
 
     // Now issue the query
@@ -1028,31 +1344,36 @@ function osrc_refresh_object_handler(aparam)
 	    ls__notify:this.request_updates,
 	    ls__sqlparam:this.EncodeParams()
 	    }, osrc_refresh_object_cb);
+
     return true;
     }
 
-function osrc_refresh_object_cb()
+
+function osrc_refresh_object_cb(data)
     {
-    var links = pg_links(this);
-    var success = links && links[0] && (links[0].target != 'ERR');
-    if(success && links.length > 1)
+    // Do we have a valid result from the refresh?
+    if (data && data.status == 'OK' && data.resultset.length > 0)
 	{
 	// Check new/corrected data provided by server
-	var cr=this.replica[this.CurrentRecord];
-	var server_rec = this.ParseOneRow(links, 1);
-	var diff = 0;
-	for(var i in server_rec)
-	    for(var j in cr)
+	var cr = this.replica[this.CurrentRecord];
+	var server_rec = data.resultset[0];
+	var diff = false;
+	var attrlist = server_rec.getAttrList();
+	for(var a in attrlist)
+	    {
+	    var attr = server_rec.getAttr(a);
+	    var cattr = cr.getAttr(a);
+	    if (!cattr)
+		cattr = cr[a] = new $CX.Types.osrcAttr();
+	    if (cattr.get() != attr.get())
 		{
-		if (cr[j].oid == server_rec[i].oid && cr[j].value != server_rec[i].value)
-		    {
-		    cr[j].value = server_rec[i].value;
-		    cr[j].type = server_rec[i].type;
-		    diff = 1;
-		    }
+		cattr.v = attr.get();
+		cattr.t = attr.getType();
+		diff = true;
 		}
+	    }
 
-	// if any changes, display them
+	// if any changes, tell our clients about them.
 	if (diff)
 	    {
 	    this.SyncID = osrc_syncid++;
@@ -1061,7 +1382,8 @@ function osrc_refresh_object_cb()
 	}
     }
 
-function osrc_action_modify(aparam) //up,initiating_client)
+
+function osrc_action_modify(aparam) //up,initiating_client
     {
     this.doing_refresh = false;
     if (aparam)
@@ -1386,8 +1708,7 @@ function osrc_open_session(cb)
     //alert('open');
     if(this.sid || cb == osrc_open_query)
 	{
-	this.__osrc_cb = cb;
-	this.__osrc_cb();
+	cb.call(this, null);
 	}
     else
 	{
@@ -1398,13 +1719,6 @@ function osrc_open_session(cb)
 function osrc_open_query()
     {
     //Open Query
-    /*if(!this.sid)
-	{
-	var lnks = pg_links(this);
-	if (!lnks || !lnks[0] || !lnks[0].target)
-	    return false;
-	this.sid=pg_links(this)[0].target;
-	}*/
     if(this.qid && this.sid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query);
@@ -1420,33 +1734,32 @@ function osrc_open_query()
     this.querysize = this.replicasize;
     }
 
-function osrc_get_qid()
+function osrc_get_qid(data)
     {
-    //return;
-    var lnk = pg_links(this);
-    this.data_start = 1;
-    if (!this.sid && lnk && lnk[0] && lnk[0].target)
+    // Check for handles
+    if (data)
 	{
-	this.sid = lnk[0].target;
-	this.data_start = 2;
+	// Get session handle
+	if (!this.sid && data.session)
+	    this.sid = data.session;
+
+	// Get query handle
+	if (data.queryclosed)
+	    this.qid = null;
+	else
+	    this.qid = data.query;
 	}
 
-    if (lnk && lnk[this.data_start-1])
-	this.qid=lnk[this.data_start-1].target;
-    else
-	this.qid = null;
-
-    //confirm(this.baseobj + " ==> " + this.qid);
-    if (!this.qid)
+    // No valid query run?  Bail out if so.
+    if (!data || !data.query)
 	{
-	/*this.pending=false;*/
 	this.move_target = null;
 	this.GiveAllCurrentRecord('get_qid');
 	this.SetPending(false);
-	/*this.Dispatch();*/
 	}
     else
 	{
+	// Valid query
 	this.query_delay = pg_timestamp() - this.request_start_ts;
 	for(var i in this.child)
 	    this.child[i].DataAvailable(this, this.doing_refresh?'refresh':'query');
@@ -1455,23 +1768,22 @@ function osrc_get_qid()
 	else
 	    var tgt = 1;
 	this.move_target = null;
-	if (lnk.length > 1)
+	if (data.resultset.length > 0)
 	    {
 	    // did an autofetch - we have the data already
-	    if (!this.do_append) this.ClearReplica();
+	    if (!this.do_append)
+		this.ClearReplica();
 	    this.TargetRecord = [tgt,tgt];
 	    this.CurrentRecord = tgt;
 	    this.moveop = true;
-	    this.FetchNext();
+	    this.FetchNext(data);
 	    }
 	else
 	    {
 	    // start the ball rolling for the fetch
-	    //this.ifcProbe(ifAction).Invoke("First", {from_internal:true});
 	    this.ifcProbe(ifAction).Invoke("FindObject", {ID:tgt, from_internal:true});
 	    }
 	}
-    /** normally don't actually load the data...just let children know that the data is available **/
     }
 
 function osrc_parse_one_attr(lnk)
@@ -1490,14 +1802,15 @@ function osrc_parse_one_attr(lnk)
 
 function osrc_new_replica_object(id, oid)
     {
-    var obj = [];
-    obj.oid=oid;
-    obj.id = id;
+    var obj = new $CX.Types.osrcObject();
+    obj.__cx_handle = oid;
+    obj.__cx_id = id;
     return obj;
     }
 
 function osrc_prune_replica(most_recent_id)
     {
+    // Remove records from beginning of replica?
     if(this.LastRecord < most_recent_id)
 	{
 	this.LastRecord = most_recent_id;
@@ -1517,11 +1830,16 @@ function osrc_prune_replica(most_recent_id)
 	    if (found) break;
 
 	    // clean up replica
-	    this.oldoids.push(this.replica[this.FirstRecord].oid);
-	    delete this.replica[this.FirstRecord];
+	    if (this.replica[this.FirstRecord])
+		{
+		this.oldoids.push(this.replica[this.FirstRecord].__cx_handle);
+		delete this.replica[this.FirstRecord];
+		}
 	    this.FirstRecord++;
 	    }
 	}
+
+    // Remove records from end of replica?
     if(this.FirstRecord > most_recent_id)
 	{
 	this.FirstRecord = most_recent_id;
@@ -1543,7 +1861,7 @@ function osrc_prune_replica(most_recent_id)
 	    // clean up replica
 	    if (this.replica[this.LastRecord])
 		{
-		this.oldoids.push(this.replica[this.LastRecord].oid);
+		this.oldoids.push(this.replica[this.LastRecord].__cx_handle);
 		delete this.replica[this.LastRecord];
 		}
 	    this.LastRecord--;
@@ -1561,16 +1879,15 @@ function osrc_action_clear(aparam)
 
 function osrc_clear_replica()
     {
-    this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
-    this.CurrentRecord=1;/* the current record */
-    this.OSMLRecord=0;/* the last record we got from the OSML */
+    this.TargetRecord = [1,1];	// the record we're aiming for -- go until we get it
+    this.CurrentRecord=1;	// the current record
+    this.OSMLRecord=0;		// the last record we got from the OSML
 
-    /** Clear replica **/
+    // Clear replica contents
     if(this.replica)
 	for(var i in this.replica)
-	    this.oldoids.push(this.replica[i].oid);
+	    this.oldoids.push(this.replica[i].__cx_handle);
     
-    if(this.replica) delete this.replica;
     this.replica = [];
     this.LastRecord=0;
     this.FinalRecord=null;
@@ -1625,15 +1942,16 @@ function osrc_query_timeout()
 
 function osrc_end_query()
     {
-    //this.initiating_client.OperationComplete(); /* don't need this...I think....*/
     var qid=this.qid
     this.qid=null;
-    /* return the last record as the current one if it was our target otherwise, don't */
+
+    // If we retrieved any data at all, mark the last one as the Final Record.
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
 	{
 	this.replica[this.LastRecord].__osrc_is_last = true;
 	this.FinalRecord = this.LastRecord;
 	}
+
     this.query_ended = true;
     this.FoundRecord();
     if(qid)
@@ -1667,7 +1985,6 @@ function osrc_found_record()
 	this.GiveAllCurrentRecord('change');
     else
 	this.TellAllReplicaMoved();
-    /*this.pending=false;*/
     this.SetPending(false);
     this.osrc_oldoid_cleanup();
     if (this.query_delay)
@@ -1684,79 +2001,72 @@ function osrc_found_record()
 	}
     }
 
-function osrc_fetch_next()
+function osrc_fetch_next(data)
     {
-    pg_debug(this.id + ": FetchNext() ==> " + pg_links(this).length + "\n");
-    //alert('fetching....');
-    if(!this.qid)
+    // No data supplied?
+    if (!data || !data.query)
 	{
-	//if (pg_diag) confirm("ERR: " + this.baseobj + " ==> " + this.qid);
 	if (pg_diag) confirm("fetch_next: error - no qid.  first/last/cur/osml: " + this.FirstRecord + "/" + this.LastRecord + "/" + this.CurrentRecord + "/" + this.OSMLRecord + "\n");
-	//alert('something is wrong...');
-	//alert(this.src);
+	return 0;
 	}
-    var lnk=pg_links(this);
-    var lc=lnk.length;
-    //confirm(this.baseobj + " ==> " + lc + " links");
-    if(lc <= this.data_start)
-	{ // query over
+
+    // query over?
+    if (data.resultset.length == 0)
+	{
 	this.EndQuery();
 	return 0;
 	}
-    var colnum=0;
-    var i = this.data_start;
-    var rowcnt = 0;
-    while (i < lc)
+
+    // Records skipped?
+    if (data.skipped > 0)
 	{
-	if (lnk[i].target == 'QUERYCLOSED')
-	    {
-	    this.qid = null;
-	    break;
-	    }
-	if (lnk[i].target == 'SKIPPED')
-	    {
-	    this.OSMLRecord += parseInt(lnk[i].text);
-	    //this.FirstRecord = this.OSMLRecord + 1;
-	    i++;
-	    this.querysize++; // indicate that we hit end of result set
-	    continue;
-	    }
-	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
-	this.replica[this.OSMLRecord] =
-		this.NewReplicaObj(this.OSMLRecord, lnk[i].target);
-	this.PruneReplica(this.OSMLRecord);
-	var row = this.ParseOneRow(lnk, i);
-	rowcnt++;
-	i += row.length;
-	for(var j=0; j<row.length; j++)
-	    {
-	    this.replica[this.OSMLRecord][j] = row[j];
-	    if (this.doing_refresh && this.refresh_objname && row[j].oid == 'name' && this.refresh_objname == row[j].value)
-		this.CurrentRecord = this.OSMLRecord;
-	    }
+	this.OSMLRecord += data.skipped;
+	this.querysize++;
 	}
-    this.data_start = 1; // reset it
-    pg_debug("   Fetch returned " + rowcnt + " rows, querysize was " + this.querysize + ".\n");
+
+    // Import the data
+    var rowcnt = 0;
+    for(var i=0; i<data.resultset.length; i++)
+	{
+	// Store the retrieved object into the replica.
+	rowcnt++;
+	this.OSMLRecord++;
+	var obj = this.replica[this.OSMLRecord] = data.resultset[i];
+	obj.__cx_id = this.OSMLRecord;
+	this.PruneReplica(this.OSMLRecord);
+
+	// Record the data types we're observing in this object.
+	for(var a in obj)
+	    if (typeof obj[a] == 'object')
+		this.type_list[a] = obj[a].getType();
+
+	// If we're refreshing, compare the target object name.
+	if (this.doing_refresh && this.refresh_objname && obj.getAttrValue('name') == this.refresh_objname)
+	    this.CurrentRecord = this.OSMLRecord;
+	}
 
     // make sure we bring this.LastRecord back down to the top of our replica...
-    while(!this.replica[this.LastRecord] && this.LastRecord > 0)
+    while (!this.replica[this.LastRecord] && this.LastRecord > 0)
 	this.LastRecord--;
 
-    if(this.LastRecord<this.TargetRecord[1])
+    // Did we get to the target record?
+    if (this.LastRecord < this.TargetRecord[1])
 	{ 
-	// didn't get a full fetch?  end query if so
 	if (rowcnt < this.querysize)
 	    {
+	    // didn't get a full fetch, but also did not find our record.  End query here.
 	    this.EndQuery();
 	    return 0;
 	    }
 
-	// Wow - how many records does the user want?
+	// Wow - how many records does the user want?  This check is
+	// here as a failsafe catch point, to keep retrieval from going on
+	// ad infinitum.
 	if ((this.LastRecord % 500) < ((this.LastRecord - this.querysize) % 500))
 	    {
 	    if (!confirm("You have already retrieved " + this.LastRecord + " records.  Do you want to continue?"))
 		{
-		// pause here.
+		// pause here at the user's request.
 		this.FoundRecord();
 		return 0;
 		}
@@ -1768,17 +2078,24 @@ function osrc_fetch_next()
     else
 	{
 	// we've got the one we need 
-	if((this.LastRecord-this.FirstRecord+1)<this.replicasize && rowcnt >= this.querysize)
+	if ((this.LastRecord-this.FirstRecord+1) < this.replicasize && rowcnt >= this.querysize)
 	    {
-	    // make sure we have a full replica if possible
+	    // Replica is not full and more data is likely available:
+	    // Make sure we have a full replica if possible.
 	    this.DoFetch(this.replicasize - (this.LastRecord - this.FirstRecord + 1), false);
 	    }
 	else
 	    {
 	    if (rowcnt < this.querysize)
+		{
+		// Replica is full and no more data is available
 		this.EndQuery();
+		}
 	    else
+		{
+		// Replica is full but more data is likely available
 		this.FoundRecord();
+		}
 	    }
 	}
     }
@@ -1788,7 +2105,6 @@ function osrc_oldoid_cleanup()
     if(this.oldoids && this.oldoids[0])
 	{
 	this.SetPending(true);
-	/*this.pending=true;*/
 	var src='';
 	for(var i in this.oldoids)
 	    src+=this.oldoids[i];
@@ -1808,7 +2124,6 @@ function osrc_oldoid_cleanup_cb()
     {
     /*this.pending=false;*/
     //alert('cb recieved');
-    delete this.oldoids;
     this.oldoids = [];
     this.SetPending(false);
     pg_serialized_load(this, 'about:blank', null, true);
@@ -1912,7 +2227,7 @@ function osrc_move_first(aparam)
 
 function osrc_change_current_record()
     {
-    var newprevcurrent = [];
+    var newprevcurrent = new $CX.Types.osrcObject();
 
     // first, build the list of fields we're working with.  We look both in the
     // replica and in prevcurrent, since field lists can be irregular (different
@@ -1920,13 +2235,15 @@ function osrc_change_current_record()
     var fieldlist = {};
     if (this.prevcurrent)
 	{
-	for(var i=0; i<this.prevcurrent.length; i++)
-	    fieldlist[this.prevcurrent[i].oid] = true;
+	for(var f in this.prevcurrent)
+	    if (f != '__cx_id' && f != '__cx_handle' && f != '__cx_filter')
+		fieldlist[f] = true;
 	}
     if (this.replica && this.replica[this.CurrentRecord])
 	{
-	for(var i=0; i<this.replica[this.CurrentRecord].length; i++)
-	    fieldlist[this.replica[this.CurrentRecord][i].oid] = true;
+	for(var f in this.replica[this.CurrentRecord])
+	    if (f != '__cx_id' && f != '__cx_handle' && f != '__cx_filter')
+		fieldlist[f] = true;
 	}
 
     // Determine old and new values for the fields.
@@ -1934,32 +2251,16 @@ function osrc_change_current_record()
 	{
 	// Old value -- see this.prevcurrent
 	var oldval = null;
-	if (this.prevcurrent)
+	if (this.prevcurrent && typeof this.prevcurrent[attrname] == 'object')
 	    {
-	    for(var j in this.prevcurrent)
-		{
-		if (typeof this.prevcurrent[j] != 'object') continue;
-		if (this.prevcurrent[j].oid == attrname)
-		    {
-		    oldval = this.prevcurrent[j].value;
-		    break;
-		    }
-		}
+	    oldval = this.prevcurrent[attrname].get();
 	    }
 
 	// New value -- see the replica.
 	var newval = null;
-	if (this.replica[this.CurrentRecord])
+	if (this.replica[this.CurrentRecord] && typeof this.replica[this.CurrentRecord][attrname] == 'object')
 	    {
-	    for(var j in this.replica[this.CurrentRecord])
-		{
-		if (typeof this.replica[this.CurrentRecord][j] != 'object') continue;
-		if (this.replica[this.CurrentRecord][j].oid == attrname)
-		    {
-		    newval = this.replica[this.CurrentRecord][j].value;
-		    break;
-		    }
-		}
+	    newval = this.replica[this.CurrentRecord][attrname].get();
 	    }
 
 	// Issue a Changing ifValue operation if the old and new are different.
@@ -1970,44 +2271,20 @@ function osrc_change_current_record()
 	    }
 
 	// Only record the value in prevcurrent if the *new* value is not null.
-	if (newval)
-	    newprevcurrent.push({oid:attrname, value:newval});
+	if (newval !== null)
+	    {
+	    var a = new $CX.Types.osrcAttr();
+	    a.v = newval;
+	    newprevcurrent[attrname] = a;
+	    }
 	}
 
-    // Catch values that had no previous value and so were not in prevcurrent
-    /*for(var j in this.replica[this.CurrentRecord])
-	{
-	if (typeof this.replica[this.CurrentRecord][j] != 'object') continue;
-	var newval = this.replica[this.CurrentRecord][j].value;
-	var oldval = null;
-	var attrname = this.replica[this.CurrentRecord][j].oid;
-	for(var i in this.prevcurrent)
-	    {
-	    if (typeof this.prevcurrent[i] != 'object') continue;
-	    if (this.prevcurrent[i].oid == attrname)
-		{
-		oldval = this.prevcurrent[i].value;
-		break;
-		}
-	    }
-	if (oldval != newval)
-	    this.ifcProbe(ifValue).Changing(attrname, newval, true, oldval, true);
-	if (newval)
-	    newprevcurrent.push({oid:attrname, value:newval});
-	}*/
     this.prevcurrent = newprevcurrent;
     }
 
 
 function osrc_give_all_current_record(why)
     {
-    //confirm('give_all_current_record start');
-    /*for(var j in this.replica[this.CurrentRecord])
-	{
-	var col = this.replica[this.CurrentRecord][j];
-	if (typeof col == 'object')
-	    this.ifcProbe(ifValue).Changing(col.oid, col.value, true);
-	}*/
     this.ChangeCurrentRecord();
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord] && this.replica[this.LastRecord].__osrc_is_last)
 	{
@@ -2018,16 +2295,13 @@ function osrc_give_all_current_record(why)
 	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
     this.doing_refresh = false;
-    //confirm('give_all_current_record done');
     }
 
 function osrc_tell_all_replica_moved()
     {
-    //confirm('tell_all_replica_moved start');
     for(var i in this.child)
 	if(this.child[i].ReplicaMoved)
 	    this.child[i].ReplicaMoved(this);
-    //confirm('tell_all_replica_moved done');
     }
 
 
@@ -2046,49 +2320,24 @@ function osrc_move_to_record_handler(param)
     var from_internal = param.from_internal;
     if(recnum<1)
 	{
-	//alert("Can't move past beginning.");
 	return 0;
 	}
     if(this.pending)
 	{
-	//alert('you got ahead');
 	return 0;
 	}
     this.SetPending(true);
-    //this.pending=true;
-    //var someunsaved=false;
     this.RecordToMoveTo=recnum;
     if (!from_internal)
 	this.SyncID = osrc_syncid++;
     this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2, null);
-    /*for(var i in this.child)
-	 {
-	 if(this.child[i].IsUnsaved)
-	     {
-	     //alert('child: '+i+' : '+this.child[i].IsUnsaved+' isn\\'t saved...IsDiscardReady');
-	     this.child[i]._osrc_ready=false;
-	     this.child[i].IsDiscardReady();
-	     someunsaved=true;
-	     }
-	 else
-	     {
-	     this.child[i]._osrc_ready=true;
-	     }
-	 }*/
-    //if someunsaved is false, there were no unsaved forms, so no callbacks
-    //  we can just continue
-    /*if(someunsaved) return 0;
-    this.MoveToRecordCB(recnum);*/
     }
 
 function osrc_move_to_record_cb(recnum)
     {
-    pg_debug(this.id + ": MoveTo(" + recnum + ")\n");
-    //confirm(recnum);
     this.moveop=true;
     if(recnum<1)
 	{
-	//alert("Can't move past beginning.");
 	return 0;
 	}
     this.RecordToMoveTo=recnum;
@@ -2096,25 +2345,22 @@ function osrc_move_to_record_cb(recnum)
 	 {
 	 if(this.child[i].IsUnsaved)
 	     {
-	     //confirm('child: '+i+' : '+this.child[i].IsUnsaved+' isn\\'t saved...');
 	     return 0;
 	     }
 	 }
-/* If we're here, we're ready to go */
     this.TargetRecord = [recnum, recnum];
     this.CurrentRecord = recnum;
     if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)
 	{
 	this.GiveAllCurrentRecord('change');
 	this.SetPending(false);
-	/*this.pending=false;
-	this.Dispatch();*/
 	return 1;
 	}
     else
 	{
 	if(this.CurrentRecord < this.FirstRecord)
-	    { /* data is further back, need new query */
+	    {
+	    // data is further back, need new query
 	    if(this.FirstRecord-this.CurrentRecord<this.readahead)
 		{
 		this.startat=(this.FirstRecord-this.readahead)>0?(this.FirstRecord-this.readahead):1;
@@ -2134,12 +2380,13 @@ function osrc_move_to_record_cb(recnum)
 	    return 0;
 	    }
 	else
-	    { /* data is farther on, act normal */
+	    {
+	    // data is farther on, act normal
 	    if(this.qid)
 		{
 		if(this.CurrentRecord == Number.MAX_VALUE)
 		    {
-		    /* rowcount defaults to a really high number if not set */
+		    // rowcount defaults to a really high number if not set
 		    this.DoFetch(this.replicasize, true);
 		    }
 		else if (recnum == 1)
@@ -2166,11 +2413,9 @@ function osrc_move_to_record_cb(recnum)
 		}
 	    else
 		{
-		//this.pending=false;
 		this.CurrentRecord=this.LastRecord;
 		this.GiveAllCurrentRecord('change');
 		this.SetPending(false);
-		//this.Dispatch();
 		}
 	    return 0;
 	    }
@@ -2197,33 +2442,43 @@ function osrc_open_query_startat()
     this.DoRequest('multiquery', '/', {ls__startat:this.startat, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
-function osrc_get_qid_startat()
+function osrc_get_qid_startat(data)
     {
-    var lnk = pg_links(this);
-    this.qid=lnk[0].target;
-    if (!this.qid)
+    // Check for handles
+    if (data)
+	{
+	// Get session handle
+	if (!this.sid && data.session)
+	    this.sid = data.session;
+
+	// Get query handle
+	if (data.queryclosed)
+	    this.qid = null;
+	else
+	    this.qid = data.query;
+	}
+
+    // No query performed?
+    if (!data || !data.query)
 	{
 	this.startat = null;
-	//this.pending=false;
 	this.GiveAllCurrentRecord('get_qid');
 	this.SetPending(false);
-	//this.Dispatch();
 	return;
 	}
+
     this.OSMLRecord=(this.startat)?(this.startat-1):0;
-    //this.FirstRecord=this.startat;
-    /*if(this.startat-this.TargetRecord+1<this.replicasize)
-	{
-	this.DoFetch(this.TargetRecord - this.startat + 1);
-	}*/
-    if (lnk.length > 1)
+
+    // Do we have result set objects?
+    if (data.resultset.length > 0)
 	{
 	// did an autofetch - we have the data already
 	this.query_delay = pg_timestamp() - this.request_start_ts;
-	this.FetchNext();
+	this.FetchNext(data);
 	}
     else
 	{
+	// Did not do autofetch -- grab the records.
 	if(this.FirstRecord - this.startat < this.replicasize)
 	    {
 	    this.DoFetch(this.FirstRecord - this.startat, false);
@@ -2233,6 +2488,7 @@ function osrc_get_qid_startat()
 	    this.DoFetch(this.replicasize, false);
 	    }
 	}
+
     this.startat=null;
     }
 
@@ -2418,56 +2674,47 @@ function osrc_action_sync(param)
     this.SyncID = this.parentosrc.SyncID;
 
     // Compile the list of criteria
-    var query = [];
-    query.oid=null;
-    query.joinstring='AND';
-    var p=this.parentosrc.CurrentRecord;
+    var query = new $CX.Types.osrcObject();
+    query.setJoin('AND');
+    var parentobj = this.parentosrc.getObject();
     var force_empty = false;
     for(var i=1;i<10;i++)
 	{
-	//this.ParentKey[i]=eval('param.ParentKey'+i);
-	//this.ChildKey[i]=eval('param.ChildKey'+i);
 	this.ParentKey[i]=param['ParentKey'+i];
 	this.ChildKey[i]=param['ChildKey'+i];
 	if(this.ParentKey[i])
 	    {
-	    if (!this.parentosrc.replica[p])
+	    var parentcol = null;
+	    if (parentobj)
+		parentcol = parentobj.getAttr(this.ParentKey[i]);
+	    if (!parentobj || !parentcol)
 		{
-		var t = new Object();
-		t.plainsearch = true;
-		t.oid = this.ChildKey[i];
-		t.value = null;
-		t.type = 'integer'; // type doesn't matter if it is null.
+		// No current record, or if so, it has no attribute.
+		// Type doesn't matter if it is null.
+		var col = query.newAttr(this.ChildKey[i], null, 'integer');
+		var filt = col.getFilter();
+		filt.plainsearch = true;
 		if (on_norecs == 'nullisvalue')
-		    t.nullisvalue = true;
+		    filt.nullisvalue = true;
 		else if (on_norecs == 'norecs')
-		    force_empty = t.force_empty = true;
+		    force_empty = filt.force_empty = true;
 		else
-		    t.nullisvalue = false;
-		query.push(t);
+		    filt.nullisvalue = false;
 		}
 	    else
 		{
-		for(var j in this.parentosrc.replica[p])
+		// Current record with a valid attribute.
+		var col = query.newAttr(this.ChildKey[i], parentcol);
+		var filt = col.getFilter();
+		filt.plainsearch = true;
+		if (col.get() === null)
 		    {
-		    if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])
-			{
-			var t = new Object();
-			t.plainsearch = true;
-			t.oid=this.ChildKey[i];
-			t.value=this.parentosrc.replica[p][j].value;
-			t.type=this.parentosrc.replica[p][j].type;
-			if (t.value === null)
-			    {
-			    if (on_null == 'nullisvalue')
-				t.nullisvalue = true;
-			    else if (on_null == 'norecs')
-				force_empty = t.force_empty = true;
-			    else
-				t.nullisvalue = false;
-			    }
-			query.push(t);
-			}
+		    if (on_null == 'nullisvalue')
+			filt.nullisvalue = true;
+		    else if (on_null == 'norecs')
+			force_empty = filt.force_empty = true;
+		    else
+			filt.nullisvalue = false;
 		    }
 		}
 	    }
@@ -2496,26 +2743,35 @@ function osrc_action_sync(param)
 	}
     this.was_forced_empty = force_empty;
 
-    // Did it change from last time?
+    // Did it change from last time?  Get a merged list of the current and previous
+    // properties, and compare the values to see if anything is different.
     if (!this.lastSync)
-	this.lastSync = [];
+	this.lastSync = new $CX.Types.osrcObject();
     var changed = false;
-    for(var i=0;i<query.length;i++)
+    var al1 = this.lastSync.getAttrList();
+    var al2 = query.getAttrList();
+    Object.assign(al1, al2); // merge al2 into al1
+    for(var a in al1)
 	{
-	if (!this.lastSync[i])
+	var attr1 = this.lastSync.getAttr(a);
+	var attr2 = query.getAttr(a);
+	if ((attr1 && !attr2) || (!attr1 && attr2))
 	    {
+	    // Property exists in only one place
 	    changed = true;
 	    }
-	else if (this.lastSync[i].oid != query[i].oid || this.lastSync[i].value != query[i].value)
+	else if (attr1 && attr2)
 	    {
-	    changed = true;
+	    if (attr1.getType() != attr2.getType() || attr1.get() != attr2.get())
+		{
+		// Property types or values are different.
+		changed = true;
+		}
 	    }
-	this.lastSync[i] = {oid:query[i].oid, type:query[i].type, value:query[i].value};
 	}
-    for (var i=query.length;i<this.lastSync.length;i++)
-	{
-	this.lastSync[i] = {};
-	}
+
+    // Save a copy of the current criteria
+    this.lastSync = new $CX.Types.osrcObject(query);
 
     // Do the query
     if (changed)
@@ -2533,28 +2789,23 @@ function osrc_action_double_sync(param)
     this.ParentSelfKey = [];
     this.SelfChildKey = [];
     this.ChildKey = [];
-    var query = [];
-    query.oid=null;
-    query.joinstring='AND';
-    var p=this.parentosrc.CurrentRecord;
+    var query = new $CX.Types.osrcObject();
+    query.setJoin('AND');
+    var parentobj = this.parentosrc.getObject();
     for(var i=1;i<10;i++)
 	{
-	this.ParentKey[i]=eval('param.ParentKey'+i);
-	this.ParentSelfKey[i]=eval('param.ParentSelfKey'+i);
-	this.SelfChildKey[i]=eval('param.SelfChildKey'+i);
-	this.ChildKey[i]=eval('param.ChildKey'+i);
+	this.ParentKey[i] = param['ParentKey' + i];
+	this.ParentSelfKey[i] = param['ParentSelfKey' + i];
+	this.SelfChildKey[i] = param['SelfChildKey' + i];
+	this.ChildKey[i] = param['ChildKey' + i];
 	if(this.ParentKey[i])
 	    {
-	    for(var j in this.parentosrc.replica[p])
+	    var parentattr = null;
+	    if (parentobj)
+		parentattr = parentobj.getAttr(this.ParentKey[i]);
+	    if (parentobj && parentattr)
 		{
-		if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])
-		    {
-		    var t = new Object();
-		    t.oid=this.ParentSelfKey[i];
-		    t.value=this.parentosrc.replica[p][j].value;
-		    t.type=this.parentosrc.replica[p][j].type;
-		    query.push(t);
-		    }
+		query.newAttr(this.ParentSelfKey[i], parentattr);
 		}
 	    }
 	}
@@ -2563,44 +2814,40 @@ function osrc_action_double_sync(param)
 
 function osrc_action_double_sync_cb()
     {
-    var query = [];
-    query.oid=null;
-    query.joinstring='OR';
-    if(this.LastRecord==0)
-	{
-	var t = new Object();
-	t.oid=1;
-	t.value=2;
-	t.type='integer';
-	query.push(t);
-	}
+    var query = new $CX.Types.osrcObject();
+    query.setJoin('OR');
     for(var p=this.FirstRecord; p<=this.LastRecord; p++)
 	{
-	var q = [];
-	q.oid=null;
-	q.joinstring='AND';
+	var q = new $CX.Types.osrcObject();
+	q.setJoin('AND');
 	for(var i=1;i<10;i++)
 	    {
 	    if(this.SelfChildKey[i])
 		{
-		for(var j in this.replica[p])
+		var obj = this.getObject(p);
+		var attr = null;
+		if (obj)    
+		    attr = obj.getAttr(this.SelfChildKey[i]);
+		if (obj && attr)
 		    {
-		    if(this.replica[p][j].oid==this.SelfChildKey[i])
-			{
-			var t = new Object();
-			t.oid=this.ChildKey[i];
-			t.value=this.replica[p][j].value;
-			t.type=this.replica[p][j].type;
-			q.push(t);
-			}
+		    q.newAttr(this.ChildKey[i], attr);
 		    }
 		}
 	    }
-	query.push(q);
+	query.newAttr('' + p, q, 'criteria');
 	}
     
     this.doublesync=false;
     this.childosrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly});
+    }
+
+
+// for each row in the replica, call an action on another widget
+function osrc_action_for_each(aparam)
+    {
+    // Find target of the foreach operation
+    var foreach_target = wgtrGetNode(this, aparam.ForEachTarget);
+    var foreach_action = aparam.ForEachAction;
     }
 
 
@@ -2637,36 +2884,30 @@ function osrc_action_do_sql_cb()
     var grp_value = null;
     var common_values = {};
     var found_first = false;
-    var attrval;
     for(var i in osrc.replica)
 	{
-	var obj = osrc.replica[i];
-	if (typeof osrc.do_sql_field != 'undefined')
+	var obj = osrc.getObject(i);
+	var attr = obj.getAttr(osrc.do_sql_field);
+	if (attr)
 	    {
-	    for(var j in obj)
+	    var attrval = attr.get();
+	    if (typeof osrc.do_sql_used_values[attrval] != 'undefined')
 		{
-		var attr = obj[j];
-		if (attr.oid == osrc.do_sql_field)
-		    {
-		    attrval = attr.value;
-		    if (typeof osrc.do_sql_used_values[attr.value] != 'undefined')
-			{
-			grp_value = attr.value;
-			osrc.do_sql_used_values[grp_value] = true;
-			}
-		    break;
-		    }
+		grp_value = attrval;
+		osrc.do_sql_used_values[grp_value] = true;
 		}
 	    }
 	if ((grp_value !== null && grp_value == attrval) || typeof osrc.do_sql_field == 'undefined')
 	    {
-	    for(var j in obj)
+	    var attrlist = obj.getAttrList();
+	    for(var a in attrlist)
 		{
-		var attr = obj[j];
+		var attr = obj.getAttr(a);
+		var attrvalue = attr.get();
 		if (!found_first)
-		    common_values[attr.oid] = attr.value;
-		else if (common_values[attr.oid] != attr.value)
-		    delete common_values[attr.oid];
+		    common_values[a] = attrvalue;
+		else if (common_values[a] != attrvalue)
+		    delete common_values[a];
 		}
 	    found_first = true;
 	    }
@@ -2719,7 +2960,7 @@ function osrc_action_begincreate(aparam)
     // Notify all children that we have a child that is creating an object
     for(var i in this.child)
 	if (this.child[i] != aparam.client)
-	    this.child[i].ObjectAvailable([], this, 'begincreate');
+	    this.child[i].ObjectAvailable(new $CX.Types.osrcObject(), this, 'begincreate');
 
     return obj;
     }
@@ -2761,16 +3002,17 @@ function osrc_seq(direction)
     var prevseq = null;
     this.replica.forEach(function(item, idx)
 	{
-	item.forEach(function(field)
+	var attr = item.getAttr(seqfield);
+	if (attr)
 	    {
-	    if (field.oid == seqfield &&
-		((direction == 'backward' && parseInt(field.value) < cur_seq) || (direction == 'forward' && parseInt(field.value) > cur_seq)) &&
-		(prevseq === null || ((direction == 'backward' && parseInt(field.value) > prevseq) || (direction == 'forward' && parseInt(field.value) < prevseq))))
+	    var attrval = parseInt(attr.get());
+	    if (((direction == 'backward' && attrval < cur_seq) || (direction == 'forward' && attrval > cur_seq)) &&
+		(prevseq === null || ((direction == 'backward' && attrval > prevseq) || (direction == 'forward' && attrval < prevseq))))
 		{
 		previtem = idx;
-		prevseq = parseInt(field.value);
+		prevseq = attrval;
 		}
-	    });
+	    };
 	});
 
     // Didn't find anything?  Nothing to do then.
@@ -2794,7 +3036,7 @@ function osrc_seq(direction)
 	if (!doneprev)
 	    {
 	    reqparam[seqfield] = cur_seq;
-	    reqparam.ls__oid = this.replica[previtem].oid;
+	    reqparam.ls__oid = this.replica[previtem].getID();
 	    this.SetValue(seqfield, cur_seq, previtem);
 	    this.DoRequest('setattrs', '/', reqparam, seqproc);
 	    doneprev = true;
@@ -2805,7 +3047,7 @@ function osrc_seq(direction)
 	if (!donecurr)
 	    {
 	    reqparam[seqfield] = prevseq;
-	    reqparam.ls__oid = this.replica[this.CurrentRecord].oid;
+	    reqparam.ls__oid = this.replica[this.CurrentRecord].getID();
 	    this.SetValue(seqfield, prevseq);
 	    this.DoRequest('setattrs', '/', reqparam, seqproc);
 	    donecurr = true;
@@ -2848,29 +3090,26 @@ function osrc_apply_sequence(obj)
 	    var maxval = -1;
 	    this.replica.forEach(function(item)
 		{
-		item.forEach(function(field)
+		if (typeof item[rl.field] == 'object')
 		    {
-		    if (field.oid == rl.field)
-			{
-			var ckval = parseInt(field.value);
-			if (ckval > maxval)
-			    maxval = ckval;
-			}
-		    });
+		    var ckval = parseInt(item.getAttrValue(rl.field));
+		    if (ckval > maxval)
+			maxval = ckval;
+		    }
 		});
 
 	    // got maximum value in the osrc's replica.  Assign it now.
-	    var found=false;
-	    obj.forEach(function(field)
+	    if (typeof obj[rl.field] == 'object')
+		obj[rl.field].v = '' + (maxval + 1);
+	    else
 		{
-		if (field.oid == rl.field)
-		    {
-		    found = true;
-		    field.value = '' + (maxval + 1);
-		    }
-		});
-	    if (!found)
-		obj.push({hints:"", oid:rl.field, system:false, type:"integer", value:'' + (maxval + 1)});
+		obj[rl.field] = new $CX.Types.osrcAttr();
+		obj[rl.field].h = '';
+		obj[rl.field].y = false;
+		obj[rl.field].t = 'integer';
+		obj[rl.field].v = '' + (maxval + 1);
+		//obj.push({hints:"", oid:rl.field, system:false, type:"integer", value:'' + (maxval + 1)});
+		}
 	    }
 	}
     }
@@ -2932,9 +3171,6 @@ function osrc_apply_keys(obj)
 
 function osrc_apply_rel(obj, in_create)
     {
-    var cnt = 0;
-    while(typeof obj[cnt] != 'undefined') cnt++;
-
     // First, check for relationships that might imply key values
     for(var i=0; i<this.relationships.length; i++)
 	{
@@ -2946,33 +3182,25 @@ function osrc_apply_rel(obj, in_create)
 		{
 		// Which property of obj do we need to modify?
 		var found = false;
-		var obj_index = null;
-		for(var l in obj)
-		    {
-		    if (obj[l] == null || typeof obj[l] != 'object') continue;
-		    if (obj[l].oid == rule.key[k])
-			{
-			found = true;
-			if (!in_create || rule.enforce_create)
-			    obj_index = l;
-			}
-		    }
-		if (!found)
-		    obj_index = cnt++;
+		var keyname = rule.key[k];
+		var col = obj.getAttr(keyname);
+		var tcol;
+		var filt;
+		if (col)
+		    found = true;
 
-		if (obj_index != null)
+		// Are we allowed to set/overwrite this value?
+		if (!found || !in_create || rule.enforce_create)
 		    {
 		    // Find the matching column in the master osrc replica
 		    if (tgt.CurrentRecord && tgt.replica && tgt.replica[tgt.CurrentRecord])
 			{
-			for(var j in tgt.replica[tgt.CurrentRecord])
+			if ((tcol = tgt.replica[tgt.CurrentRecord].getAttr(rule.tkey[k])) != null)
 			    {
-			    var col = tgt.replica[tgt.CurrentRecord][j];
-			    if (col == null || typeof col != 'object') continue;
-			    if (col.oid == rule.tkey[k])
-				{
-				obj[obj_index] = {type:col.type, value:col.value, hints:col.hints, oid:rule.key[k], obj:rule.obj};
-				}
+			    // Found it -- set/overwrite the attribute
+			    col = obj.newAttr(keyname, tcol);
+			    filt = col.getFilter();
+			    filt.obj = rule.obj;
 			    }
 			}
 		    else
@@ -2981,39 +3209,50 @@ function osrc_apply_rel(obj, in_create)
 			switch (rule.master_norecs_action)
 			    {
 			    case 'norecs':
-				obj[obj_index] = {oid:rule.key[k], obj:rule.obj, force_empty:true};
+				col = obj.newAttr(keyname, null);
+				filt = col.getFilter();
+				filt.obj = rule.obj;
+				filt.force_empty = true;
 				break;
 			    case 'allrecs':
 				break;
 			    case 'sameasnull':
-				obj[obj_index] = {oid:rule.key[k], obj:rule.obj, value:null};
+				col = obj.newAttr(keyname, null);
+				filt = col.getFilter();
+				filt.obj = rule.obj;
 				break;
 			    }
 			}
 
-		    // Force plain search - no wildcards, etc.
-		    if (obj[obj_index])
-			obj[obj_index].plainsearch=true;
-
-		    // Type not available?
-		    if (obj[obj_index] && typeof obj[obj_index].type == "undefined" && this.type_list[obj[obj_index].oid])
-			obj[obj_index].type = this.type_list[obj[obj_index].oid];
-
-		    // Null value?
-		    if (obj[obj_index] && obj[obj_index].value === null)
+		    // Object fixups
+		    if ((col = obj.getAttr(keyname)) != null)
 			{
-			switch(rule.master_null_action)
+			var filt = col.getFilter();
+
+			// Force plain search - no wildcards, etc.
+			filt.plainsearch=true;
+
+			// Type not supplied?  Check our cached type list if so.
+			if (typeof col.getType() == "undefined" && this.type_list[keyname])
+			    col.setType(this.type_list[keyname]);
+
+			// Null value?
+			if (col.get() === null)
 			    {
-			    case 'nullisvalue':
-				obj[obj_index].nullisvalue = true;
-				break;
-			    case 'allrecs':
-				obj[obj_index] = {};
-				break;
-			    case 'norecs':
-				obj[obj_index].nullisvalue = false;
-				obj[obj_index].force_empty = true;
-				break;
+			    switch(rule.master_null_action)
+				{
+				case 'nullisvalue':
+				    filt.nullisvalue = true;
+				    break;
+				case 'allrecs':
+				    if (!found)
+					obj.removeAttr(keyname);
+				    break;
+				case 'norecs':
+				    filt.nullisvalue = false;
+				    filt.force_empty = true;
+				    break;
+				}
 			    }
 			}
 		    }
@@ -3123,9 +3362,19 @@ function osrc_set_eval_record(recnum)
 function osrc_set_value(n, v, recno)
     {
     var eval_rec = recno?recno:(this.EvalRecord?this.EvalRecord:this.CurrentRecord);
-    if (eval_rec && this.replica && this.replica[eval_rec])
+    var rec = this.getObject(eval_rec);
+    //if (eval_rec && this.replica && this.replica[eval_rec])
+    if (rec)
 	{
-	this.replica[eval_rec].forEach(function(field)
+	var attr = rec.getAttr(n);
+	if (attr)
+	    {
+	    oldval = attr.get();
+	    attr.set(v);
+	    if (eval_rec == this.CurrentRecord || eval_rec === null)
+		this.ifcProbe(ifValue).Changing(n, attr.get(), true, oldval, true);
+	    }
+	/*this.replica[eval_rec].forEach(function(field)
 	    {
 	    if (field.oid == n)
 		{
@@ -3137,7 +3386,7 @@ function osrc_set_value(n, v, recno)
 		if (eval_rec == this.CurrentRecord)
 		    this.ifcProbe(ifValue).Changing(n, field.value, true, oldval, true);
 		}
-	    });
+	    });*/
 	}
     }
 
@@ -3157,21 +3406,17 @@ function osrc_get_value(n)
     if (n == 'cx__final_id')
 	return this.FinalRecord;*/
     var eval_rec = this.EvalRecord?this.EvalRecord:this.CurrentRecord;
-    if (eval_rec && this.replica && this.replica[eval_rec])
+    if (eval_rec && this.replica)
 	{
-	for(var i in this.replica[eval_rec])
+	var eval_obj = this.getObject(eval_rec);
+	var eval_attr = null;
+	if (eval_obj)
+	    eval_attr = eval_obj.getAttr(n);
+	if (eval_obj && eval_attr)
 	    {
-	    var col = this.replica[eval_rec][i];
-	    if (col.oid == n)
-		{
-		if (col.value == null)
-		    v = null;
-		else if (col.type == 'integer')
-		    v = parseInt(col.value);
-		else
-		    v = col.value;
-		break;
-		}
+	    v = eval_attr.get();
+	    if (eval_attr.getType() == 'integer')
+		v = parseInt(v);
 	    }
 	}
 
@@ -3624,6 +3869,7 @@ function osrc_action_save_clients(aparam)
 function osrc_do_request(cmd, url, params, cb, target)
     {
     var first = true;
+    var act = ((this.ind_act && this.req_ind_act) || cmd == 'create' || cmd == 'setattrs') && cmd != 'close';
     if (!target) target = this;
     params.cx__akey = akey;
     params.ls__mode = 'osml';
@@ -3631,16 +3877,61 @@ function osrc_do_request(cmd, url, params, cb, target)
     if (this.sid) params.ls__sid = this.sid;
     if (((!this.ind_act || !this.req_ind_act) && cmd != 'create' && cmd != 'setattrs') || cmd == 'close')
 	params.cx__noact = '1';
-    for(var p in params)
-	{
-	url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
-	first = false;
-	}
+    //for(var p in params)
+//	{
+//	url += (first?'?':'&') + htutil_escape(p) + '=' + htutil_escape(params[p]);
+//	first = false;
+//	}
     this.request_start_ts = pg_timestamp();
-    pg_serialized_load(target, url, cb, !this.ind_act || !this.req_ind_act);
+
+    if (act)
+	pg_spinner_inc();
+
+    $.ajax(
+	{
+	dataType: "text", // could be "json", but we'll parse it ourselves so we can revive it.
+	url: url,
+	data: params
+	})
+	.done( (data, stat, xhr) =>
+	    {
+	    if (act)
+		pg_spinner_dec();
+	    data = JSON.parse(data, (key, value) =>
+		{
+		// We revive prototypes for the json via duck-typing.
+		if (typeof value === 'object')
+		    {
+		    // null
+		    if (value == null)
+			return value;
+		    // attribute
+		    if (typeof value.v !== 'undefined' && value.t && typeof value.__cx_handle === 'undefined')
+			value.__proto__ = $CX.Types.osrcAttr.prototype;
+		    // object (i.e., row or tuple)
+		    else if (value.__cx_handle)
+			value.__proto__ = $CX.Types.osrcObject.prototype;
+		    // money
+		    else if (typeof value.wholepart !== 'undefined' && typeof value.fractionpart !== 'undefined')
+			value.__proto__ = $CX.Types.Money.prototype;
+		    // date/time
+		    else if (typeof value.year !== 'undefined' && typeof value.month !== 'undefined')
+			{
+			value.__proto__ = $CX.Types.DateTime.prototype;
+			value.adjFromServer();
+			}
+		    }
+		return value;
+		});
+	    cb.call(this, data);
+	    })
+	.fail( (xhr, stat, err) =>
+	    {
+	    if (act)
+		pg_spinner_dec();
+	    });
+    //pg_serialized_load(target, url, cb, !this.ind_act || !this.req_ind_act);
     this.req_ind_act = true;
-    //this.onload = cb;
-    //target.src = url;
     }
 
 
@@ -3768,6 +4059,16 @@ function osrc_set_master_pending(master, p)
     }
 
 
+function osrc_api_get_object(id)
+    {
+    if (id == null || id == undefined)
+	id = this.osrcCurrentObjectID;
+    if (!id || !this.replica[id])
+	return null;
+    return this.replica[id];
+    }
+
+
 function osrc_destroy()
     {
     pg_set(this, "src", "about:blank");
@@ -3892,6 +4193,25 @@ function osrc_init(param)
     loader.QueryHandler = osrc_query_handler;
     loader.RefreshObjectHandler = osrc_refresh_object_handler;
     loader.FindObjectHandler = osrc_find_object_handler;
+
+    // Replica access API
+    loader.getObject = osrc_api_get_object;
+    Object.defineProperty(loader, 'osrcFirstObjectID',
+	{
+	get: function() { return this.FirstRecord; }
+	});
+    Object.defineProperty(loader, 'osrcLastObjectID',
+	{
+	get: function() { return this.LastRecord; }
+	});
+    Object.defineProperty(loader, 'osrcCurrentObjectID',
+	{
+	get: function() { return this.CurrentRecord; }
+	});
+    Object.defineProperty(loader, 'osrcFinalObjectID',
+	{
+	get: function() { return this.FinalRecord; }
+	});
    
     // Zero out the replica
     loader.ClearReplica();
@@ -3925,6 +4245,7 @@ function osrc_init(param)
     ia.Add("CancelCreateObject", osrc_action_cancelcreate);
     ia.Add("SeqBackward", osrc_seq_backward);
     ia.Add("SeqForward", osrc_seq_forward);
+    ia.Add("ForEach", osrc_action_for_each);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);

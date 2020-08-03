@@ -157,9 +157,9 @@ function tbld_format_cell(cell, color)
 //
 function tbld_attr_cmp(a, b)
     {
-    if (a.oid > b.oid)
+    if (a.a > b.a)
 	return 1;
-    else if (a.oid < b.oid)
+    else if (a.a < b.a)
 	return -1;
     else
 	return 0;
@@ -199,16 +199,17 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // Presentation mode -- rows or propsheet?
     if (this.datamode == 1)
 	{
-	if (!dataobj && this.osrc.CurrentRecord && this.osrc.replica[this.osrc.CurrentRecord])
-	    dataobj = this.osrc.replica[this.osrc.CurrentRecord];
+	if (!dataobj && this.osrc.osrcCurrentObjectID)
+	    dataobj = this.osrc.getObject();
+
 	// Propsheet mode - build the attr list
+	var al = dataobj.getAttrList();
 	this.attrlist = [];
-	for(var j in dataobj)
+	for(var a in al)
 	    {
-	    if (dataobj[j].oid && !dataobj[j].system)
-		{
-		this.attrlist.push(dataobj[j]);
-		}
+	    var attr = dataobj.getAttr(a);
+	    if (!attr.getSystem())
+		this.attrlist.push({a:a, v:attr.get(), t:attr.getType()});
 	    }
 	this.attrlist.sort(tbld_attr_cmp);
 	this.rows.lastosrc = this.attrlist.length;
@@ -374,14 +375,24 @@ function tbld_check_bottom()
 function tbld_find_osrc_value(rowslot, attrname)
     {
     var txt = '';
-    if (this.osrc.LastRecord >= rowslot && this.osrc.FirstRecord <= rowslot)
+    if (this.osrc.osrcLastObjectID >= rowslot && this.osrc.osrcFirstObjectID <= rowslot)
 	{
-	for(var k in this.osrc.replica[rowslot])
+	var obj = this.osrc.getObject(rowslot);
+	if (obj)
 	    {
-	    if (this.osrc.replica[rowslot][k].oid == attrname)
+	    var attr = obj.getAttr(attrname);
+	    if (attr)
 		{
-		txt = this.osrc.replica[rowslot][k].value;
-		break;
+		var type = attr.getType();
+		txt = attr.get();
+		if (type == 'money')
+		    {
+		    txt = attr.get().toString();
+		    }
+		else if (type == 'datetime')
+		    {
+		    txt = attr.get().toString();
+		    }
 		}
 	    }
 	if (txt == null || typeof txt == 'undefined')
@@ -417,9 +428,9 @@ function tbld_setup_row_data(rowslot, is_new)
 	    var txt = '';
 	    switch(this.cols[j].fieldname)
 		{
-		case 'name': txt = this.attrlist[attrid].oid; break;
-		case 'value': txt = htutil_obscure(this.attrlist[attrid].value); break;
-		case 'type': txt = this.attrlist[attrid].type; break;
+		case 'name': txt = this.attrlist[attrid].a; break;
+		case 'value': txt = htutil_obscure(this.attrlist[attrid].v); break;
+		case 'type': txt = this.attrlist[attrid].t; break;
 		default: txt = '';
 		}
 	    if(txt == null || typeof txt == 'undefined')
@@ -2182,6 +2193,7 @@ function tbld_keydown(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+
 function tbld_contextmenu(e)
     {
     var ly = e.layer;
@@ -2204,14 +2216,16 @@ function tbld_contextmenu(e)
 		event.data = new Object();
 		event.X = e.pageX;
 		event.Y = e.pageY;
-		var rec=ly.table.osrc.replica[ly.rownum];
-		if(rec)
+		var rec=ly.table.osrc.getObject(ly.rownum);
+		if (rec)
 		    {
-		    for(var i in rec)
+		    var al = rec.getAttrList();
+		    for(var a in al)
 			{
-			event.data[rec[i].oid]=rec[i].value;
-			if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum' && rec[i].oid != 'X' && rec[i].oid != 'Y')
-			    event[rec[i].oid] = rec[i].value;
+			var oneattr = rec.getAttr(a);
+			event.data[a] = oneattr.get();
+			if (typeof event[a] == 'undefined')
+			    event[a] = oneattr.get();
 			}
 		    }
 		ly.table.dta=event.data;
@@ -2286,15 +2300,17 @@ function tbld_mousedown(e)
 		    }
 		event.Caller = ly.table;
 		event.recnum = ly.rownum;
-		event.data = new Object();
-		var rec=ly.table.osrc.replica[ly.rownum];
-		if(rec)
+		event.data = {};
+		var rec=ly.table.osrc.getObject(ly.rownum);
+		if (rec)
 		    {
-		    for(var i in rec)
+		    var al = rec.getAttrList();
+		    for(var a in al)
 			{
-			event.data[rec[i].oid]=rec[i].value;
-			if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum')
-			    event[rec[i].oid] = rec[i].value;
+			var oneattr = rec.getAttr(a);
+			event.data[a] = oneattr.get();
+			if (typeof event[a] == 'undefined')
+			    event[a] = oneattr.get();
 			}
 		    }
 		ly.table.dta=event.data;
@@ -2322,14 +2338,16 @@ function tbld_mousedown(e)
 		    event.Caller = ly.table;
 		    event.recnum = ly.rownum;
 		    event.data = new Object();
-		    var rec=ly.table.osrc.replica[ly.rownum];
-		    if(rec)
+		    var rec=ly.table.osrc.getObject(ly.rownum);
+		    if (rec)
 			{
-			for(var i in rec)
+			var al = rec.getAttrList();
+			for(var a in al)
 			    {
-			    event.data[rec[i].oid]=rec[i].value;
-			    if (rec[i].oid != 'data' && rec[i].oid != 'Caller' && rec[i].oid != 'recnum')
-				event[rec[i].oid] = rec[i].value;
+			    var oneattr = rec.getAttr(a);
+			    event.data[a] = oneattr.get();
+			    if (typeof event[a] == 'undefined')
+				event[a] = oneattr.get();
 			    }
 			}
 		    ly.table.dta=event.data;
