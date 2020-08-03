@@ -11,6 +11,8 @@ centrallix "system/config"
     useragent_config = "##SYSCONFDIR##/centrallix/useragent.cfg";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
+    credentials_db = "##SYSCONFDIR##/centrallix/cxss.db";
+    debug_log_file = "/var/log/cx_debug_log";
     cache_dir = "/var/cache/centrallix";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
@@ -43,6 +45,7 @@ centrallix "system/config"
 	server_string = "Centrallix/0.9.1";
 	auth_realm = "Centrallix";
 	session_cookie = "CXID";
+	ssl_session_cookie = "SCXID";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
 	enable_gzip = 0; // false - NS4 fails on this

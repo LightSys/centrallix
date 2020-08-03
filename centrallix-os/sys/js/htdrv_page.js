@@ -1228,7 +1228,8 @@ function pg_keyhandler(k,m,e)
 	    k = 127;
 	}
 
-    return pg_keyhandler_internal(k,m,e);
+    var r = pg_keyhandler_internal(k,m,e);
+    return  r;
     }
 
 function pg_keyhandler_internal(k,m,e)
@@ -1510,7 +1511,7 @@ function pg_launch(aparam)
     var url = new String(aparam.Source);
     for(var p in aparam)
 	{
-	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source')
+	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source' || p == 'LinkApp')
 	    continue;
 	var v = aparam[p];
 	var r = wgtrCheckReference(v);
@@ -1538,7 +1539,10 @@ function pg_launch(aparam)
 	    url += '&';
 	else
 	    url += '?';
-	url += "cx__akey=" + window.akey.substr(0,49);
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    url += "cx__akey=" + window.akey;
+	else
+	    url += "cx__akey=" + window.akey.substr(0,49);
 	}
 
     // Find a unique name for the new window.

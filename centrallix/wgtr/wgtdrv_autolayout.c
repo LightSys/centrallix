@@ -247,7 +247,7 @@ wgtalVerify(pWgtrVerifySession s)
 			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
 			}
 		    child->x = child->pre_x = xo;
-		    child->width = child->pre_width = child->width = possible_width;
+		    child->pre_width = child->width = possible_width;
 		    if (child->y < 0)
 			child->pre_y = child->y = row_offset;
 		    else

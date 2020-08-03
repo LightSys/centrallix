@@ -535,13 +535,13 @@ double
 prt_fxod_WriteRasterData(void* context_v, pPrtImage img, double width, double height, double next_y)
     {
     pPrtFXodInf context = (pPrtFXodInf)context_v;
-    int rows,cols;
+    //int rows,cols;
     double actual_height;
 
 	/** How many raster rows/cols are we looking at here? **/
 	actual_height = (context->CurVPos + height <= next_y)?height:(next_y - context->CurVPos);
-	rows = actual_height/6.0*(context->SelectedResolution->Yres);
-	cols = width/10.0*(context->SelectedResolution->Xres);
+	//rows = actual_height/6.0*(context->SelectedResolution->Yres);
+	//cols = width/10.0*(context->SelectedResolution->Xres);
 
 	/** Don't actually print the image for now **/
 

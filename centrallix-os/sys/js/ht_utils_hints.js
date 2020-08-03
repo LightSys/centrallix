@@ -421,11 +421,29 @@ function cx_hints_checkmodify(e, ov, nv, type, onchange)
 	// badchars/allowchars
 	if (h.AllowChars && nv)
 	    {
-	    for(var i = 0; i<(''+nv).length; i++) if (h.AllowChars.indexOf((''+nv).charAt(i)) < 0) return ov;
+	    var nv2 = '';
+	    for(var i = 0; i<(''+nv).length; i++)
+		{
+		if (h.AllowChars.indexOf((''+nv).charAt(i)) >= 0) 
+		    {
+		    nv2 = nv2 + (''+nv).charAt(i);
+		    //return ov;
+		    }
+		}
+	    nv = nv2;
 	    }
 	if (h.BadChars && nv)
 	    {
-	    for(var i = 0; i<h.BadChars.length; i++) if ((''+nv).indexOf(h.BadChars.charAt(i)) >= 0) return ov;
+	    var nv2 = '';
+	    for(var i = 0; i<(''+nv).length; i++)
+		{
+		if (h.BadChars.indexOf((''+nv).charAt(i)) < 0)
+		    {
+		    nv2 = nv2 + (''+nv).charAt(i);
+		    }
+		    //return ov;
+		}
+	    nv = nv2;
 	    }
 
 	// Empty string is null?

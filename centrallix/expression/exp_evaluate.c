@@ -81,7 +81,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
     int rval;
 
 	/** Can't eval? **/
-	if (!objlist->Session)
+	if (!objlist || !objlist->Session)
 	    {
 	    /** Null if no context to eval a filename obj yet **/
 	    tree->Flags |= EXPR_F_NULL;
@@ -942,7 +942,8 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 		    }
 		else
 		    {
-		    child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
 		    }
 		}
 	    else
@@ -954,7 +955,7 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		if (child->Flags & EXPR_F_NULL) has_null = 1;
-		if (!(child->Flags & EXPR_F_NULL) && child->Integer == 0)
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer == 0)
 		    {
 		    tree->Integer = 0;
 		    short_circuiting = 1;
@@ -994,7 +995,8 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 		    }
 		else
 		    {
-		    child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
 		    }
 		}
 	    else
@@ -1006,7 +1008,7 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		if (child->Flags & EXPR_F_NULL) has_null = 1;
-		if (!(child->Flags & EXPR_F_NULL) && child->Integer != 0) 
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer != 0)
 		    {
 		    tree->Integer = 1;
 		    short_circuiting = 1;
@@ -1287,6 +1289,14 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
     void* vptr;
     int (*getfn)();
 
+	/** If no object list, set result to NULL. **/
+	if (!objlist)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
+
     	/** Which object are we getting at? **/
 	if (tree->ObjID == -1)
 	    {
@@ -1311,7 +1321,7 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		/** if unset because unbound to a real object, evaluate to NULL **/
-		tree->Flags |= EXPR_F_NULL;
+		tree->Flags |= (EXPR_F_NULL | EXPR_F_INDETERMINATE);
 		tree->DataType = DATA_T_INTEGER;
 		return 0;
 		}
@@ -1466,15 +1476,15 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	expModifyParamByID(objlist, id, obj);
 
 	/** Setting to NULL is simple... **/
+	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
+	if (attr_type == DATA_T_UNAVAILABLE)
+	    attr_type = tree->DataType;
 	if (tree->Flags & EXPR_F_NULL)
-	    return setfn(obj, tree->Name, tree->DataType, NULL);
+	    return setfn(obj, tree->Name, attr_type, NULL);
 
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
-	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
-	if (attr_type == DATA_T_UNAVAILABLE)
-	    attr_type = tree->DataType;
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)
@@ -1787,6 +1797,8 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
+	    if (objlist->CurControl)
+		exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 
@@ -1852,6 +1864,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
     int (*fn)();
     int old_objmask;
     int rval;
+    int i;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1886,12 +1899,14 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 
 	/** Call the appropriate evaluator fn based on type **/
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
+	tree->Flags &= ~EXPR_F_INDETERMINATE;
 	/*if (tree->NodeType == EXPR_N_LIST) return -1;*/
 	fn = EXP.EvalFunctions[tree->NodeType];
 	if (!fn)
 	    {
 	    tree->Flags &= ~EXPR_F_NEW;
-	    objlist->ModCoverageMask = old_objmask;
+	    if (objlist)
+		objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	rval = fn(tree,objlist);
@@ -1900,6 +1915,16 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	if (objlist)
 	    objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
+
+	/** Indeterminate? **/
+	for(i=0; i<tree->Children.nItems; i++)
+	    {
+	    if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_INDETERMINATE)
+		{
+		tree->Flags |= EXPR_F_INDETERMINATE;
+		break;
+		}
+	    }
 
     return rval;
     }
@@ -1923,7 +1948,8 @@ exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
 	    }
 	else
 	    {
-	    tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
+	    if (objlist)
+		tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
 	    for(i=0; i<tree->Children.nItems; i++)
 		{
 		child = (pExpression)tree->Children.Items[i];

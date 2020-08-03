@@ -71,11 +71,17 @@ AC_CACHE_SAVE
 dnl Check for makedepend (typically in XFree86-devel)
 CHECK_MAKEDEPEND
 
+dnl Check for pkg-config
+PKG_PROG_PKG_CONFIG
+
 dnl Check for OpenSSL
 CENTRALLIX_CHECK_OPENSSL
 
 dnl Check for JSON-C
 CENTRALLIX_CHECK_JSONC
+
+dnl Check for SQLite
+CENTRALLIX_CHECK_SQLITE
 
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
@@ -148,6 +154,9 @@ CENTRALLIX_CHECK_NET_NFS
 dnl LDAP netdriver support.
 AH_TEMPLATE([USE_NETLDAP], [Define for LDAP netdriver support])
 CENTRALLIX_CHECK_NET_LDAP
+
+dnl CAIRO/RSVG support.
+CENTRALLIX_CHECK_RSVG
 
 AC_SUBST(OBJDRIVERMODULES)
 AC_SUBST(OBJDRIVERS)

@@ -390,7 +390,7 @@ function osrc_refresh_timer()
     {
     this.refresh_schedid = null;
     this.req_ind_act = false;
-    if (this.revealed_children > 0)
+    if (!this.qy_reveal_only || this.revealed_children > 0)
 	this.ifcProbe(ifAction).Invoke('Refresh', {});
     else
 	this.refresh_schedid = pg_addsched_fn(this, 'RefreshTimer', [], this.refresh_interval);
@@ -427,7 +427,7 @@ function osrc_action_change_source(aparam)
     if (aparam.Source == '' || aparam.Source == this.baseobj) return;
     var l = (new String(this.baseobj)).length;
     var newl = (new String(aparam.Source)).length;
-    var s = new String(this.sql);
+    var s = new String(this.getSQL());
     var p = s.indexOf(this.baseobj);
     while (p >= 0)
 	{
@@ -465,11 +465,11 @@ function osrc_query_text_handler(aparam)
     {
     var initiating_client = aparam.client;
     var appendrows = (aparam.cx__appendrows)?true:false;
-    var statement=this.sql;
+    var statement=this.getSQL();
     var case_insensitive = (aparam.cx__case_insensitive)?true:false;
 
     var sel_re = /^\s*(set\s+rowcount\s+[0-9]+\s+)?select\s+/i;
-    var is_select = sel_re.test(this.sql);
+    var is_select = sel_re.test(this.getSQL());
 
     if (this.use_having)
 	var osrcsep = ' HAVING ';
@@ -551,7 +551,7 @@ function osrc_query_text_handler(aparam)
 
     // add any relationships
     var rel = new $CX.Types.osrcObject();
-    this.ApplyRelationships(rel, false);
+    this.ApplyRelationships(rel, false, false);
     if (!$.isEmptyObject(rel))
 	{
 	statement += osrcsep;
@@ -628,7 +628,7 @@ function osrc_query_object_handler(aparam)
     this.move_target = aparam.targetrec;
 
     if (typeof q != 'undefined' && q !== null)
-	this.ApplyRelationships(q, false);
+	this.ApplyRelationships(q, false, false);
 
     // Copy ID and join info to filter
     if (q.getJoin())
@@ -671,11 +671,11 @@ function osrc_query_object_handler(aparam)
 	this.SyncID = osrc_syncid++;
 
     var sel_re = /^\s*(set\s+rowcount\s+[0-9]+\s+)?select\s+/i;
-    var is_select = sel_re.test(this.sql);
+    var is_select = sel_re.test(this.getSQL());
 
     this.pendingqueryobject=q;
     this.querytext = null;
-    var statement=this.sql;
+    var statement=this.getSQL();
 
     if (this.use_having)
 	var sep = ' HAVING ';
@@ -1192,11 +1192,11 @@ function osrc_action_create_cb2(data)
 	this.sid = data.session;
 
     // Apply any constraints to the data to be used in the create
-    this.ApplyRelationships(this.createddata, true);
+    this.ApplyRelationships(this.createddata, true, false);
     this.ApplySequence(this.createddata);
 
     // Set up the create options
-    var reqparam = {ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
+    var reqparam = {ls__reopen_sql:this.getSQL(), ls__sqlparam:this.EncodeParams()};
     if (this.use_having) reqparam.ls__reopen_having = 1;
     var attrlist = this.createddata.getAttrList();
     for(var a in attrlist)
@@ -1418,11 +1418,11 @@ function osrc_action_modify(aparam) //up,initiating_client
 	}
     //Modify an object through OSML
     //up[adsf][value];
-    var reqparam = {ls__oid:this.modifieddata.oid, ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
+    var reqparam = {ls__oid:this.modifieddata.oid, ls__reopen_sql:this.getSQL(), ls__sqlparam:this.EncodeParams()};
     if (this.use_having) reqparam.ls__reopen_having = 1;
 
     //var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.modifieddata.oid;
-    this.ApplyRelationships(this.modifieddata, false);
+    this.ApplyRelationships(this.modifieddata, false, true);
     for(var i in this.modifieddata) if(i!='oid')
 	{
 	if (this.modifieddata[i]['value'] == null)
@@ -1659,6 +1659,11 @@ function osrc_cb_register(client)
 	{
 	this.is_client_discardable = true;
 	this.ifcProbe(ifValue).Changing("is_client_discardable", 1, true, 0, true);
+	}
+
+    if (this.replica && this.replica.length != 0)
+	{
+	pg_addsched_fn(this,'GiveOneCurrentRecord', [this.child.length - 1, 'change'], 0);
 	}
     }
 
@@ -1951,16 +1956,20 @@ function osrc_end_query()
 	this.replica[this.LastRecord].__osrc_is_last = true;
 	this.FinalRecord = this.LastRecord;
 	}
-
+    else if (this.LastRecord < this.FirstRecord)
+	{
+	// No data returned at all
+	this.FinalRecord = this.LastRecord;
+	}
     this.query_ended = true;
     this.FoundRecord();
     if(qid)
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.Dispatch();
     this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
     this.doing_refresh = false;
+    this.Dispatch();
 
     // Handle auto-refresh timer
     if (this.refresh_schedid)
@@ -1987,6 +1996,7 @@ function osrc_found_record()
 	this.TellAllReplicaMoved();
     this.SetPending(false);
     this.osrc_oldoid_cleanup();
+    this.ifcProbe(ifEvent).Activate("Results", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
     if (this.query_delay)
 	{
 	if (this.query_delay_schedid)
@@ -2282,6 +2292,10 @@ function osrc_change_current_record()
     this.prevcurrent = newprevcurrent;
     }
 
+function osrc_give_one_current_record(id, why)
+    {
+    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':why));
+    }
 
 function osrc_give_all_current_record(why)
     {
@@ -2292,7 +2306,7 @@ function osrc_give_all_current_record(why)
 	this.FinalRecord = this.LastRecord;
 	}
     for(var i in this.child)
-	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+	this.GiveOneCurrentRecord(i, why);
     this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
     this.doing_refresh = false;
     }
@@ -2933,7 +2947,7 @@ function osrc_cb_new_object_template()
     var obj = this.NewReplicaObj(0, 0);
 
     // Apply relationships and keys
-    this.ApplyRelationships(obj, false);
+    this.ApplyRelationships(obj, false, false);
     this.ApplyKeys(obj);
     this.ApplySequence(obj);
 
@@ -3032,7 +3046,7 @@ function osrc_seq(direction)
 	    }
 
 	// Step 2: update prior record's sequence
-	var reqparam = {ls__reopen_sql:this.sql, ls__sqlparam:this.EncodeParams()};
+	var reqparam = {ls__reopen_sql:this.getSQL(), ls__sqlparam:this.EncodeParams()};
 	if (!doneprev)
 	    {
 	    reqparam[seqfield] = cur_seq;
@@ -3169,7 +3183,7 @@ function osrc_apply_keys(obj)
     return;
     }
 
-function osrc_apply_rel(obj, in_create)
+function osrc_apply_rel(obj, in_create, in_modify)
     {
     // First, check for relationships that might imply key values
     for(var i=0; i<this.relationships.length; i++)
@@ -3188,6 +3202,20 @@ function osrc_apply_rel(obj, in_create)
 		var filt;
 		if (col)
 		    found = true;
+
+		// If not already in the obj, we add it unless we're modifying
+		// an already existing object, in which case tagging relationship
+		// data causes unnecessary fields to be set.
+		// 
+		// GRB: merge conflict on this - I believe this is no longer an
+		// issue with the updated code, since attr not found in the below
+		// getAttr() does not do anything anyhow.
+		//
+		//if (!found)
+		//    {
+		//    if (in_modify)
+		//	continue;
+		//    }
 
 		// Are we allowed to set/overwrite this value?
 		if (!found || !in_create || rule.enforce_create)
@@ -3623,6 +3651,12 @@ function osrc_queue_request(r)
     }
 
 
+function osrc_compare_requests(r1, r2)
+    {
+    return JSON.stringify(r1) === JSON.stringify(r2);
+    }
+
+
 function osrc_dispatch()
     {
     if (this.pending || this.masters_pending.length) return;
@@ -3630,6 +3664,17 @@ function osrc_dispatch()
     var requeue = [];
     while ((req = this.query_request_queue.shift()) != null)
 	{
+	// Peek to see if the next request(s) are identical
+	while (this.query_request_queue.length > 0)
+	    {
+	    var req2 = this.query_request_queue[0];
+	    if (this.CompareRequests(req, req2))
+		this.query_request_queue.shift();
+	    else
+		break;
+	    }
+	
+	// Process the request
 	switch(req.Request)
 	    {
 	    case 'Query':
@@ -4069,6 +4114,27 @@ function osrc_api_get_object(id)
     }
 
 
+function osrc_get_sql()
+    {
+    var newsql = wgtrGetServerProperty(this, "sql", this.sql);
+    if (this.origbaseobj && this.baseobj && this.origbaseobj != this.baseobj)
+	{
+	var l = (new String(this.origbaseobj)).length;
+	var newl = (new String(this.baseobj)).length;
+	var s = new String(newsql);
+	var p = s.indexOf(this.origbaseobj);
+	while (p >= 0)
+	    {
+	    s = s.substr(0,p) + this.baseobj + s.substr(p+l);
+	    p = s.indexOf(this.origbaseobj, p+newl);
+	    }
+	return s;
+	}
+    else
+	return newsql;
+    }
+
+
 function osrc_destroy()
     {
     pg_set(this, "src", "about:blank");
@@ -4102,8 +4168,10 @@ function osrc_init(param)
     loader.qy_reveal_only = param.qy_reveal_only;
     loader.refresh_interval = param.refresh;
     loader.sql=param.sql;
+    loader.getSQL = osrc_get_sql;
     loader.filter=param.filter;
     loader.baseobj=param.baseobj;
+    loader.origbaseobj=param.baseobj;
     loader.use_having = param.use_having;
     loader.readonly = false;
     loader.autoquery = param.autoquery;
@@ -4161,11 +4229,13 @@ function osrc_init(param)
     loader.FetchNext = osrc_fetch_next;
     loader.GoNogo = osrc_go_nogo;
     loader.QueueRequest = osrc_queue_request;
+    loader.CompareRequests = osrc_compare_requests;
     loader.Dispatch = osrc_dispatch;
     loader.DoRequest = osrc_do_request;
     loader.EncodeParams = osrc_encode_params;
     loader.Encode = osrc_encode;
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
+    loader.GiveOneCurrentRecord=osrc_give_one_current_record;
     loader.ChangeCurrentRecord=osrc_change_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
@@ -4251,6 +4321,7 @@ function osrc_init(param)
     var ie = loader.ifcProbeAdd(ifEvent);
     ie.Add("DataFocusChanged");
     ie.Add("EndQuery");
+    ie.Add("Results");
     ie.Add("BeginQuery");
     ie.Add("Created");
     ie.Add("Modified");

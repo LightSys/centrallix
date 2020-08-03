@@ -39,9 +39,12 @@
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "stparse.h"
+#include "cxlib/xhandle.h"
 
 
-#define MQ_MAX_ORDERBY	25
+#define MQ_MAX_ORDERBY		(25)
+
+#define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+1024)
 
 
 /*** Structure for a query driver.  A query driver basically manages a type
@@ -110,7 +113,7 @@ typedef struct _QS
     XArray		Children;
     int			ObjID;
     char		Presentation[32];
-    char		Source[OBJSYS_MAX_PATH+1];
+    char		Source[MQ_MAX_SOURCELEN];
     char		Name[32];
     int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;
@@ -137,6 +140,8 @@ typedef struct _QS
 #define MQ_SF_ASSIGNMENT	512		/* SELECT :obj:attr = ... */
 #define MQ_SF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
 #define MQ_SF_IFMODIFIED	2048		/* UPDATE ... SET ... IF MODIFIED */
+#define MQ_SF_APPSCOPE		4096		/* DECLARE ... SCOPE APPLICATION */
+#define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -173,6 +178,26 @@ typedef struct _QDO
     pStructInf		Data;			/* Object data */
     }
     QueryDeclaredObject, *pQueryDeclaredObject;
+
+
+/*** Similarly, this is for a declared collection (i.e. table). ***/
+typedef struct _QDC
+    {
+    char		Name[32];		/* Name of the collection */
+    handle_t		Collection;		/* Collection data */
+    }
+    QueryDeclaredCollection, *pQueryDeclaredCollection;
+
+
+/*** Data from end-user session/group/app.  This is for declared
+ *** items with scope "application".
+ ***/
+typedef struct _QAD
+    {
+    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
+    }
+    QueryAppData, *pQueryAppData;
 
 
 typedef struct _QST QueryStatement, *pQueryStatement;
@@ -220,8 +245,16 @@ struct _MQ /* MultiQuery */
     pLxSession		LexerSession;		/* tokenized query string */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
-    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
     int			ThisObj;		/* a self-reference to a select statement's items */
+    unsigned int	StartMsec;		/* msec value at start of query */
+    unsigned int	YieldMsec;		/* msec value at last thYield() */
+
+    /*** the following are for declared objects and
+     *** collections with scope "query", the default
+     *** scope.
+     ***/
+    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
@@ -265,5 +298,7 @@ int mq_internal_FreeQE(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
+handle_t mq_internal_FindCollection(pMultiQuery mq, char* collection);
+void mq_internal_CheckYield(pMultiQuery mq);
 
 #endif  /* not defined _MULTIQUERY_H */

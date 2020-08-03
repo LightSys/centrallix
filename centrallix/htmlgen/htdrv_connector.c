@@ -176,9 +176,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
 #endif
-	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%];\n",
+	    /*htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%];\n",
 		    !*source, name, 
-		    *source, source);
+		    *source, source);*/
 #if 00
 	    }
 	if (*rpt_context && *target)
@@ -192,14 +192,17 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 #endif
-	    htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%];\n",
+	    /*htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%];\n",
 		    *target, target, 
-		    !*target, name);
+		    !*target, name);*/
 #if 00
 	    }
 #endif
-	htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
+	//htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
+	htrAddScriptInit_va(s, "    %[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%], '%STR&SYM', {%STR});\n",
+		!*source, name, *source, source,
 		event, 
+		*target, target, !*target, name,
 		action,
 		xs.String);
 	xsDeInit(&xs);

@@ -10,6 +10,7 @@
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxlib/xarray.h"
 
 
 /************************************************************************/
@@ -58,7 +59,7 @@ int
 mquAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, where_qs, where_item, from_qs;
-    pQueryElement qe,recent;
+    pQueryElement qe /*,recent*/ ;
     pExpression new_exp;
     int i;
     int src_idx;
@@ -93,7 +94,8 @@ mquAnalyze(pQueryStatement stmt)
 		    if (from_qs->Children.nItems == 1 || (item->Flags & MQ_SF_IDENTITY))
 			{
 			src_idx = expLookupParam(stmt->Query->ObjList, 
-					item->Presentation[0]?(item->Presentation):(item->Source));
+					item->Presentation[0]?(item->Presentation):(item->Source),
+					0);
 			}
 		    }
 		}
@@ -123,7 +125,7 @@ mquAnalyze(pQueryStatement stmt)
 	    stmt->Tree = qe;
 
 	    /** Need to link in with each of the update-items. **/
-	    recent = NULL;
+	    /*recent = NULL;*/
 	    for(i=0;i<qs->Children.nItems;i++)
 	        {
 		item = (pQueryStructure)(qs->Children.Items[i]);
@@ -233,9 +235,8 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	/** Set iteration cnt to 0 **/
 	qe->IterCnt = 0;
 
-	objects_to_update = (pXArray)nmMalloc(sizeof(XArray));
+	objects_to_update = xaNew(16);
 	if (!objects_to_update) goto error;
-	xaInit(objects_to_update, 16);
 
 	/** Retrieve matching records **/
 	while((!qe->SlaveIterCnt || qe->IterCnt < qe->SlaveIterCnt) && (cld_rval = cld->Driver->NextItem(cld, stmt)) == 1)
@@ -321,8 +322,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    expFreeParamList(objlist);
 		    }
 		}
-	    xaDeInit(objects_to_update);
-	    nmFree(objects_to_update, sizeof(XArray));
+	    xaFree(objects_to_update);
 	    }
 
 	/** Close the SELECT **/

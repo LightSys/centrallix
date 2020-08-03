@@ -13,6 +13,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include <time.h>
+#include "cxlib/xhandle.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -442,6 +443,10 @@ objInitialize()
 
 	/** Load the inheritance driver **/
 	oihInitialize();
+
+	/** Load the temp driver **/
+	xhnInitContext(&OSYS.TempObjects);
+	tmpInitialize();
 
 	nmRegister(sizeof(Object),"Object");
 	nmRegister(sizeof(ObjQuery),"ObjQuery");

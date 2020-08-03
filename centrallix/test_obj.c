@@ -27,6 +27,7 @@
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
 #include "obfuscate.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -87,6 +88,8 @@ struct
     TESTOBJ;
 
 #define BUFF_SIZE 1024
+
+#define CSV_MAX_ATTRS	640
 
 typedef struct
     {
@@ -550,8 +553,8 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     int t,i;
     pObjectInfo info;
     pFile try_file;
-    char* attrnames[640];
-    int attrtypes[640];
+    char* attrnames[CSV_MAX_ATTRS];
+    int attrtypes[CSV_MAX_ATTRS];
     int n_attrs;
     int name_was_null;
     XString xs;
@@ -663,9 +666,14 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			    }
+
 			}
 		    fdPrintf(TESTOBJ.Output, "\n");
 		    objClose(obj);
+		    }
+		for(i=0;i<n_attrs;i++)
+		    {
+		    nmSysFree(attrnames[i]);
 		    }
 		objQueryClose(qy);
 		}
@@ -1390,6 +1398,7 @@ start(void* v)
     pLxSession input_lx;
     char* ptr;
     int alloc;
+    pApplication app;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -1442,9 +1451,12 @@ start(void* v)
 	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	    }
 
+	/** Application context **/
+	cxssPushContext();
+	app = appCreate("test_obj");
+
 	/** Open a session **/
 	s = objOpenSession("/");
-	cxssPushContext();
 
 	/** -C cmd provided on command line? **/
 	if (TESTOBJ.Command[0])
@@ -1508,6 +1520,8 @@ start(void* v)
 	    if (!inbuf)
 	        {
 		printf("quit\n");
+		appDestroy(app);
+		cxssPopContext();
 		objCloseSession(s);
 		thExit();
 		}
@@ -1516,6 +1530,7 @@ start(void* v)
 	    if (rval == 1) break;
 	    }
 
+	appDestroy(app);
 	cxssPopContext();
 	objCloseSession(s);
 

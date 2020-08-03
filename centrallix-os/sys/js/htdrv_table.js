@@ -28,7 +28,44 @@ function tbld_format_cell(cell, color)
 	var str = htutil_encode(String(cell.data));
     if (colinfo.wrap != 'no')
 	str = htutil_nlbr(str);
-    if (cell.subkind != 'headercell' && colinfo.type == 'check')
+    if (cell.subkind != 'headercell' && colinfo.type == 'progress')
+	{
+	// Progress Bar
+	var val = cell.data;
+	var roundto = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'round_to');
+	if (!roundto) roundto = 1.0;
+	var pad = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_padding');
+	if (!pad) pad = 0;
+	pad = parseInt(pad);
+	var barcolor = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_color');
+	if (!barcolor) barcolor = '#a0a0a0';
+	barcolor = String(barcolor).replace(/[^a-z0-9A-Z#]/g, "");
+	var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
+	if (!bartext) bartext = 'black';
+	bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
+	var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
+	actpct = String(actpct).replace(/[^0-9.%]/g, "");
+	var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
+	if (val >= 0.5)
+	    {
+	    innertxt = pct + ' ';
+	    outertxt = '';
+	    }
+	else
+	    {
+	    innertxt = ' ';
+	    outertxt = ' ' + pct;
+	    }
+	txt = '<div style="display:inline-block; width:100%;">' +
+		  '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
+		      htutil_encode(innertxt) + 
+		  '</div>' +
+		  '<span style="padding:' + pad + 'px;">' +
+		      htutil_encode(outertxt) + 
+		  '</span>' + 
+	      '</div>';
+	}
+    else if (cell.subkind != 'headercell' && colinfo.type == 'check')
 	{
 	// Checkmark
 	var sl = str.toLowerCase();
@@ -81,9 +118,11 @@ function tbld_format_cell(cell, color)
     if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle)
 	{
 	// Build the paragraph elements of the cell
+	var t_p = null;
+	var c_p = null;
 	if (titletxt)
 	    {
-	    var t_p = document.createElement('p');
+	    t_p = document.createElement('p');
 	    $(t_p).attr("style", titlestyle);
 	    $(t_p).css({'margin':'0px'});
 	    $(t_p).append(titletxt);
@@ -94,7 +133,7 @@ function tbld_format_cell(cell, color)
 	$(p).append(txt);
 	if (captxt)
 	    {
-	    var c_p = document.createElement('p');
+	    c_p = document.createElement('p');
 	    $(c_p).attr("style", capstyle);
 	    $(c_p).css({'margin':'0px'});
 	    $(c_p).append(captxt);
@@ -115,6 +154,9 @@ function tbld_format_cell(cell, color)
 	cell.cxstyle = style;
 	cell.cxcapstyle = capstyle;
 	cell.cxtitlestyle = titlestyle;
+	cell.el_title = t_p;
+	cell.el_text = p;
+	cell.el_caption = c_p;
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
@@ -662,6 +704,16 @@ function tbld_bring_into_view(rownum)
     }
 
 
+function tbld_update_scrollbar()
+    {
+    $(this.scrollbar).stop(false, true);
+    if (this.thumb_height != this.thumb_avail)
+	htr_setvisibility(this.scrollbar, "inherit");
+    $(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear",
+	() => { if (this.thumb_height == this.thumb_avail) htr_setvisibility(this.scrollbar, "hidden"); } );
+    }
+
+
 function tbld_update_thumb(anim)
     {
     // Current offset of scroll area
@@ -710,8 +762,7 @@ function tbld_update_thumb(anim)
     // Set scrollbar visibility
     if (this.demand_scrollbar)
 	{
-	$(this.scrollbar).stop(false, true);
-	$(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear", null);
+	this.UpdateScrollbar();
 	}
 	//$(this.scrollbar).css({"opacity": (this.thumb_height == this.thumb_avail)?0.0:1.0});
 	//htr_setvisibility(this.scrollbar, (this.thumb_height == this.thumb_avail)?"hidden":"inherit");
@@ -816,10 +867,15 @@ function tbld_select()
 	{
 	this.mouseover();
 	}
+    this.showdetail(false);
+    }
+
+function tbld_showdetail(on_new)
+    {
     for(var i=0; i<this.table.detail_widgets.length; i++)
 	{
 	var dw = this.table.detail_widgets[i];
-	if (wgtrGetServerProperty(dw, 'display_for', 1) && this.table.initselect !== 2 /* 2 = noexpand */ )
+	if (wgtrGetServerProperty(dw, 'display_for', 1) && (this.table.initselect !== 2 || (this.table.initselect == 2 && on_new)) /* 2 = noexpand */ && (!on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
 	    {
 	    var found=false;
 	    for(var j=0; j<this.detail.length; j++)
@@ -834,7 +890,7 @@ function tbld_select()
 	    if (!found)
 		{
 		// already a part of another row?
-		if ($(dw).css("visibility") == 'inherit')
+		if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		    {
 		    pg_reveal_event(dw, dw, 'Obscure');
 		    dw.is_visible = 0;
@@ -892,6 +948,11 @@ function tbld_deselect()
 	this.removeChild(this.ctr);
 	this.ctr = null;
 	}
+    this.hidedetail();
+    }
+
+function tbld_hidedetail()
+    {
     for(var i=0; i<this.detail.length; i++)
 	{
 	var dw = this.detail[i];
@@ -926,6 +987,7 @@ function tbld_newselect()
 	{
 	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolornew', this.table.textcolornew));
 	}
+    this.showdetail(true);
     }
 
 function tbld_setbackground(obj, widget, prefix)
@@ -978,7 +1040,7 @@ function tbld_sched_scroll(y)
 	pg_delsched(this.scroll_timeout);
     $(this.scrolldiv).stop(false, true);
     $(this.box).stop(false, true);
-    pg_addsched_fn(this, "Scroll", [y], 0);
+    this.scroll_timeout = pg_addsched_fn(this, "Scroll", [y], 0);
     }
 
 
@@ -1509,6 +1571,8 @@ function tbld_instantiate_row(parentDiv, x, y)
     row.newselect=tbld_newselect;
     row.mouseover=tbld_domouseover;
     row.mouseout=tbld_domouseout;
+    row.showdetail=tbld_showdetail;
+    row.hidedetail=tbld_hidedetail;
     row.needs_redraw = false;
     row.detail = [];
 
@@ -1639,6 +1703,7 @@ function tbld_init(param)
     t.showselect = param.show_selection;
     t.initselect = param.initial_selection;
     t.initselect_orig = param.initial_selection;
+    t.allowdeselect = param.allow_deselection;
     t.datamode = param.dm;
     t.has_header = param.hdr;
     t.demand_scrollbar = param.demand_sb;
@@ -1681,6 +1746,7 @@ function tbld_init(param)
     t.osrc_busy = false;
     t.osrc_last_op = null;
     //t.log = [];
+    t.ttf_string = '';
     
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
@@ -1726,6 +1792,7 @@ function tbld_init(param)
     t.RescanRowVisibility = tbld_rescan_row_visibility;
     t.RefreshRowVisibility = tbld_refresh_row_visibility;
     t.UpdateThumb = tbld_update_thumb;
+    t.UpdateScrollbar = tbld_update_scrollbar;
     t.FormatRow = tbld_format_row;
     t.FormatCell = tbld_format_cell;
     t.UpdateHeight = tbld_update_height;
@@ -1740,6 +1807,8 @@ function tbld_init(param)
     t.InitBH = tbld_init_bh;
     t.OsrcDispatch = tbld_osrc_dispatch;
     t.OsrcRequest = tbld_osrc_request;
+    t.EndTTF = tbld_end_ttf;
+    t.CheckHighlight = tbld_check_highlight;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -1907,7 +1976,7 @@ function tbld_init(param)
     // Scrollbar styling
     //$(t.scrollbar).find('td:has(img),div').css({'background-color':'rgba(128,128,128,0.2)'});
     if (t.demand_scrollbar)
-	$(t.scrollbar).css({"opacity": 0.0, "visibility": "inherit"});
+	$(t.scrollbar).css({"opacity": 0.0, "visibility": "hidden"});
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
     $(t.scrollbar).css(
@@ -2057,15 +2126,13 @@ function tbld_mouseover(e)
 		tbld_mcurrent.has_mouse = false;
 		if (tbld_mcurrent.demand_scrollbar)
 		    {
-		    $(tbld_mcurrent.scrollbar).stop(false, true);
-		    $(tbld_mcurrent.scrollbar).animate({"opacity": (tbld_mcurrent.thumb_height == tbld_mcurrent.thumb_avail)?0.0:(tbld_mcurrent.has_mouse?1.0:0.33)}, 150, "linear", null);
+		    tbld_mcurrent.UpdateScrollbar();
 		    }
 		}
 	    tbld_mcurrent = t;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
         if(ly.subkind=='cellborder')
@@ -2077,7 +2144,8 @@ function tbld_mouseover(e)
 	    var t = ly.table;
 	    if (ly.firstChild && ly.firstChild.firstChild)
 		{
-		var cell_width = getdocWidth(ly.firstChild.firstChild);
+		//var cell_width = getdocWidth(ly.firstChild.firstChild);
+		var cell_width = $(ly.firstChild.firstChild).width();
 		if (t.colsep > 0 || t.dragcols)
 		    cell_width += (t.bdr_width*2 + t.colsep);
 		if (t.cols[ly.colnum].width < cell_width && ly.data)
@@ -2146,6 +2214,51 @@ function tbld_wheel(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function tbld_end_ttf()
+    {
+    this.ttf_timeout = null;
+    this.ttf_string = '';
+    }
+
+function tbld_check_highlight(cell, str)
+    {
+    // Title data
+    if (cell.titledata)
+	{
+	var pos = cell.titledata.toLowerCase().indexOf(this.ttf_string.toLowerCase());
+	if (pos >= 0)
+	    {
+	    var sel = window.getSelection();
+	    var r = document.createRange();
+	    r.selectNodeContents(cell.el_title);
+	    r.setStart(cell.el_title.firstChild.firstChild, pos);
+	    r.setEnd(cell.el_title.firstChild.firstChild, pos + this.ttf_string.length);
+	    sel.removeAllRanges();
+	    sel.addRange(r);
+	    return true;
+	    }
+	}
+
+    // Main data
+    if (cell.data)
+	{
+	var pos = cell.data.toLowerCase().indexOf(this.ttf_string.toLowerCase());
+	if (pos >= 0)
+	    {
+	    var sel = window.getSelection();
+	    var r = document.createRange();
+	    r.selectNodeContents(cell.el_text);
+	    r.setStart(cell.el_text.firstChild.firstChild, pos);
+	    r.setEnd(cell.el_text.firstChild.firstChild, pos + this.ttf_string.length);
+	    sel.removeAllRanges();
+	    sel.addRange(r);
+	    return true;
+	    }
+	}
+
+    return false;
+    }
+
 function tbld_keydown(e)
     {
     e = e.Dom2Event;
@@ -2175,7 +2288,7 @@ function tbld_keydown(e)
 	    var target_y = t.vis_height - getRelativeY(target_row);
 	    t.Scroll(target_y, true);
 	    }
-	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || e.key == ' ')
+	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || (e.key == ' ' && !t.ttf_string))
 	    {
 	    var target_row = t.rows[t.rows.lastvis];
 	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
@@ -2188,6 +2301,46 @@ function tbld_keydown(e)
 	else if (e.keyCode == e.DOM_VK_DOWN || e.key == 'ArrowDown')
 	    {
 	    t.BringIntoView(t.rows.lastvis+1);
+	    }
+	else if (ttf && e.which)
+	    {
+	    if (t.ttf_timeout)
+		pg_delsched(t.ttf_timeout);
+	    t.ttf_timeout = pg_addsched_fn(t, "EndTTF", [], 800);
+	    var old_str = t.ttf_string;
+	    if (e.which == 8)
+		t.ttf_string = t.ttf_string.substring(0, t.ttf_string.length-1);
+	    else
+		t.ttf_string += String.fromCharCode(e.which);
+	    var found = false;
+	    if (t.ttf_string)
+		{
+		for(var i = t.rows.first; i<= t.rows.last && !found; i++)
+		    {
+		    var row = t.rows[i];
+		    for(var c in row.cols)
+			{
+			var col = row.cols[c];
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image')
+			    {
+			    if (t.CheckHighlight(col, t.ttf_string))
+				{
+				t.BringIntoView(i);
+				found = true;
+				break;
+				}
+			    }
+			}
+		    }
+		if (!found)
+		    {
+		    t.ttf_string = old_str;
+		    }
+		}
+	    else
+		{
+		window.getSelection().removeAllRanges();
+		}
 	    }
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -2286,7 +2439,8 @@ function tbld_mousedown(e)
 		    }
 		else if (ly.table.initselect !== ly.table.initselect_orig)
 		    {
-		    ly.table.initselect = ly.table.initselect_orig;
+		    if (ly.table.allowdeselect)
+			ly.table.initselect = ly.table.initselect_orig;
 		    ly.table.RedrawAll(null, true);
 		    }
 		}
@@ -2361,8 +2515,10 @@ function tbld_mousedown(e)
             for(var i in ly.row.table.osrc.orderobject)
                 neworder[i]=ly.row.table.osrc.orderobject[i];
             
-            var colname=ly.row.table.cols[ly.colnum].fieldname;
-                /** check for the this field already in the sort criteria **/
+            var colname=ly.row.table.cols[ly.colnum].sort_fieldname;
+	    if (!colname)
+		colname=ly.row.table.cols[ly.colnum].fieldname;
+	    /** check for the this field already in the sort criteria **/
             if(':"'+colname+'" asc'==neworder[0])
                 neworder[0]=':"'+colname+'" desc';
             else if (':"'+colname+'" desc'==neworder[0])
@@ -2396,8 +2552,7 @@ function tbld_mousemove(e)
 	    t.has_mouse = false;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
 	}

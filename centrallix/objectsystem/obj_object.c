@@ -294,6 +294,7 @@ obj_internal_AllocObj()
 	this->AttrExp = NULL;
 	this->AttrExpName = NULL;
 	this->LinkCnt = 1;
+	this->RowID = -1;
 	xaInit(&(this->Attrs),16);
 
     return this;
@@ -793,6 +794,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	     **/
 	    orig_ck_type = ck_type;
 	    obj_info = objInfo(this);
+	    drv = NULL;
 	    if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF) || used_openas || this->SubPtr + this->SubCnt < this->Pathname->nElements)
 		{
 		/** Find out what driver handles this type.   Since type was determined from
@@ -1092,11 +1094,14 @@ int
 obj_internal_CopyPath(pPathname dest, pPathname src)
     {
     int i,j;
+    int old_linkcnt;
     pStruct new_inf;
 
     	/** Copy the raw data. **/
 	if (dest->OpenCtlBuf) nmSysFree(dest->OpenCtlBuf);
+	old_linkcnt = dest->LinkCnt;
 	memcpy(dest,src,sizeof(Pathname));
+	dest->LinkCnt = old_linkcnt;
 
 	/** Alloc a new ctlbuf **/
 	if (src->OpenCtlBuf)
@@ -1254,7 +1259,7 @@ objClose(pObject this)
 
 	    /** Remove from open objects this session. **/
 	    xaRemoveItem(&(this->Session->OpenObjects),
-	        xaFindItem(&(this->Session->OpenObjects),(void*)this));
+	        xaFindItemR(&(this->Session->OpenObjects),(void*)this));
 
 	    /** Any notify requests open on this? **/
 	    while (this->NotifyItem)
@@ -1279,6 +1284,7 @@ objClose(pObject this)
 	    this->VAttrs = NULL;
 	    }
 	obj_internal_FreeObj(this);
+
 
     return 0;
     }
@@ -1390,6 +1396,7 @@ objDelete(pObjSession session, char* path)
 pObjectInfo
 objInfo(pObject this)
     {
+    memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
     if (this->Driver->Info)
 	if (this->Driver->Info(this->Data, &(this->AdditionalInfo)) < 0)
 	    return NULL;
@@ -1571,3 +1578,61 @@ objCommitObject(pObject this)
     }
 
 
+/*** objOpenChild - open a child object for access to its content, attributes, and
+ *** methods.  Optionally create a new object.  Open 'mode' uses flags like the
+ *** UNIX open() call.
+ ***/
+pObject 
+objOpenChild(pObject parent, char* childname, int mode, int permission_mask, char* type)
+    {
+    pObject this = NULL;
+    void* obj_data;
+    pContentType typeinfo;
+
+	ASSERTMAGIC(parent, MGK_OBJECT);
+
+	/** Ensure driver support.  FIXME this can be processed using a query
+	 ** instead of open-child for drivers that do not support OpenChild
+	 **/
+	if (!parent->Driver->OpenChild)
+	    goto error;
+
+	/** Allocate the new object **/
+	this = obj_internal_AllocObj();
+	if (!this)
+	    goto error;
+
+	/** Set up basic info **/
+	this->EvalContext = parent->EvalContext;	/* inherit from parent */
+	this->Driver = parent->Driver;
+	this->ILowLevelDriver = parent->ILowLevelDriver;
+	this->TLowLevelDriver = parent->TLowLevelDriver;
+	this->Mode = mode;
+	this->Session = parent->Session;
+	this->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	memset(this->Pathname, 0, sizeof(Pathname));
+	this->Pathname->OpenCtlBuf = NULL;
+	if (parent->Prev)
+	    objLinkTo(parent->Prev);
+	this->Prev = parent->Prev;
+	obj_internal_CopyPath(this->Pathname, parent->Pathname);
+	this->Pathname->LinkCnt = 1;
+	this->SubPtr = parent->SubPtr;
+	this->SubCnt = parent->SubCnt+1;
+
+	/** Call the driver **/
+	typeinfo = (pContentType)xhLookup(&OSYS.Types, (void*)"system/object");
+	if (!typeinfo)
+	    goto error;
+	obj_data = parent->Driver->OpenChild(parent->Data, this, childname, mode, typeinfo, type, &(this->Session->Trx));
+	if (!obj_data)
+	    goto error;
+	this->Data = obj_data;
+
+	return this;
+
+    error:
+	if (this)
+	    obj_internal_FreeObj(this);
+	return NULL;
+    }

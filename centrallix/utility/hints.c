@@ -296,12 +296,12 @@ objInfToHints(pStructInf inf, int data_type)
 	stAttrValue(stLookup(inf,"min"),NULL,(char**)&(ph->MinValue),0);
 	stAttrValue(stLookup(inf,"max"),NULL,(char**)&(ph->MaxValue),0);*/
 	ph->Constraint = stGetExpression(stLookup(inf,"constraint"), 0);
-	ph->DefaultExpr = stGetExpression(stLookup(inf,"default"), 0);
-	ph->MinValue = stGetExpression(stLookup(inf,"min"), 0);
-	ph->MaxValue = stGetExpression(stLookup(inf,"max"), 0);
 	if (ph->Constraint) ph->Constraint = expDuplicateExpression(ph->Constraint);
+	ph->DefaultExpr = stGetExpression(stLookup(inf,"default"), 0);
 	if (ph->DefaultExpr) ph->DefaultExpr = expDuplicateExpression(ph->DefaultExpr);
+	ph->MinValue = stGetExpression(stLookup(inf,"min"), 0);
 	if (ph->MinValue) ph->MinValue = expDuplicateExpression(ph->MinValue);
+	ph->MaxValue = stGetExpression(stLookup(inf,"max"), 0);
 	if (ph->MaxValue) ph->MaxValue = expDuplicateExpression(ph->MaxValue);
 
 	/** Compile expressions, if any **/
@@ -426,6 +426,7 @@ objInfToHints(pStructInf inf, int data_type)
 	while(stAttrValue(stLookup(inf,"style"),NULL,&ptr,cnt) >= 0)
 	    {
 	    hnt_internal_SetStyleItem(ph, ptr);
+	    cnt++;
 	    }
 
 	/** Check for group ID and Name **/
@@ -518,6 +519,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Check default **/
 	if (rval == 0 && (ptod->Flags & DATA_TF_NULL) && ph->DefaultExpr)
 	    {
+	    expBindExpression(ph->DefaultExpr, our_objlist, 0);
 	    if (expEvalTree(ph->DefaultExpr, our_objlist) < 0)
 		{
 		rval = -1;
@@ -582,6 +584,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Test constraint **/
 	if (ph->Constraint)
 	    {
+	    expBindExpression(ph->Constraint, our_objlist, 0);
 	    if (expEvalTree(ph->Constraint, our_objlist) < 0)
 		{
 		rval = -1;
@@ -608,6 +611,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Max/Min expression **/
 	if (ph->MinValue)
 	    {
+	    expBindExpression(ph->MinValue, our_objlist, 0);
 	    if (expEvalTree(ph->MinValue, our_objlist) < 0)
 		{
 		rval = -1;
@@ -629,6 +633,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	    }
 	if (ph->MaxValue)
 	    {
+	    expBindExpression(ph->MaxValue, our_objlist, 0);
 	    if (expEvalTree(ph->MaxValue, our_objlist) < 0)
 		{
 		rval = -1;

@@ -1,0 +1,3 @@
+##NAME Expression join, three sources
+#
+query select camt = :c:amount, rdate = :r:create_date, c2amt = :c2:amount from /tests/multilevel1.json c, expression ('/tests/multilevel1.json/' + :c:name) r, expression ('/tests/multilevel1.json/' + :c:name + '/a/') c2 where :r:name = 'q'

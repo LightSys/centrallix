@@ -455,7 +455,9 @@ function tc_visible_changed(prop,o,n)
 	//try default tab
 	if(htr_getvisibility(t.init_tab.tab)=='inherit')
 	    {
-	    t.tabs[t.init_tab.tabindex-1].makeCurrent();
+	    // This is forced, so we skip the obscure/reveal checks
+	    t.ChangeSelection3(t.tabs[t.init_tab.tabindex-1]);
+	    //t.tabs[t.init_tab.tabindex-1].makeCurrent();
 	    }
 	else //otherwise find first tab not hidden
 	    {
@@ -463,7 +465,9 @@ function tc_visible_changed(prop,o,n)
 		{
 		if(htr_getvisibility(t.tabs[i].tab)=='inherit')
 		    {
-		    t.tabs[i].makeCurrent();
+		    // This is forced, so we skip the obscure/reveal checks
+		    t.ChangeSelection3(t.tabs[i]);
+		    //t.tabs[i].makeCurrent();
 		    break;
 		    }
 		}

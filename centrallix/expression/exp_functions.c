@@ -16,6 +16,7 @@
 #include "cxss/cxss.h"
 #include <openssl/sha.h>
 #include <openssl/md5.h>
+#include <openssl/evp.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -334,8 +335,11 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
         {
 	tree->DataType = DATA_T_INTEGER;
 	tree->Flags |= EXPR_F_NULL;
-	i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
-	i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
+	if (objlist)
+	    {
+	    i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
+	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
+	    }
 	return 0;
 	}
     if (i0->Integer != 0)
@@ -345,6 +349,13 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    {
 	    return -1;
 	    }
+	if (i0->Flags & EXPR_F_INDETERMINATE)
+	    {
+	    if (exp_internal_EvalTree(i2,objlist) < 0)
+		{
+		return -1;
+		}
+	    }
 	if (i2->AggLevel > 0)
 	    {
 	    if (exp_internal_EvalAggregates(i2,objlist) < 0)
@@ -352,7 +363,8 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    }
 	else
 	    {
-	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
+	    if (objlist)
+		i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	    }
 	tree->DataType = i1->DataType;
 	if (i1->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
@@ -366,6 +378,13 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
     else
         {
 	/** False, return 3rd argument i2 **/
+	if (i0->Flags & EXPR_F_INDETERMINATE)
+	    {
+	    if (exp_internal_EvalTree(i1,objlist) < 0)
+		{
+		return -1;
+		}
+	    }
 	if (i1->AggLevel > 0)
 	    {
 	    if (exp_internal_EvalAggregates(i1,objlist) < 0)
@@ -373,7 +392,8 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    }
 	else
 	    {
-	    i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
+	    if (objlist)
+		i1->ObjDelayChangeMask |= (objlist->ModCoverageMask & i1->ObjCoverageMask);
 	    }
 	if (exp_internal_EvalTree(i2,objlist) < 0)
 	    {
@@ -793,6 +813,7 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     /** Now do the string replace **/
     srcptr = i0->String;
     dstptr = tree->String;
+    *dstptr = '\0';
     while (*srcptr)
 	{
 	searchptr = strstr(srcptr, i1->String);
@@ -807,6 +828,7 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    /** copy stuff in between matches **/
 	    memcpy(dstptr, srcptr, searchptr - srcptr);
 	    dstptr += (searchptr - srcptr);
+	    *dstptr = '\0';
 	    srcptr = searchptr;
 	    }
 	/** do the replace **/
@@ -1253,7 +1275,7 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
     tree->DataType = DATA_T_STRING;
 
     /** Validate the params **/
-    if (i0 && !i2 && i0->Flags & EXPR_F_NULL)
+    if (!objlist || (i0 && !i2 && i0->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	fn_rval = 0;
@@ -1563,7 +1585,7 @@ int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     {
     pExpression eval_exp, parent;
     int rval;
-    if (i0 && !i1 && i0->Flags & EXPR_F_NULL)
+    if (!objlist || (i0 && !i1 && i0->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
@@ -1641,7 +1663,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	    break;
 
 	case DATA_T_MONEY:
-	    mt = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+	    mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -1674,7 +1696,7 @@ int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, p
     /** checks **/
     if (!i0 || !i1)
 	{
-	mssError(1, "EXP", "formatdate() takes two parameters: (datetime, string)");
+	mssError(1, "EXP", "dateformat() takes two parameters: (datetime, string)");
 	return -1;
 	}
     if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
@@ -1685,12 +1707,12 @@ int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, p
 	}
     if (!i0 || i0->DataType != DATA_T_DATETIME)
 	{
-	mssError(1, "EXP", "formatdate() first parameter must be a date");
+	mssError(1, "EXP", "dateformat() first parameter must be a date");
 	return -1;
 	}
     if (!i1 || i1->DataType != DATA_T_STRING)
 	{
-	mssError(1, "EXP", "formatdate() second parameter must be a string");
+	mssError(1, "EXP", "dateformat() second parameter must be a string");
 	return -1;
 	}
 
@@ -1813,25 +1835,9 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
     }
 
 
-int
-exp_fn_dateadd_mod_add(int v1, int v2, int mod, int* overflow)
-    {
-    int rv;
-    rv = (v1 + v2)%mod;
-    *overflow = (v1 + v2)/mod;
-    if (rv < 0)
-	{
-	*overflow -= 1;
-	rv += mod;
-	}
-    return rv;
-    }
-
-
 int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr;
-    int carry;
 
     /** checks **/
     if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
@@ -1878,51 +1884,8 @@ int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	return -1;
 	}
 
-    /** Do the add **/
-    tree->Types.Date.Part.Second = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Second, diff_sec, 60, &carry);
-    diff_min += carry;
-    tree->Types.Date.Part.Minute = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Minute, diff_min, 60, &carry);
-    diff_hr += carry;
-    tree->Types.Date.Part.Hour = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Hour, diff_hr, 24, &carry);
-    diff_day += carry;
-
-    /** Now add months and years **/
-    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, diff_mo, 12, &carry);
-    diff_yr += carry;
-    tree->Types.Date.Part.Year += diff_yr;
-
-    /** Correct for jumping to a month with fewer days **/
-    if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
-	{
-	tree->Types.Date.Part.Day = (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
-	}
-
-    /** Adding days is more complicated **/
-    while (diff_day > 0)
-	{
-	tree->Types.Date.Part.Day++;
-	if (tree->Types.Date.Part.Day >= (obj_month_days[tree->Types.Date.Part.Month] + ((tree->Types.Date.Part.Month==1 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)))
-	    {
-	    tree->Types.Date.Part.Day = 0;
-	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, 1, 12, &carry);
-	    tree->Types.Date.Part.Year += carry;
-	    }
-	diff_day--;
-	}
-    while (diff_day < 0)
-	{
-	if (tree->Types.Date.Part.Day == 0)
-	    {
-	    tree->Types.Date.Part.Day = (obj_month_days[exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry)] + ((tree->Types.Date.Part.Month==2 && IS_LEAP_YEAR(tree->Types.Date.Part.Year+1900))?1:0)) - 1;
-	    tree->Types.Date.Part.Month = exp_fn_dateadd_mod_add(tree->Types.Date.Part.Month, -1, 12, &carry);
-	    tree->Types.Date.Part.Year += carry;
-	    }
-	else
-	    {
-	    tree->Types.Date.Part.Day--;
-	    }
-	diff_day++;
-	}
+    /** Adjust it **/
+    objDateAdd(&tree->Types.Date, diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr);
 
     return 0;
     }
@@ -1973,7 +1936,7 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	    break;
 
 	case DATA_T_MONEY:
-	    mt = i0->Types.Money.WholePart * 10000 + i0->Types.Money.FractionPart;
+	    mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -2396,6 +2359,11 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     SHA256_CTX hashctx;
     unsigned char tmpseed[SHA256_DIGEST_LENGTH];
     unsigned long long val;
+	
+	if (!objlist)
+	    {
+	    return 0;
+	    }
 
 	/** Seed provided? **/
 	if (i0 && !(i0->Flags & EXPR_F_NULL))
@@ -2439,6 +2407,425 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     return 0;
     }
 
+
+int exp_fn_hash(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    /*EVP_MD_CTX *hashctx = NULL;
+    const EVP_MD *hashtype = NULL;
+    unsigned char hashvalue[EVP_MAX_MD_SIZE];*/
+    unsigned char hashvalue[SHA512_DIGEST_LENGTH];
+    unsigned int hashlen;
+
+	/** Init the hash function **/
+	/*hashctx = EVP_MD_CTX_new();
+	if (!hashctx)
+	    {
+	    mssError(1, "EXP", "hash(): could not allocate hash digest context");
+	    goto error;
+	    }*/
+	if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires hash type as its first parameter");
+	    goto error;
+	    }
+	if (!i1)
+	    {
+	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    goto error;
+	    }
+	if (i1->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	if (i1->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    goto error;
+	    }
+	/*if (!strcmp(i0->String, "md5"))
+	    hashtype = EVP_md5();
+	else if (!strcmp(i0->String, "sha1"))
+	    hashtype = EVP_sha1();
+	else if (!strcmp(i0->String, "sha256"))
+	    hashtype = EVP_sha256();
+	else if (!strcmp(i0->String, "sha384"))
+	    hashtype = EVP_sha384();
+	else if (!strcmp(i0->String, "sha512"))
+	    hashtype = EVP_sha512();
+	if (!hashtype)
+	    {
+	    mssError(1, "EXP", "hash(): invalid or unsupported hash type %s", i0->String);
+	    goto error;
+	    }
+	EVP_DigestInit_ex(hashctx, hashtype, NULL);
+	EVP_DigestUpdate(hashctx, i1->String, strlen(i1->String));
+	EVP_DigestFinal_ex(hashctx, hashvalue, &hashlen);*/
+	if (!strcmp(i0->String, "md5"))
+	    {
+	    MD5((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 16;
+	    }
+	else if (!strcmp(i0->String, "sha1"))
+	    {
+	    SHA1((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 20;
+	    }
+	else if (!strcmp(i0->String, "sha256"))
+	    {
+	    SHA256((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 32;
+	    }
+	else if (!strcmp(i0->String, "sha384"))
+	    {
+	    SHA384((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 48;
+	    }
+	else if (!strcmp(i0->String, "sha512"))
+	    {
+	    SHA512((unsigned char*)i1->String, strlen(i1->String), hashvalue);
+	    hashlen = 64;
+	    }
+	tree->String = nmSysMalloc(hashlen * 2 + 1);
+	if (!tree->String)
+	    {
+	    mssError(1, "EXP", "hash(): out of memory");
+	    goto error;
+	    }
+	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
+
+	/*EVP_MD_CTX_free(hashctx);*/
+	return 0;
+
+    error:
+	/*if (hashctx)
+	    EVP_MD_CTX_free(hashctx);*/
+	return -1;
+    }
+
+
+int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    /*EVP_MD_CTX *hashctx = NULL;*/
+    const EVP_MD *hashtype = NULL;
+    unsigned char hashvalue[EVP_MAX_MD_SIZE];
+    unsigned int hashlen;
+
+	/** Init the hash function **/
+	/*hashctx = EVP_MD_CTX_new();
+	if (!hashctx)
+	    {
+	    mssError(1, "EXP", "hash(): could not allocate hash digest context");
+	    goto error;
+	    }*/
+	if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires hash type as its first parameter");
+	    goto error;
+	    }
+	if (!i1)
+	    {
+	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    goto error;
+	    }
+	if (i1->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	if (i1->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires a string (input data) as its second parameter");
+	    goto error;
+	    }
+	if (i2->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	if (i2->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "hash() requires a string (key) as its third parameter");
+	    goto error;
+	    }
+	if (!strcmp(i0->String, "md5"))
+	    hashtype = EVP_md5();
+	else if (!strcmp(i0->String, "sha1"))
+	    hashtype = EVP_sha1();
+	else if (!strcmp(i0->String, "sha256"))
+	    hashtype = EVP_sha256();
+	else if (!strcmp(i0->String, "sha384"))
+	    hashtype = EVP_sha384();
+	else if (!strcmp(i0->String, "sha512"))
+	    hashtype = EVP_sha512();
+	if (!hashtype)
+	    {
+	    mssError(1, "EXP", "hash(): invalid or unsupported hash type %s", i0->String);
+	    goto error;
+	    }
+	/*EVP_DigestInit_ex(hashctx, hashtype, NULL);
+	EVP_DigestUpdate(hashctx, i1->String, strlen(i1->String));
+	EVP_DigestFinal_ex(hashctx, hashvalue, &hashlen);*/
+	HMAC(hashtype, (unsigned char*)i2->String, strlen(i2->String), (unsigned char*)i1->String, strlen(i1->String), hashvalue, &hashlen);
+	tree->String = nmSysMalloc(hashlen * 2 + 1);
+	if (!tree->String)
+	    {
+	    mssError(1, "EXP", "hash(): out of memory");
+	    goto error;
+	    }
+	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
+
+	/*EVP_MD_CTX_free(hashctx);*/
+	return 0;
+
+    error:
+	/*if (hashctx)
+	    EVP_MD_CTX_free(hashctx);*/
+	return -1;
+    }
+
+
+/** pbkdf2('algo', passwd, salt, iterations) **/
+int exp_fn_pbkdf2(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression i3 = (tree->Children.nItems >= 4)?(tree->Children.Items[3]):NULL;
+    const EVP_MD *hashtype = NULL;
+    unsigned char hashvalue[EVP_MAX_MD_SIZE];
+    unsigned int hashlen;
+
+	/** Validate parameters **/
+	if (!i0 || !i1 || !i2 || !i3)
+	    {
+	    mssError(1, "EXP", "function usage: pbkdf2('algo', password, salt, iterations)");
+	    goto error;
+	    }
+	tree->DataType = DATA_T_STRING;
+
+	/** Nulls? **/
+	if ((i0->Flags | i1->Flags | i2->Flags | i3->Flags) & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	/** Wrong data types? **/
+	if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING || i2->DataType != DATA_T_STRING || i3->DataType != DATA_T_INTEGER)
+	    {
+	    mssError(1, "EXP", "function usage: pbkdf2('algo', password, salt, iterations)");
+	    goto error;
+	    }
+
+	/** Select a hash algorithm **/
+	if (!strcmp(i0->String, "md5"))
+	    hashtype = EVP_md5();
+	else if (!strcmp(i0->String, "sha1"))
+	    hashtype = EVP_sha1();
+	else if (!strcmp(i0->String, "sha256"))
+	    hashtype = EVP_sha256();
+	else if (!strcmp(i0->String, "sha384"))
+	    hashtype = EVP_sha384();
+	else if (!strcmp(i0->String, "sha512"))
+	    hashtype = EVP_sha512();
+	if (!hashtype)
+	    {
+	    mssError(1, "EXP", "pbkdf2(): invalid or unsupported hash type %s", i0->String);
+	    goto error;
+	    }
+	hashlen = EVP_MD_size(hashtype);
+
+	/** Compute it **/
+	if (PKCS5_PBKDF2_HMAC(i1->String, strlen(i1->String), (unsigned char*)i2->String, strlen(i2->String), i3->Integer, hashtype, hashlen, hashvalue) == 0)
+	    {
+	    mssError(1, "EXP", "pbkdf2(): operation failed");
+	    goto error;
+	    }
+
+	/** Generate output **/
+	if (hashlen*2+1 > 63)
+	    {
+	    tree->Alloc = 1;
+	    tree->String = nmSysMalloc(hashlen*2+1);
+	    if (!tree->String)
+		{
+		mssError(1, "EXP", "pbkdf2(): out of memory");
+		goto error;
+		}
+	    }
+	else
+	    {
+	    tree->Alloc = 0;
+	    tree->String = tree->Types.StringBuf;
+	    }
+	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
+
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
+int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double n;
+
+	if (!i0)
+	    {
+	    mssError(1, "EXP", "log10() requires a number as its first parameter");
+	    goto error;
+	    }
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		n = i0->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		n = i0->Types.Double;
+		break;
+	    case DATA_T_MONEY:
+		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
+		break;
+	    default:
+		mssError(1, "EXP", "log10() requires a number as its first parameter");
+		goto error;
+	    }
+	if (n < 0)
+	    {
+	    mssError(1, "EXP", "log10(): cannot compute the logarithm of a negative number");
+	    goto error;
+	    }
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = log10(n);
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
+int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double n, p;
+
+	if (!i0 || !i1)
+	    {
+	    mssError(1, "EXP", "power() requires numbers as its first and second parameters");
+	    goto error;
+	    }
+	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	    {
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		n = i0->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		n = i0->Types.Double;
+		break;
+	    case DATA_T_MONEY:
+		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
+		break;
+	    default:
+		mssError(1, "EXP", "power() requires a number as its first parameter");
+		goto error;
+	    }
+	switch(i1->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		p = i1->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		p = i1->Types.Double;
+		break;
+	    default:
+		mssError(1, "EXP", "power() requires an integer or double as its second parameter");
+		goto error;
+	    }
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = pow(n, p);
+	return 0;
+    
+    error:
+	return -1;
+    }
+
+
+/*** Windowing Functions ***/
+
+int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression new_exp;
+    char newbuf[512];
+
+    /** Init the Aggregate computation expression? **/
+    if (!tree->AggExp)
+        {
+	tree->PrivateData = nmSysMalloc(512);
+	if (!tree->PrivateData)
+	    return -ENOMEM;
+	memset(tree->PrivateData, 0, 512);
+	tree->AggExp = expAllocExpression();
+	tree->AggExp->NodeType = EXPR_N_PLUS;
+	tree->AggExp->DataType = DATA_T_INTEGER;
+	tree->AggExp->Integer = -1;
+	tree->AggExp->AggLevel = 1;
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->DataType = DATA_T_INTEGER;
+	new_exp->Integer = 1;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	}
+
+    if (tree->Flags & EXPR_F_AGGLOCKED) return 0;
+
+    /** Changed? **/
+    if (tree->Children.nItems > 0)
+	{
+	memset(newbuf, 0, sizeof(newbuf));
+	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
+	    return -1;
+	if (memcmp(newbuf, tree->PrivateData, 512))
+	    {
+	    /** Reset count **/
+	    memcpy(tree->PrivateData, newbuf, 512);
+	    tree->AggExp->Integer = 0;
+	    tree->AggCount = 0;
+	    tree->AggValue = 0;
+	    }
+	}
+
+    /** Compute the possibly incremented value **/
+    //if (!(i0->Flags & EXPR_F_NULL))
+    //    {
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	//}
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
+/*** Aggregate Functions ***/
 
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -2916,7 +3303,16 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
 	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
 	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
+	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
+	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
+	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
+	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 
+	/** Windowing **/
+	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+
+	/** Aggregate **/
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
 	xhAdd(&EXP.Functions, "sum", (char*)exp_fn_sum);

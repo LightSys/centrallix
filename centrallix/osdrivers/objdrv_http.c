@@ -20,6 +20,11 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/md5.h>
+#include <time.h>
+#include "config.h"
+#ifdef TM_IN_SYS_TIME
+#include <sys/time.h>
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -77,7 +82,9 @@ typedef struct
 
 #define HTTP_PUSAGE_T_URL	1	/* parameter is encoded into the url */
 #define HTTP_PUSAGE_T_POST	2	/* parameter is encoded into the post data */
+#define HTTP_PUSAGE_T_HEADER	3	/* parameter is encoded into an HTTP request header */
 
+#define HTTP_PSOURCE_T_NONE	0	/* parameter has no source - only the provided default */
 #define HTTP_PSOURCE_T_PATH	1	/* parameter comes from pathname subpart */
 #define HTTP_PSOURCE_T_PARAM	2	/* parameter comes from OSML open parameter */
 
@@ -125,6 +132,7 @@ typedef struct
     pXString	ContentCache;
     int		ContentCacheTS;
     int		ContentCacheMaxLen;
+    pParamObjects ObjList;
     }
     HttpData, *pHttpData;
 
@@ -155,6 +163,128 @@ struct
     }
     HTTP_INF;
 
+char* http_internal_GetHeader(pXArray xa, char* name);
+
+
+/*** http_internal_GetParamType() - get the data type of a parameter
+ ***/
+int
+http_internal_GetParamType(void* inf_v, char* attrname)
+    {
+    pHttpData inf = HTTP(inf_v);
+    pHttpParam http_param;
+    pParam param;
+    int i;
+
+	/** Find the param **/
+	for(i=0;i<inf->Params.nItems;i++)
+	    {
+	    http_param = (pHttpParam)inf->Params.Items[i];
+	    param = http_param->Parameter;
+	    if (!strcmp(attrname, param->Name))
+		{
+		if (!param->Value)
+		    return -1;
+		return param->Value->DataType;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** http_internal_GetParamValue() - get the value of a parameter
+ ***/
+int
+http_internal_GetParamValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    pHttpData inf = HTTP(inf_v);
+    pHttpParam http_param;
+    pParam param;
+    int i;
+
+	/** Find the param **/
+	for(i=0;i<inf->Params.nItems;i++)
+	    {
+	    http_param = (pHttpParam)inf->Params.Items[i];
+	    param = http_param->Parameter;
+	    if (!strcmp(attrname, param->Name))
+		{
+		if (!param->Value)
+		    return 1;
+		if (datatype != param->Value->DataType)
+		    {
+		    mssError(1,"HTTP","Type mismatch accessing parameter '%s'", param->Name);
+		    return -1;
+		    }
+		if (param->Value->Flags & DATA_TF_NULL)
+		    return 1;
+		objCopyData(&(param->Value->Data), val, datatype);
+		return 0;
+		}
+	    }
+
+    return -1;
+    }
+
+
+/*** http_internal_SetParamValue() - set the value of a parameter - not
+ *** supported.
+ ***/
+int
+http_internal_SetParamValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    return -1;
+    }
+
+
+/*** http_internal_GetHdrType() - get the data type of a  request header;
+ *** this will always be a string (unless the header does not exist)
+ ***/
+int
+http_internal_GetHdrType(void* inf_v, char* attrname)
+    {
+    //pHttpData inf = HTTP(inf_v);
+    return DATA_T_STRING;
+    }
+
+
+/*** http_internal_GetHdrValue() - get the value of a request header
+ ***/
+int
+http_internal_GetHdrValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    pHttpData inf = HTTP(inf_v);
+    char* hdrval;
+
+	/** Look up the header **/
+	hdrval = http_internal_GetHeader(&inf->RequestHeaders, attrname);
+
+	/** No such header?  Return null. **/
+	if (!hdrval)
+	    return 1;
+
+	/** Must be requesting a string value **/
+	if (datatype != DATA_T_STRING)
+	    {
+	    mssError(1,"HTTP","Type mismatch accessing header '%s'", attrname);
+	    return -1;
+	    }
+	val->String = hdrval;
+
+    return 0;
+    }
+
+
+/*** http_internal_SetHdrValue() - set the value of a request header - not
+ *** supported.
+ ***/
+int
+http_internal_SetHdrValue(void* inf_v, char* attrname, int datatype, pObjData val)
+    {
+    return -1;
+    }
+
 
 /*** http_internal_AddRequestHeader - add a header to the HTTP request
  ***/
@@ -178,18 +308,19 @@ http_internal_AddRequestHeader(pHttpData inf, char* hdrname, char* hdrvalue, int
 		    {
 		    xaRemoveItem(&inf->RequestHeaders, i);
 		    nmFree(hdr, sizeof(HttpHeader));
-		    return 0;
+		    goto done;
 		    }
 
 		/** Replace existing header value **/
 		hdr->Value = hdrvalue;
 		hdr->ValueAlloc = hdralloc;
-		return 0;
+		goto done;
 		}
 	    }
 
 	/** Don't add a NULL header **/
-	if (!hdrvalue) return 0;
+	if (!hdrvalue)
+	    goto done;
 	
 	/** Allocate the header **/
 	hdr = (pHttpHeader)nmMalloc(sizeof(HttpHeader));
@@ -205,7 +336,10 @@ http_internal_AddRequestHeader(pHttpData inf, char* hdrname, char* hdrvalue, int
 	else
 	    xaAddItem(&inf->RequestHeaders, (void*)hdr);
 
-    return 0;
+    done:
+	if (inf->ObjList)
+	    expModifyParam(inf->ObjList, "headers", (void*)inf);
+	return 0;
     }
 
 
@@ -293,9 +427,9 @@ http_internal_Cleanup(pHttpData inf)
 	    xaDeInit(&inf->RequestHeaders);
 	    http_internal_FreeHeaders(&inf->ResponseHeaders);
 	    xaDeInit(&inf->ResponseHeaders);
-	    xaDeInit(&inf->Params);
 
 	    http_internal_FreeParams(inf);
+	    xaDeInit(&inf->Params);
 
 	    /** Free connection data **/
 	    if (inf->Server) nmSysFree(inf->Server);
@@ -320,8 +454,14 @@ http_internal_Cleanup(pHttpData inf)
 	    /** Close socket, if needed **/
 	    http_internal_CloseConnection(inf);
 
+	    if (inf->ObjList)
+		expFreeParamList(inf->ObjList);
+
 	    if (inf->ContentCache)
 		xsFree(inf->ContentCache);
+
+	    if (inf->Annotation)
+		nmSysFree(inf->Annotation);
 
 	    nmFree(inf,sizeof(HttpData));
 	    }
@@ -333,13 +473,13 @@ http_internal_Cleanup(pHttpData inf)
 /** taking advantage of the fact that in C, "a" "b" is the same as "ab" **/
 /** These definitions come directly from sec3.3.1 of rfc2616 (modified for C identifiers) **/
 #define HTTP_date "(" rfc1123_date ")" "|" "(" rfc850_date ")" "|" "(" asctime_date ")"
-#define rfc1123_date wkday "," SP date1 SP time SP "GMT"
-#define rfc850_date weekday "," SP date2 SP time SP "GMT"
-#define asctime_date wkday SP date3 SP time SP DIGIT4
+#define rfc1123_date wkday "," SP date1 SP xtime SP "GMT"
+#define rfc850_date weekday "," SP date2 SP xtime SP "GMT"
+#define asctime_date wkday SP date3 SP xtime SP DIGIT4
 #define date1 DIGIT2 SP month SP DIGIT4
 #define date2 DIGIT2 "-" month "-" DIGIT2
 #define date3 month SP "(" DIGIT2 "|" "(" SP DIGIT1 ")" ")"
-#define time DIGIT2 ":" DIGIT2 ":" DIGIT2
+#define xtime DIGIT2 ":" DIGIT2 ":" DIGIT2
 #define wkday "(Mon|Tue|Wed|Thu|Fri|Sat|Sun)"
 #define weekday "(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)"
 #define month "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
@@ -531,7 +671,7 @@ http_internal_ConnectHttps(pHttpData inf)
 	    inf->Socket = netConnectTCP(inf->Server, "443", 0);
 	if (!inf->Socket)
 	    {
-	    mssError(0, "HTTP", "Could not connect to server");
+	    mssErrorErrno(1, "HTTP", "Could not connect to server %s:%s", inf->Server, inf->Port[0]?inf->Port:"443");
 	    return -1;
 	    }
 
@@ -638,6 +778,27 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    nmSysFree(keydata);
 	    }
 
+	/** Add any parameterized request headers **/
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_HEADER)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			{
+			if (one_http_param->Parameter->Value->Data.String)
+			    http_internal_AddRequestHeader(inf, one_http_param->Parameter->Name, nmSysStrdup(one_http_param->Parameter->Value->Data.String), 1, 0);
+			}
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for '%s' header", one_http_param->Parameter->Name);
+			}
+		    }
+		}
+	    }
+
 	/** Build the URL parameters **/
 	url_params = xsNew();
 	if (!url_params)
@@ -725,7 +886,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
 	    }
 
-	printf("Web client sending request: %s - %s%s - %s\n", inf->Server, path, xsString(url_params), xsString(post_params));
+	printf("Web client sending request: %s - %s%s - %s\n", inf->Server, path, xsString(url_params), post_params?xsString(post_params):"");
 
 	xsFree(url_params);
 	url_params = NULL;
@@ -778,7 +939,7 @@ http_internal_GetPageStream(pHttpData inf)
     int toktype;
 #define BUF_SIZE 256
     char buf[BUF_SIZE];
-    char *fullpath; // the path to be send to the server
+    char *fullpath = NULL; // the path to be send to the server
     char *ptr;
     char *ptr2;
     int alloc = 0;
@@ -791,9 +952,17 @@ http_internal_GetPageStream(pHttpData inf)
     int i;
     pParam one_param = NULL;
     pHttpParam one_http_param = NULL;
+    time_t tval;
+    struct tm* thetime;
 
 	/** Reset ContentLength and Offset **/
 	inf->ContentLength = inf->NetworkOffset = inf->ReadOffset = 0;
+
+	/** Add or replace the Date: header **/
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(buf, sizeof(buf), "%a, %d %b %Y %T GMT", thetime);
+	http_internal_AddRequestHeader(inf, "Date", nmSysStrdup(buf), 1, 0);
 
 	/** Re-evaluate hints on parameters, as needed **/
 	for(i=0; i<xaCount(&inf->Params); i++)
@@ -802,7 +971,7 @@ http_internal_GetPageStream(pHttpData inf)
 	    one_param = one_http_param->Parameter;
 
 	    /** Apply hints **/
-	    if (paramEvalHints(one_param, NULL, inf->Obj->Session) < 0)
+	    if (paramEvalHints(one_param, inf->ObjList, inf->Obj->Session) < 0)
 		goto error;
 	    }
 
@@ -868,6 +1037,8 @@ http_internal_GetPageStream(pHttpData inf)
 	/** Send the request **/
 	if (http_internal_SendRequest(inf, fullpath) < 0)
 	    goto error;
+	nmSysFree(fullpath);
+	fullpath = NULL;
 
 	/** Set up connection **/
 #if 00
@@ -1129,6 +1300,7 @@ http_internal_GetPageStream(pHttpData inf)
 	/** Error exit **/
 	if (alloc) nmSysFree(ptr);
 	if (lex) mlxCloseSession(lex);
+	if (fullpath) nmSysFree(fullpath);
 	return -1;
 
     try_up:
@@ -1144,9 +1316,11 @@ http_internal_GetPageStream(pHttpData inf)
 char*
 http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value)
     {
-    char* ptr;
+    char* ptr = NULL;
 
-	if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
+	//if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
+	//if (stGetObjAttrValue(inf->Node->Data, configname, DATA_T_STRING, POD(&ptr)) < 0 || !ptr)
+	if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
 	    ptr = default_value;
 	ptr = nmSysStrdup(ptr);
 	if (!ptr)
@@ -1173,7 +1347,7 @@ http_internal_FreeParams(pHttpData inf)
 	    nmFree(one_http_param, sizeof(HttpParam));
 	    paramFree(one_param);
 	    }
-	xaClear(&inf->Params);
+	xaClear(&inf->Params, NULL, NULL);
 
     return 0;
     }
@@ -1220,15 +1394,17 @@ http_internal_LoadParams(pHttpData inf)
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_URL;
 			else if (!strcmp(val, "post"))
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_POST;
+			else if (!strcmp(val, "header"))
+			    one_new_http_param->Usage = HTTP_PUSAGE_T_HEADER;
 			else
 			    {
-			    mssError(1, "HTTP", "Parameter %s usage must be 'url' or 'post'", param_inf->Name);
+			    mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
 			    goto error;
 			    }
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Parameter %s usage must be 'url' or 'post'", param_inf->Name);
+			mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
 			goto error;
 			}
 		    }
@@ -1243,15 +1419,17 @@ http_internal_LoadParams(pHttpData inf)
 			    one_new_http_param->Source = HTTP_PSOURCE_T_PATH;
 			else if (!strcmp(val, "param"))
 			    one_new_http_param->Source = HTTP_PSOURCE_T_PARAM;
+			else if (!strcmp(val, "none"))
+			    one_new_http_param->Source = HTTP_PSOURCE_T_NONE;
 			else
 			    {
-			    mssError(1, "HTTP", "Parameter %s source must be 'path' or 'param'", param_inf->Name);
+			    mssError(1, "HTTP", "Parameter %s source must be 'path', 'param', or 'none'", param_inf->Name);
 			    goto error;
 			    }
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Parameter %s source must be 'path' or 'param'", param_inf->Name);
+			mssError(1, "HTTP", "Parameter %s source must be 'path', 'param', or 'none'", param_inf->Name);
 			goto error;
 			}
 		    }
@@ -1326,7 +1504,7 @@ http_internal_LoadParams(pHttpData inf)
 		}
 	    }
 
-	/** Go through the parameters and set any url params, and evaluate hints. **/
+	/** Go through the parameters and set any url params **/
 	for(i=0; i<xaCount(&inf->Params); i++)
 	    {
 	    one_http_param = (pHttpParam)xaGetItem(&inf->Params, i);
@@ -1349,9 +1527,14 @@ http_internal_LoadParams(pHttpData inf)
 			}
 		    }
 		}
+	    }
 
-	    /** Apply hints **/
-	    if (paramEvalHints(one_param, NULL, inf->Obj->Session) < 0)
+	/** Apply presentation hints **/
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = (pHttpParam)xaGetItem(&inf->Params, i);
+	    one_param = one_http_param->Parameter;
+	    if (paramEvalHints(one_param, inf->ObjList, inf->Obj->Session) < 0)
 		goto error;
 	    }
 
@@ -1416,6 +1599,14 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Node = node;
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
 	inf->Node->OpenCnt++;
+
+	/** Create the expression eval param list **/
+	inf->ObjList = expCreateParamList();
+	inf->ObjList->Session = obj->Session;
+	expAddParamToList(inf->ObjList, "headers", (void*)inf, EXPR_O_CURRENT);
+	expSetParamFunctions(inf->ObjList, "headers", http_internal_GetHdrType, http_internal_GetHdrValue, http_internal_SetHdrValue);
+	expAddParamToList(inf->ObjList, "parameters", (void*)inf, 0);
+	expSetParamFunctions(inf->ObjList, "parameters", http_internal_GetParamType, http_internal_GetParamValue, http_internal_SetParamValue);
 
 	/** Configuration **/
 	inf->ProxyServer = http_internal_GetConfigString(inf, "proxyserver", "");

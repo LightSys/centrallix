@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"

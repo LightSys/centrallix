@@ -44,14 +44,15 @@
 typedef struct _SI
     {
     int		    Magic;
+    int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
     char*	    UsrType;	/* type of group, null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
     struct _SI*	    Parent;	/* Parent inf, null if toplevel */
     struct _SI**    SubInf;	/* List of attrs/groups included */
-    unsigned short  nSubInf;	/* Number of attrs/groups - up to 65535 */
-    unsigned char   nSubAlloc;	/* Amount of space allocated for subinf ptrs */
-    unsigned char   Flags;	/* ST_F_xxx - either top, attrib, or group */
+    unsigned int    nSubInf:21;	/* Number of attrs/groups - up to ST_SUBINF_LIMIT */
+    unsigned char   nSubAlloc:6; /* Amount of space allocated for subinf ptrs */
+    unsigned char   Flags:5;	/* ST_F_xxx - either top, attrib, or group */
     unsigned char*  ScriptText;	/* If a ST_F_SCRIPT node, here is the script text */
     void*	    ScriptCode;	/* "compiled" script code */
     void*	    UserData;	/* Misc linkage for use by app */
@@ -68,9 +69,10 @@ typedef struct _SI
 #define	ST_USRTYPE_STRLEN   64	/* if group, alloc bytes for type name */
 #define ST_NAME_STRLEN	    64	/* alloc size for group/attrib name */
 
-#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))
+/*#define ST_ALLOCSIZ(x)	(((x)->nSubAlloc)<<(ST_SUBALLOC_BLKSIZ))*/
+#define ST_ALLOCSIZ(x)	(ST_SUBALLOC_BLKSIZ<<((x)->nSubAlloc))
 
-#define ST_SUBINF_LIMIT	    65535
+#define ST_SUBINF_LIMIT	    (2 * 1024 * 1024 - 1)
 
 
 #if 00 /* GRB - old version */
@@ -117,6 +119,9 @@ int stFreeInf(pStructInf inf);
 int stAddInf(pStructInf main_inf, pStructInf sub_inf);
 
 /*** new functions ***/
+pStructInf stLinkInf(pStructInf inf);
+int stPrintInf(pStructInf this);
+int stRemoveInf(pStructInf inf);
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
 int stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value);
 int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);

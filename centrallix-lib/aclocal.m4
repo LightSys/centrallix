@@ -208,4 +208,14 @@ AC_DEFUN(CHECK_VALGRIND,
     ]
 )
 	    
-	    
+	   
+dnl Check for SIOCOUTQ ioctl (linux-specific)
+AC_DEFUN(CHECK_SIOCOUTQ,
+    [
+    AC_MSG_CHECKING(if SIOCOUTQ ioctl is usable)
+	AC_CHECK_HEADER([linux/sockios.h],
+	    AC_DEFINE(HAVE_SIOCOUTQ,1,[defined to 1 if SIOCOUTQ is available]),
+	    AC_DEFINE(HAVE_SIOCOUTQ,0,[defined to 1 if SIOCOUTQ is available])
+	)
+    ]
+)

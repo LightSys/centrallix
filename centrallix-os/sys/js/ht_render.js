@@ -346,7 +346,7 @@ function cxjs_minus(a, b)
 	a = String(a);
 	b = String(b);
 	if (a.lastIndexOf(b) == a.length - b.length)
-	    return a.substr(a.length - b.length);
+	    return a.substr(0, a.length - b.length);
 	else
 	    return a;
 	}
@@ -553,20 +553,34 @@ function htr_event(e)
 	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
 	    {
 	    cx__event.key = e.which;
-	    switch(e.keyCode)
+	    if (e.charCode == 0)
 		{
-		case e.DOM_VK_HOME:	cx__event.keyName = 'home'; break;
-		case e.DOM_VK_END:	cx__event.keyName = 'end'; break;
-		case e.DOM_VK_LEFT:	cx__event.keyName = 'left'; break;
-		case e.DOM_VK_RIGHT:	cx__event.keyName = 'right'; break;
-		case e.DOM_VK_UP:	cx__event.keyName = 'up'; break;
-		case e.DOM_VK_DOWN:	cx__event.keyName = 'down'; break;
-		case e.DOM_VK_TAB:	cx__event.keyName = 'tab'; break;
-		case e.DOM_VK_ENTER:	cx__event.keyName = 'enter'; break;
-		case e.DOM_VK_RETURN:	cx__event.keyName = 'enter'; break;
-		case e.DOM_VK_ESCAPE:	cx__event.keyName = 'escape'; break;
-		case e.DOM_VK_F3:	cx__event.keyName = 'f3'; break;
-		default:		cx__event.keyName = null; break;
+		switch(e.keyCode)
+		    {
+		    case 36:		cx__event.keyName = 'home'; break;
+		    case 23:		cx__event.keyName = 'end'; break;
+		    case 37:		cx__event.keyName = 'left'; break;
+		    case 39:		cx__event.keyName = 'right'; break;
+		    case 38:		cx__event.keyName = 'up'; break;
+		    case 40:		cx__event.keyName = 'down'; break;
+		    case 9:			cx__event.keyName = 'tab'; break;
+		    case 14:		cx__event.keyName = 'enter'; break;
+		    case 13:		cx__event.keyName = 'enter'; break;
+		    case 27:		cx__event.keyName = 'escape'; break;
+		    case 114:		cx__event.keyName = 'f3'; break;
+		    //case e.DOM_VK_HOME:	cx__event.keyName = 'home'; break;
+		    //case e.DOM_VK_END:	cx__event.keyName = 'end'; break;
+		    //case e.DOM_VK_LEFT:	cx__event.keyName = 'left'; break;
+		    //case e.DOM_VK_RIGHT:	cx__event.keyName = 'right'; break;
+		    //case e.DOM_VK_UP:	cx__event.keyName = 'up'; break;
+		    //case e.DOM_VK_DOWN:	cx__event.keyName = 'down'; break;
+		    //case e.DOM_VK_TAB:	cx__event.keyName = 'tab'; break;
+		    //case e.DOM_VK_ENTER:	cx__event.keyName = 'enter'; break;
+		    //case e.DOM_VK_RETURN:	cx__event.keyName = 'enter'; break;
+		    //case e.DOM_VK_ESCAPE:	cx__event.keyName = 'escape'; break;
+		    //case e.DOM_VK_F3:	cx__event.keyName = 'f3'; break;
+		    default:		cx__event.keyName = null; break;
+		    }
 		}
 	    }
 

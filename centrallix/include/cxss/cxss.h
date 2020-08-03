@@ -125,6 +125,7 @@ int cxssInitialize();
 
 /*** Utility functions ***/
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
+int cxssGenerateHexKey(char* hexkey, size_t len);
 int cxssShred(unsigned char* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 
@@ -152,6 +153,9 @@ int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
 pCxssKeystreamState cxssKeystreamNew(unsigned char* key, int keylen);
 int cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datalen);
 int cxssKeystreamFree(pCxssKeystreamState kstate);
+
+/*** Credentials Manager API ***/
+#include "cxss/credentials_mgr.h"
 
 /*** Security Policy - Authorization API ***/
 int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);

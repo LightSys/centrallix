@@ -33,6 +33,8 @@ typedef struct
     XArray, *pXArray;
 
 /** Functions **/
+pXArray xaNew(int init_size);
+int xaFree(pXArray this);
 int xaInit(pXArray this, int init_size);
 int xaDeInit(pXArray this);
 int xaAddItem(pXArray this, void* item);
@@ -40,8 +42,10 @@ int xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen);
 int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset);
 void* xaGetItem(pXArray this, int index);
 int xaFindItem(pXArray this, void* item);
+int xaFindItemR(pXArray this, void* item);
 int xaRemoveItem(pXArray this, int index);
-int xaClear(pXArray this);
+int xaClear(pXArray this, int (*free_fn)(), void* free_arg);
+int xaClearR(pXArray this, int (*free_fn)(), void* free_arg);
 int xaCount(pXArray this);
 int xaSetItem(pXArray this, int index, void* item);
 int xaInsertBefore(pXArray this, int index, void* item);

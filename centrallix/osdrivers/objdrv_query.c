@@ -355,7 +355,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	inf->Node->OpenCnt++;
 
 	/** Get SQL string **/
-	if (stGetAttrValue(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0) != 0)
+	if (stGetAttrValueOSML(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0, obj->Session) != 0)
 	    {
 	    mssError(1,"QY","'sql' property must be supplied for query objects");
 	    goto error;
@@ -678,8 +678,7 @@ qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** Put checking for your own attributes here. **/
 	if (inf->Type == QY_T_LIST)
 	    {
-	    /** None, currently **/
-	    return -1;
+	    return qy_internal_GetParamType(inf, attrname);
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
@@ -730,7 +729,7 @@ qyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	    }
 	if (inf->Type == QY_T_LIST)
 	    {
-	    return -1;
+	    return qy_internal_GetParamValue(inf, attrname, datatype, val);
 	    }
 
 	mssError(1,"QY","Could not locate requested attribute");

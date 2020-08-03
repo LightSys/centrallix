@@ -1,5 +1,6 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,6 +50,7 @@ nht_i_AllocConn(pFile net_conn)
 	conn->ConnFD = net_conn;
 	conn->Size = -1;
 	conn->LastHandle = XHN_INVALID_HANDLE;
+	conn->StrictSameSite = 1;
 	xaInit(&conn->RequestHeaders, 16);
 	xaInit(&conn->ResponseHeaders, 16);
 	strtcpy(conn->ResponseContentType, "text/html", sizeof(conn->ResponseContentType));
@@ -77,7 +79,7 @@ nht_i_FreeConn(pNhtConn conn)
 	nht_i_Log(conn);
 
 	/** Close the connection **/
-	if (conn->SSLpid)
+	if (conn->SSLpid > 0 && conn->UsingTLS)
 	    cxssFinishTLS(conn->SSLpid, conn->ConnFD, conn->ReportingFD);
 	else
 	    netCloseTCP(conn->ConnFD, 1000, 0);
@@ -162,6 +164,7 @@ nht_i_ConnHandler(void* conn_v)
     pNhtApp app;
     pNhtAppGroup group;
     int context_started = 0;
+    pApplication tmp_app = NULL;
     unsigned char* keydata;
     char* nonce;
     unsigned char noncelen;
@@ -193,7 +196,7 @@ nht_i_ConnHandler(void* conn_v)
 
 	/** Compute header nonce.  This is used for functionally nothing, but
 	 ** it causes the content and offsets to values in the header to change
-	 ** with each request; this can help frustrate certain types of 
+	 ** with each response; this can help frustrate certain types of 
 	 ** cryptographic attacks.
 	 **/
 	if (conn->UsingTLS && NHT.NonceData)
@@ -234,7 +237,7 @@ nht_i_ConnHandler(void* conn_v)
 	if (usrname && !passwd) passwd = "";
 	if (!usrname || !passwd) 
 	    {
-	    nht_i_WriteErrResponse(conn, 404, "Bad Request", "<h1>400 Bad Request</h1>\r\n");
+	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>401 Unauthorized</h1>\r\n");
 	    goto out;
 	    }
 
@@ -390,16 +393,31 @@ nht_i_ConnHandler(void* conn_v)
 		}
 
 	    /** Authentication succeeded - start a new session **/
-	    conn->NhtSession = nht_i_AllocSession(usrname);
+	    conn->NhtSession = nht_i_AllocSession(usrname, conn->UsingTLS);
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
 	    nht_i_LinkSess(conn->NhtSession);
 	    }
 
 	/** Start the application security context **/
+	akey_inf = stLookup_ne(url_inf,"cx__akey");
 	if (conn->NhtSession && conn->NhtSession->Session)
 	    {
 	    cxssPushContext();
 	    context_started = 1;
+
+	    /** If a valid akey was specified, resume the application **/
+	    if (akey_inf && nht_i_VerifyAKey(akey_inf->StrVal, conn->NhtSession, &group, &app) == 0 && group && app)
+		{
+		appResume(app->Application);
+		}
+	    else
+		{
+		tmp_app = appCreate(NULL);
+		}
+	    }
+	else
+	    {
+	    tmp_app = appCreate(NULL);
 	    }
 
 	/** Bump last activity dates. **/
@@ -455,7 +473,6 @@ nht_i_ConnHandler(void* conn_v)
 	/** If the method was GET and an ls__method was specified, use that method **/
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
-	    akey_inf = stLookup_ne(url_inf,"cx__akey");
 	    if (!akey_inf || strncmp(akey_inf->StrVal, conn->NhtSession->SKey, strlen(conn->NhtSession->SKey)))
 		{
 		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
@@ -582,6 +599,7 @@ nht_i_ConnHandler(void* conn_v)
     out:
 	if (url_inf && !conn) stFreeInf_ne(url_inf);
 	if (conn) nht_i_FreeConn(conn);
+	if (tmp_app) appDestroy(tmp_app);
 	if (context_started) cxssPopContext();
 	thExit();
     }
@@ -688,7 +706,7 @@ nht_i_TLSHandler(void* v)
 	    {
 	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
 	    }
-	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) != 0)
+	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) == 0)
 	    {
 	    /** Load certificate chain also **/
 	    fp = fopen(strval, "r");
@@ -725,6 +743,8 @@ nht_i_TLSHandler(void* v)
 		continue;
 		}
 
+	    //cxDebugLog("new TLS connection");
+
 	    /** Check reopen **/
 	    nht_i_CheckAccessLog();
 
@@ -736,6 +756,7 @@ nht_i_TLSHandler(void* v)
 		thSleep(1);
 		continue;
 		}
+	    conn->UsingTLS = 1;
 
 	    /** Start TLS on the connection.  This replaces conn->ConnFD with
 	     ** a pipe to the TLS encryption/decryption process.
@@ -745,6 +766,7 @@ nht_i_TLSHandler(void* v)
 		{
 		nht_i_FreeConn(conn);
 		mssError(1,"NHT","Could not start TLS on the connection!");
+		continue;
 		}
 
 	    /** Start the request handler thread **/
@@ -812,6 +834,8 @@ nht_i_Handler(void* v)
 		thSleep(10);
 		continue;
 		}
+
+	    //cxDebugLog("new HTTP connection");
 
 	    /** Check reopen **/
 	    nht_i_CheckAccessLog();

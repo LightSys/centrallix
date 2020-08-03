@@ -365,7 +365,7 @@ function wgtrGetServerProperty(node, prop_name, def)
     var val = node.__WgtrParams[prop_name];
     if (typeof val == 'undefined')
 	return def;
-    else if (typeof val == 'object' && val.exp)
+    else if (typeof val == 'object' && val && val.exp)
 	{
 	//var _context = window[node.__WgtrNamespace.NamespaceID];
 	var _context = node.__WgtrNamespace;

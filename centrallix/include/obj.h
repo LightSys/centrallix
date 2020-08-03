@@ -165,6 +165,7 @@ typedef struct _OSD
     XArray	RootContentTypes;
     int		Capabilities;
     void*	(*Open)();
+    void*	(*OpenChild)();
     int		(*Close)();
     int		(*Create)();
     int		(*Delete)();
@@ -230,6 +231,15 @@ typedef struct _OT
     }
     ObjTrxTree, *pObjTrxTree;
 
+#define OXT_S_PENDING	0
+#define OXT_S_VISITED	1
+#define OXT_S_COMPLETE	2
+#define OXT_S_FAILED	3
+
+#define OXT_OP_NONE	0
+#define OXT_OP_CREATE	1
+#define OXT_OP_SETATTR	2
+#define OXT_OP_DELETE	3
 
 
 /** objectsystem session **/
@@ -242,18 +252,11 @@ typedef struct _OSS
     pObjTrxTree		Trx;
     XHashQueue		DirectoryCache;		/* directory entry cache */
     handle_t		Handle;
+    int			Flags;
     }
     ObjSession, *pObjSession;
 
-#define OXT_S_PENDING	0
-#define OXT_S_VISITED	1
-#define OXT_S_COMPLETE	2
-#define OXT_S_FAILED	3
-
-#define OXT_OP_NONE	0
-#define OXT_OP_CREATE	1
-#define OXT_OP_SETATTR	2
-#define OXT_OP_DELETE	3
+#define OBJ_SESS_F_CLOSING	1
 
 
 /** Content type descriptor **/
@@ -300,6 +303,7 @@ typedef struct _OA
 #define OBJ_INFO_F_NO_CONTENT		(1<<13)	/* object does not have content, objRead() would fail */
 #define OBJ_INFO_F_SUPPORTS_INHERITANCE	(1<<14)	/* object can support inheritance attr cx__inherit, etc. */
 #define OBJ_INFO_F_FORCED_LEAF		(1<<15)	/* object is forced to be a 'leaf' unless ls__type used. */
+#define OBJ_INFO_F_TEMPORARY		(1<<16)	/* this is a temporary object without a vaoid pathname. */
 
 
 /** object virtual attribute - these are attributes which persist only while
@@ -348,6 +352,7 @@ typedef struct _OF
     void*	AttrExp;	/* an expression used for the above */
     char*	AttrExpName;	/* Name of attr for above expression */
     DateTime	CacheExpire;	/* Date/time after which cached data is no longer valid */
+    int		RowID;
     }
     Object, *pObject;
 
@@ -357,6 +362,30 @@ typedef struct _OF
 #define OBJ_F_NOCACHE		8	/* object should *not* be cached by the Directory Cache */
 #define	OBJ_F_METAONLY		16	/* user opened '?' object */
 #define OBJ_F_UNMANAGED		32	/* don't auto-close on session closure */
+#define OBJ_F_TEMPORARY		64	/* created by objCreateTempObject() */
+
+
+/** temporary collection indexes **/
+typedef struct _TI
+    {
+    XArray	Fields;		/* List of fields in this index */
+    XHashTable	Index;		/* FIXME: replace with B+ tree in the future */
+    void*	OneObjList;	/* pParamObjects; for convenience */
+    int		IsUnique:1;
+    }
+    ObjTempIndex, *pObjTempIndex;
+
+
+/** structure for temporary objects **/
+typedef struct _TO
+    {
+    handle_t	Handle;
+    int		LinkCnt;
+    void*	Data;		/* pStructInf */
+    long long	CreateCnt;
+    XArray	Indexes;	/* of pObjTempIndex */
+    }
+    ObjTemp, *pObjTemp;
 
 
 /** structure used for sorting a query result set. **/
@@ -367,6 +396,7 @@ typedef struct _SRT
     XArray	SortNames[2];	/* names of objects */
     XString	SortDataBuf;	/* buffer for sort key data */
     XString	SortNamesBuf;	/* buffer for object names */
+    int		IsTemp;
     }
     ObjQuerySort, *pObjQuerySort;
 
@@ -482,6 +512,8 @@ typedef struct
     long long	PathID;			/* pseudo-paths for multiquery */
     char	TrxLogPath[OBJSYS_MAX_PATH]; /* path to osml trx log */
     XArray	Locks;			/* Object and subtree locks */
+    HandleContext TempObjects;		/* Handle table of temporary objects */
+    pObjDriver	TempDriver;
     }
     OSYS_t;
 
@@ -607,6 +639,7 @@ int objResumeTransaction(pObjSession this, pObjTrxTree trx);
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);
+pObject objOpenChild(pObject obj, char* name, int mode, int permission_mask, char* type);
 int objClose(pObject this);
 int objCreate(pObjSession session, char* path, int permission_mask, char* type);
 int objDelete(pObjSession session, char* path);
@@ -702,8 +735,9 @@ int objDataFromStringAlloc(pObjData pod, int type, char* str);
 char* objFormatMoneyTmp(pMoneyType m, char* format);
 char* objFormatDateTmp(pDateTime dt, char* format);
 int objCurrentDate(pDateTime dt);
-int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
-int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist);
+int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
+int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
+int objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr);
 
 
 /** objectsystem replication services - open object notification (Rn) system **/
@@ -717,5 +751,11 @@ int objDriverAttrEvent(pObject this, char* attr_name, pTObjData newvalue, int se
 int objRegisterEventHandler(char* class_code, int (*handler_function)());
 int objRegisterEvent(char* class_code, char* pathname, char* where_clause, int flags, char* xdata);
 int objUnRegisterEvent(char* class_code, char* xdata);
+
+
+/** temporary objects **/
+handle_t objCreateTempObject();
+pObject objOpenTempObject(pObjSession session, handle_t tempobj, int mode);
+int objDeleteTempObject(handle_t tempobj);
 
 #endif /*_OBJ_H*/

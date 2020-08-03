@@ -59,6 +59,7 @@ typedef struct
     pObject		SavedObjList[MQT_MAX_OBJECTS];
     int			nObjects;
     int			IsLastRow;
+    int			BypassChecked;
     int			AggLevel;
     pExpression		ListItems[MQT_MAX_OBJECTS];
     int			ListCount[MQT_MAX_OBJECTS];
@@ -154,7 +155,7 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 	/** Ok, figure out if the group by columns changed **/
 	oldlen = md->GroupByLen;
 	/*md->GroupByLen = (ptr - new_buf);*/
-	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList);
+	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList, 0);
 	if (md->GroupByLen < 0) return -1;
 	*new_ptr = new_buf;
 	if (md->GroupByPtr == NULL) return 1;
@@ -172,7 +173,7 @@ int
 mqtAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, subitem, where_qs, where_item;
-    pQueryElement qe,recent;
+    pQueryElement qe /*,recent*/ ;
     pExpression new_exp;
     int i;
     pMQTData md;
@@ -198,7 +199,7 @@ mqtAnalyze(pQueryStatement stmt)
 	    /** Need to link in with each of the select-items.  This operates both
 	     ** on SELECT items and on the RHS of SET items in an UPDATE clause.
 	     **/
-	    recent = NULL;
+	    /*recent = NULL;*/
 	    for(i=0;i<qs->Children.nItems;i++)
 		{
 		item = (pQueryStructure)(qs->Children.Items[i]);
@@ -391,7 +392,8 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
 	    {
 	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	    if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+	    if (exp /* && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL) */ )
+	    //if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
 		{
 		expUnlockAggregates(exp, level);
 		expEvalTree(exp, objlist);
@@ -415,7 +417,7 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	if (stmt->HavingClause)
 	    {
 	    id = -1;
-	    if (expLookupParam(objlist, "this") < 0)
+	    if (expLookupParam(objlist, "this", 0) < 0)
 		id = expAddParamToList(objlist, "this", NULL, 0);
 	    expUnlockAggregates(stmt->HavingClause, level);
 	    expEvalTree(stmt->HavingClause, objlist);
@@ -436,6 +438,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     int i;
     pQueryElement cld;
+    pMQTData md = (pMQTData)(qe->PrivateData);
 
     	/** First, evaluate all of the attributes that we 'own' **/
 	for(i=0;i<qe->AttrNames.nItems;i++) if (qe->AttrDeriv.Items[i] == NULL && qe->AttrCompiledExpr.Items[i] && ((pExpression)(qe->AttrCompiledExpr.Items[i]))->AggLevel == 0)
@@ -463,6 +466,7 @@ mqtStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	/** Set iteration cnt to 0 **/
 	qe->IterCnt = 0;
+	md->BypassChecked = 0;
 
     return 0;
     }
@@ -521,6 +525,33 @@ mqt_internal_SwapObjList(pMQTData md, pQueryStatement stmt, int do_close)
     }
 
 
+/*** mqt_internal_NextChildItem - retrieve the next child item underlying
+ *** this query.
+ ***/
+int
+mqt_internal_NextChildItem(pQueryElement parent, pQueryElement child, pQueryStatement stmt)
+    {
+    int rval;
+    int ck;
+    pMQTData md = (pMQTData)(parent->PrivateData);
+
+	/** If our constraint is false and depends only on provided objects, we're done now. **/
+	if (md->BypassChecked == 0 && parent->Constraint && parent->Constraint->ObjCoverageMask == (parent->Constraint->ObjCoverageMask & stmt->Query->ProvidedObjMask))
+	    {
+	    md->BypassChecked = 1;
+	    ck = mqt_internal_CheckConstraint(parent, stmt);
+	    if (ck == 0)
+		return 0;
+	    }
+
+	rval = child->Driver->NextItem(child, stmt);
+
+	mqt_internal_UpdateAggregates(stmt, parent, 0, stmt->Query->ObjList);
+
+    return rval;
+    }
+
+
 /*** mqtNextItem - retrieves the first/next item in the result set for the
  *** tablular query.  This driver only runs its own loop once through, but
  *** within that one iteration may be multiple row result sets handled by
@@ -552,7 +583,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	        {
 	        while(1)
 	            {
-	            rval = cld->Driver->NextItem(cld, stmt);
+		    rval = mqt_internal_NextChildItem(qe, cld, stmt);
 		    if (rval <= 0) break;
 		    ck = mqt_internal_CheckConstraint(qe, stmt);
 		    if (ck < 0) return ck;
@@ -594,7 +625,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    {
 	            while(1)
 	                {
-	                rval = cld->Driver->NextItem(cld, stmt);
+			rval = mqt_internal_NextChildItem(qe, cld, stmt);
 			if (rval <= 0) break;
 		        ck = mqt_internal_CheckConstraint(qe, stmt);
 		        if (ck < 0) return ck;
@@ -644,7 +675,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			{
 			while(1)
 			    {
-			    rval = cld->Driver->NextItem(cld, stmt);
+			    rval = mqt_internal_NextChildItem(qe, cld, stmt);
 			    if (rval <= 0) break;
 			    ck = mqt_internal_CheckConstraint(qe, stmt);
 			    if (ck < 0) return ck;
@@ -795,6 +826,8 @@ mqtInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MQTData), "MQTData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQT - MultiQuery Tabular Data Module");

@@ -103,7 +103,7 @@ typedef struct _MPI
     pMqpSubtrees    Subtrees;
     pMqpRowCache    RowCache;
     int		    ObjMode;	/* O_xxx mode to open objects with */
-    char	    CurrentSource[OBJSYS_MAX_PATH];
+    char	    CurrentSource[OBJSYS_MAX_PATH+1+1024];
     XArray	    SourceList;
     int		    SourceIndex;
     pExpression	    AddlExp;
@@ -384,7 +384,7 @@ mqpAnalyze(pQueryStatement stmt)
 	     ** If this is an expression, Presentation has a forced value
 	     ** if not otherwise supplied by the SQL coder.
 	     **/
-	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
+	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source), 0);
 	    if (src_idx == -1)
 	        {
 		mq_internal_FreeQE(qe);
@@ -734,6 +734,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     pMqpRowCache rc;
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    handle_t collection;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -761,7 +762,20 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		}
 
 	    /** Open the data source in the objectsystem **/
-	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+		if (collection == XHN_INVALID_HANDLE)
+		    {
+		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
+		    return -1;
+		    }
+		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
+		}
+	    else
+		{
+		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+		}
 	    if (!qe->LLSource) 
 		{
 		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
@@ -896,6 +910,8 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    slashptr = strchr(element_list[0]+1, '/');
 	    if (!slashptr) slashptr = strchr(element_list[0], '\0');
 	    qptr = strchr(element_list[0], '?');
+	    if (qptr > slashptr)
+		qptr = NULL;
 	    orig_len = cur_len;
 
 	    /** Open path so far and query for matching objects **/
@@ -1399,6 +1415,12 @@ mqpInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqpSbtInf), "MqpSbtInf");
+	nmRegister(sizeof(MqpSubtrees), "MqpSubtrees");
+	nmRegister(sizeof(MqpOneRow), "MqpOneRow");
+	nmRegister(sizeof(MqpRowCache), "MqpRowCache");
+	nmRegister(sizeof(MqpInf), "MqpInf");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQP - MultiQuery Projection Module");

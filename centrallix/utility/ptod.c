@@ -115,7 +115,7 @@ ptodFree(pTObjData ptod)
     {
 
 	/** Link count to 0? **/
-	if ((ptod->LinkCnt--) != 0) return 0;
+	if ((--ptod->LinkCnt) != 0) return 0;
 
 	/** Free data memory **/
 	ptod_internal_FreeData(ptod);

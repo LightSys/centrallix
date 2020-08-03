@@ -1,0 +1,6 @@
+##NAME SQL Temp Collection Indexing
+
+query declare collection c scope application; insert into collection c select st1 = :st1:abbrev, st2 = :st2:abbrev, st3 = :st3:abbrev from /tests/States.csv/rows st1, /tests/States.csv/rows st2, /tests/States.csv/rows st3 where :st3:abbrev <= 'ZZ'; select count(1) from collection c
+query select count(1) from /tests/States.csv/rows st, collection c where :st:abbrev = :c:st1 and :st:abbrev = :c:st2 and :st:abbrev = :c:st3
+query select count(1) from /tests/States.csv/rows st, collection c where :st:abbrev = :c:st3 and :st:abbrev = :c:st2 and :st:abbrev = :c:st1
+#query select count(1) from collection c, /tests/States.csv/rows st where :st:abbrev = :c:st1 and :st:abbrev = :c:st2 and :st:abbrev = :c:st3

@@ -1715,6 +1715,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     int colspan;
     double cellwidth;
     int context_pushed = 0;
+    int is_autowidth = 0;
 	
 	/** conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,table);
@@ -1733,6 +1734,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
 	if (rpt_internal_GetBool(table, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
 	if (rpt_internal_GetBool(table, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	is_autowidth = rpt_internal_GetBool(table, "autowidth", 0, 0);
 
 	/** Get column count and widths. **/
 	numcols = 0;
@@ -1822,7 +1824,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags,
 		"numcols", numcols, "colwidths", cwidths, "colsep", colsep, "outerborder", outerborder,
 		"innerborder", innerborder, "shadow", shadow, "topborder", tb, "bottomborder", bb,
-		"leftborder", lb, "rightborder", rb, NULL);
+		"leftborder", lb, "rightborder", rb, "autowidth", is_autowidth, NULL);
 	if (outerborder) prtFreeBorder(outerborder);
 	if (innerborder) prtFreeBorder(innerborder);
 	if (shadow) prtFreeBorder(shadow);
@@ -3037,6 +3039,11 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
 		    rval = rpt_internal_DoImage(inf, subobj, rs, NULL, container_handle);
 		    if (rval < 0) break;
 		    }
+                else if (!strcmp(subobj->UsrType, "report/svg"))
+                    {
+                    rval = rpt_internal_DoSvg(inf, subobj, rs, NULL, container_handle);
+                    if (rval < 0) break;
+                    }
 		else if (!strcmp(subobj->UsrType, "report/data"))
 		    {
 		    rval = rpt_internal_DoData(inf, subobj, rs, container_handle);
@@ -3102,7 +3109,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 	    }
 	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL)
 	    {
-	    mssError(1,"RPT","Could not open 'source' image for report/image object");
+	    mssError(0,"RPT","Could not open 'source' image for report/image object");
 	    return -1;
 	    }
 	img = prtCreateImageFromPNG(objRead, imgobj);
@@ -3116,6 +3123,63 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 
 	/** Add it to its container **/
 	if (prtWriteImage(container_handle, img, x,y,w,h, flags) < 0) return -1;
+
+    return 0;
+    }
+
+
+/*** rpt_internal_DoSvg - put an svg image on the report.
+ ***/
+int
+rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pQueryConn this_qy, int container_handle)
+    {
+    char* svgsrc;
+    pPrtSvg svg;
+    pObject svgobj;
+    int flags;
+    double x,y,w,h;
+    int rval;
+
+	rval = rpt_internal_CheckCondition(inf,image);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Get area geometry **/
+	if (rpt_internal_GetDouble(image, "x", &x, 0) < 0) x = -1;
+	if (rpt_internal_GetDouble(image, "y", &y, 0) < 0) y = -1;
+	if (rpt_internal_GetDouble(image, "width", &w, 0) < 0)
+	    {
+	    mssError(1,"RPT","report/svg must have a valid 'width' attribute");
+	    return -1;
+	    }
+	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0)
+	    {
+	    mssError(1,"RPT","report/svg must have a valid 'height' attribute");
+	    return -1;
+	    }
+
+	/** Load the image **/
+	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&svgsrc), 0, inf->Obj->Session) != 0)
+	    {
+	    mssError(1,"RPT","report/svg object must have a valid 'source' attribute");
+	    return -1;
+	    }
+	if ((svgobj = objOpen(inf->Obj->Session, svgsrc, O_RDONLY, 0400, "image/svg+xml")) == NULL)
+	    {
+	    mssError(0,"RPT","Could not open 'source' image for report/svg object");
+	    return -1;
+	    }
+	svg = prtReadSvg(objRead, svgobj);
+	objClose(svgobj);
+	if (!svg) return -1;
+
+	/** Check flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+
+	/** Add it to its container **/
+	if (prtWriteSvgToContainer(container_handle, svg, x,y,w,h, flags) < 0) return -1;
 
     return 0;
     }
@@ -3435,6 +3499,44 @@ rpt_internal_FreeQC(pQueryConn qc)
     }
 
 
+/*** rpt_internal_LoadEndorsements - look for security endorsements
+ ***/
+int
+rpt_internal_LoadEndorsements(pRptData inf, pStructInf req)
+    {
+    char* endorsement_sql = NULL;
+    pObjQuery eqy;
+    pObject eobj;
+    char* one_endorsement;
+    char* one_context;
+
+	/** Check for endorsements to load **/
+	if (stAttrValue(stLookup(req, "add_endorsements_sql"), NULL, &endorsement_sql, 0) == 0 && endorsement_sql)
+	    {
+	    /** Run the SQL to fetch the endorsements **/
+	    eqy = objMultiQuery(inf->Obj->Session, endorsement_sql, NULL, 0);
+	    if (eqy)
+		{
+		/** Loop through returned rows **/
+		while ((eobj = objQueryFetch(eqy, O_RDONLY)) != NULL)
+		    {
+		    if (objGetAttrValue(eobj, "endorsement", DATA_T_STRING, POD(&one_endorsement)) == 0)
+			{
+			if (objGetAttrValue(eobj, "context", DATA_T_STRING, POD(&one_context)) == 0)
+			    {
+			    cxssAddEndorsement(one_endorsement, one_context);
+			    }
+			}
+		    objClose(eobj);
+		    }
+		objQueryClose(eqy);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** rpt_internal_Run - execute an immediate adhoc report with complete
  *** information listed in the req structure.
  ***/
@@ -3487,6 +3589,9 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		err = 1;
 		}
 	    }
+
+	/** Security endorsements? **/
+	rpt_internal_LoadEndorsements(inf, req);
 
 	/** Page geometry? **/
 	prtGetPageGeometry(ps, &pagewidth, &pageheight);
@@ -3726,7 +3831,15 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 			break;
 			}
 		    }
-		else if (!strcmp(subreq->UsrType,"report/data"))
+		else if (!strcmp(subreq->UsrType, "report/svg"))
+                    {
+                    if (rpt_internal_DoSvg(inf, subreq, rs, NULL, rs->PageHandle) < 0)
+                        {
+                        err = 1;
+                        break;
+                        }
+                    }
+                else if (!strcmp(subreq->UsrType,"report/data"))
 		    {
 		    if (rpt_internal_DoData(inf, subreq, rs, rs->PageHandle) <0)
 		        {
@@ -3809,7 +3922,7 @@ rpt_internal_Generator(void* v)
 	    }
 
 	/** Set image store location **/
-	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, (void* (*)())objWrite, (void* (*)())objClose);
+	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, objWrite, objClose);
 
 	/** Some output specific options **/
 	if (rpt_internal_GetBool(inf->Node->Data, "text_pagebreak", 1, 0) == 0)
@@ -4826,7 +4939,7 @@ rptExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt
 int
 rptInfo(void* inf_v, pObjectInfo info)
     {
-    pRptData inf = RPT(inf);
+    pRptData inf = RPT(inf_v);
 
 	info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | 
 	    OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT | 

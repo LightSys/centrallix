@@ -269,14 +269,20 @@ expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
  *** we find it, or -1 if not found.
  ***/
 int
-expLookupParam(pParamObjects this, char* name)
+expLookupParam(pParamObjects this, char* name, int flags)
     {
-    int i;
+    int i, idx;
 
 	/** Search for it **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
-	    if (this->Names[i] != NULL && !strcmp(name, this->Names[i]))
-		return i;
+	    {
+	    if (flags & EXPR_F_REVERSE)
+		idx = (EXPR_MAX_PARAMS-1) - i;
+	    else
+		idx = i;
+	    if (this->Names[idx] != NULL && !strcmp(name, this->Names[idx]))
+		return idx;
+	    }
 
     return -1;
     }
@@ -300,7 +306,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    }
 
 	/** Already exists? **/
-	exist = expLookupParam(this, name);
+	exist = expLookupParam(this, name, flags);
 	if (exist >= 0 && !(flags & (EXPR_O_ALLOWDUPS | EXPR_O_REPLACE)))
 	    {
 	    mssError(1,"EXP","Parameter Object name %s already exists", name);
@@ -361,9 +367,17 @@ expRemoveParamFromList(pParamObjects this, char* name)
     int i;
 
     	/** Find the thing and delete it **/
-	i = expLookupParam(this, name);
+	i = expLookupParam(this, name, 0);
 	if (i < 0) return -1;
 
+    return expRemoveParamFromListById(this, i);
+    }
+
+int
+expRemoveParamFromListById(pParamObjects this, int i)
+    {
+
+	/** Remove it **/
 	if (this->Flags[i] & EXPR_O_ALLOCNAME) nmSysFree(this->Names[i]);
 	this->Flags[i] = 0;
 	this->Objects[i] = NULL;
@@ -401,7 +415,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 	    }
 	else
 	    {
-	    slot_id = expLookupParam(this, name);
+	    slot_id = expLookupParam(this, name, 0);
 	    }
 	if (slot_id < 0) return -1;
 
@@ -657,7 +671,7 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 	    }
 	else
 	    {
-	    slot_id = expLookupParam(this, name);
+	    slot_id = expLookupParam(this, name, 0);
 	    }
 	if (slot_id < 0) return -1;
 

@@ -34,6 +34,10 @@
 /*		Centrallix and the ObjectSystem.			*/
 /************************************************************************/
 
+/*** HTTP server globals instantiation ***/
+NHT_t NHT;
+
+/*** Response codes ***/
 int nht_codes[] = 
     {
     100,101,
@@ -806,7 +810,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 
 	/** Record the time and response code **/
 	thetime = localtime(&tval);
-	strftime(conn->ResponseTime, sizeof(conn->ResponseTime), "%d/%a/%Y:%T %z", thetime);
+	strftime(conn->ResponseTime, sizeof(conn->ResponseTime), "%d/%b/%Y:%T %z", thetime);
 	conn->ResponseCode = code;
 	strtcpy(conn->ResponseText, text, sizeof(conn->ResponseText));
 
@@ -815,7 +819,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"HTTP/1.0 %INT %STR\r\n"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
-		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict\r\n%]"
+		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict%]%[\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
 		"%[Content-Type: %STR\r\n%]"
 		"%[Pragma: %STR\r\n%]"
@@ -826,8 +830,10 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		text,
 		NHT.ServerString,
 		tbuf,
-		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie), (conn->NhtSession)?conn->NhtSession->Cookie:NULL,
-		conn->UsingTLS,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
+		(conn->NhtSession)?conn->NhtSession->Cookie:NULL,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie) && conn->UsingTLS,
+		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie) && conn->StrictSameSite,
 		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
 		conn->ResponseContentLength > 0, conn->ResponseContentLength,
 		conn->ResponseContentType[0] && !strpbrk(conn->ResponseContentType, "\r\n"), conn->ResponseContentType,
@@ -1557,6 +1563,7 @@ nht_i_NextLine(char * token, pNhtConn conn, int size)
      ** the terminating \0 character.
      **/
     if(size > (end - start + 1)) size = (end-start + 1);
+    if(size < (end - start + 1)) end -= ((end-start + 1) - size);
     memcpy(token, buffer + start , size-1); /* Copy relevant data into token. */
     token[size-1] = '\0';
     fdUnRead(conn->ConnFD, buffer+end, length - end, 0, 0); //Unread extra data.
@@ -1596,6 +1603,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	find_inf = stLookup_ne(url_inf,"cx__mode");
 	if (find_inf && !strcmp(find_inf->StrVal, "rest"))
 	    {
+	    conn->StrictSameSite = 0;
 	    return nht_i_RestPost(conn, url_inf, size, content);
 	    }
 	   
@@ -2141,8 +2149,8 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			nmSysFree(app->Endorsements.Items[i]);
 			nmSysFree(app->Contexts.Items[i]);
 			}
-		    xaClear(&app->Endorsements);
-		    xaClear(&app->Contexts);
+		    xaClear(&app->Endorsements, NULL, NULL);
+		    xaClear(&app->Contexts, NULL, NULL);
 		    cxssGetEndorsementList(&app->Endorsements, &app->Contexts);
 		    }
 
@@ -2228,6 +2236,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	/** REST mode? **/
 	else if (!strcmp(find_inf->StrVal,"rest"))
 	    {
+	    conn->StrictSameSite = 0;
 	    rval = nht_i_RestGet(conn, url_inf, target_obj);
 	    }
 
@@ -2466,6 +2475,7 @@ nht_i_DELETE(pNhtConn conn, pStruct url_inf)
 	    }
 
 	/** Call out to REST functionality **/
+	conn->StrictSameSite = 0;
 	rval = nht_i_RestDelete(conn, url_inf, target_obj);
 	if (rval < 0)
 	    {
@@ -2593,6 +2603,7 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	    }
 
 	/** Call out to REST functionality **/
+	conn->StrictSameSite = 0;
 	rval = nht_i_RestPatch(conn, url_inf, target_obj, j_obj);
 	if (rval < 0)
 	    {
@@ -2633,7 +2644,20 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
     int rcnt;
     int type,i,v;
     pStruct sub_inf;
+    pStruct find_inf;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
     int already_exist=0;
+
+	/** Validate akey and make sure app and group id's match as well.  AKey
+	 ** must be supplied with all PUT requests.
+	 **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
+	    {
+	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
+	    return -1;
+	    }
 
     	/** See if the object already exists. **/
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
@@ -2906,7 +2930,11 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
 		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
-		    if (toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+		    if (!conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
+			{
+			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			}
+		    else if (conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.TlsSessionCookie,strlen(NHT.TlsSessionCookie)) || conn->Cookie[strlen(NHT.TlsSessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
 			}
@@ -3209,6 +3237,11 @@ nhtInitialize()
 		strval = "CXID";
 		}
 	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
+	    if (stAttrValue(stLookup(my_config, "ssl_session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = NHT.SessionCookie;
+		}
+	    strtcpy(NHT.TlsSessionCookie, strval, sizeof(NHT.TlsSessionCookie));
 
 	    /** Access log file **/
 	    if (stAttrValue(stLookup(my_config, "access_log"), NULL, &strval, 0) >= 0)
@@ -3234,8 +3267,8 @@ nhtInitialize()
 	thCreate(nht_i_Watchdog, 0, NULL);
 
 	/** Start the network listeners. **/
-	thCreate(nht_i_Handler, 0, NULL);
 	thCreate(nht_i_TLSHandler, 0, NULL);
+	thCreate(nht_i_Handler, 0, NULL);
 
     return 0;
     }
