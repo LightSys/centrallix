@@ -361,6 +361,7 @@ CONFFILES=centrallix.conf \
 TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
 CTESTFILES:=$(wildcard tests/test_$(TONLY)*.c)
 COTESTFILES=$(patsubst %.c,%.o,$(CTESTFILES))
+CBTESTFILES=$(patsubst %.c,%.bin,$(CTESTFILES))
 ifeq ($TOTESTFILES,)
     TOTESTDEPS=
 else
@@ -525,10 +526,13 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
-test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(COTESTFILES)
+tests/test_%.bin: tests/test_%.o .testdepend
+	$(CC) $< tests/t_driver.c $$(sed -n 's#^$@: ##p' < .testdepend) $(STATIC_LIBS) -o $@
+
+test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for TOFILE in $$(ls $(TOTESTFILES) $(COTESTFILES) ); do \
+	@for TOFILE in $$(ls $(TOTESTFILES) $(CBTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
 		CXOS=$$(sed -n 's/^[ 	]*path *= *"\([^"]*\).*/\1/p' < "$(sysconfdir)/centrallix/rootnode"); \
 		CBLUE=$$(/usr/bin/tput setaf 4); \
@@ -548,7 +552,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(COTESTFILES)
 		    "$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		    RET="$${PIPESTATUS[0]}"; \
 		else \
-		    TOBASE="$${TOFILE%.o}"; \
+		    TOBASE="$${TOFILE%.bin}"; \
 		    TONAME=$$(sed -n 's/^\/\/NAME //p' < $$TOBASE.c); \
 		    TOUNDO=$$(sed -n 's/^\/\/UNDO //p' < $$TOBASE.c); \
 		    TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
@@ -556,7 +560,6 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(COTESTFILES)
 		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
 		    [ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
 		    echo -n "$$CBLUE"; \
-		    $(CC) $$TOBASE.o $$(cat $$TOBASE.deps) tests/t_driver.c $(STATIC_LIBS) -o $$TOBASE.bin 2>&1 | sed 's/^/    /'; \
 		    ulimit -s 16384; \
 		    ./$$TOBASE.bin 2>&1 > $$TOBASE.out | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		    RET="$${PIPESTATUS[0]}"; \
@@ -673,6 +676,11 @@ depend:	.depend
 	@makedepend -o.o -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >.depend 2>/dev/null
 	@makedepend -o.so -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
 
+.testdepend: tests/test_*.deps
+	@echo "Rebuilding test dependencies..."
+	@echo > $@
+	@for FILE in $<; do echo -n "$${FILE/.deps/.bin}: " >> $@; echo $$(cat $$FILE) >> $@; done
+
 .subbuild:
 	@echo '1' >.subbuild
 
@@ -709,6 +717,7 @@ netdrivers/net_ldap.so: netdrivers/net_ldap.c
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 	
+include .testdepend
+
 # Dependencies made by "make depend"
 include .depend
-
