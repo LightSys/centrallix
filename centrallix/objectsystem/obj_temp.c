@@ -209,7 +209,7 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	    return -1;
 
 	/** Look it up **/
-	node = xhLookup(&idx->Index, key);
+	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
 	if (!node)
 	    {
 	    nmSysFree(key);
@@ -349,7 +349,7 @@ tmp_internal_FreeIndex(pObjTempIndex idx)
     {
 
 	expFreeParamList(idx->OneObjList);
-	xaClear(&idx->Fields, nmSysFree, NULL);
+	xaClear(&idx->Fields, (void*)nmSysFree, NULL);
 	xhClear(&idx->Index, NULL, NULL);
 	xaDeInit(&idx->Fields);
 	xhDeInit(&idx->Index);
@@ -785,8 +785,6 @@ int
 tmpDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
     pObjTempData inf = (pObjTempData)inf_v;
-    int i;
-    pObjTempIndex idx;
 
 	/** Trying to delete root? **/
 	if (inf->Data == (pStructInf)inf->TempObj->Data)
@@ -798,7 +796,6 @@ tmpDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	/** Delete it. **/
 	tmp_internal_RemoveFromMatchingIndexes(inf->TempObj, inf->Data, "*");
 	stRemoveInf(inf->Data);
-	//stFreeInf(inf->Data);
 	 
 	/** Release the inf structure **/
 	tmpClose(inf_v, oxt);
@@ -936,7 +933,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
 		expFreeProps(props);
 		props = NULL;
-		xaClear(propnames, nmSysFree, NULL);
+		xaClear(propnames, (void*)nmSysFree, NULL);
 		xaFree(propnames);
 		}
 	    }
@@ -961,7 +958,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 	if (propnames)
 	    {
-	    xaClear(propnames, nmSysFree, NULL);
+	    xaClear(propnames, (void*)nmSysFree, NULL);
 	    xaFree(propnames);
 	    }
 	return NULL;
