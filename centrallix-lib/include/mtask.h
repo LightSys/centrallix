@@ -182,6 +182,7 @@ typedef struct _FD
 #define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
 #define FD_F_PIPE	2048		/* is a pipe */
 #define FD_UF_BLOCKINGIO 4096		/* use blocking IO only */
+#define FD_F_RDEOF	8192		/* FD cannot be read due to eof */
 
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */

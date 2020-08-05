@@ -1838,7 +1838,6 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr;
-    int carry;
 
     /** checks **/
     if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)

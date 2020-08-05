@@ -359,6 +359,14 @@ CONFFILES=centrallix.conf \
 
 # testobj-driven test files
 TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
+CTESTFILES:=$(wildcard tests/test_$(TONLY)*.c)
+COTESTFILES=$(patsubst %.c,%.o,$(CTESTFILES))
+CBTESTFILES=$(patsubst %.c,%.bin,$(CTESTFILES))
+ifeq ($TOTESTFILES,)
+    TOTESTDEPS=
+else
+    TOTESTDEPS=test_install
+endif
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
@@ -518,28 +526,44 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
+tests/test_%.bin: tests/test_%.o .testdepend
+	$(CC) $< tests/t_driver.c $$(sed -n 's#^$@: ##p' < .testdepend) $(STATIC_LIBS) -o $@
 
-test: tests/centrallix.conf-test test_install $(TOTESTFILES)
+test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
+	@for TOFILE in $$(ls $(TOTESTFILES) $(CBTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
 		CXOS=$$(sed -n 's/^[ 	]*path *= *"\([^"]*\).*/\1/p' < "$(sysconfdir)/centrallix/rootnode"); \
-	    	TOBASE="$${TOFILE%.to}"; \
-		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
-		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
-		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
-		TOSIMPLE="$${TOBASE#tests/test_}"; \
 		CBLUE=$$(/usr/bin/tput setaf 4); \
 		CRED=$$(/usr/bin/tput setaf 1); \
 		CGREEN=$$(/usr/bin/tput setaf 2); \
 		CBOLD=$$(/usr/bin/tput bold); \
 		CNORM=$$(/usr/bin/tput sgr0); \
-		/bin/rm -f "$$PWD/$$TOBASE.out"; \
-		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
-		echo -n "$$CBLUE"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
-		RET="$${PIPESTATUS[0]}"; \
+	    	if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
+		    TOBASE="$${TOFILE%.to}"; \
+		    TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		    TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		    TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
+		    TOSIMPLE="$${TOBASE#tests/test_}"; \
+		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
+		    [ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
+		    echo -n "$$CBLUE"; \
+		    "$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+		    RET="$${PIPESTATUS[0]}"; \
+		else \
+		    TOBASE="$${TOFILE%.bin}"; \
+		    TONAME=$$(sed -n 's/^\/\/NAME //p' < $$TOBASE.c); \
+		    TOUNDO=$$(sed -n 's/^\/\/UNDO //p' < $$TOBASE.c); \
+		    TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
+		    TOSIMPLE="$${TOBASE#tests/test_}"; \
+		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
+		    [ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
+		    echo -n "$$CBLUE"; \
+		    ulimit -s 16384; \
+		    ./$$TOBASE.bin 2>&1 > $$TOBASE.out | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+		    RET="$${PIPESTATUS[0]}"; \
+		fi; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
 		if [ "$$RET" -eq 142 ]; then \
 		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
@@ -626,6 +650,7 @@ clean:
 	@rm -f etc/centrallix.init
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
+	@rm -f tests/*.o tests/*.bin
 	@rm -rf thirdparty/*-inst
 	@rm -f *.gcov */*.gcov
 	@rm -f *.gcda */*.gcda
@@ -650,6 +675,11 @@ depend:	.depend
 	@echo "Rebuilding dependencies..."
 	@makedepend -o.o -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >.depend 2>/dev/null
 	@makedepend -o.so -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
+
+.testdepend: tests/test_*.deps
+	@echo "Rebuilding test dependencies..."
+	@echo > $@
+	@for FILE in $<; do echo -n "$${FILE/.deps/.bin}: " >> $@; echo $$(cat $$FILE) >> $@; done
 
 .subbuild:
 	@echo '1' >.subbuild
@@ -687,6 +717,7 @@ netdrivers/net_ldap.so: netdrivers/net_ldap.c
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 	
+include .testdepend
+
 # Dependencies made by "make depend"
 include .depend
-

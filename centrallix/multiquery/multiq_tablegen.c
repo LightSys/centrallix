@@ -173,7 +173,7 @@ int
 mqtAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, subitem, where_qs, where_item;
-    pQueryElement qe,recent;
+    pQueryElement qe /*,recent*/ ;
     pExpression new_exp;
     int i;
     pMQTData md;
@@ -199,7 +199,7 @@ mqtAnalyze(pQueryStatement stmt)
 	    /** Need to link in with each of the select-items.  This operates both
 	     ** on SELECT items and on the RHS of SET items in an UPDATE clause.
 	     **/
-	    recent = NULL;
+	    /*recent = NULL;*/
 	    for(i=0;i<qs->Children.nItems;i++)
 		{
 		item = (pQueryStructure)(qs->Children.Items[i]);

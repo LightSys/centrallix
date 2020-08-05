@@ -1659,9 +1659,9 @@ function osrc_end_query()
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.Dispatch();
     this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
     this.doing_refresh = false;
+    this.Dispatch();
 
     // Handle auto-refresh timer
     if (this.refresh_schedid)
@@ -2020,7 +2020,7 @@ function osrc_change_current_record()
 
 function osrc_give_one_current_record(id, why)
     {
-    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':why));
     }
 
 function osrc_give_all_current_record(why)

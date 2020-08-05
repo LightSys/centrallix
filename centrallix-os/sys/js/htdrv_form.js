@@ -330,7 +330,7 @@ function form_load_fields(data, no_clear, modify, onefield)
     }
 
 /** Objectsource says our object is available **/
-function form_cb_object_available(data)
+function form_cb_object_available(data, osrc, why)
     {
     var go_view = false;
     if (this.mode == 'Query')
@@ -391,7 +391,7 @@ function form_cb_object_available(data)
 
 	    this.LoadFields(this.data);
 
-	    this.SendEvent('DataLoaded');
+	    this.SendEvent('DataLoaded', {why: why} );
 	    }
 	else
 	    {
@@ -710,6 +710,8 @@ function form_select_element(current, save_if_last, reverse)
     {
     var incr = reverse?(-1):1;
     var ctrlnum = (this.elements.length - incr)%this.elements.length;
+    if (!current && reverse)
+	ctrlnum = 0;
     var origctrl;
     var found_one = false;
 
@@ -754,6 +756,14 @@ function form_select_element(current, save_if_last, reverse)
 	    if (pg_removekbdfocus())
 		{
 		this.nextform.SelectElement(null);
+		return;
+		}
+	    }
+	if (reverse && origctrl == 0 && this.prevform && current && this.prevform.is_enabled)
+	    {
+	    if (pg_removekbdfocus())
+		{
+		this.prevform.SelectElement(null, false, true);
 		return;
 		}
 	    }
@@ -1529,6 +1539,9 @@ function form_init(form,param)
     else if (param.nfw)
 	form.nextformwithin = wgtrGetNode(form, param.nfw);
 	//form.nextform = wgtrFindInSubtree(wgtrGetNode(form, param.nfw), form, "widget/form");
+    form.prevform = null;
+    if (param.pf)
+	form.prevform = wgtrGetNode(form, param.pf);
 
     //if (!form.osrc) alert('no osrc container!');
     form.IsUnsaved = false;
