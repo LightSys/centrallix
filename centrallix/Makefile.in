@@ -527,7 +527,7 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
 tests/test_%.bin: tests/test_%.o .testdepend
-	$(CC) $< tests/t_driver.c $$(sed -n 's#^$@: ##p' < .testdepend) $(STATIC_LIBS) -o $@
+	$(CC) $< tests/t_driver.c $$(sed -n 's#^$@: ##p' < .testdepend) $(LIBS) -o $@
 
 test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
