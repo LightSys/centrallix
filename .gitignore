@@ -58,3 +58,4 @@ centrallix/test-driver
 *.gcda
 perf.data
 perf.data.old
+.idea/
