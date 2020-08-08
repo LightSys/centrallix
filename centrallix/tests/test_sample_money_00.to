@@ -1,0 +1,2 @@
+##NAME Sample Test Functionality
+query select $4 + 1.25
