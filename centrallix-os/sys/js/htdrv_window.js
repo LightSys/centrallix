@@ -306,7 +306,9 @@ function wn_setvisibility_bh(v)
 	if (this.point_at)
 	    {
 	    // Border radius of this window
-	    var br = parseInt($(this).css('border-radius'));
+	    var brtxt = $(this).css('border-radius');
+	    if (!brtxt) brtxt = $(this).css('border-bottom-left-radius'); // grrr firefox
+	    var br = parseInt(brtxt);
 	    var min_offset = br + 20;
 
 	    // Geometry of widget we're pointing at...
