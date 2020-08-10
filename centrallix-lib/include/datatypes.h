@@ -56,8 +56,11 @@ typedef struct _SV
 /** Money structure **/
 typedef struct _MN
     {
-    int                 WholePart;      /* integer part = floor($amount) */
-    unsigned short      FractionPart;   /* fract part = $amount - floor($amount) */
+    /* Commented out old structure */
+    //int                 WholePart;      /* integer part = floor($amount) */
+    //unsigned short      FractionPart;   /* fract part = $amount - floor($amount) */
+    
+    long long       MoneyValue;     /* Fixed-point representation in 1/10000 of a dollar */
     }
     MoneyType, *pMoneyType;
 
