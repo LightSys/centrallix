@@ -602,14 +602,14 @@ exp_internal_ResetAggregates(pExpression this, int reset_id, int level)
 	        {
 	        this->AggExp->Integer = 0;
 	        this->AggExp->Types.Double = 0;
-	        this->AggExp->Types.Money.WholePart = 0;
-	        this->AggExp->Types.Money.FractionPart = 0;
+	        //this->AggExp->Types.Money.WholePart = 0;
+	        //this->AggExp->Types.Money.FractionPart = 0;
 	        this->Flags |= EXPR_F_AGGLOCKED;
 		}
 	    this->Integer = 0;
 	    this->Types.Double = 0;
-	    this->Types.Money.WholePart = 0;
-	    this->Types.Money.FractionPart = 0;
+	    //this->Types.Money.WholePart = 0;
+	    //this->Types.Money.FractionPart = 0;
 	    if (!strcmp(this->Name,"count")) 
 	        {
 		this->Flags &= ~EXPR_F_NULL;
