@@ -475,14 +475,14 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (tens_multiplier > 0) tens_multiplier /= 10;
 
 	/** Special handling of zeros **/
-	if (m->WholePart == 0 && m->FractionPart == 0 && zero_type != 0)
+	/* Carl if (m->WholePart == 0 && m->FractionPart == 0 && zero_type != 0)
 	    {
 	    if (strlen(zero_strings[zero_type]) >= length)
 		return -1;
 	    else
 		strcpy(str, zero_strings[zero_type]);
 	    return 0;
-	    }
+	    }*/
 
 	xsInit(&xs);
 
@@ -490,7 +490,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (strpbrk(fmt,"+-()[]")) automatic_sign = 0;
 
 	/** Determine the 'print' version of whole/fraction parts **/
-	if (m->WholePart >= 0 || m->FractionPart == 0)
+	/*Carl if (m->WholePart >= 0 || m->FractionPart == 0)
 	    {
 	    print_whole = m->WholePart;
 	    print_fract = m->FractionPart;
@@ -501,10 +501,10 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	    print_fract = 10000 - m->FractionPart;
 	    }
 	orig_print_whole = m->WholePart;
-	if (print_whole < 0) print_whole = -print_whole;
+	if (print_whole < 0) print_whole = -print_whole;*/
 
 	/** Ok, start generating the thing. **/
-	while(*fmt) 
+	/*Carl while(*fmt) 
 	    {
             if (automatic_sign)
                 {
@@ -513,7 +513,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 		    *(str++) = '-';
                 /*else
 		    *(str++) = ' ';*/
-                }
+    /*Carl            }
 	    switch(*fmt)
                 {
                 case '$':
@@ -557,7 +557,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 		    else
 		        {
 			/** Replace comma with space if no digits and surrounded by placeholders **/
-			if (!((start_fmt != fmt && fmt[-1] == '#') || fmt[1] == '#'))
+			/*Carl if (!((start_fmt != fmt && fmt[-1] == '#') || fmt[1] == '#'))
 			    {
 			    xsConcatenate(&xs," ",1);
 			    }
@@ -610,7 +610,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                     break;
                 }
 	    fmt++;
-	    }
+	    }*/
 
 	if(strlen(xs.String) < length)
 	    {
@@ -801,11 +801,14 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 	        v = (int)(*(double*)data_ptr); break;
 
 	    case DATA_T_MONEY: 
-	        m = (pMoneyType)data_ptr;
+	    /*Carl     m = (pMoneyType)data_ptr;
                 if (m->FractionPart==0 || m->WholePart>=0)
 		    v = m->WholePart;
 		else
-		    v = m->WholePart + 1;
+		    v = m->WholePart + 1;*/
+	    
+	        //Adding a value for v so this function does not return an uninitialized variable
+	        v = 2;
 		break;
 
 	    case DATA_T_INTVEC:
@@ -840,7 +843,7 @@ objDataToDouble(int data_type, void* data_ptr)
 	    {
 	    case DATA_T_INTEGER: v = *(int*)data_ptr; break;
 	    case DATA_T_STRING: v = strtod((char*)data_ptr, NULL); break;
-	    case DATA_T_MONEY: m = (pMoneyType)data_ptr; v = m->WholePart + (m->FractionPart/10000.0); break;
+	    case DATA_T_MONEY: m = (pMoneyType)data_ptr; v = 2;/*Carl m->WholePart + (m->FractionPart/10000.0);*/ break;
 	    case DATA_T_DOUBLE: v = *(double*)data_ptr; break;
 	    default: v = 0.0; break;
 	    }
@@ -1409,7 +1412,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     char* tptr;
 
     	/** Select the correct type. **/
-	switch(data_type)
+	/*Carl switch(data_type)
 	    {
 	    case DATA_T_STRING:
 		cxssGetVariable("mfmt", &fmt, obj_default_money_fmt);
@@ -1420,7 +1423,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		if (strlen(ptr) < sizeof(tmpbuf))
 		    {
 		    /** strip commas (or periods, if in intl format) **/
-		    tptr = tmpbuf;
+		    /*Carl tptr = tmpbuf;
 		    while(*ptr)
 			{
 			if (*ptr != (intl_format?'.':','))
@@ -1495,7 +1498,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 	        m->WholePart = ((pMoneyType)data_ptr)->WholePart;
 		m->FractionPart = ((pMoneyType)data_ptr)->FractionPart;
 		break;
-	    }
+	    }*/
 
     return 0;
     }
@@ -1573,10 +1576,13 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		        break;
 
 		    case DATA_T_MONEY:
-		        m = (pMoneyType)data_ptr_2;
+		    /*Carl    m = (pMoneyType)data_ptr_2;
 			if (m->WholePart > intval) cmp_value = -1;
 			else if (m->WholePart < intval) cmp_value = 1;
-			else cmp_value = m->FractionPart?-1:0;
+			else cmp_value = m->FractionPart?-1:0;*/
+		    
+		    //Adding an arbitrary value for cmp_value so no reference uninitialized var
+		    cmp_value = 2;
 			break;
 
 		    case DATA_T_INTVEC:
@@ -1615,11 +1621,14 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 		
 		    case DATA_T_MONEY:
-		        objDataToMoney(DATA_T_STRING, data_ptr_1, &m_v);
+		    /*Carl    objDataToMoney(DATA_T_STRING, data_ptr_1, &m_v);
 			m = (pMoneyType)data_ptr_2;
 			if (m_v.WholePart > m->WholePart) cmp_value = 1;
 			else if (m_v.WholePart < m->WholePart) cmp_value = -1;
-			else cmp_value = m_v.FractionPart - m->FractionPart;
+			else cmp_value = m_v.FractionPart - m->FractionPart;*/
+		    
+		    //Arbitrary value for cmp_value
+		    cmp_value = 2;
 			break;
 
 		    case DATA_T_DOUBLE:
@@ -1672,11 +1681,14 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 
 		    case DATA_T_MONEY:
-			m = (pMoneyType)data_ptr_2;
+			/*Carl m = (pMoneyType)data_ptr_2;
 		        dblval = m->WholePart + (m->FractionPart/10000.0);
 			if (dblval == *(double*)data_ptr_1) cmp_value = 0;
 			else if (dblval > *(double*)data_ptr_1) cmp_value = -1;
-			else cmp_value = 1;
+			else cmp_value = 1;*/
+			
+			//Arbitrary value
+			cmp_value = 2;
 			break;
 
 		    case DATA_T_STRINGVEC:
@@ -1762,7 +1774,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 
 		    case DATA_T_MONEY:
-			m = (pMoneyType)data_ptr_2;
+			/*Carl m = (pMoneyType)data_ptr_2;
 			if (iv->nIntegers != 2)
 			    {
 			    err = 1;
@@ -1772,7 +1784,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		            if (m->WholePart > iv->Integers[0]) cmp_value = -1;
 			    else if (m->WholePart < iv->Integers[0]) cmp_value = 1;
 			    else cmp_value = iv->Integers[1] - m->FractionPart;
-			    }
+			    }*/
+			//Arbitrary cmp value
+			cmp_value = 2;
 			break;
 
 		    default:
@@ -1821,9 +1835,12 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		switch(data_type_2)
 		    {
 		    case DATA_T_MONEY: 
-			if (m->WholePart > ((pMoneyType)data_ptr_2)->WholePart) cmp_value = 1;
+			/*Carl if (m->WholePart > ((pMoneyType)data_ptr_2)->WholePart) cmp_value = 1;
 			else if (m->WholePart < ((pMoneyType)data_ptr_2)->WholePart) cmp_value = -1;
-			else cmp_value = m->FractionPart - ((pMoneyType)data_ptr_2)->FractionPart;
+			else cmp_value = m->FractionPart - ((pMoneyType)data_ptr_2)->FractionPart;*/
+			
+			//Arbitrary cmp value
+			cmp_value = 2;
 			break;
 
 		    default:
@@ -1898,7 +1915,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 	else if (data_type == DATA_T_MONEY)
 	    {
-	    m = (pMoneyType)data_ptr;
+	    /*Carl m = (pMoneyType)data_ptr;
 	    if (m->WholePart < 0)
 	        {
 		if (m->FractionPart == 0)
@@ -1917,7 +1934,7 @@ objDataToWords(int data_type, void* data_ptr)
 	        {
 		integer_part = m->WholePart;
 		fraction_part = m->FractionPart;
-		}
+		}*/
 	    }
 	else
 	    {
@@ -1989,7 +2006,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 
 	/** Now take care of cents if a money type **/
-	if (data_type == DATA_T_MONEY)
+	/*Carl if (data_type == DATA_T_MONEY)
 	    {
 	    if (fraction_part == 0)
 	        {
@@ -2000,7 +2017,7 @@ objDataToWords(int data_type, void* data_ptr)
 	        sprintf(nbuf, "And %2.2ld/100 ", fraction_part/100);
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
-	    }
+	    }*/
 
     return tmpbuf.String;
     }
@@ -2185,10 +2202,10 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 
 	    case DATA_T_MONEY:
 		/** XOR 0x80000000 to convert to Offset Zero form. **/
-		((unsigned int*)tmp_buf)[0] = htonl(exp->Types.Money.WholePart ^ 0x80000000);
+		/*Carl ((unsigned int*)tmp_buf)[0] = htonl(exp->Types.Money.WholePart ^ 0x80000000);
 		((unsigned short*)tmp_buf)[2] = htons(exp->Types.Money.FractionPart);
 		*item = (char*)(tmp_buf);
-		*itemlen = 6;
+		*itemlen = 6;*/
 		break;
 
 	    case DATA_T_DOUBLE:

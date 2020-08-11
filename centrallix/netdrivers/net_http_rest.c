@@ -114,10 +114,10 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
 		break;
 
 	    case DATA_T_MONEY:
-		nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%INT, \"fractionpart\":%INT }",
+		/*Carl nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%INT, \"fractionpart\":%INT }",
 			od.Money->WholePart,
 			od.Money->FractionPart
-			);
+			);*/
 		break;
 
 	    default:
