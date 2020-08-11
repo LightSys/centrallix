@@ -152,8 +152,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			if (t == MLX_TOK_INTEGER)
 			    {
 			    i = mlxIntVal(lxs);
-			    etmp->Types.Money.WholePart = i;
-			    etmp->Types.Money.FractionPart = 0;
+			    //etmp->Types.Money.WholePart = i;
+			    //etmp->Types.Money.FractionPart = 0;
 			    }
 			else
 			    {

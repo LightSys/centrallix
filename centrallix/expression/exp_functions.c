@@ -266,7 +266,7 @@ int exp_fn_abs(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	        break;
 
 	    case DATA_T_MONEY:
-	        if (i0->Types.Money.WholePart >= 0)
+	        /*Carl if (i0->Types.Money.WholePart >= 0)
 		    {
 		    tree->Types.Money.WholePart = i0->Types.Money.WholePart;
 		    tree->Types.Money.FractionPart = i0->Types.Money.FractionPart;
@@ -283,7 +283,7 @@ int exp_fn_abs(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 			tree->Types.Money.WholePart = -i0->Types.Money.WholePart;
 			tree->Types.Money.FractionPart = 0;
 			}
-		    }
+		    }*/
 	        break;
 
 	    default:
@@ -1663,7 +1663,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	    break;
 
 	case DATA_T_MONEY:
-	    mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+	    /*Carl mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -1682,7 +1682,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 		mt += 10000;
 		tree->Types.Money.WholePart -= 1;
 		}
-	    tree->Types.Money.FractionPart = mt;
+	    tree->Types.Money.FractionPart = mt;*/
 	    break;
 	}
     return 0;
@@ -1936,7 +1936,7 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	    break;
 
 	case DATA_T_MONEY:
-	    mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+	    /*Carl mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -1951,7 +1951,7 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 		mt += 10000;
 		tree->Types.Money.WholePart -= 1;
 		}
-	    tree->Types.Money.FractionPart = mt;
+	    tree->Types.Money.FractionPart = mt;*/
 	    break;
 	}
     return 0;
@@ -2947,8 +2947,8 @@ int exp_fn_avg(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    sumexp->String[0] = '\0';
 	    sumexp->Integer = 0;
 	    sumexp->Types.Double = 0;
-	    sumexp->Types.Money.FractionPart = 0;
-	    sumexp->Types.Money.WholePart = 0;
+	    //sumexp->Types.Money.FractionPart = 0;
+	    //sumexp->Types.Money.WholePart = 0;
 
 	    cntexp->Integer = 0;
 	    }
@@ -3035,8 +3035,8 @@ int exp_fn_sum(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    tree->AggExp->String[0] = '\0';
 	    tree->AggExp->Integer = 0;
 	    tree->AggExp->Types.Double = 0;
-	    tree->AggExp->Types.Money.FractionPart = 0;
-	    tree->AggExp->Types.Money.WholePart = 0;
+	    //tree->AggExp->Types.Money.FractionPart = 0;
+	    //tree->AggExp->Types.Money.WholePart = 0;
 	    }
 	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[0]), 1);
 	expCopyValue(i0, (pExpression)(tree->AggExp->Children.Items[1]), 0);
@@ -3098,8 +3098,8 @@ int exp_fn_max(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    tree->String[0] = '\0';
 	    tree->Integer = 0;
 	    tree->Types.Double = 0;
-	    tree->Types.Money.FractionPart = 0;
-	    tree->Types.Money.WholePart = 0;
+	    //tree->Types.Money.FractionPart = 0;
+	    //tree->Types.Money.WholePart = 0;
 	    expCopyValue(i0,tree,0);
 	    }
 	subexp = ((pExpression)(tree->AggExp->Children.Items[2]));
@@ -3160,8 +3160,8 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    tree->Alloc = 0;
 	    tree->Integer = 0;
 	    tree->Types.Double = 0;
-	    tree->Types.Money.FractionPart = 0;
-	    tree->Types.Money.WholePart = 0;
+	    //tree->Types.Money.FractionPart = 0;
+	    //tree->Types.Money.WholePart = 0;
 	    expCopyValue(i0,tree,0);
 	    }
 	subexp = ((pExpression)(tree->AggExp->Children.Items[2]));
