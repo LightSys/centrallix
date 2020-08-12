@@ -475,14 +475,14 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (tens_multiplier > 0) tens_multiplier /= 10;
 
 	/** Special handling of zeros **/
-	/* Carl if (m->WholePart == 0 && m->FractionPart == 0 && zero_type != 0)
+	if (m->MoneyValue == 0 && zero_type != 0)
 	    {
 	    if (strlen(zero_strings[zero_type]) >= length)
 		return -1;
 	    else
 		strcpy(str, zero_strings[zero_type]);
 	    return 0;
-	    }*/
+	    }
 
 	xsInit(&xs);
 
@@ -490,21 +490,21 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (strpbrk(fmt,"+-()[]")) automatic_sign = 0;
 
 	/** Determine the 'print' version of whole/fraction parts **/
-	/*Carl if (m->WholePart >= 0 || m->FractionPart == 0)
+	if (m->MoneyValue/10000 >= 0 || m->MoneyValue%10000 == 0)
 	    {
-	    print_whole = m->WholePart;
-	    print_fract = m->FractionPart;
+	    print_whole = m->MoneyValue/10000;
+	    print_fract = m->MoneyValue%10000;
 	    }
 	else
 	    {
-	    print_whole = m->WholePart + 1;
-	    print_fract = 10000 - m->FractionPart;
+	    print_whole = m->MoneyValue/10000 + 1;
+	    print_fract = 10000 - m->MoneyValue%10000;
 	    }
-	orig_print_whole = m->WholePart;
-	if (print_whole < 0) print_whole = -print_whole;*/
+	orig_print_whole = m->MoneyValue/10000;
+	if (print_whole < 0) print_whole = -print_whole;
 
 	/** Ok, start generating the thing. **/
-	/*Carl while(*fmt) 
+	while(*fmt) 
 	    {
             if (automatic_sign)
                 {
@@ -513,29 +513,29 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 		    *(str++) = '-';
                 /*else
 		    *(str++) = ' ';*/
-    /*Carl            }
+                }
 	    switch(*fmt)
                 {
                 case '$':
                     *(str++) = '$';
                     break;
    
-    		case ' ':
-		case '*':
+    		    case ' ':
+		        case '*':
                 case '0':
                 case '^':
                 case '#':
 		    if (in_decimal_part)
 		        {
-			d = (print_fract/tens_multiplier)%10;
-			tens_multiplier /= 10;
-			}
+			    d = (print_fract/tens_multiplier)%10;
+			    tens_multiplier /= 10;
+			    }
 		    else
 		        {
-			d = print_whole/tens_multiplier;
-			print_whole -= d*tens_multiplier;
-			tens_multiplier /= 10;
-			}
+			    d = print_whole/tens_multiplier;
+			    print_whole -= d*tens_multiplier;
+			    tens_multiplier /= 10;
+			    }
 		    if (d != 0 || *fmt == '0' || *fmt == '^') suppressing_zeros = 0;
 		    if (suppressing_zeros)
 		        {
@@ -557,7 +557,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 		    else
 		        {
 			/** Replace comma with space if no digits and surrounded by placeholders **/
-			/*Carl if (!((start_fmt != fmt && fmt[-1] == '#') || fmt[1] == '#'))
+			if (!((start_fmt != fmt && fmt[-1] == '#') || fmt[1] == '#'))
 			    {
 			    xsConcatenate(&xs," ",1);
 			    }
@@ -610,7 +610,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                     break;
                 }
 	    fmt++;
-	    }*/
+	    }
 
 	if(strlen(xs.String) < length)
 	    {
