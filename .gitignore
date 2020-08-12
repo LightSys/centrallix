@@ -31,6 +31,7 @@ centrallix/man/test_obj.1.gz
 centrallix/osdrivers/*.so
 centrallix/netdrivers/*.so
 centrallix/test_obj
+centrallix/temp_testrunner
 centrallix/test_prt
 centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
