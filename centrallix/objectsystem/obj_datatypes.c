@@ -1573,13 +1573,10 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		        break;
 
 		    case DATA_T_MONEY:
-		    /*Carl    m = (pMoneyType)data_ptr_2;
-			if (m->WholePart > intval) cmp_value = -1;
-			else if (m->WholePart < intval) cmp_value = 1;
-			else cmp_value = m->FractionPart?-1:0;*/
-		    
-		    //Adding an arbitrary value for cmp_value so no reference uninitialized var
-		    cmp_value = 2;
+		        m = (pMoneyType)data_ptr_2;
+			if (m->MoneyValue/10000 > intval) cmp_value = -1;
+			else if (m->MoneyValue/10000 < intval) cmp_value = 1;
+			else cmp_value = m->MoneyValue%10000?-1:0;
 			break;
 
 		    case DATA_T_INTVEC:
@@ -1618,14 +1615,11 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 		
 		    case DATA_T_MONEY:
-		    /*Carl    objDataToMoney(DATA_T_STRING, data_ptr_1, &m_v);
+		        objDataToMoney(DATA_T_STRING, data_ptr_1, &m_v);
 			m = (pMoneyType)data_ptr_2;
-			if (m_v.WholePart > m->WholePart) cmp_value = 1;
-			else if (m_v.WholePart < m->WholePart) cmp_value = -1;
-			else cmp_value = m_v.FractionPart - m->FractionPart;*/
-		    
-		    //Arbitrary value for cmp_value
-		    cmp_value = 2;
+			if (m_v.MoneyValue/10000 > m->MoneyValue/10000) cmp_value = 1;
+			else if (m_v.MoneyValue/10000 < m->MoneyValue/10000) cmp_value = -1;
+			else cmp_value = m_v.MoneyValue%10000 - m->MoneyValue%10000;
 			break;
 
 		    case DATA_T_DOUBLE:
@@ -1678,14 +1672,11 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 
 		    case DATA_T_MONEY:
-			/*Carl m = (pMoneyType)data_ptr_2;
-		        dblval = m->WholePart + (m->FractionPart/10000.0);
+			m = (pMoneyType)data_ptr_2;
+		        dblval = m->MoneyValue/10000 + ((m->MoneyValue%10000)/10000.0);
 			if (dblval == *(double*)data_ptr_1) cmp_value = 0;
 			else if (dblval > *(double*)data_ptr_1) cmp_value = -1;
-			else cmp_value = 1;*/
-			
-			//Arbitrary value
-			cmp_value = 2;
+			else cmp_value = 1;
 			break;
 
 		    case DATA_T_STRINGVEC:
@@ -1771,19 +1762,17 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 
 		    case DATA_T_MONEY:
-			/*Carl m = (pMoneyType)data_ptr_2;
+			m = (pMoneyType)data_ptr_2;
 			if (iv->nIntegers != 2)
 			    {
 			    err = 1;
 			    }
 			else
 			    {
-		            if (m->WholePart > iv->Integers[0]) cmp_value = -1;
-			    else if (m->WholePart < iv->Integers[0]) cmp_value = 1;
-			    else cmp_value = iv->Integers[1] - m->FractionPart;
-			    }*/
-			//Arbitrary cmp value
-			cmp_value = 2;
+		            if (m->MoneyValue/10000 > iv->Integers[0]) cmp_value = -1;
+			    else if (m->MoneyValue/10000 < iv->Integers[0]) cmp_value = 1;
+			    else cmp_value = iv->Integers[1] - m->MoneyValue%10000;
+			    }
 			break;
 
 		    default:
@@ -1832,12 +1821,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		switch(data_type_2)
 		    {
 		    case DATA_T_MONEY: 
-			/*Carl if (m->WholePart > ((pMoneyType)data_ptr_2)->WholePart) cmp_value = 1;
-			else if (m->WholePart < ((pMoneyType)data_ptr_2)->WholePart) cmp_value = -1;
-			else cmp_value = m->FractionPart - ((pMoneyType)data_ptr_2)->FractionPart;*/
-			
-			//Arbitrary cmp value
-			cmp_value = 2;
+			if (m->MoneyValue/10000 > ((pMoneyType)data_ptr_2)->MoneyValue/10000) cmp_value = 1;
+			else if (m->MoneyValue/10000 < ((pMoneyType)data_ptr_2)->MoneyValue/10000) cmp_value = -1;
+			else cmp_value = m->MoneyValue%10000 - ((pMoneyType)data_ptr_2)->MoneyValue%10000;
 			break;
 
 		    default:
