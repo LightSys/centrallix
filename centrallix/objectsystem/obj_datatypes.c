@@ -1898,26 +1898,26 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 	else if (data_type == DATA_T_MONEY)
 	    {
-	    /*Carl m = (pMoneyType)data_ptr;
-	    if (m->WholePart < 0)
+	    m = (pMoneyType)data_ptr;
+	    if (m->MoneyValue/10000 < 0)
 	        {
-		if (m->FractionPart == 0)
+		if (m->MoneyValue%10000 == 0)
 		    {
-		    integer_part = -m->WholePart;
+		    integer_part = -m->MoneyValue/10000;
 		    fraction_part = 0;
 		    }
 		else
 		    {
-		    integer_part = (-m->WholePart) - 1;
-		    fraction_part = 10000 - m->FractionPart;
+		    integer_part = (-m->MoneyValue/10000) - 1;
+		    fraction_part = 10000 - m->MoneyValue%10000;
 		    }
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
 	        {
-		integer_part = m->WholePart;
-		fraction_part = m->FractionPart;
-		}*/
+		integer_part = m->MoneyValue/10000;
+		fraction_part = m->MoneyValue%10000;
+		}
 	    }
 	else
 	    {
@@ -1989,7 +1989,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 
 	/** Now take care of cents if a money type **/
-	/*Carl if (data_type == DATA_T_MONEY)
+	if (data_type == DATA_T_MONEY)
 	    {
 	    if (fraction_part == 0)
 	        {
@@ -2000,7 +2000,7 @@ objDataToWords(int data_type, void* data_ptr)
 	        sprintf(nbuf, "And %2.2ld/100 ", fraction_part/100);
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
-	    }*/
+	    }
 
     return tmpbuf.String;
     }
