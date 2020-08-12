@@ -802,10 +802,10 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 
 	    case DATA_T_MONEY: 
 	        m = (pMoneyType)data_ptr;
-                if (m->FractionPart==0 || m->WholePart>=0)
-		    v = m->WholePart;
+                if (m->MoneyValue%10000==0 || m->MoneyValue/10000>=0)
+		    v = m->MoneyValue/10000;
 		else
-		    v = m->WholePart + 1;
+		    v = m->MoneyValue/10000 + 1;
 		break;
 
 	    case DATA_T_INTVEC:
