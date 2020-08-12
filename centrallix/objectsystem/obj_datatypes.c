@@ -801,14 +801,11 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 	        v = (int)(*(double*)data_ptr); break;
 
 	    case DATA_T_MONEY: 
-	    /*Carl     m = (pMoneyType)data_ptr;
+	        m = (pMoneyType)data_ptr;
                 if (m->FractionPart==0 || m->WholePart>=0)
 		    v = m->WholePart;
 		else
-		    v = m->WholePart + 1;*/
-	    
-	        //Adding a value for v so this function does not return an uninitialized variable
-	        v = 2;
+		    v = m->WholePart + 1;
 		break;
 
 	    case DATA_T_INTVEC:
@@ -843,7 +840,7 @@ objDataToDouble(int data_type, void* data_ptr)
 	    {
 	    case DATA_T_INTEGER: v = *(int*)data_ptr; break;
 	    case DATA_T_STRING: v = strtod((char*)data_ptr, NULL); break;
-	    case DATA_T_MONEY: m = (pMoneyType)data_ptr; v = 2;/*Carl m->WholePart + (m->FractionPart/10000.0);*/ break;
+	    case DATA_T_MONEY: m = (pMoneyType)data_ptr; v = m->MoneyValue/10000 + ((m->MoneyValue%10000)/10000.0); break;
 	    case DATA_T_DOUBLE: v = *(double*)data_ptr; break;
 	    default: v = 0.0; break;
 	    }
