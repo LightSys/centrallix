@@ -672,11 +672,6 @@ depend:	.depend
 	@makedepend -o.o -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >.depend 2>/dev/null
 	@makedepend -o.so -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
 
-.testdepend: tests/test_*.deps
-	@echo "Rebuilding test dependencies..."
-	@echo > $@
-	@for FILE in $<; do echo -n "$${FILE/.deps/.bin}: " >> $@; echo $$(cat $$FILE) >> $@; done
-
 .subbuild:
 	@echo '1' >.subbuild
 
@@ -712,8 +707,6 @@ netdrivers/net_ldap.so: netdrivers/net_ldap.c
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-	
-include .testdepend
 
 # Dependencies made by "make depend"
 include .depend
