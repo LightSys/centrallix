@@ -36,19 +36,19 @@ char * test_name = "?";
 void
 segv_handler(int v)
     {
-    printf("%-62.62s  " RED "CRASH\n" RESET, test_name);
+    printf(RESET "%-62.62s  " RED "CRASH\n" RESET, test_name);
     exit(0);
     }
 void
 abort_handler(int v)
     {
-    printf("%-62.62s  " RED "ABORT\n" RESET, test_name);
+    printf(RESET "%-62.62s  " RED "ABORT\n" RESET, test_name);
     exit(0);
     }
 void
 alarm_handler(int v)
     {
-    printf("%-62.62s  " RED "LOCKUP\n" RESET, test_name);
+    printf(RESET "%-62.62s  " RED "LOCKUP\n" RESET, test_name);
     exit(0);
     }
 
@@ -69,9 +69,9 @@ start(void* v)
 	times(&t);
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	if (rval < 0)
-        printf("%-62.62s  " RED "FAIL\n" RESET, test_name);
+        printf(RESET "%-62.62s  " RED "FAIL\n" RESET, test_name);
 	else
-        printf("%-62.62s  " GREEN "Pass\n" RESET, test_name);
+        printf(RESET "%-62.62s  " GREEN "Pass\n" RESET, test_name);
 
     return;
     }
