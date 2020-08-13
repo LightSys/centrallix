@@ -491,12 +491,15 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 
 	/** Determine the 'print' version of whole/fraction parts **/
 	orig_print_whole = m->MoneyValue/10000;
-	print_whole = m->MoneyValue/10000;
-	print_fract = m->MoneyValue%10000;
-	if (print_whole < 0)
+	if (m->MoneyValue < 0)
         {
-            print_whole = -print_whole;
-            print_fract = -print_fract;
+            print_whole = -m->MoneyValue/10000;
+            print_fract = -m->MoneyValue%10000;
+        }
+	else
+        {
+            print_whole = m->MoneyValue/10000;
+            print_fract = m->MoneyValue%10000;
         }
 	/*if (m->MoneyValue/10000 >= 0 || m->MoneyValue%10000 == 0)
 	    {
@@ -810,10 +813,12 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 
 	    case DATA_T_MONEY: 
 	        m = (pMoneyType)data_ptr;
-                if (m->MoneyValue%10000==0 || m->MoneyValue/10000>=0)
+	        v = m->MoneyValue/10000;
+	    //This handled the unsigned representation of FractionPart    
+        /*        if (m->MoneyValue%10000==0 || m->MoneyValue/10000>=0)
 		    v = m->MoneyValue/10000;
 		else
-		    v = m->MoneyValue/10000 + 1;
+		    v = m->MoneyValue/10000 + 1;*/
 		break;
 
 	    case DATA_T_INTVEC:
@@ -1913,9 +1918,13 @@ objDataToWords(int data_type, void* data_ptr)
 	else if (data_type == DATA_T_MONEY)
 	    {
 	    m = (pMoneyType)data_ptr;
-	    if (m->MoneyValue/10000 < 0)
+	    if (m->MoneyValue < 0)
 	        {
-		if (m->MoneyValue%10000 == 0)
+	        /** Keep the opposite (positive) value for printing **/
+            integer_part = -m->MoneyValue/10000;
+            fraction_part = -m->MoneyValue%10000;
+	        
+		/*if (m->MoneyValue%10000 == 0)
 		    {
 		    integer_part = -m->MoneyValue/10000;
 		    fraction_part = 0;
@@ -1924,7 +1933,7 @@ objDataToWords(int data_type, void* data_ptr)
 		    {
 		    integer_part = (-m->MoneyValue/10000) - 1;
 		    fraction_part = 10000 - m->MoneyValue%10000;
-		    }
+		    }*/
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
