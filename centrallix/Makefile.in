@@ -594,9 +594,6 @@ jsengine: $(JSVM)
 test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
-temp_testrunner: temp_testrunner.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) centrallix.o temp_testrunner.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o temp_testrunner $(LIBS)
-
 test_prt: test_prt.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) centrallix.o test_prt.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_prt $(LIBS)
 
