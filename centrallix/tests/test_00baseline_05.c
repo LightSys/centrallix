@@ -1,7 +1,8 @@
 //NAME Native C ** SHOULD FAIL **
 
 long long
-test(void)
+test(char** name)
     {
+    *name = "Native C ** SHOULD FAIL **";
     return -1;
     }
