@@ -490,18 +490,26 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (strpbrk(fmt,"+-()[]")) automatic_sign = 0;
 
 	/** Determine the 'print' version of whole/fraction parts **/
-	if (m->MoneyValue/10000 >= 0 || m->MoneyValue%10000 == 0)
+	orig_print_whole = m->MoneyValue/10000;
+	print_whole = m->MoneyValue/10000;
+	print_fract = m->MoneyValue%10000;
+	if (print_whole < 0)
+        {
+            print_whole = -print_whole;
+            print_fract = -print_fract;
+        }
+	/*if (m->MoneyValue/10000 >= 0 || m->MoneyValue%10000 == 0)
 	    {
 	    print_whole = m->MoneyValue/10000;
 	    print_fract = m->MoneyValue%10000;
 	    }
 	else
-	    {
+	    { //This handled the unsigned representation of FractionPart
 	    print_whole = m->MoneyValue/10000 + 1;
 	    print_fract = 10000 - m->MoneyValue%10000;
 	    }
 	orig_print_whole = m->MoneyValue/10000;
-	if (print_whole < 0) print_whole = -print_whole;
+	if (print_whole < 0) print_whole = -print_whole;*/
 
 	/** Ok, start generating the thing. **/
 	while(*fmt) 
@@ -1401,7 +1409,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     char* endptr2;
     double dbl;
     int is_neg = 0;
-    unsigned long intval;
+    long long intval;
     int scale;
     char* fmt;
     int intl_format;
@@ -1409,7 +1417,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     char* tptr;
 
     	/** Select the correct type. **/
-	/*Carl switch(data_type)
+	switch(data_type)
 	    {
 	    case DATA_T_STRING:
 		cxssGetVariable("mfmt", &fmt, obj_default_money_fmt);
@@ -1420,7 +1428,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		if (strlen(ptr) < sizeof(tmpbuf))
 		    {
 		    /** strip commas (or periods, if in intl format) **/
-		    /*Carl tptr = tmpbuf;
+		    tptr = tmpbuf;
 		    while(*ptr)
 			{
 			if (*ptr != (intl_format?'.':','))
@@ -1442,26 +1450,33 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    ptr++;
 		    }
 		intval = 0;
-		m->FractionPart = 0;
-		m->WholePart = 0;
-		intval = strtoul(ptr, &endptr, 10);
-		if (intval > 0x7FFFFFFFUL)
+		m->MoneyValue = 0;
+		intval = strtoll(ptr, &endptr, 10);
+		if (intval > 0x7FFFFFFFFFFFFFFFLL)
 		    return -1;
 		if ((endptr - ptr) != strspn(ptr, "0123456789"))
 		    return -1;
 		if (is_neg)
-		    m->WholePart = -intval;
+		    m->MoneyValue = -intval*10000;
 		else
-		    m->WholePart = intval;
+		    m->MoneyValue = intval*10000;
 		if (*endptr == (intl_format?',':'.'))
 		    {
-		    intval = strtoul(endptr+1, &endptr2, 10);
+		    intval = strtoll(endptr+1, &endptr2, 10);
 		    scale = endptr2 - (endptr+1);
 		    if (scale != strspn(endptr+1, "0123456789"))
 			return -1;
 		    while(scale < 4) { scale++; intval *= 10; }
 		    while(scale > 4) { scale--; intval /= 10; }
-		    m->FractionPart = intval;
+		    if (is_neg)
+                {
+		            m->MoneyValue -= intval;
+                }
+		    else
+                {
+		            m->MoneyValue += intval;
+                }
+		    //m->FractionPart = intval;
 		    endptr = endptr2;
 		    }
 		if (endptr == ptr)
@@ -1470,32 +1485,31 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    }
 		if (*endptr == '-')
 		    {
-		    m->WholePart = -m->WholePart;
+		    m->MoneyValue = -m->MoneyValue;
 		    is_neg = !is_neg;
 		    }
-		if (is_neg && m->FractionPart != 0)
-		    {
+		/*if (is_neg && m->FractionPart != 0)
+		    { //This handled the unsigned representation of FractionPart
 		    m->WholePart--;
 		    m->FractionPart = 10000 - m->FractionPart;
-		    }
+		    }*/
 		break;
 	    
 	    case DATA_T_DOUBLE:
 	        dbl = *(double*)data_ptr + 0.000001;
-	        m->WholePart = floor(dbl);
-		m->FractionPart = (dbl - m->WholePart)*10000;
+	        long long WholePart = floor(dbl);
+		    int FractionPart = (dbl - WholePart)*10000;
+		    m->MoneyValue = (WholePart*10000) + FractionPart;
 		break;
 	
 	    case DATA_T_INTEGER:
-	        m->WholePart = *(int*)data_ptr;
-		m->FractionPart = 0;
+	        m->MoneyValue = *(long long*)data_ptr;
 		break;
 
 	    case DATA_T_MONEY:
-	        m->WholePart = ((pMoneyType)data_ptr)->WholePart;
-		m->FractionPart = ((pMoneyType)data_ptr)->FractionPart;
+	        m->MoneyValue = ((pMoneyType)data_ptr)->MoneyValue;
 		break;
-	    }*/
+	    }
 
     return 0;
     }
