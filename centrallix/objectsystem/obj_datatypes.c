@@ -5,6 +5,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <math.h>
+#include <byteswap.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -501,18 +502,6 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
             print_whole = m->Value/10000;
             print_fract = m->Value%10000;
         }
-	/*if (m->Value/10000 >= 0 || m->Value%10000 == 0)
-	    {
-	    print_whole = m->Value/10000;
-	    print_fract = m->Value%10000;
-	    }
-	else
-	    { //This handled the unsigned representation of FractionPart
-	    print_whole = m->Value/10000 + 1;
-	    print_fract = 10000 - m->Value%10000;
-	    }
-	orig_print_whole = m->Value/10000;
-	if (print_whole < 0) print_whole = -print_whole;*/
 
 	/** Ok, start generating the thing. **/
 	while(*fmt) 
@@ -817,11 +806,6 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
                 mssError(1,"OBJ","Warning: %d overflow; cannot fit value of that size in int ", data_type);
 	        else
 	            v = m->Value/10000;
-	    //This handled the unsigned representation of FractionPart    
-        /*        if (m->Value%10000==0 || m->Value/10000>=0)
-		    v = m->Value/10000;
-		else
-		    v = m->Value/10000 + 1;*/
 		break;
 
 	    case DATA_T_INTVEC:
@@ -1920,17 +1904,6 @@ objDataToWords(int data_type, void* data_ptr)
 	        /** Keep the opposite (positive) value for printing **/
             integer_part = -m->Value/10000;
             fraction_part = -m->Value%10000;
-	        
-		/*if (m->Value%10000 == 0)
-		    {
-		    integer_part = -m->Value/10000;
-		    fraction_part = 0;
-		    }
-		else
-		    {
-		    integer_part = (-m->Value/10000) - 1;
-		    fraction_part = 10000 - m->Value%10000;
-		    }*/
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
@@ -2205,13 +2178,9 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 
 	    case DATA_T_MONEY:
 		/** XOR 0x80000000 to convert to Offset Zero form. **/
-		//((long long*)tmp_buf)[0] = htonll(exp->Types.Money.Value ^ 0x8000000000000000);
+		((long long*)tmp_buf)[0] = bswap_64(exp->Types.Money.Value ^ 0x8000000000000000);
 		*item = (char*)(tmp_buf);
         *itemlen = 8;
-		/*Carl ((unsigned int*)tmp_buf)[0] = htonl(exp->Types.Money.WholePart ^ 0x80000000);
-		((unsigned short*)tmp_buf)[2] = htons(exp->Types.Money.FractionPart);
-		*item = (char*)(tmp_buf);
-		*itemlen = 6;*/
 		break;
 
 	    case DATA_T_DOUBLE:
