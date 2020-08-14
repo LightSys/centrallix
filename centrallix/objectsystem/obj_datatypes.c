@@ -475,7 +475,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (tens_multiplier > 0) tens_multiplier /= 10;
 
 	/** Special handling of zeros **/
-	if (m->MoneyValue == 0 && zero_type != 0)
+	if (m->Value == 0 && zero_type != 0)
 	    {
 	    if (strlen(zero_strings[zero_type]) >= length)
 		return -1;
@@ -490,28 +490,28 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	if (strpbrk(fmt,"+-()[]")) automatic_sign = 0;
 
 	/** Determine the 'print' version of whole/fraction parts **/
-	orig_print_whole = m->MoneyValue/10000;
-	if (m->MoneyValue < 0)
+	orig_print_whole = m->Value/10000;
+	if (m->Value < 0)
         {
-            print_whole = -m->MoneyValue/10000;
-            print_fract = -m->MoneyValue%10000;
+            print_whole = -m->Value/10000;
+            print_fract = -m->Value%10000;
         }
 	else
         {
-            print_whole = m->MoneyValue/10000;
-            print_fract = m->MoneyValue%10000;
+            print_whole = m->Value/10000;
+            print_fract = m->Value%10000;
         }
-	/*if (m->MoneyValue/10000 >= 0 || m->MoneyValue%10000 == 0)
+	/*if (m->Value/10000 >= 0 || m->Value%10000 == 0)
 	    {
-	    print_whole = m->MoneyValue/10000;
-	    print_fract = m->MoneyValue%10000;
+	    print_whole = m->Value/10000;
+	    print_fract = m->Value%10000;
 	    }
 	else
 	    { //This handled the unsigned representation of FractionPart
-	    print_whole = m->MoneyValue/10000 + 1;
-	    print_fract = 10000 - m->MoneyValue%10000;
+	    print_whole = m->Value/10000 + 1;
+	    print_fract = 10000 - m->Value%10000;
 	    }
-	orig_print_whole = m->MoneyValue/10000;
+	orig_print_whole = m->Value/10000;
 	if (print_whole < 0) print_whole = -print_whole;*/
 
 	/** Ok, start generating the thing. **/
@@ -531,22 +531,22 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                     *(str++) = '$';
                     break;
    
-    		    case ' ':
-		        case '*':
+    		case ' ':
+		case '*':
                 case '0':
                 case '^':
                 case '#':
 		    if (in_decimal_part)
 		        {
-			    d = (print_fract/tens_multiplier)%10;
-			    tens_multiplier /= 10;
-			    }
+			d = (print_fract/tens_multiplier)%10;
+			tens_multiplier /= 10;
+			}
 		    else
 		        {
-			    d = print_whole/tens_multiplier;
-			    print_whole -= d*tens_multiplier;
-			    tens_multiplier /= 10;
-			    }
+			d = print_whole/tens_multiplier;
+			print_whole -= d*tens_multiplier;
+			tens_multiplier /= 10;
+			}
 		    if (d != 0 || *fmt == '0' || *fmt == '^') suppressing_zeros = 0;
 		    if (suppressing_zeros)
 		        {
@@ -813,12 +813,15 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 
 	    case DATA_T_MONEY: 
 	        m = (pMoneyType)data_ptr;
-	        v = m->MoneyValue/10000;
+	        if (m->Value/10000 > INT_MAX)
+                mssError(1,"OBJ","Warning: %d overflow; cannot fit value of that size in int ", data_type);
+	        else
+	            v = m->Value/10000;
 	    //This handled the unsigned representation of FractionPart    
-        /*        if (m->MoneyValue%10000==0 || m->MoneyValue/10000>=0)
-		    v = m->MoneyValue/10000;
+        /*        if (m->Value%10000==0 || m->Value/10000>=0)
+		    v = m->Value/10000;
 		else
-		    v = m->MoneyValue/10000 + 1;*/
+		    v = m->Value/10000 + 1;*/
 		break;
 
 	    case DATA_T_INTVEC:
@@ -853,7 +856,7 @@ objDataToDouble(int data_type, void* data_ptr)
 	    {
 	    case DATA_T_INTEGER: v = *(int*)data_ptr; break;
 	    case DATA_T_STRING: v = strtod((char*)data_ptr, NULL); break;
-	    case DATA_T_MONEY: m = (pMoneyType)data_ptr; v = m->MoneyValue/10000 + ((m->MoneyValue%10000)/10000.0); break;
+	    case DATA_T_MONEY: m = (pMoneyType)data_ptr; v = m->Value/10000.0; break;
 	    case DATA_T_DOUBLE: v = *(double*)data_ptr; break;
 	    default: v = 0.0; break;
 	    }
@@ -1414,7 +1417,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     char* endptr2;
     double dbl;
     int is_neg = 0;
-    long long intval;
+    unsigned long intval;
     int scale;
     char* fmt;
     int intl_format;
@@ -1455,19 +1458,22 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    ptr++;
 		    }
 		intval = 0;
-		m->MoneyValue = 0;
-		intval = strtoll(ptr, &endptr, 10);
+		m->Value = 0;
+		intval = strtoul(ptr, &endptr, 10);
+		/** Checking for overflow, Max UL can be greater than Max LL **/
 		if (intval > 0x7FFFFFFFFFFFFFFFLL)
 		    return -1;
 		if ((endptr - ptr) != strspn(ptr, "0123456789"))
 		    return -1;
 		if (is_neg)
-		    m->MoneyValue = -intval*10000;
+		    m->Value = -intval*10000;
 		else
-		    m->MoneyValue = intval*10000;
+		    m->Value = intval*10000;
+		
+		/** Handling the "fraction" portion after the decimal point **/
 		if (*endptr == (intl_format?',':'.'))
 		    {
-		    intval = strtoll(endptr+1, &endptr2, 10);
+		    intval = strtoul(endptr+1, &endptr2, 10);
 		    scale = endptr2 - (endptr+1);
 		    if (scale != strspn(endptr+1, "0123456789"))
 			return -1;
@@ -1475,13 +1481,12 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    while(scale > 4) { scale--; intval /= 10; }
 		    if (is_neg)
                 {
-		            m->MoneyValue -= intval;
+		            m->Value -= intval;
                 }
 		    else
                 {
-		            m->MoneyValue += intval;
+		            m->Value += intval;
                 }
-		    //m->FractionPart = intval;
 		    endptr = endptr2;
 		    }
 		if (endptr == ptr)
@@ -1490,29 +1495,21 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    }
 		if (*endptr == '-')
 		    {
-		    m->MoneyValue = -m->MoneyValue;
+		    m->Value = -m->Value;
 		    is_neg = !is_neg;
 		    }
-		/*if (is_neg && m->FractionPart != 0)
-		    { //This handled the unsigned representation of FractionPart
-		    m->WholePart--;
-		    m->FractionPart = 10000 - m->FractionPart;
-		    }*/
 		break;
 	    
 	    case DATA_T_DOUBLE:
-	        dbl = *(double*)data_ptr + 0.000001;
-	        long long WholePart = floor(dbl);
-		    int FractionPart = (dbl - WholePart)*10000;
-		    m->MoneyValue = (WholePart*10000) + FractionPart;
+            m->Value = *(double*)data_ptr * 10000.0;
 		break;
 	
 	    case DATA_T_INTEGER:
-	        m->MoneyValue = *(long long*)data_ptr;
+	            m->Value = *(long long*)data_ptr * 10000;
 		break;
 
 	    case DATA_T_MONEY:
-	        m->MoneyValue = ((pMoneyType)data_ptr)->MoneyValue;
+	        m->Value = ((pMoneyType)data_ptr)->Value;
 		break;
 	    }
 
@@ -1593,9 +1590,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 
 		    case DATA_T_MONEY:
 		        m = (pMoneyType)data_ptr_2;
-			if (m->MoneyValue/10000 > intval) cmp_value = -1;
-			else if (m->MoneyValue/10000 < intval) cmp_value = 1;
-			else cmp_value = m->MoneyValue%10000?-1:0;
+			if (m->Value/10000 > intval) cmp_value = -1;
+			else if (m->Value/10000 < intval) cmp_value = 1;
+			else cmp_value = m->Value%10000?-1:0;
 			break;
 
 		    case DATA_T_INTVEC:
@@ -1636,9 +1633,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		    case DATA_T_MONEY:
 		        objDataToMoney(DATA_T_STRING, data_ptr_1, &m_v);
 			m = (pMoneyType)data_ptr_2;
-			if (m_v.MoneyValue/10000 > m->MoneyValue/10000) cmp_value = 1;
-			else if (m_v.MoneyValue/10000 < m->MoneyValue/10000) cmp_value = -1;
-			else cmp_value = m_v.MoneyValue%10000 - m->MoneyValue%10000;
+			if (m_v.Value > m->Value) cmp_value = 1;
+			else if (m_v.Value < m->Value) cmp_value = -1;
+			else cmp_value = 0;
 			break;
 
 		    case DATA_T_DOUBLE:
@@ -1692,7 +1689,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 
 		    case DATA_T_MONEY:
 			m = (pMoneyType)data_ptr_2;
-		        dblval = m->MoneyValue/10000 + ((m->MoneyValue%10000)/10000.0);
+		        dblval = m->Value/10000.0;
 			if (dblval == *(double*)data_ptr_1) cmp_value = 0;
 			else if (dblval > *(double*)data_ptr_1) cmp_value = -1;
 			else cmp_value = 1;
@@ -1788,9 +1785,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			    }
 			else
 			    {
-		            if (m->MoneyValue/10000 > iv->Integers[0]) cmp_value = -1;
-			    else if (m->MoneyValue/10000 < iv->Integers[0]) cmp_value = 1;
-			    else cmp_value = iv->Integers[1] - m->MoneyValue%10000;
+		            if (m->Value/10000 > iv->Integers[0]) cmp_value = -1;
+			    else if (m->Value/10000 < iv->Integers[0]) cmp_value = 1;
+			    else cmp_value = iv->Integers[1] - m->Value%10000;
 			    }
 			break;
 
@@ -1840,9 +1837,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		switch(data_type_2)
 		    {
 		    case DATA_T_MONEY: 
-			if (m->MoneyValue/10000 > ((pMoneyType)data_ptr_2)->MoneyValue/10000) cmp_value = 1;
-			else if (m->MoneyValue/10000 < ((pMoneyType)data_ptr_2)->MoneyValue/10000) cmp_value = -1;
-			else cmp_value = m->MoneyValue%10000 - ((pMoneyType)data_ptr_2)->MoneyValue%10000;
+			if (m->Value > ((pMoneyType)data_ptr_2)->Value) cmp_value = 1;
+			else if (m->Value < ((pMoneyType)data_ptr_2)->Value) cmp_value = -1;
+			else cmp_value = 0;
 			break;
 
 		    default:
@@ -1918,28 +1915,28 @@ objDataToWords(int data_type, void* data_ptr)
 	else if (data_type == DATA_T_MONEY)
 	    {
 	    m = (pMoneyType)data_ptr;
-	    if (m->MoneyValue < 0)
+	    if (m->Value < 0)
 	        {
 	        /** Keep the opposite (positive) value for printing **/
-            integer_part = -m->MoneyValue/10000;
-            fraction_part = -m->MoneyValue%10000;
+            integer_part = -m->Value/10000;
+            fraction_part = -m->Value%10000;
 	        
-		/*if (m->MoneyValue%10000 == 0)
+		/*if (m->Value%10000 == 0)
 		    {
-		    integer_part = -m->MoneyValue/10000;
+		    integer_part = -m->Value/10000;
 		    fraction_part = 0;
 		    }
 		else
 		    {
-		    integer_part = (-m->MoneyValue/10000) - 1;
-		    fraction_part = 10000 - m->MoneyValue%10000;
+		    integer_part = (-m->Value/10000) - 1;
+		    fraction_part = 10000 - m->Value%10000;
 		    }*/
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
 	        {
-		integer_part = m->MoneyValue/10000;
-		fraction_part = m->MoneyValue%10000;
+		integer_part = m->Value/10000;
+		fraction_part = m->Value%10000;
 		}
 	    }
 	else
@@ -2208,6 +2205,9 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 
 	    case DATA_T_MONEY:
 		/** XOR 0x80000000 to convert to Offset Zero form. **/
+		//((long long*)tmp_buf)[0] = htonll(exp->Types.Money.Value ^ 0x8000000000000000);
+		*item = (char*)(tmp_buf);
+        *itemlen = 8;
 		/*Carl ((unsigned int*)tmp_buf)[0] = htonl(exp->Types.Money.WholePart ^ 0x80000000);
 		((unsigned short*)tmp_buf)[2] = htons(exp->Types.Money.FractionPart);
 		*item = (char*)(tmp_buf);
