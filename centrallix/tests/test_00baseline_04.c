@@ -1,7 +1,6 @@
-//NAME Native C ** SHOULD Pass **
-
 long long
-test(void)
+test(char** name)
     {
+    *name = "00baseline_04 Native C ** SHOULD Pass **";
     return 0;
     }

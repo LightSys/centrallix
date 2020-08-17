@@ -25,23 +25,31 @@
 /************************************************************************/
 
 
-long long test(void);
+#define RED    "\033[1m\x1B[31m"
+#define GREEN  "\033[1m\x1B[32m"
+#define RESET  "\x1B[0m"
+
+long long test(char**);
+
+char * test_name = "?";
 
 void
 segv_handler(int v)
     {
-    exit(121);
+    printf(RESET "%-62.62s  " RED "CRASH\n" RESET, test_name);
+    exit(0);
     }
 void
 abort_handler(int v)
     {
-    printf("FAIL\n");
+    printf(RESET "%-62.62s  " RED "ABORT\n" RESET, test_name);
     exit(0);
     }
 void
 alarm_handler(int v)
     {
-    exit(142);
+    printf(RESET "%-62.62s  " RED "LOCKUP\n" RESET, test_name);
+    exit(0);
     }
 
 void
@@ -57,13 +65,13 @@ start(void* v)
 	alarm(4);
 	times(&t);
 	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
-	rval = test();
+	rval = test(&test_name);
 	times(&t);
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	if (rval < 0)
-	    printf("FAIL\n");
+        printf(RESET "%-62.62s  " RED "FAIL\n" RESET, test_name);
 	else
-	    printf("Pass\n");
+        printf(RESET "%-62.62s  " GREEN "Pass\n" RESET, test_name);
 
     return;
     }
