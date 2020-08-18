@@ -2177,7 +2177,7 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 		break;
 
 	    case DATA_T_MONEY:
-		/** XOR 0x80000000 to convert to Offset Zero form. **/
+		/** XOR 0x8000000000000000 to convert to Offset Zero form. **/
 		((long long*)tmp_buf)[0] = bswap_64(exp->Types.Money.Value ^ 0x8000000000000000);
 		*item = (char*)(tmp_buf);
         *itemlen = 8;
