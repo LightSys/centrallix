@@ -22,7 +22,7 @@ test(char** name)
     testValue = objDataToDouble(7,&test);
     assert(testValue == -1.0);
 
-    /** Fraction Case **/
+    /** Rational Case **/
     test.Value = -25000;
     testValue = objDataToDouble(7,&test);
     assert(testValue == -2.5);

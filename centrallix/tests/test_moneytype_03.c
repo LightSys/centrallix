@@ -12,9 +12,6 @@ test(char** name)
     char data_ptr[] = "$4.50";
     assert(objDataToMoney(2,data_ptr,&test) == 0);
     assert(test.Value == 45000);
-    //printf("%lld", test.Value);
-    
-    //Edge Cases
 
     /** Double Case **/
     double testDouble = 5.5;
@@ -31,5 +28,9 @@ test(char** name)
     assert(objDataToMoney(7,&testMoney,&test) == 0);
     assert(test.Value == 900000);
 
+    /** Overflow Case (intval > LL max) **/
+    char overflow_ptr[] = "$10000000000000000000.50";
+    assert(objDataToMoney(2,overflow_ptr,&test) == -1);
+    
     return 0;
 }
