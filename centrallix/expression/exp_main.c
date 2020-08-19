@@ -523,7 +523,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 	    case EXPR_N_INTEGER: printf("INTEGER = %d", this->Integer); break;
 	    case EXPR_N_STRING: printf("STRING = <%s>", this->String); break;
 	    case EXPR_N_DOUBLE: printf("DOUBLE = %.2f", this->Types.Double); break;
-	    case EXPR_N_MONEY: printf("MONEY");/*printf("MONEY = %d.%4.4d", this->Types.Money.WholePart, this->Types.Money.FractionPart);*/ break;
+	    case EXPR_N_MONEY: printf("MONEY = %4.4lld", this->Types.Money.Value); break;
 	    case EXPR_N_DATETIME: printf("DATETIME = %s", objDataToStringTmp(DATA_T_DATETIME,&(this->Types.Date), 0)); break;
 	    case EXPR_N_PLUS: printf("PLUS"); break;
 	    case EXPR_N_MULTIPLY: printf("MULTIPLY"); break;
@@ -863,8 +863,8 @@ expCompareExpressionValues(pExpression exp1, pExpression exp2)
 	    return 0;
 	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DOUBLE && exp1->Types.Double != exp2->Types.Double)
 	    return 0;
-	//if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && (exp1->Types.Money.WholePart != exp2->Types.Money.WholePart || exp1->Types.Money.FractionPart != exp2->Types.Money.FractionPart))
-	    //return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_MONEY && exp1->Types.Money.Value != exp2->Types.Money.Value
+	    return 0;
 	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_DATETIME && (exp1->Types.Date.Part.Second != exp2->Types.Date.Part.Second || exp1->Types.Date.Part.Minute != exp2->Types.Date.Part.Minute || exp1->Types.Date.Part.Hour != exp2->Types.Date.Part.Hour || exp1->Types.Date.Part.Day != exp2->Types.Date.Part.Day || exp1->Types.Date.Part.Month != exp2->Types.Date.Part.Month || exp1->Types.Date.Part.Year != exp2->Types.Date.Part.Year))
 	    return 0;
 
