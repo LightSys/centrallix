@@ -1650,7 +1650,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	    break;
 
 	case DATA_T_MONEY:
-	    /*Carl mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+	    mt = i0->Types.Money.Value;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -1662,14 +1662,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 		mt /= mv;
 		mt *= mv;
 		}
-	    tree->Types.Money.WholePart = mt/10000;
-	    mt = mt % 10000;
-	    if (mt < 0)
-		{
-		mt += 10000;
-		tree->Types.Money.WholePart -= 1;
-		}
-	    tree->Types.Money.FractionPart = mt;*/
+	    tree->Types.Money.Value = mt;
 	    break;
 	}
     return 0;
@@ -1923,7 +1916,7 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	    break;
 
 	case DATA_T_MONEY:
-	    /*Carl mt = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+	    mt = i0->Types.Money.Value;
 	    if (dec < 4)
 		{
 		mv = 1;
@@ -1931,14 +1924,7 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 		mt /= mv;
 		mt *= mv;
 		}
-	    tree->Types.Money.WholePart = mt/10000;
-	    mt = mt % 10000;
-	    if (mt < 0)
-		{
-		mt += 10000;
-		tree->Types.Money.WholePart -= 1;
-		}
-	    tree->Types.Money.FractionPart = mt;*/
+	    tree->Types.Money.Value = mt;
 	    break;
 	}
     return 0;
