@@ -1770,11 +1770,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			    }
 			else
 			    {
-		            if (m->Value/10000 > iv->Integers[0])
-                    {cmp_value = -1; printf("Reached -1");}
-			    else if (m->Value/10000 < iv->Integers[0]) 
-                    {cmp_value = 1; printf("Reached 1");}
-			    else {cmp_value = iv->Integers[1] - m->Value%10000; printf("Reached 0");}
+		        if (m->Value/10000 > iv->Integers[0]) cmp_value = -1;
+			    else if (m->Value/10000 < iv->Integers[0])cmp_value = 1;
+			    else cmp_value = iv->Integers[1] - m->Value%10000;
 			    }
 			break;
 
