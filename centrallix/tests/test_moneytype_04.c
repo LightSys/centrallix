@@ -76,7 +76,7 @@ test(char** name)
 
     validTestIV.Integers[0] = 7;
     validTestIV.Integers[1] = 0;
-    assert(objDataCompare(5,&testIV,7,&test) == 0);
+    assert(objDataCompare(5,&validTestIV,7,&test) == 0);
 
     /** Compare StrV with Money Case **/
     StringVec testSV = {0};
