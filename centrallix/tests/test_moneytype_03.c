@@ -13,10 +13,27 @@ test(char** name)
     assert(objDataToMoney(2,data_ptr,&test) == 0);
     assert(test.Value == 45000);
 
+    char data_ptr2[] = "-$4.50";
+    assert(objDataToMoney(2,data_ptr2,&test) == 0);
+    assert(test.Value == -45000);
+
+    /** Overflow Case (intval > LL max) **/
+    char overflow_ptr[] = "$10000000000000000000.50";
+    assert(objDataToMoney(2,overflow_ptr,&test) == -1);
+
     /** Double Case **/
     double testDouble = 5.5;
     assert(objDataToMoney(3,&testDouble,&test) == 0);
     assert(test.Value == 55000);
+
+    testDouble = -5.5;
+    assert(objDataToMoney(3,&testDouble,&test) == 0);
+    assert(test.Value == -55000);
+    
+    //Double Fraction Overflow
+    testDouble = 5.159999999999;
+    assert(objDataToMoney(3,&testDouble,&test) == 0);
+    assert(test.Value == 51599);
     
     /** Int Case **/
     int testInt = 6;
@@ -28,9 +45,7 @@ test(char** name)
     assert(objDataToMoney(7,&testMoney,&test) == 0);
     assert(test.Value == 900000);
 
-    /** Overflow Case (intval > LL max) **/
-    char overflow_ptr[] = "$10000000000000000000.50";
-    assert(objDataToMoney(2,overflow_ptr,&test) == -1);
+    
     
     return 0;
 }
