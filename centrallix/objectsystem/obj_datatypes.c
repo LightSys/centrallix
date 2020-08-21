@@ -1485,11 +1485,12 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		break;
 	    
 	    case DATA_T_DOUBLE:
-            m->Value = *(double*)data_ptr * 10000.0;
+            dbl = *(double*)data_ptr * 10000.0;
+            m->Value = (long long)dbl;
 		break;
 	
 	    case DATA_T_INTEGER:
-	            m->Value = *(long long*)data_ptr * 10000;
+	            m->Value = *(int*)data_ptr * 10000;
 		break;
 
 	    case DATA_T_MONEY:
@@ -1769,9 +1770,11 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			    }
 			else
 			    {
-		            if (m->Value/10000 > iv->Integers[0]) cmp_value = -1;
-			    else if (m->Value/10000 < iv->Integers[0]) cmp_value = 1;
-			    else cmp_value = iv->Integers[1] - m->Value%10000;
+		            if (m->Value/10000 > iv->Integers[0])
+                    {cmp_value = -1; printf("Reached -1");}
+			    else if (m->Value/10000 < iv->Integers[0]) 
+                    {cmp_value = 1; printf("Reached 1");}
+			    else {cmp_value = iv->Integers[1] - m->Value%10000; printf("Reached 0");}
 			    }
 			break;
 

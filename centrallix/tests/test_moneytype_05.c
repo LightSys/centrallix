@@ -20,6 +20,19 @@ test(char** name)
     data_ptr = "Negative Seven And 05/100 ";
     returnStr = objDataToWords(7,&test);
     assert(strcmp(data_ptr, returnStr) == 0);
+
+    /**objDataToWords Truncates fractional cent values past 100ths**/
+    /** Fractional Case **/
+    test.Value = -70525;
+    data_ptr = "Negative Seven And 05/100 ";
+    returnStr = objDataToWords(7,&test);
+    assert(strcmp(data_ptr, returnStr) == 0);
+
+    /** Fractional Case **/
+    test.Value = -70575;
+    data_ptr = "Negative Seven And 05/100 ";
+    returnStr = objDataToWords(7,&test);
+    assert(strcmp(data_ptr, returnStr) == 0);
     
     return 0;
 }

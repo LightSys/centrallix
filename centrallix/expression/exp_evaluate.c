@@ -311,6 +311,8 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    }
 			md = i0->Types.Money.Value / 10000.0;
 			md = md / i1->Types.Double;
+			if (md < 0) md -= 0.5;
+			else md += 0.5;
 			tree->Types.Money.Value = (long long)(md * 10000);
 			//Old Definition
 			/*mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
@@ -330,7 +332,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 		    case DATA_T_MONEY:
 			mv = i0->Types.Money.Value;
 			mv2 = i1->Types.Money.Value;
-			if (i1->Types.Money.Value == 0)
+			if (mv2 == 0)
 			    {
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
@@ -464,18 +466,15 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    case DATA_T_INTEGER:
 			mv *= i1->Integer;
 			break;
-			
 		    case DATA_T_DOUBLE:		    
 			md = mv * i1->Types.Double;
 			if (md < 0) md -= 0.5;
 			else md += 0.5;
 			mv = md;
 			break;
-			
 		    case DATA_T_MONEY:
 			mssError(1,"EXP","Cannot multiply a money data type by another money data type");
 			return -1;
-			
 		    default:
 			mssError(1,"EXP","Can only multiply a money data type by an integer or double");
 			return -1;
@@ -1460,7 +1459,6 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	    else if (tree->DataType == DATA_T_INTEGER && attr_type == DATA_T_MONEY)
 	        {
 		tree->Types.Money.Value = (tree->Integer * 10000);
-		tree->Types.Money.FractionPart = 0;
 		}
 	    else if (tree->DataType == DATA_T_DOUBLE && attr_type == DATA_T_MONEY)
 	        {
