@@ -2179,6 +2179,10 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 
 	    case DATA_T_MONEY:
 		/** XOR 0x8000000000000000 to convert to Offset Zero form. **/
+		/** Offset Zero form is a signed number representation where all
+		 ** values below a certain bit (usually most significant) are negative
+		 ** and all values above are positive. It allows sorting based on raw bit value.
+		 ** It essentially functions like 2's complement with the sign bit inversed.**/
 		((long long*)tmp_buf)[0] = bswap_64(exp->Types.Money.Value ^ 0x8000000000000000);
 		*item = (char*)(tmp_buf);
         *itemlen = 8;
