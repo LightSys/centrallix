@@ -17,31 +17,27 @@
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
 
-#define BPT_SLOTS	(16)
-#define CEIL_HALF_OF_LEAF_SLOTS ( ( BPT_SLOTS + 1 ) / 2 )
-#define IDX_SLOTS ( ( BPT_SLOTS ) - 1 )
-#define IDX_CHILDREN ( BPT_SLOTS )
-#define CEIL_HALF_OF_IDX_SLOTS	( ( ( IDX_SLOTS ) + 1 ) / 2 )
+#define T_SLOTS (3)     // this means max leaf vals = 6, max index keys = 4 // TODO fails if < 3
 
 /** Global Variables **/
-extern int depthG;
+//extern int depthG;
 
 /** Structures **/
-typedef struct _BPK BPTreeKey, *pBPTreeKey;
-typedef union _BPV BPTreeVal, *pBPTreeVal;
-typedef struct _BPT BPTree, *pBPTree;
+typedef struct _BPK BPNodeKey, *pBPNodeKey;
+typedef union _BPV BPNodeVal, *pBPNodeVal;
+typedef struct _BPN BPNode, *pBPNode;
 
 //IMT: Temporary until we know data structure that will be passed to bulk load
-typedef struct BPTData
+/*typedef struct BPTData
     {
     char * Key;
     int    KeyLength;
     void * Value;
-    } BPTData;
+    } BPTData;*/
 
-typedef struct BPTreeRoot BPTreeRoot;
-struct BPTreeRoot{
-	pBPTree root;
+typedef struct BPTree BPTree;
+struct BPTree {
+	pBPNode root;
 };
 
 struct _BPK
@@ -52,43 +48,46 @@ struct _BPK
 
 union _BPV
     {
-    BPTree*	Child;
+    BPNode*	Child;
     void*	Ref;
     };
 
-struct _BPT
+struct _BPN
     {
-    BPTreeKey	Keys[BPT_SLOTS];
+    BPNodeKey	Keys[2 * T_SLOTS];  // last key left unused for index nodes
     int		nKeys;
-    BPTreeVal	Children[BPT_SLOTS+1];
-    pBPTree	Parent;
-    pBPTree	Next;
-    pBPTree	Prev;
+    BPNodeVal	Children[2 * T_SLOTS];
+    pBPNode	Next;
+    pBPNode	Prev;
     unsigned int		IsLeaf:1;
     };
 
 /** Functions **/
-pBPTree bptNew();
-int bptInit(pBPTree this);
-void bptFree(pBPTree this);
-int bptDeInit(pBPTree this);
-int bptAdd(pBPTree *this, char* key, int key_len, void* data);
-void* bptLookup(pBPTree this, char* key, int key_len);
-int bptRemove(pBPTree this, char* key, int key_len);
-int bptClear(pBPTree this, int (*free_fn)(), void* free_arg);
-int bpt_i_Push(pBPTree this);
-int bpt_i_Fake();
-int bpt_PrintTree(pBPTree *tree);
-int bpt_PrintTreeSmall(pBPTree root);
-void bpt_i_CopyKey(pBPTree tree1, int idx1, pBPTree tree2, int idx2);
-int bpt_i_GetNeighborIndex(pBPTree this);
-pBPTree bpt_i_RemoveEntryFromNode(pBPTree this, char* key, int key_len, pBPTreeVal);
-pBPTree bpt_i_AdjustRoot(pBPTree this);
-pBPTree bpt_i_DeleteEntry(pBPTree root, pBPTree this, char* key, int key_len, pBPTreeVal);
+BPTree* bptNew();
+int bptInsert(BPTree *this, char* key, int key_len, void* data);    // formerly bptAdd
+int bptInit(pBPNode this);
+void bptFree(pBPNode this);
+int bptDeInit(pBPNode this);
+pBPNode bptSearch(pBPNode this, char* key, int key_len);            // formerly bptLookup
+int bptRemove(BPTree *this, char* key, int key_len, int (*free_fn)(), void* free_arg);
+
+pBPNode bpt_i_new_BPNode();  // allocate and init a new BPNode, return NULL if fails
 int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);
-int bpt_i_Scan(pBPTree this, char* key, int key_len, int *locate_index);
-int bpt_i_Find(pBPTree this, char* key, int key_len, pBPTree *locate, int *locate_index);
-pBPTree bptBulkLoad(char* fname, int num);
-int bptCreateTreeFromData(pBPTree * root, BPTData * entries, int num_entries );
+int bpt_i_Split_Child(pBPNode this, int index);                             // helper for bptRemove
+int bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data); // helper for bptRemove
+pBPNodeKey bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len);  // helper for bptRemove
+int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // used in bptRemove to free descendants
+
+// functions from orig file that haven't been rechecked/implemented
+//void bpt_i_ReplaceValue(pBPNode this, char* find, int find_len, char* replace, int replace_len);
+/*pBPNode bptBulkLoad(char* fname, int num);
+int bptCreateTreeFromData(pBPNode * root, BPTData * entries, int num_entries );*/
+
+/** TEST functions (should not exist in final version) **/
+void bpt_PrintTree(pBPNode tree, int level);
+void printPtr(void* ptr);   // helper function for "naming" nodes
+int testTree(BPTree* tree);   // test that all nodes are in order, no dups except for in index nodes, vals match keys
+int testTree_inner(pBPNode tree, int* last, int* lastLeaf);    // helper for testTree
+
 #endif /* _BPTREE_H */
 
