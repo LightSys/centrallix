@@ -1486,6 +1486,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 	    
 	    case DATA_T_DOUBLE:
             dbl = *(double*)data_ptr * 10000.0;
+            dbl = round(dbl);
             m->Value = (long long)dbl;
 		break;
 	

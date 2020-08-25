@@ -311,8 +311,8 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    }
 			md = i0->Types.Money.Value / 10000.0;
 			md = md / i1->Types.Double;
-			if (md < 0) md -= 0.5;
-			else md += 0.5;
+			//if (md < 0) md -= 0.5;
+			//else md += 0.5;
 			tree->Types.Money.Value = (long long)(md * 10000);
 			//Old Definition
 			/*mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
