@@ -33,7 +33,7 @@ test(char** name)
     //Double Fraction Overflow
     testDouble = 5.159999999999;
     assert(objDataToMoney(3,&testDouble,&test) == 0);
-    assert(test.Value == 51599);
+    assert(test.Value == 51600);
     
     /** Int Case **/
     int testInt = 6;
