@@ -1654,13 +1654,15 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 		f = 1;
 		for(i=0;i<column->DecimalOffset;i++) f *= 10;
 		pod->Money = (pMoneyType)data;
-		pod->Money->WholePart = v/f;
+		pod->Money->Value = (v/f) * 10000;
+		//pod->Money->WholePart = v/f;
 		v = (v/f)*f;
 		if (column->DecimalOffset <= 4)
 		    for(i=column->DecimalOffset;i<4;i++) v *= 10;
 		else
 		    for(i=4;i<column->DecimalOffset;i++) v /= 10;
-		pod->Money->FractionPart = v;
+		//pod->Money->FractionPart = v;
+		pod->Money->Value += v;
 		break;
 	    default:
 		mssError(1, "DBL", "Bark!  Unhandled data type for column '%s'", column->Name);

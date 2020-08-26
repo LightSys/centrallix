@@ -1227,7 +1227,7 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
 	    case DATA_T_INTEGER:
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
 		pod->Integer = strtoi(ibuf, NULL, 10);
-		break;
+		break
 	    case DATA_T_STRING:
 		pod->String = data;
 		if (fp_internal_MappedCopy(data, column->Length+1, column, row_data) < 0) return -1;
@@ -1248,13 +1248,15 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
 		f = 1;
 		for(i=0;i<column->DecimalOffset;i++) f *= 10;
 		pod->Money = (pMoneyType)data;
-		pod->Money->WholePart = v/f;
+		pod->Money->Value = (v/f) * 10000;
+		//pod->Money->WholePart = v/f;
 		v = (v/f)*f;
 		if (column->DecimalOffset <= 4)
 		    for(i=column->DecimalOffset;i<4;i++) v *= 10;
 		else
 		    for(i=4;i<column->DecimalOffset;i++) v /= 10;
-		pod->Money->FractionPart = v;
+		pod->Money->Value += v;
+		//pod->Money->FractionPart = v;
 		break;
 	    default:
 		mssError(1, "FP", "Bark!  Unhandled data type for column '%s'", column->Name);
