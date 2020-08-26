@@ -775,9 +775,10 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		{
 		/** smallmoney, 4-byte **/
 		memcpy(&i, ptr, 4);
-		val->Money->WholePart = i/10000;
-		if (i < 0 && (i%10000) != 0) val->Money->WholePart--;
-		val->Money->FractionPart = i - (val->Money->WholePart*10000);
+		val->Money->Value = i;
+		//val->Money->WholePart = i/10000;
+		//if (i < 0 && (i%10000) != 0) val->Money->WholePart--;
+		//val->Money->FractionPart = i - (val->Money->WholePart*10000);
 		return 0;
 		}
 	    else
@@ -807,17 +808,20 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		divtmp = msl/10000;
 		n = (n<<16) + divtmp;
 		msl -= divtmp*10000;
-		val->Money->WholePart = n;
-		val->Money->FractionPart = msl;
+		val->Money->Value = (n*10000) + msl;
 		if (minus)
-		    {
-		    val->Money->WholePart = -val->Money->WholePart;
-		    if (val->Money->FractionPart > 0)
-			{
-			val->Money->WholePart--;
-			val->Money->FractionPart = 10000 - val->Money->FractionPart;
-			}
-		    }
+		    val->Money->Value = -val->Money->Value;
+		//val->Money->WholePart = n;
+		//val->Money->FractionPart = msl;
+		//if (minus)
+		//    {
+		//    val->Money->WholePart = -val->Money->WholePart;
+		//    if (val->Money->FractionPart > 0)
+		//	{
+		//	val->Money->WholePart--;
+		//	val->Money->FractionPart = 10000 - val->Money->FractionPart;
+		//	}
+		//    }
 		return 0;
 		}
 	    }
