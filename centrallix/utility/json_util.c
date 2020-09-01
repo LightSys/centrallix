@@ -236,11 +236,13 @@ jutilGetMoneyObject(struct json_object* jobj, pMoneyType m)
 		    {
 		    has_whole = 1;
 		    //m->WholePart = json_object_get_int(iter.val);
+		    m->Value += json_object_get_int(iter.val) * 10000;
 		    }
 		else if (!strcmp(iter.key, "fractionpart"))
 		    {
 		    has_fraction = 1;
 		    //m->FractionPart = json_object_get_int(iter.val);
+		    m->Value += json_object_get_int(iter.val);
 		    }
 		else
 		    {

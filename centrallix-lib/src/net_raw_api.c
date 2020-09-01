@@ -106,7 +106,7 @@ raw_internal_SkipCmd(pNetManagedConn conn, pNetCmdHeader cmd)
 		case NET_PARAM_REF:	len = 4; break;
 		case NET_PARAM_DOUBLE:	len = 8; break;
 		case NET_PARAM_DATETIME: len= 5; break;
-		case NET_PARAM_MONEY:	len = 6; break;
+		case NET_PARAM_MONEY:	len = 8; break;
 		case NET_PARAM_NULL:	len = 0; break;
 		case NET_PARAM_STRING:
 		    rcnt = fdRead(conn->ConnFD, &len, 4, 0, FD_U_PACKET);
@@ -192,7 +192,7 @@ rawSendParam(pNetManagedConn conn, char param_type, pObjData value, int cmd_id)
 		break;
 
 	    case NET_PARAM_MONEY:
-	        memcpy(buf+1, value->Money, 6);
+	        memcpy(buf+1, value->Money, 8);
 		len = 7;
 		break;
 
@@ -276,10 +276,10 @@ raw_internal_NextParam(pNetManagedConn conn, char expected_type, char* param_typ
 	        value->Money = nmMalloc(sizeof(MoneyType));
 		if (!value->Money) 
 		    {
-		    raw_internal_ReadBytes(conn, 6);
+		    raw_internal_ReadBytes(conn, 8);
 		    return -1;
 		    }
-		fdRead(conn->ConnFD, value->Money, 6, 0, FD_U_PACKET);
+		fdRead(conn->ConnFD, value->Money, 8, 0, FD_U_PACKET);
 	        break;
 
 	    case NET_PARAM_DATETIME:
