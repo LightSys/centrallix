@@ -1201,6 +1201,7 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 
 	    case DATA_T_MONEY:
 		//iv = srcval->Money->WholePart * 100 + (srcval->Money->FractionPart / 100);
+		iv = srcval->Money->Value/10000 * 100 + (srcval->Money->Value%10000 / 100);
 		if (strchr(param,'i'))
 		    dv = obf_internal_ObfuscateIntegerMultiples(hash, hash_novalue, &bitcnt, iv);
 		else
@@ -1211,6 +1212,7 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 		    }
 		//m.WholePart = floor(dv/100.0);
 		//m.FractionPart = (dv - m.WholePart*100) * 100;
+		m.Value = dv * 100;
 		dstval->Money = &m;
 		break;
 
