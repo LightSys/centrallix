@@ -9,20 +9,53 @@ test(char** name)
 {
     *name = "moneytype_06 - obj_internal_BuildBinaryItem";
     char** item;
+    item = (char**)malloc(24);
     int* itemlen;
+    itemlen = (int*)malloc(4);
+    
+    //Creating an ObjData with a moneytype inside, pObjData for parameters
+    ObjData moneyData;
+    MoneyType unionFiller = {70000};
+    moneyData.Money = &unionFiller;
+    pObjData moneyDataPtr = &moneyData;
+    
+    //Utilizing expression.h functions to initialize expression and paramobjects
     pExpression testExp = expAllocExpression();
     pParamObjects testParamObjects = expCreateParamList();
+    
+    //Buffer must be at least 12 bytes
     unsigned char tmpbuf[12];
 
-    /** Positive Case **/
-    testExp->Types.Money.Value = 90000;
+    /** NULL Case **/
     assert(obj_internal_BuildBinaryItem(item, itemlen, testExp, testParamObjects, tmpbuf) == -1);
 
+    /** Positive Case **/
+    testExp = expPodToExpression(moneyDataPtr, 7, testExp);
+    assert(obj_internal_BuildBinaryItem(item, itemlen, testExp, testParamObjects, tmpbuf) == 0);
+    
+    assert(tmpbuf[0] == 0x80);
+    assert(tmpbuf[1] == 0x0);
+    assert(tmpbuf[2] == 0x0);
+    assert(tmpbuf[3] == 0x0);
+    assert(tmpbuf[4] == 0x0);
+    assert(tmpbuf[5] == 0x1);
+    assert(tmpbuf[6] == 0x11);
+    assert(tmpbuf[7] == 0x70);
+    
     /** Negative Case **/
-    //test.Value = -70500;
-    //data_ptr = "Negative Seven And 05/100 ";
-    //returnStr = objDataToWords(7,&test);
-    //assert(strcmp(data_ptr, returnStr) == 0);
+    unionFiller.Value = -70000;
+
+    testExp = expPodToExpression(moneyDataPtr, 7, testExp);
+    assert(obj_internal_BuildBinaryItem(item, itemlen, testExp, testParamObjects, tmpbuf) == 0);
+    
+    assert(tmpbuf[0] == 0x7f);
+    assert(tmpbuf[1] == 0xff);
+    assert(tmpbuf[2] == 0xff);
+    assert(tmpbuf[3] == 0xff);
+    assert(tmpbuf[4] == 0xff);
+    assert(tmpbuf[5] == 0xfe);
+    assert(tmpbuf[6] == 0xee);
+    assert(tmpbuf[7] == 0x90);
     
     expFreeExpression(testExp);
 
