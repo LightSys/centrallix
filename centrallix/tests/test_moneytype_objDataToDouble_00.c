@@ -4,7 +4,7 @@
 long long
 test(char** name)
 {
-    *name = "moneytype_02 - objDataToDouble";
+    *name = "moneytype_00 - objDataToDouble";
 
     /** Zero Case **/
     MoneyType test = {0};

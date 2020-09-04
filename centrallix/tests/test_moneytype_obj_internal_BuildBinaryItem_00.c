@@ -7,7 +7,7 @@
 long long
 test(char** name)
 {
-    *name = "moneytype_06 - obj_internal_BuildBinaryItem";
+    *name = "moneytype_00 - obj_internal_BuildBinaryItem";
     char** item;
     item = (char**)malloc(24);
     int* itemlen;

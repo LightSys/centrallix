@@ -8,7 +8,7 @@
 long long
 test(char** name)
 {
-    *name = "moneytype_01 - objDataToInteger";
+    *name = "moneytype_00 - objDataToInteger";
 
     /** Zero Case **/
     MoneyType test = {0};

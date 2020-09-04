@@ -6,7 +6,7 @@
 long long
 test(char** name)
 {
-    *name = "moneytype_04 - objDataCompare";
+    *name = "moneytype_00 - objDataCompare";
     MoneyType test = {70000};
 
     /** Compare Int with Money Case **/

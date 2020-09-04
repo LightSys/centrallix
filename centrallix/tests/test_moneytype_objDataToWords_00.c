@@ -7,7 +7,7 @@
 long long
 test(char** name)
 {
-    *name = "moneytype_05 - objDataToWords";
+    *name = "moneytype_00 - objDataToWords";
     MoneyType test = {70500};
 
     /** Positive Case **/
