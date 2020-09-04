@@ -5,7 +5,7 @@
 long long
 test(char** name)
 {
-    *name = "moneytype_03 - objDataToMoney";
+    *name = "moneytype_00 - objDataToMoney";
     MoneyType test = {0};
 
     /** String Case **/
