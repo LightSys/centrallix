@@ -423,8 +423,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 			break;
 		    case DATA_T_MONEY:
 			tree->DataType = DATA_T_MONEY;
-			//mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
-			//mv *= i0->Integer;
+			mv = i1->Types.Money.Value * i0->Integer;
 			break;
 		    case DATA_T_STRING:
 			tree->DataType = DATA_T_STRING;

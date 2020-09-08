@@ -228,6 +228,7 @@ jutilGetMoneyObject(struct json_object* jobj, pMoneyType m)
 
 	/** Search the object's properties **/
 	memset(m, 0, sizeof(MoneyType));
+	m->Value = 0;
 	json_object_object_foreachC(jobj, iter)
 	    {
 	    if (json_object_is_type(iter.val, json_type_int))

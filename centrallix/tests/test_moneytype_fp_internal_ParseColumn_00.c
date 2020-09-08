@@ -8,6 +8,12 @@ long long
 test(char** name)
 {
     *name = "moneytype_00 - fp_internal_ParseColumn";
+    
+    FpColInf testColInf = {0};
+    pFpColInf testColInfPtr = &FpColInf;
+    
+    
+    
     char** item;
     int* itemlen;
     pExpression testExp = expAllocExpression();

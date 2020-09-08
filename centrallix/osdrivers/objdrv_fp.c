@@ -1227,7 +1227,7 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
 	    case DATA_T_INTEGER:
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
 		pod->Integer = strtoi(ibuf, NULL, 10);
-		break
+		break;
 	    case DATA_T_STRING:
 		pod->String = data;
 		if (fp_internal_MappedCopy(data, column->Length+1, column, row_data) < 0) return -1;

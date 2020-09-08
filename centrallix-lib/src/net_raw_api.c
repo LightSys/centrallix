@@ -193,7 +193,7 @@ rawSendParam(pNetManagedConn conn, char param_type, pObjData value, int cmd_id)
 
 	    case NET_PARAM_MONEY:
 	        memcpy(buf+1, value->Money, 8);
-		len = 7;
+		len = 9;
 		break;
 
 	    case NET_PARAM_NULL:
