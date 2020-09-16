@@ -17,10 +17,9 @@
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
 
-#define T_SLOTS (3)     // this means max leaf vals = 6, max index keys = 4 // TODO fails if < 3
-
-/** Global Variables **/
-//extern int depthG;
+/* DO NOT SET HALF_T_SLOTS to < 3 */
+#define HALF_T_SLOTS (8)     
+#define MAX_KEYS(pNode) (2 * HALF_T_SLOTS - ((pNode)->IsLeaf ? 0 : 1))
 
 /** Structures **/
 typedef struct _BPK BPNodeKey, *pBPNodeKey;
@@ -54,23 +53,25 @@ union _BPV
 
 struct _BPN
     {
-    BPNodeKey	Keys[2 * T_SLOTS];  // last key left unused for index nodes
+    BPNodeKey	Keys[2 * HALF_T_SLOTS];  // last key left unused for index nodes
     int		nKeys;
-    BPNodeVal	Children[2 * T_SLOTS];
+    BPNodeVal	Children[2 * HALF_T_SLOTS];
     pBPNode	Next;
     pBPNode	Prev;
     unsigned int		IsLeaf:1;
     };
 
-/** Functions **/
+/** Public Functions **/
 BPTree* bptNew();
 int bptInsert(BPTree *this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptInit(pBPNode this);
-void bptFree(pBPNode this);
+int bptFree(pBPNode this);
 int bptDeInit(pBPNode this);
 pBPNode bptSearch(pBPNode this, char* key, int key_len);            // formerly bptLookup
 int bptRemove(BPTree *this, char* key, int key_len, int (*free_fn)(), void* free_arg);
 
+
+/** These should probably be removed from this header in the long run; tests can individually declare***/
 pBPNode bpt_i_new_BPNode();  // allocate and init a new BPNode, return NULL if fails
 int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);
 int bpt_i_Split_Child(pBPNode this, int index);                             // helper for bptRemove
@@ -83,8 +84,8 @@ int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // u
 /*pBPNode bptBulkLoad(char* fname, int num);
 int bptCreateTreeFromData(pBPNode * root, BPTData * entries, int num_entries );*/
 
-/** TEST functions (should not exist in final version) **/
-void bpt_PrintTree(pBPNode tree, int level);
+/** Temporary functions (should not exist in final version) **/
+void printTree(pBPNode tree, int level);
 void printPtr(void* ptr);   // helper function for "naming" nodes
 int testTree(BPTree* tree);   // test that all nodes are in order, no dups except for in index nodes, vals match keys
 int testTree_inner(pBPNode tree, int* last, int* lastLeaf);    // helper for testTree

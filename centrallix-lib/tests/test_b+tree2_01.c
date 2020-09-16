@@ -23,7 +23,7 @@ test(char** tname)
     srand(seed);
     printf("\nSeed: %d\n", seed);
     BPTree* t = bptNew();
-    //bpt_PrintTree(t->root, 0);
+    //printTree(t->root, 0);
     int val;
     char* k;
     char* d;
@@ -59,7 +59,7 @@ test(char** tname)
             {
             printf("Inserting %s\t", k);
             printf("Failed tree:\n");
-            bpt_PrintTree(t->root, 0);
+            printTree(t->root, 0);
             break;
             }
         //else printf("Passed\n");
@@ -67,7 +67,7 @@ test(char** tname)
         free(k);
         }
     printf("Passed inserts\n");
-    //bpt_PrintTree(t->root, 0);
+    //printTree(t->root, 0);
     
     while (t->root->nKeys > 0) //for (i=NUM_TESTS; i>0 && t->root->nKeys > 0; i--) 
         {
@@ -80,20 +80,20 @@ test(char** tname)
             {
             printf("Removing %s\t", k);
             printf("Failed tree:\n");
-            bpt_PrintTree(t->root, 0);
+            printTree(t->root, 0);
             printf("\nSeed: %d\n", seed);
             break;
             }
         else 
             {
             //printf("Passed\n");
-            //bpt_PrintTree(t->root, 0);
+            //printTree(t->root, 0);
             }
         free(k);
         }
     printf("Passed remove\n");
 
-    bpt_PrintTree(t->root, 0);  // tree should be empty
+    printTree(t->root, 0);  // tree should be empty
 
     nmFree(t->root, sizeof(BPNode));
     free(t);
