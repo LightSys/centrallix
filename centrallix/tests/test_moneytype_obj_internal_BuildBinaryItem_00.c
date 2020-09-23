@@ -13,12 +13,6 @@ test(char** name)
     int* itemlen;
     itemlen = (int*)malloc(4);
     
-    //Creating an ObjData with a moneytype inside, pObjData for parameters
-    ObjData moneyData;
-    MoneyType unionFiller = {70000};
-    moneyData.Money = &unionFiller;
-    pObjData moneyDataPtr = &moneyData;
-    
     //Utilizing expression.h functions to initialize expression and paramobjects
     pExpression testExp = expAllocExpression();
     pParamObjects testParamObjects = expCreateParamList();
@@ -29,6 +23,12 @@ test(char** name)
     /** NULL Case **/
     assert(obj_internal_BuildBinaryItem(item, itemlen, testExp, testParamObjects, tmpbuf) == -1);
 
+    //For remaining cases, creating an ObjData with a moneytype inside, pObjData for parameters
+    ObjData moneyData;
+    MoneyType unionFiller = {70000};
+    moneyData.Money = &unionFiller;
+    pObjData moneyDataPtr = &moneyData;
+    
     /** Positive Case **/
     testExp = expPodToExpression(moneyDataPtr, 7, testExp);
     assert(obj_internal_BuildBinaryItem(item, itemlen, testExp, testParamObjects, tmpbuf) == 0);

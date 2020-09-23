@@ -3,25 +3,32 @@
 #include <stdio.h>
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "osdrivers/objdrv_fp.c"
 
 long long
 test(char** name)
 {
     *name = "moneytype_00 - fp_internal_ParseColumn";
     
-    FpColInf testColInf = {0};
-    pFpColInf testColInfPtr = &FpColInf;
+    //FpColInf testColInf = {0};
+    pFpColInf = &FpColInf;
     
+    //7 for money type
+    FpColInf.Type = 7;
+    FpColInf.Length = 8;
+    FpColInf.RecordOffset = 0;
+    FpColInf.DecimalOffset = 4;
+    ObjData moneyData;
+    pObjData moneyDataPtr = &moneyData;
+    MoneyType testMoneyData = {0};
+    pMoneyType pTestMoneyData = &testMoneyData;
     
+    //Raw data for row data.
+    char* testString = "450";
     
-    char** item;
-    int* itemlen;
-    pExpression testExp = expAllocExpression();
-    pParamObjects testParamObjects = expCreateParamList();
-    unsigned char tmpbuf[12];
+    assert(fp_internal_ParseColumn(pFpColInf, moneyDataPtr, (char*)pTestMoneyData, testString) == 0);
 
     /** NULL Case **/
-    assert(obj_internal_BuildBinaryItem(item, itemlen, testExp, testParamObjects, tmpbuf) == -1);
 
     /** Positive Case **/
     testExp->Types.Money.Value = 90000;
@@ -34,8 +41,6 @@ test(char** name)
     //data_ptr = "Negative Seven And 05/100 ";
     //returnStr = objDataToWords(7,&test);
     //assert(strcmp(data_ptr, returnStr) == 0);
-
-    expFreeExpression(testExp);
 
     return 0;
 }
