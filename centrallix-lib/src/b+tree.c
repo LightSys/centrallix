@@ -209,7 +209,7 @@ bpt_i_Find_Key_In_Node(BPNode * node, char * key, int key_len, int * cmp)
         {
         *cmp = curr_cmp;
         }
-    return (i < node->nKeys) ? i : -1;
+    return i;
 }
 
 int
