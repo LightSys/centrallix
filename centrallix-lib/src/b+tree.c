@@ -416,8 +416,7 @@ bptRemove(BPTree* tree, char* key, int key_len, int (*free_fn)(), void* free_arg
 
                         /* shift next->Keys and ->Children down by 1 */
                         memmove(&next->Keys[0], &next->Keys[1], sizeof(next->Keys[0]) * (next->nKeys-1));
-                        //TODO: double check this
-                        memmove(&next->Children[0], &next->Children[1], sizeof(next->Children[0]) * (searchNext->nKeys+2));
+                        memmove(&next->Children[0], &next->Children[1], sizeof(next->Children[0]) * (next->nKeys+1));
                         next->nKeys--;
                         }
                     else
