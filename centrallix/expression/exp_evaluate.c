@@ -191,7 +191,6 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     pExpression i0,i1;
     MoneyType m;
     int i;
-    int is_negative = 0;
     long long mv, mv2;
     double md;
 
@@ -280,27 +279,12 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 		    case DATA_T_INTEGER:
 		        tree->DataType = DATA_T_MONEY;
 			memcpy(&m, &(i0->Types.Money), sizeof(MoneyType));
-			if (m.Value < 0)
-		    	    {
-			    is_negative = !is_negative;
-			    m.Value = -m.Value;
-		            }
-			i = i1->Integer;
-			if (i < 0) 
-			    {
-			    i = -i;
-			    is_negative = !is_negative;
-			    }
 			if (i == 0)
 			    {
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
 			tree->Types.Money.Value = m.Value / i;
-			if (is_negative)
-			    {
-			    tree->Types.Money.Value = -tree->Types.Money.Value;
-			    }
 			break;
 		    case DATA_T_DOUBLE:
 			tree->DataType = DATA_T_MONEY;
@@ -309,25 +293,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			md = i0->Types.Money.Value / 10000.0;
-			md = md / i1->Types.Double;
-			//if (md < 0) md -= 0.5;
-			//else md += 0.5;
-			tree->Types.Money.Value = (long long)(md * 10000);
-			//Old Definition
-			/*mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
-			md = mv / i1->Types.Double;
-			if (md < 0) md -= 0.5;
-			else md += 0.5;
-			mv = md;
-			tree->Types.Money.WholePart = mv/10000;
-			mv = mv % 10000;
-			if (mv < 0)
-			    {
-			    mv += 10000;
-			    tree->Types.Money.WholePart -= 1;
-			    }
-			tree->Types.Money.FractionPart = mv;*/
+			tree->Types.Money.Value = (long long)(i0->Types.Money.Value/i1->Types.Double);
 			break;
 		    case DATA_T_MONEY:
 			mv = i0->Types.Money.Value;
@@ -593,7 +559,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    case DATA_T_MONEY:
 		        /** Treat Int as a dollar value **/
 		        tree->DataType = DATA_T_MONEY;
-		        tree->Types.Money.Value = (i0->Integer * 10000) - i1->Types.Money.Value;
+		        tree->Types.Money.Value = (i0->Integer * 10000ll) - i1->Types.Money.Value;
 			break;
 		    default:
 			tree->Integer = i0->Integer - objDataToInteger(i1->DataType, dptr, NULL);

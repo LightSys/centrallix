@@ -1491,7 +1491,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		break;
 	
 	    case DATA_T_INTEGER:
-	            m->Value = *(int*)data_ptr * 10000;
+	            m->Value = *(int*)data_ptr * 10000ll;
 		break;
 
 	    case DATA_T_MONEY:
@@ -1576,9 +1576,9 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 
 		    case DATA_T_MONEY:
 		        m = (pMoneyType)data_ptr_2;
-			if (m->Value/10000 > intval) cmp_value = -1;
-			else if (m->Value/10000 < intval) cmp_value = 1;
-			else cmp_value = m->Value%10000?-1:0;
+			if (m->Value > intval*10000ll) cmp_value = -1;
+			else if (m->Value < intval*10000ll) cmp_value = 1;
+			else cmp_value = 0;
 			break;
 
 		    case DATA_T_INTVEC:

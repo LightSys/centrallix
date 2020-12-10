@@ -808,7 +808,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		divtmp = msl/10000;
 		n = (n<<16) + divtmp;
 		msl -= divtmp*10000;
-		val->Money->Value = (n*10000) + msl;
+		val->Money->Value = (n*10000ll) + msl;
 		if (minus)
 		    val->Money->Value = -val->Money->Value;
 		//val->Money->WholePart = n;

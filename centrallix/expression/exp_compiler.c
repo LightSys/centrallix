@@ -152,7 +152,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			if (t == MLX_TOK_INTEGER)
 			    {
 			    i = mlxIntVal(lxs);
-			    etmp->Types.Money.Value = (i * 10000);
+			    etmp->Types.Money.Value = (i * 10000ll);
 			    }
 			else
 			    {
