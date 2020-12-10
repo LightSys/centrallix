@@ -629,7 +629,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    case DATA_T_INTEGER:
 		        tree->DataType = DATA_T_MONEY;
 		        /** Since Value is in 1/10000 of a dollar, integer must be multiplied to scale **/
-			tree->Types.Money.Value = i0->Types.Money.Value - (i1->Integer * 10000);
+			tree->Types.Money.Value = i0->Types.Money.Value - (i1->Integer * 10000ll);
 			break;
 		    case DATA_T_DOUBLE:
 		        tree->DataType = DATA_T_DOUBLE;
@@ -772,7 +772,7 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		    case DATA_T_MONEY:
 			tree->DataType = DATA_T_MONEY;
 			/** Int must be converted to 1/10000 of a dollar **/
-			tree->Types.Money.Value = i1->Types.Money.Value + (i0->Integer * 10000);
+			tree->Types.Money.Value = i1->Types.Money.Value + (i0->Integer * 10000ll);
 			break;
 
 		    default:
@@ -1457,7 +1457,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 		}
 	    else if (tree->DataType == DATA_T_INTEGER && attr_type == DATA_T_MONEY)
 	        {
-		tree->Types.Money.Value = (tree->Integer * 10000);
+		tree->Types.Money.Value = (tree->Integer * 10000ll);
 		}
 	    else if (tree->DataType == DATA_T_DOUBLE && attr_type == DATA_T_MONEY)
 	        {
