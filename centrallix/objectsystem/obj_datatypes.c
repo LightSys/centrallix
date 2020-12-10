@@ -1450,9 +1450,9 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		if ((endptr - ptr) != strspn(ptr, "0123456789"))
 		    return -1;
 		if (is_neg)
-		    m->Value = -intval*10000;
+		    m->Value = -intval*10000ll;
 		else
-		    m->Value = intval*10000;
+		    m->Value = intval*10000ll;
 		
 		/** Handling the "fraction" portion after the decimal point **/
 		if (*endptr == (intl_format?',':'.'))
