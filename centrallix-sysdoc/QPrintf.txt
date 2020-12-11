@@ -66,6 +66,9 @@ FORMATTING...
 
 	%INT	An integer value, with range of the normal 'int' value
 		in the C language.  Can be positive, negative, or zero.
+		
+	%LL     A 64-bit integer value, with range of 'long long' value
+        in the C language.  Can be positive, negative, or zero.
 
 	%POS	A non-negative integer value (zero allowed).
 
