@@ -802,8 +802,8 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 
 	    case DATA_T_MONEY: 
 	        m = (pMoneyType)data_ptr;
-	        if (m->Value/10000 > INT_MAX)
-                mssError(1, "OBJ", "Warning: %d overflow; cannot fit value of that size in int ", data_type);
+	        if (m->Value/10000 > INT_MAX || m->Value/10000 < INT_MIN)
+                mssError(1, "OBJ", "Warning: %d (MoneyType) overflow; cannot fit value of that size in int", data_type);
 	        else
 	            v = m->Value/10000;
 		break;
