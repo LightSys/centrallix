@@ -45,6 +45,12 @@ test(char** name)
     assert(fp_internal_ParseColumn(pTestColInf, moneyDataPtr, (char*)pTestMoneyData, testString) == 0);
     assert(moneyDataPtr->Money->Value == 4500);
     
-    
+    //This function truncates answers
+    char* testRoundedString = "45011999";
+    testColInf.DecimalOffset = 5;
+    assert(fp_internal_ParseColumn(pTestColInf, moneyDataPtr, (char*)pTestMoneyData, testRoundedString) == 0);
+    assert(moneyDataPtr->Money->Value == 4501199);
+            
+            
     return 0;
 }

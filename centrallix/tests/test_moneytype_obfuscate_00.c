@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include "expression.h"
 #include "cxlib/xstring.h"
-#include "utility/obfuscate.c"
+//#include "utility/obfuscate.c"
 
 long long
 test(char** name)
 {
     *name = "moneytype_00 - obfuscate";
 
-    obfObfuscateData();
+    //obfObfuscateData();
     
     return 0;
 }
