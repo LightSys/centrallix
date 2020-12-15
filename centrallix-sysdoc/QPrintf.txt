@@ -185,6 +185,7 @@ IMPLEMENTED...
     Here are the currently implemented specifier chains:
 
 	%INT
+	%LL
 	%POS
 	%STR
 	%nSTR
