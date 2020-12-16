@@ -686,6 +686,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
     {
     int i,minus,n;
     unsigned int msl,lsl,divtmp;
+    long long ll_msl, ll_lsl;
     unsigned int days,fsec;
     float f;
 
@@ -796,32 +797,16 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		    if (lsl == 0xFFFFFFFF) msl++;
 		    lsl++;
 		    }
-		/** Long division, 16 bits = 1 "digit" **/
-		divtmp = msl/10000;
-		n = divtmp;
-		msl -= divtmp*10000;
-		msl = (msl<<16) + (lsl>>16);
-		divtmp = msl/10000;
-		n = (n<<16) + divtmp;
-		msl -= divtmp*10000;
-		msl = (msl<<16) + (lsl & 0xFFFF);
-		divtmp = msl/10000;
-		n = (n<<16) + divtmp;
-		msl -= divtmp*10000;
-		val->Money->Value = (n*10000ll) + msl;
+		/** Both msl and lsl are little endian, so I want lsl to come before msl.
+		** I do this by shifting lsl left in a long long (ll_lsl) by 32 bits, and then OR it with msl
+		**/
+		ll_msl = msl;
+		ll_lsl = lsl;
+		ll_lsl = ll_lsl << 32;
+		ll_lsl = ll_lsl | ll_msl;
+		val->Money->Value = lsll;
 		if (minus)
-		    val->Money->Value = -val->Money->Value;
-		//val->Money->WholePart = n;
-		//val->Money->FractionPart = msl;
-		//if (minus)
-		//    {
-		//    val->Money->WholePart = -val->Money->WholePart;
-		//    if (val->Money->FractionPart > 0)
-		//	{
-		//	val->Money->WholePart--;
-		//	val->Money->FractionPart = 10000 - val->Money->FractionPart;
-		//	}
-		//    }
+            val->Money->Value = -val->Money->Value;
 		return 0;
 		}
 	    }
