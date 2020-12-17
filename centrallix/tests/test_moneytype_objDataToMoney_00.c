@@ -17,6 +17,10 @@ test(char** name)
     assert(objDataToMoney(2,data_ptr2,&test) == 0);
     assert(test.Value == -45000);
 
+    char data_ptr3[] = "-$0.01";
+    assert(objDataToMoney(2,data_ptr3,&test) == 0);
+    assert(test.Value == -100);
+
     /** Overflow Case (intval > LL max) **/
     char overflow_ptr[] = "$10000000000000000000.50";
     assert(objDataToMoney(2,overflow_ptr,&test) == -1);

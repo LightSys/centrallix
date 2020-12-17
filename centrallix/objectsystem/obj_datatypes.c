@@ -509,7 +509,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
             if (automatic_sign)
                 {
                 automatic_sign = 0;
-                if (orig_print_whole < 0)
+                if (m->Value < 0)
 		    *(str++) = '-';
                 /*else
 		    *(str++) = ' ';*/

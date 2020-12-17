@@ -279,12 +279,12 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 		    case DATA_T_INTEGER:
 		        tree->DataType = DATA_T_MONEY;
 			memcpy(&m, &(i0->Types.Money), sizeof(MoneyType));
-			if (i == 0)
+			if (i1->Integer == 0)
 			    {
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			tree->Types.Money.Value = m.Value / i;
+			tree->Types.Money.Value = (long long)(m.Value / i1->Integer);
 			break;
 		    case DATA_T_DOUBLE:
 			tree->DataType = DATA_T_MONEY;

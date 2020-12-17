@@ -804,7 +804,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		ll_lsl = lsl;
 		ll_lsl = ll_lsl << 32;
 		ll_lsl = ll_lsl | ll_msl;
-		val->Money->Value = lsll;
+		val->Money->Value = ll_lsll;
 		if (minus)
             val->Money->Value = -val->Money->Value;
 		return 0;
