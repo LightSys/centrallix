@@ -29,8 +29,6 @@ test(char** tname)
         qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
         qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
         rval = qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
-        //Currently rval == -22 (EINVAL error code, overflow).
-        printf("%d", rval);
         assert(!strcmp(buf+4, "Here is the long long: 12345..."));
         //For the long long case, rval will be set to the return value of snprintf, i.e. length of string
         assert(rval == 31);
@@ -45,7 +43,5 @@ test(char** tname)
     }
 
     return iter*4;
-
-    return iter*6;
 }
 
