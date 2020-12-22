@@ -1140,6 +1140,7 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
     static char* str = NULL;
     int bitcnt = 0;
     int iv, dv;
+    long long lliv, lldv;
     int scale;
     XString xs;
 
@@ -1200,17 +1201,24 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 		break;
 
 	    case DATA_T_MONEY:
-		iv = srcval->Money->Value/10000 * 100 + (srcval->Money->Value%10000 / 100);
-		if (strchr(param,'i'))
-		    dv = obf_internal_ObfuscateIntegerMultiples(hash, hash_novalue, &bitcnt, iv);
-		else
-		    {
-		    if (obf_internal_GetBits(hash, &bitcnt, 1)) iv = (iv + 1)*10;
-		    if (obf_internal_GetBits(hash, &bitcnt, 1)) iv = iv/10 + 1;
-		    dv = obf_internal_ObfuscateInteger(hash, hash_novalue, &bitcnt, iv);
-		    }
-		m.Value = dv * 100;
-		dstval->Money = &m;
+	        if (srcval->Money->Value < INT_MAX)
+	        {
+                iv = srcval->Money->Value * 100;
+                if (strchr(param,'i'))
+                    dv = obf_internal_ObfuscateIntegerMultiples(hash, hash_novalue, &bitcnt, iv);
+                else
+                {
+                    if (obf_internal_GetBits(hash, &bitcnt, 1)) iv = (iv + 1)*10;
+                    if (obf_internal_GetBits(hash, &bitcnt, 1)) iv = iv/10 + 1;
+                    dv = obf_internal_ObfuscateInteger(hash, hash_novalue, &bitcnt, iv);
+                }
+                m.Value = (long long)(dv * 100);
+                dstval->Money = &m;
+	        }
+	        else
+	        {
+                mssError(1,"OBF","Obfuscate not supported for Money Type greater than INT_MAX");
+	        }
 		break;
 
 	    case DATA_T_DOUBLE:

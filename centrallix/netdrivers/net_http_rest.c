@@ -76,6 +76,7 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
     {
     ObjData od;
     int rval;
+        long long whole, fraction;
 
 	/** Get the data value **/
 	rval = objGetAttrValue(obj, attrname, data_type, &od);
@@ -114,10 +115,28 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
 		break;
 
 	    case DATA_T_MONEY:
-		nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%INT, \"fractionpart\":%INT }",
-			od.Money->Value/10000,
-			od.Money->Value%10000
-			);
+	        /** For the time being, 64-bit representation will mimic whole and fraction part handling of negatives
+	         ** with regards to JSON data.  It will use the new %LL specifier, but the JSON returned will
+	         ** contain an inverted fraction part that always counts in the positive direction.
+	         **/
+	        
+	        /** If there is a negative with a non-zero fraction part **/
+	        if (od.Money->Value < 0 && od.Money->Value%10000 != 0)
+                {
+	                whole = (od.Money->Value + 10000)/10000ll;
+	                fraction = 10000ll - od.Money->Value%10000;
+                    nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%LL, \"fractionpart\":%LL }",
+                                      whole,
+                                      fraction
+                    );
+                }
+	        else
+                {
+                    nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%LL, \"fractionpart\":%LL }",
+                                      od.Money->Value/10000ll,
+                                      od.Money->Value%10000ll
+                    );
+                }
 		break;
 
 	    default:
