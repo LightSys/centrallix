@@ -34,6 +34,7 @@
 
 
 #include "obj.h"
+#include "ptod.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/xhash.h"
 #include <openssl/sha.h>
@@ -260,6 +261,8 @@ int expIsConstant(pExpression this);
 pExpression expReducedDuplicate(pExpression this);
 int expCompareExpressions(pExpression exp1, pExpression exp2);
 int expCompareExpressionValues(pExpression exp1, pExpression exp2);
+pTObjData expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags);
+pTObjData expExpressionToPtod(pExpression exp);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
