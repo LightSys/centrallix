@@ -1250,9 +1250,9 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
             //Finally, I multiple v by decimalOffsetValue to get my Money->Value
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
 		v = strtoll(ibuf, NULL, 10);
-		for (i=0; i<column->DecimalOffset; i++) decimalOffsetValue /= 10.0;
+		decimalOffsetValue /= pow(10, DecimalOffset);
 		pod->Money = (pMoneyType)data;
-		pod->Money->Value = v*decimalOffsetValue;
+		pod->Money->Value = (v*decimalOffsetValue)+ 0.1;
 		break;
 	    default:
 		mssError(1, "FP", "Bark!  Unhandled data type for column '%s'", column->Name);
