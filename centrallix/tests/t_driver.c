@@ -17,10 +17,13 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	test_00baseline.c     					*/
+/* Module: 	t_driver.c     					*/
 /* Author:	Greg Beeley (GRB)					*/
-/* Creation:	March 11th, 2005 					*/
-/* Description: Test suite entry to generate a baseline comparison value*/
+/* Creation:	3 Aug 2020 					*/
+/* Description: Driver for straight C Centrallix tests. To use it, write
+    a C file implementing the "test" function (asserting your test
+    conditions or returning a nonzero value for failures), then link in
+    t_driver.o. */
 /************************************************************************/
 
 
