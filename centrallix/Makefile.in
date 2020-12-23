@@ -526,8 +526,11 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
-tests/test_%.bin: tests/test_%.o tests/t_driver.c centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) $< tests/t_driver.c centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS)
+tests/t_driver.o: tests/t_driver.c 
+	$(CC) $< -c -o $@
+
+tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS)
 
 test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
