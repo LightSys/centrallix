@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <signal.h>
-#include <sys/times.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -55,19 +54,15 @@ alarm_handler(int v)
 void
 start(void* v)
     {
-    struct tms t;
-    clock_t start,end;
     long long rval;
 
     signal(SIGSEGV, segv_handler);
     signal(SIGABRT, abort_handler);
     signal(SIGALRM, alarm_handler);
     alarm(4);
-    times(&t);
-    start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
+    
     rval = test(&test_name);
-    times(&t);
-    end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
+    
     if (rval < 0)
         printf(RESET "%-62.62s  " RED "FAIL\n" RESET, test_name);
     else
