@@ -2802,10 +2802,10 @@ int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, p
 	memset(newbuf, 0, sizeof(newbuf));
 	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
 	    return -1;
-	if (memcmp(newbuf, tree->PrivateData, 512))
+	if (memcmp(newbuf, tree->PrivateData, sizeof(newbuf)))
 	    {
 	    /** Reset count **/
-	    memcpy(tree->PrivateData, newbuf, 512);
+	    memcpy(tree->PrivateData, newbuf, sizeof(newbuf));
 	    tree->AggExp->Integer = 0;
 	    tree->AggCount = 0;
 	    tree->AggValue = 0;
