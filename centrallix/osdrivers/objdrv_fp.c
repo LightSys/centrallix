@@ -1250,7 +1250,7 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
             //Finally, I multiple v by decimalOffsetValue to get my Money->Value
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
 		v = strtoll(ibuf, NULL, 10);
-		decimalOffsetValue /= pow(10, DecimalOffset);
+		decimalOffsetValue /= pow(10, column->DecimalOffset);
 		pod->Money = (pMoneyType)data;
 		pod->Money->Value = (v*decimalOffsetValue)+ 0.1;
 		break;

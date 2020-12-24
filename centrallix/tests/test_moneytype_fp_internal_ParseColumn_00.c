@@ -45,11 +45,11 @@ test(char** name)
     assert(fp_internal_ParseColumn(pTestColInf, moneyDataPtr, (char*)pTestMoneyData, testString) == 0);
     assert(moneyDataPtr->Money->Value == 4500);
     
-    //This function truncates answers
+    //This function now rounds properly with the addition of adding .1 for floating point error handling
     char* testRoundedString = "45011999";
     testColInf.DecimalOffset = 5;
     assert(fp_internal_ParseColumn(pTestColInf, moneyDataPtr, (char*)pTestMoneyData, testRoundedString) == 0);
-    assert(moneyDataPtr->Money->Value == 4501199);
+    assert(moneyDataPtr->Money->Value == 4501200);
             
             
     return 0;
