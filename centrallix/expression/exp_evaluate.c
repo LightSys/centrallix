@@ -293,7 +293,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			tree->Types.Money.Value = (long long)(i0->Types.Money.Value/i1->Types.Double);
+			tree->Types.Money.Value = llround(i0->Types.Money.Value/i1->Types.Double);
 			break;
 		    case DATA_T_MONEY:
 			mv = i0->Types.Money.Value;

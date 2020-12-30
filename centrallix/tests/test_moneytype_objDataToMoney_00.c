@@ -1,6 +1,7 @@
 #include "obj.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 long long
 test(char** name)
@@ -9,18 +10,27 @@ test(char** name)
     MoneyType test = {0};
 
     /** String Case **/
-    char data_ptr[] = "$4.50";
+    char data_ptr[20] = "$4.50";
     assert(objDataToMoney(2,data_ptr,&test) == 0);
     assert(test.Value == 45000);
 
-    char data_ptr2[] = "-$4.50";
-    assert(objDataToMoney(2,data_ptr2,&test) == 0);
+    strcpy(data_ptr, "-$4.50");
+    assert(objDataToMoney(2,data_ptr,&test) == 0);
     assert(test.Value == -45000);
 
-    char data_ptr3[] = "-$0.01";
-    assert(objDataToMoney(2,data_ptr3,&test) == 0);
+    strcpy(data_ptr, "-$0.01");
+    assert(objDataToMoney(2,data_ptr,&test) == 0);
     assert(test.Value == -100);
+    
+    /** String Case that would overflow INT_MAX and INT_MIN **/
+    strcpy(data_ptr, "$2200000000.00");
+    assert(objDataToMoney(2,data_ptr,&test) == 0);
+    assert(test.Value == 22000000000000);
 
+    strcpy(data_ptr, "-$2200000000.00");
+    assert(objDataToMoney(2,data_ptr,&test) == 0);
+    assert(test.Value == -22000000000000);
+    
     /** Overflow Case (intval > LL max) **/
     char overflow_ptr[] = "$10000000000000000000.50";
     assert(objDataToMoney(2,overflow_ptr,&test) == -1);
@@ -34,7 +44,16 @@ test(char** name)
     assert(objDataToMoney(3,&testDouble,&test) == 0);
     assert(test.Value == -55000);
     
-    //Double Fraction Overflow
+    /** Double Case that would overflow INT_MAX and INT_MIN **/
+    testDouble = 2200000000.5;
+    assert(objDataToMoney(3,&testDouble,&test) == 0);
+    assert(test.Value == 22000000005000);
+
+    testDouble = -2200000000.5;
+    assert(objDataToMoney(3,&testDouble,&test) == 0);
+    assert(test.Value == -22000000005000);
+    
+    /** Double Fraction Overflow **/
     testDouble = 5.159999999999;
     assert(objDataToMoney(3,&testDouble,&test) == 0);
     assert(test.Value == 51600);

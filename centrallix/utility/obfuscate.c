@@ -1201,7 +1201,7 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 		break;
 
 	    case DATA_T_MONEY:
-	        if (srcval->Money->Value < INT_MAX)
+	        if (srcval->Money->Value <= INT_MAX/100  && srcval->Money->Value >= INT_MIN/100)
 	        {
                 iv = srcval->Money->Value * 100;
                 if (strchr(param,'i'))

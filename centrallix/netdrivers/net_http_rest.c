@@ -123,8 +123,10 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
 	        /** If there is a negative with a non-zero fraction part **/
 	        if (od.Money->Value < 0 && od.Money->Value%10000 != 0)
                 {
-	                whole = (od.Money->Value + 10000)/10000ll;
-	                fraction = 10000ll - od.Money->Value%10000;
+	                /** Add negative 1 then truncate fraction. (essentially floor() )**/
+	                whole = (od.Money->Value - 10000)/10000ll;
+	                /** Since fraction always counts away from zero, it is inverted**/
+	                fraction = 10000ll - abs(od.Money->Value%10000);
                     nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%LL, \"fractionpart\":%LL }",
                                       whole,
                                       fraction

@@ -797,14 +797,10 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		    if (lsl == 0xFFFFFFFF) msl++;
 		    lsl++;
 		    }
-		/** Both msl and lsl are little endian, so I want lsl to come before msl.
-		** I do this by shifting lsl left in a long long (ll_lsl) by 32 bits, and then OR it with msl
+		/** msl is the most significant 32-bit value and needs to come before lsl
+		** I do this by shifting msl left cast to a long long by 32 bits, and then OR it with lsl
 		**/
-		ll_msl = msl;
-		ll_lsl = lsl;
-		ll_lsl = ll_lsl << 32;
-		ll_lsl = ll_lsl | ll_msl;
-		val->Money->Value = ll_lsll;
+		val->Money->Value = (((long long)msl)<<32) | (long long)lsl;
 		if (minus)
             val->Money->Value = -val->Money->Value;
 		return 0;
