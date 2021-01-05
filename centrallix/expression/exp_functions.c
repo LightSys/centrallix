@@ -1749,16 +1749,16 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	mssError(1, "EXP", "datediff() first parameter must be non-null string or keyword date part");
 	return -1;
 	}
-    if (!i1 || i1->DataType != DATA_T_DATETIME || !i2 || i2->DataType != DATA_T_DATETIME)
-	{
-	mssError(1, "EXP", "datediff() second and third parameters must be datetime types");
-	return -1;
-	}
     if ((i1 && (i1->Flags & EXPR_F_NULL)) || (i2 && (i2->Flags & EXPR_F_NULL)))
 	{
 	tree->DataType = DATA_T_INTEGER;
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    if (!i1 || i1->DataType != DATA_T_DATETIME || !i2 || i2->DataType != DATA_T_DATETIME)
+	{
+	mssError(1, "EXP", "datediff() second and third parameters must be datetime types");
+	return -1;
 	}
     tree->DataType = DATA_T_INTEGER;
 
