@@ -792,7 +792,7 @@ function tbld_object_modified(current, dataobj)
     this.RedrawAll(null, true);
     }
 
-function tbld_replica_changed(dataobj, force_datafetch)
+function tbld_replica_changed(dataobj, force_datafetch, why)
     {
     //this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     this.osrc_busy = false;
@@ -1505,6 +1505,16 @@ function tbld_is_row_visible(rowslot)
     }
 
 
+function tbld_show_selection()
+    {
+    if (this.initselect != 1)
+	{
+	this.initselect = 1;
+	this.RedrawAll(null, true);
+	}
+    }
+
+
 function tbld_instantiate_row(parentDiv, x, y)
     {
     // Check the cache
@@ -1993,6 +2003,7 @@ function tbld_init(param)
     // Actions
     var ia = t.ifcProbeAdd(ifAction);
     ia.Add("Clear", tbld_clear_rows);
+    ia.Add("ShowSelection", tbld_show_selection);
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
@@ -2379,6 +2390,8 @@ function tbld_contextmenu(e)
 function tbld_mousedown(e)
     {
     var ly = e.layer;
+    var toggle_row = false;
+    var moved = false;
     if(ly.kind && ly.kind=='tabledynamic')
         {
         if(ly.subkind=='cellborder')
@@ -2411,23 +2424,18 @@ function tbld_mousedown(e)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
 		    {
-		    ly.table.initselect = 1;
+		    toggle_row = true;
+		    //ly.table.initselect = 1;
 		    if(ly.rownum && ly.disp_mode != 'newselect')
 			{
+			moved = true;
 			ly.crname = null;
 			ly.table.OsrcRequest('MoveToRecord', {rownum:ly.rownum});
 			}
 		    }
-		else if (ly.table.initselect !== 1)
+		else if (ly.table.initselect !== 1 || ly.table.initselect !== ly.table.initselect_orig)
 		    {
-		    ly.table.initselect = 1;
-		    ly.table.RedrawAll(null, true);
-		    }
-		else if (ly.table.initselect !== ly.table.initselect_orig)
-		    {
-		    if (ly.table.allowdeselect)
-			ly.table.initselect = ly.table.initselect_orig;
-		    ly.table.RedrawAll(null, true);
+		    toggle_row = true;
 		    }
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
@@ -2452,7 +2460,8 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
-		cn_activate(ly.table,'Click', event);
+		if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		    toggle_row = false;
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
 		{
@@ -2487,7 +2496,22 @@ function tbld_mousedown(e)
 			    }
 			}
 		    ly.table.dta=event.data;
-		    cn_activate(ly.table,'DblClick', event);
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('DblClick', event)))
+			toggle_row = false;
+		    }
+		}
+	    if (toggle_row)
+		{
+		if (ly.table.initselect !== 1 || moved)
+		    {
+		    ly.table.initselect = 1;
+		    ly.table.RedrawAll(null, true);
+		    }
+		else if (ly.table.initselect !== ly.table.initselect_orig)
+		    {
+		    if (ly.table.allowdeselect)
+			ly.table.initselect = ly.table.initselect_orig;
+		    ly.table.RedrawAll(null, true);
 		    }
 		}
 	    }
