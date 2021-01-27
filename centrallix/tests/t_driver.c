@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <signal.h>
+#include <curses.h>
+#include <term.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -26,31 +28,36 @@
     t_driver.o. */
 /************************************************************************/
 
-
-#define RED    "\033[1m\x1B[31m"
-#define GREEN  "\033[1m\x1B[32m"
-#define RESET  "\x1B[0m"
-
 long long test(char**);
 
 char * test_name = "?";
 
 void
+print_result(char * result, int color)
+    {
+    printf("%-62.62s  ", test_name);
+    putp(tparm(tigetstr("setaf"), color)); //set terminal text color
+    putp(tparm(tigetstr("bold"))); //set terminal text to bold
+    printf("%s\n", result);
+    putp(tparm(tigetstr("sgr0"))); //clear terminal text attributes
+    }
+
+void
 segv_handler(int v)
     {
-    printf(RESET "%-62.62s  " RED "CRASH\n" RESET, test_name);
+    print_result("CRASH", COLOR_RED);
     exit(0);
     }
 void
 abort_handler(int v)
     {
-    printf(RESET "%-62.62s  " RED "ABORT\n" RESET, test_name);
+    print_result("ABORT", COLOR_RED);
     exit(0);
     }
 void
 alarm_handler(int v)
     {
-    printf(RESET "%-62.62s  " RED "LOCKUP\n" RESET, test_name);
+    print_result("LOCKUP", COLOR_RED);
     exit(0);
     }
 
@@ -63,13 +70,17 @@ start(void* v)
     signal(SIGABRT, abort_handler);
     signal(SIGALRM, alarm_handler);
     alarm(4);
+
+    // Initialize curses terminal and clear any existing text attributes
+    setupterm(0, 1, 0);
+    putp(tparm(tigetstr("sgr0")));
     
     rval = test(&test_name);
-    
+
     if (rval < 0)
-        printf(RESET "%-62.62s  " RED "FAIL\n" RESET, test_name);
+        print_result("FAIL", COLOR_RED);
     else
-        printf(RESET "%-62.62s  " GREEN "Pass\n" RESET, test_name);
+        print_result("Pass", COLOR_GREEN);
 
     return;
     }
