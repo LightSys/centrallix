@@ -570,7 +570,6 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		else \
 		    TOBASE="$${TOFILE%.bin}"; \
 		    ulimit -s 16384; \
-		    echo -n "$$CBLUE"; \
 		    ./$$TOBASE.bin 2>&1; \
 		fi; \
 	    fi \

@@ -79,8 +79,6 @@ start(void* v)
     int result = setupterm(0, 1, 0);
     if (result != 0) {
         use_curses = false;
-    } else {
-        putp(tparm(tigetstr("sgr0")));
     }
     
     rval = test(&test_name);
