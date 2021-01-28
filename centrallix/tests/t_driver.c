@@ -31,15 +31,20 @@
 long long test(char**);
 
 char * test_name = "?";
+bool use_curses = true;
 
 void
 print_result(char * result, int color)
     {
     printf("%-62.62s  ", test_name);
-    putp(tparm(tigetstr("setaf"), color)); //set terminal text color
-    putp(tparm(tigetstr("bold"))); //set terminal text to bold
+    if (use_curses) {
+        putp(tparm(tigetstr("setaf"), color)); //set terminal text color
+        putp(tparm(tigetstr("bold"))); //set terminal text to bold
+    }
     printf("%s\n", result);
-    putp(tparm(tigetstr("sgr0"))); //clear terminal text attributes
+    if (use_curses) {
+        putp(tparm(tigetstr("sgr0"))); //clear terminal text attributes
+    }
     }
 
 void
@@ -70,10 +75,13 @@ start(void* v)
     signal(SIGABRT, abort_handler);
     signal(SIGALRM, alarm_handler);
     alarm(4);
-
-    // Initialize curses terminal and clear any existing text attributes
-    setupterm(0, 1, 0);
-    putp(tparm(tigetstr("sgr0")));
+    
+    int result = setupterm(0, 1, 0);
+    if (result != 0) {
+        use_curses = false;
+    } else {
+        putp(tparm(tigetstr("sgr0")));
+    }
     
     rval = test(&test_name);
 
