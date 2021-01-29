@@ -83,6 +83,9 @@ CENTRALLIX_CHECK_JSONC
 dnl Check for SQLite
 CENTRALLIX_CHECK_SQLITE
 
+dnl Check for ncurses
+CENTRALLIX_CHECK_NCURSES
+
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
 CHECK_CTYPE_B

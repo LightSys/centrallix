@@ -93,6 +93,13 @@ AC_DEFUN(CENTRALLIX_CHECK_JSONC,
     ]
 )
 
+dnl Test for ncurses
+AC_DEFUN(CENTRALLIX_CHECK_NCURSES,
+    [
+    AC_CHECK_LIB(ncurses, setupterm, AC_DEFINE(HAVE_NCURSES, 1, [Defined to 1 if you have the ncurses library (-lncurses).]))
+    ]
+)
+
 
 dnl Test for the Centrallix-LIB header and library files.
 AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
