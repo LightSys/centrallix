@@ -33,17 +33,27 @@ long long test(char**);
 char * test_name = "?";
 bool use_curses = true;
 
+int
+puterr(char character)
+{
+    return putc(character, stderr);
+}
+
 void
 print_result(char * result, int color)
     {
+    if (use_curses) {
+        // Clear blue color from stderr
+        tputs(tparm(tigetstr("sgr0")), 1, puterr);
+    }
     printf("%-62.62s  ", test_name);
     if (use_curses) {
-        putp(tparm(tigetstr("setaf"), color)); //set terminal text color
-        putp(tparm(tigetstr("bold"))); //set terminal text to bold
+        tputs(tparm(tigetstr("setaf"), color), 1, putchar); //set stdout text color
+        tputs(tparm(tigetstr("bold")), 1, putchar); //set stdout text to bold
     }
     printf("%s\n", result);
     if (use_curses) {
-        putp(tparm(tigetstr("sgr0"))); //clear terminal text attributes
+        tputs(tparm(tigetstr("sgr0")), 1, putchar); //clear stdout text attributes
     }
     }
 
@@ -75,12 +85,17 @@ start(void* v)
     signal(SIGABRT, abort_handler);
     signal(SIGALRM, alarm_handler);
     alarm(4);
-    
+
     int result = setupterm(0, 1, 0);
     if (result != 0) {
         use_curses = false;
     }
     
+    if (use_curses) {
+        // Set any error output to be blue
+        tputs(tparm(tigetstr("setaf"), COLOR_BLUE), 1, puterr);
+    }
+
     rval = test(&test_name);
 
     if (rval < 0)
