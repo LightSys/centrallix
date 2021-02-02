@@ -56,7 +56,7 @@ segv_handler(int v)
 void
 abort_handler(int v)
     {
-    print_result("ABORT", COLOR_RED);
+    print_result("FAIL", COLOR_RED);
     exit(0);
     }
 void
