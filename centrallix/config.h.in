@@ -58,7 +58,8 @@
 /* Define to 1 if you have the `mkdir' function. */
 #undef HAVE_MKDIR
 
-/* Defined to 1 if you have the ncurses library (-lncurses). */
+/* Defined to 1 if you have the ncurses library (-lncurses, curses.h, and
+   term.h). */
 #undef HAVE_NCURSES
 
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */

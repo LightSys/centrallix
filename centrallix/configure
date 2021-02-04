@@ -5668,10 +5668,26 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncurses_setupterm" >&5
 $as_echo "$ac_cv_lib_ncurses_setupterm" >&6; }
 if test "x$ac_cv_lib_ncurses_setupterm" = xyes; then :
-  $as_echo "#define HAVE_NCURSES 1" >>confdefs.h
-
+  ncurses_found="yes"
 fi
 
+    ac_fn_c_check_header_mongrel "$LINENO" "curses.h" "ac_cv_header_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_curses_h" = xyes; then :
+  curses_h_found="yes"
+fi
+
+
+    ac_fn_c_check_header_mongrel "$LINENO" "term.h" "ac_cv_header_term_h" "$ac_includes_default"
+if test "x$ac_cv_header_term_h" = xyes; then :
+  term_h_found="yes"
+fi
+
+
+    if test "$ncurses_found" = "yes" -a "$curses_h_found" = "yes" -a "$term_h_found" = "yes"; then
+
+$as_echo "#define HAVE_NCURSES 1" >>confdefs.h
+
+    fi
 
 
 
