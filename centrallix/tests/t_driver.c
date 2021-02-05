@@ -45,7 +45,7 @@ puterr(char character)
 }
 
 void
-print_result(char * result, int succeeded)
+print_result(char * result, bool succeeded)
     {
     #ifdef HAVE_NCURSES
     if (use_curses) {
