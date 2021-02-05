@@ -626,6 +626,7 @@ ac_subst_vars='LTLIBOBJS
 LOGMETHOD
 COVERAGE
 PROFILE
+NCURSES_LIBS
 STATIC_LIBS
 STATIC_CFLAGS
 NETDRIVERS
@@ -5687,6 +5688,7 @@ fi
 
 $as_echo "#define HAVE_NCURSES 1" >>confdefs.h
 
+       NCURSES_LIBS="-lncurses"
     fi
 
 
@@ -7265,6 +7267,7 @@ $as_echo "$as_me: WARNING: recent Cairo was not found -- svg support will be dis
             { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: librsvg was not found -- svg support will be disabled" >&5
 $as_echo "$as_me: WARNING: librsvg was not found -- svg support will be disabled" >&2;}
         fi
+
 
 
 

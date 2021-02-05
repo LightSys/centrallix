@@ -101,6 +101,7 @@ AC_DEFUN(CENTRALLIX_CHECK_NCURSES,
     AC_CHECK_HEADER([term.h], [term_h_found="yes"])
     if test "$ncurses_found" = "yes" -a "$curses_h_found" = "yes" -a "$term_h_found" = "yes"; then
        AC_DEFINE(HAVE_NCURSES, 1, [Defined to 1 if you have the ncurses library (-lncurses, curses.h, and term.h).])
+       NCURSES_LIBS="-lncurses"
     fi
     ]
 )
