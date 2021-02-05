@@ -1,13 +1,18 @@
+#include "config.h"
 #include "cxlib/mtask.h"
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <signal.h>
+
+#ifdef HAVE_NCURSES
 #include <curses.h>
 #include <term.h>
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -40,39 +45,50 @@ puterr(char character)
 }
 
 void
-print_result(char * result, int color)
+print_result(char * result, bool succeeded)
     {
+    #ifdef HAVE_NCURSES
     if (use_curses) {
         // Clear blue color from stderr
         tputs(tparm(tigetstr("sgr0")), 1, puterr);
     }
+    #endif
+
     printf("%-62.62s  ", test_name);
+
+    #ifdef HAVE_NCURSES
     if (use_curses) {
+        int color = succeeded ? COLOR_GREEN : COLOR_RED;
         tputs(tparm(tigetstr("setaf"), color), 1, putchar); //set stdout text color
         tputs(tparm(tigetstr("bold")), 1, putchar); //set stdout text to bold
     }
+    #endif
+
     printf("%s\n", result);
+
+    #ifdef HAVE_NCURSES
     if (use_curses) {
         tputs(tparm(tigetstr("sgr0")), 1, putchar); //clear stdout text attributes
     }
+    #endif
     }
 
 void
 segv_handler(int v)
     {
-    print_result("CRASH", COLOR_RED);
+    print_result("CRASH", false);
     exit(0);
     }
 void
 abort_handler(int v)
     {
-    print_result("FAIL", COLOR_RED);
+    print_result("FAIL", false);
     exit(0);
     }
 void
 alarm_handler(int v)
     {
-    print_result("LOCKUP", COLOR_RED);
+    print_result("LOCKUP", false);
     exit(0);
     }
 
@@ -86,22 +102,24 @@ start(void* v)
     signal(SIGALRM, alarm_handler);
     alarm(4);
 
+    #ifdef HAVE_NCURSES
     int result = setupterm(0, 1, 0);
     if (result != 0) {
         use_curses = false;
     }
-    
+
     if (use_curses) {
         // Set any error output to be blue
         tputs(tparm(tigetstr("setaf"), COLOR_BLUE), 1, puterr);
     }
+    #endif
 
     rval = test(&test_name);
 
     if (rval < 0)
-        print_result("FAIL", COLOR_RED);
+        print_result("FAIL", false);
     else
-        print_result("Pass", COLOR_GREEN);
+        print_result("Pass", true);
 
     return;
     }
