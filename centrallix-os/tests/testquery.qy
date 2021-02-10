@@ -1,0 +1,8 @@
+$Version=2$
+testquery "system/query"
+    {
+    color "query/parameter" { type=string; }
+    id "query/parameter" { type=integer; }
+
+    sql = "select :name, :rowid, :color from /tests/test3.json where (:rowid = :parameters:id or :parameters:id is null) and (:color = :parameters:color or :parameters:color is null)";
+    }

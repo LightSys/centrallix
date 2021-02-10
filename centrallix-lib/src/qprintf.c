@@ -504,10 +504,75 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
     }
 
 
+/*** qpf_internal_base64encode() - convert string to base 64 representation
+ ***/
+int
+qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+    {
+    static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const char* srcptr = src;
+    char* dstptr;
+    int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
+
+	/** Grow dstbuf if necessary and possible, otherwise return error **/
+	if (req_size > *dst_size)
+	    {
+	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
+		{
+		QPERR(QPF_ERR_T_MEMORY);
+		return -1;
+		}
+	    }
+
+	dstptr = *dst + *dst_offset;
+	
+	/** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
+	while(srcptr < src + src_size)
+	    {
+	    /** First 6 bits of source[0] --> first byte dst. **/
+	    dstptr[0] = b64[srcptr[0]>>2];
+
+	    /** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
+	    if (srcptr+1 < src + src_size)
+		dstptr[1] = b64[((srcptr[0]&0x03)<<4) | (srcptr[1]>>4)];
+	    else
+		{
+		dstptr[1] = b64[(srcptr[0]&0x03)<<4];
+		dstptr[2] = '=';
+		dstptr[3] = '=';
+		dstptr += 4;
+		break;
+		}
+
+	    /** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
+	    if (srcptr+2 < src + src_size)
+		dstptr[2] = b64[((srcptr[1]&0x0F)<<2) | (srcptr[2]>>6)];
+	    else
+		{
+		dstptr[2] = b64[(srcptr[1]&0x0F)<<2];
+		dstptr[3] = '=';
+		dstptr += 4;
+		break;
+		}
+
+	    /** Last dst byte from last 6 bits of src[2] **/
+	    dstptr[3] = b64[(srcptr[2]&0x3F)];
+
+	    /** Increment pointers **/
+	    dstptr += 4;
+	    srcptr += 3;
+	    }
+
+	*dst_offset = *dst_offset + (dstptr - *dst);
+
+    return dstptr - *dst;
+    }
+
+
 /*** qpf_internal_base64decode() - convert base 64 to a string representation
  ***/
 static inline int
-qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
     char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
@@ -1042,6 +1107,16 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
 					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0)
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
+				    break;
+
+				case QPF_SPEC_T_B64:
+				    if((n=qpf_internal_base64encode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
+					{ rval = -EINVAL; goto error; } 
+				    else 
+					{
+					copied+=n;
+					cplen=0; 
+					}
 				    break;
 				
 				case QPF_SPEC_T_DB64:

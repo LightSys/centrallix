@@ -811,7 +811,7 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    }
 
 	/** Coverage mask for direct references (incl getdate() and user_name()) **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number") || !strcmp(exp->Name, "eval")))
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
 	    }

@@ -13,7 +13,7 @@ test(char** tname)
     int iter;
     unsigned char buf[44];
 
-	*tname = "qprintf-63 %STR&DB64 overflow test";
+	*tname = "qprintf-65 %STR&B64 overflow test";
 	iter = 200000;
 	for(i=0;i<iter;i++)
 	    {
@@ -25,9 +25,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
-	    assert(rval == 9);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eg");
+	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "test data");
+	    assert(rval == strlen("dGVzdCBkYXRh"));
+	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "the quick brown fox jumps ov");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

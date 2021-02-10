@@ -786,13 +786,13 @@ mqjStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 int
 mqj_internal_NextItemPrefetch(pQueryElement qe, pQueryStatement stmt)
     {
-    pQueryElement master,slave;
-    pMqjJoinData md;
+    //pQueryElement master,slave;
+    //pMqjJoinData md;
 
 	/** Determine master and slave sides of query **/
-	master = (pQueryElement)(qe->Children.Items[0]);
-	slave = (pQueryElement)(qe->Children.Items[1]);
-	md = (pMqjJoinData)(qe->PrivateData);
+	//master = (pQueryElement)(qe->Children.Items[0]);
+	//slave = (pQueryElement)(qe->Children.Items[1]);
+	//md = (pMqjJoinData)(qe->PrivateData);
 
     return 1;
     }
@@ -886,10 +886,10 @@ mqjFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pQueryElement master;
     pQueryElement slave;
-    pMqjJoinData md;
+    //pMqjJoinData md;
 
     	/** Need to complete the slave-side query? (early query cancel) **/
-	md = (pMqjJoinData)(qe->PrivateData);
+	//md = (pMqjJoinData)(qe->PrivateData);
 	if (qe->Flags & MQ_EF_SLAVESTART)
 	    {
 	    qe->Flags &= ~MQ_EF_SLAVESTART;

@@ -664,7 +664,6 @@ int
 qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
-    int rval;
 
 	if (inf == NULL) return -1;
 

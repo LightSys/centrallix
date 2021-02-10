@@ -1,0 +1,10 @@
+##NAME EXEC statement
+
+csv exec /tests/testquery.qy
+csv exec /tests/testquery.qy id=1
+csv exec /tests/testquery.qy id=1 + 1
+csv exec /tests/testquery.qy color="red"
+csv exec /tests/testquery.qy color="r" + "ed"
+csv exec /tests/testquery.qy color="r" + "ed", id=4
+csv exec /tests/testquery.qy color="r" + "ed", id=sqrt(16)
+csv exec /tests/testquery.qy color="yellow", id=5

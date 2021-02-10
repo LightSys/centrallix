@@ -66,14 +66,27 @@ function eb_internal_setvalue(v)
 function eb_setvalue(v,f)
     {
     this.internal_setvalue(v);
+    if (!this.in_transaction)
+	this.DoDataChange(1, 0);
+    }
+
+function eb_begin_transaction()
+    {
+    this.in_transaction = true;
+    }
+
+function eb_end_transaction()
+    {
     this.DoDataChange(1, 0);
+    this.in_transaction = false;
     }
 
 function eb_clearvalue()
     {
     this.was_null = true;
     this.Update(null);
-    this.DoDataChange(1, 0);
+    if (!this.in_transaction)
+	this.DoDataChange(1, 0);
     }
 
 function eb_content_changed(p,o,n)
@@ -450,7 +463,8 @@ function eb_do_data_change(from_osrc, from_kbd)
 	}
     this.oldvalue = this.value;
     this.value = nv;
-    cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
+    if (this.value !== this.oldvalue)
+	cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
     }
 
 
@@ -642,6 +656,7 @@ function eb_init(param)
     l.was_null = false;
     l.value_history = [];
     l.hist_offset = -1;
+    l.in_transaction = false;
 
     // Callbacks
     l.keyhandler = eb_keyhandler;
@@ -652,6 +667,8 @@ function eb_init(param)
     l.tipid = null;
     l.getvalue = eb_getvalue;
     l.setvalue = eb_setvalue;
+    l.begintransaction = eb_begin_transaction;
+    l.endtransaction = eb_end_transaction;
     l.internal_setvalue = eb_internal_setvalue;
     l.clearvalue = eb_clearvalue;
     l.setoptions = null;

@@ -974,6 +974,86 @@ exp_internal_UnlinkControl(pExpControl ctl)
     }
 
 
+/*** Build a PTOD structure with an expression's value
+ ***/
+pTObjData
+expExpressionToPtod(pExpression exp)
+    {
+    pTObjData ptod;
+
+	/** Create the ptod **/
+	ptod = ptodAllocate();
+	if (!ptod)
+	    return NULL;
+	ptod->DataType = exp->DataType;
+	if (exp->Flags & EXPR_F_NULL)
+	    {
+	    ptod->Flags |= DATA_TF_NULL;
+	    return ptod;
+	    }
+	else
+	    {
+	    ptod->Flags &= ~DATA_TF_NULL;
+	    }
+
+	/** Fill in the data value **/
+	switch(ptod->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		ptod->Data.Integer = exp->Integer;
+		break;
+	    case DATA_T_STRING:
+		ptod->Data.String = nmSysStrdup(exp->String);
+		break;
+	    case DATA_T_MONEY:
+		ptod->Data.Money = nmMalloc(sizeof(MoneyType));
+		memcpy(&ptod->Data.Money, &exp->Types.Money, sizeof(MoneyType));
+		break;
+	    case DATA_T_DATETIME:
+		ptod->Data.DateTime = nmMalloc(sizeof(DateTime));
+		memcpy(&ptod->Data.DateTime, &exp->Types.Date, sizeof(DateTime));
+		break;
+	    case DATA_T_DOUBLE:
+		ptod->Data.Double = exp->Types.Double;
+		break;
+	    default:
+		mssError(1, "PTOD", "Unhandled data type in expExpressionToPtod()");
+		ptodFree(ptod);
+		return NULL;
+	    }
+
+    return ptod;
+    }
+
+
+/*** Compile and evaluate an expression string
+ ***/
+pTObjData
+expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags)
+    {
+    pTObjData ptod;
+    pExpression exp;
+
+	/** First, compile it **/
+	exp = expCompileExpression(text, objlist, lxflags, cmpflags);
+	if (!exp)
+	    return NULL;
+
+	/** Evaluate **/
+	if (expEvalTree(exp, objlist) < 0)
+	    {
+	    expFreeExpression(exp);
+	    return NULL;
+	    }
+
+	/** Convert value to a PTOD **/
+	ptod = expExpressionToPtod(exp);
+	expFreeExpression(exp);
+
+    return ptod;
+    }
+
+
 /*** expInitialize - initialize the expression evaluator subsystem.
  ***/
 int

@@ -284,6 +284,8 @@ function form_load_fields(data, no_clear, modify, onefield)
 	    }
 	}
 
+    this.BeginTransaction();
+
     for(var i in this.elements)
 	{
 	if (onefield && onefield != this.elements[i].fieldname) continue;
@@ -327,12 +329,17 @@ function form_load_fields(data, no_clear, modify, onefield)
 	    this.elements[i].clearvalue();
 	    }
 	}
+
+    this.CommitTransaction();
     }
 
 /** Objectsource says our object is available **/
-function form_cb_object_available(data)
+function form_cb_object_available(data, osrc, why)
     {
     var go_view = false;
+
+    this.BeginTransaction();
+
     if (this.mode == 'Query')
 	{
 	// reset form status widgets when query done
@@ -391,7 +398,7 @@ function form_cb_object_available(data)
 
 	    this.LoadFields(this.data);
 
-	    this.SendEvent('DataLoaded');
+	    this.SendEvent('DataLoaded', {why: why} );
 	    }
 	else
 	    {
@@ -404,6 +411,7 @@ function form_cb_object_available(data)
     this.didsearch = false;
     this.didsearchlast = false;
     this.__created = false;
+    this.CommitTransaction();
     }
 
 /** Objectsource says the operation is complete **/
@@ -456,7 +464,7 @@ function form_action_clear(aparam)
     {
     if(this.mode=="NoData")
 	return; /* Already in NoData Mode */
-    if(this.IsUnsaved && (this.mode=="New" || this.mode=="Modify"))
+    if(this.IsUnsaved && (this.mode=="New" || this.mode=="Modify") && !aparam.force)
 	{
 	if(confirm("OK to save or discard changes, CANCEL to stay here"))
 	    {
@@ -710,6 +718,8 @@ function form_select_element(current, save_if_last, reverse)
     {
     var incr = reverse?(-1):1;
     var ctrlnum = (this.elements.length - incr)%this.elements.length;
+    if (!current && reverse)
+	ctrlnum = 0;
     var origctrl;
     var found_one = false;
 
@@ -754,6 +764,14 @@ function form_select_element(current, save_if_last, reverse)
 	    if (pg_removekbdfocus())
 		{
 		this.nextform.SelectElement(null);
+		return;
+		}
+	    }
+	if (reverse && origctrl == 0 && this.prevform && current && this.prevform.is_enabled)
+	    {
+	    if (pg_removekbdfocus())
+		{
+		this.prevform.SelectElement(null, false, true);
 		return;
 		}
 	    }
@@ -983,25 +1001,38 @@ function form_send_event(event, eparam)
 function form_begin_transaction()
     {
     this.trx_events = [];
-    this.in_transaction = true;
+    if (!this.in_transaction)
+	{
+	for(var i in this.elements)
+	    if (this.elements[i].begintransaction)
+		this.elements[i].begintransaction();
+	}
+    this.in_transaction++;
     }
 
 function form_commit_transaction()
     {
-    // scan for duplicate data change events
-    var found_datachange = false;
-    for(var i=0; i<this.trx_events.length; i++)
+    this.in_transaction--;
+    if (!this.in_transaction)
 	{
-	var e = this.trx_events[i];
-	if (e.event == 'DataChange')
+	// scan for duplicate data change events
+	var found_datachange = false;
+	for(var i=0; i<this.trx_events.length; i++)
 	    {
-	    if (found_datachange)
-		continue;
-	    found_datachange = true;
+	    var e = this.trx_events[i];
+	    if (e.event == 'DataChange')
+		{
+		if (found_datachange)
+		    continue;
+		found_datachange = true;
+		}
+	    cn_activate(this, e.event, e.evobj);
 	    }
-	cn_activate(this, e.event, e.evobj);
+
+	for(var i in this.elements)
+	    if (this.elements[i].endtransaction)
+		this.elements[i].endtransaction();
 	}
-    this.in_transaction = false;
     }
 
 // Disables the entire form.
@@ -1031,11 +1062,13 @@ function form_clear_all(internal_only)
     {
     if (!internal_only)
 	{
+	this.BeginTransaction();
 	for(var i in this.elements)
 	    {
 	    this.elements[i].clearvalue();
 	    this.elements[i]._form_IsChanged=false;
 	    }
+	this.CommitTransaction();
 	}
     this.IsUnsaved=false;
     this.is_savable = false;
@@ -1529,6 +1562,9 @@ function form_init(form,param)
     else if (param.nfw)
 	form.nextformwithin = wgtrGetNode(form, param.nfw);
 	//form.nextform = wgtrFindInSubtree(wgtrGetNode(form, param.nfw), form, "widget/form");
+    form.prevform = null;
+    if (param.pf)
+	form.prevform = wgtrGetNode(form, param.pf);
 
     //if (!form.osrc) alert('no osrc container!');
     form.IsUnsaved = false;
@@ -1575,7 +1611,7 @@ function form_init(form,param)
     form.recid = 1;
     form.lastrecid = null;
     form.data = null;
-    form.in_transaction = false;
+    form.in_transaction = 0;
     form.trx_events = [];
 
 /** initialize actions and callbacks **/

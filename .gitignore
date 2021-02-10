@@ -36,6 +36,7 @@ centrallix-lib/include/cxlib
 */nbproject/
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
+centrallix/tests/*.bin
 centrallix/tests/*.to.tmp
 centrallix/thirdparty/compare-*
 centrallix/thirdparty/*-inst
@@ -56,3 +57,4 @@ centrallix/test-driver
 *.gcda
 perf.data
 perf.data.old
+.idea/

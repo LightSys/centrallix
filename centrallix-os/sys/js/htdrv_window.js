@@ -305,6 +305,12 @@ function wn_setvisibility_bh(v)
 	// Point logic
 	if (this.point_at)
 	    {
+	    // Border radius of this window
+	    var brtxt = $(this).css('border-radius');
+	    if (!brtxt) brtxt = $(this).css('border-bottom-left-radius'); // grrr firefox
+	    var br = parseInt(brtxt);
+	    var min_offset = br + 20;
+
 	    // Geometry of widget we're pointing at...
 	    if (this.point_at.GetSelectedGeom)
 		var geom = this.point_at.GetSelectedGeom();
@@ -318,8 +324,8 @@ function wn_setvisibility_bh(v)
 		case 'bottom':
 		    // Allowable point positions
 		    var pt_y = $(this).outerHeight() + 15;
-		    var min_pt_x = 20;
-		    var max_pt_x = $(this).outerWidth() - 20;
+		    var min_pt_x = min_offset;
+		    var max_pt_x = $(this).outerWidth() - min_offset;
 		    if (min_pt_x > max_pt_x) return;
 
 		    // Allowable window positions
@@ -339,8 +345,8 @@ function wn_setvisibility_bh(v)
 		case 'top':
 		    // Allowable point positions
 		    var pt_y = -15;
-		    var min_pt_x = 20;
-		    var max_pt_x = $(this).outerWidth() - 20;
+		    var min_pt_x = min_offset;
+		    var max_pt_x = $(this).outerWidth() - min_offset;
 		    if (min_pt_x > max_pt_x) return;
 
 		    // Allowable window positions
@@ -360,8 +366,8 @@ function wn_setvisibility_bh(v)
 		case 'left':
 		    // Allowable point positions
 		    var pt_x = -15;
-		    var min_pt_y = 20;
-		    var max_pt_y = $(this).outerHeight() - 20;
+		    var min_pt_y = min_offset;
+		    var max_pt_y = $(this).outerHeight() - min_offset;
 		    if (min_pt_y > max_pt_y) return;
 
 		    // Allowable window positions
@@ -381,8 +387,8 @@ function wn_setvisibility_bh(v)
 		case 'right':
 		    // Allowable point positions
 		    var pt_x = $(this).outerWidth() + 15;
-		    var min_pt_y = 20;
-		    var max_pt_y = $(this).outerHeight() - 20;
+		    var min_pt_y = min_offset;
+		    var max_pt_y = $(this).outerHeight() - min_offset;
 		    if (min_pt_y > max_pt_y) return;
 
 		    // Allowable window positions

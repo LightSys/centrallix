@@ -1322,7 +1322,8 @@ http_internal_GetConfigString(pHttpData inf, char* configname, char* default_val
 	//if (stGetObjAttrValue(inf->Node->Data, configname, DATA_T_STRING, POD(&ptr)) < 0 || !ptr)
 	if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
 	    ptr = default_value;
-	ptr = nmSysStrdup(ptr);
+	if (ptr)
+	    ptr = nmSysStrdup(ptr);
 	if (!ptr)
 	    return NULL;
 	if (HTTP_OS_DEBUG) printf("%s: %s\n",configname,ptr);
@@ -1559,6 +1560,10 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     short rval;
     pSnNode node = NULL;
     char* ptr;
+    char* user;
+    char* pw;
+    char* authline;
+    int len;
     int redir_cnt;
 
 	/** Allocate the structure **/
@@ -1626,19 +1631,31 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 
 	/** Authentication headers **/
-	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", "")))
+	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", NULL)))
 	    {
-	    if (ptr[0])
-		http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1, 0);
-	    else
-		nmSysFree(ptr);
+	    http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1, 0);
 	    }
-	if ((ptr = http_internal_GetConfigString(inf, "authline", "")))
+	if ((ptr = http_internal_GetConfigString(inf, "authline", NULL)))
 	    {
-	    if (ptr[0])
-		http_internal_AddRequestHeader(inf, "Authorization", ptr, 1, 0);
-	    else
+	    http_internal_AddRequestHeader(inf, "Authorization", ptr, 1, 0);
+	    }
+	else if ((user = http_internal_GetConfigString(inf, "username", NULL)))
+	    {
+	    pw = http_internal_GetConfigString(inf, "password", "");
+	    ptr = nmSysMalloc(strlen(user) + 1 + strlen(pw) + 1);
+	    if (!ptr)
+		goto error;
+	    sprintf(ptr, "%s:%s", user, pw);
+	    len = (strlen(user) + 1 + strlen(pw)) * 2 + 3 + 6;
+	    authline = nmSysMalloc(len);
+	    if (!authline)
+		{
 		nmSysFree(ptr);
+		goto error;
+		}
+	    qpfPrintf(NULL, authline, len, "Basic %STR&B64", ptr);
+	    nmSysFree(ptr);
+	    http_internal_AddRequestHeader(inf, "Authorization", authline, 1, 0);
 	    }
 
 	/** Control flags **/

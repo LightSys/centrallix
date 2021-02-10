@@ -424,8 +424,8 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pMqusData pdata;
     pQueryElement cld;
-    int i,j,k;
-    pParamObjects objlist, check_objlist;
+    int i,j;
+    pParamObjects objlist;
     pQueryStructure update_qs;
     pExpression exp, assign_exp;
     int t;
