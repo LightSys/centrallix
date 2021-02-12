@@ -699,6 +699,26 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			}
 		    qy = NULL;
 
+		    /** Close old objects **/
+		    ptr = NULL;
+		    stAttrValue_ne(stLookup_ne(req_inf,"ls__closeobjs"),&ptr);
+		    while(ptr && *ptr)
+			{
+			obj_handle = xhnStringToHandle(ptr+1, &newptr, 16);
+			if (newptr <= ptr+1) break;
+			ptr = newptr;
+			if (*ptr == ',') ptr++;
+			obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
+			if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
+			    {
+			    mssError(1,"NHT","Invalid object id(s) in OSML multiquery 'ls__closeobjs' request");
+			    continue;
+			    }
+			xhnFreeHandle(&(sess->Hctx), obj_handle);
+			objClose(obj);
+			obj = NULL;
+			}
+
 		    /** check for query parameters **/
 		    nht_query = nht_i_CreateQuery(req_inf);
 		    if (nht_query)

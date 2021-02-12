@@ -1437,7 +1437,19 @@ function osrc_open_query()
 	return 0;
 	}
     this.query_ended = false;
-    var reqobj = {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()};
+    var oldoids = this.oldoids.join();
+    this.oldoids = [];
+    var reqobj =
+	{
+	ls__autoclose_sr:'1', 
+	ls__autofetch:'1', 
+	ls__objmode:'0', 
+	ls__notify:this.request_updates, 
+	ls__rowcount:this.replicasize, 
+	ls__sql:this.query, 
+	ls__sqlparam:this.EncodeParams(),
+	ls__closeobjs:oldoids
+	};
     if (!this.sid)
 	reqobj.ls__newsess = 'yes';
     this.ifcProbe(ifEvent).Activate("BeginQuery", {});
