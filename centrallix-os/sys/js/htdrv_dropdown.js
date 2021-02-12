@@ -1044,7 +1044,7 @@ function dd_action_set_group(aparam)
     var new_select = null;
     for(var i=0; i<this.allValues.length; i++)
 	{
-	if (!this.currentGroup || !this.allValues[i].grp || this.currentGroup == this.allValues[i].grp)
+	if (typeof this.currentGroup == 'undefined' || this.currentGroup === null || this.allValues[i].grp === null || this.currentGroup === this.allValues[i].grp)
 	    {
 	    if (typeof aparam.Min == 'undefined' || aparam.Min === null || aparam.Min <= this.allValues[i].value)
 		{
@@ -1132,6 +1132,10 @@ function dd_action_set_items(aparam)
 
 	var url = "/?cx__akey=" + akey + "&ls__mode=query&ls__rowcount=" + rowlimit + "&ls__sql=" + htutil_escape(aparam.SQL);
 	pg_serialized_load(this.sql_loader, url, dd_sql_loaded);
+	}
+    else
+	{
+	this.additems(this, []);
 	}
     }
 
