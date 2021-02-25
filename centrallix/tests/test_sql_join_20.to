@@ -1,0 +1,3 @@
+##NAME Two joins, first outer, second excluded rows
+
+query select t1id = :t1:f_id, t2id = :t2:f_id, jsid = :js:rowid, t1desc = :t1:f_desc, t2desc = :t2:f_desc, jscolor = :js:color from /tests/Testdata2.csv/rows t1, /tests/Testdata1.csv/rows t2, /tests/test3.json js where :t1:f_id *= :t2:f_id and lower(:t2:f_desc) = :js:color and :js:color != 'yellow'
