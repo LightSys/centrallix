@@ -1044,7 +1044,7 @@ function dd_action_set_group(aparam)
     var new_select = null;
     for(var i=0; i<this.allValues.length; i++)
 	{
-	if (typeof this.currentGroup == 'undefined' || this.currentGroup === null || this.allValues[i].grp === null || this.currentGroup === this.allValues[i].grp)
+	if (typeof this.currentGroup == 'undefined' || this.currentGroup === null || this.allValues[i].grp === null || this.currentGroup == this.allValues[i].grp)
 	    {
 	    if (typeof aparam.Min == 'undefined' || aparam.Min === null || aparam.Min <= this.allValues[i].value)
 		{
