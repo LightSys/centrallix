@@ -1683,7 +1683,7 @@ function osrc_end_query()
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
+    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0)});
     this.doing_refresh = false;
     this.Dispatch();
 
