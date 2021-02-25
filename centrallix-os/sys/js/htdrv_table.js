@@ -1244,7 +1244,7 @@ function tbld_apply_row_geom(row, firstcol)
     for(var j=firstcol; j<this.colcount; j++)
 	{
 	var c=row.cols[j];
-	var new_w = this.cols[j].width - this.innerpadding*2;
+	var new_w = this.cols[j].width; // - this.innerpadding*2;
 	if (this.colsep > 0 || this.dragcols)
 	    new_w -= (this.bdr_width*2 + this.colsep);
 	$(c).width(new_w);
@@ -1587,7 +1587,7 @@ function tbld_instantiate_row(parentDiv, x, y)
 	col.colnum = j;
 	col.xoffset = this.cols[j].xoffset;
 	col.subkind = "cell";
-	col.initwidth=this.cols[j].width-this.innerpadding*2;
+	col.initwidth=this.cols[j].width; //-this.innerpadding*2;
 	if (this.colsep > 0 || this.dragcols)
 	    col.initwidth -= (this.bdr_width*2 + this.colsep);
 	$(col).css
