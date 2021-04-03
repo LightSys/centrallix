@@ -2923,7 +2923,7 @@ mq_internal_NextStatement(pMultiQuery this)
 		goto error;
 		}
 	    }
-	mq_internal_DumpQEWithExpr(stmt->Tree, 0);
+	//mq_internal_DumpQEWithExpr(stmt->Tree, 0);
 
 	/** Just did a declaration? **/
 	if (!stmt->Tree && mq_internal_FindItem(stmt->QTree, MQ_T_DECLARECLAUSE, NULL))
