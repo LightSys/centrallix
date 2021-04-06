@@ -162,6 +162,7 @@ mqusAnalyze(pQueryStatement stmt)
 		expAddNode(exp, item->Expr);
 		pdata->Criteria[pdata->nCriteria].Compare = exp;
 		pdata->Criteria[pdata->nCriteria].Exp = item->Expr;
+		item->Expr = NULL;
 
 		/** Main criteria tree **/
 		if (pdata->AllCriteria)
@@ -587,6 +588,16 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 int
 mqusRelease(pQueryElement qe, pQueryStatement stmt)
     {
+    pMqusData pdata;
+
+	pdata = (pMqusData)qe->PrivateData;
+	if (pdata)
+	    {
+	    if (pdata->AllCriteria)
+		expFreeExpression(pdata->AllCriteria);
+	    nmFree(pdata, sizeof(MqusData));
+	    }
+
     return 0;
     }
 
