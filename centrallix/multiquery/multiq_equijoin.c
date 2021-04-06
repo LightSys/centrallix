@@ -1124,6 +1124,8 @@ mqjRelease(pQueryElement qe, pQueryStatement stmt)
 	    for(i=0; i<md->Sources.nItems; i++)
 		{
 		src = (pMqjJoinExec)md->Sources.Items[i];
+		if (src->Constraint)
+		    expFreeExpression(src->Constraint);
 		nmFree(src, sizeof(MqjJoinExec));
 		}
 	    xaDeInit(&md->Sources);
