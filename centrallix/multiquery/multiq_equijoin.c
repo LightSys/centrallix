@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
@@ -132,9 +133,6 @@ typedef struct _MQJS
  ***/
 typedef struct
     {
-    /** Number of provided sources **/
-    int			nProvidedObjects;
-
     /** Join data **/
     XArray		Sources;
 
@@ -592,7 +590,6 @@ mqjAnalyze(pQueryStatement stmt)
 		}
 	    memset(qe->PrivateData, 0, sizeof(MqjJoinData));
 	    xaInit(&((pMqjJoinData)(qe->PrivateData))->Sources, 16);
-	    md->nProvidedObjects = stmt->Query->nProvidedObjects;
 
 	    used_mask = 0;
 	    for(i=0; i<joined_objects; i++)
@@ -641,7 +638,7 @@ mqjAnalyze(pQueryStatement stmt)
 		/** Mask for sources **/
 		used_mask |= jexec->CoverageMask;
 
-		/** Handle joins **/
+		/** Handle outer joins **/
 		for(j=0; j<n_joins; j++)
 		    {
 		    /** Is it an outer join? Yes if:
@@ -920,7 +917,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
     pMqjJoinExec src, nextsrc;
     int rval = 1;
     unsigned int null_dep_mask;
-    int is_outer = 0;
+    bool is_outer = false;
     pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
 
 	/** Find the source **/
@@ -932,7 +929,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 
 	/** Is this source outer joined? **/
 	if (src->OuterMask || (null_dep_mask != 0 && (null_dep_mask & md->OuterStateMask) == null_dep_mask))
-	    is_outer = 1;
+	    is_outer = true;
 
 	/** Already done with this source? **/
 	if (src->State == MqjStateFinished)
@@ -992,7 +989,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 			mqj_internal_SetState(md, source_id, MqjStateOuter);
 			}
 
-		    /** Outer source? **/
+		    /** Source being treated as Outer? **/
 		    if (src->State == MqjStateOuter)
 			{
 			src->IterCnt += 1;
