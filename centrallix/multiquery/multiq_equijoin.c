@@ -108,6 +108,8 @@ typedef struct
     {
     pExpression		Constraint;
     unsigned int	DependencyMask;
+    unsigned int	GlobalDependencyMask;
+    unsigned int	ReverseDependencyMask;
     unsigned int	CoverageMask;
     unsigned int	OuterMask;
     int			SrcIndex;
@@ -124,6 +126,8 @@ typedef struct _MQJS
     pQueryStructure	FromItem;
     int			Score;
     unsigned int	DependencyMask;
+    unsigned int	GlobalDependencyMask;
+    unsigned int	ReverseDependencyMask;
     }
     MqjSource, *pMqjSource;
 
@@ -471,6 +475,8 @@ mqjAnalyze(pQueryStatement stmt)
 		if (!sources[i])
 		    goto error;
 		sources[i]->DependencyMask = 0;
+		sources[i]->GlobalDependencyMask = 0;
+		sources[i]->ReverseDependencyMask = 0;
 		sources[i]->FromItem = from_item;
 		sources[i]->Score = from_item->Specificity + (1000 - from_item->QELinkage->OrderPrio) * 0x10000;
 		}
@@ -538,11 +544,24 @@ mqjAnalyze(pQueryStatement stmt)
 		for(j=0; j<n_joins; j++)
 		    {
 		    if ((joins[j]->Mask & (1<<ordered_sources[i]->FromItem->ObjID)) && !(joins[j]->GlobalDependencyMask & (1<<ordered_sources[i]->FromItem->ObjID)))
-			ordered_sources[i]->DependencyMask |= joins[j]->GlobalDependencyMask;
+			{
+			ordered_sources[i]->DependencyMask |= joins[j]->DependencyMask;
+			ordered_sources[i]->GlobalDependencyMask |= joins[j]->GlobalDependencyMask;
+			}
 		    }
 		}
 
-	    /*for(i=0;i<joined_objects;i++)
+	    /** Set reverse dependencies **/
+	    for(i=0; i<joined_objects; i++)
+		{
+		for(j=0; j<joined_objects; j++)
+		    {
+		    if (j != i && (ordered_sources[i]->DependencyMask & (1<<ordered_sources[j]->FromItem->ObjID)))
+			ordered_sources[j]->ReverseDependencyMask |= (1<<ordered_sources[i]->FromItem->ObjID);
+		    }
+		}
+
+	    for(i=0;i<joined_objects;i++)
 		{
 		fprintf(stderr, "Src%d: %s %s score 0x%1.1x, dep %2.2x (",
 			i,
@@ -552,6 +571,8 @@ mqjAnalyze(pQueryStatement stmt)
 			ordered_sources[i]->DependencyMask
 			);
 		mqj_internal_PrintMask(ordered_sources[i]->DependencyMask, ordered_sources, joined_objects);
+		fprintf(stderr, ") rdep %2.2x (", ordered_sources[i]->ReverseDependencyMask);
+		mqj_internal_PrintMask(ordered_sources[i]->ReverseDependencyMask, ordered_sources, joined_objects);
 		fprintf(stderr, ")\n");
 		}
 	    for(i=0;i<n_joins;i++)
@@ -569,7 +590,7 @@ mqjAnalyze(pQueryStatement stmt)
 		fprintf(stderr, "), globaldep %2.2x (", joins[i]->GlobalDependencyMask);
 		mqj_internal_PrintMask(joins[i]->GlobalDependencyMask, ordered_sources, joined_objects);
 		fprintf(stderr, ")\n");
-		}*/
+		}
 
 	    /** Get the select clause **/
 	    select_qs = mq_internal_FindItem(from_qs->Parent, MQ_T_SELECTCLAUSE, NULL);
@@ -622,6 +643,8 @@ mqjAnalyze(pQueryStatement stmt)
 		jexec->SrcIndex = ordered_sources[i]->FromItem->ObjID;
 		jexec->Constraint = NULL;
 		jexec->DependencyMask = ordered_sources[i]->DependencyMask;
+		jexec->GlobalDependencyMask = ordered_sources[i]->GlobalDependencyMask;
+		jexec->ReverseDependencyMask = ordered_sources[i]->ReverseDependencyMask;
 		jexec->CoverageMask = 1<<jexec->SrcIndex;
 		jexec->OuterMask = 0;
 		jexec->QE = source;
@@ -728,12 +751,12 @@ mqjAnalyze(pQueryStatement stmt)
 			}
 		    }
 
-		/*fprintf(stderr, "%s: dep %2.2x cov %2.2x out %2.2x\n", 
+		fprintf(stderr, "%s: dep %2.2x cov %2.2x out %2.2x\n", 
 		    ((pQueryStructure)(jexec->QE->QSLinkage))->Presentation,
 		    jexec->DependencyMask,
 		    jexec->CoverageMask,
 		    jexec->OuterMask
-		    );*/
+		    );
 		}
 
 	    /** Now link in to the query exec tree **/
