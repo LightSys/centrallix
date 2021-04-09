@@ -76,7 +76,7 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
     {
     ObjData od;
     int rval;
-        long long whole, fraction;
+    long long whole, fraction;
 
 	/** Get the data value **/
 	rval = objGetAttrValue(obj, attrname, data_type, &od);

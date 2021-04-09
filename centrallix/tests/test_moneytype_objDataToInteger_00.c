@@ -1,9 +1,6 @@
 #include "obj.h"
 #include <assert.h>
 #include <stdio.h>
-//#include "xstring.h"
-//#include "mtsession.h"
-//#include "mtask.h"
 
 long long
 test(char** name)

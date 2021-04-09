@@ -1655,13 +1655,11 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 		for(i=0;i<column->DecimalOffset;i++) f *= 10;
 		pod->Money = (pMoneyType)data;
 		pod->Money->Value = (v/f) * 10000;
-		//pod->Money->WholePart = v/f;
 		v = (v/f)*f;
 		if (column->DecimalOffset <= 4)
 		    for(i=column->DecimalOffset;i<4;i++) v *= 10;
 		else
 		    for(i=4;i<column->DecimalOffset;i++) v /= 10;
-		//pod->Money->FractionPart = v;
 		pod->Money->Value += v;
 		break;
 	    default:

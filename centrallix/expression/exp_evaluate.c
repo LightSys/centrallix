@@ -431,7 +431,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    case DATA_T_INTEGER:
 			mv *= i1->Integer;
 			break;
-		    case DATA_T_DOUBLE:		    
+		    case DATA_T_DOUBLE:
 			md = mv * i1->Types.Double;
 			if (md < 0) md -= 0.5;
 			else md += 0.5;

@@ -777,9 +777,6 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		/** smallmoney, 4-byte **/
 		memcpy(&i, ptr, 4);
 		val->Money->Value = i;
-		//val->Money->WholePart = i/10000;
-		//if (i < 0 && (i%10000) != 0) val->Money->WholePart--;
-		//val->Money->FractionPart = i - (val->Money->WholePart*10000);
 		return 0;
 		}
 	    else
