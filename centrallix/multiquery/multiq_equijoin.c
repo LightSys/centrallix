@@ -113,9 +113,7 @@ typedef struct
     unsigned int	CoverageMask;
     unsigned int	OuterMask;
     int			SrcIndex;
-    int			IterCnt;
     int			ReturnIterCnt;
-    int			NextIterCnt;
     MqjJoinExecState	State;
     pQueryElement	QE;
     }
@@ -906,7 +904,7 @@ mqjStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	for(i=0; i<md->Sources.nItems; i++)
 	    {
 	    src = (pMqjJoinExec)md->Sources.Items[i];
-	    src->ReturnIterCnt = src->NextIterCnt = src->IterCnt = 0;
+	    src->ReturnIterCnt = 0;
 	    mqj_internal_SetState(md, i, MqjStateNotStarted);
 	    }
 
@@ -956,7 +954,6 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 	null_dep_mask = (~md->StartedStateMask) & src->DependencyMask;
 
 	/** Is this source outer joined? **/
-	//if (src->OuterMask || (null_dep_mask != 0 && (null_dep_mask & md->OuterStateMask) == null_dep_mask))
 	if (src->OuterMask || (src->DependencyMask != 0 && (src->DependencyMask & md->OuterStateMask) == src->DependencyMask))
 	    is_outer = true;
 	can_be_outer = (md->CanBeOuterMask & src->CoverageMask)?true:false;
@@ -966,7 +963,6 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 	    return -1;
 
 	/** Non-outer element with null dependencies? **/
-	//if (null_dep_mask != 0 && !can_be_outer && (src->DependencyMask & md->OuterStateMask) != src->DependencyMask)
 	if (null_dep_mask != 0 && !can_be_outer)
 	    {
 	    if (src->State == MqjStateStarted)
@@ -978,7 +974,6 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 	/** Start the source? **/
 	if (src->State == MqjStateNotStarted)
 	    {
-	    src->IterCnt = 0;
 	    src->ReturnIterCnt = 0;
 	    if (null_dep_mask == 0)
 		{
@@ -1009,10 +1004,6 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 			    src->QE->Driver->Finish(src->QE, stmt);
 			    mqj_internal_SetState(md, source_id, MqjStateFinished);
 			    }
-			else
-			    {
-			    src->IterCnt += 1;
-			    }
 			}
 
 		    /** Got no rows and source is outer? **/
@@ -1024,7 +1015,6 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 		    /** Source being treated as Outer? **/
 		    if (src->State == MqjStateOuter)
 			{
-			src->IterCnt += 1;
 			if (src->ReturnIterCnt >= 1)
 			    {
 			    /** Already returned a null row -- set finished -- no need to Finish()
@@ -1038,7 +1028,6 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 		    if (nextsrc && (src->State == MqjStateStarted || src->State == MqjStateOuter))
 			{
 			mqj_internal_SetState(md, source_id+1, MqjStateNotStarted);
-			src->NextIterCnt = 0;
 			}
 		    }
 		}
@@ -1090,30 +1079,10 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 		    else if (rval == 0)
 			{
 			continue;
-
-			/** No data from next source **/
-			if (can_be_outer && src->NextIterCnt == 0)
-			    {
-			    /** Chained outer situation - return valid but null row **/
-			    if (src->State == MqjStateStarted)
-				{
-				src->QE->Driver->Finish(src->QE, stmt);
-				mqj_internal_SetState(md, source_id, MqjStateOuter);
-				}
-			    src->NextIterCnt += 1;
-			    src->ReturnIterCnt += 1;
-			    return 1;
-			    }
-			else
-			    {
-			    /** Normal retrieval - go try fetching another row **/
-			    continue;
-			    }
 			}
 		    else /* rval > 0 */
 			{
 			/** Valid data from next source **/
-			src->NextIterCnt += 1;
 			src->ReturnIterCnt += 1;
 			return 1;
 			}
