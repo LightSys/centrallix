@@ -2,7 +2,7 @@ Attribute [id1]:   string   "Aardvark"
 Attribute [id2]:  integer  NULL
 Attribute [id3]:  integer  NULL
 Attribute [id4]:  integer  NULL
-Attribute [id5]:   string   "green"
+Attribute [id5]:   string   "green" 
 Attribute [id1]:   string   "Beagle" 
 Attribute [id2]:   string   "green" 
 Attribute [id3]:   string   "Red" 
@@ -27,12 +27,12 @@ Attribute [id1]:   string   "Fox"
 Attribute [id2]:   string   "orange" 
 Attribute [id3]:  integer  NULL
 Attribute [id4]:  integer  NULL
-Attribute [id5]:   string   "purple"
+Attribute [id5]:   string   "purple" 
 Attribute [id1]:   string   "Goat" 
 Attribute [id2]:   string   "purple" 
 Attribute [id3]:  integer  NULL
 Attribute [id4]:  integer  NULL
-Attribute [id5]:   string   "violet"
+Attribute [id5]:   string   "violet" 
 Attribute [id1]:   string   "Hawk" 
 Attribute [id2]:   string   "violet" 
 Attribute [id3]:  integer  NULL
