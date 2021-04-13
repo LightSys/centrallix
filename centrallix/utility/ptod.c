@@ -272,6 +272,24 @@ ptodPrint(pTObjData ptod)
     }
 
 
+/*** ptodToStringTmp() - Convert a ptod to string form.
+ ***/
+char*
+ptodToStringTmp(pTObjData ptod)
+    {
+    char* str;
+
+	/** Convert to string **/
+	if (ptod->Flags & DATA_TF_NULL || ptod->DataType < 0 || ptod->DataType == DATA_T_UNAVAILABLE)
+	    return "";
+	else if (ptod->DataType == DATA_T_INTEGER || ptod->DataType == DATA_T_DOUBLE)
+	    return (char*)objDataToStringTmp(ptod->DataType, (void*)&(ptod->Data), 0);
+	else
+	    return (char*)objDataToStringTmp(ptod->DataType, (void*)(ptod->Data.Generic), 0);
+
+    }
+
+
 int 
 ptodTypeOf(pTObjData ptod)
     {

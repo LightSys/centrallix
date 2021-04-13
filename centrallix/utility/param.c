@@ -231,9 +231,21 @@ paramSetValueFromInfNe(pParam param, pStruct inf)
 	    {
 	    ptod = ptodAllocate();
 	    ptod->DataType = param->Value->DataType;
-	    if (objDataFromStringAlloc(&(ptod->Data), param->Value->DataType, str) < 0)
-		goto error;
-	    ptod->Flags &= ~(DATA_TF_NULL);
+
+	    /** Empty is NULL if datatype is non-string, otherwise there
+	     ** is no good way to indicate an empty string vs a null
+	     ** string, so it has to be handled via hints (strnull).
+	     **/
+	    if (ptod->DataType != DATA_T_STRING && !*str)
+		{
+		ptod->Flags |= DATA_TF_NULL;
+		}
+	    else
+		{
+		if (objDataFromStringAlloc(&(ptod->Data), param->Value->DataType, str) < 0)
+		    goto error;
+		ptod->Flags &= ~(DATA_TF_NULL);
+		}
 	    paramSetValue(param, ptod);
 	    ptodFree(ptod);
 	    return 0;

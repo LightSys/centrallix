@@ -874,7 +874,9 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)) 
+		if (t < 0)
+		    return -1;
+		if (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER) 
 		    {
 		    mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
 		    return -1;
@@ -927,7 +929,9 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)) 
+		if (t < 0)
+		    return -1;
+		if (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)
 		    {
 		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
 		    return -1;

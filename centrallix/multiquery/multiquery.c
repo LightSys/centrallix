@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <assert.h>
+#include "ptod.h"
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
@@ -1010,7 +1011,11 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 	    if (t == MLX_TOK_OPENPAREN) 
 		parenlevel++;
 	    if (t == MLX_TOK_CLOSEPAREN)
+		{
 		parenlevel--;
+		if (parenlevel < 0)
+		    break;
+		}
 
 	    /** Copy it to the raw data **/
 	    ptr = mlxStringVal(lxs,NULL);
@@ -1194,6 +1199,49 @@ mq_internal_ParseUpdateItem(pQueryStructure item_qs, pLxSession lxs)
     }
 
 
+/*** mq_internal_CopyLiteral() - copy lexer data to a string raw, for later
+ *** analysis or compilation.  Returns the token type of the last token
+ *** encountered (i.e., the token that terminated the copy operation).
+ ***/
+int
+mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
+    {
+    int t, parenlevel;
+    char* ptr;
+
+	parenlevel = 0;
+	while(1)
+	    {
+	    t = mlxNextToken(lxs);
+	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+		break;
+	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON || t == MLX_TOK_COMMA) && parenlevel <= 0)
+		break;
+	    if (t == MLX_TOK_OPENPAREN) parenlevel++;
+	    if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
+	    ptr = mlxStringVal(lxs,NULL);
+	    if (!ptr) break;
+	    if (t == MLX_TOK_STRING)
+		{
+		xsConcatQPrintf(xs, "%STR&DQUOT", ptr);
+		}
+	    else
+		{
+		xsConcatenate(xs, ptr, -1);
+		}
+	    xsConcatenate(xs, " ", 1);
+	    }
+
+	/** Mismatched parentheses **/
+	if (parenlevel != 0)
+	    {
+	    return -t;
+	    }
+
+    return t;
+    }
+
+
 /*** mq_internal_SyntaxParse - parse the syntax of the SQL used for this
  *** query.
  ***/
@@ -1211,10 +1259,12 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom;
     int is_object;
     char* ptr;
+    pXString xs, param;
+    pTObjData ptod;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
-				   "showplan", "multistatement", "if", "modified", NULL};
+				   "showplan", "multistatement", "if", "modified", "exec", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -1852,6 +1902,101 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    ondup_cls->Parent = qs;
 			    next_state = OnDupItem;
 			    }
+			else if (!strcmp("exec", ptr))
+			    {
+			    /** EXEC is a form of SELECT from a specific source with parameters **/
+			    t = mlxNextToken(lxs);
+			    if (t == MLX_TOK_FILENAME || t == MLX_TOK_STRING)
+				{
+				/** We handle this by setting up a SELECT * FROM /path/name?param=value **/
+				ptr = mlxStringVal(lxs, NULL);
+				select_cls = mq_internal_AllocQS(MQ_T_SELECTCLAUSE);
+				xaAddItem(&qs->Children, (void*)select_cls);
+				select_cls->Parent = qs;
+				new_qs = mq_internal_AllocQS(MQ_T_SELECTITEM);
+				xaAddItem(&select_cls->Children, (void*)new_qs);
+				new_qs->Parent = select_cls;
+				new_qs->Expr = NULL;
+				strtcpy(new_qs->Presentation, "*", sizeof(new_qs->Presentation));
+				xsCopy(&new_qs->RawData, "*", 1);
+				new_qs->Flags |= MQ_SF_ASTERISK;
+				new_qs->ObjCnt = 1;
+				from_cls = mq_internal_AllocQS(MQ_T_FROMCLAUSE);
+				xaAddItem(&qs->Children, (void*)from_cls);
+				from_cls->Parent = qs;
+				new_qs = mq_internal_AllocQS(MQ_T_FROMSOURCE);
+				xaAddItem(&from_cls->Children, (void*)new_qs);
+				new_qs->Parent = from_cls;
+				new_qs->Presentation[0] = 0;
+				new_qs->Name[0] = 0;
+				xs = xsNew();
+				xsCopy(xs, ptr, -1);
+
+				/** Check for parameters **/
+				int paramcnt = 0;
+				while(1)
+				    {
+				    t = mlxNextToken(lxs);
+				    if (t != MLX_TOK_STRING && t != MLX_TOK_RESERVEDWD && t != MLX_TOK_KEYWORD)
+					{
+					mlxHoldToken(lxs);
+					break;
+					}
+				    paramcnt++;
+				    ptr = mlxStringVal(lxs, NULL);
+				    xsConcatQPrintf(xs, "%STR%STR&URL", (paramcnt == 1)?"?":"&", ptr);
+				    t = mlxNextToken(lxs);
+				    if (t != MLX_TOK_EQUALS)
+					{
+					next_state = ParseError;
+					mssError(1,"MQ","Expected equals after EXEC parameter");
+					mlxNoteError(lxs);
+					xsFree(xs);
+					break;
+					}
+
+				    /** Parameter value **/
+				    param = xsNew();
+				    t = mq_internal_CopyLiteral(lxs, param);
+				    if (t < 0)
+					{
+					next_state = ParseError;
+					mssError(1,"MQ","Error in EXEC parameter");
+					mlxNoteError(lxs);
+					xsFree(xs);
+					xsFree(param);
+					break;
+					}
+				    ptod = expCompileAndEval(param->String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+				    if (!ptod)
+					{
+					next_state = ParseError;
+					mssError(1,"MQ","Could not evaluate EXEC parameter");
+					mlxNoteError(lxs);
+					xsFree(xs);
+					xsFree(param);
+					break;
+					}
+				    ptr = ptodToStringTmp(ptod);
+				    xsConcatQPrintf(xs, "=%STR&URL", ptr);
+				    if (t != MLX_TOK_COMMA)
+					{
+					mlxHoldToken(lxs);
+					break;
+					}
+				    }
+
+				strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
+				next_state = LookForClause;
+				}
+			    else
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected path name after EXEC");
+				mlxNoteError(lxs);
+				break;
+				}
+			    }
 			else
 			    {
 			    next_state = ParseError;
@@ -1946,28 +2091,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    xaAddItem(&groupby_cls->Children, (void*)new_qs);
 
 		    /** Copy the entire item literally to the RawData for later compilation **/
-		    parenlevel = 0;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-			    break;
-			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON || t == MLX_TOK_COMMA) && parenlevel == 0)
-			    break;
-			if (t == MLX_TOK_OPENPAREN) parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
-			xsConcatenate(&new_qs->RawData," ",1);
-			}
+		    t = mq_internal_CopyLiteral(lxs, &new_qs->RawData);
 
 		    /** Where to from here? **/
 		    if (t == MLX_TOK_COMMA)
@@ -2005,29 +2129,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    xaAddItem(&orderby_cls->Children, (void*)new_qs);
 
 		    /** Copy the entire item literally to the RawData for later compilation **/
-		    parenlevel = 0;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON)
-			    {
-			    break;
-			    }
-			if (t == MLX_TOK_COMMA && parenlevel == 0) break;
-			if (t == MLX_TOK_OPENPAREN) parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    xsConcatenate(&new_qs->RawData,ptr,-1);
-			    }
-			xsConcatenate(&new_qs->RawData," ",1);
-			}
+		    t = mq_internal_CopyLiteral(lxs, &new_qs->RawData);
 
 		    /** Where to from here? **/
 		    if (t == MLX_TOK_COMMA)
@@ -2271,45 +2373,19 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		case WhereItem:
 		    /** Copy the whole where clause first **/
-		    parenlevel = 0;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-			    break;
-			if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
-			    break;
-			if (t == MLX_TOK_OPENPAREN) 
-			    parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN)
-			    parenlevel--;
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    xsConcatQPrintf(&where_cls->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    xsConcatenate(&where_cls->RawData,ptr,-1);
-			    }
-			xsConcatenate(&where_cls->RawData," ",1);
-			}
+		    t = mq_internal_CopyLiteral(lxs, &where_cls->RawData);
 
 		    /** We'll break the where clause out later.  Now should be end of SQL. **/
 		    if (t == MLX_TOK_EOF)
 		        {
-			if (parenlevel != 0)
-			    {
-			    next_state = ParseError;
-			    mssError(1,"MQ","Unexpected end-of-query in WHERE clause");
-			    mlxNoteError(lxs);
-			    }
-			else
-			    {
-			    mlxHoldToken(lxs);
-			    next_state = ParseDone;
-			    }
+			mlxHoldToken(lxs);
+			next_state = ParseDone;
+			}
+		    else if (t < 0)
+			{
+			next_state = ParseError;
+			mssError(1,"MQ","Unexpected end-of-query in WHERE clause");
+			mlxNoteError(lxs);
 			}
 		    else if (t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON)
 		        {
@@ -2326,30 +2402,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 
 		case HavingItem:
 		    /** Copy the whole having clause first **/
-		    parenlevel = 0;
-		    while(1)
-		        {
-			t = mlxNextToken(lxs);
-			if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF || ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON) && parenlevel <= 0))
-			    {
-			    break;
-			    }
-			if (t == MLX_TOK_OPENPAREN) 
-			    parenlevel++;
-			if (t == MLX_TOK_CLOSEPAREN)
-			    parenlevel--;
-			ptr = mlxStringVal(lxs,NULL);
-			if (!ptr) break;
-			if (t == MLX_TOK_STRING)
-			    {
-			    xsConcatQPrintf(&having_cls->RawData, "%STR&DQUOT", ptr);
-			    }
-			else
-			    {
-			    xsConcatenate(&having_cls->RawData,ptr,-1);
-			    }
-			xsConcatenate(&having_cls->RawData," ",1);
-			}
+		    t = mq_internal_CopyLiteral(lxs, &having_cls->RawData);
 
 		    /** We'll break the having clause out later. **/
 		    if (t == MLX_TOK_EOF)

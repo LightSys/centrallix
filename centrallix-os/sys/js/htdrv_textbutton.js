@@ -99,6 +99,7 @@ function tb_init(param)
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetText", tb_action_settext);
+    ia.Add("Click", tb_action_click);
 
     // Mobile Safari workaround
     $(l).find("span").on("click", function() {});
@@ -110,6 +111,12 @@ function tb_action_settext(aparam)
     //this.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     //this.l2.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     //this.l3.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    }
+
+function tb_action_click(aparam)
+    {
+    if (this.enabled)
+	this.ifcProbe(ifEvent).Activate('Click', {});
     }
 
 // used by ifValue
