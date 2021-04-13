@@ -25,13 +25,18 @@ test(char** tname)
         buf[2] = '\0';
         buf[1] = 0xff;
         buf[0] = '\0';
-        qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
-        qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
-        qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
-        rval = qpfPrintf(NULL, buf+4, 36, "Here is the long long: %LL...", 12345ll);
-        assert(!strcmp(buf+4, "Here is the long long: 12345..."));
+        
+        //Test value > INT_MAX
+        long long testNum = 2200000000ll;
+
+        qpfPrintf(NULL, buf + 4, 36, "Here is the ll: %LL...", testNum);
+        qpfPrintf(NULL, buf+4, 36, "Here is the ll: %LL...", testNum);
+        qpfPrintf(NULL, buf+4, 36, "Here is the ll: %LL...", testNum);
+        rval = qpfPrintf(NULL, buf+4, 36, "Here is the ll: %LL...", testNum);
+
+        assert(!strcmp(buf+4, "Here is the ll: 2200000000..."));
         //For the long long case, rval will be set to the return value of snprintf, i.e. length of string
-        assert(rval == 31);
+        assert(rval == 29);
         assert(buf[43] == '\n');
         assert(buf[42] == '\0');
         assert(buf[41] == 0xff);
