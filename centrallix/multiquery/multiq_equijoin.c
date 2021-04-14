@@ -1078,7 +1078,15 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 			}
 		    else if (rval == 0)
 			{
-			continue;
+			if (src->State == MqjStateOuter && nextsrc->ReturnIterCnt == 0)
+			    {
+			    src->ReturnIterCnt += 1;
+			    return 1;
+			    }
+			else
+			    {
+			    continue;
+			    }
 			}
 		    else /* rval > 0 */
 			{
