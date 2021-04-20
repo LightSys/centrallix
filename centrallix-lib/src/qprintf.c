@@ -58,47 +58,48 @@
 #define QPF_SPEC_T_DBL		(4)
 #define QPF_SPEC_T_NSTR		(5)
 #define QPF_SPEC_T_CHR		(6)
-#define QPF_SPEC_T_ENDSRC	(6)
+#define QPF_SPEC_T_LL     (7)
+#define QPF_SPEC_T_ENDSRC	(7)
 
 /*** builtin filtering specifiers ***/
-#define QPF_SPEC_T_STARTFILT	(7)
-#define QPF_SPEC_T_QUOT		(7)
-#define QPF_SPEC_T_DQUOT	(8)
-#define QPF_SPEC_T_SYM		(9)
-#define QPF_SPEC_T_JSSTR	(10)
-#define QPF_SPEC_T_NLEN		(11)
-#define QPF_SPEC_T_WS		(12)
-#define QPF_SPEC_T_ESCWS	(13)
-#define QPF_SPEC_T_ESCSP	(14)
-#define QPF_SPEC_T_UNESC	(15)
-#define QPF_SPEC_T_SSYB		(16)
-#define QPF_SPEC_T_DSYB		(17)
-#define QPF_SPEC_T_FILE		(18)
-#define QPF_SPEC_T_PATH		(19)
-#define QPF_SPEC_T_HEX		(20)
-#define QPF_SPEC_T_DHEX		(21)
-#define QPF_SPEC_T_B64		(22)
-#define QPF_SPEC_T_DB64		(23)
-#define QPF_SPEC_T_RF		(24)
-#define QPF_SPEC_T_RR		(25)
-#define	QPF_SPEC_T_HTENLBR	(26)
-#define QPF_SPEC_T_DHTE		(27)
-#define QPF_SPEC_T_URL		(28)
-#define QPF_SPEC_T_DURL		(29)
-#define QPF_SPEC_T_NLSET	(30)
-#define QPF_SPEC_T_NRSET	(31)
-#define QPF_SPEC_T_NZRSET	(32)
-#define QPF_SPEC_T_SQLARG	(33)
-#define QPF_SPEC_T_SQLSYM	(34)
-#define QPF_SPEC_T_HTDATA	(35)
-#define QPF_SPEC_T_HTE		(36)
-#define QPF_SPEC_T_ESCQWS	(37)
-#define QPF_SPEC_T_ESCQ		(38)
-#define QPF_SPEC_T_CSSVAL	(39)
-#define QPF_SPEC_T_CSSURL	(40)
-#define QPF_SPEC_T_JSONSTR	(41)
-#define QPF_SPEC_T_ENDFILT	(41)
-#define QPF_SPEC_T_MAXSPEC	(41)
+#define QPF_SPEC_T_STARTFILT	(8)
+#define QPF_SPEC_T_QUOT		(8)
+#define QPF_SPEC_T_DQUOT	(9)
+#define QPF_SPEC_T_SYM		(10)
+#define QPF_SPEC_T_JSSTR	(11)
+#define QPF_SPEC_T_NLEN		(12)
+#define QPF_SPEC_T_WS		(13)
+#define QPF_SPEC_T_ESCWS	(14)
+#define QPF_SPEC_T_ESCSP	(15)
+#define QPF_SPEC_T_UNESC	(16)
+#define QPF_SPEC_T_SSYB		(17)
+#define QPF_SPEC_T_DSYB		(18)
+#define QPF_SPEC_T_FILE		(19)
+#define QPF_SPEC_T_PATH		(20)
+#define QPF_SPEC_T_HEX		(21)
+#define QPF_SPEC_T_DHEX		(22)
+#define QPF_SPEC_T_B64		(23)
+#define QPF_SPEC_T_DB64		(24)
+#define QPF_SPEC_T_RF		(25)
+#define QPF_SPEC_T_RR		(26)
+#define	QPF_SPEC_T_HTENLBR	(27)
+#define QPF_SPEC_T_DHTE		(28)
+#define QPF_SPEC_T_URL		(29)
+#define QPF_SPEC_T_DURL		(30)
+#define QPF_SPEC_T_NLSET	(31)
+#define QPF_SPEC_T_NRSET	(32)
+#define QPF_SPEC_T_NZRSET	(33)
+#define QPF_SPEC_T_SQLARG	(34)
+#define QPF_SPEC_T_SQLSYM	(35)
+#define QPF_SPEC_T_HTDATA	(36)
+#define QPF_SPEC_T_HTE		(37)
+#define QPF_SPEC_T_ESCQWS	(38)
+#define QPF_SPEC_T_ESCQ		(39)
+#define QPF_SPEC_T_CSSVAL	(40)
+#define QPF_SPEC_T_CSSURL	(41)
+#define QPF_SPEC_T_JSONSTR	(42)
+#define QPF_SPEC_T_ENDFILT	(42)
+#define QPF_SPEC_T_MAXSPEC	(42)
 
 /** Names for specifiers as used in format string - must match the above. **/
 const char*
@@ -111,6 +112,7 @@ qpf_spec_names[] =
     "DBL",
     "nSTR",
     "CHR",
+    "LL",
     "QUOT",
     "DQUOT",
     "SYM",
@@ -139,13 +141,13 @@ qpf_spec_names[] =
     "nZRSET",
     "SQLARG",
     "SQLSYM",
-    "HTDATA",	/* 35 */
+    "HTDATA",	/* 36 */
     "HTE",
-    "ESCQWS",	/* 37 */
-    "ESCQ",	/* 38 */
-    "CSSVAL",	/* 39 */
-    "CSSURL",	/* 40 */
-    "JSONSTR",	/* 41 */
+    "ESCQWS",	/* 38 */
+    "ESCQ",	/* 39 */
+    "CSSVAL",	/* 40 */
+    "CSSURL",	/* 41 */
+    "JSONSTR",	/* 42 */
     NULL
     };
 
@@ -819,6 +821,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     int n;
     int found;
     int intval;
+    long long llval;
     const char* strval;
     double dblval;
     char tmpbuf[64];
@@ -1035,6 +1038,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			    strval = tmpbuf;
 			    break;
 
+            case QPF_SPEC_T_LL:
+                llval = va_arg(ap, long long);
+                cplen = snprintf(tmpbuf, sizeof(tmpbuf), "%lld", llval);
+                strval = tmpbuf;
+                break;
+                
 			case QPF_SPEC_T_DBL:
 			    dblval = va_arg(ap, double);
 			    cplen = snprintf(tmpbuf, sizeof(tmpbuf), "%lf", dblval);
