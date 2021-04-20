@@ -413,7 +413,6 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    {
 		    case DATA_T_MONEY:
 			tree->DataType = DATA_T_MONEY;
-			//Double check that casting is working properly
 			mv = i1->Types.Money.Value * i0->Types.Double;
 			break;
 		    default:
