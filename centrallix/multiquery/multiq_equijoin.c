@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include "obj.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
@@ -93,12 +94,40 @@ typedef struct
     MqjJoin, *pMqjJoin;
 
 
+/**** Data on one join, in execution tree ***/
+typedef enum
+    {
+    MqjStateNotStarted,		/* source has not been Start()ed */
+    MqjStateStarted,		/* source is started and last result if any was a valid not-null row */
+    MqjStateOuter,		/* source is started and last result was null (0) but source is outer */
+    MqjStateFinished		/* source returned 0 or -1 and is now Finish()ed */
+    }
+    MqjJoinExecState;
+
+typedef struct
+    {
+    pExpression		Constraint;
+    unsigned int	DependencyMask;
+    unsigned int	GlobalDependencyMask;
+    unsigned int	ReverseDependencyMask;
+    unsigned int	CoverageMask;
+    unsigned int	OuterMask;
+    int			SrcIndex;
+    int			ReturnIterCnt;
+    MqjJoinExecState	State;
+    pQueryElement	QE;
+    }
+    MqjJoinExec, *pMqjJoinExec;
+
+
 /*** Data on one source ***/
 typedef struct _MQJS
     {
     pQueryStructure	FromItem;
     int			Score;
     unsigned int	DependencyMask;
+    unsigned int	GlobalDependencyMask;
+    unsigned int	ReverseDependencyMask;
     }
     MqjSource, *pMqjSource;
 
@@ -108,13 +137,28 @@ typedef struct _MQJS
  ***/
 typedef struct
     {
+    /** Join data **/
+    XArray		Sources;
+
+    /** Source status mask, 1=valid, 0=null; source is valid if it is in
+     ** the state Started.
+     **/
+    unsigned int	StartedStateMask;
+
+    /** "Outer" status mask, 1=outer, 0=not outer.  Note that this is not
+     ** whether there source is outer or not, but rather whether the source
+     ** had no rows but is being included due to outer joins
+     **/
+    unsigned int	OuterStateMask;
+    unsigned int	CanBeOuterMask;
+
+    /** Prefetch data **/
     pObject 		PrefetchObjs[MQJ_MAX_PREFETCH];
     int			PrefetchMatchCnt[MQJ_MAX_PREFETCH];
     int 		nPrefetch;
     int			PrefetchUsesSlave;	/* boolean */
     int			PrefetchReachedEnd;	/* boolean */
     int			CurItem;
-    pExpression		SlaveExpr;
     }
     MqjJoinData, *pMqjJoinData;
 
@@ -261,7 +305,7 @@ int
 mqjAnalyze(pQueryStatement stmt)
     {
     pQueryElement qe;
-    pQueryElement master=NULL,slave=NULL;
+    pQueryElement source;
     pQueryStructure from_qs = NULL;
     pQueryStructure select_qs = NULL;
     pQueryStructure where_qs = NULL;
@@ -277,10 +321,14 @@ mqjAnalyze(pQueryStatement stmt)
     int joined_objects;
     int n_joins = 0;
     int n_sources = 0;
-    unsigned int used_sourcemask, provided_mask;
+    unsigned int provided_mask;
+    unsigned int used_mask;
+    pExpression* add_to_exp;
+    pMqjJoinData md;
     int min_objlist = stmt->Query->nProvidedObjects;
     unsigned int our_mask, our_outer_mask;
     int mask_objcnt;
+    pMqjJoinExec src, src2;
 
 	n_sources = stmt->Query->ObjList->nObjects;
 	for(i=0; i<n_sources; i++)
@@ -428,6 +476,8 @@ mqjAnalyze(pQueryStatement stmt)
 		if (!sources[i])
 		    goto error;
 		sources[i]->DependencyMask = 0;
+		sources[i]->GlobalDependencyMask = 0;
+		sources[i]->ReverseDependencyMask = 0;
 		sources[i]->FromItem = from_item;
 		sources[i]->Score = from_item->Specificity + (1000 - from_item->QELinkage->OrderPrio) * 0x10000;
 		}
@@ -495,12 +545,14 @@ mqjAnalyze(pQueryStatement stmt)
 		for(j=0; j<n_joins; j++)
 		    {
 		    if ((joins[j]->Mask & (1<<ordered_sources[i]->FromItem->ObjID)) && !(joins[j]->GlobalDependencyMask & (1<<ordered_sources[i]->FromItem->ObjID)))
-			ordered_sources[i]->DependencyMask |= joins[j]->GlobalDependencyMask;
+			{
+			ordered_sources[i]->DependencyMask |= joins[j]->DependencyMask;
+			ordered_sources[i]->GlobalDependencyMask |= joins[j]->GlobalDependencyMask;
+			}
 		    }
 		}
 
-#if 00
-	    for(i=0;i<joined_objects;i++)
+	    /*for(i=0;i<joined_objects;i++)
 		{
 		fprintf(stderr, "Src%d: %s %s score 0x%1.1x, dep %2.2x (",
 			i,
@@ -510,6 +562,8 @@ mqjAnalyze(pQueryStatement stmt)
 			ordered_sources[i]->DependencyMask
 			);
 		mqj_internal_PrintMask(ordered_sources[i]->DependencyMask, ordered_sources, joined_objects);
+		fprintf(stderr, ") rdep %2.2x (", ordered_sources[i]->ReverseDependencyMask);
+		mqj_internal_PrintMask(ordered_sources[i]->ReverseDependencyMask, ordered_sources, joined_objects);
 		fprintf(stderr, ")\n");
 		}
 	    for(i=0;i<n_joins;i++)
@@ -527,47 +581,79 @@ mqjAnalyze(pQueryStatement stmt)
 		fprintf(stderr, "), globaldep %2.2x (", joins[i]->GlobalDependencyMask);
 		mqj_internal_PrintMask(joins[i]->GlobalDependencyMask, ordered_sources, joined_objects);
 		fprintf(stderr, ")\n");
-		}
-#endif
+		}*/
 
 	    /** Get the select clause **/
 	    select_qs = mq_internal_FindItem(from_qs->Parent, MQ_T_SELECTCLAUSE, NULL);
 
-	    /** Ok, got list of join expressions.  Now create a JOIN from each one. **/
-	    used_sourcemask = 0;
-	    for(i=0; i<joined_objects-1; i++)
+	    /** Create the new QueryElement and link into the exec tree... **/
+	    qe = mq_internal_AllocQE();
+	    if (!qe)
+		goto error;
+	    qe->Driver = MQJINF.ThisDriver;
+	    qe->PrivateData = md = (void*)nmMalloc(sizeof(MqjJoinData));
+	    qe->QSLinkage = NULL;
+	    qe->OrderPrio = 0x7FFFFFFF;
+	    qe->Parent = NULL;
+	    if (!qe->PrivateData)
 		{
-		/** Create the new QueryElement and link into the exec tree... **/
-		qe = mq_internal_AllocQE();
-		if (!qe)
-		    goto error;
-		qe->Driver = MQJINF.ThisDriver;
+		mq_internal_FreeQE(qe);
+		goto error;
+		}
+	    memset(qe->PrivateData, 0, sizeof(MqjJoinData));
+	    xaInit(&((pMqjJoinData)(qe->PrivateData))->Sources, 16);
+	    md->CanBeOuterMask = 0;
+	    used_mask = 0;
 
-		/** Find the master QE from the MQ->Trees array if 1st join, otherwise use MQ->Tree. **/
-		if (i == 0)
-		    {
-		    for(j=0; j<xaCount(&stmt->Trees); j++)
-		        {
-			master = (pQueryElement)xaGetItem(&stmt->Trees, j);
-			if (((pQueryStructure)(master->QSLinkage)) == ordered_sources[i]->FromItem) break;
-			}
-		    used_sourcemask |= 1<<ordered_sources[i]->FromItem->ObjID;
-		    }
-		else
-		    {
-		    master = stmt->Tree;
-		    }
-		qe->SrcIndex = ordered_sources[i]->FromItem->ObjID;
-
-		/** Find the slave QE, from the MQ->Trees array, whether 1st or nth join. **/
+	    for(i=0; i<joined_objects; i++)
+		{
+		/** Lookup the next source **/
+		source = NULL;
 		for(j=0; j<xaCount(&stmt->Trees); j++)
 		    {
-		    slave = (pQueryElement)xaGetItem(&stmt->Trees, j);
-		    if (((pQueryStructure)(slave->QSLinkage)) == ordered_sources[i+1]->FromItem) break;
+		    source = (pQueryElement)xaGetItem(&stmt->Trees, j);
+		    if (((pQueryStructure)(source->QSLinkage)) == ordered_sources[i]->FromItem) break;
 		    }
-		qe->SrcIndexSlave = ordered_sources[i+1]->FromItem->ObjID;
+		if (!source)
+		    {
+		    mssError(1,"MQJ","Bark!  Could not locate join source component!");
+		    nmFree(qe->PrivateData, sizeof(MqjJoinData));
+		    mq_internal_FreeQE(qe);
+		    goto error;
+		    }
+		if (source->OrderPrio < qe->OrderPrio)
+		    qe->OrderPrio = source->OrderPrio;
 
-		/** Handle joins **/
+		/** Set up join exec data **/
+		src = (pMqjJoinExec)nmMalloc(sizeof(MqjJoinExec));
+		if (!src)
+		    {
+		    mq_internal_FreeQE(qe);
+		    goto error;
+		    }
+		memset(src, 0, sizeof(MqjJoinExec));
+		src->SrcIndex = ordered_sources[i]->FromItem->ObjID;
+		src->Constraint = NULL;
+		src->DependencyMask = ordered_sources[i]->DependencyMask;
+		src->GlobalDependencyMask = ordered_sources[i]->GlobalDependencyMask;
+		src->ReverseDependencyMask = ordered_sources[i]->ReverseDependencyMask;
+		src->CoverageMask = 1<<src->SrcIndex;
+		src->OuterMask = 0;
+		src->QE = source;
+		if (i == 0)
+		    {
+		    qe->SrcIndex = src->SrcIndex;
+		    }
+
+		/** Add the source below this qe **/
+		xaAddItem(&md->Sources, (void*)src);
+		xaAddItem(&qe->Children, (void*)source);
+		source->Parent = qe;
+
+		/** Mask for sources **/
+		used_mask |= src->CoverageMask;
+
+		/** Handle outer joins **/
 		for(j=0; j<n_joins; j++)
 		    {
 		    /** Is it an outer join? Yes if:
@@ -575,16 +661,24 @@ mqjAnalyze(pQueryStatement stmt)
 		     **   2) All outer members are now covered,
 		     **   3) This current object is an inner member.
 		     **/
-		    if ((joins[j]->OuterMask & ~provided_mask) != 0 && ((joins[j]->OuterMask & ~provided_mask) & used_sourcemask) == (joins[j]->OuterMask & ~provided_mask) && (joins[j]->InnerMask & (1<<(qe->SrcIndexSlave))))
+		    if ((joins[j]->OuterMask & ~provided_mask) != 0 /* is outer join */
+			&& ((joins[j]->OuterMask & ~provided_mask) & src->DependencyMask) == (joins[j]->OuterMask & ~provided_mask) /* outers covered */
+			&& (joins[j]->InnerMask & (1<<(src->SrcIndex)))) /* current source is inner */
 			{
-			qe->Flags |= MQ_EF_OUTERJOIN;
+			/** OuterMask is CoverageMask if an outerjoin, otherwise -0- **/
+			src->OuterMask = src->CoverageMask;
 			}
-		    qe->DependencyMask = ordered_sources[i+1]->DependencyMask;
-		    //qe->DependencyMask |= joins[j]->GlobalDependencyMask;
 		    }
+		if (src->OuterMask || (src->DependencyMask && (src->DependencyMask & md->CanBeOuterMask) == src->DependencyMask))
+		    md->CanBeOuterMask |= src->CoverageMask;
 
-		/** We're now "using" this object ID **/
-		used_sourcemask |= 1<<qe->SrcIndexSlave;
+		/** Reverse dependencies **/
+		for(j=0; j<i; j++)
+		    {
+		    src2 = (pMqjJoinExec)md->Sources.Items[j];
+		    if ((src->DependencyMask & src2->CoverageMask) != 0 && src->OuterMask == 0)
+			src2->ReverseDependencyMask |= src->CoverageMask;
+		    }
 
 		/** Handle SELECT clause items **/
 		if (select_qs)
@@ -593,7 +687,7 @@ mqjAnalyze(pQueryStatement stmt)
 		    for(j=0; j<select_qs->Children.nItems; j++)
 			{
 			select_item = (pQueryStructure)(select_qs->Children.Items[j]);
-			if (select_item->QELinkage == slave || select_item->QELinkage == master)
+			if (select_item->QELinkage == source)
 			    select_item->QELinkage = qe;
 			}
 
@@ -601,7 +695,10 @@ mqjAnalyze(pQueryStatement stmt)
 		    for(j=0; j<select_qs->Children.nItems; j++)
 			{
 			select_item = (pQueryStructure)(select_qs->Children.Items[j]);
-			if ((select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | used_sourcemask | EXPR_MASK_EXTREF)) == 0) || ((select_item->Flags & MQ_SF_ASTERISK) && i == joined_objects-2))
+			if (((	select_item->Expr 
+				&& (select_item->Expr->ObjCoverageMask & ~(stmt->Query->ProvidedObjMask | used_mask | EXPR_MASK_EXTREF)) == 0) 
+			     || ((select_item->Flags & MQ_SF_ASTERISK) && i == joined_objects-1))
+			    && select_item->QELinkage != qe)
 			    {
 			    if (select_item->Flags & MQ_SF_ASTERISK)
 				stmt->Flags |= MQ_TF_ASTERISK;
@@ -615,27 +712,37 @@ mqjAnalyze(pQueryStatement stmt)
 		    }
 
 		/** Grab up the WHERE expressions for this join... **/
-		qe->Constraint = NULL;
 		if (where_qs)
 		    {
 		    for(j=0; j<where_qs->Children.nItems; j++)
 			{
 			where_item = (pQueryStructure)(where_qs->Children.Items[j]);
-			if (where_item->Expr && (where_item->Expr->ObjCoverageMask & used_sourcemask) != 0 && (where_item->Expr->ObjCoverageMask & (stmt->Query->ProvidedObjMask | used_sourcemask /*| provided_mask*/)) == where_item->Expr->ObjCoverageMask)
+			if (where_item->Expr 
+			    && (where_item->Expr->ObjCoverageMask & src->CoverageMask) != 0
+			    && (where_item->Expr->ObjCoverageMask & (stmt->Query->ProvidedObjMask | src->DependencyMask | src->CoverageMask)) == where_item->Expr->ObjCoverageMask)
 			    {
-			    if (qe->Constraint)
+			    add_to_exp = &src->Constraint;
+			    }
+			else
+			    {
+			    add_to_exp = NULL;
+			    }
+
+			if (add_to_exp)
+			    {
+			    if (*add_to_exp)
 				{
 				new_exp = expAllocExpression();
 				if (!new_exp)
 				    goto error;
 				new_exp->NodeType = EXPR_N_AND;
-				expAddNode(new_exp, qe->Constraint);
+				expAddNode(new_exp, *add_to_exp);
 				expAddNode(new_exp, where_item->Expr);
-				qe->Constraint = new_exp;
+				*add_to_exp = new_exp;
 				}
 			    else
 				{
-				qe->Constraint = where_item->Expr;
+				*add_to_exp = where_item->Expr;
 				}
 			    xaRemoveItem(&where_qs->Children, j);
 			    where_item->Expr = NULL;
@@ -646,23 +753,16 @@ mqjAnalyze(pQueryStatement stmt)
 			}
 		    }
 
-		/** Add the master and slave below this qe **/
-		if (!master || !slave)
-		    {
-		    mssError(1,"MQJ","Bark!  Could not locate master/slave query component(s)!");
-		    mq_internal_FreeQE(qe);
-		    goto error;
-		    }
-		xaAddItem(&qe->Children,(void*)master);
-		master->Parent = qe;
-		xaAddItem(&qe->Children,(void*)slave);
-		slave->Parent = qe;
-		stmt->Tree = qe;
-		qe->QSLinkage = NULL;
-		qe->PrivateData = (void*)nmMalloc(sizeof(MqjJoinData));
-		memset(qe->PrivateData, 0, sizeof(MqjJoinData));
-		qe->OrderPrio = (slave->OrderPrio < master->OrderPrio)?slave->OrderPrio:master->OrderPrio;
+		/*fprintf(stderr, "%s: dep %2.2x cov %2.2x out %2.2x\n", 
+		    ((pQueryStructure)(src->QE->QSLinkage))->Presentation,
+		    src->DependencyMask,
+		    src->CoverageMask,
+		    src->OuterMask
+		    );*/
 		}
+
+	    /** Now link in to the query exec tree **/
+	    stmt->Tree = qe;
 	    }
 
     cleanup:
@@ -753,14 +853,44 @@ mqj_internal_DoPrefetch(pQueryElement qe, pQueryStatement stmt)
     }
 
 
+/*** mqj_internal_SetState - set the state for a source, and update masks
+ ***/
+int
+mqj_internal_SetState(pMqjJoinData md, int source_id, MqjJoinExecState new_state)
+    {
+    pMqjJoinExec src = ((pMqjJoinExec)md->Sources.Items[source_id]);
+
+	/** Update Started mask **/
+	if (new_state == MqjStateStarted)
+	    md->StartedStateMask |= 1<<(src->SrcIndex);
+	else
+	    md->StartedStateMask &= ~(1<<(src->SrcIndex));
+
+	/** Update Outer mask **/
+	if (new_state == MqjStateOuter)
+	    md->OuterStateMask |= 1<<(src->SrcIndex);
+	else
+	    md->OuterStateMask &= ~(1<<(src->SrcIndex));
+
+	/** Set the source's state **/
+	src->State = new_state;
+
+    return 0;
+    }
+
+
 /*** mqjStart - starts the join operation.  This function mostly does 
  *** some initialization, but does not fetch any rows.
  ***/
 int
 mqjStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
-    pQueryElement master;
     pMqjJoinData md;
+    pMqjJoinExec src;
+    int i;
+
+	/*if (additional_expr)
+	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);*/
 
     	/** Initialize the iteration counts. **/
 	qe->IterCnt = 0;
@@ -769,10 +899,14 @@ mqjStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	md = (pMqjJoinData)(qe->PrivateData);
 	md->nPrefetch = 0;
 	md->CurItem = 0;
-
-	/** Start the query on the master side. **/
-	master = (pQueryElement)(qe->Children.Items[0]);
-	if (master->Driver->Start(master, stmt, NULL) < 0) return -1;
+	md->StartedStateMask = 0;
+	md->OuterStateMask = 0;
+	for(i=0; i<md->Sources.nItems; i++)
+	    {
+	    src = (pMqjJoinExec)md->Sources.Items[i];
+	    src->ReturnIterCnt = 0;
+	    mqj_internal_SetState(md, i, MqjStateNotStarted);
+	    }
 
     return 0;
     }
@@ -798,6 +932,187 @@ mqj_internal_NextItemPrefetch(pQueryElement qe, pQueryStatement stmt)
     }
 
 
+/*** mqj_internal_NextItem_r - recursively try subsequent sources in nested
+ *** iteration.  Returns 1 on successful row, 0 if no row or end of results, or
+ *** -1 on an error condition.
+ ***/
+int
+mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
+    {
+    pMqjJoinExec src, nextsrc, checksrc;
+    int rval = 1;
+    unsigned int null_dep_mask;
+    bool can_be_outer = false, is_outer = false;
+    pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
+    int j;
+
+	/** Find the source **/
+	src = (pMqjJoinExec)md->Sources.Items[source_id];
+	nextsrc = (source_id+1 < md->Sources.nItems)?((pMqjJoinExec)md->Sources.Items[source_id+1]):NULL;
+
+	/** Determine null dependencies **/
+	null_dep_mask = (~md->StartedStateMask) & src->DependencyMask;
+
+	/** Is this source outer joined? **/
+	if (src->OuterMask || (src->DependencyMask != 0 && (src->DependencyMask & md->OuterStateMask) == src->DependencyMask))
+	    is_outer = true;
+	can_be_outer = (md->CanBeOuterMask & src->CoverageMask)?true:false;
+
+	/** Already done with this source? **/
+	if (src->State == MqjStateFinished)
+	    return -1;
+
+	/** Non-outer element with null dependencies? **/
+	if (null_dep_mask != 0 && !can_be_outer)
+	    {
+	    if (src->State == MqjStateStarted)
+		src->QE->Driver->Finish(src->QE, stmt);
+	    mqj_internal_SetState(md, source_id, MqjStateFinished);
+	    return 0;
+	    }
+
+	/** Start the source? **/
+	if (src->State == MqjStateNotStarted)
+	    {
+	    src->ReturnIterCnt = 0;
+	    if (null_dep_mask == 0)
+		{
+		if (src->QE->Driver->Start(src->QE, stmt, src->Constraint) < 0)
+		    return -1;
+		mqj_internal_SetState(md, source_id, MqjStateStarted);
+		}
+	    else if (can_be_outer)
+		{
+		mqj_internal_SetState(md, source_id, MqjStateOuter);
+		}
+	    }
+
+	/** Try to find a usable result. **/
+	while(1)
+	    {
+	    /** Retrieve a row from the source? **/
+	    if (src->State == MqjStateStarted || src->State == MqjStateOuter)
+		{
+		if (!nextsrc || nextsrc->State == MqjStateNotStarted || nextsrc->State == MqjStateFinished)
+		    {
+		    /** Started -- retrieve row **/
+		    if (src->State == MqjStateStarted)
+			{
+			rval = src->QE->Driver->NextItem(src->QE, stmt);
+			if (rval < 0 || rval == 0)
+			    {
+			    src->QE->Driver->Finish(src->QE, stmt);
+			    mqj_internal_SetState(md, source_id, MqjStateFinished);
+			    }
+			}
+
+		    /** Got no rows and source is outer? **/
+		    if (src->State == MqjStateFinished && src->ReturnIterCnt == 0 && can_be_outer)
+			{
+			mqj_internal_SetState(md, source_id, MqjStateOuter);
+			}
+
+		    /** Source being treated as Outer? **/
+		    if (src->State == MqjStateOuter)
+			{
+			if (src->ReturnIterCnt >= 1)
+			    {
+			    /** Already returned a null row -- set finished -- no need to Finish()
+			     ** because source already closed as evidenced by state Outer.
+			     **/
+			    mqj_internal_SetState(md, source_id, MqjStateFinished);
+			    }
+			}
+
+		    /** Prime next source retrieval **/
+		    if (nextsrc && (src->State == MqjStateStarted || src->State == MqjStateOuter))
+			{
+			mqj_internal_SetState(md, source_id+1, MqjStateNotStarted);
+			}
+		    }
+		}
+
+	    /** Loop next source **/
+	    if (src->State == MqjStateStarted || src->State == MqjStateOuter)
+		{
+		if (nextsrc)
+		    {
+		    rval = mqj_internal_NextItem_r(qe, stmt, source_id+1);
+
+		    if (rval == 1)
+			{
+			/** Reverse dependencies not fulfilled? **/
+			if (src->State == MqjStateStarted && (src->ReverseDependencyMask & md->StartedStateMask) != src->ReverseDependencyMask)
+			    {
+			    /** Finish up any next sources that were valid **/
+			    for(j=md->Sources.nItems-1; j>source_id; j--)
+				{
+				checksrc = (pMqjJoinExec)md->Sources.Items[j];
+				if ((checksrc->CoverageMask & src->ReverseDependencyMask) || checksrc == src)
+				    {
+				    if (checksrc->State == MqjStateStarted)
+					{
+					checksrc->QE->Driver->Finish(checksrc->QE, stmt);
+					if (src->State == MqjStateOuter)
+					    mqj_internal_SetState(md, j, MqjStateOuter);
+					}
+				    else if (checksrc->State == MqjStateOuter)
+					{
+					mqj_internal_SetState(md, j, (src->State == MqjStateOuter)?MqjStateOuter:MqjStateFinished);
+					}
+				    }
+				}
+			    rval = 0;
+			    }
+			}
+
+		    if (rval < 0)
+			{
+			/** Next source returned error **/
+			if (src->State == MqjStateStarted)
+			    {
+			    src->QE->Driver->Finish(src->QE, stmt);
+			    }
+			mqj_internal_SetState(md, source_id, MqjStateFinished);
+			return -1;
+			}
+		    else if (rval == 0)
+			{
+			if (src->State == MqjStateOuter && nextsrc->ReturnIterCnt == 0)
+			    {
+			    src->ReturnIterCnt += 1;
+			    return 1;
+			    }
+			else
+			    {
+			    continue;
+			    }
+			}
+		    else /* rval > 0 */
+			{
+			/** Valid data from next source **/
+			src->ReturnIterCnt += 1;
+			return 1;
+			}
+		    }
+		else
+		    {
+		    /** No next source, and this source is valid **/
+		    src->ReturnIterCnt += 1;
+		    return 1;
+		    }
+		}
+	    else
+		{
+		/** This source is finished **/
+		return 0;
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** mqjNextItem - retrieves the first/next item in the joined result set.
  *** This function must iterate through each item of the master's result
  *** set, and for each one, call a start, nextitem{}, and finish for the
@@ -807,75 +1122,12 @@ mqj_internal_NextItemPrefetch(pQueryElement qe, pQueryStatement stmt)
 int
 mqjNextItem(pQueryElement qe, pQueryStatement stmt)
     {
-    pQueryElement master,slave;
-    int rval;
-    int i;
-    int nullouter;
+    //pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
 
     	/** Do query in multiple-OR-fetch mode? **/
 	if (MQJ_ENABLE_PREFETCH) return mqj_internal_NextItemPrefetch(qe,stmt);
 
-    	/** Get master, slave ptrs **/
-	master = (pQueryElement)(qe->Children.Items[0]);
-	slave = (pQueryElement)(qe->Children.Items[1]);
-
-	/** Loop until we get a row. **/
-	while(1)
-	    {
-	    /** IF slave cnt is 0, get a new master row and start the slave... **/
-	    if (qe->SlaveIterCnt == 0)
-	        {
-	        rval = master->Driver->NextItem(master, stmt);
-	        if (rval == 0 || rval < 0) return rval;
-	        qe->IterCnt++;
-		/*expFreezeEval(qe->Constraint, stmt->Query->ObjList, slave->SrcIndex);*/
-		/*if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL)
-		    {*/
-		    /** If slave only depends on NULL outer elements, then don't run it **/
-		    nullouter = 0;
-		    for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
-			if (stmt->Query->ObjList->Objects[i] == NULL && ((1<<i) & master->CoverageMask))
-			    nullouter |= (1<<i);
-		    //if (slave->DependencyMask && (slave->DependencyMask & ~nullouter) == 0)
-		    if (qe->DependencyMask & nullouter)
-			{
-			rval = 1;
-			break;
-			}
-
-		    /** Start the slave **/
-		    if (slave->Driver->Start(slave, stmt, qe->Constraint) < 0)
-			return -1;
-		    qe->Flags |= MQ_EF_SLAVESTART;
-		    /*}*/
-	        }
-
-	    /** Ok, retrieve a slave row. **/
-	    /*if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) */
-	        rval = slave->Driver->NextItem(slave, stmt);
-	    /*else
-	        rval = 0;*/
-	    if ((rval == 0 || rval < 0) && (qe->SlaveIterCnt > 0 || !(qe->Flags & MQ_EF_OUTERJOIN)))
-	        {
-		/*if (stmt->Query->ObjList->Objects[qe->SrcIndex] != NULL) 
-		    {*/
-		    slave->Driver->Finish(slave, stmt);
-		    qe->Flags &= ~MQ_EF_SLAVESTART;
-		    /*}*/
-		qe->SlaveIterCnt = 0;
-		continue;
-		}
-	    else if (rval == 0 && (qe->Flags & MQ_EF_OUTERJOIN))
-		{
-		/** outer join with NULL row from slave **/
-		/*expModifyParam(stmt->Query->ObjList, stmt->Query->ObjList->Names[slave->SrcIndex], NULL);*/
-		rval = 1;
-		}
-	    qe->SlaveIterCnt++;
-	    break;
-	    }
-
-    return rval;
+    return mqj_internal_NextItem_r(qe, stmt, 0);
     }
 
 
@@ -884,22 +1136,20 @@ mqjNextItem(pQueryElement qe, pQueryStatement stmt)
 int
 mqjFinish(pQueryElement qe, pQueryStatement stmt)
     {
-    pQueryElement master;
-    pQueryElement slave;
-    //pMqjJoinData md;
+    pMqjJoinExec src;
+    pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
+    int i;
 
-    	/** Need to complete the slave-side query? (early query cancel) **/
-	//md = (pMqjJoinData)(qe->PrivateData);
-	if (qe->Flags & MQ_EF_SLAVESTART)
+    	/** Need to complete the sources? (early query cancel) **/
+	for(i=md->Sources.nItems-1; i>=0; i--)
 	    {
-	    qe->Flags &= ~MQ_EF_SLAVESTART;
-	    slave = (pQueryElement)(qe->Children.Items[1]);
-	    slave->Driver->Finish(slave, stmt);
+	    src = (pMqjJoinExec)md->Sources.Items[i];
+	    if (src->State == MqjStateStarted)
+		{
+		src->QE->Driver->Finish(src->QE, stmt);
+		mqj_internal_SetState(md, i, MqjStateFinished);
+		}
 	    }
-
-    	/** Complete the query on the master side **/
-	master = (pQueryElement)(qe->Children.Items[0]);
-	master->Driver->Finish(master, stmt);
 
     return 0;
     }
@@ -912,8 +1162,22 @@ mqjFinish(pQueryElement qe, pQueryStatement stmt)
 int
 mqjRelease(pQueryElement qe, pQueryStatement stmt)
     {
+    int i;
+    pMqjJoinExec src;
+    pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
 
-    	if (qe->PrivateData) nmFree(qe->PrivateData, sizeof(MqjJoinData));
+    	if (md)
+	    {
+	    for(i=0; i<md->Sources.nItems; i++)
+		{
+		src = (pMqjJoinExec)md->Sources.Items[i];
+		if (src->Constraint)
+		    expFreeExpression(src->Constraint);
+		nmFree(src, sizeof(MqjJoinExec));
+		}
+	    xaDeInit(&md->Sources);
+	    nmFree(md, sizeof(MqjJoinData));
+	    }
 
     return 0;
     }
@@ -935,6 +1199,7 @@ mqjInitialize()
 	nmRegister(sizeof(MqjJoin), "MqjJoin");
 	nmRegister(sizeof(MqjSource), "MqjSource");
 	nmRegister(sizeof(MqjJoinData), "MqjJoinData");
+	nmRegister(sizeof(MqjJoinExec), "MqjJoinExec");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQJ - MultiQuery Join Module");

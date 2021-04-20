@@ -165,7 +165,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 					non_simple = 1;
 					break;
 					}
-				    if (search_qe->Parent && !strncmp(search_qe->Parent->Driver->Name, "MQJ", 3) && search_qe->Parent->SrcIndexSlave == src_idx)
+				    if (search_qe->Parent && !strncmp(search_qe->Parent->Driver->Name, "MQJ", 3) && search_qe->Parent->SrcIndex != src_idx)
 					{
 					non_primary = 1;
 					break;
