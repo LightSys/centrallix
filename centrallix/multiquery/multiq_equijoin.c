@@ -345,7 +345,7 @@ mqjAnalyze(pQueryStatement stmt)
 		for(i=0;i<where_qs->Children.nItems;i++)
 		    {
 		    where_item = (pQueryStructure)(where_qs->Children.Items[i]);
-		    if (where_item->ObjCnt == 2)
+		    if (where_item->ObjCnt >= 2)
 			{
 			/** Already seen this join combination? **/
 			found_join = NULL;
