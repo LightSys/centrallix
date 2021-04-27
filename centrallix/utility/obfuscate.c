@@ -1143,6 +1143,7 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
     long long lliv, lldv;
     int scale;
     XString xs;
+    long long twoDecimalPlacesMoney;
 
 	/** Empty param? **/
 	if (!param)
@@ -1201,9 +1202,10 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 		break;
 
 	    case DATA_T_MONEY:
-	        if (srcval->Money->Value <= INT_MAX/100  && srcval->Money->Value >= INT_MIN/100)
+            twoDecimalPlacesMoney = srcval->Money->Value / 100;
+            if (twoDecimalPlacesMoney <= INT_MAX  && twoDecimalPlacesMoney >= INT_MIN)
 	        {
-                iv = srcval->Money->Value * 100;
+                iv = twoDecimalPlacesMoney;
                 if (strchr(param,'i'))
                     dv = obf_internal_ObfuscateIntegerMultiples(hash, hash_novalue, &bitcnt, iv);
                 else

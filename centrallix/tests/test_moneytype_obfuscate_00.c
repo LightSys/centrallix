@@ -5,34 +5,64 @@
 #include "cxlib/xstring.h"
 #include "obfuscate.h"
 
+void
+testObfuscationWIntegerMultiples()
+{
+    ObjData srcVal, dstVal;
+    long long moneyValue = 1100;
+    MoneyType money = {moneyValue};
+    srcVal.Money = &money;
+    int numsToObfuscate = 50;
+    int obfuscated = 0;
+    int i;
+
+    for (i = 0; i < numsToObfuscate; i++)
+    {
+        money.Value = moneyValue;
+        int rval = obfObfuscateData(&srcVal, &dstVal, DATA_T_MONEY, NULL, NULL, NULL, NULL, "V", "i", NULL, NULL);
+        assert(rval == 0);
+        if (dstVal.Money->Value != srcVal.Money->Value) {
+            obfuscated++;
+        }
+        moneyValue *= 2;
+    }
+    float percentObfuscated = (float)obfuscated / (float)numsToObfuscate;
+    assert(percentObfuscated > 0.70);
+}
+
+void
+testObfuscationWIntegerObfuscate()
+{
+    ObjData srcVal, dstVal;
+    long long moneyValue = 1100;
+    MoneyType money = {moneyValue};
+    srcVal.Money = &money;
+    int i;
+
+    for (i = 0; i < 50; i++)
+    {
+        money.Value = moneyValue;
+        int rval = obfObfuscateData(&srcVal, &dstVal, DATA_T_MONEY, NULL, NULL, NULL, NULL, "V", NULL, NULL, NULL);
+        assert(rval == 0);
+        assert(dstVal.Money->Value != srcVal.Money->Value);
+        moneyValue *= 2;
+    }
+}
+
+void
+testMoneyTooLarge()
+{
+
+}
+
 long long
 test(char** name)
 {
     *name = "moneytype_00 - obfuscate";
 
-    //MoneyType
-    int dataType = 7;
-    
-    pObfWord wordList;
-    pObfWordCat catList;
-    char* attrname, objname, type_name, key, which, param;
-    char example[] = "exampleWord";
-    char ex2[] = "key";
-    char ex3[] = "type_name";
-    char ex4[] = "objname";
-    char ex5[] = "attrname";
-    which = example; key = ex2; type_name = ex3; objname = ex4; attrname = ex5;
-    
-    void* generic = example;
-    
-    ObjData srcValFiller, dstValFiller;
-    MoneyType unionFiller = {70000};
-    srcValFiller.Money = &unionFiller;
-    srcValFiller.Generic = generic;
-    pObjData srcVal = &srcValFiller;
-    pObjData dstVal = &dstValFiller;
-    
-    obfObfuscateData(srcVal, dstVal, dataType, attrname, objname, type_name, key, which, param, wordList, catList);
-    
+    testObfuscationWIntegerMultiples();
+    testObfuscationWIntegerObfuscate();
+    testMoneyTooLarge();
+
     return 0;
 }
