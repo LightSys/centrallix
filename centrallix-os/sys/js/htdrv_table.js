@@ -17,7 +17,8 @@ window.tbld_touches = [];
 //
 function tbld_format_cell(cell, color)
     {
-    var txt,captxt,titletxt;
+    var txt = '', captxt = '', titletxt = '';
+    var imgsrc = '', imgstyle = '';
     var style = 'margin:0px; padding:0px; ';
     var capstyle = 'font-size:80%; margin:2px 0px 0px 0px; padding:0px; ';
     var titlestyle = 'font-size:120%; margin:0px 0px 2px 0px; padding:0px; ';
@@ -77,19 +78,21 @@ function tbld_format_cell(cell, color)
     else if (cell.subkind != 'headercell' && colinfo.type == 'image')
 	{
 	// Image
-	if (str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/')
-	    txt = '';
-	else
+	if (!(str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/'))
 	    {
-	    txt = '<img src="' + htutil_encode(String(cell.data),true) + '"';
-	    if (colinfo.image_maxwidth || colinfo.image_maxheight)
-		{
-		txt += ' style="';
-		if (colinfo.image_maxwidth) txt += 'max-width:' + colinfo.image_maxwidth + 'px; ';
-		if (colinfo.image_maxheight) txt += 'max-height:' + colinfo.image_maxheight + 'px; ';
-		txt += '"';
-		}
-	    txt += ">";
+	    imgsrc = cell.data;
+	    //txt = '<img src="' + htutil_encode(String(cell.data),true) + '"';
+	    //if (colinfo.image_maxwidth || colinfo.image_maxheight)
+		//{
+		//txt += ' style="';
+		//if (colinfo.image_maxwidth) txt += 'max-width:' + colinfo.image_maxwidth + 'px; ';
+		if (colinfo.image_maxwidth) imgstyle += 'max-width:' + colinfo.image_maxwidth + 'px; ';
+		//if (colinfo.image_maxheight) txt += 'max-height:' + colinfo.image_maxheight + 'px; ';
+		if (colinfo.image_maxheight) imgstyle += 'max-height:' + colinfo.image_maxheight + 'px; ';
+		//txt += '"';
+		//}
+	    //txt += ">";
+	    imgstyle += htutil_getstyle(wgtrFindDescendent(this, colinfo.name, colinfo.ns), 'image', {} );
 	    }
 	}
     else
@@ -115,7 +118,7 @@ function tbld_format_cell(cell, color)
 	}
 
     // If style or content has changed, then update it.
-    if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle)
+    if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle || imgsrc != cell.imgsrc || imgstyle != cell.imgstyle)
 	{
 	// Build the paragraph elements of the cell
 	var t_p = null;
@@ -130,7 +133,16 @@ function tbld_format_cell(cell, color)
 	var p = document.createElement('p');
 	$(p).attr("style", style);
 	$(p).css({'margin':'0px'});
-	$(p).append(txt);
+	if (txt)
+	    $(p).append(txt);
+	if (imgsrc)
+	    {
+	    var ie = document.createElement('img');
+	    $(ie).attr('src', imgsrc);
+	    if (imgstyle)
+		$(ie).attr('style', imgstyle);
+	    $(p).append(ie);
+	    }
 	if (captxt)
 	    {
 	    c_p = document.createElement('p');
@@ -157,6 +169,8 @@ function tbld_format_cell(cell, color)
 	cell.el_title = t_p;
 	cell.el_text = p;
 	cell.el_caption = c_p;
+	cell.imgsrc = imgsrc;
+	cell.imgstyle = imgstyle;
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
