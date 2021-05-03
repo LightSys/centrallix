@@ -1,5 +1,5 @@
 $Version=2$
-SecurityModel_SamplePolicy "system/sec-policy"
+security "system/sec-policy"
     {
     // Mode = disable, warn, or enforce
     mode = enforce;
