@@ -7,8 +7,7 @@ int
 mssErrorHelper_init()
 {
   mssInitialize("altpasswd", "/usr/local/etc/centrallix/cxpasswd-test", "", 0, "test");
-  mssAuthenticate("cxtest", "cxtestpass");   
-  return 0;
+  return mssAuthenticate("cxtest", "cxtestpass");
 }
 
 int

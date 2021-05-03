@@ -1,6 +1,7 @@
-#include "obj.h"
 #include <assert.h>
 #include <stdio.h>
+#include "obj.h"
+#include "testhelpers/mssErrorHelper.h"
 
 long long
 test(char** name)
@@ -24,18 +25,11 @@ test(char** name)
     assert(objDataToInteger(7,&test,NULL) == 1);
 
     /** Overflow Case **/
-    //Manual Testing showed this section to work properly on overflow
-    //Currently, I do not know how to print the error messages, so this part
-    //will remain commented out.
-    
-    //test.Value = 250000000000000000;
-    //testValue = objDataToInteger(7,&test,NULL);
-    
-    //assert(testValue);
-    //assert(testValue == 5);
-    //mssStringError(pXString);
-    //printf("%s", pXString);
-    
-    
+    mssErrorHelper_init();
+    test.Value = 250000000000000000;
+    objDataToInteger(7,&test,NULL);
+    assert(mssErrorHelper_mostRecentErrorContains(
+        "OBJ: Warning: 7 (MoneyType) overflow; cannot fit value of that size in int"));
+
     return 0;
 }
