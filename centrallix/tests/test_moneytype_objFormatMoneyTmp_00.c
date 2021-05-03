@@ -4,10 +4,6 @@
 long long
 test(char** name)
 {
-    /** objFormatMoneyTmp is a wrapper that calls obj_internal_FormatMoney
-     ** Functionality was changed in obj_internal_FormatMoney, so the point of
-     ** these tests is to test obj_internal_FormatMoney, even with a different function call
-     **/
     *name = "moneytype_00 - objFormatMoneyTmp";
     
     /** 0 Case **/
