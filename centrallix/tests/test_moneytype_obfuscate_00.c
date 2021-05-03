@@ -4,6 +4,7 @@
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "obfuscate.h"
+#include "testhelpers/mssErrorHelper.h"
 
 void
 testObfuscationWIntegerMultiples()
@@ -52,7 +53,13 @@ testObfuscationWIntegerObfuscate()
 void
 testMoneyTooLarge()
 {
+    ObjData srcVal, dstVal;
+    MoneyType money = {25000000000000000000};
+    srcVal.Money = &money;
 
+    mssErrorHelper_init();
+    obfObfuscateData(&srcVal, &dstVal, DATA_T_MONEY, NULL, NULL, NULL, NULL, "V", NULL, NULL, NULL);
+    assert(mssErrorHelper_mostRecentErrorContains("Obfuscate not supported for Money Type greater than INT_MAX"));
 }
 
 long long
