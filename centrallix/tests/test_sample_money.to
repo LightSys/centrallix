@@ -1,2 +1,0 @@
-##NAME Money Test 2
-query select $4 + 1.5
