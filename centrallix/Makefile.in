@@ -367,6 +367,7 @@ ifeq ($TOTESTFILES,)
 else
     TOTESTDEPS=test_install
 endif
+TESTHELPERS:=$(wildcard tests/helpers/*.o)
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
@@ -529,8 +530,8 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 tests/t_driver.o: tests/t_driver.c 
 	$(CC) $(CFLAGS) $< -c -o $@
 
-tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
+tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS) $(TESTHELPERS)
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(TESTHELPERS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
 
 test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
