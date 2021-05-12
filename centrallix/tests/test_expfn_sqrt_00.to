@@ -1,0 +1,19 @@
+##NAME sqrt() function
+
+query select 'sqrt(0)' = sqrt(0)
+
+query select 'sqrt(1)' = sqrt(1)
+
+query select 'sqrt(2)' = sqrt(2)
+
+query select 'sqrt(3)' = sqrt(3)
+
+query select 'sqrt(4)' = sqrt(4)             
+
+query select 'sqrt(5.5)' = sqrt(5.5)
+
+query select 'sqrt(-2)' = sqrt(-2)
+
+query select 'sqrt(-5.5)' = sqrt(-5.5)   
+
+

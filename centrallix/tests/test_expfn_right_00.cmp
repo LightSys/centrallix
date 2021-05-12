@@ -1,0 +1,6 @@
+Attribute [right("abcde", 3)]:   string   "cde" 
+Attribute [right("abcde", 8)]:   string   "abcde" 
+Attribute [right("abcde", 0)]:   string   "" 
+Attribute [right("abcde"", 6)]:   string   "abcde\"" 
+Attribute [right("", 1)]:   string   "" 
+Attribute [right(null, null)]:   string  NULL

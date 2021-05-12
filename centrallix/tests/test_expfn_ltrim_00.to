@@ -1,0 +1,21 @@
+##NAME ltrim() function
+
+query select 'ltrim("No white space on left or right side.")' = ltrim("No white space on the left or right side.")
+
+query select 'ltrim("     White space on the left side.")' = ltrim("     White space on the left side.")
+
+query select 'ltrim("White space on the right side.     ")' = ltrim("White space on the right side.     ")
+
+query select 'ltrim("     White space on the right and the left side.     ")' = ltrim("     White space on both the right and the left side.     ")
+
+query select 'ltrim("\tWith tab character")' = ltrim("\tWith tab character")
+
+query select 'ltrim("\nWith newline character")' = ltrim("\nWith newline character")
+
+# \r wreaks havoc on output formatting so I'm leaving it out of the test right now, but it is currently neglected by ltrim()
+#query select 'ltrim("\rWith carriage return character.")' = "\r With carriage return character."
+
+query select 'ltrim("")' = ltrim("")
+
+query select 'ltrim(null)' = ltrim(null)
+

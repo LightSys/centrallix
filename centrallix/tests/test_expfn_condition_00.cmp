@@ -1,0 +1,20 @@
+Attribute [condition(0,1,2)]:  integer  2
+Attribute [condition(1,1,2)]:  integer  1
+Attribute [condition(2,1,2)]:  integer  1
+Attribute [condition(-1,1,2)]:  integer  1
+Attribute [condition(0,-500,-600)]:  integer  -600
+Attribute [condition(0,'LHS','RHS')]:   string   "RHS" 
+Attribute [condition(2,'LHS','RHS')]:   string   "LHS" 
+Attribute [condition(0,"LHS","RHS")]:   string   "RHS" 
+Attribute [condition(2,"LHS","RHS")]:   string   "LHS" 
+Attribute [condition(0,LHS, RHS)]:   string   "RHS" 
+Attribute [condition(2,LHS,RHS)]:   string   "LHS" 
+Attribute [condition(0,notemptystring,"")]:   string   "" 
+Attribute [condition(0,notnull,null)]:   string  NULL
+Attribute [condition(0,$3.0,$5.0)]:    money   $5.00 
+Attribute [condition(-5000,$3.0,$5.0)]:    money   $3.00 
+Attribute [condition(0,1.23456789,9.876543]:   double  9.87654321
+Attribute [condition(1000000,1.23456789,9.]:   double  1.23456789
+Attribute [condition(-1,-1.23,-3.21)]:   double  -1.23
+Attribute [condition(0,convert(datetime,"0]: datetime   '01 Jan 2020 00:00' 
+Attribute [condition(0,true,false)]:   string   "false" 

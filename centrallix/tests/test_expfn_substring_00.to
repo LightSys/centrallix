@@ -1,0 +1,14 @@
+##NAME substring function
+
+query select substring("abcde", 3, 2)
+query select substring("abcde", 4)
+query select substring("abcde",-1)
+query select substring("abcde", -3, 2)
+query select substring("abc", 3, 2)
+query select substring("abcde", 3, -2)
+query select substring(null, 1, 1)
+query select substring("string", null, 1)
+query select substring("string", 1)
+query select substring("a slightly longer string", 10, 50)
+query select substring("\\", 1, 1)
+query select substring("", 1, 1)

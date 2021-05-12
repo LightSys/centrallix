@@ -1,0 +1,3 @@
+##NAME sum() function
+
+query select 'sum(:f_integer)' = sum(:f_integer), 'sum(:f_double)' = sum(:f_double), 'sum(:f_money)' = sum(:f_money), 'sum(null)' = sum(null) from /tests/Datatypes.csv/rows where abs(:f_integer) < 1000000000 and abs(:f_money) < 1000000000

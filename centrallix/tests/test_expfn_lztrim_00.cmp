@@ -1,0 +1,8 @@
+Attribute [lztrim("This is a test string."]:   string   "This is a test string." 
+Attribute [lztrim("012345")]:   string   "12345" 
+Attribute [lztrim("000.12345")]:   string   "0.12345" 
+Attribute [lztrim("00astring")]:   string   "0astring" 
+Attribute [lztrim("$00.12345")]:   string   "$00.12345" 
+Attribute [lztrim("0001.23")]:   string   "1.23" 
+Attribute [lztrim("")]:   string   "" 
+Attribute [lztrim(null)]:   string  NULL

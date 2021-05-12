@@ -1,0 +1,16 @@
+##NAME replicate() function
+
+query select 'replicate(Hello,10)' = replicate(Hello,10)
+
+query select 'replicate("Are we there yet?",5)' = replicate("Are we there yet? ",5)
+# Notice how even if n is greater than 255, only 255 will be displayed
+query select 'replicate("a", 300)' = replicate("a",300)
+
+query select 'replicate("God is good, all the time! ", 5)' = replicate("God is good, all the time! ", 5)
+
+query select 'replicate(null, 5)' = replicate(null,5)
+
+query select 'replicate("",255)' = replicate("",255)
+
+query select 'replicate(Hi, 2.5)' = replicate(Hi, 2.5)
+

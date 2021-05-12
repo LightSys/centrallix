@@ -1,0 +1,17 @@
+##NAME last(x) function
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_integer asc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_integer desc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_double asc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_double desc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_money asc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_money desc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_datetime asc
+
+query select last(:f_string) from /tests/Datatypes.csv/rows order by :f_datetime desc
