@@ -133,4 +133,3 @@ void* stGetValueList(pStructInf this, int type, unsigned int* nval);
 int stAttrIsList(pStructInf this);
 
 #endif /* _STPARSE_H */
-

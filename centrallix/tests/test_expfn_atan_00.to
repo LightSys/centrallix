@@ -1,0 +1,66 @@
+##NAME atan() function
+
+query select 'atan(tan(0.0))' = atan(tan(0.0))
+
+query select 'atan(tan(radians(30)))' = atan(tan(radians(30)))
+
+query select 'atan(tan(radians(45)))' = atan(tan(radians(45)))
+
+query select 'atan(tan(radians(60)))' = atan(tan(radians(60)))
+
+query select 'atan(tan(radians(90)))' = atan(tan(radians(90)))
+
+query select 'atan(tan(radians(180)))' = atan(tan(radians(180)))
+
+query select 'atan(tan(radians(270)))' = atan(tan(radians(270)))
+
+query select 'atan(tan(radians(360)))' = atan(tan(radians(360)))
+
+query select 'atan(tan(radians(720)))' = atan(tan(radians(720)))
+
+query select 'atan(tan(radians(-30)))' = atan(tan(radians(-30)))
+
+query select 'atan(tan(radians(-45)))' = atan(tan(radians(-45)))
+
+query select 'atan(tan(radians(-60)))' = atan(tan(radians(-60)))
+
+query select 'atan(tan(radians(-90)))' = atan(tan(radians(-90)))
+
+query select 'atan(tan(radians(-180)))' = atan(tan(radians(-180)))
+
+query select 'atan(tan(radians(-270)))' = atan(tan(radians(-270)))
+
+query select 'atan(tan(radians(-360)))' = atan(tan(radians(-360)))
+
+query select 'atan(tan(radians(-720)))' = atan(tan(radians(-720)))
+
+query select 'atan(tan(0))' = atan(tan(0))
+
+query select 'atan(tan(1))' = atan(tan(1))
+
+query select 'atan(tan(2))' = atan(tan(2))
+
+query select 'atan(tan(3))' = atan(tan(3))
+
+query select 'atan(tan(4))' = atan(tan(4))
+
+query select 'atan(tan(5))' = atan(tan(5))
+
+query select 'atan(tan(6))' = atan(tan(6))
+
+query select 'atan(tan(7))' = atan(tan(7))
+
+query select 'atan(tan(-1))' = atan(tan(-1))
+
+query select 'atan(tan(-2))' = atan(tan(-2))
+
+query select 'atan(tan(-3))' = atan(tan(-3))
+
+query select 'atan(tan(-4))' = atan(tan(-4))
+
+query select 'atan(tan(-5))' = atan(tan(-5))
+
+query select 'atan(tan(-6))' = atan(tan(-6))
+
+query select 'atan(tan(-7))' = atan(tan(-7))
+

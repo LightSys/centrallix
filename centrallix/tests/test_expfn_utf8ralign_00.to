@@ -1,0 +1,21 @@
+##NAME UTF-8 compatible ralign() function
+
+query select 'ralign("Test", 10)' = ralign("Test", 10)
+query select 'ralign("Test", 0)' = ralign("Test", 0)
+query select 'ralign("Test", -50)' = ralign("Test", -10)
+query select 'ralign("",5)' = ralign("",5)
+query select 'ralign(null,1)' = ralign(null,1)
+query select 'ralign("A", null)' = ralign("A", null)
+query select 'ralign("A", "A")' = ralign("A", "A")
+query select 'ralign("A", 1, 9)' = ralign("A", 1, 9)
+
+query select ralign(:f_string,20) from /tests/Datatypes.csv/rows
+
+query select 'ralign("Сынақ", 0)' = ralign("Сынақ", 0)
+query select 'ralign("Testdə", 2)' = ralign("Testdə", 2)
+query select 'ralign("Ölçek", 5)' = ralign("Ölçek", 5)
+query select 'ralign("اختبار", 7)' = ralign("ﺎﺨﺘﺑﺍﺭ", 7)
+query select 'ralign("测试", -4)' = ralign("测试", -4)
+query select 'ralign("Prüfung", 20)' = ralign("Prüfung", 20)
+query select 'ralign("テスト テスト テスト テスト", 100)' = ralign("テスト テスト テスト テスト", 100)
+query select 'ralign("     테스트", 15)' = ralign("     테스트", 15)

@@ -1,0 +1,7 @@
+##NAME Parsing (known bug)
+
+query select '2-1' = 2-1
+query select '2 -1' = 2 -1
+
+query select '2.5-1.0' = 2.5-1.0
+query select '2.5 -1.0' = 2.5 -1.0

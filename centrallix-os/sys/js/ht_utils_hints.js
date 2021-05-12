@@ -244,35 +244,35 @@ function cx_parse_hints(hstr)
 		switch(attrval[0])
 		    {
 		    case "d":
-			ph.DefaultExpr = unescape(attrval[1]);
+			ph.DefaultExpr = decodeURIComponent(attrval[1]);
 			break;
 		    case "c":
-			ph.Constraint = unescape(attrval[1]);
+			ph.Constraint = decodeURIComponent(attrval[1]);
 			break;
 		    case "m":
-			ph.MinValue = unescape(attrval[1]);
+			ph.MinValue = decodeURIComponent(attrval[1]);
 			break;
 		    case "M":
-			ph.MaxValue = unescape(attrval[1]);
+			ph.MaxValue = decodeURIComponent(attrval[1]);
 			break;
 		    case "el":
 			ph.EnumList = attrval[1].split(",");
 			for(var j=0; j<ph.EnumList.length; j++)
 			    {
-			    ph.EnumList[j] = unescape(ph.EnumList[j]);
+			    ph.EnumList[j] = decodeURIComponent(ph.EnumList[j]);
 			    }
 			break;
 		    case "eq":
-			ph.EnumQuery = unescape(attrval[1]);
+			ph.EnumQuery = decodeURIComponent(attrval[1]);
 			break;
 		    case "fm":
-			ph.Format = unescape(attrval[1]);
+			ph.Format = decodeURIComponent(attrval[1]);
 			break;
 		    case "ac":
-			ph.AllowChars = unescape(attrval[1]);
+			ph.AllowChars = decodeURIComponent(attrval[1]);
 			break;
 		    case "bc":
-			ph.BadChars = unescape(attrval[1]);
+			ph.BadChars = decodeURIComponent(attrval[1]);
 			break;
 		    case "l":
 			ph.Length = parseInt(attrval[1]);
@@ -296,13 +296,13 @@ function cx_parse_hints(hstr)
 			ph.GroupID = parseInt(attrval[1]);
 			break;
 		    case "gn":
-			ph.GroupName = unescape(attrval[1]);
+			ph.GroupName = decodeURIComponent(attrval[1]);
 			break;
 		    case "O":
 			ph.OrderID = parseInt(attrval[1]);
 			break;
 		    case "fn":
-			ph.FriendlyName = unescape(attrval[1]);
+			ph.FriendlyName = decodeURIComponent(attrval[1]);
 			break;
 		    }
 		}

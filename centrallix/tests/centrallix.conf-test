@@ -14,6 +14,7 @@ centrallix "system/config"
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
     transaction_log_file = "/var/log/cx_transaction_log";
+    charsetmap_file = "/usr/local/src/cx-git/centrallix/etc/charsetmap.cfg"; //hardcoded path
 
     // Set this to 1 to allow Centrallix to send a user's login credentials
     // to another server, as a part of "single sign on" type authentication.

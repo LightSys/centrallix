@@ -1,0 +1,7 @@
+##NAME Testing characters respect utf-8
+
+# Notice the *.cmp file will have nothing as an output as the strings in the Datatypes.csv file respects utf-8 rules
+# The length function is in MySQL and will be implemented in the future
+# This portion of the code 'where length(*) < char_length(*) should output the string if it is non utf8
+query select :f_string from /tests/Datatypes.csv/rows where length(:f_string) < char_length(:f_string)
+

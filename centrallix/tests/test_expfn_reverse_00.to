@@ -1,0 +1,5 @@
+##NAME reverse() function
+
+query select reverse(:f_string) from /tests/Datatypes.csv/rows 
+query select reverse(:Color) from /tests/TestLevel1.csv/rows
+query select 'reverse(null)' = reverse(null)

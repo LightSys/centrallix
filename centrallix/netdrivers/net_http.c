@@ -821,7 +821,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"Date: %STR\r\n"
 		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict%]%[\r\n%]"
 		"%[Content-Length: %INT\r\n%]"
-		"%[Content-Type: %STR\r\n%]"
+		"%[Content-Type: %STR; charset=%STR\r\n%]"
 		"%[Pragma: %STR\r\n%]"
 		"%[Transfer-Encoding: chunked\r\n%]"
 		"Referrer-Policy: same-origin\r\n"
@@ -837,6 +837,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
 		conn->ResponseContentLength > 0, conn->ResponseContentLength,
 		conn->ResponseContentType[0] && !strpbrk(conn->ResponseContentType, "\r\n"), conn->ResponseContentType,
+		conn->ResponseCharset,
 		conn->NoCache, "no-cache",
 		conn->UsingChunkedEncoding,
 		(conn->Keepalive?"keep-alive":"close")
@@ -850,6 +851,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 	    if (strpbrk(hdr->Name, ": \r\n\t") || strpbrk(hdr->Value, "\r\n"))
 		continue;
 	    rval = nht_i_QPrintfConn(conn, 1, "%STR: %STR\r\n", hdr->Name, hdr->Value);
+
 	    if (rval < 0) return rval;
 	    wcnt += rval;
 	    }
@@ -2055,6 +2057,10 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    nht_i_AddResponseHeader(conn, "Content-Encoding", "gzip", 0);
 		    }
+                    
+                /** Print encoding type and content type **/
+		//This is causing Kardia to not load
+		//fdPrintf(conn->ConnFD,"Content-Type: text/html; charset=%s\r\nPragma: no-cache\r\n\r\n", chrGetEquivalentName("http"));
 
 		/** Send the response **/
 		conn->NoCache = 1;

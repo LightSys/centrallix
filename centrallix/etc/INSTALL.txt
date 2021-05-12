@@ -50,3 +50,15 @@ types.cfg:
     can be changed by changing the "types_config" attribute in the main
     config file centrallix.conf.
 
+charsetmap.cfg
+
+    In the POSIX specifications, MySQL, and the other components that are being
+    used in Centrallix, character encodings are specified by strings.  This 
+    makes sense for most applications (Like centrallix) where a variable number
+    of locales could be used, but because the different components refer to the 
+    character sets with different names, it can be very hard to coordinate the 
+    character encoding between all parts of an application.  The charsetmap.cfg
+    file is meant to fix this problem by mapping what the system calls an
+    encoding to what all the other components call that encoding.  See the
+    default charsetmap.cfg for an example of what it should look like and the
+    different tags that are currently recognized by Centrallix and its plugins.

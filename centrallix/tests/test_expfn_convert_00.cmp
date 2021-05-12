@@ -1,0 +1,27 @@
+Attribute [convert(integer, 100)]:  integer  100
+Attribute [convert(integer, " 2.9")]:  integer  2
+Attribute [convert(integer, -2.9)]:  integer  -2
+Attribute [convert(integer, $-2147483647.9]:  integer  2147483647
+Attribute [convert(integer, $-1.50)]:  integer  -1
+Attribute [convert(integer, "7Jesus")]:  integer  7
+Attribute [convert(integer, "Jesus7")]:  integer  0
+Attribute [convert(string, -100)]:   string   "-100" 
+Attribute [convert(string, "test string")]:   string   "test string" 
+Attribute [convert(string, 2147483647.99)]:   string   "2147483647.99" 
+Attribute [convert(string, $-1.00)]:   string   "-$1.00" 
+Attribute [convert(string, convert(datetim]:   string   "32 May 2020 15:45" 
+Attribute [convert(double, 100)]:   double  100.0
+Attribute [convert(double, "-10.3")]:   double  -10.3
+Attribute [convert(double, -10.3)]:   double  -10.3
+Attribute [convert(double, $3.50)]:   double  3.5
+Attribute [convert(double, $-3.999999)]:   double  -3.9999
+Attribute [convert(double,"7Jesus")]:   double  7.0
+Attribute [convert(double,"Jesus7")]:   double  0.0
+Attribute [convert(money, 100)]:    money   $100.00 
+Attribute [convert(money, "$-0.50")]:    money   -$0.50 
+Attribute [convert(money, (10 - 10))]:    money   $0.00 
+Attribute [convert(money, $0)]:    money   $0.00 
+Attribute [convert(money, convert(string, ]:    money   -$1.50 
+Attribute [convert(money, "7Jesus")]:    money   $7.00 
+Attribute [convert(datetime, "05/21/2020 1]: datetime   '21 May 2020 15:45' 
+Attribute [convert(datetime, "05/21/2020 1]: datetime   '20 May 2020 23:00' 

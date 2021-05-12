@@ -1,0 +1,88 @@
+##NAME power() function
+# Notice that for power(a,b) when a < 0 and b is a double then the ourput can be -nan.0 due to imaginary numbers resulting from the roots caused by fractional exponents
+query select 'power(0,0)' = power(0,0)
+
+query select 'power(0,1)' = power(0,1)
+
+query select 'power(1,0)' = power(1,0)
+
+query select 'power(20,0)' = power(20,0)
+
+query select 'power($2,0)' = power($2,0)
+
+query select 'power(1,1)' = power(1,1)
+
+query select 'power(1,20)' = power(1,20)
+
+query select 'power(2.2,1)' = power(2.2,1)             
+
+query select 'power(2.2,3)' = power(2.2,3) 
+
+query select 'power(2.2,2.2)' = power(2.2,2.2)             
+
+query select 'power(2,2)' = power(2,2)
+
+query select 'power(3,5)' = power(3,5)
+
+query select 'power($2,2)' = power($2,2)
+
+query select 'power($2,2.2)' = power($2,2.2)
+# power(a,-b)
+query select 'power(1,-1)' = power(1,-1)
+
+query select 'power(1,-20)' = power(1,-20)
+
+query select 'power(2.2,-1)' = power(2.2,-1)
+
+query select 'power(2.2,-3)' = power(2.2,-3)   
+
+query select 'power(2.2,-2.2)' = power(2.2,-2.2)             
+
+query select 'power(2,-2)' = power(2,-2)
+
+query select 'power(3,-5)' = power(3,-5)
+
+query select 'power($2,-2)' = power($2,-2)
+
+query select 'power($2,-2.2)' = power($2,-2.2)
+# power(-a,b)
+query select 'power(-1,0)' = power(-1,0)
+
+query select 'power(-20,0)' = power(-20,0)
+
+query select 'power($-2,0)' = power($-2,0)
+
+query select 'power(-1,1)' = power(-1,1)
+
+query select 'power(-1,20)' = power(-1,20)
+
+query select 'power(-2.2,1)' = power(-2.2,1)             
+
+query select 'power(-2.2,3)' = power(-2.2,3)                        
+
+query select 'power(-2.2,2.2)' = power(-2.2,2.2)            
+
+query select 'power(-2,2)' = power(-2,2)
+
+query select 'power(-3,5)' = power(-3,5)
+
+query select 'power($-2,2)' = power($-2,2)
+
+query select 'power($-2,2.2)' = power($-2,2.2)
+# power(-a,-b)
+query select 'power(-1,-1)' = power(-1,-1)
+
+query select 'power(-1,-20)' = power(-1,-20)
+
+query select 'power(-2.2,-1)' = power(-2.2,-1)   
+
+query select 'power(-2.2,-3)' = power(-2.2,-3)            
+
+query select 'power(-2,-2)' = power(-2,-2)
+
+query select 'power(-3,-5)' = power(-3,-5)
+
+query select 'power($-2,-2)' = power($-2,-2)
+
+query select 'power($-2,-2.2)' = power($-2,-2.2)
+

@@ -54,7 +54,7 @@ nht_i_AllocConn(pFile net_conn)
 	xaInit(&conn->RequestHeaders, 16);
 	xaInit(&conn->ResponseHeaders, 16);
 	strtcpy(conn->ResponseContentType, "text/html", sizeof(conn->ResponseContentType));
-
+	strtcpy(conn->ResponseCharset, "UTF-8", sizeof(conn->ResponseCharset));
 	/** Get the remote IP and port **/
 	remoteip = netGetRemoteIP(net_conn, NET_U_NOBLOCK);
 	if (remoteip) strtcpy(conn->IPAddr, remoteip, sizeof(conn->IPAddr));

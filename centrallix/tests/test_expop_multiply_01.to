@@ -1,0 +1,8 @@
+##NAME Multiplication (*) inconsistencies with string values
+
+# These same operands work with + and - because they convert the string to an
+# int when possible, but with multiplication it throws an error
+query select '-2 * "3"' = -2 * "3"
+
+# Similarly for consistency I would argue that this should result in an integer
+query select '4 * "4"' = 4 * "4"

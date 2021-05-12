@@ -1,0 +1,4 @@
+Attribute [sum(:f_integer)]:  integer  100
+Attribute [sum(:f_double)]:   double  4992.67
+Attribute [sum(:f_money)]:    money   $65083.49 
+Attribute [sum(null)]:   string  NULL

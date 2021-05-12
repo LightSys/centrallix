@@ -1,0 +1,16 @@
+##NAME UTF-8 compatible upper() function
+
+query select upper(:f_string) from /tests/Datatypes.csv/rows 
+query select upper(:Color) from /tests/TestLevel1.csv/rows 
+query select upper(null)
+query select upper("\t")
+query select upper("española")
+query select upper("română")
+query select upper("日本人")
+query select upper("српски")
+query select upper("монгол")
+query select upper("Ελληνικά")
+query select upper("ΕΛΛΗΝΙΚΑ")
+query select upper("français")
+query select upper("ر")
+

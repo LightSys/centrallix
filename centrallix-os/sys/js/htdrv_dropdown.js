@@ -804,7 +804,7 @@ function dd_add_items(l,ary)
 	if (typeof ary[sel].value == 'number')
 	    cx_set_hints(this, "d=" + ary[sel].value, "widget");
 	else
-	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget");
+	    cx_set_hints(this, "d=" + encodeURIComponent(cxjs_quote(ary[sel].value)), "widget");
 	}
     else
 	{

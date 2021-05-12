@@ -1,0 +1,7 @@
+Attribute [square(0)]:  integer  0
+Attribute [square(1)]:  integer  1
+Attribute [square(-1)]:  integer  1
+Attribute [square(5)]:  integer  25
+Attribute [square(-5)]:  integer  25
+Attribute [square(2.2)]:   double  4.84
+Attribute [square(-2.2)]:   double  4.84

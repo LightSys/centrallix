@@ -1,0 +1,19 @@
+##NAME UTF-8 compatible escape() function
+
+query select 'escape("abcde", "a", "c")' = escape("abcde", "a", "c")
+query select 'escape("abcde", "f", "e")' = escape("abcde", "f", "e")
+query select 'escape("abcde")' = escape("abcde")
+query select 'escape("abcde", "c", 4)' = escape("abcde", "c", 4)
+
+query select 'escape("abcde", "f", "g")' = escape("abcde", "f", "g")
+query select 'escape("abcde", "a")' = escape("abcde", "a")
+query select 'escape("aaaaa", "a")' = escape("aaaaa", "a")
+query select 'escape("this is a more   complicated test", "t t", "8")' = escape("this is a more   complicated test", "t t", "8")
+query select 'escape("The buffer size will need to increase because of escaping.", "aeiou")' = escape("The buffer size will need to increase because of escaping.", "aeiou")
+
+query select 'escape("\{sl\"a\"sh\}", "\"\}\{", "\\")' = escape("\{sl\"a\"sh\}", "\"\}\{", "\\")
+query select 'escape("АДЖИ\\drop日本人--all", "И\-")' = escape("АДЖИ\\drop日本人--all", "И\-")
+query select 'escape("χ", "χ")' = escape("χ", "χ")
+query select 'escape("Салом", "омСла")' = escape("Салом", "омСла")
+
+

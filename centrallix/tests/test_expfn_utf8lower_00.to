@@ -1,0 +1,18 @@
+##NAME UTF-8 compatible lower() function
+
+query select lower(:f_string) from /tests/Datatypes.csv/rows
+query select lower(:Color) from /tests/TestLevel1.csv/rows 
+query select lower(null)
+query select lower("\t")
+query select lower("ESPAÑOLA")
+query select lower("ROMÂNĂ")
+query select lower("日本人")
+query select lower("СРПСКИ")
+query select lower("МОНГОЛ")
+query select lower("ΕΛΛΗΝΙΚΆ")
+query select lower("Ελληνικά")
+query select lower("FRANÇAIS")
+query select lower("ﺭ")
+
+
+

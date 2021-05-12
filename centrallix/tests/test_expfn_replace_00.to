@@ -22,3 +22,6 @@ query select replace("ababab","a","xyz")
 query select replace("ababab","b","xyz")
 query select replace("ababab","ab","xyz")
 query select replace("ababab","ba","xyz")
+
+query select replace(null, "", "")
+query select replace("", null, "")

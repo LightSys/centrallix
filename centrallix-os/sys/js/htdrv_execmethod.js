@@ -16,7 +16,7 @@ function ex_action_domethod(aparam)
     var m = aparam.Method?aparam.Method:this.Methodname;
     var p = aparam.Parameter?aparam.Parameter:this.Methodparam;
     if (!o || !m || !p) return false;
-    var url = o + '?cx__akey='+akey+'&ls__mode=execmethod&ls__methodname=' + (escape(m).replace(/\//g,'%2f')) + '&ls__methodparam=' + (escape(p).replace(/\//g,'%2f'));
+    var url = o + '?cx__akey='+akey+'&ls__mode=execmethod&ls__methodname=' + (encodeURIComponent(m).replace(/\//g,'%2f')) + '&ls__methodparam=' + (encodeURIComponent(p).replace(/\//g,'%2f'));
     pg_serialized_load(this.HiddenLayer, url, null);
     return true;
     }
