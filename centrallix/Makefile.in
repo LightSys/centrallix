@@ -367,7 +367,8 @@ ifeq ($TOTESTFILES,)
 else
     TOTESTDEPS=test_install
 endif
-TESTHELPERS:=$(wildcard tests/helpers/*.o)
+CTESTHELPERS:=$(wildcard tests/helpers/*.c)
+TESTHELPERS:=$(patsubst %.c,%.o,$(CTESTHELPERS))
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
@@ -647,6 +648,7 @@ clean:
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
 	@rm -f tests/*.o tests/*.bin
+	@rm -f tests/helpers/*.o
 	@rm -rf thirdparty/*-inst
 	@rm -f *.gcov */*.gcov
 	@rm -f *.gcda */*.gcda
