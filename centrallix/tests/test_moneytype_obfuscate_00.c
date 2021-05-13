@@ -54,7 +54,7 @@ void
 testMoneyTooLarge()
 {
     ObjData srcVal, dstVal;
-    MoneyType money = {25000000000000000000};
+    MoneyType money = {250000000000000000ll};
     srcVal.Money = &money;
 
     mssErrorHelper_init();
