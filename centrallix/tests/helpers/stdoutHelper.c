@@ -24,12 +24,15 @@ stdoutHelper_stopCaptureAndGetContents()
   close(stdoutHelper_stdoutCopy);
 
   // Read the contents of the file with stdout contents
+  char* contents = "";
   fseek(stdoutHelper_tmpfile, 0, SEEK_END);
   long size = ftell(stdoutHelper_tmpfile);
-  char *contents = malloc(size + 1);
-  rewind(stdoutHelper_tmpfile);
-  fread(contents, 1, size, stdoutHelper_tmpfile);
-  contents[size] = 0;
+  if (size > 0) {
+    contents = malloc(size + 1);
+    rewind(stdoutHelper_tmpfile);
+    fread(contents, 1, size, stdoutHelper_tmpfile);
+    contents[size] = 0;
+  }
 
   // Close and remove the file and return its contents
   fclose(stdoutHelper_tmpfile);
