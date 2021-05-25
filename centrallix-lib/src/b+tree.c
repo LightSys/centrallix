@@ -116,7 +116,7 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
                 i--;
                 }
 
-            this->Keys[i+1].Value = malloc(key_len);
+            this->Keys[i+1].Value = malloc(key_len); //TODO: Change malloc to nmalloc
             if (!this->Keys[i+1].Value) return -1;
 
             memcpy(this->Keys[i+1].Value, key, key_len);
