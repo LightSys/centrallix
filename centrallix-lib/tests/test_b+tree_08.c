@@ -16,14 +16,12 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	 	{
 		tree = bpt_i_new_BPNode();
-		tree->Parent = tree;
 		tree->Next = tree;
 		tree->Prev = tree;
 		tree->nKeys = 4;
 		tree->IsLeaf = 0;
 		val = bptInit(tree);
 		assert (val == 0);
-		assert (tree->Parent == NULL);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);

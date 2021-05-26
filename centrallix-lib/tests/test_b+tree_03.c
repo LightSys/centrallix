@@ -41,6 +41,7 @@ test(char** tname)
 
 	
 	tmp = 0;
+	printTree(&root, 3);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (tmp == 0);
