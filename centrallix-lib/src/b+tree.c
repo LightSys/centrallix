@@ -664,6 +664,10 @@ void
 printTree(pBPNode tree, int level)
     {
     int i;
+    if(tree == NULL) {
+        printf("Null");
+    }
+    else {
     for (i=0; i<level; i++) printf("\t");
     printf("Node ");
     printPtr(tree);
@@ -684,6 +688,7 @@ printTree(pBPNode tree, int level)
         for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child, level+1);
         }
     if (level==0) printf("----------------------\n");
+    }
     }
 
 void printPtr(void* ptr) {
