@@ -25,6 +25,7 @@
 typedef struct _BPK BPNodeKey, *pBPNodeKey;
 typedef union _BPV BPNodeVal, *pBPNodeVal;
 typedef struct _BPN BPNode, *pBPNode;
+typedef struct BPTree BPTree, *pBPTree;
 
 //IMT: Temporary until we know data structure that will be passed to bulk load
 /*typedef struct BPTData
@@ -34,7 +35,6 @@ typedef struct _BPN BPNode, *pBPNode;
     void * Value;
     } BPTData;*/
 
-typedef struct BPTree BPTree;
 struct BPTree {
 	pBPNode root;
 };
