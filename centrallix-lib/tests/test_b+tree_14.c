@@ -46,7 +46,6 @@ test(char** tname)
 				
 				if (j!=0)
 					{
-					nodes[nodeIndex]->Parent = nodes[parentIndex];
 					if ((k+1)%(LEVELNKEYS[j-1]+1)==0) parentIndex++;
 					}
 			
@@ -80,7 +79,6 @@ test(char** tname)
 		assert (val == 0);
 		for (j=0; j<TOTNODES; j++)
 			{
-			assert (nodes[j]->Parent == NULL);
 			assert (nodes[j]->Next == NULL);
 			assert (nodes[j]->Prev == NULL);
 			assert (nodes[j]->nKeys == 0);	
