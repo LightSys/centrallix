@@ -51,16 +51,10 @@ test(char** tname)
 	root->IsLeaf = 0;
 	leftMid->IsLeaf = 0;
 	rightMid->IsLeaf = 0;
-	leftMid->Parent = root;
-	rightMid->Parent = root;
-	leftL->Parent = leftMid;
-	leftR->Parent = leftMid;
-	rightL->Parent = rightMid;
-	rightR->Parent = rightMid;
 
 
 	tmp = 0;
-	bpt_PrintTree(&root);
+	printTree(&root, 3);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (tmp == 0);
