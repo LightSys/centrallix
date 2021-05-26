@@ -14,9 +14,9 @@ test(char** tname)
 	*tname = "b+tree-04 2 Children";
 	iter = 8000000;
 	
-	pBPTree root = bptNew();
-	pBPTree left = bptNew();
-	pBPTree right = bptNew();  
+	BPNode* root = bpt_i_new_BPNode();
+	BPNode* left = bpt_i_new_BPNode();
+	BPNode* right = bpt_i_new_BPNode();  
         root->Keys[0].Length = 5;
         root->Keys[0].Value = "Tommy\0"; 
 	root->nKeys++;	
@@ -33,20 +33,16 @@ test(char** tname)
 	right->Keys[1].Value = "!?\0";
 	right->nKeys++;
 	root->Children[0].Child = left;
-	left->Parent = root;
 	root->Children[1].Child = right;
-	right->Parent = root;
 	left->Next = right;
 	root->IsLeaf = 0;
 	
 	tmp = 0;
-	bpt_PrintTree(&root);
 	for(i=0;i<iter;i++)
 	 	{
 		assert (tmp == 0);
 		}
 
-	printf("\n");
 	
     	return iter*4;
     	}
