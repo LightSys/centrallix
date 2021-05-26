@@ -7,7 +7,7 @@ test(char** tname)
     {
     int i;
     int iter;
-	pBPTree tree;
+	pBPNode tree;
 	int val;
 
 	*tname = "b+tree-08 bptInit returns 0, clears ptrs, resets vars";
@@ -15,7 +15,7 @@ test(char** tname)
 	iter = 800000;
 	for(i=0;i<iter;i++)
 	 	{
-		tree = bptNew();
+		tree = bpt_i_new_BPNode();
 		tree->Parent = tree;
 		tree->Next = tree;
 		tree->Prev = tree;

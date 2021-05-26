@@ -13,7 +13,7 @@ test(char** tname)
 	*tname = "b+tree-40 Remove all keys from tree of size 1000";
 	iter = 50;
 	
-	pBPTree this;
+	pBPNode this;
 	char* fname = "tests/bpt_bl_10e2.dat";
 	FILE* f = NULL;
 	this = bptBulkLoad(fname, 100);

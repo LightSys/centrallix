@@ -18,7 +18,7 @@ test(char** tname)
 	*tname = "b+tree-29 Bulk Loading: Size = 100";
 	iter = 800;
 
-	pBPTree this;
+	pBPNode this;
 	char* fname = "tests/bpt_bl_10e2.dat";
 	FILE* tree = NULL;
 	FILE* dict = NULL;

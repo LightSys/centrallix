@@ -12,8 +12,8 @@ test(char** tname)
 	*tname = "b+tree-time07 testing time of searching tree size 10000";
 	iter = 500000;
 	
-	pBPTree this = bptBulkLoad("tests/bpt_bl_10e4.dat", 10000);
-	pBPTree dummy = NULL;
+	pBPNode this = bptBulkLoad("tests/bpt_bl_10e4.dat", 10000);
+	pBPNode dummy = NULL;
 	int idx = 0;
 
 	for(i=0;i<iter;i++)

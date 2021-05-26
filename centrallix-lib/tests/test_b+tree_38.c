@@ -12,7 +12,7 @@ test(char** tname)
 	*tname = "b+tree-38 Coalesce inodes";
 	iter = 100;
 	
-	pBPTree this;
+	pBPNode this;
 	char* fname = "tests/bpt_bl_10e3.dat";
 	
 	this = bptBulkLoad(fname, 1000);

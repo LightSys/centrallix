@@ -5,9 +5,9 @@
 #include "b+tree.h"
 
 /** Declare internal function to test **/
-pBPTree bpt_i_Split(pBPTree node, int split_loc);
+pBPNode bpt_i_Split(pBPNode node, int split_loc);
 
-static void create_leaf_node(pBPTree leaf_node, int nKeys, int max_key_len)
+static void create_leaf_node(pBPNode leaf_node, int nKeys, int max_key_len)
 	{
 	int * new_val;
 	int j;
@@ -23,7 +23,7 @@ static void create_leaf_node(pBPTree leaf_node, int nKeys, int max_key_len)
 	leaf_node->nKeys = BPT_SLOTS;
 	}
 
-static void validate_split(int split_loc, pBPTree leaf_node, pBPTree right_node, int total_nkeys, int max_key_len)
+static void validate_split(int split_loc, pBPNode leaf_node, pBPNode right_node, int total_nkeys, int max_key_len)
 	{
 	assert(right_node->IsLeaf == 1);
 	assert(right_node->nKeys == BPT_SLOTS - split_loc);
@@ -65,7 +65,7 @@ test(char** tname)
     {
     int i;
     int iter;
-	pBPTree leaf_node, right_node;
+	pBPNode leaf_node, right_node;
 	int max_key_len = 2;
 
 	*tname = "b+tree-09: Test bptSplit";
@@ -73,7 +73,7 @@ test(char** tname)
 	iter = 1000;
 	for(i=0;i<iter;i++)
 	 	{
-		leaf_node = bptNew();
+		leaf_node = bpt_i_new_BPNode();
 
 		create_leaf_node(leaf_node, BPT_SLOTS, max_key_len);
 
@@ -91,21 +91,21 @@ test(char** tname)
 		nmFree(leaf_node, sizeof(*leaf_node));
 
 		/** Test that node is successfully created if split location creates an empty left node **/ 
-		leaf_node = bptNew();
+		leaf_node = bpt_i_new_BPNode();
 		create_leaf_node(leaf_node, BPT_SLOTS, max_key_len);
 		right_node = bpt_i_Split(leaf_node, 0);
 		validate_split(0, leaf_node, right_node, BPT_SLOTS, max_key_len);
 		nmFree(leaf_node, sizeof( *leaf_node));
 
 		/** Test that node is successfully created if split location creates an empty left node **/ 
-		leaf_node = bptNew();
+		leaf_node = bpt_i_new_BPNode();
 		create_leaf_node(leaf_node, BPT_SLOTS, max_key_len);
 		right_node = bpt_i_Split(leaf_node, BPT_SLOTS );
 		validate_split(BPT_SLOTS, leaf_node, right_node, BPT_SLOTS, max_key_len);
 		nmFree(leaf_node, sizeof(*leaf_node));
 
 		/** Test that node is successfully created if split before node is full (tests case of index node) **/ 
-		leaf_node = bptNew();
+		leaf_node = bpt_i_new_BPNode();
 		create_leaf_node(leaf_node, IDX_SLOTS, max_key_len);
 		right_node = bpt_i_Split(leaf_node, CEIL_HALF_OF_IDX_SLOTS);
 		validate_split(CEIL_HALF_OF_IDX_SLOTS, leaf_node, right_node, IDX_SLOTS, max_key_len);

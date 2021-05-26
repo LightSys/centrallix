@@ -11,7 +11,7 @@ test(char **tname){
 	*tname = "b+tree add test 2- leaf insert";
 	printf("\n Adding Test #1\n");
 
-	pBPTree root = bptNew();
+	pBPTree root = bpt_i_new_BPNode();
 
 	char* key = "2\0";
 	char* val = "second one\0";

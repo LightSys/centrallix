@@ -13,10 +13,10 @@ test(char** tname)
 	*tname = "b+tree-23 REMOVE RIGHT ENTRY FROM ROOT";
 	iter = 8000000;
 	
-	pBPTree root = bptNew();
-	pBPTree left = bptNew();
-	pBPTree mid = bptNew();
-	pBPTree right = bptNew();  
+	pBPNode root = bpt_i_new_BPNode();
+	pBPNode left = bpt_i_new_BPNode();
+	pBPNode mid = bpt_i_new_BPNode();
+	pBPNode right = bpt_i_new_BPNode();  
         root->Keys[0].Length = 5;
         root->Keys[0].Value = "Tommy\0"; 
 	root->nKeys++;	

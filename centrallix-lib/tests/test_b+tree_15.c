@@ -9,14 +9,14 @@ test(char** tname)
     {
     int i; 
     int iter;
-	pBPTree tree;
+	pBPNode tree;
 
 	*tname = "b+tree-15 bptFree deinits leaf tree with 3 values";
 
 	iter = 800000;
 	for(i=0;i<iter;i++)
 	 	{
-		tree = bptNew();
+		tree = bpt_i_new_BPNode();
 		bptInit(tree);
 		tree->Keys[0].Length = 2;
 		tree->Keys[0].Value = nmSysMalloc(2); // don't assign double quoted string because deInit frees this

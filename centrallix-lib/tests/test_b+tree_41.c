@@ -10,12 +10,12 @@ test(char** tname)
 	int iter, i, tmp;
 	int d1, d2, d3;
 	int idx;
-        pBPTree dummy;
+        pBPNode dummy;
 
 	*tname = "b+tree-41 Analyze depth of tree";
 	iter = 8000000;
 	
-	pBPTree this1 = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
+	pBPNode this1 = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
 	depthG = 0;
 	tmp = bpt_i_Find(this1, "00000001", 8, &dummy, &idx);
 	assert (tmp == 0);	
@@ -32,7 +32,7 @@ test(char** tname)
 	assert (d2 == d3);
 	printf("n = 10\tdepth = %d\n", d2);
 	
-	pBPTree this2 = bptBulkLoad("tests/bpt_bl_10e2.dat", 100);
+	pBPNode this2 = bptBulkLoad("tests/bpt_bl_10e2.dat", 100);
 	depthG = 0;
 	tmp = bpt_i_Find(this2, "00000001", 8, &dummy, &idx);
 	assert (tmp == 0);	
@@ -50,7 +50,7 @@ test(char** tname)
 	printf("n = 100\tdepth = %d\n", d2);
 
 
-	pBPTree this3 = bptBulkLoad("tests/bpt_bl_10e3.dat", 1000);
+	pBPNode this3 = bptBulkLoad("tests/bpt_bl_10e3.dat", 1000);
 	depthG = 0;
 	tmp = bpt_i_Find(this3, "00000001", 8, &dummy, &idx);
 	assert (tmp == 0);	
@@ -67,7 +67,7 @@ test(char** tname)
 	assert (d2 == d3);
 	printf("n = 1000\tdepth = %d\n", d2);
 
-	pBPTree this4 = bptBulkLoad("tests/bpt_bl_10e4.dat", 10000);
+	pBPNode this4 = bptBulkLoad("tests/bpt_bl_10e4.dat", 10000);
 	depthG = 0;
 	tmp = bpt_i_Find(this4, "00000001", 8, &dummy, &idx);
 	assert (tmp == 0);	
@@ -84,7 +84,7 @@ test(char** tname)
 	assert (d2 == d3);
 	printf("n = 10000\tdepth = %d\n", d2);
 
-	pBPTree this5 = bptBulkLoad("tests/bpt_bl_10e5.dat", 100000);
+	pBPNode this5 = bptBulkLoad("tests/bpt_bl_10e5.dat", 100000);
 	depthG = 0;
 	tmp = bpt_i_Find(this5, "00000001", 8, &dummy, &idx);
 	assert (tmp == 0);	
@@ -101,7 +101,7 @@ test(char** tname)
 	assert (d2 == d3);
 	printf("n = 100000\tdepth = %d\n", d2);
 
-	pBPTree this6 = bptBulkLoad("tests/bpt_bl_10e6.dat", 1000000);
+	pBPNode this6 = bptBulkLoad("tests/bpt_bl_10e6.dat", 1000000);
 	depthG = 0;
 	tmp = bpt_i_Find(this6, "00000001", 8, &dummy, &idx);
 	assert (tmp == 0);	

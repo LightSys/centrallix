@@ -9,7 +9,7 @@ test(char** tname)
     {
     int i; 
     int iter;
-	pBPTree tree, left, right;
+	pBPNode tree, left, right;
 	int val;
 
 	*tname = "b+tree-12 bptDeInit works for 2-level tree";
@@ -17,9 +17,9 @@ test(char** tname)
 	iter = 80000;
 	for(i=0;i<iter;i++)
 	 	{
-		tree = bptNew();
-		left = bptNew();
-		right = bptNew();
+		tree = bpt_i_new_BPNode();
+		left = bpt_i_new_BPNode();
+		right = bpt_i_new_BPNode();
 		bptInit(tree);
 		bptInit(left);
 		bptInit(right);

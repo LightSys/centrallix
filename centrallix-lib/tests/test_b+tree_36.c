@@ -12,7 +12,7 @@ test(char** tname)
 	*tname = "b+tree-36 Coalesce left leaf twice";
 	iter = 1000;
 	
-	pBPTree this;
+	pBPNode this;
 	char* fname = "tests/bpt_bl_10e2.dat";
 
 	for(i=0;i<iter;i++)

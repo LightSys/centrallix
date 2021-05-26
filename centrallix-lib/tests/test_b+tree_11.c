@@ -9,7 +9,7 @@ test(char** tname)
     {
     int i; 
     int iter;
-	pBPTree tree;
+	pBPNode tree;
 	int val;
 
 	*tname = "b+tree-11 bptDeInit works for leaf tree with 3 values";
@@ -17,7 +17,7 @@ test(char** tname)
 	iter = 800000;
 	for(i=0;i<iter;i++)
 	 	{
-		tree = bptNew();
+		tree = bpt_i_new_BPNode();
 		bptInit(tree);
 		tree->Keys[0].Length = 2;
 		tree->Keys[0].Value = nmSysMalloc(2); // don't assign double quoted string because deInit frees this

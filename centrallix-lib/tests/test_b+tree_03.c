@@ -14,7 +14,7 @@ test(char** tname)
 	*tname = "b+tree-03 5 Keys in root";
 	iter = 8000000;
 	
-	pBPTree root = bptNew();
+	pBPNode root = bpt_i_new_BPNode();
 	//printf("A\n");
 	
 	/*void* copy;

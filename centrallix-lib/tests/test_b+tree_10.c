@@ -5,7 +5,7 @@
 #include "b+tree.h"
 
 /** Declare internal function to test **/
-int bpt_i_Insert(pBPTree this, char* key, int key_len, void* data, int idx); //TODO: We NEED to either define this function or use a different function
+int bpt_i_Insert(pBPNode this, char* key, int key_len, void* data, int idx); //TODO: We NEED to either define this function or use a different function
 
 long long
 test(char** tname)
@@ -13,14 +13,14 @@ test(char** tname)
     int i;
     int iter;
 	int ret_val;
-	pBPTree leaf_node;
+	pBPNode leaf_node;
 
 	*tname = "b+tree-10: Test bpt_i_Insert";
 
 	iter = 100000;
 	for(i=0;i<iter;i++)
 	 	{
-		leaf_node = bptNew();
+		leaf_node = bpt_i_new_BPNode();
 
 		/** For explicitness **/
 		leaf_node->IsLeaf = 1;
@@ -92,7 +92,7 @@ test(char** tname)
 		assert(leaf_node->Children[ 1 ].Ref == &mid_key_value);
 
 		/** Test a successful insertion into an index node **/
-		pBPTree index_node = bptNew();
+		pBPNode index_node = bpt_i_new_BPNode();
 		index_node->IsLeaf = 0;
 		char leaf_node_key[] = "leaf_node";
 		assert(leaf_node->Parent == NULL);

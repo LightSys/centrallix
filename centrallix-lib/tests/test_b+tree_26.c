@@ -7,17 +7,17 @@ long long
 test(char** tname)
    	{
 	int i, iter, tmp, idx;
-	pBPTree locate;
+	pBPNode locate;
 	char* hold;
 
 	*tname = "b+tree-26 full test of bpt_i_Find";
 	iter = 800000;
 	printf("\n");
 
-	pBPTree root = bptNew();
-	pBPTree left = bptNew();
-	pBPTree mid = bptNew();
-	pBPTree right = bptNew();  
+	pBPNode root = bpt_i_new_BPNode();
+	pBPNode left = bpt_i_new_BPNode();
+	pBPNode mid = bpt_i_new_BPNode();
+	pBPNode right = bpt_i_new_BPNode();  
         root->Keys[0].Length = 5;
         root->Keys[0].Value = "Green\0"; 
 	root->nKeys++;	
@@ -54,7 +54,7 @@ test(char** tname)
 	left->Next = right;
 	root->IsLeaf = 0;
 	
-	pBPTree root2 = bptNew();
+	pBPNode root2 = bpt_i_new_BPNode();
 	root2->nKeys++;
 	root2->Keys[0].Value = "Only\n";
 	root2->Keys[0].Length = 4;

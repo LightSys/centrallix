@@ -9,20 +9,20 @@ test(char** tname)
     {
     int i; 
     int iter;
-	pBPTree tree, left, right, ll, lr, rl, rr;
+	pBPNode tree, left, right, ll, lr, rl, rr;
 
 	*tname = "b+tree-17 bptFree deinits 3-level tree";
 
 	iter = 80000;
 	for(i=0;i<iter;i++)
 	 	{
-		tree = bptNew();
-		left = bptNew();
-		right = bptNew();
-		ll = bptNew();
-		lr = bptNew();
-		rl = bptNew();
-		rr = bptNew();
+		tree = bpt_i_new_BPNode();
+		left = bpt_i_new_BPNode();
+		right = bpt_i_new_BPNode();
+		ll = bpt_i_new_BPNode();
+		lr = bpt_i_new_BPNode();
+		rl = bpt_i_new_BPNode();
+		rr = bpt_i_new_BPNode();
 
 		bptInit(tree);
 		bptInit(left);

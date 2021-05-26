@@ -14,13 +14,13 @@ test(char** tname)
 	*tname = "b+tree-20 bpt_i_CopyKey";
 	iter = 8000000;
 	
-	pBPTree root = bptNew();
-	pBPTree leftMid = bptNew();
-	pBPTree rightMid = bptNew();
-	pBPTree leftL = bptNew();
-	pBPTree leftR = bptNew();
-	pBPTree rightL = bptNew();
-	pBPTree rightR = bptNew();  
+	pBPNode root = bpt_i_new_BPNode();
+	pBPNode leftMid = bpt_i_new_BPNode();
+	pBPNode rightMid = bpt_i_new_BPNode();
+	pBPNode leftL = bpt_i_new_BPNode();
+	pBPNode leftR = bpt_i_new_BPNode();
+	pBPNode rightL = bpt_i_new_BPNode();
+	pBPNode rightR = bpt_i_new_BPNode();  
         root->Keys[0].Length = 5;
         root->Keys[0].Value = "Tommy\0"; 
 	root->nKeys++;	

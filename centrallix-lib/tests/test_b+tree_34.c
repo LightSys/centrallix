@@ -8,7 +8,7 @@ test(char** tname)
    	{
 	int i;
     	int iter;
-	pBPTree root, left, rootNull, rootLeaf, rootToAdjust, leftToAdjust;
+	pBPNode root, left, rootNull, rootLeaf, rootToAdjust, leftToAdjust;
 
 
 	*tname = "b+tree-34 bpt_i_AdjustRoot";
@@ -17,8 +17,8 @@ test(char** tname)
 
 	for (i=0; i<iter; i++)
 		{
-		root = bptNew();
-		left = bptNew(); 
+		root = bpt_i_new_BPNode();
+		left = bpt_i_new_BPNode(); 
 	        root->Keys[0].Length = 5;
        		root->Keys[0].Value = "00005\0"; 
 		root->nKeys++;	
@@ -40,12 +40,12 @@ test(char** tname)
 		rootNull = bpt_i_AdjustRoot(rootNull);
 		assert (rootNull == NULL);
 
-		rootLeaf = bptNew();
+		rootLeaf = bpt_i_new_BPNode();
 		rootLeaf = bpt_i_AdjustRoot(rootLeaf);
 		assert (rootLeaf == NULL);		
 		
-		rootToAdjust = bptNew();
-		leftToAdjust = bptNew();
+		rootToAdjust = bpt_i_new_BPNode();
+		leftToAdjust = bpt_i_new_BPNode();
 		leftToAdjust->Keys[0].Length = 5; 
 		leftToAdjust->Keys[0].Value = "00000\0";
                 leftToAdjust->nKeys++;

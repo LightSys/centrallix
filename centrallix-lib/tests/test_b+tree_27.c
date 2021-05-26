@@ -14,16 +14,16 @@ test(char** tname)
 	char* rval5;
 	char* rval6;
 	char* rval7;
-	pBPTree this;
+	pBPNode this;
 
 	*tname = "b+tree-27 test of bptLookup";
 	iter = 800000;
 	printf("\n");
 
-	pBPTree root = bptNew();
-	pBPTree left = bptNew();
-	pBPTree mid = bptNew();
-	pBPTree right = bptNew();  
+	pBPNode root = bpt_i_new_BPNode();
+	pBPNode left = bpt_i_new_BPNode();
+	pBPNode mid = bpt_i_new_BPNode();
+	pBPNode right = bpt_i_new_BPNode();  
         root->Keys[0].Length = 5;
         root->Keys[0].Value = "Green\0"; 
 	root->nKeys++;	

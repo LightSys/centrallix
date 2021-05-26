@@ -14,9 +14,9 @@ test(char** tname)
 	*tname = "b+tree-04 2 Children";
 	iter = 8000000;
 	
-	BPNode* root = bpt_i_new_BPNode();
-	BPNode* left = bpt_i_new_BPNode();
-	BPNode* right = bpt_i_new_BPNode();  
+	pBPNode root = bpt_i_new_BPNode();
+	pBPNode left = bpt_i_new_BPNode();
+	pBPNode right = bpt_i_new_BPNode();  
         root->Keys[0].Length = 5;
         root->Keys[0].Value = "Tommy\0"; 
 	root->nKeys++;	

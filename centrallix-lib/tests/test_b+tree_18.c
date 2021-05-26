@@ -23,7 +23,7 @@ test(char** tname)
 	iter = 80000;
 	for(i=0;i<iter;i++)
 	 	{
-		pBPTree nodes[TOTNODES];
+		pBPNode nodes[TOTNODES];
 
 		int nodeIndex = 0;
 		int parentIndex = 0;
@@ -33,7 +33,7 @@ test(char** tname)
 			{
 			for (k=0; k<LEVELNNODES[j]; k++)
 				{
-				nodes[nodeIndex] = bptNew();
+				nodes[nodeIndex] = bpt_i_new_BPNode();
 				bptInit(nodes[nodeIndex]);
 				nodes[nodeIndex]->nKeys = LEVELNKEYS[j];
 				nodes[nodeIndex]->IsLeaf = (j==NUMLEVELS-1);
