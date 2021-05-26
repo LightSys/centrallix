@@ -8,11 +8,11 @@ test(char** tname)
 	printf("\n");
 	int i;
     	int iter;
-	int tmp;
+	int tmp = 1;
 
 	*tname = "b+tree-01 EMPTY TREE";
 	iter = 8000000;
-	tmp = bpt_PrintTree(NULL);
+	printTree(NULL, 0);
 	for(i=0;i<iter;i++)
 	 	{
 		//tmp = bpt_PrintTree(NULL);
