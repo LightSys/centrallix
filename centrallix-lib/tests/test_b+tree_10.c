@@ -5,7 +5,7 @@
 #include "b+tree.h"
 
 /** Declare internal function to test **/
-int bpt_i_Insert(pBPTree this, char* key, int key_len, void* data, int idx);
+int bpt_i_Insert(pBPTree this, char* key, int key_len, void* data, int idx); //TODO: We NEED to either define this function or use a different function
 
 long long
 test(char** tname)
