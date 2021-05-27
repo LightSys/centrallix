@@ -10,22 +10,22 @@ test(char **tname){
 
 	*tname = "b+tree add test 6 - insert partial (a-f) alphabet in order ";
 
-	pBPTree root = NULL;
+	pBPTree tree = bptNew();
 	int t, i, iter = 9000000;
 	
 	char* data = "data";
 
-	t = bptAdd(&root, "a", 1, data);
+	t = bptInsert(tree, "a", 1, data);
 		assert (t == 0);
-		t = bptAdd(&root, "b", 1, data);
+		t = bptInsert(tree, "b", 1, data);
                 assert (t == 0);
-		t = bptAdd(&root, "c", 1, data);
+		t = bptInsert(tree, "c", 1, data);
                 assert (t == 0);
-		t = bptAdd(&root, "d", 1, data);
+		t = bptInsert(tree, "d", 1, data);
                 assert (t == 0);
-		t = bptAdd(&root, "e", 1, data);
+		t = bptInsert(tree, "e", 1, data);
                 assert (t == 0);
-		t = bptAdd(&root, "f", 1, data);
+		t = bptInsert(tree, "f", 1, data);
                 assert (t == 0);
 	
 	for(i = 0; i < iter; i++)
@@ -33,8 +33,6 @@ test(char **tname){
 		assert (0 == 0);
 		}
 		
-	bpt_PrintTree(&root);
-	printf("\n");
 	return iter*4;
 
 }

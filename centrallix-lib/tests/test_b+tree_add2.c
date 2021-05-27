@@ -10,19 +10,18 @@ test(char **tname){
 
 	*tname = "b+tree add test 3 - insert with bptAdd";
 
-	pBPTree tree = NULL;
+	pBPTree tree = bptNew();
 
 	char* key = "hi\0";
 	char* val = "hopeful\0";
 
-	int t = bptAdd(&tree, key, 2, val);
+	int t = bptInsert(tree, key, 2, val);
 	int iter = 9000000, i;
 
 
 	for (i=0; i<iter; i++)
 		assert (t == 0);
-	bpt_PrintTree(&tree);
-	printf("\n");
+		
 	return iter*4;
 
 }
