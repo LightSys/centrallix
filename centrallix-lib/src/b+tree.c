@@ -561,7 +561,7 @@ bptDeInit(pBPNode this)
         {
         for (i = 0; i < this->nKeys; i++)
             {
-            ret |= bptFree(this->Children[i].Child);
+            ret = bptFree(this->Children[i].Child);
             }
 
         if(ret != 0)
