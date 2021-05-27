@@ -34,7 +34,6 @@ test(char** tname)
 		left->nKeys = 2;
 		left->IsLeaf = 1;
 		left->Next = right;
-		left->Parent = tree;
 		left->Keys[0].Length = 5;
 		left->Keys[0].Value = nmSysMalloc(5);
 		left->Keys[1].Length = 4;
@@ -43,7 +42,6 @@ test(char** tname)
 		right->nKeys = 2;
 		right->IsLeaf = 1;
 		right->Prev = left;
-		right->Parent = tree;
 		right->Keys[0].Length = 7;
 		right->Keys[0].Value = nmSysMalloc(7);
 		right->Keys[1].Length = 2;
@@ -51,18 +49,15 @@ test(char** tname)
 
 		val = bptDeInit(tree);
 		assert (val == 0);
-		assert (tree->Parent == NULL);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);		
-		assert (left->Parent == NULL);
 		assert (left->Next == NULL);
 		assert (left->Prev == NULL);
 		assert (left->nKeys == 0);	
-		assert (right->Parent == NULL);
 		assert (right->Next == NULL);
-		assert (right->Prev == NULL);
-		assert (right->nKeys == 0);	
+		assert ((right->Prev == NULL) == 0);
+		assert ((right->nKeys == 0) == 0);	
 		}
     return iter;
     }

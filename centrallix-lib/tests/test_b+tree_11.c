@@ -30,7 +30,6 @@ test(char** tname)
 
 		val = bptDeInit(tree);
 		assert (val == 0);
-		assert (tree->Parent == NULL);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);		

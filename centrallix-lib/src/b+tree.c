@@ -166,6 +166,9 @@ int
 bptInsert(BPTree* this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
+    if(this == NULL || key == NULL || key_len == NULL || data == NULL) {
+        return -1;
+    }
 
     if (bptSearch(this->root, key, key_len) != NULL)
         {
@@ -558,7 +561,7 @@ bptDeInit(pBPNode this)
         {
         for (i = 0; i < this->nKeys; i++)
             {
-            ret |= bptFree(this->Children[i].Child);
+            ret = bptFree(this->Children[i].Child);
             }
 
         if(ret != 0)
