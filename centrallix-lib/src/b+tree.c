@@ -158,12 +158,14 @@ bptNew()
     this->root = bpt_i_new_BPNode();
     if (!this->root) return NULL;
 
+    this->size = 0;
+
     return this;
     }
 
 /*** bptInsert(T, k, v) - insert k,v into tree T in a single pass down the tree ***/
 int
-bptInsert(BPTree* this, char* key, int key_len, void* data)
+bptInsert(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
     if(this == NULL || key == NULL || key_len == NULL || data == NULL) {
@@ -195,6 +197,7 @@ bptInsert(BPTree* this, char* key, int key_len, void* data)
 
     if (bpt_i_Insert_Nonfull(this->root, key, key_len, data) < 0) return -3;
 
+    this->size++;
     return 0;
     }
 
@@ -242,6 +245,7 @@ bptRemove(BPTree* tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                 memmove(&this->Children[i], &this->Children[i+1], ((this->nKeys-1)-i) * sizeof(this->Children[0]));
                 this->nKeys--;
 
+                tree->size--;
                 return 0;
                 }
             else
@@ -491,6 +495,18 @@ bptRemove(BPTree* tree, char* key, int key_len, int (*free_fn)(), void* free_arg
         }
     }
 
+int
+bptSize(pBPTree this)
+    {
+    return this->size;
+    }
+
+int
+bptIsEmpty(pBPTree this)
+    {
+    return (this->size == 0);
+    }
+
 pBPNodeKey
 bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len)
     {
@@ -664,6 +680,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
     return 0;   // TODO handle nmFree, nmSysFree return nonzero
     }
 
+//TODO : finish function
 pBPTree
 bptBulkLoad(char* fname, int num)
 	{
@@ -685,6 +702,7 @@ bptBulkLoad(char* fname, int num)
 			{
 			return NULL;
 			}
+            tree->size++;
 		}
 	fclose(data);
 
