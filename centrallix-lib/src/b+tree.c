@@ -540,6 +540,8 @@ bptFree(pBPNode this)
     if(ret == 0)
         {
         nmFree(this, sizeof(BPNode));
+        this->Next = NULL;
+        this->Prev = NULL;
         return 0;
         }
     
@@ -559,7 +561,7 @@ bptDeInit(pBPNode this)
     /** Deallocate children **/
     if (!this->IsLeaf)
         {
-        for (i = 0; i < this->nKeys; i++)
+        for (i = 0; i <= this->nKeys; i++)
             {
             ret = bptFree(this->Children[i].Child);
             }

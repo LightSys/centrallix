@@ -56,8 +56,8 @@ test(char** tname)
 		assert (left->Prev == NULL);
 		assert (left->nKeys == 0);	
 		assert (right->Next == NULL);
-		assert ((right->Prev == NULL) == 0);
-		assert ((right->nKeys == 0) == 0);	
+		assert ((right->Prev == NULL));
+		assert ((right->nKeys == 0));	
 		}
     return iter;
     }
