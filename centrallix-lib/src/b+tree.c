@@ -702,7 +702,6 @@ bptBulkLoad(char* fname, int num)
 			{
 			return NULL;
 			}
-            tree->size++;
 		}
 	fclose(data);
 
