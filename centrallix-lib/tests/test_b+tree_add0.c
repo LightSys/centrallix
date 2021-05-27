@@ -11,12 +11,14 @@ test(char **tname){
 	*tname = "b+tree add test 1 - leaf insert";
 	printf("\n Adding Test #0\n");
 
-	pBPTree root = bpt_i_new_BPNode();
+	pBPTree tree = bptNew();
 
 	char key[] = "hello\0";
 	char val[] = "hopeful\0";
 
-	int t = bpt_i_Insert(root, key, 5, val, 0);
+	pBPNode root = tree->root;
+
+	int t = bptInsert(tree, key, 5, val);
 	int iter = 9000000, i;
 	char* str = (char*)root->Children[0].Ref;
 	for(i = 0; i < iter; i++){
@@ -25,7 +27,7 @@ test(char **tname){
 	}
 	
 	printf("\n");
-	bpt_PrintTree(&root);
+	printTree(root,1);
 	printf("\n");
 	return iter*4;
 

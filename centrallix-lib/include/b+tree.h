@@ -62,7 +62,7 @@ struct _BPN
     };
 
 /** Public Functions **/
-BPTree* bptNew();
+pBPTree bptNew();
 int bptInsert(BPTree *this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptInit(pBPNode this);
 int bptFree(pBPNode this);
@@ -81,8 +81,8 @@ int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // u
 
 // functions from orig file that haven't been rechecked/implemented
 //void bpt_i_ReplaceValue(pBPNode this, char* find, int find_len, char* replace, int replace_len);
-/*pBPNode bptBulkLoad(char* fname, int num);
-int bptCreateTreeFromData(pBPNode * root, BPTData * entries, int num_entries );*/
+pBPTree bptBulkLoad(char* fname, int num);
+/*int bptCreateTreeFromData(pBPNode * root, BPTData * entries, int num_entries );*/
 
 /** Temporary functions (should not exist in final version) **/
 void printTree(pBPNode tree, int level);

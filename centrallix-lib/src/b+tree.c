@@ -664,6 +664,33 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
     return 0;   // TODO handle nmFree, nmSysFree return nonzero
     }
 
+pBPTree
+bptBulkLoad(char* fname, int num)
+	{
+	pBPTree tree = bptNew();
+    int i;
+	FILE* data = NULL;
+	data = fopen(fname, "r");
+	char key[10], leaf[50];
+	char* info;
+	char* key_val;
+	
+	for (i=0; i<num; i++)
+		{
+		fscanf(data, "%s %[^\n]", key, leaf);
+		printf("Key: %s\nValue: %s\n",key,leaf);
+		key_val = key;
+        info = leaf;
+		if (bptInsert(tree, key, strlen(key), leaf) != 0)
+			{
+			return NULL;
+			}
+		}
+	fclose(data);
+
+	return tree;
+	}    
+
 
 /********************** TEST FUNCTIONS *******************************/
 void
