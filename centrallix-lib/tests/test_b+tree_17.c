@@ -42,7 +42,6 @@ test(char** tname)
 		left->nKeys = 1;
 		left->IsLeaf = 0;
 		left->Next = right;
-		left->Parent = tree;
 		left->Children[0].Child = ll;
 		left->Children[1].Child = lr;
 		left->Keys[0].Length = 5;
@@ -51,7 +50,6 @@ test(char** tname)
 		right->nKeys = 1;
 		right->IsLeaf = 0;
 		right->Prev = left;
-		right->Parent = tree;
 		right->Children[0].Child = rl;
 		right->Children[1].Child = rr;
 		right->Keys[0].Length = 7;
@@ -60,7 +58,6 @@ test(char** tname)
 		ll->nKeys = 2;
 		ll->IsLeaf = 1;
 		ll->Next = lr;
-		ll->Parent = left;
 		ll->Keys[0].Length = 3;
 		ll->Keys[0].Value = nmSysMalloc(3);
 		ll->Keys[1].Length = 2;
@@ -69,7 +66,6 @@ test(char** tname)
 		lr->nKeys = 2;
 		lr->IsLeaf = 1;
 		lr->Prev = ll;
-		lr->Parent = left;
 		lr->Keys[0].Length = 3;
 		lr->Keys[0].Value = nmSysMalloc(3);
 		lr->Keys[1].Length = 2;
@@ -78,7 +74,6 @@ test(char** tname)
 		rl->nKeys = 2;
 		rl->IsLeaf = 1;
 		rl->Next = rr;
-		rl->Parent = right;
 		rl->Keys[0].Length = 3;
 		rl->Keys[0].Value = nmSysMalloc(3);
 		rl->Keys[1].Length = 2;
@@ -87,40 +82,32 @@ test(char** tname)
 		rl->nKeys = 2;
 		rl->IsLeaf = 1;
 		rl->Prev = rl;
-		rl->Parent = right;
 		rl->Keys[0].Length = 3;
 		rl->Keys[0].Value = nmSysMalloc(3);
 		rl->Keys[1].Length = 2;
 		rl->Keys[1].Value = nmSysMalloc(2);
 
 		bptDeInit(tree);
-		assert (tree->Parent == NULL);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);	
 
-		assert (left->Parent == NULL);
 		assert (left->Next == NULL);
 		assert (left->Prev == NULL);
 		assert (left->nKeys == 0);	
-		assert (right->Parent == NULL);
 		assert (right->Next == NULL);
 		assert (right->Prev == NULL);
 		assert (right->nKeys == 0);	
 
-		assert (ll->Parent == NULL);
 		assert (ll->Next == NULL);
 		assert (ll->Prev == NULL);
 		assert (ll->nKeys == 0);
-		assert (lr->Parent == NULL);
 		assert (lr->Next == NULL);
 		assert (lr->Prev == NULL);
 		assert (lr->nKeys == 0);
-		assert (rl->Parent == NULL);
 		assert (rl->Next == NULL);
 		assert (rl->Prev == NULL);
 		assert (rl->nKeys == 0);
-		assert (rr->Parent == NULL);
 		assert (rr->Next == NULL);
 		assert (rr->Prev == NULL);
 		assert (rr->nKeys == 0);
