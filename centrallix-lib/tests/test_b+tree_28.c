@@ -14,10 +14,12 @@ test(char** tname)
 	char* rval3;
 	char* rval4;	
 
+	pBPNode ret_node;
+
 	*tname = "b+tree-28 Bulk Loading: Size = 10";
 	iter = 8000;
 	
-	pBPNode this;
+	pBPTree this;
 	char* fname = "tests/bpt_bl_10e1.dat";
 	FILE* tree = NULL;
 	FILE* dict = NULL;
@@ -42,17 +44,24 @@ test(char** tname)
 	 	{
 		this = bptBulkLoad(fname, 10);
 		assert (this != NULL);
-		rval1 = (char*) bptLookup(this, "00000001", 8);
-		assert (strcmp("A", rval1) == 0);
-                rval2 = (char*) bptLookup(this, "00000009", 8);
-                assert (strcmp("Aaron'srod", rval2) == 0);
-		rval3 = (char*) bptLookup(this, "00000010", 8);
-                assert (strcmp("Ab", rval3) == 0);
-		rval4 = (char*) bptLookup(this, "00000011", 8);
-                assert (rval4 == NULL);
+		ret_node = bptSearch(this->root, "00000001", 8);
+		int i = 0;
+		printf("%d: %s\n", i, (char*)ret_node->Children[i].Ref);
+		while(strcmp(ret_node->Keys[i].Value, "00000001") != 0){
+			printf("%d: %s\n", i, (char*)ret_node->Children[i].Ref);
+			i++;
 		}
-
-	printf("\n");
+		rval1 = (char*) ret_node->Children[i].Ref;
+		printf("Value: %s\n", rval1);
+		assert (strcmp("A", rval1) == 0);
+        /*
+		rval2 = (char*) bptSearch(this, "00000009", 8);
+        assert (strcmp("Aaron'srod", rval2) == 0);
+		rval3 = (char*) bptSearch(this, "00000010", 8);
+        assert (strcmp("Ab", rval3) == 0);
+		rval4 = (char*) bptSearch(this, "00000011", 8);
+        assert (rval4 == NULL);*/
+		}
 	
     	return iter*4;
     	}
