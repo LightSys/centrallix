@@ -26,7 +26,6 @@ test(char** tname)
 		pBPNode nodes[TOTNODES];
 
 		int nodeIndex = 0;
-		int parentIndex = 0;
 
 		// do all except assigning children, next, prev
 		for (j=0; j<NUMLEVELS; j++)
@@ -43,11 +42,6 @@ test(char** tname)
 					nodes[nodeIndex]->Keys[m].Value = nmSysMalloc(KEYLEN);
 					}
 				
-				if (j!=0)
-					{
-					nodes[nodeIndex]->Parent = nodes[parentIndex];
-					if ((k+1)%(LEVELNKEYS[j-1]+1)==0) parentIndex++;
-					}
 			
 				nodeIndex++;
 				}
@@ -78,7 +72,6 @@ test(char** tname)
 		bptFree(nodes[0]);
 		for (j=0; j<TOTNODES; j++)
 			{
-			assert (nodes[j]->Parent == NULL);
 			assert (nodes[j]->Next == NULL);
 			assert (nodes[j]->Prev == NULL);
 			assert (nodes[j]->nKeys == 0);	
