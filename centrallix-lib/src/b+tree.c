@@ -548,11 +548,11 @@ bptInit(pBPNode this)
 /*** bptFree() - deinit and deallocate a node and all its descendants
  ***/
 int
-bptFree(pBPNode this)
+bptFreeNode(pBPNode this)
     {
     int ret;
 
-    ret = bptDeInit(this);
+    ret = bptDeInitNode(this);
     if(ret == 0)
         {
         nmFree(this, sizeof(BPNode));
@@ -567,7 +567,7 @@ bptFree(pBPNode this)
 /*** bptDeInit() - deinit a node and deinit/deallocate all descendants, but don't deallocate it
  ***/
 int
-bptDeInit(pBPNode this)
+bptDeInitNode(pBPNode this)
     {
     int i, ret;
 
@@ -579,7 +579,7 @@ bptDeInit(pBPNode this)
         {
         for (i = 0; i <= this->nKeys; i++)
             {
-            ret = bptFree(this->Children[i].Child);
+            ret = bptFreeNode(this->Children[i].Child);
             }
 
         if(ret != 0)
@@ -593,11 +593,66 @@ bptDeInit(pBPNode this)
         {
         nmSysFree(this->Keys[i].Value);
         }
-    this->nKeys = 0;
     this->Next = NULL;
     this->Prev = NULL;
+    this->IsLeaf = 1;
+    this->nKeys = 0;
 
     return 0;
+    }    
+
+/*** bptDeInit() - deinit a tree and deinit/deallocate all descendants, but don't deallocate it
+ ***/
+int
+bptDeInit(pBPTree this)
+    {
+    int i, ret;
+    pBPNode root = this->root;
+
+    /** Should not be passed NULL **/
+    if(this==NULL) return -1;
+
+    /** Deallocate children **/
+    if (!root->IsLeaf)
+        {
+        for (i = 0; i <= root->nKeys; i++)
+            {
+            ret = bptFreeNode(root->Children[i].Child);
+            }
+
+        if(ret != 0)
+            {
+            return -2;
+            }
+        }
+
+    /** Deallocate key values **/
+    for (i = 0; i < root->nKeys; i++)
+        {
+        nmSysFree(root->Keys[i].Value);
+        }
+    nmFree(root, sizeof(BPNode));
+    this->size = 0;
+    
+    return 0;
+    }
+
+/*** bptFree() - deinit and deallocate a tree and all its descendants
+ ***/
+int
+bptFree(pBPTree this)
+    {
+    int ret;
+    pBPNode root = this->root;
+
+    ret = bptDeInitNode(root);
+    if(ret == 0)
+        {
+        nmFree(this, sizeof(BPTree));
+        return 0;
+        }
+    
+    return -1;
     }
 
 /*** bpt_i_Compare() - compares two key values.  Return value is greater

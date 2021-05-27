@@ -27,7 +27,7 @@ test(char** tname)
 		tree->nKeys = 3;
 		tree->IsLeaf = 1;
 
-		bptFree(tree);
+		bptFreeNode(tree);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);		
