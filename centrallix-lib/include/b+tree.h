@@ -37,6 +37,7 @@ typedef struct BPTree BPTree, *pBPTree;
 
 struct BPTree {
 	pBPNode root;
+    int size;
 };
 
 struct _BPK
@@ -63,12 +64,14 @@ struct _BPN
 
 /** Public Functions **/
 pBPTree bptNew();
-int bptInsert(BPTree *this, char* key, int key_len, void* data);    // formerly bptAdd
+int bptInsert(pBPTree this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptInit(pBPNode this);
 int bptFree(pBPNode this);
 int bptDeInit(pBPNode this);
 pBPNode bptSearch(pBPNode this, char* key, int key_len);            // formerly bptLookup
-int bptRemove(BPTree *this, char* key, int key_len, int (*free_fn)(), void* free_arg);
+int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free_arg);
+int bptSize(pBPTree this);
+int bptIsEmpty(pBPTree this);
 
 
 /** These should probably be removed from this header in the long run; tests can individually declare***/
@@ -87,7 +90,7 @@ pBPTree bptBulkLoad(char* fname, int num);
 /** Temporary functions (should not exist in final version) **/
 void printTree(pBPNode tree, int level);
 void printPtr(void* ptr);   // helper function for "naming" nodes
-int testTree(BPTree* tree);   // test that all nodes are in order, no dups except for in index nodes, vals match keys
+int testTree(pBPTree tree);   // test that all nodes are in order, no dups except for in index nodes, vals match keys
 int testTree_inner(pBPNode tree, int* last, int* lastLeaf);    // helper for testTree
 
 #endif /* _BPTREE_H */
