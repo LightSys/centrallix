@@ -576,7 +576,8 @@ bptDeInit(pBPNode this)
         nmSysFree(this->Keys[i].Value);
         }
     this->nKeys = 0;
-    this->Next = this->Prev = NULL;
+    this->Next = NULL;
+    this->Prev = NULL;
 
     return 0;
     }
