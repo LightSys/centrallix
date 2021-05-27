@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
 #include "b+tree.h"
-#include "newmalloc_memfail.h"
 
 
 long long
