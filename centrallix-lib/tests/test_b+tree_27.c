@@ -18,7 +18,7 @@ test(char** tname)
 
 	pBPNode rnode1;
 
-	*tname = "b+tree-27 test of bptLookup";
+	*tname = "b+tree-27 test of bptSearch";
 	iter = 800000;
 	printf("\n");
 
@@ -60,7 +60,6 @@ test(char** tname)
 	left->Next = right;
 	root->IsLeaf = 0;
 	
-	//this = bptBulkLoad("tests/bpt_bl_10e2.dat", 100);
 	for (i=0; i<iter; i++)
 		{
 		rnode1 = bptSearch(root, "Zebra", 5);
@@ -70,21 +69,7 @@ test(char** tname)
 			i++;
 		}
 		rval1 = rnode1->Children[i].Ref;
-		/*
-		rval2 = (char*) bptLookup(this, "00000001", 8);
-		rval3 = (char*) bptLookup(this, "00000057", 8);
-		rval4 =	(char*) bptLookup(this, "00000100", 8);
-		rval5 = (char*) bptLookup(this, "00000000", 8);
-		rval6 = (char*) bptLookup(this, "00000037", 8);
-		rval7 = (char*) bptLookup(this, "00000072", 8);*/
 		assert (strcmp("REF VAL\0", rval1) == 0);
-		/*
-		assert (strcmp("A\0", rval2) == 0);
-		assert (strcmp("Abashing\0", rval3) == 0);
-		assert (strcmp("ABC\0", rval4) == 0);
-		assert (rval5 == NULL);
-		assert (strcmp("Abandoned\0", rval6) == 0);
-		assert (strcmp("Abattoir\0", rval7) == 0);*/
 		}
 
 	printf("\n");
