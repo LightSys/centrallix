@@ -18,6 +18,8 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	 	{
 		pBPNode this = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
+		printf("%d", bptSize(this));
+		printf("\n");
 		assert(bptSize(this) == 10);
 		}
 	
