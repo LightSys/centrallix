@@ -15,7 +15,6 @@ test(char** tname)
 	iter = 8000000;
 	
 	pBPNode root = bpt_i_new_BPNode();
-	//printf("A\n");
 	
 	/*void* copy;
         copy = nmSysMalloc(5);
@@ -40,15 +39,11 @@ test(char** tname)
 	root->Keys[4].Value = "!?\0";
 	root->nKeys++;
 
-	printf("%d\n", root->nKeys);
 	
-	//strcpy(root->Keys[0].Value, "Tommy");
-	//printf("B\n");
 	tmp = 0;
 	printTree(&root, 3);
 	for(i=0;i<iter;i++)
 	 	{
-		//tmp = bpt_PrintTree(NULL);
 		assert (tmp == 0);
 		}
 
