@@ -66,8 +66,10 @@ struct _BPN
 pBPTree bptNew();
 int bptInsert(pBPTree this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptInit(pBPNode this);
-int bptFree(pBPNode this);
-int bptDeInit(pBPNode this);
+int bptFreeNode(pBPNode this);
+int bptDeInitNode(pBPNode this);
+int bptFree(pBPTree this);
+int bptDeInit(pBPTree this);
 pBPNode bptSearch(pBPNode this, char* key, int key_len);            // formerly bptLookup
 int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free_arg);
 int bptSize(pBPTree this);

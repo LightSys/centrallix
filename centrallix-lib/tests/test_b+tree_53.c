@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "b+tree.h"
+#include "newmalloc.h"
 
 
 long long
@@ -15,7 +16,7 @@ test(char** tname)
 	*tname = "b+tree-54 bptSize updates when deInit-ing";
 
 	assert (bptSize(tree) == 0);
-	iter = 20000;
+	iter = 200000;
 	for(i=0;i<iter;i++)
 	    {	
 		pBPNode root = bpt_i_new_BPNode();
@@ -47,7 +48,7 @@ test(char** tname)
 		tree->root = root;
 		tree->size = 5;
 
-		bptDeInit(tree->root);
+		bptDeInit(tree);
 		assert(bptSize(tree)==0);
 		}
 	
