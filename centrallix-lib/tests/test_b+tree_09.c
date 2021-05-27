@@ -70,8 +70,8 @@ test(char** tname)
     {
     int i;
     int iter;
-	//pBPNode leaf_node, right_node;
-	int leaf_node, right_node;
+	pBPNode leaf_node, right_node;
+	//int leaf_node, right_node;
 	int max_key_len = 2;
 
 	*tname = "b+tree-09: Test bptSplit";
