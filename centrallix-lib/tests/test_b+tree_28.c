@@ -46,13 +46,10 @@ test(char** tname)
 		assert (this != NULL);
 		ret_node = bptSearch(this->root, "00000001", 8);
 		int i = 0;
-		printf("%d: %s\n", i, (char*)ret_node->Children[i].Ref);
 		while(strcmp(ret_node->Keys[i].Value, "00000001") != 0){
-			printf("%d: %s\n", i, (char*)ret_node->Children[i].Ref);
 			i++;
 		}
 		rval1 = (char*) ret_node->Children[i].Ref;
-		printf("Value: %s\n", rval1);
 		assert (strcmp("A", rval1) == 0);
         /*
 		rval2 = (char*) bptSearch(this, "00000009", 8);

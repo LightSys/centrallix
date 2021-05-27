@@ -664,7 +664,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
 pBPTree
 bptBulkLoad(char* fname, int num)
 	{
-	pBPTree root = bptNew();
+	pBPTree tree = bptNew();
     int i;
 	FILE* data = NULL;
 	data = fopen(fname, "r");
@@ -678,14 +678,14 @@ bptBulkLoad(char* fname, int num)
 		printf("Key: %s\nValue: %s\n",key,leaf);
 		key_val = key;
         info = leaf;
-		if (bptInsert(root, key, strlen(key) + sizeof(char), leaf) != 0)
+		if (bptInsert(tree, key, strlen(key), leaf) != 0)
 			{
 			return NULL;
 			}
 		}
 	fclose(data);
 
-	return root;
+	return tree;
 	}    
 
 
